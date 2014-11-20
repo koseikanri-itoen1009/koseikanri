@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A15C(body)
  * Description      : 保管場所転送取引データOIF更新(基準在庫)
  * MD.050           : 保管場所転送取引データOIF更新(基準在庫) MD050_COI_003_A15
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------------  ----------------------------------------------------------
@@ -20,6 +20,12 @@ AS
  *  ins_standard_inv_err_list    基準在庫変更データのエラーリスト表追加      (A-7)
  *  del_hht_inv_transactions     HHT入出庫一時表のエラーレコード削除         (A-8)
  *  ins_mtl_transactions_if      基準在庫変更データの資材取引OIF追加         (A-9)
+ *  ins_vd_column                VDコラムマスタの登録                        (A-12)
+ *  chk_new_vd_data              新規ベンダ基準在庫妥当性チェック            (A-14)
+ *  put_warning_msg              エラー情報編集処理                          (A-15)
+ *  new_vd_column_create         新規ベンダ基準在庫
+ *                                    コラム上限値チェック                   (A-11)
+ *                                    登録コラム情報初期化                   (A-13)
  *  submain                      メイン処理プロシージャ                      (A-2)
  *  main                         コンカレント実行ファイル登録プロシージャ    (A-10)
  *
@@ -32,6 +38,7 @@ AS
  *  2009/04/06    1.2   SCS T.Nakamura   障害番号 T1_0004
  *                                         VDコラムマスタの更新処理の修正
  *  2009/12/15    1.3   SCS N.Abe        [E_本稼動_00402]VDコラムマスタ更新処理の修正
+ *  2010/04/19    1.4   SCS H.Sasaki     [E_本稼動_06588]HHTからのVDコラムマスタ登録
  *
  *****************************************************************************************/
 --
@@ -96,6 +103,17 @@ AS
   -- ===============================
   cv_pkg_name          CONSTANT VARCHAR2(100) := 'XXCOI003A15C'; -- パッケージ名
 --
+-- == 2011/04/19 V1.4 Added START ===============================================================
+  cv_prf_max_column_no  CONSTANT VARCHAR2(30) :=  'XXCOI1_MAX_COLUMN_NO';     --  XXCOI:登録コラム上限値
+  cv_prf_default_rack   CONSTANT VARCHAR2(30) :=  'XXCOI1_DEFAULT_RACK';      --  XXCOI:ラック数初期値
+  cv_hht_program_div_6  CONSTANT VARCHAR2(1)  :=  '6';                        --  入出庫ジャーナル処理区分（新規ベンダ基準在庫）
+  cv_day_form_m         CONSTANT VARCHAR2(6)  :=  'YYYYMM';                   --  日付型(年月)
+  cv_month_type_0       CONSTANT VARCHAR2(1)  :=  '0';                        --  月区分（前月）
+  cv_month_type_1       CONSTANT VARCHAR2(1)  :=  '1';                        --  月区分（当月）
+  cv_dummy_value        CONSTANT VARCHAR2(11) :=  'dummy_value';              --  NVL用ダミー値
+  cv_inst_type_1        CONSTANT VARCHAR2(1)  :=  '1';                        --  機器区分（自販機）
+  cv_yes                CONSTANT VARCHAR2(1)  :=  'Y';                        --  固定値 Y
+-- == 2011/04/19 V1.4 Added END   ===============================================================
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -128,6 +146,16 @@ AS
   gv_msg_coi_10371     CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10371'; -- 基準在庫更新（基準在庫上限値）エラー
   gv_mst_coi_10372     CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10372'; -- 基準在庫更新（基準在庫少数点）エラー
 -- Add 2009/02/18 #015 ↑
+-- == 2011/04/19 V1.4 Added START ===============================================================
+  cv_msg_coi_00032      CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-00032';       --  プロファイル値取得エラー
+  cv_msg_coi_10430      CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10430';       --  VDコラム登録済みエラーメッセージ
+  cv_msg_coi_10431      CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10431';       --  基準在庫更新（コラム上限値）エラー
+  cv_msg_coi_10432      CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10432';       --  基準在庫更新（顧客情報未取得）エラー
+  cv_msg_coi_10433      CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10433';       --  メッセージヘッダ（ベンダ初回）
+  cv_msg_coi_10434      CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10434';       --  メッセージヘッダ（新規ベンダ基準在庫）
+  cv_msg_coi_10435      CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10435';       --  基準在庫更新（顧客移行）エラー
+  cv_msg_coi_10436      CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10436';       --  新規ベンダ基準在庫コラム重複
+-- == 2011/04/19 V1.4 Added END   ===============================================================
 --
   -- トークン
   gv_tkn_pro_tok       CONSTANT VARCHAR2(7)   := 'PRO_TOK';              -- プロファイル名
@@ -146,11 +174,27 @@ AS
   gv_tkn_org_code_tok  CONSTANT VARCHAR2(12)  := 'ORG_CODE_TOK';         -- 在庫組織コード
   gv_tkn_invoice_type  CONSTANT VARCHAR2(12)  := 'INVOICE_TYPE';         -- 伝票区分
   gv_tkn_tran_type_tok CONSTANT VARCHAR2(20)  := 'TRANSACTION_TYPE_TOK'; -- 取引タイプ名
+-- == 2011/04/19 V1.4 Added START ===============================================================
+  cv_tkn_cust_code      CONSTANT VARCHAR2(30) :=  'CUSTOMER_CODE';        --  顧客コード
+  cv_tkn_max_column     CONSTANT VARCHAR2(30) :=  'MAX_COLUMN';           --  コラム上限値
+-- == 2011/04/19 V1.4 Added END   ===============================================================
 --
   gv_pro_div_chg_inv   CONSTANT VARCHAR2(1)   := '1';                    -- 入出庫ジャーナル処理区分(基準在庫変更)
   gn_xhit_status_0     CONSTANT NUMBER        := 0;                      -- HHT入出庫一時表ステータス 0(未処理)
   gv_vd_get_lock       CONSTANT VARCHAR2(1)   := 'Y';                    -- VDコラムマスタロック取得成功
   gv_vd_miss_lock      CONSTANT VARCHAR2(1)   := 'N';                    -- VDコラムマスタロック取得失敗
+-- == 2011/04/19 V1.4 Added START ===============================================================
+  gb_customer_chk       BOOLEAN;                                          --  顧客情報存在チェックフラグ
+  gb_vd_column_chk      BOOLEAN;                                          --  VDコラムマスタ存在チェックフラグ
+  gb_sale_base_chk      BOOLEAN;                                          --  前月当月売上拠点チェックフラグ
+  gb_cust_grp_chk       BOOLEAN;                                          --  顧客内有効データ有無フラグ
+  gn_target_cnt2        NUMBER;                                           --  対象件数（新規ベンダ基準在庫用）
+  gn_normal_cnt2        NUMBER;                                           --  正常件数（新規ベンダ基準在庫用）
+  gn_warn_cnt2          NUMBER;                                           --  スキップ件数（新規ベンダ基準在庫用）
+  gt_max_column_no      xxcoi_mst_vd_column.column_no%TYPE;               --  コラムNo上限値
+  gt_default_rack       xxcoi_mst_vd_column.rack_quantity%TYPE;           --  ラック数初期値
+  gv_ins_vd_type        VARCHAR2(1);                                      --  当月前月区分
+-- == 2011/04/19 V1.4 Added END   ===============================================================
 --
   -- VDコラムマスタ情報レコード型
   TYPE gr_mst_vd_column_type IS RECORD(
@@ -167,6 +211,20 @@ AS
 --
   -- VDコラムマスタ情報カーソルレコード型
   gr_mst_vd_column_rec   gr_mst_vd_column_type;
+-- == 2011/04/19 V1.4 Added START ===============================================================
+  --  新規ベンダ基準在庫登録用変数設定
+  TYPE new_vd_data_rtype IS RECORD(
+      customer_id           xxcoi_mst_vd_column.customer_id%TYPE
+    , column_no             xxcoi_mst_vd_column.column_no%TYPE
+    , item_id               xxcoi_mst_vd_column.item_id%TYPE
+    , inventory_quantity    xxcoi_mst_vd_column.inventory_quantity%TYPE
+    , price                 xxcoi_mst_vd_column.price%TYPE
+    , hot_cold              xxcoi_mst_vd_column.hot_cold%TYPE
+  );
+  --
+  TYPE new_vd_data_ttype IS TABLE OF new_vd_data_rtype INDEX BY BINARY_INTEGER;
+  gt_new_vd_data    new_vd_data_ttype;
+-- == 2011/04/19 V1.4 Added END   ===============================================================
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -208,6 +266,37 @@ AS
     ORDER BY xhit.interface_id                           -- 1.インターフェースID
     FOR UPDATE NOWAIT;
 --
+-- == 2011/04/19 V1.4 Added START ===============================================================
+  --  新規ベンダ基準在庫情報抽出カーソル
+  CURSOR hht_inv_tran2_cur
+  IS
+    SELECT  xhit.rowid                AS  row_id            --  1.ROWID
+          , xhit.inventory_item_id    AS  item_id           --  2.品目ID
+          , xhit.item_code            AS  item_code         --  3.品目コード
+          , xhit.total_quantity       AS  total_qnt         --  4.総数量
+          , xhit.primary_uom_code     AS  prim_uom_code     --  5.基準単位
+          , xhit.invoice_date         AS  invoice_date      --  6.伝票日付
+          , xhit.outside_subinv_code  AS  out_inv_code      --  7.出庫側保管場所
+          , xhit.inside_subinv_code   AS  in_inv_code       --  8.入庫側保管場所
+          , xhit.outside_code         AS  outside_code      --  9.出庫側コード
+          , xhit.inside_code          AS  customer_code     -- 10.顧客コード
+          , xhit.invoice_no           AS  invoice_no        -- 11.伝票№
+          , xhit.column_no            AS  column_no         -- 12.コラム№
+          , xhit.unit_price           AS  unit_price        -- 13.単価
+          , xhit.hot_cold_div         AS  hot_cold_div      -- 14.H/C
+          , xhit.employee_num         AS  employee_num      -- 15.営業員コード
+          , xhit.base_code            AS  base_code         -- 16.拠点コード
+          , xhit.record_type          AS  record_type       -- 17.レコード種別
+          , xhit.invoice_type         AS  invoice_type      -- 18.伝票区分
+          , xhit.department_flag      AS  department_flag   -- 19.百貨店フラグ
+    FROM    xxcoi_hht_inv_transactions    xhit              -- HHT入出庫一時表
+    WHERE   xhit.status           =   gn_xhit_status_0
+    AND     xhit.hht_program_div  =   cv_hht_program_div_6
+    ORDER BY  xhit.inside_code    ASC
+            , xhit.column_no      DESC
+            , xhit.interface_id   DESC
+    FOR UPDATE NOWAIT;
+-- == 2011/04/19 V1.4 Added END   ===============================================================
   -- 基準在庫変更抽出カーソルレコード型
   hht_inv_tran_rec hht_inv_tran_cur%ROWTYPE;
 --
@@ -369,6 +458,39 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- == 2011/04/19 V1.4 Added START ===============================================================
+    -- ====================================
+    --  登録コラム上限値取得
+    -- ====================================
+    gt_max_column_no  :=  TO_NUMBER(fnd_profile.value(cv_prf_max_column_no));
+    --
+    IF (gt_max_column_no IS NULL) THEN
+      lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                          iv_application    =>  gv_msg_kbn_coi
+                        , iv_name           =>  cv_msg_coi_00032
+                        , iv_token_name1    =>  gv_tkn_pro_tok
+                        , iv_token_value1   =>  cv_prf_max_column_no
+                      );
+      lv_errbuf   :=  lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    -- ====================================
+    --  ラック数初期値取得
+    -- ====================================
+    gt_default_rack   :=  TO_NUMBER(fnd_profile.value(cv_prf_default_rack));
+    --
+    IF (gt_default_rack IS NULL) THEN
+      lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                          iv_application    =>  gv_msg_kbn_coi
+                        , iv_name           =>  cv_msg_coi_00032
+                        , iv_token_name1    =>  gv_tkn_pro_tok
+                        , iv_token_value1   =>  cv_prf_default_rack
+                      );
+      lv_errbuf   :=  lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    --
+-- == 2011/04/19 V1.4 Added END   ===============================================================
   EXCEPTION
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -777,8 +899,11 @@ AS
           which  => FND_FILE.OUTPUT
          ,buff   => lv_errbuf);
 --
+-- == 2011/04/19 V1.4 Modified START ===============================================================
         -- エラー件数のカウントアップ
-        gn_error_cnt := gn_error_cnt + 1;
+--        gn_error_cnt := gn_error_cnt + 1;
+        gn_warn_cnt :=  gn_warn_cnt + 1;
+-- == 2011/04/19 V1.4 Modified END   ===============================================================
 --
       -- VDコラムマスタロック取得有無フラグが失敗の場合
       ELSE
@@ -1433,6 +1558,921 @@ AS
 --
   END ins_mtl_transactions_if;
 --
+-- == 2011/04/19 V1.4 Added START ===============================================================
+  /**********************************************************************************
+   * Procedure Name   : ins_vd_column
+   * Description      : VDコラムマスタの登録(A-12)
+   ***********************************************************************************/
+  PROCEDURE ins_vd_column(
+      ov_errbuf     OUT VARCHAR2      --  エラー・メッセージ            --# 固定 #
+    , ov_retcode    OUT VARCHAR2      --  リターン・コード              --# 固定 #
+    , ov_errmsg     OUT VARCHAR2      --  ユーザー・エラー・メッセージ  --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_vd_column'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --  伝票日付が当月(gv_ins_vd_type = '1')の場合、前月項目は初期値を設定
+    --  前月の場合は、当月情報と同値を設定
+    <<ins_vd_clm_loop>>
+    FOR ln_count IN  1 .. gt_new_vd_data.COUNT  LOOP
+      INSERT  INTO  xxcoi_mst_vd_column(
+          vd_column_mst_id                                              --   1.VDコラムマスタID
+        , customer_id                                                   --   2.顧客ID
+        , column_no                                                     --   3.コラムNo
+        , item_id                                                       --   4.品目ID
+        , organization_id                                               --   5.在庫組織ID
+        , inventory_quantity                                            --   6.基準在庫数
+        , price                                                         --   7.単価
+        , hot_cold                                                      --   8.H/C
+        , last_month_item_id                                            --   9.(前月)品目ID
+        , last_month_inventory_quantity                                 --  10.(前月)基準在庫数
+        , last_month_price                                              --  11.(前月)単価
+        , last_month_hot_cold                                           --  12.(前月)H/C
+        , rack_quantity                                                 --  13.ラック数
+        , created_by                                                    --  14.作成者
+        , creation_date                                                 --  15.作成日時
+        , last_updated_by                                               --  16.最終更新者
+        , last_update_date                                              --  17.最終更新日時
+        , last_update_login                                             --  18.最終更新ログイン者
+        , request_id                                                    --  19.要求ID
+        , program_application_id                                        --  20.プログラム・アプリケーションID
+        , program_id                                                    --  21.プログラムID
+        , program_update_date                                           --  22.プログラム更新日時
+      )VALUES(
+          xxcoi_mst_vd_column_s01.NEXTVAL                               --  1
+        , gt_new_vd_data(ln_count).customer_id                          --  2
+        , gt_new_vd_data(ln_count).column_no                            --  3
+        , gt_new_vd_data(ln_count).item_id                              --  4
+        , gt_inv_org_id                                                 --  5
+        , gt_new_vd_data(ln_count).inventory_quantity                   --  6
+        , gt_new_vd_data(ln_count).price                                --  7
+        , gt_new_vd_data(ln_count).hot_cold                             --  8
+        , CASE  WHEN  gv_ins_vd_type = cv_month_type_1  THEN  NULL
+                                                        ELSE  gt_new_vd_data(ln_count).item_id
+          END                                                           --  9
+        , CASE  WHEN  gv_ins_vd_type = cv_month_type_1  THEN  0
+                                                        ELSE  gt_new_vd_data(ln_count).inventory_quantity
+          END                                                           --  10
+        , CASE  WHEN  gv_ins_vd_type = cv_month_type_1  THEN  NULL
+                                                        ELSE  gt_new_vd_data(ln_count).price
+          END                                                           --  11
+        , CASE  WHEN  gv_ins_vd_type = cv_month_type_1  THEN  NULL
+                                                        ELSE  gt_new_vd_data(ln_count).hot_cold
+          END                                                           --  12
+        , gt_default_rack                                               --  13
+        , cn_created_by                                                 --  14
+        , SYSDATE                                                       --  15
+        , cn_last_updated_by                                            --  16
+        , SYSDATE                                                       --  17
+        , cn_last_update_login                                          --  18
+        , cn_request_id                                                 --  19
+        , cn_program_application_id                                     --  20
+        , cn_program_id                                                 --  21
+        , SYSDATE                                                       --  22
+      );
+    END LOOP ins_vd_clm_loop;
+--
+  EXCEPTION
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_vd_column;
+--
+  /**********************************************************************************
+   * Procedure Name   : chk_new_vd_data
+   * Description      : 新規ベンダ基準在庫妥当性チェック(A-14)
+   ***********************************************************************************/
+  PROCEDURE chk_new_vd_data(
+      it_chk_customer   IN  hz_cust_accounts.account_number%TYPE    --  顧客コード（切替確認用）
+    , ov_msg_code       OUT VARCHAR2                                --  メッセージコード
+    , ov_errbuf         OUT VARCHAR2                                --  エラー・メッセージ            --# 固定 #
+    , ov_retcode        OUT VARCHAR2                                --  リターン・コード              --# 固定 #
+    , ov_errmsg         OUT VARCHAR2                                --  ユーザー・エラー・メッセージ  --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_new_vd_data'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_dummy      NUMBER;
+--
+    chk_vd_data_expt  EXCEPTION;
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    IF (  (it_chk_customer IS NULL)
+          OR
+          (it_chk_customer <> hht_inv_tran_rec.customer_code)
+       )
+    THEN
+      --  １レコード目、または、顧客が変更された場合のみチェック
+      BEGIN
+        --  VDコラムマスタの存在チェック
+        SELECT  1
+        INTO    ln_dummy
+        FROM    xxcoi_mst_vd_column     xmvc
+              , xxcmm_cust_accounts     xca
+        WHERE   xmvc.customer_id        =   xca.customer_id
+        AND     xca.customer_code       =   hht_inv_tran_rec.customer_code
+        AND     xmvc.column_no          =   1
+        AND     ROWNUM  = 1;
+        --
+        --  データが存在する場合、エラー
+        gb_vd_column_chk  :=  FALSE;
+        ov_msg_code       :=  cv_msg_coi_10430;
+        RAISE chk_vd_data_expt;
+      EXCEPTION
+        WHEN  NO_DATA_FOUND THEN
+          gb_vd_column_chk  :=  TRUE;
+      END;
+    END IF;
+    --
+    --  基準在庫数に少数点が含まれる場合エラー
+    IF ((hht_inv_tran_rec.total_qnt - ROUND(hht_inv_tran_rec.total_qnt)) <> 0) THEN
+      ov_msg_code   :=  gv_mst_coi_10372;
+      RAISE chk_vd_data_expt;
+    END IF;
+    --
+    --  基準在庫数が４桁以上の場合エラー
+    IF (LENGTH(hht_inv_tran_rec.total_qnt) > 3) THEN
+      ov_msg_code   :=  gv_msg_coi_10371;
+      RAISE chk_vd_data_expt;
+    END IF;
+    --
+    --  単価がNULLの場合エラー
+    IF  (hht_inv_tran_rec.unit_price IS NULL) THEN
+      ov_msg_code   :=  gv_msg_coi_10353;
+      RAISE chk_vd_data_expt;
+    END IF;
+    --
+    --  単価がマイナス値の場合エラー
+    IF (hht_inv_tran_rec.unit_price < 0) THEN
+      ov_msg_code   :=  gv_msg_coi_10059;
+      RAISE chk_vd_data_expt;
+    END IF;
+    --
+    --  H/C区分がNULLの場合エラー
+    IF (hht_inv_tran_rec.hot_cold_div IS NULL) THEN
+      ov_msg_code   :=  gv_msg_coi_10354;
+      RAISE chk_vd_data_expt;
+    END IF;
+    --
+  EXCEPTION
+    -- *** VDコラムマスタ登録用データチェック例外ハンドラ ***
+    WHEN chk_vd_data_expt THEN
+      ov_retcode  :=  cv_status_warn;
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END chk_new_vd_data;
+--
+  /**********************************************************************************
+   * Procedure Name   : put_warning_msg
+   * Description      : エラー情報編集処理(A-15)
+   ***********************************************************************************/
+  PROCEDURE put_warning_msg(
+      iv_msg_code   IN  VARCHAR2      --  メッセージコード
+    , ov_errbuf     OUT VARCHAR2      --  エラー・メッセージ            --# 固定 #
+    , ov_retcode    OUT VARCHAR2      --  リターン・コード              --# 固定 #
+    , ov_errmsg     OUT VARCHAR2      --  ユーザー・エラー・メッセージ  --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'put_warning_msg'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_key_msg  VARCHAR2(5000);   --  キー情報
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --  警告件数カウント
+    gn_warn_cnt2  :=  gn_warn_cnt2  + 1;
+    --
+    --  メッセージ生成（キー情報）
+    lv_key_msg    :=  xxccp_common_pkg.get_msg(
+                          iv_application    =>  gv_msg_kbn_coi
+                        , iv_name           =>  gv_msg_coi_10342
+                        , iv_token_name1    =>  gv_tkn_base_code
+                        , iv_token_value1   =>  hht_inv_tran_rec.base_code
+                        , iv_token_name2    =>  gv_tkn_record_type
+                        , iv_token_value2   =>  hht_inv_tran_rec.record_type
+                        , iv_token_name3    =>  gv_tkn_invoice_type
+                        , iv_token_value3   =>  hht_inv_tran_rec.invoice_type
+                        , iv_token_name4    =>  gv_tkn_dept_flag
+                        , iv_token_value4   =>  hht_inv_tran_rec.department_flag
+                        , iv_token_name5    =>  gv_tkn_invoice_no
+                        , iv_token_value5   =>  hht_inv_tran_rec.invoice_no
+                        , iv_token_name6    =>  gv_tkn_column_no
+                        , iv_token_value6   =>  hht_inv_tran_rec.column_no
+                        , iv_token_name7    =>  gv_tkn_item_code
+                        , iv_token_value7   =>  hht_inv_tran_rec.item_code
+                      );
+    --
+    --  メッセージ生成（エラー内容）
+    IF    (iv_msg_code = cv_msg_coi_10430) THEN
+      --  VDコラム登録済みエラー
+      lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                          iv_application    =>  gv_msg_kbn_coi
+                        , iv_name           =>  cv_msg_coi_10430
+                      );
+    ELSIF (iv_msg_code = cv_msg_coi_10431) THEN
+      --  基準在庫更新（コラム上限値）エラー
+      lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                          iv_application    =>  gv_msg_kbn_coi
+                        , iv_name           =>  cv_msg_coi_10431
+                        , iv_token_name1    =>  cv_tkn_max_column
+                        , iv_token_value1   =>  TO_CHAR(gt_max_column_no)
+                        , iv_token_name2    =>  gv_tkn_column_no
+                        , iv_token_value2   =>  TO_CHAR(hht_inv_tran_rec.column_no)
+                      );
+    ELSIF (iv_msg_code = cv_msg_coi_10432) THEN
+      --  基準在庫更新（顧客情報未取得）エラー
+      lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                          iv_application    =>  gv_msg_kbn_coi
+                        , iv_name           =>  cv_msg_coi_10432
+                      );
+    ELSIF (iv_msg_code = cv_msg_coi_10435) THEN
+      --  基準在庫更新（顧客移行）エラー
+      lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                          iv_application    =>  gv_msg_kbn_coi
+                        , iv_name           =>  cv_msg_coi_10435
+                      );
+    ELSIF (iv_msg_code = cv_msg_coi_10436) THEN
+      --  新規ベンダ基準在庫コラム重複
+      lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                          iv_application    =>  gv_msg_kbn_coi
+                        , iv_name           =>  cv_msg_coi_10436
+                        , iv_token_name1    =>  cv_tkn_cust_code
+                        , iv_token_value1   =>  TO_CHAR(hht_inv_tran_rec.customer_code)
+                        , iv_token_name2    =>  gv_tkn_column_no
+                        , iv_token_value2   =>  TO_CHAR(hht_inv_tran_rec.column_no)
+                      );
+    ELSIF (iv_msg_code = gv_mst_coi_10372) THEN
+      --  基準在庫更新（基準在庫小数点）エラー
+      lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                          iv_application    =>  gv_msg_kbn_coi
+                        , iv_name           =>  gv_mst_coi_10372
+                        , iv_token_name1    =>  gv_tkn_total_qnt
+                        , iv_token_value1   =>  TO_CHAR(hht_inv_tran_rec.total_qnt)
+                      );
+    ELSIF (iv_msg_code = gv_msg_coi_10371) THEN
+      --  基準在庫更新（基準在庫上限値）エラー
+      lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                          iv_application    =>  gv_msg_kbn_coi
+                        , iv_name           =>  gv_msg_coi_10371
+                        , iv_token_name1    =>  gv_tkn_total_qnt
+                        , iv_token_value1   =>  TO_CHAR(hht_inv_tran_rec.total_qnt)
+                      );
+    ELSIF (iv_msg_code = gv_msg_coi_10353) THEN
+      --  基準在庫更新（単価未設定エラー）エラー
+      lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                          iv_application    =>  gv_msg_kbn_coi
+                        , iv_name           =>  gv_msg_coi_10353
+                      );
+    ELSIF (iv_msg_code = gv_msg_coi_10059) THEN
+      --  基準在庫更新（単価不整合）エラー
+      lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                          iv_application    =>  gv_msg_kbn_coi
+                        , iv_name           =>  gv_msg_coi_10059
+                        , iv_token_name1    =>  gv_tkn_unit_price
+                        , iv_token_value1   =>  TO_CHAR(hht_inv_tran_rec.unit_price)
+                      );
+    ELSIF (iv_msg_code = gv_msg_coi_10354) THEN
+      --  基準在庫更新（H/C未設定エラー）エラー
+      lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                          iv_application    =>  gv_msg_kbn_coi
+                        , iv_name           =>  gv_msg_coi_10354
+                      );
+    END IF;
+    --
+    --  メッセージの出力
+    FND_FILE.PUT_LINE(
+        which   =>  FND_FILE.LOG
+      , buff    =>  lv_key_msg || lv_errmsg
+    );
+    --
+    FND_FILE.PUT_LINE(
+        which   =>  FND_FILE.OUTPUT
+      , buff    =>  lv_key_msg || lv_errmsg
+    );
+    --
+    IF (iv_msg_code <> cv_msg_coi_10436) THEN
+      --  HHTエラーリストに登録
+      --  コラム番号重複による、データ破棄に関してはエラーリストに出力しない
+      -- ===========================================
+      -- 基準在庫変更データのエラーリスト表追加(A-7)
+      -- ===========================================
+      ins_standard_inv_err_list(
+          ov_errbuf     =>  lv_errbuf         --  エラー・メッセージ            --# 固定 #
+        , ov_retcode    =>  lv_retcode        --  リターン・コード              --# 固定 #
+        , iov_errmsg    =>  lv_errmsg         --  ユーザー・エラー・メッセージ  --# 固定 #
+      );
+      IF (lv_retcode <> cv_status_normal) THEN
+        RAISE global_process_expt;
+      END IF;
+    END IF;
+    --
+    --  HHT一時表を削除
+    -- ===========================================
+    -- HHT入出庫一時表のエラーレコード削除(A-8)
+    -- ===========================================
+    del_hht_inv_transactions(
+        ov_errbuf     =>  lv_errbuf         --  エラー・メッセージ            --# 固定 #
+      , ov_retcode    =>  lv_retcode        --  リターン・コード              --# 固定 #
+      , ov_errmsg     =>  lv_errmsg         --  ユーザー・エラー・メッセージ  --# 固定 #
+    );
+    IF (lv_retcode <> cv_status_normal) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+  EXCEPTION
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END put_warning_msg;
+--
+  /**********************************************************************************
+   * Procedure Name   : new_vd_column_create
+   * Description      : 新規ベンダ基準在庫
+   ***********************************************************************************/
+  PROCEDURE new_vd_column_create(
+      ov_errbuf     OUT VARCHAR2      --  エラー・メッセージ            --# 固定 #
+    , ov_retcode    OUT VARCHAR2      --  リターン・コード              --# 固定 #
+    , ov_errmsg     OUT VARCHAR2      --  ユーザー・エラー・メッセージ  --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'new_vd_column_create'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_target_rec_msg   CONSTANT VARCHAR2(100)  :=  'APP-XXCCP1-90000';   --  対象件数メッセージ
+    cv_success_rec_msg  CONSTANT VARCHAR2(100)  :=  'APP-XXCCP1-90001';   --  成功件数メッセージ
+    cv_skip_rec_msg     CONSTANT VARCHAR2(100)  :=  'APP-XXCCP1-90003';   --  スキップ件数メッセージ
+    cv_cnt_token        CONSTANT VARCHAR2(10)   :=  'COUNT';              --  件数メッセージ用トークン名
+--
+    -- *** ローカル変数 ***
+    lv_message                VARCHAR2(5000);                                 --  メッセージ
+    lt_msg_code               fnd_new_messages.message_name%TYPE;             --  警告メッセージコード
+    lt_customer_id            hz_cust_accounts.cust_account_id%TYPE;          --  顧客ID
+    lt_chk_customer           hz_cust_accounts.account_number%TYPE;           --  顧客コード（切替確認用）
+    lt_chk_column             xxcoi_mst_vd_column.column_no%TYPE;             --  コラムNo（切替確認用）
+    lt_sale_base_code         xxcmm_cust_accounts.sale_base_code%TYPE;        --  当月売上拠点
+    lt_past_sale_base_code    xxcmm_cust_accounts.past_sale_base_code%TYPE;   --  前月売上拠点
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- #####################################################################################
+    --  HHTからのVDコラムマスタ登録
+    -- #####################################################################################
+    --  初期化
+    gn_target_cnt2  :=  0;
+    gn_normal_cnt2  :=  0;
+    gn_warn_cnt2    :=  0;
+    --
+    gb_customer_chk   :=  TRUE;
+    gb_vd_column_chk  :=  TRUE;
+    gb_sale_base_chk  :=  TRUE;
+    gb_cust_grp_chk   :=  FALSE;
+    lt_chk_column     :=  0;
+    --
+    --  メッセージヘッダの出力（新規ベンダ基準在庫）
+    lv_message  :=  xxccp_common_pkg.get_msg(
+                        iv_application    =>  gv_msg_kbn_coi
+                      , iv_name           =>  cv_msg_coi_10434
+                    );
+    --
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => lv_message
+    );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => ''
+    );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => lv_message
+    );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => ''
+    );
+    --
+    -- ===============================
+    --  基準在庫変更データ抽出(A-2)
+    -- ===============================
+    OPEN  hht_inv_tran2_cur;
+    --
+    <<vd_create_loop>>
+    LOOP
+      --
+      FETCH hht_inv_tran2_cur INTO  hht_inv_tran_rec;
+      --
+      -- ===============================
+      --  コラム上限値チェック(A-11)
+      -- ===============================
+      IF  ( (hht_inv_tran_rec.column_no > gt_max_column_no)
+            AND
+            (hht_inv_tran2_cur%FOUND)
+          )
+      THEN
+        --  データが取得された場合のみ
+        --  終了ステータス警告
+        ov_retcode  :=  cv_status_warn;
+        --
+        --  登録可能コラム数の上限を超えている場合、上限値以上の全データをエラーとする
+        <<chk_max_clm_loop>>
+        LOOP
+          --  対象件数カウント
+          gn_target_cnt2  :=  gn_target_cnt2 + 1;
+          --
+          --  警告メッセージ、HHTエラーリストの出力と、HHT入出庫一時表の削除
+          put_warning_msg(
+              iv_msg_code     =>  cv_msg_coi_10431
+            , ov_errbuf       =>  lv_errbuf         --  エラー・メッセージ            --# 固定 #
+            , ov_retcode      =>  lv_retcode        --  リターン・コード              --# 固定 #
+            , ov_errmsg       =>  lv_errmsg         --  ユーザー・エラー・メッセージ  --# 固定 #
+          );
+          --  処理完了ステータス正常以外の場合
+          IF (lv_retcode <> cv_status_normal) THEN
+            RAISE global_process_expt;
+          END IF;
+          --
+          --  次データ取得（上限値以下になるか、対象データがなくなるまで継続）
+          FETCH hht_inv_tran2_cur INTO  hht_inv_tran_rec;
+          EXIT WHEN ((hht_inv_tran_rec.column_no  <=  gt_max_column_no) OR (hht_inv_tran2_cur%NOTFOUND));
+          --
+        END LOOP chk_max_clm_loop;
+      END IF;
+      --
+      --
+      IF  ( (lt_chk_customer IS NULL)
+            OR
+            (lt_chk_customer <> hht_inv_tran_rec.customer_code)
+            OR
+            (hht_inv_tran2_cur%NOTFOUND)
+          )
+      THEN
+        --  １レコード目、顧客コードが変更、全データ処理済のいずれかの場合以下を実行
+        --
+        -- ===============================
+        --  VDコラムマスタの登録(A-12)
+        -- ===============================
+        IF  ( (lt_chk_customer IS NOT NULL)
+              AND
+              (gb_customer_chk)
+              AND
+              (gb_vd_column_chk)
+              AND
+              (gb_sale_base_chk)
+              AND
+              (gb_cust_grp_chk)
+            )
+        THEN
+          --  １レコード目以外、かつ、顧客が取得されている、VDコラムマスタが存在しない、
+          --  売上拠点不整合がない、１顧客で最低１コラム有効なデータが存在する場合
+          ins_vd_column(
+              ov_errbuf       =>  lv_errbuf         --  エラー・メッセージ            --# 固定 #
+            , ov_retcode      =>  lv_retcode        --  リターン・コード              --# 固定 #
+            , ov_errmsg       =>  lv_errmsg         --  ユーザー・エラー・メッセージ  --# 固定 #
+          );
+          --  処理完了ステータス正常以外の場合
+          IF (lv_retcode <> cv_status_normal) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+        --
+        -- ===============================
+        --  登録コラム情報初期化(A-13)
+        -- ===============================
+        --  顧客情報が変わった場合、VDコラム情報を保持する変数を初期化
+        gt_new_vd_data.DELETE;
+        --  顧客内有効データ有無フラグ
+        gb_cust_grp_chk :=  FALSE;
+        --
+        IF  (hht_inv_tran2_cur%FOUND) THEN
+          BEGIN
+            --  伝票日付の前月、当月を設定
+            gv_ins_vd_type  :=  CASE  WHEN  TO_CHAR(hht_inv_tran_rec.invoice_date, cv_day_form_m) = TO_CHAR(gd_process_date, cv_day_form_m)
+                                        THEN  cv_month_type_1
+                                        ELSE  cv_month_type_0
+                                END;
+            --
+            --  顧客ID取得
+            SELECT  hca.cust_account_id       customer_id
+                  , xca.sale_base_code        sale_base_code
+                  , xca.past_sale_base_code   past_sale_base_code
+            INTO    lt_customer_id
+                  , lt_sale_base_code
+                  , lt_past_sale_base_code
+            FROM    hz_cust_accounts        hca
+                  , xxcmm_cust_accounts     xca
+            WHERE   hca.account_number            =   hht_inv_tran_rec.customer_code
+            AND     hca.cust_account_id           =   xca.customer_id
+            AND     hht_inv_tran_rec.base_code    =   CASE  WHEN  gv_ins_vd_type = cv_month_type_1
+                                                              THEN  NVL(xca.sale_base_code,      cv_dummy_value)
+                                                              ELSE  NVL(xca.past_sale_base_code, cv_dummy_value)
+                                                      END
+            AND     xxcoi_common_pkg.chk_aff_active(NULL, hht_inv_tran_rec.base_code, NULL, hht_inv_tran_rec.invoice_date) = cv_yes
+            AND     ROWNUM  = 1;
+            --
+            --  売上拠点チェック（顧客移行対応）
+            IF  ( (gv_ins_vd_type = cv_month_type_0)
+                  AND
+                  (lt_sale_base_code <> lt_past_sale_base_code)
+                )
+            THEN
+              --  前月伝票で、顧客の当月、前月売上拠点が不一致の場合
+              gb_sale_base_chk  :=  FALSE;
+              ov_retcode        :=  cv_status_warn;
+            ELSE
+              gb_sale_base_chk  :=  TRUE;
+            END IF;
+            --
+            --  顧客情報が取得された場合
+            gb_customer_chk   :=  TRUE;
+            --
+            --  コラムNo1から、今回対象の有効最大コラムNoまでを初期化
+            <<vd_format_loop>>
+            FOR ln_cnt  IN  1 .. hht_inv_tran_rec.column_no LOOP
+              gt_new_vd_data(ln_cnt).customer_id          :=  lt_customer_id;
+              gt_new_vd_data(ln_cnt).column_no            :=  ln_cnt;
+              gt_new_vd_data(ln_cnt).item_id              :=  NULL;
+              gt_new_vd_data(ln_cnt).inventory_quantity   :=  0;
+              gt_new_vd_data(ln_cnt).price                :=  NULL;
+              gt_new_vd_data(ln_cnt).hot_cold             :=  NULL;
+            END LOOP  vd_format_loop;
+            --
+          EXCEPTION
+            WHEN  NO_DATA_FOUND THEN
+              --  顧客情報取得エラー
+              gb_customer_chk   :=  FALSE;
+              ov_retcode        :=  cv_status_warn;
+          END;
+          --
+        END IF;
+      END IF;
+      --
+      --
+      --  処理の終了
+      EXIT  WHEN  hht_inv_tran2_cur%NOTFOUND;
+      gn_target_cnt2  :=  gn_target_cnt2 + 1;
+      --
+      --
+      IF NOT(gb_customer_chk) THEN
+        --  顧客IDが取得できなかった場合（同一顧客のスキップ）
+        --  警告メッセージ、HHTエラーリストの出力と、HHT入出庫一時表の削除
+        put_warning_msg(
+            iv_msg_code     =>  cv_msg_coi_10432
+          , ov_errbuf       =>  lv_errbuf         --  エラー・メッセージ            --# 固定 #
+          , ov_retcode      =>  lv_retcode        --  リターン・コード              --# 固定 #
+          , ov_errmsg       =>  lv_errmsg         --  ユーザー・エラー・メッセージ  --# 固定 #
+        );
+        --  処理完了ステータス正常以外の場合
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+        --
+      ELSIF NOT(gb_vd_column_chk) THEN
+        --  VDコラムマスタが登録済みの場合（同一顧客のスキップ）
+        put_warning_msg(
+            iv_msg_code     =>  cv_msg_coi_10430
+          , ov_errbuf       =>  lv_errbuf         --  エラー・メッセージ            --# 固定 #
+          , ov_retcode      =>  lv_retcode        --  リターン・コード              --# 固定 #
+          , ov_errmsg       =>  lv_errmsg         --  ユーザー・エラー・メッセージ  --# 固定 #
+        );
+        --  処理完了ステータス正常以外の場合
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+        --
+      ELSIF NOT(gb_sale_base_chk) THEN
+        --  前月、当月売上拠点の不一致（同一顧客のスキップ）
+        put_warning_msg(
+            iv_msg_code     =>  cv_msg_coi_10435
+          , ov_errbuf       =>  lv_errbuf         --  エラー・メッセージ            --# 固定 #
+          , ov_retcode      =>  lv_retcode        --  リターン・コード              --# 固定 #
+          , ov_errmsg       =>  lv_errmsg         --  ユーザー・エラー・メッセージ  --# 固定 #
+        );
+        --  処理完了ステータス正常以外の場合
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+        --
+      ELSIF ( (NVL(lt_chk_customer, cv_dummy_value) = hht_inv_tran_rec.customer_code)
+              AND
+              (lt_chk_column = hht_inv_tran_rec.column_no)
+            )
+      THEN
+        --  １レコード前と同一顧客、同一コラムNoの場合（同一コラムのスキップ）
+        put_warning_msg(
+            iv_msg_code     =>  cv_msg_coi_10436
+          , ov_errbuf       =>  lv_errbuf         --  エラー・メッセージ            --# 固定 #
+          , ov_retcode      =>  lv_retcode        --  リターン・コード              --# 固定 #
+          , ov_errmsg       =>  lv_errmsg         --  ユーザー・エラー・メッセージ  --# 固定 #
+        );
+        --  本処理はデータスキップするが正常終了扱いとする。（警告ステータスを立てない）
+        --  メッセージ出力処理でカウントされた警告件数をクリア
+        gn_warn_cnt2 := gn_warn_cnt2 - 1;
+        --
+        --  処理完了ステータス正常以外の場合
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+        --
+      ELSE
+        -- =======================================
+        -- 新規ベンダ基準在庫妥当性チェック(A-14)
+        -- =======================================
+        chk_new_vd_data(
+            it_chk_customer =>  lt_chk_customer   --  顧客コード（切替確認用）
+          , ov_msg_code     =>  lt_msg_code       --  メッセージコード
+          , ov_errbuf       =>  lv_errbuf         --  エラー・メッセージ            --# 固定 #
+          , ov_retcode      =>  lv_retcode        --  リターン・コード              --# 固定 #
+          , ov_errmsg       =>  lv_errmsg         --  ユーザー・エラー・メッセージ  --# 固定 #
+        );
+        --
+        IF  (lv_retcode = cv_status_normal)  THEN
+          --  有効な登録データが取得されたためTRUEを設定
+          gb_cust_grp_chk   :=  TRUE;
+          --
+          --  チェック処理で問題がなかった場合
+          --  資材取引一時表に追加
+          -- =====================================
+          -- 基準在庫変更ワークテーブルの追加(A-4)
+          -- =====================================
+          ins_tmp_svd_tran_date(
+              ov_errbuf       =>  lv_errbuf       --  エラー・メッセージ            --# 固定 #
+            , ov_retcode      =>  lv_retcode      --  リターン・コード              --# 固定 #
+            , ov_errmsg       =>  lv_errmsg       --  ユーザー・エラー・メッセージ  --# 固定 #
+          );
+          --
+          --  HHT入出庫一時表の更新
+          -- ========================================
+          -- HHT入出庫一時表の処理ステータス更新(A-6)
+          -- ========================================
+          upd_hht_inv_transactions(
+              ov_errbuf       =>  lv_errbuf       --  エラー・メッセージ            --# 固定 #
+            , ov_retcode      =>  lv_retcode      --  リターン・コード              --# 固定 #
+            , ov_errmsg       =>  lv_errmsg       --  ユーザー・エラー・メッセージ  --# 固定 #
+          );
+          --
+          IF (hht_inv_tran_rec.total_qnt > 0) THEN
+            --  VDコラムマスタ作成用変数にデータを保持（顧客IDとコラムNoは初期化時に設定済み）
+            --  0の場合は、初期化時の設定のままとする
+            gt_new_vd_data(hht_inv_tran_rec.column_no).item_id              :=  hht_inv_tran_rec.item_id;
+            gt_new_vd_data(hht_inv_tran_rec.column_no).inventory_quantity   :=  hht_inv_tran_rec.total_qnt;
+            gt_new_vd_data(hht_inv_tran_rec.column_no).price                :=  hht_inv_tran_rec.unit_price;
+            gt_new_vd_data(hht_inv_tran_rec.column_no).hot_cold             :=  hht_inv_tran_rec.hot_cold_div;
+          END IF;
+        ELSIF (lv_retcode = cv_status_warn) THEN
+          --  チェック処理A-14警告時
+          ov_retcode  :=  cv_status_warn;
+          --  HHT入出庫一時表の削除
+          put_warning_msg(
+              iv_msg_code     =>  lt_msg_code       --  チェック処理で発生したエラーのメッセージコード
+            , ov_errbuf       =>  lv_errbuf         --  エラー・メッセージ            --# 固定 #
+            , ov_retcode      =>  lv_retcode        --  リターン・コード              --# 固定 #
+            , ov_errmsg       =>  lv_errmsg         --  ユーザー・エラー・メッセージ  --# 固定 #
+          );
+          --
+          --  処理完了ステータス正常以外の場合
+          IF (lv_retcode <> cv_status_normal) THEN
+            RAISE global_process_expt;
+          END IF;
+        ELSE
+          --  チェック処理A-14エラー時
+          RAISE global_process_expt;
+        END IF;
+      END IF;
+      --
+      lt_chk_customer   :=  hht_inv_tran_rec.customer_code;
+      lt_chk_column     :=  hht_inv_tran_rec.column_no;
+    END LOOP  vd_create_loop;
+    --
+    CLOSE hht_inv_tran2_cur;
+    --
+    IF (gn_target_cnt2 = 0) THEN
+      --  対象データなしメッセージ
+      lv_message  :=  xxccp_common_pkg.get_msg(
+                          iv_application    =>  gv_msg_kbn_coi
+                        , iv_name           =>  gv_msg_coi_00008
+                      );
+      --
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => lv_message
+      );
+      --
+    END IF;
+    --
+    --  成功件数 = 対象件数 - 警告件数
+    gn_normal_cnt2  :=  gn_target_cnt2 - gn_warn_cnt2;
+    --
+    -- ===========================================
+    -- 終了処理(A-10)
+    -- ===========================================
+    --  空行
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => ''
+    );
+    --対象件数出力
+    gv_out_msg  :=  xxccp_common_pkg.get_msg(
+                        iv_application    =>  gv_msg_kbn_ccp
+                      , iv_name           =>  cv_target_rec_msg
+                      , iv_token_name1    =>  cv_cnt_token
+                      , iv_token_value1   =>  TO_CHAR(gn_target_cnt2)
+                    );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+--
+    --成功件数出力
+    gv_out_msg  :=  xxccp_common_pkg.get_msg(
+                        iv_application    =>  gv_msg_kbn_ccp
+                      , iv_name           =>  cv_success_rec_msg
+                      , iv_token_name1    =>  cv_cnt_token
+                      , iv_token_value1   =>  TO_CHAR(gn_normal_cnt2)
+                    );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+--
+    -- スキップ件数出力
+    gv_out_msg  :=  xxccp_common_pkg.get_msg(
+                      iv_application    =>  gv_msg_kbn_ccp
+                    , iv_name           =>  cv_skip_rec_msg
+                    , iv_token_name1    =>  cv_cnt_token
+                    , iv_token_value1   =>  TO_CHAR(gn_warn_cnt2)
+                    );
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => gv_out_msg
+    );
+--
+--
+  EXCEPTION
+    -- *** ロック取得例外ハンドラ ***
+    WHEN lock_expt THEN
+       -- 対象件数のカウントアップ
+      gn_target_cnt := gn_target_cnt + 1;
+--
+      -- ロックエラーメッセージ(HHT入出庫一時表)
+      lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                          iv_application  =>  gv_msg_kbn_coi
+                        , iv_name         =>  gv_msg_coi_10055
+                      );
+      lv_errbuf :=  lv_errmsg;
+      ov_errmsg   :=  lv_errmsg;                                                    --# 任意 #
+      ov_errbuf   :=  SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode  :=  cv_status_error;                                              --# 任意 #
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END new_vd_column_create;
+-- == 2011/04/19 V1.4 Added END   ===============================================================
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ(A-2)
@@ -1492,6 +2532,44 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- == 2011/04/19 V1.4 Added START ===============================================================
+    -- ===============================
+    -- 新規ベンダ基準在庫
+    -- ===============================
+    new_vd_column_create(
+        ov_errbuf       =>  lv_errbuf         --  エラー・メッセージ            --# 固定 #
+      , ov_retcode      =>  lv_retcode        --  リターン・コード              --# 固定 #
+      , ov_errmsg       =>  lv_errmsg         --  ユーザー・エラー・メッセージ  --# 固定 #
+    );
+    IF (lv_retcode = cv_status_warn) THEN
+      ov_retcode  :=  cv_status_warn;
+    ELSIF (lv_retcode = cv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+    --
+    --  メッセージヘッダの出力（ベンダ初回）
+    lv_message  :=  xxccp_common_pkg.get_msg(
+                        iv_application    =>  gv_msg_kbn_coi
+                      , iv_name           =>  cv_msg_coi_10433
+                    );
+    --
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => lv_message
+    );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => ''
+    );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => lv_message
+    );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => ''
+    );
+-- == 2011/04/19 V1.4 Added END   ===============================================================
     -- ===============================
     -- 基準在庫変更データ抽出(A-2)
     -- ===============================
@@ -1600,20 +2678,41 @@ AS
         which => FND_FILE.OUTPUT
        ,buff  => lv_message);
 --
-    -- 対象件数が1件以上存在する場合
-    ELSE
+-- == 2011/04/19 V1.4 Deleted START ===============================================================
+--    -- 対象件数が1件以上存在する場合
+--    ELSE
+--      -- ===========================================
+--      -- 基準在庫変更データの資材取引OIF追加(A-9)
+--      -- ===========================================
+--      ins_mtl_transactions_if(
+--        lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,lv_retcode        -- リターン・コード             --# 固定 #
+--       ,lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+-- == 2011/04/19 V1.4 Deleted END   ===============================================================
+    END IF;
+-- == 2011/04/19 V1.4 Added START ===============================================================
+    --
+    IF (gn_target_cnt <> 0 OR gn_target_cnt2 <> 0) THEN
+      --  新規ベンダ基準在庫、ベンダ初回のいずれかに対象が１レコードでも存在する場合
+      --
       -- ===========================================
       -- 基準在庫変更データの資材取引OIF追加(A-9)
       -- ===========================================
       ins_mtl_transactions_if(
-        lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,lv_retcode        -- リターン・コード             --# 固定 #
-       ,lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+          ov_errbuf       =>  lv_errbuf         --  エラー・メッセージ            --# 固定 #
+        , ov_retcode      =>  lv_retcode        --  リターン・コード              --# 固定 #
+        , ov_errmsg       =>  lv_errmsg         --  ユーザー・エラー・メッセージ  --# 固定 #
+      );
 --
       IF (lv_retcode <> cv_status_normal) THEN
         RAISE global_process_expt;
       END IF;
     END IF;
+-- == 2011/04/19 V1.4 Added END   ===============================================================
 --
     -- 警告件数またはスキップ件数が1件以上存在する場合
     IF (gn_error_cnt > 0)
@@ -1632,6 +2731,9 @@ AS
       lv_errmsg := xxccp_common_pkg.get_msg(
                      iv_application  => gv_msg_kbn_coi
                     ,iv_name         => gv_msg_coi_10055);
+-- == 2011/04/19 V1.4 Added START ===============================================================
+      lv_errbuf :=  lv_errmsg;
+-- == 2011/04/19 V1.4 Added END   ===============================================================
       ov_errmsg := lv_errmsg;                                                   --# 任意 #
       ov_errbuf := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;                                            --# 任意 #
@@ -1773,17 +2875,18 @@ AS
       ,buff   => gv_out_msg
     );
 --
-    --エラー件数出力
-    gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => gv_msg_kbn_ccp
-                    ,iv_name         => cv_error_rec_msg
-                    ,iv_token_name1  => cv_cnt_token
-                    ,iv_token_value1 => TO_CHAR(gn_error_cnt)
-                   );
-    FND_FILE.PUT_LINE(
-       which  => FND_FILE.OUTPUT
-      ,buff   => gv_out_msg
-    );
+-- == 2011/04/19 V1.4 Modified START ===============================================================
+--    --エラー件数出力
+--    gv_out_msg := xxccp_common_pkg.get_msg(
+--                     iv_application  => gv_msg_kbn_ccp
+--                    ,iv_name         => cv_error_rec_msg
+--                    ,iv_token_name1  => cv_cnt_token
+--                    ,iv_token_value1 => TO_CHAR(gn_error_cnt)
+--                   );
+--    FND_FILE.PUT_LINE(
+--       which  => FND_FILE.OUTPUT
+--      ,buff   => gv_out_msg
+--    );
 --
     -- スキップ件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
@@ -1796,6 +2899,27 @@ AS
         which  => FND_FILE.OUTPUT
       , buff   => gv_out_msg
     );
+    --
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => ''
+    );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => ''
+    );
+    --エラー件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => gv_msg_kbn_ccp
+                    ,iv_name         => cv_error_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_error_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+-- == 2011/04/19 V1.4 Modified END   ===============================================================
 --
     --取引作成件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A12C(body)
  * Description      : HHT入出庫データ抽出
  * MD.050           : HHT入出庫データ抽出 MD050_COI_003_A12
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2010/03/23    1.6   Y.Goto           [E_本稼動_01943]拠点の有効チェックを追加
  *  2010/04/19    1.7   H.Sasaki         [E_本稼動_02365]見本の拠点有効チェックを変更
  *  2010/04/22    1.8   N.Abe            [E_本稼動_02415]見本の拠点有効チェック修正(上様顧客)
+ *  2011/04/14    1.9   S.Ochiai         [E_本稼動_06588]レコード種別'21'(新規ベンダ基準在庫)追加対応
  *
  *****************************************************************************************/
 --
@@ -488,6 +489,9 @@ AS
             ,TRIM(xihit.base_delivery_flag) AS base_delivery_flag       -- 拠点間倉替フラグ
             ,CASE   TRIM(xihit.record_type)
                 WHEN  '20'  THEN          SUBSTRB(TRIM(xihit.outside_code), -5, 5)
+-- == 2011/04/14 V1.9 Added START ===============================================================
+                WHEN  '21'  THEN          SUBSTRB(TRIM(xihit.outside_code), -5, 5)
+-- == 2011/04/14 V1.9 Added END =================================================================
                 WHEN  '30'  THEN
                   CASE  TRIM(xihit.invoice_type)
                     WHEN  '1'  THEN       SUBSTRB(TRIM(xihit.outside_code), -2, 2)
@@ -665,6 +669,9 @@ AS
     -- *** ローカル定数 ***
     --
     cv_record_type_vd       CONSTANT VARCHAR2(2) := '20';                           -- レコード種別：VD初回
+-- == 2011/04/14 V1.9 Added START ===============================================================
+    cv_record_type_new      CONSTANT VARCHAR2(2) := '21';                           -- レコード種別：新規ベンダ基準在庫
+-- == 2011/04/14 V1.9 Added END =================================================================
     cv_record_type_inv      CONSTANT VARCHAR2(2) := '30';                           -- レコード種別：入出庫
     cv_record_type_sample   CONSTANT VARCHAR2(2) := '40';                           -- レコード種別：見本
     cv_lookup_record_type   CONSTANT VARCHAR2(23) := 'XXCOI1_HHT_INV_DATA_DIV';     -- LOOKUP_TYPE：レコード種別
@@ -776,7 +783,10 @@ AS
     -- 2.条件付必須項目チェック
     -- -------------------------------
     -- (1).コラム№
-    IF g_hht_inv_if_tab( in_work_count ).record_type = cv_record_type_vd
+-- == 2011/04/14 V1.9 Modified START ===============================================================
+--    IF g_hht_inv_if_tab( in_work_count ).record_type = cv_record_type_vd
+    IF g_hht_inv_if_tab( in_work_count ).record_type IN( cv_record_type_vd, cv_record_type_new )
+-- == 2011/04/14 V1.9 Modified END =================================================================
     AND  g_hht_inv_if_tab( in_work_count ).column_no IS NULL THEN
         --
         lv_errmsg := xxccp_common_pkg.get_msg(
@@ -905,8 +915,12 @@ AS
     gn_total_quantity := ( NVL( g_hht_inv_if_tab( in_work_count ).case_quantity ,0 )
                              * NVL( g_hht_inv_if_tab( in_work_count ).case_in_quantity,0 ) ) 
                                  + NVL( g_hht_inv_if_tab( in_work_count ).quantity,0 ) ;
-    -- 取引を作成しないVD初回は除く（単価、H/C更新のみ）
-    IF g_hht_inv_if_tab( in_work_count ).record_type != cv_record_type_vd THEN
+-- == 2011/04/14 V1.9 Modified START ===============================================================
+--    -- 取引を作成しないVD初回は除く（単価、H/C更新のみ）
+--    IF g_hht_inv_if_tab( in_work_count ).record_type != cv_record_type_vd THEN
+    -- 取引を作成しないVD初回（単価、H/C更新のみ）、新規ベンダ基準在庫は除く
+    IF g_hht_inv_if_tab( in_work_count ).record_type NOT IN( cv_record_type_vd, cv_record_type_new ) THEN
+-- == 2011/04/14 V1.9 Modified START ===============================================================
         -- 総本数0判定
         IF gn_total_quantity = 0 THEN
         --
@@ -1567,6 +1581,9 @@ AS
     -- ===============================
     cv_prg_name       CONSTANT VARCHAR2(100) := 'insert_hht_inv_tran';  -- プログラム名
     cv_record_type_20 CONSTANT VARCHAR2(2)   := '20';                   -- レコード種別：VD初回
+-- == 2011/04/14 V1.9 Added START ===============================================================
+    cv_record_type_21 CONSTANT VARCHAR2(2)   := '21';                   -- レコード種別：新規ベンダ基準在庫
+-- == 2011/04/14 V1.9 Added END =================================================================
     cv_dummy          CONSTANT VARCHAR2(2)   := '99';                   -- 伝票区分：ダミー
 --
 --#####################  固定ローカル変数宣言部 START   ########################
@@ -1670,8 +1687,14 @@ AS
         ,g_hht_inv_if_tab( in_work_count ).case_quantity         -- 9.ケース数
         ,g_hht_inv_if_tab( in_work_count ).case_in_quantity      -- 10.入数
         ,g_hht_inv_if_tab( in_work_count ).quantity              -- 11.本数
+-- == 2011/04/14 V1.9 Modified START ===============================================================
+--        ,DECODE( g_hht_inv_if_tab( in_work_count ).record_type
+--                 ,cv_record_type_20,cv_dummy, g_hht_inv_if_tab( in_work_count ).invoice_type )         -- 12.伝票区分
         ,DECODE( g_hht_inv_if_tab( in_work_count ).record_type
-                 ,cv_record_type_20,cv_dummy, g_hht_inv_if_tab( in_work_count ).invoice_type )         -- 12.伝票区分
+                ,cv_record_type_20,cv_dummy
+                ,cv_record_type_21,cv_dummy
+                ,g_hht_inv_if_tab( in_work_count ).invoice_type )-- 12.伝票区分
+-- == 2011/04/14 V1.9 Modified END =================================================================
         ,g_hht_inv_if_tab( in_work_count ).base_delivery_flag    -- 13.拠点間倉替フラグ
         ,g_hht_inv_if_tab( in_work_count ).outside_code          -- 14.出庫側コード
         ,g_hht_inv_if_tab( in_work_count ).inside_code           -- 15.入庫側コード
