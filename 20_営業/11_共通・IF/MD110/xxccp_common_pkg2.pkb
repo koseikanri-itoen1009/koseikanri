@@ -31,6 +31,7 @@ AS
  *  2009-05-01    1.4  Masayuki.Sano    障害番号T1_0910対応(スキーマ名付加)
  *  2009-05-11    1.5  Masayuki.Sano    障害番号T1_0376対応(ダミー日付の日付変換時、書式指定)
  *  2009-06-25    1.6  Yuuki.Nakamura   障害番号T1_1425対応(文字化けチェック削除)
+ *  2009-08-17    1.7  Yutaka.Kuboshima 障害番号0000818対応(BLOB変換関数修正)
  *****************************************************************************************/
 --
   -- ===============================
@@ -68,6 +69,9 @@ AS
 --
   gv_cnst_msg_com3_001   CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-10111';  -- ﾛｯｸｴﾗｰ
   gv_cnst_msg_com3_002   CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-10112';  -- 対象データなし
+-- 2009/08/17 Ver1.7 add start by Yutaka.Kuboshima
+  gv_cnst_msg_com3_003   CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-10122';  -- 文字列変換不可エラー
+-- 2009/08/17 Ver1.7 add end by Yutaka.Kuboshima
   -- 項目チェック
   gv_cnst_msg_com3_para1 CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-10117';  -- パラメータエラー(項目名称)
   gv_cnst_msg_com3_para2 CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-10118';  -- パラメータエラー(必須フラグ)
@@ -359,6 +363,21 @@ AS
    * Procedure Name   : BLOBデータ変換
    * Description      : blob_to_varchar2
    ***********************************************************************************/
+-- 2009/08/17 Ver1.7 modify start by Yutaka.Kuboshima
+-- ===============================
+-- 全面改修
+-- ===============================
+--
+-- エラー内容：32000バイト以上かつ、2バイト文字が存在する場合、文字化けエラーが発生する可能性がある。
+--
+-- ■対応内容
+-- 修正前：最初にBLOBから32000バイトを取り出し、 文字列に変換していき、BLOBが32000バイト以上の場合は
+--         BLOBがなくなるまで10000バイトずつ取り出して文字列に変換していく。 
+--
+-- 修正後：BLOBから改行コードまでを取り出し、文字列に変換していく。(1レコードずつ取り出して文字列に変換) 
+--         BLOBがなくなるまで上記を繰り返す。
+--
+/*
   PROCEDURE blob_to_varchar2(
     in_file_id   IN         NUMBER,          -- ファイルＩＤ
     ov_file_data OUT NOCOPY g_file_data_tbl, -- 変換後VARCHAR2データ
@@ -543,6 +562,201 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END blob_to_varchar2;
+--
+*/
+  /**********************************************************************************
+   * Procedure Name   : BLOBデータ変換
+   * Description      : blob_to_varchar2
+   ***********************************************************************************/
+  PROCEDURE blob_to_varchar2(
+    in_file_id   IN         NUMBER,          -- ファイルＩＤ
+    ov_file_data OUT NOCOPY g_file_data_tbl, -- 変換後VARCHAR2データ
+    ov_errbuf    OUT NOCOPY VARCHAR2,        -- エラー・メッセージ           --# 固定 #
+    ov_retcode   OUT NOCOPY VARCHAR2,        -- リターン・コード             --# 固定 #
+    ov_errmsg    OUT NOCOPY VARCHAR2)        -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'blob_to_varchar2'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cr_line_feed                     CONSTANT RAW(10)     := UTL_RAW.CAST_TO_RAW(CHR(10)); -- 改行コード
+--
+    -- *** ローカル変数 ***
+    lb_src_lob                       BLOB;                         -- 読み込み対象BLOB
+    lr_bufb                          RAW(32767);                   -- 格納バッファ
+    lv_str                           VARCHAR2(32767);              -- キャスト退避
+    li_amt                           INTEGER;                      -- 読み取りサイズ
+    li_pos                           INTEGER;                      -- 読み取り開始位置
+    li_index                         INTEGER;                      -- 行
+    li_save_pos_line_feed            INTEGER;                      -- 改行コード位置退避用
+    li_pos_line_feed                 INTEGER;                      -- 改行コード位置
+    li_blob_length                   INTEGER;                      -- BLOB値の長さ
+    lb_eof_flag                      BOOLEAN;                      -- EOFフラグ
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- ===============================
+    -- ユーザー定義例外
+    -- ===============================
+    not_cast_varchar2_expt           EXCEPTION;                    -- 文字列変換不可エラー
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := xxccp_common_pkg.set_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 変数初期化
+    ov_file_data.delete;
+    li_amt                := 0;      -- 読み取りサイズ
+    li_pos                := 0;      -- 読み取り開始位置
+    li_index              := 1;      -- 行
+    li_pos_line_feed      := 0;      -- 改行コード位置
+    li_save_pos_line_feed := 0;      -- 改行コード位置退避用
+    lb_eof_flag           := FALSE;  -- EOFフラグ
+--
+    -- ファイルアップロードインタフェースデータ取得
+    -- 行ロック処理
+    SELECT xmf.file_data -- ファイルデータ
+    INTO   lb_src_lob
+    FROM   xxccp_mrp_file_ul_interface xmf
+    WHERE  xmf.file_id = in_file_id
+    FOR UPDATE OF xmf.file_id NOWAIT;
+    --
+    -- BLOB値の長さ取得
+    li_blob_length := DBMS_LOB.GETLENGTH(lb_src_lob);
+--
+    -- 1レコード毎に処理
+    <<line_loop>>
+    LOOP
+--
+      -- 改行コードの位置を取得します
+      li_pos_line_feed := DBMS_LOB.INSTR(lb_src_lob,                -- 読み込み対象BLOB
+                                         cr_line_feed,              -- 検索文字(改行コード)
+                                         li_save_pos_line_feed + 1, -- 開始位置(前改行コード + 1)
+                                         1);                        -- 出現番号
+      -- 改行コードが存在しない場合
+      IF (li_pos_line_feed = 0) THEN
+        -- 読み取りサイズ設定(BLOB値の長さ - 前回の改行コード位置)
+        li_amt := li_blob_length - li_save_pos_line_feed;
+        -- EOFフラグ設定
+        lb_eof_flag := TRUE;
+      ELSE
+        -- 読み取りサイズ設定(改行コードは読取らないため、-2(前回の改行コード + 今回の改行コード)をしています)
+        li_amt := li_pos_line_feed - li_save_pos_line_feed - 2;
+        -- BLOBの最後の文字が改行コードの場合
+        IF (li_pos_line_feed = li_blob_length) THEN
+          -- EOFフラグ設定
+          lb_eof_flag := TRUE;
+        END IF;
+      END IF;
+      -- 読み取りサイズが32767バイトより大きい場合
+      IF (li_amt > 32767) THEN
+        -- 文字列変換が不可能なためエラー終了
+        RAISE not_cast_varchar2_expt;
+      END IF;
+      -- バッファ読み取り開始位置設定(前回の改行コード位置の次バイトから読み取り開始)
+      li_pos := li_save_pos_line_feed + 1;
+      -- バッファ取得
+      DBMS_LOB.READ(lb_src_lob  --読み込み対象BLOB
+                   ,li_amt      --読み取りサイズ
+                   ,li_pos      --読み取り開始位置
+                   ,lr_bufb);   --格納バッファ
+      -- VARCHAR2に変換
+      lv_str := UTL_RAW.CAST_TO_VARCHAR2(lr_bufb);
+      -- 1行分の情報を保管
+      ov_file_data(li_index) := lv_str;
+      -- 終了条件：EOFフラグがTRUEになるまで
+      EXIT WHEN (lb_eof_flag = TRUE);
+      -- 行番号をカウントアップ（初期値は１）
+      li_index := li_index + 1;
+      -- 改行コードの位置を退避させます
+      li_save_pos_line_feed := li_pos_line_feed;
+--
+    END LOOP line_loop;
+--
+    --==============================================================
+    --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+    WHEN check_lock_expt THEN                           --*** ロック取得エラー ***
+      -- エラーメッセージ取得
+      lv_errmsg := xxccp_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                            gv_cnst_msg_com3_001);
+      lv_errbuf := lv_errmsg;
+      ov_errmsg := lv_errmsg;
+      ov_errbuf := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := xxccp_common_pkg.set_status_error;
+--
+    WHEN NO_DATA_FOUND THEN                             --*** データ取得エラー ***
+      -- エラーメッセージ取得
+      lv_errmsg := xxccp_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                            gv_cnst_msg_com3_002,
+                                            gv_cnst_tkn_value,
+                                            in_file_id);
+      lv_errbuf := lv_errmsg;
+      ov_errmsg := lv_errmsg;
+      ov_errbuf := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := xxccp_common_pkg.set_status_error;
+--
+    WHEN not_cast_varchar2_expt THEN                    --*** 文字列変換不可エラー ***
+      -- エラーメッセージ取得
+      lv_errmsg := xxccp_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                            gv_cnst_msg_com3_003,
+                                            gv_cnst_tkn_value,
+                                            in_file_id);
+      lv_errbuf := lv_errmsg;
+      ov_errmsg := lv_errmsg;
+      ov_errbuf := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := xxccp_common_pkg.set_status_error;
+      -- 変換後VARCHAR2データを削除します
+      ov_file_data.delete;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := xxccp_common_pkg.set_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := xxccp_common_pkg.set_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := xxccp_common_pkg.set_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END blob_to_varchar2;
+--
+-- 2009/08/17 Ver1.7 modify end by Yutaka.Kuboshima
 --
   /**********************************************************************************
    * Procedure Name   : 項目チェック
