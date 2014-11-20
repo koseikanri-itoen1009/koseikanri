@@ -7,7 +7,7 @@ AS
  * Description      : 運賃更新
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_733
  * MD.070           : 運賃更新 T_MD070_BPO_73D
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/04/03    1.0  Oracle 小松 淳    初版作成
+ *  2008/07/11    1.1  Oracle 山根 一浩  変更要求＃96、＃98対応
+ *  2008/07/23    1.2  Oracle 野村 正幸  内部変更#132対応
  *
  *****************************************************************************************/
 --
@@ -140,6 +142,9 @@ AS
   -- 商品区分
   gv_prod_class_lef          CONSTANT VARCHAR2(1) := '1';   -- 1:リーフ
   gv_prod_class_drk          CONSTANT VARCHAR2(1) := '2';   -- 2:ドリンク
+  -- 配車タイプ(2008/07/11)
+  gv_dispatch_type_1         CONSTANT VARCHAR2(1) := '1';   -- 1:通常配車
+  gv_dispatch_type_2         CONSTANT VARCHAR2(1) := '2';   -- 2:伝票なし配車(リーフ小口)
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -175,6 +180,7 @@ AS
     outside_contract         xxwip_deliverys.outside_contract%TYPE,         -- 契約外区分
     transfer_location        xxwip_deliverys.transfer_location%TYPE,        -- 振替先
     description              xxwip_deliverys.description%TYPE,              -- 運賃摘要
+    dispatch_type            xxwip_deliverys.dispatch_type%TYPE,            -- 配車タイプ(2008/07/11)
     bill_picking_amount      xxwip_delivery_company.bill_picking_amount%TYPE-- 請求ピッキング単価
   );
 --
@@ -336,6 +342,9 @@ AS
   -- (登録用)運賃摘要
   TYPE t_ins_description IS TABLE OF xxwip_deliverys.description%TYPE
   INDEX BY BINARY_INTEGER;
+  -- (登録用)配車タイプ(2008/07/11)
+  TYPE t_ins_dispatch_type IS TABLE OF xxwip_deliverys.dispatch_type%TYPE
+  INDEX BY BINARY_INTEGER;
 --
   tab_ins_deliverys_header_id           t_ins_deliverys_header_id;
   tab_ins_delivery_company_code         t_ins_delivery_company_code;
@@ -378,6 +387,7 @@ AS
   tab_ins_transfer_location             t_ins_transfer_location;
   tab_ins_outside_up_count              t_ins_outside_up_count;
   tab_ins_description                   t_ins_description;
+  tab_ins_dispatch_type                 t_ins_dispatch_type;              -- 2008/07/11
 --
   -- 運賃ヘッダアドオン登録用PL/SQL表索引
   gn_ins_cnt    NUMBER;
@@ -443,6 +453,105 @@ AS
   tab_upd_congestion_charge             t_upd_congestion_charge;
   tab_upd_picking_charge                t_upd_picking_charge;
 --
+-- ##### 20080723 Ver.1.2 内部変更#132対応 START #####
+--       更新項目追加
+--
+  -- (更新用)運送業者
+  TYPE t_upd_delivery_company_code IS TABLE OF xxwip_deliverys.delivery_company_code%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)送り状No
+  TYPE t_upd_invoice_no IS TABLE OF xxwip_deliverys.invoice_no%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)支払判断区分
+  TYPE t_upd_payments_judgment_classe IS TABLE OF xxwip_deliverys.payments_judgment_classe%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)出庫日
+  TYPE t_upd_ship_date IS TABLE OF xxwip_deliverys.ship_date%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)到着日
+  TYPE t_upd_arrival_date IS TABLE OF xxwip_deliverys.arrival_date%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)報告日
+  TYPE t_upd_report_date IS TABLE OF xxwip_deliverys.report_date%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)判断日
+  TYPE t_upd_judgement_date IS TABLE OF xxwip_deliverys.judgement_date%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)商品区分
+  TYPE t_upd_goods_classe IS TABLE OF xxwip_deliverys.goods_classe%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)混載区分
+  TYPE t_upd_mixed_code IS TABLE OF xxwip_deliverys.mixed_code%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)請求運賃
+  TYPE t_upd_charged_amount IS TABLE OF xxwip_deliverys.charged_amount%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)代表出庫倉庫コード
+  TYPE t_upd_whs_code IS TABLE OF xxwip_deliverys.whs_code%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)代表配送先コード区分
+  TYPE t_upd_code_division IS TABLE OF xxwip_deliverys.code_division%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)代表配送先コード
+  TYPE t_upd_shipping_address_code IS TABLE OF xxwip_deliverys.shipping_address_code%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)最長実際距離
+  TYPE t_upd_actual_distance IS TABLE OF xxwip_deliverys.actual_distance%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)混載数
+  TYPE t_upd_consolid_qty IS TABLE OF xxwip_deliverys.consolid_qty%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)代表タイプ
+  TYPE t_upd_order_type IS TABLE OF xxwip_deliverys.order_type%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)重量容積区分
+  TYPE t_upd_weight_capacity_class IS TABLE OF xxwip_deliverys.weight_capacity_class%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)契約外区分
+  TYPE t_upd_outside_contract IS TABLE OF xxwip_deliverys.outside_contract%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)差異区分
+  TYPE t_upd_output_flag IS TABLE OF xxwip_deliverys.output_flag%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)支払確定区分
+  TYPE t_upd_defined_flag IS TABLE OF xxwip_deliverys.defined_flag%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)支払確定戻
+  TYPE t_upd_return_flag IS TABLE OF xxwip_deliverys.return_flag%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)振替先
+  TYPE t_upd_transfer_location IS TABLE OF xxwip_deliverys.transfer_location%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- (更新用)配車タイプ
+  TYPE t_upd_dispatch_type IS TABLE OF xxwip_deliverys.dispatch_type%TYPE
+  INDEX BY BINARY_INTEGER;
+--
+  tab_upd_delivery_company_code         t_upd_delivery_company_code;     -- (更新用)運送業者
+  tab_upd_invoice_no                    t_upd_invoice_no;                -- (更新用)送り状No
+  tab_upd_payments_judgment_clas        t_upd_payments_judgment_classe;  -- (更新用)支払判断区分
+  tab_upd_ship_date                     t_upd_ship_date;                 -- (更新用)出庫日
+  tab_upd_arrival_date                  t_upd_arrival_date;              -- (更新用)到着日
+  tab_upd_report_date                   t_upd_report_date;               -- (更新用)報告日
+  tab_upd_judgement_date                t_upd_judgement_date;            -- (更新用)判断日
+  tab_upd_goods_classe                  t_upd_goods_classe;              -- (更新用)商品区分
+  tab_upd_mixed_code                    t_upd_mixed_code;                -- (更新用)混載区分
+  tab_upd_charged_amount                t_upd_charged_amount;            -- (更新用)請求運賃
+  tab_upd_whs_code                      t_upd_whs_code;                  -- (更新用)代表出庫倉庫コード
+  tab_upd_code_division                 t_upd_code_division;             -- (更新用)代表配送先コード区分
+  tab_upd_shipping_address_code         t_upd_shipping_address_code;     -- (更新用)代表配送先コード
+  tab_upd_actual_distance               t_upd_actual_distance;           -- (更新用)最長実際距離
+  tab_upd_consolid_qty                  t_upd_consolid_qty;              -- (更新用)混載数
+  tab_upd_order_type                    t_upd_order_type;                -- (更新用)代表タイプ
+  tab_upd_weight_capacity_class         t_upd_weight_capacity_class;     -- (更新用)重量容積区分
+  tab_upd_outside_contract              t_upd_outside_contract;          -- (更新用)契約外区分
+  tab_upd_output_flag                   t_upd_output_flag;               -- (更新用)差異区分
+  tab_upd_defined_flag                  t_upd_defined_flag;              -- (更新用)支払確定区分
+  tab_upd_return_flag                   t_upd_return_flag;               -- (更新用)支払確定戻
+  tab_upd_transfer_location             t_upd_transfer_location;         -- (更新用)振替先
+  tab_upd_dispatch_type                 t_upd_dispatch_type;             -- (更新用)配車タイプ
+--
+-- ##### 20080723 Ver.1.2 内部変更#132対応 END   #####
+--
   -- 運賃ヘッダアドオン更新用PL/SQL表索引
   gn_upd_cnt    NUMBER;
 --
@@ -494,6 +603,9 @@ AS
   PROCEDURE cal_money_proc(
     in_goods_classe        IN  xxwip_deliverys.goods_classe%TYPE,               -- 商品区分
     in_mixed_code          IN  xxwip_deliverys.mixed_code%TYPE,                 -- 混載区分
+-- ##### 20080723 Ver.1.2 内部変更#132対応 START #####
+    in_charged_amount      IN  xxwip_deliverys.charged_amount%TYPE,             -- 請求運賃
+-- ##### 20080723 Ver.1.2 内部変更#132対応 END   #####
     in_shipping_expenses   IN  xxwip_delivery_charges.shipping_expenses%TYPE,   -- 運送料
     in_many_rate           IN  xxwip_deliverys.many_rate%TYPE,                  -- 諸料金
     in_leaf_consolid_add   IN  xxwip_delivery_charges.leaf_consolid_add%TYPE,   -- リーフ混載割増
@@ -560,8 +672,11 @@ AS
     ln_total_amount := in_shipping_expenses + ln_consolid_surcharge
                      + ln_picking_charge    + NVL(in_many_rate, 0);
 --
-    -- ｢差額｣の算出(運送費 － 合計)
-    ln_balance := in_shipping_expenses - ln_total_amount;
+    -- ｢差額｣の算出(請求運賃 － 合計)
+-- ##### 20080723 Ver.1.2 内部変更#132対応 START #####
+--    ln_balance := in_shipping_expenses - ln_total_amount;
+    ln_balance := in_charged_amount - ln_total_amount;
+-- ##### 20080723 Ver.1.2 内部変更#132対応 END   #####
 --
     -- 各算出値をOUT変数にセット
     on_balance            := ln_balance;
@@ -1012,6 +1127,7 @@ AS
              xd.outside_contract,            -- 契約外区分
              xd.transfer_location,           -- 振替先
              xd.description,                 -- 運賃摘要
+             xd.dispatch_type,               -- 配車タイプ(2008/07/11)
              NVL(xdc.bill_picking_amount, 0) -- 請求ピッキング単価
       BULK COLLECT INTO gt_extraction_xd
       FROM   xxwip_deliverys        xd,  -- 運賃ヘッダアドオン
@@ -1190,6 +1306,9 @@ AS
     cal_money_proc(
       in_goods_classe        => ir_xd_data.goods_classe,        -- 商品区分
       in_mixed_code          => ir_xd_data.mixed_code,          -- 混載区分
+-- ##### 20080723 Ver.1.2 内部変更#132対応 START #####
+      in_charged_amount      => ir_xdc_data.shipping_expenses,  -- 請求金額（運送費）
+-- ##### 20080723 Ver.1.2 内部変更#132対応 END   #####
       in_shipping_expenses   => ir_xdc_data.shipping_expenses,  -- 運送料
       in_many_rate           => ir_xd_data.many_rate,           -- 諸料金
       in_leaf_consolid_add   => ir_xdc_data.leaf_consolid_add,  -- リーフ混載割増
@@ -1268,6 +1387,9 @@ AS
       tab_ins_outside_up_count(gn_ins_cnt)      := 0;                            -- 外部業者変更数
       tab_ins_description(gn_ins_cnt)           := ir_xd_data.description;       -- 運賃摘要
 --
+      -- 2008/07/11
+      tab_ins_dispatch_type(gn_ins_cnt)         := ir_xd_data.dispatch_type;     -- 配車タイプ
+--
     ELSE
 --
       -- ***************************************
@@ -1276,6 +1398,35 @@ AS
 --
       -- 更新テーブル索引インクリメント
       gn_upd_cnt := gn_upd_cnt + 1;
+--
+-- ##### 20080723 Ver.1.2 内部変更#132対応 START #####
+-- 登録時と同じ状態に更新する為、更新項目追加
+--
+      tab_upd_delivery_company_code(gn_upd_cnt)     := ir_xd_data.delivery_company_code;    -- 運送業者
+      tab_upd_invoice_no(gn_upd_cnt)                := ir_xd_data.invoice_no;               -- 送り状No
+      tab_upd_payments_judgment_clas(gn_upd_cnt)    := ir_xd_data.payments_judgment_classe; -- 支払判断区分
+      tab_upd_ship_date(gn_upd_cnt)                 := ir_xd_data.ship_date;              -- 出庫日
+      tab_upd_arrival_date(gn_upd_cnt)              := ir_xd_data.arrival_date;           -- 到着日
+      tab_upd_report_date(gn_upd_cnt)               := ir_xd_data.report_date;            -- 報告日
+      tab_upd_judgement_date(gn_upd_cnt)            := ir_xd_data.judgement_date;         -- 判断日
+      tab_upd_goods_classe(gn_upd_cnt)              := ir_xd_data.goods_classe;           -- 商品区分
+      tab_upd_mixed_code(gn_upd_cnt)                := ir_xd_data.mixed_code;             -- 混載区分
+      tab_upd_charged_amount(gn_upd_cnt)            := ir_xdc_data.shipping_expenses;     -- 請求運賃
+      tab_upd_whs_code(gn_upd_cnt)                  := ir_xd_data.whs_code;               -- 代表出庫倉庫コード
+      tab_upd_code_division(gn_upd_cnt)             := ir_xd_data.code_division;          -- 代表配送先コード区分
+      tab_upd_shipping_address_code(gn_upd_cnt)     := ir_xd_data.shipping_address_code;  -- 代表配送先コード
+      tab_upd_actual_distance(gn_upd_cnt)           := ir_xd_data.actual_distance;        -- 最長実際距離
+      tab_upd_consolid_qty(gn_upd_cnt)              := ir_xd_data.consolid_qty;           -- 混載数
+      tab_upd_order_type(gn_upd_cnt)                := ir_xd_data.order_type;             -- 代表タイプ
+      tab_upd_weight_capacity_class(gn_upd_cnt)     := ir_xd_data.weight_capacity_class;  -- 重量容積区分
+      tab_upd_outside_contract(gn_upd_cnt)          := ir_xd_data.outside_contract;       -- 契約外区分
+      tab_upd_output_flag(gn_upd_cnt)               := NULL;     -- 差異区分
+      tab_upd_defined_flag(gn_upd_cnt)              := NULL;     -- 支払確定区分
+      tab_upd_return_flag(gn_upd_cnt)               := NULL;     -- 支払確定戻
+      tab_upd_transfer_location(gn_upd_cnt)         := ir_xd_data.transfer_location;      -- 振替先
+      tab_upd_dispatch_type(gn_upd_cnt)             := ir_xd_data.dispatch_type;          -- 配車タイプ
+--
+-- ##### 20080723 Ver.1.2 内部変更#132対応 END   #####
 --
       tab_upd_delivery_no(gn_upd_cnt)        := ir_xd_data.delivery_no;        -- 配送No
       tab_upd_contract_rate(gn_upd_cnt)      := ir_xdc_data.shipping_expenses; -- 契約運賃
@@ -1355,6 +1506,14 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
+-- ##### 20080723 Ver.1.2 内部変更#132対応 START #####
+    -- データが存在しない場合は、処理をスキップ
+    IF (tab_ins_deliverys_header_id.COUNT = 0) THEN
+      RETURN;
+    END IF;
+-- ##### 20080723 Ver.1.2 内部変更#132対応 END   #####
+--
+--
     FORALL ln_index IN tab_ins_deliverys_header_id.FIRST .. tab_ins_deliverys_header_id.LAST
       INSERT INTO xxwip_deliverys(
         deliverys_header_id,        -- 運賃ヘッダーアドオンID
@@ -1398,6 +1557,7 @@ AS
         transfer_location,          -- 振替先
         outside_up_count,           -- 外部業者変更回数
         description,                -- 運賃摘要
+        dispatch_type,              -- 配車タイプ(2008/07/11)
         created_by,                 -- 作成者
         creation_date,              -- 作成日
         last_updated_by,            -- 最終更新者
@@ -1449,6 +1609,7 @@ AS
         tab_ins_transfer_location(ln_index),          -- 振替先
         tab_ins_outside_up_count(ln_index),           -- 外部業者変更回数
         tab_ins_description(ln_index),                -- 運賃摘要
+        tab_ins_dispatch_type(ln_index),              -- 配車タイプ(2008/07/11)
         gn_user_id,                                   -- 作成者
         gd_sysdate,                                   -- 作成日
         gn_user_id,                                   -- 最終更新者
@@ -1520,6 +1681,14 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
+-- ##### 20080723 Ver.1.2 内部変更#132対応 START #####
+    -- データが存在しない場合は、処理をスキップ
+    IF (tab_upd_delivery_no.COUNT = 0) THEN
+      RETURN;
+    END IF;
+-- ##### 20080723 Ver.1.2 内部変更#132対応 END   #####
+--
+--
     FORALL ln_index IN tab_upd_delivery_no.FIRST .. tab_upd_delivery_no.LAST
       UPDATE xxwip_deliverys
       SET    contract_rate          = tab_upd_contract_rate(ln_index),      -- 契約運賃
@@ -1535,6 +1704,31 @@ AS
              consolid_surcharge     = tab_upd_consolid_surcharge(ln_index), -- 混載割増金額
              congestion_charge      = tab_upd_congestion_charge(ln_index),  -- 通行料
              picking_charge         = tab_upd_picking_charge(ln_index),     -- ピッキング料
+-- ##### 20080723 Ver.1.2 内部変更#132対応 START #####
+             delivery_company_code    = tab_upd_delivery_company_code(ln_index),    -- 運送業者
+             invoice_no               = tab_upd_invoice_no(ln_index),               -- 送り状No
+             payments_judgment_classe = tab_upd_payments_judgment_clas(ln_index),   -- 支払判断区分
+             ship_date                = tab_upd_ship_date(ln_index),                -- 出庫日
+             arrival_date             = tab_upd_arrival_date(ln_index),             -- 到着日
+             report_date              = tab_upd_report_date(ln_index),              -- 報告日
+             judgement_date           = tab_upd_judgement_date(ln_index),           -- 判断日
+             goods_classe             = tab_upd_goods_classe(ln_index),             -- 商品区分
+             mixed_code               = tab_upd_mixed_code(ln_index),               -- 混載区分
+             charged_amount           = tab_upd_charged_amount(ln_index),           -- 請求運賃
+             whs_code                 = tab_upd_whs_code(ln_index),                 -- 代表出庫倉庫コード
+             code_division            = tab_upd_code_division(ln_index),            -- 代表配送先コード区分
+             shipping_address_code    = tab_upd_shipping_address_code(ln_index),    -- 代表配送先コード
+             actual_distance          = tab_upd_actual_distance(ln_index),          -- 最長実際距離
+             consolid_qty             = tab_upd_consolid_qty(ln_index),             -- 混載数
+             order_type               = tab_upd_order_type(ln_index),               -- 代表タイプ
+             weight_capacity_class    = tab_upd_weight_capacity_class(ln_index),    -- 重量容積区分
+             outside_contract         = tab_upd_outside_contract(ln_index),         -- 契約外区分
+             output_flag              = tab_upd_output_flag(ln_index),              -- 差異区分
+             defined_flag             = tab_upd_defined_flag(ln_index),             -- 支払確定区分
+             return_flag              = tab_upd_return_flag(ln_index),              -- 支払確定戻
+             transfer_location        = tab_upd_transfer_location(ln_index),        -- 振替先
+             dispatch_type            = tab_upd_dispatch_type(ln_index),            -- 配車タイプ
+-- ##### 20080723 Ver.1.2 内部変更#132対応 END   #####
              last_updated_by        = gn_user_id,               -- 最終更新者
              last_update_date       = gd_sysdate,               -- 最終更新日
              last_update_login      = gn_login_id,              -- 最終更新ログイン
@@ -1709,6 +1903,7 @@ AS
       FROM   xxwip_deliverys        xd,  -- 運賃ヘッダアドオン
              xxwip_delivery_company xdc  -- 運賃用運送業者アドオンマスタ
       WHERE  xd.p_b_classe            =  gv_paycharge_type_2
+      AND    xd.dispatch_type IN (gv_dispatch_type_1,gv_dispatch_type_2)    -- 2008/07/11
       AND    xd.goods_classe IS NOT NULL
       AND    xd.goods_classe          =  xdc.goods_classe(+)
       AND    xd.delivery_company_code =  xdc.delivery_company_code(+)
@@ -1873,6 +2068,9 @@ AS
     cal_money_proc(
       in_goods_classe        => ir_xd_ex_data.goods_classe,        -- 商品区分
       in_mixed_code          => ir_xd_ex_data.mixed_code,          -- 混載区分
+-- ##### 20080723 Ver.1.2 内部変更#132対応 START #####
+      in_charged_amount      => ir_xd_ex_data.charged_amount,      -- 請求運賃
+-- ##### 20080723 Ver.1.2 内部変更#132対応 END   #####
       in_shipping_expenses   => ir_xdc_ex_data.shipping_expenses,  -- 運送料
       in_many_rate           => ir_xd_ex_data.many_rate,           -- 諸料金
       in_leaf_consolid_add   => ir_xdc_ex_data.leaf_consolid_add,  -- リーフ混載割増

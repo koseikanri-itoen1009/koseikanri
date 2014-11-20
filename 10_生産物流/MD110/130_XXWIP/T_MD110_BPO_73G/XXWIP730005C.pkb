@@ -7,7 +7,7 @@ AS
  * Description      : 請求運賃チェックリスト
  * MD.050/070       : 運賃計算（トランザクション）  (T_MD050_BPO_734)
  *                    請求運賃チェックリスト        (T_MD070_BPO_73G)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2008/07/17    1.5   Satoshi Takemoto ST障害対応#456
  *  2008/07/24    1.6   Satoshi Takemoto ST障害対応#477
  *  2008/07/25    1.7   Masayuki Nomura  ST障害対応#456
+ *  2008/07/28    1.8   Masayuki Nomura  変更要求結合テスト障害対応
  *
  *****************************************************************************************/
 --
@@ -542,7 +543,10 @@ AS
             ,NVL( xdl.distance          , 0 )               AS distance_2       -- 距離２
             ,NVL( xdl.qty               , 0 )               AS qty              -- 数量
             ,NVL( xdl.delivery_weight   , 0 )               AS weight           -- 重量
-            ,xdl.dellivary_classe                           AS deliv_div        -- 配送区分
+-- ##### 20080725 1.8 変更要求結合テスト障害対応 START #####
+--            ,xdl.dellivary_classe                           AS deliv_div        -- 配送区分
+            ,NVL(xdl.dellivary_classe ,xd1.dellivary_classe) AS deliv_div        -- 配送区分
+-- ##### 20080725 1.8 変更要求結合テスト障害対応 END   #####
             ,NVL( xd2.charged_amount    , 0 )               AS c_kei      -- 運送業者：契約運賃
             ,NVL( xd2.consolid_surcharge, 0 )               AS c_kon      -- 運送業者：混載割増
             ,NVL( xd2.picking_charge    , 0 )               AS c_pic      -- 運送業者：PIC

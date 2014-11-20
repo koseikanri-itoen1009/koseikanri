@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common3_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.0
+ * Version                : 1.2
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -26,6 +26,7 @@ AS
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008/04/18   1.0   M.Nomura         新規作成
  *  2008/07/02   1.1   M.Nomura         メッセージ出力不具合
+ *  2008/07/17   1.2   M.Nomura         変更要求#96、#98対応・内部課題32対応
  *
  *****************************************************************************************/
 --
@@ -948,8 +949,11 @@ AS
     ELSIF (iv_deliver_to_code_class = '11') THEN
       od_code_division := '2'; -- 取引先
 --
-    -- １：拠点、９：配送の場合
-    ELSIF (iv_deliver_to_code_class = '1') OR (iv_deliver_to_code_class = '9') THEN
+    -- １：拠点、１０：配送の場合
+-- ##### 20080717 Ver.1.2 変更要求#96、#98対応・内部課題32対応 START #####
+--    ELSIF (iv_deliver_to_code_class = '1') OR (iv_deliver_to_code_class = '9') THEN
+    ELSIF (iv_deliver_to_code_class = '1') OR (iv_deliver_to_code_class = '10') THEN
+-- ##### 20080717 Ver.1.2 変更要求#96、#98対応・内部課題32対応 END   #####
       od_code_division := '3'; -- 配送先
 --
     -- 上記以外の場合
@@ -1045,7 +1049,11 @@ AS
     -- **************************************************
     -- 出荷入数が設定されている場合
     -- **************************************************
-    IF (ln_num_of_deliver IS NOT NULL ) THEN
+-- ##### 20080717 Ver.1.2 変更要求#96、#98対応・内部課題32対応 START #####
+--    IF (ln_num_of_deliver IS NOT NULL ) THEN
+    -- 出荷入数が設定されていて、値が0以外の場合
+    IF ((ln_num_of_deliver IS NOT NULL ) OR (ln_num_of_deliver <> 0 )) THEN
+-- ##### 20080717 Ver.1.2 変更要求#96、#98対応・内部課題32対応 END   #####
       -- 出荷入数 × 変換対象の数量
       ln_converted_num := CEIL(in_qty / ln_num_of_deliver);
 --
@@ -1054,7 +1062,10 @@ AS
     -- **************************************************
     ELSIF (lv_conv_unit IS NOT NULL ) THEN
       -- 入出庫換算単位 が取得できない場合
-      IF (ln_num_of_cases IS NULL) THEN
+-- ##### 20080717 Ver.1.2 変更要求#96、#98対応・内部課題32対応 START #####
+--      IF (ln_num_of_cases IS NULL)  THEN
+      IF ((ln_num_of_cases IS NULL) OR (ln_num_of_cases = 0)) THEN
+-- ##### 20080717 Ver.1.2 変更要求#96、#98対応・内部課題32対応 END   #####
 -- ##### 20080702 Ver.1.1 メッセージ出力不具合 START #####
 /***
         lv_errmsg := xxcmn_common_pkg.get_msg('XXCMN','APP-XXCMN-10133',
