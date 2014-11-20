@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A032C (body)
  * Description      : 営業成績表集計
  * MD.050           : 営業成績表集計 MD050_COS_002_A03
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2009/08/31    1.6   K.Kiriu          [0000929]訪問軒数/有効訪問件数のカウント方法変更
  *  2009/09/04    1.7   K.Kiriu          [0000900]PT対応
  *  2009/10/30    1.8   M.Sano           [0001373]XXCOS_RS_INFO_V変更に伴うPT対応
+ *  2009/11/12    1.9   N.Maeda          [E_T4_00188]新規獲得ポイント集計条件修正
  *
  *****************************************************************************************/
 --
@@ -4373,8 +4374,11 @@ AS
 /* 2009/04/28 Ver1.4 Mod Start */
 --                            WHEN  ncph.data_kbn = ct_point_data_cls_new_cust
 --                            OR    ncph.data_kbn = ct_point_data_cls_f_and_f
-                            WHEN  ncph.evaluration_kbn = ct_evaluration_kbn_acvmt
-                            AND   (
+-- *********** 2009/11/12 Ver1.9 N.Maeda MOD START *********** --
+--                            WHEN  ncph.evaluration_kbn = ct_evaluration_kbn_acvmt
+--                            AND   (
+                            WHEN  (
+-- *********** 2009/11/12 Ver1.9 N.Maeda MOD START *********** --
                                      ncph.data_kbn = ct_point_data_cls_new_cust
                                   OR ncph.data_kbn = ct_point_data_cls_f_and_f
                                   )
