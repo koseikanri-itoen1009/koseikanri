@@ -7,7 +7,7 @@ AS
  * Description      : 倉替返品情報インターフェース
  * MD.050           : 倉替返品 T_MD050_BPO_430
  * MD.070           : 倉替返品情報インターフェース T_MD070_BPO_43B
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * -------------------------  ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2009/01/15    1.10  Masayoshi Uehara 本番問合せ#1019対応
  *  2009/01/22    1.11  ORACLE山本恭久   本番問合せ#1037対応
  *  2009/04/09    1.12  SCS丸下          本番障害#1346
+ *  2009/06/30    1.13  Yuki Kazama      本番障害#1335対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2555,6 +2556,10 @@ AS
     -- *** ローカル変数 ***
     ln_seq         NUMBER;  -- シーケンス（受注明細）
     ln_seq_lot     NUMBER;  -- シーケンス（移動ロット詳細）
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add Start
+    ln_max_order_line_number  xxwsh_order_lines_all.order_line_number%TYPE;
+    ln_order_line_number      xxwsh_order_lines_all.order_line_number%TYPE;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -2585,9 +2590,48 @@ AS
       gt_xol_order_line_id(gn_idx_ln)           := ln_seq;
       -- 受注ヘッダアドオンID<--A-9で設定した受注ヘッダアドオンID
       gt_xol_order_header_id(gn_idx_ln)         := gn_seq_a9;
-      -- 明細番号<--ヘッダ単位に1から採番
-      gt_line_number_a11                        := gt_line_number_a11 + 1;
-      gt_xol_order_line_number(gn_idx_ln)       := gt_line_number_a11;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Mod Start
+      -- 受注アドオンに品目が存在した場合は明細番号を使用
+      BEGIN
+        SELECT MAX(xola.order_line_number)
+        INTO   ln_order_line_number
+        FROM   xxwsh_order_lines_all  xola
+        WHERE  xola.request_no         = gt_request_no
+        AND    xola.shipping_item_code = it_item_no
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          ln_order_line_number := NULL;
+      END;
+      -- 受注アドオンに品目が存在しなかった場合は最大明細番号+1より採番
+      IF ln_order_line_number IS NULL THEN
+        IF NVL(gt_line_number_a11,0) = 0 THEN
+          BEGIN
+            SELECT NVL(MAX(xola.order_line_number),0)
+            INTO   ln_max_order_line_number
+            FROM   xxwsh_order_lines_all  xola
+            WHERE  xola.request_no = gt_request_no
+            ;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              ln_max_order_line_number := 0;
+          END;
+--
+          gt_line_number_a11 := ln_max_order_line_number +1;
+        ELSE
+          gt_line_number_a11 := gt_line_number_a11 +1;
+        END IF;
+      END IF;
+--
+      IF ln_order_line_number IS NOT NULL THEN
+        gt_xol_order_line_number(gn_idx_ln)       := ln_order_line_number;
+      ELSE
+        gt_xol_order_line_number(gn_idx_ln)       := gt_line_number_a11;
+      END IF;
+--      -- 明細番号<--ヘッダ単位に1から採番
+--      gt_line_number_a11                        := gt_line_number_a11 + 1;
+--      gt_xol_order_line_number(gn_idx_ln)       := gt_line_number_a11;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Mod End
       -- 依頼No<--A-5で変換した変換後依頼No
       gt_xol_request_no(gn_idx_ln)              := gt_request_no;
       -- 出荷品目ID<--A-3で取得した品目ID
@@ -2647,9 +2691,48 @@ AS
 --
       -- 受注ヘッダアドオンID<--A-9で設定した受注ヘッダアドオンID
       gt_xol_order_header_id(gn_idx_ln)        := gn_seq_a9;
-      -- 明細番号<--ヘッダ単位に1から採番
-      gt_line_number_a11                       := gt_line_number_a11 + 1;
-      gt_xol_order_line_number(gn_idx_ln)      := gt_line_number_a11;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Mod Start
+      -- 受注アドオンに品目が存在した場合明細番号を使用
+      BEGIN
+        SELECT MAX(xola.order_line_number)
+        INTO   ln_order_line_number
+        FROM   xxwsh_order_lines_all  xola
+        WHERE  xola.request_no         = gt_request_no
+        AND    xola.shipping_item_code = gt_order_all_tbl(in_idx).ln_shipping_item_code
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          ln_order_line_number := NULL;
+      END;
+      -- 受注アドオンに品目が存在しなかった場合最大明細番号+1より採番
+      IF ln_order_line_number IS NULL THEN
+        IF NVL(gt_line_number_a11,0) = 0 THEN
+          BEGIN
+            SELECT NVL(MAX(xola.order_line_number),0)
+            INTO   ln_max_order_line_number
+            FROM   xxwsh_order_lines_all  xola
+            WHERE  xola.request_no = gt_request_no
+            ;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              ln_max_order_line_number := 0;
+          END;
+--
+          gt_line_number_a11 := ln_max_order_line_number +1;
+        ELSE
+          gt_line_number_a11 := gt_line_number_a11 +1;
+        END IF;
+      END IF;
+--
+      IF ln_order_line_number IS NOT NULL THEN
+        gt_xol_order_line_number(gn_idx_ln)       := ln_order_line_number;
+      ELSE
+        gt_xol_order_line_number(gn_idx_ln)       := gt_line_number_a11;
+      END IF;
+--      -- 明細番号<--ヘッダ単位に1から採番
+--      gt_line_number_a11                       := gt_line_number_a11 + 1;
+--      gt_xol_order_line_number(gn_idx_ln)      := gt_line_number_a11;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Mod End
       -- 依頼No<--A-5で変換した変換後依頼No
       gt_xol_request_no(gn_idx_ln)             := gt_request_no;
       -- 出荷品目ID<--A-6で取得した出荷品目ID
@@ -2804,6 +2887,10 @@ AS
     -- *** ローカル変数 ***
     ln_seq          NUMBER;  -- シーケンス（受注明細）
     ln_seq_lot      NUMBER;  -- シーケンス（移動ロット詳細）
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add Start
+    ln_max_order_line_number  xxwsh_order_lines_all.order_line_number%TYPE;
+    ln_order_line_number      xxwsh_order_lines_all.order_line_number%TYPE;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -2831,9 +2918,48 @@ AS
     gt_xol_order_line_id(gn_idx_ln)           := ln_seq;
     -- 受注ヘッダアドオンID<--A-9で設定した受注ヘッダアドオンID
     gt_xol_order_header_id(gn_idx_ln)         := gn_seq_a9;
-    -- 明細番号<--ヘッダ単位に1から採番
-    gt_line_number_a11                        := gt_line_number_a11 + 1;
-    gt_xol_order_line_number(gn_idx_ln)       := gt_line_number_a11;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Mod Start
+    -- 受注アドオンに品目が存在した場合明細番号を使用
+    BEGIN
+      SELECT MAX(xola.order_line_number)
+      INTO   ln_order_line_number
+      FROM   xxwsh_order_lines_all  xola
+      WHERE  xola.request_no         = gt_request_no
+      AND    xola.shipping_item_code = it_item_no
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        ln_order_line_number := NULL;
+    END;
+    -- 受注アドオンに品目が存在しなかった場合最大明細番号+1より採番
+    IF ln_order_line_number IS NULL THEN
+      IF NVL(gt_line_number_a11,0) = 0 THEN
+        BEGIN
+          SELECT NVL(MAX(xola.order_line_number),0)
+          INTO   ln_max_order_line_number
+          FROM   xxwsh_order_lines_all  xola
+          WHERE  xola.request_no = gt_request_no
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            ln_max_order_line_number := 0;
+        END;
+--
+        gt_line_number_a11 := ln_max_order_line_number +1;
+      ELSE
+        gt_line_number_a11 := gt_line_number_a11 +1;
+      END IF;
+    END IF;
+--
+    IF ln_order_line_number IS NOT NULL THEN
+      gt_xol_order_line_number(gn_idx_ln) := ln_order_line_number;
+    ELSE
+      gt_xol_order_line_number(gn_idx_ln) := gt_line_number_a11;
+    END IF;
+--    -- 明細番号<--ヘッダ単位に1から採番
+--    gt_line_number_a11                        := gt_line_number_a11 + 1;
+--    gt_xol_order_line_number(gn_idx_ln)       := gt_line_number_a11;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Mod End
     -- 依頼No<--A-5で変換した変換後依頼No
     gt_xol_request_no(gn_idx_ln)              := gt_request_no;
     -- 出荷品目ID<--A-3で取得した品目ID
@@ -3161,6 +3287,10 @@ AS
     -- *** ローカル変数 ***
     ln_seq           NUMBER;     -- シーケンス（受注明細）
     ln_seq_lot       NUMBER;     -- シーケンス（移動ロット詳細）
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add Start
+    ln_max_order_line_number  xxwsh_order_lines_all.order_line_number%TYPE;
+    ln_order_line_number      xxwsh_order_lines_all.order_line_number%TYPE;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -3188,9 +3318,48 @@ AS
     gt_xol_order_line_id(gn_idx_ln)       := ln_seq;
     -- 受注ヘッダアドオンID<--A-12で退避した受注ヘッダアドオンID
     gt_xol_order_header_id(gn_idx_ln)     := gn_seq_a12;
-    -- 明細番号<--ヘッダ単位に1から採番
-    gt_line_number_a11 := gt_line_number_a11 + 1;
-    gt_xol_order_line_number(gn_idx_ln) := gt_line_number_a11;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Mod Start
+    -- 受注アドオンに品目が存在した場合明細番号を使用
+    BEGIN
+      SELECT MAX(xola.order_line_number)
+      INTO   ln_order_line_number
+      FROM   xxwsh_order_lines_all  xola
+      WHERE  xola.request_no         = gt_request_no
+      AND    xola.shipping_item_code = it_item_no
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        ln_order_line_number := NULL;
+    END;
+    -- 受注アドオンに品目が存在しなかった場合最大明細番号+1より採番
+    IF ln_order_line_number IS NULL THEN
+      IF NVL(gt_line_number_a11,0) = 0 THEN
+        BEGIN
+          SELECT NVL(MAX(xola.order_line_number),0)
+          INTO   ln_max_order_line_number
+          FROM   xxwsh_order_lines_all  xola
+          WHERE  xola.request_no = gt_request_no
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            ln_max_order_line_number := 0;
+        END;
+--
+        gt_line_number_a11 := ln_max_order_line_number +1;
+      ELSE
+        gt_line_number_a11 := gt_line_number_a11 +1;
+      END IF;
+    END IF;
+--
+    IF ln_order_line_number IS NOT NULL THEN
+      gt_xol_order_line_number(gn_idx_ln) := ln_order_line_number;
+    ELSE
+      gt_xol_order_line_number(gn_idx_ln) := gt_line_number_a11;
+    END IF;
+--    -- 明細番号<--ヘッダ単位に1から採番
+--    gt_line_number_a11 := gt_line_number_a11 + 1;
+--    gt_xol_order_line_number(gn_idx_ln) := gt_line_number_a11;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Mod End
     -- 依頼No<--A-5で変換した変換後依頼No
     gt_xol_request_no(gn_idx_ln)          := gt_request_no;
     -- 出荷品目ID<--A-3で取得した出荷品目ID
@@ -3886,6 +4055,46 @@ AS
 --2008/08/07 Add ↓
     lt_actual_class        xxwsh_order_headers_all.actual_confirm_class%TYPE;
 --2008/08/07 Add ↑
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add Start
+    lt_bk_reserve_if_item_code      xxwsh_reserve_interface.item_code%TYPE;        -- 退避品目コード
+    lt_bk_order_type_id             xxwsh_order_headers_all.order_type_id%TYPE;    -- 受注タイプID
+    lt_bk_confirm_item_code         xxwsh_order_lines_all.shipping_item_code%TYPE; -- 実績計上済データ投入品目コード
+    ln_cnt_line_item_no             NUMBER;
+    ln_line_cnt                     NUMBER;
+--
+    -- 倉替返品IFに存在しない,受注アドオンに存在するデータを抽出
+    CURSOR cur_get_order_minus_reserve(
+      pi_request_no  IN  xxwsh_order_headers_all.request_no%TYPE
+     ,pi_invoice_no  IN  xxwsh_reserve_interface.invoice_no%TYPE
+    )
+    IS
+      SELECT xola.shipping_item_code          -- 出荷品目
+            ,CASE
+               WHEN xott.order_category_code = gv_cate_return THEN  -- 受注カテゴリ=返品の場合
+                 xola.quantity
+               WHEN xott.order_category_code = gv_cate_order  THEN  -- 受注カテゴリ=受注の場合
+                 xola.quantity * -1
+               ELSE
+                 0
+             END AS quantity                  -- 加算用数量
+      FROM   xxwsh_order_headers_all       xoha
+            ,xxwsh_order_lines_all         xola
+            ,xxwsh_oe_transaction_types_v  xott
+      WHERE  xoha.order_header_id      = xola.order_header_id
+      AND    xoha.order_type_id        = xott.transaction_type_id  -- 受注タイプID=取引タイプID
+      AND    xoha.latest_external_flag = gv_flag_on
+      AND    xola.delete_flag          = gv_flag_off   -- 削除フラグ
+      AND    xoha.request_no           = pi_request_no
+      AND    NOT EXISTS( SELECT 1
+                         FROM   xxwsh_order_lines_all    sxola
+                               ,xxwsh_reserve_interface  sxri
+                         WHERE  sxri.invoice_no          = pi_invoice_no
+                         AND    sxola.request_no         = pi_request_no
+                         AND    sxola.shipping_item_code = sxri.item_code
+                         AND    sxola.shipping_item_code = xola.shipping_item_code
+                       )
+      ;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -4032,6 +4241,11 @@ AS
         lt_invoice_no_a2 := gt_reserve_interface_tbl(i).invoice_no;
 -- add end 2009/01/15 ver1.10 by M.Uehara
 --
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add Start
+        -- 退避品目コード初期化
+        lt_bk_reserve_if_item_code := NULL;
+        lt_bk_confirm_item_code    := NULL;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add End
       --前回A-2伝票Noと同じ場合
       ELSE
         lb_break_flg_a2 := FALSE;
@@ -4109,22 +4323,13 @@ AS
 --
           ln_idx_a6 := j;      -- LOOPの外のA-13②でindexの値を使用するため変数に退避
 --
-          -- ===========================================
-          -- 合算数量の算出 (A-18)
-          -- ===========================================
-          -- 合算数量<--A-2で取得した数量 + A-6で取得した加算用数量
-          gt_sum_quantity := gt_reserve_interface_tbl(i).quantity_total
-            +  gt_order_all_tbl(ln_idx_a6).ln_add_quantity;
 --
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add Start
           -- 出荷実績計上済の場合
           -- LOOPを抜けた直後で出荷実績計上済か否かの判定が必要なのでここで変数に退避しておく
-          lt_req_statu := gt_order_all_tbl(ln_idx_a6).hd_req_status;
---2008/08/07 Add ↓
+          lt_req_statu    := gt_order_all_tbl(ln_idx_a6).hd_req_status;
           lt_actual_class := gt_order_all_tbl(ln_idx_a6).hd_actual_confirm_class;
---2008/08/07 Add ↑
-/* 2008/08/07 Mod ↓
-          IF (lt_req_statu = cv_req_status_confirm) THEN
-2008/08/07 Mod ↑ */
+--
           -- 出荷実績計上済且つ実績計上済区分='Y'の場合
           IF ((lt_req_statu = cv_req_status_confirm) AND (lt_actual_class = gv_flag_on)) THEN
 --
@@ -4146,6 +4351,7 @@ AS
             END IF;
 --
             IF (lb_break_flg_a6) THEN  -- A-6伝票Noがブレイクした場合(前回A-6伝票Noと異なる場合)
+--
               -- ここではA-6伝票Noブレイクフラグを初期化しないで下さい
               -- ===========================================
               -- 倉替返品打消情報(明細)作成処理 (A-8)
@@ -4159,153 +4365,488 @@ AS
               IF (lv_retcode = gv_status_error) THEN
                 RAISE global_process_expt;
               END IF;
-           END IF;
---
-           IF (lb_break_flg_a2) THEN      -- A-2伝票Noがブレイクした場合(前回A-2伝票Noと異なる場合)
---
-              lb_break_flg_a2 := FALSE;   -- A-2伝票Noブレイクフラグ初期化
-              gt_line_number_a11 := 0;    -- A-11でセットする明細番号(ヘッダ単位に1から採番)
---
-              -- ===========================================
-              -- 倉替返品情報(ヘッダ)作成処理 (A-9)
-              -- ===========================================
-              set_order_headers(
-                ln_idx_a6,                                         -- 1.配列インデックス
-                gt_reserve_interface_tbl(i).quantity_total,        -- 2.数量
-                gt_reserve_interface_tbl(i).recorded_date,         -- 3.計上日付(着日)
-                gt_reserve_interface_tbl(i).receive_base_code,     -- 4.相手拠点コード
-                gt_reserve_interface_tbl(i).input_base_code,       -- 5.入力拠点コード
-                lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-                lv_retcode,        -- リターン・コード             --# 固定 #
-                lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
---
-              IF (lv_retcode = gv_status_error) THEN
-                RAISE global_process_expt;
-              END IF;
---
-              -- ===========================================
-              -- 最新フラグ更新情報作成処理 (A-10)
-              -- ===========================================
-              set_latest_external_flag(
-                ln_idx_a6,                                         -- 1.配列インデックス
-                lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-                lv_retcode,        -- リターン・コード             --# 固定 #
-                lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
---
-              IF (lv_retcode = gv_status_error) THEN
-                RAISE global_process_expt;
-              END IF;
             END IF;
+          END IF;
 --
-            -- A-2で取得した品目コード=A-6で取得した出荷品目の場合
-            IF (gt_reserve_interface_tbl(i).item_no = gt_order_all_tbl(ln_idx_a6).ln_shipping_item_code) THEN
-              -- A-2で取得した品目がA-6で取得した品目にない場合A-2で取得した品目を作成するためのフラグ
-              gb_a11_flg := TRUE;    -- A-11-2を行うかどうかを制御するフラグ
-            END IF;
+          -- ===========================================
+          -- 合算数量の算出 (A-18)
+          -- ===========================================
+          -- 「倉替IF・受注アドオンの合計数量を比較した品目コード」以上の品目コードの場合のみLOOPに入る
+          IF (  lt_bk_reserve_if_item_code IS NULL
+             OR lt_bk_reserve_if_item_code <= gt_order_all_tbl(ln_idx_a6).ln_shipping_item_code
+             )
+          THEN
 --
-            IF (lb_break_flg_a6) THEN  -- A-6伝票Noがブレイクした場合(前回A-6伝票Noと異なる場合)
-              -- ここではA-6伝票Noブレイクフラグを初期化しないで下さい
-              -- ===========================================
-              -- 倉替返品情報(明細)作成処理 (A-11)
-              -- ===========================================
-              set_order_lines(
-                ln_idx_a6,                                         -- 1.配列インデックス
-                gt_reserve_interface_tbl(i).item_no,               -- 2.品目コード
-                gt_reserve_interface_tbl(i).quantity_total,        -- 3.数量
-                lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-                lv_retcode,        -- リターン・コード             --# 固定 #
-                lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+            -- 実績計上済で、アドオンにあるが倉替IFにない場合は明細を挿入する
+            IF ((lt_req_statu = cv_req_status_confirm) AND (lt_actual_class = gv_flag_on)) THEN
+            
+              SELECT COUNT(xola.order_line_id)
+              INTO   ln_line_cnt
+              FROM   xxwsh_order_lines_all  xola
+              WHERE  xola.request_no         = gt_order_all_tbl(ln_idx_a6).hd_request_no
+              AND    xola.shipping_item_code = gt_order_all_tbl(ln_idx_a6).ln_shipping_item_code
+              AND    NOT EXISTS( SELECT 1
+                                 FROM   xxwsh_reserve_interface  xri
+                                 WHERE  xri.invoice_no = gt_reserve_interface_tbl(i).invoice_no
+                                 AND    xri.item_code  = gt_order_all_tbl(ln_idx_a6).ln_shipping_item_code
+                                )
+              ;
 --
-              IF (lv_retcode = gv_status_error) THEN
-                RAISE global_process_expt;
-              END IF;
-            END IF;
+              -- 倉替返品IFにない受注アドオンの品目で,挿入していない品目のみ登録する
+              IF (   ln_line_cnt > 0
+                 AND (  lt_bk_confirm_item_code IS NULL
+                     OR lt_bk_confirm_item_code < gt_order_all_tbl(ln_idx_a6).ln_shipping_item_code
+                     )
+                 )
+              THEN
+                lt_bk_confirm_item_code := gt_order_all_tbl(ln_idx_a6).ln_shipping_item_code;
 --
-            -- A-2で取得した品目がA-6で取得した品目にない場合A-2で取得した品目を作成する
-            IF (j = gt_order_all_tbl.LAST) THEN
-              IF (gb_a11_flg = FALSE) THEN         -- A-2で取得した品目がA-6で取得した品目にない場合
+                -- 合算数量<--A-6で取得した加算用数量
+                gt_sum_quantity := gt_order_all_tbl(ln_idx_a6).ln_add_quantity;
 --
-                set_order_lines_2(
-                  gt_reserve_interface_tbl(i).item_no,               -- 1.品目コード
-                  gt_reserve_interface_tbl(i).quantity_total,        -- 2.数量
-                  lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-                  lv_retcode,        -- リターン・コード             --# 固定 #
-                  lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+                IF (lb_break_flg_a2) THEN      -- A-2伝票Noがブレイクした場合(前回A-2伝票Noと異なる場合)
 --
-                IF (lv_retcode = gv_status_error) THEN
-                  RAISE global_process_expt;
+                  lb_break_flg_a2 := FALSE;   -- A-2伝票Noブレイクフラグ初期化
+                  gt_line_number_a11 := 0;    -- A-11でセットする明細番号(ヘッダ単位に1から採番)
+--
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add End
+                  -- ===========================================
+                  -- 倉替返品情報(ヘッダ)作成処理 (A-9)
+                  -- ===========================================
+                  set_order_headers(
+                    ln_idx_a6,                                         -- 1.配列インデックス
+                    gt_reserve_interface_tbl(i).quantity_total,        -- 2.数量
+                    gt_reserve_interface_tbl(i).recorded_date,         -- 3.計上日付(着日)
+                    gt_reserve_interface_tbl(i).receive_base_code,     -- 4.相手拠点コード
+                    gt_reserve_interface_tbl(i).input_base_code,       -- 5.入力拠点コード
+                    lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+                    lv_retcode,        -- リターン・コード             --# 固定 #
+                    lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_process_expt;
+                  END IF;
+--
+                  -- ===========================================
+                  -- 最新フラグ更新情報作成処理 (A-10)
+                  -- ===========================================
+                  set_latest_external_flag(
+                    ln_idx_a6,                                         -- 1.配列インデックス
+                    lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+                    lv_retcode,        -- リターン・コード             --# 固定 #
+                    lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_process_expt;
+                  END IF;
                 END IF;
 --
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add Start
+                IF (lb_break_flg_a6) THEN  -- A-6伝票Noがブレイクした場合(前回A-6伝票Noと異なる場合)
+                  -- ここではA-6伝票Noブレイクフラグを初期化しないで下さい
+                  -- ===========================================
+                  -- 倉替返品情報(明細)作成処理 (A-11)
+                  -- ===========================================
+                  set_order_lines(
+                    ln_idx_a6,                                         -- 1.配列インデックス
+                    gt_reserve_interface_tbl(i).item_no,               -- 2.品目コード
+                    gt_reserve_interface_tbl(i).quantity_total,        -- 3.数量
+                    lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+                    lv_retcode,        -- リターン・コード             --# 固定 #
+                    lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_process_expt;
+                  END IF;
+                END IF;
               END IF;
             END IF;
---
-          -- =======================================================================================
-          -- 出荷実績計上済でない場合
-          ELSE
-            IF (lb_break_flg_a2) THEN   -- A-2伝票Noがブレイクした場合(前回A-2伝票Noと異なる場合)
---
-              lb_break_flg_a2 := FALSE;    -- A-2伝票Noブレイクフラグ初期化
---
-              -- ===========================================
-              -- 倉替返品更新情報(ヘッダ)作成処理 (A-12)
-              -- ===========================================
-              set_upd_order_headers(
-                ln_idx_a6,                                         -- 1.配列インデックス
-                gt_reserve_interface_tbl(i).quantity_total,        -- 2.数量
-                lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-                lv_retcode,        -- リターン・コード             --# 固定 #
-                lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
---
-              IF (lv_retcode = gv_status_error) THEN
-                RAISE global_process_expt;
-              END IF;
+            
+            -- 倉替IFの品目コードを退避する
+            IF lt_bk_reserve_if_item_code > gt_order_all_tbl(ln_idx_a6).ln_shipping_item_code THEN
+              lt_bk_reserve_if_item_code := NULL;
+            ELSE
+              lt_bk_reserve_if_item_code := gt_reserve_interface_tbl(i).item_no;
             END IF;
+
+            -- 同品目の場合のみ、受注アドオンの数量にIFの数量を加算する
+            IF gt_reserve_interface_tbl(i).item_no = gt_order_all_tbl(ln_idx_a6).ln_shipping_item_code THEN
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add End
 --
-            -- ===========================================
-            -- 倉替返品更新情報(明細)作成処理 (A-13①)
-            -- ===========================================
-            -- A-2で取得した品目コード=A-6で取得した出荷品目の場合は更新
-            -- 同じ品目がなければここでは何もしない
-            IF (gt_reserve_interface_tbl(i).item_no = gt_order_all_tbl(ln_idx_a6).ln_shipping_item_code) THEN
+              -- 合算数量<--A-2で取得した数量 + A-6で取得した加算用数量
+              gt_sum_quantity := gt_reserve_interface_tbl(i).quantity_total
+                               + gt_order_all_tbl(ln_idx_a6).ln_add_quantity;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Del Start
+--              -- 出荷実績計上済の場合
+--              -- LOOPを抜けた直後で出荷実績計上済か否かの判定が必要なのでここで変数に退避しておく
+--              lt_req_statu := gt_order_all_tbl(ln_idx_a6).hd_req_status;
+----2008/08/07 Add ↓
+--              lt_actual_class := gt_order_all_tbl(ln_idx_a6).hd_actual_confirm_class;
+----2008/08/07 Add ↑
+-- ver1.13 Y.Kazama 本番障害#1335対応 Del End
+/* 2008/08/07 Mod ↓
+          IF (lt_req_statu = cv_req_status_confirm) THEN
+2008/08/07 Mod ↑ */
+              -- 出荷実績計上済且つ実績計上済区分='Y'の場合
+              IF ((lt_req_statu = cv_req_status_confirm) AND (lt_actual_class = gv_flag_on)) THEN
 --
-              set_upd_order_lines_upd(
-                ln_idx_a6,                                         -- 1.配列インデックス
-                gt_reserve_interface_tbl(i).quantity_total,        -- 2.数量
-                lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-                lv_retcode,        -- リターン・コード             --# 固定 #
-                lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+-- ver1.13 Y.Kazama 本番障害#1335対応 Del Start
+--                IF (lb_break_flg_a2) THEN  -- A-2伝票Noがブレイクした場合(前回A-2伝票Noと異なる場合)
+--                  -- ここではA-2伝票Noブレイクフラグを初期化しないで下さい
+--                  -- ===========================================
+--                  -- 倉替返品打消情報(ヘッダ)作成処理 (A-7)
+--                  -- ===========================================
+--                  IF (ln_idx_a6 = 1) THEN
+--                    set_del_headers(
+--                      lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--                      lv_retcode,        -- リターン・コード             --# 固定 #
+--                      lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
 --
-                lb_a13upd_flg := TRUE;  -- 同じ品目があればフラグをONにする
+--                    IF (lv_retcode = gv_status_error) THEN
+--                      RAISE global_process_expt;
+--                    END IF;
+--                  END IF;
+--                END IF;
 --
-              IF (lv_retcode = gv_status_error) THEN
-                RAISE global_process_expt;
+--                IF (lb_break_flg_a6) THEN  -- A-6伝票Noがブレイクした場合(前回A-6伝票Noと異なる場合)
+--
+--                  -- ここではA-6伝票Noブレイクフラグを初期化しないで下さい
+--                  -- ===========================================
+--                  -- 倉替返品打消情報(明細)作成処理 (A-8)
+--                  -- ===========================================
+--                  set_del_lines(
+--                    ln_idx_a6,                                         -- 1.配列インデックス
+--                    lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--                    lv_retcode,        -- リターン・コード             --# 固定 #
+--                    lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--
+--                  IF (lv_retcode = gv_status_error) THEN
+--                    RAISE global_process_expt;
+--                  END IF;
+--                END IF;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Del End
+--
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add Start
+                -- 既に倉替返品更新ヘッダをコールしている場合
+                IF ( NOT lb_break_flg_a2 ) THEN
+                  -- 退避変数初期化
+                  lt_bk_order_type_id := NULL;
+--
+                  -- 合算数量>0(正)の場合
+                  IF (gt_sum_quantity > 0) THEN
+                    -- A-6で取得した受注タイプ(新規/訂正).受注カテゴリ=返品の場合
+                    IF (gt_new_transaction_catg_code = gv_cate_return) THEN
+                      -- 受注タイプID<--A-6で取得した受注タイプ(新規/訂正).取引タイプID
+                      lt_bk_order_type_id := gt_new_transaction_type_id;
+                    -- A-6で取得した受注タイプ(新規/訂正).受注カテゴリ=受注の場合
+                    ELSIF (gt_new_transaction_catg_code = gv_cate_order) THEN
+                      -- 受注タイプID<--A-6で取得した受注タイプ(打消).取引タイプID
+                      lt_bk_order_type_id := gt_del_transaction_type_id;
+                    END IF;
+                  ELSIF( gt_sum_quantity < 0 ) THEN      -- 合算数量<0(負)の場合
+                    -- A-6で取得した受注タイプ(新規/訂正).受注カテゴリ=返品の場合
+                    IF (gt_new_transaction_catg_code = gv_cate_return) THEN
+                      -- 受注タイプID<--A-6で取得した受注タイプ(打消).取引タイプID
+                      lt_bk_order_type_id := gt_del_transaction_type_id;
+                    -- A-6で取得した受注タイプ(新規/訂正).受注カテゴリ=受注の場合
+                    ELSIF (gt_new_transaction_catg_code = gv_cate_order) THEN
+                      -- 受注タイプID<--A-6で取得した受注タイプ(新規/訂正).取引タイプID
+                      lt_bk_order_type_id := gt_new_transaction_type_id;
+                    END IF;
+                  END IF;
+--
+                  -- 前品目で設定した受注タイプと異なる場合は上書き
+                  IF (   lt_bk_order_type_id IS NOT NULL
+                     AND gt_xoh_order_type_id(gn_idx_hd) <> lt_bk_order_type_id
+                     )
+                  THEN
+--
+                    gt_xoh_order_type_id(gn_idx_hd) := lt_bk_order_type_id;
+                  END IF;
+                END IF;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add End
+                IF (lb_break_flg_a2) THEN      -- A-2伝票Noがブレイクした場合(前回A-2伝票Noと異なる場合)
+--
+                  lb_break_flg_a2 := FALSE;   -- A-2伝票Noブレイクフラグ初期化
+                  gt_line_number_a11 := 0;    -- A-11でセットする明細番号(ヘッダ単位に1から採番)
+--
+                  -- ===========================================
+                  -- 倉替返品情報(ヘッダ)作成処理 (A-9)
+                  -- ===========================================
+                  set_order_headers(
+                    ln_idx_a6,                                         -- 1.配列インデックス
+                    gt_reserve_interface_tbl(i).quantity_total,        -- 2.数量
+                    gt_reserve_interface_tbl(i).recorded_date,         -- 3.計上日付(着日)
+                    gt_reserve_interface_tbl(i).receive_base_code,     -- 4.相手拠点コード
+                    gt_reserve_interface_tbl(i).input_base_code,       -- 5.入力拠点コード
+                    lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+                    lv_retcode,        -- リターン・コード             --# 固定 #
+                    lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_process_expt;
+                  END IF;
+--
+                  -- ===========================================
+                  -- 最新フラグ更新情報作成処理 (A-10)
+                  -- ===========================================
+                  set_latest_external_flag(
+                    ln_idx_a6,                                         -- 1.配列インデックス
+                    lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+                    lv_retcode,        -- リターン・コード             --# 固定 #
+                    lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_process_expt;
+                  END IF;
+                END IF;
+--
+                -- A-2で取得した品目コード=A-6で取得した出荷品目の場合
+                IF (gt_reserve_interface_tbl(i).item_no = gt_order_all_tbl(ln_idx_a6).ln_shipping_item_code) THEN
+                  -- A-2で取得した品目がA-6で取得した品目にない場合A-2で取得した品目を作成するためのフラグ
+                  gb_a11_flg := TRUE;    -- A-11-2を行うかどうかを制御するフラグ
+                END IF;
+--
+-- ver1.13 Y.Kazama 本番障害#1335対応 Del Start
+--                IF (lb_break_flg_a6) THEN  -- A-6伝票Noがブレイクした場合(前回A-6伝票Noと異なる場合)
+-- ver1.13 Y.Kazama 本番障害#1335対応 Del End
+                  -- ここではA-6伝票Noブレイクフラグを初期化しないで下さい
+                  -- ===========================================
+                  -- 倉替返品情報(明細)作成処理 (A-11)
+                  -- ===========================================
+                  set_order_lines(
+                    ln_idx_a6,                                         -- 1.配列インデックス
+                    gt_reserve_interface_tbl(i).item_no,               -- 2.品目コード
+                    gt_reserve_interface_tbl(i).quantity_total,        -- 3.数量
+                    lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+                    lv_retcode,        -- リターン・コード             --# 固定 #
+                    lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_process_expt;
+                  END IF;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Del Start
+--                END IF;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Del End
+--
+                -- A-2で取得した品目がA-6で取得した品目にない場合A-2で取得した品目を作成する
+                IF (j = gt_order_all_tbl.LAST) THEN
+                  IF (gb_a11_flg = FALSE) THEN         -- A-2で取得した品目がA-6で取得した品目にない場合
+--
+                    set_order_lines_2(
+                      gt_reserve_interface_tbl(i).item_no,               -- 1.品目コード
+                      gt_reserve_interface_tbl(i).quantity_total,        -- 2.数量
+                      lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+                      lv_retcode,        -- リターン・コード             --# 固定 #
+                      lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--
+                    IF (lv_retcode = gv_status_error) THEN
+                      RAISE global_process_expt;
+                    END IF;
+--
+                  END IF;
+                END IF;
+--
+              -- =======================================================================================
+              -- 出荷実績計上済でない場合
+              ELSE
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add Start
+                -- 既に倉替返品更新ヘッダをコールしている場合
+                IF NOT lb_break_flg_a2 THEN
+--
+                  -- 退避変数初期化
+                  lt_bk_order_type_id := NULL;
+--
+                  -- 合算数量>0(正)の場合
+                  IF (gt_sum_quantity > 0) THEN
+                    -- A-6で取得した受注タイプ(新規/訂正).受注カテゴリ=返品の場合
+                    IF (gt_new_transaction_catg_code = gv_cate_return) THEN
+                      -- 受注タイプID<--A-6で取得した受注タイプ(新規/訂正).取引タイプID
+                      lt_bk_order_type_id := gt_new_transaction_type_id;
+                    -- A-6で取得した受注タイプ(新規/訂正).受注カテゴリ=受注の場合
+                    ELSIF (gt_new_transaction_catg_code = gv_cate_order) THEN
+                      -- 受注タイプID<--A-6で取得した受注タイプ(打消).取引タイプID
+                      lt_bk_order_type_id := gt_del_transaction_type_id;
+                    END IF;
+                  ELSIF( gt_sum_quantity < 0 ) THEN      -- 合算数量<0(負)の場合
+                    -- A-6で取得した受注タイプ(新規/訂正).受注カテゴリ=返品の場合
+                    IF (gt_new_transaction_catg_code = gv_cate_return) THEN
+                      -- 受注タイプID<--A-6で取得した受注タイプ(打消).取引タイプID
+                      lt_bk_order_type_id := gt_del_transaction_type_id;
+                    -- A-6で取得した受注タイプ(新規/訂正).受注カテゴリ=受注の場合
+                    ELSIF (gt_new_transaction_catg_code = gv_cate_order) THEN
+                      -- 受注タイプID<--A-6で取得した受注タイプ(新規/訂正).取引タイプID
+                      lt_bk_order_type_id := gt_new_transaction_type_id;
+                    END IF;
+                  END IF;
+--
+                  -- 前品目で設定した受注タイプと異なる場合は上書き
+                  IF (   lt_bk_order_type_id IS NOT NULL
+                     AND gt_xoh_a12_order_type_id(gn_idx_hd_a12) <> lt_bk_order_type_id
+                     )
+                  THEN
+--
+                    gt_xoh_a12_order_type_id(gn_idx_hd_a12) := lt_bk_order_type_id;
+                  END IF;
+                END IF;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add End
+--
+                IF (lb_break_flg_a2) THEN   -- A-2伝票Noがブレイクした場合(前回A-2伝票Noと異なる場合)
+--
+                  lb_break_flg_a2 := FALSE;    -- A-2伝票Noブレイクフラグ初期化
+--
+                  -- ===========================================
+                  -- 倉替返品更新情報(ヘッダ)作成処理 (A-12)
+                  -- ===========================================
+                  set_upd_order_headers(
+                    ln_idx_a6,                                         -- 1.配列インデックス
+                    gt_reserve_interface_tbl(i).quantity_total,        -- 2.数量
+                    lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+                    lv_retcode,        -- リターン・コード             --# 固定 #
+                    lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_process_expt;
+                  END IF;
+                END IF;
+--
+                -- ===========================================
+                -- 倉替返品更新情報(明細)作成処理 (A-13①)
+                -- ===========================================
+                -- A-2で取得した品目コード=A-6で取得した出荷品目の場合は更新
+                -- 同じ品目がなければここでは何もしない
+                IF (gt_reserve_interface_tbl(i).item_no = gt_order_all_tbl(ln_idx_a6).ln_shipping_item_code) THEN
+--
+                  set_upd_order_lines_upd(
+                    ln_idx_a6,                                         -- 1.配列インデックス
+                    gt_reserve_interface_tbl(i).quantity_total,        -- 2.数量
+                    lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+                    lv_retcode,        -- リターン・コード             --# 固定 #
+                    lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--
+                    lb_a13upd_flg := TRUE;  -- 同じ品目があればフラグをONにする
+--
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_process_expt;
+                  END IF;
+                END IF;
               END IF;
-            END IF;
 --
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add Start
+            END IF;
           END IF;
---
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add End
         END LOOP gt_order_all_tbl_loop;
 --
-        -- ===========================================
-        -- 倉替返品更新情報(明細)作成処理 (A-13②)
-        -- ===========================================
-        -- 出荷実績計上済でない場合で、A-2で取得した品目がA-6で取得した品目になかった場合
-        -- 同じ品目がないのでここで新規に明細を作成する
-        IF (lt_req_statu <> cv_req_status_confirm) AND
-           (NOT lb_a13upd_flg) THEN
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add Start
+        <<get_order_minus_reserve>>
+        FOR rec_get_order_minus_reserve IN cur_get_order_minus_reserve( pi_request_no => gt_request_no
+                                                                       ,pi_invoice_no => gt_reserve_interface_tbl(i).invoice_no ) LOOP
 --
-          set_upd_order_lines_ins( -- ここで渡すものはA-6ではなくA-2で取得したほうなので注意！
-            ln_idx_a6,                                         -- 1.配列インデックス
-            gt_reserve_interface_tbl(i).quantity_total,        -- 2.数量
-            gt_reserve_interface_tbl(i).item_no,               -- 3.品目コード
-            lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-            lv_retcode,        -- リターン・コード             --# 固定 #
-            lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+          IF rec_get_order_minus_reserve.quantity > 0 THEN
+            gb_posi_flg := TRUE;
+          ELSE
+            gb_nega_flg := TRUE;
+          END IF;
 --
-          IF (lv_retcode = gv_status_error) THEN
-            RAISE global_process_expt;
+        END LOOP get_order_minus_reserve;
+
+--
+        IF (   lt_req_statu <> cv_req_status_confirm ) THEN
+          IF (lb_break_flg_a2) THEN   -- A-2伝票Noがブレイクした場合(前回A-2伝票Noと異なる場合)
+            -- 合算数量<--A-2で取得した数量 + A-6で取得した加算用数量
+            gt_sum_quantity := gt_reserve_interface_tbl(i).quantity_total;
+
+            -- ===========================================
+            -- 倉替返品更新情報(ヘッダ)作成処理 (A-12)
+            -- ===========================================
+            set_upd_order_headers(
+              ln_idx_a6,                                         -- 1.配列インデックス
+              gt_reserve_interface_tbl(i).quantity_total,        -- 2.数量
+              lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+              lv_retcode,        -- リターン・コード             --# 固定 #
+              lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+            lb_break_flg_a2 := FALSE;    -- A-2伝票Noブレイクフラグ初期化
+          END IF;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add End
+          -- ===========================================
+          -- 倉替返品更新情報(明細)作成処理 (A-13②)
+          -- ===========================================
+          -- 出荷実績計上済でない場合で、A-2で取得した品目がA-6で取得した品目になかった場合
+          -- 同じ品目がないのでここで新規に明細を作成する
+          IF (lt_req_statu <> cv_req_status_confirm) AND
+             (NOT lb_a13upd_flg) THEN
+--
+            set_upd_order_lines_ins( -- ここで渡すものはA-6ではなくA-2で取得したほうなので注意！
+              ln_idx_a6,                                         -- 1.配列インデックス
+              gt_reserve_interface_tbl(i).quantity_total,        -- 2.数量
+              gt_reserve_interface_tbl(i).item_no,               -- 3.品目コード
+              lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+              lv_retcode,        -- リターン・コード             --# 固定 #
+              lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+          END IF;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add Start
+        END IF;
+        -- A-2で取得した品目がA-6で取得した品目にない場合A-2で取得した品目を作成する
+        IF (   lt_req_statu = cv_req_status_confirm ) THEN
+          IF (lb_break_flg_a2) THEN      -- A-2伝票Noがブレイクした場合(前回A-2伝票Noと異なる場合)
+--
+            lb_break_flg_a2 := FALSE;   -- A-2伝票Noブレイクフラグ初期化
+            gt_line_number_a11 := 0;    -- A-11でセットする明細番号(ヘッダ単位に1から採番)
+--
+            -- ===========================================
+            -- 倉替返品情報(ヘッダ)作成処理 (A-9)
+            -- ===========================================
+            set_order_headers(
+              ln_idx_a6,                                         -- 1.配列インデックス
+              gt_reserve_interface_tbl(i).quantity_total,        -- 2.数量
+              gt_reserve_interface_tbl(i).recorded_date,         -- 3.計上日付(着日)
+              gt_reserve_interface_tbl(i).receive_base_code,     -- 4.相手拠点コード
+              gt_reserve_interface_tbl(i).input_base_code,       -- 5.入力拠点コード
+              lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+              lv_retcode,        -- リターン・コード             --# 固定 #
+              lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--
+            -- ===========================================
+            -- 最新フラグ更新情報作成処理 (A-10)
+            -- ===========================================
+            set_latest_external_flag(
+              ln_idx_a6,                                         -- 1.配列インデックス
+              lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+              lv_retcode,        -- リターン・コード             --# 固定 #
+              lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+          END IF;
+        
+          IF gb_a11_flg = FALSE THEN  -- A-2で取得した品目がA-6で取得した品目にない場合
+--
+            set_order_lines_2(
+              gt_reserve_interface_tbl(i).item_no,               -- 1.品目コード
+              gt_reserve_interface_tbl(i).quantity_total,        -- 2.数量
+              lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+              lv_retcode,        -- リターン・コード             --# 固定 #
+              lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
           END IF;
         END IF;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add End
 --
       -- ===========================================================================================
       -- 同一依頼No情報が抽出できなかった場合
@@ -4331,7 +4872,6 @@ AS
           IF (lv_retcode = gv_status_error) THEN
             RAISE global_process_expt;
           END IF;
---
         END IF;
 --
         -- ===========================================
@@ -4352,6 +4892,19 @@ AS
       END IF;
 --
     END LOOP gt_reserve_interface_tbl_loop;
+--
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add Start
+    --------------------------------------
+    -- 最終伝票Noの明細数量正負チェック
+    --------------------------------------
+    -- 同一伝票No内で明細の数量が正負混在している場合はエラー
+    IF ( gb_posi_flg AND gb_nega_flg ) THEN
+      lv_errmsg  := xxcmn_common_pkg.get_msg( gv_xxwsh,gv_xxwsh_num_mix_err ,'invoice_no' ,lt_invoice_no_a2);
+      lv_errbuf  := lv_errmsg;
+      lv_retcode := gv_status_error;
+      RAISE global_process_expt;
+    END IF;
+-- ver1.13 Y.Kazama 本番障害#1335対応 Add End
 --
     -- ===============================
     -- 倉替返品情報登録処理 (A-14)
