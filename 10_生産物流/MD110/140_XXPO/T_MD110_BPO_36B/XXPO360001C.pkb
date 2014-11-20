@@ -7,7 +7,7 @@ AS
  * Description      : 発注書
  * MD.050/070       : 仕入（帳票）Issue1.0(T_MD050_BPO_360)
  *                    仕入（帳票）Issue1.0(T_MD070_BPO_36B)
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/06/27    1.8   R.Tomoyose       明細が最大行出力（６行出力）の時に、
  *                                       合計が次ページに表示される現象を修正
  *  2008/10/21    1.9   T.Ohashi         指摘382対応
+ *  2008/11/20    1.10  T.Ohashi         指摘664対応
  *
  *****************************************************************************************/
 --
@@ -185,6 +186,9 @@ AS
      ,drop_zip                    VARCHAR2(8)                             -- 支給/出荷郵便番号
      ,drop_address1               VARCHAR2(30)                            -- 支給/出荷住所１
      ,drop_address2               VARCHAR2(30)                            -- 支給/出荷住所２
+-- add start ver1.10
+     ,phone                       VARCHAR2(30)                            -- 支給/出荷電話番号
+-- add end ver1.10
      ,factory_name                xxcmn_vendor_sites_v.vendor_site_name%TYPE -- 工場名
      ,dept_code                   po_headers_all.attribute10%TYPE            -- 部署コード
      ,vendor_id                   xxcmn_vendors2_v.vendor_id%TYPE            -- 仕入先ＩＤ
@@ -604,6 +608,14 @@ AS
               || ' WHEN poh.attribute6 = '|| gv_direct_type_s ||' THEN ' -- 支給の場合
               || '      xves2.address_line2 '      -- 仕入先サイト住所２
               || ' END  AS drop_address2 '         -- 支給/出荷住所２
+-- add start ver1.10
+              || ',CASE '
+              || ' WHEN poh.attribute6 = '|| gv_direct_type_p ||' THEN ' -- 出荷の場合
+              || '      xps.phone '                -- パーティサイト電話番号
+              || ' WHEN poh.attribute6 = '|| gv_direct_type_s ||' THEN ' -- 支給の場合
+              || '      xves2.phone '              -- 仕入先サイト電話番号
+              || ' END  AS phone '                 -- 支給/出荷電話番号
+-- add end ver1.10
               || ',xves3.vendor_site_name AS factory_name'           -- 工場名
               || ',poh.attribute10        AS dept_code'              -- 部署コード
               || ',xve1.vendor_id         AS vendor_id'              -- 仕入先ＩＤ
@@ -1420,6 +1432,14 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
         gt_xml_data_table(gl_xml_idx).tag_value := SUBSTRB(gt_main_data(i).drop_address2,
                                                            1,30) ;
+-- add start ver1.10
+        -- 支給/出荷：電話番号
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'phone_no' ;
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := SUBSTRB(gt_main_data(i).phone,
+                                                           1,30) ;
+-- add end ver1.10
 --
         -- 支払条件文言取得関数により
         lv_term_str := xxcmn_common_pkg.get_term_of_payment(
