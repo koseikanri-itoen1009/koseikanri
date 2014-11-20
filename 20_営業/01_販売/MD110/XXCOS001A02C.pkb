@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A02C (body)
  * Description      : 入金データの取込を行う
  * MD.050           : HHT入金データ取込 (MD050_COS_001_A02)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/07/21    1.7   T.Tominaga       [0000741]パフォーマンス改善対応
  *                                       [0000765]入金拠点コードの取得先変更
  *  2009/07/28    1.8   T.Tominaga       [0000881]拠点名称・顧客名の桁数編集
+ *  2009/10/02    1.9   N.Maeda          [0001378]エラーリスト出力桁数編集
  *
  *****************************************************************************************/
 --
@@ -852,11 +853,16 @@ AS
         FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
         ov_retcode := cv_status_warn;
         -- エラー変数へ格納
-        gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
-        gt_err_base_name(ln_err_no)        :=  lt_base_name;                 -- 拠点名称
-        gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
-        gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
-        gt_err_cus_name(ln_err_no)         :=  lt_customer_name;             -- 顧客名
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
+--        gt_err_base_code(ln_err_no)        :=  lt_base_code;                -- 拠点コード
+        gt_err_base_name(ln_err_no)        :=  lt_base_name;                -- 拠点名称
+--        gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;           -- 伝票NO
+--        gt_err_party_num(ln_err_no)        :=  lt_customer_number;          -- 顧客コード
+        gt_err_cus_name(ln_err_no)         :=  lt_customer_name;            -- 顧客名
+        gt_err_base_code(ln_err_no)        :=  SUBSTRB(lt_base_code,1,4);       -- 拠点コード
+        gt_err_entry_number(ln_err_no)     :=  SUBSTRB(lt_hht_invoice_no,1,12); -- 伝票NO
+        gt_err_party_num(ln_err_no)        :=  SUBSTRB(lt_customer_number,1,9); -- 顧客コード
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
         gt_err_pay_dlv_date(ln_err_no)     :=  lt_payment_date;              -- 入金/納品日
         gt_err_pay_class_name(ln_err_no)   :=  NULL;                         -- 入金区分名称
         gt_err_error_message(ln_err_no)    :=  SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
@@ -876,13 +882,19 @@ AS
             FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
             ov_retcode := cv_status_warn;
             -- エラー変数へ格納
-            gt_err_base_code(ln_err_no)        :=  lt_base_code;                   -- 拠点コード
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
+--            gt_err_base_code(ln_err_no)        :=  lt_base_code;                   -- 拠点コード
             gt_err_base_name(ln_err_no)        :=  lt_base_name;                   -- 拠点名称
-            gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;              -- 伝票NO
-            gt_err_party_num(ln_err_no)        :=  lt_customer_number;             -- 顧客コード
+--            gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;              -- 伝票NO
+--            gt_err_party_num(ln_err_no)        :=  lt_customer_number;             -- 顧客コード
             gt_err_cus_name(ln_err_no)         :=  lt_customer_name;               -- 顧客名
             gt_err_pay_dlv_date(ln_err_no)     :=  lt_payment_date;                -- 入金/納品日
-            gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;              -- 入金区分名称
+--            gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;             -- 入金区分名称
+            gt_err_base_code(ln_err_no)        :=  SUBSTRB(lt_base_code,1,4);       -- 拠点コード
+            gt_err_entry_number(ln_err_no)     :=  SUBSTRB(lt_hht_invoice_no,1,12); -- 伝票NO
+            gt_err_party_num(ln_err_no)        :=  SUBSTRB(lt_customer_number,1,9); -- 顧客コード
+            gt_err_pay_class_name(ln_err_no)   :=  SUBSTRB(lt_pay_class_name,1,12); -- 入金区分名称
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
             gt_err_error_message(ln_err_no)    :=  SUBSTRB( lv_errmsg, 1, 60 );    -- エラー内容
             ln_err_no := ln_err_no + 1;
             -- エラーフラグ更新
@@ -906,13 +918,19 @@ AS
             FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
             ov_retcode := cv_status_warn;
             -- エラー変数へ格納
-            gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
+--            gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
             gt_err_base_name(ln_err_no)        :=  lt_base_name;                 -- 拠点名称
-            gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
-            gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
+--            gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
+--            gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
             gt_err_cus_name(ln_err_no)         :=  lt_customer_name;             -- 顧客名
             gt_err_pay_dlv_date(ln_err_no)     :=  lt_payment_date;              -- 入金/納品日
-            gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
+--            gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
+            gt_err_base_code(ln_err_no)        :=  SUBSTRB(lt_base_code,1,4);       -- 拠点コード
+            gt_err_entry_number(ln_err_no)     :=  SUBSTRB(lt_hht_invoice_no,1,12); -- 伝票NO
+            gt_err_party_num(ln_err_no)        :=  SUBSTRB(lt_customer_number,1,9); -- 顧客コード
+            gt_err_pay_class_name(ln_err_no)   :=  SUBSTRB(lt_pay_class_name,1,12); -- 入金区分名称
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
             gt_err_error_message(ln_err_no)    :=  SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
             ln_err_no := ln_err_no + 1;
             -- エラーフラグ更新
@@ -927,13 +945,19 @@ AS
             FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
             ov_retcode := cv_status_warn;
             -- エラー変数へ格納
-            gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
+--            gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
             gt_err_base_name(ln_err_no)        :=  lt_base_name;                 -- 拠点名称
-            gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
-            gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
+--            gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
+--            gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
             gt_err_cus_name(ln_err_no)         :=  lt_customer_name;             -- 顧客名
             gt_err_pay_dlv_date(ln_err_no)     :=  lt_payment_date;              -- 入金/納品日
-            gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
+--            gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
+            gt_err_base_code(ln_err_no)        :=  SUBSTRB(lt_base_code,1,4);       -- 拠点コード
+            gt_err_entry_number(ln_err_no)     :=  SUBSTRB(lt_hht_invoice_no,1,12); -- 伝票NO
+            gt_err_party_num(ln_err_no)        :=  SUBSTRB(lt_customer_number,1,9); -- 顧客コード
+            gt_err_pay_class_name(ln_err_no)   :=  SUBSTRB(lt_pay_class_name,1,12); -- 入金区分名称
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
             gt_err_error_message(ln_err_no)    :=  SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
             ln_err_no := ln_err_no + 1;
             -- エラーフラグ更新
@@ -948,13 +972,19 @@ AS
             FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
             ov_retcode := cv_status_warn;
             -- エラー変数へ格納
-            gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
+--            gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
             gt_err_base_name(ln_err_no)        :=  lt_base_name;                 -- 拠点名称
-            gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
-            gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
+--            gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
+--            gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
             gt_err_cus_name(ln_err_no)         :=  lt_customer_name;             -- 顧客名
             gt_err_pay_dlv_date(ln_err_no)     :=  lt_payment_date;              -- 入金/納品日
-            gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
+--            gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
+            gt_err_base_code(ln_err_no)        :=  SUBSTRB(lt_base_code,1,4);       -- 拠点コード
+            gt_err_entry_number(ln_err_no)     :=  SUBSTRB(lt_hht_invoice_no,1,12); -- 伝票NO
+            gt_err_party_num(ln_err_no)        :=  SUBSTRB(lt_customer_number,1,9); -- 顧客コード
+            gt_err_pay_class_name(ln_err_no)   :=  SUBSTRB(lt_pay_class_name,1,12); -- 入金区分名称
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
             gt_err_error_message(ln_err_no)    :=  SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
             ln_err_no := ln_err_no + 1;
             -- エラーフラグ更新
@@ -1096,13 +1126,19 @@ AS
               FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
               ov_retcode := cv_status_warn;
               -- エラー変数へ格納
-              gt_err_base_code(ln_err_no)        :=  lt_base_code;               -- 拠点コード
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
+--              gt_err_base_code(ln_err_no)        :=  lt_base_code;               -- 拠点コード
               gt_err_base_name(ln_err_no)        :=  lt_base_name;               -- 拠点名称
-              gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;          -- 伝票NO
-              gt_err_party_num(ln_err_no)        :=  lt_customer_number;         -- 顧客コード
+--              gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;          -- 伝票NO
+--              gt_err_party_num(ln_err_no)        :=  lt_customer_number;         -- 顧客コード
               gt_err_cus_name(ln_err_no)         :=  lt_customer_name;           -- 顧客名
               gt_err_pay_dlv_date(ln_err_no)     :=  lt_payment_date;            -- 入金/納品日
-              gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;          -- 入金区分名称
+--              gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;          -- 入金区分名称
+              gt_err_base_code(ln_err_no)        :=  SUBSTRB(lt_base_code,1,4);       -- 拠点コード
+              gt_err_entry_number(ln_err_no)     :=  SUBSTRB(lt_hht_invoice_no,1,12); -- 伝票NO
+              gt_err_party_num(ln_err_no)        :=  SUBSTRB(lt_customer_number,1,9); -- 顧客コード
+              gt_err_pay_class_name(ln_err_no)   :=  SUBSTRB(lt_pay_class_name,1,12); -- 入金区分名称
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
               gt_err_error_message(ln_err_no)    :=  SUBSTRB(lv_errmsg, 1, 60);  -- エラー内容
               ln_err_no := ln_err_no + 1;
               -- エラーフラグ更新
@@ -1155,13 +1191,19 @@ AS
               FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
               ov_retcode := cv_status_warn;
               -- エラー変数へ格納
-              gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
+--              gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
               gt_err_base_name(ln_err_no)        :=  lt_base_name;                 -- 拠点名称
-              gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
-              gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
+--              gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
+--              gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
               gt_err_cus_name(ln_err_no)         :=  lt_customer_name;             -- 顧客名
               gt_err_pay_dlv_date(ln_err_no)     :=  lt_payment_date;              -- 入金/納品日
-              gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
+--              gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
+              gt_err_base_code(ln_err_no)        :=  SUBSTRB(lt_base_code,1,4);       -- 拠点コード
+              gt_err_entry_number(ln_err_no)     :=  SUBSTRB(lt_hht_invoice_no,1,12); -- 伝票NO
+              gt_err_party_num(ln_err_no)        :=  SUBSTRB(lt_customer_number,1,9); -- 顧客コード
+              gt_err_pay_class_name(ln_err_no)   :=  SUBSTRB(lt_pay_class_name,1,12); -- 入金区分名称
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
               gt_err_error_message(ln_err_no)    :=  SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
               ln_err_no := ln_err_no + 1;
               -- エラーフラグ更新
@@ -1178,13 +1220,19 @@ AS
           FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
           ov_retcode := cv_status_warn;
           -- エラー変数へ格納
-          gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
+--          gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
           gt_err_base_name(ln_err_no)        :=  lt_base_name;                 -- 拠点名称
-          gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
-          gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
+--          gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
+--          gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
           gt_err_cus_name(ln_err_no)         :=  lt_customer_name;             -- 顧客名
           gt_err_pay_dlv_date(ln_err_no)     :=  lt_payment_date;              -- 入金/納品日
-          gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
+--          gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
+          gt_err_base_code(ln_err_no)        :=  SUBSTRB(lt_base_code,1,4);       -- 拠点コード
+          gt_err_entry_number(ln_err_no)     :=  SUBSTRB(lt_hht_invoice_no,1,12); -- 伝票NO
+          gt_err_party_num(ln_err_no)        :=  SUBSTRB(lt_customer_number,1,9); -- 顧客コード
+          gt_err_pay_class_name(ln_err_no)   :=  SUBSTRB(lt_pay_class_name,1,12); -- 入金区分名称
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
           gt_err_error_message(ln_err_no)    :=  SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
           ln_err_no := ln_err_no + 1;
           -- エラーフラグ更新
@@ -1220,13 +1268,19 @@ AS
           FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
           ov_retcode := cv_status_warn;
           -- エラー変数へ格納
-          gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
+--          gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
           gt_err_base_name(ln_err_no)        :=  lt_base_name;                 -- 拠点名称
-          gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
-          gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
+--          gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
+--          gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
           gt_err_cus_name(ln_err_no)         :=  lt_customer_name;             -- 顧客名
           gt_err_pay_dlv_date(ln_err_no)     :=  lt_payment_date;              -- 入金/納品日
-          gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
+--          gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
+          gt_err_base_code(ln_err_no)        :=  SUBSTRB(lt_base_code,1,4);       -- 拠点コード
+          gt_err_entry_number(ln_err_no)     :=  SUBSTRB(lt_hht_invoice_no,1,12); -- 伝票NO
+          gt_err_party_num(ln_err_no)        :=  SUBSTRB(lt_customer_number,1,9); -- 顧客コード
+          gt_err_pay_class_name(ln_err_no)   :=  SUBSTRB(lt_pay_class_name,1,12); -- 入金区分名称
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
           gt_err_error_message(ln_err_no)    :=  SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
           ln_err_no := ln_err_no + 1;
           -- エラーフラグ更新
@@ -1240,13 +1294,19 @@ AS
           FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
           ov_retcode := cv_status_warn;
           -- エラー変数へ格納
-          gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
+--          gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
           gt_err_base_name(ln_err_no)        :=  lt_base_name;                 -- 拠点名称
-          gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
-          gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
+--          gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
+--          gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
           gt_err_cus_name(ln_err_no)         :=  lt_customer_name;             -- 顧客名
           gt_err_pay_dlv_date(ln_err_no)     :=  lt_payment_date;              -- 入金/納品日
-          gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
+--          gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
+          gt_err_base_code(ln_err_no)        :=  SUBSTRB(lt_base_code,1,4);       -- 拠点コード
+          gt_err_entry_number(ln_err_no)     :=  SUBSTRB(lt_hht_invoice_no,1,12); -- 伝票NO
+          gt_err_party_num(ln_err_no)        :=  SUBSTRB(lt_customer_number,1,9); -- 顧客コード
+          gt_err_pay_class_name(ln_err_no)   :=  SUBSTRB(lt_pay_class_name,1,12); -- 入金区分名称
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
           gt_err_error_message(ln_err_no)    :=  SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
           ln_err_no := ln_err_no + 1;
           -- エラーフラグ更新
@@ -1265,13 +1325,19 @@ AS
         FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
         ov_retcode := cv_status_warn;
         -- エラー変数へ格納
-        gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
+--        gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
         gt_err_base_name(ln_err_no)        :=  lt_base_name;                 -- 拠点名称
-        gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
-        gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
+--        gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
+--        gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
         gt_err_cus_name(ln_err_no)         :=  lt_customer_name;             -- 顧客名
         gt_err_pay_dlv_date(ln_err_no)     :=  lt_payment_date;              -- 入金/納品日
-        gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
+--        gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
+        gt_err_base_code(ln_err_no)        :=  SUBSTRB(lt_base_code,1,4);       -- 拠点コード
+        gt_err_entry_number(ln_err_no)     :=  SUBSTRB(lt_hht_invoice_no,1,12); -- 伝票NO
+        gt_err_party_num(ln_err_no)        :=  SUBSTRB(lt_customer_number,1,9); -- 顧客コード
+        gt_err_pay_class_name(ln_err_no)   :=  SUBSTRB(lt_pay_class_name,1,12); -- 入金区分名称
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
         gt_err_error_message(ln_err_no)    :=  SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
         ln_err_no := ln_err_no + 1;
         -- エラーフラグ更新
@@ -1284,13 +1350,19 @@ AS
           FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
           ov_retcode := cv_status_warn;
           -- エラー変数へ格納
-          gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
+--          gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
           gt_err_base_name(ln_err_no)        :=  lt_base_name;                 -- 拠点名称
-          gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
-          gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
+--          gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
+--          gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
           gt_err_cus_name(ln_err_no)         :=  lt_customer_name;             -- 顧客名
           gt_err_pay_dlv_date(ln_err_no)     :=  lt_payment_date;              -- 入金/納品日
-          gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
+--          gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
+          gt_err_base_code(ln_err_no)        :=  SUBSTRB(lt_base_code,1,4);       -- 拠点コード
+          gt_err_entry_number(ln_err_no)     :=  SUBSTRB(lt_hht_invoice_no,1,12); -- 伝票NO
+          gt_err_party_num(ln_err_no)        :=  SUBSTRB(lt_customer_number,1,9); -- 顧客コード
+          gt_err_pay_class_name(ln_err_no)   :=  SUBSTRB(lt_pay_class_name,1,12); -- 入金区分名称
+-- ********** 2009/10/02 1.9 N.Maeda MOD START ********** --
           gt_err_error_message(ln_err_no)    :=  SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
           ln_err_no := ln_err_no + 1;
           -- エラーフラグ更新
@@ -1371,7 +1443,10 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    lv_data_name  VARCHAR2(10);   -- データ名称
+-- ******* 2009/10/02 1.9 N.Maeda MOD START ******* --
+--    lv_data_name  VARCHAR2(10);   -- データ名称
+    lv_data_name  xxcos_rep_hht_err_list.data_name%TYPE;   -- データ名称
+-- ******* 2009/10/02 1.9 N.Maeda MOD  END  ******* --
     lv_tkn        VARCHAR2(50);   -- エラーメッセージ用トークン
 --
     -- *** ローカル・カーソル ***
@@ -1394,7 +1469,7 @@ AS
     -- HHTエラーリスト帳票ワークテーブルへエラーデータ登録
     --==============================================================
     -- データ名称取得
-    lv_data_name := xxccp_common_pkg.get_msg( cv_application, cv_msg_data_name );
+    lv_data_name := SUBSTRB( xxccp_common_pkg.get_msg( cv_application, cv_msg_data_name ),1,20);
 --
     -- エラー件数セット
     on_warn_cnt := gt_err_base_code.COUNT;

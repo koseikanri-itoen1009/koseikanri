@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *                                       [T1_0977]従業員マスタと顧客マスタの取得分割
  *  2009/09/01    1.15  N.Maeda          [0000929]リソースID取得条件変更[成績者⇒納品者]
  *                                                H/C妥当性チェックの実行条件修正
+ *  2009/10/01    1.16  N.Maeda          [0001378]エラーリスト登録時登録桁数指定
  *
  *****************************************************************************************/
 --
@@ -220,6 +221,9 @@ AS
   cv_spe_cha         CONSTANT VARCHAR2(1)   := ' ';
   cv_time_cha        CONSTANT VARCHAR2(1)   := ':';
 --****************************** 2009/05/15 1.14 N.Maeda ADD  END   *****************************--
+-- ******* 2009/10/01 N.Maeda ADD START ********* --
+  cv_user_lang       CONSTANT fnd_lookup_values.language%TYPE := USERENV( 'LANG' );
+-- ******* 2009/10/01 N.Maeda ADD  END  ********* --
 --
   -- クイックコードタイプ
   cv_qck_typ_status  CONSTANT VARCHAR2(30)  := 'XXCOS1_CUS_STATUS_MST_001_A01';   -- 顧客ステータス
@@ -869,173 +873,240 @@ AS
     CURSOR get_cus_status_cur
     IS
       SELECT  look_val.meaning      meaning
-      FROM    fnd_lookup_values     look_val,
-              fnd_lookup_types_tl   types_tl,
-              fnd_lookup_types      types,
-              fnd_application_tl    appl,
-              fnd_application       app
-      WHERE   appl.application_id   = types.application_id
-      AND     app.application_id    = appl.application_id
-      AND     types_tl.lookup_type  = look_val.lookup_type
-      AND     types.lookup_type     = types_tl.lookup_type
-      AND     types.security_group_id   = types_tl.security_group_id
-      AND     types.view_application_id = types_tl.view_application_id
-      AND     types_tl.language = USERENV( 'LANG' )
-      AND     look_val.language = USERENV( 'LANG' )
-      AND     appl.language     = USERENV( 'LANG' )
-      AND     app.application_short_name = cv_application
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+      FROM    fnd_lookup_values     look_val
+      WHERE   look_val.language = cv_user_lang
       AND     look_val.lookup_type = cv_qck_typ_status
       AND     look_val.lookup_code LIKE cv_qck_typ_a01
       AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
       AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
       AND     look_val.enabled_flag = cv_tkn_yes;
 --
+--      FROM    fnd_lookup_values     look_val,
+--              fnd_lookup_types_tl   types_tl,
+--              fnd_lookup_types      types,
+--              fnd_application_tl    appl,
+--              fnd_application       app
+--      WHERE   appl.application_id   = types.application_id
+--      AND     app.application_id    = appl.application_id
+--      AND     types_tl.lookup_type  = look_val.lookup_type
+--      AND     types.lookup_type     = types_tl.lookup_type
+--      AND     types.security_group_id   = types_tl.security_group_id
+--      AND     types.view_application_id = types_tl.view_application_id
+--      AND     types_tl.language = USERENV( 'LANG' )
+--      AND     look_val.language = USERENV( 'LANG' )
+--      AND     appl.language     = USERENV( 'LANG' )
+--      AND     app.application_short_name = cv_application
+--      AND     look_val.lookup_type = cv_qck_typ_status
+--      AND     look_val.lookup_code LIKE cv_qck_typ_a01
+--      AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--      AND     look_val.enabled_flag = cv_tkn_yes;
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
+--
     -- クイックコード取得：カード売区分
     CURSOR get_card_sales_cur
     IS
       SELECT  look_val.lookup_code  lookup_code
-      FROM    fnd_lookup_values     look_val,
-              fnd_lookup_types_tl   types_tl,
-              fnd_lookup_types      types,
-              fnd_application_tl    appl,
-              fnd_application       app
-      WHERE   appl.application_id   = types.application_id
-      AND     app.application_id    = appl.application_id
-      AND     types_tl.lookup_type  = look_val.lookup_type
-      AND     types.lookup_type     = types_tl.lookup_type
-      AND     types.security_group_id   = types_tl.security_group_id
-      AND     types.view_application_id = types_tl.view_application_id
-      AND     types_tl.language = USERENV( 'LANG' )
-      AND     look_val.language = USERENV( 'LANG' )
-      AND     appl.language     = USERENV( 'LANG' )
-      AND     app.application_short_name = cv_application
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+      FROM    fnd_lookup_values     look_val
+      WHERE   look_val.language = cv_user_lang
       AND     look_val.lookup_type  = cv_qck_typ_card
       AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
       AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
       AND     look_val.enabled_flag = cv_tkn_yes;
 --
+--      FROM    fnd_lookup_values     look_val,
+--              fnd_lookup_types_tl   types_tl,
+--              fnd_lookup_types      types,
+--              fnd_application_tl    appl,
+--              fnd_application       app
+--      WHERE   appl.application_id   = types.application_id
+--      AND     app.application_id    = appl.application_id
+--      AND     types_tl.lookup_type  = look_val.lookup_type
+--      AND     types.lookup_type     = types_tl.lookup_type
+--      AND     types.security_group_id   = types_tl.security_group_id
+--      AND     types.view_application_id = types_tl.view_application_id
+--      AND     types_tl.language = USERENV( 'LANG' )
+--      AND     look_val.language = USERENV( 'LANG' )
+--      AND     appl.language     = USERENV( 'LANG' )
+--      AND     app.application_short_name = cv_application
+--      AND     look_val.lookup_type  = cv_qck_typ_card
+--      AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--      AND     look_val.enabled_flag = cv_tkn_yes;
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
+--
     -- クイックコード取得：入力区分（使用可能項目）
     CURSOR get_input_enabled_cur
     IS
       SELECT  look_val.lookup_code  lookup_code
-      FROM    fnd_lookup_values     look_val,
-              fnd_lookup_types_tl   types_tl,
-              fnd_lookup_types      types,
-              fnd_application_tl    appl,
-              fnd_application       app
-      WHERE   appl.application_id   = types.application_id
-      AND     app.application_id    = appl.application_id
-      AND     types_tl.lookup_type  = look_val.lookup_type
-      AND     types.lookup_type     = types_tl.lookup_type
-      AND     types.security_group_id   = types_tl.security_group_id
-      AND     types.view_application_id = types_tl.view_application_id
-      AND     types_tl.language = USERENV( 'LANG' )
-      AND     look_val.language = USERENV( 'LANG' )
-      AND     appl.language     = USERENV( 'LANG' )
-      AND     app.application_short_name = cv_application
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+      FROM    fnd_lookup_values     look_val
+      WHERE   look_val.language = cv_user_lang
       AND     look_val.lookup_type  = cv_qck_typ_input
       AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
       AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
       AND     look_val.enabled_flag = cv_tkn_yes;
 --
+--      FROM    fnd_lookup_values     look_val,
+--              fnd_lookup_types_tl   types_tl,
+--              fnd_lookup_types      types,
+--              fnd_application_tl    appl,
+--              fnd_application       app
+--      WHERE   appl.application_id   = types.application_id
+--      AND     app.application_id    = appl.application_id
+--      AND     types_tl.lookup_type  = look_val.lookup_type
+--      AND     types.lookup_type     = types_tl.lookup_type
+--      AND     types.security_group_id   = types_tl.security_group_id
+--      AND     types.view_application_id = types_tl.view_application_id
+--      AND     types_tl.language = USERENV( 'LANG' )
+--      AND     look_val.language = USERENV( 'LANG' )
+--      AND     appl.language     = USERENV( 'LANG' )
+--      AND     app.application_short_name = cv_application
+--      AND     look_val.lookup_type  = cv_qck_typ_input
+--      AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--      AND     look_val.enabled_flag = cv_tkn_yes;
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
+--
     -- クイックコード取得：入力区分（納品データ）
     CURSOR get_input_dlv_cur
     IS
       SELECT  look_val.lookup_code  lookup_code
-      FROM    fnd_lookup_values     look_val,
-              fnd_lookup_types_tl   types_tl,
-              fnd_lookup_types      types,
-              fnd_application_tl    appl,
-              fnd_application       app
-      WHERE   appl.application_id   = types.application_id
-      AND     app.application_id    = appl.application_id
-      AND     types_tl.lookup_type  = look_val.lookup_type
-      AND     types.lookup_type     = types_tl.lookup_type
-      AND     types.security_group_id   = types_tl.security_group_id
-      AND     types.view_application_id = types_tl.view_application_id
-      AND     types_tl.language = USERENV( 'LANG' )
-      AND     look_val.language = USERENV( 'LANG' )
-      AND     appl.language     = USERENV( 'LANG' )
-      AND     app.application_short_name = cv_application
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+      FROM    fnd_lookup_values     look_val
+      WHERE   look_val.language = cv_user_lang
       AND     look_val.lookup_type  = cv_qck_typ_input
       AND     look_val.enabled_flag = cv_tkn_yes
       AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
       AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
       AND     look_val.attribute3   = cv_tkn_yes;
 --
+--      FROM    fnd_lookup_values     look_val,
+--              fnd_lookup_types_tl   types_tl,
+--              fnd_lookup_types      types,
+--              fnd_application_tl    appl,
+--              fnd_application       app
+--      WHERE   appl.application_id   = types.application_id
+--      AND     app.application_id    = appl.application_id
+--      AND     types_tl.lookup_type  = look_val.lookup_type
+--      AND     types.lookup_type     = types_tl.lookup_type
+--      AND     types.security_group_id   = types_tl.security_group_id
+--      AND     types.view_application_id = types_tl.view_application_id
+--      AND     types_tl.language = USERENV( 'LANG' )
+--      AND     look_val.language = USERENV( 'LANG' )
+--      AND     appl.language     = USERENV( 'LANG' )
+--      AND     app.application_short_name = cv_application
+--      AND     look_val.lookup_type  = cv_qck_typ_input
+--      AND     look_val.enabled_flag = cv_tkn_yes
+--      AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--      AND     look_val.attribute3   = cv_tkn_yes;
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
+--
     -- クイックコード取得：入力区分（返品データ）
     CURSOR get_input_return_cur
     IS
       SELECT  look_val.lookup_code  lookup_code
-      FROM    fnd_lookup_values     look_val,
-              fnd_lookup_types_tl   types_tl,
-              fnd_lookup_types      types,
-              fnd_application_tl    appl,
-              fnd_application       app
-      WHERE   appl.application_id   = types.application_id
-      AND     app.application_id    = appl.application_id
-      AND     types_tl.lookup_type  = look_val.lookup_type
-      AND     types.lookup_type     = types_tl.lookup_type
-      AND     types.security_group_id   = types_tl.security_group_id
-      AND     types.view_application_id = types_tl.view_application_id
-      AND     types_tl.language = USERENV( 'LANG' )
-      AND     look_val.language = USERENV( 'LANG' )
-      AND     appl.language     = USERENV( 'LANG' )
-      AND     app.application_short_name = cv_application
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+      FROM    fnd_lookup_values     look_val
+      WHERE   look_val.language = cv_user_lang
       AND     look_val.lookup_type  = cv_qck_typ_input
       AND     look_val.enabled_flag = cv_tkn_yes
       AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
       AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
       AND     look_val.attribute3   = cv_tkn_no;
 --
+--      FROM    fnd_lookup_values     look_val,
+--              fnd_lookup_types_tl   types_tl,
+--              fnd_lookup_types      types,
+--              fnd_application_tl    appl,
+--              fnd_application       app
+--      WHERE   appl.application_id   = types.application_id
+--      AND     app.application_id    = appl.application_id
+--      AND     types_tl.lookup_type  = look_val.lookup_type
+--      AND     types.lookup_type     = types_tl.lookup_type
+--      AND     types.security_group_id   = types_tl.security_group_id
+--      AND     types.view_application_id = types_tl.view_application_id
+--      AND     types_tl.language = USERENV( 'LANG' )
+--      AND     look_val.language = USERENV( 'LANG' )
+--      AND     appl.language     = USERENV( 'LANG' )
+--      AND     app.application_short_name = cv_application
+--      AND     look_val.lookup_type  = cv_qck_typ_input
+--      AND     look_val.enabled_flag = cv_tkn_yes
+--      AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--      AND     look_val.attribute3   = cv_tkn_no;
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
+--
     -- クイックコード取得：入力区分（フルVD納品・自動吸上）
     CURSOR get_input_auto_cur
     IS
       SELECT  look_val.lookup_code  lookup_code
-      FROM    fnd_lookup_values     look_val,
-              fnd_lookup_types_tl   types_tl,
-              fnd_lookup_types      types,
-              fnd_application_tl    appl,
-              fnd_application       app
-      WHERE   appl.application_id   = types.application_id
-      AND     app.application_id    = appl.application_id
-      AND     types_tl.lookup_type  = look_val.lookup_type
-      AND     types.lookup_type     = types_tl.lookup_type
-      AND     types.security_group_id   = types_tl.security_group_id
-      AND     types.view_application_id = types_tl.view_application_id
-      AND     types_tl.language = USERENV( 'LANG' )
-      AND     look_val.language = USERENV( 'LANG' )
-      AND     appl.language     = USERENV( 'LANG' )
-      AND     app.application_short_name = cv_application
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+      FROM    fnd_lookup_values     look_val
+      WHERE   look_val.language = cv_user_lang
       AND     look_val.lookup_type  = cv_qck_typ_input
       AND     look_val.enabled_flag = cv_tkn_yes
       AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
       AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
       AND     look_val.attribute2   = cv_tkn_yes;
 --
+--      FROM    fnd_lookup_values     look_val,
+--              fnd_lookup_types_tl   types_tl,
+--              fnd_lookup_types      types,
+--              fnd_application_tl    appl,
+--              fnd_application       app
+--      WHERE   appl.application_id   = types.application_id
+--      AND     app.application_id    = appl.application_id
+--      AND     types_tl.lookup_type  = look_val.lookup_type
+--      AND     types.lookup_type     = types_tl.lookup_type
+--      AND     types.security_group_id   = types_tl.security_group_id
+--      AND     types.view_application_id = types_tl.view_application_id
+--      AND     types_tl.language = USERENV( 'LANG' )
+--      AND     look_val.language = USERENV( 'LANG' )
+--      AND     appl.language     = USERENV( 'LANG' )
+--      AND     app.application_short_name = cv_application
+--      AND     look_val.lookup_type  = cv_qck_typ_input
+--      AND     look_val.enabled_flag = cv_tkn_yes
+--      AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--      AND     look_val.attribute2   = cv_tkn_yes;
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
+--
     -- クイックコード取得：業態（小分類）
     CURSOR get_gyotai_sho_cur
     IS
       SELECT  look_val.meaning      meaning
-      FROM    fnd_lookup_values     look_val,
-              fnd_lookup_types_tl   types_tl,
-              fnd_lookup_types      types,
-              fnd_application_tl    appl,
-              fnd_application       app
-      WHERE   appl.application_id   = types.application_id
-      AND     app.application_id    = appl.application_id
-      AND     types_tl.lookup_type  = look_val.lookup_type
-      AND     types.lookup_type     = types_tl.lookup_type
-      AND     types.security_group_id   = types_tl.security_group_id
-      AND     types.view_application_id = types_tl.view_application_id
-      AND     types_tl.language = USERENV( 'LANG' )
-      AND     look_val.language = USERENV( 'LANG' )
-      AND     appl.language     = USERENV( 'LANG' )
-      AND     app.application_short_name = cv_application
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+      FROM    fnd_lookup_values     look_val
+      WHERE   look_val.language = cv_user_lang
       AND     look_val.lookup_type  = cv_qck_typ_gyotai
       AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
       AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
       AND     look_val.enabled_flag = cv_tkn_yes;
+--
+--      FROM    fnd_lookup_values     look_val,
+--              fnd_lookup_types_tl   types_tl,
+--              fnd_lookup_types      types,
+--              fnd_application_tl    appl,
+--              fnd_application       app
+--      WHERE   appl.application_id   = types.application_id
+--      AND     app.application_id    = appl.application_id
+--      AND     types_tl.lookup_type  = look_val.lookup_type
+--      AND     types.lookup_type     = types_tl.lookup_type
+--      AND     types.security_group_id   = types_tl.security_group_id
+--      AND     types.view_application_id = types_tl.view_application_id
+--      AND     types_tl.language = USERENV( 'LANG' )
+--      AND     look_val.language = USERENV( 'LANG' )
+--      AND     appl.language     = USERENV( 'LANG' )
+--      AND     app.application_short_name = cv_application
+--      AND     look_val.lookup_type  = cv_qck_typ_gyotai
+--      AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--      AND     look_val.enabled_flag = cv_tkn_yes;
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
 --
     -- クイックコード取得：消費税区分
     CURSOR get_tax_class_cur
@@ -1044,25 +1115,34 @@ AS
 -- ********** 2009/09/01 1.15 N.Maeda DEL START ******** --
 --              look_val.attribute3   attribute3
 -- ********** 2009/09/01 1.15 N.Maeda DEL START ******** --
-      FROM    fnd_lookup_values     look_val,
-              fnd_lookup_types_tl   types_tl,
-              fnd_lookup_types      types,
-              fnd_application_tl    appl,
-              fnd_application       app
-      WHERE   appl.application_id   = types.application_id
-      AND     app.application_id    = appl.application_id
-      AND     types_tl.lookup_type  = look_val.lookup_type
-      AND     types.lookup_type     = types_tl.lookup_type
-      AND     types.security_group_id   = types_tl.security_group_id
-      AND     types.view_application_id = types_tl.view_application_id
-      AND     types_tl.language = USERENV( 'LANG' )
-      AND     look_val.language = USERENV( 'LANG' )
-      AND     appl.language     = USERENV( 'LANG' )
-      AND     app.application_short_name = cv_application
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+      FROM    fnd_lookup_values     look_val
+      WHERE   look_val.language = cv_user_lang
       AND     look_val.lookup_type  = cv_qck_typ_tax
       AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
       AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
       AND     look_val.enabled_flag = cv_tkn_yes;
+--
+--      FROM    fnd_lookup_values     look_val,
+--              fnd_lookup_types_tl   types_tl,
+--              fnd_lookup_types      types,
+--              fnd_application_tl    appl,
+--              fnd_application       app
+--      WHERE   appl.application_id   = types.application_id
+--      AND     app.application_id    = appl.application_id
+--      AND     types_tl.lookup_type  = look_val.lookup_type
+--      AND     types.lookup_type     = types_tl.lookup_type
+--      AND     types.security_group_id   = types_tl.security_group_id
+--      AND     types.view_application_id = types_tl.view_application_id
+--      AND     types_tl.language = USERENV( 'LANG' )
+--      AND     look_val.language = USERENV( 'LANG' )
+--      AND     appl.language     = USERENV( 'LANG' )
+--      AND     app.application_short_name = cv_application
+--      AND     look_val.lookup_type  = cv_qck_typ_tax
+--      AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--      AND     look_val.enabled_flag = cv_tkn_yes;
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
 --
 --****************************** 2009/04/20 1.11 T.Kitajima DEL START  *****************************--
 --    -- クイックコード取得：百貨店画面種別
@@ -1094,74 +1174,102 @@ AS
     CURSOR get_item_status_cur
     IS
       SELECT  look_val.meaning      meaning
-      FROM    fnd_lookup_values     look_val,
-              fnd_lookup_types_tl   types_tl,
-              fnd_lookup_types      types,
-              fnd_application_tl    appl,
-              fnd_application       app
-      WHERE   appl.application_id   = types.application_id
-      AND     app.application_id    = appl.application_id
-      AND     types_tl.lookup_type  = look_val.lookup_type
-      AND     types.lookup_type     = types_tl.lookup_type
-      AND     types.security_group_id   = types_tl.security_group_id
-      AND     types.view_application_id = types_tl.view_application_id
-      AND     types_tl.language = USERENV( 'LANG' )
-      AND     look_val.language = USERENV( 'LANG' )
-      AND     appl.language     = USERENV( 'LANG' )
-      AND     app.application_short_name = cv_application
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+      FROM    fnd_lookup_values     look_val
+      WHERE   look_val.language = cv_user_lang
       AND     look_val.lookup_type  = cv_qck_typ_item
       AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
       AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
       AND     look_val.enabled_flag = cv_tkn_yes;
 --
+--      FROM    fnd_lookup_values     look_val,
+--              fnd_lookup_types_tl   types_tl,
+--              fnd_lookup_types      types,
+--              fnd_application_tl    appl,
+--              fnd_application       app
+--      WHERE   appl.application_id   = types.application_id
+--      AND     app.application_id    = appl.application_id
+--      AND     types_tl.lookup_type  = look_val.lookup_type
+--      AND     types.lookup_type     = types_tl.lookup_type
+--      AND     types.security_group_id   = types_tl.security_group_id
+--      AND     types.view_application_id = types_tl.view_application_id
+--      AND     types_tl.language = USERENV( 'LANG' )
+--      AND     look_val.language = USERENV( 'LANG' )
+--      AND     appl.language     = USERENV( 'LANG' )
+--      AND     app.application_short_name = cv_application
+--      AND     look_val.lookup_type  = cv_qck_typ_item
+--      AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--      AND     look_val.enabled_flag = cv_tkn_yes;
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
+--
     -- クイックコード取得：売上区分
     CURSOR get_sale_class_cur
     IS
       SELECT  look_val.lookup_code  lookup_code
-      FROM    fnd_lookup_values     look_val,
-              fnd_lookup_types_tl   types_tl,
-              fnd_lookup_types      types,
-              fnd_application_tl    appl,
-              fnd_application       app
-      WHERE   appl.application_id   = types.application_id
-      AND     app.application_id    = appl.application_id
-      AND     types_tl.lookup_type  = look_val.lookup_type
-      AND     types.lookup_type     = types_tl.lookup_type
-      AND     types.security_group_id   = types_tl.security_group_id
-      AND     types.view_application_id = types_tl.view_application_id
-      AND     types_tl.language = USERENV( 'LANG' )
-      AND     look_val.language = USERENV( 'LANG' )
-      AND     appl.language     = USERENV( 'LANG' )
-      AND     app.application_short_name = cv_application
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+      FROM    fnd_lookup_values     look_val
+      WHERE   look_val.language = cv_user_lang
       AND     look_val.lookup_type  = cv_qck_typ_sale
       AND     look_val.attribute1   = cv_tkn_yes
       AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
       AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
       AND     look_val.enabled_flag = cv_tkn_yes;
 --
+--      FROM    fnd_lookup_values     look_val,
+--              fnd_lookup_types_tl   types_tl,
+--              fnd_lookup_types      types,
+--              fnd_application_tl    appl,
+--              fnd_application       app
+--      WHERE   appl.application_id   = types.application_id
+--      AND     app.application_id    = appl.application_id
+--      AND     types_tl.lookup_type  = look_val.lookup_type
+--      AND     types.lookup_type     = types_tl.lookup_type
+--      AND     types.security_group_id   = types_tl.security_group_id
+--      AND     types.view_application_id = types_tl.view_application_id
+--      AND     types_tl.language = USERENV( 'LANG' )
+--      AND     look_val.language = USERENV( 'LANG' )
+--      AND     appl.language     = USERENV( 'LANG' )
+--      AND     app.application_short_name = cv_application
+--      AND     look_val.lookup_type  = cv_qck_typ_sale
+--      AND     look_val.attribute1   = cv_tkn_yes
+--      AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--      AND     look_val.enabled_flag = cv_tkn_yes;
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
+--
     -- クイックコード取得：H/C
     CURSOR get_hc_class_cur
     IS
       SELECT  look_val.lookup_code  lookup_code
-      FROM    fnd_lookup_values     look_val,
-              fnd_lookup_types_tl   types_tl,
-              fnd_lookup_types      types,
-              fnd_application_tl    appl,
-              fnd_application       app
-      WHERE   appl.application_id   = types.application_id
-      AND     app.application_id    = appl.application_id
-      AND     types_tl.lookup_type  = look_val.lookup_type
-      AND     types.lookup_type     = types_tl.lookup_type
-      AND     types.security_group_id   = types_tl.security_group_id
-      AND     types.view_application_id = types_tl.view_application_id
-      AND     types_tl.language = USERENV( 'LANG' )
-      AND     look_val.language = USERENV( 'LANG' )
-      AND     appl.language     = USERENV( 'LANG' )
-      AND     app.application_short_name = cv_application
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+      FROM    fnd_lookup_values     look_val
+      WHERE   look_val.language = cv_user_lang
       AND     look_val.lookup_type  = cv_qck_typ_hc
       AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
       AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
       AND     look_val.enabled_flag = cv_tkn_yes;
+--
+--      FROM    fnd_lookup_values     look_val,
+--              fnd_lookup_types_tl   types_tl,
+--              fnd_lookup_types      types,
+--              fnd_application_tl    appl,
+--              fnd_application       app
+--      WHERE   appl.application_id   = types.application_id
+--      AND     app.application_id    = appl.application_id
+--      AND     types_tl.lookup_type  = look_val.lookup_type
+--      AND     types.lookup_type     = types_tl.lookup_type
+--      AND     types.security_group_id   = types_tl.security_group_id
+--      AND     types.view_application_id = types_tl.view_application_id
+--      AND     types_tl.language = USERENV( 'LANG' )
+--      AND     look_val.language = USERENV( 'LANG' )
+--      AND     appl.language     = USERENV( 'LANG' )
+--      AND     app.application_short_name = cv_application
+--      AND     look_val.lookup_type  = cv_qck_typ_hc
+--      AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--      AND     look_val.enabled_flag = cv_tkn_yes;
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
 --
   BEGIN
 --
@@ -1748,7 +1856,10 @@ AS
     ln_header_ok_no         NUMBER  DEFAULT  '1';                              -- 正常値配列ナンバー（ヘッダ）
     ln_line_ok_no           NUMBER  DEFAULT  '1';                              -- 正常値配列ナンバー（明細）
     ld_process_date         DATE;                                              -- カレント月の翌月
-    lv_return_data          VARCHAR2(10);                                      -- 返品データ
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+    lv_return_data          xxcos_rep_hht_err_list.data_name%TYPE;             -- 返品データ
+--    lv_return_data          VARCHAR2(10);                                      -- 返品データ
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
     lv_column_check         VARCHAR2(18);                                      -- 顧客ID、コラムNo.の結合した値
     ln_time_char            NUMBER;                                            -- 時間の文字列チェック
     lv_status               VARCHAR2(5);                                       -- AR会計期間チェック：ステータスの種類
@@ -1809,8 +1920,12 @@ AS
   /*-----2009/02/03-----END-------------------------------------------------------------------------------*/
       --== データ名称判定 ==--
       -- データ名称取得
-      gv_tkn1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_delivery );
-      lv_return_data := xxccp_common_pkg.get_msg( cv_application, cv_msg_return );
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--      gv_tkn1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_delivery );
+--      lv_return_data := xxccp_common_pkg.get_msg( cv_application, cv_msg_return );
+      gv_tkn1        := SUBSTRB(xxccp_common_pkg.get_msg( cv_application, cv_msg_delivery ),1,20);
+      lv_return_data := SUBSTRB(xxccp_common_pkg.get_msg( cv_application, cv_msg_return ),1,20);
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
 --
       FOR i IN 1..gt_qck_inp_dlv.COUNT LOOP
         IF ( gt_qck_inp_dlv(i) = lt_input_class ) THEN
@@ -2053,21 +2168,25 @@ AS
                  xxcmm_cust_accounts  baseadd,                 -- 顧客追加情報_拠点
                  (
                    SELECT  look_val.meaning      cus
-                   FROM    fnd_lookup_values     look_val,
-                           fnd_lookup_types_tl   types_tl,
-                           fnd_lookup_types      types,
-                           fnd_application_tl    appl,
-                           fnd_application       app
-                   WHERE   appl.application_id   = types.application_id
-                   AND     app.application_id    = appl.application_id
-                   AND     types_tl.lookup_type  = look_val.lookup_type
-                   AND     types.lookup_type     = types_tl.lookup_type
-                   AND     types.security_group_id   = types_tl.security_group_id
-                   AND     types.view_application_id = types_tl.view_application_id
-                   AND     types_tl.language = USERENV( 'LANG' )
-                   AND     look_val.language = USERENV( 'LANG' )
-                   AND     appl.language     = USERENV( 'LANG' )
-                   AND     app.application_short_name = cv_application
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+                   FROM    fnd_lookup_values     look_val
+--                   FROM    fnd_lookup_values     look_val,
+--                           fnd_lookup_types_tl   types_tl,
+--                           fnd_lookup_types      types,
+--                           fnd_application_tl    appl,
+--                           fnd_application       app
+--                   WHERE   appl.application_id   = types.application_id
+--                   AND     app.application_id    = appl.application_id
+--                   AND     types_tl.lookup_type  = look_val.lookup_type
+--                   AND     types.lookup_type     = types_tl.lookup_type
+--                   AND     types.security_group_id   = types_tl.security_group_id
+--                   AND     types.view_application_id = types_tl.view_application_id
+--                   AND     types_tl.language = USERENV( 'LANG' )
+--                   AND     look_val.language = USERENV( 'LANG' )
+                   WHERE     look_val.language = cv_user_lang
+--                   AND     appl.language     = USERENV( 'LANG' )
+--                   AND     app.application_short_name = cv_application
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
                    AND     look_val.lookup_type  = cv_qck_typ_cus
                    AND     look_val.attribute1   = cv_tkn_yes
                    AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
@@ -2076,21 +2195,25 @@ AS
                  ) cust_class,   -- 顧客区分（'10'(顧客) , '12'(上様)）
                  (
                    SELECT  look_val.meaning      base
-                   FROM    fnd_lookup_values     look_val,
-                           fnd_lookup_types_tl   types_tl,
-                           fnd_lookup_types      types,
-                           fnd_application_tl    appl,
-                           fnd_application       app
-                   WHERE   appl.application_id   = types.application_id
-                   AND     app.application_id    = appl.application_id
-                   AND     types_tl.lookup_type  = look_val.lookup_type
-                   AND     types.lookup_type     = types_tl.lookup_type
-                   AND     types.security_group_id   = types_tl.security_group_id
-                   AND     types.view_application_id = types_tl.view_application_id
-                   AND     types_tl.language = USERENV( 'LANG' )
-                   AND     look_val.language = USERENV( 'LANG' )
-                   AND     appl.language     = USERENV( 'LANG' )
-                   AND     app.application_short_name = cv_application
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+                   FROM    fnd_lookup_values     look_val
+--                   FROM    fnd_lookup_values     look_val,
+--                           fnd_lookup_types_tl   types_tl,
+--                           fnd_lookup_types      types,
+--                           fnd_application_tl    appl,
+--                           fnd_application       app
+--                   WHERE   appl.application_id   = types.application_id
+--                   AND     app.application_id    = appl.application_id
+--                   AND     types_tl.lookup_type  = look_val.lookup_type
+--                   AND     types.lookup_type     = types_tl.lookup_type
+--                   AND     types.security_group_id   = types_tl.security_group_id
+--                   AND     types.view_application_id = types_tl.view_application_id
+--                   AND     types_tl.language = USERENV( 'LANG' )
+--                   AND     look_val.language = USERENV( 'LANG' )
+                   WHERE     look_val.language = cv_user_lang
+--                   AND     appl.language     = USERENV( 'LANG' )
+--                   AND     app.application_short_name = cv_application
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
                    AND     look_val.lookup_type  = cv_qck_typ_cus
                    AND     look_val.attribute2   = cv_tkn_yes
                    AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
@@ -2118,17 +2241,23 @@ AS
               FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
               ov_retcode := cv_status_warn;
               -- エラー変数へ格納
-              gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+              gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+--              gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
               gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
               gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
               gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-              gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+              gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+--              gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
               gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
               gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-              gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+              gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+--              gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
               gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
               gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-              gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+              gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+--              gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
               gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
               gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
               ln_err_no := ln_err_no + 1;
@@ -2163,17 +2292,23 @@ AS
               FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
               ov_retcode := cv_status_warn;
               -- エラー変数へ格納
-              gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+              gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                 -- 拠点コード
+--              gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
               gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
               gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
               gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-              gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+              gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+--              gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
               gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
               gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-              gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+              gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);           -- 顧客コード
+--              gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
               gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
               gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-              gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+              gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);          -- 成績者コード
+--              gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
               gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
               gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
               ln_err_no := ln_err_no + 1;
@@ -2193,17 +2328,23 @@ AS
             FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
             ov_retcode := cv_status_warn;
             -- エラー変数へ格納
-            gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+            gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+--            gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
             gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
             gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
             gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-            gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+            gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+--            gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
             gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
             gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-            gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+            gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+--            gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
             gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
             gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-            gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+            gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+--            gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
             gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
             gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
             ln_err_no := ln_err_no + 1;
@@ -2293,17 +2434,23 @@ AS
               FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
               ov_retcode := cv_status_warn;
               -- エラー変数へ格納
-              gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+              gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+--              gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
               gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
               gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
               gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-              gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+              gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+--              gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
               gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
               gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-              gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+              gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+--              gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
               gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
               gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-              gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+              gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+--              gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
               gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
               gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
               ln_err_no := ln_err_no + 1;
@@ -2323,17 +2470,23 @@ AS
           FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
           ov_retcode := cv_status_warn;
           -- エラー変数へ格納
-          gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+          gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+--          gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
           gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
           gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
           gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-          gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+          gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+--          gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
           gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
           gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-          gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+          gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+--          gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
           gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
           gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-          gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--          gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+          gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
           gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
           gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
           ln_err_no := ln_err_no + 1;
@@ -2368,17 +2521,23 @@ AS
               FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
               ov_retcode := cv_status_warn;
               -- エラー変数へ格納
-              gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+              gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+--              gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
               gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
               gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
               gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-              gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+              gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+--              gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
               gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
               gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-              gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+              gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+--              gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
               gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
               gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-              gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+              gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+--              gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
               gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
               gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
               ln_err_no := ln_err_no + 1;
@@ -2399,17 +2558,23 @@ AS
             FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
             ov_retcode := cv_status_warn;
             -- エラー変数へ格納
-            gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+            gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+--            gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
             gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
             gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
             gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-            gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+            gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+--            gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
             gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
             gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-            gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+            gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+--            gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
             gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
             gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-            gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+              gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+--            gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
             gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
             gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
             ln_err_no := ln_err_no + 1;
@@ -2438,17 +2603,23 @@ AS
               FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
               ov_retcode := cv_status_warn;
               -- エラー変数へ格納
-              gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--              gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
               gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
               gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
               gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-              gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--              gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
               gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
               gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-              gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--              gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
               gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
               gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-              gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--              gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+              gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+              gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+              gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+              gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
               gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
               gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
               ln_err_no := ln_err_no + 1;
@@ -2487,17 +2658,23 @@ AS
           FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
           ov_retcode := cv_status_warn;
           -- エラー変数へ格納
-          gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--          gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
           gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
           gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
           gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-          gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--          gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
           gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
           gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-          gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--          gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
           gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
           gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-          gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--          gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+          gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+          gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+          gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+          gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
           gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
           gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
           ln_err_no := ln_err_no + 1;
@@ -2516,17 +2693,23 @@ AS
         FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
         ov_retcode := cv_status_warn;
         -- エラー変数へ格納
-        gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--        gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
         gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
         gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
         gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-        gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--        gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
         gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
         gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-        gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--        gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
         gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
         gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-        gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--        gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+        gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+        gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+        gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+        gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
         gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
         gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
         ln_err_no := ln_err_no + 1;
@@ -2545,17 +2728,23 @@ AS
               FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
               ov_retcode := cv_status_warn;
               -- エラー変数へ格納
-              gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--              gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
               gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
               gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
               gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-              gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--              gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
               gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
               gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-              gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--              gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
               gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
               gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-              gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--              gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+              gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+              gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+              gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+              gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
               gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
               gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
               ln_err_no := ln_err_no + 1;
@@ -2581,17 +2770,23 @@ AS
           FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
           ov_retcode := cv_status_warn;
           -- エラー変数へ格納
-          gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--          gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
           gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
           gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
           gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-          gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--          gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
           gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
           gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-          gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--          gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
           gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
           gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-          gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--          gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+          gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+          gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+          gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+          gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
           gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
           gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
           ln_err_no := ln_err_no + 1;
@@ -2684,17 +2879,23 @@ AS
         FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
         ov_retcode := cv_status_warn;
         -- エラー変数へ格納
-        gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--        gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
         gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
         gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
         gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-        gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--        gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
         gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
         gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-        gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--        gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
         gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
         gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-        gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--        gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+        gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+        gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+        gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+        gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
         gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
         gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
         ln_err_no := ln_err_no + 1;
@@ -2709,17 +2910,23 @@ AS
         FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
         ov_retcode := cv_status_warn;
         -- エラー変数へ格納
-        gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--        gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
         gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
         gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
         gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-        gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--        gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
         gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
         gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-        gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--        gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
         gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
         gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-        gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--        gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+        gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+        gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+        gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+        gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
         gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
         gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
         ln_err_no := ln_err_no + 1;
@@ -2734,17 +2941,23 @@ AS
         FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
         ov_retcode := cv_status_warn;
         -- エラー変数へ格納
-        gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--        gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
         gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
         gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
         gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-        gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--        gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
         gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
         gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-        gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--        gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
         gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
         gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-        gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--        gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+        gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+        gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+        gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+        gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
         gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
         gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
         ln_err_no := ln_err_no + 1;
@@ -2762,17 +2975,23 @@ AS
         FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
         ov_retcode := cv_status_warn;
         -- エラー変数へ格納
-        gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--        gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
         gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
         gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
         gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-        gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--        gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
         gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
         gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-        gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--        gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
         gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
         gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-        gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--        gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+        gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+        gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+        gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+        gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
         gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
         gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
         ln_err_no := ln_err_no + 1;
@@ -2807,17 +3026,23 @@ AS
             FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
             ov_retcode := cv_status_warn;
             -- エラー変数へ格納
-            gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--            gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
             gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
             gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
             gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-            gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--            gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
             gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
             gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-            gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--            gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
             gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
             gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-            gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--            gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+            gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+            gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+            gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+            gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
             gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
             gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
             ln_err_no := ln_err_no + 1;
@@ -2831,17 +3056,23 @@ AS
           FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
           ov_retcode := cv_status_warn;
           -- エラー変数へ格納
-          gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--          gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
           gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
           gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
           gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-          gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--          gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
           gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
           gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-          gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--          gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
           gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
           gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-          gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--          gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+          gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+          gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+          gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+          gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
           gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
           gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
           ln_err_no := ln_err_no + 1;
@@ -2856,17 +3087,23 @@ AS
           FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
           ov_retcode := cv_status_warn;
           -- エラー変数へ格納
-          gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--          gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
           gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
           gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
           gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-          gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--          gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
           gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
           gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-          gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--          gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
           gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
           gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-          gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--          gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+          gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+          gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+          gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+          gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
           gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
           gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
           ln_err_no := ln_err_no + 1;
@@ -2947,18 +3184,26 @@ AS
             FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
             ov_retcode := cv_status_warn;
             -- エラー変数へ格納
-            gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--            gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
             gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
             gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
             gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-            gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
-            gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
+--            gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--            gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
             gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-            gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--            gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
             gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
             gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-            gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
-            gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
+--            gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--            gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
+            gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+            gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+            gt_err_line_no(ln_err_no)          := SUBSTRB(lt_line_no_hht,1,2);                -- 行NO
+            gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+            gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+            gt_err_item_code(ln_err_no)        := SUBSTRB(lt_item_code,1,7);                  -- 品目コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
             gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
             ln_err_no := ln_err_no + 1;
             -- エラーフラグ更新
@@ -2974,18 +3219,26 @@ AS
               FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
               ov_retcode := cv_status_warn;
               -- エラー変数へ格納
-              gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--              gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
               gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
               gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
               gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-              gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
-              gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
+--              gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--              gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
               gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-              gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--              gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
               gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
               gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-              gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
-              gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
+--              gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--              gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
+              gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+              gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+              gt_err_line_no(ln_err_no)          := SUBSTRB(lt_line_no_hht,1,2);                -- 行NO
+              gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+              gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+              gt_err_item_code(ln_err_no)        := SUBSTRB(lt_item_code,1,7);                  -- 品目コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
               gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
               ln_err_no := ln_err_no + 1;
               -- エラーフラグ更新
@@ -3003,18 +3256,26 @@ AS
             FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
             ov_retcode := cv_status_warn;
             -- エラー変数へ格納
-            gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--            gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
             gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
             gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
             gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-            gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
-            gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
+--            gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--            gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
             gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-            gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--            gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
             gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
             gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-            gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
-            gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
+--            gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--            gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
+            gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+            gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+            gt_err_line_no(ln_err_no)          := SUBSTRB(lt_line_no_hht,1,2);                -- 行NO
+            gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+            gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+            gt_err_item_code(ln_err_no)        := SUBSTRB(lt_item_code,1,7);                  -- 品目コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
             gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
             ln_err_no := ln_err_no + 1;
             -- エラーフラグ更新
@@ -3032,18 +3293,26 @@ AS
             FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
             ov_retcode := cv_status_warn;
             -- エラー変数へ格納
-            gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--            gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
             gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
             gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
             gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-            gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
-            gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
+--            gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--            gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
             gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-            gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--            gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
             gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
             gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-            gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
-            gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
+--            gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--            gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
+            gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+            gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+            gt_err_line_no(ln_err_no)          := SUBSTRB(lt_line_no_hht,1,2);                -- 行NO
+            gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+            gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+            gt_err_item_code(ln_err_no)        := SUBSTRB(lt_item_code,1,7);                  -- 品目コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
             gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
             ln_err_no := ln_err_no + 1;
             -- エラーフラグ更新
@@ -3062,18 +3331,26 @@ AS
             FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
             ov_retcode := cv_status_warn;
             -- エラー変数へ格納
-            gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--            gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
             gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
             gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
             gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-            gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
-            gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
+--            gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--            gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
             gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-            gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--            gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
             gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
             gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-            gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
-            gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
+--            gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--            gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
+            gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+            gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+            gt_err_line_no(ln_err_no)          := SUBSTRB(lt_line_no_hht,1,2);                -- 行NO
+            gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+            gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+            gt_err_item_code(ln_err_no)        := SUBSTRB(lt_item_code,1,7);                  -- 品目コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
             gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
             ln_err_no := ln_err_no + 1;
             -- エラーフラグ更新
@@ -3093,18 +3370,26 @@ AS
               FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
               ov_retcode := cv_status_warn;
               -- エラー変数へ格納
-              gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--              gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
               gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
               gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
               gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-              gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
-              gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
+--              gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--              gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
               gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-              gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--              gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
               gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
               gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-              gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
-              gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
+--              gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--              gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
+              gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+              gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+              gt_err_line_no(ln_err_no)          := SUBSTRB(lt_line_no_hht,1,2);                -- 行NO
+              gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+              gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+              gt_err_item_code(ln_err_no)        := SUBSTRB(lt_item_code,1,7);                  -- 品目コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
               gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
               ln_err_no := ln_err_no + 1;
               -- エラーフラグ更新
@@ -3121,18 +3406,26 @@ AS
                 FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
                 ov_retcode := cv_status_warn;
                 -- エラー変数へ格納
-                gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--                gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
                 gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
                 gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
                 gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-                gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
-                gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
+--                gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--                gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
                 gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-                gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--                gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
                 gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
                 gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-                gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
-                gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
+--                gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--                gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
+                gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+                gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+                gt_err_line_no(ln_err_no)          := SUBSTRB(lt_line_no_hht,1,2);                -- 行NO
+                gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+                gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+                gt_err_item_code(ln_err_no)        := SUBSTRB(lt_item_code,1,7);                  -- 品目コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
                 gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
                 ln_err_no := ln_err_no + 1;
                 -- エラーフラグ更新
@@ -3170,18 +3463,26 @@ AS
                 FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
                 ov_retcode := cv_status_warn;
                 -- エラー変数へ格納
-                gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--                gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
                 gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
                 gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
                 gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-                gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
-                gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
+--                gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--                gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
                 gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-                gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--                gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
                 gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
                 gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-                gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
-                gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
+--                gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--                gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
+                gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+                gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+                gt_err_line_no(ln_err_no)          := SUBSTRB(lt_line_no_hht,1,2);                -- 行NO
+                gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+                gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+                gt_err_item_code(ln_err_no)        := SUBSTRB(lt_item_code,1,7);                  -- 品目コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
                 gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
                 ln_err_no := ln_err_no + 1;
                 -- エラーフラグ更新
@@ -3199,18 +3500,26 @@ AS
                 FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
                 ov_retcode := cv_status_warn;
                 -- エラー変数へ格納
-                gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+--                gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
                 gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
                 gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
                 gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-                gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
-                gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
+--                gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--                gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
                 gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-                gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--                gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
                 gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
                 gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-                gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
-                gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
+--                gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--                gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
+                gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+                gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+                gt_err_line_no(ln_err_no)          := SUBSTRB(lt_line_no_hht,1,2);                -- 行NO
+                gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+                gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+                gt_err_item_code(ln_err_no)        := SUBSTRB(lt_item_code,1,7);                  -- 品目コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
                 gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
                 ln_err_no := ln_err_no + 1;
                 -- エラーフラグ更新
