@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI010A03C(body)
  * Description      : VDコラムマスタHHT連携
  * MD.050           : VDコラムマスタHHT連携 MD050_COI_010_A03
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2011/10/03    1.6   Y.Horikawa       [E_本稼動_08440]HHT2次開発（販売予測情報連携）
  *  2012/01/17    1.7   Y.Horikawa       [E_本稼動_08919]HHT2次開発（販売予測情報連携）追加対応：次回補充の出力制御対応
  *  2012/02/20    1.8   Y.Horikawa       [E_本稼動_09140]販売予測算出時にコラム変更日を考慮するように変更
+ *  2012/03/12    1.9   Y.Horikawa       [E_本稼動_09139]販売予測の次回補充の算出方法を変更
  *
  *****************************************************************************************/
 --
@@ -1009,7 +1010,10 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cn_max_value_next_supply  CONSTANT NUMBER := 99;
-    cn_min_value_next_supply  CONSTANT NUMBER := 1;
+-- 2012/03/12 Mod Start Ver.1.9
+--    cn_min_value_next_supply  CONSTANT NUMBER := 1;
+    cn_min_value_next_supply  CONSTANT NUMBER := 0;
+-- 2012/03/12 Mod End Ver.1.9
     cn_max_supply_inst_pct    CONSTANT NUMBER := 100;
     cn_max_sales_forecast_qty CONSTANT NUMBER := 99;
 --
@@ -1017,6 +1021,9 @@ AS
     ln_sales_forecast_qty  NUMBER;
     ln_next_supply         NUMBER;
     ln_supply_inst_pct     NUMBER;
+-- 2012/03/12 Add Start Ver.1.9
+    ln_next_supply_left_side_val  NUMBER;
+-- 2012/03/12 Add End Ver.1.9
 --
     -- *** ローカル・カーソル ***
 --
@@ -1040,19 +1047,35 @@ AS
     -- 販売予測数（最大値を超えた場合は最大値に置き換え）
     ln_sales_forecast_qty := LEAST(ln_sales_forecast_qty, cn_max_sales_forecast_qty);
 --
--- 2011/11/24 mod start Ver.1.6 対応中の変更
---    -- 次回補充（小数点以下切り上げ）
---    ln_next_supply := CEIL(gn_sppl_inst_lower_limit * in_inventory_quantity / (in_total_qty / in_workdays));
-    -- 次回補充（小数点以下切捨て）
-    ln_next_supply := FLOOR(gn_sppl_inst_lower_limit * in_inventory_quantity / ln_sales_forecast_qty);
-    -- 次回補充（最小値より小さい場合は最小値に置き換え）
-    ln_next_supply := GREATEST(ln_next_supply, cn_min_value_next_supply);
--- 2011/11/24 mod end Ver.1.6 対応中の変更
-    -- 次回補充（最大値を超えた場合は最大値に置き換え）
-    ln_next_supply := LEAST(ln_next_supply, cn_max_value_next_supply);
+-- 2012/03/12 Mod Start Ver.1.9
+---- 2011/11/24 mod start Ver.1.6 対応中の変更
+----    -- 次回補充（小数点以下切り上げ）
+----    ln_next_supply := CEIL(gn_sppl_inst_lower_limit * in_inventory_quantity / (in_total_qty / in_workdays));
+--    -- 次回補充（小数点以下切捨て）
+--    ln_next_supply := FLOOR(gn_sppl_inst_lower_limit * in_inventory_quantity / ln_sales_forecast_qty);
+--    -- 次回補充（最小値より小さい場合は最小値に置き換え）
+--    ln_next_supply := GREATEST(ln_next_supply, cn_min_value_next_supply);
+---- 2011/11/24 mod end Ver.1.6 対応中の変更
+--    -- 次回補充（最大値を超えた場合は最大値に置き換え）
+--    ln_next_supply := LEAST(ln_next_supply, cn_max_value_next_supply);
+    -- 次回補充算出
+    <<calc_next_supply_loop>>
+    FOR ln_index IN cn_min_value_next_supply .. cn_max_value_next_supply LOOP
+      ln_next_supply := ln_index;
+      ln_next_supply_left_side_val
+          := CEIL((in_total_qty / in_workdays) * (in_days_after_supply + ln_next_supply)) / in_inventory_quantity;
+      IF (ln_next_supply_left_side_val >= gn_sppl_inst_lower_limit) THEN
+        EXIT calc_next_supply_loop;
+      END IF;
+    END LOOP calc_next_supply_loop;
+-- 2012/03/12 Mod End Ver.1.9
 --
-    -- 補充指示率（小数点1桁目を四捨五入）
-    ln_supply_inst_pct := ROUND(ln_sales_forecast_qty / in_inventory_quantity * 100);
+-- 2012/03/12 Mod Start Ver.1.9
+--    -- 補充指示率（小数点1桁目を四捨五入）
+--    ln_supply_inst_pct := ROUND(ln_sales_forecast_qty / in_inventory_quantity * 100);
+    -- 補充指示率（小数点以下切捨て）
+    ln_supply_inst_pct := TRUNC(ln_sales_forecast_qty / in_inventory_quantity * 100);
+-- 2012/03/12 Mod End Ver.1.9
     -- 補充指示率（最大値を超えた場合は最大値に置き換え）
     ln_supply_inst_pct := LEAST(ln_supply_inst_pct, cn_max_supply_inst_pct);
 --
