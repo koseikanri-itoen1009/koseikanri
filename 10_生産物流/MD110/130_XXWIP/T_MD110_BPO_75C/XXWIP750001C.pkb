@@ -7,7 +7,7 @@ AS
  * Description      : 振替運賃情報更新
  * MD.050           : 運賃計算（振替） T_MD050_BPO_750
  * MD.070           : 振替運賃情報更新 T_MD070_BPO_75C
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *  2008/12/13    1.12 Oracle 野村 正幸  本番#721対応
  *  2008/12/15    1.13 野村 正幸         本番#712対応
  *  2009/01/08    1.14 野村 正幸         本番#961対応
+ *  2009/01/19    1.15 椎名 昭圭         本番#1003対応
  *
  *****************************************************************************************/
 --
@@ -1940,7 +1941,15 @@ AS
            xtfi.request_no,             -- 2.依頼No
            xtfi.goods_classe,           -- 3.商品区分
            xtfi.jurisdicyional_hub,     -- 4.管轄拠点
-           SUM(xtfi.actual_qty),        -- 5.振替数量
+-- 2009/01/19 v1.15 UPDATE START
+--           SUM(xtfi.actual_qty),        -- 5.振替数量
+           CASE                         -- 5.振替数量
+             WHEN (xtfi.goods_classe = gv_prod_class_lef) THEN
+               TRUNC(AVG(xtfi.calc_qry))
+             WHEN (xtfi.goods_classe = gv_prod_class_drk) THEN
+               SUM(xtfi.calc_qry)
+           END,
+-- 2009/01/19 v1.15 UPDATE END
            CASE                         -- 6.リーフ振替金額
              WHEN (xtfi.goods_classe = gv_prod_class_lef) THEN
                TRUNC(AVG(xtfi.amount))
