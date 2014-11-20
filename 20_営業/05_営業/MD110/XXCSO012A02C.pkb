@@ -7,7 +7,7 @@ AS
  * Description      : ファイルアップロードIFに取込まれたデータを
  *                    物件マスタ情報(IB)に登録します。
  * MD.050           : MD050_CSO_012_A02_自動販売機データ格納
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009-05-22    1.3   M.Ohtsuki        T1_1141対応      廃棄フラグに0を設定
  *  2009-01-13    1.4   K.Hosoi          E_本稼動_00443対応
  *  2014-05-19    1.5   K.Nakamura       E_本稼動_11853対応 ベンダー購入対応
+ *  2014-08-27    1.6   S.Yamashita      E_本稼動_11719対応 ベンダー購入対応
  *
  *****************************************************************************************/
 --
@@ -177,6 +178,9 @@ AS
 --
   cv_msg_conm             CONSTANT VARCHAR2(1)   := ',';              -- カンマ
 --
+/* 2014-08-27 S.Yamashita E_本稼動_11719対応 START */
+  cv_msg_part_only        CONSTANT VARCHAR2(1) := ':';
+/* 2014-08-27 S.Yamashita E_本稼動_11719対応 END */
 /* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
   cv_hyphen               CONSTANT VARCHAR2(1)   := '-';                -- ハイフン
   -- 値セット
@@ -3210,7 +3214,10 @@ AS
     l_instance_rec.quantity                   := cn_num1;                      -- 数量
     l_instance_rec.unit_of_measure            := cv_unit_of_measure;           -- 単位
     l_instance_rec.instance_status_id         := gt_instance_status_id_2;      -- インスタンスステータスID
-    l_instance_rec.instance_type_code         := SUBSTRB(gv_hazard_class,1,1); -- インスタンスタイプコード
+/* 2014.08.27 S.Yamashita E_本稼動_11719対応 START */
+--    l_instance_rec.instance_type_code         := SUBSTRB(gv_hazard_class,1,1); -- インスタンスタイプコード
+    l_instance_rec.instance_type_code         := SUBSTRB(gv_hazard_class,1,INSTRB(gv_hazard_class,cv_msg_part_only,1,1)-1); -- インスタンスタイプコード
+/* 2014.08.27 S.Yamashita E_本稼動_11719対応 END */
     l_instance_rec.location_type_code         := cv_location_type_code;        -- 現行事業所タイプ
     l_instance_rec.location_id                := gn_party_site_id;             -- 現行事業所ID
     l_instance_rec.install_date               := gd_process_date;              -- 導入日

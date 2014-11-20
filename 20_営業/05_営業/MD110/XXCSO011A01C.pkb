@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.35
+ * Version          : 1.36
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -114,6 +114,7 @@ AS
  *  2014-04-30    1.34 T.Nakano          【E_本稼動_11770】
  *                                        ・自販機、ショーケース廃棄決済申請チェックの条件変更
  *  2014-05-13    1.35 K.Nakamura        【E_本稼動_11853】ベンダー購入対応
+ *  2014-08-29    1.36 S.Yamashita       【E_本稼動_11719】ベンダー購入対応(PH2)
  *
  *****************************************************************************************/
   --
@@ -7339,7 +7340,10 @@ AS
     -- *** ローカル変数 ***
     lt_business_low_type      xxcso_cust_acct_sites_v.business_low_type%TYPE;   -- 業態（小分類）
     lt_customer_class_code    xxcso_cust_acct_sites_v.customer_class_code%TYPE; -- 顧客区分
-    lv_hazard_class           VARCHAR2(1);                                      -- 機器区分（危険度区分）
+/* 2014.08.29 S.Yamashita E_本稼動_11719対応 START */
+--    lv_hazard_class           VARCHAR2(1);                                      -- 機器区分（危険度区分）
+    lv_hazard_class           po_hazard_classes_tl.hazard_class%type;           -- 機器区分（危険度区分）
+/* 2014.08.29 S.Yamashita E_本稼動_11719対応 end   */
     /* 2010.04.01 maruyama E_本稼動_02133 作業区分によって機種の取得先を変更する start */  
     lv_un_number              po_un_numbers_vl.un_number%TYPE; --機種CD
     /* 2010.04.01 maruyama E_本稼動_02133 作業区分によって機種の取得先を変更する end */  
@@ -7422,7 +7426,10 @@ AS
     
     
     BEGIN
-      SELECT SUBSTRB(phcv.hazard_class,1,1)         -- 機器区分（危険度区分）
+/* 2014.08.29 S.Yamashita E_本稼動_11719対応 START */
+--      SELECT SUBSTRB(phcv.hazard_class,1,1)         -- 機器区分（危険度区分）
+      SELECT SUBSTRB(phcv.hazard_class,1,INSTRB(phcv.hazard_class,cv_msg_part_only,1,1)-1)         -- 機器区分（危険度区分）
+/* 2014.08.29 S.Yamashita E_本稼動_11719対応 END */
       INTO   lv_hazard_class
       FROM   po_un_numbers_vl     punv              -- 国連番号マスタビュー
             ,po_hazard_classes_vl phcv              -- 危険度区分マスタビュー

@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.29
+ * Version          : 1.30
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -73,6 +73,7 @@ AS
  *  2010-03-01    1.27  K.Hosoi          E_本稼動_01761対応
  *  2014-05-19    1.28  Y.Shoji          E_本稼動_11853⑧対応
  *  2014-07-08    1.29  T.Kobori         E_本稼動_11853⑩対応
+ *  2014-08-27    1.30  S.Yamashita      E_本稼動_11719対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -234,6 +235,9 @@ AS
   --参照タイプ
   cv_xxcs01_lease_kbn     CONSTANT VARCHAR2(100) := 'XXCSO1_LEASE_KBN';  -- リース区分
   /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
+/* 2014.08.27 S.Yamashita E_本稼動_11719対応 ADD START */
+  cv_msg_part_only        CONSTANT VARCHAR2(1) := ':';
+/* 2014.08.27 S.Yamashita E_本稼動_11719対応 ADD END */
   -- DEBUG_LOG用メッセージ
   cv_debug_msg1           CONSTANT VARCHAR2(200) := '<< システム日付取得処理 >>';
   cv_debug_msg2           CONSTANT VARCHAR2(200) := 'od_sysdate = ';
@@ -3759,7 +3763,10 @@ AS
     BEGIN
       SELECT punv.attribute2                        -- メーカーコード
             ,punv.attribute3                        -- 年式
-            ,SUBSTRB(phcv.hazard_class,1,1)         -- 機器区分（危険度区分）
+/* 2014.08.27 S.Yamashita E_本稼動_11719対応 START */
+--            ,SUBSTRB(phcv.hazard_class,1,1)         -- 機器区分（危険度区分）
+            ,SUBSTRB(phcv.hazard_class,1,INSTRB(phcv.hazard_class,cv_msg_part_only,1,1)-1)  -- 機器区分（危険度区分）
+/* 2014.08.27 S.Yamashita E_本稼動_11719対応 END */
             /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 add START */
             ,punv.attribute13                       -- リース区分(機種マスタ)
             ,punv.attribute14                       -- 取得価格(機種マスタ)
@@ -5512,7 +5519,10 @@ AS
 --
             -- 機器区分取得
             BEGIN
-              SELECT SUBSTRB(phcv.hazard_class,1,1) -- 機器区分（危険度区分）
+/* 2014.08.27 S.Yamashita E_本稼動_11719対応 START */
+--              SELECT SUBSTRB(phcv.hazard_class,1,1) -- 機器区分（危険度区分）
+              SELECT SUBSTRB(phcv.hazard_class,1,INSTRB(phcv.hazard_class,cv_msg_part_only,1,1)-1) -- 機器区分（危険度区分）
+/* 2014.08.27 S.Yamashita E_本稼動_11719対応 END */
               INTO   lv_hazard_class
               FROM   po_un_numbers_vl     punv               -- 国連番号マスタビュー
                     ,po_hazard_classes_vl phcv               -- 危険度区分マスタビュー
@@ -6282,7 +6292,10 @@ AS
     -- ================================
 --
     BEGIN
-      SELECT SUBSTRB(phcv.hazard_class,1,1) -- 機器区分（危険度区分）
+/* 2014.08.27 S.Yamashita E_本稼動_11719対応 START */
+--      SELECT SUBSTRB(phcv.hazard_class,1,1) -- 機器区分（危険度区分）
+      SELECT SUBSTRB(phcv.hazard_class,1,INSTRB(phcv.hazard_class,cv_msg_part_only,1,1)-1) -- 機器区分（危険度区分）
+/* 2014.08.27 S.Yamashita E_本稼動_11719対応 END */
       INTO   lv_hazard_class
       FROM   po_un_numbers_vl     punv               -- 国連番号マスタビュー
             ,po_hazard_classes_vl phcv               -- 危険度区分マスタビュー
