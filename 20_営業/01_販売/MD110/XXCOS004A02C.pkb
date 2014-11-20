@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A02C (body)
  * Description      : 商品別売上計算
  * MD.050           : 商品別売上計算 MD050_COS_004_A02
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -20,6 +20,10 @@ AS
  *  set_lines              販売実績明細作成(A-5)
  *  set_headers            販売実績ヘッダ作成(A-6)
  *  update_digestion       消化処理設定(A-7)
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD START **************************************************************
+ *  ar_chk                 AR金額差異チェック処理(A-8)
+ *  inv_chk                INV品目数差異チェック処理(A-9)
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD END   **************************************************************
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -46,6 +50,8 @@ AS
  *  2009/08/17    1.14  K.Kiriu          [0000430]PT対応
  *  2009/09/11    1.15  M.Sano           [0001345]PT対応
  *  2010/01/18    1.16  K.Atsushiba      [E_本稼動_01110]赤黒フラグの判定条件変更
+ *  2010/02/15    1.17  M.Hokkanji       [E_本稼働_01393]店舗別消化計算情報のチェック処理
+ *                                       を追加
  *
  *****************************************************************************************/
 --
@@ -121,6 +127,10 @@ AS
   global_data_lock_expt       EXCEPTION;
   PRAGMA EXCEPTION_INIT( global_data_lock_expt, -54 );
 --****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD START **************************************************************
+  global_inv_chk_err_expt     EXCEPTION; --INV品目データ不一致エラー
+  global_ar_chk_err_expt      EXCEPTION; --AR金額不一致エラー
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD END   **************************************************************
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -183,6 +193,18 @@ AS
   ct_msg_inv_lock_err       CONSTANT fnd_new_messages.message_name%TYPE
                                       := 'APP-XXCOS1-10975';               --棚卸管理テーブルロック取得エラーメッセージ
 --****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD START **************************************************************
+  ct_msg_get_profile_err    CONSTANT  fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-00004';               --プロファイル取得エラー
+  cv_msg_ar_chk_err         CONSTANT fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-10976';               --AR金額不一致エラーメッセージ
+  cv_msg_inv_chk_err        CONSTANT fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-10977';               --INV品目データ不一致エラーメッセージ
+  ct_msg_org_id             CONSTANT  fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-00047';               --MO:営業単位
+  ct_msg_max_date           CONSTANT  fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-00056';               --XXCOS:MAX日付
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD END   **************************************************************
   --クイックコードタイプ
   ct_qct_regular_type       CONSTANT  fnd_lookup_types.lookup_type%TYPE
                                       := 'XXCOS1_REGULAR_ANY_CLASS';       --定期随時
@@ -303,6 +325,41 @@ AS
 /* 2009/08/17 Ver1.14 Add Start */
   ct_lang                   CONSTANT fnd_lookup_values.language%TYPE := USERENV('LANG'); -- 言語
 /* 2009/08/17 Ver1.14 Add End   */
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD START **************************************************************
+  ct_prof_org_id            CONSTANT  fnd_profile_options.profile_option_name%TYPE
+                                      := 'ORG_ID';                           --MO:営業単位
+  ct_prof_max_date          CONSTANT  fnd_profile_options.profile_option_name%TYPE
+                                      := 'XXCOS1_MAX_DATE';       --MAX日付
+  ct_un_calc_flag_4         CONSTANT  xxcos_shop_digestion_hdrs.uncalculate_class%TYPE
+                                      := '4';                              --未計算フラグ
+  --棚卸区分
+  ct_inventory_class_2      CONSTANT   xxcoi_inv_reception_monthly.inventory_kbn%TYPE
+                                      := '2';                              --月末
+  --棚卸対象区分
+  ct_secondary_class_2      CONSTANT   mtl_secondary_inventories.attribute5%TYPE
+                                      := '2';                              --消化
+  --フォーマット
+  cv_fmt_date               CONSTANT  VARCHAR2(10)  := 'RRRR/MM/DD';
+  cv_fmt_yyyymm             CONSTANT  VARCHAR2(6)   := 'YYYYMM';
+  cv_fmt_mm                 CONSTANT  VARCHAR2(6)   := 'MM';
+  --完了フラグ
+  ct_complete_flag_yes      CONSTANT  ra_customer_trx_all.complete_flag%TYPE
+                                      := 'Y';                              --完了
+  --明細タイプ
+  ct_line_type_line         CONSTANT  ra_customer_trx_lines_all.line_type%TYPE
+                                      := 'LINE';                           --LINE
+  ct_qcc_customer_trx_type  CONSTANT  fnd_lookup_types.lookup_type%TYPE
+                                      := 'XXCOS_004_A01%';        --ＡＲ取引タイプ特定マスタ
+  ct_qct_customer_trx_type  CONSTANT  fnd_lookup_types.lookup_type%TYPE
+                                      := 'XXCOS1_AR_TRX_TYPE_MST_004_A01';
+                                                                  --ＡＲ取引タイプ特定マスタ_004_A01
+  --存在フラグ
+  cv_exists_flag_yes        CONSTANT  VARCHAR2(1) := 'Y';         --存在あり
+  cv_exists_flag_no         CONSTANT  VARCHAR2(1) := 'N';         --存在なし
+  --定期随時区分
+  cv_exec_div_0             CONSTANT  VARCHAR2(1) := '0';         --定期随時区分(随時)
+  cv_exec_div_1             CONSTANT  VARCHAR2(1) := '1';         --定期随時区分(定期)
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD END   **************************************************************
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -379,6 +436,14 @@ AS
   gt_tab_invent_seq_up            g_tab_invent_seq;                      --棚卸SEQ
   gt_organization_code            mtl_parameters.organization_code%TYPE; --在庫組織コード
   gt_organization_id              mtl_parameters.organization_id%TYPE;   --在庫組織ID
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD START **************************************************************
+  gt_un_calc_flag                 xxcos_shop_digestion_hdrs.uncalculate_class%TYPE;
+                                                                         --未計算フラグ
+  gn_org_id                       NUMBER;                                -- 営業単位
+  gd_begi_month_date              DATE;                                  -- 前月開始日
+  gv_month_date                   VARCHAR(6);                            -- 前月(年月)
+  gd_max_date                     DATE;                                  -- MAX日付
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD END   **************************************************************
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -548,6 +613,12 @@ AS
 --
     --前月終了年月日取得
     gd_last_month_date := LAST_DAY(ADD_MONTHS( gd_business_date ,-1 ));
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD START **************************************************************
+    --前月開始年月日取得
+    gd_begi_month_date := TRUNC( ADD_MONTHS( gd_business_date, -1 ), cv_fmt_mm );
+    --前月年月取得
+    gv_month_date      := TO_CHAR( gd_begi_month_date, cv_fmt_yyyymm );
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD END   **************************************************************
 --
     --==============================================================
     --3.定期随時区分のチェックをします。
@@ -589,7 +660,18 @@ AS
       IF ( iv_base_code IS NULL ) THEN
         RAISE global_base_err_expt;
       END IF;
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD START **************************************************************
+      --==========================================================================
+      --4.随時実行の場合、未計算区分に0:INV/ARともにデータが存在するをセットします
+      --==========================================================================
+      gt_un_calc_flag := ct_un_calc_flag_0;
+    ELSE
+      --========================================================================================
+      --5.定期実行の場合、未計算区分に4:INV/ARともにデータが存在するが掛け率が異常をセットします
+      --========================================================================================
+      gt_un_calc_flag := ct_un_calc_flag_4;
     END IF;
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD END   **************************************************************
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -665,6 +747,11 @@ AS
     lv_gl_id    VARCHAR2(100);   --GLID
     lv_pro_id   VARCHAR2(100);   --プロファイルID
     lv_err_code VARCHAR2(100);   --エラーID
+    lv_org_id   VARCHAR2(5000);
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD START **************************************************************
+    lv_str_profile_name   VARCHAR2(5000);                     --プロファイル名
+    lv_max_date           VARCHAR2(5000);                     --MAX日付
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD END **************************************************************
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -859,6 +946,45 @@ AS
       lv_pro_id   := ct_prof_dlv_ptn_cls;
       RAISE global_get_profile_expt;
     END IF;
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD START **************************************************************
+    --==================================
+    -- 10.MO:営業単位
+    --==================================
+    lv_org_id                 := FND_PROFILE.VALUE( ct_prof_org_id );
+--
+    -- プロファイルが取得できない場合はエラー
+    IF ( lv_org_id IS NULL ) THEN
+      --プロファイル名文字列取得
+      lv_str_profile_name     := xxccp_common_pkg.get_msg(
+                                   iv_application        => ct_xxcos_appl_short_name,
+                                   iv_name               => ct_msg_org_id
+                                 );
+      lv_err_code := ct_msg_get_profile_err;
+      lv_pro_id   := lv_str_profile_name;
+      RAISE global_get_profile_expt;
+    END IF;
+--
+    gn_org_id                 := TO_NUMBER( lv_org_id );
+    --==================================
+    -- 2.XXCOS:MAX日付
+    --==================================
+    lv_max_date := FND_PROFILE.VALUE( ct_prof_max_date );
+--
+    -- プロファイルが取得できない場合はエラー
+    IF ( lv_max_date IS NULL ) THEN
+      --プロファイル名文字列取得
+      lv_str_profile_name     := xxccp_common_pkg.get_msg(
+                                   iv_application        => ct_xxcos_appl_short_name,
+                                   iv_name               => ct_msg_max_date
+                                 );
+      lv_err_code := ct_msg_get_profile_err;
+      lv_pro_id   := lv_str_profile_name;
+      --
+      RAISE global_get_profile_expt;
+    END IF;
+--
+    gd_max_date               := TO_DATE( lv_max_date, cv_fmt_date );
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD END   **************************************************************
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -1239,7 +1365,10 @@ AS
       WHERE  amt.account_number = xsdh.customer_number                    --ヘッダ.顧客コード           = 取得した顧客コード
       AND    xsdh.shop_digestion_hdr_id                = xsdl.shop_digestion_hdr_id --ヘッダ.ヘッダID             = 明細.ヘッダID
       AND    xsdh.sales_result_creation_flag           = ct_make_flag_no            --ヘッダ.販売実績作成済フラグ = ‘N’
-      AND    xsdh.uncalculate_class                    = ct_un_calc_flag_0          --ヘッダ.未計算区分           = 0
+--******************************* 2010/02/15 1.17 M.Hokkanji MOD START **************************************************************
+      AND    xsdh.uncalculate_class                    IN (ct_un_calc_flag_0,gt_un_calc_flag) --ヘッダ.未計算区分(0、定期の場合のみ4)
+--      AND    xsdh.uncalculate_class                    = ct_un_calc_flag_0          --ヘッダ.未計算区分           = 0
+--******************************* 2010/02/15 1.17 M.Hokkanji MOD END   **************************************************************
       AND    xsdh.cust_account_id                      = hnas.cust_account_id       --ヘッダ.顧客ID               = 顧客マスタ.顧客ID
       AND    hnas.cust_account_id                      = xxca.customer_id           --顧客マスタ.顧客ID           = アドオン.顧客ID
 /* 2009/08/17 Ver1.14 Mod Start */
@@ -2063,6 +2192,9 @@ AS
   PROCEDURE update_digestion(
     iv_base_code       IN         VARCHAR2,     -- 拠点コード
     iv_customer_number IN         VARCHAR2,     -- 顧客コード
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD START **************************************************************
+    iv_exec_div        IN         VARCHAR2,     -- 定期随時区分
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD END   **************************************************************
     ov_errbuf          OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode         OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg          OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2134,10 +2266,14 @@ AS
       WHEN OTHERS THEN
         RAISE global_up_headers_expt;
     END;
-    -- ===============================
-    -- 2.販売実績作成分更新処理
-    -- ===============================
-    BEGIN
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD START **************************************************************
+    -- 定期随時区分が定期の場合のみ未計算区分が1(INV/ARともにデータが存在しないデータを更新する。)
+    IF (iv_exec_div = cv_exec_div_1) THEN
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD END   **************************************************************
+      -- ===============================
+      -- 2.販売実績作成分更新処理
+      -- ===============================
+      BEGIN
 /* 2009/08/17 Ver1.14 Mod Start */
 --      UPDATE xxcos_shop_digestion_hdrs
 --         SET sales_result_creation_flag = ct_make_flag_yes,
@@ -2152,28 +2288,28 @@ AS
 --       WHERE uncalculate_class          = ct_un_calc_flag_1
 --         AND sales_result_creation_flag = ct_make_flag_no
 --         AND customer_number IN (
-      UPDATE xxcos_shop_digestion_hdrs xsdh
-         SET xsdh.sales_result_creation_flag = ct_make_flag_yes,
-             xsdh.sales_result_creation_date = gd_business_date,
-             xsdh.last_updated_by            = cn_last_updated_by,
-             xsdh.last_update_date           = cd_last_update_date,
-             xsdh.last_update_login          = cn_last_update_login,
-             xsdh.request_id                 = cn_request_id,
-             xsdh.program_application_id     = cn_program_application_id,
-             xsdh.program_id                 = cn_program_id,
-             xsdh.program_update_date        = cd_program_update_date
-       WHERE xsdh.uncalculate_class          = ct_un_calc_flag_1
-         AND xsdh.sales_result_creation_flag = ct_make_flag_no
-         AND EXISTS (
+        UPDATE xxcos_shop_digestion_hdrs xsdh
+           SET xsdh.sales_result_creation_flag = ct_make_flag_yes,
+               xsdh.sales_result_creation_date = gd_business_date,
+               xsdh.last_updated_by            = cn_last_updated_by,
+               xsdh.last_update_date           = cd_last_update_date,
+               xsdh.last_update_login          = cn_last_update_login,
+               xsdh.request_id                 = cn_request_id,
+               xsdh.program_application_id     = cn_program_application_id,
+               xsdh.program_id                 = cn_program_id,
+               xsdh.program_update_date        = cd_program_update_date
+         WHERE xsdh.uncalculate_class          = ct_un_calc_flag_1
+           AND xsdh.sales_result_creation_flag = ct_make_flag_no
+           AND EXISTS (
 /* 2009/08/17 Ver1.14 Mod End   */
-               SELECT hca.account_number  account_number         --顧客コード
-               FROM   hz_cust_accounts    hca,                   --顧客マスタ
-                      xxcmm_cust_accounts xca                    --顧客アドオン
-               WHERE  hca.cust_account_id     = xca.customer_id  --顧客マスタ.顧客ID   = 顧客アドオン.顧客ID
+                 SELECT hca.account_number  account_number         --顧客コード
+                 FROM   hz_cust_accounts    hca,                   --顧客マスタ
+                        xxcmm_cust_accounts xca                    --顧客アドオン
+                 WHERE  hca.cust_account_id     = xca.customer_id  --顧客マスタ.顧客ID   = 顧客アドオン.顧客ID
 /* 2009/08/17 Ver1.14 Add Start */
-               AND    xca.customer_code       = xsdh.customer_number --顧客アドオン.顧客コード = 消化VD用消化計算ヘッダ.顧客コード
+                 AND    xca.customer_code       = xsdh.customer_number --顧客アドオン.顧客コード = 消化VD用消化計算ヘッダ.顧客コード
 /* 2009/08/17 Ver1.14 Add End   */
-               AND    EXISTS (SELECT flv.meaning
+                 AND    EXISTS (SELECT flv.meaning
 /* 2009/08/17 Ver1.14 Mod Start */
 --                              FROM   fnd_application               fa,
 --                                     fnd_lookup_types              flt,
@@ -2188,24 +2324,24 @@ AS
 --                              AND    flv.enabled_flag                                =    ct_enabled_flag_yes
 --                              AND    flv.language                                    =    USERENV( 'LANG' )
 --                              AND    flv.meaning                                     =    hca.customer_class_code
-                              FROM   fnd_lookup_values  flv
-                              WHERE  flv.lookup_type      = ct_qct_cust_type
-                              AND    flv.lookup_code      LIKE ct_qcc_cust_code_2
-                              AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
-                                                          AND     NVL( flv.end_date_active, gd_last_month_date )
-                              AND    flv.enabled_flag     = ct_enabled_flag_yes
-                              AND    flv.language         = ct_lang
-                              AND    flv.meaning          = hca.customer_class_code
+                                FROM   fnd_lookup_values  flv
+                                WHERE  flv.lookup_type      = ct_qct_cust_type
+                                AND    flv.lookup_code      LIKE ct_qcc_cust_code_2
+                                AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                            AND     NVL( flv.end_date_active, gd_last_month_date )
+                                AND    flv.enabled_flag     = ct_enabled_flag_yes
+                                AND    flv.language         = ct_lang
+                                AND    flv.meaning          = hca.customer_class_code
 /* 2009/08/17 Ver1.14 Mod End   */
-                             ) --顧客マスタ.顧客区分 = 10(顧客)
-               AND    EXISTS (SELECT hcae.account_number --拠点コード
-                                FROM   hz_cust_accounts    hcae,
+                               ) --顧客マスタ.顧客区分 = 10(顧客)
+                 AND    EXISTS (SELECT hcae.account_number --拠点コード
+                                  FROM   hz_cust_accounts    hcae,
 /* 2009/08/17 Ver1.14 Mod Start */
 --                                       xxcmm_cust_accounts xcae
-                                       xxcmm_cust_accounts xcae,
-                                       fnd_lookup_values   flv
+                                         xxcmm_cust_accounts xcae,
+                                         fnd_lookup_values   flv
 /* 2009/08/17 Ver1.14 Mod End   */
-                                WHERE  hcae.cust_account_id = xcae.customer_id--顧客マスタ.顧客ID =顧客アドオン.顧客ID
+                                  WHERE  hcae.cust_account_id = xcae.customer_id--顧客マスタ.顧客ID =顧客アドオン.顧客ID
 /* 2009/08/17 Ver1.14 Mod Start */
 --                                AND    EXISTS (SELECT flv.meaning
 --                                               FROM   fnd_application               fa,
@@ -2224,30 +2360,30 @@ AS
 --                                              ) --顧客マスタ.顧客区分 = 1(拠点)
 --                                AND    xcae.management_base_code = NVL( iv_base_code,xcae.management_base_code )
 --                                                --顧客顧客アドオン.管理元拠点コード = INパラ拠点コード
-                                AND    flv.lookup_type      = ct_qct_cust_type
-                                AND    flv.lookup_code      LIKE ct_qcc_cust_code_1
-                                AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
-                                                            AND     NVL( flv.end_date_active, gd_last_month_date )
-                                AND    flv.enabled_flag     = ct_enabled_flag_yes
-                                AND    flv.language         = ct_lang
-                                AND    flv.meaning          = hcae.customer_class_code
-                                AND    (
-                                         ( iv_base_code IS NULL )
-                                         OR
-                                         ( iv_base_code IS NOT NULL AND xcae.management_base_code = iv_base_code )
-                                       ) --顧客顧客アドオン.管理元拠点コード = INパラ拠点コード
+                                  AND    flv.lookup_type      = ct_qct_cust_type
+                                  AND    flv.lookup_code      LIKE ct_qcc_cust_code_1
+                                  AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                              AND     NVL( flv.end_date_active, gd_last_month_date )
+                                  AND    flv.enabled_flag     = ct_enabled_flag_yes
+                                  AND    flv.language         = ct_lang
+                                  AND    flv.meaning          = hcae.customer_class_code
+                                  AND    (
+                                           ( iv_base_code IS NULL )
+                                           OR
+                                           ( iv_base_code IS NOT NULL AND xcae.management_base_code = iv_base_code )
+                                         ) --顧客顧客アドオン.管理元拠点コード = INパラ拠点コード
 /* 2009/08/17 Ver1.14 Mod End   */
-                                AND    hcae.account_number = NVL( xca.past_sale_base_code,xca.sale_base_code )
-                               ) --管理拠点に所属する拠点コード=顧客アドオン.前月拠点or売上拠点
+                                  AND    hcae.account_number = NVL( xca.past_sale_base_code,xca.sale_base_code )
+                                 ) --管理拠点に所属する拠点コード=顧客アドオン.前月拠点or売上拠点
 /* 2009/08/17 Ver1.14 Mod Start */
 --               AND    hca.account_number = NVL( iv_customer_number,hca.account_number ) --顧客コード=INパラ(顧客コード)
-               AND    (
-                        ( iv_customer_number IS NULL )
-                        OR
-                        ( iv_customer_number IS NOT NULL AND hca.account_number = iv_customer_number )
-                      ) --顧客コード=INパラ(顧客コード)
+                 AND    (
+                          ( iv_customer_number IS NULL )
+                          OR
+                          ( iv_customer_number IS NOT NULL AND hca.account_number = iv_customer_number )
+                        ) --顧客コード=INパラ(顧客コード)
 /* 2009/08/17 Ver1.14 Mod End   */
-               AND    EXISTS (SELECT flv.meaning
+                 AND    EXISTS (SELECT flv.meaning
 /* 2009/08/17 Ver1.14 Mod Start */
 --                              FROM   fnd_application               fa,
 --                                     fnd_lookup_types              flt,
@@ -2262,25 +2398,25 @@ AS
 --                              AND    flv.enabled_flag                                =    ct_enabled_flag_yes
 --                              AND    flv.language                                    =    USERENV( 'LANG' )
 --                              AND    flv.meaning = xca.business_low_type
-                              FROM   fnd_lookup_values  flv
-                              WHERE  flv.lookup_type      = ct_qct_gyo_type
-                              AND    flv.lookup_code      LIKE ct_qcc_it_code
-                              AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
-                                                          AND     NVL( flv.end_date_active, gd_last_month_date )
-                              AND    flv.enabled_flag     = ct_enabled_flag_yes
-                              AND    flv.language         = ct_lang
-                              AND    flv.meaning          = xca.business_low_type
+                                FROM   fnd_lookup_values  flv
+                                WHERE  flv.lookup_type      = ct_qct_gyo_type
+                                AND    flv.lookup_code      LIKE ct_qcc_it_code
+                                AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                            AND     NVL( flv.end_date_active, gd_last_month_date )
+                                AND    flv.enabled_flag     = ct_enabled_flag_yes
+                                AND    flv.language         = ct_lang
+                                AND    flv.meaning          = xca.business_low_type
 /* 2009/08/17 Ver1.14 Mod End   */
-                             )  --業態小分類=インショップ,当社直営店
-               UNION
-               SELECT hca.account_number  account_number         --顧客コード
-               FROM   hz_cust_accounts    hca,                   --顧客マスタ
-                      xxcmm_cust_accounts xca                    --顧客アドオン
-               WHERE  hca.cust_account_id     = xca.customer_id --顧客マスタ.顧客ID   = 顧客アドオン.顧客ID
+                               )  --業態小分類=インショップ,当社直営店
+                 UNION
+                 SELECT hca.account_number  account_number         --顧客コード
+                 FROM   hz_cust_accounts    hca,                   --顧客マスタ
+                        xxcmm_cust_accounts xca                    --顧客アドオン
+                 WHERE  hca.cust_account_id     = xca.customer_id --顧客マスタ.顧客ID   = 顧客アドオン.顧客ID
 /* 2009/08/17 Ver1.14 Add Start */
-               AND    xca.customer_code       = xsdh.customer_number --顧客マスタ.顧客コード = 消化VD用消化計算ヘッダ.顧客コード
+                 AND    xca.customer_code       = xsdh.customer_number --顧客マスタ.顧客コード = 消化VD用消化計算ヘッダ.顧客コード
 /* 2009/08/17 Ver1.14 Add End   */
-               AND    EXISTS (SELECT flv.meaning
+                 AND    EXISTS (SELECT flv.meaning
 /* 2009/08/17 Ver1.14 Mod Start */
 --                              FROM   fnd_application               fa,
 --                                     fnd_lookup_types              flt,
@@ -2295,30 +2431,30 @@ AS
 --                              AND    flv.enabled_flag                                =    ct_enabled_flag_yes
 --                              AND    flv.language                                    =    USERENV( 'LANG' )
 --                              AND    flv.meaning                                     =    hca.customer_class_code
-                              FROM   fnd_lookup_values  flv
-                              WHERE  flv.lookup_type      = ct_qct_cust_type
-                              AND    flv.lookup_code      LIKE ct_qcc_cust_code_2
-                              AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
-                                                          AND     NVL( flv.end_date_active, gd_last_month_date )
-                              AND    flv.enabled_flag     = ct_enabled_flag_yes
-                              AND    flv.language         = ct_lang
-                              AND    flv.meaning          = hca.customer_class_code
+                                FROM   fnd_lookup_values  flv
+                                WHERE  flv.lookup_type      = ct_qct_cust_type
+                                AND    flv.lookup_code      LIKE ct_qcc_cust_code_2
+                                AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                            AND     NVL( flv.end_date_active, gd_last_month_date )
+                                AND    flv.enabled_flag     = ct_enabled_flag_yes
+                                AND    flv.language         = ct_lang
+                                AND    flv.meaning          = hca.customer_class_code
 /* 2009/08/17 Ver1.14 Mod End   */
-                             ) --顧客マスタ.顧客区分 = 10(顧客)
-               AND    (
-                       xca.past_sale_base_code = NVL( iv_base_code,xca.past_sale_base_code )
-                       OR
-                       xca.sale_base_code = NVL( iv_base_code,xca.sale_base_code )
-                      )--顧客アドオン.前月拠点or売上拠点 = INパラ拠点コード
+                               ) --顧客マスタ.顧客区分 = 10(顧客)
+                 AND    (
+                         xca.past_sale_base_code = NVL( iv_base_code,xca.past_sale_base_code )
+                         OR
+                         xca.sale_base_code = NVL( iv_base_code,xca.sale_base_code )
+                        )--顧客アドオン.前月拠点or売上拠点 = INパラ拠点コード
 /* 2009/08/17 Ver1.14 Mod Start */
 --               AND    hca.account_number = NVL( iv_customer_number,hca.account_number ) --顧客コード=INパラ(顧客コード)
-               AND    (
-                        ( iv_customer_number IS NULL )
-                        OR
-                        ( iv_customer_number IS NOT NULL AND hca.account_number = iv_customer_number )
-                      ) --顧客コード=INパラ(顧客コード)
+                 AND    (
+                          ( iv_customer_number IS NULL )
+                          OR
+                          ( iv_customer_number IS NOT NULL AND hca.account_number = iv_customer_number )
+                        ) --顧客コード=INパラ(顧客コード)
 /* 2009/08/17 Ver1.14 Mod End   */
-               AND    EXISTS (SELECT flv.meaning
+                 AND    EXISTS (SELECT flv.meaning
 /* 2009/08/17 Ver1.14 Mod Start */
 --                              FROM   fnd_application               fa,
 --                                     fnd_lookup_types              flt,
@@ -2333,23 +2469,26 @@ AS
 --                              AND    flv.enabled_flag                                =    ct_enabled_flag_yes
 --                              AND    flv.language                                    =    USERENV( 'LANG' )
 --                              AND    flv.meaning = xca.business_low_type
-                              FROM   fnd_lookup_values  flv
-                              WHERE  flv.lookup_type      = ct_qct_gyo_type
-                              AND    flv.lookup_code      LIKE ct_qcc_it_code
-                              AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
-                                                          AND     NVL( flv.end_date_active, gd_last_month_date )
-                              AND    flv.enabled_flag     = ct_enabled_flag_yes
-                              AND    flv.language         = ct_lang
-                              AND    flv.meaning          = xca.business_low_type
+                                FROM   fnd_lookup_values  flv
+                                WHERE  flv.lookup_type      = ct_qct_gyo_type
+                                AND    flv.lookup_code      LIKE ct_qcc_it_code
+                                AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                            AND     NVL( flv.end_date_active, gd_last_month_date )
+                                AND    flv.enabled_flag     = ct_enabled_flag_yes
+                                AND    flv.language         = ct_lang
+                                AND    flv.meaning          = xca.business_low_type
 /* 2009/08/17 Ver1.14 Mod End   */
-                             )  --業態小分類=インショップ,当社直営店
-             )
-       ;
-    EXCEPTION
-      -- エラー処理（データ追加エラー）
-      WHEN OTHERS THEN
-        RAISE global_up_headers_expt;
-    END;
+                               )  --業態小分類=インショップ,当社直営店
+               )
+         ;
+      EXCEPTION
+        -- エラー処理（データ追加エラー）
+        WHEN OTHERS THEN
+          RAISE global_up_headers_expt;
+      END;
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD START **************************************************************
+    END IF;
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD END   **************************************************************
     -- ===============================
     -- 3.棚卸管理テーブル更新処理
     -- ===============================
@@ -2432,6 +2571,342 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END update_digestion;
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD START **************************************************************
+--
+  /**********************************************************************************
+   * Procedure Name   : ar_chk
+   * Description      : AR金額差異チェック(A-08)
+   ***********************************************************************************/
+  PROCEDURE ar_chk(
+    it_rec_work_data IN g_rec_work_data, --顧客情報
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ar_chk'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_extended_amount   ra_customer_trx_lines_all.extended_amount%TYPE; --本体金額(AR)
+    ln_ar_sales_amount   xxcos_shop_digestion_hdrs.ar_sales_amount%TYPE; --店舗別売上金額
+    
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 初期化
+    BEGIN
+      -- AR金額取得
+      SELECT SUM(rctla.extended_amount)          extended_amount      --本体金額
+        INTO ln_extended_amount
+        FROM ra_customer_trx_all                 rcta,                --AR取引情報テーブル
+             ra_customer_trx_lines_all           rctla,               --AR取引明細テーブル
+             ra_cust_trx_line_gl_dist_all        rctlgda,             --AR取引明細会計配分テーブル
+             ra_cust_trx_types_all               rctta                --AR取引タイプマスタ
+       WHERE rcta.ship_to_customer_id          = it_rec_work_data.cust_account_id
+         AND rcta.customer_trx_id              = rctla.customer_trx_id
+         AND rctla.customer_trx_id             = rctlgda.customer_trx_id
+         AND rctla.customer_trx_line_id        = rctlgda.customer_trx_line_id
+         AND rcta.cust_trx_type_id             = rctta.cust_trx_type_id
+         AND rctla.line_type                   = ct_line_type_line
+         AND rcta.complete_flag                = ct_complete_flag_yes
+         AND rctlgda.gl_date                  >= gd_begi_month_date
+         AND rctlgda.gl_date                  <= gd_last_month_date
+         AND rcta.org_id                       = gn_org_id
+         AND EXISTS(SELECT cv_exists_flag_yes exists_flag
+                      FROM fnd_lookup_values flv
+                     WHERE flv.lookup_type   =    ct_qct_customer_trx_type
+                       AND flv.lookup_code   LIKE ct_qcc_customer_trx_type
+                       AND flv.meaning       =    rctta.name
+                       AND rctlgda.gl_date   >=    flv.start_date_active
+                       AND rctlgda.gl_date   <=    NVL( flv.end_date_active, gd_max_date )
+                       AND flv.enabled_flag  =    ct_enabled_flag_yes
+                       AND flv.language      =    ct_lang
+             );
+      -- 取得に失敗した場合
+      IF (ln_extended_amount IS NULL ) THEN
+        RAISE global_ar_chk_err_expt;
+      END IF;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        RAISE global_ar_chk_err_expt;
+    END;
+    -- 店舗別用消化計算ヘッダテーブルから店舗別売上金額を取得
+    BEGIN
+      SELECT xsdh.ar_sales_amount extended_amount
+        INTO ln_ar_sales_amount
+        FROM xxcos_shop_digestion_hdrs xsdh--店舗別用消化計算ヘッダテーブル
+       WHERE xsdh.cust_account_id = it_rec_work_data.cust_account_id
+         AND xsdh.sales_base_code = it_rec_work_data.past_sale_base_code
+         AND xsdh.digestion_due_date = gd_last_month_date;
+      -- 取得に失敗した場合
+      IF (ln_ar_sales_amount IS NULL ) THEN
+        RAISE global_ar_chk_err_expt;
+      END IF;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        RAISE global_ar_chk_err_expt;
+    END;
+    -- ARから取得した金額と店舗別用消化計算ヘッダテーブルから取得した金額が一致しないもしくは
+    -- ARから取得した金額が0の場合ARチェックエラーとする。
+    IF ((ln_extended_amount <> ln_ar_sales_amount) OR
+        (ln_ar_sales_amount = 0) ) THEN
+      RAISE global_ar_chk_err_expt;
+    END IF;
+--
+  EXCEPTION
+    -- *** ARチェックエラー ***
+    WHEN global_ar_chk_err_expt    THEN
+      ov_errmsg               := xxccp_common_pkg.get_msg(
+                                   iv_application        => ct_xxcos_appl_short_name,
+                                   iv_name               => cv_msg_ar_chk_err,
+                                   iv_token_name1        => cv_tkn_parm_data1,
+                                   iv_token_value1       => it_rec_work_data.customer_number
+                                 );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ar_chk;
+--
+  /**********************************************************************************
+   * Procedure Name   : inv_chk
+   * Description      : INV品目数差異チェック処理(A-9)
+   ***********************************************************************************/
+  PROCEDURE inv_chk(
+    it_rec_work_data IN g_rec_work_data, --顧客情報
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'inv_chk'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_amount NUMBER; -- 対象データ取得
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 初期化
+    BEGIN
+      SELECT A.inv_wear
+        INTO ln_amount
+        FROM (
+               SELECT sirm.inventory_item_id      inventory_item_id,           --品目ID
+                      sirm.subinventory_code      subinventory_code ,           --保管場所
+                      SUM(sirm.inv_wear)          inv_wear                     --販売数(棚卸減耗)
+                 FROM xxcoi_inv_reception_monthly sirm,
+                      mtl_secondary_inventories   msi
+                  --INV月次在庫受払表.保管場所      = 保管場所マスタ.保管場所
+                WHERE sirm.subinventory_code = msi.secondary_inventory_name
+                  --保管場所マスタ.[DFF2]棚卸区分   = '2'「消化」
+                  AND msi.attribute5         = ct_secondary_class_2
+                  --保管場所マスタ.[DFF4]顧客コード = 顧客コード
+                  AND msi.attribute4         = it_rec_work_data.customer_number
+                  --保管場所マスタ.[DFF7]拠点コード = 納品拠点コード
+                  --保管場所マスタ.[DFF7]拠点コード = 顧客アドオンマスタ.前月売上拠点コード or 売上拠点コード
+                  AND msi.attribute7         =it_rec_work_data.past_sale_base_code
+                  --INV月次在庫受払表.拠点コード    = 顧客アドオンマスタ.前月売上拠点コード or 売上拠点コード
+                  AND sirm.base_code         =it_rec_work_data.past_sale_base_code
+                  --INV月次在庫受払表.組織ID        = 在庫組織ID
+                  AND sirm.organization_id   = gt_organization_id
+                  --INV月次在庫受払表.年月          = 前月年月
+                  AND sirm.practice_month    = gv_month_date
+                  --INV月次在庫受払表.棚卸区分      = '2'「月末」
+                  AND sirm.inventory_kbn     = ct_inventory_class_2
+                  GROUP BY sirm.inventory_item_id,           --品目ID
+                           sirm.subinventory_code            --保管場所
+             ) A
+       WHERE NOT EXISTS (
+                          SELECT B.inventory_item_id,        --品目ID
+                                 B.subinventory_code,
+                                 B.inv_wear
+                            FROM (
+                              SELECT xsdl.inventory_item_id inventory_item_id --品目ID
+                                    ,xsdl.ship_from_subinventory_code subinventory_code -- 保管場所
+                                    ,SUM(xsdl.sales_quantity) inv_wear --販売数(棚卸減耗)
+                                FROM xxcos_shop_digestion_lns xsdl -- 店舗別用消化計算明細テーブル
+                                    ,xxcos_shop_digestion_hdrs xsdh
+                               WHERE xsdl.delivery_base_code = it_rec_work_data.past_sale_base_code
+                                 AND xsdl.customer_number = it_rec_work_data.customer_number --顧客コード
+                                 AND xsdl.digestion_due_date = gd_last_month_date
+                                 AND xsdh.shop_digestion_hdr_id = xsdl.shop_digestion_hdr_id --店舗別用消化計算ヘッダID
+                                 AND xsdh.uncalculate_class = ct_un_calc_flag_0 --未計算区分
+                               GROUP BY xsdl.inventory_item_id
+                                       ,xsdl.ship_from_subinventory_code
+                                 ) B
+                           WHERE B.inventory_item_id = A.inventory_item_id
+                             AND B.subinventory_code = A.subinventory_code
+                             AND B.inv_wear          = A.inv_wear
+                        )
+       AND ROWNUM = 1;
+       IF (ln_amount IS NOT NULL) THEN
+         RAISE global_inv_chk_err_expt;
+       END IF;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        NULL;
+    END;
+    BEGIN
+      SELECT A.inv_wear
+        INTO ln_amount
+        FROM (
+               SELECT xsdl.inventory_item_id inventory_item_id --品目ID
+                     ,xsdl.ship_from_subinventory_code subinventory_code -- 保管場所
+                     ,SUM(xsdl.sales_quantity) inv_wear --販売数(棚卸減耗)
+                 FROM xxcos_shop_digestion_lns xsdl -- 店舗別用消化計算明細テーブル
+                     ,xxcos_shop_digestion_hdrs xsdh
+                WHERE xsdl.delivery_base_code = it_rec_work_data.past_sale_base_code
+                  AND xsdl.customer_number = it_rec_work_data.customer_number --顧客コード
+                  AND xsdl.digestion_due_date = gd_last_month_date
+                  AND xsdh.shop_digestion_hdr_id = xsdl.shop_digestion_hdr_id --店舗別用消化計算ヘッダID
+                  AND xsdh.uncalculate_class = ct_un_calc_flag_0 --未計算区分
+                GROUP BY xsdl.inventory_item_id
+                        ,xsdl.ship_from_subinventory_code
+             ) A
+       WHERE NOT EXISTS (
+               SELECT B.inventory_item_id,        --品目ID
+                      B.subinventory_code,
+                      B.inv_wear
+                 FROM (
+                         SELECT sirm.inventory_item_id      inventory_item_id,           --品目ID
+                                sirm.subinventory_code      subinventory_code ,           --保管場所
+                                SUM(sirm.inv_wear)          inv_wear                     --販売数(棚卸減耗)
+                           FROM xxcoi_inv_reception_monthly sirm,
+                                mtl_secondary_inventories   msi
+                            --INV月次在庫受払表.保管場所      = 保管場所マスタ.保管場所
+                          WHERE sirm.subinventory_code = msi.secondary_inventory_name
+                            --保管場所マスタ.[DFF2]棚卸区分   = '2'「消化」
+                            AND msi.attribute5         = ct_secondary_class_2
+                            --保管場所マスタ.[DFF4]顧客コード = 顧客コード
+                            AND msi.attribute4         = it_rec_work_data.customer_number
+                            --保管場所マスタ.[DFF7]拠点コード = 納品拠点コード
+                            --保管場所マスタ.[DFF7]拠点コード = 顧客アドオンマスタ.前月売上拠点コード or 売上拠点コード
+                            AND msi.attribute7         = it_rec_work_data.past_sale_base_code
+                            --INV月次在庫受払表.拠点コード    = 顧客アドオンマスタ.前月売上拠点コード or 売上拠点コード
+                            AND sirm.base_code         = it_rec_work_data.past_sale_base_code
+                            --INV月次在庫受払表.組織ID        = 在庫組織ID
+                            AND sirm.organization_id   = gt_organization_id
+                            --INV月次在庫受払表.年月          = 前月年月
+                            AND sirm.practice_month    = gv_month_date
+                            --INV月次在庫受払表.棚卸区分      = '2'「月末」
+                            AND sirm.inventory_kbn     = ct_inventory_class_2
+                            GROUP BY sirm.inventory_item_id,           --品目ID
+                                     sirm.subinventory_code            --保管場所
+                      ) B
+                WHERE B.inventory_item_id = A.inventory_item_id
+                  AND B.subinventory_code = A.subinventory_code
+                  AND B.inv_wear          = A.inv_wear
+                        )
+       AND ROWNUM = 1;
+       IF (ln_amount IS NOT NULL) THEN
+         RAISE global_inv_chk_err_expt;
+       END IF;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        NULL;
+    END;
+--
+  EXCEPTION
+    -- *** INVチェックエラー ***
+    WHEN global_inv_chk_err_expt    THEN
+      ov_errmsg               := xxccp_common_pkg.get_msg(
+                                   iv_application        => ct_xxcos_appl_short_name,
+                                   iv_name               => cv_msg_inv_chk_err,
+                                   iv_token_name1        => cv_tkn_parm_data1,
+                                   iv_token_value1       => it_rec_work_data.customer_number
+                                 );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END inv_chk;
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD END **************************************************************
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -2468,6 +2943,10 @@ AS
 --
     -- *** ローカル変数 ***
     lv_err_emp  VARCHAR2(1);     -- リターン・コード一時保管
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD START **************************************************************
+    lv_customer_number xxcos_shop_digestion_hdrs.customer_number%TYPE;  -- 顧客コード
+    ln_cust_account_id xxcos_shop_digestion_hdrs.cust_account_id%TYPE;  -- 顧客ID
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD END   **************************************************************
 --
     -- ===============================
     -- ローカル・カーソル
@@ -2555,6 +3034,48 @@ AS
       END IF;
       RAISE global_common_expt;
     END IF;
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD START **************************************************************
+    --==============================================================
+    --随時実行の場合、店舗別用消化計算が最新かどうかチェックを行います。
+    --==============================================================
+    IF ( iv_exec_div = cv_exec_div_0 ) THEN
+      <<gt_tab_work_data_loop>>
+      FOR ln_i IN 1..gt_tab_work_data.COUNT LOOP
+        --==============================================================
+        --ループの初回か顧客が変更された場合にチェック処理を行います。
+        --==============================================================
+        IF (lv_customer_number IS NULL OR
+            lv_customer_number <> gt_tab_work_data(ln_i).customer_number) THEN
+          -- ===============================
+          -- A-9.ARデータチェック処理
+          -- ===============================
+          ar_chk(
+             gt_tab_work_data(ln_i)                -- 店舗別用消化計算データ
+            ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
+            ,lv_retcode                            -- リターン・コード             --# 固定 #
+            ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          IF ( lv_retcode != cv_status_normal ) THEN
+            RAISE global_common_expt;
+          END IF;
+          -- ===============================
+          -- A-10.INVデータチェック処理
+          -- ===============================
+          inv_chk(
+             gt_tab_work_data(ln_i)                -- 店舗別用消化計算データ
+            ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
+            ,lv_retcode                            -- リターン・コード             --# 固定 #
+            ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          IF ( lv_retcode != cv_status_normal ) THEN
+            RAISE global_common_expt;
+          END IF;
+          lv_customer_number := gt_tab_work_data(ln_i).customer_number;
+          ln_cust_account_id := gt_tab_work_data(ln_i).cust_account_id;
+        END IF;
+      END LOOP gt_tab_work_data_loop;
+    END IF;
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD END   **************************************************************
     -- ===============================
     -- A-4．商品別売上算処理
     -- ===============================
@@ -2607,6 +3128,9 @@ AS
     update_digestion(
        iv_base_code       -- 拠点コード
       ,iv_customer_number -- 顧客コード
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD START **************************************************************
+      ,iv_exec_div        -- 定期随時区分
+--******************************* 2010/02/15 1.17 M.Hokkanji ADD END   **************************************************************
       ,lv_errbuf          -- エラー・メッセージ           --# 固定 #
       ,lv_retcode         -- リターン・コード             --# 固定 #
       ,lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
