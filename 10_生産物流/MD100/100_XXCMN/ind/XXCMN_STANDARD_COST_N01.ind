@@ -1,0 +1,1 @@
+CREATE INDEX xxcmn.xxcmn_standard_cost_n01 ON xxcmn.xxcmn_standard_cost_if( item_code,start_date_active ) TABLESPACE xxidx;

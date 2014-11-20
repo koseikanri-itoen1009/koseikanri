@@ -14,6 +14,9 @@ CREATE OR REPLACE VIEW apps.xxwsh_carriers_schedule_ln_v
  TRANSACTION_TYPE_ID,
  SCHEDULE_SHIP_DATE,
  SCHEDULE_ARRIVAL_DATE,
+-- 2008/09/02 TE080_600w“ENo13‘Î‰ Add D.Nihei Start
+ AMOUNT_FIX_CLASS,
+-- 2008/09/02 TE080_600w“ENo13‘Î‰ Add D.Nihei End
  DELIVER_FROM,
  DELIVER_FROM_NAME,
  DELIVER_TO,
@@ -64,12 +67,14 @@ CREATE OR REPLACE VIEW apps.xxwsh_carriers_schedule_ln_v
  LAST_UPDATE_DATE,
  LAST_UPDATE_LOGIN
 ) AS 
-  SELECT xoha.rowid                       row_id
+SELECT xoha.rowid                       row_id
       ,xoha.order_header_id             header_id                   -- ó’ƒwƒbƒ_ID
       ,NVL2(xcs.default_line_number,'0','1') default_line           -- Šî€–¾×
       ,xottv.shipping_shikyu_class      transaction_type           -- ˆ—í•ÊƒR[ƒh
       ,xlvv1.meaning                    transaction_type_name       -- ˆ—í•Ê–¼Ì
-      ,NVL(xoha.delivery_no,xoha.mixed_no) delivery_no              -- ”z‘—No
+-- 2008/09/02 PT1-1_4 Mod D.Nihei Start
+--      ,NVL(xoha.delivery_no,xoha.mixed_no) delivery_no              -- ”z‘—No
+      ,xoha.delivery_no                 delivery_no              -- ”z‘—No
       ,xoha.request_no                  request_no                  -- ˆË—ŠNo
       ,xoha.career_id                   career_id                   -- ‰^‘—‹ÆÒID
       ,xoha.freight_carrier_code        freight_carrier_code        -- ‰^‘—‹ÆÒ
@@ -77,8 +82,11 @@ CREATE OR REPLACE VIEW apps.xxwsh_carriers_schedule_ln_v
       ,xlvv2.attribute6                 shipping_kubun_code         -- DFF¬Œû‹æ•ª
       ,xlvv2.attribute9                 mixed_class_code            -- DFF¬Ú‹æ•ª
       ,xottv.transaction_type_id        transaction_type_id         -- æˆøƒ^ƒCƒvID
-      ,xoha.schedule_ship_date          schedule_ship_date          -- oŒÉ—\’è“ú 
+      ,xoha.schedule_ship_date          schedule_ship_date          -- oŒÉ—\’è“ú
       ,xoha.schedule_arrival_date       schedule_arrival_date       -- ’…‰×—\’è“ú
+-- 2008/09/02 TE080_600w“ENo13‘Î‰ Add D.Nihei Start
+      ,xoha.amount_fix_class            amount_fix_class            -- —L‹àŠzŠm’è‹æ•ª
+-- 2008/09/02 TE080_600w“ENo13‘Î‰ Add D.Nihei End
       ,xoha.deliver_from                deliver_from                -- o‰×Œ³•ÛŠÇêŠ
       ,xilv.description                 deliver_from_name           -- “E—v
       ,xoha.deliver_to                  deliver_to                  -- o‰×æ
@@ -116,7 +124,7 @@ CREATE OR REPLACE VIEW apps.xxwsh_carriers_schedule_ln_v
       ,xpsv2.party_site_full_name       result_deliver_to_name      -- o‰×æ_ÀÑ–¼Ì
       ,xoha.shipped_date                shipped_date                -- o‰×“ú
       ,xoha.arrival_date                arrival_date                -- ’…‰×“ú
-      -- 
+      --
       ,xoha.req_status                  req_status                  -- ƒXƒe[ƒ^ƒX
       ,xoha.notif_status                notif_status                -- ’Ê’mƒXƒe[ƒ^ƒX
       ,xoha.prev_notif_status           prev_notif_status           -- ‘O‰ñ’Ê’mƒXƒe[ƒ^ƒX
@@ -126,7 +134,7 @@ CREATE OR REPLACE VIEW apps.xxwsh_carriers_schedule_ln_v
       ,xoha.screen_update_date          screen_update_date          -- ‰æ–ÊXV“ú
       ,xoha.prev_delivery_no            prev_delivery_no            -- ‘O‰ñ”z‘—‡‚
       ,xoha.actual_confirm_class        actual_confirm_class        -- ÀÑŒvãÏ‹æ•ª
-      -- 
+      --
       ,xoha.created_by                  created_by                  -- ì¬Ò
       ,xoha.creation_date               creation_date               -- ì¬“ú
       ,xoha.last_updated_by             last_updated_by             -- ÅIXVÒ
@@ -139,12 +147,12 @@ FROM   xxwsh_order_headers_all      xoha   -- ó’ƒwƒbƒ_[
       ,xxcmn_lookup_values_v        xlvv2
       ,xxcmn_lookup_values_v        xlvv3
       ,xxcmn_item_locations_v       xilv
-      ,xxcmn_party_sites_v          xpsv
-      ,xxcmn_party_sites_v          xpsv2
+      ,xxcmn_party_sites_v xpsv
+      ,xxcmn_party_sites_v xpsv2
       ,xxcmn_vendor_sites_v         xvsv
       ,xxcmn_parties_v              xpv
       ,xxcmn_vendors_v              xvv
-WHERE xlvv1.lookup_type(+)        = 'XXWSH_PROCESS_TYPE' 
+WHERE xlvv1.lookup_type(+)        = 'XXWSH_PROCESS_TYPE'
 AND   xlvv1.lookup_code(+)        = xottv.shipping_shikyu_class       -- ˆ—í•Ê
 AND   xlvv2.lookup_type(+)        = 'XXCMN_SHIP_METHOD'
 AND   xlvv2.lookup_code(+)        = xoha.shipping_method_code         -- ”z‘—‹æ•ª
@@ -158,18 +166,136 @@ AND   xpv.party_number(+)         = xoha.head_sales_branch            -- ŠÇŠ‹’“
 AND   xpv.customer_class_code(+)  = '1'                               -- ŒÚ‹q‹æ•ª
 AND   xvv.segment1(+)             = xoha.vendor_code                  -- æˆøæ–¼Ì
 AND   xcs.default_line_number (+) = xoha.request_no
-AND   xcs.delivery_no (+)         = NVL(xoha.delivery_no,xoha.mixed_no)
+AND   xcs.delivery_no (+)         = xoha.delivery_no
+AND   xoha.order_type_id          = xottv.transaction_type_id
+AND   xoha.latest_external_flag   = 'Y'
+AND   (    (xottv.shipping_shikyu_class   = '1')
+      OR   (xottv.shipping_shikyu_class = '2') )
+AND   xoha.delivery_no IS NOT NULL
+UNION ALL
+SELECT xoha.rowid                       row_id
+      ,xoha.order_header_id             header_id                   -- ó’ƒwƒbƒ_ID
+      ,NVL2(xcs.default_line_number,'0','1') default_line           -- Šî€–¾×
+      ,xottv.shipping_shikyu_class      transaction_type           -- ˆ—í•ÊƒR[ƒh
+      ,xlvv1.meaning                    transaction_type_name       -- ˆ—í•Ê–¼Ì
+      ,xoha.mixed_no                    delivery_no              -- ”z‘—No
+-- 2008/09/02 PT1-1_4 Mod D.Nihei End
+      ,xoha.request_no                  request_no                  -- ˆË—ŠNo
+      ,xoha.career_id                   career_id                   -- ‰^‘—‹ÆÒID
+      ,xoha.freight_carrier_code        freight_carrier_code        -- ‰^‘—‹ÆÒ
+      ,xoha.shipping_method_code        shipping_method_code        -- ”z‘—‹æ•ª
+      ,xlvv2.attribute6                 shipping_kubun_code         -- DFF¬Œû‹æ•ª
+      ,xlvv2.attribute9                 mixed_class_code            -- DFF¬Ú‹æ•ª
+      ,xottv.transaction_type_id        transaction_type_id         -- æˆøƒ^ƒCƒvID
+      ,xoha.schedule_ship_date          schedule_ship_date          -- oŒÉ—\’è“ú
+      ,xoha.schedule_arrival_date       schedule_arrival_date       -- ’…‰×—\’è“ú
+-- 2008/09/02 TE080_600w“ENo13‘Î‰ Add D.Nihei Start
+      ,xoha.amount_fix_class            amount_fix_class            -- —L‹àŠzŠm’è‹æ•ª
+-- 2008/09/02 TE080_600w“ENo13‘Î‰ Add D.Nihei End
+      ,xoha.deliver_from                deliver_from                -- o‰×Œ³•ÛŠÇêŠ
+      ,xilv.description                 deliver_from_name           -- “E—v
+      ,xoha.deliver_to                  deliver_to                  -- o‰×æ
+      ,xoha.vendor_site_code            vendor_site_code            -- æˆøæƒTƒCƒg
+      ,xpsv.party_site_full_name        deliver_to_name             -- o‰×æ³®–¼Ì
+      ,xvsv.vendor_site_short_name      vendor_site_code_name       -- æˆøæƒTƒCƒg—ªÌ
+      ,xoha.head_sales_branch           head_sales_branch           -- ŠÇŠ‹’“_
+      ,xpv.party_short_name             head_sales_branch_name      -- ŠÇŠ‹’“_—ªÌ
+      ,xoha.vendor_code                 vendor_code                 -- æˆøæ
+      ,xvv.vendor_short_name            vendor_short_name           -- æˆøæ—ªÌ
+      ,xoha.based_weight                based_weight                -- Šî–{d—Ê
+      ,xoha.based_capacity              based_capacity              -- Šî–{—eÏ
+      ,xoha.sum_weight                  sum_weight                  -- ÏÚd—Ê‡Œv
+      ,xoha.sum_capacity                sum_capacity                -- ÏÚ—eÏ‡Œv
+      ,xoha.pallet_sum_quantity         pallet_sum_quantity         -- ‡ŒvƒpƒŒƒbƒg–‡”
+      ,xoha.sum_pallet_weight           sum_pallet_weight           -- ‡ŒvƒpƒŒƒbƒgd—Ê
+      ,xoha.loading_efficiency_weight   loading_efficiency_weight   -- d—ÊÏÚŒø—¦
+      ,xoha.loading_efficiency_capacity loading_efficiency_capacity -- —eÏÏÚŒø—¦
+      ,xoha.weight_capacity_class       weight_capacity_class       -- d—Ê—eÏ‹æ•ª
+      ,xoha.prod_class                  prod_class                  -- ¤•i‹æ•ª
+      ,xoha.mixed_ratio                 mixed_ratio                 -- ¬Ú—¦
+      ,xoha.slip_number                 slip_number                 -- ‘—‚èóNo
+      ,xoha.small_quantity              small_quantity              -- ¬ŒûŒÂ”
+      ,xoha.label_quantity              label_quantity              -- ƒ‰ƒxƒ‹–‡”
+      ,xoha.mixed_sign                  mixed_sign                  -- ¬Ú‹L†
+      ,DECODE(xottv.shipping_shikyu_class
+         ,'1',xoha.mixed_no
+         ,'2',NULL)                     mixed_no                    -- ¬ÚŒ³No
+      ,xoha.result_freight_carrier_id   result_freight_carrier_id   -- ‰^‘—‹ÆÒ_ÀÑID
+      ,xoha.result_freight_carrier_code result_freight_carrier_code -- ‰^‘—‹ÆÒ_ÀÑ
+      ,xoha.result_shipping_method_code result_shipping_method_code -- ”z‘—‹æ•ª_ÀÑ
+      ,xlvv3.attribute6                 result_shipping_kubun_code  -- DFF¬Œû‹æ•ª_ÀÑ
+      ,xlvv3.attribute9                 result_mixed_class_code     -- DFF¬Ú‹æ•ª_ÀÑ
+      ,xoha.result_deliver_to           result_deliver_to           -- o‰×æ_ÀÑ
+      ,xpsv2.party_site_full_name       result_deliver_to_name      -- o‰×æ_ÀÑ–¼Ì
+      ,xoha.shipped_date                shipped_date                -- o‰×“ú
+      ,xoha.arrival_date                arrival_date                -- ’…‰×“ú
+      --
+      ,xoha.req_status                  req_status                  -- ƒXƒe[ƒ^ƒX
+      ,xoha.notif_status                notif_status                -- ’Ê’mƒXƒe[ƒ^ƒX
+      ,xoha.prev_notif_status           prev_notif_status           -- ‘O‰ñ’Ê’mƒXƒe[ƒ^ƒX
+      ,xoha.notif_date                  notif_date                  -- Šm’è’Ê’mÀ{“ú
+      ,xoha.new_modify_flg              new_modify_flg              -- V‹KC³ƒtƒ‰ƒO
+      ,xoha.screen_update_by            screen_update_by            -- ‰æ–ÊXVÒ
+      ,xoha.screen_update_date          screen_update_date          -- ‰æ–ÊXV“ú
+      ,xoha.prev_delivery_no            prev_delivery_no            -- ‘O‰ñ”z‘—‡‚
+      ,xoha.actual_confirm_class        actual_confirm_class        -- ÀÑŒvãÏ‹æ•ª
+      --
+      ,xoha.created_by                  created_by                  -- ì¬Ò
+      ,xoha.creation_date               creation_date               -- ì¬“ú
+      ,xoha.last_updated_by             last_updated_by             -- ÅIXVÒ
+      ,xoha.last_update_date            last_update_date            -- ÅIXV“ú
+      ,xoha.last_update_login           last_update_login           -- ÅIXVƒƒOƒCƒ“
+FROM   xxwsh_order_headers_all      xoha   -- ó’ƒwƒbƒ_[
+      ,xxwsh_oe_transaction_types_v xottv  -- ó’ƒ^ƒCƒv
+      ,xxwsh_carriers_schedule      xcs    -- ”zÔ”z‘—Œv‰æ
+      ,xxcmn_lookup_values_v        xlvv1
+      ,xxcmn_lookup_values_v        xlvv2
+      ,xxcmn_lookup_values_v        xlvv3
+      ,xxcmn_item_locations_v       xilv
+      ,xxcmn_party_sites_v xpsv
+      ,xxcmn_party_sites_v xpsv2
+      ,xxcmn_vendor_sites_v         xvsv
+      ,xxcmn_parties_v              xpv
+      ,xxcmn_vendors_v              xvv
+WHERE xlvv1.lookup_type(+)        = 'XXWSH_PROCESS_TYPE'
+AND   xlvv1.lookup_code(+)        = xottv.shipping_shikyu_class       -- ˆ—í•Ê
+AND   xlvv2.lookup_type(+)        = 'XXCMN_SHIP_METHOD'
+AND   xlvv2.lookup_code(+)        = xoha.shipping_method_code         -- ”z‘—‹æ•ª
+AND   xlvv3.lookup_type(+)        = 'XXCMN_SHIP_METHOD'
+AND   xlvv3.lookup_code(+)        = xoha.result_shipping_method_code  -- ”z‘—‹æ•ª_ÀÑ
+AND   xilv.segment1(+)            = xoha.deliver_from                 -- o‰×Œ³•ÛŠÇêŠ–¼Ìæ“¾
+AND   xpsv.party_site_id(+)       = xoha.deliver_to_id                -- o‰×æ–¼Ì
+AND   xpsv2.party_site_id(+)      = xoha.result_deliver_to_id         -- o‰×æ_ÀÑ–¼Ì
+AND   xvsv.vendor_site_id(+)      = xoha.vendor_site_id               -- æˆøæƒTƒCƒg–¼Ì
+AND   xpv.party_number(+)         = xoha.head_sales_branch            -- ŠÇŠ‹’“_–¼Ì
+AND   xpv.customer_class_code(+)  = '1'                               -- ŒÚ‹q‹æ•ª
+AND   xvv.segment1(+)             = xoha.vendor_code                  -- æˆøæ–¼Ì
+AND   xcs.default_line_number (+) = xoha.request_no
+-- 2008/09/02 PT1-1_4 Mod D.Nihei Start
+--AND   xcs.delivery_no (+)         = NVL(xoha.delivery_no,xoha.mixed_no)
+AND   xcs.delivery_no (+)         = xoha.mixed_no
+-- 2008/09/02 PT1-1_4 Mod D.Nihei End
 AND   xoha.order_type_id          = xottv.transaction_type_id
 AND   xoha.latest_external_flag   = 'Y'
 AND   (    (xottv.shipping_shikyu_class   = '1')
       OR (   (xottv.shipping_shikyu_class = '2')
          AND (xoha.delivery_no IS NOT NULL)))
+-- 2008/09/02 PT1-1_4 Add D.Nihei Start
+AND   xoha.delivery_no IS NULL
+-- 2008/09/02 PT1-1_4 Add D.Nihei End
 UNION ALL
 SELECT xmrih.rowid                        row_id
       ,xmrih.mov_hdr_id                       header_id               -- ˆÚ“®ƒwƒbƒ_ID
       ,NVL2(xcs.default_line_number,'0','1') default_line            -- Šî€–¾×
       ,'3'                                transaction_type            -- ˆ—í•ÊƒR[ƒh
-      ,xlvv1.meaning                      transaction_type_name       -- ˆ—í•Ê–¼Ì
+-- 2008/09/02 PT1-1_4 Mod D.Nihei Start
+--      ,xlvv1.meaning                      transaction_type_name       -- ˆ—í•Ê–¼Ì
+      ,(SELECT  xlvv1.meaning
+        FROM    xxcmn_lookup_values_v xlvv1
+        WHERE   xlvv1.lookup_type = 'XXWSH_PROCESS_TYPE'
+        AND     xlvv1.lookup_code = '3'
+        AND     ROWNUM            = 1  )  transaction_type_name       -- ˆ—í•Ê–¼Ì
+-- 2008/09/02 PT1-1_4 Mod D.Nihei End
       ,xmrih.delivery_no                  delivery_no                 -- ”z‘—No
       ,xmrih.mov_num                      request_no                  -- ˆË—ŠNo/ˆÚ“®No
       ,xmrih.career_id                    career_id                   -- ‰^‘—‹ÆÒID
@@ -178,8 +304,11 @@ SELECT xmrih.rowid                        row_id
       ,xlvv2.attribute6                   shipping_kubun_code         -- DFF¬Œû‹æ•ª
       ,xlvv2.attribute9                   mixed_class_code            -- DFF¬Ú‹æ•ª
       ,NULL                               transaction_type_id         -- æˆøƒ^ƒCƒvID
-      ,xmrih.schedule_ship_date           schedule_ship_date          -- oŒÉ—\’è“ú 
+      ,xmrih.schedule_ship_date           schedule_ship_date          -- oŒÉ—\’è“ú
       ,xmrih.schedule_arrival_date        schedule_arrival_date       -- ’…‰×—\’è“ú
+-- 2008/09/02 TE080_600w“ENo13‘Î‰ Add D.Nihei Start
+      ,NULL                               amount_fix_class            -- —L‹àŠzŠm’è‹æ•ª
+-- 2008/09/02 TE080_600w“ENo13‘Î‰ Add D.Nihei End
       ,xmrih.shipped_locat_code           deliver_from                -- o‰×Œ³•ÛŠÇêŠ
       ,xilv.description                   deliver_from_name           -- “E—v
       ,xmrih.ship_to_locat_code           deliver_to                  -- o‰×æ
@@ -215,7 +344,7 @@ SELECT xmrih.rowid                        row_id
       ,NULL                               result_deliver_to_name      -- o‰×æ_ÀÑ–¼Ì
       ,xmrih.actual_ship_date             shipped_date                -- o‰×“ú
       ,xmrih.actual_arrival_date          arrival_date                -- ’…‰×“ú
-      -- 
+      --
       ,xmrih.status                       req_status                  -- ƒXƒe[ƒ^ƒX
       ,xmrih.notif_status                 notif_status                -- ’Ê’mƒXƒe[ƒ^ƒX
       ,xmrih.prev_notif_status            prev_notif_status           -- ‘O‰ñ’Ê’mƒXƒe[ƒ^ƒX
@@ -225,7 +354,7 @@ SELECT xmrih.rowid                        row_id
       ,xmrih.screen_update_date           screen_update_date          -- ‰æ–ÊXV“ú
       ,xmrih.prev_delivery_no             prev_delivery_no            -- ‘O‰ñ”z‘—‡‚
       ,xmrih.comp_actual_flg              actual_confirm_class        -- ÀÑŒvãÏ‹æ•ª
-      -- 
+      --
       ,xmrih.created_by                   created_by                  -- ì¬Ò
       ,xmrih.creation_date                creation_date               -- ì¬“ú
       ,xmrih.last_updated_by              last_updated_by             -- ÅIXVÒ
@@ -233,14 +362,18 @@ SELECT xmrih.rowid                        row_id
       ,xmrih.last_update_login            last_update_login           -- ÅIXVƒƒOƒCƒ“
 FROM   xxinv_mov_req_instr_headers xmrih
       ,xxwsh_carriers_schedule     xcs    -- ”zÔ”z‘—Œv‰æ
-      ,xxcmn_lookup_values_v       xlvv1
+-- 2008/09/02 PT1-1_4 Del D.Nihei Start
+--      ,xxcmn_lookup_values_v       xlvv1
+-- 2008/09/02 PT1-1_4 Del D.Nihei End
       ,xxcmn_lookup_values_v       xlvv2
       ,xxcmn_lookup_values_v       xlvv3
       ,xxcmn_item_locations_v      xilv
       ,xxcmn_item_locations_v      xilv2
-WHERE  xlvv1.lookup_type          = 'XXWSH_PROCESS_TYPE' 
-AND    xlvv1.lookup_code          = '3'                                -- ˆ—í•Ê
-AND    xlvv2.lookup_type(+)       = 'XXCMN_SHIP_METHOD'
+-- 2008/09/02 PT1-1_4 Mod D.Nihei Start
+--WHERE  xlvv1.lookup_type          = 'XXWSH_PROCESS_TYPE' 
+--AND    xlvv1.lookup_code          = '3'                                -- ˆ—í•Ê
+WHERE  xlvv2.lookup_type(+)       = 'XXCMN_SHIP_METHOD'
+-- 2008/09/02 PT1-1_4 Mod D.Nihei End
 AND    xlvv2.lookup_code(+)       = xmrih.shipping_method_code         -- ”z‘—‹æ•ª
 AND    xlvv3.lookup_type(+)       = 'XXCMN_SHIP_METHOD'
 AND    xlvv3.lookup_code(+)       = xmrih.actual_shipping_method_code  -- ”z‘—‹æ•ª_ÀÑ
