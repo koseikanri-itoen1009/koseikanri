@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI003A05R(body)
  * Description      : 入庫差異確認リスト
  * MD.050           : 入庫差異確認リスト MD050_COI_003_A05
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/08/18    1.2   N.Abe            [0001090]出力桁数の修正
  *  2009/12/25    1.3   N.Abe            [E_本稼動_00222]顧客名称取得方法修正
  *                                       [E_本稼動_00610]パフォーマンス改善
+ *  2010/11/29    1.4   H.Sasaki         [E_本稼動_05338]パフォーマンス改善
  *
  *****************************************************************************************/
 --
@@ -195,6 +196,10 @@ AS
   --
   gr_param                  gr_param_rec;
   gt_hht_info_tab           gt_hht_info_ttype;
+-- == 2010/11/29 V1.4 Added START ===============================================================
+  gt_base_code              xxcoi_hht_inv_transactions.base_code%TYPE;        --  拠点コード
+  gn_ins_cnt                NUMBER;                                           --  帳票ワーク挿入件数
+-- == 2010/11/29 V1.4 Added END   ===============================================================
 --
   /**********************************************************************************
    * Procedure Name   : del_work
@@ -709,6 +714,10 @@ AS
 --      
     -- コミット
     COMMIT;
+-- == 2010/11/29 V1.4 Added START ===============================================================
+    --  帳票ワーク挿入件数
+    gn_ins_cnt :=  gn_ins_cnt + 1;
+-- == 2010/11/29 V1.4 Added END   ===============================================================
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -852,6 +861,9 @@ AS
           WHERE xhit.stock_balance_list_div IN (cv_flg_o,cv_flg_i)
             AND (xhit.invoice_date BETWEEN gd_target_date_start AND gd_target_date_end)
             AND xhit.status = cn_status
+-- == 2010/11/29 V1.4 Added START ===============================================================
+            AND xhit.base_code    =   gt_base_code
+-- == 2010/11/29 V1.4 Added END   ===============================================================
 -- == 2009/08/06 V1.1 Modified START ===============================================================
 --            AND EXISTS (SELECT 1 FROM xxcoi_base_info2_v  xbiv 
 --                        WHERE xbiv.focus_base_code = gr_param.base_code
@@ -1910,7 +1922,17 @@ AS
       which  => FND_FILE.LOG
     , buff   => gv_out_msg
     );
---    
+--
+-- == 2010/11/29 V1.4 Added START ===============================================================
+    --  対照拠点コード取得
+    SELECT  DECODE(xca.dept_hht_div, '1', xca.management_base_code, hca.account_number)
+    INTO    gt_base_code
+    FROM    hz_cust_accounts      hca
+          , xxcmm_cust_accounts   xca
+    WHERE   hca.cust_account_id       =   xca.customer_id
+    AND     hca.customer_class_code   =   '1'
+    AND     hca.account_number        =   gr_param.base_code;
+-- == 2010/11/29 V1.4 Added END   ===============================================================
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -2003,6 +2025,9 @@ AS
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
     gn_warn_cnt   := 0;
+-- == 2010/11/29 V1.4 Added START ===============================================================
+    gn_ins_cnt    := 0;
+-- == 2010/11/29 V1.4 Added END   ===============================================================
 --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -2035,51 +2060,65 @@ AS
       RAISE global_process_expt ;
     END IF;
 --
-    -- 出力条件が「差異有り」の場合
-    IF ( gr_param.output_term = cv_output_term_0 ) THEN
-         -- =====================================================
-         -- 差異有りHHT入出庫データ取得(A-2)
-         -- =====================================================
-         get_hht_data_a(
-            lv_errbuf            -- エラー・メッセージ           --# 固定 #
-          , lv_retcode           -- リターン・コード             --# 固定 #
-          , lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
-         );
-         IF ( lv_retcode = cv_status_error ) THEN
-           -- エラー処理
-           RAISE global_process_expt ;
-         END IF;
-    ELSIF
-      -- 出力条件が「差異無し」の場合
-      ( gr_param.output_term = cv_output_term_1 ) THEN
-         -- =====================================================
-         -- 差異無しHHT入出庫データ取得(A-4)
-         -- =====================================================
-         get_hht_data_b(
-             lv_errbuf            -- エラー・メッセージ           --# 固定 #
-           , lv_retcode           -- リターン・コード             --# 固定 #
-           , lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
-         );
-         IF ( lv_retcode = cv_status_error ) THEN
-           -- エラー処理
-           RAISE global_process_expt ;
-         END IF;
-    ELSIF
-      -- 出力条件が「差異有無」の場合
-      ( gr_param.output_term = cv_output_term_2 ) THEN
-        -- =====================================================
-        -- 差異有無HHT入出庫データ取得(A-6)
-        -- =====================================================
-        get_hht_data_c(
-            lv_errbuf            -- エラー・メッセージ           --# 固定 #
-          , lv_retcode           -- リターン・コード             --# 固定 #
-          , lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
-        );
-        IF ( lv_retcode = cv_status_error ) THEN
-          -- エラー処理
-          RAISE global_process_expt ;
-        END IF;
+-- == 2010/11/29 V1.4 Modified START ===============================================================
+--    -- 出力条件が「差異有り」の場合
+--    IF ( gr_param.output_term = cv_output_term_0 ) THEN
+--         -- =====================================================
+--         -- 差異有りHHT入出庫データ取得(A-2)
+--         -- =====================================================
+--         get_hht_data_a(
+--            lv_errbuf            -- エラー・メッセージ           --# 固定 #
+--          , lv_retcode           -- リターン・コード             --# 固定 #
+--          , lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
+--         );
+--         IF ( lv_retcode = cv_status_error ) THEN
+--           -- エラー処理
+--           RAISE global_process_expt ;
+--         END IF;
+--    ELSIF
+--      -- 出力条件が「差異無し」の場合
+--      ( gr_param.output_term = cv_output_term_1 ) THEN
+--         -- =====================================================
+--         -- 差異無しHHT入出庫データ取得(A-4)
+--         -- =====================================================
+--         get_hht_data_b(
+--             lv_errbuf            -- エラー・メッセージ           --# 固定 #
+--           , lv_retcode           -- リターン・コード             --# 固定 #
+--           , lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
+--         );
+--         IF ( lv_retcode = cv_status_error ) THEN
+--           -- エラー処理
+--           RAISE global_process_expt ;
+--         END IF;
+--    ELSIF
+--      -- 出力条件が「差異有無」の場合
+--      ( gr_param.output_term = cv_output_term_2 ) THEN
+--        -- =====================================================
+--        -- 差異有無HHT入出庫データ取得(A-6)
+--        -- =====================================================
+--        get_hht_data_c(
+--            lv_errbuf            -- エラー・メッセージ           --# 固定 #
+--          , lv_retcode           -- リターン・コード             --# 固定 #
+--          , lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
+--        );
+--        IF ( lv_retcode = cv_status_error ) THEN
+--          -- エラー処理
+--          RAISE global_process_expt ;
+--        END IF;
+--    END IF;
+    -- =====================================================
+    -- 差異有無HHT入出庫データ取得(A-6)
+    -- =====================================================
+    get_hht_data_c(
+        lv_errbuf            -- エラー・メッセージ           --# 固定 #
+      , lv_retcode           -- リターン・コード             --# 固定 #
+      , lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    IF ( lv_retcode = cv_status_error ) THEN
+      -- エラー処理
+      RAISE global_process_expt ;
     END IF;
+-- == 2010/11/29 V1.4 Modified END   ===============================================================
 --
     -- HHT入出庫データが1件以上取得できた場合
     IF ( gn_hht_info_cnt > 0 ) THEN
@@ -2089,6 +2128,21 @@ AS
        <<gn_hht_info_cnt_loop>>
        FOR gn_hht_info_loop_cnt IN 1 .. gn_hht_info_cnt LOOP
 --
+-- == 2010/11/29 V1.4 Added START ===============================================================
+        IF  (     gr_param.output_term = cv_output_term_0
+              AND gt_hht_info_tab(gn_hht_info_loop_cnt).outside_qty <> gt_hht_info_tab(gn_hht_info_loop_cnt).inside_qty
+            )
+            OR
+            (     gr_param.output_term = cv_output_term_1
+              AND gt_hht_info_tab(gn_hht_info_loop_cnt).outside_qty =  gt_hht_info_tab(gn_hht_info_loop_cnt).inside_qty
+            )
+            OR
+            (gr_param.output_term = cv_output_term_2)
+        THEN
+          --  パラメータ差異ありで、入庫数量、出庫数量不一致のデータ
+          --  パラメータ差異なしで、入庫数量、出庫数量一致のデータ
+          --  パラメータ差異有無で、全データ
+-- == 2010/11/29 V1.4 Added END   ===============================================================
           -- ======================================
           -- ワークテーブルデータ登録(A-3,A-5,A-7)
           -- ======================================
@@ -2102,13 +2156,19 @@ AS
           IF ( lv_retcode = cv_status_error ) THEN
             RAISE global_process_expt;
           END IF;
+-- == 2010/11/29 V1.4 Added START ===============================================================
+        END IF;
+-- == 2010/11/29 V1.4 Added END   ===============================================================
 --
        END LOOP gn_hht_info_cnt_loop;
 --
     END IF;
 --
     -- 出力対象件数が0件の場合、ワークテーブルにパラメータ情報のみを登録
-    IF (gn_target_cnt = 0) THEN
+-- == 2010/11/29 V1.4 Modified START ===============================================================
+--    IF (gn_target_cnt = 0) THEN
+    IF (gn_ins_cnt = 0) THEN
+-- == 2010/11/29 V1.4 Modified END   ===============================================================
 --
       -- 0件メッセージの取得
       lv_nodata_msg := xxccp_common_pkg.get_msg(
