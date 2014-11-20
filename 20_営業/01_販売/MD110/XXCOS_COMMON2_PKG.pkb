@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_common2_pkg(spec)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.7
+ * Version                : 1.8
  *
  * Program List
  *  --------------------          ---- ----- --------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009/10/02    1.6  M.Sano           [0001156]顧客品目抽出条件追加
  *                                      [0001344]顧客品目検索エラー,JANコード検索エラーのパラメータ追加
  *  2010/04/15    1.7  Y.Goto           [E_本稼動_01719]担当営業員取得関数追加
+ *  2010/05/26    1.8  K.Kiriu          [E_本稼動_02853]convert_quantity 出荷数量null時の不具合対応
  *
  *****************************************************************************************/
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1283,6 +1284,11 @@ AS
     -- ===============================
     lv_case_uom_code                                   mtl_units_of_measure_tl.uom_code%TYPE; -- ケース単位コード
     --
+/* 2010/05/26 Ver1.8 Add Start */
+    ln_sum_indv_order_qty                              NUMBER;  -- 発注数量(合計・バラ)
+    ln_sum_shipping_qty                                NUMBER;  -- 出荷数量(合計・バラ)
+/* 2010/05/26 Ver1.8 Add End  */
+
 --#####################  固定ローカル変数宣言部 START   ########################
 --
     lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
@@ -1306,11 +1312,19 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+/* 2010/05/26 Ver1.8 Add Start */
+    --発注数量(合計・バラ)、出荷数量(合計・バラ)がNULLの場合0とする
+    ln_sum_indv_order_qty := NVL( in_sum_indv_order_qty, cn_zero );
+    ln_sum_shipping_qty   := NVL( in_sum_shipping_qty, cn_zero );
+/* 2010/05/26 Ver1.8 Add End */
     --ケース単位コード取得
     lv_case_uom_code := FND_PROFILE.VALUE( ct_prof_case_uom_code );
 --
+/* 2010/05/26 Ver1.8 Mod Start */
     --欠品数量(合計・バラ) = 発注数量(合計・バラ) - 出荷数量(合計・バラ)
-    on_sum_stockout_qty  := in_sum_indv_order_qty - in_sum_shipping_qty;
+--    on_sum_stockout_qty  := in_sum_indv_order_qty - in_sum_shipping_qty;
+    on_sum_stockout_qty  := ln_sum_indv_order_qty - ln_sum_shipping_qty;
+/* 2010/05/26 Ver1.8 Mod End   */
 --
     --ケース以外の場合
     IF ( iv_uom_code <> lv_case_uom_code ) THEN
@@ -1318,10 +1332,14 @@ AS
       --ケース入数あり、且つ、0以外
       IF ( in_case_qty IS NOT NULL )
         AND ( in_case_qty <> cn_zero )THEN
+/* 2010/05/26 Ver1.8 Mod Start */
         --出荷数量(バラ)   = 出荷数量(合計・バラ) / ケース入数の余り
-        on_indv_shipping_qty := MOD( in_sum_shipping_qty, in_case_qty );
+--        on_indv_shipping_qty := MOD( in_sum_shipping_qty, in_case_qty );
+        on_indv_shipping_qty := MOD( ln_sum_shipping_qty, in_case_qty );
         --出荷数量(ケース) = 出荷数量(合計・バラ) / ケース入数の商
-        on_case_shipping_qty := TRUNC( in_sum_shipping_qty / in_case_qty );
+--        on_case_shipping_qty := TRUNC( in_sum_shipping_qty / in_case_qty );
+        on_case_shipping_qty := TRUNC( ln_sum_shipping_qty / in_case_qty );
+/* 2010/05/26 Ver1.8 Mod End   */
         --欠品数量(バラ)   = 欠品数量(合計・バラ) / ケース入数の余り
         on_indv_stockout_qty := MOD( on_sum_stockout_qty, in_case_qty );
         --欠品数量(ケース) = 欠品数量(合計・バラ) / ケース入数の商
@@ -1329,7 +1347,10 @@ AS
       --ケース入数なし
       ELSE
         --出荷数量(バラ)   = 出荷数量(合計・バラ)
-        on_indv_shipping_qty := in_sum_shipping_qty;
+/* 2010/05/26 Ver1.8 Mod Start */
+--        on_indv_shipping_qty := in_sum_shipping_qty;
+        on_indv_shipping_qty := ln_sum_shipping_qty;
+/* 2010/05/26 Ver1.8 Mod End   */
         --出荷数量(ケース) = 0
         on_case_shipping_qty := cn_zero;
         --欠品数量(バラ)   = 欠品数量(合計・バラ) 
@@ -1341,8 +1362,11 @@ AS
       --ボール入数あり、且つ、0以外
       IF ( in_ball_qty IS NOT NULL )
         AND ( in_ball_qty <> cn_zero )THEN
+/* 2010/05/26 Ver1.8 Mod Start */
         --出荷数量(ボール) = 出荷数量(合計・バラ) / ボール入数の商
-        on_ball_shipping_qty := TRUNC( in_sum_shipping_qty / in_ball_qty );
+--        on_ball_shipping_qty := TRUNC( in_sum_shipping_qty / in_ball_qty );
+        on_ball_shipping_qty := TRUNC( ln_sum_shipping_qty / in_ball_qty );
+/* 2010/05/26 Ver1.8 Mod End   */
         --欠品数量(ボール) = 欠品数量(合計・バラ) / ボール入数の商
         on_ball_stockout_qty := TRUNC( on_sum_stockout_qty / in_ball_qty );
       --ボール入数なし
@@ -1356,8 +1380,11 @@ AS
     --ケースの場合
     ELSE
 --
+/* 2010/05/26 Ver1.8 Mod Start */
       --出荷数量(バラ)   = 出荷数量(合計・バラ)
-      on_indv_shipping_qty := in_sum_shipping_qty;
+--      on_indv_shipping_qty := in_sum_shipping_qty;
+      on_indv_shipping_qty := ln_sum_shipping_qty;
+/* 2010/05/26 Ver1.8 Mod End   */
       --出荷数量(ケース) = 0
       on_case_shipping_qty := cn_zero;
       --出荷数量(ボール) = 0
