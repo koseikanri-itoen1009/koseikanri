@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A10C(body)
  * Description      : 商品計画リスト（累計）出力
  * MD.050           : 商品計画リスト（累計）出力 MD050_CSM_002_A10
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2011-01-05     1.7   SCS OuKou       [E_本稼動_05803]
  *  2012-12-10     1.8   SCSK K.Taniguchi[E_本稼動_09949] 新旧原価選択可能対応
  *  2013-01-31     1.9   SCSK K.Taniguchi[E_本稼動_09949] 年度開始日取得の不具合対応
+ *  2013-02-14     1.10  SCSK S.Niki     [E_本稼動_09950] 階層計出力対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -170,6 +171,13 @@ AS
   cv_new_cost      CONSTANT VARCHAR2(10)  := '10';                              -- パラメータ：新旧原価区分（新原価）
   cv_old_cost      CONSTANT VARCHAR2(10)  := '20';                              -- パラメータ：新旧原価区分（旧原価）
 --//+ADD END E_本稼動_09949 K.Taniguchi
+--//+ADD START E_本稼動_09950 S.Niki
+  cv_lvl2          CONSTANT VARCHAR2(2)   := 'L2'; -- 拠点階層
+  cv_lvl3          CONSTANT VARCHAR2(2)   := 'L3'; -- 拠点階層
+  cv_lvl4          CONSTANT VARCHAR2(2)   := 'L4'; -- 拠点階層
+  cv_lvl5          CONSTANT VARCHAR2(2)   := 'L5'; -- 拠点階層
+  cv_lvl6          CONSTANT VARCHAR2(2)   := 'L6'; -- 拠点階層
+--//+ADD END E_本稼動_09950 S.Niki
 
 --
   -- ===============================
@@ -1043,6 +1051,10 @@ AS
   PROCEDURE select_discount_data(
     iv_yyyy             IN  VARCHAR2,     -- 対象年度
     iv_kyoten_cd        IN  VARCHAR2,     -- 拠点コード
+--//+ADD START E_本稼動_09950 S.Niki
+    iv_level_sum_flg    IN  VARCHAR2,     -- 階層計処理フラグ
+    iv_p_level          IN  VARCHAR2,     -- 階層
+--//+ADD END E_本稼動_09950 S.Niki
     ot_sales_discount   OUT xxcsm_item_plan_loc_bdgt.sales_discount%TYPE,     -- 売上値引
     ot_receipt_discount OUT xxcsm_item_plan_loc_bdgt.receipt_discount%TYPE,   -- 入金値引
     ov_errbuf           OUT NOCOPY VARCHAR2,                    -- エラー・メッセー
@@ -1082,7 +1094,15 @@ AS
 --###########################  固定部 END   ############################
 --
     -- 抽出処理
-    SELECT
+--//+UPD START E_本稼動_09950 S.Niki
+--    SELECT
+    SELECT /*+
+             LEADING(iph ipb ipl xlllv)
+             USE_NL(iph ipb ipl xlllv)
+             INDEX(iph XXCSM_ITEM_PLAN_HEADERS_U01)
+             INDEX(ipb XXCSM_ITEM_PLAN_LOC_BDGT_N01)
+           */
+--//+UPD END E_本稼動_09950 S.Niki
        NVL(SUM(ipb.sales_discount),0)         sales_discount            -- 売上値引
       ,NVL(SUM(ipb.receipt_discount),0)       receipt_discount          -- 入金値引
     INTO
@@ -1095,8 +1115,41 @@ AS
       iph.item_plan_header_id = ipb.item_plan_header_id
     AND
       iph.plan_year = TO_NUMBER(iv_yyyy)
+--//+UPD START E_本稼動_09950 S.Niki
+--    AND
+--      iph.location_cd = iv_kyoten_cd
     AND
-      iph.location_cd = iv_kyoten_cd
+    (
+      (
+            iv_level_sum_flg = cv_flg_n       -- 階層計出力処理でない
+       AND  iph.location_cd  = iv_kyoten_cd   -- 単一拠点コード指定
+      )
+      OR
+      (
+            iv_level_sum_flg = cv_flg_y       -- 階層計出力処理の場合
+       AND  iph.location_cd  IN
+            (
+              -- 指定された拠点配下の拠点を返す
+              SELECT  CASE xlllv.location_level
+                        WHEN cv_lvl2 THEN xlllv.cd_level2
+                        WHEN cv_lvl3 THEN xlllv.cd_level3
+                        WHEN cv_lvl4 THEN xlllv.cd_level4
+                        WHEN cv_lvl5 THEN xlllv.cd_level5
+                        WHEN cv_lvl6 THEN xlllv.cd_level6
+                      END   AS  location_cd         -- 配下の拠点コード
+              FROM    xxcsm_loc_level_list_v  xlllv -- 部門一覧ビュー
+              WHERE   1=1
+              AND     CASE  iv_p_level              -- 階層レベル
+                        WHEN cv_lvl2 THEN xlllv.cd_level2
+                        WHEN cv_lvl3 THEN xlllv.cd_level3
+                        WHEN cv_lvl4 THEN xlllv.cd_level4
+                        WHEN cv_lvl5 THEN xlllv.cd_level5
+                        WHEN cv_lvl6 THEN xlllv.cd_level6
+                      END   =   iv_kyoten_cd        -- 拠点コード
+            )
+      )
+    )
+--//+UPD END E_本稼動_09950 S.Niki
     AND
       EXISTS(
         SELECT 'X'   x
@@ -1511,6 +1564,11 @@ AS
     iv_p_new_old_cost_class
                     IN  VARCHAR2,            -- 6.新旧原価区分
 --//+ADD END E_本稼動_09949 K.Taniguchi
+--//+ADD START E_本稼動_09950 S.Niki
+    iv_level_sum_flg
+                    IN  VARCHAR2 ,           -- 7.階層計処理フラグ
+    iv_p_level      IN  VARCHAR2 ,           -- 8.階層
+--//+ADD END E_本稼動_09950 S.Niki
     ov_errbuf       OUT NOCOPY VARCHAR2,     --   エラー・メッセージ                  --# 固定 #
     ov_retcode      OUT NOCOPY VARCHAR2,     --   リターン・コード                    --# 固定 #
     ov_errmsg       OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ        --# 固定 #
@@ -1616,7 +1674,12 @@ AS
     CURSOR item_plan_cur(
       in_yyyy                   IN  NUMBER,       -- 1.対象年度
       iv_kyoten_cd              IN  VARCHAR2,     -- 2.拠点コード
-      iv_p_new_old_cost_class   IN  VARCHAR2)     -- 3.新旧原価区分
+--//+UPD START E_本稼動_09950 S.Niki
+--      iv_p_new_old_cost_class   IN  VARCHAR2)     -- 3.新旧原価区分
+      iv_p_new_old_cost_class   IN  VARCHAR2,     -- 3.新旧原価区分
+      iv_level_sum_flg          IN  VARCHAR2,     -- 4.階層計処理フラグ
+      iv_p_level                IN  VARCHAR2)     -- 5.階層
+--//+UPD END E_本稼動_09950 S.Niki
     IS
       SELECT
          sub.group1_cd                  group1_cd      --商品群コード１
@@ -1632,7 +1695,10 @@ AS
         ,NVL(SUM(sub.sales_budget), 0)  sales_budget   --売上
       FROM
       (
-          SELECT
+--//+UPD START E_本稼動_09950 S.Niki
+--          SELECT
+          SELECT /*+ USE_NL(iph ipl cgv xlllv) */
+--//+UPD END E_本稼動_09950 S.Niki
              cgv.group1_cd                  group1_cd      --商品群コード１
             ,cgv.group1_nm                  group1_nm      --商品群名称１
             ,cgv.group4_cd                  group4_cd      --商品群コード４
@@ -1738,8 +1804,41 @@ AS
              ipl.item_no = cgv.item_cd
           AND
              iph.plan_year = in_yyyy
+--//+UPD START E_本稼動_09950 S.Niki
+--          AND
+--             iph.location_cd = iv_kyoten_cd
           AND
-             iph.location_cd = iv_kyoten_cd
+          (
+            (
+                  iv_level_sum_flg = cv_flg_n       -- 階層計出力処理でない
+             AND  iph.location_cd  = iv_kyoten_cd   -- 単一拠点コード指定
+            )
+            OR
+            (
+                  iv_level_sum_flg = cv_flg_y       -- 階層計出力処理の場合
+             AND  iph.location_cd  IN
+                  (
+                    -- 指定された拠点配下の拠点を返す
+                    SELECT  CASE xlllv.location_level
+                              WHEN cv_lvl2 THEN xlllv.cd_level2
+                              WHEN cv_lvl3 THEN xlllv.cd_level3
+                              WHEN cv_lvl4 THEN xlllv.cd_level4
+                              WHEN cv_lvl5 THEN xlllv.cd_level5
+                              WHEN cv_lvl6 THEN xlllv.cd_level6
+                            END   AS  location_cd         -- 配下の拠点コード
+                    FROM    xxcsm_loc_level_list_v  xlllv -- 部門一覧ビュー
+                    WHERE   1=1
+                    AND     CASE  iv_p_level              -- 階層レベル
+                              WHEN cv_lvl2 THEN xlllv.cd_level2
+                              WHEN cv_lvl3 THEN xlllv.cd_level3
+                              WHEN cv_lvl4 THEN xlllv.cd_level4
+                              WHEN cv_lvl5 THEN xlllv.cd_level5
+                              WHEN cv_lvl6 THEN xlllv.cd_level6
+                            END   =   iv_kyoten_cd        -- 拠点コード
+                  )
+            )
+          )
+--//+UPD END E_本稼動_09950 S.Niki
           AND
              ipl.item_kbn <> cv_item_kbn
       ) sub
@@ -1780,16 +1879,31 @@ AS
     -- ***************************************
 
     gn_target_cnt := gn_target_cnt + 1;
+--//+ADD START E_本稼動_09950 S.Niki
+    lv_retcode    := cv_status_normal;
+--//+ADD END E_本稼動_09950 S.Niki
 
     -- =============================================
     -- 年間商品計画データ存在チェック(A-3)
     -- =============================================
-    chk_plandata(
-              iv_yyyy              -- 対象年度
-             ,iv_kyoten_cd         -- 拠点コード
-             ,lv_errbuf            -- エラー・メッセージ
-             ,lv_retcode           -- リターン・コード
-             ,lv_errmsg);
+--//+UPD START E_本稼動_09950 S.Niki
+--    chk_plandata(
+--              iv_yyyy              -- 対象年度
+--             ,iv_kyoten_cd         -- 拠点コード
+--             ,lv_errbuf            -- エラー・メッセージ
+--             ,lv_retcode           -- リターン・コード
+--             ,lv_errmsg);
+--
+    -- 階層計出力処理でない場合
+    IF ( iv_level_sum_flg = cv_flg_n ) THEN
+      chk_plandata(
+                iv_yyyy              -- 対象年度
+               ,iv_kyoten_cd         -- 拠点コード
+               ,lv_errbuf            -- エラー・メッセージ
+               ,lv_retcode           -- リターン・コード
+               ,lv_errmsg);
+    END IF;
+--//+UPD END E_本稼動_09950 S.Niki
     -- 例外処理
     IF (lv_retcode = cv_status_error) THEN
       --(エラー処理)
@@ -1799,12 +1913,24 @@ AS
       -- =============================================
       -- 按分処理済データ存在チェック(A-4)
       -- =============================================
-      chk_propdata(
-                iv_yyyy              -- 対象年度
-               ,iv_kyoten_cd         -- 拠点コード
-               ,lv_errbuf            -- エラー・メッセージ
-               ,lv_retcode           -- リターン・コード
-               ,lv_errmsg);
+--//+UPD START E_本稼動_09950 S.Niki
+--      chk_propdata(
+--                iv_yyyy              -- 対象年度
+--               ,iv_kyoten_cd         -- 拠点コード
+--               ,lv_errbuf            -- エラー・メッセージ
+--               ,lv_retcode           -- リターン・コード
+--               ,lv_errmsg);
+--
+      -- 階層計出力処理でない場合
+      IF ( iv_level_sum_flg = cv_flg_n ) THEN
+        chk_propdata(
+                  iv_yyyy              -- 対象年度
+                 ,iv_kyoten_cd         -- 拠点コード
+                 ,lv_errbuf            -- エラー・メッセージ
+                 ,lv_retcode           -- リターン・コード
+                 ,lv_errmsg);
+      END IF;
+--//+UPD END E_本稼動_09950 S.Niki
       -- 例外処理
       IF (lv_retcode = cv_status_error) THEN
         --(エラー処理)
@@ -1819,7 +1945,16 @@ AS
         lv_kyoten_nm := iv_kyoten_nm;
 --//+UPD START E_本稼動_09949 K.Taniguchi
 --      OPEN item_plan_cur(TO_NUMBER(iv_yyyy), iv_kyoten_cd);
-        OPEN item_plan_cur(TO_NUMBER(iv_yyyy), iv_kyoten_cd, iv_p_new_old_cost_class);
+--//+UPD START E_本稼動_09950 S.Niki
+--      OPEN item_plan_cur(TO_NUMBER(iv_yyyy), iv_kyoten_cd, iv_p_new_old_cost_class);
+        OPEN item_plan_cur(
+          in_yyyy                  =>  TO_NUMBER(iv_yyyy)       -- 1.対象年度
+         ,iv_kyoten_cd             =>  iv_kyoten_cd             -- 2.拠点コード
+         ,iv_p_new_old_cost_class  =>  iv_p_new_old_cost_class  -- 3.新旧原価区分
+         ,iv_level_sum_flg         =>  iv_level_sum_flg         -- 4.階層計処理フラグ
+         ,iv_p_level               =>  iv_p_level               -- 5.階層
+        );
+--//+UPD END E_本稼動_09950 S.Niki
 --//+UPD END E_本稼動_09949 K.Taniguchi
         <<item_plan_loop>>
         LOOP
@@ -2131,6 +2266,10 @@ AS
         select_discount_data(
                     iv_yyyy              -- 対象年度
                    ,iv_kyoten_cd         -- 拠点コード
+--//+ADD START E_本稼動_09950 S.Niki
+                   ,iv_level_sum_flg     -- 階層計処理フラグ
+                   ,iv_p_level           -- 階層
+--//+ADD END E_本稼動_09950 S.Niki
                    ,ln_sales_discount    -- 売上値引
                    ,ln_receipt_discount  -- 入金値引
                    ,lv_errbuf            -- エラー・メッセージ
@@ -2355,6 +2494,9 @@ AS
     cv_lvl5   CONSTANT VARCHAR2(2) := 'L5'; -- 拠点階層
 --
     -- *** ローカル変数 ***
+--//+ADD START E_本稼動_09950 S.Niki
+    lt_level_sum_base_name    xxcsm_loc_name_list_v.base_name%TYPE; -- 階層計用拠点名称
+--//+ADD END E_本稼動_09950 S.Niki
 --
     -- ===============================
     -- ローカル・カーソル
@@ -2511,6 +2653,10 @@ AS
 --//+ADD START E_本稼動_09949 K.Taniguchi
             iv_p_new_old_cost_class,                           -- 新旧原価区分
 --//+ADD END E_本稼動_09949 K.Taniguchi
+--//+ADD START E_本稼動_09950 S.Niki
+            cv_flg_n,                                          -- 階層計処理フラグ（'N'）
+            iv_p_level,                                        -- 階層
+--//+ADD END E_本稼動_09950 S.Niki
             lv_errbuf,         -- エラー・メッセージ           --# 固定 #
             lv_retcode,        -- リターン・コード             --# 固定 #
             lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2537,6 +2683,10 @@ AS
 --//+ADD START E_本稼動_09949 K.Taniguchi
             iv_p_new_old_cost_class,                           -- 新旧原価区分
 --//+ADD END E_本稼動_09949 K.Taniguchi
+--//+ADD START E_本稼動_09950 S.Niki
+            cv_flg_n,                                          -- 階層計処理フラグ（'N'）
+            iv_p_level,                                        -- 階層
+--//+ADD END E_本稼動_09950 S.Niki
             lv_errbuf,         -- エラー・メッセージ           --# 固定 #
             lv_retcode,        -- リターン・コード             --# 固定 #
             lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2563,6 +2713,10 @@ AS
 --//+ADD START E_本稼動_09949 K.Taniguchi
             iv_p_new_old_cost_class,                           -- 新旧原価区分
 --//+ADD END E_本稼動_09949 K.Taniguchi
+--//+ADD START E_本稼動_09950 S.Niki
+            cv_flg_n,                                          -- 階層計処理フラグ（'N'）
+            iv_p_level,                                        -- 階層
+--//+ADD END E_本稼動_09950 S.Niki
             lv_errbuf,         -- エラー・メッセージ           --# 固定 #
             lv_retcode,        -- リターン・コード             --# 固定 #
             lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2589,6 +2743,10 @@ AS
 --//+ADD START E_本稼動_09949 K.Taniguchi
             iv_p_new_old_cost_class,                           -- 新旧原価区分
 --//+ADD END E_本稼動_09949 K.Taniguchi
+--//+ADD START E_本稼動_09950 S.Niki
+            cv_flg_n,                                          -- 階層計処理フラグ（'N'）
+            iv_p_level,                                        -- 階層
+--//+ADD END E_本稼動_09950 S.Niki
             lv_errbuf,         -- エラー・メッセージ           --# 固定 #
             lv_retcode,        -- リターン・コード             --# 固定 #
             lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2615,6 +2773,10 @@ AS
 --//+ADD START E_本稼動_09949 K.Taniguchi
             iv_p_new_old_cost_class,                           -- 新旧原価区分
 --//+ADD END E_本稼動_09949 K.Taniguchi
+--//+ADD START E_本稼動_09950 S.Niki
+            cv_flg_n,                                          -- 階層計処理フラグ（'N'）
+            iv_p_level,                                        -- 階層
+--//+ADD END E_本稼動_09950 S.Niki
             lv_errbuf,         -- エラー・メッセージ           --# 固定 #
             lv_retcode,        -- リターン・コード             --# 固定 #
             lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2628,6 +2790,52 @@ AS
         NULL;
     END CASE;
 
+--//+ADD START E_本稼動_09950 S.Niki
+    -- =============================================
+    --
+    -- 階層計出力処理
+    --
+    -- =============================================
+    -- 階層レベルが'L6'以外の場合（'L6'の場合、階層計は出力しない）
+    -- かつ、拠点データが正常出力された場合（全ての拠点をチェックエラーでスキップした場合、階層計は出力しない）
+    IF ( iv_p_level <> cv_lvl6 ) AND ( gn_normal_cnt <> 0 ) THEN
+      --
+      -- ===============================
+      -- 階層計用拠点名称取得
+      -- ===============================
+      BEGIN
+        SELECT  xlnlv.base_name         AS base_name  -- 部門名称
+        INTO    lt_level_sum_base_name                -- 階層計用拠点名称
+        FROM    xxcsm_loc_name_list_v   xlnlv         -- 部門名称ビュー
+        WHERE   xlnlv.base_code   = iv_p_kyoten_cd    -- 部門コード(パラメータ拠点コード)
+        AND     ROWNUM = 1
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lt_level_sum_base_name := NULL;
+      END;
+      --
+      -- ===============================
+      -- 拠点ループ内処理（階層計出力処理）
+      -- ===============================
+      loop_kyoten(
+        iv_p_yyyy,                                         -- 対象年度
+        iv_p_kyoten_cd,                                    -- 拠点コード（パラメータ）
+        iv_p_cost_kind,                                    -- 原価種別
+        iv_p_kyoten_cd,                                    -- 拠点コード（パラメータ）
+        lt_level_sum_base_name,                            -- 拠点名（階層計用拠点名称）
+        iv_p_new_old_cost_class,                           -- 新旧原価区分
+        cv_flg_y,                                          -- 階層計処理フラグ（'Y'）
+        iv_p_level,                                        -- 階層
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+    --
+    END IF;
+--//+ADD END E_本稼動_09950 S.Niki
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述

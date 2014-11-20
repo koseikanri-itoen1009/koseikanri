@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
  * Package Name     : XXCSM002A11C(spec)
  * Description      : 商品計画リスト(時系列CS単位)出力
  * MD.050           : 商品計画リスト(時系列CS単位)出力 MD050_CSM_002_A11
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -58,6 +58,7 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
  *  2011/01/05    1.10  SCS OuKou       [E_本稼動_05803]
  *  2012/12/14    1.11  SCSK K.Taniguchi[E_本稼動_09949] 新旧原価選択可能対応
  *  2013/01/31    1.12  SCSK K.Taniguchi [E_本稼動_09949]年度開始日取得の不具合対応
+ *  2013/02/15    1.13  SCSK S.Niki     [E_本稼動_09950] 階層計出力対応
  *
  *****************************************************************************************/
 --
@@ -151,6 +152,13 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
   cv_new_cost               CONSTANT VARCHAR2(10)  := '10';                         -- パラメータ：新旧原価区分（新原価）
   cv_old_cost               CONSTANT VARCHAR2(10)  := '20';                         -- パラメータ：新旧原価区分（旧原価）
 --//+ADD END E_本稼動_09949 K.Taniguchi
+--//+ADD START E_本稼動_09950 S.Niki
+  cv_lvl2                   CONSTANT VARCHAR2(2)   := 'L2';                         -- 拠点階層
+  cv_lvl3                   CONSTANT VARCHAR2(2)   := 'L3';                         -- 拠点階層
+  cv_lvl4                   CONSTANT VARCHAR2(2)   := 'L4';                         -- 拠点階層
+  cv_lvl5                   CONSTANT VARCHAR2(2)   := 'L5';                         -- 拠点階層
+  cv_lvl6                   CONSTANT VARCHAR2(2)   := 'L6';                         -- 拠点階層
+--//+ADD END E_本稼動_09950 S.Niki
 -- 
   -- ===============================
   -- ユーザー定義グローバル変数 
@@ -168,6 +176,9 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
   gv_new_old_cost_class    VARCHAR2(2);                                        -- 新旧原価区分(パラメータ格納用)
   gd_gl_start_date         DATE;                                               -- 起動時の年度開始日
 --//+ADD END E_本稼動_09949 K.Taniguchi
+--//+ADD START E_本稼動_09950 S.Niki
+  gt_level_sum_base_name    xxcsm_loc_name_list_v.base_name%TYPE;              -- 階層計用拠点名称
+--//+ADD END E_本稼動_09950 S.Niki
   
   -- ===============================
   -- 共用メッセージ番号
@@ -729,8 +740,8 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
     INTO  
                   ln_counts
     FROM  
-                   xxcsm_item_plan_lines xipl                            -- 商品計画ヘッダテーブル
-                  ,xxcsm_item_plan_headers xiph                          -- 商品計画明細テーブル
+                   xxcsm_item_plan_lines xipl                            -- 商品計画明細テーブル
+                  ,xxcsm_item_plan_headers xiph                          -- 商品計画ヘッダテーブル
     WHERE 
               xipl.item_plan_header_id      = xiph.item_plan_header_id   -- 商品計画ヘッダID
     AND       xiph.plan_year                = gn_taisyoym                -- 対象年度
@@ -1531,6 +1542,12 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
    ****************************************************************************/
   PROCEDURE deal_down_data(
         iv_kyoten_cd    IN  VARCHAR2            -- 拠点コード
+--//+ADD START E_本稼動_09950 S.Niki
+       ,iv_level_sum_flg
+                        IN  VARCHAR2            -- 階層計処理フラグ
+       ,iv_kyoten_kaisou
+                        IN  VARCHAR2            -- 階層
+--//+ADD END E_本稼動_09950 S.Niki
        ,ov_errbuf       OUT NOCOPY VARCHAR2     -- エラー・メッセージ
        ,ov_retcode      OUT NOCOPY VARCHAR2     -- リターン・コード
        ,ov_errmsg       OUT NOCOPY VARCHAR2)    -- ユーザー・エラー・メッセージ
@@ -1564,7 +1581,15 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
     CURSOR   
         get_down_data_cur
     IS
-      SELECT   
+--//+UPD START E_本稼動_09950 S.Niki
+--      SELECT   
+      SELECT /*+
+               LEADING(xiph xiplb xipl xlllv)
+               USE_NL(xiph xiplb xipl xlllv)
+               INDEX(xiph XXCSM_ITEM_PLAN_HEADERS_U01)
+               INDEX(xiplb XXCSM_ITEM_PLAN_LOC_BDGT_N01)
+             */
+--//+UPD END E_本稼動_09950 S.Niki
              xiplb.month_no                                   AS  month                     -- 月
             ,SUM(NVL(xiplb.sales_discount,0))                 AS  sales_d                   -- 売上値引
             ,SUM(NVL(xiplb.receipt_discount,0))               AS  receipt_d                 -- 入金値引
@@ -1574,7 +1599,40 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
       WHERE    
             xiplb.item_plan_header_id                        = xiph.item_plan_header_id    -- 商品計画ヘッダID
       AND   xiph.plan_year                                   = gn_taisyoym                 -- 対象年度
-      AND   xiph.location_cd                                 = iv_kyoten_cd                -- 拠点コード
+--//+UPD START E_本稼動_09950 S.Niki
+--      AND   xiph.location_cd                                 = iv_kyoten_cd                -- 拠点コード
+      AND
+      (
+        (
+              iv_level_sum_flg = cv_flg_n       -- 階層計出力処理でない
+         AND  xiph.location_cd  = iv_kyoten_cd  -- 単一拠点コード指定
+        )
+        OR
+        (
+              iv_level_sum_flg = cv_flg_y       -- 階層計出力処理の場合
+         AND  xiph.location_cd  IN
+              (
+                -- 指定された拠点配下の拠点を返す
+                SELECT  CASE xlllv.location_level
+                          WHEN cv_lvl2 THEN xlllv.cd_level2
+                          WHEN cv_lvl3 THEN xlllv.cd_level3
+                          WHEN cv_lvl4 THEN xlllv.cd_level4
+                          WHEN cv_lvl5 THEN xlllv.cd_level5
+                          WHEN cv_lvl6 THEN xlllv.cd_level6
+                        END   AS  location_cd         -- 配下の拠点コード
+                FROM    xxcsm_loc_level_list_v  xlllv -- 部門一覧ビュー
+                WHERE   1=1
+                AND     CASE  iv_kyoten_kaisou        -- 階層レベル
+                          WHEN cv_lvl2 THEN xlllv.cd_level2
+                          WHEN cv_lvl3 THEN xlllv.cd_level3
+                          WHEN cv_lvl4 THEN xlllv.cd_level4
+                          WHEN cv_lvl5 THEN xlllv.cd_level5
+                          WHEN cv_lvl6 THEN xlllv.cd_level6
+                        END   =   iv_kyoten_cd        -- 拠点コード
+              )
+        )
+      )
+--//+UPD END E_本稼動_09950 S.Niki
       AND   EXISTS (
                     SELECT   
                          'X'
@@ -1957,6 +2015,10 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
    *****************************************************************************/
    PROCEDURE deal_item_data(
          iv_kyoten_cd      IN  VARCHAR2                      --拠点コード
+--//+ADD START E_本稼動_09950 S.Niki
+        ,iv_level_sum_flg  IN  VARCHAR2                      --階層計処理フラグ
+        ,iv_kyoten_kaisou  IN  VARCHAR2                      --階層
+--//+ADD END E_本稼動_09950 S.Niki
         ,ov_errbuf         OUT NOCOPY VARCHAR2               --共通・エラー・メッセージ
         ,ov_retcode        OUT NOCOPY VARCHAR2               --リターン・コード
         ,ov_errmsg         OUT NOCOPY VARCHAR2)              --ユーザー・エラー・メッセージ
@@ -2091,6 +2153,10 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
     CURSOR
         get_item_data_cur(
                           iv_kyoten_cd      IN VARCHAR2                         -- 拠点コード
+--//+ADD START E_本稼動_09950 S.Niki
+                         ,iv_level_sum_flg  IN  VARCHAR2                        -- 階層計処理フラグ
+                         ,iv_kyoten_kaisou  IN  VARCHAR2                        -- 階層
+--//+ADD END E_本稼動_09950 S.Niki
                           )
     IS
       SELECT
@@ -2112,7 +2178,10 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
             ,NVL(sub.attribute11, 0)               AS  conversion               -- 入数
       FROM
       (
-          SELECT
+--//+UPD START E_本稼動_09950 S.Niki
+--          SELECT
+          SELECT /*+ USE_NL(xiph xipl xcgv iimb xlllv) */
+--//+UPD END E_本稼動_09950 S.Niki
                  xipl.month_no                          AS  month_no                 -- 月
                 ,xipl.amount                            AS  amount                   -- 数量
                 ,xipl.sales_budget                      AS  sales_budget             -- 売上金額
@@ -2221,7 +2290,40 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
           AND    xcgv.item_cd                           = xipl.item_no               -- 商品コード
           AND    xipl.item_no                           = iimb.item_no               -- 商品コード
           AND    xiph.plan_year                         = gn_taisyoym                -- 対象年度
-          AND    xiph.location_cd                       = iv_kyoten_cd               -- 拠点コード
+--//+UPD START E_本稼動_09950 S.Niki
+--          AND    xiph.location_cd                       = iv_kyoten_cd               -- 拠点コード
+          AND
+          (
+            (
+                  iv_level_sum_flg = cv_flg_n       -- 階層計出力処理でない
+             AND  xiph.location_cd  = iv_kyoten_cd  -- 単一拠点コード指定
+            )
+            OR
+            (
+                  iv_level_sum_flg = cv_flg_y       -- 階層計出力処理の場合
+             AND  xiph.location_cd  IN
+                  (
+                    -- 指定された拠点配下の拠点を返す
+                    SELECT  CASE xlllv.location_level
+                              WHEN cv_lvl2 THEN xlllv.cd_level2
+                              WHEN cv_lvl3 THEN xlllv.cd_level3
+                              WHEN cv_lvl4 THEN xlllv.cd_level4
+                              WHEN cv_lvl5 THEN xlllv.cd_level5
+                              WHEN cv_lvl6 THEN xlllv.cd_level6
+                            END   AS  location_cd         -- 配下の拠点コード
+                    FROM    xxcsm_loc_level_list_v  xlllv -- 部門一覧ビュー
+                    WHERE   1=1
+                    AND     CASE  iv_kyoten_kaisou        -- 階層レベル
+                              WHEN cv_lvl2 THEN xlllv.cd_level2
+                              WHEN cv_lvl3 THEN xlllv.cd_level3
+                              WHEN cv_lvl4 THEN xlllv.cd_level4
+                              WHEN cv_lvl5 THEN xlllv.cd_level5
+                              WHEN cv_lvl6 THEN xlllv.cd_level6
+                            END   =   iv_kyoten_cd        -- 拠点コード
+                  )
+            )
+          )
+--//+UPD END E_本稼動_09950 S.Niki
           AND    xipl.item_kbn                          <> '0'                       -- 商品区分(商品群以外)
       ) sub
       GROUP BY
@@ -2286,7 +2388,10 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
     -- データの処理【商品】
     -- =======================================
     <<get_item_data_cur_loop>>
-    FOR rec_item_data IN get_item_data_cur(iv_kyoten_cd) LOOP   
+--//+UPD START E_本稼動_09950 S.Niki
+--    FOR rec_item_data IN get_item_data_cur(iv_kyoten_cd) LOOP   
+    FOR rec_item_data IN get_item_data_cur(iv_kyoten_cd ,iv_level_sum_flg ,iv_kyoten_kaisou) LOOP
+--//+UPD END E_本稼動_09950 S.Niki
         BEGIN
 --//+UPD START 2009/02/18 CT028 S.Son
 --//+MOD START 2010/12/17 E_本稼動_05803 Y.Kanami
@@ -2642,6 +2747,10 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
     -- ================================================
     deal_down_data(
                iv_kyoten_cd                   -- 拠点コード（1桁）
+--//+ADD START E_本稼動_09950 S.Niki
+              ,iv_level_sum_flg               -- 階層計処理フラグ
+              ,iv_kyoten_kaisou               -- 階層
+--//+ADD END E_本稼動_09950 S.Niki
               ,lv_errbuf                      -- エラー・メッセージ
               ,lv_retcode                     -- リターン・コード
               ,lv_errmsg                      -- ユーザー・エラー・メッセージ
@@ -3873,9 +3982,16 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
    * Description      : 拠点毎に処理を繰り返す
    ****************************************************************************/
   PROCEDURE deal_all_data(
---//+ADD START 2009/02/20 CT028 S.Son
-        ov_line_info   OUT  VARCHAR2
---//+ADD END 2009/02/20 CT028 S.Son
+--//+UPD START E_本稼動_09950 S.Niki
+----//+ADD START 2009/02/20 CT028 S.Son
+--        ov_line_info   OUT  VARCHAR2
+----//+ADD END 2009/02/20 CT028 S.Son
+        iv_level_sum_flg
+                       IN  VARCHAR2                                             -- 階層計処理フラグ
+       ,iv_kyoten_kaisou
+                       IN  VARCHAR2                                             -- 階層
+       ,ov_line_info   OUT VARCHAR2
+--//+UPD END E_本稼動_09950 S.Niki
        ,ov_errbuf      OUT NOCOPY VARCHAR2                                      -- エラー・メッセージ
        ,ov_retcode     OUT NOCOPY VARCHAR2                                      -- リターン・コード
        ,ov_errmsg      OUT NOCOPY VARCHAR2)                                     -- ユーザー・エラー・メッセージ
@@ -3915,21 +4031,37 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
   -- ================================================
   -- 【拠点コードリスト】取得処理
   -- ================================================
-  xxcsm_common_pkg.get_kyoten_cd_lv6(gv_kyotencd
-                                     ,gv_kaisou
---//ADD START 2009/05/07 T1_0858 M.Ohtsuki
-                                     ,gn_taisyoym
---//ADD END   2009/05/07 T1_0858 M.Ohtsuki
-                                     ,lv_get_loc_tab
-                                     ,lv_retcode
-                                     ,lv_errbuf
-                                     ,lv_errmsg
-                                    );
-                                                                  
+--//+UPD START E_本稼動_09950 S.Niki
+--  xxcsm_common_pkg.get_kyoten_cd_lv6(gv_kyotencd
+--                                     ,gv_kaisou
+----//ADD START 2009/05/07 T1_0858 M.Ohtsuki
+--                                     ,gn_taisyoym
+----//ADD END   2009/05/07 T1_0858 M.Ohtsuki
+--                                     ,lv_get_loc_tab
+--                                     ,lv_retcode
+--                                     ,lv_errbuf
+--                                     ,lv_errmsg
+--                                    );
+--                                                                  
+  -- 階層計出力処理でない場合
+  IF ( iv_level_sum_flg = cv_flg_n ) THEN
+    xxcsm_common_pkg.get_kyoten_cd_lv6(gv_kyotencd        -- 拠点コード
+                                      ,gv_kaisou          -- 階層
+                                      ,gn_taisyoym        -- 対象年度
+                                      ,lv_get_loc_tab
+                                      ,lv_retcode
+                                      ,lv_errbuf
+                                      ,lv_errmsg
+                                      );
+  ELSE
+    -- 階層計出力処理の場合
+    lv_get_loc_tab(1).kyoten_cd := gv_kyotencd;             -- 拠点コード
+    lv_get_loc_tab(1).kyoten_nm := gt_level_sum_base_name;  -- 階層計用拠点名称
+  END IF;
+--//+UPD END E_本稼動_09950 S.Niki
     IF (lv_retcode <> cv_status_normal) THEN  -- 戻り値が異常の場合
         RAISE global_api_others_expt;
     END IF;
-
                              
   -- ================================================
   -- 【拠点コードリスト】拠点毎に下記処理を繰り返す
@@ -3950,13 +4082,24 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
         -- ================================================
         -- 【チェック処理】
         -- ================================================
-        do_check(
-                 lv_kyoten_cd
-                ,lv_errbuf
-                ,lv_retcode
-                ,lv_errmsg
-                );
-                
+--//+UPD START E_本稼動_09950 S.Niki
+--        do_check(
+--                 lv_kyoten_cd
+--                ,lv_errbuf
+--                ,lv_retcode
+--                ,lv_errmsg
+--                );
+--                
+        -- 階層計出力処理でない場合
+        IF ( iv_level_sum_flg = cv_flg_n ) THEN
+          do_check(
+                   lv_kyoten_cd
+                  ,lv_errbuf
+                  ,lv_retcode
+                  ,lv_errmsg
+                  );
+        END IF;
+--//+UPD END E_本稼動_09950 S.Niki
         IF (lv_retcode = cv_status_warn) THEN  -- 戻り値が警告の場合
             -- 次のデータに移動します
             RAISE global_skip_expt;
@@ -3969,6 +4112,10 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
         -- ================================================
         deal_item_data(
                      lv_kyoten_cd
+--//+ADD START E_本稼動_09950 S.Niki
+                    ,iv_level_sum_flg  --階層計処理フラグ
+                    ,gv_kaisou         --階層
+--//+ADD END E_本稼動_09950 S.Niki
                     ,lv_errbuf
                     ,lv_retcode
                     ,lv_errmsg
@@ -4104,6 +4251,9 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
 --//+ADD START 2009/02/20 CT028 S.Son   
     lv_line_info := NULL;
 --//+ADD END 2009/02/20 CT028 S.Son   
+--//+ADD START E_本稼動_09950 S.Niki
+    lv_retcode   := cv_status_normal;
+--//+ADD END E_本稼動_09950 S.Niki
     -- ヘッダ情報の抽出
     lv_data_head := xxccp_common_pkg.get_msg(                                   -- 拠点コードの出力
                       iv_application  => cv_xxcsm                               -- アプリケーション短縮名
@@ -4126,7 +4276,12 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
     
     -- ボディ情報を取得（deal_all_dataを呼び出す）        
     deal_all_data(
-                   lv_line_info
+--//+UPD START E_本稼動_09950 S.Niki
+--                   lv_line_info
+                   cv_flg_n             -- 階層計処理フラグ('N')
+                  ,gv_kaisou            -- 階層
+                  ,lv_line_info
+--//+UPD END E_本稼動_09950 S.Niki
                   ,lv_errbuf
                   ,lv_retcode
                   ,lv_errmsg
@@ -4138,6 +4293,45 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
       ELSIF (lv_retcode = cv_status_warn) THEN -- 戻り値が警告の場合
         ov_retcode := lv_retcode;  
       END IF;
+--//+ADD START E_本稼動_09950 S.Niki
+    -- =============================================
+    --
+    -- 階層計出力処理
+    --
+    -- =============================================
+    -- 階層レベルが'L6'以外の場合（'L6'の場合、階層計は出力しない）
+    -- かつ、拠点データが正常出力された場合（全ての拠点をチェックエラーでスキップした場合、階層計は出力しない）
+    IF ( gv_kaisou <> cv_lvl6 ) AND ( gn_normal_cnt <> 0 ) THEN
+      --
+      -- ===============================
+      -- 階層計用拠点名称取得
+      -- ===============================
+      BEGIN
+        SELECT  xlnlv.base_name         AS base_name  -- 部門名称
+        INTO    gt_level_sum_base_name                -- 階層計用拠点名称
+        FROM    xxcsm_loc_name_list_v   xlnlv         -- 部門名称ビュー
+        WHERE   xlnlv.base_code   = gv_kyotencd       -- 部門コード(パラメータ拠点コード)
+        AND     ROWNUM            = 1
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          gt_level_sum_base_name := NULL;
+      END;
+      --
+      -- 階層計出力処理
+      deal_all_data(
+                     cv_flg_y             -- 階層計処理フラグ('Y')
+                    ,gv_kaisou            -- 階層
+                    ,lv_line_info
+                    ,lv_errbuf
+                    ,lv_retcode
+                    ,lv_errmsg
+                    );
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+    END IF;
+--//+ADD END E_本稼動_09950 S.Niki
 --//+UPD START 2009/02/20 CT028 S.Son   
       IF (gn_normal_cnt = 0) OR (lv_line_info IS NULL) THEN
 --//+UPD END 2009/02/20 CT028 S.Son   
