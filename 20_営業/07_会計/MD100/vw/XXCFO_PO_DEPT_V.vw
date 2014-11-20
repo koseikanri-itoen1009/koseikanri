@@ -8,11 +8,12 @@ CREATE OR REPLACE FORCE VIEW XXCFO_PO_DEPT_V(
  * Version         : 1.1
  * 
  * Change Record
- * ------------- ----- ------------ -------------------------------------
- *  Date          Ver.  Editor       Description
- * ------------- ----- ------------ -------------------------------------
- *  2008/12/16    1.0  SCS 山口 優   初回作成
- *  2009/02/06    1.1  SCS 嵐田勇人  [障害CFO_001]事業所アドオンマスタの有効日付チェックを追加
+ * ------------- ----- ------------   -------------------------------------
+ *  Date          Ver.  Editor         Description
+ * ------------- ----- ------------   -------------------------------------
+ *  2008/12/16    1.0  SCS 山口 優     初回作成
+ *  2009/02/06    1.1  SCS 嵐田勇人    [障害CFO_001]事業所アドオンマスタの有効日付チェックを追加
+ *  2009/04/03    1.2  SCS 廣瀬 真佐人 [障害T1_0283]購買担当者の適用開始日のNULL値を考慮
  ************************************************************************/
   location_code,                -- 事業所コード
   location_short_name           -- 略称
@@ -28,8 +29,8 @@ CREATE OR REPLACE FORCE VIEW XXCFO_PO_DEPT_V(
                            AND TRUNC(NVL(xla.end_date_active, SYSDATE)) --                    AND TRUNC(NVL(事業所アドオンマスタ.適用終了日,SYSDATE))
     AND pa.agent_id          = papf.person_id               -- 購買担当マスタ.購買担当ID = 従業員マスタ.従業員ID
     AND papf.attribute28     = hl.location_code             -- 従業員マスタ.DFF28 = 事業所マスタ.事業所コード
-    AND TRUNC(SYSDATE) BETWEEN TRUNC(pa.start_date_active)             -- TRUNC(SYSDATE) BETWEEN TRUNC(購買担当マスタ.適用開始日)
-                           AND TRUNC(NVL(pa.end_date_active, SYSDATE)) --                    AND TRUNC(NVL(購買担当マスタ.適用終了日,SYSDATE))
+    AND TRUNC(SYSDATE) BETWEEN TRUNC(NVL(pa.start_date_active, SYSDATE))             -- TRUNC(SYSDATE) BETWEEN TRUNC(購買担当マスタ.適用開始日)
+                           AND TRUNC(NVL(pa.end_date_active  , SYSDATE)) --                    AND TRUNC(NVL(購買担当マスタ.適用終了日,SYSDATE))
     AND TRUNC(SYSDATE) BETWEEN TRUNC(papf.effective_start_date)             -- TRUNC(SYSDATE) BETWEEN TRUNC(従業員マスタ.有効開始日)
                            AND TRUNC(NVL(papf.effective_end_date, SYSDATE)) --                    AND TRUNC(NVL(従業員マスタ.有効終了日,SYSDATE))
     AND papf.current_employee_flag = 'Y'         -- 従業員マスタ.現在従業員フラグ = 'Y'
