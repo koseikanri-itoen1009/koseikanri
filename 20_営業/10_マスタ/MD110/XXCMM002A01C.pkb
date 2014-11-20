@@ -52,7 +52,7 @@ AS
  *  2009/04/16    1.3   SCS 吉川 博章    障害No.483 対応
  *                                       submain の処理を大幅修正
  *  2009/05/21    1.4   SCS 吉川 博章    障害No.T1_0966 対応
- *  2009/05/27    1.5   SCS 吉川 博章    障害No.T1_1167 対応
+ *  2009/05/29                           障害No.T1_0966 対応(再雇用時の対応漏れ)
  *
  *****************************************************************************************/
 --
@@ -2644,23 +2644,17 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 -- 職責の取得
--- Ver1.5  2009/05/28 Mod  T1_1167対応
----- 職責の取得時に使用する日付
---    --新規社員・再雇用時は入社日にて職責検索／既存社員で
---    IF (ir_masters_rec.ymd_kbn  = gv_sts_yes)       -- 入社日変更
---    OR (ir_masters_rec.emp_kbn  = gv_kbn_new) THEN  -- 新規社員
---      ld_st_date := ir_masters_rec.hire_date;
---    ELSIF (ir_masters_rec.actual_termination_date IS NULL)
---       OR (TO_DATE(ir_masters_rec.announce_date,'YYYYMMDD') < ir_masters_rec.actual_termination_date) THEN
---      ld_st_date := TO_DATE(ir_masters_rec.announce_date,'YYYYMMDD');
---    ELSE
---      ld_st_date := ir_masters_rec.actual_termination_date;
---    END IF;
-    --
-    -- 業務日付 + 1 を開始日として設定する
-    ld_st_date := cd_process_date + 1;
---
--- End1.5
+-- 職責の取得時に使用する日付
+    --新規社員・再雇用時は入社日にて職責検索／既存社員で
+    IF (ir_masters_rec.ymd_kbn  = gv_sts_yes)       -- 入社日変更
+    OR (ir_masters_rec.emp_kbn  = gv_kbn_new) THEN  -- 新規社員
+      ld_st_date := ir_masters_rec.hire_date;
+    ELSIF (ir_masters_rec.actual_termination_date IS NULL)
+       OR (TO_DATE(ir_masters_rec.announce_date,'YYYYMMDD') < ir_masters_rec.actual_termination_date) THEN
+      ld_st_date := TO_DATE(ir_masters_rec.announce_date,'YYYYMMDD');
+    ELSE
+      ld_st_date := ir_masters_rec.actual_termination_date;
+    END IF;
     --
     BEGIN
     -- AFF部門（部門階層ビュー）
@@ -5696,6 +5690,19 @@ AS
       END;
     END IF;
     --
+-- Ver1.4 Add  2009/05/29  セキュリティ属性登録処理をコール  T1_0966
+    ins_user_sec(
+      ir_masters_rec       -- 対象従業員情報
+     ,lv_errbuf            -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode           -- リターン・コード             --# 固定 #
+     ,lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    --
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_api_expt;
+    END IF;
+    --
+-- End Ver1.4
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
