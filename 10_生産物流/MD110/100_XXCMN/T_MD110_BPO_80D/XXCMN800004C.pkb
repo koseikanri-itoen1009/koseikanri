@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインターフェース(Outbound)
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目マスタインタフェース T_MD070_BPO_80D
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,8 @@ AS
  *  2007/11/26    1.0  Oracle 椎名 昭圭  初回作成
  *  2008/05/08    1.1  Oracle 椎名 昭圭  変更要求#11対応
  *  2008/06/12    1.2  Oracle 丸下       日付項目書式変更
+ *  2008/07/11    1.3  Oracle 椎名 昭圭  仕様不備障害#I_S_001.2対応
+ *                                       仕様不備障害#I_S_192.1.2対応
  *
  *****************************************************************************************/
 --
@@ -106,32 +108,35 @@ AS
 --
   -- 品目マスタ情報を格納するレコード
   TYPE item_mst_rec IS RECORD(
-    item_id               ic_item_mst_b.item_id%TYPE,                     -- 品目ID
-    item_no               ic_item_mst_b.item_no%TYPE,                     -- 品目
-    parent_item_no        xxcmn_item_mst_v.item_no%TYPE,                  -- 品目(親品目)
-    item_name             xxcmn_item_mst_b.item_name%TYPE,                -- 正式名
-    item_short_name       xxcmn_item_mst_b.item_short_name%TYPE,          -- 略称
-    attribute22           ic_item_mst_b.attribute22%TYPE,                 -- ITFコード
-    attribute21           ic_item_mst_b.attribute21%TYPE,                 -- JANコード
-    attribute11           ic_item_mst_b.attribute11%TYPE,                 -- ケース入数
-    attribute25           ic_item_mst_b.attribute25%TYPE,                 -- 重量
-    attribute16           ic_item_mst_b.attribute16%TYPE,                 -- 容積
-    attribute12           ic_item_mst_b.attribute12%TYPE,                 -- NET
-    price                 VARCHAR2(240),                                  -- 定価
-    shelf_life            xxcmn_item_mst_b.shelf_life%TYPE,               -- 賞味期間
-    palette_max_cs_qty    VARCHAR2(2),                                    -- 配数
-    palette_max_step_qty  VARCHAR2(2),                                    -- パレット当り最大段数
-    palette_step_qty      VARCHAR2(2),                                    -- パレット段
-    shelf_life_class      xxcmn_item_mst_b.shelf_life_class%TYPE,         -- 賞味期間区分
-    bottle_class          xxcmn_item_mst_b.bottle_class%TYPE,             -- 容器区分
-    uom_class             xxcmn_item_mst_b.uom_class%TYPE,                -- 単位区分
-    inventory_chk_class   xxcmn_item_mst_b.inventory_chk_class%TYPE,      -- 棚卸区分
-    trace_class           xxcmn_item_mst_b.trace_class%TYPE,              -- トレース区分
-    start_date_active     xxcmn_item_mst_b.start_date_active%TYPE,        -- 適用開始日
-    last_update_date      DATE,                                           -- 最終更新日時
-    cs_weigth_or_capacity xxcmn_item_mst_b.cs_weigth_or_capacity%TYPE,    -- ケース重量容積
-    category_set_name     xxcmn_item_categories_v.category_set_name%TYPE, -- カテゴリセット名
-    segment1              xxcmn_item_categories_v.segment1%TYPE           -- カテゴリコード
+    item_id               ic_item_mst_b.item_id%TYPE,                       -- 品目ID
+    item_no               ic_item_mst_b.item_no%TYPE,                       -- 品目
+    parent_item_no        xxcmn_item_mst_v.item_no%TYPE,                    -- 品目(親品目)
+    item_name             xxcmn_item_mst_b.item_name%TYPE,                  -- 正式名
+    item_short_name       xxcmn_item_mst_b.item_short_name%TYPE,            -- 略称
+    attribute22           ic_item_mst_b.attribute22%TYPE,                   -- ITFコード
+    attribute21           ic_item_mst_b.attribute21%TYPE,                   -- JANコード
+    attribute11           ic_item_mst_b.attribute11%TYPE,                   -- ケース入数
+    attribute25           ic_item_mst_b.attribute25%TYPE,                   -- 重量
+    attribute16           ic_item_mst_b.attribute16%TYPE,                   -- 容積
+    attribute12           ic_item_mst_b.attribute12%TYPE,                   -- NET
+    price                 VARCHAR2(240),                                    -- 定価
+    shelf_life            xxcmn_item_mst_b.shelf_life%TYPE,                 -- 賞味期間
+    palette_max_cs_qty    VARCHAR2(2),                                      -- 配数
+    palette_max_step_qty  VARCHAR2(2),                                      -- パレット当り最大段数
+    palette_step_qty      VARCHAR2(2),                                      -- パレット段
+    shelf_life_class      xxcmn_item_mst_b.shelf_life_class%TYPE,           -- 賞味期間区分
+    bottle_class          xxcmn_item_mst_b.bottle_class%TYPE,               -- 容器区分
+    uom_class             xxcmn_item_mst_b.uom_class%TYPE,                  -- 単位区分
+    inventory_chk_class   xxcmn_item_mst_b.inventory_chk_class%TYPE,        -- 棚卸区分
+    trace_class           xxcmn_item_mst_b.trace_class%TYPE,                -- トレース区分
+    start_date_active     xxcmn_item_mst_b.start_date_active%TYPE,          -- 適用開始日
+    last_update_date      DATE,                                             -- 最終更新日時
+    cs_weigth_or_capacity xxcmn_item_mst_b.cs_weigth_or_capacity%TYPE,      -- ケース重量容積
+    category_set_name     xxcmn_item_categories_v.category_set_name%TYPE,   -- カテゴリセット名
+    segment1              xxcmn_item_categories_v.segment1%TYPE,            -- カテゴリコード
+    item_class_code       xxcmn_item_categories3_v.item_class_code%TYPE,    -- 品目区分
+    in_out_class_code     xxcmn_item_categories3_v.in_out_class_code%TYPE,  -- 内外区分
+    obsolete_class        xxcmn_item_mst_b.obsolete_class%TYPE              -- 廃止区分
   );
 --
   -- 品目マスタ情報を格納するテーブル型の定義
@@ -285,12 +290,16 @@ AS
             END,
             ximb.cs_weigth_or_capacity,                   -- ケース重量容積
             xicv.category_set_name,                       -- カテゴリセット名
-            xicv.segment1                                 -- カテゴリコード
+            xicv.segment1,                                -- カテゴリコード
+            xicv3.item_class_code,                        -- 品目区分
+            xicv3.in_out_class_code,                      -- 内外区分
+            ximb.obsolete_class                           -- 廃止区分
     BULK COLLECT INTO gt_item_mst_tbl
     FROM  xxcmn_item_categories_v   xicv,
           xxcmn_item_categories_v   xicv2,
           ic_item_mst_b             iimb,
           xxcmn_item_mst_b          ximb,
+          xxcmn_item_categories3_v  xicv3,
           ((SELECT iimb1.item_id
           FROM     ic_item_mst_b    iimb1
           WHERE    ((iimb1.last_update_date >= ld_last_update) AND
@@ -312,6 +321,7 @@ AS
     AND   iimb.item_id             =  xicv2.item_id
     AND   iimb.item_id             =  ximb.item_id
     AND   iimb.item_id             =  iimb2.item_id
+    AND   iimb.item_id             =  xicv3.item_id
     ORDER BY iimb.item_no, ximb.start_date_active;
 --
     --==============================================================
@@ -376,7 +386,6 @@ AS
     cv_xxcmn_d17    CONSTANT VARCHAR2(3)   := '900';
     cv_b_num        CONSTANT NUMBER        :=  92;
     cv_sep_com      CONSTANT VARCHAR2(1)   := ',';
-    cv_sep_wquot    CONSTANT VARCHAR2(1)   := '"';
     cv_drink        CONSTANT VARCHAR2(1)   := '2';
     cv_leaf         CONSTANT VARCHAR2(1)   := '1';
     cv_item         CONSTANT VARCHAR2(100) := '商品区分';
@@ -433,8 +442,10 @@ AS
                         || gt_item_mst_tbl(i).item_no               || cv_sep_com   -- コード1
                         || gt_item_mst_tbl(i).parent_item_no        || cv_sep_com   -- コード2
                                                                     || cv_sep_com   -- コード3
-                        || gt_item_mst_tbl(i).item_name             || cv_sep_com   -- 名称1
-                        || gt_item_mst_tbl(i).item_short_name       || cv_sep_com   -- 名称2
+                        || REPLACE(gt_item_mst_tbl(i).item_name, cv_sep_com)
+                                                                    || cv_sep_com   -- 名称1
+                        || REPLACE(gt_item_mst_tbl(i).item_short_name, cv_sep_com)
+                                                                    || cv_sep_com   -- 名称2
                                                                     || cv_sep_com   -- 名称3
                                                                     || cv_sep_com   -- 情報1
                                                                     || cv_sep_com   -- 情報2
@@ -473,9 +484,9 @@ AS
                         || gt_item_mst_tbl(i).uom_class             || cv_sep_com   -- 区分6
                         || gt_item_mst_tbl(i).inventory_chk_class   || cv_sep_com   -- 区分7
                         || gt_item_mst_tbl(i).trace_class           || cv_sep_com   -- 区分8
-                                                                    || cv_sep_com   -- 区分9
-                                                                    || cv_sep_com   -- 区分10
-                                                                    || cv_sep_com   -- 区分11
+                        || gt_item_mst_tbl(i).item_class_code       || cv_sep_com   -- 区分9
+                        || gt_item_mst_tbl(i).in_out_class_code     || cv_sep_com   -- 区分10
+                        || gt_item_mst_tbl(i).obsolete_class        || cv_sep_com   -- 区分11
                                                                     || cv_sep_com   -- 区分12
                                                                     || cv_sep_com   -- 区分13
                                                                     || cv_sep_com   -- 区分14

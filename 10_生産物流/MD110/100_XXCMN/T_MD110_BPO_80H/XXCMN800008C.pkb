@@ -7,7 +7,7 @@ AS
  * Description      : 運送業者マスタインターフェース(Outbound)
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 運送業者マスタインタフェース T_MD070_BPO_80H
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/05/14    1.3  Oracle 椎名 昭圭  内部変更要求#96対応
  *  2008/05/15    1.4  Oracle 丸下 博宣  内部変更要求#102対応
  *  2008/06/12    1.5  Oracle 丸下       日付項目書式変更
+ *  2008/07/11    1.6  Oracle 椎名 昭圭  仕様不備障害#I_S_192.1.2対応
  *
  *****************************************************************************************/
 --
@@ -301,7 +302,6 @@ AS
     cv_xxcmn_d17    CONSTANT VARCHAR2(3)  := '900';
     cv_b_num        CONSTANT NUMBER       :=  93;
     cv_sep_com      CONSTANT VARCHAR2(1)  := ',';
-    cv_sep_wquot    CONSTANT VARCHAR2(1)  := '"';
 --
     -- *** ローカル変数 ***
     lf_file_hand    UTL_FILE.FILE_TYPE;    -- ファイル・ハンドルの宣言
@@ -355,26 +355,26 @@ AS
                         || gt_carry_mst_tbl(i).freight_code || cv_sep_com   -- コード1
                                                             || cv_sep_com   -- コード2
                                                             || cv_sep_com   -- コード3
-                        || cv_sep_wquot
-                        || gt_carry_mst_tbl(i).party_name
-                        || cv_sep_wquot                     || cv_sep_com   -- 名称1
-                        || cv_sep_wquot
-                        || gt_carry_mst_tbl(i).party_short_name
-                        || cv_sep_wquot                     || cv_sep_com   -- 名称2
+                        || REPLACE(gt_carry_mst_tbl(i).party_name, cv_sep_com)
+                                                            || cv_sep_com   -- 名称1
+                        || REPLACE(gt_carry_mst_tbl(i).party_short_name, cv_sep_com)
+                                                            || cv_sep_com   -- 名称2
                                                             || cv_sep_com   -- 名称3
-                        || cv_sep_wquot
-                        || gt_carry_mst_tbl(i).address_line1
-                        || gt_carry_mst_tbl(i).address_line2
-                        || cv_sep_wquot                     || cv_sep_com   -- 情報1
+                        || REPLACE(gt_carry_mst_tbl(i).address_line1, cv_sep_com)
+                        || REPLACE(gt_carry_mst_tbl(i).address_line2, cv_sep_com)
+                                                            || cv_sep_com   -- 情報1
                                                             || cv_sep_com   -- 情報2
                                                             || cv_sep_com   -- 情報3
                                                             || cv_sep_com   -- 情報4
                                                             || cv_sep_com   -- 情報5
                                                             || cv_sep_com   -- 情報6
                                                             || cv_sep_com   -- 情報7
-                        || gt_carry_mst_tbl(i).phone        || cv_sep_com   -- 情報8
-                        || gt_carry_mst_tbl(i).fax          || cv_sep_com   -- 情報9
-                        || gt_carry_mst_tbl(i).zip          || cv_sep_com   -- 情報10
+                        || REPLACE(gt_carry_mst_tbl(i).phone, cv_sep_com)
+                                                            || cv_sep_com   -- 情報8
+                        || REPLACE(gt_carry_mst_tbl(i).fax, cv_sep_com)
+                                                            || cv_sep_com   -- 情報9
+                        || REPLACE(gt_carry_mst_tbl(i).zip, cv_sep_com)
+                                                            || cv_sep_com   -- 情報10
                                                             || cv_sep_com   -- 情報11
                                                             || cv_sep_com   -- 情報12
                                                             || cv_sep_com   -- 情報13

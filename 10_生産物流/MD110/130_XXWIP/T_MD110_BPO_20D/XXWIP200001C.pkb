@@ -7,7 +7,7 @@ AS
  * Description      : 生産バッチ情報ダウンロード
  * MD.050           : 生産バッチ T_MD050_BPO_202
  * MD.070           : 生産バッチ情報ダウンロード T_MD070_BPO_20D
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/01/16    1.0  Oracle 野村 正幸  初回作成
  *  2008/06/18    1.1  Oracle 二瓶 大輔  ST不具合対応#160(日付書式修正)
+ *  2008/07/11    1.2  Oracle 山根 一浩  I_S_001,I_S_192対応
  *
  *****************************************************************************************/
 --
@@ -103,6 +104,7 @@ AS
   gv_tkn_table       CONSTANT VARCHAR2(100) := 'TABLE';             -- トークン：TABLE
   gv_tkn_target_name CONSTANT VARCHAR2(100) := 'TARGET_NAME';       -- トークン：TARGET_NAME
   gv_tkn_path        CONSTANT VARCHAR2(100) := 'PATH';              -- トークン：PATH
+  gv_tkn_name        CONSTANT VARCHAR2(100) := 'NAME';
 --
   --プロファイル
   gv_prf_out_dir     CONSTANT VARCHAR2(50) := 'XXWIP_BATCH_OUT_DIR';       -- プロファイル：出力先
@@ -406,11 +408,19 @@ AS
     -- *** ローカル定数 ***
     cv_sep_com      CONSTANT VARCHAR2(1)  := ',';
     cv_sep_wquot    CONSTANT VARCHAR2(1)  := '"';
+    lv_file_name    CONSTANT VARCHAR2(200) := '生産バッチ情報ファイル';
 --
     -- *** ローカル変数 ***
     lf_file_hand    UTL_FILE.FILE_TYPE;    -- ファイル・ハンドルの宣言
     lv_csv_file     VARCHAR2(5000);        -- 出力情報
     lv_data_type    VARCHAR2(1);           -- データ区分
+    lr_mst_rec      material_info_rec;
+--
+    -- 2008/07/11 Add ↓
+    lb_retcd        BOOLEAN;
+    ln_file_size    NUMBER;
+    ln_block_size   NUMBER;
+    -- 2008/07/11 Add ↑
 --
     -- ===============================
     -- ローカル・カーソル
@@ -432,6 +442,26 @@ AS
     -- **************************************************
     -- CSVファイル出力の場合
     IF (iv_file_type = gv_csv_file) THEN
+--
+        -- 2008/07/11 Add ↓
+        -- ファイル存在チェック
+        UTL_FILE.FGETATTR(gv_out_dir,
+                          gv_out_file_name,
+                          lb_retcd,
+                          ln_file_size,
+                          ln_block_size);
+--
+        -- ファイル存在
+        IF (lb_retcd) THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg('XXCMN',
+                                                'APP-XXCMN-10602',
+                                                gv_tkn_name,
+                                                lv_file_name);
+          lv_errbuf := lv_errmsg;
+          RAISE global_process_expt;
+        END IF;
+        -- 2008/07/11 Add ↑
+--
       lf_file_hand := UTL_FILE.FOPEN(gv_out_dir,        -- ディレクトリ
                                      gv_out_file_name,  -- ファイル名
                                      'w');              -- 書込みモード
@@ -446,6 +476,8 @@ AS
       <<gt_material_info_tbl_loop>>
       FOR i IN gt_material_info_tbl.FIRST .. gt_material_info_tbl.LAST LOOP
 --
+        lr_mst_rec := gt_material_info_tbl(i);
+--
         -- **************************************************
         -- *** データ区分編集
         -- **************************************************
@@ -453,19 +485,30 @@ AS
         lv_data_type := NULL;
 --
         -- 未送信の場合
-        IF (gt_material_info_tbl(i).send_type = gt_send_type_non) THEN
+        IF (lr_mst_rec.send_type = gt_send_type_non) THEN
           lv_data_type := gt_data_type_add;
 --
         -- 修正の場合
-        ELSIF (gt_material_info_tbl(i).send_type = gt_send_type_mod) THEN
+        ELSIF (lr_mst_rec.send_type = gt_send_type_mod) THEN
           lv_data_type := gt_data_type_mod;
 --
         -- 取消の場合
-        ELSIF (gt_material_info_tbl(i).send_type = gt_send_type_can) THEN
+        ELSIF (lr_mst_rec.send_type = gt_send_type_can) THEN
           lv_data_type := gt_data_type_del;
         END IF;
 --
         -- 取得データCVS形式生成
+        -- 2008/07/11 Mod ↓
+        lv_csv_file := lr_mst_rec.plant_code                             || cv_sep_com ||
+                       lr_mst_rec.batch_no                               || cv_sep_com ||
+                       lr_mst_rec.item_no                                || cv_sep_com ||
+                       TO_CHAR(lr_mst_rec.plan_start_date, 'YYYY/MM/DD') || cv_sep_com ||
+                       lr_mst_rec.routing_no                             || cv_sep_com ||
+                       lr_mst_rec.location_code                          || cv_sep_com ||
+                       lr_mst_rec.instruction_total                      || cv_sep_com ||
+                       lv_data_type;
+        -- 2008/07/11 Mod ↑
+/*
         lv_csv_file :=     cv_sep_wquot   || gt_material_info_tbl(i).plant_code  || cv_sep_wquot 
                         || cv_sep_com 
                         || cv_sep_wquot   || gt_material_info_tbl(i).batch_no || cv_sep_wquot 
@@ -484,6 +527,7 @@ AS
                         || gt_material_info_tbl(i).instruction_total 
                         || cv_sep_com 
                         || cv_sep_wquot   || lv_data_type || cv_sep_wquot;
+*/
 --
         -- **************************************************
         -- *** 出力処理
@@ -618,7 +662,7 @@ AS
     -- ===============================
     -- 固定ローカル定数
     -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_send_type'; -- プログラム名
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'set_batch_id'; -- プログラム名
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -858,10 +902,10 @@ AS
     gn_target_cnt := gt_material_info_tbl.COUNT;
 --
     -- ===============================
-    -- 処理結果レポート出力 (D-4)
+    -- CSVファイル出力 (D-4)
     -- ===============================
     output_csv(
-      gv_rep_file,        -- 処理種別：処理結果レポート
+      gv_csv_file,        -- 処理種別：CSVファイル出力
       lv_errbuf,          -- エラー・メッセージ           --# 固定 #
       lv_retcode,         -- リターン・コード             --# 固定 #
       lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -871,10 +915,10 @@ AS
     END IF;
 --
     -- ===============================
-    -- CSVファイル出力 (D-4)
+    -- 処理結果レポート出力 (D-4)
     -- ===============================
     output_csv(
-      gv_csv_file,        -- 処理種別：CSVファイル出力
+      gv_rep_file,        -- 処理種別：処理結果レポート
       lv_errbuf,          -- エラー・メッセージ           --# 固定 #
       lv_retcode,         -- リターン・コード             --# 固定 #
       lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -895,6 +939,7 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+/*
     -- ===============================
     -- 送信済フラグ更新 (D-6)
     -- ===============================
@@ -906,6 +951,7 @@ AS
     IF (lv_retcode = gv_status_error) THEN
       RAISE global_process_expt;
     END IF;
+*/
 --
     -- *******************************
     -- *** 正常件数 設定

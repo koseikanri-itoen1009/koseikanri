@@ -7,7 +7,7 @@ AS
  * Description      : 配送先マスタインターフェース(Outbound)
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 配送先マスタインタフェース T_MD070_BPO_80F
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2008/05/14    1.2  Oracle 椎名 昭圭  内部変更要求#96対応
  *  2008/05/16    1.3  Oracle 丸下 博宣  支払先サイトアドオン略称出力を追加
  *  2008/06/12    1.4  Oracle 丸下       日付項目書式変更
+ *  2008/07/11    1.5  Oracle 椎名 昭圭  仕様不備障害#I_S_192.1.2対応
  *
  *****************************************************************************************/
 --
@@ -408,7 +409,6 @@ AS
     cv_b_num_ship   CONSTANT NUMBER       :=  95;       -- 出荷配送先
     cv_b_num_pay    CONSTANT NUMBER       :=  96;       -- 有償配送先
     cv_sep_com      CONSTANT VARCHAR2(1)  := ',';
-    cv_sep_wquot    CONSTANT VARCHAR2(1)  := '"';
 --
     -- *** ローカル変数 ***
     lf_file_hand    UTL_FILE.FILE_TYPE;    -- ファイル・ハンドルの宣言
@@ -462,20 +462,25 @@ AS
                         || gt_ship_mst_tbl(i).attribute18           || cv_sep_com   -- コード1
                         || gt_ship_mst_tbl(i).base_code             || cv_sep_com   -- コード2
                                                                     || cv_sep_com   -- コード3
-                        || gt_ship_mst_tbl(i).party_site_name       || cv_sep_com   -- 名称1
+                        || REPLACE(gt_ship_mst_tbl(i).party_site_name, cv_sep_com)
+                                                                    || cv_sep_com   -- 名称1
                                                                     || cv_sep_com   -- 名称2
                                                                     || cv_sep_com   -- 名称3
-                        || gt_ship_mst_tbl(i).address_line1         
-                        || gt_ship_mst_tbl(i).address_line2         || cv_sep_com   -- 情報1
+                        || REPLACE(gt_ship_mst_tbl(i).address_line1, cv_sep_com)
+                        || REPLACE(gt_ship_mst_tbl(i).address_line2, cv_sep_com)
+                                                                    || cv_sep_com   -- 情報1
                                                                     || cv_sep_com   -- 情報2
                                                                     || cv_sep_com   -- 情報3
                                                                     || cv_sep_com   -- 情報4
                                                                     || cv_sep_com   -- 情報5
                                                                     || cv_sep_com   -- 情報6
                                                                     || cv_sep_com   -- 情報7
-                        || gt_ship_mst_tbl(i).phone                 || cv_sep_com   -- 情報8
-                        || gt_ship_mst_tbl(i).fax                   || cv_sep_com   -- 情報9
-                        || gt_ship_mst_tbl(i).zip                   || cv_sep_com   -- 情報10
+                        || REPLACE(gt_ship_mst_tbl(i).phone, cv_sep_com)
+                                                                    || cv_sep_com   -- 情報8
+                        || REPLACE(gt_ship_mst_tbl(i).fax, cv_sep_com)
+                                                                    || cv_sep_com   -- 情報9
+                        || REPLACE(gt_ship_mst_tbl(i).zip, cv_sep_com)
+                                                                    || cv_sep_com   -- 情報10
                         || gt_ship_mst_tbl(i).attribute2            || cv_sep_com   -- 情報11
                         || gt_ship_mst_tbl(i).attribute3            || cv_sep_com   -- 情報12
                                                                     || cv_sep_com   -- 情報13
@@ -532,20 +537,26 @@ AS
                         || gt_pay_mst_tbl(i).vendor_site_code       || cv_sep_com   -- コード1
                         || gt_pay_mst_tbl(i).segment1               || cv_sep_com   -- コード2
                                                                     || cv_sep_com   -- コード3
-                        || gt_pay_mst_tbl(i).vendor_site_name       || cv_sep_com   -- 名称1
-                        || gt_pay_mst_tbl(i).vendor_site_short_name || cv_sep_com   -- 名称2
+                        || REPLACE(gt_pay_mst_tbl(i).vendor_site_name, cv_sep_com)
+                                                                    || cv_sep_com   -- 名称1
+                        || REPLACE(gt_pay_mst_tbl(i).vendor_site_short_name, cv_sep_com)
+                                                                    || cv_sep_com   -- 名称2
                                                                     || cv_sep_com   -- 名称3
-                        || gt_pay_mst_tbl(i).address_line1         
-                        || gt_pay_mst_tbl(i).address_line2          || cv_sep_com   -- 情報1
+                        || REPLACE(gt_pay_mst_tbl(i).address_line1, cv_sep_com)
+                        || REPLACE(gt_pay_mst_tbl(i).address_line2, cv_sep_com)
+                                                                    || cv_sep_com   -- 情報1
                                                                     || cv_sep_com   -- 情報2
                                                                     || cv_sep_com   -- 情報3
                                                                     || cv_sep_com   -- 情報4
                                                                     || cv_sep_com   -- 情報5
                                                                     || cv_sep_com   -- 情報6
                                                                     || cv_sep_com   -- 情報7
-                        || gt_pay_mst_tbl(i).phone                  || cv_sep_com   -- 情報8
-                        || gt_pay_mst_tbl(i).fax                    || cv_sep_com   -- 情報9
-                        || gt_pay_mst_tbl(i).zip                    || cv_sep_com   -- 情報10
+                        || REPLACE(gt_pay_mst_tbl(i).phone, cv_sep_com)
+                                                                    || cv_sep_com   -- 情報8
+                        || REPLACE(gt_pay_mst_tbl(i).fax, cv_sep_com)
+                                                                    || cv_sep_com   -- 情報9
+                        || REPLACE(gt_pay_mst_tbl(i).zip, cv_sep_com)
+                                                                    || cv_sep_com   -- 情報10
                                                                     || cv_sep_com   -- 情報11
                                                                     || cv_sep_com   -- 情報12
                                                                     || cv_sep_com   -- 情報13

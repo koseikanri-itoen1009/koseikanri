@@ -7,7 +7,7 @@ AS
  * Description      : 拠点マスタインターフェース(Outbound)
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 拠点マスタインタフェース T_MD070_BPO_80E
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2008/04/30    1.1  Oracle 椎名 昭圭  変更要求#11対応
  *  2008/05/14    1.2  Oracle 椎名 昭圭  内部変更要求#96対応
  *  2008/06/12    1.3  Oracle 丸下       日付項目書式変更
+ *  2008/07/11    1.4  Oracle 椎名 昭圭  仕様不備障害#I_S_192.1.2対応
  *
  *****************************************************************************************/
 --
@@ -288,7 +289,6 @@ AS
     cv_xxcmn_d17    CONSTANT VARCHAR2(3)  := '900';
     cv_b_num        CONSTANT NUMBER       :=  91;
     cv_sep_com      CONSTANT VARCHAR2(1)  := ',';
-    cv_sep_wquot    CONSTANT VARCHAR2(1)  := '"';
 --
     -- *** ローカル変数 ***
     lf_file_hand    UTL_FILE.FILE_TYPE;    -- ファイル・ハンドルの宣言
@@ -336,66 +336,66 @@ AS
       IF (gt_str_mst_tbl.COUNT <> 0) THEN
         <<gt_str_mst_tbl_loop>>
         FOR i IN gt_str_mst_tbl.FIRST .. gt_str_mst_tbl.LAST LOOP
-          lv_csv_file   := cv_itoen                         || cv_sep_com   -- 会社名
-                        || cv_xxcmn_d17                     || cv_sep_com   -- EOSデータ種別
-                        || cv_b_num                         || cv_sep_com   -- 伝票用枝番
-                        || gt_str_mst_tbl(i).account_number || cv_sep_com   -- コード1
-                                                            || cv_sep_com   -- コード2
-                                                            || cv_sep_com   -- コード3
-                        || cv_sep_wquot
-                        || gt_str_mst_tbl(i).party_name
-                        || cv_sep_wquot                     || cv_sep_com   -- 名称1
-                        || cv_sep_wquot
-                        || gt_str_mst_tbl(i).party_short_name
-                        || cv_sep_wquot                     || cv_sep_com   -- 名称2
-                                                            || cv_sep_com   -- 名称3
-                        || cv_sep_wquot
-                        || gt_str_mst_tbl(i).address_line1
-                        || gt_str_mst_tbl(i).address_line2
-                        || cv_sep_wquot                     || cv_sep_com   -- 情報1
-                                                            || cv_sep_com   -- 情報2
-                                                            || cv_sep_com   -- 情報3
-                                                            || cv_sep_com   -- 情報4
-                                                            || cv_sep_com   -- 情報5
-                                                            || cv_sep_com   -- 情報6
-                                                            || cv_sep_com   -- 情報7
-                        || gt_str_mst_tbl(i).phone          || cv_sep_com   -- 情報8
-                        || gt_str_mst_tbl(i).fax            || cv_sep_com   -- 情報9
-                        || gt_str_mst_tbl(i).zip            || cv_sep_com   -- 情報10
-                                                            || cv_sep_com   -- 情報11
-                                                            || cv_sep_com   -- 情報12
-                                                            || cv_sep_com   -- 情報13
-                                                            || cv_sep_com   -- 情報14
-                                                            || cv_sep_com   -- 情報15
-                                                            || cv_sep_com   -- 情報16
-                                                            || cv_sep_com   -- 情報17
-                                                            || cv_sep_com   -- 情報18
-                                                            || cv_sep_com   -- 情報19
-                                                            || cv_sep_com   -- 情報20
-                                                            || cv_sep_com   -- 区分1
-                                                            || cv_sep_com   -- 区分2
-                                                            || cv_sep_com   -- 区分3
-                                                            || cv_sep_com   -- 区分4
-                                                            || cv_sep_com   -- 区分5
-                                                            || cv_sep_com   -- 区分6
-                                                            || cv_sep_com   -- 区分7
-                                                            || cv_sep_com   -- 区分8
-                                                            || cv_sep_com   -- 区分9
-                                                            || cv_sep_com   -- 区分10
-                                                            || cv_sep_com   -- 区分11
-                                                            || cv_sep_com   -- 区分12
-                                                            || cv_sep_com   -- 区分13
-                                                            || cv_sep_com   -- 区分14
-                                                            || cv_sep_com   -- 区分15
-                                                            || cv_sep_com   -- 区分16
-                                                            || cv_sep_com   -- 区分17
-                                                            || cv_sep_com   -- 区分18
-                                                            || cv_sep_com   -- 区分19
-                                                            || cv_sep_com   -- 区分20
+          lv_csv_file   := cv_itoen                           || cv_sep_com   -- 会社名
+                        || cv_xxcmn_d17                       || cv_sep_com   -- EOSデータ種別
+                        || cv_b_num                           || cv_sep_com   -- 伝票用枝番
+                        || gt_str_mst_tbl(i).account_number   || cv_sep_com   -- コード1
+                                                              || cv_sep_com   -- コード2
+                                                              || cv_sep_com   -- コード3
+                        || REPLACE(gt_str_mst_tbl(i).party_name, cv_sep_com)
+                                                              || cv_sep_com   -- 名称1
+                        || REPLACE(gt_str_mst_tbl(i).party_short_name, cv_sep_com)
+                                                              || cv_sep_com   -- 名称2
+                                                              || cv_sep_com   -- 名称3
+                        || REPLACE(gt_str_mst_tbl(i).address_line1, cv_sep_com)
+                        || REPLACE(gt_str_mst_tbl(i).address_line2, cv_sep_com)
+                                                              || cv_sep_com   -- 情報1
+                                                              || cv_sep_com   -- 情報2
+                                                              || cv_sep_com   -- 情報3
+                                                              || cv_sep_com   -- 情報4
+                                                              || cv_sep_com   -- 情報5
+                                                              || cv_sep_com   -- 情報6
+                                                              || cv_sep_com   -- 情報7
+                        || REPLACE(gt_str_mst_tbl(i).phone, cv_sep_com)
+                                                              || cv_sep_com   -- 情報8
+                        || REPLACE(gt_str_mst_tbl(i).fax, cv_sep_com)
+                                                              || cv_sep_com   -- 情報9
+                        || REPLACE(gt_str_mst_tbl(i).zip, cv_sep_com)
+                                                              || cv_sep_com   -- 情報10
+                                                              || cv_sep_com   -- 情報11
+                                                              || cv_sep_com   -- 情報12
+                                                              || cv_sep_com   -- 情報13
+                                                              || cv_sep_com   -- 情報14
+                                                              || cv_sep_com   -- 情報15
+                                                              || cv_sep_com   -- 情報16
+                                                              || cv_sep_com   -- 情報17
+                                                              || cv_sep_com   -- 情報18
+                                                              || cv_sep_com   -- 情報19
+                                                              || cv_sep_com   -- 情報20
+                                                              || cv_sep_com   -- 区分1
+                                                              || cv_sep_com   -- 区分2
+                                                              || cv_sep_com   -- 区分3
+                                                              || cv_sep_com   -- 区分4
+                                                              || cv_sep_com   -- 区分5
+                                                              || cv_sep_com   -- 区分6
+                                                              || cv_sep_com   -- 区分7
+                                                              || cv_sep_com   -- 区分8
+                                                              || cv_sep_com   -- 区分9
+                                                              || cv_sep_com   -- 区分10
+                                                              || cv_sep_com   -- 区分11
+                                                              || cv_sep_com   -- 区分12
+                                                              || cv_sep_com   -- 区分13
+                                                              || cv_sep_com   -- 区分14
+                                                              || cv_sep_com   -- 区分15
+                                                              || cv_sep_com   -- 区分16
+                                                              || cv_sep_com   -- 区分17
+                                                              || cv_sep_com   -- 区分18
+                                                              || cv_sep_com   -- 区分19
+                                                              || cv_sep_com   -- 区分20
                         || TO_CHAR(gt_str_mst_tbl(i).start_date_active, 'YYYY/MM/DD')
-                                                            || cv_sep_com   -- 適用開始日
+                                                              || cv_sep_com   -- 適用開始日
                         || TO_CHAR(gt_str_mst_tbl(i).last_update_date, 'YYYY/MM/DD HH24:MI:SS')
-                        ;                                                   -- 更新日時
+                        ;                                                     -- 更新日時
 --
           -- CSVファイルへ出力する場合
           IF (iv_file_type = gv_csv_file) THEN

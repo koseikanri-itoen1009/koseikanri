@@ -7,7 +7,7 @@ AS
  * Description      : 倉庫マスタインターフェース(Outbound)
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 倉庫マスタインタフェース T_MD070_BPO_80G
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2007/12/26    1.0  Oracle 椎名 昭圭  初回作成
  *  2008/05/02    1.1  Oracle 椎名 昭圭  変更要求#11･内部変更要求#62対応
  *  2008/06/12    1.2  Oracle 丸下       日付項目書式変更
+ *  2008/07/11    1.3  Oracle 椎名 昭圭  仕様不備障害#I_S_192.1.2対応
  *
  *****************************************************************************************/
 --
@@ -296,7 +297,6 @@ AS
     cv_xxcmn_d17    CONSTANT VARCHAR2(3)  := '900';
     cv_b_num        CONSTANT NUMBER       :=  94;
     cv_sep_com      CONSTANT VARCHAR2(1)  := ',';
-    cv_sep_wquot    CONSTANT VARCHAR2(1)  := '"';
     cv_space        CONSTANT VARCHAR2(3)  := ' 　';
 --
     -- *** ローカル変数 ***
@@ -351,19 +351,25 @@ AS
                         || gt_ware_mst_tbl(i).segment1              || cv_sep_com   -- コード1
                         || gt_ware_mst_tbl(i).whse_code             || cv_sep_com   -- コード2
                                                                     || cv_sep_com   -- コード3
-                        || gt_ware_mst_tbl(i).location_name         || cv_sep_com   -- 名称1
-                        || gt_ware_mst_tbl(i).location_short_name   || cv_sep_com   -- 名称2
+                        || REPLACE(gt_ware_mst_tbl(i).location_name, cv_sep_com)
+                                                                    || cv_sep_com   -- 名称1
+                        || REPLACE(gt_ware_mst_tbl(i).location_short_name, cv_sep_com)
+                                                                    || cv_sep_com   -- 名称2
                                                                     || cv_sep_com   -- 名称3
-                        || gt_ware_mst_tbl(i).address_line1         || cv_sep_com   -- 情報1
+                        || REPLACE(gt_ware_mst_tbl(i).address_line1, cv_sep_com)
+                                                                    || cv_sep_com   -- 情報1
                                                                     || cv_sep_com   -- 情報2
                                                                     || cv_sep_com   -- 情報3
                                                                     || cv_sep_com   -- 情報4
                                                                     || cv_sep_com   -- 情報5
                                                                     || cv_sep_com   -- 情報6
                                                                     || cv_sep_com   -- 情報7
-                        || gt_ware_mst_tbl(i).phone                 || cv_sep_com   -- 情報8
-                        || gt_ware_mst_tbl(i).fax                   || cv_sep_com   -- 情報9
-                        || gt_ware_mst_tbl(i).zip                   || cv_sep_com   -- 情報10
+                        || REPLACE(gt_ware_mst_tbl(i).phone, cv_sep_com)
+                                                                    || cv_sep_com   -- 情報8
+                        || REPLACE(gt_ware_mst_tbl(i).fax, cv_sep_com)
+                                                                    || cv_sep_com   -- 情報9
+                        || REPLACE(gt_ware_mst_tbl(i).zip, cv_sep_com)
+                                                                    || cv_sep_com   -- 情報10
                                                                     || cv_sep_com   -- 情報11
                                                                     || cv_sep_com   -- 情報12
                                                                     || cv_sep_com   -- 情報13

@@ -35,6 +35,7 @@ AS
  *  2008/03/11    1.0   Y.Kanami         新規作成
  *  2008/06/26    1.1  Oracle D.Sugahara ST障害 #297対応 *
  *  2008/07/02    1.2  Oracle M.Hokkanji ST障害 #321、#351対応 *
+ *  2008/07/10    1.3  Oracle M.Hokkanji TE080指摘03対応、ヘッダ積載率再計算対応
  *
  *****************************************************************************************/
 --
@@ -127,6 +128,10 @@ AS
                                                       -- メッセージ：共通関数エラー
   gv_msg_xxwsh_11813    CONSTANT VARCHAR2(100)  :=  'APP-XXWSH-11813';
                                                       -- メッセージ：運賃形態取得エラー
+-- Ver1.3 M.Hokkanji Start
+  gv_msg_xxwsh_11814    CONSTANT VARCHAR2(100)  :=  'APP-XXWSH-11814';
+                                                      -- メッセージ：配送区分取得エラー
+-- Ver1.3 M.Hokkanji End
 --
   -- トークン
   gv_tkn_item           CONSTANT VARCHAR2(100)  :=  'ITEM';       -- トークン：ITEM
@@ -143,6 +148,10 @@ AS
   gv_tkn_delivry_no     CONSTANT VARCHAR2(100)  :=  'DELIVERY_NO';-- トークン：DELIVERY_NO
   gv_tkn_branch         CONSTANT VARCHAR2(100)  :=  'BRANCH';     -- トークン：BRANCH
   gv_fnc_name           CONSTANT VARCHAR2(100)  :=  'FNC_NAME';   -- トークン：FNC_NAME
+-- Ver1.3 M.Hokkanji Start
+  gv_tkn_ship_method    CONSTANT VARCHAR2(100)  := 'SHIP_METHOD'; -- トークン：SHIP_METHOD
+  gv_tkn_source_no      CONSTANT VARCHAR2(100)  := 'SOURCE_NO';   -- トークン：SOURCE_NO
+-- Ver1.3 M.Hokkanji END
 --
   gv_prod_cls_leaf      CONSTANT VARCHAR2(1)    :=  '1';          -- 商品区分：リーフ
   gv_prod_cls_drink     CONSTANT VARCHAR2(1)    :=  '2';          -- 商品区分：ドリンク
@@ -468,6 +477,11 @@ AS
   TYPE freight_charge_type_ttype IS
     TABLE OF xxwsh_carriers_schedule.freight_charge_type%TYPE INDEX BY BINARY_INTEGER;
                                                                             -- 運賃形態
+-- Ver1.3 M.Hokkanji Start
+  TYPE mixed_ratio_ttype is
+    TABLE OF xxwsh_order_headers_all.mixed_ratio%TYPE INDEX BY BINARY_INTEGER;
+                                                                            -- 混載率
+-- Ver1.3 M.Hokkanji End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -4245,7 +4259,12 @@ debug_cnt number default 0;
        WHERE  xict.intensive_no = xiclt.intensive_no        -- 集約No
          AND  xict.intensive_no = xmct.intensive_no         -- 集約No
          AND  xiclt.request_no  = xcst.request_no           -- 依頼No
-      ORDER BY  xmct.delivery_no ASC                        -- 配送No
+-- Ver1.3 M.Hokkanji Start
+-- TE080指摘事項08対応
+--      ORDER BY  xmct.delivery_no ASC                        -- 配送No
+      ORDER BY  xict.transaction_type ASC                     -- 業務種別
+              , xmct.delivery_no ASC                          -- 配送No
+-- Ver1.3 M.Hokkanji End
 -- Ver1.2 M.Hokkanji Start
 --              , xcst.prev_delivery_no ASC                   -- 前回配送No
               , NVL(xcst.delivery_no,xcst.prev_delivery_no) ASC -- 前回配送No
@@ -5246,6 +5265,12 @@ debug_log(FND_FILE.LOG,'小口配送情報作成処理終了');
 --2008.05.27 D.Sugahara不具合No9 対応->
     cv_an_object          CONSTANT VARCHAR2(1)  := '1'; -- 対象    
 --2008.05.27 D.Sugahara不具合No9 対応<-
+-- Ver1.3 M.Hokkanji Start
+    cv_table_name_con     CONSTANT VARCHAR2(30) := '配送区分情報VIEW2';
+    cv_ship_method_name   CONSTANT VARCHAR2(30) := '混載配送区分';
+    cv_effective_date     CONSTANT VARCHAR2(30) := '基準日';
+    cv_consolid_false     CONSTANT NUMBER       := 0;   -- 混載許可フラグ：不許可
+-- Ver1.3 M.Hokkanji End
 --
     -- *** ローカル変数 ***
     TYPE get_intensive_tmp_rtype IS RECORD(
@@ -5349,6 +5374,9 @@ debug_log(FND_FILE.LOG,'小口配送情報作成処理終了');
     lv_cdkbn_1                xxcmn_delivery_lt2_v.code_class1%TYPE;        -- コード区分１
     lv_cdkbn_2                xxcmn_delivery_lt2_v.code_class2%TYPE;        -- コード区分２
     lv_cdkbn_2_opt            VARCHAR2(1);                                  -- コード区分２(最適化用)
+-- Ver1.3 M.Hokkanji Start
+    lv_cdkbn_2_con            VARCHAR2(1);                                  -- コード区分２(混載チェック用)
+-- Ver1.3 M.Hokkanji End
     lv_mixed_flag             VARCHAR2(1) DEFAULT NULL;                     -- 混載済フラグ
     lv_second_ship_to         xxwsh_intensive_carriers_tmp.deliver_to%TYPE; -- 2件目の出荷先
     lv_brake_flag             BOOLEAN DEFAULT FALSE;                        -- ブレイクフラグ
@@ -6079,6 +6107,181 @@ debug_log(FND_FILE.LOG,'混載合計重量：'||lt_mix_total_weight(j));
 debug_log(FND_FILE.LOG,'混載合計容積：'||lt_mix_total_capacity(j));
 end loop;
 --
+-- Ver1.3 M.Hokkanji Start
+      -- 混載の場合、最適化した配送区分が混載データに存在するかを確認
+      IF (lt_mixed_class_tab(ln_parent_no) = gv_mixed_class_mixed) THEN
+        IF (lt_intensive_tab(ln_child_no).transaction_type = gv_ship_type_ship) THEN -- 出荷依頼
+debug_log(FND_FILE.LOG,'9-4-a最適配送区分設定');
+          lv_cdkbn_2_con  :=  gv_cdkbn_ship_to; -- 配送先
+        ELSE
+          lv_cdkbn_2_con  :=  gv_cdkbn_storage; -- 倉庫
+        END IF;
+debug_log(FND_FILE.LOG,'9-4-b最適配送区分存在チェック');
+        get_consolidated_flag(
+            iv_code_class1                => gv_cdkbn_storage         -- コード区分１
+          , iv_entering_despatching_code1 => first_deliver_from       -- 入出庫場所１
+          , iv_code_class2                => lv_cdkbn_2_con           -- コード区分２
+          , iv_entering_despatching_code2 => lt_intensive_tab(ln_child_no).deliver_to
+                                                                      -- 入出庫場所２
+          , iv_ship_method                => lv_ship_optimization     -- 配送区分
+          , ov_consolidate_flag           => lv_consolid_flag_ships
+                                                                      -- 混載可否フラグ:配送区分
+          , ov_errbuf                     => lv_errbuf
+          , ov_retcode                    => lv_retcode
+          , ov_errmsg                     => lv_errmsg
+        );
+        IF (lv_retcode = gv_status_error) THEN
+debug_log(FND_FILE.LOG,'9-4-b最適配送区分存在チェック関数エラー');
+          RAISE global_api_expt;
+        END IF;
+        -- 混載可否フラグが取得できなかった場合
+        IF (NVL(lv_consolid_flag_ships,cv_consolid_false) = cv_consolid_false) THEN
+debug_log(FND_FILE.LOG,'9-4-c最適配送区分取得失敗');
+          lv_ship_optimization := lt_ship_method_cls;
+debug_log(FND_FILE.LOG,'9-4-d混載配送区分取得');
+debug_log(FND_FILE.LOG,'配送区分：'||lv_ship_optimization);
+debug_log(FND_FILE.LOG,'基準日：'||TO_CHAR(first_schedule_ship_date,'YYYY/MM/DD'));
+          BEGIN
+            SELECT xsmv.mixed_ship_method_code
+            INTO   lv_mixed_ship_method
+            FROM   xxwsh_ship_method2_v xsmv
+            WHERE  xsmv.ship_method_code = lv_ship_optimization
+            AND    first_schedule_ship_date
+                   BETWEEN xsmv.start_date_active
+                       AND NVL(xsmv.end_date_active,first_schedule_ship_date);
+          EXCEPTION
+            WHEN OTHERS THEN
+debug_log(FND_FILE.LOG,'9-4-e混載配送区分取得失敗');
+            -- エラーメッセージ取得
+            lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                           gv_xxwsh            -- モジュール名略称：XXWSH 出荷・引当/配車
+                          ,gv_msg_xxwsh_11804  -- 対象データなし
+                          ,gv_tkn_table        -- トークン'TABLE'
+                          ,cv_table_name_con   -- テーブル名：配送区分情報VIEW2
+                          ,gv_tkn_key          -- トークン'KEY'
+                          ,cv_ship_method_name || ':' || lv_ship_optimization || '、' ||
+                          cv_effective_date || ':' || TO_CHAR(first_schedule_ship_date,'YYYY/MM/DD')
+                         ) ,1 ,5000);
+            RAISE global_api_expt;
+          END;
+        END IF;
+      END IF;
+debug_log(FND_FILE.LOG,'9-4-f小口区分確認');
+      -- 混載データがルートに存在するかチェックする判断を行うため
+      -- 小口区分チェックをループ前に移動
+      --小口区分確認
+      BEGIN
+        SELECT  COUNT(xsmv.ship_method_code)                 -- 出荷方法
+          INTO  lv_small_amt_cnt
+          FROM  xxwsh_ship_method2_v xsmv                    -- 配送区分情報View2
+         WHERE xsmv.ship_method_code = lv_ship_optimization  -- 配送区分
+           AND xsmv.small_amount_class = '1'                 -- 小口区分
+           AND xsmv.start_date_active <= gd_date_from        -- 出荷方法適用開始日
+           AND (xsmv.end_date_active IS NULL
+                OR xsmv.end_date_active >= gd_date_from)     -- 出荷方法適用終了日
+          AND ROWNUM = 1
+          ;
+      EXCEPTION
+        -- *** OTHERS例外ハンドラ ***
+        WHEN OTHERS THEN
+          lv_small_amt_cnt := 0;
+      END;
+debug_log(FND_FILE.LOG,'小口区分lv_small_amt_cnt:' || lv_small_amt_cnt);
+      -- 混載で小口ではない場合混載配送区分が該当ルートに存在するかをチェック
+      IF ((lt_mixed_class_tab(ln_parent_no) = gv_mixed_class_mixed)
+        AND (lv_small_amt_cnt = 0 )) THEN
+debug_log(FND_FILE.LOG,'9-4-g混載配送区分ルートチェック(基準元)');
+debug_log(FND_FILE.LOG,'コード区分１:' || gv_cdkbn_storage);
+debug_log(FND_FILE.LOG,'入出庫場所１:' || first_deliver_from);
+debug_log(FND_FILE.LOG,'コード区分２:' || lv_cdkbn_2_opt);
+debug_log(FND_FILE.LOG,'入出庫場所２:' || first_deliver_to);
+debug_log(FND_FILE.LOG,'配送区分:' || lv_mixed_ship_method );
+        get_consolidated_flag(
+            iv_code_class1                => gv_cdkbn_storage         -- コード区分１
+          , iv_entering_despatching_code1 => first_deliver_from       -- 入出庫場所１
+          , iv_code_class2                => lv_cdkbn_2_opt           -- コード区分２
+          , iv_entering_despatching_code2 => first_deliver_to
+                                                                      -- 入出庫場所２
+          , iv_ship_method                => lv_mixed_ship_method     -- 配送区分
+          , ov_consolidate_flag           => lv_consolid_flag_ships
+                                                                      -- 混載可否フラグ:配送区分
+          , ov_errbuf                     => lv_errbuf
+          , ov_retcode                    => lv_retcode
+          , ov_errmsg                     => lv_errmsg
+        );
+        IF (lv_retcode = gv_status_error) THEN
+debug_log(FND_FILE.LOG,'9-4-g混載配送区分ルートチェック(基準元)関数エラー');
+          RAISE global_api_expt;
+        END IF;
+        -- 混載可否フラグが取得できなかった場合
+        IF (NVL(lv_consolid_flag_ships,cv_consolid_false) = cv_consolid_false) THEN
+debug_log(FND_FILE.LOG,'9-4-g混載配送区分ルートチェック(基準元)関数エラー');
+          -- エラーメッセージ取得
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                         gv_xxwsh            -- モジュール名略称：XXWSH 出荷・引当/配車
+                        ,gv_msg_xxwsh_11814  -- 配送区分存在エラー
+                        ,gv_tkn_codekbn1     -- トークン'コード区分1'
+                        ,gv_cdkbn_storage
+                        ,gv_tkn_from         -- トークン'保管場所1'
+                        ,first_deliver_from
+                        ,gv_tkn_codekbn2     -- トークン'コード区分2'
+                        ,lv_cdkbn_2_opt
+                        ,gv_tkn_to           -- トークン'保管場所2'
+                        ,first_deliver_to
+                        ,gv_tkn_ship_method  -- トークン'配送区分'
+                        ,lv_mixed_ship_method
+                        ,gv_tkn_source_no    -- トークン'集約元No'
+                        ,first_intensive_source_no
+                       ) ,1 ,5000);
+          RAISE global_api_expt;
+        END IF;
+debug_log(FND_FILE.LOG,'9-4-h混載配送区分ルートチェック(混載先)');
+debug_log(FND_FILE.LOG,'コード区分１:' || gv_cdkbn_storage);
+debug_log(FND_FILE.LOG,'入出庫場所１:' || first_deliver_from);
+debug_log(FND_FILE.LOG,'コード区分２:' || lv_cdkbn_2_con);
+debug_log(FND_FILE.LOG,'入出庫場所２:' || first_deliver_to);
+debug_log(FND_FILE.LOG,'配送区分:' || lv_mixed_ship_method );
+        get_consolidated_flag(
+            iv_code_class1                => gv_cdkbn_storage         -- コード区分１
+          , iv_entering_despatching_code1 => first_deliver_from       -- 入出庫場所１
+          , iv_code_class2                => lv_cdkbn_2_con           -- コード区分２
+          , iv_entering_despatching_code2 => lt_intensive_tab(ln_child_no).deliver_to
+                                                                      -- 入出庫場所２
+          , iv_ship_method                => lv_mixed_ship_method     -- 配送区分
+          , ov_consolidate_flag           => lv_consolid_flag_ships
+                                                                      -- 混載可否フラグ:配送区分
+          , ov_errbuf                     => lv_errbuf
+          , ov_retcode                    => lv_retcode
+          , ov_errmsg                     => lv_errmsg
+        );
+        IF (lv_retcode = gv_status_error) THEN
+debug_log(FND_FILE.LOG,'9-4-h混載配送区分ルートチェック(混載先)関数エラー');
+          RAISE global_api_expt;
+        END IF;
+        -- 混載可否フラグが取得できなかった場合
+        IF (NVL(lv_consolid_flag_ships,cv_consolid_false) = cv_consolid_false) THEN
+debug_log(FND_FILE.LOG,'9-4-h混載配送区分ルートチェック(混載先)関数エラー');
+          -- エラーメッセージ取得
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                         gv_xxwsh            -- モジュール名略称：XXWSH 出荷・引当/配車
+                        ,gv_msg_xxwsh_11814  -- 配送区分存在エラー
+                        ,gv_tkn_codekbn1     -- トークン'コード区分1'
+                        ,gv_cdkbn_storage
+                        ,gv_tkn_from         -- トークン'保管場所1'
+                        ,first_deliver_from
+                        ,gv_tkn_codekbn2     -- トークン'コード区分2'
+                        ,lv_cdkbn_2_con
+                        ,gv_tkn_to           -- トークン'保管場所2'
+                        ,lt_intensive_tab(ln_child_no).deliver_to
+                        ,gv_tkn_ship_method  -- トークン'配送区分'
+                        ,lv_mixed_ship_method
+                        ,gv_tkn_source_no    -- トークン'集約元No'
+                        ,first_intensive_source_no
+                       ) ,1 ,5000);
+          RAISE global_api_expt;
+        END IF;
+      END IF;
+-- Ver1.3 M.Hokkanji End
       <<plsql_tab_setting_loop>>
       FOR rec_idx IN 1..lt_intensive_no_tab.COUNT LOOP
 debug_log(FND_FILE.LOG,'9-5PLSQLに格納');
@@ -6104,6 +6307,10 @@ debug_log(FND_FILE.LOG,'9-5-1-1-修正配送区分');
 --debug_log(FND_FILE.LOG,'9-5-1-1-1 ln_tab_ins_idx:'|| ln_tab_ins_idx);
 debug_log(FND_FILE.LOG,'9-5-1-1-1 ln_parent_no:'|| ln_parent_no);
 --2008.05.27 D.Sugahara 不具合No9対応->
+-- Ver1.3 M.Hokkanji Start
+        -- 混載データがルートに存在するかチェックする判断を行うため
+        -- 小口区分チェックをループ前に移動
+/*
         --小口区分確認
         BEGIN
           SELECT  COUNT(xsmv.ship_method_code)                 -- 出荷方法
@@ -6121,6 +6328,8 @@ debug_log(FND_FILE.LOG,'9-5-1-1-1 ln_parent_no:'|| ln_parent_no);
           WHEN OTHERS THEN
             lv_small_amt_cnt := 0;
         END;
+*/
+-- Ver1.3 M.Hokkanji End
 --2008.05.27 D.Sugahara 不具合No9対応<-
         -- 修正配送区分
         IF (lt_mixed_class_tab(ln_parent_no) = gv_mixed_class_mixed) THEN
@@ -7859,7 +8068,15 @@ debug_log(FND_FILE.LOG,'4-2一括登録処理');
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    cv_yes        CONSTANT VARCHAR2(1) := 'Y';        -- YES
+    cv_yes        CONSTANT VARCHAR2(1) := 'Y';         -- YES
+-- Ver1.3 M.Hokkanji Start
+    cv_an_object      CONSTANT VARCHAR2(1)   := '1';   -- 対象
+    cv_table_name     CONSTANT VARCHAR2(100) := '自動配車ソート用中間テーブル';
+    cv_parameter_name CONSTANT VARCHAR2(100) := '依頼No/移動No:';
+    cv_0              CONSTANT NUMBER        := 0;     -- 数値判定用
+    cv_loading_over   CONSTANT VARCHAR2(1) := '1';     -- 積載オーバー区分：オーバー
+    cn_sts_error      CONSTANT NUMBER := 1;            -- 共通関数エラー
+-- Ver1.3 M.Hokkanji End
 --
     -- *** ローカル変数 ***
     lt_upd_req_no_ship_tab        request_no_ttype;   -- 依頼No
@@ -7887,6 +8104,51 @@ debug_log(FND_FILE.LOG,'4-2一括登録処理');
     lt_prog_appl_id     xxcmn_txn_lot_cost.program_application_id%TYPE; -- アプリケーションID
     lt_conc_program_id  xxcmn_txn_lot_cost.program_id%TYPE;             -- プログラムID
 -- 20080603 K.Yamane 不具合No14<-
+-- Ver1.3 M.Hokkanji Start
+    -- ヘッダ登録用
+    lt_ship_based_weight        based_weight_ttype;                                  -- 基本重量(出荷)
+    lt_ship_based_capacity      based_capa_ttype;                                    -- 基本容積(出荷)
+    lt_ship_loading_weight      loading_weight_ttype;                                -- 重量積載効率(出荷)
+    lt_ship_loading_capacity    loading_capacity_ttype;                              -- 容積積載効率(出荷)
+    lt_ship_mixed_ratio         mixed_ratio_ttype;                                   -- 混載率(出荷)
+    lt_move_based_weight        based_weight_ttype;                                  -- 基本重量(移動)
+    lt_move_based_capacity      based_capa_ttype;                                    -- 基本容積(移動)
+    lt_move_loading_weight      loading_weight_ttype;                                -- 重量積載効率(移動)
+    lt_move_loading_capacity    loading_capacity_ttype;                              -- 容積積載効率(移動)
+    lt_move_mixed_ratio         mixed_ratio_ttype;                                   -- 混載率(移動)
+    -- 配車配送取得用
+    lt_sum_loading_weight       xxwsh_carriers_schedule.sum_loading_weight%TYPE;     -- 重量合計
+    lt_sum_loading_capacity     xxwsh_carriers_schedule.sum_loading_capacity%TYPE;   -- 容積合計
+    lt_small_amount_class       xxwsh_ship_method_v.small_amount_class%TYPE;         -- 小口区分
+    -- ソート
+    lt_sort_sum_weight          xxwsh_carriers_sort_tmp.sum_weight%TYPE;             -- ソート積載重量合計
+    lt_sort_sum_capacity        xxwsh_carriers_sort_tmp.sum_capacity%TYPE;           -- ソート積載容積合計
+    lt_sort_pallet_weight       xxwsh_carriers_sort_tmp.sum_pallet_weight%TYPE;      -- ソートパレット重量合計
+    lt_sort_deliver_from        xxwsh_carriers_sort_tmp.deliver_from%TYPE;           -- ソート出庫元保管場所
+    lt_sort_deliver_to          xxwsh_carriers_sort_tmp.deliver_to%TYPE;             -- ソート出庫先保管場所
+    lt_schedule_ship_date       xxwsh_carriers_sort_tmp.schedule_ship_date%TYPE;     -- ソート出庫予定日
+    lt_weight_capacity_class    xxwsh_carriers_sort_tmp.weight_capacity_class%TYPE;  -- 重量容積区分
+    lt_prod_class               xxwsh_carriers_sort_tmp.prod_class%TYPE;             -- 商品区分
+    lt_based_weight             xxwsh_carriers_sort_tmp.based_weight%TYPE;           -- 基本重量
+    lt_based_capacity           xxwsh_carriers_sort_tmp.based_capacity%TYPE;         -- 基本容積
+    -- 一時処理用
+    lt_mixed_ratio              xxwsh_order_headers_all.mixed_ratio%TYPE;            -- 混載率
+    lt_sum_weight               xxwsh_carriers_schedule.sum_loading_weight%TYPE;     -- 重量合計
+    lv_code_kbn                 VARCHAR2(1);                                         -- コード区分
+    lv_loading_over_class       VARCHAR2(1);                                         -- 積載オーバー区分
+    lv_ship_methods             xxcmn_ship_methods.ship_method%TYPE;                 -- 出荷方法
+    ln_load_efficiency_weight   NUMBER;                                              -- 重量積載効率
+    ln_load_efficiency_capacity NUMBER;                                              -- 容積積載効率
+    lv_mixed_ship_method        VARCHAR2(2);                                         -- 混載配送区分
+    ln_set_efficiency_weight    NUMBER;                                              -- SET用重量積載効率
+    ln_set_efficiency_capacity  NUMBER;                                              -- SET用容積積載効率
+    ln_drink_deadweight         NUMBER;                                              -- ドリンク積載重量
+    ln_leaf_deadweight          NUMBER;                                              -- リーフ積載重量
+    ln_leaf_loading_capacity    NUMBER;                                              -- リーフ積載容積
+    ln_drink_loading_capacity   NUMBER;                                              -- ドリンク積載容積
+    ln_palette_max_qty          NUMBER;                                              -- パレット最大枚数
+    ln_retnum                   NUMBER;                                              -- 共通関数戻り値
+-- Ver1.3 M.Hokkanji End
 --
     -- *** ローカル・カーソル ***
     CURSOR get_upd_key_cur IS
@@ -7926,14 +8188,330 @@ debug_log(FND_FILE.LOG,'B-15【依頼・指示情報更新処理】');
 --
 -- 20080603 K.Yamane 不具合No4->
       -- 配車配送計画アドオンの存在チェック
-      SELECT COUNT(xcs.transaction_id)
-      INTO   ln_cnt
-      FROM   xxwsh_carriers_schedule xcs
-      WHERE  xcs.delivery_no = cur_rec.delivery_no
-      AND    ROWNUM = 1;
+-- Ver1.3 M.Hokkanji Start
+      -- 配車配送計画から値を取得する必要があるため修正
+debug_log(FND_FILE.LOG,'B-15_a【配車配送計画情報取得】' || 'delivery_no:' || cur_rec.delivery_no);
+      BEGIN
+        SELECT  xcs.sum_loading_weight     sum_loading_weight      -- 積載重量合計
+               ,xcs.sum_loading_capacity   sum_loading_capacity    -- 積載容積合計
+               ,xsmv.small_amount_class    small_amount_class      -- 小口区分
+        INTO   lt_sum_loading_weight,
+               lt_sum_loading_capacity,
+               lt_small_amount_class
+        FROM   xxwsh_carriers_schedule xcs, -- 
+               xxwsh_ship_method_v xsmv     -- 配送区分情報View
+        WHERE  xcs.delivery_no = cur_rec.delivery_no
+        AND    xsmv.ship_method_code = xcs.delivery_type;
+        ln_cnt := 1;
+debug_log(FND_FILE.LOG,'B-15_b1【配車配送計画情報取得対象有】');
+debug_log(FND_FILE.LOG,'B-15_b1 lt_sum_loading_weight:' || lt_sum_loading_weight);
+debug_log(FND_FILE.LOG,'B-15_b1 lt_sum_loading_capacity:' || lt_sum_loading_capacity);
+debug_log(FND_FILE.LOG,'B-15_b1 lt_small_amount_class:' || lt_small_amount_class);
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+debug_log(FND_FILE.LOG,'B-15_b2【配車配送計画情報取得対象データ無】');
+          ln_cnt := 0;
+      END;
+--      SELECT COUNT(xcs.transaction_id)
+--      INTO   ln_cnt
+--      FROM   xxwsh_carriers_schedule xcs
+--      WHERE  xcs.delivery_no = cur_rec.delivery_no
+--      AND    ROWNUM = 1;
 --
+-- Ver1.3 M.Hokkanji End
       -- 配車配送計画アドオンに存在すれば
       IF (ln_cnt > 0) THEN
+-- Ver1.3 M.Hokkanji Start
+debug_log(FND_FILE.LOG,'B-15_c1【自動配車ソート用中間テーブルデータ取得】cur_rec.request_no:' || cur_rec.request_no);
+        -- ヘッダを更新するのに必要な情報を取得
+        BEGIN
+          SELECT  NVL(xcst.sum_weight,cv_0)        sum_weight             -- 積載重量合計
+                 ,NVL(xcst.sum_capacity,cv_0)      sum_capacity           -- 積載容積合計
+                 ,NVL(xcst.sum_pallet_weight,cv_0) sum_pallet_weight      -- 合計パレット重量
+                 ,xcst.deliver_from                deliver_from           -- 出庫元保管場所
+                 ,xcst.deliver_to                  deliver_to             -- 出荷先
+                 ,xcst.schedule_ship_date          schedule_ship_date     -- 出庫予定日
+                 ,xcst.weight_capacity_class       weight_capacity_class  -- 重量容積区分
+                 ,xcst.prod_class                  prod_class             -- 商品区分
+          INTO    lt_sort_sum_weight
+                 ,lt_sort_sum_capacity
+                 ,lt_sort_pallet_weight
+                 ,lt_sort_deliver_from
+                 ,lt_sort_deliver_to
+                 ,lt_schedule_ship_date
+                 ,lt_weight_capacity_class
+                 ,lt_prod_class
+          FROM    xxwsh_carriers_sort_tmp xcst
+          WHERE   xcst.request_no = cur_rec.request_no;
+debug_log(FND_FILE.LOG,'B-15_c2【自動配車ソート用中間テーブルデータ取得成功】');
+debug_log(FND_FILE.LOG,'B-15_c2 lt_sort_sum_weight:' || lt_sort_sum_weight);
+debug_log(FND_FILE.LOG,'B-15_c2 lt_sort_sum_capacity:' || lt_sort_sum_capacity);
+debug_log(FND_FILE.LOG,'B-15_c2 lt_sort_pallet_weightt:' || lt_sort_pallet_weight);
+debug_log(FND_FILE.LOG,'B-15_c2 lt_sort_deliver_from:' || lt_sort_deliver_from);
+debug_log(FND_FILE.LOG,'B-15_c2 lt_sort_deliver_to:' || lt_sort_deliver_to);
+debug_log(FND_FILE.LOG,'B-15_c2 lt_schedule_ship_date:' || TO_DATE(lt_schedule_ship_date,'YYYY/MM/DD'));
+debug_log(FND_FILE.LOG,'B-15_c2 lt_weight_capacity_class:' || lt_weight_capacity_class);
+debug_log(FND_FILE.LOG,'B-15_c2 lt_prod_class:' || lt_prod_class);
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+debug_log(FND_FILE.LOG,'B-15_c3【自動配車ソート用中間テーブルデータ取得失敗】');
+            -- エラーメッセージ取得
+            lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                           gv_xxwsh            -- モジュール名略称：XXWSH 出荷・引当/配車
+                          ,gv_msg_xxwsh_11804  -- 対象データなし
+                          ,gv_tkn_table        -- トークン'TABLE'
+                          ,cv_table_name       -- テーブル名：自動配車ソート用中間テーブル
+                          ,gv_tkn_key          -- トークン'KEY'
+                          ,cv_parameter_name || cur_rec.request_no -- エラーデータ
+                         ) ,1 ,5000);
+            RAISE global_api_expt;
+        END;
+debug_log(FND_FILE.LOG,'B-15_d【重量設定】');
+        -- 小口の場合はパレット重量を加味しない
+        IF (lt_small_amount_class = cv_an_object) THEN
+          lt_sum_weight := lt_sort_sum_weight;
+        ELSE
+          lt_sum_weight := lt_sort_sum_weight + lt_sort_pallet_weight;
+        END IF;
+debug_log(FND_FILE.LOG,'B-15_e【混載率取得】');
+        -- 重量容積区分が重量の場合
+        IF (lt_weight_capacity_class = gv_weight) THEN
+          -- 取得した重量合計が0の場合
+          IF (lt_sum_loading_weight = cv_0) THEN
+            lt_mixed_ratio := cv_0; --混載率に0をセット
+          ELSE
+            lt_mixed_ratio := ROUND(lt_sum_weight / lt_sum_loading_weight * 100,2);
+          END IF;
+        ELSE
+          -- 取得した容積合計が0の場合
+          IF (lt_sum_loading_capacity = cv_0) THEN
+            lt_mixed_ratio := cv_0; --混載率に0をセット
+          ELSE
+            lt_mixed_ratio := ROUND(lt_sort_sum_capacity / lt_sum_loading_capacity * 100,2);
+          END IF;
+        END IF;
+debug_log(FND_FILE.LOG,'B-15_f【コード区分セット】');
+        -- 処理種別：出荷の場合
+        IF (cur_rec.transaction_type = gv_ship_type_ship) THEN
+          lv_code_kbn := gv_cdkbn_ship_to;
+        ELSE
+          lv_code_kbn := gv_cdkbn_storage;
+        END IF;
+--
+debug_log(FND_FILE.LOG,'B-15_g1【重量積載効率算出】');
+debug_log(FND_FILE.LOG,'-----------------------------------');
+debug_log(FND_FILE.LOG,'B-15_g1 合計重量:' || lt_sum_weight);
+debug_log(FND_FILE.LOG,'B-15_g1 合計容積:NULL');
+debug_log(FND_FILE.LOG,'B-15_g1 コード区分1:' || gv_cdkbn_storage);
+debug_log(FND_FILE.LOG,'B-15_g1 入出庫場所コード１:' || lt_sort_deliver_from);
+debug_log(FND_FILE.LOG,'B-15_g1 コード区分2:' || lv_code_kbn);
+debug_log(FND_FILE.LOG,'B-15_g1 入出庫場所コード2:' || lt_sort_deliver_to);
+debug_log(FND_FILE.LOG,'B-15_g1 出荷方法:' || cur_rec.fixed_shipping_method_code);
+debug_log(FND_FILE.LOG,'B-15_g1 商品区分:' || gv_prod_class);
+debug_log(FND_FILE.LOG,'B-15_g1 自動配車対象区分:NULL');
+debug_log(FND_FILE.LOG,'B-15_g1 基準日(適用日基準日):' || TO_CHAR(lt_schedule_ship_date,'YYYY/MM/DD'));
+debug_log(FND_FILE.LOG,'-----------------------------------');
+--
+        -- 共通関数：積載効率チェック(積載効率)
+        xxwsh_common910_pkg.calc_load_efficiency(
+            in_sum_weight                  => NVL(lt_sum_weight,0)      -- 1.合計重量
+          , in_sum_capacity                => NULL                      -- 2.合計容積
+          , iv_code_class1                 => gv_cdkbn_storage          -- 3.コード区分１
+          , iv_entering_despatching_code1  => lt_sort_deliver_from      -- 4.入出庫場所コード１
+          , iv_code_class2                 => lv_code_kbn               -- 5.コード区分２
+          , iv_entering_despatching_code2  => lt_sort_deliver_to        -- 6.入出庫場所コード２
+          , iv_ship_method                 => cur_rec.fixed_shipping_method_code
+                                                                        -- 7.出荷方法
+          , iv_prod_class                  => lt_prod_class             -- 8.商品区分
+          , iv_auto_process_type           => NULL                      -- 9.自動配車対象区分
+          , id_standard_date               => lt_schedule_ship_date
+                                                                        -- 10.基準日(適用日基準日)
+          , ov_retcode                     => lv_retcode                -- 11.リターンコード
+          , ov_errmsg_code                 => lv_errmsg                 -- 12.エラーメッセージコード
+          , ov_errmsg                      => lv_errbuf                 -- 13.エラーメッセージ
+          , ov_loading_over_class          => lv_loading_over_class     -- 14.積載オーバー区分
+          , ov_ship_methods                => lv_ship_methods           -- 15.出荷方法
+          , on_load_efficiency_weight      => ln_load_efficiency_weight -- 16.重量積載効率
+          , on_load_efficiency_capacity    => ln_load_efficiency_capacity
+                                                                        -- 17.容積積載効率
+          , ov_mixed_ship_method           => lv_mixed_ship_method      -- 18.混載配送区分
+        );
+--
+debug_log(FND_FILE.LOG,'-----------------------------------');
+debug_log(FND_FILE.LOG,'B-15_g2 リターンコード:' || lv_retcode);
+debug_log(FND_FILE.LOG,'B-15_g2 エラーメッセージコード:' || lv_errmsg);
+debug_log(FND_FILE.LOG,'B-15_g2 エラーメッセージ:' || lv_errbuf);
+debug_log(FND_FILE.LOG,'B-15_g2 積載オーバー区分:' || lv_loading_over_class);
+debug_log(FND_FILE.LOG,'B-15_g2 出荷方法:' || lv_ship_methods);
+debug_log(FND_FILE.LOG,'B-15_g2 重量積載効率:' || ln_load_efficiency_weight);
+debug_log(FND_FILE.LOG,'B-15_g2 容積積載効率:' || ln_load_efficiency_capacity);
+debug_log(FND_FILE.LOG,'B-15_g2 混載配送区分:' || lv_mixed_ship_method);
+        -- 共通関数がエラーの場合
+        IF (lv_retcode = gv_status_error) THEN
+--
+debug_log(FND_FILE.LOG,'B-15_g3【重量積載効率取得エラー】');
+--
+          RAISE global_api_expt;
+        END IF;
+--
+        -- 積載オーバーの場合
+        IF (lv_loading_over_class = cv_loading_over) THEN
+debug_log(FND_FILE.LOG,'B-15_g4【重量積載効率積載オーバー】');
+          -- エラーメッセージ取得
+          lv_errmsg := SUBSTRB(xxcmn_common_pkg.get_msg(
+                           gv_xxwsh            -- モジュール名略称：XXWSH 出荷・引当/配車
+                         , gv_msg_xxwsh_11803  -- メッセージ：APP-XXWSH-11803 積載オーバーメッセージ
+                         , gv_tkn_req_no       -- トークン：REQ_NO
+                         , cur_rec.request_no  -- 出荷依頼No
+                        ),1,5000);
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+        END IF;
+debug_log(FND_FILE.LOG,'B-15_g5【重量積載効率セット】');
+        -- 重量積載効率をセット
+        ln_set_efficiency_weight := ln_load_efficiency_weight;
+--
+debug_log(FND_FILE.LOG,'B-15_h1【容積積載効率算出】');
+debug_log(FND_FILE.LOG,'-----------------------------------');
+debug_log(FND_FILE.LOG,'B-15_h1 合計重量:NULL');
+debug_log(FND_FILE.LOG,'B-15_h1 合計容積:'|| lt_sort_sum_capacity);
+debug_log(FND_FILE.LOG,'B-15_h1 コード区分1:' || gv_cdkbn_storage);
+debug_log(FND_FILE.LOG,'B-15_h1 入出庫場所コード１:' || lt_sort_deliver_from);
+debug_log(FND_FILE.LOG,'B-15_h1 コード区分2:' || lv_code_kbn);
+debug_log(FND_FILE.LOG,'B-15_h1 入出庫場所コード2:' || lt_sort_deliver_to);
+debug_log(FND_FILE.LOG,'B-15_h1 出荷方法:' || cur_rec.fixed_shipping_method_code);
+debug_log(FND_FILE.LOG,'B-15_h1 商品区分:' || gv_prod_class);
+debug_log(FND_FILE.LOG,'B-15_h1 自動配車対象区分:NULL');
+debug_log(FND_FILE.LOG,'B-15_h1 基準日(適用日基準日):' || TO_CHAR(lt_schedule_ship_date,'YYYY/MM/DD'));
+debug_log(FND_FILE.LOG,'-----------------------------------');
+--
+        -- 共通関数：積載効率チェック(積載効率)
+        xxwsh_common910_pkg.calc_load_efficiency(
+            in_sum_weight                  => NULL                        -- 1.合計重量
+          , in_sum_capacity                => NVL(lt_sort_sum_capacity,0) -- 2.合計容積
+          , iv_code_class1                 => gv_cdkbn_storage          -- 3.コード区分１
+          , iv_entering_despatching_code1  => lt_sort_deliver_from      -- 4.入出庫場所コード１
+          , iv_code_class2                 => lv_code_kbn               -- 5.コード区分２
+          , iv_entering_despatching_code2  => lt_sort_deliver_to        -- 6.入出庫場所コード２
+          , iv_ship_method                 => cur_rec.fixed_shipping_method_code
+                                                                        -- 7.出荷方法
+          , iv_prod_class                  => lt_prod_class             -- 8.商品区分
+          , iv_auto_process_type           => NULL                      -- 9.自動配車対象区分
+          , id_standard_date               => lt_schedule_ship_date
+                                                                        -- 10.基準日(適用日基準日)
+          , ov_retcode                     => lv_retcode                -- 11.リターンコード
+          , ov_errmsg_code                 => lv_errmsg                 -- 12.エラーメッセージコード
+          , ov_errmsg                      => lv_errbuf                 -- 13.エラーメッセージ
+          , ov_loading_over_class          => lv_loading_over_class     -- 14.積載オーバー区分
+          , ov_ship_methods                => lv_ship_methods           -- 15.出荷方法
+          , on_load_efficiency_weight      => ln_load_efficiency_weight -- 16.重量積載効率
+          , on_load_efficiency_capacity    => ln_load_efficiency_capacity
+                                                                        -- 17.容積積載効率
+          , ov_mixed_ship_method           => lv_mixed_ship_method      -- 18.混載配送区分
+        );
+--
+debug_log(FND_FILE.LOG,'-----------------------------------');
+debug_log(FND_FILE.LOG,'B-15_h2 リターンコード:' || lv_retcode);
+debug_log(FND_FILE.LOG,'B-15_h2 エラーメッセージコード:' || lv_errmsg);
+debug_log(FND_FILE.LOG,'B-15_h2 エラーメッセージ:' || lv_errbuf);
+debug_log(FND_FILE.LOG,'B-15_h2 積載オーバー区分:' || lv_loading_over_class);
+debug_log(FND_FILE.LOG,'B-15_h2 出荷方法:' || lv_ship_methods);
+debug_log(FND_FILE.LOG,'B-15_h2 重量積載効率:' || ln_load_efficiency_weight);
+debug_log(FND_FILE.LOG,'B-15_h2 容積積載効率:' || ln_load_efficiency_capacity);
+debug_log(FND_FILE.LOG,'B-15_h2 混載配送区分:' || lv_mixed_ship_method);
+        -- 共通関数がエラーの場合
+        IF (lv_retcode = gv_status_error) THEN
+--
+debug_log(FND_FILE.LOG,'B-15_h3【容積積載効率取得エラー】');
+--
+          RAISE global_api_expt;
+        END IF;
+--
+        -- 積載オーバーの場合
+        IF (lv_loading_over_class = cv_loading_over) THEN
+debug_log(FND_FILE.LOG,'B-15_h4【容積積載効率積載オーバー】');
+          -- エラーメッセージ取得
+          lv_errmsg := SUBSTRB(xxcmn_common_pkg.get_msg(
+                           gv_xxwsh            -- モジュール名略称：XXWSH 出荷・引当/配車
+                         , gv_msg_xxwsh_11803  -- メッセージ：APP-XXWSH-11803 積載オーバーメッセージ
+                         , gv_tkn_req_no       -- トークン：REQ_NO
+                         , cur_rec.request_no  -- 出荷依頼No
+                        ),1,5000);
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+        END IF;
+debug_log(FND_FILE.LOG,'B-15_h5【容積積載効率セット】');
+        -- 容積積載効率をセット
+        ln_set_efficiency_capacity := ln_load_efficiency_capacity;
+debug_log(FND_FILE.LOG,'B-15_i1【基本重量基本容積取得】');
+        ln_retnum :=  xxwsh_common_pkg.get_max_pallet_qty(    -- 共通関数：最大パレット枚数算出関数
+                          iv_code_class1
+                                  => gv_cdkbn_storage             -- コード区分１
+                        , iv_entering_despatching_code1
+                                  => lt_sort_deliver_from         -- 入出庫場所コード１
+                        , iv_code_class2
+                                  => lv_code_kbn                  -- コード区分２
+                        , iv_entering_despatching_code2
+                                  => lt_sort_deliver_to           -- 入出庫場所コード２
+                        , id_standard_date
+                                  => lt_schedule_ship_date        -- 基準日
+                        , iv_ship_methods
+                                  => cur_rec.fixed_shipping_method_code
+                                                                  -- 配送区分                                
+                        , on_drink_deadweight
+                                  => ln_drink_deadweight          -- ドリンク積載重量
+                        , on_leaf_deadweight
+                                  => ln_leaf_deadweight           -- リーフ積載重量
+                        , on_drink_loading_capacity
+                                  => ln_drink_loading_capacity    -- ドリンク積載容積
+                        , on_leaf_loading_capacity
+                                  => ln_leaf_loading_capacity     -- リーフ積載容積
+                        , on_palette_max_qty
+                                  => ln_palette_max_qty           -- パレット最大枚数
+                     );
+debug_log(FND_FILE.LOG,'B-15_i2【基本重量基本容積取得後】');
+debug_log(FND_FILE.LOG,'・リターンコード:'|| ln_retnum);
+debug_log(FND_FILE.LOG,'・ドリンク積載重量:'|| ln_drink_deadweight);
+debug_log(FND_FILE.LOG,'・リーフ積載重量:'|| ln_leaf_deadweight);
+debug_log(FND_FILE.LOG,'・ドリンク積載容積:'|| ln_leaf_loading_capacity);
+debug_log(FND_FILE.LOG,'・リーフ積載容積:'|| ln_leaf_loading_capacity);
+debug_log(FND_FILE.LOG,'・パレット最大枚数:'|| ln_palette_max_qty);
+        -- 共通関数エラーの場合
+        IF (ln_retnum = cn_sts_error) THEN
+          gv_err_key  :=  gv_cdkbn_storage
+                          || gv_msg_comma ||
+                          lt_sort_deliver_from
+                          || gv_msg_comma ||
+                          lv_code_kbn
+                          || gv_msg_comma ||
+                          lt_sort_deliver_to
+                          || gv_msg_comma ||
+                          TO_CHAR(lt_schedule_ship_date, 'YYYY/MM/DD')
+                          || gv_msg_comma ||
+                          cur_rec.fixed_shipping_method_code
+                          ;
+          -- エラーメッセージ取得
+          lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg(
+                          gv_xxwsh                -- モジュール名略称：XXWSH 出荷・引当/配車
+                        , gv_msg_xxwsh_11810      -- メッセージ：APP-XXWSH-11810 共通関数エラー
+                        , gv_fnc_name             -- トークン：FNC_NAME
+                        , 'xxwsh_common_pkg.get_max_pallet_qty' -- 関数名
+                        , gv_tkn_key              -- トークン：KEY
+                        , gv_err_key              -- 関数実行キー
+                        ),1,5000);
+          RAISE global_api_expt;
+        END IF;
+debug_log(FND_FILE.LOG,'B-15_i3【基本重量基本容積特定処理】');
+        -- 商品区分がリーフの場合
+        IF ( lt_prod_class = gv_prod_cls_leaf) THEN
+          lt_based_weight   := ln_leaf_deadweight;
+          lt_based_capacity := ln_leaf_loading_capacity;
+        ELSE
+          lt_based_weight   := ln_drink_deadweight;
+          lt_based_capacity := ln_drink_loading_capacity;
+        END IF;
+--
+-- Ver1.3 M.Hokkanji End
 --
         -- 処理種別：出荷
         IF (cur_rec.transaction_type = gv_ship_type_ship) THEN
@@ -7950,6 +8528,13 @@ debug_log(FND_FILE.LOG,'B15_1.0 処理種別：出荷 ln_loop_cnt= '||to_char(ln_loop_c
           lt_upd_method_code_ship_tab(ln_loop_cnt_ship)  := cur_rec.fixed_shipping_method_code; -- 修正配送区分
 -- Ver1.2 M.Hokkanji End
 --
+-- Ver1.3 M.Hokkanji Start
+          lt_ship_based_weight(ln_loop_cnt_ship)         := lt_based_weight;            -- 基本重量
+          lt_ship_based_capacity(ln_loop_cnt_ship)       := lt_based_capacity;          -- 基本容積
+          lt_ship_loading_weight(ln_loop_cnt_ship)       := ln_set_efficiency_weight;   -- 重量積載効率
+          lt_ship_loading_capacity(ln_loop_cnt_ship)     := ln_set_efficiency_capacity; -- 容積積載効率
+          lt_ship_mixed_ratio(ln_loop_cnt_ship)          := lt_mixed_ratio;             -- 混載率
+-- Ver1.3 M.Hokkanji End
         -- 処理種別：移動
         ELSE
 debug_log(FND_FILE.LOG,'B15_1.1 処理種別：移動 ln_loop_cnt= '||to_char(ln_loop_cnt));
@@ -7963,6 +8548,14 @@ debug_log(FND_FILE.LOG,'B15_1.1 処理種別：移動 ln_loop_cnt= '||to_char(ln_loop_c
 -- Ver1.2 M.Hokkanji Start
           lt_upd_method_code_move_tab(ln_loop_cnt_move)  := cur_rec.fixed_shipping_method_code; -- 修正配送区分
 -- Ver1.2 M.Hokkanji End
+--
+-- Ver1.3 M.Hokkanji Start
+          lt_move_based_weight(ln_loop_cnt_move)         := lt_based_weight;            -- 基本重量
+          lt_move_based_capacity(ln_loop_cnt_move)       := lt_based_capacity;          -- 基本容積
+          lt_move_loading_weight(ln_loop_cnt_move)       := ln_set_efficiency_weight;   -- 重量積載効率
+          lt_move_loading_capacity(ln_loop_cnt_move)     := ln_set_efficiency_capacity; -- 容積積載効率
+          lt_move_mixed_ratio(ln_loop_cnt_move)          := lt_mixed_ratio;             -- 混載率
+-- Ver1.3 M.Hokkanji End
 --
         END IF;
 --
@@ -7997,6 +8590,15 @@ debug_log(FND_FILE.LOG,'B15_1.2 移動更新件数：'||to_char(lt_upd_req_no_move_tab.
 -- Ver1.2 M.Hokkanji Start
             , shipping_method_code   = lt_upd_method_code_ship_tab(upd_cnt_1)  -- 配送区分
 -- Ver1.2 M.Hokkanji End
+-- Ver1.3 M.Hokkanji Start
+            , based_weight           = lt_ship_based_weight(upd_cnt_1)         -- 基本重量
+            , based_capacity         = lt_ship_based_capacity(upd_cnt_1)       -- 基本容積
+            , loading_efficiency_weight
+                                     = lt_ship_loading_weight(upd_cnt_1)       -- 重量積載効率
+            , loading_efficiency_capacity
+                                     = lt_ship_loading_capacity(upd_cnt_1)     -- 容積積載効率
+            , mixed_ratio            = lt_ship_mixed_ratio(upd_cnt_1)          -- 混載率
+-- Ver1.3 M.Hokkanji End
 -- 20080603 K.Yamane 不具合No14->
             , program_application_id = lt_prog_appl_id                         -- ｱﾌﾟﾘｹｰｼｮﾝID
             , program_id             = lt_conc_program_id                      -- プログラムID
@@ -8017,6 +8619,15 @@ debug_log(FND_FILE.LOG,'B15_1.2 移動更新件数：'||to_char(lt_upd_req_no_move_tab.
 -- Ver1.2 M.Hokkanji Start
             , shipping_method_code   = lt_upd_method_code_move_tab(upd_cnt_2)  -- 配送区分
 -- Ver1.2 M.Hokkanji End
+-- Ver1.3 M.Hokkanji Start
+            , based_weight           = lt_move_based_weight(upd_cnt_2)         -- 基本重量
+            , based_capacity         = lt_move_based_capacity(upd_cnt_2)       -- 基本容積
+            , loading_efficiency_weight
+                                     = lt_move_loading_weight(upd_cnt_2)       -- 重量積載効率
+            , loading_efficiency_capacity
+                                     = lt_move_loading_capacity(upd_cnt_2)     -- 容積積載効率
+            , mixed_ratio            = lt_move_mixed_ratio(upd_cnt_2)          -- 混載率
+-- Ver1.3 M.Hokkanji End
 -- 20080603 K.Yamane 不具合No14->
             , request_id             = lt_conc_request_id                      -- 要求ID
             , program_application_id = lt_prog_appl_id                         -- ｱﾌﾟﾘｹｰｼｮﾝID

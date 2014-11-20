@@ -7,7 +7,7 @@ AS
  * Description      : 受払その他実績リスト
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77D)
- * Version          : 1.5
+ * Version          : 1.7
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -38,6 +38,9 @@ AS
  *                                       ロット管理の対象外の場合は標準原価マスタテーブルより取得
  *  2008/06/13    1.5   T.Endou          着荷日が無い場合は、予定着荷日を使用する
  *                                       生産原料詳細（アドオン）を結合条件から外す
+ *  2008/06/19    1.6   Y.Ishikawa       取引区分が廃却、見本に関しては、受払区分を掛けない
+ *  2008/06/25    1.7   T.Ikehara        特定文字列を出力しようとすると、エラーとなり帳票が出力
+ *                                       されない現象への対応
  *
  *****************************************************************************************/
 --
@@ -85,6 +88,12 @@ AS
   ------------------------------
   gc_cat_set_goods_class  CONSTANT VARCHAR2(100) := '商品区分' ;
   gc_cat_set_item_class   CONSTANT VARCHAR2(100) := '品目区分' ;
+--
+  ------------------------------
+  -- 取引区分名
+  ------------------------------
+  gv_haiki                   CONSTANT VARCHAR2(100) := '廃却' ;
+  gv_mihon                   CONSTANT VARCHAR2(100) := '見本' ;
 --
   ------------------------------
   -- 日付項目編集関連
@@ -216,7 +225,7 @@ AS
 --
     --データの場合
     IF (ic_type = 'D') THEN
-      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>' ;
+      lv_convert_data := '<'||iv_name||'><![CDATA['||iv_value||']]></'||iv_name||'>' ;
     ELSE
       lv_convert_data := '<'||iv_name||'>' ;
     END IF ;
@@ -1296,8 +1305,13 @@ AS
       || '  ,xlei.item_attribute15    AS cost_mng_clss'     -- 原価管理区分
       || '  ,xlei.lot_ctl             AS lot_ctl'           -- ロット管理区分
       || '  ,xlei.actual_unit_price   AS actual_unit_price' -- 実際単価
-      || '  ,NVL2(rpmv.item_id,trn.trans_qty,'              -- 数量
-      || '   trn.trans_qty * TO_NUMBER(rpmv.rcv_pay_div))  AS trans_qty'
+      || '  ,NVL2(rpmv.item_id, '
+      ||      ' trn.trans_qty, '
+      ||      ' DECODE(rpmv.dealings_div_name,''' || gv_haiki || ''' '
+      ||      '       ,trn.trans_qty '
+      ||      '       , ''' || gv_mihon || ''' '
+      ||      '       ,trn.trans_qty '
+      ||      ',trn.trans_qty * TO_NUMBER(rpmv.rcv_pay_div))) trans_qty ' -- 数量
       || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
       || '  ,xlei.lot_attribute18)    AS lot_desc'          -- 摘要
       ;
@@ -1418,8 +1432,13 @@ AS
       || '  ,xlei.item_attribute15    AS cost_mng_clss'     -- 原価管理区分
       || '  ,xlei.lot_ctl             AS lot_ctl'           -- ロット管理区分
       || '  ,xlei.actual_unit_price   AS actual_unit_price' -- 実際単価
-      || '  ,NVL2(rpmv.item_id,trn.trans_qty,'              -- 数量
-      || '   trn.trans_qty * TO_NUMBER(rpmv.rcv_pay_div))  AS trans_qty'
+      || '  ,NVL2(rpmv.item_id, '
+      ||      ' trn.trans_qty, '
+      ||      ' DECODE(rpmv.dealings_div_name,''' || gv_haiki || ''' '
+      ||      '       ,trn.trans_qty '
+      ||      '       , ''' || gv_mihon || ''' '
+      ||      '       ,trn.trans_qty '
+      ||      ',trn.trans_qty * TO_NUMBER(rpmv.rcv_pay_div))) trans_qty ' -- 数量
       || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
       || '  ,xlei.lot_attribute18)    AS lot_desc'          -- 摘要
       ;
