@@ -7,7 +7,7 @@ AS
  * Description      : 倉替返品情報インターフェース
  * MD.050           : 倉替返品 T_MD050_BPO_430
  * MD.070           : 倉替返品情報インターフェース T_MD070_BPO_43B
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------------  ----------------------------------------------------------
@@ -48,7 +48,7 @@ AS
  *  2008/11/25    1.6   ORACLE吉元強樹   本番問合せ#243対応
  *  2008/12/22    1.7   ORACLE椎名昭圭   本番問合せ#743対応
  *  2009/01/06    1.8   Yuko Kawano      本番問合せ#908対応
- *
+ *  2009/01/13    1.9   Hitomi Itou      本番問合せ#981対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3268,6 +3268,9 @@ AS
         ,result_deliver_to                             -- 出荷先_実績
         ,shipped_date                                  -- 出荷日
         ,arrival_date                                  -- 着荷日
+-- 2009/01/13 H.Itou Add Start 本番障害#981対応
+        ,actual_confirm_class                          -- 実績計上済区分
+-- 2009/01/13 H.Itou Add End
         ,performance_management_dept                   -- 成績管理部署
         ,registered_sequence                           -- 登録順序
         ,created_by                                    -- 作成者
@@ -3304,6 +3307,9 @@ AS
         ,gt_xoh_result_deliver_to(i)                   -- 出荷先_実績
         ,gt_xoh_shipped_date(i)                        -- 出荷日
         ,gt_xoh_arrival_date(i)                        -- 着荷日
+-- 2009/01/13 H.Itou Add Start 本番障害#981対応
+        ,gv_flag_off                                   -- 実績計上済区分
+-- 2009/01/13 H.Itou Add End
         ,gt_xoh_perform_management_dept(i)             -- 成績管理部署
         ,gt_xoh_registered_sequence(i)                 -- 登録順序
         ,gt_xoh_created_by(i)                          -- 作成者
