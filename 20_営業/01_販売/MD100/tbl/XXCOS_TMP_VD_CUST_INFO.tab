@@ -1,0 +1,51 @@
+/*****************************************************************************************
+ * Copyright c 2011, SCSK Corporation. All rights reserved.
+ *
+ * Table Name  : XXCOS_TMP_VD_CUST_INFO
+ * Description : 自販機販売報告書顧客情報一時表
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ * 2012/02/09    1.0   K.Kiriu          [E_本稼動_08359]新規作成
+ *
+ **************************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE XXCOS.XXCOS_TMP_VD_CUST_INFO
+(
+   CUSTOMER_CODE        VARCHAR2(9)      --顧客コード
+  ,CUSTOMER_NAME        VARCHAR2(360)    --顧客名称
+  ,PARTY_ID             NUMBER           --パーティID
+  ,SALES_BASE_NAME      VARCHAR2(360)    --売上拠点名称
+  ,SALES_BASE_CITY      VARCHAR2(120)    --都道府県市区（売上拠点）
+  ,SALES_BASE_ADDRESS1  VARCHAR2(240)    --住所１（売上拠点）
+  ,SALES_BASE_ADDRESS2  VARCHAR2(240)    --住所２（売上拠点）
+  ,SALES_BASE_TEL       VARCHAR2(30)     --電話番号（売上拠点）
+  ,VENDOR_CODE          VARCHAR2(30)     --仕入先コード
+  ,VENDOR_NAME          VARCHAR2(360)    --仕入先名称（送付先）
+  ,VENDOR_ZIP           VARCHAR2(20)     --郵便番号（送付先）
+  ,VENDOR_ADDRESS1      VARCHAR2(360)    --住所１（送付先）
+  ,VENDOR_ADDRESS2      VARCHAR2(240)    --住所２（送付先）
+  ,DATE_FROM            DATE             --対象期間開始日
+  ,DATE_TO              DATE             --対象期間終了日
+)
+ON COMMIT DELETE ROWS
+/
+COMMENT ON TABLE  XXCOS.XXCOS_TMP_VD_CUST_INFO                          IS '自販機販売報告書顧客情報一時表'
+/
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.CUSTOMER_CODE            IS '顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.CUSTOMER_NAME            IS '顧客名称';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.PARTY_ID                 IS 'パーティID';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.SALES_BASE_NAME          IS '売上拠点名称';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.SALES_BASE_CITY          IS '都道府県市区（売上拠点）';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.SALES_BASE_ADDRESS1      IS '住所１（売上拠点）';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.SALES_BASE_ADDRESS2      IS '住所２（売上拠点）';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.SALES_BASE_TEL           IS '電話番号（売上拠点）';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.VENDOR_CODE              IS '仕入先コード';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.VENDOR_NAME              IS '仕入先名称（送付先）';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.VENDOR_ZIP               IS '郵便番号（送付先）';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.VENDOR_ADDRESS1          IS '住所１（送付先）';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.VENDOR_ADDRESS2          IS '住所２（送付先）';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.DATE_FROM                IS '対象期間開始日';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.DATE_TO                  IS '対象期間終了日';

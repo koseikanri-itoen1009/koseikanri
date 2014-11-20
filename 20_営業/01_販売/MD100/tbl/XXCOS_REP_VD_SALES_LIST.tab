@@ -1,0 +1,80 @@
+/*****************************************************************************************
+ * Copyright c 2011, SCSK Corporation. All rights reserved.
+ *
+ * Table Name  : XXCOS_REP_VD_SALES_LIST
+ * Description : 自販機販売報告書帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ * 2012/02/09    1.0   K.Kiriu          [E_本稼動_08359]新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_REP_VD_SALES_LIST
+(
+   RECORD_ID                 NUMBER         NOT NULL     --レコードID
+  ,VENDOR_ZIP                VARCHAR2(20)                --郵便番号（送付先）
+  ,VENDOR_ADDRESS1           VARCHAR2(360)               --住所１（送付先）
+  ,VENDOR_ADDRESS2           VARCHAR2(240)               --住所２（送付先）
+  ,VENDOR_NAME               VARCHAR2(360)               --仕入先名称（送付先）
+  ,CUSTOMER_CODE             VARCHAR2(9)                 --顧客コード
+  ,VENDOR_CODE               VARCHAR2(30)                --仕入先コード
+  ,SALES_BASE_CITY           VARCHAR2(120)               --都道府県市区（売上拠点）
+  ,SALES_BASE_ADDRESS1       VARCHAR2(240)               --住所１（売上拠点）
+  ,SALES_BASE_ADDRESS2       VARCHAR2(240)               --住所２（売上拠点）
+  ,SALES_BASE_NAME           VARCHAR2(360)               --売上拠点名称
+  ,SALES_BASE_TEL            VARCHAR2(30)                --電話番号（売上拠点）
+  ,SALESREP_NAME             VARCHAR2(300)               --顧客担当者名称
+  ,DATE_FROM                 DATE                        --対象期間開始日
+  ,DATE_TO                   DATE                        --対象期間終了日
+  ,INSTALL_LOCATION          VARCHAR2(360)               --設置先場所
+  ,ITEM_NAME                 VARCHAR2(20)                --商品名
+  ,SALES_PRICE               NUMBER(12,2)                --売価
+  ,SALES_QTY                 NUMBER(11,2)                --販売本数
+  ,SALES_AMOUNT              NUMBER(12,0)                --販売金額
+  ,CREATED_BY                NUMBER(15,0)   NOT NULL     --作成者
+  ,CREATION_DATE             DATE           NOT NULL     --作成日
+  ,LAST_UPDATED_BY           NUMBER(15,0)   NOT NULL     --最終更新者
+  ,LAST_UPDATE_DATE          DATE           NOT NULL     --最終更新日
+  ,LAST_UPDATE_LOGIN         NUMBER(15,0)                --最終更新ログイン
+  ,REQUEST_ID                NUMBER(15,0)                --要求ID
+  ,PROGRAM_APPLICATION_ID    NUMBER(15,0)                --コンカレント・プログラム・アプリケーションID
+  ,PROGRAM_ID                NUMBER(15,0)                --コンカレント・プログラムID
+  ,PROGRAM_UPDATE_DATE       DATE                        --プログラム更新日
+  ,CONSTRAINT XXCOS_REP_VD_SALES_LIST_PK PRIMARY KEY ( RECORD_ID )
+   USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.RECORD_ID                    IS 'レコードID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.VENDOR_ZIP                   IS '郵便番号（送付先）';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.VENDOR_ADDRESS1              IS '住所１（送付先）';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.VENDOR_ADDRESS2              IS '住所２（送付先）';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.VENDOR_NAME                  IS '仕入先名称（送付先）';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.CUSTOMER_CODE                IS '顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.VENDOR_CODE                  IS '仕入先コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.SALES_BASE_CITY              IS '都道府県市区（売上拠点）';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.SALES_BASE_ADDRESS1          IS '住所１（売上拠点）';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.SALES_BASE_ADDRESS2          IS '住所２（売上拠点）';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.SALES_BASE_NAME              IS '売上拠点名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.SALES_BASE_TEL               IS '電話番号（売上拠点）';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.SALESREP_NAME                IS '顧客担当者名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.DATE_FROM                    IS '対象期間開始日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.DATE_TO                      IS '対象期間終了日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.INSTALL_LOCATION             IS '設置先場所';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.ITEM_NAME                    IS '商品名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.SALES_PRICE                  IS '売価';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.SALES_QTY                    IS '販売本数';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.SALES_AMOUNT                 IS '販売金額';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.CREATED_BY                   IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.CREATION_DATE                IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.LAST_UPDATED_BY              IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.LAST_UPDATE_DATE             IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.LAST_UPDATE_LOGIN            IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.REQUEST_ID                   IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.PROGRAM_APPLICATION_ID       IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.PROGRAM_ID                   IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_VD_SALES_LIST.PROGRAM_UPDATE_DATE          IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_REP_VD_SALES_LIST                              IS '自販機販売報告書帳票ワークテーブル';

@@ -1,0 +1,18 @@
+/************************************************************************
+ * Copyright c 2011, SCSK Corporation. All rights reserved.
+ *
+ * View Name       : XXCOS_REP_VD_SALES_LIST_N01
+ * Description     : 自販機販売報告書帳票ワークテーブルインデックスN01
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ * 2012/02/09    1.0   K.Kiriu          [E_本稼動_08359]新規作成
+ *
+ ************************************************************************/
+CREATE INDEX XXCOS.XXCOS_REP_VD_SALES_LIST_N01 ON XXCOS.XXCOS_REP_VD_SALES_LIST (
+  request_id
+) TABLESPACE xxidx2
+/

@@ -1,0 +1,15 @@
+/************************************************************************
+ * Copyright c 2011, SCSK Corporation. All rights reserved.
+ *
+ * View Name       : XXCOS_REP_VD_SALES_LIST_S01
+ * Description     : レコードID(自販機販売報告書帳票ワークテーブル)
+ * Version         : 1.1
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ * 2012/02/09    1.0   K.Kiriu          [E_本稼動_08359]新規作成
+ *
+ ************************************************************************/
+CREATE SEQUENCE XXCOS.XXCOS_REP_VD_SALES_LIST_S01 MINVALUE 1 MAXVALUE 999999999999999 INCREMENT BY 1 START WITH 1 CACHE 100 NOORDER CYCLE ;
