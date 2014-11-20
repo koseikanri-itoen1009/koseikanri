@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO019A10C(body)
  * Description      : 訪問売上計画管理表（随時実行の帳票）用にサマリテーブルを作成します。
  * MD.050           :  MD050_CSO_019_A10_訪問売上計画管理集計バッチ
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2009-08-28    1.5   Daisuke.Abe      【0001194】パフォーマンス対応
  *  2009-11-06    1.6   Kazuo.Satomura   【E_T4_00135(I_E_636)】
  *  2009-12-28    1.7   Kazuyo.Hosoi     【E_本稼動_00686】対応
+ *  2010-05-14    1.8   SCS 吉元強樹     【E_本稼動_02763】対応
  *
  *****************************************************************************************/
 --
@@ -1366,7 +1367,14 @@ AS
              -- 顧客別売上実績集計
              --------------------------------
              UNION ALL
-             SELECT  xcav.sale_base_code                     group_base_code
+-- 2010/05/14 v1.8 T.Yoshimoto Mod Start E_本稼動_02763
+--             SELECT  xcav.sale_base_code                     group_base_code
+             SELECT  (SELECT xcca.sale_base_code
+                      FROM    xxcmm_cust_accounts xcca
+                      WHERE   xcca.customer_code = xsv2.account_number
+                      AND     rownum = 1
+                      )          group_base_code
+-- 2010/05/14 v1.8 T.Yoshimoto Mod End E_本稼動_02763
                     ,xsv2.account_number                     sum_org_code
                     ,TO_CHAR(xsv2.delivery_date,'YYYYMMDD')  sales_date
                     ,NULL                                    tgt_amt
@@ -1426,42 +1434,64 @@ AS
                                END
                               ) pure_amount
 /* 20090828_abe_0001194 START*/
-                      FROM    (SELECT  /*+ USE_NL(xsv.seh xsv.sel) */
-                                       xsv.account_number     account_number
+                      FROM    (
+-- 2010/05/14 v1.8 T.Yoshimoto Del Start E_本稼動_02763
+--                      SELECT  /*+ USE_NL(xsv.seh xsv.sel) */
+--                                       xsv.account_number     account_number
 --                      FROM    (SELECT  xsv.account_number     account_number
 /* 20090828_abe_0001194 END*/
-                                      ,xsv.delivery_date      delivery_date
-                                      ,'N'                    other_flag
-                                      ,SUM(xsv.pure_amount)   pure_amount
-                               FROM    xxcso_sales_v  xsv
-                               WHERE   xsv.delivery_date BETWEEN gd_ar_gl_period_from
-                                                             AND gd_process_date
-                                 AND   xsv.delivery_pattern_class <> cv_delivery_pattern_cls_5
-                               GROUP BY xsv.account_number, xsv.delivery_date
-                               UNION ALL
+--                                      ,xsv.delivery_date      delivery_date
+--                                      ,'N'                    other_flag
+--                                      ,SUM(xsv.pure_amount)   pure_amount
+--                               FROM    xxcso_sales_v  xsv
+--                               WHERE   xsv.delivery_date BETWEEN gd_ar_gl_period_from
+--                                                             AND gd_process_date
+--                                 AND   xsv.delivery_pattern_class <> cv_delivery_pattern_cls_5
+--                               GROUP BY xsv.account_number, xsv.delivery_date
+--                               UNION ALL
 /* 20090828_abe_0001194 START*/
-                               SELECT  /*+ USE_NL(xsv.seh xsv.sel) */
-                                       xsv.account_number     account_number
+--                               SELECT  /*+ USE_NL(xsv.seh xsv.sel) */
+--                                       xsv.account_number     account_number
 --                               SELECT  xsv.account_number     account_number
 /* 20090828_abe_0001194 END*/
-                                      ,xsv.delivery_date      delivery_date
-                                      ,'Y'                    other_flag
-                                      ,SUM(xsv.pure_amount)   pure_amount
+--                                      ,xsv.delivery_date      delivery_date
+--                                      ,'Y'                    other_flag
+--                                      ,SUM(xsv.pure_amount)   pure_amount
+--                               FROM    xxcso_sales_v  xsv
+--                               WHERE   xsv.delivery_date BETWEEN gd_ar_gl_period_from
+--                                                             AND gd_process_date
+--                                 AND   xsv.delivery_pattern_class = cv_delivery_pattern_cls_5
+--                               GROUP BY xsv.account_number, xsv.delivery_date
+-- 2010/05/14 v1.8 T.Yoshimoto Del End E_本稼動_02763
+-- 2010/05/14 v1.8 T.Yoshimoto Add Start E_本稼動_02763
+                               SELECT  /*+ USE_NL(xsv.seh xsv.sel) */
+                                   xsv.account_number     account_number
+                                  ,xsv.delivery_date      delivery_date
+                                  ,DECODE(xsv.delivery_pattern_class,cv_delivery_pattern_cls_5,'Y','N')  other_flag
+                                  ,SUM(xsv.pure_amount)   pure_amount
                                FROM    xxcso_sales_v  xsv
                                WHERE   xsv.delivery_date BETWEEN gd_ar_gl_period_from
                                                              AND gd_process_date
-                                 AND   xsv.delivery_pattern_class = cv_delivery_pattern_cls_5
-                               GROUP BY xsv.account_number, xsv.delivery_date
+                               GROUP BY xsv.account_number 
+                                       ,xsv.delivery_date
+                                       ,DECODE(xsv.delivery_pattern_class,cv_delivery_pattern_cls_5,'Y','N')
+-- 2010/05/14 v1.8 T.Yoshimoto Add End E_本稼動_02763
                               ) xsv1
                      )                       xsv2
-                    ,xxcso_cust_accounts_v   xcav
-             WHERE   xcav.account_number = xsv2.account_number
+-- 2010/05/14 v1.8 T.Yoshimoto Del Start E_本稼動_02763
+--                    ,xxcso_cust_accounts_v   xcav
+--             WHERE   xcav.account_number = xsv2.account_number
+-- 2010/05/14 v1.8 T.Yoshimoto Del End E_本稼動_02763
              --------------------------------
              -- 顧客別訪問実績集計
              --------------------------------
              UNION ALL
-             SELECT  xcav.sale_base_code                       group_base_code
-                    ,xcav.account_number                       sum_org_code
+-- 2010/05/14 v1.8 T.Yoshimoto Mod Start E_本稼動_02763
+--             SELECT  xcav.sale_base_code                       group_base_code
+--                    ,xcav.account_number                       sum_org_code
+             SELECT  xvv1.sale_base_code                       group_base_code
+                    ,xvv1.account_number                       sum_org_code
+-- 2010/05/14 v1.8 T.Yoshimoto Mod End E_本稼動_02763
                     ,TO_CHAR(xvv1.actual_end_date,'YYYYMMDD')  sales_date
                     ,NULL                                      tgt_amt
                     ,NULL                                      rslt_amt
@@ -1502,7 +1532,15 @@ AS
                     ,xvv1.visit_num_z                          vis_z_num
 /* 20090828_abe_0001194 START*/
              FROM    (SELECT  /*+ index(xvv.jtb xxcso_jtf_tasks_b_n20) */
-                              xvv.party_id                                party_id
+-- 2010/05/14 v1.8 T.Yoshimoto Mod Start E_本稼動_02763
+--                              xvv.party_id                                party_id
+                              hca.account_number                          account_number
+                             ,(SELECT xcca.sale_base_code
+                               FROM  xxcmm_cust_accounts xcca
+                               WHERE xcca.customer_code = hca.account_number
+                               AND   rownum = 1
+                              )                                           sale_base_code
+-- 2010/05/14 v1.8 T.Yoshimoto Mod End E_本稼動_02763
 --             FROM    (SELECT  xvv.party_id                                party_id
 /* 20090828_abe_0001194 END*/
                              ,TRUNC(xvv.actual_end_date)                  actual_end_date
@@ -1542,12 +1580,26 @@ AS
                              ,SUM(xvv.visit_num_y)                        visit_num_y
                              ,SUM(xvv.visit_num_z)                        visit_num_z
                       FROM    xxcso_visit_v xvv
+-- 2010/05/14 v1.8 T.Yoshimoto Add Start E_本稼動_02763
+                             ,hz_cust_accounts   hca
+-- 2010/05/14 v1.8 T.Yoshimoto Add End E_本稼動_02763
                       WHERE   TRUNC(xvv.actual_end_date) BETWEEN gd_ar_gl_period_from
                                                              AND gd_process_date
-                      GROUP BY xvv.party_id, TRUNC(xvv.actual_end_date)
+-- 2010/05/14 v1.8 T.Yoshimoto Add Start E_本稼動_02763
+                      AND     hca.party_id = xvv.party_id
+-- 2010/05/14 v1.8 T.Yoshimoto Add End E_本稼動_02763
+-- 2010/05/14 v1.8 T.Yoshimoto Mod Start E_本稼動_02763
+--                      GROUP BY xvv.party_id, TRUNC(xvv.actual_end_date)
+                      --同一account_numberから取得したsale_base_codeは値はユニークの為
+                      --group by 句には含めずに省略。
+                      GROUP BY hca.account_number
+                              , TRUNC(xvv.actual_end_date)
+-- 2010/05/14 v1.8 T.Yoshimoto Add End E_本稼動_02763
                      )                       xvv1
-                    ,xxcso_cust_accounts_v   xcav
-             WHERE   xcav.party_id = xvv1.party_id
+-- 2010/05/14 v1.8 T.Yoshimoto Del Start E_本稼動_02763
+--                    ,xxcso_cust_accounts_v   xcav
+--             WHERE   xcav.party_id = xvv1.party_id
+-- 2010/05/14 v1.8 T.Yoshimoto Del End E_本稼動_02763
             ) inn_v
     GROUP BY  inn_v.sum_org_code
              ,inn_v.group_base_code
