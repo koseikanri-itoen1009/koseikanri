@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A01C(body)
  * Description      : 工場直送出荷依頼IF作成を行う
  * MD.050           : 工場直送出荷依頼IF作成 MD050_COS_008_A01
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -61,6 +61,8 @@ AS
  *  2009/11/24    1.16  N.Maeda          [E_本稼動_00014] 出荷指示の改行コード対応
  *  2009/11/25    1.17  K.Atsushiba      [E_本稼動_00034]リーフの出荷依頼が明細毎に作成されないように修正
  *  2009/12/01    1.18  K.Atsushiba      [E_本稼動_00206]無限ループ対応
+ *  2009/12/07    1.19  K.Atsushiba      [E_本番_00247]子コードが設定されている場合は子コードで重量計算するように修正
+ *                                       [E_本稼動_00305]子コードが設定されている場合は子コードで出荷依頼を作成するように修正
  *
  *****************************************************************************************/
 --
@@ -355,7 +357,12 @@ AS
            ,NULL                                      province                -- 配送先コード      A-17で設定
 --          ,hl.province                               province                -- 配送先コード
 /* 2009/09/16 Ver.1.12 Mod End */
-          ,msib.segment1                             item_code               -- 品目コード
+/* 2009/12/07 Ver1.19 Mod Start */
+          ,NVL(oola.attribute6, oola.ordered_item)   item_code               -- 品目コード
+          ,oola.ordered_item                          parent_item_code       -- 親品目コード
+          ,oola.context                               line_context           -- コンテキスト
+--          ,msib.segment1                             item_code               -- 品目コード
+/* 2009/12/07 Ver1.19 Mod End */
           ,xicv.prod_class_name                      item_div_name           -- 商品区分名
           ,xicv.prod_class_code                      prod_class_code         -- 商品区分コード
           ,ooha.order_number                         order_number            -- 受注番号
@@ -547,7 +554,10 @@ AS
 --****************************** 2009/05/26 1.7 T.Kitajima MOD  END  ******************************--
     AND   xca.customer_id                         = hca.cust_account_id                       -- 顧客ID
     AND   oola.org_id                             = gt_org_id                                 -- 営業単位
-    AND   oola.ordered_item                       = msib.segment1                             -- 品目コード
+/* 2009/12/07 Ver1.19 Mod Start */
+    AND   NVL(oola.attribute6, oola.ordered_item) = msib.segment1                             -- 品目コード
+--    AND   oola.ordered_item                       = msib.segment1                             -- 品目コード
+/* 2009/12/07 Ver1.19 Mod End */
     AND   xicv.item_no                            = msib.segment1                             -- 品目コード
     AND   msib.organization_id                    = oola.ship_from_org_id                     -- 組織ID
 /* 2009/09/16 Ver.1.12 Del Start */
@@ -3868,8 +3878,10 @@ AS
 --    END LOOP loop_line_data;
 /* 2009/09/16 Ver.1.12 Del End */
     --
-    -- OMメッセージリストの初期化
-    OE_MSG_PUB.INITIALIZE;
+/* 2009/12/07 Ver1.19 Del Start */
+--    -- OMメッセージリストの初期化
+--    OE_MSG_PUB.INITIALIZE;
+/* 2009/12/07 Ver1.19 Del End */
     --
     -- ===============================
     -- 明細更新
@@ -3877,6 +3889,10 @@ AS
     <<update_line_data>>
 /* 2009/09/16 Ver.1.12 Mod Start */
     FOR ln_idx IN 1..gt_order_upd_tbl.COUNT LOOP
+/* 2009/12/07 Ver1.19 Add Start */
+      -- OMメッセージリストの初期化
+      OE_MSG_PUB.INITIALIZE;
+/* 2009/12/07 Ver1.19 Add End */
       lt_line_tbl(cn_index)                        := OE_ORDER_PUB.G_MISS_LINE_REC;
       lt_line_tbl(cn_index).operation              := OE_GLOBALS.G_OPR_UPDATE;                         -- 処理モード
       lt_line_tbl(cn_index).line_id                := gt_order_upd_tbl(ln_idx).line_id;                -- 明細ID
@@ -5699,8 +5715,10 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    -- OMメッセージリストの初期化
-    OE_MSG_PUB.INITIALIZE;
+/* 2009/12/07 Ver1.19 Del Start */
+--    -- OMメッセージリストの初期化
+--    OE_MSG_PUB.INITIALIZE;
+/* 2009/12/07 Ver1.19 Del End */
     --
     -- 変数初期化
     ln_msg_count := 0;
@@ -5714,6 +5732,16 @@ AS
       FROM    oe_order_lines_all  oola
       WHERE   oola.header_id   = gt_order_ins_tbl(ln_idx).header_id
       GROUP BY oola.header_id;
+/* 2009/12/07 Ver1.19 Add Start */
+      SELECT msib.inventory_item_id
+      INTO   gt_order_ins_tbl(ln_idx).inventory_item_id
+      FROM   mtl_system_items_b  msib
+      WHERE  msib.segment1          = gt_order_ins_tbl(ln_idx).parent_item_code
+      AND    msib.organization_id   = gn_organization_id;
+      --
+      -- OMメッセージリストの初期化
+      OE_MSG_PUB.INITIALIZE;
+/* 2009/12/07 Ver1.19 End Start */
       --
       lt_line_tbl(cn_index)                        := OE_ORDER_PUB.G_MISS_LINE_REC;
       lt_line_tbl(cn_index).operation              := OE_GLOBALS.G_OPR_CREATE;                        -- 処理モード
@@ -5773,6 +5801,9 @@ AS
       lt_line_tbl(cn_index).program_application_id := cn_program_application_id;                         -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
       lt_line_tbl(cn_index).program_id             := cn_program_id;                                     -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
       lt_line_tbl(cn_index).program_update_date    := cd_program_update_date;                            -- プログラム更新日
+/* 2009/12/07 Ver1.19 Add Start */
+      lt_line_tbl(cn_index).context                := gt_order_ins_tbl(ln_idx).line_context;
+/* 2009/12/07 Ver1.19 Add Start */
       --
       -- 数量の設定
       IF ( gt_order_ins_tbl(ln_idx).order_quantity_uom = gt_order_ins_tbl(ln_idx).conv_order_quantity_uom ) THEN
