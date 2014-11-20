@@ -7,7 +7,7 @@ AS
  * Description      : 積込指示書
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 積込指示書 T_MD070_BPO_62J
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/03/25    1.0   Yoshitomo Kawasaki 新規作成
  *  2008/06/23    1.1   Yoshikatsu Shindou 配送区分情報VIEWのリレーションを外部結合に変更
  *                                         小口区分がNULLの時の処理を追加
+ *  2008/07/03    1.2   Jun Nakada         ST不具合対応No412 重量容積の小数第一位切り上げ
  *
  *****************************************************************************************/
 --
@@ -1459,12 +1460,19 @@ AS
       -- 明細最終行出力フラグ
       IF ( lv_detail_end_disp_flg = TRUE ) THEN
 --
+-- 2008/07/03 MOD START NAKADA ST不具合対応No412 重量容積の小数第一位切り上げ
         -- 【依頼重量】
-        prcsub_set_xml_data('irai_juuryou', gt_main_data(i).sum_weight_irai) ;
+        prcsub_set_xml_data('irai_juuryou', CEIL(TRUNC(gt_main_data(i).sum_weight_irai,1))) ;
+-- 2008/07/03 MOD END   NAKADA
+--
         -- 【依頼重量】（単位）
         prcsub_set_xml_data('irai_juuryou_unit', gv_uom_weight) ;
+--
+-- 2008/07/03 MOD START NAKADA ST不具合対応No412 重量容積の小数第一位切り上げ
         -- 【依頼容積】
-        prcsub_set_xml_data('irai_youseki', gt_main_data(i).sum_capacity_irai) ;
+        prcsub_set_xml_data('irai_youseki', CEIL(TRUNC(gt_main_data(i).sum_capacity_irai,1))) ;
+-- 2008/07/03 MOD END   NAKADA
+--
         -- 【依頼容積】（単位）
         prcsub_set_xml_data('irai_youseki_unit', gv_uom_capacity) ;
 --
