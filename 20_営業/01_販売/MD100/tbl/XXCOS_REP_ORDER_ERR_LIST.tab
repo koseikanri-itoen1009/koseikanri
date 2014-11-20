@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_REP_ORDER_ERR_LIST
  * Description : 受注エラーリスト帳票ワークテーブル
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS K.Kumamoto 新規作成
  *  2009/04/08    1.1   SCS N.Maeda    【ST障害No.T1_0382】店舗コード(SHOP_CODE)の桁数を8⇒10に変更
+ *  2009/07/09    1.2   SCS T.Tominaga 【0000486】行No(LINE_NO)の桁数を2⇒3,0に変更
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_ORDER_ERR_LIST
@@ -27,7 +28,7 @@ CREATE TABLE XXCOS.XXCOS_REP_ORDER_ERR_LIST
    ,SHOP_CODE                     VARCHAR2(10)                                 --店舗コード
    ,CUSTOMER_NUMBER               VARCHAR2(9)                                  --顧客コード
    ,SHOP_NAME                     VARCHAR2(20)                                 --店舗名称
-   ,LINE_NO                       NUMBER(2)                                    --行No
+   ,LINE_NO                       NUMBER(3,0)                                  --行No
    ,ITEM_CODE                     VARCHAR2(7)                                  --品目コード
    ,EDI_ITEM_CODE                 VARCHAR2(20)                                 --EDI商品コード
    ,ITEM_NAME                     VARCHAR2(20)                                 --品目名称

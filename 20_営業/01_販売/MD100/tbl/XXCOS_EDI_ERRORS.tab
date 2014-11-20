@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOS_EDI_ERRORS
  * Description : EDIエラー情報テーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS M.Yamaki     新規作成
+ *  2009/07/09    1.1   SCS T.Tominaga 【0000486】行番号(LINE_NO)の桁数を3,0に変更
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_EDI_ERRORS(
@@ -19,7 +20,7 @@ CREATE TABLE XXCOS.XXCOS_EDI_ERRORS(
  ,DLV_DATE                         DATE                NULL                               -- 店舗納品日
  ,INVOICE_NUMBER                   VARCHAR2(12)        NULL                               -- 伝票番号
  ,SHOP_CODE                        VARCHAR2(10)        NULL                               -- 店舗コード
- ,LINE_NO                          NUMBER              NULL                               -- 行番号
+ ,LINE_NO                          NUMBER(3,0)         NULL                               -- 行番号
  ,EDI_ITEM_CODE                    VARCHAR2(20)        NULL                               -- EDI商品コード
  ,ITEM_CODE                        VARCHAR2(7)         NULL                               -- 品目コード
  ,QUANTITY                         NUMBER              NULL                               -- 本数
