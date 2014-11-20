@@ -3,7 +3,7 @@
  *
  * View Name   : XXCOK_SELLING_TRNS_FROM_V
  * Description : 売上振替元情報ビュー
- * Version     : 1.2
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -13,6 +13,8 @@
  *  2009/04/06    1.1   M.Hiruta         [障害T1_0199対応] 振替元拠点の抽出元を売上振替元情報テーブルへ変更
  *                                       [障害T1_0307対応] 担当営業員抽出条件のSYSDATEを業務日付へ変更
  *  2009/04/23    1.2   M.Hiruta         [障害T1_0624対応] 組織プロファイルの抽出条件の業務日付をSYSDATEへ変更
+ *  2009/06/16    1.3   M.Hiruta         [障害T1_1403対応] 振替割合登録後に実績振替対象外となったデータを
+ *                                                         検索できるよう変更
  *
  **************************************************************************************/
 CREATE OR REPLACE VIEW xxcok_selling_trns_from_v
@@ -96,8 +98,10 @@ AS
 -- End   2009/04/03 Ver_1.1 T1_0199 M.Hiruta
   AND    hca.party_id                 = people.party_id (+)
   AND    hca.customer_class_code     <> '12'
-  AND    hp.duns_number_c             = '40'
-  AND    xca.selling_transfer_div     = '1'
+-- Start 2009/06/16 Ver_1.3 T1_1403 M.Hiruta
+--  AND    hp.duns_number_c             = '40'
+--  AND    xca.selling_transfer_div     = '1'
+-- Start 2009/06/16 Ver_1.3 T1_1403 M.Hiruta
   AND    xca.chain_store_code        IS NULL
 /
 COMMENT ON TABLE  apps.xxcok_selling_trns_from_v                           IS '売上振替元情報ビュー'
