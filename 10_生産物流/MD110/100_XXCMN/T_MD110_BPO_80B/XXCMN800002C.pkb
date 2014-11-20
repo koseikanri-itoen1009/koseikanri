@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目インタフェース T_MD070_BPO_80B
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -72,6 +72,7 @@ AS
  *  2008/06/23    1.4   Oracle 山根 一浩 ST事前検証不具合対応
  *  2008/06/25    1.5   Oracle 山根 一浩 不具合No275対応
  *  2008/07/07    1.6   Oracle 山根 一浩 I_S_192対応
+ *  2008/08/07    1.7   Oracle 椎名 昭圭 内部変更要求#178対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -6397,7 +6398,13 @@ AS
              xif.sale_obj_code,         -- 売上対象区分
              xif.jan_code,              -- JANコード
              xif.sale_start_date,       -- 発売開始日(製造開始日)
-             xif.abolition_code,        -- 廃止区分
+-- 2008/08/07 v1.7 UPDATE START
+--             xif.abolition_code,        -- 廃止区分
+             DECODE(xif.abolition_code,
+                    NULL, '0',
+                    '1')  AS  abolition_code,
+                                        -- 廃止区分
+-- 2008/08/07 v1.7 UPDATE END
              xif.abolition_date,        -- 廃止日(製造中止日)
              xif.raw_mate_consumption,  -- 原料使用量
              xif.raw_material_cost,     -- 原料
