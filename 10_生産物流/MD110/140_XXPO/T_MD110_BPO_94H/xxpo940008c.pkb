@@ -7,7 +7,7 @@ AS
  * Description      : ロット引当情報取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : ロット引当情報取込処理 T_MD070_BPO_94H
- * Version          : 1.8
+ * Version          : 1.9
  * Program List
  * --------------------------- ----------------------------------------------------------
  *  Name                        Description
@@ -41,6 +41,7 @@ AS
  *  2009/02/25    1.6  Oracle 吉田 夏樹  本番#1121対応、863対応再対応
  *  2009/04/15    1.7  SCS    伊藤ひとみ 本番#1403,1405対応
  *  2009/04/17    1.8  SCS    椎名 昭圭  ロット管理外品はロットIDをNULLとして取得
+ *  2009/04/23    1.9  SCS    椎名 昭圭  本番#1420対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1875,7 +1876,10 @@ AS
              xxcmn_lot_status_v    xlsv     -- ロットステータスビュー
       WHERE  xlsv.lot_status(+)           = ilm.attribute23
       AND    ilm.lot_id                   = gt_lr_lot_id_tbl(gn_i)
-      AND    ilm.attribute1              >= gt_lr_lot_date_tbl(gn_i)   -- 指定製造日
+-- 2009/04/23 v1.19 UPDATE START
+--      AND    ilm.attribute1              >= gt_lr_lot_date_tbl(gn_i)   -- 指定製造日
+      AND    xlsv.prod_class_code         = gt_lr_prod_class_code_tbl(gn_i)   -- 商品区分
+-- 2009/04/23 v1.19 UPDATE END
       AND    xlsv.pay_provision_m_reserve = gv_flg_y                   -- 有償支給(手動引当)
       AND    ROWNUM         = 1
       ;
