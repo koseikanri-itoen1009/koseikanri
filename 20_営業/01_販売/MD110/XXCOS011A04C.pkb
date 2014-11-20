@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A04C (body)
  * Description      : 入庫予定データの作成を行う
  * MD.050           : 入庫予定データ作成 (MD050_COS_011_A04)
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,7 +29,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/18    1.0  K.Kiriu          新規作成
  *  2008/02/27    1.1  K.Kiriu          [COS_147]税率の取得条件追加
- *  2009/03/10    1.2  T.Kitajima       [障害T1_0030]顧客品目の無効エラー対応
+ *  2009/03/10    1.2  T.Kitajima       [T1_0030]顧客品目の無効エラー対応
+ *  2009/04/06    1.3  T.Kitajima       [T1_0043]顧客品目の絞り込み条件に単位を追加
  *
  *****************************************************************************************/
 --
@@ -1496,6 +1497,9 @@ AS
                        ,mcix.inactive_flag          inactive_ref_flag
                        ,mcix.inventory_item_id      inventory_item_id
                        ,mp.organization_id          organization_id
+--********************  2009/04/06    1.3  T.Kitajima ADD Start ********************
+                       ,mci.attribute1              attribute1
+--********************  2009/04/06    1.3  T.Kitajima ADD  End  ********************
                 FROM    mtl_customer_item_xrefs  mcix   --顧客品目相互参照
                        ,mtl_customer_items       mci    --顧客品目
                        ,mtl_parameters           mp     --在庫組織
@@ -1525,6 +1529,9 @@ AS
       AND    mcis.customer_id(+)          = gt_chain_cust_acct_id          --チェーン店の顧客品目
       AND    msib.organization_id         = mcis.organization_id(+)        --結合(D品目 = 顧客品目相)
       AND    msib.inventory_item_id       = mcis.inventory_item_id(+)      --結合(D品目 = 顧客品目相)
+--********************  2009/04/06    1.3  T.Kitajima ADD Start ********************
+      AND    msib.primary_unit_of_measure = mcis.attribute1(+)             --結合(D品目 = 顧客品目相)
+--********************  2009/04/06    1.3  T.Kitajima ADD  End  ********************
 --********************  2009/03/10    1.2  T.Kitajima MOD  End  ********************
       AND    ( cd_process_date BETWEEN ximb.start_date_active AND  ximb.end_date_active )  --O品目A適用日FROM-TO
       AND    iimb.item_id                 = ximb.item_id                 --結合(O品目 = O品目A)
