@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A03C (body)
  * Description      : VD納品データ作成
  * MD.050           : VD納品データ作成(MD050_COS_001_A03)
- * Version          : 1.25
+ * Version          : 1.27
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -71,6 +71,8 @@ AS
  *  2012/02/03    1.23    K.Kiriu          [E_本稼動_08938] 訂正時の消費税額不具合対応
  *  2012/08/06    1.24    T.Makuta         [E_本稼動_09888] PT対応
  *  2012/08/27    1.25    T.Makuta         [E_本稼動_10008] PT対応
+ *  2013/10/18    1.26    K.Nakamura       [E_本稼動_10904] 消費税増税対応
+ *  2014/01/29    1.27    K.Nakamura       [E_本稼動_11449] 消費税率取得基準日を検収日⇒オリジナル検収日に変更
  *
  *****************************************************************************************/
 --
@@ -1590,6 +1592,9 @@ AS
   lt_mon_sale_base_code                xxcmm_cust_accounts.sale_base_code%TYPE;
   lt_past_sale_base_code               xxcmm_cust_accounts.past_sale_base_code%TYPE;
 -- ************* 2009/08/21 1.17 N.Maeda ADD  END  *************--
+-- ************* 2013/10/18 1.26 K.Nakamura ADD START *************--
+  ld_tax_date                     DATE; -- 消費税取得基準日
+-- ************* 2013/10/18 1.26 K.Nakamura ADD  END  *************--
     -- *** ローカル・カーソル ***
   CURSOR get_sales_exp_cur
     IS
@@ -1611,6 +1616,10 @@ AS
     <<header_loop>>
     FOR ck_no IN 1..gn_target_cnt LOOP
 --
+-- ************* 2013/10/18 1.26 K.Nakamura ADD START *************--
+      -- 消費税取得基準日の初期化
+      ld_tax_date                     := NULL;
+-- ************* 2013/10/18 1.26 K.Nakamura ADD  END  *************--
       --積上消費税の初期化
       ln_all_tax_amount               := 0;
       --最大消費税額の初期化
@@ -1981,6 +1990,22 @@ AS
       --====================
       --消費税マスタ情報取得
       --====================
+-- ************* 2013/10/18 1.26 K.Nakamura ADD START *************--
+      -- 内税（伝票課税）の場合
+      IF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN
+        -- 納品日
+-- ************* 2014/01/29 1.27 K.Nakamura ADD START *************--
+--        ld_tax_date := lt_open_dlv_date;
+        ld_tax_date := lt_dlv_date;
+-- ************* 2014/01/29 1.27 K.Nakamura ADD END   *************--
+      ELSE
+        -- 検収日
+-- ************* 2014/01/29 1.27 K.Nakamura ADD START *************--
+--        ld_tax_date := lt_open_inspect_date;
+        ld_tax_date := lt_inspect_date;
+-- ************* 2014/01/29 1.27 K.Nakamura ADD END   *************--
+      END IF;
+-- ************* 2013/10/18 1.26 K.Nakamura ADD  END  *************--
       BEGIN
 -- ****************** 2009/09/03 1.18 N.Maeda MOD START ************** --
         SELECT  xtv.tax_rate             -- 消費税率
@@ -1992,8 +2017,12 @@ AS
         FROM   xxcos_tax_v   xtv         -- 消費税view
         WHERE  xtv.hht_tax_class    = lt_consumption_tax_class
         AND    xtv.set_of_books_id  = TO_NUMBER( gv_bks_id )
-        AND    NVL( xtv.start_date_active, lt_open_inspect_date )  <= lt_open_inspect_date
-        AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_open_inspect_date;
+-- ************* 2013/10/18 1.26 K.Nakamura MOD START *************--
+--        AND    NVL( xtv.start_date_active, lt_open_inspect_date )  <= lt_open_inspect_date
+--        AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_open_inspect_date;
+        AND    NVL( xtv.start_date_active, ld_tax_date ) <= ld_tax_date
+        AND    NVL( xtv.end_date_active, gd_max_date )   >= ld_tax_date;
+-- ************* 2013/10/18 1.26 K.Nakamura MOD  END  *************--
 --
 --        SELECT avtab.tax_rate           -- 消費税率
 --        INTO   lt_tax_consum 

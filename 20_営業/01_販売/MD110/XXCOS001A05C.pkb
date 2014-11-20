@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.32
+ * Version          : 1.34
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -95,6 +95,8 @@ AS
  *                                                        オーダーNo内のスペース削除対応
  *  2011/07/04    1.31  T.Ishiwata       [E_本稼動_07848] OM受注のオーダーNo初期化対応
  *  2011/10/14    1.32  K.Kiriu          [E_本稼動_07906] 流通ＢＭＳ対応
+ *  2013/10/17    1.33  K.Kiriu          [E_本稼動_10904] 消費税対応
+ *  2014/01/29    1.34  K.Nakamura       [E_本稼動_11449] 消費税率取得基準日を納品日・検収日⇒オリジナル納品日・オリジナル検収日に変更
  *
  *****************************************************************************************/
 --
@@ -3362,6 +3364,9 @@ AS
 /* 2011/10/14 Ver1.32 Add Start */
   lt_order_connection_num         xxcos_edi_headers.order_connection_number%TYPE;  -- 受注関連番号
 /* 2011/10/14 Ver1.32 Add End   */
+/* 2013/10/17 Ver1.33 Add Start */
+  ld_tax_date                     DATE;                                            -- 消費税取得日付
+/* 2013/10/17 Ver1.33 Add End   */
 --
     -- *** ローカル・カーソル ***
 --******************************* 2009/06/23 N.Maeda Var1.17 ADD START ***************************************
@@ -3516,6 +3521,10 @@ AS
       lv_state_flg                    := cv_status_normal;
       -- HHT百貨店区分エラー(初期化)
       lv_dept_hht_div_flg             := cv_status_normal;
+/* 2013/10/17 Ver1.33 Add Start */
+      --消費税取得日付
+      ld_tax_date                     := NULL;
+/* 2013/10/17 Ver1.33 Add End   */
 --
 --******************************* 2009/06/23 N.Maeda Var1.17 MOD START ***************************************
 --      lt_row_id                    := gt_dlv_edi_headers_data( ck_no ).row_id;                   -- 行ID
@@ -3945,6 +3954,22 @@ AS
           --====================
           --消費税マスタ情報取得
           --====================
+/* 2013/10/17 Ver1.33 Add Start */
+          --内税（伝票課税）の場合
+          IF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN
+            --納品日(オリジナル)から消費税マスタを取得
+/* 2014/01/29 Ver1.34 Mod Start */
+--            ld_tax_date := lt_open_dlv_date;
+            ld_tax_date := lt_dlv_date;
+/* 2014/01/29 Ver1.34 Mod End   */
+          ELSE
+            --検収日(オリジナル)から消費税マスタを取得
+/* 2014/01/29 Ver1.34 Mod Start */
+--            ld_tax_date := lt_open_inspect_date;
+            ld_tax_date := lt_inspect_date;
+/* 2014/01/29 Ver1.34 Mod End   */
+          END IF;
+/* 2013/10/17 Ver1.33 Add End   */
           BEGIN
 -- ********* 2009/09/04 1.21 N.Maeda MOD START **************** --
             SELECT  xtv.tax_rate             -- 消費税率
@@ -3956,12 +3981,16 @@ AS
             FROM   xxcos_tax_v   xtv         -- 消費税view
             WHERE  xtv.hht_tax_class    = lt_consumption_tax_class
             AND    xtv.set_of_books_id  = TO_NUMBER( gv_bks_id )
---******************************* 2010/03/01 1.26 N.Maeda MOD START ***************************************
---            AND    NVL( xtv.start_date_active, lt_inspect_date )  <= lt_inspect_date
---            AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_inspect_date;
-            AND    NVL( xtv.start_date_active, lt_open_inspect_date )  <= lt_open_inspect_date
-            AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_open_inspect_date;
---******************************* 2010/03/01 1.26 N.Maeda MOD  END  ***************************************
+/* 2013/10/17 Ver1.33 Mod Start */
+----******************************* 2010/03/01 1.26 N.Maeda MOD START ***************************************
+----            AND    NVL( xtv.start_date_active, lt_inspect_date )  <= lt_inspect_date
+----            AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_inspect_date;
+--            AND    NVL( xtv.start_date_active, lt_open_inspect_date )  <= lt_open_inspect_date
+--            AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_open_inspect_date;
+----******************************* 2010/03/01 1.26 N.Maeda MOD  END  ***************************************
+            AND    NVL( xtv.start_date_active, ld_tax_date )  <= ld_tax_date
+            AND    NVL( xtv.end_date_active,   gd_max_date )  >= ld_tax_date;
+/* 2013/10/17 Ver1.33 Mod End   */
 --
 --            SELECT avtab.tax_rate           -- 消費税率
 --            INTO   lt_tax_consum 
@@ -6598,6 +6627,10 @@ AS
 /* 2011/10/14 Ver1.32 Add Start */
   lt_order_connection_num         xxcos_edi_headers.order_connection_number%TYPE;  -- 受注関連番号
 /* 2011/10/14 Ver1.32 Add End   */
+/* 2013/10/17 Ver1.33 Add Start */
+  ld_tax_date                     DATE;                                            -- 消費税取得日付
+/* 2013/10/17 Ver1.33 Add End   */
+
 --
     -- *** ローカル・カーソル ***
   CURSOR get_sales_exp_cur
@@ -6756,6 +6789,10 @@ AS
       lv_state_flg                    := cv_status_normal;
       -- HHT百貨店区分エラー(初期化)
       lv_dept_hht_div_flg             := cv_status_normal;
+/* 2013/10/17 Ver1.33 Add Start */
+      --消費税取得日付
+      ld_tax_date                     := NULL;
+/* 2013/10/17 Ver1.33 Add End   */
 --******************************* 2009/06/23 N.Maeda Var1.17 MOD START ***************************************
       lt_row_id                    := gt_inp_dlv_hht_headers_data( ck_no ).row_id;                   -- 行ID
 --******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
@@ -7199,6 +7236,22 @@ AS
             --====================
             --消費税マスタ情報取得
             --====================
+/* 2013/10/17 Ver1.33 Add Start */
+          --内税（伝票課税）の場合
+          IF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN
+            --納品日(オリジナル)から消費税マスタを取得
+/* 2014/01/29 Ver1.34 Mod Start */
+--            ld_tax_date := lt_open_dlv_date;
+            ld_tax_date := lt_dlv_date;
+/* 2014/01/29 Ver1.34 Mod End   */
+          ELSE
+            --検収日(オリジナル)から消費税マスタを取得
+/* 2014/01/29 Ver1.34 Mod Start */
+--            ld_tax_date := lt_open_inspect_date;
+            ld_tax_date := lt_inspect_date;
+/* 2014/01/29 Ver1.34 Mod End   */
+          END IF;
+/* 2013/10/17 Ver1.33 Add End   */
           BEGIN
 -- ********** 2009/09/04 1.21 N.Maeda MOD START ***************** --
             SELECT  xtv.tax_rate             -- 消費税率
@@ -7210,8 +7263,12 @@ AS
             FROM   xxcos_tax_v   xtv         -- 消費税view
             WHERE  xtv.hht_tax_class    = lt_consumption_tax_class
             AND    xtv.set_of_books_id  = TO_NUMBER( gv_bks_id )
-            AND    NVL( xtv.start_date_active, lt_open_inspect_date )  <= lt_open_inspect_date
-            AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_open_inspect_date;
+/* 2013/10/17 Ver1.33 Mod Start */
+--            AND    NVL( xtv.start_date_active, lt_open_inspect_date )  <= lt_open_inspect_date
+--            AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_open_inspect_date;
+            AND    NVL( xtv.start_date_active, ld_tax_date )  <= ld_tax_date
+            AND    NVL( xtv.end_date_active,   gd_max_date )  >= ld_tax_date;
+/* 2013/10/17 Ver1.33 Mod End   */
 --
 --              SELECT avtab.tax_rate           -- 消費税率
 --              INTO   lt_tax_consum 
@@ -9841,6 +9898,9 @@ AS
 /* 2011/10/14 Ver1.32 Add Start */
   lt_order_connection_num         xxcos_edi_headers.order_connection_number%TYPE;  -- 受注関連番号
 /* 2011/10/14 Ver1.32 Add End   */
+/* 2013/10/17 Ver1.33 Add Start */
+  ld_tax_date                     DATE;                                            -- 消費税取得日付
+/* 2013/10/17 Ver1.33 Add End   */
 --
     -- *** ローカル・カーソル ***
 --******************************* 2009/06/23 N.Maeda Var1.17 ADD START ***************************************
@@ -9929,6 +9989,10 @@ AS
       -- 明細合計本体金額
       ln_line_pure_amount_sum           := 0;
 --******************************* 2009/05/18 N.Maeda Var1.15 ADD END *****************************************
+/* 2013/10/17 Ver1.33 Add Start */
+      --消費税取得日付
+      ld_tax_date                     := NULL;
+/* 2013/10/17 Ver1.33 Add End   */
 --
 --******************************* 2009/06/23 N.Maeda Var1.17 MOD START ***************************************
 ----******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
@@ -10369,6 +10433,22 @@ AS
           --====================
           --消費税マスタ情報取得
           --====================
+/* 2013/10/17 Ver1.33 Add Start */
+          --内税（伝票課税）の場合
+          IF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN
+            --納品日(オリジナル)から消費税マスタを取得
+/* 2014/01/29 Ver1.34 Mod Start */
+--            ld_tax_date := lt_open_dlv_date;
+            ld_tax_date := lt_dlv_date;
+/* 2014/01/29 Ver1.34 Mod End   */
+          ELSE
+            --検収日から消費税マスタを取得
+/* 2014/01/29 Ver1.34 Mod Start */
+--            ld_tax_date := lt_open_inspect_date;
+            ld_tax_date := lt_inspect_date;
+/* 2014/01/29 Ver1.34 Mod End   */
+          END IF;
+/* 2013/10/17 Ver1.33 Add End   */
           BEGIN
 -- ********* 2009/09/03 1.21 N.Maeda MOD START **************** --
             SELECT  xtv.tax_rate             -- 消費税率
@@ -10380,12 +10460,16 @@ AS
             FROM   xxcos_tax_v   xtv         -- 消費税view
             WHERE  xtv.hht_tax_class    = lt_consumption_tax_class
             AND    xtv.set_of_books_id  = TO_NUMBER( gv_bks_id )
---******************************* 2010/03/01 1.26 N.Maeda MOD START ***************************************
---            AND    NVL( xtv.start_date_active, lt_inspect_date )  <= lt_inspect_date
---            AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_inspect_date;
-            AND    NVL( xtv.start_date_active, lt_open_inspect_date )  <= lt_open_inspect_date
-            AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_open_inspect_date;
---******************************* 2010/03/01 1.26 N.Maeda MOD  END  ***************************************
+/* 2013/10/17 Ver1.33 Mod Start */
+----******************************* 2010/03/01 1.26 N.Maeda MOD START ***************************************
+----            AND    NVL( xtv.start_date_active, lt_inspect_date )  <= lt_inspect_date
+----            AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_inspect_date;
+--            AND    NVL( xtv.start_date_active, lt_open_inspect_date )  <= lt_open_inspect_date
+--            AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_open_inspect_date;
+----******************************* 2010/03/01 1.26 N.Maeda MOD  END  ***************************************
+            AND    NVL( xtv.start_date_active, ld_tax_date )  <= ld_tax_date
+            AND    NVL( xtv.end_date_active,   gd_max_date )  >= ld_tax_date;
+/* 2013/10/17 Ver1.33 Mod End   */
 --
 --            SELECT avtab.tax_rate           -- 消費税率
 --            INTO   lt_tax_consum 
