@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF013A20C(body)
  * Description      : FAアドオンIF
  * MD.050           : MD050_CFF_013_A20_FAアドオンIF
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,12 @@ AS
  *                                         を取得し、追加OIFの計算月数へ設定する。
  *  2009/05/19    1.3   SCS礒崎祐次      [障害T1_0893]
  *                                       ①リース法人税台帳で減価償却の計算が行われない。
+ *  2009/05/29    1.4   SCS磯崎祐次      [障害T1_0893]追記
+ *                                       ①リース取引(追加)登録時の事業供用日は
+ *                                         リース開始日を設定する。
+ *  2009/06/16    1.5   SCS中村祐基      [障害T1_1428]
+ *                                       ①資産カテゴリCCID取得ロジックの
+ *                                       パラメータ：資産勘定の値をNULL値固定に変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2981,7 +2987,10 @@ AS
 -- T1_0759 2009/04/23 ADD END   --
       xxcff_common1_pkg.chk_fa_category(
          iv_segment1      => g_asset_category_tab(ln_loop_cnt) -- 資産種類
-        ,iv_segment3      => g_les_asset_acct_tab(ln_loop_cnt) -- 資産勘定
+-- T1_1428 MOD START 2009/06/16 Ver1.5 by Yuuki Nakamura
+--      ,iv_segment3      => g_les_asset_acct_tab(ln_loop_cnt) -- 資産勘定
+        ,iv_segment3      => NULL                              -- 資産勘定
+-- T1_1428 MOD END 2009/06/16 Ver1.5 by Yuuki Nakamura
         ,iv_segment4      => g_deprn_acct_tab(ln_loop_cnt)     -- 償却科目
 -- T1_0759 2009/04/23 MOD START --
 --      ,iv_segment5      => g_life_in_months_tab(ln_loop_cnt) -- 耐用年数
@@ -3162,7 +3171,10 @@ AS
             ,ctrct_head.comments           AS comments            -- 件名
             ,ctrct_head.payment_years      AS payment_years       -- 年数(リース期間)
             ,ctrct_hist.life_in_months     AS life_in_months      -- 法定耐用年数
-            ,ctrct_head.contract_date      AS contract_date       -- リース契約日
+-- T1_0893 2009/05/29 MOD START --
+--          ,ctrct_head.contract_date      AS contract_date       -- リース契約日
+            ,ctrct_head.lease_start_date   AS contract_date       -- リース開始日
+-- T1_0893 2009/05/29 MOD END   --
             ,ctrct_hist.original_cost      AS original_cost       -- 取得価格
             ,1                             AS quantity            -- 数量
             ,obj_head.department_code      AS department_code     -- 管理部門
