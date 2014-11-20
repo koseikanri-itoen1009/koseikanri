@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2009-05-01    1.6   Tomoko.Mori      T1_0897対応
  *  2009-05-19    1.7   K.Satomura       ＳＴ障害対応(T1_1048対応)
  *  2009-05-21    1.8   M.Maruyama       ＳＴ障害対応(T1_1093対応)
+ *  2009-05-22    1.9   K.Satomura       ＳＴ障害対応(T1_1142対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -119,6 +120,9 @@ AS
   cv_tkn_number_15        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00152';  -- インターフェースファイル名
   cv_tkn_number_16        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00011';  -- 業務処理日付取得エラー
   cv_tkn_number_17        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00224';  -- CSVファイル出力0件エラーメッセージ
+  /* 2009.05.22 K.Satomura T1_1142対応 START */
+  cv_tkn_number_18        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00570';  -- 電話番号桁数エラー
+  /* 2009.05.22 K.Satomura T1_1142対応 END */
 --
   -- トークンコード
   cv_tkn_errmsg           CONSTANT VARCHAR2(20) := 'ERR_MSG';
@@ -137,6 +141,10 @@ AS
   cv_tkn_table            CONSTANT VARCHAR2(20) := 'TABLE';
   cv_tkn_process          CONSTANT VARCHAR2(20) := 'PROCESS';
   cv_tkn_base_value       CONSTANT VARCHAR2(20) := 'BASE_VALUE';
+  /* 2009.05.22 K.Satomura T1_1142対応 START */
+  cv_tkn_new_old          CONSTANT VARCHAR2(20) := 'NEW_OLD';
+  cv_tkn_phone_num        CONSTANT VARCHAR2(20) := 'PHONE_NUM';
+  /* 2009.05.22 K.Satomura T1_1142対応 END */
 --
   -- 作業区分
   cn_work_kbn1            CONSTANT NUMBER       := 1;                -- 新台設置
@@ -753,6 +761,11 @@ AS
     cv_salebase_info   CONSTANT VARCHAR2(100) := '顧客マスタビューの売上拠点コード';
     cv_emplbase_info   CONSTANT VARCHAR2(100) := '従業員マスタビューの勤務地拠点コード';
     cv_syozokum_info   CONSTANT VARCHAR2(100) := '所属マスタの事業所電話番号';
+    /* 2009.05.22 K.Satomura T1_1142対応 START */
+    cn_phone_num_max_legth CONSTANT NUMBER        := 6; -- 電話番号最大桁数
+    cv_phone_old           CONSTANT VARCHAR2(100) := '現設置先';
+    cv_phone_new           CONSTANT VARCHAR2(100) := '新設置先';
+    /* 2009.05.22 K.Satomura T1_1142対応 END */
 --
     -- *** ローカル変数 ***
     lv_instance_type_code      VARCHAR2(30);            -- インスタンスタイプコード
@@ -815,10 +828,10 @@ AS
     ld_date                    DATE;                    -- 業務処理日付格納用('yyyymmdd'形式)
     lv_log_po_head_num         VARCHAR2(20);            -- ログ用発注番号
     lv_log_po_line_num         VARCHAR2(20);            -- ログ用発注明細番号
-    lv_log_po_dist_num         VARCHAR2(20);            -- ログ用発注搬送番号 
-    lv_log_rq_head_num         VARCHAR2(20);            -- ログ用発注依頼番号                 
-    lv_log_rq_line_num         VARCHAR2(20);            -- ログ用発注依頼明細番号                 
-    ln_num1                    NUMBER;                  -- 1回目のハイフンの位置                               
+    lv_log_po_dist_num         VARCHAR2(20);            -- ログ用発注搬送番号
+    lv_log_rq_head_num         VARCHAR2(20);            -- ログ用発注依頼番号
+    lv_log_rq_line_num         VARCHAR2(20);            -- ログ用発注依頼明細番号
+    ln_num1                    NUMBER;                  -- 1回目のハイフンの位置
     ln_num2                    NUMBER;                  -- 2回目のハイフンの位置
   BEGIN
 --
@@ -1852,6 +1865,45 @@ AS
       --
     END IF;
     /* 2009.05.19 K.Satomura T1_1048対応 END */
+    /* 2009.05.22 K.Satomura T1_1142対応 START */
+    -- 電話番号桁数チェック
+    IF (LENGTHB(lv_cur_phone_number1) > cn_phone_num_max_legth
+      OR LENGTHB(lv_cur_phone_number2) > cn_phone_num_max_legth
+      OR LENGTHB(lv_cur_phone_number3) > cn_phone_num_max_legth)
+    THEN
+      -- 現設置先電話桁数エラー
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name         -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_18    -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_new_old      -- トークンコード1
+                     ,iv_token_value1 => cv_phone_old        -- トークン値1
+                     ,iv_token_name2  => cv_tkn_phone_num    -- トークンコード2
+                     ,iv_token_value2 => lv_cur_phone_number -- トークン値2
+                   );
+      --
+      RAISE global_skip_expt;
+      --
+    END IF;
+    --
+    IF (LENGTHB(lv_new_phone_number1) > cn_phone_num_max_legth
+      OR LENGTHB(lv_new_phone_number2) > cn_phone_num_max_legth
+      OR LENGTHB(lv_new_phone_number3) > cn_phone_num_max_legth)
+    THEN
+      -- 新設置先電話桁数エラー
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name         -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_18    -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_new_old      -- トークンコード1
+                     ,iv_token_value1 => cv_phone_new        -- トークン値1
+                     ,iv_token_name2  => cv_tkn_phone_num    -- トークンコード2
+                     ,iv_token_value2 => lv_new_phone_number -- トークン値2
+                   );
+      --
+      RAISE global_skip_expt;
+      --
+    END IF;
+    --
+    /* 2009.05.22 K.Satomura T1_1142対応 END */
     -- 物件コード１
     io_get_data_rec.install_code1          := REPLACE(lv_install_code1, cv_hyphen);
     -- 機種名１
