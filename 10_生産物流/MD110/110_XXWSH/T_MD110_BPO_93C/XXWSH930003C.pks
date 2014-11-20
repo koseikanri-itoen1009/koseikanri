@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE xxwsh930003c 
+CREATE OR REPLACE PACKAGE xxwsh930003c
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（出庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93C)
- * Version          : 1.5
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -24,7 +24,9 @@ AS
  *  2008/06/25    1.2   Oohashi  Takao   不具合ログ対応
  *  2008/06/30    1.3   Oohashi  Takao   不具合ログ対応
  *  2008/07/02    1.4   Kawano   Yuko    ST不具合対応#352
- *  2008/07/08    1.5   Satoshi Yunba    禁則文字対応
+ *  2008/07/07    1.5   Akiyoshi Shiina  変更要求対応#92
+ *  2008/07/08    1.6   Satoshi Yunba    禁則文字対応
+ *  2008/07/24    1.7   Akiyoshi Shiina  ST不具合#197、内部課題#32、内部変更要求#180対応
  *
  *****************************************************************************************/
 --

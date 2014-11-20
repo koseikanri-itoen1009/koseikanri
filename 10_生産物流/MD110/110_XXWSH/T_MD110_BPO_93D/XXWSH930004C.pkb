@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（入庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93D)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2008/06/30    1.3   Oracle大橋孝郎   不具合ログ対応
  *  2008/07/08    1.4   Oracle弓場哲士   禁則文字対応
  *  2008/07/09    1.5   Oracle椎名昭圭   変更要求対応#92
+ *  2008/07/28    1.6   Oracle椎名昭圭   ST不具合#197、内部課題#32、内部変更要求#180対応
  *
  *****************************************************************************************/
 --
@@ -202,6 +203,9 @@ AS
      ,quant_r          NUMBER         -- 依頼数（ロット管理外）
      ,quant_i          NUMBER         -- 入庫数（ロット管理外）
      ,quant_o          NUMBER         -- 出庫数（ロット管理外）
+-- 2008/07/28 A.Shiina v1.6 ADD Start
+     ,quant_d          NUMBER   -- 内訳数量(インタフェース用)
+-- 2008/07/28 A.Shiina v1.6 ADD End
      ,status           VARCHAR2(100)  -- 受注ヘッダステータス
 -- add start ver1.1
      ,conv_unit        VARCHAR2(240)  -- 入出庫換算単位
@@ -1125,11 +1129,21 @@ AS
     -- 定  数  宣  言
     -- ==================================================
     cv_prg_name         CONSTANT VARCHAR2(100) := 'prc_set_temp_data' ; -- プログラム名
+-- 2008/07/28 A.Shiina v1.6 ADD Start
+    cv_eos_data_cd_220  CONSTANT VARCHAR2(3) := '220';  -- 220 移動出庫確定報告
+    cv_eos_data_cd_230  CONSTANT VARCHAR2(3) := '230';  -- 230 移動入庫確定報告
+-- 2008/07/28 A.Shiina v1.6 ADD End
 --
     -- ==================================================
     -- 変  数  宣  言
     -- ==================================================
     lv_reserved_status  xxwsh_shipping_lines_if.reserved_status%TYPE ;   -- 保留ステータス
+-- 2008/07/28 A.Shiina v1.6 ADD Start
+    lv_eos_data_type    xxwsh_shipping_headers_if.eos_data_type%TYPE ;  -- EOSデータ種別
+    ln_quant_kbn        NUMBER;         -- 数量区分
+--
+    ln_cnt              NUMBER := 0 ;   -- 存在カウント
+-- 2008/07/28 A.Shiina v1.6 ADD End
 --
     ln_temp_cnt         NUMBER DEFAULT 0 ;   -- 取得レコードカウント
 --
@@ -1262,9 +1276,27 @@ AS
     -- ロット管理品の場合
 --    ELSIF ( ir_get_data.lot_ctl = gc_lot_ctl_y ) THEN
 -- del end ver1.1
+-- 2008/07/28 A.Shiina v1.6 ADD Start
 --
+    -- 変数初期化
+    ln_cnt := 0;
+--
+    -- 移動ロット詳細アドオン存在チェック
+    SELECT  COUNT(1)
+    INTO    ln_cnt
+    FROM    xxinv_mov_lot_details   xmld    -- 移動ロット詳細アドオン
+    WHERE   xmld.document_type_code = gc_doc_type_move
+    AND   xmld.mov_line_id          = ir_get_data.order_line_id
+    AND   xmld.lot_id               = ir_get_data.lot_id
+    ;
+--
+-- 2008/07/28 A.Shiina v1.6 ADD End
       -- ロット情報取得
       BEGIN
+-- 2008/07/28 A.Shiina v1.6 ADD Start
+    -- 移動ロット詳細アドオンに存在する場合
+      IF (ln_cnt > 0) THEN
+-- 2008/07/28 A.Shiina v1.6 ADD End
 -- mod satart ver1.1
 --        SELECT ilm.lot_no                                    -- ロット番号
         SELECT xmld.lot_no                                   -- ロット番号
@@ -1289,32 +1321,57 @@ AS
               ,SUM( CASE
                       WHEN (xmld.record_type_code = gc_rec_type_inst) THEN 
                         CASE 
-                          WHEN xicv.item_class_code = '5'             -- 品目区分が製品
--- mod start ver1.3
---                           AND ir_get_data.conv_unit IS NOT NULL THEN -- 入出庫換算単位がNULLでない
-                           AND ir_get_data.conv_unit IS NOT NULL      -- 入出庫換算単位がNULLでない
-                           AND ir_get_data.prod_class_code = '2' THEN -- 商品区分がドリンク
--- mod end ver1.3
+-- 2008/07/28 A.Shiina v1.6 UPDATE Start
+--                          WHEN xicv.item_class_code = '5'             -- 品目区分が製品
+---- mod start ver1.3
+----                           AND ir_get_data.conv_unit IS NOT NULL THEN -- 入出庫換算単位がNULLでない
+--                           AND ir_get_data.conv_unit IS NOT NULL      -- 入出庫換算単位がNULLでない
+--                           AND ir_get_data.prod_class_code = '2' THEN -- 商品区分がドリンク
+---- mod end ver1.3
+                         -- 品目区分が製品、かつ
+                         -- 入出庫換算単位がNULLでない、かつ
+                         -- 商品区分がドリンク、かつ
+                         -- ケース入数が1以上の場合
+                         WHEN ((xicv.item_class_code = '5')
+                          AND (ir_get_data.conv_unit IS NOT NULL)
+                          AND (ir_get_data.prod_class_code = '2')
+                          AND (ir_get_data.num_of_cases > 0))THEN
                               -- 換算する
--- mod start ver1.2
---                              (xmld.actual_quantity/ir_get_data.num_of_cases)
-                              ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)
+---- mod start ver1.2
+----                              (xmld.actual_quantity/ir_get_data.num_of_cases)
+--                              ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)
+                           ROUND((NVL(xmld.actual_quantity, ir_get_data.quant_r)
+                                   /ir_get_data.num_of_cases),3)
+-- 2008/07/28 A.Shiina v1.6 UPDATE End
 -- mod end ver1.2
                         ELSE
                               -- 換算しない
-                              (xmld.actual_quantity/1)
+-- 2008/07/28 A.Shiina v1.6 UPDATE Start
+--                              (xmld.actual_quantity/1)
+                           NVL(xmld.actual_quantity, ir_get_data.quant_r)
+-- 2008/07/28 A.Shiina v1.6 UPDATE End
                         END
                       ELSE 0
                     END )                                    -- 依頼数
               ,SUM( CASE
                       WHEN (xmld.record_type_code = gc_rec_type_dlvr) THEN 
-                        CASE 
-                          WHEN xicv.item_class_code = '5'             -- 品目区分が製品
--- mod start ver1.3
---                           AND ir_get_data.conv_unit IS NOT NULL THEN -- 入出庫換算単位がNULLでない
-                           AND ir_get_data.conv_unit IS NOT NULL      -- 入出庫換算単位がNULLでない
-                           AND ir_get_data.prod_class_code = '2' THEN -- 商品区分がドリンク
--- mod end ver1.3
+                        CASE
+-- 2008/07/28 A.Shiina v1.6 UPDATE Start
+--                          WHEN xicv.item_class_code = '5'             -- 品目区分が製品
+---- mod start ver1.3
+----                           AND ir_get_data.conv_unit IS NOT NULL THEN -- 入出庫換算単位がNULLでない
+--                           AND ir_get_data.conv_unit IS NOT NULL      -- 入出庫換算単位がNULLでない
+--                           AND ir_get_data.prod_class_code = '2' THEN -- 商品区分がドリンク
+---- mod end ver1.3
+                         -- 品目区分が製品、かつ
+                         -- 入出庫換算単位がNULLでない、かつ
+                         -- 商品区分がドリンク、かつ
+                         -- ケース入数が1以上の場合
+                         WHEN ((xicv.item_class_code = '5')
+                          AND (ir_get_data.conv_unit IS NOT NULL)
+                          AND (ir_get_data.prod_class_code = '2')
+                          AND (ir_get_data.num_of_cases > 0)) THEN
+-- 2008/07/28 A.Shiina v1.6 UPDATE End
                               -- 換算する
 -- mod start ver1.2
 --                              (xmld.actual_quantity/ir_get_data.num_of_cases)
@@ -1328,12 +1385,22 @@ AS
                     END )                                    -- 入庫数
               ,SUM( CASE
                       WHEN (xmld.record_type_code = gc_rec_type_stck) THEN 
-                        CASE 
-                          WHEN xicv.item_class_code = '5'             -- 品目区分が製品
--- mod start ver1.3
---                           AND ir_get_data.conv_unit IS NOT NULL THEN -- 入出庫換算単位がNULLでない
-                           AND ir_get_data.conv_unit IS NOT NULL      -- 入出庫換算単位がNULLでない
-                           AND ir_get_data.prod_class_code = '2' THEN -- 商品区分がドリンク
+                        CASE
+-- 2008/07/28 A.Shiina v1.6 UPDATE Start
+--                          WHEN xicv.item_class_code = '5'             -- 品目区分が製品
+---- mod start ver1.3
+----                           AND ir_get_data.conv_unit IS NOT NULL THEN -- 入出庫換算単位がNULLでない
+--                           AND ir_get_data.conv_unit IS NOT NULL      -- 入出庫換算単位がNULLでない
+--                           AND ir_get_data.prod_class_code = '2' THEN -- 商品区分がドリンク
+                         -- 品目区分が製品、かつ
+                         -- 入出庫換算単位がNULLでない、かつ
+                         -- 商品区分がドリンク、かつ
+                         -- ケース入数が1以上の場合
+                         WHEN ((xicv.item_class_code = '5')
+                          AND (ir_get_data.conv_unit IS NOT NULL)
+                          AND (ir_get_data.prod_class_code = '2')
+                          AND (ir_get_data.num_of_cases > 0)) THEN
+-- 2008/07/28 A.Shiina v1.6 UPDATE End
 -- mod end ver1.3
                               -- 換算する
 -- mod start ver1.2
@@ -1397,6 +1464,31 @@ AS
                 ,ilm.attribute3
                 ,xlv.meaning
         ;
+-- 2008/07/28 A.Shiina v1.6 ADD Start
+      -- 移動ロット詳細アドオンに存在しない場合
+      ELSE
+        or_temp_tab.lot_no        := NULL ;   -- ロット番号
+        or_temp_tab.product_date  := NULL ;   -- 製造日
+        or_temp_tab.use_by_date   := NULL ;   -- 賞味期限
+        or_temp_tab.original_char := NULL ;   -- 固有記号
+        or_temp_tab.lot_status    := NULL ;   -- 品質
+--
+        -- 入出庫換算単位がNULLでない、かつ
+        -- 商品区分がドリンク、かつ
+        -- ケース入数が1以上の場合
+        IF ((ir_get_data.conv_unit IS NOT NULL)
+          AND (ir_get_data.prod_class_code = '2')
+          AND (ir_get_data.num_of_cases > 0)) THEN
+          or_temp_tab.quant_r := ROUND((ir_get_data.quant_r/ir_get_data.num_of_cases),3);
+        ELSE
+          or_temp_tab.quant_r := ir_get_data.quant_r ;
+        END IF;                                         -- 依頼数
+--
+        or_temp_tab.quant_i := ir_get_data.quant_i ;    -- 入庫数
+        or_temp_tab.quant_o := ir_get_data.quant_o ;    -- 出庫数
+--
+      END IF;
+-- 2008/07/28 A.Shiina v1.6 ADD End
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
           or_temp_tab.lot_no        := NULL ;  -- ロット番号
@@ -1422,11 +1514,17 @@ AS
 --    END IF ;
 -- del end ver1.1
 --
+-- 2008/07/28 A.Shiina v1.6 ADD Start
+    -- 変数初期化
+    lv_reserved_status := NULL;
+-- 2008/07/28 A.Shiina v1.6 ADD End
+--
     --------------------------------------------------
     -- 差異事由設定
     --------------------------------------------------
     -- 保留ステータス
-   BEGIN
+-- 2008/07/28 A.Shiina v1.6 UPDATE Start
+/*   BEGIN
       SELECT DISTINCT  xsli.reserved_status
       INTO   lv_reserved_status
       FROM xxwsh_shipping_headers_if  xshi      -- 出荷依頼インタフェースヘッダアドオン
@@ -1441,15 +1539,61 @@ AS
       WHEN TOO_MANY_ROWS THEN
        lv_reserved_status := NULL ;
     END ;
+*/--
+    -- 変数初期化
+    lv_eos_data_type   := NULL;
+    lv_reserved_status := NULL;
 --
+    -- 保留ステータス判定
+    -- EOSデータ種別取得
+    BEGIN
+      SELECT DISTINCT
+              xshi.eos_data_type
+             ,xsli.reserved_status
+      INTO    lv_eos_data_type
+             ,lv_reserved_status
+      FROM    xxwsh_shipping_headers_if  xshi      -- 出荷依頼インタフェースヘッダアドオン
+             ,xxwsh_shipping_lines_if    xsli      -- 出荷依頼インタフェース明細アドオン
+      WHERE  xshi.header_id        = xsli.header_id
+      AND    xshi.delivery_no      = ir_get_data.delivery_no   -- 配送Ｎｏ
+      AND    xshi.order_source_ref = ir_get_data.request_no    -- 依頼Ｎｏ
+      ;
+--
+      IF ((lv_reserved_status = gc_reserved_status_y)
+        AND (lv_eos_data_type = cv_eos_data_cd_220)) THEN
+        ln_quant_kbn := 1;    -- 保留かつ出庫対象
+      ELSIF ((lv_reserved_status = gc_reserved_status_y)
+        AND (lv_eos_data_type = cv_eos_data_cd_230)) THEN
+        ln_quant_kbn := 2;    -- 保留かつ入庫対象
+      END IF;
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_eos_data_type   := NULL ;
+        lv_reserved_status := NULL ;
+    END ;
+--
+-- 2008/07/28 A.Shiina v1.6 UPDATE End
     ------------------------------
     -- 保留ステータス：「保留」
     ------------------------------
     IF ( lv_reserved_status = gc_reserved_status_y ) THEN
+-- 2008/07/28 A.Shiina v1.6 UPDATE Start
 --
-      or_temp_tab.quant_r       := ir_get_data.quant_r ;  -- 依頼数
-      or_temp_tab.quant_i       := ir_get_data.quant_i ;  -- 入庫数
-      or_temp_tab.quant_o       := ir_get_data.quant_o ;  -- 出庫数
+--      or_temp_tab.quant_r       := ir_get_data.quant_r ;  -- 依頼数
+--      or_temp_tab.quant_i       := ir_get_data.quant_i ;  -- 入庫数
+--      or_temp_tab.quant_o       := ir_get_data.quant_o ;  -- 出庫数
+      or_temp_tab.quant_r       := 0 ;  -- 依頼数
+      -- 出庫対象の場合
+      IF (ln_quant_kbn = 1) THEN
+        or_temp_tab.quant_i       := 0 ;                                              -- 入庫数
+        or_temp_tab.quant_o       := NVL(ir_get_data.quant_d, ir_get_data.quant_r) ;  -- 出庫数
+      -- 入庫対象の場合
+      ELSIF (ln_quant_kbn = 2) THEN
+        or_temp_tab.quant_i       := NVL(ir_get_data.quant_d, ir_get_data.quant_r) ;  -- 入庫数
+        or_temp_tab.quant_o       := 0 ;                                              -- 出庫数
+      END IF;
+-- 2008/07/28 A.Shiina v1.6 UPDATE End
 --
       -- ロット情報取得
       BEGIN
@@ -1691,7 +1835,10 @@ AS
             ,xmrih.status                 AS status               -- ヘッダステータス
 -- add start ver1.1
             ,ximv.conv_unit               AS conv_unit             -- 入出庫換算単位
-            ,TO_NUMBER(NVL(ximv.num_of_cases,'1')) AS num_of_cases -- ケース入数
+-- 2008/07/28 A.Shiina v1.6 UPDATE Start
+--            ,TO_NUMBER(NVL(ximv.num_of_cases,'1')) AS num_of_cases -- ケース入数
+            ,TO_NUMBER(ximv.num_of_cases) AS num_of_cases -- ケース入数
+-- 2008/07/28 A.Shiina v1.6 UPDATE End
 -- add end ver1.1
 -- add start ver1.2
             ,xmld.lot_id                  AS lot_id                -- ロットID
@@ -1738,9 +1885,12 @@ AS
       ----------------------------------------------------------------------------------------------
       AND   NVL( xmril.delete_flg, gc_yn_div_n ) = gc_yn_div_n          -- 未削除
       AND   xmrih.mov_hdr_id        = xmril.mov_hdr_id
--- add start ver1.2
-      AND   xmld.mov_line_id        = xmril.mov_line_id
--- add end ver1.2
+-- 2008/07/28 A.Shiina v1.6 UPDATE Start
+---- add start ver1.2
+--      AND   xmld.mov_line_id        = xmril.mov_line_id
+      AND   xmld.mov_line_id(+)        = xmril.mov_line_id
+---- add end ver1.2
+-- 2008/07/28 A.Shiina v1.6 UPDATE End
       ----------------------------------------------------------------------------------------------
       -- ＯＰＭ保管場所
       ----------------------------------------------------------------------------------------------
@@ -1750,12 +1900,28 @@ AS
       AND   xil.segment1            = xmrih.ship_to_locat_code
 -- mod end ver1.1
       -- パラメータ条件．ブロック１・２・３
-      AND   (  gr_param.block_01      IS NULL
-            OR xil.distribution_block = gr_param.block_01 )
-      AND   (  gr_param.block_02      IS NULL
-            OR xil.distribution_block = gr_param.block_02 )
-      AND   (  gr_param.block_03      IS NULL
-            OR xil.distribution_block = gr_param.block_03 )
+-- 2008/07/28 A.Shiina v1.6 ADD Start
+--      AND   (  gr_param.block_01      IS NULL
+--            OR xil.distribution_block = gr_param.block_01 )
+--      AND   (  gr_param.block_02      IS NULL
+--            OR xil.distribution_block = gr_param.block_02 )
+--      AND   (  gr_param.block_03      IS NULL
+--            OR xil.distribution_block = gr_param.block_03 )
+      AND   (
+              -- パラメータ条件．ブロック１・２・３が全てNULLの場合
+              (
+                (gr_param.block_01 IS NULL)
+                  AND  (gr_param.block_02 IS NULL)
+                    AND  (gr_param.block_03 IS NULL)
+              )
+              OR
+              -- パラメータ条件．ブロック１・２・３の何れかが指定された場合
+              (xil.distribution_block IN (gr_param.block_01,
+                                          gr_param.block_02,
+                                          gr_param.block_03)
+              )
+            )
+-- 2008/07/28 A.Shiina v1.6 ADD End
       -- パラメータ条件．オンライン区分
       AND   xil.eos_control_type   = NVL( gr_param.online_type, xil.eos_control_type )
 -- mod start ver1.1
@@ -1826,7 +1992,10 @@ AS
             ,xmrih.status                       AS status               -- ヘッダステータス
 -- add start ver1.1
             ,ximv.conv_unit               AS conv_unit             -- 入出庫換算単位
-            ,TO_NUMBER(NVL(ximv.num_of_cases,'1')) AS num_of_cases -- ケース入数
+-- 2008/07/28 A.Shiina v1.6 UPDATE Start
+--            ,TO_NUMBER(NVL(ximv.num_of_cases,'1')) AS num_of_cases -- ケース入数
+            ,TO_NUMBER(ximv.num_of_cases) AS num_of_cases -- ケース入数
+-- 2008/07/28 A.Shiina v1.6 UPDATE End
 -- add end ver1.1
 -- add start ver1.2
             ,xmld.lot_id                  AS lot_id                -- ロットID
@@ -1873,9 +2042,12 @@ AS
       ----------------------------------------------------------------------------------------------
       AND   NVL( xmril.delete_flg, gc_yn_div_n ) = gc_yn_div_n          -- 未削除
       AND   xmrih.mov_hdr_id        = xmril.mov_hdr_id
--- add start ver1.2
-      AND   xmld.mov_line_id        = xmril.mov_line_id
--- add end ver1.2
+-- 2008/07/28 A.Shiina v1.6 UPDATE Start
+---- add start ver1.2
+--      AND   xmld.mov_line_id        = xmril.mov_line_id
+      AND   xmld.mov_line_id(+)        = xmril.mov_line_id
+---- add end ver1.2
+-- 2008/07/28 A.Shiina v1.6 UPDATE End
       ----------------------------------------------------------------------------------------------
       -- ＯＰＭ保管場所
       ----------------------------------------------------------------------------------------------
@@ -1885,12 +2057,28 @@ AS
       AND   xil.segment1            = xmrih.ship_to_locat_code
 -- mod end ver1.1
       -- パラメータ条件．ブロック１・２・３
-      AND   (  gr_param.block_01      IS NULL
-            OR xil.distribution_block = gr_param.block_01 )
-      AND   (  gr_param.block_02      IS NULL
-            OR xil.distribution_block = gr_param.block_02 )
-      AND   (  gr_param.block_03      IS NULL
-            OR xil.distribution_block = gr_param.block_03 )
+-- 2008/07/28 A.Shiina v1.6 ADD Start
+--      AND   (  gr_param.block_01      IS NULL
+--            OR xil.distribution_block = gr_param.block_01 )
+--      AND   (  gr_param.block_02      IS NULL
+--            OR xil.distribution_block = gr_param.block_02 )
+--      AND   (  gr_param.block_03      IS NULL
+--            OR xil.distribution_block = gr_param.block_03 )
+      AND   (
+              -- パラメータ条件．ブロック１・２・３が全てNULLの場合
+              (
+                (gr_param.block_01 IS NULL)
+                  AND  (gr_param.block_02 IS NULL)
+                    AND  (gr_param.block_03 IS NULL)
+              )
+              OR
+              -- パラメータ条件．ブロック１・２・３の何れかが指定された場合
+              (xil.distribution_block IN (gr_param.block_01,
+                                          gr_param.block_02,
+                                          gr_param.block_03)
+              )
+            )
+-- 2008/07/28 A.Shiina v1.6 ADD End
       -- パラメータ条件．オンライン区分
       AND   xil.eos_control_type   = NVL( gr_param.online_type, xil.eos_control_type )
 -- mod start ver1.1
@@ -1960,6 +2148,9 @@ AS
             ,xsli.orderd_quantity             AS quant_r          -- 依頼数
             ,xsli.ship_to_quantity            AS quant_i          -- 入庫数
             ,xsli.shiped_quantity             AS quant_o          -- 出庫数
+-- 2008/07/28 A.Shiina v1.6 ADD Start
+            ,xsli.detailed_quantity           AS quant_d          -- 内訳数量(インタフェース用)
+-- 2008/07/28 A.Shiina v1.6 ADD End
             ,NULL                             AS status           -- ヘッダステータス
 -- 2008/07/09 A.Shiina v1.5 ADD Start
             ,xshi.filler14                    AS freight_charge_code   -- 運賃区分
@@ -2002,12 +2193,28 @@ AS
       AND   xil.segment1          = xshi.ship_to_location
 -- mod end ver1.1
       -- パラメータ条件．ブロック１・２・３
-      AND   (  gr_param.block_01      IS NULL
-            OR xil.distribution_block = gr_param.block_01 )
-      AND   (  gr_param.block_02      IS NULL
-            OR xil.distribution_block = gr_param.block_02 )
-      AND   (  gr_param.block_03      IS NULL
-            OR xil.distribution_block = gr_param.block_03 )
+-- 2008/07/28 A.Shiina v1.6 ADD Start
+--      AND   (  gr_param.block_01      IS NULL
+--            OR xil.distribution_block = gr_param.block_01 )
+--      AND   (  gr_param.block_02      IS NULL
+--            OR xil.distribution_block = gr_param.block_02 )
+--      AND   (  gr_param.block_03      IS NULL
+--            OR xil.distribution_block = gr_param.block_03 )
+      AND   (
+              -- パラメータ条件．ブロック１・２・３が全てNULLの場合
+              (
+                (gr_param.block_01 IS NULL)
+                  AND  (gr_param.block_02 IS NULL)
+                    AND  (gr_param.block_03 IS NULL)
+              )
+              OR
+              -- パラメータ条件．ブロック１・２・３の何れかが指定された場合
+              (xil.distribution_block IN (gr_param.block_01,
+                                          gr_param.block_02,
+                                          gr_param.block_03)
+              )
+            )
+-- 2008/07/28 A.Shiina v1.6 ADD End
       -- パラメータ条件．オンライン区分
       AND   xil.eos_control_type  = NVL( gr_param.online_type, xil.eos_control_type )
 -- mod start ver1.1
@@ -2198,6 +2405,9 @@ AS
         lr_get_data.quant_r          := re_main.quant_r ;           -- 依頼数（ロット管理外）
         lr_get_data.quant_i          := re_main.quant_i ;           -- 入庫数（ロット管理外）
         lr_get_data.quant_o          := re_main.quant_o ;           -- 出庫数（ロット管理外）
+-- 2008/07/28 A.Shiina v1.6 UPDATE Start
+        lr_get_data.quant_d          := re_main.quant_d  ;          -- 内訳数量(インタフェース用)
+-- 2008/07/28 A.Shiina v1.6 UPDATE End
         lr_get_data.status           := re_main.status ;            -- ヘッダステータス
 --
        --------------------------------------------------
