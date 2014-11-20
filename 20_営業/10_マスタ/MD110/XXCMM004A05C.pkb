@@ -75,6 +75,7 @@ AS
  *                                                      本社商品区分が「2：ドリンク」の場合は0を許容しないように修正
  *  2010/01/04    1.18  Shigeto.Niki     E_本稼動_00614 以下項目について親品目の値を継承しないように修正
  *                                                      重量/体積,ITFコード,配数,段数,商品分類,ボール入数
+ *  2010/02/25    1.19  Shigeto.Niki     E_本稼動_01589 品目カテゴリ割当(バラ茶区分)の固定値セットを解除
  *
  *****************************************************************************************/
 --
@@ -244,9 +245,13 @@ AS
   cv_lot_ctl_defname     CONSTANT VARCHAR2(60)  := 'XXCMM:品目登録画面_ロットデフォルト値';         -- 「XXCMM:品目登録画面_ロットデフォルト値」名
 --Ver1.10 End
 --Ver1.11 2009/06/11 Add start
-  cv_prof_baracha_div    CONSTANT VARCHAR2(30)  := 'XXCMM1_004_INI_BARACHA_DIV';                    -- XXCMM:バラ茶区分初期値
+-- 2010/02/25 Ver1.19 E_本稼動_01589 delete start by Shigeto.Niki
+--  cv_prof_baracha_div    CONSTANT VARCHAR2(30)  := 'XXCMM1_004_INI_BARACHA_DIV';                    -- XXCMM:バラ茶区分初期値
+-- 2010/02/25 Ver1.19 E_本稼動_01589 delete end by Shigeto.Niki
   cv_prof_mark_pg        CONSTANT VARCHAR2(30)  := 'XXCMM1_004_INI_MARK_GUN_CODE';                  -- XXCMM:マーケ用群コード初期値
-  cv_baracha_div_def     CONSTANT VARCHAR2(60)  := 'XXCMM:バラ茶区分初期値';                        -- XXCMM:バラ茶区分初期値
+-- 2010/02/25 Ver1.19 E_本稼動_01589 delete start by Shigeto.Niki
+--  cv_baracha_div_def     CONSTANT VARCHAR2(60)  := 'XXCMM:バラ茶区分初期値';                        -- XXCMM:バラ茶区分初期値
+-- 2010/02/25 Ver1.19 E_本稼動_01589 delete end by Shigeto.Niki
   cv_mark_pg_def         CONSTANT VARCHAR2(60)  := 'XXCMM:マーケ用群コード初期値';                  -- XXCMM:マーケ用群コード初期値
 --Ver1.11 End
 -- 2009/09/07 Ver1.15 障害0001258 add start by Y.Kuboshima
@@ -514,6 +519,10 @@ AS
       ,hsk_category_id          mtl_categories_b.category_id%TYPE                                   -- カテゴリID(本社商品区分)
       ,sg_category_set_id       mtl_category_sets_b.category_set_id%TYPE                            -- カテゴリセットID(政策群)
       ,sg_category_id           mtl_categories_b.category_id%TYPE                                   -- カテゴリID(政策群)
+-- 2010/02/25 Ver1.19 E_本稼動_01589 add start by Shigeto.Niki
+      ,bd_category_id           mtl_categories_b.category_id%TYPE                                   -- カテゴリID(バラ茶区分)
+      ,bd_category_set_id       mtl_category_sets_b.category_set_id%TYPE                            -- カテゴリセットID(バラ茶区分)
+-- 2010/02/25 Ver1.19 E_本稼動_01589 add end by Shigeto.Niki
       );
   -- カテゴリ情報(親品目時に使用)
   TYPE g_item_ctg_rtype    IS RECORD                                                                -- レコード型を宣言
@@ -584,7 +593,9 @@ AS
   gn_lot_ctl                NUMBER;                                                                 -- XXCMM:品目登録画面_ロットデフォルト値格納用
 --Ver1.10 End
 --Ver1.11 2009/06/11 Add start
-  gn_baracha_div            NUMBER;                                                                 -- XXCMM:バラ茶区分初期値
+-- 2010/02/25 Ver1.19 E_本稼動_01589 delete start by Shigeto.Niki
+--  gn_baracha_div            NUMBER;                                                                 -- XXCMM:バラ茶区分初期値
+-- 2010/02/25 Ver1.19 E_本稼動_01589 delete end by Shigeto.Niki
   gv_mark_pg                VARCHAR2(4);                                                            -- XXCMM:マーケ用群コード
 --Ver1.11 End
 --Ver1.13 2009/07/26 Add Start
@@ -1247,6 +1258,10 @@ AS
              ,hsk.hsk_category_id
              ,sg.sg_category_set_id
              ,sg.sg_category_id
+-- 2010/02/25 Ver1.19 E_本稼動_01589 add start by Shigeto.Niki
+             ,bd.bd_category_set_id
+             ,bd.bd_category_id
+-- 2010/02/25 Ver1.19 E_本稼動_01589 add end by Shigeto.Niki
       FROM    xxcmn_item_mst_b     ximb
              ,ic_item_mst_b        iimb
              ,xxcmm_system_items_b xsib
@@ -1290,12 +1305,29 @@ AS
                 AND         gicsg.category_id        = mcsg.category_id
                 AND         gicsg.category_id        = mcsg.category_id
               ) sg       -- 政策群
+-- 2010/02/25 Ver1.19 E_本稼動_01589 add start by Shigeto.Niki
+             ,(SELECT       gicbd.item_id                  AS item_id
+                           ,mcbd.segment1                  AS baracha_div
+                           ,mcbd.category_id               AS bd_category_id
+                           ,mcsbd.category_set_id          AS bd_category_set_id
+                FROM        gmi_item_categories  gicbd
+                           ,mtl_category_sets_vl mcsbd
+                           ,mtl_categories_vl    mcbd
+                WHERE       gicbd.category_set_id    = mcsbd.category_set_id
+                AND         mcsbd.category_set_name  = cv_categ_set_baracha_div
+                AND         gicbd.category_id        = mcbd.category_id
+                AND         gicbd.category_id        = mcbd.category_id
+              ) bd       -- バラ茶区分
+-- 2010/02/25 Ver1.19 E_本稼動_01589 add end by Shigeto.Niki
       WHERE   ximb.item_id = pn_parent_item_id
       AND     ximb.item_id = iimb.item_id
       AND     iimb.item_no = xsib.item_code
       AND     ximb.item_id = ssk.item_id
       AND     ximb.item_id = hsk.item_id
       AND     ximb.item_id = sg.item_id
+-- 2010/02/25 Ver1.19 E_本稼動_01589 add start by Shigeto.Niki
+      AND     ximb.item_id = bd.item_id
+-- 2010/02/25 Ver1.19 E_本稼動_01589 add end by Shigeto.Niki
       AND     ximb.start_date_active <= TRUNC(gd_process_date)
       AND     ximb.end_date_active   >= TRUNC(gd_process_date)
       ;
@@ -1422,6 +1454,10 @@ AS
       l_set_parent_item_rec.lot_suffix               := i_item_ctg_rec.lot_suffix;
       l_set_parent_item_rec.hsk_category_id          := i_item_ctg_rec.hsk_category_id;
       l_set_parent_item_rec.hsk_category_set_id      := i_item_ctg_rec.hsk_category_set_id;
+-- 2010/02/25 Ver1.19 E_本稼動_01589 add start by Shigeto.Niki
+      l_set_parent_item_rec.bd_category_id           := i_item_ctg_rec.bd_category_id;
+      l_set_parent_item_rec.bd_category_set_id       := i_item_ctg_rec.bd_category_set_id;
+-- 2010/02/25 Ver1.19 E_本稼動_01589 add end by Shigeto.Niki
     ELSE
       --==============================================================
       -- 子品目の場合、親品目抽出し、変数にセットします。
@@ -3810,30 +3846,49 @@ AS
         -- 本社商品区分「1:リーフ」の場合チェックします。※「2:ドリンク」の場合は「0:その他」をセットします。
         --==============================================================
         lv_step := 'A-4.20';
-        IF ( i_wk_item_rec.hon_product_class IS NOT NULL ) THEN
-          IF ( TO_NUMBER(i_wk_item_rec.hon_product_class) = cn_hon_prod_leaf ) THEN
-            IF ( i_wk_item_rec.baracha_div IS NOT NULL ) THEN
-              -- LOOKUP表存在チェック
-              -- 初期化
-              l_lookup_rec := NULL;
-              l_lookup_rec.lookup_type := cv_lookup_barachakubun;
-              l_lookup_rec.lookup_code := i_wk_item_rec.baracha_div;
-              l_lookup_rec.line_no     := i_wk_item_rec.line_no;
-              l_lookup_rec.item_code   := i_wk_item_rec.item_code;
-              -- LOOKUP表存在チェック
-              chk_exists_lookup(
-                io_lookup_rec => l_lookup_rec
-               ,ov_errbuf     => lv_errbuf
-               ,ov_retcode    => lv_retcode
-               ,ov_errmsg     => lv_errmsg
-              );
-              -- 処理結果チェック
-              IF ( lv_retcode <> cv_status_normal ) THEN
-                lv_check_flag := cv_status_error;
-              END IF;
+-- 2010/02/25 Ver1.19 E_本稼動_01589 modify start by Shigeto.Niki
+--        IF ( i_wk_item_rec.hon_product_class IS NOT NULL ) THEN
+--          IF ( TO_NUMBER(i_wk_item_rec.hon_product_class) = cn_hon_prod_leaf ) THEN
+--            IF ( i_wk_item_rec.baracha_div IS NOT NULL ) THEN
+--              -- LOOKUP表存在チェック
+--              -- 初期化
+--              l_lookup_rec := NULL;
+--              l_lookup_rec.lookup_type := cv_lookup_barachakubun;
+--              l_lookup_rec.lookup_code := i_wk_item_rec.baracha_div;
+--              l_lookup_rec.line_no     := i_wk_item_rec.line_no;
+--              l_lookup_rec.item_code   := i_wk_item_rec.item_code;
+--              -- LOOKUP表存在チェック
+--              chk_exists_lookup(
+--                io_lookup_rec => l_lookup_rec
+--               ,ov_errbuf     => lv_errbuf
+--               ,ov_retcode    => lv_retcode
+--               ,ov_errmsg     => lv_errmsg
+--              );
+        IF ( i_wk_item_rec.baracha_div IS NOT NULL ) THEN
+          IF ( i_wk_item_rec.hon_product_class IS NOT NULL ) THEN
+            -- 本社商品区分が「2:ドリンク」の場合、バラ茶区分は「0:その他」をセットします。
+            IF ( TO_NUMBER(i_wk_item_rec.hon_product_class) = cn_hon_prod_drink ) THEN
+              l_item_ctg_rec.category_val      := cn_baracha_etc;
+            ELSIF (  TO_NUMBER(i_wk_item_rec.hon_product_class) = cn_hon_prod_leaf ) THEN
+              l_item_ctg_rec.category_val      := i_wk_item_rec.baracha_div;
             END IF;
+            l_item_ctg_rec.category_set_name := cv_categ_set_baracha_div;
+            -- カテゴリ存在チェック
+            chk_exists_category(
+              io_item_ctg_rec => l_item_ctg_rec
+             ,ov_errbuf       => lv_errbuf
+             ,ov_retcode      => lv_retcode
+             ,ov_errmsg       => lv_errmsg
+            );
+            -- 処理結果チェック
+            IF ( lv_retcode <> cv_status_normal ) THEN
+              lv_check_flag := cv_status_error;
+            END IF;
+--            END IF;
           END IF;
         END IF;
+          --
+-- 2010/02/25 Ver1.19 E_本稼動_01589 modify end by Shigeto.Niki
         --
         --==============================================================
         -- A-4.21 JANコードチェック
@@ -4459,20 +4514,22 @@ AS
     --==============================================================
     -- 親品目時、または、子品目時親品目に設定されていなければ設定する
     --==============================================================
-    -- バラ茶区分
-    IF ( l_item_ctg_rec.bd_category_set_id IS NULL ) THEN
-      l_item_ctg_rec.category_set_name := cv_categ_set_baracha_div;
-      l_item_ctg_rec.category_val      := gn_baracha_div;
-      --
-      -- カテゴリ存在チェック
-      chk_exists_category(
-        io_item_ctg_rec => l_item_ctg_rec
-       ,ov_errbuf       => lv_errbuf
-       ,ov_retcode      => lv_retcode
-       ,ov_errmsg       => lv_errmsg
-      );
-    END IF;
-    --
+-- 2010/02/25 Ver1.19 E_本稼動_01589 delete start by Shigeto.Niki
+--    -- バラ茶区分
+--    IF ( l_item_ctg_rec.bd_category_set_id IS NULL ) THEN
+--      l_item_ctg_rec.category_set_name := cv_categ_set_baracha_div;
+--      l_item_ctg_rec.category_val      := gn_baracha_div;
+--      --
+--      -- カテゴリ存在チェック
+--      chk_exists_category(
+--        io_item_ctg_rec => l_item_ctg_rec
+--       ,ov_errbuf       => lv_errbuf
+--       ,ov_retcode      => lv_retcode
+--       ,ov_errmsg       => lv_errmsg
+--      );
+--    END IF;
+--    --
+-- 2010/02/25 Ver1.19 E_本稼動_01589 delete end by Shigeto.Niki
     -- マーケ用群コード
     IF ( l_item_ctg_rec.mgc_category_set_id IS NULL ) THEN
       l_item_ctg_rec.category_set_name := cv_categ_set_mark_pg;
@@ -5421,14 +5478,16 @@ AS
 --Ver1.10  2009/06/04 End
     --
 --Ver1.11  2009/06/11 Add start
-    -- XXCMM:バラ茶区分初期値
-    gn_baracha_div := TO_NUMBER(FND_PROFILE.VALUE(cv_prof_baracha_div));
-    -- 取得エラー時
-    IF ( gn_baracha_div IS NULL ) THEN
-      lv_tkn_value := cv_baracha_div_def;
-      RAISE get_profile_expt;
-    END IF;
-    --
+-- 2010/02/25 Ver1.19 E_本稼動_01589 delete start by Shigeto.Niki
+--    -- XXCMM:バラ茶区分初期値
+--    gn_baracha_div := TO_NUMBER(FND_PROFILE.VALUE(cv_prof_baracha_div));
+--    -- 取得エラー時
+--    IF ( gn_baracha_div IS NULL ) THEN
+--      lv_tkn_value := cv_baracha_div_def;
+--      RAISE get_profile_expt;
+--    END IF;
+--    --
+-- 2010/02/25 Ver1.19 E_本稼動_01589 delete end by Shigeto.Niki
     -- XXCMM:マーケ用群コード初期値
     gv_mark_pg := FND_PROFILE.VALUE(cv_prof_mark_pg);
     -- 取得エラー時
