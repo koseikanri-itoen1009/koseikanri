@@ -1,5 +1,4 @@
-CREATE UNIQUE INDEX xxcfr.xxcfr_invoice_headers_uk01 ON xxcfr.xxcfr_invoice_headers(
-  org_id,
-  bill_cust_code,
-  cutoff_date
+CREATE UNIQUE INDEX xxcfr.xxcfr_invoice_headers_u01 ON xxcfr.xxcfr_invoice_headers(
+  cutoff_date,
+  bill_cust_code
 ) TABLESPACE xxidx2;
