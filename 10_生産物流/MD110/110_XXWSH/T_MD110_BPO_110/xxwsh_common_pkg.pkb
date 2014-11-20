@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.25
+ * Version                : 1.26
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -76,6 +76,7 @@ AS
  *  2008/09/03   1.24  Oracle 伊藤ひとみ[配車解除関数] PT 1-2_8 指摘#59対応
  *  2008/09/17   1.25  Oracle 北寒寺正夫[混載元No更新関数] T_TE080_BPO_400指摘77により出荷依頼画面で使用するため新規追加
  *                                                         ※FORMSではON_UPDATE以外でUPDATE文を発行できないため外出し
+ *  2008/10/06   1.26  Oracle 伊藤ひとみ[重量容積小口個数更新関数] 統合テスト指摘240対応 積載効率チェック(合計値算出)にパラメータ.基準日追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2474,7 +2475,11 @@ AS
               lv_errmsg,                                  -- エラーメッセージ
               ln_sum_weight,                              -- 合計重量
               ln_sum_capacity,                            -- 合計容積
-              ln_sum_pallet_weight);                      -- 合計パレット重量
+              ln_sum_pallet_weight,                       -- 合計パレット重量
+-- 2008/10/06 H.Itou Add Start 統合テスト指摘240 INパラメータ.基準日を追加
+              ld_shipped_date                             -- 出荷日
+-- 2008/10/06 H.Itou Add End
+              );
 --
             -- リターンコードが'1'(異常)の場合は返り値に1：処理エラーを返し終了
             IF (lv_retcode = gn_status_error) THEN
@@ -3000,7 +3005,11 @@ AS
               lv_errmsg,               -- エラーメッセージ
               ln_sum_weight,           -- 合計重量
               ln_sum_capacity,         -- 合計容積
-              ln_sum_pallet_weight);   -- 合計パレット重量
+              ln_sum_pallet_weight,    -- 合計パレット重量
+-- 2008/10/06 H.Itou Add Start 統合テスト指摘240 INパラメータ.基準日を追加
+              ld_shipped_date          -- 出荷日
+-- 2008/10/06 H.Itou Add End
+              );
 --
             -- リターンコードが'1'(異常)の場合は返り値に1：処理エラーを返し終了
             IF (lv_retcode = gn_status_error) THEN
@@ -3437,7 +3446,11 @@ AS
               lv_errmsg,                                -- エラーメッセージ
               ln_sum_weight,                            -- 合計重量
               ln_sum_capacity,                          -- 合計容積
-              ln_sum_pallet_weight);                    -- 合計パレット重量
+              ln_sum_pallet_weight,                     -- 合計パレット重量
+-- 2008/10/06 H.Itou Add Start 統合テスト指摘240 INパラメータ.基準日を追加
+              ld_actual_ship_date                       -- 出庫日
+-- 2008/10/06 H.Itou Add End
+              );
 --
             -- リターンコードが'1'(異常)の場合は返り値に1：処理エラーを返し終了
             IF (lv_retcode = gn_status_error) THEN
