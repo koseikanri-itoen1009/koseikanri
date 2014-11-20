@@ -1,0 +1,2 @@
+CREATE INDEX jtf.xxcso_jtf_task_types_tl_n01 ON jtf_task_types_tl (name,language) TABLESPACE apps_ts_tx_idx
+/

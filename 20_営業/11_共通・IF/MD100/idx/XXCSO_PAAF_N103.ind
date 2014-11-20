@@ -1,0 +1,2 @@
+CREATE INDEX hr.xxcso_paaf_n103 ON per_all_assignments_f (substrb(ass_attribute14, 1, 3)) TABLESPACE apps_ts_tx_idx
+/

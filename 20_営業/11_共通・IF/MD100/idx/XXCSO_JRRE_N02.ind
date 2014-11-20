@@ -1,0 +1,2 @@
+CREATE INDEX jtf.xxcso_jrre_n02 ON jtf_rs_resource_extns (category,start_date_active,end_date_active) TABLESPACE apps_ts_tx_idx
+/

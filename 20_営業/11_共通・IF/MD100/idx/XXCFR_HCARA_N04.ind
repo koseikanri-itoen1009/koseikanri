@@ -1,0 +1,2 @@
+CREATE INDEX ar.xxcfr_hcara_n04 ON hz_cust_acct_relate_all (attribute1,status) TABLESPACE apps_ts_tx_idx
+/

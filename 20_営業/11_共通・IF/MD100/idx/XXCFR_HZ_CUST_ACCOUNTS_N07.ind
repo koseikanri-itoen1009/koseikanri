@@ -1,0 +1,2 @@
+CREATE INDEX ar.xxcfr_hz_cust_accounts_n07 ON hz_cust_accounts (attribute8) TABLESPACE apps_ts_tx_idx
+/

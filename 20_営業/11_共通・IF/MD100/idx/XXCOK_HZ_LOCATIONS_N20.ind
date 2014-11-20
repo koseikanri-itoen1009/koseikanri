@@ -1,0 +1,2 @@
+CREATE INDEX ar.xxcok_hz_locations_n20 ON hz_locations (address3) TABLESPACE apps_ts_tx_idx
+/

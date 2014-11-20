@@ -1,0 +1,2 @@
+CREATE INDEX ar.xxcmm_hz_party_sites_n06 ON hz_party_sites (status) TABLESPACE apps_ts_tx_idx
+/

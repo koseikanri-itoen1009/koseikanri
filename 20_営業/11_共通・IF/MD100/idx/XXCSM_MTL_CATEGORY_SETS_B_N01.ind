@@ -1,0 +1,2 @@
+CREATE INDEX inv.xxcsm_mtl_category_sets_b_n01 ON mtl_category_sets_b (structure_id) TABLESPACE apps_ts_tx_idx
+/

@@ -1,0 +1,2 @@
+CREATE INDEX ont.xxcos_oe_order_lines_all_n21 ON oe_order_lines_all (request_date desc) TABLESPACE apps_ts_tx_idx
+/

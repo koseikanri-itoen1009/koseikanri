@@ -1,0 +1,2 @@
+CREATE INDEX gl.xxcfo_gl_code_combinations_n33 ON gl_code_combinations (chart_of_accounts_id,account_type) TABLESPACE apps_ts_tx_idx
+/

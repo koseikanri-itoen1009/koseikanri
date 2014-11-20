@@ -1,0 +1,2 @@
+CREATE INDEX inv.xxcoi_mtl_item_locations_n09 ON mtl_item_locations (enabled_flag,disable_date,segment1) TABLESPACE apps_ts_tx_idx
+/

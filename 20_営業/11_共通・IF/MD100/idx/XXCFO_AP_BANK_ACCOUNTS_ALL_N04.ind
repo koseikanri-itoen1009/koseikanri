@@ -1,0 +1,2 @@
+CREATE INDEX ap.xxcfo_ap_bank_accounts_all_n04 ON ap_bank_accounts_all (attribute1) TABLESPACE apps_ts_tx_idx
+/

@@ -1,0 +1,2 @@
+CREATE INDEX jtf.xxcso_jtf_tasks_b_n17 ON jtf_tasks_b (owner_id,trunc(last_update_date)) TABLESPACE apps_ts_tx_idx
+/

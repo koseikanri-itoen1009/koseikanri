@@ -1,0 +1,2 @@
+CREATE INDEX ar.xxcso_hopeb_n03 ON hz_org_profiles_ext_b (attr_group_id,c_ext_attr2,d_ext_attr3,d_ext_attr4) TABLESPACE apps_ts_tx_idx
+/

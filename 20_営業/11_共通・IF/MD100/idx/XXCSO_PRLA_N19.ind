@@ -1,0 +1,2 @@
+CREATE INDEX po.xxcso_prla_n19 ON po_requisition_lines_all (request_id) TABLESPACE apps_ts_tx_idx
+/

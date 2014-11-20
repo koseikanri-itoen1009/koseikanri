@@ -1,0 +1,2 @@
+CREATE INDEX ont.xxcos_oe_order_lines_all_n20 ON oe_order_lines_all (packing_instructions) TABLESPACE apps_ts_tx_idx
+/

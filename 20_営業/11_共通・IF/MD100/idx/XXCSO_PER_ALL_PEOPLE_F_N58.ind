@@ -1,0 +1,2 @@
+CREATE INDEX hr.xxcso_per_all_people_f_n58 ON per_all_people_f (per_information18 || ' ' || per_information19) TABLESPACE apps_ts_tx_idx
+/

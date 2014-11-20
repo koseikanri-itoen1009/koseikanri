@@ -1,0 +1,2 @@
+CREATE INDEX gmf.xxcsm_cm_cldr_dtl_n01 ON cm_cldr_dtl (start_date,end_date) TABLESPACE apps_ts_tx_idx
+/

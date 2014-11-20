@@ -1,0 +1,2 @@
+CREATE INDEX jtf.xxcoi_jrre_n01 ON jtf_rs_resource_extns (source_number) TABLESPACE apps_ts_tx_idx
+/

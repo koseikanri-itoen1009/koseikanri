@@ -1,0 +1,2 @@
+CREATE INDEX hr.xxcfo_per_all_people_f_n57 ON per_all_people_f (attribute28) TABLESPACE apps_ts_tx_idx
+/
