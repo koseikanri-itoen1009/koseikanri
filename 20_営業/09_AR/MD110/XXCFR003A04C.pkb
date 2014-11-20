@@ -7,7 +7,7 @@ AS
  * Description      : EDI請求書データ作成
  * MD.050           : MD050_CFR_003_A04_EDI請求書データ作成
  * MD.070           : MD050_CFR_003_A04_EDI請求書データ作成
- * Version          : 2.0
+ * Version          : 2.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2009/11/02    1.8   SCS 廣瀬 真佐人   AR仕様変更IE601,603対応  
  *  2009/11/16    1.9   SCS 廣瀬 真佐人   AR共通課題IE678対応
  *  2009/12/13    2.0   SCS 松尾 泰生    [障害本稼動_00350] 消費税区分を判断した請求金額の対応
+ *  2009/12/24    2.1   SCS 廣瀬 真佐人  [障害本稼動_00606] 期間中の顧客階層変更対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1082,8 +1083,12 @@ AS
              (gv_start_mode_flg = cv_start_mode_h
 -- Modify 2009.11.16 Ver1.9 Start  日中のリカバリジョブの時は、トランザクション≠マスタであるのでマスタを見る必要がある
               AND EXISTS (SELECT 'X'
-                          FROM  xxcfr_bill_customers_v xbcv
-                          WHERE xih.bill_cust_code = xbcv.bill_customer_code
+-- Modify 2009.12.24 Ver2.1 Start
+--                          FROM  xxcfr_bill_customers_v xbcv
+--                          WHERE xih.bill_cust_code = xbcv.bill_customer_code
+                          FROM  xxcfr_all_bill_customers_v xbcv
+                          WHERE xih.bill_cust_code = xbcv.customer_code
+-- Modify 2009.12.24 Ver2.1 End
                             AND xbcv.receiv_code1  = iv_ar_code1
                             AND xbcv.inv_prt_type  = cv_inv_prt_type -- '3'(EDI)
                          )
@@ -2984,13 +2989,23 @@ AS
     -- エラー売掛コード1(請求書)設定顧客取得カーソル
     CURSOR get_edi_cust_cur(iv_arcode1 IN VARCHAR2)
     IS
-      SELECT xbcv.bill_customer_code  cust_code     -- 請求先顧客コード
-            ,xbcv.bill_customer_name  cust_name     -- 請求先顧客名
+-- Modify 2009.12.24 Ver2.1 Start
+--      SELECT xbcv.bill_customer_code  cust_code     -- 請求先顧客コード
+--            ,xbcv.bill_customer_name  cust_name     -- 請求先顧客名
+      SELECT xbcv.customer_code       cust_code     -- 請求先顧客コード
+            ,xbcv.customer_name       cust_name     -- 請求先顧客名
+-- Modify 2009.12.24 Ver2.1 End
       FROM   xxcfr_invoice_headers   xih            -- 請求ヘッダ情報
-            ,xxcfr_bill_customers_v  xbcv           -- 請求先顧客ビュー
+-- Modify 2009.12.24 Ver2.1 Start
+--            ,xxcfr_bill_customers_v  xbcv           -- 請求先顧客ビュー
+            ,xxcfr_all_bill_customers_v      xbcv  -- 顧客ビュー
+-- Modify 2009.12.24 Ver2.1 End
       WHERE  xbcv.receiv_code1 = iv_arcode1        -- 売掛コード1(請求書)
       AND    xbcv.inv_prt_type = cv_inv_prt_type              -- 請求書出力形式(3:EDI請求)
-      AND    xbcv.bill_customer_code = xih.bill_cust_code 
+-- Modify 2009.12.24 Ver2.1 Start
+--      AND    xbcv.bill_customer_code = xih.bill_cust_code
+        AND  xbcv.customer_code = xih.bill_cust_code  -- 顧客番号
+-- Modify 2009.12.24 Ver2.1 End
       AND  ((gv_start_mode_flg = cv_start_mode_b     AND  -- 夜間バッチ起動時
              EXISTS (SELECT *
                      FROM   xxcfr_inv_info_transfer xiit  -- 請求情報引渡テーブル
@@ -3001,7 +3016,10 @@ AS
            OR
             (gv_start_mode_flg = cv_start_mode_h  AND  -- 手動起動時
              xih.cutoff_date = gd_target_date))        -- 締日
-      ORDER BY xbcv.bill_customer_code;
+-- Modify 2009.12.24 Ver2.1 Start
+--      ORDER BY xbcv.bill_customer_code;
+      ORDER BY xbcv.customer_code;
+-- Modify 2009.12.24 Ver2.1 End
 --
 -- Modify 2009.05.07 Ver1.3 End
     -- *** ローカル・レコード ***

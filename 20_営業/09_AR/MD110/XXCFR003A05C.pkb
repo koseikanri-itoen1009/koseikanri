@@ -7,7 +7,7 @@ AS
  * Description      : 請求金額一覧表出力
  * MD.050           : MD050_CFR_003_A05_請求金額一覧表出力
  * MD.070           : MD050_CFR_003_A05_請求金額一覧表出力
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/04/14    1.2  SCS 大川 恵      [障害T1_0533] 出力ファイル名変数文字列オーバーフロー対応
  *  2009/04/28    1.3  SCS 萱原 伸哉    [障害T1_0742] 伝票日付セット値修正対応
  *  2009/10/02    1.4  SCS 安川 智博    共通課題「IE535」対応
+ *  2009/12/24    1.5  SCS 廣瀬 真佐人  [障害本稼動_00606] 期間中の顧客階層変更対応
  *
  *****************************************************************************************/
 --
@@ -720,16 +721,27 @@ AS
     WHERE xih.invoice_id = xil.invoice_id  -- 一括請求書ID
       AND xih.cutoff_date = gd_target_date -- パラメータ．締日
       AND EXISTS (SELECT 'X'
-                  FROM xxcfr_bill_customers_v xb,                      -- 請求先顧客ビュー
+-- Modify 2009.10.02 Ver1.4 Start
+-- Modify 2009.12.24 Ver1.5 Start
+--                  FROM xxcfr_bill_customers_v xb,                      -- 請求先顧客ビュー
+                  FROM xxcfr_all_bill_customers_v xb,                     -- 顧客ビュー
+-- Modify 2009.12.24 Ver1.5 End
 -- Modify 2009.10.02 Ver1.4 Start
                        xxcmm_cust_accounts    xca                      -- 顧客追加情報
 -- Modify 2009.10.02 Ver1.4 End
-                  WHERE xih.bill_cust_code = xb.bill_customer_code
--- Modify 2009.10.02 Ver1.4 Start
-                    AND xca.customer_code = xb.bill_customer_code
--- Modify 2009.10.02 Ver1.4 End
+-- Modify 2009.12.24 Ver1.5 Start
+--                  WHERE xih.bill_cust_code = xb.bill_customer_code
+---- Modify 2009.10.02 Ver1.4 Start
+--                    AND xca.customer_code = xb.bill_customer_code
+---- Modify 2009.10.02 Ver1.4 End
+                  WHERE xih.bill_cust_code = xb.customer_code
+                    AND xca.customer_code = xb.customer_code
+-- Modify 2009.12.24 Ver1.5 End
                     AND xb.cons_inv_flag = cv_enabled_yes             -- 一括請求書発行フラグ＝有効
-                    AND (xb.bill_customer_code = NVL(iv_bill_cust_code,xb.bill_customer_code ) ) -- 請求先顧客コード
+-- Modify 2009.12.24 Ver1.5 Start
+--                    AND (xb.bill_customer_code = NVL(iv_bill_cust_code,xb.bill_customer_code ) ) -- 請求先顧客コード
+                    AND (xb.customer_code = NVL(iv_bill_cust_code,xb.customer_code ) ) -- 請求先顧客コード
+-- Modify 2009.12.24 Ver1.5 End
                     AND ( (gv_inv_all_flag = cv_status_yes) OR
                           (gv_inv_all_flag = cv_status_no AND 
 -- Modify 2009.10.02 Ver1.4 Start
