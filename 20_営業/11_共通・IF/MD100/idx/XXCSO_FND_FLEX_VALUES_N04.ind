@@ -1,0 +1,2 @@
+CREATE INDEX applsys.xxcso_fnd_flex_values_n04 ON fnd_flex_values (UPPER(flex_value)) TABLESPACE apps_ts_tx_idx;
+/

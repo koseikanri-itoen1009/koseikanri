@@ -1,0 +1,2 @@
+CREATE INDEX ar.xxcso_hz_cust_accounts_n08 ON hz_cust_accounts (UPPER(account_number)) TABLESPACE apps_ts_tx_idx;
+/

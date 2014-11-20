@@ -1,0 +1,2 @@
+CREATE INDEX po.xxcso_po_vendors_n05 ON po_vendors (UPPER(SUBSTRB(vendor_name, 1, 80))) TABLESPACE apps_ts_tx_idx;
+/

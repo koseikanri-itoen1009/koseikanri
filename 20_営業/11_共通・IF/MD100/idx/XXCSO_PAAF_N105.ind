@@ -1,0 +1,2 @@
+CREATE INDEX hr.xxcso_paaf_n105 ON per_all_assignments_f (UPPER(ass_attribute6)) TABLESPACE apps_ts_tx_idx;
+/
