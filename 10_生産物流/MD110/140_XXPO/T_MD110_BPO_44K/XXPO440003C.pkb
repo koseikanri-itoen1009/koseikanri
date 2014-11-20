@@ -7,7 +7,7 @@ AS
  * Description      : 入庫予定表
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_444)
  *                    有償支給帳票Issue1.0(T_MD070_BPO_44K)
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/03/26    1.0   Masayuki Ikeda   新規作成
  *  2008/06/04    1.1 Yasuhisa Yamamoto  結合テスト不具合ログ#440_53
+ *  2008/07/01    1.2   椎名             内部変更要求142
  *
  *****************************************************************************************/
 --
@@ -371,6 +372,8 @@ AS
       ||                             ' AND     NVL( xvs.end_date_active, xoha.schedule_ship_date )'
       || ' AND xoha.vendor_site_id        = xvs.vendor_site_id'           -- 仕入先マスタ結合
       || ' AND xoha.deliver_from_id       = xil.inventory_location_id'    -- OPM保管場所マスタ結合
+      || ' AND xoha.schedule_ship_date BETWEEN xil.date_from '
+      ||                             ' AND     NVL( xil.date_to, xoha.schedule_ship_date )'
       || ' AND xoha.req_status           IN(''' || gc_req_status_s_cmpb || ''''
       ||                                  ',''' || gc_req_status_s_cmpc || ''')'
       || ' AND xoha.latest_external_flag  = ''' || gc_yn_div_y || ''''
@@ -1475,7 +1478,7 @@ AS
 --
     --データの場合
     IF ( ic_type = 'D' ) THEN
-      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>' ;
+      lv_convert_data := '<'||iv_name||'><![CDATA['||iv_value||']]></'||iv_name||'>';
     ELSE
       lv_convert_data := '<'||iv_name||'>' ;
     END IF ;
