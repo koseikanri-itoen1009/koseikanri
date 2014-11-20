@@ -7,7 +7,7 @@ AS
  * Description      : 直送仕入・出荷実績作成処理
  * MD.050           : 仕入先出荷実績         T_MD050_BPO_320
  * MD.070           : 直送仕入・出荷実績作成 T_MD070_BPO_32B
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2008/12/04    1.9   Oracle 吉元 強樹 本番障害No420対応
  *  2008/12/06    1.10  Oracle 伊藤 ひとみ 本番障害No528対応
  *  2008/12/15    1.11  Oracle 北寒寺 正夫 本番障害No648対応
+ *  2008/12/19    1.12  Oracle 二瓶 大輔 本番障害No648再対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2296,6 +2297,9 @@ AS
           ,cust_po_number
           ,price_list_id
           ,request_no
+-- 2008/12/19 D.Nihei Add Start
+          ,base_request_no
+-- 2008/12/19 D.Nihei Add End
           ,req_status
           ,delivery_no
           ,prev_delivery_no
@@ -2394,6 +2398,9 @@ AS
           ,cust_po_number                             -- cust_po_number
           ,price_list_id                              -- price_list_id
           ,request_no                                 -- request_no
+-- 2008/12/19 D.Nihei Add Start
+          ,base_request_no                            -- base_request_no
+-- 2008/12/19 D.Nihei Add End
           ,ir_masters_rec.req_status                  -- req_status
           ,delivery_no                                -- delivery_no
           ,prev_delivery_no                           -- prev_delivery_no
@@ -2600,6 +2607,9 @@ AS
         ,lot_no                                          -- ロットNo
         ,actual_date                                     -- 実績日
         ,actual_quantity                                 -- 実績数量
+-- 2008/12/19 D.Nihei Add Start
+        ,before_actual_quantity                          -- 訂正前数量
+-- 2008/12/19 D.Nihei Add End
         ,automanual_reserve_class                        -- 自動手動引当区分
         ,created_by
         ,creation_date
@@ -2621,6 +2631,9 @@ AS
             ,xmld.lot_no                                     -- lot_no
             ,xmld.actual_date                                -- actual_date
             ,xmld.actual_quantity                            -- actual_quantity
+-- 2008/12/19 D.Nihei Add Start
+            ,xmld.actual_quantity                            -- actual_quantity
+-- 2008/12/19 D.Nihei Add End
             ,xmld.automanual_reserve_class                   -- automanual_reserve_class
             ,gn_created_by                                   -- created_by
             ,gd_creation_date                                -- creation_date

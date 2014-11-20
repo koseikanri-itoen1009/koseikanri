@@ -7,7 +7,7 @@ AS
  * Description            : 生産バッチロット詳細画面データソースパッケージ(BODY)
  * MD.050                 : T_MD050_BPO_200_生産バッチ.doc
  * MD.070                 : T_MD070_BPO_20A_生産バッチ一覧画面.doc
- * Version                : 1.5
+ * Version                : 1.6
  *
  * Program List
  *  --------------------  ---- ----- -------------------------------------------------
@@ -25,6 +25,8 @@ AS
  *  2008/10/29   1.3   D.Nihei          統合障害#481対応（ORDER BY句編集) 
  *  2008/11/19   1.4   D.Nihei          統合障害#681対応（条件追加) 
  *  2008/12/02   1.5   D.Nihei          本番障害#251対応（条件追加) 
+ *  2008/12/19   1.6   D.Nihei          本番障害#645対応（条件修正) 
+ *                                      本番障害#648対応（条件修正) 
  *****************************************************************************************/
 --
   -- 定数宣言
@@ -177,14 +179,28 @@ AS
         wk_sql1 := wk_sql1 || '      - ';
         wk_sql1 := wk_sql1 || '      (SELECT  NVL(SUM(CASE ';
         wk_sql1 := wk_sql1 || '               WHEN (otta.order_category_code = ''ORDER'') THEN ';
-        wk_sql1 := wk_sql1 || '                 ola.shipped_quantity ';
+-- 2008/12/19 D.Nihei MOD START
+--        wk_sql1 := wk_sql1 || '                 ola.shipped_quantity ';
+        wk_sql1 := wk_sql1 || '                 NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0) ';
+-- 2008/12/19 D.Nihei MOD END
         wk_sql1 := wk_sql1 || '               WHEN (otta.order_category_code = ''RETURN'') THEN ';
-        wk_sql1 := wk_sql1 || '                 ola.shipped_quantity * -1 ';
+-- 2008/12/19 D.Nihei MOD START
+--        wk_sql1 := wk_sql1 || '                 ola.shipped_quantity * -1 ';
+        wk_sql1 := wk_sql1 || '                 (NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)) * -1 ';
+-- 2008/12/19 D.Nihei MOD END
         wk_sql1 := wk_sql1 || '               END), 0) ';
-        wk_sql1 := wk_sql1 || '       FROM    xxwsh_order_headers_all    oha ';
-        wk_sql1 := wk_sql1 || '             , xxwsh_order_lines_all      ola ';
+        wk_sql1 := wk_sql1 || '       FROM    xxwsh_order_headers_all    oha  ';
+        wk_sql1 := wk_sql1 || '             , xxwsh_order_lines_all      ola  ';
+-- 2008/12/19 D.Nihei ADD START
+        wk_sql1 := wk_sql1 || '             , xxinv_mov_lot_details      mld  ';
+-- 2008/12/19 D.Nihei ADD END
         wk_sql1 := wk_sql1 || '             , oe_transaction_types_all   otta ';
         wk_sql1 := wk_sql1 || '       WHERE   ola.shipping_inventory_item_id = ' || lt_inv_item_id ;
+-- 2008/12/19 D.Nihei ADD START
+        wk_sql1 := wk_sql1 || '       AND     ola.order_line_id              = mld.mov_line_id ';
+        wk_sql1 := wk_sql1 || '       AND     mld.document_type_code         = ''10'' ';
+        wk_sql1 := wk_sql1 || '       AND     mld.record_type_code           = ''20'' ';
+-- 2008/12/19 D.Nihei ADD END
         wk_sql1 := wk_sql1 || '       AND     oha.deliver_from_id            = enable_lot.inventory_location_id ';
         wk_sql1 := wk_sql1 || '       AND     oha.order_header_id            = ola.order_header_id ';
         wk_sql1 := wk_sql1 || '       AND     otta.transaction_type_id       = oha.order_type_id ';
@@ -196,14 +212,28 @@ AS
         wk_sql1 := wk_sql1 || '      - ';
         wk_sql1 := wk_sql1 || '      (SELECT  NVL(SUM(CASE ';
         wk_sql1 := wk_sql1 || '               WHEN (otta.order_category_code = ''ORDER'') THEN ';
-        wk_sql1 := wk_sql1 || '                 ola.shipped_quantity ';
+-- 2008/12/19 D.Nihei MOD START
+--        wk_sql1 := wk_sql1 || '                 ola.shipped_quantity ';
+        wk_sql1 := wk_sql1 || '                 NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0) ';
+-- 2008/12/19 D.Nihei MOD END
         wk_sql1 := wk_sql1 || '               WHEN (otta.order_category_code = ''RETURN'') THEN ';
-        wk_sql1 := wk_sql1 || '                 ola.shipped_quantity * -1 ';
+-- 2008/12/19 D.Nihei MOD START
+--        wk_sql1 := wk_sql1 || '                 ola.shipped_quantity * -1 ';
+        wk_sql1 := wk_sql1 || '                 (NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)) * -1 ';
+-- 2008/12/19 D.Nihei MOD END
         wk_sql1 := wk_sql1 || '               END), 0) ';
         wk_sql1 := wk_sql1 || '       FROM    xxwsh_order_headers_all    oha ';
         wk_sql1 := wk_sql1 || '             , xxwsh_order_lines_all      ola ';
+-- 2008/12/19 D.Nihei ADD START
+        wk_sql1 := wk_sql1 || '             , xxinv_mov_lot_details      mld  ';
+-- 2008/12/19 D.Nihei ADD END
         wk_sql1 := wk_sql1 || '             , oe_transaction_types_all   otta ';
         wk_sql1 := wk_sql1 || '       WHERE   ola.shipping_inventory_item_id = ' || lt_inv_item_id ;
+-- 2008/12/19 D.Nihei ADD START
+        wk_sql1 := wk_sql1 || '       AND     ola.order_line_id         = mld.mov_line_id ';
+        wk_sql1 := wk_sql1 || '       AND     mld.document_type_code    = ''30'' ';
+        wk_sql1 := wk_sql1 || '       AND     mld.record_type_code      = ''20'' ';
+-- 2008/12/19 D.Nihei ADD END
         wk_sql1 := wk_sql1 || '       AND     oha.deliver_from_id       = enable_lot.inventory_location_id ';
         wk_sql1 := wk_sql1 || '       AND     oha.order_header_id       = ola.order_header_id ';
         wk_sql1 := wk_sql1 || '       AND     otta.transaction_type_id  = oha.order_type_id ';
@@ -352,9 +382,15 @@ AS
         wk_sql1 := wk_sql1 || '       - ';
         wk_sql1 := wk_sql1 || '      (SELECT  NVL(SUM(CASE ';
         wk_sql1 := wk_sql1 || '               WHEN (otta.order_category_code = ''ORDER'') THEN ';
-        wk_sql1 := wk_sql1 || '                 mld.actual_quantity ';
+-- 2008/12/19 D.Nihei MOD START
+--        wk_sql1 := wk_sql1 || '                 mld.actual_quantity ';
+        wk_sql1 := wk_sql1 || '                 NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0) ';
+-- 2008/12/19 D.Nihei MOD END
         wk_sql1 := wk_sql1 || '               WHEN (otta.order_category_code = ''RETURN'') THEN ';
-        wk_sql1 := wk_sql1 || '                 mld.actual_quantity * -1 ';
+-- 2008/12/19 D.Nihei MOD START
+--        wk_sql1 := wk_sql1 || '                 mld.actual_quantity * -1 ';
+        wk_sql1 := wk_sql1 || '                 (NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)) * -1 ';
+-- 2008/12/19 D.Nihei MOD END
         wk_sql1 := wk_sql1 || '               END), 0) ';
         wk_sql1 := wk_sql1 || '       FROM    xxwsh_order_headers_all    oha ';
         wk_sql1 := wk_sql1 || '              ,xxwsh_order_lines_all      ola ';
@@ -376,9 +412,15 @@ AS
         wk_sql1 := wk_sql1 || '       - ';
         wk_sql1 := wk_sql1 || '      (SELECT  NVL(SUM(CASE ';
         wk_sql1 := wk_sql1 || '               WHEN (otta.order_category_code = ''ORDER'') THEN ';
-        wk_sql1 := wk_sql1 || '                 mld.actual_quantity ';
+-- 2008/12/19 D.Nihei MOD START
+--        wk_sql1 := wk_sql1 || '                 mld.actual_quantity ';
+        wk_sql1 := wk_sql1 || '                 NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0) ';
+-- 2008/12/19 D.Nihei MOD END
         wk_sql1 := wk_sql1 || '               WHEN (otta.order_category_code = ''RETURN'') THEN ';
-        wk_sql1 := wk_sql1 || '                 mld.actual_quantity * -1 ';
+-- 2008/12/19 D.Nihei MOD START
+--        wk_sql1 := wk_sql1 || '                 mld.actual_quantity * -1 ';
+        wk_sql1 := wk_sql1 || '                 (NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)) * -1 ';
+-- 2008/12/19 D.Nihei MOD END
         wk_sql1 := wk_sql1 || '               END), 0) ';
         wk_sql1 := wk_sql1 || '       FROM    xxwsh_order_headers_all    oha ';
         wk_sql1 := wk_sql1 || '              ,xxwsh_order_lines_all      ola ';
@@ -395,7 +437,7 @@ AS
         wk_sql1 := wk_sql1 || '       AND     mld.lot_id                = ilm.lot_id ';
         wk_sql1 := wk_sql1 || '       AND     mld.document_type_code    = ''30'' ';
         wk_sql1 := wk_sql1 || '       AND     mld.record_type_code      = ''20'' ';
-        wk_sql1 := wk_sql1 || '       AND     otta.attribute1           = ''1'' ';
+        wk_sql1 := wk_sql1 || '       AND     otta.attribute1           = ''2'' ';
         wk_sql1 := wk_sql1 || '       AND     otta.transaction_type_id  = oha.order_type_id) ';
         wk_sql1 := wk_sql1 || '     )                                      stock_qty                '; -- 在庫総数
 -- 入庫予定SQL
@@ -435,7 +477,10 @@ AS
         wk_sql1 := wk_sql1 || '       WHERE   mrih.ship_to_locat_id       = enable_lot.inventory_location_id ';
         wk_sql1 := wk_sql1 || '       AND     mrih.comp_actual_flg        = ''N'' ';
         wk_sql1 := wk_sql1 || '       AND     mrih.status                 = ''04'' ';
-        wk_sql1 := wk_sql1 || '       AND     mrih.schedule_arrival_date <= TO_DATE(''' || id_material_date || ''') ';
+-- 2008/12/19 D.Nihei MOD START
+--        wk_sql1 := wk_sql1 || '       AND     mrih.schedule_arrival_date <= TO_DATE(''' || id_material_date || ''') ';
+        wk_sql1 := wk_sql1 || '       AND     NVL(mrih.actual_arrival_date, mrih.schedule_arrival_date) <= TO_DATE(''' || id_material_date || ''') ';
+-- 2008/12/19 D.Nihei MOD END
         wk_sql1 := wk_sql1 || '       AND     mrih.mov_hdr_id             = mril.mov_hdr_id ';
         wk_sql1 := wk_sql1 || '       AND     mril.mov_line_id            = mld.mov_line_id ';
         wk_sql1 := wk_sql1 || '       AND     mril.delete_flg             = ''N'' ';
@@ -912,7 +957,7 @@ AS
         wk_sql2 := wk_sql2 || '                 AND     mld.item_id              = ' || lt_item_id;
         wk_sql2 := wk_sql2 || '                 AND     mld.document_type_code   = ''30'' ';
         wk_sql2 := wk_sql2 || '                 AND     mld.record_type_code     = ''20'' ';
-        wk_sql2 := wk_sql2 || '                 AND     otta.attribute1          = ''1'' ';
+        wk_sql2 := wk_sql2 || '                 AND     otta.attribute1          = ''2'' ';
         wk_sql2 := wk_sql2 || '                 AND     otta.transaction_type_id = oha.order_type_id ';
         wk_sql2 := wk_sql2 || '                 UNION ';
         wk_sql2 := wk_sql2 || '                 SELECT  mil.inventory_location_id  location_id ';
@@ -956,7 +1001,10 @@ AS
         wk_sql2 := wk_sql2 || '                       , xxinv_mov_lot_details       mld   ';
         wk_sql2 := wk_sql2 || '                 WHERE   mrih.comp_actual_flg        = ''N'' ';
         wk_sql2 := wk_sql2 || '                 AND     mrih.status                 = ''04'' ';
-        wk_sql2 := wk_sql2 || '                 AND     mrih.schedule_arrival_date <= TO_DATE(''' || id_material_date || ''') ';
+-- 2008/12/19 D.Nihei MOD START
+--        wk_sql2 := wk_sql2 || '                 AND     mrih.schedule_ship_date <= TO_DATE(''' || id_material_date || ''') ';
+        wk_sql2 := wk_sql2 || '                 AND     NVL(mrih.actual_ship_date, mrih.schedule_ship_date) <= TO_DATE(''' || id_material_date || ''') ';
+-- 2008/12/19 D.Nihei MOD END
         wk_sql2 := wk_sql2 || '                 AND     mrih.mov_hdr_id             = mril.mov_hdr_id ';
         wk_sql2 := wk_sql2 || '                 AND     mril.mov_line_id            = mld.mov_line_id ';
         wk_sql2 := wk_sql2 || '                 AND     mril.delete_flg             = ''N'' ';
