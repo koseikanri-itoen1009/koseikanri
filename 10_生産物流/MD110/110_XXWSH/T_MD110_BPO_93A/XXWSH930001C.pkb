@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.45
+ * Version          : 1.46
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -140,6 +140,7 @@ AS
  *                                                         各プロシージャでエラー終了した場合、サブメインの例外処理で制御できるようにする。
  *  2009/02/09    1.45 Oracle 佐久間尚豊 本番障害対応#1165 拠点情報は配送先の管轄拠点より取得する。
  *                                                         顧客情報は配送先の上位パーティ（顧客）より取得する。
+ *  2009/02/20    1.46 Oracle 佐久間尚豊 本番障害対応#1199 配送No/移動No-EOSデータ種別単位のエラーは明細単位（一部はヘッダ単位）で出力する。
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -755,7 +756,17 @@ AS
     -- 顧客区分(出荷先)
     customer_class_code         hz_cust_accounts.customer_class_code%TYPE,
     -- 拠点実績有無区分                                                        -- 2008/12/11 本番障害#644 Add
-    location_rel_code           xxcmn_cust_accounts2_v.location_rel_code%TYPE  -- 2008/12/11 本番障害#644 Add
+    location_rel_code           xxcmn_cust_accounts2_v.location_rel_code%TYPE, -- 2008/12/11 本番障害#644 Add
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+    -- 配送NO単位エラーフラグ（「エラー種別：エラー」が配送No、EOSデータ種別単位なのか識別する）
+    -- (1:エラーの場合、0:正常)
+    delivery_no_err_flg         VARCHAR2(1),
+    -- 明細単位エラーフラグ（「エラー種別：エラー」が明細単位なのか識別する）
+    -- (1:エラーの場合、0:正常)
+    meisai_err_flg              VARCHAR2(1),
+    -- メッセージid
+    msg_id                      VARCHAR2(15)
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
   );
 --
   -- 移動ロット詳細(アドオン)
@@ -1097,6 +1108,9 @@ AS
   gn_zero_updt_idx      NUMBER;  -- 2008/08/18 TE080_930指摘#32対応 Add
 --
   gr_interface_info_rec    interface_tbl;             -- インターフェーステーブルのデータ
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+  gr_err_header_rec        interface_tbl;             -- エラーデータ
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
   gr_movlot_detail_rec     movlot_detail_rec;         -- 移動ロット詳細のデータ
   gr_mov_req_instr_h_rec   mov_req_instr_h_rec;       -- 移動依頼/指示ヘッダのデータ
   gr_mov_req_instr_l_rec   mov_req_instr_l_rec;       -- 移動依頼/指示明細(アドオン)
@@ -1281,6 +1295,9 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+    ln_err_idx NUMBER;            -- エラーデータindex
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
 --
     -- *** ローカル・カーソル ***
 --
@@ -1298,6 +1315,10 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+    -- エラー用配列のインデックスを設定
+    ln_err_idx := gr_err_header_rec.COUNT;
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
 --
     <<deliveryno_unit_errflg_set>>
     FOR j IN 1..gr_interface_info_rec.COUNT LOOP
@@ -1308,11 +1329,22 @@ AS
 --
         IF (in_level = 1) THEN
           gr_interface_info_rec(j).err_flg := gv_flg_on;
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+          -- 配送NO単位エラーフラグをONにする
+          gr_interface_info_rec(j).delivery_no_err_flg := gv_flg_on;
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
         ELSE
           gr_interface_info_rec(j).reserve_flg := gv_flg_on;
         END IF;
 --
         gr_interface_info_rec(j).message := iv_message;
+--
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+        -- エラー用配列にエラーデータを設定
+        ln_err_idx                            := ln_err_idx + 1;
+        gr_err_header_rec(ln_err_idx)         := gr_interface_info_rec(j);
+        gr_err_header_rec(ln_err_idx).message := iv_message;
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
 --
       END IF;
 --
@@ -1347,8 +1379,14 @@ AS
   /**********************************************************************************
    * Procedure Name   : set_header_unit_reserveflg
    * Description      : ヘッダ単位(配送No、依頼No・移動番号、EOSデータ種別)にflag=1をセットする プロシージャ
+   *                    エラー出力については基本的に明細単位（一部ヘッダ単位）とする（2009/02/20 本番障害#1199）
    ***********************************************************************************/
   PROCEDURE set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+    in_idx                  IN  NUMBER,              -- データindex
+    iv_header_err_only_flg  IN  VARCHAR2,            -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+    iv_msg_id               IN  VARCHAR2,            -- メッセージID
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
     iv_delivery_no          IN  xxwsh_shipping_headers_if.delivery_no%TYPE,  -- 配送No
     iv_movreqno             IN  VARCHAR2,            -- 移動番号、依頼No
     iv_eos_data_type        IN  xxwsh_shipping_headers_if.eos_data_type%TYPE,  -- EOSデータ種別
@@ -1378,6 +1416,10 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+    ln_err_idx      NUMBER;       -- エラーデータindex
+    lv_err_put_flg  VARCHAR2(1);  -- エラー出力対象フラグ
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
 --
     -- *** ローカル・カーソル ***
 --
@@ -1396,6 +1438,62 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+    -- エラー出力対象フラグの初期化
+    lv_err_put_flg := gv_flg_on;
+--
+    -- エラーデータ出力対象チェック
+    -- 明細単位エラーの場合は無条件で出力対象、ヘッダー単位の場合はメッセージが重複しない場合のみ出力対象
+    IF (iv_header_err_only_flg = gv_flg_on) 
+    THEN
+--
+      -- エラー用配列のデータある間ループ
+      <<err_put_chk>>
+      FOR h IN 1..gr_err_header_rec.COUNT LOOP
+--
+        -- ヘッダー単位でメッセージが重複する場合、エラー出力対象フラグをOFFにする
+        IF ((gr_err_header_rec(h).header_id = gr_interface_info_rec(in_idx).header_id) AND
+            (gr_err_header_rec(h).msg_id = iv_msg_id))
+        THEN
+--
+          lv_err_put_flg := gv_flg_off;
+          EXIT;
+--
+        END IF;
+--
+      END LOOP err_put_chk;
+--
+    END IF;
+--
+    -- エラー出力対象の場合のみ、エラー出力を行う
+    IF (lv_err_put_flg = gv_flg_on) 
+    THEN
+--
+      -- エラー用配列のインデックスを設定
+      IF (gr_err_header_rec.COUNT = 0) THEN
+        ln_err_idx := 1;
+      ELSE
+        ln_err_idx := gr_err_header_rec.COUNT + 1;
+      END IF;
+--
+      -- エラー用配列にエラーデータを設定
+      gr_err_header_rec(ln_err_idx)         := gr_interface_info_rec(in_idx);
+      gr_err_header_rec(ln_err_idx).message := iv_message;
+      gr_err_header_rec(ln_err_idx).msg_id  := iv_msg_id;
+
+--
+    END IF;
+--
+    -- エラー処理データの場合、明細単位でメインデータ抽出用配列のエラーフラグをONに設定
+    -- ただし、明細単位でのチェックエラーのみ（ヘッダ単位でも行うと明細データをチェックしないため）
+    IF ((in_level = gv_err_class) AND 
+        (iv_header_err_only_flg = gv_flg_off))
+    THEN
+      gr_interface_info_rec(ln_err_idx).meisai_err_flg := gv_flg_on;
+    END IF;
+--
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+
     <<header_unit_reserveflg_set>>
     FOR j IN 1..gr_interface_info_rec.COUNT LOOP
 --
@@ -2286,6 +2384,9 @@ AS
 --
         ELSE
 --
+          --********** debug_log ********** START ***
+          debug_log(FND_FILE.LOG,'ケース入数エラー（その１）');
+          --********** debug_log ********** END   ***
           lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                          'XXCMN'
                         ,gv_msg_93a_604                                 -- ケース入り数エラー
@@ -2299,6 +2400,11 @@ AS
 --
           --配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
           set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+            in_idx,                 -- データindex
+            gv_flg_off,             -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+            gv_msg_93a_604,         -- メッセージid（ケース入り数エラー）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
             gr_interface_info_rec(in_idx).delivery_no,         -- 配送No
             gr_interface_info_rec(in_idx).order_source_ref,    -- 受注ソース参照(依頼/移動No)
             gr_interface_info_rec(in_idx).eos_data_type,       -- EOSデータ種別
@@ -2340,6 +2446,9 @@ AS
 --
         ELSE
 --
+          --********** debug_log ********** START ***
+          debug_log(FND_FILE.LOG,'ケース入数エラー（その２）');
+          --********** debug_log ********** END   ***
           lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                          'XXCMN'
                         ,gv_msg_93a_604                                 -- ケース入り数エラー
@@ -2353,6 +2462,11 @@ AS
 --
           --配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
           set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+            in_idx,                 -- データindex
+            gv_flg_off,             -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+            gv_msg_93a_604,         -- メッセージid（ケース入り数エラー）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
             gr_interface_info_rec(in_idx).delivery_no,         -- 配送No
             gr_interface_info_rec(in_idx).order_source_ref,    -- 受注ソース参照(依頼/移動No)
             gr_interface_info_rec(in_idx).eos_data_type,       -- EOSデータ種別
@@ -4638,6 +4752,11 @@ AS
       wk_sql := wk_sql || '          ,NULL                               ';  -- OPM品目情報VIEW2.INV品目(倉庫品目)
       wk_sql := wk_sql || '          ,NULL                               ';  -- 顧客区分(出荷先)
       wk_sql := wk_sql || '          ,NULL                               ';  -- 拠点実績有無区分     2008/12/11 本番障害#644 Add
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+      wk_sql := wk_sql || '          ,''' || gv_flg_off || ''''           ;  -- 配送NO単位エラーフラグ
+      wk_sql := wk_sql || '          ,''' || gv_flg_off || ''''           ;  -- 明細単位エラーフラグ
+      wk_sql := wk_sql || '          ,NULL                               ';  -- メッセージid
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
       wk_sql := wk_sql || '     FROM  ';
       wk_sql := wk_sql || '           xxwsh_shipping_headers_if   xshi       ';  -- IF_H
       wk_sql := wk_sql || '           ,xxwsh_shipping_lines_if    xsli       ';  -- IF_L
@@ -4998,6 +5117,9 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
+    --********** debug_log ********** START ***
+    debug_log(FND_FILE.LOG,'A-5-1');
+    --********** debug_log ********** END   ***
 --
     --同一配送Noで複数の移動No(依頼No)をもつレコードの値チェック
     --運送業者
@@ -5019,6 +5141,41 @@ AS
       lv_error_flg            := gr_interface_info_rec(i).err_flg;               -- エラーフラグ
       lt_order_source_ref     := gr_interface_info_rec(i).order_source_ref;      --受注ソース参照(依頼/移動No)
       lt_cust_po_number       := gr_interface_info_rec(i).cust_po_number;        --IF_H.顧客発注番号  2008/10/30 統合指摘#390 Add
+
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+      --********** debug_log ********** START ***
+      debug_log(FND_FILE.LOG,'-----------------------------------------------------------');
+      debug_log(FND_FILE.LOG,'配送No         :'||gr_interface_info_rec(i).delivery_no);
+      debug_log(FND_FILE.LOG,'依頼/移動No    :'||gr_interface_info_rec(i).order_source_ref);
+      debug_log(FND_FILE.LOG,'受注品目       :'||gr_interface_info_rec(i).orderd_item_code);
+      debug_log(FND_FILE.LOG,'出荷日         :'||TO_CHAR(gr_interface_info_rec(i).shipped_date,'YYYY/MM/DD'));
+      debug_log(FND_FILE.LOG,'着荷日         :'||TO_CHAR(gr_interface_info_rec(i).arrival_date,'YYYY/MM/DD'));
+      debug_log(FND_FILE.LOG,'商品区分       :'||gr_interface_info_rec(i).prod_kbn_cd);
+      debug_log(FND_FILE.LOG,'品目区分       :'||gr_interface_info_rec(i).item_kbn_cd);
+      debug_log(FND_FILE.LOG,'ロットNO       :'||gr_interface_info_rec(i).lot_no);
+      debug_log(FND_FILE.LOG,'ロット管理品か :'||gr_interface_info_rec(i).lot_ctl);
+      debug_log(FND_FILE.LOG,'製造年月日     :'||TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD'));
+      debug_log(FND_FILE.LOG,'賞味期限       :'||TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD'));
+      debug_log(FND_FILE.LOG,'固有記号       :'||gr_interface_info_rec(i).original_character);
+      --********** debug_log ********** END   ***
+--
+      -- 配送NO単位でのエラーが発生していない場合
+      IF (gr_interface_info_rec(i).delivery_no_err_flg = '0') THEN
+--
+        -- 明細単位でエラーデータである場合、エラーフラグをONにする
+        IF (gr_interface_info_rec(i).meisai_err_flg = gv_flg_on)
+        THEN
+--
+          lv_error_flg := gv_flg_on;
+--
+        ELSE
+--
+          lv_error_flg := gv_flg_off;
+--
+        END IF;
+--
+      END IF;
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
 --
       IF (lv_error_flg = '0') THEN
 --
@@ -5082,6 +5239,11 @@ AS
 --
             --配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
             set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+              i,                                            -- データindex
+              gv_flg_on,                                    -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+              gv_msg_93a_153,                               -- メッセージid（配送No-依頼/移動No関連エラーメッセージ） 
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
               gr_interface_info_rec(i).delivery_no,         -- 配送No
               gr_interface_info_rec(i).order_source_ref,    -- 受注ソース参照(依頼/移動No)
               gr_interface_info_rec(i).eos_data_type,       -- EOSデータ種別
@@ -5147,6 +5309,9 @@ AS
           --処理可能な指示データが存在しない場合、エラー
           IF (ln_data_count = 0) THEN
 --
+            --********** debug_log ********** START ***
+            debug_log(FND_FILE.LOG,'実績計上／訂正不可エラー（その１）');
+            --********** debug_log ********** END   ***
             lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                            gv_msg_kbn                                 -- 'XXWSH'
                           ,gv_msg_93a_154                             -- 実績計上／訂正不可エラーメッセージ
@@ -5160,6 +5325,11 @@ AS
 --
             --配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
             set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+              i,                                            -- データindex
+              gv_flg_on,                                    -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+              gv_msg_93a_154,                               -- メッセージid（実績計上／訂正不可エラーメッセージ）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
               gr_interface_info_rec(i).delivery_no,         -- 配送No
               gr_interface_info_rec(i).order_source_ref,    -- 受注ソース参照(依頼/移動No)
               gr_interface_info_rec(i).eos_data_type,       -- EOSデータ種別
@@ -5206,6 +5376,11 @@ AS
 --
           --配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
           set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+            i,                      -- データindex
+            gv_flg_on,              -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+            gv_msg_93a_148,         -- メッセージid（配送No-運賃区分組合せエラーメッセージ）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
             lt_delivery_no,         -- 配送No
             lt_order_source_ref,    -- 受注ソース参照(依頼/移動No)
             gr_interface_info_rec(i).eos_data_type,  -- EOSデータ種別
@@ -5265,6 +5440,11 @@ AS
 --
             --配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
             set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+              i,                      -- データindex
+              gv_flg_on,              -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+              gv_msg_93a_149,         -- メッセージid（ロット管理品の必須項目未設定エラー）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
               lt_delivery_no,         -- 配送No
               lt_order_source_ref,    -- 受注ソース参照(依頼/移動No)
               gr_interface_info_rec(i).eos_data_type,  -- EOSデータ種別
@@ -5408,6 +5588,11 @@ AS
 --
             --配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
             set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+              i,                      -- データindex
+              gv_flg_off,             -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+              gv_msg_93a_150,         -- メッセージid（ロットマスタ取得エラー）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
               lt_delivery_no,         -- 配送No
               lt_order_source_ref,    -- 受注ソース参照(依頼/移動No)
               gr_interface_info_rec(i).eos_data_type,  -- EOSデータ種別
@@ -5450,6 +5635,11 @@ AS
 --
             --配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
             set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+              i,                      -- データindex
+              gv_flg_off,             -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+              gv_msg_93a_151,         -- メッセージid（ロットマスタ取得複数件エラー）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
               lt_delivery_no,         -- 配送No
               lt_order_source_ref,    -- 受注ソース参照(依頼/移動No)
               gr_interface_info_rec(i).eos_data_type,  -- EOSデータ種別
@@ -5895,6 +6085,10 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
+    --********** debug_log ********** START ***
+    debug_log(FND_FILE.LOG,'-----------------------------------------------------------');
+    debug_log(FND_FILE.LOG,'A-5-2');
+    --********** debug_log ********** END   ***
 --
     -- 同一配送No-受注ソース参照-EOSデータ種別単位で、複数の受注品目-ロットNoが存在する場合、エラーとし警告ログ出力します。
     <<deliveryno_src_manyitem>>
@@ -5910,6 +6104,41 @@ AS
       lt_eos_data_type         := gr_interface_info_rec(i).eos_data_type;         -- IF_H.EOSデータ種別
       lt_weight_capacity_class := gr_interface_info_rec(i).weight_capacity_class; -- 重量容積区分
       lv_error_flg             := gr_interface_info_rec(i).err_flg;               -- エラーフラグ
+
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+      --********** debug_log ********** START ***
+      debug_log(FND_FILE.LOG,'-----------------------------------------------------------');
+      debug_log(FND_FILE.LOG,'配送No         :'||gr_interface_info_rec(i).delivery_no);
+      debug_log(FND_FILE.LOG,'依頼/移動No    :'||gr_interface_info_rec(i).order_source_ref);
+      debug_log(FND_FILE.LOG,'受注品目       :'||gr_interface_info_rec(i).orderd_item_code);
+      debug_log(FND_FILE.LOG,'出荷日         :'||TO_CHAR(gr_interface_info_rec(i).shipped_date,'YYYY/MM/DD'));
+      debug_log(FND_FILE.LOG,'着荷日         :'||TO_CHAR(gr_interface_info_rec(i).arrival_date,'YYYY/MM/DD'));
+      debug_log(FND_FILE.LOG,'商品区分       :'||gr_interface_info_rec(i).prod_kbn_cd);
+      debug_log(FND_FILE.LOG,'品目区分       :'||gr_interface_info_rec(i).item_kbn_cd);
+      debug_log(FND_FILE.LOG,'ロットNO       :'||gr_interface_info_rec(i).lot_no);
+      debug_log(FND_FILE.LOG,'ロット管理品か :'||gr_interface_info_rec(i).lot_ctl);
+      debug_log(FND_FILE.LOG,'製造年月日     :'||TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD'));
+      debug_log(FND_FILE.LOG,'賞味期限       :'||TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD'));
+      debug_log(FND_FILE.LOG,'固有記号       :'||gr_interface_info_rec(i).original_character);
+      --********** debug_log ********** END   ***
+--
+      -- 配送NO単位でのエラーが発生していない場合
+      IF (gr_interface_info_rec(i).delivery_no_err_flg = '0') THEN
+--
+        -- 明細単位でエラーデータである場合、エラーフラグをONにする
+        IF (gr_interface_info_rec(i).meisai_err_flg = gv_flg_on)
+        THEN
+--
+          lv_error_flg := gv_flg_on;
+--
+        ELSE
+--
+          lv_error_flg := gv_flg_off;
+--
+        END IF;
+--
+      END IF;
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
 --
       IF (lv_error_flg = '0') THEN
 --
@@ -6335,6 +6564,10 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
+    --********** debug_log ********** START ***
+    debug_log(FND_FILE.LOG,'-----------------------------------------------------------');
+    debug_log(FND_FILE.LOG,'A-5-3');
+    --********** debug_log ********** END   ***
 --
     <<line_loop>>
     FOR i IN 1..gr_interface_info_rec.COUNT LOOP
@@ -6344,6 +6577,41 @@ AS
       lt_eos_data_type := gr_interface_info_rec(i).eos_data_type;         -- EOSデータ種別
       lt_delivery_no   := gr_interface_info_rec(i).delivery_no;           -- IF_H.配送No
       lv_error_flg     := gr_interface_info_rec(i).err_flg;               -- エラーフラグ
+
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+      --********** debug_log ********** START ***
+      debug_log(FND_FILE.LOG,'-----------------------------------------------------------');
+      debug_log(FND_FILE.LOG,'配送No         :'||gr_interface_info_rec(i).delivery_no);
+      debug_log(FND_FILE.LOG,'依頼/移動No    :'||gr_interface_info_rec(i).order_source_ref);
+      debug_log(FND_FILE.LOG,'受注品目       :'||gr_interface_info_rec(i).orderd_item_code);
+      debug_log(FND_FILE.LOG,'出荷日         :'||TO_CHAR(gr_interface_info_rec(i).shipped_date,'YYYY/MM/DD'));
+      debug_log(FND_FILE.LOG,'着荷日         :'||TO_CHAR(gr_interface_info_rec(i).arrival_date,'YYYY/MM/DD'));
+      debug_log(FND_FILE.LOG,'商品区分       :'||gr_interface_info_rec(i).prod_kbn_cd);
+      debug_log(FND_FILE.LOG,'品目区分       :'||gr_interface_info_rec(i).item_kbn_cd);
+      debug_log(FND_FILE.LOG,'ロットNO       :'||gr_interface_info_rec(i).lot_no);
+      debug_log(FND_FILE.LOG,'ロット管理品か :'||gr_interface_info_rec(i).lot_ctl);
+      debug_log(FND_FILE.LOG,'製造年月日     :'||TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD'));
+      debug_log(FND_FILE.LOG,'賞味期限       :'||TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD'));
+      debug_log(FND_FILE.LOG,'固有記号       :'||gr_interface_info_rec(i).original_character);
+      --********** debug_log ********** END   ***
+--
+      -- 配送NO単位でのエラーが発生していない場合
+      IF (gr_interface_info_rec(i).delivery_no_err_flg = '0') THEN
+--
+        -- 明細単位でエラーデータである場合、エラーフラグをONにする
+        IF (gr_interface_info_rec(i).meisai_err_flg = gv_flg_on)
+        THEN
+--
+          lv_error_flg := gv_flg_on;
+--
+        ELSE
+--
+          lv_error_flg := gv_flg_off;
+--
+        END IF;
+--
+      END IF;
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
 --
       IF (lv_error_flg = '0') THEN
 --
@@ -6424,6 +6692,9 @@ AS
 --
           IF (ln_cnt = 0) THEN
 --
+            --********** debug_log ********** START ***
+            debug_log(FND_FILE.LOG,'マスタチェックエラーメッセージ（その１）');
+            --********** debug_log ********** END   ***
             -- マスタに存在しなければ、配送No単位にエラーflagをセット
             lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                            gv_msg_kbn          -- 'XXWSH'
@@ -6510,6 +6781,9 @@ AS
 --
             IF (ln_cnt = 0) THEN
 --
+              --********** debug_log ********** START ***
+              debug_log(FND_FILE.LOG,'マスタチェックエラーメッセージ（その２）');
+              --********** debug_log ********** END   ***
               -- マスタに存在しなければ、配送No単位にエラーflagをセット
               lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                              gv_msg_kbn          -- 'XXWSH'
@@ -6603,6 +6877,9 @@ AS
 --
           IF (ln_cnt = 0) THEN
 --
+            --********** debug_log ********** START ***
+            debug_log(FND_FILE.LOG,'マスタチェックエラーメッセージ（その３）');
+            --********** debug_log ********** END   ***
             -- マスタに存在しなければ、配送No単位にエラーflagをセット
             lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                            gv_msg_kbn          -- 'XXWSH'
@@ -6686,6 +6963,9 @@ AS
 --
           IF (ln_cnt = 0) THEN
 --
+            --********** debug_log ********** START ***
+            debug_log(FND_FILE.LOG,'マスタチェックエラーメッセージ（その４）');
+            --********** debug_log ********** END   ***
             -- マスタに存在しなければ、配送No単位にエラーflagをセット
             lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                             gv_msg_kbn          -- 'XXWSH'
@@ -6750,6 +7030,9 @@ AS
 --
             IF (ln_cnt = 0) THEN
 --
+              --********** debug_log ********** START ***
+              debug_log(FND_FILE.LOG,'マスタチェックエラーメッセージ（その５）');
+              --********** debug_log ********** END   ***
               -- マスタに存在しなければ、配送No単位にエラーflagをセット
               lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                              gv_msg_kbn          -- 'XXWSH'
@@ -6819,6 +7102,9 @@ AS
 --
               IF (ln_cnt = 0) THEN
 --
+                --********** debug_log ********** START ***
+                debug_log(FND_FILE.LOG,'組合せと指示チェックエラーメッセージ（その１）');
+                --********** debug_log ********** END   ***
                 -- 存在しなければ、配送No単位にエラーflagをセット
                 lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                gv_msg_kbn          -- 'XXWSH'
@@ -6887,6 +7173,9 @@ AS
 --
           IF (ln_cnt = 0) THEN
 --
+            --********** debug_log ********** START ***
+            debug_log(FND_FILE.LOG,'マスタチェックエラーメッセージ（その６）');
+            --********** debug_log ********** END   ***
             -- マスタに存在しなければ、配送No単位にエラーflagをセット
             lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                            gv_msg_kbn                                     -- 'XXWSH'
@@ -6965,6 +7254,9 @@ AS
 --
           IF (ln_cnt = 0) THEN
 --
+            --********** debug_log ********** START ***
+            debug_log(FND_FILE.LOG,'マスタチェックエラーメッセージ（その７）');
+            --********** debug_log ********** END   ***
             -- マスタに存在しなければ、配送No単位にエラーflagをセット
             lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                            gv_msg_kbn          -- 'XXWSH'
@@ -7040,6 +7332,9 @@ AS
 --
             IF (ln_cnt = 0) THEN
 --
+              --********** debug_log ********** START ***
+              debug_log(FND_FILE.LOG,'マスタチェックエラーメッセージ（その８）');
+              --********** debug_log ********** END   ***
               -- マスタに存在しなければ、配送No単位にエラーflagをセット
               lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                              gv_msg_kbn          -- 'XXWSH'
@@ -7131,6 +7426,9 @@ AS
 --
           IF (ln_cnt = 0) THEN
 --
+            --********** debug_log ********** START ***
+            debug_log(FND_FILE.LOG,'マスタチェックエラーメッセージ（その９）');
+            --********** debug_log ********** END   ***
             -- マスタに存在しなければ、配送No単位にエラーflagをセット
             lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                            gv_msg_kbn          -- 'XXWSH'
@@ -7194,6 +7492,9 @@ AS
 --
             IF (ln_cnt = 0) THEN
 --
+              --********** debug_log ********** START ***
+              debug_log(FND_FILE.LOG,'マスタチェックエラーメッセージ（その１０）');
+              --********** debug_log ********** END   ***
               -- マスタに存在しなければ、配送No単位にエラーflagをセット
               lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                              gv_msg_kbn          -- 'XXWSH'
@@ -7263,6 +7564,9 @@ AS
 --
               IF (ln_cnt = 0) THEN
 --
+                --********** debug_log ********** START ***
+                debug_log(FND_FILE.LOG,'組合せと指示チェックエラーメッセージ（その２）');
+                --********** debug_log ********** END   ***
                 -- 存在しなければ、配送No単位にエラーflagをセット
                 lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                gv_msg_kbn          -- 'XXWSH'
@@ -7377,6 +7681,9 @@ AS
             IF (FND_DATE.STRING_TO_DATE(lv_inv_close_period,'YYYY/MM') >= gr_interface_info_rec(i).shipped_date)
             THEN
 --
+              --********** debug_log ********** START ***
+              debug_log(FND_FILE.LOG,'在庫会計期間CLOSEエラー（その１）');
+              --********** debug_log ********** END   ***
               -- 在庫会計期間がCLOSEなので、ログを出力し、配送No単位にエラーをセット
               lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                              gv_msg_kbn          -- 'XXWSH'
@@ -7430,6 +7737,9 @@ AS
                 (FND_DATE.STRING_TO_DATE(lv_inv_close_period,'YYYY/MM') >= gr_interface_info_rec(i).arrival_date))
             THEN
 --
+              --********** debug_log ********** START ***
+              debug_log(FND_FILE.LOG,'在庫会計期間CLOSEエラー（その２）');
+              --********** debug_log ********** END   ***
               -- 在庫会計期間がCLOSEなので、ログを出力し、配送No単位にエラーをセット
               lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                              gv_msg_kbn          -- 'XXWSH'
@@ -7713,6 +8023,10 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
+    --********** debug_log ********** START ***
+    debug_log(FND_FILE.LOG,'-----------------------------------------------------------');
+    debug_log(FND_FILE.LOG,'A-6');
+    --********** debug_log ********** END   ***
 --
     <<appropriate_chk_line_loop>>
     FOR i IN 1..gr_interface_info_rec.COUNT LOOP
@@ -7723,6 +8037,41 @@ AS
       lv_error_flg        := gr_interface_info_rec(i).err_flg;                  --エラーフラグ
       lt_delivery_no      := gr_interface_info_rec(i).delivery_no;              --配送No
       lt_order_source_ref := gr_interface_info_rec(i).order_source_ref;         --受注ソース参照
+
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+      --********** debug_log ********** START ***
+      debug_log(FND_FILE.LOG,'-----------------------------------------------------------');
+      debug_log(FND_FILE.LOG,'配送No         :'||gr_interface_info_rec(i).delivery_no);
+      debug_log(FND_FILE.LOG,'依頼/移動No    :'||gr_interface_info_rec(i).order_source_ref);
+      debug_log(FND_FILE.LOG,'受注品目       :'||gr_interface_info_rec(i).orderd_item_code);
+      debug_log(FND_FILE.LOG,'出荷日         :'||TO_CHAR(gr_interface_info_rec(i).shipped_date,'YYYY/MM/DD'));
+      debug_log(FND_FILE.LOG,'着荷日         :'||TO_CHAR(gr_interface_info_rec(i).arrival_date,'YYYY/MM/DD'));
+      debug_log(FND_FILE.LOG,'商品区分       :'||gr_interface_info_rec(i).prod_kbn_cd);
+      debug_log(FND_FILE.LOG,'品目区分       :'||gr_interface_info_rec(i).item_kbn_cd);
+      debug_log(FND_FILE.LOG,'ロットNO       :'||gr_interface_info_rec(i).lot_no);
+      debug_log(FND_FILE.LOG,'ロット管理品か :'||gr_interface_info_rec(i).lot_ctl);
+      debug_log(FND_FILE.LOG,'製造年月日     :'||TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD'));
+      debug_log(FND_FILE.LOG,'賞味期限       :'||TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD'));
+      debug_log(FND_FILE.LOG,'固有記号       :'||gr_interface_info_rec(i).original_character);
+      --********** debug_log ********** END   ***
+--
+      -- 配送NO単位でのエラーが発生していない場合
+      IF (gr_interface_info_rec(i).delivery_no_err_flg = '0') THEN
+--
+        -- 明細単位でエラーデータである場合、エラーフラグをONにする
+        IF (gr_interface_info_rec(i).meisai_err_flg = gv_flg_on)
+        THEN
+--
+          lv_error_flg := gv_flg_on;
+--
+        ELSE
+--
+          lv_error_flg := gv_flg_off;
+--
+        END IF;
+--
+      END IF;
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
 --
       IF (lv_error_flg = '0') THEN
 --
@@ -7897,6 +8246,11 @@ AS
 --
               -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
               set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                i,                    -- データindex
+                gv_flg_on,            -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                gv_msg_93a_017,       -- メッセージid（妥当チェックエラーメッセージ(移動予定実績警告)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                 lt_delivery_no,       -- 配送No
                 lt_order_source_ref,  -- 移動No/依頼No
                 lt_eos_data_type,     -- EOSデータ種別
@@ -8146,6 +8500,11 @@ AS
 --
                 -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                 set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                  i,                    -- データindex
+                  gv_flg_on,            -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                  gv_msg_93a_018,       -- メッセージid（妥当チェックエラーメッセージ(出荷支給予定実績警告)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                   lt_delivery_no,       -- 配送No
                   lt_order_source_ref,  -- 移動No/依頼No
                   lt_eos_data_type,     -- EOSデータ種別
@@ -8186,6 +8545,9 @@ AS
 --
               ln_errflg := 1;
 --
+              --********** debug_log ********** START ***
+              debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(数量項目エラー)：（その１）');
+              --********** debug_log ********** END   ***
               -- ログ出力
               lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                              gv_msg_kbn          -- 'XXWSH'
@@ -8206,6 +8568,11 @@ AS
 --
               -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
               set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                i,                    -- データindex
+                gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                gv_msg_93a_022,       -- メッセージid（妥当チェックエラーメッセージ(数量項目エラー)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                 lt_delivery_no,       -- 配送No
                 lt_order_source_ref,  -- 移動No/依頼No
                 lt_eos_data_type,     -- EOSデータ種別
@@ -8232,6 +8599,9 @@ AS
 --
                 ln_errflg := 1;
 --
+                --********** debug_log ********** START ***
+                debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(数量項目エラー)：（その２）');
+                --********** debug_log ********** END   ***
                 -- ログ出力
                 lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                gv_msg_kbn          -- 'XXWSH'
@@ -8252,6 +8622,11 @@ AS
 --
                 -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                 set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                  i,                    -- データindex
+                  gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                  gv_msg_93a_022,       -- メッセージid（妥当チェックエラーメッセージ(数量項目エラー)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                   lt_delivery_no,       -- 配送No
                   lt_order_source_ref,  -- 移動No/依頼No
                   lt_eos_data_type,     -- EOSデータ種別
@@ -8280,6 +8655,9 @@ AS
 --
                 ln_errflg := 1;
 --
+                --********** debug_log ********** START ***
+                debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(数量項目エラー)：（その３）');
+                --********** debug_log ********** END   ***
                 -- ログ出力
                 lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                gv_msg_kbn          -- 'XXWSH'
@@ -8300,6 +8678,11 @@ AS
 --
                 -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                 set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                  i,                    -- データindex
+                  gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                  gv_msg_93a_022,       -- メッセージid（妥当チェックエラーメッセージ(数量項目エラー)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                   lt_delivery_no,       -- 配送No
                   lt_order_source_ref,  -- 移動No/依頼No
                   lt_eos_data_type,     -- EOSデータ種別
@@ -8328,6 +8711,9 @@ AS
 --
                 ln_errflg := 1;
 --
+                --********** debug_log ********** START ***
+                debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(数量項目エラー)：（その４）');
+                --********** debug_log ********** END   ***
                 -- ログ出力
                 lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                gv_msg_kbn          -- 'XXWSH'
@@ -8348,6 +8734,11 @@ AS
 --
                 -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                 set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                  i,                    -- データindex
+                  gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                  gv_msg_93a_022,       -- メッセージid（妥当チェックエラーメッセージ(数量項目エラー)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                   lt_delivery_no,       -- 配送No
                   lt_order_source_ref,  -- 移動No/依頼No
                   lt_eos_data_type,     -- EOSデータ種別
@@ -8419,6 +8810,9 @@ AS
 --
                   ln_errflg := 1;
 --
+                  --********** debug_log ********** START ***
+                  debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(項目妥当チェックエラー)：（その１）');
+                  --********** debug_log ********** END   ***
                   -- (項目妥当チェックエラー)
                   lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                  gv_msg_kbn          -- 'XXWSH'
@@ -8445,6 +8839,11 @@ AS
 --
                   -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                   set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                    i,                    -- データindex
+                    gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                    gv_msg_93a_019,       -- メッセージid（妥当チェックエラーメッセージ(項目妥当チェックエラー)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                     lt_delivery_no,       -- 配送No
                     lt_order_source_ref,  -- 移動No/依頼No
                     lt_eos_data_type,     -- EOSデータ種別
@@ -8474,6 +8873,9 @@ AS
 --
                   ln_errflg := 1;
 --
+                  --********** debug_log ********** START ***
+                  debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(項目妥当チェックエラー)：（その２）');
+                  --********** debug_log ********** END   ***
                   -- (項目妥当チェックエラー)
                   lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                  gv_msg_kbn          -- 'XXWSH'
@@ -8500,6 +8902,11 @@ AS
 --
                   -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                   set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                    i,                    -- データindex
+                    gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                    gv_msg_93a_019,       -- メッセージid（妥当チェックエラーメッセージ(項目妥当チェックエラー)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                     lt_delivery_no,       -- 配送No
                     lt_order_source_ref,  -- 移動No/依頼No
                     lt_eos_data_type,     -- EOSデータ種別
@@ -8613,6 +9020,9 @@ AS
 --
                     ln_errflg := 1;
 --
+                    --********** debug_log ********** START ***
+                    debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(ロットステータス未設定警告)：（その１）');
+                    --********** debug_log ********** END   ***
                     -- (ロットステータス未設定警告)
                     lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                    gv_msg_kbn          -- 'XXWSH'
@@ -8642,6 +9052,11 @@ AS
 --
                     -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                     set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                      i,                    -- データindex
+                      gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                      gv_msg_93a_158,       -- メッセージid（妥当チェックエラーメッセージ(ロットステータス未設定警告)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                       lt_delivery_no,       -- 配送No
                       lt_order_source_ref,  -- 移動No/依頼No
                       lt_eos_data_type,     -- EOSデータ種別
@@ -8723,6 +9138,9 @@ AS
 --
                           ln_errflg := 1;
 --
+                          --********** debug_log ********** START ***
+                          debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(品質警告)：（その１）');
+                          --********** debug_log ********** END   ***
                           -- (品質警告)
                           lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                          gv_msg_kbn          -- 'XXWSH'
@@ -8749,6 +9167,11 @@ AS
 --
                           -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                           set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                            i,                    -- データindex
+                            gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                            gv_msg_93a_021,       -- メッセージid（妥当チェックエラーメッセージ(品質警告)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                             lt_delivery_no,       -- 配送No
                             lt_order_source_ref,  -- 移動No/依頼No
                             lt_eos_data_type,     -- EOSデータ種別
@@ -8768,6 +9191,9 @@ AS
 --
                         ln_errflg := 1;
 --
+                        --********** debug_log ********** START ***
+                        debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(ロット警告)：（その１）');
+                        --********** debug_log ********** END   ***
                         -- (ロット警告)
                         lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                        gv_msg_kbn          -- 'XXWSH'
@@ -8794,6 +9220,11 @@ AS
 --
                         -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                         set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                          i,                    -- データindex
+                          gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                          gv_msg_93a_020,       -- メッセージid（妥当チェックエラーメッセージ(ロット警告)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                           lt_delivery_no,       -- 配送No
                           lt_order_source_ref,  -- 移動No/依頼No
                           lt_eos_data_type,     -- EOSデータ種別
@@ -8824,6 +9255,9 @@ AS
 --
                 ln_errflg := 1;
 --
+                --********** debug_log ********** START ***
+                debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(ロット警告)：（その２）');
+                --********** debug_log ********** END   ***
                 -- (ロット警告)
                 lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                gv_msg_kbn          -- 'XXWSH'
@@ -8850,6 +9284,11 @@ AS
 --
                 -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                 set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                  i,                    -- データindex
+                  gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                  gv_msg_93a_020,       -- メッセージid（妥当チェックエラーメッセージ(ロット警告)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                   lt_delivery_no,       -- 配送No
                   lt_order_source_ref,  -- 移動No/依頼No
                   lt_eos_data_type,     -- EOSデータ種別
@@ -8918,6 +9357,9 @@ AS
 --
                     ln_errflg := 1;
 --
+                    --********** debug_log ********** START ***
+                    debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(項目妥当チェックエラー)：（その３）');
+                    --********** debug_log ********** END   ***
                     -- (項目妥当チェックエラー)
                     lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                    gv_msg_kbn          -- 'XXWSH'
@@ -8944,6 +9386,11 @@ AS
 --
                     -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                     set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                      i,                    -- データindex
+                      gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                      gv_msg_93a_019,       -- メッセージid（妥当チェックエラーメッセージ(項目妥当チェックエラー)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                       lt_delivery_no,       -- 配送No
                       lt_order_source_ref,  -- 移動No/依頼No
                       lt_eos_data_type,     -- EOSデータ種別
@@ -8970,6 +9417,9 @@ AS
 --
                     ln_errflg := 1;
 --
+                    --********** debug_log ********** START ***
+                    debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(項目妥当チェックエラー)：（その４）');
+                    --********** debug_log ********** END   ***
                     -- (項目妥当チェックエラー)
                     lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                    gv_msg_kbn          -- 'XXWSH'
@@ -8996,6 +9446,11 @@ AS
 --
                     -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                     set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                      i,                    -- データindex
+                      gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                      gv_msg_93a_019,       -- メッセージid（妥当チェックエラーメッセージ(項目妥当チェックエラー)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                       lt_delivery_no,       -- 配送No
                       lt_order_source_ref,  -- 移動No/依頼No
                       lt_eos_data_type,     -- EOSデータ種別
@@ -9102,6 +9557,9 @@ AS
 --
                         ln_errflg := 1;
 --
+                        --********** debug_log ********** START ***
+                        debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(ロットステータス未設定警告)：（その２）');
+                        --********** debug_log ********** END   ***
                         -- (ロットステータス未設定警告)
                         lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                        gv_msg_kbn          -- 'XXWSH'
@@ -9130,6 +9588,11 @@ AS
 --
                         -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                         set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                          i,                    -- データindex
+                          gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                          gv_msg_93a_158,       -- メッセージid（妥当チェックエラーメッセージ(ロットステータス未設定警告)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                           lt_delivery_no,       -- 配送No
                           lt_order_source_ref,  -- 移動No/依頼No
                           lt_eos_data_type,     -- EOSデータ種別
@@ -9209,6 +9672,9 @@ AS
 --
                             ln_errflg := 1;
 --
+                            --********** debug_log ********** START ***
+                            debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(品質警告)：（その２）');
+                            --********** debug_log ********** END   ***
                             -- (品質警告)
                             lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                            gv_msg_kbn          -- 'XXWSH'
@@ -9235,6 +9701,11 @@ AS
 --
                             -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                             set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                              i,                    -- データindex
+                              gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                              gv_msg_93a_021,       -- メッセージid（妥当チェックエラーメッセージ(品質警告)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                               lt_delivery_no,       -- 配送No
                               lt_order_source_ref,  -- 移動No/依頼No
                               lt_eos_data_type,     -- EOSデータ種別
@@ -9255,6 +9726,9 @@ AS
 --
                           ln_errflg := 1;
 --
+                          --********** debug_log ********** START ***
+                          debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(ロット警告)：（その３）');
+                          --********** debug_log ********** END   ***
                           -- (ロット警告)
                           lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                          gv_msg_kbn          -- 'XXWSH'
@@ -9281,6 +9755,11 @@ AS
 --
                           -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                           set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                            i,                    -- データindex
+                            gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                            gv_msg_93a_020,       -- メッセージid（妥当チェックエラーメッセージ(ロット警告)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                             lt_delivery_no,       -- 配送No
                             lt_order_source_ref,  -- 移動No/依頼No
                             lt_eos_data_type,     -- EOSデータ種別
@@ -9398,6 +9877,9 @@ AS
 --
                       ln_errflg := 1;
 --
+                      --********** debug_log ********** START ***
+                      debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(ロットステータス未設定警告)：（その３）');
+                      --********** debug_log ********** END   ***
                       -- (ロットステータス未設定警告)
                       lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                      gv_msg_kbn          -- 'XXWSH'
@@ -9426,6 +9908,11 @@ AS
 --
                       -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                       set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                        i,                    -- データindex
+                        gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                        gv_msg_93a_158,       -- メッセージid（妥当チェックエラーメッセージ(ロットステータス未設定警告)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                         lt_delivery_no,       -- 配送No
                         lt_order_source_ref,  -- 移動No/依頼No
                         lt_eos_data_type,     -- EOSデータ種別
@@ -9504,6 +9991,9 @@ AS
 --
                           ln_errflg := 1;
 --
+                          --********** debug_log ********** START ***
+                          debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(品質警告)：（その３）');
+                          --********** debug_log ********** END   ***
                           -- (品質警告)
                           lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                          gv_msg_kbn          -- 'XXWSH'
@@ -9530,6 +10020,11 @@ AS
 --
                           -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                           set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                            i,                    -- データindex
+                            gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                            gv_msg_93a_021,       -- メッセージid（妥当チェックエラーメッセージ(品質警告)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                             lt_delivery_no,       -- 配送No
                             lt_order_source_ref,  -- 移動No/依頼No
                             lt_eos_data_type,     -- EOSデータ種別
@@ -9550,6 +10045,9 @@ AS
 --
                         ln_errflg := 1;
 --
+                        --********** debug_log ********** START ***
+                        debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(ロット警告)：（その４）');
+                        --********** debug_log ********** END   ***
                         -- (ロット警告)
                         lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                        gv_msg_kbn          -- 'XXWSH'
@@ -9576,6 +10074,11 @@ AS
 --
                         -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                         set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                          i,                    -- データindex
+                          gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                          gv_msg_93a_020,       -- メッセージid（妥当チェックエラーメッセージ(ロット警告)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                           lt_delivery_no,       -- 配送No
                           lt_order_source_ref,  -- 移動No/依頼No
                           lt_eos_data_type,     -- EOSデータ種別
@@ -9594,6 +10097,9 @@ AS
 --
                        ln_errflg := 1;
 --
+                        --********** debug_log ********** START ***
+                        debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(ロット警告)：（その５）');
+                        --********** debug_log ********** END   ***
                         -- (ロット警告)
                         lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                        gv_msg_kbn          -- 'XXWSH'
@@ -9620,6 +10126,11 @@ AS
 --
                         -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                         set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                          i,                    -- データindex
+                          gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                          gv_msg_93a_020,       -- メッセージid（妥当チェックエラーメッセージ(ロット警告)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                           lt_delivery_no,       -- 配送No
                           lt_order_source_ref,  -- 移動No/依頼No
                           lt_eos_data_type,     -- EOSデータ種別
@@ -9666,6 +10177,9 @@ AS
 --
                 ln_errflg := 1;
 --
+                --********** debug_log ********** START ***
+                debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(項目妥当チェックエラー)：（その５）');
+                --********** debug_log ********** END   ***
                 -- (項目妥当チェックエラー)
                 lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                gv_msg_kbn          -- 'XXWSH'
@@ -9692,6 +10206,11 @@ AS
 --
                 -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                 set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                  i,                    -- データindex
+                  gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                  gv_msg_93a_019,       -- メッセージid（妥当チェックエラーメッセージ(項目妥当チェックエラー)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                   lt_delivery_no,       -- 配送No
                   lt_order_source_ref,  -- 移動No/依頼No
                   lt_eos_data_type,     -- EOSデータ種別
@@ -9755,6 +10274,9 @@ AS
 --
                   ln_errflg := 1;
 --
+                  --********** debug_log ********** START ***
+                  debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(ロット警告)：（その６）');
+                  --********** debug_log ********** END   ***
                   -- (ロット警告)
                   lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                  gv_msg_kbn          -- 'XXWSH'
@@ -9781,6 +10303,11 @@ AS
 --
                   -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                   set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                    i,                    -- データindex
+                    gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                    gv_msg_93a_020,       -- メッセージid（妥当チェックエラーメッセージ(ロット警告)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                     lt_delivery_no,       -- 配送No
                     lt_order_source_ref,  -- 移動No/依頼No
                     lt_eos_data_type,     -- EOSデータ種別
@@ -9816,6 +10343,9 @@ AS
 --
                 ln_errflg := 1;
 --
+                --********** debug_log ********** START ***
+                debug_log(FND_FILE.LOG,'妥当チェックエラーメッセージ(項目妥当チェックエラー)：（その６）');
+                --********** debug_log ********** END   ***
                 -- (項目妥当チェックエラー)
                 lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                gv_msg_kbn          -- 'XXWSH'
@@ -9842,6 +10372,11 @@ AS
 --
                 -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                 set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                  i,                    -- データindex
+                  gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                  gv_msg_93a_019,       -- メッセージid（妥当チェックエラーメッセージ(項目妥当チェックエラー)）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                   lt_delivery_no,       -- 配送No
                   lt_order_source_ref,  -- 移動No/依頼No
                   lt_eos_data_type,     -- EOSデータ種別
@@ -9985,6 +10520,11 @@ AS
 --
               -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
               set_header_unit_reserveflg(
+-- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
+                i,                    -- データindex
+                gv_flg_off,           -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                gv_msg_93a_146,       -- メッセージid（ロット管理品の内訳数量未設定エラーメッセージ）
+-- 2009/02/20 本番障害#1199 ADD END   配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
                 lt_delivery_no,       -- 配送No
                 lt_order_source_ref,  -- 移動No/依頼No
                 lt_eos_data_type,     -- EOSデータ種別
@@ -10315,6 +10855,9 @@ AS
 --
         IF (ln_ret_code = gn_warn) THEN
 --
+          --********** debug_log ********** START ***
+          debug_log(FND_FILE.LOG,'最大配送区分算出関数エラー（その１）');
+          --********** debug_log ********** END   ***
           lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
                          gv_msg_kbn                       -- 'XXWSH'
                         ,gv_msg_93a_152                   -- 最大配送区分算出関数エラー
@@ -10367,6 +10910,9 @@ AS
 --
       IF (ln_ret_code = gn_warn) THEN
 --
+        --********** debug_log ********** START ***
+        debug_log(FND_FILE.LOG,'最大パレット枚数算出関数エラー（その１）');
+        --********** debug_log ********** END   ***
         lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
                        gv_msg_kbn                       -- 'XXWSH'
                       ,gv_msg_93a_025                   -- 最大パレット枚数算出関数エラー
@@ -10807,6 +11353,9 @@ AS
 --
         IF (ln_ret_code = gn_warn) THEN
 --
+          --********** debug_log ********** START ***
+          debug_log(FND_FILE.LOG,'最大配送区分算出関数エラー（その２）');
+          --********** debug_log ********** END   ***
           lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
                          gv_msg_kbn                       -- 'XXWSH'
                         ,gv_msg_93a_152                   -- 最大配送区分算出関数エラー
@@ -10859,6 +11408,9 @@ AS
 --
       IF (ln_ret_code = gn_warn) THEN
 --
+        --********** debug_log ********** START ***
+        debug_log(FND_FILE.LOG,'最大パレット枚数算出関数エラー（その２）');
+        --********** debug_log ********** END   ***
         lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
                        gv_msg_kbn                       -- 'XXWSH'
                       ,gv_msg_93a_025                   -- 最大パレット枚数算出関数エラー
@@ -11254,6 +11806,9 @@ AS
       WHEN NO_DATA_FOUND THEN
       --処理可能な指示データが存在しない場合、エラー
 --
+        --********** debug_log ********** START ***
+        debug_log(FND_FILE.LOG,'実績計上／訂正不可エラー（その２）');
+        --********** debug_log ********** END   ***
         lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
                        gv_msg_kbn                                 -- 'XXWSH'
                       ,gv_msg_93a_154                             -- 実績計上／訂正不可エラーメッセージ
@@ -12963,6 +13518,9 @@ AS
 --
         IF (ln_ret_code = gn_warn) THEN
 --
+          --********** debug_log ********** START ***
+          debug_log(FND_FILE.LOG,'最大配送区分算出関数エラー（その３）');
+          --********** debug_log ********** END   ***
           lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
                          gv_msg_kbn                       -- 'XXWSH'
                         ,gv_msg_93a_152                   -- 最大配送区分算出関数エラー
@@ -13015,6 +13573,9 @@ AS
 --
       IF (ln_ret_code = gn_warn) THEN
 --
+        --********** debug_log ********** START ***
+        debug_log(FND_FILE.LOG,'最大パレット枚数算出関数エラー（その３）');
+        --********** debug_log ********** END   ***
         lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
                        gv_msg_kbn                       -- 'XXWSH'
                       ,gv_msg_93a_025                   -- 最大パレット枚数算出関数エラー
@@ -13439,6 +14000,9 @@ AS
 --
         IF (ln_ret_code = gn_warn) THEN
 --
+          --********** debug_log ********** START ***
+          debug_log(FND_FILE.LOG,'最大配送区分算出関数エラー（その４）');
+          --********** debug_log ********** END   ***
           lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
                          gv_msg_kbn                       -- 'XXWSH'
                         ,gv_msg_93a_152                   -- 最大配送区分算出関数エラー
@@ -13491,6 +14055,9 @@ AS
 --
       IF (ln_ret_code = gn_warn) THEN
 --
+        --********** debug_log ********** START ***
+        debug_log(FND_FILE.LOG,'最大パレット枚数算出関数エラー（その４）');
+        --********** debug_log ********** END   ***
         lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
                        gv_msg_kbn                       -- 'XXWSH'
                       ,gv_msg_93a_025                   -- 最大パレット枚数算出関数エラー
@@ -13793,6 +14360,9 @@ AS
 --
         IF (ln_ret_code = gn_warn) THEN
 --
+          --********** debug_log ********** START ***
+          debug_log(FND_FILE.LOG,'最大配送区分算出関数エラー（その５）');
+          --********** debug_log ********** END   ***
           lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
                          gv_msg_kbn                       -- 'XXWSH'
                         ,gv_msg_93a_152                   -- 最大配送区分算出関数エラー
@@ -13843,6 +14413,9 @@ AS
 --
       IF (ln_ret_code = gn_warn) THEN
 --
+        --********** debug_log ********** START ***
+        debug_log(FND_FILE.LOG,'最大パレット枚数算出関数エラー（その５）');
+        --********** debug_log ********** END   ***
         lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
                        gv_msg_kbn                       -- 'XXWSH'
                       ,gv_msg_93a_025                   -- 最大パレット枚数算出関数エラー
@@ -17617,59 +18190,108 @@ debug_log(FND_FILE.LOG,'      実績数量:' || ln_shiped_quantity);
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
+-- 2009/02/20 本番障害#1199 MOD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
 --
+--    <<disp_report_loop>>
+--    FOR i IN 1..gr_interface_info_rec.COUNT LOOP
+----
+--      IF (gr_interface_info_rec(i).err_flg     = gv_flg_on)
+--      OR (gr_interface_info_rec(i).reserve_flg = gv_flg_on)
+--      OR (gr_interface_info_rec(i).logonly_flg = gv_flg_on) THEN
+----
+--        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_sep_msg);
+----
+--        lv_dspbuf := '';
+--        lv_dspbuf := gr_interface_info_rec(i).party_site_code                         || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).freight_carrier_code       || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).shipping_method_code       || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).cust_po_number             || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).order_source_ref           || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).delivery_no                || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).collected_pallet_qty       || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).location_code              || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).arrival_time_from          || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).arrival_time_to            || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).eos_data_type              || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).ship_to_location           || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || TO_CHAR(gr_interface_info_rec(i).shipped_date,'YYYY/MM/DD') || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || TO_CHAR(gr_interface_info_rec(i).arrival_date,'YYYY/MM/DD') || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).order_type                 || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).used_pallet_qty            || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).report_post_code           || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).header_id                  || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).line_id                    || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).line_number                || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).orderd_item_code           || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).shiped_quantity            || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).ship_to_quantity           || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).lot_no                     || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD') || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD') || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).original_character         || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).detailed_quantity          || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).item_kbn_cd                || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).prod_kbn_cd                || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).weight_capacity_class      || gv_msg_pnt;
+--        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).lot_ctl;
+----
+--        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_dspbuf);
+----
+--        lv_dspmsg := gr_interface_info_rec(i).message;
+----
+--        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_dspmsg);
+----
+--      END IF;
+----
+--    END LOOP disp_report_loop;
+    -- エラー出力はエラー用配列から
     <<disp_report_loop>>
-    FOR i IN 1..gr_interface_info_rec.COUNT LOOP
+    FOR i IN 1..gr_err_header_rec.COUNT LOOP
 --
-      IF (gr_interface_info_rec(i).err_flg     = gv_flg_on)
-      OR (gr_interface_info_rec(i).reserve_flg = gv_flg_on)
-      OR (gr_interface_info_rec(i).logonly_flg = gv_flg_on) THEN
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_sep_msg);
 --
-        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_sep_msg);
+      lv_dspbuf := '';
+      lv_dspbuf := gr_err_header_rec(i).party_site_code                         || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).freight_carrier_code       || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).shipping_method_code       || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).cust_po_number             || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).order_source_ref           || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).delivery_no                || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).collected_pallet_qty       || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).location_code              || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).arrival_time_from          || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).arrival_time_to            || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).eos_data_type              || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).ship_to_location           || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || TO_CHAR(gr_err_header_rec(i).shipped_date,'YYYY/MM/DD') || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || TO_CHAR(gr_err_header_rec(i).arrival_date,'YYYY/MM/DD') || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).order_type                 || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).used_pallet_qty            || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).report_post_code           || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).header_id                  || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).line_id                    || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).line_number                || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).orderd_item_code           || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).shiped_quantity            || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).ship_to_quantity           || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).lot_no                     || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || TO_CHAR(gr_err_header_rec(i).designated_production_date,'YYYY/MM/DD') || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || TO_CHAR(gr_err_header_rec(i).use_by_date,'YYYY/MM/DD') || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).original_character         || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).detailed_quantity          || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).item_kbn_cd                || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).prod_kbn_cd                || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).weight_capacity_class      || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gr_err_header_rec(i).lot_ctl;
 --
-        lv_dspbuf := '';
-        lv_dspbuf := gr_interface_info_rec(i).party_site_code                         || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).freight_carrier_code       || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).shipping_method_code       || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).cust_po_number             || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).order_source_ref           || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).delivery_no                || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).collected_pallet_qty       || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).location_code              || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).arrival_time_from          || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).arrival_time_to            || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).eos_data_type              || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).ship_to_location           || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || TO_CHAR(gr_interface_info_rec(i).shipped_date,'YYYY/MM/DD') || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || TO_CHAR(gr_interface_info_rec(i).arrival_date,'YYYY/MM/DD') || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).order_type                 || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).used_pallet_qty            || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).report_post_code           || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).header_id                  || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).line_id                    || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).line_number                || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).orderd_item_code           || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).shiped_quantity            || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).ship_to_quantity           || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).lot_no                     || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD') || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD') || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).original_character         || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).detailed_quantity          || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).item_kbn_cd                || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).prod_kbn_cd                || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).weight_capacity_class      || gv_msg_pnt;
-        lv_dspbuf := lv_dspbuf || gr_interface_info_rec(i).lot_ctl;
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_dspbuf);
 --
-        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_dspbuf);
+      lv_dspmsg := gr_err_header_rec(i).message;
 --
-        lv_dspmsg := gr_interface_info_rec(i).message;
---
-        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_dspmsg);
---
-      END IF;
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_dspmsg);
 --
     END LOOP disp_report_loop;
+-- 2009/02/20 本番障害#1199 MOD END 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
