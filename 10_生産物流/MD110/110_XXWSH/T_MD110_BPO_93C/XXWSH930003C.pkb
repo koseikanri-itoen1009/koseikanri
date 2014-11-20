@@ -2930,7 +2930,18 @@ AS
           ,trn.freight_charge_code       AS freight_charge_code   -- 運賃区分
           ,trn.complusion_output_kbn     AS complusion_output_kbn -- 強制出力区分
           ,trn.no_instr_actual           AS no_instr_actual       -- 指示なし実績:'Y' 指示あり実績:'N'
-          ,trn.lot_inst_cnt              AS lot_inst_cnt          -- 指示ロットの件数
+          --,trn.lot_inst_cnt              AS lot_inst_cnt          -- 指示ロットの件数    -- 2008/12/25 本番障害#831 Del
+          -- 2008/12/25 本番障害#831 Add Start ------------------------------
+          ,(
+              SELECT COUNT(*)
+              FROM xxinv_mov_lot_details  xmld2
+              WHERE xmld2.document_type_code IN (gc_doc_type_ship
+                                                ,gc_doc_type_prov)
+              AND xmld2.record_type_code = gc_rec_type_inst  -- 指示ロット
+              AND xmld2.lot_id = trn.lot_id
+              AND xmld2.mov_line_id = trn.order_line_id
+           ) AS lot_inst_cnt    -- 指示ロットの件数
+          -- 2008/12/25 本番障害#831 Add End ------------------------------
           ,ROW_NUMBER() OVER(PARTITION BY trn.request_no,trn.item_code order by trn.lot_id) AS row_num -- 依頼No・品目ごとにロットID昇順で1から採番
       FROM (
         SELECT /*+ leading (xoha xola otta xmld iimb gic1 mcb1 gic2 mcb2) use_nl(xoha xola otta xmld iimb gic1 mcb1 gic2 mcb2) */
@@ -2963,7 +2974,7 @@ AS
             ,xoha.freight_charge_class    AS freight_charge_code -- 運賃区分
             ,NVL(xcv.complusion_output_code,'0') AS complusion_output_kbn -- 強制出力区分
             ,DECODE(xoha.schedule_ship_date,NULL,gc_yn_div_y,gc_yn_div_n) AS no_instr_actual  -- 指示なし実績:'Y' 指示あり実績:'N'
-            ,COUNT(xmld.lot_id)           AS lot_inst_cnt        -- 指示ロットの件数
+            --,COUNT(xmld.lot_id)           AS lot_inst_cnt        -- 指示ロットの件数     -- 2008/12/25 本番障害#831 Del
         FROM
            xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
@@ -3095,7 +3106,7 @@ AS
             ,xoha.freight_charge_class          AS freight_charge_code   -- 運賃区分
             ,NVL(xcv.complusion_output_code,'0') AS complusion_output_kbn -- 強制出力区分
             ,DECODE(xoha.schedule_ship_date,NULL,gc_yn_div_y,gc_yn_div_n) AS no_instr_actual  -- 指示なし実績:'Y' 指示あり実績:'N'
-            ,COUNT(xmld.lot_id)                 AS lot_inst_cnt        -- 指示ロットの件数
+            --,COUNT(xmld.lot_id)                 AS lot_inst_cnt        -- 指示ロットの件数    -- 2008/12/25 本番障害#831 Del
         FROM
            xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
@@ -3972,7 +3983,17 @@ AS
           ,trn.prod_class_code           AS prod_class_code       -- 商品区分
           ,trn.complusion_output_kbn     AS complusion_output_kbn -- 強制出力区分
           ,trn.no_instr_actual           AS no_instr_actual       -- 指示なし実績:'Y' 指示あり実績:'N'
-          ,trn.lot_inst_cnt              AS lot_inst_cnt          -- 指示ロットの件数
+          --,trn.lot_inst_cnt              AS lot_inst_cnt          -- 指示ロットの件数   -- 2008/12/25 本番障害#831 Del
+          -- 2008/12/25 本番障害#831 Add Start ------------------------------
+          ,(
+              SELECT COUNT(*)
+              FROM xxinv_mov_lot_details  xmld2
+              WHERE xmld2.document_type_code = gc_doc_type_move
+              AND xmld2.record_type_code = gc_rec_type_inst  -- 指示ロット
+              AND xmld2.lot_id = trn.lot_id
+              AND xmld2.mov_line_id = trn.order_line_id
+           ) AS lot_inst_cnt    -- 指示ロットの件数
+          -- 2008/12/25 本番障害#831 Add End ------------------------------
           ,ROW_NUMBER() OVER(PARTITION BY trn.request_no,trn.item_code order by trn.lot_id) AS row_num -- 依頼No・品目ごとにロットID昇順で1から採番
       FROM (
         SELECT /*+ leading (xmrih xmril xmld iimb gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld iimb gic1 mcb1 gic2 mcb2) */
@@ -4004,7 +4025,7 @@ AS
             ,NVL(xcv.complusion_output_code,'0') AS complusion_output_kbn -- 強制出力区分
             ,DECODE(NVL(xmrih.no_instr_actual_class,gc_yn_div_n)
                           ,gc_yn_div_y,gc_yn_div_y,gc_yn_div_n) AS no_instr_actual  -- 指示なし実績:'Y' 指示あり実績:'N'
-            ,COUNT(xmld.lot_id)           AS lot_inst_cnt        -- 指示ロットの件数
+            --,COUNT(xmld.lot_id)           AS lot_inst_cnt        -- 指示ロットの件数   -- 2008/12/25 本番障害#831 Del
         FROM
            xxinv_mov_req_instr_headers    xmrih   -- 移動依頼/指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril   -- 移動依頼/指示明細アドオン
@@ -4132,7 +4153,7 @@ AS
             ,NVL(xcv.complusion_output_code,'0') AS complusion_output_kbn -- 強制出力区分
             ,DECODE(NVL(xmrih.no_instr_actual_class,gc_yn_div_n)
                           ,gc_yn_div_y,gc_yn_div_y,gc_yn_div_n) AS no_instr_actual  -- 指示なし実績:'Y' 指示あり実績:'N'
-            ,COUNT(xmld.lot_id)           AS lot_inst_cnt        -- 指示ロットの件数
+            --,COUNT(xmld.lot_id)           AS lot_inst_cnt        -- 指示ロットの件数       -- 2008/12/25 本番障害#831 Del
         FROM
            xxinv_mov_req_instr_headers    xmrih   -- 移動依頼/指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril   -- 移動依頼/指示明細アドオン
