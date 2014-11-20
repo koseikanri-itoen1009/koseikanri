@@ -7,7 +7,7 @@ AS
  * Description      : 加重平均計算処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 加重平均計算処理 T_MD070_BPO_79C
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/12/02    1.1   H.Marushita      数量ゼロの取引別ロット原価を抽出対象外とする。
  *  2008/12/05    1.2   H.Marushita      本番435対応
  *  2008/12/19    1.3   H.Marushita      在庫調整用に更新と登録を行うように修正
+ *  2009/01/14    1.4   H.Marushita      ロットマスタの単価変更反映条件の見直し
  *
  *****************************************************************************************/
 --
@@ -443,8 +444,13 @@ AS
     END LOOP upd_lot_cost_date_loop;
 --
     -- 一括更新処理
-    FORALL ln_loop_cnt IN 1 .. gt_item_id_upd_tab.COUNT
-      -- 品目マスタ更新
+-- 2009/01/14 MOD S
+--    FORALL ln_loop_cnt IN 1 .. gt_item_id_upd_tab.COUNT
+--
+    FORALL ln_loop_cnt IN 1 .. gt_xlc_item_id_tab.COUNT
+--
+-- 2009/01/14 MOD E
+      -- ロット別実際原価マスタ更新
       UPDATE xxcmn_lot_cost
       SET trans_qty               = gt_xlc_trans_qty_tab(ln_loop_cnt) -- 取引数量
          ,unit_ploce              = gt_xlc_unit_price_tab(ln_loop_cnt)-- 単価 
