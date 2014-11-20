@@ -7,7 +7,7 @@ AS
  * Description      : 倉替返品情報インターフェース
  * MD.050           : 倉替返品 T_MD050_BPO_430
  * MD.070           : 倉替返品情報インターフェース T_MD070_BPO_43B
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------------  ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2008/10/10    1.5   ORACLE平福正明   T_S_474対応
  *  2008/11/25    1.6   ORACLE吉元強樹   本番問合せ#243対応
  *  2008/12/22    1.7   ORACLE椎名昭圭   本番問合せ#743対応
+ *  2009/01/06    1.8   Yuko Kawano      本番問合せ#908対応
  *
  *****************************************************************************************/
 --
@@ -1666,7 +1667,10 @@ AS
               WHEN (xoh.order_category_code = gv_cate_return)  -- 受注カテゴリ=返品の場合
                 THEN xol.quantity
               --WHEN (xoh.transaction_type_name = gv_cate_order )  -- 受注タイプ名=受注の場合
-              WHEN (xoh.order_category_code = gv_cate_return)  -- 受注カテゴリ=受注の場合
+--2009/01/06 Y.Kawano Mod Start #908
+--              WHEN (xoh.order_category_code = gv_cate_return)  -- 受注カテゴリ=受注の場合
+              WHEN (xoh.order_category_code = gv_cate_order)  -- 受注カテゴリ=受注の場合
+--2009/01/06 Y.Kawano Mod End   #908
                 THEN xol.quantity * -1
               ELSE 0
             END                          AS add_quantity,                 -- 加算用数量
