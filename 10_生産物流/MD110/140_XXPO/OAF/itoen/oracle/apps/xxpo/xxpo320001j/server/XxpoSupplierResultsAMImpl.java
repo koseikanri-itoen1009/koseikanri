@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoSupplierResultsAMImpl
 * 概要説明   : 仕入先出荷実績入力:検索アプリケーションモジュール
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,41 +12,40 @@
 * 2008-06-26 1.1  北寒寺正夫   ST不具合#17/結合指摘No3
 * 2008-07-11 1.2  伊藤ひとみ   内部変更#153 納入日の未来日チェック追加
 * 2008-10-22 1.3  吉元強樹     T_S_599対応
+* 2008-11-04 1.4  二瓶大輔     統合障害#51,103、104対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo320001j.server;
 
-import com.sun.java.util.collections.HashMap;
 import com.sun.java.util.collections.ArrayList;
+import com.sun.java.util.collections.HashMap;
+
+import itoen.oracle.apps.xxcmn.util.XxcmnConstants;
+import itoen.oracle.apps.xxcmn.util.XxcmnUtility;
+import itoen.oracle.apps.xxcmn.util.server.XxcmnOAApplicationModuleImpl;
+import itoen.oracle.apps.xxpo.util.XxpoConstants;
+import itoen.oracle.apps.xxpo.util.XxpoUtility;
 
 import java.sql.CallableStatement;
 import java.sql.SQLException;
 import java.sql.Types;
 
-import oracle.apps.fnd.framework.server.OADBTransaction;
-
-import oracle.apps.fnd.framework.server.OAViewObjectImpl;
-import oracle.apps.fnd.framework.OARow;
-import oracle.apps.fnd.framework.OAViewObject;
+import oracle.apps.fnd.common.MessageToken;
 import oracle.apps.fnd.framework.OAAttrValException;
 import oracle.apps.fnd.framework.OAException;
+import oracle.apps.fnd.framework.OARow;
+import oracle.apps.fnd.framework.OAViewObject;
+import oracle.apps.fnd.framework.server.OADBTransaction;
+import oracle.apps.fnd.framework.server.OAViewObjectImpl;
 
-import oracle.apps.fnd.common.MessageToken;
-
-import oracle.jbo.domain.Number;
-import oracle.jbo.domain.Date;
 import oracle.jbo.Row;
-
-import itoen.oracle.apps.xxcmn.util.server.XxcmnOAApplicationModuleImpl;
-import itoen.oracle.apps.xxcmn.util.XxcmnUtility;
-import itoen.oracle.apps.xxcmn.util.XxcmnConstants;
-import itoen.oracle.apps.xxpo.util.XxpoConstants;
-import itoen.oracle.apps.xxpo.util.XxpoUtility;
+import oracle.jbo.domain.Date;
+import oracle.jbo.domain.Number;
 
 /***************************************************************************
  * 仕入先出荷実績入力:検索アプリケーションモジュールです。
  * @author  SCS 吉元 強樹
- * @version 1.1
+ * @version 1.4
  ***************************************************************************
  */
 public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -76,9 +75,6 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
   {
     return (OAViewObjectImpl)findViewObject("StatusCodeVO1");
   }
-
-
-
 
   /***************************************************************************
    * (検索画面)初期化処理を行うメソッドです。
@@ -189,7 +185,13 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
 
     ArrayList exceptions = new ArrayList(100);
 
-    if (XxcmnUtility.isBlankOrNull(fdDate))
+// 2008-11-04 v1.4 D.Nihei Mod Start 統合障害#104対応
+//    if (XxcmnUtility.isBlankOrNull(fdDate))
+    // 発注No
+    Object poNum  = poResultsSearchRow.getAttribute("PoNum");
+    if (XxcmnUtility.isBlankOrNull(poNum) 
+     && XxcmnUtility.isBlankOrNull(fdDate))
+// 2008-11-04 v1.4 D.Nihei Mod End
     {
       exceptions.add( new OAAttrValException(
                             OAAttrValException.TYP_VIEW_OBJECT,          
@@ -303,10 +305,10 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
       boolean retFlag;
 
       // *************************************************** //
-      // * 処理3:出庫実績存在チェック                      * //
-      // * 処理4:OPM在庫会計CLOSEチェック                  * //
-      // * 処理5:発注ステータスチェック                    * //
-      // * 処理6:発注明細金額確定チェック                  * //
+      // * 処理3:出庫実績存在チェック                         * //
+      // * 処理4:OPM在庫会計CLOSEチェック                     * //
+      // * 処理5:発注ステータスチェック                        * //
+      // * 処理6:発注明細金額確定チェック                      * //
       // *************************************************** //
       retFlag = chkBatchDelivery(exceptions,
                                  vo,
@@ -319,7 +321,7 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
       }
 
       // *************************************************** //
-      // * 処理7:発注明細更新処理                          * //
+      // * 処理7:発注明細更新処理                             * //
       // *************************************************** //
       detailsUpdate(row, resultsDetailsVo);
       
@@ -377,7 +379,7 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
     boolean retFlag;
 
     // *************************************************** //
-    // * 処理3:出庫実績存在チェック                      * //
+    // * 処理3:出庫実績存在チェック                         * //
     // *************************************************** //
     String headerNumber = (String)row.getAttribute("HeaderNumber"); // 発注番号
 
@@ -721,6 +723,12 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
     {
       // ヘッダの入力制御を実施
       readOnlyChangedHeader();
+// 2008-11-04 v1.4 D.Nihei Add Start 
+    } else
+    {
+      // 摘要を初期化する
+      resultsMakeHdrPVORow.setAttribute("DescriptionReadOnly", Boolean.FALSE);
+// 2008-11-04 v1.4 D.Nihei Add End
     }
 
     
@@ -893,7 +901,7 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // 明細.摘要
     resultsMakeDetailsVORow.setAttribute("DescriptionReadOnly",       Boolean.TRUE);
 
-    // 明細.ランク1
+    // 明細.ランク1,ランク2
     resultsMakeDetailsVORow.setAttribute("RankReadOnly",              Boolean.TRUE);
 
   }
@@ -1398,7 +1406,7 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // *   ヘッダー更新処理      * //
     // *************************** //
     if (!XxcmnUtility.isEquals(makeHdrVORow.getAttribute("Description"),               
-                               makeHdrVORow.getAttribute("BaseDescription")))    // 適用(ヘッダー)：適用(ヘッダー)(DB)
+                               makeHdrVORow.getAttribute("BaseDescription")))    // 摘要(ヘッダー)：摘要(ヘッダー)(DB)
     {
 
 // 2008-10-22 T.Yoshimoto ADD START
@@ -1469,7 +1477,7 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
         || (!XxcmnUtility.isEquals(makeDetailsVORow.getAttribute("AppointmentDate"),               
                                  makeDetailsVORow.getAttribute("BaseAppointmentDate"))) // 日付指定：日付指定(DB)
         || (!XxcmnUtility.isEquals(makeDetailsVORow.getAttribute("Description"),               
-                                 makeDetailsVORow.getAttribute("BaseDescription"))))    // 適用(明細)：適用(明細)(DB)
+                                 makeDetailsVORow.getAttribute("BaseDescription"))))    // 摘要(明細)：摘要(明細)(DB)
       {
 
 // 2008-10-22 T.Yoshimoto ADD START
@@ -1540,14 +1548,18 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
       {
 // 20080521 add yoshimoto End 不具合ログ#320_3
 
-        if ((!XxcmnUtility.isEquals(makeDetailsVORow.getAttribute("ItemAmount"),               
-                                   makeDetailsVORow.getAttribute("BaseIlmItemAmount")))   // 入数：OPMロットMST在庫入数(DB)
+        if ( (!XxcmnUtility.isEquals(makeDetailsVORow.getAttribute("ItemAmount"),               
+                                     makeDetailsVORow.getAttribute("BaseIlmItemAmount")))   // 入数：OPMロットMST在庫入数(DB)
           || (!XxcmnUtility.isEquals(makeDetailsVORow.getAttribute("ProductionDate"),               
-                                   makeDetailsVORow.getAttribute("BaseProductionDate")))   // 製造日：OPMロットMST製造年月日(DB)
+                                     makeDetailsVORow.getAttribute("BaseProductionDate")))  // 製造日：OPMロットMST製造年月日(DB)
           || (!XxcmnUtility.isEquals(makeDetailsVORow.getAttribute("UseByDate"),               
-                                   makeDetailsVORow.getAttribute("BaseUseByDate")))       // 賞味期限：OPMロットMST賞味期限(DB)
+                                     makeDetailsVORow.getAttribute("BaseUseByDate")))       // 賞味期限：OPMロットMST賞味期限(DB)
           || (!XxcmnUtility.isEquals(makeDetailsVORow.getAttribute("Rank"),               
-                                   makeDetailsVORow.getAttribute("BaseRank"))))           // ランク1：OPMロットMSTランク1(DB)
+                                     makeDetailsVORow.getAttribute("BaseRank")))            // ランク1：OPMロットMSTランク1(DB)
+// 2008-11-04 v1.4 D.Nihei Add Start 統合障害#51対応
+          || (!XxcmnUtility.isEquals(makeDetailsVORow.getAttribute("Rank2"),               
+                                     makeDetailsVORow.getAttribute("BaseRank2"))))          // ランク2：OPMロットMSTランク2(DB)
+// 2008-11-04 v1.4 D.Nihei Add End
         {
 
 // 2008-10-22 T.Yoshimoto ADD START
@@ -2067,6 +2079,10 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
     params.put("UseByDate",         makeDetailsVORow.getAttribute("UseByDate"));
     // ランク1
     params.put("Rank",              makeDetailsVORow.getAttribute("Rank"));
+// 2008-11-04 v1.4 D.Nihei Add Start 統合障害#51対応 
+    // ランク2
+    params.put("Rank2",              makeDetailsVORow.getAttribute("Rank2"));
+// 2008-11-04 v1.4 D.Nihei Add End
     // 品目ID
     params.put("ItemId",            makeDetailsVORow.getAttribute("ItemId"));
     // ロットNo
@@ -2364,6 +2380,25 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
 
   } // chkConversion
 
+// 2008-11-04 v1.4 D.Nihei Add Start 統合障害#104対応 
+  /***************************************************************************
+   * 納入日のコピー処理を行うメソッドです。
+   ***************************************************************************
+   */
+  public void copyDeliveryDate()
+  {
+    // バッチヘッダ情報VO取得
+    XxpoResultsSearchVOImpl vo = getXxpoResultsSearchVO1();
+    OARow row                  = (OARow)vo.first();
+    Date deliveryDateFrom      = (Date)row.getAttribute("DeliveryDateFrom"); // 納入日（開始）
+    Date deliveryDateTo        = (Date)row.getAttribute("DeliveryDateTo");   // 納入日（終了）
+    if (XxcmnUtility.isBlankOrNull(deliveryDateTo)) 
+    {
+      row.setAttribute("DeliveryDateTo", deliveryDateFrom);
+    }
+  } // copyDeliveryDate
+// 2008-11-04 v1.4 D.Nihei Add End
+
   /**
    * 
    * Container's getter for XxpoResultsSearchVO1
@@ -2447,9 +2482,5 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
   {
     return (XxpoSupplierResultsDetailsVOImpl)findViewObject("XxpoSupplierResultsDetailsVO1");
   }
-
-
-
-
   
 }

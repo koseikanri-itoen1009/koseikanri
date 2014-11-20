@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxpoSupplierResultsCO
 * 概要説明   : 仕入先出荷実績入力:検索コントローラ
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-02-06 1.0  吉元強樹     新規作成
 * 2008-05-02 1.0  吉元強樹     変更要求対応(#12,36,90)、内部変更要求対応(#28,41)
+* 2008-11-04 1.1  二瓶大輔     統合障害#104対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo320001j.webui;
@@ -34,7 +35,7 @@ import itoen.oracle.apps.xxpo.util.XxpoConstants;
 /***************************************************************************
  * 仕入先出荷実績入力:検索コントローラです。
  * @author  SCS 吉元 強樹
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoSupplierResultsCO extends XxcmnOAControllerImpl
@@ -249,6 +250,13 @@ public class XxpoSupplierResultsCO extends XxcmnOAControllerImpl
           "Yes",
           "No",
           null);
+// 2008-11-04 v1.1 D.Nihei Add Start 統合障害#104対応 
+      // 納入日（開始）が変更された場合
+      } else if ("deliveryDate".equals(pageContext.getParameter(EVENT_PARAM)))
+      {
+        // コピー処理
+        am.invokeMethod("copyDeliveryDate");
+// 2008-11-04 v1.1 D.Nihei Add End
       }
 
     // 例外が発生した場合  

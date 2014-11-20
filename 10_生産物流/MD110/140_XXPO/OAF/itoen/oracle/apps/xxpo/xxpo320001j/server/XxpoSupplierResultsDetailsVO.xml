@@ -13,86 +13,106 @@
    FetchSize="200"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
-SELECT pla.po_line_id line_id                  -- 明細ID
-      ,pla.line_num   line_num                 -- 明細番号
-      ,pla.item_no  item_no                  -- 品目コード
-      ,pla.x_item_id  item_id                  -- 品目ID
-      ,TO_CHAR(pla.attribute4, 'FM99990.000') item_amount          -- 入数
-      ,pla.item_short_name item_name         -- 品目名
-      ,ilm.lot_no lot_no                       -- ロットNo
-      ,TO_CHAR(pla.attribute11, 'FM999,999,990.000') order_amount  -- 発注数量
-      ,pla.attribute3 accompany_code           -- 付帯コード
-      ,FND_DATE.STRING_TO_DATE(ilm.attribute1, 'YYYY/MM/DD')  production_date          -- 製造日
-      ,TO_CHAR(NVL(pla.attribute6,pla.attribute11), 'FM999999990.000') leaving_shed_amount  -- 出庫数量
-      ,FND_DATE.STRING_TO_DATE(pla.attribute9, 'YYYY/MM/DD') appointment_date         -- 日付指定
-      ,FND_DATE.STRING_TO_DATE(ilm.attribute3, 'YYYY/MM/DD') use_by_date              -- 賞味期限
-      ,pla.expiration_day expiration_date    -- 賞味期間
-      ,pla.attribute10 unit_name               -- 単位名
-      ,pla.attribute15 description             -- 摘要
-      ,ilm.attribute2 koyu_code                -- 固有記号 
-      ,ilm.attribute14 rank                    -- ランク 
-      ,pla.po_header_id                        -- 発注ヘッダID
-      ,pla.attribute14 money_decision_flag     -- 金額確定フラグ
-      ,pla.cost_manage_code cost_manage_code   -- 原価管理区分
-      ,pla.conv_unit conv_unit                 -- 入出庫換算単位
-      ,pla.lot_ctl lot_ctl                     -- ロット
-      ,xcicv.prod_class_code prod_class_code   -- 商品区分
-      ,xcicv.item_class_code item_class_code   -- 品目区分
-      ,TO_CHAR(pla.attribute4, 'FM99990.000') base_item_amount                        -- 在庫入数(DB)
-      ,FND_DATE.STRING_TO_DATE(pla.attribute5, 'YYYY/MM/DD') base_shipping_date       -- 仕入先出荷日(DB)
-      ,TO_CHAR(pla.attribute6, 'FM999999990.000') base_shipping_amount                -- 仕入先出荷数量(DB)
-      ,FND_DATE.STRING_TO_DATE(pla.attribute9, 'YYYY/MM/DD') base_appointment_date    -- 日付指定(DB)
-      ,pla.attribute15 base_description        -- 摘要(DB)
-      ,TO_CHAR(ilm.attribute6, 'FM99990.000') base_ilm_item_amount                    -- OPMロットマスタ在庫入数(DB)
-      ,FND_DATE.STRING_TO_DATE(ilm.attribute1, 'YYYY/MM/DD') base_production_date     -- OPMロットマスタ製造年月日(DB)
-      ,FND_DATE.STRING_TO_DATE(ilm.attribute3, 'YYYY/MM/DD') base_use_by_date         -- OPMロットマスタ賞味期限(DB) 
-      ,ilm.attribute14 base_rank               -- OPMロットマスタランク(DB)
-      ,ilm.created_by lot_created_by           -- WHOカラム
-      ,ilm.creation_date lot_creation_date     -- WHOカラム
-      ,ilm.last_updated_by lot_last_updated_by -- WHOカラム
-      ,TO_CHAR(ilm.last_update_date, 'YYYY/MM/DD HH24:MI:SS') lot_last_update_date  -- WHOカラム
-      ,ilm.last_update_login lot_last_update_login -- WHOカラム
-      ,pla.created_by created_by                                                    -- WHOカラム
-      ,pla.creation_date creation_date                                              -- WHOカラム
-      ,pla.last_updated_by last_updated_by                                          -- WHOカラム
-      ,TO_CHAR(pla.last_update_date, 'YYYY/MM/DD HH24:MI:SS') last_update_date      -- WHOカラム
-      ,pla.last_update_login last_update_login                  -- WHOカラム
-FROM po_headers_all pha           -- 発注ヘッダ
-    ,(select pla1.po_line_id
-            ,pla1.po_header_id
-            ,pla1.line_num
-            ,pla1.item_id  
-            ,pla1.attribute1
-            ,pla1.attribute3
-            ,pla1.attribute4 
-            ,pla1.attribute5 
-            ,pla1.attribute6
-            ,pla1.attribute9
-            ,pla1.attribute10
-            ,pla1.attribute11
-            ,pla1.attribute14
-            ,pla1.attribute15
-            ,pla1.created_by     
-            ,pla1.creation_date  
-            ,pla1.last_updated_by
-            ,pla1.last_update_date
-            ,pla1.last_update_login
-            ,xcimv1.item_id x_item_id
-            ,xcimv1.item_no
-            ,xcimv1.item_short_name
-            ,xcimv1.expiration_day
-            ,xcimv1.cost_manage_code
-            ,xcimv1.conv_unit conv_unit
-            ,xcimv1.lot_ctl lot_ctl
-      from po_lines_all pla1
-          ,xxcmn_item_mst_v xcimv1
-      where pla1.item_id = xcimv1.inventory_item_id) pla
-    ,ic_lots_mst ilm              -- OPMロットマスタ
-    ,xxcmn_item_categories5_v xcicv  -- 品目カテゴリ情報V5
-WHERE pha.po_header_id  = pla.po_header_id
-  AND pla.attribute1    = ilm.lot_no(+)
-  AND pla.x_item_id     = ilm.item_id(+)
-  AND pla.x_item_id     = xcicv.item_id
+SELECT pla.po_line_id         line_id                  -- 明細ID
+      ,pla.line_num           line_num                 -- 明細番号
+      ,pla.item_no            item_no                  -- 品目コード
+      ,pla.x_item_id          item_id                  -- 品目ID
+      ,TO_CHAR(pla.attribute4, 'FM99990.000') 
+                              item_amount              -- 入数
+      ,pla.item_short_name    item_name                -- 品目名
+      ,ilm.lot_no             lot_no                   -- ロットNo
+      ,TO_CHAR(pla.attribute11, 'FM999,999,990.000') 
+                              order_amount             -- 発注数量
+      ,pla.attribute3         accompany_code           -- 付帯コード
+      ,FND_DATE.STRING_TO_DATE(ilm.attribute1, 'YYYY/MM/DD')  
+                              production_date          -- 製造日
+      ,TO_CHAR(NVL(pla.attribute6,pla.attribute11), 'FM999999990.000') 
+                              leaving_shed_amount      -- 出庫数量
+      ,FND_DATE.STRING_TO_DATE(pla.attribute9, 'YYYY/MM/DD') 
+                              appointment_date         -- 日付指定
+      ,FND_DATE.STRING_TO_DATE(ilm.attribute3, 'YYYY/MM/DD') 
+                              use_by_date              -- 賞味期限
+      ,pla.expiration_day     expiration_date          -- 賞味期間
+      ,pla.attribute10        unit_name                -- 単位名
+      ,pla.attribute15        description              -- 摘要
+      ,ilm.attribute2         koyu_code                -- 固有記号 
+      ,ilm.attribute14        rank                     -- ランク1 
+      ,pla.po_header_id       po_header_id             -- 発注ヘッダID
+      ,pla.attribute14        money_decision_flag      -- 金額確定フラグ
+      ,pla.cost_manage_code   cost_manage_code         -- 原価管理区分
+      ,pla.conv_unit          conv_unit                -- 入出庫換算単位
+      ,pla.lot_ctl            lot_ctl                  -- ロット
+      ,xcicv.prod_class_code  prod_class_code          -- 商品区分
+      ,xcicv.item_class_code  item_class_code          -- 品目区分
+      ,TO_CHAR(pla.attribute4, 'FM99990.000') 
+                              base_item_amount         -- 在庫入数(DB)
+      ,FND_DATE.STRING_TO_DATE(pla.attribute5, 'YYYY/MM/DD')
+                              base_shipping_date       -- 仕入先出荷日(DB)
+      ,TO_CHAR(pla.attribute6, 'FM999999990.000') 
+                              base_shipping_amount     -- 仕入先出荷数量(DB)
+      ,FND_DATE.STRING_TO_DATE(pla.attribute9, 'YYYY/MM/DD') 
+                              base_appointment_date    -- 日付指定(DB)
+      ,pla.attribute15        base_description         -- 摘要(DB)
+      ,TO_CHAR(ilm.attribute6, 'FM99990.000') 
+                              base_ilm_item_amount     -- OPMロットマスタ在庫入数(DB)
+      ,FND_DATE.STRING_TO_DATE(ilm.attribute1, 'YYYY/MM/DD') 
+                              base_production_date     -- OPMロットマスタ製造年月日(DB)
+      ,FND_DATE.STRING_TO_DATE(ilm.attribute3, 'YYYY/MM/DD') 
+                              base_use_by_date         -- OPMロットマスタ賞味期限(DB) 
+      ,ilm.attribute14        base_rank                -- OPMロットマスタランク(DB)
+      ,ilm.created_by         lot_created_by           -- WHOカラム
+      ,ilm.creation_date      lot_creation_date        -- WHOカラム
+      ,ilm.last_updated_by    lot_last_updated_by      -- WHOカラム
+      ,TO_CHAR(ilm.last_update_date, 'YYYY/MM/DD HH24:MI:SS') 
+                              lot_last_update_date     -- WHOカラム
+      ,ilm.last_update_login  lot_last_update_login    -- WHOカラム
+      ,pla.created_by         created_by               -- WHOカラム
+      ,pla.creation_date      creation_date            -- WHOカラム
+      ,pla.last_updated_by    last_updated_by          -- WHOカラム
+      ,TO_CHAR(pla.last_update_date, 'YYYY/MM/DD HH24:MI:SS') 
+                              last_update_date         -- WHOカラム
+      ,pla.last_update_login  last_update_login        -- WHOカラム
+-- 2008/11/04 D.Nihei Add Start 統合障害#51
+      ,ilm.attribute15        rank2                    -- ランク2 
+      ,ilm.attribute15        base_rank2               -- ランク2(DB) 
+-- 2008/11/04 D.Nihei Add End
+FROM   po_headers_all pha           -- 発注ヘッダ
+      ,(SELECT pla1.po_line_id
+              ,pla1.po_header_id
+              ,pla1.line_num
+              ,pla1.item_id  
+              ,pla1.attribute1
+              ,pla1.attribute3
+              ,pla1.attribute4 
+              ,pla1.attribute5 
+              ,pla1.attribute6
+              ,pla1.attribute9
+              ,pla1.attribute10
+              ,pla1.attribute11
+              ,pla1.attribute14
+              ,pla1.attribute15
+              ,pla1.created_by     
+              ,pla1.creation_date  
+              ,pla1.last_updated_by
+              ,pla1.last_update_date
+              ,pla1.last_update_login
+              ,xcimv1.item_id x_item_id
+              ,xcimv1.item_no
+              ,xcimv1.item_short_name
+              ,xcimv1.expiration_day
+              ,xcimv1.cost_manage_code
+              ,xcimv1.conv_unit conv_unit
+              ,xcimv1.lot_ctl lot_ctl
+       FROM    po_lines_all pla1
+              ,xxcmn_item_mst_v xcimv1
+       WHERE   pla1.item_id = xcimv1.inventory_item_id
+       )                         pla    -- 発注明細
+      ,ic_lots_mst               ilm    -- OPMロットマスタ
+      ,xxcmn_item_categories5_v  xcicv  -- 品目カテゴリ情報V5
+WHERE  pha.po_header_id  = pla.po_header_id
+  AND  pla.attribute1    = ilm.lot_no(+)
+  AND  pla.x_item_id     = ilm.item_id(+)
+  AND  pla.x_item_id     = xcicv.item_id
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />
@@ -323,7 +343,7 @@ WHERE pha.po_header_id  = pla.po_header_id
    <ViewAttribute
       Name="Rank"
       IsPersistent="false"
-      Precision="240"
+      Precision="10"
       Type="java.lang.String"
       ColumnType="VARCHAR2"
       AliasName="RANK"
@@ -744,6 +764,26 @@ WHERE pha.po_header_id  = pla.po_header_id
       AliasName="VIEW_ATTR"
       Passivate="true"
       SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Rank2"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="Rank2"
+      Expression="Rank2"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseRank2"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BaseRank2"
+      Expression="BaseRank2"
+      SQLType="VARCHAR" >
    </ViewAttribute>
    <AttrArray Name="KeyAttributes">
       <Item Value="LineId" />

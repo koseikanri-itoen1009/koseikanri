@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.15
+* バージョン : 1.16
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -23,6 +23,7 @@
 * 2008-10-22 1.13 伊藤ひとみ   変更要求#217,238,統合テスト指摘49対応
 * 2008-10-22 1.14 吉元強樹     統合テスト指摘426対応
 * 2008-10-23 1.15 伊藤ひとみ   T_TE080_BPO_340 指摘5
+* 2008-11-04 1.16 二瓶大輔     統合障害#51,103、104対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -44,7 +45,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仕入共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.15
+ * @version 1.16
  ***************************************************************************
  */
 public class XxpoUtility 
@@ -3546,6 +3547,10 @@ public class XxpoUtility
 
     // ランク1
     String rank              = (String)params.get("Rank");
+// 2008-11-04 v1.16 D.Nihei Add Start 統合障害#51対応 
+    // ランク2
+    String rank2             = (String)params.get("Rank2");
+// 2008-11-04 v1.16 D.Nihei Add End
     // 品目ID
     Number itemId            = (Number)params.get("ItemId");
     // ロットNo
@@ -3631,9 +3636,9 @@ public class XxpoUtility
     sb.append("          ,ilm.attribute30 "                         );  // DFF項目30
     sb.append("          ,ilm.attribute_category "                  );  // DFFカテゴリ
     sb.append("          ,ilm.odm_lot_number "                      );
-    sb.append("    FROM ic_lots_mst ilm "                           );
-    sb.append("    WHERE ilm.item_id = :1 "                         );  // 品目ID(35)
-    sb.append("    AND   ilm.lot_no  = :2; "                        );  // ロットNo(238)
+    sb.append("    FROM   ic_lots_mst ilm "                           );
+    sb.append("    WHERE  ilm.item_id = :1 "                         );  // 品目ID(35)
+    sb.append("    AND    ilm.lot_no  = :2; "                        );  // ロットNo(238)
     sb.append("  p_lot_rec ic_lots_mst%ROWTYPE; "                   );
   
     sb.append("  CURSOR p_lot_cpg_cur( "                            );
@@ -3648,9 +3653,9 @@ public class XxpoUtility
     sb.append("          ,ilc.last_update_date "                    );
     sb.append("          ,ilc.last_updated_by "                     );
     sb.append("          ,ilc.last_update_login "                   );
-    sb.append("    FROM ic_lots_cpg ilc "                           );
-    sb.append("    WHERE ilc.item_id = :1 "                         );  // 品目ID(35)
-    sb.append("    AND   ilc.lot_id  = p_lot_id; "                  );  // ロットID(338)
+    sb.append("    FROM   ic_lots_cpg ilc "                           );
+    sb.append("    WHERE  ilc.item_id = :1 "                         );  // 品目ID(35)
+    sb.append("    AND    ilc.lot_id  = p_lot_id; "                  );  // ロットID(338)
     sb.append("  p_lot_cpg_rec ic_lots_cpg%ROWTYPE; "               );
 
     sb.append("BEGIN "                                              );
@@ -3663,15 +3668,18 @@ public class XxpoUtility
     sb.append("  FETCH p_lot_cpg_cur INTO p_lot_cpg_rec; "          );
 
     // 更新が発生する場合、更新データを格納
-    sb.append("  p_lot_rec.attribute6        := :3; "                 );  // 在庫入数
-    sb.append("  p_lot_rec.attribute1        := :4; "                 );  // 製造年月日
-    sb.append("  p_lot_rec.attribute3        := :5; "                 );  // 賞味期限
-    sb.append("  p_lot_rec.attribute14       := :6; "                 );  // ランク1
-    sb.append("  p_lot_rec.last_updated_by   := FND_GLOBAL.USER_ID; " );  // 最終更新者
-    sb.append("  p_lot_rec.last_update_date  := SYSDATE; "            );  // 最終更新日
+    sb.append("  p_lot_rec.attribute6       := :3; "                 );  // 在庫入数
+    sb.append("  p_lot_rec.attribute1       := :4; "                 );  // 製造年月日
+    sb.append("  p_lot_rec.attribute3       := :5; "                 );  // 賞味期限
+    sb.append("  p_lot_rec.attribute14      := :6; "                 );  // ランク1
+// 2008-11-04 v1.16 D.Nihei Add Start 統合障害#51対応 
+    sb.append("  p_lot_rec.attribute15      := :7; "                 );  // ランク2
+// 2008-11-04 v1.16 D.Nihei Add End
+    sb.append("  p_lot_rec.last_updated_by  := FND_GLOBAL.USER_ID; " );  // 最終更新者
+    sb.append("  p_lot_rec.last_update_date := SYSDATE; "            );  // 最終更新日
 
     // ロット更新API呼び出し
-    sb.append("  GMI_LotUpdate_PUB.Update_Lot( "                                       );
+    sb.append("  GMI_LOTUPDATE_PUB.UPDATE_LOT( "                                       );
     sb.append("                     p_api_version      => ln_api_version_number "      );  // IN  APIのバージョン番号
     sb.append("                    ,p_init_msg_list    => FND_API.G_FALSE "            );  // IN  メッセージ初期化フラグ
     sb.append("                    ,p_commit           => FND_API.G_FALSE "            );  // IN  処理確定フラグ
@@ -3694,9 +3702,9 @@ public class XxpoUtility
     sb.append("  END IF; "                         );
 
     // OUTパラメータ出力
-    sb.append("  :7 := lv_ret_status; "            );
-    sb.append("  :8 := ln_msg_cnt; "               );
-    sb.append("  :9 := lv_msg_data; "              );
+    sb.append("  :8 := lv_ret_status; "            );
+    sb.append("  :9 := ln_msg_cnt; "               );
+    sb.append("  :10 := lv_msg_data; "              );
 
     sb.append("END; "                              );
 
@@ -3709,25 +3717,29 @@ public class XxpoUtility
     try
     {
       // パラメータ設定(INパラメータ)
-      cstmt.setInt(1, XxcmnUtility.intValue(itemId)); // 品目ID
-      cstmt.setString(2, lotNo);                      // ロットNo
-      cstmt.setString(3, itemAmount);                 // 在庫入数
-      cstmt.setString(4, sProductionDate);            // 製造年月日
-      cstmt.setString(5, sUseByDate);                 // 賞味期限
-      cstmt.setString(6, rank);                       // ランク1
+      int i = 1;
+      cstmt.setInt(i++, XxcmnUtility.intValue(itemId)); // 品目ID
+      cstmt.setString(i++, lotNo);                      // ロットNo
+      cstmt.setString(i++, itemAmount);                 // 在庫入数
+      cstmt.setString(i++, sProductionDate);            // 製造年月日
+      cstmt.setString(i++, sUseByDate);                 // 賞味期限
+      cstmt.setString(i++, rank);                       // ランク1
+// 2008-11-04 v1.16 D.Nihei Add Start 統合障害#51対応 
+      cstmt.setString(i++, rank2);                       // ランク2
+// 2008-11-04 v1.16 D.Nihei Add End
 
       // パラメータ設定(OUTパラメータ)
-      cstmt.registerOutParameter(7, Types.VARCHAR); // リターンコード
-      cstmt.registerOutParameter(8, Types.INTEGER); // メッセージ数
-      cstmt.registerOutParameter(9, Types.VARCHAR); // メッセージ
+      cstmt.registerOutParameter(i++, Types.VARCHAR); // リターンコード
+      cstmt.registerOutParameter(i++, Types.INTEGER); // メッセージ数
+      cstmt.registerOutParameter(i++, Types.VARCHAR); // メッセージ
     
       //PL/SQL実行
       cstmt.execute();
 
       // 戻り値取得
-      String retStatus = cstmt.getString(7); // リターンコード
-      int msgCnt      = cstmt.getInt(8);    // メッセージ数
-      String msgData   = cstmt.getString(9); // メッセージ
+      String retStatus = cstmt.getString(8);  // リターンコード
+      int msgCnt       = cstmt.getInt(9);     // メッセージ数
+      String msgData   = cstmt.getString(10); // メッセージ
 
 //20080225 add Start
       // 正常終了の場合、フラグを1:正常に。

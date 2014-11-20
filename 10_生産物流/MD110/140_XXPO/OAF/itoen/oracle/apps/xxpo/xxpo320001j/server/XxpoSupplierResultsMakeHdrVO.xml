@@ -19,7 +19,7 @@ SELECT pha.segment1 header_number                -- 発注番号
       ,cvv2.vendor_short_name mediation_name     -- 斡旋者名
       ,FND_DATE.STRING_TO_DATE(pha.attribute4, 'YYYY/MM/DD') delivery_date     -- 納入日
       ,clvv1.meaning status_disp                 -- ステータス
-      ,pha.attribute1 status_code                --ステータスコード
+      ,pha.attribute1 status_code                -- ステータスコード
       ,pha.attribute5 location_code              -- 納入先コード
       ,cilv.description location_name            -- 納入先名
       ,pha.attribute10 department_code           -- 発注部署コード
@@ -276,7 +276,7 @@ WHERE pha.vendor_id        = cvv1.vendor_id
    <ViewAttribute
       Name="Description"
       IsPersistent="false"
-      Precision="150"
+      Precision="60"
       Type="java.lang.String"
       ColumnType="VARCHAR2"
       AliasName="DESCRIPTION"

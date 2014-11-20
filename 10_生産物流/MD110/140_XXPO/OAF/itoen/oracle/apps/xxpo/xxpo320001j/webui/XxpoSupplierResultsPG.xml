@@ -25,7 +25,7 @@
                                     </oa:cellFormat>
                                     <oa:cellFormat id="SearchCell101" height="1" columnSpan="3">
                                        <ui:contents>
-                                          <oa:messageTextInput id="TxtHeaderNumber" maximumLength="12" shortDesc="発注No" styleClass="LegendText" columns="15"/>
+                                          <oa:messageTextInput id="TxtHeaderNumber" maximumLength="12" shortDesc="発注No" styleClass="LegendText" columns="15" viewName="XxpoResultsSearchVO1" viewAttr="PoNum"/>
                                        </ui:contents>
                                     </oa:cellFormat>
                                     <oa:cellFormat id="SearchCell102" hAlign="right" height="1">
@@ -99,7 +99,11 @@
                                     </oa:cellFormat>
                                     <oa:cellFormat id="SearchCell301" height="1">
                                        <ui:contents>
-                                          <oa:messageTextInput id="TxtDeliveryDateFrom" prompt="" required="no" shortDesc="納入日（開始）" dataType="DATE" styleClass="LegendText" maximumLength="10" columns="12" viewName="XxpoResultsSearchVO1" viewAttr="DeliveryDateFrom"/>
+                                          <oa:messageTextInput id="TxtDeliveryDateFrom" prompt="" required="no" shortDesc="納入日（開始）" dataType="DATE" styleClass="LegendText" maximumLength="10" columns="12" viewName="XxpoResultsSearchVO1" viewAttr="DeliveryDateFrom">
+                                             <ui:primaryClientAction>
+                                                <ui:firePartialAction event="deliveryDate"/>
+                                             </ui:primaryClientAction>
+                                          </oa:messageTextInput>
                                        </ui:contents>
                                     </oa:cellFormat>
                                     <oa:cellFormat id="SearchCell302" height="1" rendered="true" hAlign="start">
@@ -109,7 +113,7 @@
                                     </oa:cellFormat>
                                     <oa:cellFormat id="SearchCell303" height="1" rendered="true">
                                        <ui:contents>
-                                          <oa:messageTextInput id="TxtDeliveryDateTo" prompt="" required="no" shortDesc="納入日（終了）" dataType="DATE" styleClass="LegendText" maximumLength="10" columns="12"/>
+                                          <oa:messageTextInput id="TxtDeliveryDateTo" prompt="" required="no" shortDesc="納入日（終了）" dataType="DATE" styleClass="LegendText" maximumLength="10" columns="12" viewName="XxpoResultsSearchVO1" viewAttr="DeliveryDateTo"/>
                                        </ui:contents>
                                     </oa:cellFormat>
                                     <oa:cellFormat id="SearchCell304" hAlign="right" height="1">

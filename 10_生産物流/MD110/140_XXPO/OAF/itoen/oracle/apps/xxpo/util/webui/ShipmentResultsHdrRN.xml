@@ -148,7 +148,7 @@
                   </oa:cellFormat>
                   <oa:cellFormat id="HeaderCell601" columnSpan="5" width="100%">
                      <ui:contents>
-                        <oa:messageTextInput id="TxtDescription" prompt="" required="no" shortDesc="摘要" maximumLength="150" columns="60" styleClass="LegendText" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="Description" readOnly="${oa.XxpoSupplierResultsMakePVO1.DescriptionReadOnly}" disabled="false"/>
+                        <oa:messageTextInput id="TxtDescription" prompt="" required="no" shortDesc="摘要" maximumLength="60" columns="120" styleClass="LegendText" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="Description" readOnly="${oa.XxpoSupplierResultsMakePVO1.DescriptionReadOnly}" disabled="false"/>
                      </ui:contents>
                   </oa:cellFormat>
                </ui:contents>
