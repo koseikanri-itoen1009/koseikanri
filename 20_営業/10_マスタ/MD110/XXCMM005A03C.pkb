@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM005A03C(body)
  * Description      : 拠点マスタIF出力（HHT）
  * MD.050           : 拠点マスタIF出力（HHT） MD050_CMM_005_A03
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  2009/02/03    1.0   Masayuki.Sano    新規作成
  *  2009/02/26    1.1   Masayuki.Sano    結合テスト動作不正対応
  *  2009/03/09    1.2   Yutaka.Kuboshima ファイル出力先のプロファイルの変更
+ *  2009/04/01    1.3   Yutaka.Kuboshima 障害T1_0157,T1_0158の対応
  *
  *****************************************************************************************/
 --
@@ -368,11 +369,26 @@ AS
             ,xxcmm_cust_accounts  xca
             ,hz_party_sites       hps
             ,hz_locations         hlo
+-- 2009/04/01 Ver1.3 add start by Yutaka.Kuboshima
+            ,hz_cust_acct_sites   hcas
+-- 2009/04/01 Ver1.3 add end by Yutaka.Kuboshima
       WHERE  xca.customer_id = hza.cust_account_id
       AND    hza.party_id    = hps.party_id
       AND    hlo.location_id = hps.location_id
+-- 2009/04/01 Ver1.3 add start by Yutaka.Kuboshima
+      AND    hza.cust_account_id = hcas.cust_account_id
+      AND    hcas.party_site_id  = hps.party_site_id
+-- 2009/04/01 Ver1.3 add end by Yutaka.Kuboshima
       AND    hza.customer_class_code  = '1'
       AND    hps.status      = 'A'
+-- 2009/04/01 Ver1.3 add start by Yutaka.Kuboshima
+      AND    hlo.location_id = (SELECT MAX(hps2.location_id)
+                                FROM   hz_cust_acct_sites hcas2
+                                      ,hz_party_sites     hps2
+                                WHERE  hcas2.cust_account_id = hza.cust_account_id
+                                AND    hcas2.party_site_id   = hps2.party_site_id
+                                AND    hps2.status           = 'A')
+-- 2009/04/01 Ver1.3 add end by Yutaka.Kuboshima
       AND    (  ( hza.last_update_date BETWEEN id_last_update_date_from AND id_last_update_date_to )
              OR ( xca.last_update_date BETWEEN id_last_update_date_from AND id_last_update_date_to )
              OR ( hlo.last_update_date BETWEEN id_last_update_date_from AND id_last_update_date_to ) )
@@ -530,7 +546,10 @@ AS
         lv_output_line := lv_output_line || cv_sep || cv_dqu || lv_output_val || cv_dqu;
         -- 失効日
         lv_output_val  := TO_CHAR(gt_csv_output_tab(ln_idx).stop_approval_date, 'YYYYMMDD');
-        lv_output_line := lv_output_line || cv_sep || cv_dqu || lv_output_val || cv_dqu;
+-- 2009/04/01 Ver1.3 modify start by Yutaka.Kuboshima
+--        lv_output_line := lv_output_line || cv_sep || cv_dqu || lv_output_val || cv_dqu;
+        lv_output_line := lv_output_line || cv_sep || lv_output_val;
+-- 2009/04/01 Ver1.3 modify end by Yutaka.Kuboshima
         -- 取得した最終更新日から最大のものを算出
         ld_max_date := gt_csv_output_tab(ln_idx).hza_last_update_date;
         IF ( ld_max_date < gt_csv_output_tab(ln_idx).xca_last_update_date ) THEN
