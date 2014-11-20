@@ -1,0 +1,24 @@
+CREATE TABLE xxinv.xxinv_open_warehouses (
+  inventory_open_id    NUMBER      NOT NULL
+ ,whse_code            VARCHAR2(4) NOT NULL
+ ,fiscal_year          VARCHAR2(4) NOT NULL
+ ,period               NUMBER(5)   NOT NULL
+ ,created_by           NUMBER(15)  NOT NULL
+ ,creation_date        DATE        NOT NULL
+ ,last_updated_by      NUMBER(15)  NOT NULL
+ ,last_update_date     DATE        NOT NULL
+ ,last_update_login    NUMBER(15)
+ ,CONSTRAINT xxinv_open_warehouses_pk PRIMARY KEY (inventory_open_id,whse_code)
+);
+--
+COMMENT ON COLUMN xxinv.xxinv_open_warehouses.inventory_open_id IS 'オープンID';
+COMMENT ON COLUMN xxinv.xxinv_open_warehouses.whse_code         IS '倉庫コード';
+COMMENT ON COLUMN xxinv.xxinv_open_warehouses.fiscal_year       IS '会計年度';
+COMMENT ON COLUMN xxinv.xxinv_open_warehouses.period            IS '期間';
+COMMENT ON COLUMN xxinv.xxinv_open_warehouses.created_by        IS '作成者';
+COMMENT ON COLUMN xxinv.xxinv_open_warehouses.creation_date     IS '作成日';
+COMMENT ON COLUMN xxinv.xxinv_open_warehouses.last_updated_by   IS '最終更新者';
+COMMENT ON COLUMN xxinv.xxinv_open_warehouses.last_update_date  IS '最終更新日';
+COMMENT ON COLUMN xxinv.xxinv_open_warehouses.last_update_login IS '最終更新ログイン';
+--
+COMMENT ON TABLE  xxinv.xxinv_open_warehouses IS '在庫期間再オープン管理テーブル';
