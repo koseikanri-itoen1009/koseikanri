@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="Xx03ArInvoiceInputAM"
+   ComponentClass="oracle.apps.xx03.ar.input.server.Xx03ArInvoiceInputAMImpl"
+   LoadComponentsLazily="true" >
+   <Properties>
+      <Property Name ="RETENTION_LEVEL" Value ="MANAGE_STATE" />
+   </Properties>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="Xx03TaxCodesLovVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03TaxCodesLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03PrecisionVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03PrecisionVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03ReceivableSlipsVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03ReceivableSlipsVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03ArInvoiceInputSlipPVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03ArInvoiceInputSlipPVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03PrePayButtonVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03PrePayButtonVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03SlipNumbersVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03SlipNumbersVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03GetAutoAccountInfoMemoVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03GetAutoAccountInfoMemoVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03GetAutoAccountInfoCustomerVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03GetAutoAccountInfoCustomerVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03GetTaxOverrideVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03GetTaxOverrideVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03CustTaxOptionVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03CustTaxOptionVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03SystemTaxOptionVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03SystemTaxOptionVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03CheckCommitmentNumberVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03CheckCommitmentNumberVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03ReceivableSlipsLineVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03ReceivableSlipsLineVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03GetCreditTransTypeInfoVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03GetCreditTransTypeInfoVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03GetBaseCurrencyVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03GetBaseCurrencyVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03GetAffPromptVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03GetAffPromptVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03GetDffPromptVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03GetDffPromptVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03TaxClassLovVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03TaxClassLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03SelectedPrecisionVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03SelectedPrecisionVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03CommitmentDateVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03CommitmentDateVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03ConfirmDispSlipsVO1"
+      ViewObjectName="oracle.apps.xx03.ar.confirm.server.Xx03ConfirmDispSlipsVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03ConfirmDispSlipsLineVO1"
+      ViewObjectName="oracle.apps.xx03.ar.confirm.server.Xx03ConfirmDispSlipsLineVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03ConfirmUpdSlipsVO1"
+      ViewObjectName="oracle.apps.xx03.ar.confirm.server.Xx03ConfirmUpdSlipsVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03GetTransTypeNameVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03GetTransTypeNameVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03GetArCustomerNameVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03GetArCustomerNameVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03GetArCustSiteNameVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03GetArCustSiteNameVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03GetReceiptMethodNameVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03GetReceiptMethodNameVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03GetTermsNameVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03GetTermsNameVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03GetArLinesNameVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03GetArLinesNameVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03GetUomCodeVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03GetUomCodeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03GetCurrencyNameVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03GetCurrencyNameVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03EnableSlipTypeVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03EnableSlipTypeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03GetTaxColVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03GetTaxColVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03SlipTypesLovVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03SlipTypesLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03GetDefaultApproverVO1"
+      ViewObjectName="oracle.apps.xx03.ar.confirm.server.Xx03GetDefaultApproverVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03GetApproverNameVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03GetApproverNameVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03SlipTypesLovVO2"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03SlipTypesLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03ReceivableSlipsLineVO2"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03ReceivableSlipsLineVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03GetArMenuSlipTypeVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03GetArMenuSlipTypeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03ChkUsrDepartmentVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03ChkUsrDepartmentVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XX03GetItemFormatVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.XX03GetItemFormatVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="Xx03ChkArCustomerVO1"
+      ViewObjectName="oracle.apps.xx03.ar.input.server.Xx03ChkArCustomerVO" >
+   </ViewUsage>
+   <ViewLinkUsage
+      Name="Xx03ReceivableSlipsToLinesVL1"
+      ViewLinkObjectName="oracle.apps.xx03.ar.input.server.Xx03ReceivableSlipsToLinesVL"
+      SrcViewUsageName="oracle.apps.xx03.ar.input.server.Xx03ArInvoiceInputAM.Xx03ReceivableSlipsVO1"
+      DstViewUsageName="oracle.apps.xx03.ar.input.server.Xx03ArInvoiceInputAM.Xx03ReceivableSlipsLineVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="Xx03ConfirmDispSlipsToLinesVL1"
+      ViewLinkObjectName="oracle.apps.xx03.ar.confirm.server.Xx03ConfirmDispSlipsToLinesVL"
+      SrcViewUsageName="oracle.apps.xx03.ar.input.server.Xx03ArInvoiceInputAM.Xx03ConfirmDispSlipsVO1"
+      DstViewUsageName="oracle.apps.xx03.ar.input.server.Xx03ArInvoiceInputAM.Xx03ConfirmDispSlipsLineVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="Xx03ReceivableSlipsToSlipNameVL1"
+      ViewLinkObjectName="oracle.apps.xx03.ar.input.server.Xx03ReceivableSlipsToSlipNameVL"
+      SrcViewUsageName="oracle.apps.xx03.ar.input.server.Xx03ArInvoiceInputAM.Xx03ReceivableSlipsVO1"
+      DstViewUsageName="oracle.apps.xx03.ar.input.server.Xx03ArInvoiceInputAM.Xx03SlipTypesLovVO1"
+      Reversed="true" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+</AppModule>

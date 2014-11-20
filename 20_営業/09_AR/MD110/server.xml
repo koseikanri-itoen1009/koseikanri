@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE JboPackage SYSTEM "jbo_03_01.dtd">
+
+<JboPackage
+   Name="server"
+   SeparateXMLFiles="true"
+   PackageName="oracle.apps.xx03.ar.input.server" >
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_ejbPackage" Value="false" />
+   </DesignTime>
+   <Containee
+      Name="Xx03ArInvoiceInputAM"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03ArInvoiceInputAM"
+      ObjectType="AppModule" >
+   </Containee>
+   <Containee
+      Name="Xx03TaxCodesLovVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03TaxCodesLovVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03PrecisionVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03PrecisionVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03ReceivableSlipsVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03ReceivableSlipsVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03ReceivableSlipsLineVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03ReceivableSlipsLineVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03ReceivableSlipsToLinesVL"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03ReceivableSlipsToLinesVL"
+      ObjectType="ViewLink" >
+   </Containee>
+   <Containee
+      Name="Xx03ArInvoiceInputSlipPVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03ArInvoiceInputSlipPVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03PrePayButtonVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03PrePayButtonVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03SlipNumbersVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03SlipNumbersVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03GetAutoAccountInfoMemoVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03GetAutoAccountInfoMemoVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03GetAutoAccountInfoCustomerVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03GetAutoAccountInfoCustomerVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03GetTaxOverrideVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03GetTaxOverrideVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03CustTaxOptionVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03CustTaxOptionVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03SystemTaxOptionVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03SystemTaxOptionVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03ArInvoiceAdvanceAM"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03ArInvoiceAdvanceAM"
+      ObjectType="AppModule" >
+   </Containee>
+   <Containee
+      Name="Xx03ArInvoiceFirstCustomerAM"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03ArInvoiceFirstCustomerAM"
+      ObjectType="AppModule" >
+   </Containee>
+   <Containee
+      Name="Xx03InvoiceAdvanceVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03InvoiceAdvanceVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03InvoiceFirstCustomerVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03InvoiceFirstCustomerVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03EntryPersonLovVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03EntryPersonLovVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03ReceivableSlipsToEntryPersonVL"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03ReceivableSlipsToEntryPersonVL"
+      ObjectType="ViewLink" >
+   </Containee>
+   <Containee
+      Name="Xx03SlipTypesLovVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03SlipTypesLovVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03ReceivableSlipsToSlipNameVL"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03ReceivableSlipsToSlipNameVL"
+      ObjectType="ViewLink" >
+   </Containee>
+   <Containee
+      Name="Xx03InvoiceAdvanceLinesVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03InvoiceAdvanceLinesVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03TaxClassLovVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03TaxClassLovVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03CheckCommitmentNumberVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03CheckCommitmentNumberVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03GetCreditTransTypeInfoVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03GetCreditTransTypeInfoVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03GetBaseCurrencyVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03GetBaseCurrencyVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03GetAffPromptVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03GetAffPromptVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03GetDffPromptVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03GetDffPromptVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03SelectedPrecisionVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03SelectedPrecisionVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03CommitmentDateVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03CommitmentDateVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03PaymentDateVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03PaymentDateVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03InvoiceAdvanceToLinesVL"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03InvoiceAdvanceToLinesVL"
+      ObjectType="ViewLink" >
+   </Containee>
+   <Containee
+      Name="Xx03GetArCustomerNameVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03GetArCustomerNameVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03GetArCustSiteNameVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03GetArCustSiteNameVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03GetArLinesNameVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03GetArLinesNameVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03GetCurrencyNameVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03GetCurrencyNameVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03GetReceiptMethodNameVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03GetReceiptMethodNameVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03GetTermsNameVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03GetTermsNameVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03GetTransTypeNameVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03GetTransTypeNameVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03GetUomCodeVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03GetUomCodeVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03EnableSlipTypeVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03EnableSlipTypeVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03GetTaxColVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03GetTaxColVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03GetApproverNameVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03GetApproverNameVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03ChkUsrDepartmentVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03ChkUsrDepartmentVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03GetArMenuSlipTypeVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03GetArMenuSlipTypeVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XX03GetItemFormatVO"
+      FullName="oracle.apps.xx03.ar.input.server.XX03GetItemFormatVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="Xx03ChkArCustomerVO"
+      FullName="oracle.apps.xx03.ar.input.server.Xx03ChkArCustomerVO"
+      ObjectType="ViewObject" >
+   </Containee>
+</JboPackage>
