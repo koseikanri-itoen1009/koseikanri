@@ -18,6 +18,7 @@
 ##  Date          Ver.  Editor           Description                            ##
 ## ------------- ----- ---------------- ----------------------------------------##
 ##  2009/12/02    1.0   SCS.Kikuchi      新規作成                               ##
+##  2009/12/14    1.1   SCS.Kikuchi      障害E_T4_00474対応                     ##
 ##                                                                              ##
 ##################################################################################
 
@@ -45,6 +46,10 @@ L_execdate=`/bin/date "+%Y%m%d"`    #処理日
 
 L_logfile="${L_logpath}/"`/bin/basename ${L_cmdname} .ksh`"_${L_hostname}_${L_execdate}.log"
 
+# 20091214_Ver1.1_E_T4_00474_SCS.Kikuchi_ADD_START
+L_envfile=${L_cmddir}/ALZZAPPS.env  #AL共通環境設定ファイル
+# 20091214_Ver1.1_E_T4_00474_SCS.Kikuchi_ADD_END
+
 #===============================================================================
 # Description : ログ出力処理
 #
@@ -63,6 +68,30 @@ output_log()
 #===============================================================================
 output_log "Materialized View Refresh Start"
 
+# 20091214_Ver1.1_E_T4_00474_SCS.Kikuchi_ADD_START
+# AL共通ENVファイル読み込み
+if [ -r ${L_envfile} ]
+then
+  . ${L_envfile}
+  output_log "Reading AL Env File was Completed"
+else
+  output_log "Reading AL Env File was Failed"
+  output_log "Materialized View Refresh Error End"
+  exit ${C_return_error}
+fi
+
+# 全体共通ENVファイル読み込み
+if [ -r ${L_appsora} ]
+then
+  . ${L_appsora}
+  output_log "Reading APPS Env File was Completed"
+else
+  output_log "Reading APPS Env File was Failed"
+  output_log "Materialized View Refresh Error End"
+  exit ${C_return_error}
+fi
+# 20091214_Ver1.1_E_T4_00474_SCS.Kikuchi_ADD_END
+
 #引数チェック
 if [ ${#} -ne 1 ]
 then
@@ -74,20 +103,20 @@ else
   
   #リフレッシュSQL実行
   sqlplus -s ${C_oracle_user}/${C_oracle_path} <<SQLEND >> ${L_logfile}
-  SET SERVEROUTPUT ON
-  SET FEEDBACK OFF
-  VARIABLE refresh_retcode NUMBER;
-  BEGIN
-    DBMS_MVIEW.REFRESH('${L_materialized_view_name}','c');
-    :refresh_retcode  := ${C_return_norm};
-  EXCEPTION
-    WHEN OTHERS THEN
-      ROLLBACK;
-      DBMS_OUTPUT.PUT_LINE( SQLERRM );
-      :refresh_retcode  := ${C_return_error};
-  END;
-  /
-  EXIT :refresh_retcode;
+SET SERVEROUTPUT ON
+SET FEEDBACK OFF
+VARIABLE refresh_retcode NUMBER;
+BEGIN
+  DBMS_MVIEW.REFRESH('${L_materialized_view_name}','c');
+  :refresh_retcode  := ${C_return_norm};
+EXCEPTION
+  WHEN OTHERS THEN
+    ROLLBACK;
+    DBMS_OUTPUT.PUT_LINE( SQLERRM );
+    :refresh_retcode  := ${C_return_error};
+END;
+/
+EXIT :refresh_retcode;
 SQLEND
 
   #SQL戻り値セット
