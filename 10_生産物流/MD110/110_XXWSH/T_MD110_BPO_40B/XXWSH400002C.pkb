@@ -7,7 +7,7 @@ AS
  * Description      : 顧客発注からの出荷依頼自動作成
  * MD.050/070       : 出荷依頼                        (T_MD050_BPO_400)
  *                    顧客発注からの出荷依頼自動作成  (T_MD070_BPO_40B)
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ------------------------ ----------------------------------------------------------
@@ -73,6 +73,7 @@ AS
  *  2008/10/10    1.20  丸下             「依頼区分」から『受注タイプID』を取得の条件修正
  *  2008/10/14    1.21  伊藤  ひとみ     統合テスト指摘118 1依頼に重複品目がある場合はエラー終了とする。
  *                                       統合テスト指摘240 積載効率チェック(合計値算出)のINパラメータに基準日を追加。
+ *  2008/11/20    1.22  伊藤  ひとみ     統合テスト指摘141,658対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -161,6 +162,11 @@ AS
   -- ==================================================
   -- ユーザー定義グローバル定数
   -- ==================================================
+-- 2008/11/20 H.Itou Add Start 統合テスト指摘658
+  -- 共通関数戻り値判定
+  gn_status_normal   CONSTANT NUMBER := 0; -- 正常
+  gn_status_error    CONSTANT NUMBER := 1; -- 異常
+-- 2008/11/20 H.Itou Add End
   gv_pkg_name        CONSTANT VARCHAR2(15) := 'xxwsh400002c';          -- パッケージ名
   -- プロファイル
   gv_prf_m_org       CONSTANT VARCHAR2(50) := 'XXCMN_MASTER_ORG_ID';   -- XXCMN:マスタ組織
@@ -300,6 +306,9 @@ AS
 -- 2008/10/14 H.Itou Add Start 統合テスト指摘118
   gv_msg_46          CONSTANT VARCHAR2(50) := '１依頼内に同一品目が重複しています';
 -- 2008/10/14 H.Itou Add End
+-- 2008/11/20 H.Itou Add Start 統合テスト指摘658
+  gv_msg_47          CONSTANT VARCHAR2(50) := '稼働日取得エラー';
+-- 2008/11/20 H.Itou Add End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -1888,12 +1897,49 @@ AS
                                  ,gd_arr_work_day              -- 稼働日日付    out 稼働日(着荷)
                                 );
 --
+-- 2008/11/20 H.Itou Add Start 統合テスト指摘658
+    -- 共通関数エラー時、エラー
+    IF (ln_result = gn_status_error) THEN
+      pro_err_list_make
+        (
+          iv_kind         => gv_msg_err                     --  in 種別   'エラー'
+         ,iv_dec          => gv_msg_hfn                     --  in 確定   '－'
+         ,iv_req_no       => gt_head_line(gn_i).o_r_ref     --  in 依頼No
+         ,iv_kyoten       => gt_head_line(gn_i).h_s_branch  --  in 管轄拠点
+         ,iv_ship_to      => gt_head_line(gn_i).p_s_code    --  in 出荷先
+         ,iv_description  => gt_head_line(gn_i).ship_ins    --  in 摘要
+         ,iv_cust_pono    => gt_head_line(gn_i).c_po_num    --  in 顧客発注番号
+         ,iv_ship_date    => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
+                                                            --  in 出庫日
+         ,iv_arrival_date => TO_CHAR(gt_head_line(gn_i).arr_date,'YYYY/MM/DD')
+                                                            --  in 着日
+         ,iv_ship_from    => gt_head_line(gn_i).lo_code     --  in 出荷元
+         ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
+         ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
+         ,iv_err_msg      => lv_errmsg                      --  in エラーメッセージ
+         ,iv_err_clm      => gv_msg_47                      --  in エラー項目
+         ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
+         ,ov_retcode      => lv_retcode                     -- out リターン・コード
+         ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
+        );
+      -- 共通エラーメッセージ 終了ST エラー登録
+      gv_err_sts := gv_status_error;
+--
+      RAISE err_header_expt;
+    END IF;
+-- 2008/11/20 H.Itou Add End
+-- 2008/11/20 H.Itou Mod Start 統合テスト指摘658
     -- 稼働日ではない場合、ワーニング
-    IF (gd_arr_work_day IS NULL) THEN
+--    IF (gd_arr_work_day IS NULL) THEN
+    IF (gd_arr_work_day <> gt_head_line(gn_i).arr_date) THEN
+-- 2008/11/20 H.Itou Mod End
       pro_err_list_make
         (
           iv_kind         => gv_msg_war                     --  in 種別   '警告'
-         ,iv_dec          => gv_msg_err                     --  in 確定   'エラー'
+-- 2008/11/20 H.Itou Mod Start 統合テスト指摘658
+--         ,iv_dec          => gv_msg_err                     --  in 確定   'エラー'
+         ,iv_dec          => gv_msg_war                     --  in 確定   '警告'
+-- 2008/11/20 H.Itou Mod End
          ,iv_req_no       => gv_new_order_no                --  in 依頼No(12桁)
          ,iv_kyoten       => gt_head_line(gn_i).h_s_branch  --  in 管轄拠点
          ,iv_ship_to      => gt_head_line(gn_i).p_s_code    --  in 出荷先
@@ -1932,8 +1978,42 @@ AS
                                  ,gd_shi_work_day              -- 稼働日日付    out 稼働日(出荷)
                                 );
 --
+-- 2008/11/20 H.Itou Add Start 統合テスト指摘658
+    -- 共通関数エラー時、エラー
+    IF (ln_result = gn_status_error) THEN
+      pro_err_list_make
+        (
+          iv_kind         => gv_msg_err                     --  in 種別   'エラー'
+         ,iv_dec          => gv_msg_hfn                     --  in 確定   '－'
+         ,iv_req_no       => gt_head_line(gn_i).o_r_ref     --  in 依頼No
+         ,iv_kyoten       => gt_head_line(gn_i).h_s_branch  --  in 管轄拠点
+         ,iv_ship_to      => gt_head_line(gn_i).p_s_code    --  in 出荷先
+         ,iv_description  => gt_head_line(gn_i).ship_ins    --  in 摘要
+         ,iv_cust_pono    => gt_head_line(gn_i).c_po_num    --  in 顧客発注番号
+         ,iv_ship_date    => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
+                                                            --  in 出庫日
+         ,iv_arrival_date => TO_CHAR(gt_head_line(gn_i).arr_date,'YYYY/MM/DD')
+                                                            --  in 着日
+         ,iv_ship_from    => gt_head_line(gn_i).lo_code     --  in 出荷元
+         ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
+         ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
+         ,iv_err_msg      => lv_errmsg                      --  in エラーメッセージ
+         ,iv_err_clm      => gv_msg_47                      --  in エラー項目
+         ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
+         ,ov_retcode      => lv_retcode                     -- out リターン・コード
+         ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
+        );
+      -- 共通エラーメッセージ 終了ST エラー登録
+      gv_err_sts := gv_status_error;
+--
+      RAISE err_header_expt;
+    END IF;
+-- 2008/11/20 H.Itou Add End
+-- 2008/11/20 H.Itou Mod Start 統合テスト指摘658
     -- 稼働日ではない場合、ワーニング
-    IF (gd_shi_work_day IS NULL) THEN
+--    IF (gd_shi_work_day IS NULL) THEN
+    IF (gd_shi_work_day <> gt_head_line(gn_i).ship_date) THEN
+-- 2008/11/20 H.Itou Mod End
       pro_err_list_make
         (
           iv_kind         => gv_msg_war                     --  in 種別   '警告'
@@ -2015,15 +2095,19 @@ AS
     ------------------------------------------------------------------------------------
     -- 4.共通関数「稼働日算出関数」にて配送リードタイムの日数分、過去の稼働日算出     --
     ------------------------------------------------------------------------------------
-    ln_result := xxwsh_common_pkg.get_oprtn_day
-                          (
-                            gt_head_line(gn_i).arr_date  -- 日付           in 着荷予定日
-                           ,NULL                         -- 保管倉庫コード in NULL
-                           ,gt_head_line(gn_i).p_s_code  -- 配送先コード   in 出荷先
-                           ,gv_delivery_lt               -- リードタイム   in 配送リードタイム
-                           ,gr_skbn                      -- 商品区分       in 商品区分
-                           ,gd_de_past_day               -- 稼働日日付    out 稼働日日付(過去・配送)
-                          );
+-- 2008/11/20 H.Itou Mod Start 統合テスト指摘658
+--    ln_result := xxwsh_common_pkg.get_oprtn_day
+--                          (
+--                            gt_head_line(gn_i).arr_date  -- 日付           in 着荷予定日
+--                           ,NULL                         -- 保管倉庫コード in NULL
+--                           ,gt_head_line(gn_i).p_s_code  -- 配送先コード   in 出荷先
+--                           ,gv_delivery_lt               -- リードタイム   in 配送リードタイム
+--                           ,gr_skbn                      -- 商品区分       in 商品区分
+--                           ,gd_de_past_day               -- 稼働日日付    out 稼働日日付(過去・配送)
+--                          );
+    -- 着荷予定日 － 配送LT（稼動日を考慮しない。）
+    gd_de_past_day := gt_head_line(gn_i).arr_date - gv_delivery_lt;
+-- 2008/11/20 H.Itou Mod End
 --
     ----------------------------------------------------------------------------
     -- 5.稼働日日付が出荷予定日より過去かどうかの判定                         --
@@ -2071,9 +2155,45 @@ AS
                            ,gd_past_day                   -- 稼働日日付    out 稼働日日付(過・生産)
                            );
 --
+-- 2008/11/20 H.Itou Add Start 統合テスト指摘658
+    -- 共通関数エラー時、エラー
+    IF (ln_result = gn_status_error) THEN
+      pro_err_list_make
+        (
+          iv_kind         => gv_msg_err                     --  in 種別   'エラー'
+         ,iv_dec          => gv_msg_hfn                     --  in 確定   '－'
+         ,iv_req_no       => gt_head_line(gn_i).o_r_ref     --  in 依頼No
+         ,iv_kyoten       => gt_head_line(gn_i).h_s_branch  --  in 管轄拠点
+         ,iv_ship_to      => gt_head_line(gn_i).p_s_code    --  in 出荷先
+         ,iv_description  => gt_head_line(gn_i).ship_ins    --  in 摘要
+         ,iv_cust_pono    => gt_head_line(gn_i).c_po_num    --  in 顧客発注番号
+         ,iv_ship_date    => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
+                                                            --  in 出庫日
+         ,iv_arrival_date => TO_CHAR(gt_head_line(gn_i).arr_date,'YYYY/MM/DD')
+                                                            --  in 着日
+         ,iv_ship_from    => gt_head_line(gn_i).lo_code     --  in 出荷元
+         ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
+         ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
+         ,iv_err_msg      => lv_errmsg                      --  in エラーメッセージ
+         ,iv_err_clm      => gv_msg_47                      --  in エラー項目
+         ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
+         ,ov_retcode      => lv_retcode                     -- out リターン・コード
+         ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
+        );
+      -- 共通エラーメッセージ 終了ST エラー登録
+      gv_err_sts := gv_status_error;
+--
+      RAISE err_header_expt;
+    END IF;
+-- 2008/11/20 H.Itou Add End
     ----------------------------------------------------------------------------
     -- 7.稼働日日付(引取変更LTの過去日)がシステム日付より過去かどうかの判定   --
     ----------------------------------------------------------------------------
+-- 2008/11/20 H.Itou Add Start 統合テスト指摘141
+    -- 当日出荷の場合を考慮して+1
+    gd_past_day := gd_past_day + 1;
+-- 2008/11/20 H.Itou Add End
+--
     IF (gd_sysdate > gd_past_day) THEN
       -- 過去の場合、生産物流リードタイムを満たしていない。ワーニング
       pro_err_list_make
