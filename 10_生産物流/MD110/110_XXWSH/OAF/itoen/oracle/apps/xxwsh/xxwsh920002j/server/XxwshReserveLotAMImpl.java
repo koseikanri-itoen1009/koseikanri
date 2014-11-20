@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshReserveLotAMImpl
 * 概要説明   : 引当ロット入力:登録アプリケーションモジュール
-* バージョン : 1.11
+* バージョン : 1.12
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -18,7 +18,8 @@
 * 2009-01-26 1.9  伊藤ひとみ     本番障害#936対応
 * 2009-02-17 1.10 二瓶　大輔     本番障害#863対応
 *                                本番障害#1034対応
-* 2009-12-04 1.11 伊藤ひとみ     本稼動障害#11対応
+* 2009-12-04 1.11 伊藤ひとみ     E_本稼動_00011対応
+* 2010-02-03 1.12 伊藤ひとみ     E_本稼動_00011対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -38,6 +39,10 @@ import java.sql.CallableStatement;
 import java.sql.SQLException;
 import java.sql.Types;
 
+import java.text.SimpleDateFormat;
+
+import java.util.Calendar;
+
 import oracle.apps.fnd.common.MessageToken;
 import oracle.apps.fnd.framework.OAAttrValException;
 import oracle.apps.fnd.framework.OAException;
@@ -55,7 +60,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仮引当ロット入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 北寒寺 正夫
- * @version 1.11
+ * @version 1.12
  ***************************************************************************
  */
  
@@ -87,7 +92,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     HashMap params
   )
   {
-
+// 2010-02-03 H.Itou Add Start E_本稼動_00011
+    Calendar startDate = Calendar.getInstance(); // 検索開始時刻
+// 2010-02-03 H.Itou Add End
     // ******************************************* //
     // * ページレイアウトリージョンPVO 空行取得  * //
     // ******************************************* //
@@ -156,9 +163,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     data.put("MaxDate",                   getOADBTransaction().getProfile("XXCMN_MAX_DATE"));             // 最大日付
     data.put("DummyFrequentWhse",         getOADBTransaction().getProfile("XXCMN_DUMMY_FREQUENT_WHSE"));  // ダミー倉庫
 // 2008-12-25 D.Nihei Add End
-// 2009-12-04 H.Itou Add Start 本稼動障害#11
+// 2009-12-04 H.Itou Add Start E_本稼動_00011
     data.put("OpenDate",                  XxwshUtility.getOpenDate(getOADBTransaction()));  // オープン日付
-// 2009-12-04 H.Itou Add End 本稼動障害#11
+// 2009-12-04 H.Itou Add End
     XxwshStockCanEncQtyVOImpl vo = getXxwshStockCanEncQtyVO1();
 // 2008-12-25 D.Nihei Add Start
     // 1行もない場合、空行作成
@@ -235,6 +242,42 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
       // 手持在庫数・引当可能数一覧リージョンにSQLでセットできない項目をセット
       setStockCanEncQty();
     }
+// 2010-02-03 H.Itou Add Start E_本稼動_00011
+    Calendar endDate = Calendar.getInstance();        // 検索終了時刻
+
+    // 仮引当ログ出力フラグが「Y」の場合、検索実行時間をログに出力する。
+    if (XxcmnUtility.isEquals(getOADBTransaction().getProfile("XXWSH_92B_LOG_FLG"), XxcmnConstants.STRING_Y))
+    {
+      long startTime  = startDate.getTimeInMillis();   // 検索開始時刻(ミリ秒)
+      long endTime    = endDate.getTimeInMillis();     // 検索終了時刻(ミリ秒)
+      long searchTime = (endTime - startTime) / 1000 ; // 実行時間(秒)
+
+      SimpleDateFormat dateFormat  = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+      String startDateString       = dateFormat.format(startDate.getTime()); //検索開始時刻(文字列)
+      String endDateString         = dateFormat.format(endDate.getTime());   //検索終了時刻(文字列)
+
+      // ログ出力
+      XxcmnUtility.writeLog(getOADBTransaction(),
+                            XxwshConstants.URL_XXWSH920002JH + XxcmnConstants.DOT + "initialize",
+                            "ユーザーID,ユーザー名,検索開始時刻,検索終了時刻,実行時間(秒),依頼No,呼出画面区分,品目,品目ID,ロット管理区分,保管倉庫,保管倉庫ID,品目区分,商品区分 "
+                            + getOADBTransaction().getUserId()                     + "," // ユーザーID
+                            + getOADBTransaction().getUserName()                   + "," // ユーザー名
+                            + startDateString                                      + "," // 検索開始時刻
+                            + endDateString                                        + "," // 検索終了時刻
+                            + String.valueOf(searchTime)                           + "," // 実行時間(秒)
+                            + hRow.getAttribute("RequestNo")                       + "," // 依頼No
+                            + hRow.getAttribute("CallPictureKbn")                  + "," // 呼出画面区分
+                            + hRow.getAttribute("ItemCode")                        + "," // 品目コード
+                            + hRow.getAttribute("ItemId")                          + "," // 品目ID
+                            + hRow.getAttribute("LotCtl")                          + "," // ロット管理区分
+                            + lRow.getAttribute("InputInventoryLocationCode")      + "," // 保管倉庫
+                            + lRow.getAttribute("InputInventoryLocationId")        + "," // 保管倉庫ID
+                            + hRow.getAttribute("ItemClass")                       + "," // 品目区分
+                            + hRow.getAttribute("ProdClass")                             // 商品区分
+                            ,
+                            6);
+    }
+// 2010-02-03 H.Itou Add End
   }
 
   /***************************************************************************
@@ -2828,7 +2871,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
 
       // ログ出力
       XxcmnUtility.writeLog(trans,
-                            XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+                            XxwshConstants.URL_XXWSH920002JH + XxcmnConstants.DOT + apiName,
                             s.toString(),
                             6);
 
