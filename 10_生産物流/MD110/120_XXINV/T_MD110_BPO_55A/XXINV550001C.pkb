@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.38
+ * Version          : 1.39
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *  2008/12/29    1.36  Akiyoshi Shiina    統合指摘 #809対応
  *  2008/12/30    1.37  Yasuhisa Yamamoto  本番指摘 #898対応
  *  2009/01/05    1.38  Takao    Ohashi    本番指摘 #911対応
+ *  2008/01/07    1.39  Yasuhisa Yamamoto  本番指摘 #945対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2638,10 +2639,15 @@ AS
         END;
 --
         -- 論理在庫金額
+-- 2009/01/07 Y.Yamamoto v1.39 update start #945
 -- mod start ver1.38
 --        ln_logic_stock_amount  := ROUND( ( gt_main_data(i).month_stock_nw + gt_main_data(i).cargo_stock_nw ) * ln_stock_unit_price );
-        ln_logic_stock_amount  := ROUND( ln_logic_month_stock * ln_stock_unit_price );
+--        ln_logic_stock_amount  := ROUND( ln_logic_month_stock * ln_stock_unit_price );
+        ln_logic_stock_amount  := ROUND( ( ROUND( gt_main_data(i).month_stock_be + gt_main_data(i).cargo_stock_be, 3 )
+                                         + ROUND( gt_main_data(i).stock_quantity, 3 )
+                                         - ROUND( gt_main_data(i).leaving_quantity, 3 ) ) * ln_stock_unit_price );
 -- mod end ver1.38
+-- 2009/01/07 Y.Yamamoto v1.39 update end #945
         -- 実棚在庫金額
         ln_invent_stock_amount := ROUND( gt_main_data(i).case_amt * ln_stock_unit_price ) +
         -- 実棚積送在庫金額
