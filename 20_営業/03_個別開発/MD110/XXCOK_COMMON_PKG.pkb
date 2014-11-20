@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcok_common_pkg(body)
  * Description      : 個別開発領域・共通関数
  * MD.070           : MD070_IPO_COK_共通関数
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * --------------------------   ------------------------------------------------------------
@@ -54,6 +54,10 @@ AS
  *  2009/04/13    1.10  K.YAMAGUCHI      [障害T1_0411] 問屋請求書見積照合 抽出条件変更
  *  2009/04/15    1.11  K.YAMAGUCHI      [障害T1_0570] 担当営業員コード取得 組織プロファイル有効判定条件変更
  *  2009/10/02    1.12  SCS S.Moriyama   [障害E_T3_00630] VDBM残高一覧表が出力されない
+ *  2010/04/21    1.13  SCS K.Yamguchi   [E_本稼動_02088] 問屋請求見積照合 再作成
+ *                                                        ・突合せ方法の仕様変更
+ *                                                        ・請求単位（ボール）対応
+ *                                                        ・見積に税込額が設定されている場合の対応
  *
  *****************************************************************************************/
   -- ==============================
@@ -742,6 +746,857 @@ AS
    * Procedure Name   : get_wholesale_req_est_p
    * Description      : 問屋請求見積照合
    ***********************************************************************************/
+-- 2010/04/21 Ver.1.13 [E_本稼動_02088] SCS K.Yamaguchi REPAIR START
+--  PROCEDURE get_wholesale_req_est_p(
+--    ov_errbuf                      OUT VARCHAR2 -- エラーバッファ
+--  , ov_retcode                     OUT VARCHAR2 -- リターンコード
+--  , ov_errmsg                      OUT VARCHAR2 -- エラーメッセージ
+--  , iv_wholesale_code              IN  VARCHAR2 -- 問屋管理コード
+--  , iv_sales_outlets_code          IN  VARCHAR2 -- 問屋帳合先コード
+--  , iv_item_code                   IN  VARCHAR2 -- 品目コード
+--  , in_demand_unit_price           IN  NUMBER   -- 支払単価
+--  , iv_demand_unit_type            IN  VARCHAR2 -- 請求単位
+--  , iv_selling_month               IN  VARCHAR2 -- 売上対象年月
+--  , ov_estimated_no                OUT VARCHAR2 -- 見積書No.
+--  , on_quote_line_id               OUT NUMBER   -- 明細ID
+--  , ov_emp_code                    OUT VARCHAR2 -- 担当者コード
+--  , on_market_amt                  OUT NUMBER   -- 建値
+--  , on_allowance_amt               OUT NUMBER   -- 値引(割戻し)
+--  , on_normal_store_deliver_amt    OUT NUMBER   -- 通常店納
+--  , on_once_store_deliver_amt      OUT NUMBER   -- 今回店納
+--  , on_net_selling_price           OUT NUMBER   -- NET価格
+--  , ov_estimated_type              OUT VARCHAR2 -- 見積区分
+--  , on_backmargin_amt              OUT NUMBER   -- 販売手数料
+--  , on_sales_support_amt           OUT NUMBER   -- 販売協賛金
+--  )
+--  IS
+--    -- =======================================================
+--    -- ローカル定数
+--    -- =======================================================
+--    cv_prg_name                    CONSTANT VARCHAR2(30) := 'get_wholesale_req_est_p'; -- プログラム名
+--    cv_quote_type_sale             CONSTANT VARCHAR2(1)  := '1';                       -- 見積種別 1:販売先用
+--    cv_quote_type_wholesale        CONSTANT VARCHAR2(1)  := '2';                       -- 見積種別 2:帳合問屋先用
+--    cv_status_decision             CONSTANT VARCHAR2(1)  := '2';                       -- ステータス= 2:確定
+--    cv_quote_div_usuall            CONSTANT VARCHAR2(1)  := '1';                       -- 見積区分 1:通常
+--    cn_one                         CONSTANT NUMBER       := 1;                         -- 数値:1
+--    cv_zero                        CONSTANT VARCHAR2(1)  := '0';                       -- 文字列:0
+--    cv_organization_cd             CONSTANT VARCHAR2(30) := 'XXCOK1_ORG_CODE_SALES';   -- COK用_組織コード
+--    cv_unit_type_count             CONSTANT VARCHAR2(1)  := '1';                       -- 単価区分:1(本数)
+--    cv_unit_type_cs                CONSTANT VARCHAR2(1)  := '2';                       -- 単価区分:2(C/S)
+--    -- =======================================================
+--    -- ローカル変数
+--    -- =======================================================
+--    ln_count                       NUMBER ;    -- 件数
+--    ln_price_check_on_flg          NUMBER DEFAULT 0; -- 照合結果判定フラグ
+--    ln_sql_data_not_flg            NUMBER DEFAULT 0; -- 1件目見積区分判定フラグ
+--    -- =======================================================
+--    -- ローカルRECORD型
+--    -- =======================================================
+--    --問屋請求見積1 レコード定義
+--    TYPE l_wholesale_req1_rtype    IS RECORD(
+--      lv_quote_number              xxcso_quote_headers.quote_number             %TYPE -- 帳合問屋用見積ヘッダー.見積書番号
+--    , lv_employee_number           xxcso_quote_headers.employee_number          %TYPE -- 帳合問屋用見積ヘッダー.担当者コード
+--    , lv_quote_div                 xxcso_quote_lines.quote_div                  %TYPE -- 販売先用見積明細.見積区分
+--    , ln_usually_deliv_price       xxcso_quote_lines.usually_deliv_price        %TYPE -- 販売先用見積明細.通常店納価格
+--    , ln_this_time_deliv_price     xxcso_quote_lines.this_time_deliv_price      %TYPE -- 販売先用見積明細.今回店納価格
+--    , ln_quote_line_id             xxcso_quote_lines.quote_line_id              %TYPE -- 帳合問屋用見積明細.見積明細ID
+--    , ln_quotation_price           xxcso_quote_lines.quotation_price            %TYPE -- 帳合問屋用見積明細.建値
+--    , ln_sales_discount_price      xxcso_quote_lines.sales_discount_price       %TYPE -- 帳合問屋用見積明細.売上値引
+--    , ln_usuall_net_price          xxcso_quote_lines.usuall_net_price           %TYPE -- 帳合問屋用見積明細.通常NET価格
+--    , ln_this_time_net_price       xxcso_quote_lines.this_time_net_price        %TYPE -- 帳合問屋用見積明細.今回NET価格
+--    );
+--    --問屋請求見積2 レコード定義
+--    TYPE l_wholesale_req2_rtype    IS RECORD(
+--      lv_quote_number              xxcso_quote_headers.quote_number             %TYPE -- 帳合問屋用見積ヘッダー.見積書番号
+--    , lv_employee_number           xxcso_quote_headers.employee_number          %TYPE -- 帳合問屋用見積ヘッダー.担当者コード
+--    , lv_quote_div                 xxcso_quote_lines.quote_div                  %TYPE -- 販売先用見積明細.見積区分
+--    , ln_usually_deliv_price       xxcso_quote_lines.usually_deliv_price        %TYPE -- 販売先用見積明細.通常店納価格
+--    , ln_this_time_deliv_price     xxcso_quote_lines.this_time_deliv_price      %TYPE -- 販売先用見積明細.今回店納価格
+--    , ln_quote_line_id             xxcso_quote_lines.quote_line_id              %TYPE -- 帳合問屋用見積明細.見積明細ID
+--    , ln_quotation_price           xxcso_quote_lines.quotation_price            %TYPE -- 帳合問屋用見積明細.建値
+--    , ln_sales_discount_price      xxcso_quote_lines.sales_discount_price       %TYPE -- 帳合問屋用見積明細.売上値引
+--    , ln_usuall_net_price          xxcso_quote_lines.usuall_net_price           %TYPE -- 帳合問屋用見積明細.通常NET価格
+--    , ln_this_time_net_price       xxcso_quote_lines.this_time_net_price        %TYPE -- 帳合問屋用見積明細.今回NET価格
+--    , lv_iim_b_case_in_num         ic_item_mst_b.attribute11                    %TYPE -- OPM品目マスタ.ケース入り数（DFF11)
+--    );
+--    -- =======================================================
+--    -- ローカルTABLE型
+--    -- =======================================================
+--    --問屋請求見積1 レコードの結合配列 定義
+--    TYPE  l_wholesale_req1_ttype   IS TABLE OF l_wholesale_req1_rtype
+--      INDEX BY PLS_INTEGER;
+--    --問屋請求見積2 レコードの結合配列 定義
+--    TYPE  l_wholesale_req2_ttype   IS TABLE OF l_wholesale_req2_rtype
+--      INDEX BY PLS_INTEGER;
+--    -- =======================================================
+--    -- ローカルPL/SQL表
+--    -- =======================================================
+--    --問屋請求見積1 結合配列
+--    l_wholesale_req1_tab           l_wholesale_req1_ttype;
+--    --問屋請求見積2 結合配列
+--    l_wholesale_req2_tab           l_wholesale_req2_ttype;
+----
+--  BEGIN
+--    -- =======================================================
+--    -- INパラメータ品目コードNULLチェック
+--    -- =======================================================
+--    IF( iv_item_code IS NULL ) THEN
+--      ln_price_check_on_flg := 0;  --照合結果判定フラグ  オフ
+--    ELSE
+--      BEGIN
+--        -- =======================================================
+--        -- ①SQL
+--        -- =======================================================
+--        SELECT   -- 帳合問屋用見積ヘッダー.見積書番号
+--                 csoqh_wholesale.quote_number                  AS wholesale_quote_number
+--                 -- 帳合問屋用見積ヘッダー.担当者コード
+--               , csoqh_wholesale.employee_number               AS wholesale_employee_number
+--                 -- 販売先用見積明細.見積区分
+--               , csoql_sale.quote_div                          AS sale_quote_div
+--                 -- 販売先用見積明細.通常店納価格
+--               , NVL( csoql_sale.usually_deliv_price, 0 )      AS sale_usually_deliv_price
+--                 -- 販売先用見積明細.今回店納価格
+--               , NVL( csoql_sale.this_time_deliv_price, 0 )    AS sale_this_time_deliv_price
+--                 -- 帳合問屋用見積明細.見積明細ID
+--               , csoql_wholesale.quote_line_id                 AS wholesale_quote_line_id
+--                 -- 帳合問屋用見積明細.建値
+--               , NVL( csoql_wholesale.quotation_price, 0 )     AS wholesale_quotation_price
+--                 -- 帳合問屋用見積明細.売上値引
+--               , NVL( csoql_wholesale.sales_discount_price, 0 )  AS wholesale_sales_discount_price
+--                 -- 帳合問屋用見積明細.通常NET価格
+--               , NVL( csoql_wholesale.usuall_net_price, 0 )    AS wholesale_usuall_net_price
+--                 -- 帳合問屋用見積明細.今回NET価格
+--               , NVL( csoql_wholesale.this_time_net_price, 0 ) AS wholesale_this_time_net_price
+--        BULK COLLECT INTO l_wholesale_req1_tab  --問屋請求見積1 結合配列
+--        FROM     -- 販売先用見積ヘッダー
+--                 xxcso_quote_headers                           csoqh_sale
+--                 -- 販売先用見積明細
+--               , xxcso_quote_lines                             csoql_sale
+--                 -- 帳合問屋用見積ヘッダー
+--               , xxcso_quote_headers                           csoqh_wholesale
+--                 -- 帳合問屋用見積明細
+--               , xxcso_quote_lines                             csoql_wholesale
+--                 -- Disc品目マスタ
+--               , mtl_system_items_b                            msi_b
+--                 -- 組織パラメータ
+--               , mtl_parameters                                mp
+---- 2009/03/23 Ver.1.8 SCS K.Yamaguchi ADD START
+--                 -- 顧客追加情報
+--               , xxcmm_cust_accounts                           xca
+---- 2009/03/23 Ver.1.8 SCS K.Yamaguchi ADD END
+--        WHERE    -- 条件抽出条件
+--                 -- 販売先用見積ヘッダー．見積ヘッダーID     = 販売先用見積明細．見積ヘッダーID
+--                 csoqh_sale.quote_header_id                  = csoql_sale.quote_header_id
+--                 -- 帳合問屋用見積ヘッダー．見積ヘッダーID   = 帳合問屋用見積明細．見積ヘッダーID
+--        AND      csoqh_wholesale.quote_header_id             = csoql_wholesale.quote_header_id
+--                 -- 販売先用見積ヘッダー．見積書番号         =  帳合問屋用見積ヘッダー．参照見積番号
+--        AND      csoqh_sale.quote_number                     = csoqh_wholesale.reference_quote_number
+--                 -- 販売先用見積明細．見積明細ID             = 帳合問屋用見積．参照用見積明細ＩＤ
+--        AND      csoql_sale.quote_line_id                    = csoql_wholesale.reference_quote_line_id
+--                 -- Disc品目マスタ．品目ID                   = 販売先用見積明細．品目ID
+--        AND      msi_b.inventory_item_id                     = csoql_sale.inventory_item_id
+--                 -- 販売先用見積ヘッダー．見積種別           = '1'(販売先)
+--        AND      csoqh_sale.quote_type                       = cv_quote_type_sale
+--                 -- 販売先用見積ヘッダー．ステータス         = '2'(確定)
+--        AND      csoqh_sale.status                           = cv_status_decision
+--                 -- 帳合問屋用見積ヘッダー．見積種別         = '2'(帳合問屋)
+--        AND      csoqh_wholesale.quote_type                  = cv_quote_type_wholesale
+--                 -- 帳合問屋用見積ヘッダー．ステータス       = '2'(確定)
+--        AND      csoqh_wholesale.status                      = cv_status_decision
+--                 -- Disc品目マスタ．組織ID                   = 組織パラメータ．組織ID
+--        AND      msi_b.organization_id                       = mp.organization_id
+--                 -- 販売先用見積ヘッダー．顧客コード         = 入力パラメータ．問屋帳合先コード
+--        AND      csoqh_sale.account_number                   = iv_sales_outlets_code
+--                 -- Disc品目マスタ．品目コード               = 入力パラメータ．品目コード
+--        AND      msi_b.segment1                              = iv_item_code
+---- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR START
+----                 -- 販売先用見積明細．期間（開始）           <= 入力パラメータ．売上対象年月
+----        AND      csoql_sale.quote_start_date                 <= TO_DATE( iv_selling_month , 'YYYY/MM' )
+----                 -- 販売先用見積明細．期間（終了）           >= 入力パラメータ．売上対象年月
+----        AND      csoql_sale.quote_end_date                   >= TO_DATE( iv_selling_month , 'YYYY/MM' )
+--                 -- 販売先用見積明細．期間（開始）           <= 入力パラメータ．売上対象年月
+--        AND      TO_CHAR( csoql_sale.quote_start_date, 'YYYYMM' ) <= iv_selling_month
+--                 -- 販売先用見積明細．期間（終了）           >= 入力パラメータ．売上対象年月
+--        AND      TO_CHAR( csoql_sale.quote_end_date  , 'YYYYMM' ) >= iv_selling_month
+---- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR END
+---- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR START
+----                 -- 帳合問屋用見積ヘッダー．顧客コード       = 入力パラメータ．帳合問屋コード
+----        AND      csoqh_wholesale.account_number              = iv_wholesale_code
+--                 -- 帳合問屋用見積ヘッダー．顧客コード       = 顧客追加情報．顧客コード
+--        AND      csoqh_wholesale.account_number              = xca.customer_code
+--                 -- 顧客追加情報．問屋管理コード             = 入力パラメータ．問屋管理コード
+--        AND      xca.wholesale_ctrl_code                     = iv_wholesale_code
+---- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR END
+--                 -- 帳合問屋用見積ヘッダー．単価区分         = 入力パラメータ．請求単位
+--        AND      csoqh_wholesale.unit_type                   = iv_demand_unit_type
+---- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR START
+----                 -- 帳合問屋用見積明細．期間（開始）         <= 入力パラメータ．売上対象年月
+----        AND      csoql_wholesale.quote_start_date            <= TO_DATE( iv_selling_month , 'YYYY/MM' )
+----                 -- 帳合問屋用見積明細．期間（終了）         >= 入力パラメータ．売上対象年月
+----        AND      csoql_wholesale.quote_end_date              >= TO_DATE( iv_selling_month , 'YYYY/MM' )
+--                 -- 帳合問屋用見積明細．期間（開始）         <= 入力パラメータ．売上対象年月
+--        AND      TO_CHAR( csoql_wholesale.quote_start_date, 'YYYYMM' ) <= iv_selling_month
+--                 -- 帳合問屋用見積明細．期間（終了）         >= 入力パラメータ．売上対象年月
+--        AND      TO_CHAR( csoql_wholesale.quote_end_date  , 'YYYYMM' ) >= iv_selling_month
+---- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR END
+--                 -- 組織パラメータ．組織コード               = FND_PROFILE．VALUE('XXCOK1_ORG_CODE_SALES')
+--        AND      mp.organization_code                        = FND_PROFILE.VALUE( cv_organization_cd )
+---- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR START
+----        ORDER BY -- 販売先用見積明細.見積区分                昇順
+----                 csoql_sale.quote_div                        ASC
+----                 -- 販売先用見積明細.今回店納価格            降順
+----               , csoql_sale.this_time_deliv_price            DESC NULLS LAST
+----                 -- 帳合問屋用見積明細.今回NET価格           降順
+----               , csoql_wholesale.this_time_net_price         DESC NULLS LAST;
+--        ORDER BY -- 販売先用見積明細.見積区分                昇順
+--                 csoql_sale.quote_div                        ASC
+--                 -- 販売先用見積明細.今回店納価格            降順
+--               , csoql_sale.this_time_deliv_price            DESC NULLS LAST
+--                 -- 帳合問屋用見積明細.今回NET価格           降順
+--               , csoql_wholesale.this_time_net_price         DESC NULLS LAST
+--                 -- 帳合問屋用見積ヘッダ．発行日             降順
+--               , csoqh_wholesale.publish_date                DESC NULLS LAST
+--        ;
+---- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR END
+--      END;
+--      -- =======================================================
+--      -- 問屋請求見積照合1
+--      -- =======================================================
+--      << loop_1 >>
+--      FOR ln_count IN NVL( l_wholesale_req1_tab.FIRST, 0 ) ..NVL( l_wholesale_req1_tab.LAST, 0 ) LOOP
+--        BEGIN
+--          -- =======================================================
+--          -- ②単価照合
+--          -- =======================================================
+--          -- =====================================
+--          --①.FETCHしたレコードの
+--          --1件目.見積区分<>「1(通常)」の場合
+--          --1件目の見積区分が「1(通常)」以外の場合
+--          -- =====================================
+--          IF( l_wholesale_req1_tab( cn_one ).lv_quote_div <> cv_quote_div_usuall ) THEN
+--            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
+--            ln_sql_data_not_flg   := 1;  -- 1件目見積区分判定フラグ
+--            EXIT loop_1;                        --LOOP 処理から離脱
+--          END IF;
+--          -- =====================================
+--          --①.見積区分=「1(通常)」且つ
+--          --①.建値 - ①.売上値引 - ①.通常NET価格
+--          --   = 入力パラメータ.支払単価
+--          --     (in_demand_unit_price)の場合
+--          -- =====================================
+--          IF(     ( l_wholesale_req1_tab( ln_count ).lv_quote_div = cv_quote_div_usuall )
+--              AND ( in_demand_unit_price
+--                      = (   l_wholesale_req1_tab( ln_count ).ln_quotation_price
+--                          - l_wholesale_req1_tab( ln_count ).ln_sales_discount_price
+--                          - l_wholesale_req1_tab( ln_count ).ln_usuall_net_price   )
+--                  )
+--          ) THEN
+--            --・販売手数料 = ①.建値 - ①.売上値引 - ①.通常NET価格
+--            on_backmargin_amt := l_wholesale_req1_tab( ln_count ).ln_quotation_price
+--                               - l_wholesale_req1_tab( ln_count ).ln_sales_discount_price
+--                               - l_wholesale_req1_tab( ln_count ).ln_usuall_net_price;
+--            IF( l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price = 0 ) THEN
+--              --・販売協賛金 = 0 ※今回店納が0の場合は0
+--              on_sales_support_amt := 0;
+--            ELSE
+--              --・販売協賛金 = ①.通常店納 - ①.今回店納
+--              on_sales_support_amt := l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price
+--                                   -  l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price;
+--            END IF;
+--            ov_estimated_no             := l_wholesale_req1_tab( ln_count ).lv_quote_number;         -- 見積書No.
+--            on_quote_line_id            := l_wholesale_req1_tab( ln_count ).ln_quote_line_id;        -- 明細ID
+--            ov_emp_code                 := l_wholesale_req1_tab( ln_count ).lv_employee_number;      -- 担当者コード
+--            on_market_amt               := l_wholesale_req1_tab( ln_count ).ln_quotation_price;      -- 通常建値
+--            on_allowance_amt            := l_wholesale_req1_tab( ln_count ).ln_sales_discount_price; -- 値引(割戻し)
+--            on_normal_store_deliver_amt := l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price;  -- 通常店納
+--            on_once_store_deliver_amt   := l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price;-- 今回店納
+--            on_net_selling_price        := l_wholesale_req1_tab( ln_count ).ln_usuall_net_price;     -- NET価格
+--            ov_estimated_type           := l_wholesale_req1_tab( ln_count ).lv_quote_div;            -- 見積区分
+--            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
+--            EXIT loop_1;                       --LOOP 処理から離脱
+--          END IF;
+--          -- =====================================
+--          --①.見積区分が「1」以外  且つ
+--          --①.建値 - ①.売上値引 - ①.今回NET価格
+--          --= 入力パラメータ.支払単価
+--          --    (in_demand_unit_price)の場合
+--          -- =====================================
+--          IF(     ( l_wholesale_req1_tab( ln_count ).lv_quote_div <> cv_quote_div_usuall )
+--              AND ( in_demand_unit_price
+--                      = (   l_wholesale_req1_tab( ln_count ).ln_quotation_price
+--                          - l_wholesale_req1_tab( ln_count ).ln_sales_discount_price
+--                          - l_wholesale_req1_tab( ln_count ).ln_this_time_net_price )
+--                  )
+--          ) THEN
+--            --・販売手数料 = ①.建値 - ①.売上値引 - ①.通常店納 + ①.今回店納 - ①.今回NET価格
+--            on_backmargin_amt    := l_wholesale_req1_tab( ln_count ).ln_quotation_price
+--                                  - l_wholesale_req1_tab( ln_count ).ln_sales_discount_price
+--                                  - l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price
+--                                  + l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price
+--                                  - l_wholesale_req1_tab( ln_count ).ln_this_time_net_price;
+--            --・販売協賛金 = ①.通常店納 - ①.今回店納
+--            on_sales_support_amt := l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price
+--                                  - l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price;
+----
+--            ov_estimated_no             := l_wholesale_req1_tab( ln_count ).lv_quote_number;         -- 見積書No.
+--            on_quote_line_id            := l_wholesale_req1_tab( ln_count ).ln_quote_line_id;        -- 明細ID
+--            ov_emp_code                 := l_wholesale_req1_tab( ln_count ).lv_employee_number;      -- 担当者コード
+--            on_market_amt               := l_wholesale_req1_tab( ln_count ).ln_quotation_price;      -- 通常建値
+--            on_allowance_amt            := l_wholesale_req1_tab( ln_count ).ln_sales_discount_price; -- 値引(割戻し)
+--            on_normal_store_deliver_amt := l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price;  -- 通常店納
+--            on_once_store_deliver_amt   := l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price;-- 今回店納
+--            on_net_selling_price        := l_wholesale_req1_tab( ln_count ).ln_this_time_net_price;  -- NET価格
+--            ov_estimated_type           := l_wholesale_req1_tab( ln_count ).lv_quote_div;            -- 見積区分
+----
+--            ln_price_check_on_flg := 1; --照合結果判定フラグ  オン
+--            EXIT loop_1;                       --LOOP 処理から離脱
+--          END IF;
+--          -- =====================================
+--          --①.見積区分が「1」以外  且つ
+--          --①.建値 - ①.売上値引 - ①.通常店納 + ①.今回店納 - ①.今回NET価格
+--          -- = 入力パラメータ.支払単価
+--          --      (in_demand_unit_price)の場合
+--          -- =====================================
+--          IF(     ( l_wholesale_req1_tab( ln_count ).lv_quote_div <> cv_quote_div_usuall )
+--              AND ( in_demand_unit_price
+--                      = (   l_wholesale_req1_tab( ln_count ).ln_quotation_price
+--                          - l_wholesale_req1_tab( ln_count ).ln_sales_discount_price
+--                          - l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price
+--                          + l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price
+--                          - l_wholesale_req1_tab( ln_count ).ln_this_time_net_price )
+--                  )
+--          ) THEN
+--            --・販売手数料 = 入力パラメータ.支払単価
+--            on_backmargin_amt := in_demand_unit_price;
+--            --・販売協賛金 = NULL
+--            on_sales_support_amt := NULL;
+--            ov_estimated_no             := l_wholesale_req1_tab( ln_count ).lv_quote_number;         -- 見積書No.
+--            on_quote_line_id            := l_wholesale_req1_tab( ln_count ).ln_quote_line_id;        -- 明細ID
+--            ov_emp_code                 := l_wholesale_req1_tab( ln_count ).lv_employee_number;      -- 担当者コード
+--            on_market_amt               := l_wholesale_req1_tab( ln_count ).ln_quotation_price;      -- 通常建値
+--            on_allowance_amt            := l_wholesale_req1_tab( ln_count ).ln_sales_discount_price; -- 値引(割戻し)
+--            on_normal_store_deliver_amt := l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price;  -- 通常店納
+--            on_once_store_deliver_amt   := l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price;-- 今回店納
+--            on_net_selling_price        := l_wholesale_req1_tab( ln_count ). ln_this_time_net_price; -- NET価格
+--            ov_estimated_type           := l_wholesale_req1_tab( ln_count ).lv_quote_div;            -- 見積区分
+--            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
+--            EXIT loop_1;                       --LOOP 処理から離脱
+--          END IF;
+--          -- =====================================
+--          --①.見積区分が「1」以外  且つ
+--          --①.通常店納 - ①.今回店納
+--          -- = 入力パラメータ.支払単価
+--          --      (in_demand_unit_price)の場合
+--          -- =====================================
+--          IF(     ( l_wholesale_req1_tab( ln_count ).lv_quote_div <> cv_quote_div_usuall )
+--              AND ( in_demand_unit_price
+--                      = (   l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price
+--                          - l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price  )
+--                  )
+--          ) THEN
+--            --・販売手数料 = NULL
+--            on_backmargin_amt := NULL;
+--            --・販売協賛金 = 入力パラメータ.支払単価
+--            on_sales_support_amt := in_demand_unit_price;
+--            ov_estimated_no             := l_wholesale_req1_tab( ln_count ).lv_quote_number;          -- 見積書No.
+--            on_quote_line_id            := l_wholesale_req1_tab( ln_count ).ln_quote_line_id;         -- 明細ID
+--            ov_emp_code                 := l_wholesale_req1_tab( ln_count ).lv_employee_number;       -- 担当者コード
+--            on_market_amt               := l_wholesale_req1_tab( ln_count ).ln_quotation_price;       -- 通常建値
+--            on_allowance_amt            := l_wholesale_req1_tab( ln_count ).ln_sales_discount_price;  -- 値引(割戻し)
+--            on_normal_store_deliver_amt := l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price;   -- 通常店納
+--            on_once_store_deliver_amt   := l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price; -- 今回店納
+--            on_net_selling_price        := l_wholesale_req1_tab( ln_count ).ln_this_time_net_price;   -- NET価格
+--            ov_estimated_type           := l_wholesale_req1_tab( ln_count ).lv_quote_div;             -- 見積区分
+--            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
+--            EXIT loop_1;                       --LOOP 処理から離脱
+--          END IF;
+--          -- =====================================
+--          --①.見積区分が「1」以外 且つ
+--          --①.通常NET価格 - ①.今回NET価格
+--          --= 入力パラメータ.支払単価
+--          --      (in_demand_unit_price)の場合
+--          -- =====================================
+--          IF(     ( l_wholesale_req1_tab( ln_count ).lv_quote_div <> cv_quote_div_usuall )
+--              AND ( in_demand_unit_price
+--                      = (   l_wholesale_req1_tab( ln_count ).ln_usuall_net_price
+--                          - l_wholesale_req1_tab( ln_count ).ln_this_time_net_price )
+--                  )
+--          ) THEN
+--            --・販売手数料 = (①.今回店納 - ①.今回NET価格)
+--            --             - (①.通常店納 - ①.通常NET価格)
+--            on_backmargin_amt    := (   (   l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price
+--                                          - l_wholesale_req1_tab( ln_count ).ln_this_time_net_price   )
+--                                      - (   l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price
+--                                          - l_wholesale_req1_tab( ln_count ).ln_usuall_net_price      )
+--                                    );
+--            --・販売協賛金 =  ①.通常店納 - ①.今回店納
+--            on_sales_support_amt := l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price
+--                                  - l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price;
+--            ov_estimated_no             := l_wholesale_req1_tab( ln_count ).lv_quote_number;         -- 見積書No.
+--            on_quote_line_id            := l_wholesale_req1_tab( ln_count ).ln_quote_line_id;        -- 明細ID
+--            ov_emp_code                 := l_wholesale_req1_tab( ln_count ).lv_employee_number;      -- 担当者コード
+--            on_market_amt               := l_wholesale_req1_tab( ln_count ).ln_quotation_price;      -- 通常建値
+--            on_allowance_amt            := l_wholesale_req1_tab( ln_count ).ln_sales_discount_price; -- 値引(割戻し)
+--            on_normal_store_deliver_amt := l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price;  -- 通常店納
+--            on_once_store_deliver_amt   := l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price;-- 今回店納
+--            on_net_selling_price        := l_wholesale_req1_tab( ln_count ).ln_this_time_net_price;  -- NET価格
+--            ov_estimated_type           := l_wholesale_req1_tab( ln_count ).lv_quote_div;            -- 見積区分
+--            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
+--            EXIT loop_1;                       --LOOP 処理から離脱
+--          END IF;
+--        EXCEPTION
+--          WHEN NO_DATA_FOUND THEN
+--            ln_price_check_on_flg := 0;
+--          WHEN OTHERS THEN
+--            raise_application_error(
+--              -20000, cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || SQLERRM
+--            );
+--        END;
+--      END LOOP loop_1; --l_wholesale_req1_tab LOOP END
+----
+--      IF( ln_price_check_on_flg = 0 ) THEN  --照合結果判定フラグ  オフ
+--        -- =======================================================
+--        -- ③SQL発行
+--        -- =======================================================
+--        SELECT   -- 帳合問屋用見積ヘッダー.見積書番号
+--                 csoqh_wholesale.quote_number                  AS wholesale_quote_number
+--                 -- 帳合問屋用見積ヘッダー.担当者コード
+--               , csoqh_wholesale.employee_number               AS wholesale_employee_number
+--                 -- 販売先用見積明細.見積区分
+--               , csoql_sale.quote_div                          AS sale_quote_div
+--                 -- 販売先用見積明細.通常店納価格
+--               , NVL( csoql_sale.usually_deliv_price, 0 )      AS sale_usually_deliv_price
+--                 -- 販売先用見積明細.今回店納価格
+--               , NVL( csoql_sale.this_time_deliv_price, 0 )    AS csoql_sale_this_time_del_price
+--                 -- 帳合問屋用見積明細.見積明細ID
+--               , csoql_wholesale.quote_line_id                 AS wholesale_quote_line_id
+--                 -- 帳合問屋用見積明細.建値
+--               , NVL( csoql_wholesale.quotation_price , 0 )    AS wholesale_quotation_price
+--                 -- 帳合問屋用見積明細.売上値引
+--               , NVL( csoql_wholesale.sales_discount_price, 0 )  AS wholesale_sales_discount_price
+--                 -- 帳合問屋用見積明細.通常NET価格
+--               , NVL( csoql_wholesale.usuall_net_price, 0 )    AS wholesale_usuall_net_price
+--                 -- 帳合問屋用見積明細 .今回NET価格
+--               , NVL( csoql_wholesale.this_time_net_price, 0 ) AS wholesale_this_time_net_price
+--                 -- OPM品目マスタ.ケース入り数（DFF11)
+--               , iim_b.attribute11                             AS iim_b_case_in_num
+--        -- 問屋請求見積2 結合配列
+--        BULK COLLECT INTO l_wholesale_req2_tab
+--        FROM     -- 見積ヘッダーテーブル:販売先用見積ヘッダー
+--                 xxcso_quote_headers     csoqh_sale
+--                 -- 見積明細テーブル    :販売先用見積明細
+--               , xxcso_quote_lines     csoql_sale
+--                 -- 見積ヘッダーテーブル:帳合問屋用見積ヘッダー
+--               , xxcso_quote_headers   csoqh_wholesale
+--                 -- 見積明細テーブル    :帳合問屋用見積明細
+--               , xxcso_quote_lines     csoql_wholesale
+--                 -- Disc品目マスタ      :Disc品目マスタ
+--               , mtl_system_items_b    msi_b
+--                 -- OPM品目マスタ       :OPM品目マスタ
+--               , ic_item_mst_b         iim_b
+--                 -- 組織パラメータ      :組織パラメータ
+--               , mtl_parameters        mp
+---- 2009/03/23 Ver.1.8 SCS K.Yamaguchi ADD START
+--                 -- 顧客追加情報
+--               , xxcmm_cust_accounts                           xca
+---- 2009/03/23 Ver.1.8 SCS K.Yamaguchi ADD END
+--        WHERE    -- ＜抽出条件＞
+--                 -- 販売先用見積ヘッダー．見積ヘッダーID   = 販売先用見積明細．見積ヘッダーID
+--                 csoqh_sale.quote_header_id                = csoql_sale.quote_header_id
+--                 -- 帳合問屋用見積ヘッダー．見積ヘッダーID = 帳合問屋用見積明細．見積ヘッダーID
+--        AND      csoqh_wholesale.quote_header_id           = csoql_wholesale.quote_header_id
+--                 -- 販売先用見積ヘッダー．見積書番号       = 帳合問屋用見積ヘッダー．参照見積番号
+--        AND      csoqh_sale.quote_number                   = csoqh_wholesale.reference_quote_number
+--                 -- 販売先用見積明細．見積明細ID           = 帳合問屋用見積．参照用見積明細ＩＤ
+--        AND      csoql_sale.quote_line_id                  = csoql_wholesale.reference_quote_line_id
+--                 -- Disc品目マスタ．品目ID                 = 販売先用見積明細．品目ID
+--        AND      msi_b.inventory_item_id                   = csoql_sale.inventory_item_id
+--                 -- 販売先用見積ヘッダー．見積種別         = '1'(販売先)
+--        AND      csoqh_sale.quote_type                     = cv_quote_type_sale
+--                 -- 販売先用見積ヘッダー．ステータス       = '2'(確定)
+--        AND      csoqh_sale.status                         = cv_status_decision
+--                 -- 帳合問屋用見積ヘッダー．見積種別       = '2'(帳合問屋)
+--        AND      csoqh_wholesale.quote_type                =  cv_quote_type_wholesale
+--                 -- 帳合問屋用見積ヘッダー．ステータス     = '2'(確定)
+--        AND      csoqh_wholesale.status                    = cv_status_decision
+--                 -- OPM品目マスタ．品目コード              = Disc品目マスタ．品目コード
+--        AND      iim_b.item_no                             = msi_b.segment1
+--                 -- Disc品目マスタ．組織ID                 = 組織パラメータ．組織ID
+--        AND      msi_b.organization_id                     = mp.organization_id
+--                 -- 販売先用見積ヘッダー．顧客コード       = 入力パラメータ．問屋帳合先コード
+--        AND      csoqh_sale.account_number                 = iv_sales_outlets_code
+--                 -- Disc品目マスタ．品目コード             = 入力パラメータ．品目コード
+--        AND      msi_b.segment1                            = iv_item_code
+---- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR START
+----                 -- 販売先用見積明細．期間（開始）        <= 入力パラメータ．売上対象年月
+----        AND      csoql_sale.quote_start_date              <= TO_DATE (iv_selling_month , 'YYYY/MM' )
+----                 -- 販売先用見積明細．期間（終了）        >= 入力パラメータ．売上対象年月
+----        AND      csoql_sale.quote_end_date                >= TO_DATE (iv_selling_month , 'YYYY/MM' )
+--                 -- 販売先用見積明細．期間（開始）           <= 入力パラメータ．売上対象年月
+--        AND      TO_CHAR( csoql_sale.quote_start_date, 'YYYYMM' ) <= iv_selling_month
+--                 -- 販売先用見積明細．期間（終了）           >= 入力パラメータ．売上対象年月
+--        AND      TO_CHAR( csoql_sale.quote_end_date  , 'YYYYMM' ) >= iv_selling_month
+---- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR END
+---- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR START
+----                 -- 帳合問屋用見積ヘッダー．顧客コード     = 入力パラメータ．帳合問屋コード
+----        AND      csoqh_wholesale.account_number            = iv_wholesale_code
+--                 -- 帳合問屋用見積ヘッダー．顧客コード       = 顧客追加情報．顧客コード
+--        AND      csoqh_wholesale.account_number              = xca.customer_code
+--                 -- 顧客追加情報．問屋管理コード             = 入力パラメータ．問屋管理コード
+--        AND      xca.wholesale_ctrl_code                     = iv_wholesale_code
+---- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR END
+--                 -- 帳合問屋用見積ヘッダー．単価区分      <> 入力パラメータ．請求単位
+--        AND      csoqh_wholesale.unit_type                <> iv_demand_unit_type
+---- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR START
+----                 -- 帳合問屋用見積明細．期間（開始）      <= 入力パラメータ．売上対象年月
+----        AND      csoql_wholesale.quote_start_date         <= TO_DATE ( iv_selling_month , 'YYYY/MM' )
+----                 -- 帳合問屋用見積明細．期間（終了）      >= 入力パラメータ．売上対象年月
+----        AND      csoql_wholesale.quote_end_date           >= TO_DATE (iv_selling_month , 'YYYY/MM' )
+--                 -- 帳合問屋用見積明細．期間（開始）         <= 入力パラメータ．売上対象年月
+--        AND      TO_CHAR( csoql_wholesale.quote_start_date, 'YYYYMM' ) <= iv_selling_month
+--                 -- 帳合問屋用見積明細．期間（終了）         >= 入力パラメータ．売上対象年月
+--        AND      TO_CHAR( csoql_wholesale.quote_end_date  , 'YYYYMM' ) >= iv_selling_month
+---- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR END
+--                 -- 組織パラメータ．組織コード             = FND_PROFILE．VALUE('XXCOK1_ORG_CODE_SALES')
+--        AND      mp.organization_code                      = FND_PROFILE.VALUE( cv_organization_cd )
+---- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR START
+----        ORDER BY -- ＜ソート条件＞
+----                 -- 販売先用見積明細.見積区分              昇順
+----                 csoql_sale.quote_div                      ASC
+----                 -- 販売先用見積明細.今回店納価格          降順
+----               , csoql_sale.this_time_deliv_price          DESC NULLS LAST
+----                 --帳合問屋用見積明細.今回NET価格          降順
+----               , csoql_wholesale.this_time_net_price       DESC NULLS LAST;
+--        ORDER BY -- ＜ソート条件＞
+--                 -- 販売先用見積明細.見積区分              昇順
+--                 csoql_sale.quote_div                      ASC
+--                 -- 販売先用見積明細.今回店納価格          降順
+--               , csoql_sale.this_time_deliv_price          DESC NULLS LAST
+--                 --帳合問屋用見積明細.今回NET価格          降順
+--               , csoql_wholesale.this_time_net_price       DESC NULLS LAST
+--                 -- 帳合問屋用見積明細．発行日             降順
+--               , csoqh_wholesale.publish_date              DESC NULLS LAST
+--        ;
+---- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR END
+--        -- =======================================================
+--        -- 問屋請求見積照合2
+--        -- =======================================================
+--        << loop_2 >>
+--        FOR ln_count IN NVL( l_wholesale_req2_tab.FIRST, 0 ) .. NVL( l_wholesale_req2_tab.LAST, 0 ) LOOP
+--          -- =====================================
+--          --③.FETCHしたレコードの
+--          --1件目.見積区分<>「1(通常)」の場合
+--          --1件目の見積区分が「1(通常)」以外の場合
+--          -- =====================================
+--          IF( l_wholesale_req2_tab( cn_one ).lv_quote_div <> cv_quote_div_usuall ) THEN
+--            ln_price_check_on_flg := 1; --照合結果判定フラグ  オン
+--            ln_sql_data_not_flg   := 1; -- 1件目見積区分判定フラグ
+--            EXIT;                       --LOOP 処理から離脱
+--          END IF;
+--          -- =======================================================
+--          -- ④価格情報の単位変換
+--          -- =======================================================
+--          -- =====================================
+--          -- 入力パラメータ．請求単位(iv_demand_unit_type)
+--          -- = 「本」の場合
+--          -- =====================================
+--          IF( iv_demand_unit_type = cv_unit_type_count ) THEN
+--            --見積価格情報の単位変換
+--            --建値         = ③.建値         ÷ ③.ケース入り数
+--            l_wholesale_req2_tab( ln_count ).ln_quotation_price
+--              := l_wholesale_req2_tab( ln_count ).ln_quotation_price /
+--                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
+--            --売上値引     = ③.売上値引     ÷ ③.ケース入り数
+--            l_wholesale_req2_tab( ln_count ).ln_sales_discount_price
+--              := l_wholesale_req2_tab( ln_count ).ln_sales_discount_price /
+--                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
+--            --通常NET価格  = ③.通常NET価格  ÷ ③.ケース入り数
+--            l_wholesale_req2_tab( ln_count ).ln_usuall_net_price
+--              := l_wholesale_req2_tab( ln_count ).ln_usuall_net_price /
+--                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
+--            --今回NET価格  = ③.今回NET価格  ÷ ③.ケース入り数
+--            l_wholesale_req2_tab( ln_count ).ln_this_time_net_price
+--              := l_wholesale_req2_tab( ln_count ).ln_this_time_net_price /
+--                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
+--            --通常店納価格 = ③.通常NET価格  ÷ ③.ケース入り数
+--            l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price
+--              := l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price /
+--                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
+--            --今回店納価格 = ③.今回店納価格 ÷ ③.ケース入り数
+--            l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price
+--              := l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price /
+--                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
+--          END IF;
+--          -- =====================================
+--          -- 入力パラメータ．請求単位(iv_demand_unit_type)
+--          --= 「C/S」の場合
+--          -- =====================================
+--          IF( iv_demand_unit_type = cv_unit_type_cs ) THEN
+--            --見積価格情報の単位変換
+--            --建値         = ③.建値         × ③.ケース入り数
+--            l_wholesale_req2_tab( ln_count ).ln_quotation_price
+--              := l_wholesale_req2_tab( ln_count ).ln_quotation_price *
+--                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
+--            --売上値引     = ③.売上値引     × ③.ケース入り数
+--            l_wholesale_req2_tab( ln_count ).ln_sales_discount_price
+--              := l_wholesale_req2_tab( ln_count ).ln_sales_discount_price *
+--                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
+--            --通常NET価格  = ③.通常NET価格  × ③.ケース入り数
+--            l_wholesale_req2_tab( ln_count ).ln_usuall_net_price
+--              := l_wholesale_req2_tab( ln_count ).ln_usuall_net_price *
+--                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
+--            --今回NET価格  = ③.今回NET価格  × ③.ケース入り数
+--            l_wholesale_req2_tab( ln_count ).ln_this_time_net_price
+--              := l_wholesale_req2_tab( ln_count ).ln_this_time_net_price *
+--                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
+--            --通常店納価格 = ③.通常NET価格  × ③.ケース入り数
+--            l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price
+--              := l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price *
+--                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
+--            --今回店納価格 = ③.今回店納価格 × ③.ケース入り数
+--            l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price
+--              := l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price *
+--                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
+--          END IF;
+--          -- =======================================================
+--          -- ⑤単価照合
+--          -- =======================================================
+--          -- =====================================
+--          -- ③.見積区分=「1」且つ
+--          -- ④.建値 - ④.売上値引 - ④.通常NET価格
+--          -- = 入力パラメータ.支払単価(in_demand_unit_price)
+--          -- =====================================
+--          IF(     ( l_wholesale_req2_tab( ln_count ).lv_quote_div = cv_quote_div_usuall )
+--              AND ( in_demand_unit_price =
+--                      (   l_wholesale_req2_tab( ln_count ).ln_quotation_price
+--                        - l_wholesale_req2_tab( ln_count ).ln_sales_discount_price
+--                        - l_wholesale_req2_tab( ln_count ).ln_usuall_net_price )
+--                  )
+--          ) THEN
+--            --・販売手数料 = ④.建値     - ④.売上値引 - ④.通常NET価格
+--            on_backmargin_amt :=
+--              (   l_wholesale_req2_tab( ln_count ).ln_quotation_price
+--                - l_wholesale_req2_tab( ln_count ).ln_sales_discount_price
+--                - l_wholesale_req2_tab( ln_count ).ln_usuall_net_price );
+--            IF( l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price = 0 ) THEN
+--              --・販売協賛金 = 0 ※今回店納が0の場合は0
+--              on_sales_support_amt := 0;
+--            ELSE
+--              --・販売協賛金 = ④.通常店納 - ④.今回店納
+--              on_sales_support_amt :=
+--                (   l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price
+--                  - l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price);
+--            END IF;
+----
+--            ov_estimated_no             := l_wholesale_req2_tab( ln_count ).lv_quote_number;          -- 見積書No.
+--            on_quote_line_id            := l_wholesale_req2_tab( ln_count ).ln_quote_line_id;         -- 明細ID
+--            ov_emp_code                 := l_wholesale_req2_tab( ln_count ).lv_employee_number;       -- 担当者コード
+--            on_market_amt               := l_wholesale_req2_tab( ln_count ).ln_quotation_price;       -- 通常建値
+--            on_allowance_amt            := l_wholesale_req2_tab( ln_count ).ln_sales_discount_price;  -- 値引(割戻し)
+--            on_normal_store_deliver_amt := l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price;   -- 通常店納
+--            on_once_store_deliver_amt   := l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price; -- 今回店納
+--            on_net_selling_price        := l_wholesale_req2_tab( ln_count ).ln_usuall_net_price;      -- NET価格
+--            ov_estimated_type           := l_wholesale_req2_tab( ln_count ).lv_quote_div;             -- 見積区分
+----
+--            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
+--            EXIT loop_2;                       --LOOP 処理から離脱
+--          END IF;
+--          -- =====================================
+--          --③.見積区分=「1」以外 且つ
+--          --④.建値 - ④.売上値引 - ④.今回NET価格
+--          -- = 入力パラメータ.支払単価(in_demand_unit_price)
+--          -- =====================================
+--          IF(     ( l_wholesale_req2_tab( ln_count ).lv_quote_div <> cv_quote_div_usuall )
+--              AND ( in_demand_unit_price =
+--                      (   l_wholesale_req2_tab( ln_count ).ln_quotation_price
+--                        - l_wholesale_req2_tab( ln_count ).ln_sales_discount_price
+--                        - l_wholesale_req2_tab( ln_count ).ln_this_time_net_price )
+--                      )
+--          ) THEN
+--            --・販売手数料 = ④.建値 - ④.売上値引 - ④.通常店納 + ④.今回店納 - ④.今回NET価格
+--            on_backmargin_amt :=
+--              (   l_wholesale_req2_tab( ln_count ).ln_quotation_price
+--                - l_wholesale_req2_tab( ln_count ).ln_sales_discount_price
+--                - l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price
+--                + l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price
+--                - l_wholesale_req2_tab( ln_count ).ln_this_time_net_price );
+--            --・販売協賛金 = ④.通常店納 - ④.今回店納
+--            on_sales_support_amt :=
+--              (   l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price
+--                - l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price );
+----
+--            ov_estimated_no             := l_wholesale_req2_tab( ln_count ).lv_quote_number;         -- 見積書No.
+--            on_quote_line_id            := l_wholesale_req2_tab( ln_count ).ln_quote_line_id;        -- 明細ID
+--            ov_emp_code                 := l_wholesale_req2_tab( ln_count ).lv_employee_number;      -- 担当者コード
+--            on_market_amt               := l_wholesale_req2_tab( ln_count ).ln_quotation_price;      -- 通常建値
+--            on_allowance_amt            := l_wholesale_req2_tab( ln_count ).ln_sales_discount_price; -- 値引(割戻し)
+--            on_normal_store_deliver_amt := l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price;  -- 通常店納
+--            on_once_store_deliver_amt   := l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price;-- 今回店納
+--            on_net_selling_price        := l_wholesale_req2_tab( ln_count ).ln_this_time_net_price;  -- NET価格
+--            ov_estimated_type           := l_wholesale_req2_tab( ln_count ).lv_quote_div;            -- 見積区分
+----
+--            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
+--            EXIT loop_2;                       --LOOP 処理から離脱
+--          END IF;
+--          -- =====================================
+--          -- ③.見積区分=「1」以外  且つ
+--          -- ④.建値 - ④.売上値引 - ④.通常店納 + ④.今回店納 - ④.今回NET価格
+--          -- = 入力パラメータ.支払単価(in_demand_unit_price)
+--          -- =====================================
+--          IF(     ( l_wholesale_req2_tab( ln_count ).lv_quote_div <> cv_quote_div_usuall )
+--              AND ( in_demand_unit_price =
+--                      (   l_wholesale_req2_tab( ln_count ).ln_quotation_price
+--                        - l_wholesale_req2_tab( ln_count ).ln_sales_discount_price
+--                        - l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price
+--                        + l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price
+--                        - l_wholesale_req2_tab( ln_count ).ln_this_time_net_price )
+--                  )
+--          ) THEN
+--            --・販売手数料 = 入力パラメータ.支払単価(in_demand_unit_price)
+--            on_backmargin_amt := in_demand_unit_price;
+--            --・販売協賛金 = NULL
+--            on_sales_support_amt := NULL;
+----
+--            ov_estimated_no             := l_wholesale_req2_tab( ln_count ).lv_quote_number;         -- 見積書No.
+--            on_quote_line_id            := l_wholesale_req2_tab( ln_count ).ln_quote_line_id;        -- 明細ID
+--            ov_emp_code                 := l_wholesale_req2_tab( ln_count ).lv_employee_number;      -- 担当者コード
+--            on_market_amt               := l_wholesale_req2_tab( ln_count ).ln_quotation_price;      -- 通常建値
+--            on_allowance_amt            := l_wholesale_req2_tab( ln_count ).ln_sales_discount_price; -- 値引(割戻し)
+--            on_normal_store_deliver_amt := l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price;  -- 通常店納
+--            on_once_store_deliver_amt   := l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price;-- 今回店納
+--            on_net_selling_price        := l_wholesale_req2_tab( ln_count ).ln_this_time_net_price;  -- NET価格
+--            ov_estimated_type           := l_wholesale_req2_tab( ln_count ).lv_quote_div;            -- 見積区分
+----
+--            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
+--            EXIT loop_2;                       --LOOP 処理から離脱
+--          END IF;
+--          -- =====================================
+--          -- ③.見積区分=「1」以外 且つ
+--          -- ④.通常店納 - ④.今回店納
+--          -- = 入力パラメータ.支払単価(in_demand_unit_price)
+--          -- =====================================
+--          IF(     ( l_wholesale_req2_tab( ln_count ).lv_quote_div <> cv_quote_div_usuall )
+--              AND ( in_demand_unit_price =
+--                      (   l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price
+--                        - l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price )
+--                  )
+--          ) THEN
+--            --・販売手数料 = NULL
+--            on_backmargin_amt := NULL;
+--            --・販売協賛金 = 入力パラメータ.支払単価(in_demand_unit_price)
+--            on_sales_support_amt := in_demand_unit_price;
+----
+--            ov_estimated_no             := l_wholesale_req2_tab( ln_count ).lv_quote_number;         -- 見積書No.
+--            on_quote_line_id            := l_wholesale_req2_tab( ln_count ).ln_quote_line_id;        -- 明細ID
+--            ov_emp_code                 := l_wholesale_req2_tab( ln_count ).lv_employee_number;      -- 担当者コード
+--            on_market_amt               := l_wholesale_req2_tab( ln_count ).ln_quotation_price;      -- 通常建値
+--            on_allowance_amt            := l_wholesale_req2_tab( ln_count ).ln_sales_discount_price; -- 値引(割戻し)
+--            on_normal_store_deliver_amt := l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price;  -- 通常店納
+--            on_once_store_deliver_amt   := l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price;-- 今回店納
+--            on_net_selling_price        := l_wholesale_req2_tab( ln_count ).ln_this_time_net_price;  -- NET価格
+--            ov_estimated_type           := l_wholesale_req2_tab( ln_count ).lv_quote_div;            -- 見積区分
+----
+--            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
+--            EXIT loop_2;                       --LOOP 処理から離脱
+--          END IF;
+--          -- =====================================
+--          -- ③.見積区分=「1」以外 且つ
+--          -- ④.通常NET価格 - ④.今回NET価格
+--          -- = 入力パラメータ.支払単価(in_demand_unit_price)
+--          -- =====================================
+--          IF(     ( l_wholesale_req2_tab( ln_count ).lv_quote_div <> cv_quote_div_usuall )
+--              AND ( in_demand_unit_price =
+--                      (   l_wholesale_req2_tab( ln_count ).ln_usuall_net_price
+--                        - l_wholesale_req2_tab( ln_count ).ln_this_time_net_price )
+--                  )
+--          ) THEN
+--            --・販売手数料 = (④.今回店納 - ④.今回NET価格) - (④.通常店納 - ④.通常NET価格)
+--            on_backmargin_amt :=
+--              (   (   l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price
+--                    - l_wholesale_req2_tab( ln_count ).ln_this_time_net_price   )
+--                - (   l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price
+--                    - l_wholesale_req2_tab( ln_count ).ln_usuall_net_price      )
+--              );
+--            --・販売協賛金 = ④.通常店納 - ④.今回店納
+--            on_sales_support_amt :=
+--              (   l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price
+--                - l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price );
+----
+--            ov_estimated_no             := l_wholesale_req2_tab( ln_count ).lv_quote_number;          -- 見積書No.
+--            on_quote_line_id            := l_wholesale_req2_tab( ln_count ).ln_quote_line_id;         -- 明細ID
+--            ov_emp_code                 := l_wholesale_req2_tab( ln_count ).lv_employee_number;       -- 担当者コード
+--            on_market_amt               := l_wholesale_req2_tab( ln_count ).ln_quotation_price;       -- 通常建値
+--            on_allowance_amt            := l_wholesale_req2_tab( ln_count ).ln_sales_discount_price;  -- 値引(割戻し)
+--            on_normal_store_deliver_amt := l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price;   -- 通常店納
+--            on_once_store_deliver_amt   := l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price; -- 今回店納
+--            on_net_selling_price        := l_wholesale_req2_tab( ln_count ).ln_this_time_net_price;   -- NET価格
+--            ov_estimated_type           := l_wholesale_req2_tab( ln_count ).lv_quote_div;             -- 見積区分
+----
+--            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
+--            EXIT loop_2;                       --LOOP 処理から離脱
+--          END IF;
+--        END LOOP; --l_wholesale_req2_tab LOOP END
+--      END IF;     -- condition IF ln_price_check_on_flg = 0 END
+--    END IF;     -- condition IF( iv_item_code IS NULL ) THEN
+--    -- =======================================================
+--    -- 終了処理
+--    -- =======================================================
+--    IF( ln_price_check_on_flg = 1 ) THEN  --照合結果判定フラグ  オン
+--      --見積データが取得できた場合--
+--      ov_retcode                  :=  gv_status_normal;
+--      ov_errbuf                   :=  NULL;
+--      ov_errmsg                   :=  NULL;
+--      IF(  ln_sql_data_not_flg = 1 ) THEN          -- 1件目見積区分判定
+--        ov_estimated_type         := cv_zero;  -- 見積区分
+--      END IF;
+--    ELSE
+--      --見積データが取得できなかった場合--
+--      ov_estimated_no             := NULL;     -- 見積書No
+--      on_quote_line_id            := NULL;     -- 明細ID
+--      ov_emp_code                 := NULL;     -- 担当者コード
+--      on_market_amt               := NULL;     -- 建値
+--      on_allowance_amt            := NULL;     -- 値引(割戻し)
+--      on_normal_store_deliver_amt := NULL;     -- 通常店納
+--      on_once_store_deliver_amt   := NULL;     -- 今回店納
+--      on_net_selling_price        := NULL;     -- NET価格
+--      IF( iv_item_code IS NULL ) THEN
+--        --INパラメータ.品目コード=NULLの場合
+--        ov_estimated_type         := NULL;     -- 見積区分
+--      ELSE
+--        ov_estimated_type         := cv_zero;  -- 見積区分
+--      END IF;
+----
+--      on_backmargin_amt           := NULL;     -- 販売手数料
+--      on_sales_support_amt        := NULL;     -- 販売協賛金
+--      ov_retcode                  := gv_status_normal;
+--      ov_errbuf                   := NULL;
+--      ov_errmsg                   := NULL;
+--    END IF;
+----
+--  EXCEPTION
+--    --見積データが取得できなかった場合--
+--    WHEN NO_DATA_FOUND THEN
+--      ov_estimated_no             := NULL;     -- 見積書No
+--      on_quote_line_id            := NULL;     -- 明細ID
+--      ov_emp_code                 := NULL;     -- 担当者コード
+--      on_market_amt               := NULL;     -- 建値
+--      on_allowance_amt            := NULL;     -- 値引(割戻し)
+--      on_normal_store_deliver_amt := NULL;     -- 通常店納
+--      on_once_store_deliver_amt   := NULL;     -- 今回店納
+--      on_net_selling_price        := NULL;     -- NET価格
+--      ov_estimated_type           := cv_zero;  -- 見積区分
+--      on_backmargin_amt           := NULL;     -- 販売手数料
+--      on_sales_support_amt        := NULL;     -- 販売協賛金
+--      ov_retcode                  := gv_status_normal;
+--      ov_errbuf                   := NULL;
+--      ov_errmsg                   := NULL;
+--    WHEN OTHERS THEN
+--      ov_retcode := gv_status_error;
+--      raise_application_error(
+--        -20000, cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || SQLERRM
+--      );
+----
+--  END get_wholesale_req_est_p;
   PROCEDURE get_wholesale_req_est_p(
     ov_errbuf                      OUT VARCHAR2 -- エラーバッファ
   , ov_retcode                     OUT VARCHAR2 -- リターンコード
@@ -765,833 +1620,533 @@ AS
   , on_sales_support_amt           OUT NUMBER   -- 販売協賛金
   )
   IS
-    -- =======================================================
+    --==================================================
     -- ローカル定数
-    -- =======================================================
-    cv_prg_name                    CONSTANT VARCHAR2(30) := 'get_wholesale_req_est_p'; -- プログラム名
-    cv_quote_type_sale             CONSTANT VARCHAR2(1)  := '1';                       -- 見積種別 1:販売先用
-    cv_quote_type_wholesale        CONSTANT VARCHAR2(1)  := '2';                       -- 見積種別 2:帳合問屋先用
-    cv_status_decision             CONSTANT VARCHAR2(1)  := '2';                       -- ステータス= 2:確定
-    cv_quote_div_usuall            CONSTANT VARCHAR2(1)  := '1';                       -- 見積区分 1:通常
-    cn_one                         CONSTANT NUMBER       := 1;                         -- 数値:1
-    cv_zero                        CONSTANT VARCHAR2(1)  := '0';                       -- 文字列:0
-    cv_organization_cd             CONSTANT VARCHAR2(30) := 'XXCOK1_ORG_CODE_SALES';   -- COK用_組織コード
-    cv_unit_type_count             CONSTANT VARCHAR2(1)  := '1';                       -- 単価区分:1(本数)
-    cv_unit_type_cs                CONSTANT VARCHAR2(1)  := '2';                       -- 単価区分:2(C/S)
-    -- =======================================================
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'get_wholesale_req_est_p';                        -- プログラム名
+    cv_quote_type_sales            CONSTANT VARCHAR2(1)  := '1';                                              -- 見積種別 1:販売先用
+    cv_quote_type_wholesale        CONSTANT VARCHAR2(1)  := '2';                                              -- 見積種別 2:帳合問屋先用
+    cv_quote_status_fix            CONSTANT VARCHAR2(1)  := '2';                                              -- ステータス= 2:確定
+    cv_quote_div_usuall            CONSTANT VARCHAR2(1)  := '1';                                              -- 見積区分 1:通常
+    cv_organizaiton_code           CONSTANT VARCHAR2(30) := FND_PROFILE.VALUE( 'XXCOK1_ORG_CODE_SALES' );     -- COK用_組織コード
+    cv_unit_type_unit              CONSTANT VARCHAR2(1)  := '1';                                              -- 単価区分:1(本)
+    cv_unit_type_cs                CONSTANT VARCHAR2(1)  := '2';                                              -- 単価区分:2(C/S)
+    cv_unit_type_bl                CONSTANT VARCHAR2(1)  := '3';                                              -- 単価区分:3(ボール)
+    cv_inc_tax                     xxcso_quote_headers.deliv_price_tax_type%TYPE := '2'; -- 税込価格
+    --==================================================
     -- ローカル変数
-    -- =======================================================
-    ln_count                       NUMBER ;    -- 件数
-    ln_price_check_on_flg          NUMBER DEFAULT 0; -- 照合結果判定フラグ
-    ln_sql_data_not_flg            NUMBER DEFAULT 0; -- 1件目見積区分判定フラグ
-    -- =======================================================
-    -- ローカルRECORD型
-    -- =======================================================
-    --問屋請求見積1 レコード定義
-    TYPE l_wholesale_req1_rtype    IS RECORD(
-      lv_quote_number              xxcso_quote_headers.quote_number             %TYPE -- 帳合問屋用見積ヘッダー.見積書番号
-    , lv_employee_number           xxcso_quote_headers.employee_number          %TYPE -- 帳合問屋用見積ヘッダー.担当者コード
-    , lv_quote_div                 xxcso_quote_lines.quote_div                  %TYPE -- 販売先用見積明細.見積区分
-    , ln_usually_deliv_price       xxcso_quote_lines.usually_deliv_price        %TYPE -- 販売先用見積明細.通常店納価格
-    , ln_this_time_deliv_price     xxcso_quote_lines.this_time_deliv_price      %TYPE -- 販売先用見積明細.今回店納価格
-    , ln_quote_line_id             xxcso_quote_lines.quote_line_id              %TYPE -- 帳合問屋用見積明細.見積明細ID
-    , ln_quotation_price           xxcso_quote_lines.quotation_price            %TYPE -- 帳合問屋用見積明細.建値
-    , ln_sales_discount_price      xxcso_quote_lines.sales_discount_price       %TYPE -- 帳合問屋用見積明細.売上値引
-    , ln_usuall_net_price          xxcso_quote_lines.usuall_net_price           %TYPE -- 帳合問屋用見積明細.通常NET価格
-    , ln_this_time_net_price       xxcso_quote_lines.this_time_net_price        %TYPE -- 帳合問屋用見積明細.今回NET価格
-    );
-    --問屋請求見積2 レコード定義
-    TYPE l_wholesale_req2_rtype    IS RECORD(
-      lv_quote_number              xxcso_quote_headers.quote_number             %TYPE -- 帳合問屋用見積ヘッダー.見積書番号
-    , lv_employee_number           xxcso_quote_headers.employee_number          %TYPE -- 帳合問屋用見積ヘッダー.担当者コード
-    , lv_quote_div                 xxcso_quote_lines.quote_div                  %TYPE -- 販売先用見積明細.見積区分
-    , ln_usually_deliv_price       xxcso_quote_lines.usually_deliv_price        %TYPE -- 販売先用見積明細.通常店納価格
-    , ln_this_time_deliv_price     xxcso_quote_lines.this_time_deliv_price      %TYPE -- 販売先用見積明細.今回店納価格
-    , ln_quote_line_id             xxcso_quote_lines.quote_line_id              %TYPE -- 帳合問屋用見積明細.見積明細ID
-    , ln_quotation_price           xxcso_quote_lines.quotation_price            %TYPE -- 帳合問屋用見積明細.建値
-    , ln_sales_discount_price      xxcso_quote_lines.sales_discount_price       %TYPE -- 帳合問屋用見積明細.売上値引
-    , ln_usuall_net_price          xxcso_quote_lines.usuall_net_price           %TYPE -- 帳合問屋用見積明細.通常NET価格
-    , ln_this_time_net_price       xxcso_quote_lines.this_time_net_price        %TYPE -- 帳合問屋用見積明細.今回NET価格
-    , lv_iim_b_case_in_num         ic_item_mst_b.attribute11                    %TYPE -- OPM品目マスタ.ケース入り数（DFF11)
-    );
-    -- =======================================================
-    -- ローカルTABLE型
-    -- =======================================================
-    --問屋請求見積1 レコードの結合配列 定義
-    TYPE  l_wholesale_req1_ttype   IS TABLE OF l_wholesale_req1_rtype
-      INDEX BY PLS_INTEGER;
-    --問屋請求見積2 レコードの結合配列 定義
-    TYPE  l_wholesale_req2_ttype   IS TABLE OF l_wholesale_req2_rtype
-      INDEX BY PLS_INTEGER;
-    -- =======================================================
-    -- ローカルPL/SQL表
-    -- =======================================================
-    --問屋請求見積1 結合配列
-    l_wholesale_req1_tab           l_wholesale_req1_ttype;
-    --問屋請求見積2 結合配列
-    l_wholesale_req2_tab           l_wholesale_req2_ttype;
+    --==================================================
+    -- 初期取得
+    ln_tax_rate                    NUMBER DEFAULT 0;
+    -- 換算結果格納
+    ln_usually_deliv_price         NUMBER DEFAULT NULL; -- 通常店納価格
+    ln_this_time_deliv_price       NUMBER DEFAULT NULL; -- 今回店納価格
+    ln_quotation_price             NUMBER DEFAULT NULL; -- 建値
+    ln_sales_discount_price        NUMBER DEFAULT NULL; -- 売上値引
+    ln_usuall_net_price            NUMBER DEFAULT NULL; -- 通常NET価格
+    ln_this_time_net_price         NUMBER DEFAULT NULL; -- 今回NET価格
+    --==================================================
+    -- ローカル変数
+    --==================================================
+    CURSOR get_quote_cur
+    IS
+      SELECT whole_xqh.quote_number                         AS quote_number               -- 見積書番号
+           , whole_xql.quote_line_id                        AS quote_line_id              -- 見積明細ID
+           , whole_xqh.employee_number                      AS employee_number            -- 担当者コード
+           , sales_xql.quote_div                            AS quote_div                  -- 見積区分
+           , sales_xqh.unit_type                            AS sales_unit_type            -- 【販売先】単価区分
+           , sales_xqh.deliv_price_tax_type                 AS sales_deliv_price_tax_type -- 【販売先】店納価格税区分
+           , whole_xqh.unit_type                            AS whole_unit_type            -- 【問屋】単価区分
+           , whole_xqh.deliv_price_tax_type                 AS whole_deliv_price_tax_type -- 【問屋】店納価格税区分
+           , NVL( sales_xql.usually_deliv_price   , 0 )     AS usually_deliv_price        -- 通常店納価格
+           , NVL( sales_xql.this_time_deliv_price , 0 )     AS this_time_deliv_price      -- 今回店納価格
+           , NVL( whole_xql.quotation_price       , 0 )     AS quotation_price            -- 建値
+           , NVL( whole_xql.sales_discount_price  , 0 )     AS sales_discount_price       -- 売上値引
+           , NVL( whole_xql.usuall_net_price      , 0 )     AS usuall_net_price           -- 通常NET価格
+           , NVL( whole_xql.this_time_net_price   , 0 )     AS this_time_net_price        -- 今回NET価格
+           , NVL( TO_NUMBER( iimb.attribute11 )   , 0 )     AS cs_count                   -- ケース入り数
+           , NVL( xsib.bowl_inc_num               , 0 )     AS bl_count                   -- ボール入り数
+      FROM xxcso_quote_headers          sales_xqh    -- 【販売先】見積ヘッダ
+         , xxcso_quote_lines            sales_xql    -- 【販売先】見積明細
+         , xxcso_quote_headers          whole_xqh    -- 【問屋】見積ヘッダ
+         , xxcso_quote_lines            whole_xql    -- 【問屋】見積明細
+         , xxcmm_cust_accounts          whole_xca    -- 【問屋】顧客マスタ
+         , mtl_system_items_b           msib         -- DISC品目
+         , ic_item_mst_b                iimb         -- OPM品目
+         , mtl_parameters               mp           -- 組織パラメータ
+         , xxcmm_system_items_b         xsib         -- DISC品目アドオン
+      WHERE sales_xqh.quote_type                        = cv_quote_type_sales
+        AND sales_xqh.status                            = cv_quote_status_fix
+        AND whole_xqh.quote_type                        = cv_quote_type_wholesale
+        AND whole_xqh.status                            = cv_quote_status_fix
+        AND sales_xqh.quote_header_id                   = sales_xql.quote_header_id
+        AND sales_xqh.quote_number                      = whole_xqh.reference_quote_number
+        AND sales_xql.quote_line_id                     = whole_xql.reference_quote_line_id
+        AND whole_xqh.quote_header_id                   = whole_xql.quote_header_id
+        AND whole_xqh.account_number                    = whole_xca.customer_code
+        AND sales_xql.inventory_item_id                 = msib.inventory_item_id
+        AND msib.segment1                               = iimb.item_no
+        AND msib.organization_id                        = mp.organization_id
+        AND msib.segment1                               = xsib.item_code
+        AND mp.organization_code                        = cv_organizaiton_code
+        AND sales_xqh.account_number                    = iv_sales_outlets_code
+        AND msib.segment1                               = iv_item_code
+        AND whole_xca.wholesale_ctrl_code               = iv_wholesale_code
+        AND TO_DATE( iv_selling_month, 'RRRRMM' ) BETWEEN TRUNC( sales_xql.quote_start_date, 'MM' )
+                                                      AND TRUNC( sales_xql.quote_end_date  , 'MM' )
+        AND TO_DATE( iv_selling_month, 'RRRRMM' ) BETWEEN TRUNC( whole_xql.quote_start_date, 'MM' )
+                                                      AND TRUNC( whole_xql.quote_end_date  , 'MM' )
+      ORDER BY sales_xql.quote_div
+             , whole_xqh.last_update_date         DESC
+             , sales_xql.this_time_deliv_price    DESC NULLS LAST
+             , whole_xql.this_time_net_price      DESC NULLS LAST
+             , whole_xql.usuall_net_price         DESC NULLS LAST
+    ;
 --
   BEGIN
-    -- =======================================================
-    -- INパラメータ品目コードNULLチェック
-    -- =======================================================
+    --==================================================
+    -- 品目コードがNULLの場合、突合せを行わない（勘定科目支払）
+    --==================================================
     IF( iv_item_code IS NULL ) THEN
-      ln_price_check_on_flg := 0;  --照合結果判定フラグ  オフ
-    ELSE
-      BEGIN
-        -- =======================================================
-        -- ①SQL
-        -- =======================================================
-        SELECT   -- 帳合問屋用見積ヘッダー.見積書番号
-                 csoqh_wholesale.quote_number                  AS wholesale_quote_number
-                 -- 帳合問屋用見積ヘッダー.担当者コード
-               , csoqh_wholesale.employee_number               AS wholesale_employee_number
-                 -- 販売先用見積明細.見積区分
-               , csoql_sale.quote_div                          AS sale_quote_div
-                 -- 販売先用見積明細.通常店納価格
-               , NVL( csoql_sale.usually_deliv_price, 0 )      AS sale_usually_deliv_price
-                 -- 販売先用見積明細.今回店納価格
-               , NVL( csoql_sale.this_time_deliv_price, 0 )    AS sale_this_time_deliv_price
-                 -- 帳合問屋用見積明細.見積明細ID
-               , csoql_wholesale.quote_line_id                 AS wholesale_quote_line_id
-                 -- 帳合問屋用見積明細.建値
-               , NVL( csoql_wholesale.quotation_price, 0 )     AS wholesale_quotation_price
-                 -- 帳合問屋用見積明細.売上値引
-               , NVL( csoql_wholesale.sales_discount_price, 0 )  AS wholesale_sales_discount_price
-                 -- 帳合問屋用見積明細.通常NET価格
-               , NVL( csoql_wholesale.usuall_net_price, 0 )    AS wholesale_usuall_net_price
-                 -- 帳合問屋用見積明細.今回NET価格
-               , NVL( csoql_wholesale.this_time_net_price, 0 ) AS wholesale_this_time_net_price
-        BULK COLLECT INTO l_wholesale_req1_tab  --問屋請求見積1 結合配列
-        FROM     -- 販売先用見積ヘッダー
-                 xxcso_quote_headers                           csoqh_sale
-                 -- 販売先用見積明細
-               , xxcso_quote_lines                             csoql_sale
-                 -- 帳合問屋用見積ヘッダー
-               , xxcso_quote_headers                           csoqh_wholesale
-                 -- 帳合問屋用見積明細
-               , xxcso_quote_lines                             csoql_wholesale
-                 -- Disc品目マスタ
-               , mtl_system_items_b                            msi_b
-                 -- 組織パラメータ
-               , mtl_parameters                                mp
--- 2009/03/23 Ver.1.8 SCS K.Yamaguchi ADD START
-                 -- 顧客追加情報
-               , xxcmm_cust_accounts                           xca
--- 2009/03/23 Ver.1.8 SCS K.Yamaguchi ADD END
-        WHERE    -- 条件抽出条件
-                 -- 販売先用見積ヘッダー．見積ヘッダーID     = 販売先用見積明細．見積ヘッダーID
-                 csoqh_sale.quote_header_id                  = csoql_sale.quote_header_id
-                 -- 帳合問屋用見積ヘッダー．見積ヘッダーID   = 帳合問屋用見積明細．見積ヘッダーID
-        AND      csoqh_wholesale.quote_header_id             = csoql_wholesale.quote_header_id
-                 -- 販売先用見積ヘッダー．見積書番号         =  帳合問屋用見積ヘッダー．参照見積番号
-        AND      csoqh_sale.quote_number                     = csoqh_wholesale.reference_quote_number
-                 -- 販売先用見積明細．見積明細ID             = 帳合問屋用見積．参照用見積明細ＩＤ
-        AND      csoql_sale.quote_line_id                    = csoql_wholesale.reference_quote_line_id
-                 -- Disc品目マスタ．品目ID                   = 販売先用見積明細．品目ID
-        AND      msi_b.inventory_item_id                     = csoql_sale.inventory_item_id
-                 -- 販売先用見積ヘッダー．見積種別           = '1'(販売先)
-        AND      csoqh_sale.quote_type                       = cv_quote_type_sale
-                 -- 販売先用見積ヘッダー．ステータス         = '2'(確定)
-        AND      csoqh_sale.status                           = cv_status_decision
-                 -- 帳合問屋用見積ヘッダー．見積種別         = '2'(帳合問屋)
-        AND      csoqh_wholesale.quote_type                  = cv_quote_type_wholesale
-                 -- 帳合問屋用見積ヘッダー．ステータス       = '2'(確定)
-        AND      csoqh_wholesale.status                      = cv_status_decision
-                 -- Disc品目マスタ．組織ID                   = 組織パラメータ．組織ID
-        AND      msi_b.organization_id                       = mp.organization_id
-                 -- 販売先用見積ヘッダー．顧客コード         = 入力パラメータ．問屋帳合先コード
-        AND      csoqh_sale.account_number                   = iv_sales_outlets_code
-                 -- Disc品目マスタ．品目コード               = 入力パラメータ．品目コード
-        AND      msi_b.segment1                              = iv_item_code
--- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR START
---                 -- 販売先用見積明細．期間（開始）           <= 入力パラメータ．売上対象年月
---        AND      csoql_sale.quote_start_date                 <= TO_DATE( iv_selling_month , 'YYYY/MM' )
---                 -- 販売先用見積明細．期間（終了）           >= 入力パラメータ．売上対象年月
---        AND      csoql_sale.quote_end_date                   >= TO_DATE( iv_selling_month , 'YYYY/MM' )
-                 -- 販売先用見積明細．期間（開始）           <= 入力パラメータ．売上対象年月
-        AND      TO_CHAR( csoql_sale.quote_start_date, 'YYYYMM' ) <= iv_selling_month
-                 -- 販売先用見積明細．期間（終了）           >= 入力パラメータ．売上対象年月
-        AND      TO_CHAR( csoql_sale.quote_end_date  , 'YYYYMM' ) >= iv_selling_month
--- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR END
--- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR START
---                 -- 帳合問屋用見積ヘッダー．顧客コード       = 入力パラメータ．帳合問屋コード
---        AND      csoqh_wholesale.account_number              = iv_wholesale_code
-                 -- 帳合問屋用見積ヘッダー．顧客コード       = 顧客追加情報．顧客コード
-        AND      csoqh_wholesale.account_number              = xca.customer_code
-                 -- 顧客追加情報．問屋管理コード             = 入力パラメータ．問屋管理コード
-        AND      xca.wholesale_ctrl_code                     = iv_wholesale_code
--- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR END
-                 -- 帳合問屋用見積ヘッダー．単価区分         = 入力パラメータ．請求単位
-        AND      csoqh_wholesale.unit_type                   = iv_demand_unit_type
--- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR START
---                 -- 帳合問屋用見積明細．期間（開始）         <= 入力パラメータ．売上対象年月
---        AND      csoql_wholesale.quote_start_date            <= TO_DATE( iv_selling_month , 'YYYY/MM' )
---                 -- 帳合問屋用見積明細．期間（終了）         >= 入力パラメータ．売上対象年月
---        AND      csoql_wholesale.quote_end_date              >= TO_DATE( iv_selling_month , 'YYYY/MM' )
-                 -- 帳合問屋用見積明細．期間（開始）         <= 入力パラメータ．売上対象年月
-        AND      TO_CHAR( csoql_wholesale.quote_start_date, 'YYYYMM' ) <= iv_selling_month
-                 -- 帳合問屋用見積明細．期間（終了）         >= 入力パラメータ．売上対象年月
-        AND      TO_CHAR( csoql_wholesale.quote_end_date  , 'YYYYMM' ) >= iv_selling_month
--- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR END
-                 -- 組織パラメータ．組織コード               = FND_PROFILE．VALUE('XXCOK1_ORG_CODE_SALES')
-        AND      mp.organization_code                        = FND_PROFILE.VALUE( cv_organization_cd )
--- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR START
---        ORDER BY -- 販売先用見積明細.見積区分                昇順
---                 csoql_sale.quote_div                        ASC
---                 -- 販売先用見積明細.今回店納価格            降順
---               , csoql_sale.this_time_deliv_price            DESC NULLS LAST
---                 -- 帳合問屋用見積明細.今回NET価格           降順
---               , csoql_wholesale.this_time_net_price         DESC NULLS LAST;
-        ORDER BY -- 販売先用見積明細.見積区分                昇順
-                 csoql_sale.quote_div                        ASC
-                 -- 販売先用見積明細.今回店納価格            降順
-               , csoql_sale.this_time_deliv_price            DESC NULLS LAST
-                 -- 帳合問屋用見積明細.今回NET価格           降順
-               , csoql_wholesale.this_time_net_price         DESC NULLS LAST
-                 -- 帳合問屋用見積ヘッダ．発行日             降順
-               , csoqh_wholesale.publish_date                DESC NULLS LAST
-        ;
--- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR END
-      END;
-      -- =======================================================
-      -- 問屋請求見積照合1
-      -- =======================================================
-      << loop_1 >>
-      FOR ln_count IN NVL( l_wholesale_req1_tab.FIRST, 0 ) ..NVL( l_wholesale_req1_tab.LAST, 0 ) LOOP
-        BEGIN
-          -- =======================================================
-          -- ②単価照合
-          -- =======================================================
-          -- =====================================
-          --①.FETCHしたレコードの
-          --1件目.見積区分<>「1(通常)」の場合
-          --1件目の見積区分が「1(通常)」以外の場合
-          -- =====================================
-          IF( l_wholesale_req1_tab( cn_one ).lv_quote_div <> cv_quote_div_usuall ) THEN
-            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
-            ln_sql_data_not_flg   := 1;  -- 1件目見積区分判定フラグ
-            EXIT loop_1;                        --LOOP 処理から離脱
-          END IF;
-          -- =====================================
-          --①.見積区分=「1(通常)」且つ
-          --①.建値 - ①.売上値引 - ①.通常NET価格
-          --   = 入力パラメータ.支払単価
-          --     (in_demand_unit_price)の場合
-          -- =====================================
-          IF(     ( l_wholesale_req1_tab( ln_count ).lv_quote_div = cv_quote_div_usuall )
-              AND ( in_demand_unit_price
-                      = (   l_wholesale_req1_tab( ln_count ).ln_quotation_price
-                          - l_wholesale_req1_tab( ln_count ).ln_sales_discount_price
-                          - l_wholesale_req1_tab( ln_count ).ln_usuall_net_price   )
-                  )
-          ) THEN
-            --・販売手数料 = ①.建値 - ①.売上値引 - ①.通常NET価格
-            on_backmargin_amt := l_wholesale_req1_tab( ln_count ).ln_quotation_price
-                               - l_wholesale_req1_tab( ln_count ).ln_sales_discount_price
-                               - l_wholesale_req1_tab( ln_count ).ln_usuall_net_price;
-            IF( l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price = 0 ) THEN
-              --・販売協賛金 = 0 ※今回店納が0の場合は0
-              on_sales_support_amt := 0;
-            ELSE
-              --・販売協賛金 = ①.通常店納 - ①.今回店納
-              on_sales_support_amt := l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price
-                                   -  l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price;
-            END IF;
-            ov_estimated_no             := l_wholesale_req1_tab( ln_count ).lv_quote_number;         -- 見積書No.
-            on_quote_line_id            := l_wholesale_req1_tab( ln_count ).ln_quote_line_id;        -- 明細ID
-            ov_emp_code                 := l_wholesale_req1_tab( ln_count ).lv_employee_number;      -- 担当者コード
-            on_market_amt               := l_wholesale_req1_tab( ln_count ).ln_quotation_price;      -- 通常建値
-            on_allowance_amt            := l_wholesale_req1_tab( ln_count ).ln_sales_discount_price; -- 値引(割戻し)
-            on_normal_store_deliver_amt := l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price;  -- 通常店納
-            on_once_store_deliver_amt   := l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price;-- 今回店納
-            on_net_selling_price        := l_wholesale_req1_tab( ln_count ).ln_usuall_net_price;     -- NET価格
-            ov_estimated_type           := l_wholesale_req1_tab( ln_count ).lv_quote_div;            -- 見積区分
-            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
-            EXIT loop_1;                       --LOOP 処理から離脱
-          END IF;
-          -- =====================================
-          --①.見積区分が「1」以外  且つ
-          --①.建値 - ①.売上値引 - ①.今回NET価格
-          --= 入力パラメータ.支払単価
-          --    (in_demand_unit_price)の場合
-          -- =====================================
-          IF(     ( l_wholesale_req1_tab( ln_count ).lv_quote_div <> cv_quote_div_usuall )
-              AND ( in_demand_unit_price
-                      = (   l_wholesale_req1_tab( ln_count ).ln_quotation_price
-                          - l_wholesale_req1_tab( ln_count ).ln_sales_discount_price
-                          - l_wholesale_req1_tab( ln_count ).ln_this_time_net_price )
-                  )
-          ) THEN
-            --・販売手数料 = ①.建値 - ①.売上値引 - ①.通常店納 + ①.今回店納 - ①.今回NET価格
-            on_backmargin_amt    := l_wholesale_req1_tab( ln_count ).ln_quotation_price
-                                  - l_wholesale_req1_tab( ln_count ).ln_sales_discount_price
-                                  - l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price
-                                  + l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price
-                                  - l_wholesale_req1_tab( ln_count ).ln_this_time_net_price;
-            --・販売協賛金 = ①.通常店納 - ①.今回店納
-            on_sales_support_amt := l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price
-                                  - l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price;
---
-            ov_estimated_no             := l_wholesale_req1_tab( ln_count ).lv_quote_number;         -- 見積書No.
-            on_quote_line_id            := l_wholesale_req1_tab( ln_count ).ln_quote_line_id;        -- 明細ID
-            ov_emp_code                 := l_wholesale_req1_tab( ln_count ).lv_employee_number;      -- 担当者コード
-            on_market_amt               := l_wholesale_req1_tab( ln_count ).ln_quotation_price;      -- 通常建値
-            on_allowance_amt            := l_wholesale_req1_tab( ln_count ).ln_sales_discount_price; -- 値引(割戻し)
-            on_normal_store_deliver_amt := l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price;  -- 通常店納
-            on_once_store_deliver_amt   := l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price;-- 今回店納
-            on_net_selling_price        := l_wholesale_req1_tab( ln_count ).ln_this_time_net_price;  -- NET価格
-            ov_estimated_type           := l_wholesale_req1_tab( ln_count ).lv_quote_div;            -- 見積区分
---
-            ln_price_check_on_flg := 1; --照合結果判定フラグ  オン
-            EXIT loop_1;                       --LOOP 処理から離脱
-          END IF;
-          -- =====================================
-          --①.見積区分が「1」以外  且つ
-          --①.建値 - ①.売上値引 - ①.通常店納 + ①.今回店納 - ①.今回NET価格
-          -- = 入力パラメータ.支払単価
-          --      (in_demand_unit_price)の場合
-          -- =====================================
-          IF(     ( l_wholesale_req1_tab( ln_count ).lv_quote_div <> cv_quote_div_usuall )
-              AND ( in_demand_unit_price
-                      = (   l_wholesale_req1_tab( ln_count ).ln_quotation_price
-                          - l_wholesale_req1_tab( ln_count ).ln_sales_discount_price
-                          - l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price
-                          + l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price
-                          - l_wholesale_req1_tab( ln_count ).ln_this_time_net_price )
-                  )
-          ) THEN
-            --・販売手数料 = 入力パラメータ.支払単価
-            on_backmargin_amt := in_demand_unit_price;
-            --・販売協賛金 = NULL
-            on_sales_support_amt := NULL;
-            ov_estimated_no             := l_wholesale_req1_tab( ln_count ).lv_quote_number;         -- 見積書No.
-            on_quote_line_id            := l_wholesale_req1_tab( ln_count ).ln_quote_line_id;        -- 明細ID
-            ov_emp_code                 := l_wholesale_req1_tab( ln_count ).lv_employee_number;      -- 担当者コード
-            on_market_amt               := l_wholesale_req1_tab( ln_count ).ln_quotation_price;      -- 通常建値
-            on_allowance_amt            := l_wholesale_req1_tab( ln_count ).ln_sales_discount_price; -- 値引(割戻し)
-            on_normal_store_deliver_amt := l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price;  -- 通常店納
-            on_once_store_deliver_amt   := l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price;-- 今回店納
-            on_net_selling_price        := l_wholesale_req1_tab( ln_count ). ln_this_time_net_price; -- NET価格
-            ov_estimated_type           := l_wholesale_req1_tab( ln_count ).lv_quote_div;            -- 見積区分
-            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
-            EXIT loop_1;                       --LOOP 処理から離脱
-          END IF;
-          -- =====================================
-          --①.見積区分が「1」以外  且つ
-          --①.通常店納 - ①.今回店納
-          -- = 入力パラメータ.支払単価
-          --      (in_demand_unit_price)の場合
-          -- =====================================
-          IF(     ( l_wholesale_req1_tab( ln_count ).lv_quote_div <> cv_quote_div_usuall )
-              AND ( in_demand_unit_price
-                      = (   l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price
-                          - l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price  )
-                  )
-          ) THEN
-            --・販売手数料 = NULL
-            on_backmargin_amt := NULL;
-            --・販売協賛金 = 入力パラメータ.支払単価
-            on_sales_support_amt := in_demand_unit_price;
-            ov_estimated_no             := l_wholesale_req1_tab( ln_count ).lv_quote_number;          -- 見積書No.
-            on_quote_line_id            := l_wholesale_req1_tab( ln_count ).ln_quote_line_id;         -- 明細ID
-            ov_emp_code                 := l_wholesale_req1_tab( ln_count ).lv_employee_number;       -- 担当者コード
-            on_market_amt               := l_wholesale_req1_tab( ln_count ).ln_quotation_price;       -- 通常建値
-            on_allowance_amt            := l_wholesale_req1_tab( ln_count ).ln_sales_discount_price;  -- 値引(割戻し)
-            on_normal_store_deliver_amt := l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price;   -- 通常店納
-            on_once_store_deliver_amt   := l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price; -- 今回店納
-            on_net_selling_price        := l_wholesale_req1_tab( ln_count ).ln_this_time_net_price;   -- NET価格
-            ov_estimated_type           := l_wholesale_req1_tab( ln_count ).lv_quote_div;             -- 見積区分
-            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
-            EXIT loop_1;                       --LOOP 処理から離脱
-          END IF;
-          -- =====================================
-          --①.見積区分が「1」以外 且つ
-          --①.通常NET価格 - ①.今回NET価格
-          --= 入力パラメータ.支払単価
-          --      (in_demand_unit_price)の場合
-          -- =====================================
-          IF(     ( l_wholesale_req1_tab( ln_count ).lv_quote_div <> cv_quote_div_usuall )
-              AND ( in_demand_unit_price
-                      = (   l_wholesale_req1_tab( ln_count ).ln_usuall_net_price
-                          - l_wholesale_req1_tab( ln_count ).ln_this_time_net_price )
-                  )
-          ) THEN
-            --・販売手数料 = (①.今回店納 - ①.今回NET価格)
-            --             - (①.通常店納 - ①.通常NET価格)
-            on_backmargin_amt    := (   (   l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price
-                                          - l_wholesale_req1_tab( ln_count ).ln_this_time_net_price   )
-                                      - (   l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price
-                                          - l_wholesale_req1_tab( ln_count ).ln_usuall_net_price      )
-                                    );
-            --・販売協賛金 =  ①.通常店納 - ①.今回店納
-            on_sales_support_amt := l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price
-                                  - l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price;
-            ov_estimated_no             := l_wholesale_req1_tab( ln_count ).lv_quote_number;         -- 見積書No.
-            on_quote_line_id            := l_wholesale_req1_tab( ln_count ).ln_quote_line_id;        -- 明細ID
-            ov_emp_code                 := l_wholesale_req1_tab( ln_count ).lv_employee_number;      -- 担当者コード
-            on_market_amt               := l_wholesale_req1_tab( ln_count ).ln_quotation_price;      -- 通常建値
-            on_allowance_amt            := l_wholesale_req1_tab( ln_count ).ln_sales_discount_price; -- 値引(割戻し)
-            on_normal_store_deliver_amt := l_wholesale_req1_tab( ln_count ).ln_usually_deliv_price;  -- 通常店納
-            on_once_store_deliver_amt   := l_wholesale_req1_tab( ln_count ).ln_this_time_deliv_price;-- 今回店納
-            on_net_selling_price        := l_wholesale_req1_tab( ln_count ).ln_this_time_net_price;  -- NET価格
-            ov_estimated_type           := l_wholesale_req1_tab( ln_count ).lv_quote_div;            -- 見積区分
-            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
-            EXIT loop_1;                       --LOOP 処理から離脱
-          END IF;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            ln_price_check_on_flg := 0;
-          WHEN OTHERS THEN
-            raise_application_error(
-              -20000, cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || SQLERRM
-            );
-        END;
-      END LOOP loop_1; --l_wholesale_req1_tab LOOP END
---
-      IF( ln_price_check_on_flg = 0 ) THEN  --照合結果判定フラグ  オフ
-        -- =======================================================
-        -- ③SQL発行
-        -- =======================================================
-        SELECT   -- 帳合問屋用見積ヘッダー.見積書番号
-                 csoqh_wholesale.quote_number                  AS wholesale_quote_number
-                 -- 帳合問屋用見積ヘッダー.担当者コード
-               , csoqh_wholesale.employee_number               AS wholesale_employee_number
-                 -- 販売先用見積明細.見積区分
-               , csoql_sale.quote_div                          AS sale_quote_div
-                 -- 販売先用見積明細.通常店納価格
-               , NVL( csoql_sale.usually_deliv_price, 0 )      AS sale_usually_deliv_price
-                 -- 販売先用見積明細.今回店納価格
-               , NVL( csoql_sale.this_time_deliv_price, 0 )    AS csoql_sale_this_time_del_price
-                 -- 帳合問屋用見積明細.見積明細ID
-               , csoql_wholesale.quote_line_id                 AS wholesale_quote_line_id
-                 -- 帳合問屋用見積明細.建値
-               , NVL( csoql_wholesale.quotation_price , 0 )    AS wholesale_quotation_price
-                 -- 帳合問屋用見積明細.売上値引
-               , NVL( csoql_wholesale.sales_discount_price, 0 )  AS wholesale_sales_discount_price
-                 -- 帳合問屋用見積明細.通常NET価格
-               , NVL( csoql_wholesale.usuall_net_price, 0 )    AS wholesale_usuall_net_price
-                 -- 帳合問屋用見積明細 .今回NET価格
-               , NVL( csoql_wholesale.this_time_net_price, 0 ) AS wholesale_this_time_net_price
-                 -- OPM品目マスタ.ケース入り数（DFF11)
-               , iim_b.attribute11                             AS iim_b_case_in_num
-        -- 問屋請求見積2 結合配列
-        BULK COLLECT INTO l_wholesale_req2_tab
-        FROM     -- 見積ヘッダーテーブル:販売先用見積ヘッダー
-                 xxcso_quote_headers     csoqh_sale
-                 -- 見積明細テーブル    :販売先用見積明細
-               , xxcso_quote_lines     csoql_sale
-                 -- 見積ヘッダーテーブル:帳合問屋用見積ヘッダー
-               , xxcso_quote_headers   csoqh_wholesale
-                 -- 見積明細テーブル    :帳合問屋用見積明細
-               , xxcso_quote_lines     csoql_wholesale
-                 -- Disc品目マスタ      :Disc品目マスタ
-               , mtl_system_items_b    msi_b
-                 -- OPM品目マスタ       :OPM品目マスタ
-               , ic_item_mst_b         iim_b
-                 -- 組織パラメータ      :組織パラメータ
-               , mtl_parameters        mp
--- 2009/03/23 Ver.1.8 SCS K.Yamaguchi ADD START
-                 -- 顧客追加情報
-               , xxcmm_cust_accounts                           xca
--- 2009/03/23 Ver.1.8 SCS K.Yamaguchi ADD END
-        WHERE    -- ＜抽出条件＞
-                 -- 販売先用見積ヘッダー．見積ヘッダーID   = 販売先用見積明細．見積ヘッダーID
-                 csoqh_sale.quote_header_id                = csoql_sale.quote_header_id
-                 -- 帳合問屋用見積ヘッダー．見積ヘッダーID = 帳合問屋用見積明細．見積ヘッダーID
-        AND      csoqh_wholesale.quote_header_id           = csoql_wholesale.quote_header_id
-                 -- 販売先用見積ヘッダー．見積書番号       = 帳合問屋用見積ヘッダー．参照見積番号
-        AND      csoqh_sale.quote_number                   = csoqh_wholesale.reference_quote_number
-                 -- 販売先用見積明細．見積明細ID           = 帳合問屋用見積．参照用見積明細ＩＤ
-        AND      csoql_sale.quote_line_id                  = csoql_wholesale.reference_quote_line_id
-                 -- Disc品目マスタ．品目ID                 = 販売先用見積明細．品目ID
-        AND      msi_b.inventory_item_id                   = csoql_sale.inventory_item_id
-                 -- 販売先用見積ヘッダー．見積種別         = '1'(販売先)
-        AND      csoqh_sale.quote_type                     = cv_quote_type_sale
-                 -- 販売先用見積ヘッダー．ステータス       = '2'(確定)
-        AND      csoqh_sale.status                         = cv_status_decision
-                 -- 帳合問屋用見積ヘッダー．見積種別       = '2'(帳合問屋)
-        AND      csoqh_wholesale.quote_type                =  cv_quote_type_wholesale
-                 -- 帳合問屋用見積ヘッダー．ステータス     = '2'(確定)
-        AND      csoqh_wholesale.status                    = cv_status_decision
-                 -- OPM品目マスタ．品目コード              = Disc品目マスタ．品目コード
-        AND      iim_b.item_no                             = msi_b.segment1
-                 -- Disc品目マスタ．組織ID                 = 組織パラメータ．組織ID
-        AND      msi_b.organization_id                     = mp.organization_id
-                 -- 販売先用見積ヘッダー．顧客コード       = 入力パラメータ．問屋帳合先コード
-        AND      csoqh_sale.account_number                 = iv_sales_outlets_code
-                 -- Disc品目マスタ．品目コード             = 入力パラメータ．品目コード
-        AND      msi_b.segment1                            = iv_item_code
--- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR START
---                 -- 販売先用見積明細．期間（開始）        <= 入力パラメータ．売上対象年月
---        AND      csoql_sale.quote_start_date              <= TO_DATE (iv_selling_month , 'YYYY/MM' )
---                 -- 販売先用見積明細．期間（終了）        >= 入力パラメータ．売上対象年月
---        AND      csoql_sale.quote_end_date                >= TO_DATE (iv_selling_month , 'YYYY/MM' )
-                 -- 販売先用見積明細．期間（開始）           <= 入力パラメータ．売上対象年月
-        AND      TO_CHAR( csoql_sale.quote_start_date, 'YYYYMM' ) <= iv_selling_month
-                 -- 販売先用見積明細．期間（終了）           >= 入力パラメータ．売上対象年月
-        AND      TO_CHAR( csoql_sale.quote_end_date  , 'YYYYMM' ) >= iv_selling_month
--- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR END
--- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR START
---                 -- 帳合問屋用見積ヘッダー．顧客コード     = 入力パラメータ．帳合問屋コード
---        AND      csoqh_wholesale.account_number            = iv_wholesale_code
-                 -- 帳合問屋用見積ヘッダー．顧客コード       = 顧客追加情報．顧客コード
-        AND      csoqh_wholesale.account_number              = xca.customer_code
-                 -- 顧客追加情報．問屋管理コード             = 入力パラメータ．問屋管理コード
-        AND      xca.wholesale_ctrl_code                     = iv_wholesale_code
--- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR END
-                 -- 帳合問屋用見積ヘッダー．単価区分      <> 入力パラメータ．請求単位
-        AND      csoqh_wholesale.unit_type                <> iv_demand_unit_type
--- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR START
---                 -- 帳合問屋用見積明細．期間（開始）      <= 入力パラメータ．売上対象年月
---        AND      csoql_wholesale.quote_start_date         <= TO_DATE ( iv_selling_month , 'YYYY/MM' )
---                 -- 帳合問屋用見積明細．期間（終了）      >= 入力パラメータ．売上対象年月
---        AND      csoql_wholesale.quote_end_date           >= TO_DATE (iv_selling_month , 'YYYY/MM' )
-                 -- 帳合問屋用見積明細．期間（開始）         <= 入力パラメータ．売上対象年月
-        AND      TO_CHAR( csoql_wholesale.quote_start_date, 'YYYYMM' ) <= iv_selling_month
-                 -- 帳合問屋用見積明細．期間（終了）         >= 入力パラメータ．売上対象年月
-        AND      TO_CHAR( csoql_wholesale.quote_end_date  , 'YYYYMM' ) >= iv_selling_month
--- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR END
-                 -- 組織パラメータ．組織コード             = FND_PROFILE．VALUE('XXCOK1_ORG_CODE_SALES')
-        AND      mp.organization_code                      = FND_PROFILE.VALUE( cv_organization_cd )
--- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR START
---        ORDER BY -- ＜ソート条件＞
---                 -- 販売先用見積明細.見積区分              昇順
---                 csoql_sale.quote_div                      ASC
---                 -- 販売先用見積明細.今回店納価格          降順
---               , csoql_sale.this_time_deliv_price          DESC NULLS LAST
---                 --帳合問屋用見積明細.今回NET価格          降順
---               , csoql_wholesale.this_time_net_price       DESC NULLS LAST;
-        ORDER BY -- ＜ソート条件＞
-                 -- 販売先用見積明細.見積区分              昇順
-                 csoql_sale.quote_div                      ASC
-                 -- 販売先用見積明細.今回店納価格          降順
-               , csoql_sale.this_time_deliv_price          DESC NULLS LAST
-                 --帳合問屋用見積明細.今回NET価格          降順
-               , csoql_wholesale.this_time_net_price       DESC NULLS LAST
-                 -- 帳合問屋用見積明細．発行日             降順
-               , csoqh_wholesale.publish_date              DESC NULLS LAST
-        ;
--- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR END
-        -- =======================================================
-        -- 問屋請求見積照合2
-        -- =======================================================
-        << loop_2 >>
-        FOR ln_count IN NVL( l_wholesale_req2_tab.FIRST, 0 ) .. NVL( l_wholesale_req2_tab.LAST, 0 ) LOOP
-          -- =====================================
-          --③.FETCHしたレコードの
-          --1件目.見積区分<>「1(通常)」の場合
-          --1件目の見積区分が「1(通常)」以外の場合
-          -- =====================================
-          IF( l_wholesale_req2_tab( cn_one ).lv_quote_div <> cv_quote_div_usuall ) THEN
-            ln_price_check_on_flg := 1; --照合結果判定フラグ  オン
-            ln_sql_data_not_flg   := 1; -- 1件目見積区分判定フラグ
-            EXIT;                       --LOOP 処理から離脱
-          END IF;
-          -- =======================================================
-          -- ④価格情報の単位変換
-          -- =======================================================
-          -- =====================================
-          -- 入力パラメータ．請求単位(iv_demand_unit_type)
-          -- = 「本」の場合
-          -- =====================================
-          IF( iv_demand_unit_type = cv_unit_type_count ) THEN
-            --見積価格情報の単位変換
-            --建値         = ③.建値         ÷ ③.ケース入り数
-            l_wholesale_req2_tab( ln_count ).ln_quotation_price
-              := l_wholesale_req2_tab( ln_count ).ln_quotation_price /
-                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
-            --売上値引     = ③.売上値引     ÷ ③.ケース入り数
-            l_wholesale_req2_tab( ln_count ).ln_sales_discount_price
-              := l_wholesale_req2_tab( ln_count ).ln_sales_discount_price /
-                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
-            --通常NET価格  = ③.通常NET価格  ÷ ③.ケース入り数
-            l_wholesale_req2_tab( ln_count ).ln_usuall_net_price
-              := l_wholesale_req2_tab( ln_count ).ln_usuall_net_price /
-                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
-            --今回NET価格  = ③.今回NET価格  ÷ ③.ケース入り数
-            l_wholesale_req2_tab( ln_count ).ln_this_time_net_price
-              := l_wholesale_req2_tab( ln_count ).ln_this_time_net_price /
-                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
-            --通常店納価格 = ③.通常NET価格  ÷ ③.ケース入り数
-            l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price
-              := l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price /
-                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
-            --今回店納価格 = ③.今回店納価格 ÷ ③.ケース入り数
-            l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price
-              := l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price /
-                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
-          END IF;
-          -- =====================================
-          -- 入力パラメータ．請求単位(iv_demand_unit_type)
-          --= 「C/S」の場合
-          -- =====================================
-          IF( iv_demand_unit_type = cv_unit_type_cs ) THEN
-            --見積価格情報の単位変換
-            --建値         = ③.建値         × ③.ケース入り数
-            l_wholesale_req2_tab( ln_count ).ln_quotation_price
-              := l_wholesale_req2_tab( ln_count ).ln_quotation_price *
-                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
-            --売上値引     = ③.売上値引     × ③.ケース入り数
-            l_wholesale_req2_tab( ln_count ).ln_sales_discount_price
-              := l_wholesale_req2_tab( ln_count ).ln_sales_discount_price *
-                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
-            --通常NET価格  = ③.通常NET価格  × ③.ケース入り数
-            l_wholesale_req2_tab( ln_count ).ln_usuall_net_price
-              := l_wholesale_req2_tab( ln_count ).ln_usuall_net_price *
-                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
-            --今回NET価格  = ③.今回NET価格  × ③.ケース入り数
-            l_wholesale_req2_tab( ln_count ).ln_this_time_net_price
-              := l_wholesale_req2_tab( ln_count ).ln_this_time_net_price *
-                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
-            --通常店納価格 = ③.通常NET価格  × ③.ケース入り数
-            l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price
-              := l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price *
-                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
-            --今回店納価格 = ③.今回店納価格 × ③.ケース入り数
-            l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price
-              := l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price *
-                 l_wholesale_req2_tab( ln_count ).lv_iim_b_case_in_num;
-          END IF;
-          -- =======================================================
-          -- ⑤単価照合
-          -- =======================================================
-          -- =====================================
-          -- ③.見積区分=「1」且つ
-          -- ④.建値 - ④.売上値引 - ④.通常NET価格
-          -- = 入力パラメータ.支払単価(in_demand_unit_price)
-          -- =====================================
-          IF(     ( l_wholesale_req2_tab( ln_count ).lv_quote_div = cv_quote_div_usuall )
-              AND ( in_demand_unit_price =
-                      (   l_wholesale_req2_tab( ln_count ).ln_quotation_price
-                        - l_wholesale_req2_tab( ln_count ).ln_sales_discount_price
-                        - l_wholesale_req2_tab( ln_count ).ln_usuall_net_price )
-                  )
-          ) THEN
-            --・販売手数料 = ④.建値     - ④.売上値引 - ④.通常NET価格
-            on_backmargin_amt :=
-              (   l_wholesale_req2_tab( ln_count ).ln_quotation_price
-                - l_wholesale_req2_tab( ln_count ).ln_sales_discount_price
-                - l_wholesale_req2_tab( ln_count ).ln_usuall_net_price );
-            IF( l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price = 0 ) THEN
-              --・販売協賛金 = 0 ※今回店納が0の場合は0
-              on_sales_support_amt := 0;
-            ELSE
-              --・販売協賛金 = ④.通常店納 - ④.今回店納
-              on_sales_support_amt :=
-                (   l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price
-                  - l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price);
-            END IF;
---
-            ov_estimated_no             := l_wholesale_req2_tab( ln_count ).lv_quote_number;          -- 見積書No.
-            on_quote_line_id            := l_wholesale_req2_tab( ln_count ).ln_quote_line_id;         -- 明細ID
-            ov_emp_code                 := l_wholesale_req2_tab( ln_count ).lv_employee_number;       -- 担当者コード
-            on_market_amt               := l_wholesale_req2_tab( ln_count ).ln_quotation_price;       -- 通常建値
-            on_allowance_amt            := l_wholesale_req2_tab( ln_count ).ln_sales_discount_price;  -- 値引(割戻し)
-            on_normal_store_deliver_amt := l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price;   -- 通常店納
-            on_once_store_deliver_amt   := l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price; -- 今回店納
-            on_net_selling_price        := l_wholesale_req2_tab( ln_count ).ln_usuall_net_price;      -- NET価格
-            ov_estimated_type           := l_wholesale_req2_tab( ln_count ).lv_quote_div;             -- 見積区分
---
-            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
-            EXIT loop_2;                       --LOOP 処理から離脱
-          END IF;
-          -- =====================================
-          --③.見積区分=「1」以外 且つ
-          --④.建値 - ④.売上値引 - ④.今回NET価格
-          -- = 入力パラメータ.支払単価(in_demand_unit_price)
-          -- =====================================
-          IF(     ( l_wholesale_req2_tab( ln_count ).lv_quote_div <> cv_quote_div_usuall )
-              AND ( in_demand_unit_price =
-                      (   l_wholesale_req2_tab( ln_count ).ln_quotation_price
-                        - l_wholesale_req2_tab( ln_count ).ln_sales_discount_price
-                        - l_wholesale_req2_tab( ln_count ).ln_this_time_net_price )
-                      )
-          ) THEN
-            --・販売手数料 = ④.建値 - ④.売上値引 - ④.通常店納 + ④.今回店納 - ④.今回NET価格
-            on_backmargin_amt :=
-              (   l_wholesale_req2_tab( ln_count ).ln_quotation_price
-                - l_wholesale_req2_tab( ln_count ).ln_sales_discount_price
-                - l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price
-                + l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price
-                - l_wholesale_req2_tab( ln_count ).ln_this_time_net_price );
-            --・販売協賛金 = ④.通常店納 - ④.今回店納
-            on_sales_support_amt :=
-              (   l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price
-                - l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price );
---
-            ov_estimated_no             := l_wholesale_req2_tab( ln_count ).lv_quote_number;         -- 見積書No.
-            on_quote_line_id            := l_wholesale_req2_tab( ln_count ).ln_quote_line_id;        -- 明細ID
-            ov_emp_code                 := l_wholesale_req2_tab( ln_count ).lv_employee_number;      -- 担当者コード
-            on_market_amt               := l_wholesale_req2_tab( ln_count ).ln_quotation_price;      -- 通常建値
-            on_allowance_amt            := l_wholesale_req2_tab( ln_count ).ln_sales_discount_price; -- 値引(割戻し)
-            on_normal_store_deliver_amt := l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price;  -- 通常店納
-            on_once_store_deliver_amt   := l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price;-- 今回店納
-            on_net_selling_price        := l_wholesale_req2_tab( ln_count ).ln_this_time_net_price;  -- NET価格
-            ov_estimated_type           := l_wholesale_req2_tab( ln_count ).lv_quote_div;            -- 見積区分
---
-            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
-            EXIT loop_2;                       --LOOP 処理から離脱
-          END IF;
-          -- =====================================
-          -- ③.見積区分=「1」以外  且つ
-          -- ④.建値 - ④.売上値引 - ④.通常店納 + ④.今回店納 - ④.今回NET価格
-          -- = 入力パラメータ.支払単価(in_demand_unit_price)
-          -- =====================================
-          IF(     ( l_wholesale_req2_tab( ln_count ).lv_quote_div <> cv_quote_div_usuall )
-              AND ( in_demand_unit_price =
-                      (   l_wholesale_req2_tab( ln_count ).ln_quotation_price
-                        - l_wholesale_req2_tab( ln_count ).ln_sales_discount_price
-                        - l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price
-                        + l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price
-                        - l_wholesale_req2_tab( ln_count ).ln_this_time_net_price )
-                  )
-          ) THEN
-            --・販売手数料 = 入力パラメータ.支払単価(in_demand_unit_price)
-            on_backmargin_amt := in_demand_unit_price;
-            --・販売協賛金 = NULL
-            on_sales_support_amt := NULL;
---
-            ov_estimated_no             := l_wholesale_req2_tab( ln_count ).lv_quote_number;         -- 見積書No.
-            on_quote_line_id            := l_wholesale_req2_tab( ln_count ).ln_quote_line_id;        -- 明細ID
-            ov_emp_code                 := l_wholesale_req2_tab( ln_count ).lv_employee_number;      -- 担当者コード
-            on_market_amt               := l_wholesale_req2_tab( ln_count ).ln_quotation_price;      -- 通常建値
-            on_allowance_amt            := l_wholesale_req2_tab( ln_count ).ln_sales_discount_price; -- 値引(割戻し)
-            on_normal_store_deliver_amt := l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price;  -- 通常店納
-            on_once_store_deliver_amt   := l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price;-- 今回店納
-            on_net_selling_price        := l_wholesale_req2_tab( ln_count ).ln_this_time_net_price;  -- NET価格
-            ov_estimated_type           := l_wholesale_req2_tab( ln_count ).lv_quote_div;            -- 見積区分
---
-            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
-            EXIT loop_2;                       --LOOP 処理から離脱
-          END IF;
-          -- =====================================
-          -- ③.見積区分=「1」以外 且つ
-          -- ④.通常店納 - ④.今回店納
-          -- = 入力パラメータ.支払単価(in_demand_unit_price)
-          -- =====================================
-          IF(     ( l_wholesale_req2_tab( ln_count ).lv_quote_div <> cv_quote_div_usuall )
-              AND ( in_demand_unit_price =
-                      (   l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price
-                        - l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price )
-                  )
-          ) THEN
-            --・販売手数料 = NULL
-            on_backmargin_amt := NULL;
-            --・販売協賛金 = 入力パラメータ.支払単価(in_demand_unit_price)
-            on_sales_support_amt := in_demand_unit_price;
---
-            ov_estimated_no             := l_wholesale_req2_tab( ln_count ).lv_quote_number;         -- 見積書No.
-            on_quote_line_id            := l_wholesale_req2_tab( ln_count ).ln_quote_line_id;        -- 明細ID
-            ov_emp_code                 := l_wholesale_req2_tab( ln_count ).lv_employee_number;      -- 担当者コード
-            on_market_amt               := l_wholesale_req2_tab( ln_count ).ln_quotation_price;      -- 通常建値
-            on_allowance_amt            := l_wholesale_req2_tab( ln_count ).ln_sales_discount_price; -- 値引(割戻し)
-            on_normal_store_deliver_amt := l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price;  -- 通常店納
-            on_once_store_deliver_amt   := l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price;-- 今回店納
-            on_net_selling_price        := l_wholesale_req2_tab( ln_count ).ln_this_time_net_price;  -- NET価格
-            ov_estimated_type           := l_wholesale_req2_tab( ln_count ).lv_quote_div;            -- 見積区分
---
-            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
-            EXIT loop_2;                       --LOOP 処理から離脱
-          END IF;
-          -- =====================================
-          -- ③.見積区分=「1」以外 且つ
-          -- ④.通常NET価格 - ④.今回NET価格
-          -- = 入力パラメータ.支払単価(in_demand_unit_price)
-          -- =====================================
-          IF(     ( l_wholesale_req2_tab( ln_count ).lv_quote_div <> cv_quote_div_usuall )
-              AND ( in_demand_unit_price =
-                      (   l_wholesale_req2_tab( ln_count ).ln_usuall_net_price
-                        - l_wholesale_req2_tab( ln_count ).ln_this_time_net_price )
-                  )
-          ) THEN
-            --・販売手数料 = (④.今回店納 - ④.今回NET価格) - (④.通常店納 - ④.通常NET価格)
-            on_backmargin_amt :=
-              (   (   l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price
-                    - l_wholesale_req2_tab( ln_count ).ln_this_time_net_price   )
-                - (   l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price
-                    - l_wholesale_req2_tab( ln_count ).ln_usuall_net_price      )
-              );
-            --・販売協賛金 = ④.通常店納 - ④.今回店納
-            on_sales_support_amt :=
-              (   l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price
-                - l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price );
---
-            ov_estimated_no             := l_wholesale_req2_tab( ln_count ).lv_quote_number;          -- 見積書No.
-            on_quote_line_id            := l_wholesale_req2_tab( ln_count ).ln_quote_line_id;         -- 明細ID
-            ov_emp_code                 := l_wholesale_req2_tab( ln_count ).lv_employee_number;       -- 担当者コード
-            on_market_amt               := l_wholesale_req2_tab( ln_count ).ln_quotation_price;       -- 通常建値
-            on_allowance_amt            := l_wholesale_req2_tab( ln_count ).ln_sales_discount_price;  -- 値引(割戻し)
-            on_normal_store_deliver_amt := l_wholesale_req2_tab( ln_count ).ln_usually_deliv_price;   -- 通常店納
-            on_once_store_deliver_amt   := l_wholesale_req2_tab( ln_count ).ln_this_time_deliv_price; -- 今回店納
-            on_net_selling_price        := l_wholesale_req2_tab( ln_count ).ln_this_time_net_price;   -- NET価格
-            ov_estimated_type           := l_wholesale_req2_tab( ln_count ).lv_quote_div;             -- 見積区分
---
-            ln_price_check_on_flg := 1;  --照合結果判定フラグ  オン
-            EXIT loop_2;                       --LOOP 処理から離脱
-          END IF;
-        END LOOP; --l_wholesale_req2_tab LOOP END
-      END IF;     -- condition IF ln_price_check_on_flg = 0 END
-    END IF;     -- condition IF( iv_item_code IS NULL ) THEN
-    -- =======================================================
-    -- 終了処理
-    -- =======================================================
-    IF( ln_price_check_on_flg = 1 ) THEN  --照合結果判定フラグ  オン
-      --見積データが取得できた場合--
-      ov_retcode                  :=  gv_status_normal;
-      ov_errbuf                   :=  NULL;
-      ov_errmsg                   :=  NULL;
-      IF(  ln_sql_data_not_flg = 1 ) THEN          -- 1件目見積区分判定
-        ov_estimated_type         := cv_zero;  -- 見積区分
-      END IF;
-    ELSE
-      --見積データが取得できなかった場合--
-      ov_estimated_no             := NULL;     -- 見積書No
-      on_quote_line_id            := NULL;     -- 明細ID
-      ov_emp_code                 := NULL;     -- 担当者コード
-      on_market_amt               := NULL;     -- 建値
-      on_allowance_amt            := NULL;     -- 値引(割戻し)
-      on_normal_store_deliver_amt := NULL;     -- 通常店納
-      on_once_store_deliver_amt   := NULL;     -- 今回店納
-      on_net_selling_price        := NULL;     -- NET価格
-      IF( iv_item_code IS NULL ) THEN
-        --INパラメータ.品目コード=NULLの場合
-        ov_estimated_type         := NULL;     -- 見積区分
-      ELSE
-        ov_estimated_type         := cv_zero;  -- 見積区分
-      END IF;
---
-      on_backmargin_amt           := NULL;     -- 販売手数料
-      on_sales_support_amt        := NULL;     -- 販売協賛金
-      ov_retcode                  := gv_status_normal;
-      ov_errbuf                   := NULL;
-      ov_errmsg                   := NULL;
+      ov_retcode                     := gv_status_normal;
+      ov_errbuf                      := NULL;
+      ov_errmsg                      := NULL;
+      ov_estimated_no                := NULL;
+      on_quote_line_id               := NULL;
+      ov_emp_code                    := NULL;
+      on_market_amt                  := NULL;
+      on_allowance_amt               := NULL;
+      on_normal_store_deliver_amt    := NULL;
+      on_once_store_deliver_amt      := NULL;
+      on_net_selling_price           := NULL;
+      ov_estimated_type              := NULL;
+      on_backmargin_amt              := NULL;
+      on_sales_support_amt           := NULL;
+      RETURN;
     END IF;
+    --==================================================
+    -- 支払単価が０の場合、突合せを行わない（論理削除データ）
+    --==================================================
+    IF( in_demand_unit_price = 0 ) THEN
+      ov_retcode                     := gv_status_normal;
+      ov_errbuf                      := NULL;
+      ov_errmsg                      := NULL;
+      ov_estimated_no                := NULL;
+      on_quote_line_id               := NULL;
+      ov_emp_code                    := NULL;
+      on_market_amt                  := NULL;
+      on_allowance_amt               := NULL;
+      on_normal_store_deliver_amt    := NULL;
+      on_once_store_deliver_amt      := NULL;
+      on_net_selling_price           := NULL;
+      ov_estimated_type              := NULL;
+      on_backmargin_amt              := NULL;
+      on_sales_support_amt           := NULL;
+      RETURN;
+    END IF;
+    --==================================================
+    -- 請求単位が1：本、2：CS、3：ボール以外の場合見積書無しとする
+    --==================================================
+    IF( iv_demand_unit_type NOT IN ( cv_unit_type_unit
+                                   , cv_unit_type_cs
+                                   , cv_unit_type_bl
+                                   )
+        OR iv_demand_unit_type IS NULL
+    ) THEN
+      ov_retcode                     := gv_status_normal;
+      ov_errbuf                      := NULL;
+      ov_errmsg                      := NULL;
+      ov_estimated_no                := NULL;
+      on_quote_line_id               := NULL;
+      ov_emp_code                    := NULL;
+      on_market_amt                  := NULL;
+      on_allowance_amt               := NULL;
+      on_normal_store_deliver_amt    := NULL;
+      on_once_store_deliver_amt      := NULL;
+      on_net_selling_price           := NULL;
+      ov_estimated_type              := '0';
+      on_backmargin_amt              := NULL;
+      on_sales_support_amt           := NULL;
+      RETURN;
+    END IF;
+    --==================================================
+    -- 税率取得
+    --==================================================
+    BEGIN
+      SELECT TO_NUMBER( flvv.description )   tax_rate
+      INTO ln_tax_rate
+      FROM fnd_lookup_values_vl    flvv
+      WHERE flvv.lookup_type  = 'XXCOK1_QUOTE_TAX_RATE'
+        AND flvv.enabled_flag = 'Y'
+        AND TO_DATE( iv_selling_month, 'RRRRMM' ) BETWEEN flvv.start_date_active
+                                                      AND NVL( flvv.end_date_active, TO_DATE( iv_selling_month, 'RRRRMM' ) )
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+         ln_tax_rate := 0;   -- 取得できない場合は税率をゼロとする
+    END;
+    --==================================================
+    -- 突合せ
+    --==================================================
+    FOR get_quote_rec IN get_quote_cur LOOP
+      --==================================================
+      -- 変数初期化
+      --==================================================
+      ln_usually_deliv_price   := NULL;
+      ln_this_time_deliv_price := NULL;
+      ln_quotation_price       := NULL;
+      ln_sales_discount_price  := NULL;
+      ln_usuall_net_price      := NULL;
+      ln_this_time_net_price   := NULL;
+      DECLARE
+        skip_expt                  EXCEPTION; -- 見積突合せ対象外（見積書無し）
+      BEGIN
+        --==================================================
+        -- 税抜額計算（問屋）
+        --==================================================
+        IF( get_quote_rec.whole_deliv_price_tax_type = cv_inc_tax ) THEN
+          ln_usuall_net_price      := TRUNC( get_quote_rec.usuall_net_price      / ( 100 + ln_tax_rate ) * 100, 2 );
+          ln_this_time_net_price   := TRUNC( get_quote_rec.this_time_net_price   / ( 100 + ln_tax_rate ) * 100, 2 );
+          ln_quotation_price       := TRUNC( get_quote_rec.quotation_price       / ( 100 + ln_tax_rate ) * 100, 2 );
+          ln_sales_discount_price  := TRUNC( get_quote_rec.sales_discount_price  / ( 100 + ln_tax_rate ) * 100, 2 );
+        ELSE
+          ln_usuall_net_price      := get_quote_rec.usuall_net_price;
+          ln_this_time_net_price   := get_quote_rec.this_time_net_price;
+          ln_quotation_price       := get_quote_rec.quotation_price;
+          ln_sales_discount_price  := get_quote_rec.sales_discount_price;
+        END IF;
+        --==================================================
+        -- 税抜額計算（販売先）
+        --==================================================
+        IF( get_quote_rec.sales_deliv_price_tax_type = cv_inc_tax ) THEN
+          ln_usually_deliv_price   := TRUNC( get_quote_rec.usually_deliv_price   / ( 100 + ln_tax_rate ) * 100, 2 );
+          ln_this_time_deliv_price := TRUNC( get_quote_rec.this_time_deliv_price / ( 100 + ln_tax_rate ) * 100, 2 );
+        ELSE
+          ln_usually_deliv_price   := get_quote_rec.usually_deliv_price;
+          ln_this_time_deliv_price := get_quote_rec.this_time_deliv_price;
+        END IF;
+        --==================================================
+        -- 単位換算（問屋）
+        --==================================================
+        -- 請求単位 ＝ 本
+        IF( iv_demand_unit_type = cv_unit_type_unit ) THEN
+          IF( get_quote_rec.whole_unit_type = cv_unit_type_unit ) THEN
+            ln_usuall_net_price      := ln_usuall_net_price;
+            ln_this_time_net_price   := ln_this_time_net_price;
+            ln_quotation_price       := ln_quotation_price;
+            ln_sales_discount_price  := ln_sales_discount_price;
+          ELSIF( get_quote_rec.whole_unit_type = cv_unit_type_cs ) THEN
+            IF( get_quote_rec.cs_count = 0 ) THEN
+              RAISE skip_expt; -- 突合せ対象外
+            ELSE
+              ln_usuall_net_price      := TRUNC( ln_usuall_net_price      / get_quote_rec.cs_count, 2 );
+              ln_this_time_net_price   := TRUNC( ln_this_time_net_price   / get_quote_rec.cs_count, 2 );
+              ln_quotation_price       := TRUNC( ln_quotation_price       / get_quote_rec.cs_count, 2 );
+              ln_sales_discount_price  := TRUNC( ln_sales_discount_price  / get_quote_rec.cs_count, 2 );
+            END IF;
+          ELSIF( get_quote_rec.whole_unit_type = cv_unit_type_bl ) THEN
+            IF( get_quote_rec.bl_count = 0 ) THEN
+              RAISE skip_expt; -- 突合せ対象外
+            ELSE
+              ln_usuall_net_price      := TRUNC( ln_usuall_net_price      / get_quote_rec.bl_count, 2 );
+              ln_this_time_net_price   := TRUNC( ln_this_time_net_price   / get_quote_rec.bl_count, 2 );
+              ln_quotation_price       := TRUNC( ln_quotation_price       / get_quote_rec.bl_count, 2 );
+              ln_sales_discount_price  := TRUNC( ln_sales_discount_price  / get_quote_rec.bl_count, 2 );
+            END IF;
+          END IF;
+        -- 請求単位 ＝ ケース
+        ELSIF( iv_demand_unit_type = cv_unit_type_cs ) THEN
+          IF( get_quote_rec.whole_unit_type = cv_unit_type_unit ) THEN
+            IF( get_quote_rec.cs_count = 0 ) THEN
+              RAISE skip_expt; -- 突合せ対象外
+            ELSE
+              ln_usuall_net_price      := ln_usuall_net_price      * get_quote_rec.cs_count;
+              ln_this_time_net_price   := ln_this_time_net_price   * get_quote_rec.cs_count;
+              ln_quotation_price       := ln_quotation_price       * get_quote_rec.cs_count;
+              ln_sales_discount_price  := ln_sales_discount_price  * get_quote_rec.cs_count;
+            END IF;
+          ELSIF( get_quote_rec.whole_unit_type = cv_unit_type_cs ) THEN
+            ln_usuall_net_price      := ln_usuall_net_price;
+            ln_this_time_net_price   := ln_this_time_net_price;
+            ln_quotation_price       := ln_quotation_price;
+            ln_sales_discount_price  := ln_sales_discount_price;
+          ELSIF( get_quote_rec.whole_unit_type = cv_unit_type_bl ) THEN
+            IF( get_quote_rec.cs_count = 0 )
+            OR( get_quote_rec.bl_count = 0 ) THEN
+              RAISE skip_expt; -- 突合せ対象外
+            ELSE
+              ln_usuall_net_price      := TRUNC( ln_usuall_net_price      / get_quote_rec.bl_count, 2 ) * get_quote_rec.cs_count;
+              ln_this_time_net_price   := TRUNC( ln_this_time_net_price   / get_quote_rec.bl_count, 2 ) * get_quote_rec.cs_count;
+              ln_quotation_price       := TRUNC( ln_quotation_price       / get_quote_rec.bl_count, 2 ) * get_quote_rec.cs_count;
+              ln_sales_discount_price  := TRUNC( ln_sales_discount_price  / get_quote_rec.bl_count, 2 ) * get_quote_rec.cs_count;
+            END IF;
+          END IF;
+        -- 請求単位 ＝ ボール
+        ELSIF( iv_demand_unit_type = cv_unit_type_bl ) THEN
+          IF( get_quote_rec.whole_unit_type = cv_unit_type_unit ) THEN
+            IF( get_quote_rec.bl_count = 0 ) THEN
+              RAISE skip_expt; -- 突合せ対象外
+            ELSE
+              ln_usuall_net_price      := ln_usuall_net_price      * get_quote_rec.bl_count;
+              ln_this_time_net_price   := ln_this_time_net_price   * get_quote_rec.bl_count;
+              ln_quotation_price       := ln_quotation_price       * get_quote_rec.bl_count;
+              ln_sales_discount_price  := ln_sales_discount_price  * get_quote_rec.bl_count;
+            END IF;
+          ELSIF( get_quote_rec.whole_unit_type = cv_unit_type_cs ) THEN
+            IF( get_quote_rec.cs_count = 0 )
+            OR( get_quote_rec.bl_count = 0 ) THEN
+              RAISE skip_expt; -- 突合せ対象外
+            ELSE
+              ln_usuall_net_price      := TRUNC( ln_usuall_net_price      / get_quote_rec.cs_count, 2 ) * get_quote_rec.bl_count;
+              ln_this_time_net_price   := TRUNC( ln_this_time_net_price   / get_quote_rec.cs_count, 2 ) * get_quote_rec.bl_count;
+              ln_quotation_price       := TRUNC( ln_quotation_price       / get_quote_rec.cs_count, 2 ) * get_quote_rec.bl_count;
+              ln_sales_discount_price  := TRUNC( ln_sales_discount_price  / get_quote_rec.cs_count, 2 ) * get_quote_rec.bl_count;
+            END IF;
+          ELSIF( get_quote_rec.whole_unit_type = cv_unit_type_bl ) THEN
+            ln_usuall_net_price      := ln_usuall_net_price;
+            ln_this_time_net_price   := ln_this_time_net_price;
+            ln_quotation_price       := ln_quotation_price;
+            ln_sales_discount_price  := ln_sales_discount_price;
+          END IF;
+        END IF;
+        --==================================================
+        -- 単位換算（販売先）
+        --==================================================
+        -- 請求単位 ＝ 本
+        IF( iv_demand_unit_type = cv_unit_type_unit ) THEN
+          IF( get_quote_rec.sales_unit_type = cv_unit_type_unit ) THEN
+            ln_usually_deliv_price   := ln_usually_deliv_price;
+            ln_this_time_deliv_price := ln_this_time_deliv_price;
+          ELSIF( get_quote_rec.sales_unit_type = cv_unit_type_cs ) THEN
+            IF( get_quote_rec.cs_count = 0 ) THEN
+              RAISE skip_expt; -- 突合せ対象外
+            ELSE
+              ln_usually_deliv_price   := TRUNC( ln_usually_deliv_price   / get_quote_rec.cs_count, 2 );
+              ln_this_time_deliv_price := TRUNC( ln_this_time_deliv_price / get_quote_rec.cs_count, 2 );
+            END IF;
+          ELSIF( get_quote_rec.sales_unit_type = cv_unit_type_bl ) THEN
+            IF( get_quote_rec.bl_count = 0 ) THEN
+              RAISE skip_expt; -- 突合せ対象外
+            ELSE
+              ln_usually_deliv_price   := TRUNC( ln_usually_deliv_price   / get_quote_rec.bl_count, 2 );
+              ln_this_time_deliv_price := TRUNC( ln_this_time_deliv_price / get_quote_rec.bl_count, 2 );
+            END IF;
+          END IF;
+        -- 請求単位 ＝ ケース
+        ELSIF( iv_demand_unit_type = cv_unit_type_cs ) THEN
+          IF( get_quote_rec.sales_unit_type = cv_unit_type_unit ) THEN
+            IF( get_quote_rec.cs_count = 0 ) THEN
+              RAISE skip_expt; -- 突合せ対象外
+            ELSE
+              ln_usually_deliv_price   := ln_usually_deliv_price   * get_quote_rec.cs_count;
+              ln_this_time_deliv_price := ln_this_time_deliv_price * get_quote_rec.cs_count;
+            END IF;
+          ELSIF( get_quote_rec.sales_unit_type = cv_unit_type_cs ) THEN
+            ln_usually_deliv_price   := ln_usually_deliv_price;
+            ln_this_time_deliv_price := ln_this_time_deliv_price;
+          ELSIF( get_quote_rec.sales_unit_type = cv_unit_type_bl ) THEN
+            IF( get_quote_rec.cs_count = 0 )
+            OR( get_quote_rec.bl_count = 0 ) THEN
+              RAISE skip_expt; -- 突合せ対象外
+            ELSE
+              ln_usually_deliv_price   := TRUNC( ln_usually_deliv_price   / get_quote_rec.bl_count, 2 ) * get_quote_rec.cs_count;
+              ln_this_time_deliv_price := TRUNC( ln_this_time_deliv_price / get_quote_rec.bl_count, 2 ) * get_quote_rec.cs_count;
+            END IF;
+          END IF;
+        -- 請求単位 ＝ ボール
+        ELSIF( iv_demand_unit_type = cv_unit_type_bl ) THEN
+          IF( get_quote_rec.sales_unit_type = cv_unit_type_unit ) THEN
+            IF( get_quote_rec.bl_count = 0 ) THEN
+              RAISE skip_expt; -- 突合せ対象外
+            ELSE
+              ln_usually_deliv_price   := ln_usually_deliv_price   * get_quote_rec.bl_count;
+              ln_this_time_deliv_price := ln_this_time_deliv_price * get_quote_rec.bl_count;
+            END IF;
+          ELSIF( get_quote_rec.sales_unit_type = cv_unit_type_cs ) THEN
+            IF( get_quote_rec.cs_count = 0 )
+            OR( get_quote_rec.bl_count = 0 ) THEN
+              RAISE skip_expt; -- 突合せ対象外
+            ELSE
+              ln_usually_deliv_price   := TRUNC( ln_usually_deliv_price   / get_quote_rec.cs_count, 2 ) * get_quote_rec.bl_count;
+              ln_this_time_deliv_price := TRUNC( ln_this_time_deliv_price / get_quote_rec.cs_count, 2 ) * get_quote_rec.bl_count;
+            END IF;
+          ELSIF( get_quote_rec.sales_unit_type = cv_unit_type_bl ) THEN
+            ln_usually_deliv_price   := ln_usually_deliv_price;
+            ln_this_time_deliv_price := ln_this_time_deliv_price;
+          END IF;
+        END IF;
+        --==================================================
+        -- 見積区分：通常
+        --==================================================
+        IF( get_quote_rec.quote_div = cv_quote_div_usuall ) THEN
+          --==================================================
+          -- 支払単価：建値 － 売上値引 － 通常ＮＥＴ価格
+          --==================================================
+          IF( in_demand_unit_price = ln_quotation_price
+                                   - ln_sales_discount_price
+                                   - ln_usuall_net_price
+          ) THEN
+            ov_retcode                     := gv_status_normal;
+            ov_errbuf                      := NULL;
+            ov_errmsg                      := NULL;
+            ov_estimated_no                := get_quote_rec.quote_number;
+            on_quote_line_id               := get_quote_rec.quote_line_id;
+            ov_emp_code                    := get_quote_rec.employee_number;
+            on_market_amt                  := ln_quotation_price;
+            on_allowance_amt               := ln_sales_discount_price;
+            on_normal_store_deliver_amt    := ln_usually_deliv_price;
+            on_once_store_deliver_amt      := ln_this_time_deliv_price;
+            on_net_selling_price           := ln_usuall_net_price;
+            ov_estimated_type              := get_quote_rec.quote_div;
+            on_backmargin_amt              := ln_quotation_price
+                                            - ln_sales_discount_price
+                                            - ln_usuall_net_price;
+            on_sales_support_amt           := 0;
+            RETURN;
+          END IF;
+        --==================================================
+        -- 見積区分：通常以外
+        --==================================================
+        ELSE
+          --==================================================
+          -- 支払単価：建値 － 売上値引 － 今回ＮＥＴ価格
+          --==================================================
+          IF( in_demand_unit_price = ln_quotation_price
+                                   - ln_sales_discount_price
+                                   - ln_this_time_net_price
+          ) THEN
+            ov_retcode                     := gv_status_normal;
+            ov_errbuf                      := NULL;
+            ov_errmsg                      := NULL;
+            ov_estimated_no                := get_quote_rec.quote_number;
+            on_quote_line_id               := get_quote_rec.quote_line_id;
+            ov_emp_code                    := get_quote_rec.employee_number;
+            on_market_amt                  := ln_quotation_price;
+            on_allowance_amt               := ln_sales_discount_price;
+            on_normal_store_deliver_amt    := ln_usually_deliv_price;
+            on_once_store_deliver_amt      := ln_this_time_deliv_price;
+            on_net_selling_price           := ln_this_time_net_price;
+            ov_estimated_type              := get_quote_rec.quote_div;
+            on_backmargin_amt              := ln_quotation_price
+                                            - ln_sales_discount_price
+                                            - ln_usually_deliv_price
+                                            + ln_this_time_deliv_price
+                                            - ln_this_time_net_price;
+            on_sales_support_amt           := ln_usually_deliv_price
+                                            - ln_this_time_deliv_price;
+            RETURN;
+          END IF;
+          --==================================================
+          -- 支払単価：建値 － 売上値引 － 通常店納 ＋ 今回店納 － 今回ＮＥＴ価格
+          --==================================================
+          IF( in_demand_unit_price = ln_quotation_price
+                                   - ln_sales_discount_price
+                                   - ln_usually_deliv_price
+                                   + ln_this_time_deliv_price
+                                   - ln_this_time_net_price
+          ) THEN
+            ov_retcode                     := gv_status_normal;
+            ov_errbuf                      := NULL;
+            ov_errmsg                      := NULL;
+            ov_estimated_no                := get_quote_rec.quote_number;
+            on_quote_line_id               := get_quote_rec.quote_line_id;
+            ov_emp_code                    := get_quote_rec.employee_number;
+            on_market_amt                  := ln_quotation_price;
+            on_allowance_amt               := ln_sales_discount_price;
+            on_normal_store_deliver_amt    := ln_usually_deliv_price;
+            on_once_store_deliver_amt      := ln_this_time_deliv_price;
+            on_net_selling_price           := ln_this_time_net_price;
+            ov_estimated_type              := get_quote_rec.quote_div;
+            on_backmargin_amt              := ln_quotation_price
+                                            - ln_sales_discount_price
+                                            - ln_usually_deliv_price
+                                            + ln_this_time_deliv_price
+                                            - ln_this_time_net_price;
+            on_sales_support_amt           := 0;
+            RETURN;
+          END IF;
+          --==================================================
+          -- 支払単価：通常店納 － 今回店納
+          --==================================================
+          IF( in_demand_unit_price = ln_usually_deliv_price
+                                   - ln_this_time_deliv_price
+          ) THEN
+            ov_retcode                     := gv_status_normal;
+            ov_errbuf                      := NULL;
+            ov_errmsg                      := NULL;
+            ov_estimated_no                := get_quote_rec.quote_number;
+            on_quote_line_id               := get_quote_rec.quote_line_id;
+            ov_emp_code                    := get_quote_rec.employee_number;
+            on_market_amt                  := ln_quotation_price;
+            on_allowance_amt               := ln_sales_discount_price;
+            on_normal_store_deliver_amt    := ln_usually_deliv_price;
+            on_once_store_deliver_amt      := ln_this_time_deliv_price;
+            on_net_selling_price           := ln_this_time_net_price;
+            ov_estimated_type              := get_quote_rec.quote_div;
+            on_backmargin_amt              := 0;
+            on_sales_support_amt           := ln_usually_deliv_price
+                                            - ln_this_time_deliv_price;
+            RETURN;
+          END IF;
+          --==================================================
+          -- 支払単価：通常ＮＥＴ価格 － 今回ＮＥＴ価格
+          --==================================================
+          IF( in_demand_unit_price = ln_usuall_net_price
+                                   - ln_this_time_net_price
+          ) THEN
+            ov_retcode                     := gv_status_normal;
+            ov_errbuf                      := NULL;
+            ov_errmsg                      := NULL;
+            ov_estimated_no                := get_quote_rec.quote_number;
+            on_quote_line_id               := get_quote_rec.quote_line_id;
+            ov_emp_code                    := get_quote_rec.employee_number;
+            on_market_amt                  := ln_quotation_price;
+            on_allowance_amt               := ln_sales_discount_price;
+            on_normal_store_deliver_amt    := ln_usually_deliv_price;
+            on_once_store_deliver_amt      := ln_this_time_deliv_price;
+            on_net_selling_price           := ln_this_time_net_price;
+            ov_estimated_type              := get_quote_rec.quote_div;
+            on_backmargin_amt              := ln_this_time_deliv_price
+                                            - ln_this_time_net_price
+                                            - ln_usually_deliv_price
+                                            + ln_usuall_net_price;
+            on_sales_support_amt           := ln_usually_deliv_price
+                                            - ln_this_time_deliv_price;
+            RETURN;
+          END IF;
+        END IF;
+      EXCEPTION
+        WHEN skip_expt THEN
+          NULL;
+      END;
+    END LOOP;
+    --==================================================
+    -- 見積書無し
+    --==================================================
+    ov_retcode                     := gv_status_normal;
+    ov_errbuf                      := NULL;
+    ov_errmsg                      := NULL;
+    ov_estimated_no                := NULL;
+    on_quote_line_id               := NULL;
+    ov_emp_code                    := NULL;
+    on_market_amt                  := NULL;
+    on_allowance_amt               := NULL;
+    on_normal_store_deliver_amt    := NULL;
+    on_once_store_deliver_amt      := NULL;
+    on_net_selling_price           := NULL;
+    ov_estimated_type              := '0';
+    on_backmargin_amt              := NULL;
+    on_sales_support_amt           := NULL;
 --
   EXCEPTION
-    --見積データが取得できなかった場合--
-    WHEN NO_DATA_FOUND THEN
-      ov_estimated_no             := NULL;     -- 見積書No
-      on_quote_line_id            := NULL;     -- 明細ID
-      ov_emp_code                 := NULL;     -- 担当者コード
-      on_market_amt               := NULL;     -- 建値
-      on_allowance_amt            := NULL;     -- 値引(割戻し)
-      on_normal_store_deliver_amt := NULL;     -- 通常店納
-      on_once_store_deliver_amt   := NULL;     -- 今回店納
-      on_net_selling_price        := NULL;     -- NET価格
-      ov_estimated_type           := cv_zero;  -- 見積区分
-      on_backmargin_amt           := NULL;     -- 販売手数料
-      on_sales_support_amt        := NULL;     -- 販売協賛金
-      ov_retcode                  := gv_status_normal;
-      ov_errbuf                   := NULL;
-      ov_errmsg                   := NULL;
     WHEN OTHERS THEN
       ov_retcode := gv_status_error;
-      raise_application_error(
+      RAISE_APPLICATION_ERROR(
         -20000, cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || SQLERRM
       );
 --
   END get_wholesale_req_est_p;
+-- 2010/04/21 Ver.1.13 [E_本稼動_02088] SCS K.Yamaguchi REPAIR END
 --
   /******************************************************************************
    *FUNCTION NAME : get_wholesale_req_est_type_f

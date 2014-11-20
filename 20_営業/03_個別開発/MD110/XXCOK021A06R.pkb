@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A06R(body)
  * Description      : 帳合問屋に関する請求書と見積書を突き合わせ、品目別に請求書と見積書の内容を表示
  * MD.050           : 問屋販売条件支払チェック表 MD050_COK_021_A06
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *                                                        補助科目:05132は拡売費、その他はその他科目へ設定
  *  2009/12/24    1.8   S.Moriyama       [E_本稼動_00608] SQLチューニング
  *  2010/01/27    1.9   K.Kiriu          [E_本稼動_01176] 口座種別追加に伴う口座種別名取得元クイックコード変更
+ *  2010/04/23    1.10  K.Yamaguchi      [E_本稼動_02088] NET掛け率・CSマージン額で請求単位（ボール）を考慮
  *
  *****************************************************************************************/
   -- ===============================================
@@ -133,6 +134,10 @@ AS
 -- 2010/01/27 Ver.1.9 [E_本稼動_01176] SCS K.Kiiru UPD END
   -- 請求単位
   cv_unit_type_cs            CONSTANT VARCHAR2(1)   := '2';   -- C/S
+-- 2010/04/23 Ver.1.10 [E_本稼動_02088] SCS K.Yamaguchi ADD START
+  cv_unit_type_unit          CONSTANT VARCHAR2(1)   := '1';   -- 本
+  cv_unit_type_bl            CONSTANT VARCHAR2(1)   := '3';   -- ボール
+-- 2010/04/23 Ver.1.10 [E_本稼動_02088] SCS K.Yamaguchi ADD END
   -- SVF起動パラメータ
   cv_file_id                 CONSTANT VARCHAR2(20)  := 'XXCOK021A06R';       -- 帳票ID
   cv_output_mode             CONSTANT VARCHAR2(1)   := '1';                  -- 出力区分(PDF出力)
@@ -197,7 +202,11 @@ AS
          , hp2.party_name                 AS sales_outlets_name             -- 問屋帳合先名
          , NVL( item.item_short_name, xav.description || cv_hyphen || xsav.description )
                                           AS item_short_name                -- 品名・略名(NULL：勘定科目名称-補助科目名称)
-         , item.inc_num                   AS inc_num                        -- 入数
+-- 2010/04/23 Ver.1.10 [E_本稼動_02088] SCS K.Yamaguchi REPAIR START
+--         , item.inc_num                   AS inc_num                        -- 入数
+         , item.cs_count                  AS cs_count                       -- ケース入数
+         , item.bl_count                  AS bl_count                       -- ボール入数
+-- 2010/04/23 Ver.1.10 [E_本稼動_02088] SCS K.Yamaguchi REPAIR END
          , CASE WHEN NVL( TO_DATE( item.fixed_price_start_date, cv_format_yyyy_mm_dd ) , gd_process_date ) > gd_process_date
            THEN item.old_fixed_price                                        -- 旧定価
            ELSE item.new_fixed_price                                        -- 定価(新)
@@ -227,11 +236,18 @@ AS
                  , TO_NUMBER( iimb.attribute4 )  AS old_fixed_price         -- 旧定価
                  , TO_NUMBER( iimb.attribute5 )  AS new_fixed_price         -- 定価(新)
                  , iimb.attribute6               AS fixed_price_start_date  -- 定価適用開始日
-                 , TO_NUMBER( iimb.attribute11 ) AS inc_num                 -- 入数
+-- 2010/04/23 Ver.1.10 [E_本稼動_02088] SCS K.Yamaguchi REPAIR START
+--                 , TO_NUMBER( iimb.attribute11 ) AS inc_num                 -- 入数
+                 , TO_NUMBER( iimb.attribute11 ) AS cs_count                -- ケース入数
+                 , xsib.bowl_inc_num             AS bl_count                -- ボール入り数
+-- 2010/04/23 Ver.1.10 [E_本稼動_02088] SCS K.Yamaguchi REPAIR END
                  , ximb.item_short_name          AS item_short_name         -- 品名・略名
             FROM   mtl_system_items_b  msib                                 -- 品目マスタ
                  , ic_item_mst_b       iimb                                 -- OPM品目マスタ
                  , xxcmn_item_mst_b    ximb                                 -- OPM品目アドオンマスタ
+-- 2010/04/23 Ver.1.10 [E_本稼動_02088] SCS K.Yamaguchi ADD START
+                 , xxcmm_system_items_b  xsib                               -- DISC品目アドオン
+-- 2010/04/23 Ver.1.10 [E_本稼動_02088] SCS K.Yamaguchi ADD END
             WHERE  msib.organization_id  = gn_org_id_sales
             AND    msib.segment1         = iimb.item_no
             AND    iimb.item_id          = ximb.item_id
@@ -239,6 +255,9 @@ AS
             AND    gd_process_date BETWEEN ximb.start_date_active
                                        AND NVL ( ximb.end_date_active , gd_process_date )
 -- 2009/09/01 Ver.1.5 [障害0001230] SCS S.Moriyama ADD END
+-- 2010/04/23 Ver.1.10 [E_本稼動_02088] SCS K.Yamaguchi ADD START
+            AND    msib.segment1         = xsib.item_code
+-- 2010/04/23 Ver.1.10 [E_本稼動_02088] SCS K.Yamaguchi ADD END
           ) item
          ,( SELECT abau.vendor_id        AS vendor_id                       -- 内部仕入先ID
                  , abau.vendor_site_id   AS vendor_site_id                  -- 内部仕入先サイトID
@@ -568,18 +587,48 @@ AS
       THEN
         ln_net_pct := cn_number_0;
       ELSE
-        IF ( g_target_tab( in_i ).demand_unit_type = cv_unit_type_cs ) THEN
-          -- 入数がNULLまたは0の場合、NET掛率は0
-          IF (   g_target_tab( in_i ).inc_num IS NULL )
-            OR ( g_target_tab( in_i ).inc_num = cn_number_0 )
-          THEN
-            ln_net_pct := cn_number_0;
+-- 2010/04/23 Ver.1.10 [E_本稼動_02088] SCS K.Yamaguchi REPAIR START
+--        IF ( g_target_tab( in_i ).demand_unit_type = cv_unit_type_cs ) THEN
+--          -- 入数がNULLまたは0の場合、NET掛率は0
+--          IF (   g_target_tab( in_i ).inc_num IS NULL )
+--            OR ( g_target_tab( in_i ).inc_num = cn_number_0 )
+--          THEN
+--            ln_net_pct := cn_number_0;
+--          ELSE
+--            ln_net_pct := NVL( gn_net_selling_price, 0 ) / g_target_tab( in_i ).inc_num / g_target_tab( in_i ).fixed_price * cn_number_100;
+--          END IF;
+--        ELSE
+--          ln_net_pct := NVL( gn_net_selling_price, 0 ) / g_target_tab( in_i ).fixed_price * cn_number_100;
+--        END IF;
+        -- 単位：本
+        IF( g_target_tab( in_i ).demand_unit_type = cv_unit_type_unit ) THEN
+          ln_net_pct :=   NVL( gn_net_selling_price, 0 )
+                        / g_target_tab( in_i ).fixed_price
+                        * cn_number_100;
+        -- 単位：ケース
+        ELSIF( g_target_tab( in_i ).demand_unit_type = cv_unit_type_cs ) THEN
+          IF ( NVL( g_target_tab( in_i ).cs_count, 0 ) = 0 ) THEN
+            ln_net_pct := 0;
           ELSE
-            ln_net_pct := NVL( gn_net_selling_price, 0 ) / g_target_tab( in_i ).inc_num / g_target_tab( in_i ).fixed_price * cn_number_100;
+            ln_net_pct :=   NVL( gn_net_selling_price, 0 )
+                          / g_target_tab( in_i ).cs_count
+                          / g_target_tab( in_i ).fixed_price
+                          * cn_number_100;
+          END IF;
+        -- 単位：ボール
+        ELSIF( g_target_tab( in_i ).demand_unit_type = cv_unit_type_bl ) THEN
+          IF ( NVL( g_target_tab( in_i ).bl_count, 0 ) = 0 ) THEN
+            ln_net_pct := 0;
+          ELSE
+            ln_net_pct :=   NVL( gn_net_selling_price, 0 )
+                          / g_target_tab( in_i ).bl_count
+                          / g_target_tab( in_i ).fixed_price
+                          * cn_number_100;
           END IF;
         ELSE
-          ln_net_pct := NVL( gn_net_selling_price, 0 ) / g_target_tab( in_i ).fixed_price * cn_number_100;
+          ln_net_pct := 0;
         END IF;
+-- 2010/04/23 Ver.1.10 [E_本稼動_02088] SCS K.Yamaguchi REPAIR END
       END IF;
       -- ===============================================
       -- マージン率((今回店納-NET価格)/今回店納*100)  今回店納がNULL・0以外の場合今回店納、NULLまたは0の場合通常店納
@@ -600,21 +649,64 @@ AS
       -- ===============================================
       -- C/Sマージン額((今回店納-NET価格)*入数  今回店納がNULL・0以外の場合今回店納、NULLまたは0の場合通常店納  請求単位が2(C/S)の場合、入数を掛けない
       -- ===============================================
-      IF (    gn_once_store_deliver_amt IS NOT NULL )
-        AND ( gn_once_store_deliver_amt <> cn_number_0 )
-      THEN
-        IF ( g_target_tab( in_i ).demand_unit_type = cv_unit_type_cs ) THEN
+-- 2010/04/23 Ver.1.10 [E_本稼動_02088] SCS K.Yamaguchi REPAIR START
+--      IF (    gn_once_store_deliver_amt IS NOT NULL )
+--        AND ( gn_once_store_deliver_amt <> cn_number_0 )
+--      THEN
+--        IF ( g_target_tab( in_i ).demand_unit_type = cv_unit_type_cs ) THEN
+--          ln_cs_margin_amt := gn_once_store_deliver_amt - NVL( gn_net_selling_price, 0 );
+--        ELSE
+--          ln_cs_margin_amt := ( gn_once_store_deliver_amt - NVL( gn_net_selling_price, 0 ) ) * NVL( g_target_tab( in_i ).inc_num, 0 );
+--        END IF;
+--      ELSE
+--        IF ( g_target_tab( in_i ).demand_unit_type = cv_unit_type_cs ) THEN
+--          ln_cs_margin_amt := NVL( gn_normal_store_deliver_amt, 0 ) - NVL( gn_net_selling_price, 0 );
+--        ELSE
+--          ln_cs_margin_amt := ( NVL( gn_normal_store_deliver_amt, 0 ) - NVL( gn_net_selling_price, 0 ) ) * NVL( g_target_tab( in_i ).inc_num, 0 );
+--        END IF;
+--      END IF;
+      IF ( NVL( gn_once_store_deliver_amt, 0 ) <> 0 ) THEN
+        -- 単位：本
+        IF( g_target_tab( in_i ).demand_unit_type = cv_unit_type_unit ) THEN
+          ln_cs_margin_amt :=   ( gn_once_store_deliver_amt - NVL( gn_net_selling_price, 0 ) )
+                              * NVL( g_target_tab( in_i ).cs_count, 0 );
+        -- 単位：ケース
+        ELSIF( g_target_tab( in_i ).demand_unit_type = cv_unit_type_cs ) THEN
           ln_cs_margin_amt := gn_once_store_deliver_amt - NVL( gn_net_selling_price, 0 );
+        -- 単位：ボール
+        ELSIF( g_target_tab( in_i ).demand_unit_type = cv_unit_type_bl ) THEN
+          IF( NVL( g_target_tab( in_i ).bl_count, 0 ) = 0 ) THEN
+            ln_cs_margin_amt := 0;
+          ELSE
+            ln_cs_margin_amt :=   ( gn_once_store_deliver_amt - NVL( gn_net_selling_price, 0 ) )
+                                / g_target_tab( in_i ).bl_count
+                                * NVL( g_target_tab( in_i ).cs_count, 0 );
+          END IF;
         ELSE
-          ln_cs_margin_amt := ( gn_once_store_deliver_amt - NVL( gn_net_selling_price, 0 ) ) * NVL( g_target_tab( in_i ).inc_num, 0 );
+          ln_cs_margin_amt := 0;
         END IF;
       ELSE
-        IF ( g_target_tab( in_i ).demand_unit_type = cv_unit_type_cs ) THEN
-          ln_cs_margin_amt := NVL( gn_normal_store_deliver_amt, 0 ) - NVL( gn_net_selling_price, 0 );
+        -- 単位：本
+        IF( g_target_tab( in_i ).demand_unit_type = cv_unit_type_unit ) THEN
+          ln_cs_margin_amt :=   ( gn_normal_store_deliver_amt - NVL( gn_net_selling_price, 0 ) )
+                              * NVL( g_target_tab( in_i ).cs_count, 0 );
+        -- 単位：ケース
+        ELSIF( g_target_tab( in_i ).demand_unit_type = cv_unit_type_cs ) THEN
+          ln_cs_margin_amt := gn_normal_store_deliver_amt - NVL( gn_net_selling_price, 0 );
+        -- 単位：ボール
+        ELSIF( g_target_tab( in_i ).demand_unit_type = cv_unit_type_bl ) THEN
+          IF( NVL( g_target_tab( in_i ).bl_count, 0 ) = 0 ) THEN
+            ln_cs_margin_amt := 0;
+          ELSE
+            ln_cs_margin_amt :=   ( gn_normal_store_deliver_amt - NVL( gn_net_selling_price, 0 ) )
+                                / g_target_tab( in_i ).bl_count
+                                * NVL( g_target_tab( in_i ).cs_count, 0 );
+          END IF;
         ELSE
-          ln_cs_margin_amt := ( NVL( gn_normal_store_deliver_amt, 0 ) - NVL( gn_net_selling_price, 0 ) ) * NVL( g_target_tab( in_i ).inc_num, 0 );
+          ln_cs_margin_amt := 0;
         END IF;
       END IF;
+-- 2010/04/23 Ver.1.10 [E_本稼動_02088] SCS K.Yamaguchi REPAIR END
 -- 2009/12/01 Ver.1.6 [E_本稼動_00229] SCS S.Moriyama UPD START
 --      -- ===============================================
 --      -- 補填(((実)建値-通常店納)*支払数量)
