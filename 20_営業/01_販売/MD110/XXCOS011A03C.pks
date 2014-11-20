@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (spec)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -26,6 +26,8 @@ AS
  *  2009/02/27    1.5   H.Fujimoto       結合不具合No.146,149
  *  2009/03/04    1.6   H.Fujimoto       結合不具合No.154
  *  2009/04/28    1.7   K.Kiriu          [T1_0756]レコード長変更対応
+ *  2009/05/12    1.8   K.Kiriu          [T1_0677]ラベル作成対応
+ *                                       [T1_0937]削除時の件数カウント対応
  *
  *****************************************************************************************/
 --
@@ -36,17 +38,21 @@ AS
     iv_file_name        IN     VARCHAR2,         --   1.ファイル名
     iv_make_class       IN     VARCHAR2,         --   2.作成区分
     iv_edi_c_code       IN     VARCHAR2,         --   3.EDIチェーン店コード
-    iv_edi_f_number     IN     VARCHAR2,         --   4.EDI伝送追番
-    iv_shop_date_from   IN     VARCHAR2,         --   5.店舗納品日From
-    iv_shop_date_to     IN     VARCHAR2,         --   6.店舗納品日To
-    iv_sale_class       IN     VARCHAR2,         --   7.定番特売区分
-    iv_area_code        IN     VARCHAR2,         --   8.地区コード
-    iv_center_date      IN     VARCHAR2,         --   9.センター納品日
-    iv_delivery_time    IN     VARCHAR2,         --  10.納品時刻
-    iv_delivery_charge  IN     VARCHAR2,         --  11.納品担当者
-    iv_carrier_means    IN     VARCHAR2,         --  12.輸送手段
-    iv_proc_date        IN     VARCHAR2,         --  13.処理日
-    iv_proc_time        IN     VARCHAR2          --  14.処理時刻
+/* 2009/05/12 Ver1.8 Mod Start */
+--    iv_edi_f_number     IN     VARCHAR2,         --   4.EDI伝送追番
+    iv_edi_f_number_f   IN     VARCHAR2,         --   4.EDI伝送追番(ファイル名用)
+    iv_edi_f_number_s   IN     VARCHAR2,         --   5.EDI伝送追番(抽出条件用)
+/* 2009/05/12 Ver1.8 Mod End   */
+    iv_shop_date_from   IN     VARCHAR2,         --   6.店舗納品日From
+    iv_shop_date_to     IN     VARCHAR2,         --   7.店舗納品日To
+    iv_sale_class       IN     VARCHAR2,         --   8.定番特売区分
+    iv_area_code        IN     VARCHAR2,         --   9.地区コード
+    iv_center_date      IN     VARCHAR2,         --  10.センター納品日
+    iv_delivery_time    IN     VARCHAR2,         --  11.納品時刻
+    iv_delivery_charge  IN     VARCHAR2,         --  12.納品担当者
+    iv_carrier_means    IN     VARCHAR2,         --  13.輸送手段
+    iv_proc_date        IN     VARCHAR2,         --  14.処理日
+    iv_proc_time        IN     VARCHAR2          --  15.処理時刻
   );
 END XXCOS011A03C;
 /

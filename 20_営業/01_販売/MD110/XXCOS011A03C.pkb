@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,8 @@ AS
  *  2009/02/27    1.5   H.Fujimoto       結合不具合No.146,149
  *  2009/03/04    1.6   H.Fujimoto       結合不具合No.154
  *  2009/04/28    1.7   K.Kiriu          [T1_0756]レコード長変更対応
+ *  2009/05/12    1.8   K.Kiriu          [T1_0677]ラベル作成対応
+ *                                       [T1_0937]削除時の件数カウント対応
  *
  *****************************************************************************************/
 --
@@ -143,7 +145,7 @@ AS
   cv_msg_tkn_param1     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12254';  -- 作成区分
   cv_msg_tkn_param2     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12255';  -- EDIチェーン店コード
   cv_msg_tkn_param3     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00109';  -- ファイル名
-  cv_msg_tkn_param4     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12256';  -- EDI伝送追番
+  cv_msg_tkn_param4     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12256';  -- EDI伝送追番(ファイル名用)
   cv_msg_tkn_param5     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12257';  -- 店舗納品日From
   cv_msg_tkn_param6     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12258';  -- 店舗納品日To
   cv_msg_tkn_param7     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12259';  -- 処理日
@@ -170,6 +172,9 @@ AS
   cv_msg_tkn_tbl3       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00115';  -- EDI明細情報テーブル
   cv_msg_tkn_layout     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00071';  -- 受注系項目レイアウト
   cv_msg_file_nmae      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00044';  -- ファイル名出力
+/* 2009/05/12 Ver1.8 Add Start */
+  cv_msg_tkn_param10    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12265';  -- EDI伝送追番(抽出条件用)
+/* 2009/05/12 Ver1.8 Add End   */
   -- トークンコード
   cv_tkn_in_param       CONSTANT VARCHAR2(8)   := 'IN_PARAM';          -- 入力パラメータ名
   cv_tkn_date_from      CONSTANT VARCHAR2(9)   := 'DATE_FROM';         -- 日付期間チェックの開始日
@@ -198,6 +203,9 @@ AS
   cv_tkn_param09        CONSTANT VARCHAR2(7)   := 'PARAME9';           -- 入力パラメータ値
   cv_tkn_param10        CONSTANT VARCHAR2(8)   := 'PARAME10';          -- 入力パラメータ値
   cv_tkn_param11        CONSTANT VARCHAR2(8)   := 'PARAME11';          -- 入力パラメータ値
+/* 2009/05/12 Ver1.8 Add Start */
+  cv_tkn_param12        CONSTANT VARCHAR2(8)   := 'PARAME12';          -- 入力パラメータ値
+/* 2009/05/12 Ver1.8 Add End   */
   -- 日付
   cd_sysdate            CONSTANT DATE          := SYSDATE;                            -- システム日付
   cd_process_date       CONSTANT DATE          := xxccp_common_pkg2.get_process_date; -- 業務処理日
@@ -229,9 +237,11 @@ AS
   cv_edi_create_class   CONSTANT VARCHAR2(23)  := 'XXCOS1_EDI_CREATE_CLASS';       -- EDI作成元区分
   -- クイックコード
   cv_data_type_code_c   CONSTANT VARCHAR2(3)   := '040';               -- データ種(納品予定)
+/* 2009/05/12 Ver1.8 Del Start */
 /* 2009/02/27 Ver1.5 Add Start */
-  cv_data_type_code_l   CONSTANT VARCHAR2(3)   := '200';               -- データ種(納品予定(ラベル))
+--  cv_data_type_code_l   CONSTANT VARCHAR2(3)   := '200';               -- データ種(納品予定(ラベル))
 /* 2009/02/27 Ver1.5 Add  End  */
+/* 2009/05/12 Ver1.8 Del  End  */
   cv_edi_create_class_c CONSTANT VARCHAR2(2)   := '10';                -- EDI作成元区分(受注)
   -- 作成区分
   cv_make_class_transe  CONSTANT VARCHAR2(1)   := '1';                 -- 送信
@@ -1276,17 +1286,21 @@ AS
     iv_file_name        IN  VARCHAR2,     --   1.ファイル名
     iv_make_class       IN  VARCHAR2,     --   2.作成区分
     iv_edi_c_code       IN  VARCHAR2,     --   3.EDIチェーン店コード
-    iv_edi_f_number     IN  VARCHAR2,     --   4.EDI伝送追番
-    iv_shop_date_from   IN  VARCHAR2,     --   5.店舗納品日From
-    iv_shop_date_to     IN  VARCHAR2,     --   6.店舗納品日To
-    iv_sale_class       IN  VARCHAR2,     --   7.定番特売区分
-    iv_area_code        IN  VARCHAR2,     --   8.地区コード
-    iv_center_date      IN  VARCHAR2,     --   9.センター納品日
-    iv_delivery_time    IN  VARCHAR2,     --  10.納品時刻
-    iv_delivery_charge  IN  VARCHAR2,     --  11.納品担当者
-    iv_carrier_means    IN  VARCHAR2,     --  12.輸送手段
-    iv_proc_date        IN  VARCHAR2,     --  13.処理日
-    iv_proc_time        IN  VARCHAR2,     --  14.処理時刻
+/* 2009/05/12 Ver1.8 Mod Start */
+--    iv_edi_f_number     IN  VARCHAR2,     --   4.EDI伝送追番
+    iv_edi_f_number_f   IN  VARCHAR2,     --   4.EDI伝送追番(ファイル名用)
+    iv_edi_f_number_s   IN  VARCHAR2,     --   5.EDI伝送追番(抽出条件用)
+/* 2009/05/12 Ver1.8 Mod End   */
+    iv_shop_date_from   IN  VARCHAR2,     --   6.店舗納品日From
+    iv_shop_date_to     IN  VARCHAR2,     --   7.店舗納品日To
+    iv_sale_class       IN  VARCHAR2,     --   8.定番特売区分
+    iv_area_code        IN  VARCHAR2,     --   9.地区コード
+    iv_center_date      IN  VARCHAR2,     --  10.センター納品日
+    iv_delivery_time    IN  VARCHAR2,     --  11.納品時刻
+    iv_delivery_charge  IN  VARCHAR2,     --  12.納品担当者
+    iv_carrier_means    IN  VARCHAR2,     --  13.輸送手段
+    iv_proc_date        IN  VARCHAR2,     --  14.処理日
+    iv_proc_time        IN  VARCHAR2,     --  15.処理時刻
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1356,28 +1370,48 @@ AS
                         ,iv_token_name2  => cv_tkn_param02     -- トークンコード２
                         ,iv_token_value2 => iv_edi_c_code      -- EDIチェーン店コード
                         ,iv_token_name3  => cv_tkn_param03     -- トークンコード３
-                        ,iv_token_value3 => iv_edi_f_number    -- EDI伝送追番
+/* 2009/05/12 Ver1.8 Mod Start */
+--                        ,iv_token_value3 => iv_edi_f_number    -- EDI伝送追番
+--                        ,iv_token_name4  => cv_tkn_param04     -- トークンコード４
+--                        ,iv_token_value4 => iv_shop_date_from  -- 店舗納品日From
+--                        ,iv_token_name5  => cv_tkn_param05     -- トークンコード５
+--                        ,iv_token_value5 => iv_shop_date_to    -- 店舗納品日To
+--                        ,iv_token_name6  => cv_tkn_param06     -- トークンコード６
+--                        ,iv_token_value6 => iv_sale_class      -- 定番特売区分
+--                        ,iv_token_name7  => cv_tkn_param07     -- トークンコード７
+--                        ,iv_token_value7 => iv_area_code       -- 地区コード
+--                        ,iv_token_name8  => cv_tkn_param08     -- トークンコード８
+--                        ,iv_token_value8 => iv_center_date     -- センター納品日
+                        ,iv_token_value3 => iv_edi_f_number_f  -- EDI伝送追番(ファイル名用)
                         ,iv_token_name4  => cv_tkn_param04     -- トークンコード４
-                        ,iv_token_value4 => iv_shop_date_from  -- 店舗納品日From
+                        ,iv_token_value4 => iv_edi_f_number_s  -- EDI伝送追番(抽出条件用)
                         ,iv_token_name5  => cv_tkn_param05     -- トークンコード５
-                        ,iv_token_value5 => iv_shop_date_to    -- 店舗納品日To
+                        ,iv_token_value5 => iv_shop_date_from  -- 店舗納品日From
                         ,iv_token_name6  => cv_tkn_param06     -- トークンコード６
-                        ,iv_token_value6 => iv_sale_class      -- 定番特売区分
+                        ,iv_token_value6 => iv_shop_date_to    -- 店舗納品日To
                         ,iv_token_name7  => cv_tkn_param07     -- トークンコード７
-                        ,iv_token_value7 => iv_area_code       -- 地区コード
+                        ,iv_token_value7 => iv_sale_class      -- 定番特売区分
                         ,iv_token_name8  => cv_tkn_param08     -- トークンコード８
-                        ,iv_token_value8 => iv_center_date     -- センター納品日
+                        ,iv_token_value8 => iv_area_code       -- 地区コード
+                        ,iv_token_name9  => cv_tkn_param09     -- トークンコード９
+                        ,iv_token_value9 => iv_center_date     -- センター納品日
+/* 2009/05/12 Ver1.8 Mod End   */
                       );
       lv_param_msg := lv_param_msg ||
                       xxccp_common_pkg.get_msg(
                          iv_application  => cv_application      -- アプリケーション
                         ,iv_name         => cv_msg_param2       -- パラメーター出力
-                        ,iv_token_name1  => cv_tkn_param09      -- トークンコード９
+/* 2009/05/12 Ver1.8 Mod Start */
+--                        ,iv_token_name1  => cv_tkn_param09      -- トークンコード９
+                        ,iv_token_name1  => cv_tkn_param10      -- トークンコード１０
                         ,iv_token_value1 => iv_delivery_time    -- 納品時刻
-                        ,iv_token_name2  => cv_tkn_param10      -- トークンコード１０
+--                        ,iv_token_name2  => cv_tkn_param10      -- トークンコード１０
+                        ,iv_token_name2  => cv_tkn_param11      -- トークンコード１１
                         ,iv_token_value2 => iv_delivery_charge  -- 納品担当者
-                        ,iv_token_name3  => cv_tkn_param11      -- トークンコード１１
+--                        ,iv_token_name3  => cv_tkn_param11      -- トークンコード１１
+                        ,iv_token_name3  => cv_tkn_param12      -- トークンコード１２
                         ,iv_token_value3 => iv_carrier_means    -- 輸送手段
+/* 2009/05/12 Ver1.8 Mod End   */
                       );
     -- 「作成区分」が、'解除'の場合
     ELSIF ( iv_make_class = cv_make_class_release ) THEN
@@ -1528,9 +1562,13 @@ AS
     IF ( iv_make_class = cv_make_class_transe )
     OR ( iv_make_class = cv_make_class_label )
     THEN
-      -- 「ファイル名」「EDI伝送追番」「店舗納品日From」「店舗納品日To」のいずれかが、Nullの場合
+      -- 「ファイル名」「EDI伝送追番(ファイル名用)」「EDI伝送追番(抽出条件用)」「店舗納品日From」「店舗納品日To」のいずれかが、Nullの場合
       IF ( iv_file_name      IS NULL )
-      OR ( iv_edi_f_number   IS NULL )
+/* 2009/05/12 Ver1.8 Mod Start */
+--      OR ( iv_edi_f_number   IS NULL )
+      OR ( iv_edi_f_number_f IS NULL )
+      OR ( iv_edi_f_number_s IS NULL )
+/* 2009/05/12 Ver1.8 Mod End   */
       OR ( iv_shop_date_from IS NULL )
       OR ( iv_shop_date_to   IS NULL )
       THEN
@@ -1555,19 +1593,22 @@ AS
           );
         END IF;
 --
-        -- 「EDI伝送追番」が、NULLの場合
-        IF ( iv_edi_f_number IS NULL ) THEN
+        -- 「EDI伝送追番(ファイル名用)」が、NULLの場合
+/* 2009/05/12 Ver1.8 Mod Start */
+--        IF ( iv_edi_f_number IS NULL ) THEN
+        IF ( iv_edi_f_number_f IS NULL ) THEN
+/* 2009/05/12 Ver1.8 Mod End   */
           -- トークン取得
           lv_tkn_value1 := xxccp_common_pkg.get_msg(
                               iv_application  => cv_application     -- アプリケーション
-                             ,iv_name         => cv_msg_tkn_param4  -- EDI伝送追番
+                             ,iv_name         => cv_msg_tkn_param4  -- EDI伝送追番(ファイル名用)
                            );
           -- メッセージ取得
           lv_err_msg := xxccp_common_pkg.get_msg(
                            iv_application  => cv_application     -- アプリケーション
                           ,iv_name         => cv_msg_param_null  -- 必須入力パラメータ未設定エラーメッセージ
                           ,iv_token_name1  => cv_tkn_in_param    -- 入力パラメータ名
-                          ,iv_token_value1 => lv_tkn_value1      -- EDI伝送追番
+                          ,iv_token_value1 => lv_tkn_value1      -- EDI伝送追番(ファイル名用)
                         );
           -- メッセージに出力
           FND_FILE.PUT_LINE(
@@ -1575,6 +1616,29 @@ AS
             ,buff   => lv_err_msg
           );
         END IF;
+--
+/* 2009/05/12 Ver1.8 Add Start */
+        -- 「EDI伝送追番(抽出条件用)」が、NULLの場合
+        IF ( iv_edi_f_number_s IS NULL ) THEN
+          -- トークン取得
+          lv_tkn_value1 := xxccp_common_pkg.get_msg(
+                              iv_application  => cv_application     -- アプリケーション
+                             ,iv_name         => cv_msg_tkn_param10 -- EDI伝送追番(抽出条件用)
+                           );
+          -- メッセージ取得
+          lv_err_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application     -- アプリケーション
+                          ,iv_name         => cv_msg_param_null  -- 必須入力パラメータ未設定エラーメッセージ
+                          ,iv_token_name1  => cv_tkn_in_param    -- 入力パラメータ名
+                          ,iv_token_value1 => lv_tkn_value1      -- EDI伝送追番(抽出条件用)
+                        );
+          -- メッセージに出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_err_msg
+          );
+        END IF;
+/* 2009/05/12 Ver1.8 Add End   */
 --
         -- 「店舗納品日From」が、NULLの場合
         IF ( iv_shop_date_from IS NULL ) THEN
@@ -2151,13 +2215,15 @@ AS
             ,gt_from_series
       FROM   fnd_lookup_values_vl  flvv
       WHERE  flvv.lookup_type        = cv_data_type_code_t
+/* 2009/05/12 Ver1.8 Mod Start */
 /* 2009/02/27 Ver1.5 Mod Start */
---    AND    flvv.lookup_code        = cv_data_type_code_c
-      AND (( iv_make_class           = cv_make_class_transe
-      AND    flvv.lookup_code        = cv_data_type_code_c )
-      OR   ( iv_make_class           = cv_make_class_label
-      AND    flvv.lookup_code        = cv_data_type_code_l ))
+      AND    flvv.lookup_code        = cv_data_type_code_c
+--      AND (( iv_make_class           = cv_make_class_transe
+--      AND    flvv.lookup_code        = cv_data_type_code_c )
+--      OR   ( iv_make_class           = cv_make_class_label
+--     AND    flvv.lookup_code        = cv_data_type_code_l ))
 /* 2009/02/27 Ver1.5 Mod  End  */
+/* 2009/05/12 Ver1.8 Mod  End  */
       AND    flvv.enabled_flag       = cv_y                -- 有効
       AND (( flvv.start_date_active IS NULL )
       OR   ( flvv.start_date_active <= cd_process_date ))
@@ -2330,11 +2396,11 @@ AS
    ***********************************************************************************/
   PROCEDURE get_manual_order(
     iv_edi_c_code       IN  VARCHAR2,     --   3.EDIチェーン店コード
-    iv_edi_f_number     IN  VARCHAR2,     --   4.EDI伝送追番
-    iv_shop_date_from   IN  VARCHAR2,     --   5.店舗納品日From
-    iv_shop_date_to     IN  VARCHAR2,     --   6.店舗納品日To
-    iv_sale_class       IN  VARCHAR2,     --   7.定番特売区分
-    iv_area_code        IN  VARCHAR2,     --   8.地区コード
+    iv_edi_f_number     IN  VARCHAR2,     --   5.EDI伝送追番(抽出条件用)
+    iv_shop_date_from   IN  VARCHAR2,     --   6.店舗納品日From
+    iv_shop_date_to     IN  VARCHAR2,     --   7.店舗納品日To
+    iv_sale_class       IN  VARCHAR2,     --   8.定番特売区分
+    iv_area_code        IN  VARCHAR2,     --   9.地区コード
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2435,7 +2501,7 @@ AS
   PROCEDURE output_header(
     iv_file_name        IN  VARCHAR2,     --   1.ファイル名
     iv_edi_c_code       IN  VARCHAR2,     --   3.EDIチェーン店コード
-    iv_edi_f_number     IN  VARCHAR2,     --   4.EDI伝送追番
+    iv_edi_f_number     IN  VARCHAR2,     --   4.EDI伝送追番(ファイル名用)
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2658,11 +2724,11 @@ AS
    ***********************************************************************************/
   PROCEDURE input_edi_order(
     iv_edi_c_code       IN  VARCHAR2,     --   3.EDIチェーン店コード
-    iv_edi_f_number     IN  VARCHAR2,     --   4.EDI伝送追番
-    iv_shop_date_from   IN  VARCHAR2,     --   5.店舗納品日From
-    iv_shop_date_to     IN  VARCHAR2,     --   6.店舗納品日To
-    iv_sale_class       IN  VARCHAR2,     --   7.定番特売区分
-    iv_area_code        IN  VARCHAR2,     --   8.地区コード
+    iv_edi_f_number     IN  VARCHAR2,     --   5.EDI伝送追番(抽出条件用)
+    iv_shop_date_from   IN  VARCHAR2,     --   6.店舗納品日From
+    iv_shop_date_to     IN  VARCHAR2,     --   7.店舗納品日To
+    iv_sale_class       IN  VARCHAR2,     --   8.定番特売区分
+    iv_area_code        IN  VARCHAR2,     --   9.地区コード
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -4351,15 +4417,19 @@ AS
     iv_file_name        IN  VARCHAR2,     --   1.ファイル名
     iv_make_class       IN  VARCHAR2,     --   2.作成区分
     iv_edi_c_code       IN  VARCHAR2,     --   3.EDIチェーン店コード
-    iv_edi_f_number     IN  VARCHAR2,     --   4.EDI伝送追番
-    iv_shop_date_from   IN  VARCHAR2,     --   5.店舗納品日From
-    iv_shop_date_to     IN  VARCHAR2,     --   6.店舗納品日To
-    iv_sale_class       IN  VARCHAR2,     --   7.定番特売区分
-    iv_area_code        IN  VARCHAR2,     --   8.地区コード
-    iv_center_date      IN  VARCHAR2,     --   9.センター納品日
-    iv_delivery_time    IN  VARCHAR2,     --  10.納品時刻
-    iv_delivery_charge  IN  VARCHAR2,     --  11.納品担当者
-    iv_carrier_means    IN  VARCHAR2,     --  12.輸送手段
+/* 2009/05/12 Ver1.8 Mod Start */
+--    iv_edi_f_number     IN  VARCHAR2,     --   4.EDI伝送追番
+    iv_edi_f_number_f   IN  VARCHAR2,     --   4.EDI伝送追番(ファイル名用)
+    iv_edi_f_number_s   IN  VARCHAR2,     --   5.EDI伝送追番(抽出条件用)
+/* 2009/05/12 Ver1.8 Mod End   */
+    iv_shop_date_from   IN  VARCHAR2,     --   6.店舗納品日From
+    iv_shop_date_to     IN  VARCHAR2,     --   7.店舗納品日To
+    iv_sale_class       IN  VARCHAR2,     --   8.定番特売区分
+    iv_area_code        IN  VARCHAR2,     --   9.地区コード
+    iv_center_date      IN  VARCHAR2,     --  10.センター納品日
+    iv_delivery_time    IN  VARCHAR2,     --  11.納品時刻
+    iv_delivery_charge  IN  VARCHAR2,     --  12.納品担当者
+    iv_carrier_means    IN  VARCHAR2,     --  13.輸送手段
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -4407,11 +4477,14 @@ AS
     --==============================================================
     get_manual_order(
        iv_edi_c_code       --  3.EDIチェーン店コード
-      ,iv_edi_f_number     --  4.EDI伝送追番
-      ,iv_shop_date_from   --  5.店舗納品日From
-      ,iv_shop_date_to     --  6.店舗納品日To
-      ,iv_sale_class       --  7.定番特売区分
-      ,iv_area_code        --  8.地区コード
+/* 2009/05/12 Ver1.8 Mod Start */
+--      ,iv_edi_f_number     --  4.EDI伝送追番
+      ,iv_edi_f_number_s   --  5.EDI伝送追番(抽出条件用)
+/* 2009/05/12 Ver1.8 Mod End   */
+      ,iv_shop_date_from   --  6.店舗納品日From
+      ,iv_shop_date_to     --  7.店舗納品日To
+      ,iv_sale_class       --  8.定番特売区分
+      ,iv_area_code        --  9.地区コード
       ,lv_errbuf           -- エラー・メッセージ           --# 固定 #
       ,lv_retcode          -- リターン・コード             --# 固定 #
       ,lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
@@ -4426,7 +4499,10 @@ AS
     output_header(
        iv_file_name        --  1.ファイル名
       ,iv_edi_c_code       --  3.EDIチェーン店コード
-      ,iv_edi_f_number     --  4.EDI伝送追番
+/* 2009/05/12 Ver1.8 Mod Start */
+--      ,iv_edi_f_number     --  4.EDI伝送追番
+      ,iv_edi_f_number_f   --  4.EDI伝送追番(ファイル名用)
+/* 2009/05/12 Ver1.8 Mod End   */
       ,lv_errbuf           -- エラー・メッセージ           --# 固定 #
       ,lv_retcode          -- リターン・コード             --# 固定 #
       ,lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
@@ -4440,11 +4516,14 @@ AS
     --==============================================================
     input_edi_order(
        iv_edi_c_code       --  3.EDIチェーン店コード
-      ,iv_edi_f_number     --  4.EDI伝送追番
-      ,iv_shop_date_from   --  5.店舗納品日From
-      ,iv_shop_date_to     --  6.店舗納品日To
-      ,iv_sale_class       --  7.定番特売区分
-      ,iv_area_code        --  8.地区コード
+/* 2009/05/12 Ver1.8 Mod Start */
+--      ,iv_edi_f_number     --  4.EDI伝送追番
+      ,iv_edi_f_number_s   --  5.EDI伝送追番(抽出条件用)
+/* 2009/05/12 Ver1.8 Mod End   */
+      ,iv_shop_date_from   --  6.店舗納品日From
+      ,iv_shop_date_to     --  7.店舗納品日To
+      ,iv_sale_class       --  8.定番特売区分
+      ,iv_area_code        --  9.地区コード
       ,lv_errbuf           -- エラー・メッセージ           --# 固定 #
       ,lv_retcode          -- リターン・コード             --# 固定 #
       ,lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
@@ -4567,6 +4646,12 @@ AS
     -- *** ローカル変数 ***
     lv_tkn_value1  VARCHAR2(50);    -- トークン取得用1
 --
+/* 2009/05/12 Ver1.8 Add Start */
+    -- *** ローカルTABLE型 ***
+    TYPE l_header_id_ttype IS TABLE OF xxcos_edi_headers.edi_header_info_id%TYPE INDEX BY BINARY_INTEGER;
+    lt_update_header_id    l_header_id_ttype;
+/* 2009/05/12 Ver1.8 Add Start */
+--
     -- *** ローカル・カーソル ***
     CURSOR edi_header_lock_cur
     IS
@@ -4581,7 +4666,9 @@ AS
     ;
 --
     -- *** ローカル・レコード ***
-    lt_edi_header_lock  edi_header_lock_cur%ROWTYPE;
+/* 2009/05/12 Ver1.8 Del Start */
+--    lt_edi_header_lock  edi_header_lock_cur%ROWTYPE;
+/* 2009/05/12 Ver1.8 Del End   */
 --
   BEGIN
 --
@@ -4598,7 +4685,12 @@ AS
 --
     -- EDIヘッダ情報テーブルを行ロック
     OPEN  edi_header_lock_cur;
-    FETCH edi_header_lock_cur INTO lt_edi_header_lock;
+/* 2009/05/12 Ver1.8 Mod Start */
+--    FETCH edi_header_lock_cur INTO lt_edi_header_lock;
+    FETCH edi_header_lock_cur BULK COLLECT INTO lt_update_header_id;
+    -- 抽出件数取得
+    gn_target_cnt := edi_header_lock_cur%ROWCOUNT;
+/* 2009/05/12 Ver1.8 Mod End */
     CLOSE edi_header_lock_cur;
 --
     -- EDIヘッダ情報テーブルを更新
@@ -4635,6 +4727,11 @@ AS
                      );
         RAISE global_api_others_expt;
     END;
+--
+/* 2009/05/12 Ver1.8 Add Start */
+    -- 正常件数取得
+    gn_normal_cnt := gn_target_cnt;
+/* 2009/05/12 Ver1.8 Add End */
 --
   EXCEPTION
     -- *** ロックエラー ***
@@ -4686,17 +4783,21 @@ AS
     iv_file_name        IN  VARCHAR2,     --   1.ファイル名
     iv_make_class       IN  VARCHAR2,     --   2.作成区分
     iv_edi_c_code       IN  VARCHAR2,     --   3.EDIチェーン店コード
-    iv_edi_f_number     IN  VARCHAR2,     --   4.EDI伝送追番
-    iv_shop_date_from   IN  VARCHAR2,     --   5.店舗納品日From
-    iv_shop_date_to     IN  VARCHAR2,     --   6.店舗納品日To
-    iv_sale_class       IN  VARCHAR2,     --   7.定番特売区分
-    iv_area_code        IN  VARCHAR2,     --   8.地区コード
-    iv_center_date      IN  VARCHAR2,     --   9.センター納品日
-    iv_delivery_time    IN  VARCHAR2,     --  10.納品時刻
-    iv_delivery_charge  IN  VARCHAR2,     --  11.納品担当者
-    iv_carrier_means    IN  VARCHAR2,     --  12.輸送手段
-    iv_proc_date        IN  VARCHAR2,     --  13.処理日
-    iv_proc_time        IN  VARCHAR2,     --  14.処理時刻
+/* 2009/05/12 Ver1.8 Mod Start */
+--    iv_edi_f_number     IN  VARCHAR2,     --   4.EDI伝送追番
+    iv_edi_f_number_f   IN  VARCHAR2,     --   4.EDI伝送追番(ファイル名用)
+    iv_edi_f_number_s   IN  VARCHAR2,     --   5.EDI伝送追番(抽出条件用)
+/* 2009/05/12 Ver1.8 Mod End   */
+    iv_shop_date_from   IN  VARCHAR2,     --   6.店舗納品日From
+    iv_shop_date_to     IN  VARCHAR2,     --   7.店舗納品日To
+    iv_sale_class       IN  VARCHAR2,     --   8.定番特売区分
+    iv_area_code        IN  VARCHAR2,     --   9.地区コード
+    iv_center_date      IN  VARCHAR2,     --  10.センター納品日
+    iv_delivery_time    IN  VARCHAR2,     --  11.納品時刻
+    iv_delivery_charge  IN  VARCHAR2,     --  12.納品担当者
+    iv_carrier_means    IN  VARCHAR2,     --  13.輸送手段
+    iv_proc_date        IN  VARCHAR2,     --  14.処理日
+    iv_proc_time        IN  VARCHAR2,     --  15.処理時刻
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -4751,17 +4852,21 @@ AS
        iv_file_name        --  1.ファイル名
       ,iv_make_class       --  2.作成区分
       ,iv_edi_c_code       --  3.EDIチェーン店コード
-      ,iv_edi_f_number     --  4.EDI伝送追番
-      ,iv_shop_date_from   --  5.店舗納品日From
-      ,iv_shop_date_to     --  6.店舗納品日To
-      ,iv_sale_class       --  7.定番特売区分
-      ,iv_area_code        --  8.地区コード
-      ,iv_center_date      --  9.センター納品日
-      ,iv_delivery_time    -- 10.納品時刻
-      ,iv_delivery_charge  -- 11.納品担当者
-      ,iv_carrier_means    -- 12.輸送手段
-      ,iv_proc_date        -- 13.処理日
-      ,iv_proc_time        -- 14.処理時刻
+/* 2009/05/12 Ver1.8 Mod Start */
+--      ,iv_edi_f_number     --  4.EDI伝送追番
+      ,iv_edi_f_number_f   --  4.EDI伝送追番(ファイル名用)
+      ,iv_edi_f_number_s   --  5.EDI伝送追番(抽出条件用)
+/* 2009/05/12 Ver1.8 Mod End   */
+      ,iv_shop_date_from   --  6.店舗納品日From
+      ,iv_shop_date_to     --  7.店舗納品日To
+      ,iv_sale_class       --  8.定番特売区分
+      ,iv_area_code        --  9.地区コード
+      ,iv_center_date      -- 10.センター納品日
+      ,iv_delivery_time    -- 11.納品時刻
+      ,iv_delivery_charge  -- 12.納品担当者
+      ,iv_carrier_means    -- 13.輸送手段
+      ,iv_proc_date        -- 14.処理日
+      ,iv_proc_time        -- 15.処理時刻
       ,lv_errbuf           -- エラー・メッセージ           --# 固定 #
       ,lv_retcode          -- リターン・コード             --# 固定 #
       ,lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
@@ -4794,15 +4899,19 @@ AS
          iv_file_name        --  1.ファイル名
         ,iv_make_class       --  2.作成区分
         ,iv_edi_c_code       --  3.EDIチェーン店コード
-        ,iv_edi_f_number     --  4.EDI伝送追番
-        ,iv_shop_date_from   --  5.店舗納品日From
-        ,iv_shop_date_to     --  6.店舗納品日To
-        ,iv_sale_class       --  7.定番特売区分
-        ,iv_area_code        --  8.地区コード
-        ,iv_center_date      --  9.センター納品日
-        ,iv_delivery_time    -- 10.納品時刻
-        ,iv_delivery_charge  -- 11.納品担当者
-        ,iv_carrier_means    -- 12.輸送手段
+/* 2009/05/12 Ver1.8 Mod Start */
+--        ,iv_edi_f_number     --  4.EDI伝送追番
+        ,iv_edi_f_number_f   --  4.EDI伝送追番(ファイル名用)
+        ,iv_edi_f_number_s   --  5.EDI伝送追番(抽出条件用)
+/* 2009/05/12 Ver1.8 Mod End   */
+        ,iv_shop_date_from   --  6.店舗納品日From
+        ,iv_shop_date_to     --  7.店舗納品日To
+        ,iv_sale_class       --  8.定番特売区分
+        ,iv_area_code        --  9.地区コード
+        ,iv_center_date      -- 10.センター納品日
+        ,iv_delivery_time    -- 11.納品時刻
+        ,iv_delivery_charge  -- 12.納品担当者
+        ,iv_carrier_means    -- 13.輸送手段
         ,lv_errbuf           -- エラー・メッセージ           --# 固定 #
         ,lv_retcode          -- リターン・コード             --# 固定 #
         ,lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
@@ -4869,17 +4978,21 @@ AS
     iv_file_name        IN  VARCHAR2,      --   1.ファイル名
     iv_make_class       IN  VARCHAR2,      --   2.作成区分
     iv_edi_c_code       IN  VARCHAR2,      --   3.EDIチェーン店コード
-    iv_edi_f_number     IN  VARCHAR2,      --   4.EDI伝送追番
-    iv_shop_date_from   IN  VARCHAR2,      --   5.店舗納品日From
-    iv_shop_date_to     IN  VARCHAR2,      --   6.店舗納品日To
-    iv_sale_class       IN  VARCHAR2,      --   7.定番特売区分
-    iv_area_code        IN  VARCHAR2,      --   8.地区コード
-    iv_center_date      IN  VARCHAR2,      --   9.センター納品日
-    iv_delivery_time    IN  VARCHAR2,      --  10.納品時刻
-    iv_delivery_charge  IN  VARCHAR2,      --  11.納品担当者
-    iv_carrier_means    IN  VARCHAR2,      --  12.輸送手段
-    iv_proc_date        IN  VARCHAR2,      --  13.処理日
-    iv_proc_time        IN  VARCHAR2       --  14.処理時刻
+/* 2009/05/12 Ver1.8 Mod Start */
+--    iv_edi_f_number     IN  VARCHAR2,      --   4.EDI伝送追番
+    iv_edi_f_number_f   IN  VARCHAR2,      --   4.EDI伝送追番(ファイル名用)
+    iv_edi_f_number_s   IN  VARCHAR2,      --   5.EDI伝送追番(抽出条件用)
+/* 2009/05/12 Ver1.8 Mod End   */
+    iv_shop_date_from   IN  VARCHAR2,      --   6.店舗納品日From
+    iv_shop_date_to     IN  VARCHAR2,      --   7.店舗納品日To
+    iv_sale_class       IN  VARCHAR2,      --   8.定番特売区分
+    iv_area_code        IN  VARCHAR2,      --   9.地区コード
+    iv_center_date      IN  VARCHAR2,      --  10.センター納品日
+    iv_delivery_time    IN  VARCHAR2,      --  11.納品時刻
+    iv_delivery_charge  IN  VARCHAR2,      --  12.納品担当者
+    iv_carrier_means    IN  VARCHAR2,      --  13.輸送手段
+    iv_proc_date        IN  VARCHAR2,      --  14.処理日
+    iv_proc_time        IN  VARCHAR2       --  15.処理時刻
   )
 --
 --
@@ -4934,17 +5047,21 @@ AS
        iv_file_name        --   1.ファイル名
       ,iv_make_class       --   2.作成区分
       ,iv_edi_c_code       --   3.EDIチェーン店コード
-      ,iv_edi_f_number     --   4.EDI伝送追番
-      ,iv_shop_date_from   --   5.店舗納品日From
-      ,iv_shop_date_to     --   6.店舗納品日To
-      ,iv_sale_class       --   7.定番特売区分
-      ,iv_area_code        --   8.地区コード
-      ,iv_center_date      --   9.センター納品日
-      ,iv_delivery_time    --  10.納品時刻
-      ,iv_delivery_charge  --  11.納品担当者
-      ,iv_carrier_means    --  12.輸送手段
-      ,iv_proc_date        --  13.処理日
-      ,iv_proc_time        --  14.処理時刻
+/* 2009/05/12 Ver1.8 Mod Start */
+--      ,iv_edi_f_number     --   4.EDI伝送追番
+      ,iv_edi_f_number_f   --   4.EDI伝送追番(ファイル名用)
+      ,iv_edi_f_number_s   --   5.EDI伝送追番(抽出条件用)
+/* 2009/05/12 Ver1.8 Mod End   */
+      ,iv_shop_date_from   --   6.店舗納品日From
+      ,iv_shop_date_to     --   7.店舗納品日To
+      ,iv_sale_class       --   8.定番特売区分
+      ,iv_area_code        --   9.地区コード
+      ,iv_center_date      --  10.センター納品日
+      ,iv_delivery_time    --  11.納品時刻
+      ,iv_delivery_charge  --  12.納品担当者
+      ,iv_carrier_means    --  13.輸送手段
+      ,iv_proc_date        --  14.処理日
+      ,iv_proc_time        --  15.処理時刻
       ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
