@@ -55,6 +55,7 @@ AS
  *  2008/11/06    1.9  Oracle 福田 直樹  統合#563対応
  *  2008/11/28    1.10 Oracle 野村 正幸  本番#222対応
  *  2008/12/06    1.11 Oracle 野村 正幸  本番#532対応
+ *  2008/12/13    1.12 Oracle 野村 正幸  本番#721対応
  *
  *****************************************************************************************/
 --
@@ -1442,15 +1443,31 @@ AS
                       , gt_order_inf_tbl(ln_index).shipped_quantity); -- 数量
 -- ********** 20080508 内部変更要求 seq#59 MOD END   **********
 --
-          -- 13.金額
-          i_trn_amount_tab(gn_ins_order_inf_cnt) :=
+-- ##### 20081213 Ver.1.12 本番#721対応 START #####
+-- ##### 20081213 Ver.1.12 本番#721対応 END   #####
+        -- 「ドリンク」の場合
+          IF (gt_order_inf_tbl(ln_index).prod_class = gv_prod_class_drk) THEN
+            -- 単価 × 計算数量
+            i_trn_amount_tab(gn_ins_order_inf_cnt) :=
+                gt_order_inf_tbl(ln_index).setting_amount * i_trn_calc_qry_tab(gn_ins_order_inf_cnt);
+--
+          -- 「リーフ」の場合
+          ELSIF (gt_order_inf_tbl(ln_index).prod_class = gv_prod_class_lef) THEN
+            -- リーフは現状単価を設定（車立については対象外のため、考慮しない）
+            i_trn_amount_tab(gn_ins_order_inf_cnt) :=
+                                  gt_order_inf_tbl(ln_index).setting_amount;
+--
+          END IF;
+--          -- 13.金額
+--          i_trn_amount_tab(gn_ins_order_inf_cnt) :=
 -- ##### 20080903 Ver.1.5 内部変更要求201_203 start #####
 --          gt_order_inf_tbl(ln_index).setting_amount * i_trn_calc_qry_tab(gn_ins_order_inf_cnt);
    -- ##### 20081106 Ver.1.9 統合#537対応 start #####
 --          ROUND(gt_order_inf_tbl(ln_index).setting_amount * i_trn_calc_qry_tab(gn_ins_order_inf_cnt));
-            gt_order_inf_tbl(ln_index).setting_amount;
+--            gt_order_inf_tbl(ln_index).setting_amount;
    -- ##### 20081106 Ver.1.9 統合#537対応 End   #####
 -- ##### 20080903 Ver.1.5 内部変更要求201_203 end   #####
+-- ##### 20081213 Ver.1.12 本番#721対応 END   #####
 --
         -- 存在する場合は振替運賃情報アドオン更新用PL/SQL表に格納
         ELSIF (ln_flg = 1) THEN
