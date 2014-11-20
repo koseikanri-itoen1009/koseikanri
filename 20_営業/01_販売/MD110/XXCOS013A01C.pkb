@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : ”Ì”„ŽÀÑî•ñ‚æ‚èŽd–óî•ñ‚ðì¬‚µAAR¿‹Žæˆø‚É˜AŒg‚·‚éˆ—
  * MD.050           : AR‚Ö‚Ì”Ì”„ŽÀÑƒf[ƒ^˜AŒg MD050_COS_013_A01
- * Version          : 1.17
+ * Version          : 1.18
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -46,6 +46,7 @@ AS
  *  2009/05/07    1.15  K.KIN            T1_0914AT1_0915
  *  2009/05/11    1.16  K.KIN            T1_0453AT1_0938
  *  2009/05/12    1.17  K.KIN            T1_0693
+ *  2009/05/14    1.18  K.KIN            T1_0795
  *
  *****************************************************************************************/
 --
@@ -1847,6 +1848,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     lt_goods_item_code      xxcos_sales_exp_lines.item_code%TYPE;
     lt_item_code            xxcos_sales_exp_lines.item_code%TYPE;
     lt_prod_cls             xxcos_good_prod_class_v.goods_prod_class_code%TYPE;
+    lt_delivery_date        xxcos_sales_exp_headers.delivery_date%TYPE;          -- ”[•i“ú
 --
     -- *** ƒ[ƒJƒ‹—áŠO ***
 --
@@ -2081,6 +2083,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
         --ƒGƒ‰[ƒtƒ‰ƒOOFF
         lv_err_flag := cv_n_flag;
+        lt_delivery_date := gt_sales_norm_tbl2( ln_trx_idx ).delivery_date;
         --=====================================================================
         -- ‚PDŽx•¥ðŒID‚ÌŽæ“¾
         --=====================================================================
@@ -2094,7 +2097,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
               FROM
                 ( --****Žx•¥ðŒ‚Pi“–ŒŽj
                    SELECT rtv11.term_id
-                         ,CASE WHEN rtv11.due_cutoff_day = cn_max_day                             -- Žx•¥“úAÅ‘å‚Ì32“ú
+                         ,CASE WHEN rtv11.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date ) ) -- Žx•¥“ú-1>––“ú
                                  THEN  LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date )  -- ”[•iŒŽ‚Ì––“ú
                                  ELSE  DECODE( rtv11.due_cutoff_day -1, 0
                                                 -- ŒŽ“ú•t0“ú‚Ìê‡A”[•iŒŽ‚Ì‘OŒŽ––“ú‚ðŽæ“¾
@@ -2107,8 +2110,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv11                           -- Žx•¥ðŒƒ}ƒXƒ^
-                   WHERE  gd_process_date  BETWEEN NVL( rtv11.start_date_active, gd_process_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
-                                               AND NVL( rtv11.end_date_active  , gd_process_date )
+                   WHERE  lt_delivery_date  BETWEEN NVL( rtv11.start_date_active, lt_delivery_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
+                                                AND NVL( rtv11.end_date_active  , lt_delivery_date )
                      AND  rtv11.due_cutoff_day IS NOT NULL                                         -- ’÷ŠJŽn“úorÅIŒŽ“ú•t‚ª–¢Ý’è‚Í‘ÎÛŠO
                      AND  rtv11.term_id = gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id         -- ŒÚ‹qŠK‘wƒrƒ…[‚ÌŽx•¥ðŒ‚P
                      AND  ROWNUM = 1
@@ -2117,7 +2120,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                    --****Žx•¥ðŒ‚Pi—‚ŒŽj
                    SELECT rtv12.term_id
-                         ,CASE WHEN rtv12.due_cutoff_day = cn_max_day                                            -- Žx•¥“úAÅ‘å‚Ì32“ú
+                         ,CASE WHEN rtv12.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 )  ) ) -- Žx•¥“ú-1>––“ú
                                  THEN  LAST_DAY(ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 ) ) -- ”[•i—‚ŒŽ‚Ì––“ú
                                  ELSE  DECODE( rtv12.due_cutoff_day -1 ,0
                                                 -- ŒŽ“ú•t0“ú‚Ìê‡A”[•iŒŽ‚Ì––“ú
@@ -2130,8 +2133,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv12           -- Žx•¥ðŒƒ}ƒXƒ^
-                   WHERE  gd_process_date  BETWEEN NVL( rtv12.start_date_active, gd_process_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
-                                               AND NVL( rtv12.end_date_active  , gd_process_date )
+                   WHERE  lt_delivery_date  BETWEEN NVL( rtv12.start_date_active, lt_delivery_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
+                                                AND NVL( rtv12.end_date_active  , lt_delivery_date )
                      AND  rtv12.due_cutoff_day IS NOT NULL                                         -- ’÷ŠJŽn“úorÅIŒŽ“ú•t‚ª–¢Ý’è‚Í‘ÎÛŠO
                      AND  rtv12.term_id = gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id         -- ŒÚ‹qŠK‘wƒrƒ…[‚ÌŽx•¥ðŒ‚P
                      AND  ROWNUM = 1
@@ -2140,7 +2143,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                   --****Žx•¥ðŒ‚Qi“–ŒŽj
                    SELECT rtv21.term_id
-                         ,CASE WHEN rtv21.due_cutoff_day = cn_max_day          -- Žx•¥“úAÅ‘å‚Ì32“ú
+                         ,CASE WHEN rtv21.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date ) ) -- Žx•¥“ú-1>––“ú
                                  THEN  LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date )  -- ”[•iŒŽ‚Ì––“ú
                                  ELSE  DECODE( rtv21.due_cutoff_day -1, 0
                                                 -- ŒŽ“ú•t0“ú‚Ìê‡A”[•iŒŽ‚Ì‘OŒŽ––“ú‚ðŽæ“¾
@@ -2154,8 +2157,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv21           -- Žx•¥ðŒƒ}ƒXƒ^
-                   WHERE  gd_process_date  BETWEEN NVL( rtv21.start_date_active, gd_process_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
-                                               AND NVL( rtv21.end_date_active  , gd_process_date )
+                   WHERE  lt_delivery_date  BETWEEN NVL( rtv21.start_date_active, lt_delivery_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
+                                                AND NVL( rtv21.end_date_active  , lt_delivery_date )
                      AND  rtv21.due_cutoff_day IS NOT NULL                                         -- ’÷ŠJŽn“úorÅIŒŽ“ú•t‚ª–¢Ý’è‚Í‘ÎÛŠO
                      AND  rtv21.term_id = gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id2        -- ŒÚ‹qŠK‘wƒrƒ…[‚ÌŽx•¥ðŒ‚Q
                      AND  ROWNUM = 1
@@ -2164,7 +2167,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                   --****Žx•¥ðŒ‚Qi—‚ŒŽj
                    SELECT rtv22.term_id
-                         ,CASE WHEN rtv22.due_cutoff_day = cn_max_day          -- Žx•¥“úAÅ‘å‚Ì32“ú
+                         ,CASE WHEN rtv22.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 )  ) ) -- Žx•¥“ú-1>––“ú
                                  THEN  LAST_DAY(ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 ) ) -- ”[•i—‚ŒŽ‚Ì––“ú
                                  ELSE  DECODE( rtv22.due_cutoff_day -1 ,0
                                                 -- ŒŽ“ú•t0“ú‚Ìê‡A”[•iŒŽ‚Ì––“ú
@@ -2177,8 +2180,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv22           -- Žx•¥ðŒƒ}ƒXƒ^
-                   WHERE  gd_process_date  BETWEEN NVL( rtv22.start_date_active, gd_process_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
-                                               AND NVL( rtv22.end_date_active  , gd_process_date )
+                   WHERE  lt_delivery_date  BETWEEN NVL( rtv22.start_date_active, lt_delivery_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
+                                                AND NVL( rtv22.end_date_active  , lt_delivery_date )
                      AND  rtv22.due_cutoff_day IS NOT NULL                                         -- ’÷ŠJŽn“úorÅIŒŽ“ú•t‚ª–¢Ý’è‚Í‘ÎÛŠO
                      AND  rtv22.term_id = gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id2        -- ŒÚ‹qŠK‘wƒrƒ…[‚ÌŽx•¥ðŒ‚Q
                      AND  ROWNUM = 1
@@ -2187,7 +2190,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                   --****Žx•¥ðŒ‚Ri“–ŒŽj
                    SELECT rtv31.term_id
-                         ,CASE WHEN rtv31.due_cutoff_day = cn_max_day          -- Žx•¥“úAÅ‘å‚Ì32“ú
+                         ,CASE WHEN rtv31.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date ) ) -- Žx•¥“ú-1>––“ú
                                  THEN  LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date )  -- ”[•iŒŽ‚Ì––“ú
                                  ELSE  DECODE( rtv31.due_cutoff_day -1, 0
                                                 -- ŒŽ“ú•t0“ú‚Ìê‡A”[•iŒŽ‚Ì‘OŒŽ––“ú‚ðŽæ“¾
@@ -2201,8 +2204,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv31           -- Žx•¥ðŒƒ}ƒXƒ^
-                   WHERE  gd_process_date  BETWEEN NVL( rtv31.start_date_active, gd_process_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
-                                               AND NVL( rtv31.end_date_active  , gd_process_date )
+                   WHERE  lt_delivery_date  BETWEEN NVL( rtv31.start_date_active, lt_delivery_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
+                                                AND NVL( rtv31.end_date_active  , lt_delivery_date )
                      AND  rtv31.due_cutoff_day IS NOT NULL                                         -- ’÷ŠJŽn“úorÅIŒŽ“ú•t‚ª–¢Ý’è‚Í‘ÎÛŠO
                      AND  rtv31.term_id = gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id3        -- ŒÚ‹qŠK‘wƒrƒ…[‚ÌŽx•¥ðŒ‚R
                      AND  ROWNUM = 1
@@ -2211,7 +2214,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                   --****Žx•¥ðŒ‚Ri—‚ŒŽj
                    SELECT rtv32.term_id
-                         ,CASE WHEN rtv32.due_cutoff_day = cn_max_day          -- Žx•¥“úAÅ‘å‚Ì32“ú
+                         ,CASE WHEN rtv32.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 )  ) ) -- Žx•¥“ú-1>––“ú
                                  THEN  LAST_DAY(ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 ) ) -- ”[•i—‚ŒŽ‚Ì––“ú
                                  ELSE  DECODE( rtv32.due_cutoff_day -1 ,0
                                                 -- ŒŽ“ú•t0“ú‚Ìê‡A”[•iŒŽ‚Ì––“ú
@@ -2224,14 +2227,13 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv32           -- Žx•¥ðŒƒ}ƒXƒ^
-                   WHERE  gd_process_date  BETWEEN NVL( rtv32.start_date_active, gd_process_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
-                                               AND NVL( rtv32.end_date_active  , gd_process_date )
+                   WHERE  lt_delivery_date  BETWEEN NVL( rtv32.start_date_active, lt_delivery_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
+                                                AND NVL( rtv32.end_date_active  , lt_delivery_date )
                      AND  rtv32.due_cutoff_day IS NOT NULL                                         -- ’÷ŠJŽn“úorÅIŒŽ“ú•t‚ª–¢Ý’è‚Í‘ÎÛŠO
                      AND  rtv32.term_id = gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id3        -- ŒÚ‹qŠK‘wƒrƒ…[‚ÌŽx•¥ðŒ‚R
                      AND  ROWNUM = 1
                 ) rtv
-              WHERE TRUNC( rtv.cutoff_date ) >= gd_process_date                                    -- ‹Æ–±“ú•t
-                AND TRUNC( rtv.cutoff_date ) >= gt_sales_norm_tbl2( ln_trx_idx ).delivery_date      -- ”[•i“ú
+              WHERE TRUNC( rtv.cutoff_date ) >= gt_sales_norm_tbl2( ln_trx_idx ).delivery_date      -- ”[•i“ú
               ORDER BY rtv.cutoff_date
             )
           WHERE  ROWNUM = 1;
@@ -3619,6 +3621,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     lt_goods_item_code      xxcos_sales_exp_lines.item_code%TYPE;
     lt_item_code            xxcos_sales_exp_lines.item_code%TYPE;
     lt_prod_cls             xxcos_good_prod_class_v.goods_prod_class_code%TYPE;
+    lt_delivery_date        xxcos_sales_exp_headers.delivery_date%TYPE;          -- ”[•i“ú
 --
     -- *** ƒ[ƒJƒ‹—áŠO ***
 --
@@ -3857,6 +3860,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
         --ƒGƒ‰[ƒtƒ‰ƒOOFF
         lv_err_flag := cv_n_flag;
+        lt_delivery_date := gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date;
         --=====================================================================
         -- ‚PDŽx•¥ðŒID‚ÌŽæ“¾
         --=====================================================================
@@ -3870,7 +3874,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
               FROM
                 ( --****Žx•¥ðŒ‚Pi“–ŒŽj
                    SELECT rtv11.term_id
-                         ,CASE WHEN rtv11.due_cutoff_day = cn_max_day                             -- Žx•¥“úAÅ‘å‚Ì32“ú
+                         ,CASE WHEN rtv11.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date ) ) -- Žx•¥“ú-1>––“ú
                                  THEN  LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date )  -- ”[•iŒŽ‚Ì––“ú
                                  ELSE  DECODE( rtv11.due_cutoff_day -1, 0
                                                 -- ŒŽ“ú•t0“ú‚Ìê‡A”[•iŒŽ‚Ì‘OŒŽ––“ú‚ðŽæ“¾
@@ -3883,8 +3887,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv11                           -- Žx•¥ðŒƒ}ƒXƒ^
-                   WHERE  gd_process_date  BETWEEN NVL( rtv11.start_date_active, gd_process_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
-                                               AND NVL( rtv11.end_date_active  , gd_process_date )
+                   WHERE  lt_delivery_date  BETWEEN NVL( rtv11.start_date_active, lt_delivery_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
+                                                AND NVL( rtv11.end_date_active  , lt_delivery_date )
                      AND  rtv11.due_cutoff_day IS NOT NULL                                         -- ’÷ŠJŽn“úorÅIŒŽ“ú•t‚ª–¢Ý’è‚Í‘ÎÛŠO
                      AND  rtv11.term_id = gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id         -- ŒÚ‹qŠK‘wƒrƒ…[‚ÌŽx•¥ðŒ‚P
                      AND  ROWNUM = 1
@@ -3893,7 +3897,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                    --****Žx•¥ðŒ‚Pi—‚ŒŽj
                    SELECT rtv12.term_id
-                         ,CASE WHEN rtv12.due_cutoff_day = cn_max_day                                            -- Žx•¥“úAÅ‘å‚Ì32“ú
+                         ,CASE WHEN rtv12.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ) ) ) -- Žx•¥“ú-1>––“ú
                                  THEN  LAST_DAY(ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ) ) -- ”[•i—‚ŒŽ‚Ì––“ú
                                  ELSE  DECODE( rtv12.due_cutoff_day -1 ,0
                                                 -- ŒŽ“ú•t0“ú‚Ìê‡A”[•iŒŽ‚Ì––“ú
@@ -3906,8 +3910,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv12           -- Žx•¥ðŒƒ}ƒXƒ^
-                   WHERE  gd_process_date  BETWEEN NVL( rtv12.start_date_active, gd_process_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
-                                               AND NVL( rtv12.end_date_active  , gd_process_date )
+                   WHERE  lt_delivery_date  BETWEEN NVL( rtv12.start_date_active, lt_delivery_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
+                                                AND NVL( rtv12.end_date_active  , lt_delivery_date )
                      AND  rtv12.due_cutoff_day IS NOT NULL                                         -- ’÷ŠJŽn“úorÅIŒŽ“ú•t‚ª–¢Ý’è‚Í‘ÎÛŠO
                      AND  rtv12.term_id = gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id         -- ŒÚ‹qŠK‘wƒrƒ…[‚ÌŽx•¥ðŒ‚P
                      AND  ROWNUM = 1
@@ -3916,7 +3920,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                   --****Žx•¥ðŒ‚Qi“–ŒŽj
                    SELECT rtv21.term_id
-                         ,CASE WHEN rtv21.due_cutoff_day = cn_max_day          -- Žx•¥“úAÅ‘å‚Ì32“ú
+                         ,CASE WHEN rtv21.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date ) ) -- Žx•¥“ú-1>––“ú
                                  THEN  LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date )  -- ”[•iŒŽ‚Ì––“ú
                                  ELSE  DECODE( rtv21.due_cutoff_day -1, 0
                                                 -- ŒŽ“ú•t0“ú‚Ìê‡A”[•iŒŽ‚Ì‘OŒŽ––“ú‚ðŽæ“¾
@@ -3930,8 +3934,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv21           -- Žx•¥ðŒƒ}ƒXƒ^
-                   WHERE  gd_process_date  BETWEEN NVL( rtv21.start_date_active, gd_process_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
-                                               AND NVL( rtv21.end_date_active  , gd_process_date )
+                   WHERE  lt_delivery_date  BETWEEN NVL( rtv21.start_date_active, lt_delivery_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
+                                                AND NVL( rtv21.end_date_active  , lt_delivery_date )
                      AND  rtv21.due_cutoff_day IS NOT NULL                                         -- ’÷ŠJŽn“úorÅIŒŽ“ú•t‚ª–¢Ý’è‚Í‘ÎÛŠO
                      AND  rtv21.term_id = gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id2        -- ŒÚ‹qŠK‘wƒrƒ…[‚ÌŽx•¥ðŒ‚Q
                      AND  ROWNUM = 1
@@ -3940,7 +3944,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                   --****Žx•¥ðŒ‚Qi—‚ŒŽj
                    SELECT rtv22.term_id
-                         ,CASE WHEN rtv22.due_cutoff_day = cn_max_day          -- Žx•¥“úAÅ‘å‚Ì32“ú
+                         ,CASE WHEN rtv22.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ) ) ) -- Žx•¥“ú-1>––“ú
                                  THEN  LAST_DAY(ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ) ) -- ”[•i—‚ŒŽ‚Ì––“ú
                                  ELSE  DECODE( rtv22.due_cutoff_day -1 ,0
                                                 -- ŒŽ“ú•t0“ú‚Ìê‡A”[•iŒŽ‚Ì––“ú
@@ -3953,8 +3957,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv22           -- Žx•¥ðŒƒ}ƒXƒ^
-                   WHERE  gd_process_date  BETWEEN NVL( rtv22.start_date_active, gd_process_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
-                                               AND NVL( rtv22.end_date_active  , gd_process_date )
+                   WHERE  lt_delivery_date  BETWEEN NVL( rtv22.start_date_active, lt_delivery_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
+                                                AND NVL( rtv22.end_date_active  , lt_delivery_date )
                      AND  rtv22.due_cutoff_day IS NOT NULL                                         -- ’÷ŠJŽn“úorÅIŒŽ“ú•t‚ª–¢Ý’è‚Í‘ÎÛŠO
                      AND  rtv22.term_id = gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id2        -- ŒÚ‹qŠK‘wƒrƒ…[‚ÌŽx•¥ðŒ‚Q
                      AND  ROWNUM = 1
@@ -3963,7 +3967,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                   --****Žx•¥ðŒ‚Ri“–ŒŽj
                    SELECT rtv31.term_id
-                         ,CASE WHEN rtv31.due_cutoff_day = cn_max_day          -- Žx•¥“úAÅ‘å‚Ì32“ú
+                         ,CASE WHEN rtv31.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date ) ) -- Žx•¥“ú-1>––“ú
                                  THEN  LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date )  -- ”[•iŒŽ‚Ì––“ú
                                  ELSE  DECODE( rtv31.due_cutoff_day -1, 0
                                                 -- ŒŽ“ú•t0“ú‚Ìê‡A”[•iŒŽ‚Ì‘OŒŽ––“ú‚ðŽæ“¾
@@ -3977,8 +3981,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv31           -- Žx•¥ðŒƒ}ƒXƒ^
-                   WHERE  gd_process_date  BETWEEN NVL( rtv31.start_date_active, gd_process_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
-                                               AND NVL( rtv31.end_date_active  , gd_process_date )
+                   WHERE  lt_delivery_date  BETWEEN NVL( rtv31.start_date_active, lt_delivery_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
+                                                AND NVL( rtv31.end_date_active  , lt_delivery_date )
                      AND  rtv31.due_cutoff_day IS NOT NULL                                         -- ’÷ŠJŽn“úorÅIŒŽ“ú•t‚ª–¢Ý’è‚Í‘ÎÛŠO
                      AND  rtv31.term_id = gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id3        -- ŒÚ‹qŠK‘wƒrƒ…[‚ÌŽx•¥ðŒ‚R
                      AND  ROWNUM = 1
@@ -3987,7 +3991,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                   --****Žx•¥ðŒ‚Ri—‚ŒŽj
                    SELECT rtv32.term_id
-                         ,CASE WHEN rtv32.due_cutoff_day = cn_max_day          -- Žx•¥“úAÅ‘å‚Ì32“ú
+                         ,CASE WHEN rtv32.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ) ) ) -- Žx•¥“ú-1>––“ú
                                  THEN  LAST_DAY(ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ) ) -- ”[•i—‚ŒŽ‚Ì––“ú
                                  ELSE  DECODE( rtv32.due_cutoff_day -1 ,0
                                                 -- ŒŽ“ú•t0“ú‚Ìê‡A”[•iŒŽ‚Ì––“ú
@@ -4000,14 +4004,13 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv32           -- Žx•¥ðŒƒ}ƒXƒ^
-                   WHERE  gd_process_date  BETWEEN NVL( rtv32.start_date_active, gd_process_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
-                                               AND NVL( rtv32.end_date_active  , gd_process_date )
+                   WHERE  lt_delivery_date  BETWEEN NVL( rtv32.start_date_active, lt_delivery_date ) -- ‹Æ–±“ú•tŽž“_‚Å—LŒø
+                                                AND NVL( rtv32.end_date_active  , lt_delivery_date )
                      AND  rtv32.due_cutoff_day IS NOT NULL                                         -- ’÷ŠJŽn“úorÅIŒŽ“ú•t‚ª–¢Ý’è‚Í‘ÎÛŠO
                      AND  rtv32.term_id = gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id3        -- ŒÚ‹qŠK‘wƒrƒ…[‚ÌŽx•¥ðŒ‚R
                      AND  ROWNUM = 1
                 ) rtv
-              WHERE TRUNC( rtv.cutoff_date ) >= gd_process_date                                    -- ‹Æ–±“ú•t
-                AND TRUNC( rtv.cutoff_date ) >= gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date      -- ”[•i“ú
+              WHERE TRUNC( rtv.cutoff_date ) >= gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date      -- ”[•i“ú
               ORDER BY rtv.cutoff_date
             )
           WHERE  ROWNUM = 1;

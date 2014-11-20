@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009/04/14    1.10  T.Kitajima       [T1_0344]成績者コード、納品者コードチェック仕様変更
  *  2009/04/20    1.11  T.Kitajima       [T1_0592]百貨店画面種別チェック削除
  *  2009/05/01    1.12  T.Kitajima       [T1_0268]CHAR項目のTRIM対応
+ *  2009/05/15    1.13  N.Maeda          [T1_1007]エラーデータ登録値(受注No.(HHT))の変更
  *
  *****************************************************************************************/
 --
@@ -199,6 +200,9 @@ AS
   cv_night           CONSTANT VARCHAR2(1)   := '2';                    -- 夜間起動モード＝2
   cv_depart          CONSTANT VARCHAR2(1)   := '1';                    -- 百貨店用HHT区分＝1：百貨店
   cv_general         CONSTANT VARCHAR2(1)   := NULL;                   -- 百貨店用HHT区分＝NULL：一般拠点
+--****************************** 2009/05/15 1.13 N.Maeda ADD START  *****************************--
+  ct_order_no_ebs_0  CONSTANT xxcos_dlv_headers.order_no_ebs%TYPE := 0; -- 受注No.(EBS) = 0
+--****************************** 2009/05/15 1.13 N.Maeda ADD  END   *****************************--
 --
   -- クイックコードタイプ
   cv_qck_typ_status  CONSTANT VARCHAR2(30)  := 'XXCOS1_CUS_STATUS_MST_001_A01';   -- 顧客ステータス
@@ -3171,7 +3175,12 @@ AS
             NULL,                                        -- 伝票/棚卸日
             gt_err_entry_number(i),                      -- 伝票NO
             gt_err_line_no(i),                           -- 行NO
-            gt_err_order_no_ebs(i),                      -- 受注NO（EBS）
+--****************************** 2009/05/15 1.13 N.Maeda MOD START  *****************************--
+            DECODE ( gt_err_order_no_ebs(i) ,            -- 受注NO（EBS）
+                     ct_order_no_ebs_0 , NULL ,
+                     gt_err_order_no_ebs(i) ) ,
+--            gt_err_order_no_ebs(i),                      -- 受注NO（EBS）
+--****************************** 2009/05/15 1.13 N.Maeda MOD  END   *****************************--
             gt_err_party_num(i),                         -- 顧客コード
             gt_err_customer_name(i),                     -- 顧客名
             gt_err_payment_dlv_date(i),                  -- 入金/納品日
