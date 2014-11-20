@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A04C(body)
  * Description      : 売上振替割合の登録
  * MD.050           : 売上振替割合の登録 MD050_COK_008_A04
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------------------- ---------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  * 2009/02/10     1.3   S.Sasaki         [障害COK_026]必須チェック処理追加
  * 2009/07/13     1.4   M.Hiruta         [障害0000514]処理対象に顧客ステータス「30:承認済」「50:休止」のデータを追加
  * 2009/09/09     1.5   S.Moriyama       [障害0001303]拠点セキュリティ機能追加　振替元拠点と所属拠点が異なる場合は警告とする
+ * 2009/12/04     1.6   S.Moriyama       [E_本稼動_00294]振替元/先顧客にEDIチェーン店コードが含まれる顧客を許容するように修正
  *
  *****************************************************************************************/
   -- =========================
@@ -1471,7 +1472,9 @@ AS
         AND     hp.duns_number_c        IN( cv_30 , cv_40 , cv_50 )
 -- End   2009/07/13 Ver_1.4 0000514 M.Hiruta REPAIR
         AND     xca.selling_transfer_div = cv_1
-        AND     xca.chain_store_code IS NULL
+-- 2009/12/04 Ver.1.6 [E_本稼動_00294] SCS S.Moriyama DEL START
+--        AND     xca.chain_store_code IS NULL
+-- 2009/12/04 Ver.1.6 [E_本稼動_00294] SCS S.Moriyama DEL END
         AND     hca.customer_class_code <> cv_12;
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
@@ -1573,7 +1576,9 @@ AS
         AND    hp.duns_number_c        IN( cv_30 , cv_40 , cv_50 )
 -- End   2009/07/13 Ver_1.4 0000514 M.Hiruta REPAIR
         AND    xca.selling_transfer_div = cv_1
-        AND    xca.chain_store_code IS NULL
+-- 2009/12/04 Ver.1.6 [E_本稼動_00294] SCS S.Moriyama DEL START
+--        AND    xca.chain_store_code IS NULL
+-- 2009/12/04 Ver.1.6 [E_本稼動_00294] SCS S.Moriyama DEL END
         AND    hca.customer_class_code <> cv_12;
       EXCEPTION
         WHEN NO_DATA_FOUND THEN

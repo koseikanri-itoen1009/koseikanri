@@ -3,13 +3,14 @@
  *
  * View Name   : xxcok_sales_transfer_cust_v
  * Description : 売上振替元顧客ビュー
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/10/20    1.0   S.Moriyama       新規作成
+ *  2009/12/03    1.1   S.Moriyama       [E_本稼動_00294]振替元顧客EDIチェーン対応
  *
  **************************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcok_sales_transfer_cust_v(
@@ -28,7 +29,9 @@ SELECT  /*+ LEADING(xca, hca, hp)
       , hz_cust_accounts    hca
       , hz_parties          hp
  WHERE  xca.selling_transfer_div =  '1'
-   AND  xca.chain_store_code     IS NULL
+-- 2009/12/03 Ver.1.1 [E_本稼動_00294] SCS S.Moriyama DEL START
+--   AND  xca.chain_store_code     IS NULL
+-- 2009/12/03 Ver.1.1 [E_本稼動_00294] SCS S.Moriyama DEL END
    AND  hca.cust_account_id      =  xca.customer_id
    AND  hp.party_id              =  hca.party_id
    AND  EXISTS( SELECT /*+ INDEX(xsfi xxcok_selling_from_info_n01) */
