@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A15C(body)
  * Description      : 保管場所転送取引データOIF更新(基準在庫)
  * MD.050           : 保管場所転送取引データOIF更新(基準在庫) MD050_COI_003_A15
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------------  ----------------------------------------------------------
@@ -35,13 +35,14 @@ AS
  * ------------- ----- ---------------- --------------------------------------------------
  *  2009/01/14    1.0   SCS H.Wada       main新規作成
  *  2009/02/19    1.1   SCS H.Wada       障害番号 #015
- *  2009/04/06    1.2   SCS T.Nakamura   障害番号 T1_0004
+ *  2009/04/06    1.2   SCS T.Nakamura   障害番号 T1_0063
  *                                         VDコラムマスタの更新処理の修正
  *  2009/12/15    1.3   SCS N.Abe        [E_本稼動_00402]VDコラムマスタ更新処理の修正
  *  2010/04/19    1.4   SCS H.Sasaki     [E_本稼動_06588]HHTからのVDコラムマスタ登録
  *  2011/12/07    1.5   SCSK K.Nakamura  [E_本稼動_08842]同一顧客で伝票日付が不一致の場合のエラー処理追加
  *                                       [E_本稼動_08843]VDコラムマスタ存在チェックフラグの初期化を修正
  *  2011/12/12    1.6   SCSK K.Nakamura  [E_本稼動_08842]伝票日付不一致エラーはYYYYMMでチェックするよう修正
+ *  2011/12/22    1.7   SCSK K.Nakamura  [E_本稼動_08440]コラム更新日の更新処理追加
  *
  *****************************************************************************************/
 --
@@ -117,6 +118,9 @@ AS
   cv_inst_type_1        CONSTANT VARCHAR2(1)  :=  '1';                        --  機器区分（自販機）
   cv_yes                CONSTANT VARCHAR2(1)  :=  'Y';                        --  固定値 Y
 -- == 2011/04/19 V1.4 Added END   ===============================================================
+-- == 2011/12/22 V1.7 Added START ===============================================================
+  cn_dummy_item_price   CONSTANT NUMBER       := -1;                          -- 品目ID比較時のダミー値
+-- == 2011/12/22 V1.7 Added END   ===============================================================
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -216,6 +220,9 @@ AS
    ,lm_inv_qnt    xxcoi_mst_vd_column.last_month_inventory_quantity%TYPE -- 7.前月基準在庫数
    ,lm_price      xxcoi_mst_vd_column.last_month_price%TYPE              -- 8.前月単価
    ,lm_hot_cold   xxcoi_mst_vd_column.last_month_hot_cold%TYPE           -- 9.前月H/C
+-- == 2011/12/22 V1.7 Added START ===============================================================
+   ,change_date   xxcoi_mst_vd_column.column_change_date%TYPE            -- 10.コラム変更日
+-- == 2011/12/22 V1.7 Added END   ===============================================================
   );
 --
   -- VDコラムマスタ情報カーソルレコード型
@@ -234,6 +241,19 @@ AS
   TYPE new_vd_data_ttype IS TABLE OF new_vd_data_rtype INDEX BY BINARY_INTEGER;
   gt_new_vd_data    new_vd_data_ttype;
 -- == 2011/04/19 V1.4 Added END   ===============================================================
+-- == 2011/12/22 V1.7 Added START ===============================================================
+  -- コラム変更日判定情報用レコード型
+  TYPE column_change_date_rtype IS RECORD(
+      customer_code         xxcoi_hht_inv_transactions.inside_code%TYPE  -- 1.顧客コード
+    , column_no             xxcoi_hht_inv_transactions.column_no%TYPE    -- 2.コラムNo
+    , item_id               xxcoi_mst_vd_column.item_id%TYPE             -- 3.品目ID
+    , hot_cold              xxcoi_mst_vd_column.hot_cold%TYPE            -- 4.当月H/C
+    , change_date           xxcoi_mst_vd_column.column_change_date%TYPE  -- 5.コラム変更日
+    , hold_date             xxcoi_mst_vd_column.column_change_date%TYPE  -- 6.前回コラム変更日（保持用）
+  );
+  --
+  gr_column_change_date_rec    column_change_date_rtype;
+-- == 2011/12/22 V1.7 Added END   ===============================================================
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -560,8 +580,10 @@ AS
     -- ===============================
     -- ユーザー宣言部
     -- ===============================
-    -- *** ローカル定数 ***
-    cn_dummy_item_price      CONSTANT NUMBER := -1;   -- 品目ID比較時のダミー値
+-- == 2011/12/22 V1.7 Deleted START ===============================================================
+--    -- *** ローカル定数 ***
+--    cn_dummy_item_price      CONSTANT NUMBER := -1;   -- 品目ID比較時のダミー値
+-- == 2011/12/22 V1.7 Deleted END   ===============================================================
 --
     -- *** ローカル変数 ***
     lv_key_msg            VARCHAR2(1000);          -- HHT入出庫データ用KEY情報
@@ -595,6 +617,9 @@ AS
             ,xmvc.last_month_inventory_quantity AS lm_inv_qnt  --  7.前月基準在庫数
             ,xmvc.last_month_price              AS lm_price    --  8.前月単価
             ,xmvc.last_month_hot_cold           AS lm_hot_cold --  9.前月H/C
+-- == 2011/12/22 V1.7 Added START ===============================================================
+            ,xmvc.column_change_date            AS change_date -- 10.コラム変更日
+-- == 2011/12/22 V1.7 Added END   ===============================================================
       INTO   gr_mst_vd_column_rec
       FROM   xxcoi_mst_vd_column                xmvc           -- VDコラムマスタ
             ,hz_cust_accounts                   hca            -- 顧客アカウント
@@ -1083,12 +1108,37 @@ AS
 --
       -- 総数量 > 0の場合
       IF (hht_inv_tran_rec.total_qnt > 0) THEN
+-- == 2011/12/22 V1.7 Added START ===============================================================
+        -- 空コラムからの復活の場合、業務日付
+        IF ((gr_mst_vd_column_rec.item_id IS NULL)
+          AND ((hht_inv_tran_rec.customer_code <> NVL(gr_column_change_date_rec.customer_code, cn_dummy_item_price))
+            OR (hht_inv_tran_rec.column_no <> NVL(gr_column_change_date_rec.column_no, cn_dummy_item_price)))) THEN
+          gr_column_change_date_rec.customer_code := hht_inv_tran_rec.customer_code;
+          gr_column_change_date_rec.column_no     := hht_inv_tran_rec.column_no;
+          gr_column_change_date_rec.change_date   := gd_process_date;
+        -- 品目またはH/Cが相違する場合、コラム変更日は業務日付
+        ELSIF ((hht_inv_tran_rec.customer_code = gr_column_change_date_rec.customer_code)
+          AND  (hht_inv_tran_rec.column_no = gr_column_change_date_rec.column_no)
+          AND  ((hht_inv_tran_rec.item_id <> gr_column_change_date_rec.item_id)
+            OR  (NVL(hht_inv_tran_rec.hot_cold_div, cv_dummy_value) <> gr_column_change_date_rec.hot_cold))) THEN
+          gr_column_change_date_rec.change_date := gd_process_date;
+        -- 品目およびH/Cが一致する（基準在庫または単価の不一致）場合、コラム変更日は元に戻す
+        ELSIF ((hht_inv_tran_rec.customer_code = gr_column_change_date_rec.customer_code)
+          AND  (hht_inv_tran_rec.column_no = gr_column_change_date_rec.column_no)
+          AND  (hht_inv_tran_rec.item_id = gr_column_change_date_rec.item_id)
+          AND  (NVL(hht_inv_tran_rec.hot_cold_div, cv_dummy_value) = gr_column_change_date_rec.hot_cold)) THEN
+          gr_column_change_date_rec.change_date := gr_column_change_date_rec.hold_date;
+        END IF;
+-- == 2011/12/22 V1.7 Added END   ===============================================================
         -- 当月の品目ID、基準在庫数を更新
         UPDATE xxcoi_mst_vd_column xmvc
         SET    xmvc.item_id                = hht_inv_tran_rec.item_id                                    -- 1.品目ID
               ,xmvc.inventory_quantity     = (gr_mst_vd_column_rec.inv_qnt + hht_inv_tran_rec.total_qnt) -- 2.基準在庫数
               ,xmvc.price                  = hht_inv_tran_rec.unit_price                                 -- 3.単価
               ,xmvc.hot_cold               = hht_inv_tran_rec.hot_cold_div                               -- 4.H/C
+-- == 2011/12/22 V1.7 Added START ===============================================================
+              ,xmvc.column_change_date     = gr_column_change_date_rec.change_date                       -- 12.コラム変更日
+-- == 2011/12/22 V1.7 Added END   ===============================================================
               ,xmvc.last_updated_by        = cn_last_updated_by                              --  5.最終更新者
               ,xmvc.last_update_date       = cd_last_update_date                             --  6.最終更新日
               ,xmvc.last_update_login      = cn_last_update_login                            --  7.最終更新ログイン
@@ -1100,6 +1150,15 @@ AS
 --
       -- 総数量 < 0の場合
       ELSIF (hht_inv_tran_rec.total_qnt < 0) THEN
+-- == 2011/12/22 V1.7 Added START ===============================================================
+        -- コラム変更日判定情報用レコード保持
+        gr_column_change_date_rec.customer_code := hht_inv_tran_rec.customer_code;
+        gr_column_change_date_rec.column_no     := hht_inv_tran_rec.column_no;
+        gr_column_change_date_rec.item_id       := hht_inv_tran_rec.item_id;
+        gr_column_change_date_rec.hot_cold      := NVL(gr_mst_vd_column_rec.hot_cold, cv_dummy_value);
+        gr_column_change_date_rec.change_date   := gd_process_date;
+        gr_column_change_date_rec.hold_date     := gr_mst_vd_column_rec.change_date;
+-- == 2011/12/22 V1.7 Added END   ===============================================================
         -- 当月の品目ID、基準在庫数を更新
         UPDATE xxcoi_mst_vd_column xmvc
         SET    xmvc.inventory_quantity     = (gr_mst_vd_column_rec.inv_qnt + hht_inv_tran_rec.total_qnt)       -- 1.基準在庫数
@@ -1108,6 +1167,9 @@ AS
               ,xmvc.price                  = NULL                                            --10.単価
               ,xmvc.hot_cold               = NULL                                            --11.H/C
 -- == 2009/12/15 V1.3 Added END   ===============================================================
+-- == 2011/12/22 V1.7 Added START ===============================================================
+              ,xmvc.column_change_date     = gr_column_change_date_rec.change_date           --12.コラム更新日
+-- == 2011/12/22 V1.7 Added END   ===============================================================
               ,xmvc.last_updated_by        = cn_last_updated_by                              -- 2.最終更新者
               ,xmvc.last_update_date       = cd_last_update_date                             -- 3.最終更新日
               ,xmvc.last_update_login      = cn_last_update_login                            -- 4.最終更新ログイン
@@ -1119,10 +1181,24 @@ AS
 --
       -- 総数量 = 0の場合
       ELSIF (hht_inv_tran_rec.total_qnt = 0) THEN
+-- == 2011/12/22 V1.7 Added START ===============================================================
+        -- コラム変更日判定情報用レコード保持
+        gr_column_change_date_rec.customer_code := hht_inv_tran_rec.customer_code;
+        gr_column_change_date_rec.column_no     := hht_inv_tran_rec.column_no;
+        -- H/Cが相違する場合のみ、業務日付を設定
+        IF (gr_mst_vd_column_rec.hot_cold <> NVL(hht_inv_tran_rec.hot_cold_div, gr_mst_vd_column_rec.hot_cold)) THEN
+          gr_column_change_date_rec.change_date := gd_process_date;
+        ELSE
+          gr_column_change_date_rec.change_date := gr_mst_vd_column_rec.change_date;
+        END IF;
+-- == 2011/12/22 V1.7 Added END   ===============================================================
         -- 当月の単価、H/Cを更新
         UPDATE xxcoi_mst_vd_column xmvc
         SET    xmvc.price                  = NVL(hht_inv_tran_rec.unit_price, gr_mst_vd_column_rec.price)      -- 1.単価
               ,xmvc.hot_cold               = NVL(hht_inv_tran_rec.hot_cold_div, gr_mst_vd_column_rec.hot_cold) -- 2.H/C
+-- == 2011/12/22 V1.7 Added START ===============================================================
+              ,xmvc.column_change_date     = gr_column_change_date_rec.change_date                             -- 12.コラム変更日
+-- == 2011/12/22 V1.7 Added END   ===============================================================
               ,xmvc.last_updated_by        = cn_last_updated_by                              -- 3.最終更新者
               ,xmvc.last_update_date       = cd_last_update_date                             -- 4.最終更新日
               ,xmvc.last_update_login      = cn_last_update_login                            -- 5.最終更新ログイン
@@ -1135,8 +1211,38 @@ AS
 --
     -- 伝票日付が前月の場合
     ELSE
+--
       -- 総数量 > 0 の場合
       IF (hht_inv_tran_rec.total_qnt > 0) THEN
+-- == 2011/12/22 V1.7 Added START ===============================================================
+        -- 空コラムからの復活の場合、業務日付
+        IF ((gr_mst_vd_column_rec.item_id IS NULL)
+          AND ((hht_inv_tran_rec.customer_code <> NVL(gr_column_change_date_rec.customer_code, cn_dummy_item_price))
+            OR (hht_inv_tran_rec.column_no <> NVL(gr_column_change_date_rec.column_no, cn_dummy_item_price)))) THEN
+          gr_column_change_date_rec.customer_code := hht_inv_tran_rec.customer_code;
+          gr_column_change_date_rec.column_no     := hht_inv_tran_rec.column_no;
+          gr_column_change_date_rec.change_date   := gd_process_date;
+        -- 以下の場合、コラム変更日は業務日付
+        --   品目が相違する場合
+        --   当月H/Cと前月H/Cが一致かつ、H/Cが相違する場合
+        ELSIF ((hht_inv_tran_rec.customer_code = gr_column_change_date_rec.customer_code)
+          AND  (hht_inv_tran_rec.column_no = gr_column_change_date_rec.column_no)
+          AND  ((hht_inv_tran_rec.item_id <> gr_column_change_date_rec.item_id)
+            OR  ((NVL(gr_mst_vd_column_rec.hot_cold, cv_dummy_value) = NVL(gr_mst_vd_column_rec.lm_hot_cold, cv_dummy_value))
+            AND  (NVL(hht_inv_tran_rec.hot_cold_div, cv_dummy_value) <> gr_column_change_date_rec.hot_cold)))) THEN
+          gr_column_change_date_rec.change_date := gd_process_date;
+        -- 以下の場合、コラム変更日は元に戻す
+        --   品目一致かつ、当月H/Cと前月H/Cが不一致
+        --   品目一致かつ、当月H/Cと前月H/Cが一致かつ、H/Cが一致する（基準在庫または単価の不一致）場合
+        ELSIF ((hht_inv_tran_rec.customer_code = gr_column_change_date_rec.customer_code)
+          AND  (hht_inv_tran_rec.column_no = gr_column_change_date_rec.column_no)
+          AND  (hht_inv_tran_rec.item_id = gr_column_change_date_rec.item_id)
+          AND  ((NVL(gr_mst_vd_column_rec.hot_cold, cv_dummy_value) <> NVL(gr_mst_vd_column_rec.lm_hot_cold, cv_dummy_value))
+            OR  ((NVL(gr_mst_vd_column_rec.hot_cold, cv_dummy_value) = NVL(gr_mst_vd_column_rec.lm_hot_cold, cv_dummy_value))
+            AND  (NVL(hht_inv_tran_rec.hot_cold_div, cv_dummy_value) = gr_column_change_date_rec.hot_cold)))) THEN
+          gr_column_change_date_rec.change_date := gr_column_change_date_rec.hold_date;
+        END IF;
+-- == 2011/12/22 V1.7 Added END   ===============================================================
         -- 当月の品目ID、基準在庫数を更新
         UPDATE xxcoi_mst_vd_column xmvc
         SET    xmvc.item_id                = hht_inv_tran_rec.item_id                                              -- 1.品目ID
@@ -1149,6 +1255,9 @@ AS
                                                ,hht_inv_tran_rec.hot_cold_div
                                                ,gr_mst_vd_column_rec.hot_cold )                                    -- 4.H/C
 -- == 2009/04/06 V1.2 Moded END   ===============================================================
+-- == 2011/12/22 V1.7 Added START ===============================================================
+              ,xmvc.column_change_date     = gr_column_change_date_rec.change_date                                 -- 12.コラム更新日
+-- == 2011/12/22 V1.7 Added END   ===============================================================
               ,xmvc.last_month_item_id     = hht_inv_tran_rec.item_id                                              -- 5.前月末品目ID
               ,xmvc.last_month_inventory_quantity = (gr_mst_vd_column_rec.lm_inv_qnt + hht_inv_tran_rec.total_qnt) -- 6.前月末基準在庫数
               ,xmvc.last_month_price       = hht_inv_tran_rec.unit_price                                           -- 7.前月末単価
@@ -1164,6 +1273,15 @@ AS
 --
       -- 総数量 < 0 の場合
       ELSIF (hht_inv_tran_rec.total_qnt < 0) THEN
+-- == 2011/12/22 V1.7 Added START ===============================================================
+        -- コラム変更日判定情報用レコード保持
+        gr_column_change_date_rec.customer_code := hht_inv_tran_rec.customer_code;
+        gr_column_change_date_rec.column_no     := hht_inv_tran_rec.column_no;
+        gr_column_change_date_rec.item_id       := hht_inv_tran_rec.item_id;
+        gr_column_change_date_rec.hot_cold      := NVL(gr_mst_vd_column_rec.hot_cold, cv_dummy_value);
+        gr_column_change_date_rec.change_date   := gd_process_date;
+        gr_column_change_date_rec.hold_date     := gr_mst_vd_column_rec.change_date;
+-- == 2011/12/22 V1.7 Added END   ===============================================================
         -- 当月の品目ID、基準在庫数を更新
         UPDATE xxcoi_mst_vd_column xmvc
         SET    xmvc.inventory_quantity     = (gr_mst_vd_column_rec.inv_qnt + hht_inv_tran_rec.total_qnt)           -- 1.基準在庫数
@@ -1176,6 +1294,9 @@ AS
               ,xmvc.last_month_price       = NULL                                            --14.前月末単価
               ,xmvc.last_month_hot_cold    = NULL                                            --15.前月末H/C
 -- == 2009/12/15 V1.3 Added END   ===============================================================
+-- == 2011/12/22 V1.7 Added START ===============================================================
+              ,xmvc.column_change_date     = gr_column_change_date_rec.change_date           --16.コラム更新
+-- == 2011/12/22 V1.7 Added END   ===============================================================
               ,xmvc.last_updated_by        = cn_last_updated_by                              -- 3.最終更新者
               ,xmvc.last_update_date       = cd_last_update_date                             -- 4.最終更新日
               ,xmvc.last_update_login      = cn_last_update_login                            -- 5.最終更新ログイン
@@ -1187,6 +1308,18 @@ AS
 --
       -- 総数量が0の場合
       ELSIF (hht_inv_tran_rec.total_qnt = 0) THEN
+-- == 2011/12/22 V1.7 Added START ===============================================================
+        -- コラム変更日判定情報用レコード保持
+        gr_column_change_date_rec.customer_code := hht_inv_tran_rec.customer_code;
+        gr_column_change_date_rec.column_no     := hht_inv_tran_rec.column_no;
+        -- 前月H/Cと当月H/Cが一致かつ、H/Cが相違する場合のみ、業務日付を設定
+        IF ((gr_mst_vd_column_rec.hot_cold = NVL(gr_mst_vd_column_rec.lm_hot_cold, cv_dummy_value))
+          AND (gr_mst_vd_column_rec.hot_cold <> NVL(hht_inv_tran_rec.hot_cold_div, gr_mst_vd_column_rec.hot_cold))) THEN
+          gr_column_change_date_rec.change_date := gd_process_date;
+        ELSE
+          gr_column_change_date_rec.change_date := gr_mst_vd_column_rec.change_date;
+        END IF;
+-- == 2011/12/22 V1.7 Added END   ===============================================================
         -- 当月及び前月の単価、H/Cを更新
         UPDATE xxcoi_mst_vd_column xmvc
         SET    xmvc.price                  = NVL(hht_inv_tran_rec.unit_price, gr_mst_vd_column_rec.price)          -- 1.単価
@@ -1199,6 +1332,9 @@ AS
 -- == 2009/04/06 V1.2 Moded END   ===============================================================
               ,xmvc.last_month_price       = NVL(hht_inv_tran_rec.unit_price, gr_mst_vd_column_rec.lm_price)       -- 3.前月末単価
               ,xmvc.last_month_hot_cold    = NVL(hht_inv_tran_rec.hot_cold_div, gr_mst_vd_column_rec.lm_hot_cold)  -- 4.前月末H/C
+-- == 2011/12/22 V1.7 Added START ===============================================================
+              ,xmvc.column_change_date     = gr_column_change_date_rec.change_date                                 -- 12.コラム更新日
+-- == 2011/12/22 V1.7 Added END   ===============================================================
               ,xmvc.last_updated_by        = cn_last_updated_by                              --  5.最終更新者
               ,xmvc.last_update_date       = cd_last_update_date                             --  6.最終更新日
               ,xmvc.last_update_login      = cn_last_update_login                            --  7.最終更新ログイン

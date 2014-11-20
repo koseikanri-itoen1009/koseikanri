@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI010A03C(body)
  * Description      : VDコラムマスタHHT連携
  * MD.050           : VDコラムマスタHHT連携 MD050_COI_010_A03
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -15,6 +15,8 @@ AS
  *  init                   初期処理 (A-1)
  *  get_last_coop_date     データ連携制御ワークテーブルの最終連携日時取得 (A-2)
  *  get_mst_vd_column      VDコラムマスタ情報抽出 (A-4)
+ *  forecast_calculation          予測算出 (A-10)
+ *  determine_sales_forecast_val  販売予測項目値決定 (A-9)
  *  create_csv_file        ベンダ在庫マスタCSV作成 (A-5)
  *  upd_last_coop_date     データ連携制御ワークテーブルの最終連携日時更新 (A-6)
  *  submain                メイン処理プロシージャ
@@ -32,6 +34,7 @@ AS
  *  2010/05/13    1.3   H.Sasaki         [E_本稼動_02654]顧客移行情報のステータスを検索条件に追加
  *  2010/12/28    1.4   H.Sekine         [E_本稼動_05846]基準在庫数がNULLの場合、満タン数に'0'をセットするように変更
  *  2011/05/12    1.5   H.Sasaki         [E_本稼動_07319]一顧客の重複情報を排除
+ *  2011/10/03    1.6   Y.Horikawa       [E_本稼動_08440]HHT2次開発（販売予測情報連携）
  *
  *****************************************************************************************/
 --
@@ -107,6 +110,14 @@ AS
 -- == 2010/12/28 V1.4 ADD START  ===============================================================
   cv_qty_null_err_msg         CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10429'; -- 基準在庫数NULLメッセージ
 -- == 2010/12/28 V1.4 ADD END    ===============================================================
+-- 2011/10/03 V1.6 ADD START =======================================================================
+  cv_sppl_lower_limit_err_msg CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10440'; -- 補充指示率下限値取得エラーメッセージ
+  cv_period_use_data_err_msg  CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10441'; -- 販売予測データ利用期間取得エラーメッセージ
+  cv_unpredictable_msg        CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10442'; -- 販売予測不可メッセージ
+  cv_get_supply_inst_err_msg  CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10443'; -- 補充指示取得エラーメッセージ
+  cv_no_workday_msg           CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10444'; -- 稼働日日数なしエラーメッセージ
+  cv_no_days_after_supply_msg CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10445'; -- 前回納品後稼働日日数なしエラーメッセージ
+-- 2011/10/03 V1.6 ADD END   =======================================================================
   -- トークン
   cv_tkn_p_flag               CONSTANT VARCHAR2(20)  := 'P_FLAG';           -- 夜間実行フラグ
   cv_tkn_program_id           CONSTANT VARCHAR2(20)  := 'PROGRAM_ID';       -- プログラムID
@@ -117,6 +128,14 @@ AS
   cv_tkn_cust_code            CONSTANT VARCHAR2(20)  := 'CUST_CODE';        -- 顧客コード
   cv_tkn_column_no            CONSTANT VARCHAR2(20)  := 'COLUMN_NO';        -- コラムNO
 -- == 2010/12/28 V1.4 ADD END    ===============================================================
+-- 2011/10/03 V1.6 ADD START =======================================================================
+  cv_tkn_from_date            CONSTANT VARCHAR2(20)  := 'FROM_DATE';           -- 稼働日（自）
+  cv_tkn_to_date              CONSTANT VARCHAR2(20)  := 'TO_DATE';             -- 稼働日（至）
+  cv_tkn_calendar_code        CONSTANT VARCHAR2(20)  := 'CALENDAR_CODE';       -- カレンダーコード
+  cv_tkn_lookup_type          CONSTANT VARCHAR2(20)  := 'LOOKUP_TYPE';         -- 参照タイプ
+  cv_tkn_supply_instruction   CONSTANT VARCHAR2(20)  := 'SUPPLY_INSTRUCTION';  -- 補充指示
+  cv_tkn_supply_inst_rate     CONSTANT VARCHAR2(20)  := 'SUPPLY_INST_RATE';    -- 補充指示率
+-- 2011/10/03 V1.6 ADD END   =======================================================================
 --
   cv_night_exec_flag_y        CONSTANT VARCHAR2(1)   := 'Y';                -- 夜間実行フラグ：'Y'
   cv_night_exec_flag_n        CONSTANT VARCHAR2(1)   := 'N';                -- 夜間実行フラグ：'N'
@@ -135,6 +154,11 @@ AS
 -- == 2010/12/28 V1.4 ADD START  ===============================================================
   cv_qty_zero                 CONSTANT VARCHAR2(1)   := '0';                -- 満タン数:'0'
 -- == 2010/12/28 V1.4 ADD END    ===============================================================
+-- 2011/10/03 V1.6 ADD START =======================================================================
+  cv_forecast_cust_status     CONSTANT VARCHAR2(30) := 'XXCOS1_FORECAST_CUST_STATUS';
+  cv_enable                   CONSTANT VARCHAR2(1)  := 'Y';
+  cv_forecast_use_flag        CONSTANT VARCHAR2(1)  := 'Y';
+-- 2011/10/03 V1.6 ADD END   =======================================================================
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -147,6 +171,10 @@ AS
   gv_dire_name         VARCHAR2(50);          -- ディレクトリ名
   gv_file_name         VARCHAR2(50);          -- ファイル名
   g_file_handle        UTL_FILE.FILE_TYPE;    -- ファイルハンドル
+-- 2011/10/03 V1.6 ADD START =======================================================================
+  gn_sppl_inst_lower_limit     NUMBER;  -- 補充指示率下限値
+  gn_period_use_data_forecast  NUMBER;  -- 販売予測データ利用期間
+-- 2011/10/03 V1.6 ADD END   =======================================================================
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -213,7 +241,10 @@ AS
 --
   CURSOR  get_xmvc_tbl_cur1
   IS
-    SELECT   /*+ use_nl(hp hca xmvc msib) */
+-- 2011/10/03 V1.6 MOD START =======================================================================
+--    SELECT   /*+ use_nl(hp hca xmvc msib) */
+    SELECT   /*+ push_subq(@a) push_subq(@b) leading(xmvc) */
+-- 2011/10/03 V1.6 MOD END   =======================================================================
              xmvc.column_no                AS column_no                   -- コラムNO.
 -- == 2009/11/23 V1.2 MOD START  ===============================================================
 --         , xmvc.price                    AS price                       -- 単価
@@ -235,10 +266,27 @@ AS
                   THEN cv_del_flag_y                                      -- 削除フラグに'1'を設定
                   ELSE cv_del_flag_n                                      -- それ以外の場合、削除フラグに'0'を設定
              END                           AS del_flag                    -- 削除フラグ
+-- 2011/10/03 V1.6 ADD START =======================================================================
+           , NULL                          AS dlv_date_1                  -- 納品日１
+           , NULL                          AS quantity_1                  -- 本数１
+           , NULL                          AS dlv_date_2                  -- 納品日２
+           , NULL                          AS quantity_2                  -- 本数２
+           , NULL                          AS dlv_date_3                  -- 納品日３
+           , NULL                          AS quantity_3                  -- 本数３
+           , NULL                          AS dlv_date_4                  -- 納品日４
+           , NULL                          AS quantity_4                  -- 本数４
+           , NULL                          AS dlv_date_5                  -- 納品日５
+           , NULL                          AS quantity_5                  -- 本数５
+           , NULL                          AS column_change_date          -- コラム変更日
+           , NULL                          AS calendar_code               -- カレンダーコード
+-- 2011/10/03 V1.6 ADD END   =======================================================================
     FROM     xxcoi_mst_vd_column           xmvc                           -- VDコラムマスタ
            , mtl_system_items_b            msib                           -- 品目マスタ
            , hz_cust_accounts              hca                            -- 顧客マスタ
            , hz_parties                    hp                             -- パーティ
+-- 2011/10/03 V1.6 ADD START =======================================================================
+           , xxcmm_cust_accounts           xca                            -- 顧客追加情報
+-- 2011/10/03 V1.6 ADD END   =======================================================================
     WHERE    xmvc.last_update_date         >= gd_last_coop_date           -- 取得条件：最終更新日が最終連携日時以降
     AND      xmvc.last_update_date         <  gd_sysdate                  -- 取得条件：最終更新日がSYSDATEより前
 -- == 2009/11/23 V1.2 MOD START  ===============================================================
@@ -248,11 +296,35 @@ AS
     AND      msib.organization_id   (+)    =  xmvc.organization_id        -- 結合条件：品目マスタとVDコラムマスタ
 -- == 2009/11/23 V1.2 MOD END    ===============================================================
     AND      hca.cust_account_id           =  xmvc.customer_id            -- 結合条件：顧客マスタとVDコラムマスタ
-    AND      hp.party_id                   =  hca.party_id;               -- 結合条件：パーティと顧客マスタ
+-- 2011/10/03 V1.6 MOD START =======================================================================
+--    AND      hp.party_id                   =  hca.party_id;                -- 結合条件：パーティと顧客マスタ
+    AND      hp.party_id                   =  hca.party_id                 -- 結合条件：パーティと顧客マスタ
+-- 2011/10/03 V1.6 MOD END   =======================================================================
+-- 2011/10/03 V1.6 ADD START =======================================================================
+    AND      xca.customer_id               =  xmvc.customer_id            -- 結合条件：顧客追加情報とVDコラムマスタ
+    AND      (NOT EXISTS (SELECT /*+ qb_name(a) */
+                                 'X'
+                          FROM bom_calendars bc                               -- 稼働日カレンダー
+                          WHERE xca.calendar_code = bc.calendar_code          -- 結合条件：顧客追加情報と稼働日カレンダー
+                          AND   bc.attribute1 = cv_forecast_use_flag)         -- 取得条件：販売予測利用フラグ
+           OR NOT EXISTS (SELECT /*+ qb_name(b) */
+                                 'X'
+                          FROM fnd_lookup_values flv                          -- 販売予測対象顧客ステータス
+                          WHERE flv.lookup_type = cv_forecast_cust_status     -- 取得条件：販売予測対象顧客ステータス（TYPE）
+                          AND   flv.language = USERENV('LANG')                -- 取得条件：ログイン時使用言語
+                          AND   gd_process_date BETWEEN NVL(flv.start_date_active, gd_process_date)
+                                                AND NVL(flv.end_date_active, gd_process_date) -- 取得条件：有効日
+                          AND   flv.enabled_flag = cv_enable                  -- 取得条件：有効フラグ
+                          AND   hp.duns_number_c = flv.lookup_code)           -- 結合条件：パーティと販売予測対象顧客ステータス
+              );
+-- 2011/10/03 V1.6 ADD END   =======================================================================
   --
   CURSOR  get_xmvc_tbl_cur2
   IS
-    SELECT   /*+ use_nl(hp hca xcsi xmvc msib) */
+-- 2011/10/03 V1.6 MOD START =======================================================================
+--    SELECT   /*+ use_nl(hp hca xcsi xmvc msib) */
+    SELECT   /*+ push_subq(@a) push_subq(@b) leading(xcsi) */
+-- 2011/10/03 V1.6 MOD END   =======================================================================
 -- == 2011/05/12 V1.5 Added START ===============================================================
             DISTINCT
 -- == 2011/05/12 V1.5 Added END   ===============================================================
@@ -277,11 +349,28 @@ AS
                   THEN cv_del_flag_y                                      -- 削除フラグに'1'を設定
                   ELSE cv_del_flag_n                                      -- それ以外の場合、削除フラグに'0'を設定
              END                           AS del_flag                    -- 削除フラグ
+-- 2011/10/03 V1.6 ADD START =======================================================================
+           , NULL                          AS dlv_date_1                  -- 納品日１
+           , NULL                          AS quantity_1                  -- 本数１
+           , NULL                          AS dlv_date_2                  -- 納品日２
+           , NULL                          AS quantity_2                  -- 本数２
+           , NULL                          AS dlv_date_3                  -- 納品日３
+           , NULL                          AS quantity_3                  -- 本数３
+           , NULL                          AS dlv_date_4                  -- 納品日４
+           , NULL                          AS quantity_4                  -- 本数４
+           , NULL                          AS dlv_date_5                  -- 納品日５
+           , NULL                          AS quantity_5                  -- 本数５
+           , NULL                          AS column_change_date          -- コラム変更日
+           , NULL                          AS calendar_code               -- カレンダーコード
+-- 2011/10/03 V1.6 ADD END   =======================================================================
     FROM     xxcoi_mst_vd_column           xmvc                           -- VDコラムマスタ
            , mtl_system_items_b            msib                           -- 品目マスタ
            , hz_cust_accounts              hca                            -- 顧客マスタ
            , xxcok_cust_shift_info         xcsi                           -- 顧客移行情報
            , hz_parties                    hp                             -- パーティ
+-- 2011/10/03 V1.6 ADD START =======================================================================
+           , xxcmm_cust_accounts           xca                            -- 顧客追加情報
+-- 2011/10/03 V1.6 ADD END   =======================================================================
     WHERE    xmvc.last_update_date         <  gd_last_coop_date           -- 取得条件：最終更新日が最終連携日時より前
 -- == 2009/11/23 V1.2 MOD START  ===============================================================
 --  AND      msib.inventory_item_id        =  xmvc.item_id                -- 結合条件：品目マスタとVDコラムマスタ
@@ -300,6 +389,75 @@ AS
     AND      hp.party_id                   =  hca.party_id                -- 結合条件：パーティと顧客マスタ
 -- == 2010/05/13 V1.3 Added START ===============================================================
     AND      xcsi.status                   =  cv_status_a                 --  ステータスA:確定
+-- 2011/10/03 V1.6 ADD START =======================================================================
+    AND      xca.customer_id               =  xmvc.customer_id            -- 結合条件：顧客追加情報とVDコラムマスタ
+    AND      (NOT EXISTS (SELECT /*+ qb_name(a) */
+                                 'X'
+                          FROM bom_calendars bc                               -- 稼働日カレンダー
+                          WHERE xca.calendar_code = bc.calendar_code          -- 結合条件：顧客追加情報と稼働日カレンダー
+                          AND   bc.attribute1 = cv_forecast_use_flag)         -- 取得条件：販売予測利用フラグ
+           OR NOT EXISTS (SELECT /*+ qb_name(b) */
+                                 'X'
+                          FROM fnd_lookup_values flv                          -- 販売予測対象顧客ステータス
+                          WHERE flv.lookup_type = cv_forecast_cust_status     -- 取得条件：販売予測対象顧客ステータス（TYPE）
+                          AND   flv.language = USERENV('LANG')                -- 取得条件：ログイン時使用言語
+                          AND   gd_process_date BETWEEN NVL(flv.start_date_active, gd_process_date)
+                                                AND NVL(flv.end_date_active, gd_process_date) -- 取得条件：有効日
+                          AND   flv.enabled_flag = cv_enable                  -- 取得条件：有効フラグ
+                          AND   hp.duns_number_c = flv.lookup_code)           -- 結合条件：パーティと販売予測対象顧客ステータス
+              );
+
+  CURSOR  get_xmvc_tbl_cur3
+  IS
+    SELECT   /*+ leading(@a bc) */
+             xmvc.column_no                AS column_no                   -- コラムNO.
+           , NVL( xmvc.price, cn_price_dummy )          AS price          -- 単価
+           , xmvc.inventory_quantity       AS inventory_quantity          -- 満タン数
+           , NVL( xmvc.hot_cold, cv_hot_cold_dummy )    AS hot_cold       -- H/C
+           , xmvc.last_update_date         AS last_update_date            -- 更新日時
+           , NVL( msib.segment1, cv_item_code_dummy )   AS item_code      -- 品目コード
+           , hca.account_number            AS cust_code                   -- 顧客コード
+           , CASE WHEN hp.duns_number_c IN ( cv_cust_status_reorg_crd     -- 顧客ステータスが「更正債権」
+                                           , cv_cust_status_stop_apr )    -- または、「中止決裁済」の場合
+                  THEN cv_del_flag_y                                      -- 削除フラグに'1'を設定
+                  ELSE cv_del_flag_n                                      -- それ以外の場合、削除フラグに'0'を設定
+             END                           AS del_flag                    -- 削除フラグ
+           , xmvc.dlv_date_1               AS dlv_date_1                  -- 納品日１
+           , xmvc.quantity_1               AS quantity_1                  -- 本数１
+           , xmvc.dlv_date_2               AS dlv_date_2                  -- 納品日２
+           , xmvc.quantity_2               AS quantity_2                  -- 本数２
+           , xmvc.dlv_date_3               AS dlv_date_3                  -- 納品日３
+           , xmvc.quantity_3               AS quantity_3                  -- 本数３
+           , xmvc.dlv_date_4               AS dlv_date_4                  -- 納品日４
+           , xmvc.quantity_4               AS quantity_4                  -- 本数４
+           , xmvc.dlv_date_5               AS dlv_date_5                  -- 納品日５
+           , xmvc.quantity_5               AS quantity_5                  -- 本数５
+           , xmvc.column_change_date       AS column_change_date          -- コラム変更日
+           , xca.calendar_code             AS calendar_code               -- カレンダーコード
+    FROM     xxcoi_mst_vd_column           xmvc                           -- VDコラムマスタ
+           , mtl_system_items_b            msib                           -- 品目マスタ
+           , hz_cust_accounts              hca                            -- 顧客マスタ
+           , hz_parties                    hp                             -- パーティ
+           , xxcmm_cust_accounts           xca                            -- 顧客追加情報
+    WHERE    msib.inventory_item_id (+)    =  xmvc.item_id                -- 結合条件：品目マスタとVDコラムマスタ
+    AND      msib.organization_id   (+)    =  xmvc.organization_id        -- 結合条件：品目マスタとVDコラムマスタ
+    AND      hca.cust_account_id           =  xmvc.customer_id            -- 結合条件：顧客マスタとVDコラムマスタ
+    AND      hp.party_id                   =  hca.party_id                -- 結合条件：パーティと顧客マスタ
+    AND      xca.customer_id               =  xmvc.customer_id            -- 結合条件：顧客追加情報とVDコラムマスタ
+    AND      EXISTS (SELECT /*+ qb_name(a) */
+                            'X'
+                     FROM bom_calendars bc                               -- 稼働日カレンダー
+                     WHERE xca.calendar_code = bc.calendar_code          -- 結合条件：顧客追加情報と稼働日カレンダー
+                     AND   bc.attribute1 = cv_forecast_use_flag)         -- 取得条件：販売予測利用フラグ
+    AND      EXISTS (SELECT 'X'
+                     FROM fnd_lookup_values flv                          -- 販売予測対象顧客ステータス
+                     WHERE flv.lookup_type = cv_forecast_cust_status     -- 取得条件：販売予測対象顧客ステータス（TYPE）
+                     AND   flv.language = USERENV('LANG')                -- 取得条件：ログイン時使用言語
+                     AND   gd_process_date BETWEEN NVL(flv.start_date_active, gd_process_date)
+                                           AND NVL(flv.end_date_active, gd_process_date) -- 取得条件：有効日
+                     AND   flv.enabled_flag = cv_enable                  -- 取得条件：有効フラグ
+                     AND   hp.duns_number_c = flv.lookup_code)           -- 結合条件：パーティと販売予測対象顧客ステータス
+-- 2011/10/03 V1.6 ADD END   =======================================================================
     ;
 -- == 2010/05/13 V1.3 Added END   ===============================================================
 -- == 2009/09/14 V1.1 Modified END   ===============================================================
@@ -310,7 +468,10 @@ AS
 -- == 2009/09/14 V1.1 Modified START ===============================================================
 --  TYPE g_get_xmvc_tbl_ttype IS TABLE OF get_xmvc_tbl_cur%ROWTYPE INDEX BY BINARY_INTEGER;
 --  g_get_xmvc_tbl_tab        g_get_xmvc_tbl_ttype;
-  get_xmvc_tbl_rec  get_xmvc_tbl_cur1%ROWTYPE;
+-- 2011/10/03 V1.6 MOD START =======================================================================
+--  get_xmvc_tbl_rec  get_xmvc_tbl_cur1%ROWTYPE;
+  get_xmvc_tbl_rec  get_xmvc_tbl_cur3%ROWTYPE;
+-- 2011/10/03 V1.6 MOD END   =======================================================================
 -- == 2009/09/14 V1.1 Modified END   ===============================================================
 --
   -- ===============================
@@ -354,6 +515,12 @@ AS
     cv_prf_dire_out_hht        CONSTANT VARCHAR2(30) := 'XXCOI1_DIRE_OUT_HHT';
     -- プロファイル XXCOI:VDコラムマスタHHT連携ファイル名
     cv_prf_file_vdhht          CONSTANT VARCHAR2(30) := 'XXCOI1_FILE_VDHHT';
+-- 2011/10/03 V1.6 ADD START =======================================================================
+    -- プロファイル XXCOI:補充指示率下限値
+    cv_prf_sppl_lower_limit       CONSTANT VARCHAR2(30) := 'XXCOI1_SUPPLY_INST_LOWER_LIMIT';
+    -- プロファイル XXCOI:販売予測データ利用期間
+    cv_prf_period_use_data_fcast  CONSTANT VARCHAR2(40) := 'XXCOI1_PERIOD_USE_DATA_FORECAST';
+-- 2011/10/03 V1.6 ADD END   =======================================================================
 --
     cn_working_day             CONSTANT NUMBER       := 1;    -- 営業日数
     cv_slash                   CONSTANT VARCHAR2(1)  := '/';  -- スラッシュ
@@ -403,6 +570,38 @@ AS
       , buff   => ''
     );
 --
+-- 2011/10/03 V1.6 ADD START =======================================================================
+    -- ==============================================================
+    -- プロファイル：補充指示率下限値取得
+    -- ==============================================================
+    gn_sppl_inst_lower_limit := fnd_profile.value( cv_prf_sppl_lower_limit );
+    -- 補充指示率下限値が取得できない場合
+    IF ( gn_sppl_inst_lower_limit IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_short_name_xxcoi
+                     , iv_name         => cv_sppl_lower_limit_err_msg
+                     , iv_token_name1  => cv_tkn_pro_tok
+                     , iv_token_value1 => cv_prf_sppl_lower_limit
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    -- ==============================================================
+    -- プロファイル：販売予測データ利用期間
+    -- ==============================================================
+    gn_period_use_data_forecast := fnd_profile.value( cv_prf_period_use_data_fcast );
+    -- 販売予測データ利用期間が取得できない場合
+    IF ( gn_period_use_data_forecast IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_short_name_xxcoi
+                     , iv_name         => cv_period_use_data_err_msg
+                     , iv_token_name1  => cv_tkn_pro_tok
+                     , iv_token_value1 => cv_prf_period_use_data_fcast
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- 2011/10/03 V1.6 ADD END   =======================================================================
     -- ===============================
     -- SYSDATE取得
     -- ===============================
@@ -773,6 +972,436 @@ AS
 --  END get_mst_vd_column;
 -- == 2009/09/14 V1.1 Deleted END   ===============================================================
 --
+-- 2011/10/03 V1.6 ADD START =======================================================================
+  /**********************************************************************************
+   * Procedure Name   : forecast_calculation
+   * Description      : 予測算出(A-10)
+   ***********************************************************************************/
+  PROCEDURE forecast_calculation(
+      ov_errbuf     OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
+    , ov_retcode    OUT VARCHAR2      --   リターン・コード             --# 固定 #
+    , ov_errmsg     OUT VARCHAR2      --   ユーザー・エラー・メッセージ --# 固定 #
+    , on_sales_forecast_qty  OUT NUMBER    -- 販売予測数
+    , ov_next_supply         OUT VARCHAR2  -- 次回補充
+    , on_supply_inst_pct     OUT NUMBER    -- 補充指示率
+    , in_total_qty           IN  NUMBER    -- 合計本数
+    , in_workdays            IN  NUMBER    -- 稼働日日数
+    , in_days_after_supply   IN  NUMBER    -- 前回納品後稼働日日数
+    , in_inventory_quantity  IN  NUMBER)   -- 基準在庫数
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'forecast_calculation'; -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cn_max_value_next_supply  CONSTANT NUMBER := 99;
+    cn_min_value_next_supply  CONSTANT NUMBER := 1;
+    cn_max_supply_inst_pct    CONSTANT NUMBER := 100;
+    cn_max_sales_forecast_qty CONSTANT NUMBER := 99;
+--
+    -- *** ローカル変数 ***
+    ln_sales_forecast_qty  NUMBER;
+    ln_next_supply         NUMBER;
+    ln_supply_inst_pct     NUMBER;
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 初期化
+    on_sales_forecast_qty := NULL;
+    ov_next_supply := NULL;
+    on_supply_inst_pct := NULL;
+--
+    -- 販売予測数（小数点以下切り上げ）
+    ln_sales_forecast_qty := CEIL((in_total_qty / in_workdays) * in_days_after_supply);
+    -- 販売予測数（最大値を超えた場合は最大値に置き換え）
+    ln_sales_forecast_qty := LEAST(ln_sales_forecast_qty, cn_max_sales_forecast_qty);
+--
+-- 2011/11/24 mod start Ver.1.6 対応中の変更
+--    -- 次回補充（小数点以下切り上げ）
+--    ln_next_supply := CEIL(gn_sppl_inst_lower_limit * in_inventory_quantity / (in_total_qty / in_workdays));
+    -- 次回補充（小数点以下切捨て）
+    ln_next_supply := FLOOR(gn_sppl_inst_lower_limit * in_inventory_quantity / ln_sales_forecast_qty);
+    -- 次回補充（最小値より小さい場合は最小値に置き換え）
+    ln_next_supply := GREATEST(ln_next_supply, cn_min_value_next_supply);
+-- 2011/11/24 mod end Ver.1.6 対応中の変更
+    -- 次回補充（最大値を超えた場合は最大値に置き換え）
+    ln_next_supply := LEAST(ln_next_supply, cn_max_value_next_supply);
+--
+    -- 補充指示率（小数点1桁目を四捨五入）
+    ln_supply_inst_pct := ROUND(ln_sales_forecast_qty / in_inventory_quantity * 100);
+    -- 補充指示率（最大値を超えた場合は最大値に置き換え）
+    ln_supply_inst_pct := LEAST(ln_supply_inst_pct, cn_max_supply_inst_pct);
+--
+    on_sales_forecast_qty := ln_sales_forecast_qty;
+    ov_next_supply := TO_CHAR(ln_next_supply);
+    on_supply_inst_pct := ln_supply_inst_pct;
+--
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END forecast_calculation;
+--
+  /**********************************************************************************
+   * Procedure Name   : determine_sales_forecast_val
+   * Description      : 販売予測項目値決定(A-9)
+   ***********************************************************************************/
+  PROCEDURE determine_sales_forecast_val(
+      ov_errbuf     OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
+    , ov_retcode    OUT VARCHAR2      --   リターン・コード             --# 固定 #
+    , ov_errmsg     OUT VARCHAR2      --   ユーザー・エラー・メッセージ --# 固定 #
+    , ov_sales_forecast_qty  OUT VARCHAR2  -- 販売予測数
+    , ov_supply_instruction  OUT VARCHAR2  -- 補充指示
+    , ov_next_supply         OUT VARCHAR2  -- 次回補充
+    , it_xmvc_tbl_rec        IN  get_xmvc_tbl_cur3%ROWTYPE)
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'determine_sales_forecast_val'; -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_change_column                CONSTANT VARCHAR2(30) := 'CHANGE COLUMN';
+    cv_no_sales                     CONSTANT VARCHAR2(30) := 'NO SALES';
+    cv_unpredictable                CONSTANT VARCHAR2(30) := 'UNPREDICTABLE';
+    cv_supply_instruction           CONSTANT VARCHAR2(30) := 'SUPPLY INSTRUCTION';
+    cn_default_supply_inst_pct      CONSTANT NUMBER       := 0;
+    cv_lookup_type_supply_inst      CONSTANT VARCHAR2(30) := 'XXCOI1_SUPPLY_INSTRUCTION';
+--
+    -- *** ローカル変数 ***
+    lv_msg                          VARCHAR2(2000);
+    ln_supply_instruction_pct       NUMBER;
+    lv_supply_inst_specific_cd      fnd_lookup_values.attribute4%TYPE;
+    ld_recent_dlv_date              DATE;
+    ld_past_dlv_date                DATE;
+    ld_usable_min_dlv_date          DATE;
+    ln_total_qty                    NUMBER;
+    ld_dlv_date2                    DATE;
+    ln_workdays                     NUMBER;
+    ln_days_after_supply            NUMBER;
+    ln_sales_forecast_qty           NUMBER;
+    lv_next_supply                  VARCHAR2(10);
+    lv_sales_forecast_fix_val       fnd_lookup_values.attribute5%TYPE;
+    lv_supply_instruction           fnd_lookup_values.attribute1%TYPE;
+--
+    -- *** ローカル・カーソル ***
+    CURSOR get_workday_cur (
+        iv_calendar_code  VARCHAR2
+      , id_from_date      DATE
+      , id_to_date        DATE)
+    IS
+      SELECT COUNT(1) workdays
+      FROM  bom_calendar_dates bcd
+      WHERE bcd.calendar_code = iv_calendar_code
+      AND   bcd.calendar_date >= id_from_date
+      AND   bcd.calendar_date <= id_to_date
+      AND   bcd.seq_num IS NOT NULL;
+--
+    -- *** ローカル・レコード ***
+    get_workday_rec  get_workday_cur%ROWTYPE;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 初期化
+    ln_sales_forecast_qty := NULL;
+    lv_supply_instruction := NULL;
+    lv_next_supply        := NULL;
+    ln_total_qty          := 0;
+
+    IF (NVL(it_xmvc_tbl_rec.inventory_quantity, 0) = 0) THEN
+      -- 基準在庫数無し（空コラム）
+      RETURN;
+    END IF;
+--
+    -- 販売予測に利用可能な納品日の判断用の閾値
+    ld_usable_min_dlv_date := ADD_MONTHS(gd_process_date, gn_period_use_data_forecast * -1);
+
+    -- 納品日１が販売予測に利用可能か判断
+    IF (it_xmvc_tbl_rec.dlv_date_1 > ld_usable_min_dlv_date) THEN
+      ld_past_dlv_date := it_xmvc_tbl_rec.dlv_date_1;
+      ln_total_qty := ln_total_qty + GREATEST(NVL(it_xmvc_tbl_rec.quantity_1, 0), 0);
+      ld_recent_dlv_date := it_xmvc_tbl_rec.dlv_date_1;
+    END IF;
+
+    -- 納品日２が販売予測に利用可能か判断
+    IF (it_xmvc_tbl_rec.dlv_date_2 > ld_usable_min_dlv_date) THEN
+      ld_past_dlv_date := it_xmvc_tbl_rec.dlv_date_2;
+      ln_total_qty := ln_total_qty + GREATEST(NVL(it_xmvc_tbl_rec.quantity_2, 0), 0);
+      ld_dlv_date2 := it_xmvc_tbl_rec.dlv_date_2;
+    END IF;
+
+    -- 納品日３が販売予測に利用可能か判断
+    IF (it_xmvc_tbl_rec.dlv_date_3 > ld_usable_min_dlv_date) THEN
+      ld_past_dlv_date := it_xmvc_tbl_rec.dlv_date_3;
+      ln_total_qty := ln_total_qty + GREATEST(NVL(it_xmvc_tbl_rec.quantity_3, 0), 0);
+    END IF;
+
+    -- 納品日４が販売予測に利用可能か判断
+    IF (it_xmvc_tbl_rec.dlv_date_4 > ld_usable_min_dlv_date) THEN
+      ld_past_dlv_date := it_xmvc_tbl_rec.dlv_date_4;
+      ln_total_qty := ln_total_qty + GREATEST(NVL(it_xmvc_tbl_rec.quantity_4, 0), 0);
+    END IF;
+
+    -- 納品日５が販売予測に利用可能か判断
+    IF (it_xmvc_tbl_rec.dlv_date_5 > ld_usable_min_dlv_date) THEN
+      ld_past_dlv_date := it_xmvc_tbl_rec.dlv_date_5;
+    END IF;
+--
+    -- 稼働日日数
+    <<workday>>
+    FOR get_workday_rec IN get_workday_cur (it_xmvc_tbl_rec.calendar_code, ld_past_dlv_date, ld_recent_dlv_date) LOOP
+      ln_workdays := GREATEST(get_workday_rec.workdays - 1, 0);
+      EXIT workday;
+    END LOOP workday;
+--
+    -- 前回納品後稼働日日数
+    <<days_after_supply>>
+    FOR get_workday_rec IN get_workday_cur (it_xmvc_tbl_rec.calendar_code, ld_recent_dlv_date, gd_process_date) LOOP
+      ln_days_after_supply := get_workday_rec.workdays;
+      EXIT days_after_supply;
+    END LOOP days_after_supply;
+--
+    --
+    -- 補充指示特定キー等の決定
+    --
+    IF ((it_xmvc_tbl_rec.column_change_date IS NOT NULL) AND (it_xmvc_tbl_rec.dlv_date_2 IS NULL)) THEN
+      -- コラム替え時
+      lv_supply_inst_specific_cd := cv_change_column;
+      ln_supply_instruction_pct := cn_default_supply_inst_pct;
+
+    ELSIF (ld_dlv_date2 IS NULL) THEN
+      -- 販売予測不可（納品実績が2回以上無し）
+      lv_supply_inst_specific_cd := cv_unpredictable;
+      ln_supply_instruction_pct := cn_default_supply_inst_pct;
+-- 2011/11/24 del start Ver.1.6 対応時のPTに伴い削除
+--      -- 販売予測不可メッセージを出力
+--      -- メッセージ取得
+--      lv_msg := xxccp_common_pkg.get_msg(
+--                    iv_application  => cv_appl_short_name_xxcoi
+--                  , iv_name         => cv_unpredictable_msg
+--                  , iv_token_name1  => cv_tkn_cust_code
+--                  , iv_token_value1 => it_xmvc_tbl_rec.cust_code
+--                  , iv_token_name2  => cv_tkn_column_no
+--                  , iv_token_value2 => it_xmvc_tbl_rec.column_no
+--                );
+--      -- メッセージ出力
+--      FND_FILE.PUT_LINE(
+--          which  => FND_FILE.LOG
+--        , buff   => lv_msg
+--      );
+-- 2011/11/24 del end Ver.1.6 対応時のPT実施に伴い削除
+
+    ELSIF (ln_total_qty = 0) THEN
+      -- 売上ゼロ時
+      lv_supply_inst_specific_cd := cv_no_sales;
+      ln_supply_instruction_pct := cn_default_supply_inst_pct;
+
+    ELSIF (ln_workdays = 0) THEN
+      -- 販売予測不可（稼働日日数が0）
+      lv_supply_inst_specific_cd := cv_unpredictable;
+      ln_supply_instruction_pct := cn_default_supply_inst_pct;
+      ov_retcode := cv_status_warn;
+      -- 稼働日日数なしエラーメッセージを出力
+      -- メッセージ取得
+      lv_msg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_appl_short_name_xxcoi
+                  , iv_name         => cv_no_workday_msg
+                  , iv_token_name1  => cv_tkn_cust_code
+                  , iv_token_value1 => it_xmvc_tbl_rec.cust_code
+                  , iv_token_name2  => cv_tkn_column_no
+                  , iv_token_value2 => it_xmvc_tbl_rec.column_no
+                  , iv_token_name3  => cv_tkn_calendar_code
+                  , iv_token_value3 => it_xmvc_tbl_rec.calendar_code
+                  , iv_token_name4  => cv_tkn_from_date
+                  , iv_token_value4 => TO_CHAR(ld_past_dlv_date, 'YYYY/MM/DD')
+                  , iv_token_name5  => cv_tkn_to_date
+                  , iv_token_value5 => TO_CHAR(ld_recent_dlv_date, 'YYYY/MM/DD')
+                );
+      -- メッセージ出力
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+        , buff   => lv_msg
+      );
+
+    ELSIF (ln_days_after_supply = 0) THEN
+      -- 販売予測不可（前回納品後稼働日日数が0）
+      lv_supply_inst_specific_cd := cv_unpredictable;
+      ln_supply_instruction_pct := cn_default_supply_inst_pct;
+      ov_retcode := cv_status_warn;
+      -- 前回納品後稼働日日数なしエラーメッセージを出力
+      -- メッセージ取得
+      lv_msg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_appl_short_name_xxcoi
+                  , iv_name         => cv_no_days_after_supply_msg
+                  , iv_token_name1  => cv_tkn_cust_code
+                  , iv_token_value1 => it_xmvc_tbl_rec.cust_code
+                  , iv_token_name2  => cv_tkn_column_no
+                  , iv_token_value2 => it_xmvc_tbl_rec.column_no
+                  , iv_token_name3  => cv_tkn_calendar_code
+                  , iv_token_value3 => it_xmvc_tbl_rec.calendar_code
+                  , iv_token_name4  => cv_tkn_from_date
+                  , iv_token_value4 => TO_CHAR(ld_recent_dlv_date, 'YYYY/MM/DD')
+                  , iv_token_name5  => cv_tkn_to_date
+                  , iv_token_value5 => TO_CHAR(gd_process_date, 'YYYY/MM/DD')
+                );
+      -- メッセージ出力
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+        , buff   => lv_msg
+      );
+
+    ELSE
+      -- 補充指示
+      lv_supply_inst_specific_cd := cv_supply_instruction;
+--
+      -- ===============================
+      -- 予測算出 (A-10)
+      -- ===============================
+      forecast_calculation(
+          ov_errbuf             => lv_errbuf
+        , ov_retcode            => lv_retcode
+        , ov_errmsg             => lv_errmsg
+        , on_sales_forecast_qty => ln_sales_forecast_qty
+        , ov_next_supply        => lv_next_supply
+        , on_supply_inst_pct    => ln_supply_instruction_pct
+        , in_total_qty          => ln_total_qty
+        , in_workdays           => ln_workdays
+        , in_days_after_supply  => ln_days_after_supply
+        , in_inventory_quantity => it_xmvc_tbl_rec.inventory_quantity);
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+    END IF;
+--
+    BEGIN
+      -- 補充指示出力内容取得
+      SELECT flv.attribute1 attribute1,    -- 補充指示
+             flv.attribute5 attribute5     -- 販売予測数固定文字
+      INTO  lv_supply_instruction,
+            lv_sales_forecast_fix_val
+      FROM  fnd_lookup_values flv
+      WHERE flv.lookup_type = cv_lookup_type_supply_inst
+      AND   flv.language = USERENV('LANG')
+      AND   gd_process_date BETWEEN NVL(flv.start_date_active, gd_process_date)
+                            AND NVL(flv.end_date_active, gd_process_date)
+      AND   flv.enabled_flag = cv_enable
+      AND   flv.attribute4 = lv_supply_inst_specific_cd
+      AND   ln_supply_instruction_pct BETWEEN flv.attribute2 AND flv.attribute3;
+    EXCEPTION
+      WHEN OTHERS THEN
+        ov_retcode := cv_status_warn;
+        -- メッセージ取得
+        lv_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_short_name_xxcoi
+                    , iv_name         => cv_get_supply_inst_err_msg
+                    , iv_token_name1  => cv_tkn_cust_code
+                    , iv_token_value1 => it_xmvc_tbl_rec.cust_code
+                    , iv_token_name2  => cv_tkn_column_no
+                    , iv_token_value2 => it_xmvc_tbl_rec.column_no
+                    , iv_token_name3  => cv_tkn_lookup_type
+                    , iv_token_value3 => cv_lookup_type_supply_inst
+                    , iv_token_name4  => cv_tkn_supply_instruction
+                    , iv_token_value4 => lv_supply_inst_specific_cd
+                    , iv_token_name5  => cv_tkn_supply_inst_rate
+                    , iv_token_value5 => ln_supply_instruction_pct
+                  );
+        -- メッセージ出力
+        FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT
+          , buff   => lv_msg
+        );
+    END;
+--
+    ov_sales_forecast_qty := NVL(lv_sales_forecast_fix_val, TO_CHAR(ln_sales_forecast_qty));
+    ov_supply_instruction := lv_supply_instruction;
+    ov_next_supply := lv_next_supply;
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END determine_sales_forecast_val;
+--
+-- 2011/10/03 V1.6 ADD END   =======================================================================
   /**********************************************************************************
    * Procedure Name   : create_csv_file
    * Description      : ベンダ在庫マスタCSV作成(A-5)
@@ -808,6 +1437,11 @@ AS
     lv_price                 VARCHAR2(100);                -- 単価
     lv_inventory_quantity    VARCHAR2(100);                -- 満タン数
     lv_last_update_date      VARCHAR2(100);                -- 最終更新日
+-- 2011/10/03 V1.6 ADD START =======================================================================
+    lv_sales_forecast_qty    fnd_lookup_values.attribute5%TYPE;  -- 販売予測数
+    lv_next_supply           VARCHAR2(10);                       -- 次回補充
+    lv_supply_instruction    fnd_lookup_values.attribute1%TYPE;  -- 補充指示
+-- 2011/10/03 V1.6 ADD END   =======================================================================
 --
     -- *** ローカル・カーソル ***
 --
@@ -861,17 +1495,54 @@ AS
 --
     OPEN  get_xmvc_tbl_cur1;
     OPEN  get_xmvc_tbl_cur2;
+-- 2011/10/03 V1.6 ADD START =======================================================================
+    OPEN  get_xmvc_tbl_cur3;
+-- 2011/10/03 V1.6 ADD END   =======================================================================
     --
     <<cursor_loop>>
-    FOR i IN  1 .. 2  LOOP
+-- 2011/10/03 V1.6 MOD START =======================================================================
+--    FOR i IN  1 .. 2  LOOP
+    FOR i IN  1 .. 3  LOOP
+-- 2011/10/03 V1.6 MOD END   =======================================================================
       <<create_file_loop>>
       LOOP
         IF (i = 1) THEN
           FETCH get_xmvc_tbl_cur1 INTO  get_xmvc_tbl_rec;
           EXIT WHEN get_xmvc_tbl_cur1%NOTFOUND;
-        ELSE
+-- 2011/10/03 V1.6 MOD START =======================================================================
+--        ELSE
+        ELSIF (i = 2) THEN
+-- 2011/10/03 V1.6 MOD END   =======================================================================
           FETCH get_xmvc_tbl_cur2 INTO  get_xmvc_tbl_rec;
           EXIT WHEN get_xmvc_tbl_cur2%NOTFOUND;
+-- 2011/10/03 V1.6 ADD START =======================================================================
+        ELSE
+          FETCH get_xmvc_tbl_cur3 INTO  get_xmvc_tbl_rec;
+          EXIT WHEN get_xmvc_tbl_cur3%NOTFOUND;
+          --
+          -- 変数初期化
+          lv_sales_forecast_qty := NULL;
+          lv_next_supply        := NULL;
+          lv_supply_instruction := NULL;
+          -- ===============================
+          -- 販売予測項目値決定 (A-9)
+          -- ===============================
+          determine_sales_forecast_val(
+              ov_errbuf             => lv_errbuf
+            , ov_retcode            => lv_retcode
+            , ov_errmsg             => lv_errmsg
+            , ov_sales_forecast_qty => lv_sales_forecast_qty
+            , ov_supply_instruction => lv_supply_instruction
+            , ov_next_supply        => lv_next_supply
+            , it_xmvc_tbl_rec       => get_xmvc_tbl_rec);
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_api_expt;
+          ELSIF (lv_retcode = cv_status_warn) THEN
+            -- 販売予測項目値決定（A-9）が警告終了の場合、警告数カウントアップ
+            gn_warn_cnt := gn_warn_cnt + 1;
+          END IF;
+--
+-- 2011/10/03 V1.6 ADD END   =======================================================================
         END IF;
         --
         lv_column_no          := TO_CHAR( get_xmvc_tbl_rec.column_no );                                -- コラムNo.
@@ -911,6 +1582,12 @@ AS
           cv_encloser || get_xmvc_tbl_rec.hot_cold  || cv_encloser || cv_delimiter ||  -- H/C
           cv_encloser || get_xmvc_tbl_rec.del_flag  || cv_encloser || cv_delimiter ||  -- 削除フラグ
           cv_encloser || lv_last_update_date        || cv_encloser                     -- 更新日時
+-- 2011/10/03 V1.6 ADD START =======================================================================
+                                                                   || cv_delimiter ||
+          cv_encloser || lv_sales_forecast_qty      || cv_encloser || cv_delimiter ||  -- 販売予測数
+          cv_encloser || lv_supply_instruction      || cv_encloser || cv_delimiter ||  -- 補充指示
+          cv_encloser || lv_next_supply             || cv_encloser                     -- 次回補充
+-- 2011/10/03 V1.6 ADD END   =======================================================================
         );
   --
         -- ===============================
@@ -931,6 +1608,9 @@ AS
     --
     CLOSE  get_xmvc_tbl_cur1;
     CLOSE  get_xmvc_tbl_cur2;
+-- 2011/10/03 V1.6 ADD START =======================================================================
+    CLOSE  get_xmvc_tbl_cur3;
+-- 2011/10/03 V1.6 ADD END   =======================================================================
     --
     -- ===============================
     -- 抽出0件チェック
@@ -973,9 +1653,17 @@ AS
       END IF;
       --
       IF (get_xmvc_tbl_cur2%ISOPEN) THEN
-        CLOSE get_xmvc_tbl_cur1;
+-- 2011/10/03 V1.6 MOD START =======================================================================
+--        CLOSE get_xmvc_tbl_cur1;
+        CLOSE get_xmvc_tbl_cur2;
+-- 2011/10/03 V1.6 MOD END   =======================================================================
       END IF;
 -- == 2009/09/14 V1.1 Added END   ===============================================================
+-- 2011/10/03 V1.6 ADD START =======================================================================
+      IF (get_xmvc_tbl_cur3%ISOPEN) THEN
+        CLOSE get_xmvc_tbl_cur3;
+      END IF;
+-- 2011/10/03 V1.6 ADD END   =======================================================================
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
 --
@@ -1343,6 +2031,10 @@ AS
       -- エラーの場合、成功件数の初期化とエラー件数のセット
       gn_normal_cnt := 0;
       gn_error_cnt  := 1;
+-- 2011/10/03 V1.6 ADD START =======================================================================
+      gn_target_cnt := 0;
+      gn_warn_cnt   := 0;
+-- 2011/10/03 V1.6 ADD END   =======================================================================
       --エラー出力
       FND_FILE.PUT_LINE(
           which  => FND_FILE.OUTPUT
