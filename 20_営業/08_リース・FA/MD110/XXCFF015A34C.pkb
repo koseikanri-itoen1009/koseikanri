@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF015A34C(body)
  * Description      : 自販機リース料予算作成
  * MD.050           : 自販機リース料予算作成 MD050_CFF_015_A34
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -38,7 +38,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2011/11/25    1.0   SCSK 中村健一    新規作成
  *  2014/09/29    1.1   SCSK 小路恭弘    E_本稼働_11719対応
- *  2014/10/08    1.2   SCSK 小路恭弘    E_本稼働_11719対応
+ *  2014/10/08    1.2   SCSK 小路恭弘    E_本稼働_11719対応 不具合対応
+ *  2014/10/17    1.3   SCSK 小路恭弘    E_本稼動_11719対応 不具合対応
  *
  *****************************************************************************************/
 --
@@ -4453,6 +4454,10 @@ AS
 --      AND  ( ( xvoh.customer_code   IS NULL )                                                              -- 顧客コードがNULL
 --        OR   ( xvoh.customer_code   =  gv_aff_cust_code ) )                                                -- 顧客コードがプロファイルと一致
 -- 2014/10/08 Ver.1.2 Y.Shouji DEL END
+-- 2014/10/17 Ver.1.3 Y.Shouji ADD START
+      AND  ( ( xvoh.customer_code   IS NULL )                                                              -- 顧客コードがNULL
+        OR   ( xvoh.customer_code   =  gv_aff_cust_code ) )                                                -- 顧客コードがプロファイルと一致
+-- 2014/10/17 Ver.1.3 Y.Shouji ADD END
       AND  ( ( g_lord_head_data_rec.lease_class  IS NULL )                                                 -- パラメータ<種別>がNULL
         OR   ( xvoh.lease_class       = g_lord_head_data_rec.lease_class ) )                               -- またはパラメータ<種別>と一致
 -- 2014/10/08 Ver.1.2 Y.Shouji MOD START
@@ -4594,6 +4599,10 @@ AS
       AND    ffvs.flex_value_set_name = cv_department                              -- 値セット名
       AND    ffv.flex_value_id        = ffvt.flex_value_id                         -- 値ID
       AND    ffvt.language            = ct_language                                -- 言語
+-- 2014/10/17 Ver.1.3 Y.Shouji ADD START
+      AND  ( ( xvohi.customer_code      IS NULL )                                  -- 顧客コードがNULL
+        OR   ( xvohi.customer_code      = gv_aff_cust_code ) )                     -- 顧客コードがプロファイルと一致
+-- 2014/10/17 Ver.1.3 Y.Shouji ADD END
 -- 2014/10/08 Ver.1.2 Y.Shouji MOD START
 --      AND  ( ( xvohi.customer_code      IS NULL )                                  -- 顧客コードがNULL
 --        OR   ( xvohi.customer_code      = gv_aff_cust_code ) )                     -- 顧客コードがプロファイルと一致
@@ -6249,8 +6258,12 @@ AS
                 ELSE
                   ld_vd_end_output_months := TO_DATE(TO_CHAR(g_lord_head_data_rec.output_year) || cv_join || TO_CHAR(g_vd_budget_bulk_tab(i).date_placed_in_service, cv_format_mm), cv_format_yyyymm);
                 END IF;
+-- 2014/10/17 Ver.1.3 Y.Shouji MOD START
                 -- 1 最終レコードではなく、②で取得した移動日が事業供用月以前の場合
-                IF  ( ( g_vd_his_move_tab(k).moved_date IS NOT NULL )
+                --IF  ( ( g_vd_his_move_tab(k).moved_date IS NOT NULL )
+                IF  ( ( k <> g_vd_his_move_tab.COUNT )
+                  AND ( g_vd_his_move_tab(k).moved_date IS NOT NULL )
+-- 2014/10/17 Ver.1.3 Y.Shouji MOD END
                   AND ( g_vd_his_move_tab(k).moved_date <= ld_vd_end_output_months ) ) THEN
                   -- 1.1 ②顧客移行日が②移動日以降かつ、事業供用月以前の場合
                   IF ( ( g_vd_his_move_tab(k).cust_shift_date IS NOT NULL )
