@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.34
+ * Version          : 1.35
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2008/12/30    1.32  Natsuki Yoshida  本番障害#705対応
  *  2009/01/05    1.33  Akiyoshi Shiina  本番障害#916対応
  *  2009/02/04    1.34 Yasuhisa Yamamoto 本番障害#1120対応
+ *  2009/02/05    1.35 Yasuhisa Yamamoto 本番障害#1120対応(追加対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -273,6 +274,10 @@ AS
   --相手先在庫受入フラグ
   gv_other_rcv_flag    CONSTANT VARCHAR2(1) := 'Y'; --受入
 -- 2008/12/29 v1.31 N.Yoshida add end
+-- 2009/02/05 Y.Yamamoto #1120 add start
+  --移動ステータス：入出庫報告有
+  gv_status_finish     CONSTANT VARCHAR2(2) := '06'; -- ステータス：入出庫報告有
+-- 2009/02/05 Y.Yamamoto #1120 add start
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -1535,6 +1540,9 @@ AS
            ,gmi_item_categories              gic2
            ,mtl_categories_b                 mcb2
           WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
+-- 2009/02/05 Y.Yamamoto #1120 add start
+          AND xmrih.status     = gv_status_finish                                  --ステータス：入出庫報告有
+-- 2009/02/05 Y.Yamamoto #1120 add end
           AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
           AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
           AND xmld.record_type_code = gv_rectype_out                               --レコードタイプ
@@ -1596,6 +1604,9 @@ AS
            ,gmi_item_categories              gic2
            ,mtl_categories_b                 mcb2
           WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
+-- 2009/02/05 Y.Yamamoto #1120 add start
+          AND xmrih.status     = gv_status_finish                                  --ステータス：入出庫報告有
+-- 2009/02/05 Y.Yamamoto #1120 add end
           AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
           AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
           AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
@@ -3383,6 +3394,9 @@ AS
            ,gmi_item_categories              gic2
            ,mtl_categories_b                 mcb2
           WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
+-- 2009/02/05 Y.Yamamoto #1120 add start
+          AND xmrih.status     = gv_status_finish                                  --ステータス：入出庫報告有
+-- 2009/02/05 Y.Yamamoto #1120 add end
           AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
           AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
           AND xmld.record_type_code = gv_rectype_out                               --レコードタイプ
@@ -3444,6 +3458,9 @@ AS
            ,gmi_item_categories              gic2
            ,mtl_categories_b                 mcb2
           WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
+-- 2009/02/05 Y.Yamamoto #1120 add start
+          AND xmrih.status     = gv_status_finish                                  --ステータス：入出庫報告有
+-- 2009/02/05 Y.Yamamoto #1120 add end
           AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
           AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
           AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
