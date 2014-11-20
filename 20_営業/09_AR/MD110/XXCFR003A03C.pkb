@@ -7,7 +7,7 @@ AS
  * Description      : 請求明細データ作成
  * MD.050           : MD050_CFR_003_A03_請求明細データ作成
  * MD.070           : MD050_CFR_003_A03_請求明細データ作成
- * Version          : 1.100
+ * Version          : 1.110
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2010/01/04    1.90 SCS 松尾 泰生    [障害本稼動00826] EDI請求売上返品区分NULLエラー対応
  *  2010/10/19    1.100 SCS 小山 伸男   [障害本稼動05091] 請求書の一部伝票金額が重複している件
  *                                                        ※販売実績明細との条件追加
+ *  2011/10/11    1.110 SCS 白川 篤史   [障害本稼動07906] EDIの流通BMS対応
  *
  *****************************************************************************************/
 --
@@ -1111,6 +1112,9 @@ AS
            inlv.delivery_chain_code          delivery_chain_code            -- 納品先チェーンコード
 -- Modify 2009.11.02 Ver1.6 End
 -- Modify 2009.09.29 Ver1.5 End
+-- 2011/10/11 A.Shirakawa Ver.1.110 ADD START
+          ,inlv.bms_header_data              bms_header_data                -- 流通ＢＭＳヘッダデータ
+-- 2011/10/11 A.Shirakawa Ver.1.110 ADD END
     FROM   (--請求明細データ(AR部門入力) 
             SELECT /*+ FIRST_ROWS
 -- Modify 2009.09.29 Ver1.5 Start
@@ -1220,6 +1224,9 @@ AS
                    xxca.delivery_chain_code                       delivery_chain_code     -- 納品先チェーンコード
 -- Modify 2009.11.02 Ver1.6 End
 -- Modify 2009.09.29 Ver1.5 End
+-- 2011/10/11 A.Shirakawa Ver.1.110 ADD START
+                  ,NULL                                           bms_header_data         -- 流通ＢＭＳヘッダデータ
+-- 2011/10/11 A.Shirakawa Ver.1.110 ADD END
             FROM   
                    xxcfr_invoice_headers         xih,               -- アドオン請求書ヘッダ
                    ra_customer_trx               rcta,              -- 取引テーブル
@@ -1384,6 +1391,9 @@ AS
                    xxca.delivery_chain_code                        delivery_chain_code      -- 納品先チェーンコード
 -- Modify 2009.11.02 Ver1.6 End
 -- Modify 2009.09.29 Ver1.5 End
+-- 2011/10/11 A.Shirakawa Ver.1.110 ADD START
+                  ,xedh.bms_header_data                            bms_header_data          -- 流通ＢＭＳヘッダデータ
+-- 2011/10/11 A.Shirakawa Ver.1.110 ADD END
             FROM   
                    xxcfr_invoice_headers         xih,            -- アドオン請求書ヘッダ
                    ra_customer_trx               rcta,           -- 取引テーブル
