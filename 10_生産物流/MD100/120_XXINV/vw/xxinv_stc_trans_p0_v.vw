@@ -870,6 +870,9 @@ AS
 -- 2008/12/01 Upd Y.Kawano End
   UNION ALL
   -- 有償出荷予定
+  ------------------------------------------------------------------------
+  -- 商品振替有償
+  ------------------------------------------------------------------------
 -- 2008/12/07 N.Yoshida start
 --  SELECT iwm_out_om2.attribute1                        AS ownership_code
   SELECT NULL                                          AS po_trans_id
@@ -986,6 +989,9 @@ AS
   AND    xvsa_out_om2.start_date_active               <= TRUNC(SYSDATE)
   AND    xvsa_out_om2.end_date_active                 >= TRUNC(SYSDATE)
   UNION ALL
+  ------------------------------------------------------------------------
+  -- 振替有償
+  ------------------------------------------------------------------------
 -- 2008/12/07 N.Yoshida start
 --  SELECT iwm_out_om2.attribute1                        AS ownership_code
   SELECT NULL                                          AS po_trans_id
@@ -1058,7 +1064,11 @@ AS
           AND    xrpm_out_om2.doc_type                 = 'OMSO'
           AND    xrpm_out_om2.use_div_invent           = 'Y'
           AND    xrpm_out_om2.shipment_provision_div   = '2'       -- 支給依頼
-          AND    xrpm_out_om2.item_div_origin          = '5'
+-- 2009/04/01 本番#1364 ADD START
+--          AND    xrpm_out_om2.item_div_origin          = '5'
+          AND    xrpm_out_om2.item_div_origin         <> '5'
+          AND    xrpm_out_om2.item_div_ahead           = '5'
+-- 2009/04/01 本番#1364 ADD END
           AND    xrpm_out_om2.prod_div_origin         IS NULL
           AND    xrpm_out_om2.prod_div_ahead          IS NULL
          ) xrpm
@@ -1097,6 +1107,9 @@ AS
 --  AND    xrpm.item_div_ahead                           = DECODE(mcb_out_om2.segment1,'5','5','Dummy')
   AND    xrpm.item_div_ahead                           = mcb_out_om2.segment1
 -- 2008/10/24 Y.Yamamoto v1.1 update end
+-- 2009/04/01 本番#1364 ADD START
+  AND    mcb_out_om2.segment1                         IN ('1','2','4')
+-- 2009/04/01 本番#1364 ADD END
   AND   (xrpm.ship_prov_rcv_pay_category               = otta_out_om2.attribute11
   OR     xrpm.ship_prov_rcv_pay_category              IS NULL)
   AND    xvsa_out_om2.vendor_site_id                   = xoha_out_om2.vendor_site_id
@@ -1104,6 +1117,9 @@ AS
   AND    xvsa_out_om2.end_date_active                 >= TRUNC(SYSDATE)
 -- 2008/10/24 Y.Yamamoto v1.1 add start
   UNION ALL
+  ------------------------------------------------------------------------
+  -- 有償
+  ------------------------------------------------------------------------
 -- 2008/12/07 N.Yoshida start
 --  SELECT iwm_out_om2.attribute1                        AS ownership_code
   SELECT NULL                                          AS po_trans_id
@@ -2924,6 +2940,9 @@ AS
 -- 2008/12/01 Upd Y.Kawano End
   UNION ALL
   -- 有償出荷実績
+  ------------------------------------------------------------------------
+  -- 商品振替有償
+  ------------------------------------------------------------------------
 -- 2008/12/07 N.Yoshida start
 --  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
   SELECT NULL                                          AS po_trans_id
@@ -3038,6 +3057,9 @@ AS
   AND    xvsa_out_om2_e.start_date_active             <= TRUNC(SYSDATE)
   AND    xvsa_out_om2_e.end_date_active               >= TRUNC(SYSDATE)
   UNION ALL
+  ------------------------------------------------------------------------
+  -- 商品振替有償_返品
+  ------------------------------------------------------------------------
 -- 2008/12/07 N.Yoshida start
 --  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
   SELECT NULL                                          AS po_trans_id
@@ -3153,6 +3175,9 @@ AS
   AND    xvsa_out_om2_e.start_date_active             <= TRUNC(SYSDATE)
   AND    xvsa_out_om2_e.end_date_active               >= TRUNC(SYSDATE)
   UNION ALL
+  ------------------------------------------------------------------------
+  -- 振替有償
+  ------------------------------------------------------------------------
 -- 2008/12/07 N.Yoshida start
 --  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
   SELECT NULL                                          AS po_trans_id
@@ -3225,7 +3250,12 @@ AS
           AND    flv_out_om2_e.lookup_code                      = xrpm_out_om2_e.new_div_invent
           AND    xrpm_out_om2_e.doc_type                        = 'OMSO'
           AND    xrpm_out_om2_e.use_div_invent                  = 'Y'
-          AND    xrpm_out_om2_e.item_div_origin                 = '5'
+-- 2009/04/01 本番#1364 UPDATE START
+--          AND    xrpm_out_om2_e.item_div_origin                 = '5'
+          AND    xrpm_out_om2_e.shipment_provision_div          = '2'       -- 支給依頼
+          AND    xrpm_out_om2_e.item_div_origin                <> '5'
+          AND    xrpm_out_om2_e.item_div_ahead                  = '5'
+-- 2009/04/01 本番#1364 UPDATE END
           AND    xrpm_out_om2_e.prod_div_origin                IS NULL
           AND    xrpm_out_om2_e.prod_div_ahead                 IS NULL
          ) xrpm
@@ -3257,6 +3287,9 @@ AS
   AND    gic2_out_om2_e.item_id                        = iimb2_out_om2_e.item_id
   AND    gic2_out_om2_e.category_id                    = mcb2_out_om2_e.category_id
   AND    gic2_out_om2_e.category_set_id                = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+-- 2009/04/01 本番#1364 ADD START
+  AND    mcb_out_om2_e.segment1                       IN ('1','2','4')
+-- 2009/04/01 本番#1364 ADD END
   AND   (xrpm.ship_prov_rcv_pay_category               = otta_out_om2_e.attribute11 
       OR xrpm.ship_prov_rcv_pay_category              IS NULL)
   AND    xrpm.item_div_origin                          = DECODE(mcb2_out_om2_e.segment1,'5','5','Dummy')
@@ -3268,6 +3301,9 @@ AS
   AND    xvsa_out_om2_e.start_date_active             <= TRUNC(SYSDATE)
   AND    xvsa_out_om2_e.end_date_active               >= TRUNC(SYSDATE)
   UNION ALL
+  ------------------------------------------------------------------------
+  -- 振替有償_返品
+  ------------------------------------------------------------------------
 -- 2008/12/07 N.Yoshida start
 --  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
   SELECT NULL                                          AS po_trans_id
@@ -3341,7 +3377,12 @@ AS
           AND    xrpm_out_om2_e.doc_type                        = 'PORC'
           AND    xrpm_out_om2_e.source_document_code            = 'RMA'
           AND    xrpm_out_om2_e.use_div_invent                  = 'Y'
-          AND    xrpm_out_om2_e.item_div_origin                 = '5'
+-- 2009/04/01 本番#1364 UPDATE START
+--          AND    xrpm_out_om2_e.item_div_origin                 = '5'
+          AND    xrpm_out_om2_e.shipment_provision_div          = '2'       -- 支給依頼
+          AND    xrpm_out_om2_e.item_div_origin                <> '5'
+          AND    xrpm_out_om2_e.item_div_ahead                  = '5'
+-- 2009/04/01 本番#1364 UPDATE END
           AND    xrpm_out_om2_e.prod_div_origin                IS NULL
           AND    xrpm_out_om2_e.prod_div_ahead                 IS NULL
          ) xrpm
@@ -3373,6 +3414,9 @@ AS
   AND    gic2_out_om2_e.item_id                        = iimb2_out_om2_e.item_id
   AND    gic2_out_om2_e.category_id                    = mcb2_out_om2_e.category_id
   AND    gic2_out_om2_e.category_set_id                = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+-- 2009/04/01 本番#1364 ADD START
+  AND    mcb_out_om2_e.segment1                       IN ('1','2','4')
+-- 2009/04/01 本番#1364 ADD END
   AND   (xrpm.ship_prov_rcv_pay_category               = otta_out_om2_e.attribute11 
       OR xrpm.ship_prov_rcv_pay_category              IS NULL)
   AND    xrpm.item_div_origin                          = DECODE(mcb2_out_om2_e.segment1,'5','5','Dummy')
@@ -3385,6 +3429,9 @@ AS
   AND    xvsa_out_om2_e.end_date_active               >= TRUNC(SYSDATE)
 -- 2008/10/24 Y.Yamamoto v1.1 add start
   UNION ALL
+  ------------------------------------------------------------------------
+  -- 有償
+  ------------------------------------------------------------------------
 -- 2008/12/07 N.Yoshida start
 --  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
   SELECT NULL                                          AS po_trans_id
@@ -3490,6 +3537,9 @@ AS
   AND    xvsa_out_om2_e.start_date_active             <= TRUNC(SYSDATE)
   AND    xvsa_out_om2_e.end_date_active               >= TRUNC(SYSDATE)
   UNION ALL
+  ------------------------------------------------------------------------
+  -- 有償_返品
+  ------------------------------------------------------------------------
 -- 2008/12/07 N.Yoshida start
 --  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
   SELECT NULL                                          AS po_trans_id
