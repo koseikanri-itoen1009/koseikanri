@@ -1,6 +1,10 @@
 CREATE OR REPLACE VIEW APPS.XXSKY_販売計画_基本_V
 (
  需要予測日
+-- 2009/05/19 T.Yoshimoto Add Start 本番#1487
+,世代
+,年度
+-- 2009/05/19 T.Yoshimoto Add End 本番#1487
 ,予測セットコード
 ,商品区分
 ,商品区分名
@@ -33,6 +37,10 @@ CREATE OR REPLACE VIEW APPS.XXSKY_販売計画_基本_V
 AS
 SELECT
         MFD.forecast_date                   --需要予測日
+-- 2009/05/19 T.Yoshimoto Add Start 本番#1487
+       ,MFD.attribute5_sedai                --世代
+       ,MFD.attribute6_nendo                --年度
+-- 2009/05/19 T.Yoshimoto Add End 本番#1487
        ,MFD.forecast_set                    --予測セットコード
        ,XPCV.prod_class_code                --商品区分
        ,XPCV.prod_class_name                --商品区分名
@@ -66,6 +74,10 @@ SELECT
 FROM
        (SELECT
             MFDT.forecast_date                  --需要予測日
+-- 2009/05/19 T.Yoshimoto Add Start 本番#1487
+           ,MFDS.attribute5 AS attribute5_sedai --世代
+           ,MFDS.attribute6 AS attribute6_nendo --年度
+-- 2009/05/19 T.Yoshimoto Add End 本番#1487
            ,MFDT.inventory_item_id              --商品ID
            ,MFDS.forecast_set                   --予測セットコード
            ,MFDS.attribute2 AS attribute2_shut  --出庫元倉庫コード
