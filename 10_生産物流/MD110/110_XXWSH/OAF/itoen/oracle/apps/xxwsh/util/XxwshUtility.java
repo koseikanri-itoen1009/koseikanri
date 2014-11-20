@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxwshUtility
 * 概要説明   : 出荷・引当/配車共通関数
-* バージョン : 1.0
-*=======================================================================getXxwshOrderHeadersAllLock=====
+* バージョン : 1.1
+*============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-27 1.0  伊藤ひとみ   新規作成
+* 2008-06-27 1.1  伊藤ひとみ   結合不具合TE080_400#157
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.util;
@@ -28,7 +29,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出荷・引当/配車共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxwshUtility 
@@ -5439,4 +5440,225 @@ public class XxwshUtility
       }
     }
   } // getMoveHeaderUpdateDate
+
+// 2008-06-27 H.Itou ADD Start
+ /*****************************************************************************
+   * 受注ヘッダアドオンが自分自身のコンカレント起動により更新されたかどうかチェックするメソッドです。
+   * @param trans            - トランザクション
+   * @param orderHeaderId    - 受注ヘッダアドオンID
+   * @param concName         - コンカレント名
+   * @return boolean  - true:自分が起動したコンカレントより更新されている
+   *                   - false:自分が起動したコンカレントより更新されていない
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static boolean isOrderHdrUpdForOwnConc(
+    OADBTransaction trans,
+    Number orderHeaderId,
+    String concName
+  ) throws OAException
+  {
+    String apiName     = "isOrderHdrUpdForOwnConc";
+
+    // PL/SQLの作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("BEGIN                                                                       ");
+    sb.append("  SELECT TO_CHAR(COUNT(1))                                                  ");
+    sb.append("  INTO   :1                                                                 "); // 1:件数
+    sb.append("  FROM   xxwsh_order_headers_all xoha                                       "); // 受注ヘッダアドオン
+    sb.append("  WHERE  xoha.order_header_id  = :2                                         "); // 2:受注ヘッダアドオンID
+    sb.append("  AND    xoha.last_updated_by  = FND_GLOBAL.USER_ID                         "); // ユーザーID
+    sb.append("  AND    xoha.last_update_date = xoha.program_update_date                   "); // 最終更新日とプログラム更新日が同じ
+    sb.append("  AND    EXISTS (                                                           "); // 指定したコンカレントで更新されたレコード
+    sb.append("           SELECT 1                                                         ");
+    sb.append("           FROM   fnd_concurrent_programs     fcp                           "); // コンカレントプログラムテーブル
+    sb.append("           WHERE  fcp.concurrent_program_name = :3                          "); // 3:コンカレント名
+    sb.append("           AND    fcp.concurrent_program_id   = xoha.program_id             "); // コンカレントプログラムID
+    sb.append("           AND    fcp.application_id          = xoha.program_application_id "); // アプリケーションID
+    sb.append("           )                                                                ");
+    sb.append("  AND    ROWNUM = 1;                                                        ");
+    sb.append("END;                                                                        ");
+
+    //PL/SQLの設定を行います
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+  
+    try
+    { 
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1, Types.VARCHAR);
+      
+      // パラメータ設定(INパラメータ)
+      cstmt.setInt(2, XxcmnUtility.intValue(orderHeaderId)); // 受注ヘッダアドオンID
+      cstmt.setString(3, concName);                          // コンカレント名
+      
+      // PL/SQL実行
+      cstmt.execute();
+
+      // OUTパラメータ取得
+      String cnt = cstmt.getString(1);  // 戻り値
+
+      // 0件の場合、自分が起動したコンカレントより更新されていないので、falseを返す。
+      if (XxcmnConstants.STRING_ZERO.equals(cnt))
+      {
+        return false;
+
+      // 1件の場合、自分が起動したコンカレントより更新されているので、trueを返す。
+      } else
+      {
+        return true;
+      }
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+        // ロールバック
+        XxwshUtility.rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+          s.toString(),
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        XxwshUtility.rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+          s.toString(),
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // isOrderHdrUpdForOwnConc
+
+ /*****************************************************************************
+   * 受注明細アドオンが自分自身のコンカレント起動により更新されたかどうかチェックするメソッドです。
+   * @param trans            - トランザクション
+   * @param orderHeaderId    - 受注ヘッダアドオンID
+   * @param concName         - コンカレント名
+   * @return boolean  - true:自分が起動したコンカレントより更新されている
+   *                   - false:自分が起動したコンカレントより更新されていない
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static boolean isOrderLineUpdForOwnConc(
+    OADBTransaction trans,
+    Number orderHeaderId,
+    String concName
+  ) throws OAException
+  {
+    String apiName     = "isOrderLineUpdForOwnConc";
+
+    // PL/SQLの作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("BEGIN                                                                       ");
+    sb.append("  SELECT TO_CHAR(COUNT(1))                                                  ");
+    sb.append("  INTO   :1                                                                 "); // 1:件数
+    sb.append("  FROM   xxwsh_order_lines_all  xola                                        "); // 受注明細アドオン
+    sb.append("  WHERE  xola.order_header_id  = :2                                         "); // 2:受注ヘッダアドオンID
+    sb.append("  AND    xola.last_updated_by  = FND_GLOBAL.USER_ID                         "); // ユーザーID
+    sb.append("  AND    xola.last_update_date = xola.program_update_date                   "); // 最終更新日とプログラム更新日が同じ
+    sb.append("  AND    EXISTS (                                                           "); // 指定したコンカレントで更新されたレコード
+    sb.append("           SELECT 1                                                         ");
+    sb.append("           FROM   fnd_concurrent_programs     fcp                           "); // コンカレントプログラムテーブル
+    sb.append("           WHERE  fcp.concurrent_program_name = :3                          "); // 3:コンカレント名
+    sb.append("           AND    fcp.concurrent_program_id   = xola.program_id             "); // コンカレントプログラムID
+    sb.append("           AND    fcp.application_id          = xola.program_application_id "); // アプリケーションID
+    sb.append("           )                                                                ");
+    sb.append("  AND    xola.last_update_date IN (                                         "); // 同一ヘッダID中、最大最終更新日を持つレコード
+    sb.append("           SELECT MAX(xola1.last_update_date)                               ");
+    sb.append("           FROM   xxwsh_order_lines_all  xola1                              ");
+    sb.append("           WHERE  xola1.order_header_id = :4                                ");
+    sb.append("           GROUP BY xola1.order_header_id                                   ");
+    sb.append("           )                                                                ");
+    sb.append("  AND    ROWNUM = 1;                                                        ");
+    sb.append("END;                                                                        ");
+
+    //PL/SQLの設定を行います
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+  
+    try
+    { 
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1, Types.VARCHAR);
+      
+      // パラメータ設定(INパラメータ)
+      cstmt.setInt(2, XxcmnUtility.intValue(orderHeaderId)); // 受注ヘッダアドオンID
+      cstmt.setString(3, concName);                          // コンカレント名
+      cstmt.setInt(4, XxcmnUtility.intValue(orderHeaderId)); // 受注ヘッダアドオンID
+      
+      // PL/SQL実行
+      cstmt.execute();
+
+      // OUTパラメータ取得
+      String cnt = cstmt.getString(1);  // 戻り値
+
+      // 0件の場合、自分が起動したコンカレントより更新されていないので、falseを返す。
+      if (XxcmnConstants.STRING_ZERO.equals(cnt))
+      {
+        return false;
+
+      // 1件の場合、自分が起動したコンカレントより更新されているので、trueを返す。
+      } else
+      {
+        return true;
+      }
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+        // ロールバック
+        XxwshUtility.rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+          s.toString(),
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        XxwshUtility.rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+          s.toString(),
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // isOrderLineUpdForOwnConc
+// 2008-06-27 H.Itou ADD End
 }

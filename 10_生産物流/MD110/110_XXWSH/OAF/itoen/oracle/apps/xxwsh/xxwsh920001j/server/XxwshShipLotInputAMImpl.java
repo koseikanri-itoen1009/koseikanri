@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshShipLotInputAMImpl
 * 概要説明   : 入出荷実績ロット入力画面アプリケーションモジュール
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2008-06-13 1.2  伊藤ひとみ   出荷実績計上済でもヘッダに紐付く出荷実績数量が
 *                              すべて登録済出荷実績数量に登録がない場合は
 *                              受注複写処理を行わない。
+* 2008-06-27 1.3  伊藤ひとみ   結合不具合TE080_400#157
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920001j.server;
@@ -37,7 +38,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 入出荷実績ロット入力画面アプリケーションモジュールです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.2
+ * @version 1.3
  ***************************************************************************
  */
 public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -1658,6 +1659,7 @@ public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl
                 orderLineId,           // 受注明細アドオンID
                 documentTypeCode,      // 文書タイプ
                 recordTypeCode);       // レコードタイプ
+
     // ロックエラーの場合
     if (XxcmnConstants.RETURN_ERR1.equals(retCode))
     {
@@ -1672,12 +1674,21 @@ public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl
     // ロック時に取得した最終更新日と比較
     if (!headerUpdateDateDb.equals(headerUpdateDate))
     {
-      // ロールバック
-      XxwshUtility.rollBack(getOADBTransaction());
-      // 排他エラーメッセージ出力
-      throw new OAException(
-        XxcmnConstants.APPL_XXCMN, 
-        XxcmnConstants.XXCMN10147);
+// 2008-06-27 H.Itou Mod Start
+      // 自分自身のコンカレント起動により更新された場合は排他エラーとしない
+      if (!XxwshUtility.isOrderHdrUpdForOwnConc(
+             getOADBTransaction(),
+             orderHeaderId,
+             XxwshConstants.CONC_NAME_XXWSH420001C))
+      {
+        // ロールバック
+        XxwshUtility.rollBack(getOADBTransaction());
+        // 排他エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10147);        
+      }
+// 2008-06-27 H.Itou Mod End
     }
 
     // ******************************** //
@@ -1686,12 +1697,21 @@ public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl
     // ロック時に取得した最終更新日と比較
     if (!lineUpdateDateDb.equals(lineUpdateDate))
     {
-      // ロールバック
-      XxwshUtility.rollBack(getOADBTransaction());
-      // 排他エラーメッセージ出力
-      throw new OAException(
-        XxcmnConstants.APPL_XXCMN, 
-        XxcmnConstants.XXCMN10147);
+// 2008-06-27 H.Itou Mod Start
+      // 自分自身のコンカレント起動により更新された場合は排他エラーとしない
+      if (!XxwshUtility.isOrderLineUpdForOwnConc(
+             getOADBTransaction(),
+             orderHeaderId,
+             XxwshConstants.CONC_NAME_XXWSH420001C))
+      {
+        // ロールバック
+        XxwshUtility.rollBack(getOADBTransaction());
+        // 排他エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10147);       
+      }
+// 2008-06-27 H.Itou Mod End
     }    
   }
 
