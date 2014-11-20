@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A15C(body)
  * Description      : 保管場所転送取引データOIF更新(基準在庫)
  * MD.050           : 保管場所転送取引データOIF更新(基準在庫) MD050_COI_003_A15
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------------  ----------------------------------------------------------
@@ -29,6 +29,8 @@ AS
  * ------------- ----- ---------------- --------------------------------------------------
  *  2009/01/14    1.0   SCS H.Wada       main新規作成
  *  2009/02/19    1.1   SCS H.Wada       障害番号 #015
+ *  2009/04/06    1.2   SCS T.Nakamura   障害番号 T1_0004
+ *                                         VDコラムマスタの更新処理の修正
  *
  *****************************************************************************************/
 --
@@ -978,7 +980,13 @@ AS
         SET    xmvc.item_id                = hht_inv_tran_rec.item_id                                              -- 1.品目ID
               ,xmvc.inventory_quantity     = (gr_mst_vd_column_rec.inv_qnt + hht_inv_tran_rec.total_qnt)           -- 2.基準在庫数
               ,xmvc.price                  = hht_inv_tran_rec.unit_price                                           -- 3.単価
-              ,xmvc.hot_cold               = hht_inv_tran_rec.hot_cold_div                                         -- 4.H/C
+-- == 2009/04/06 V1.2 Moded START ===============================================================
+--              ,xmvc.hot_cold               = hht_inv_tran_rec.hot_cold_div                                         -- 4.H/C
+              ,xmvc.hot_cold               = DECODE( gr_mst_vd_column_rec.hot_cold
+                                               ,gr_mst_vd_column_rec.lm_hot_cold
+                                               ,hht_inv_tran_rec.hot_cold_div
+                                               ,gr_mst_vd_column_rec.hot_cold )                                    -- 4.H/C
+-- == 2009/04/06 V1.2 Moded END   ===============================================================
               ,xmvc.last_month_item_id     = hht_inv_tran_rec.item_id                                              -- 5.前月末品目ID
               ,xmvc.last_month_inventory_quantity = (gr_mst_vd_column_rec.lm_inv_qnt + hht_inv_tran_rec.total_qnt) -- 6.前月末基準在庫数
               ,xmvc.last_month_price       = hht_inv_tran_rec.unit_price                                           -- 7.前月末単価
@@ -1012,7 +1020,13 @@ AS
         -- 当月及び前月の単価、H/Cを更新
         UPDATE xxcoi_mst_vd_column xmvc
         SET    xmvc.price                  = NVL(hht_inv_tran_rec.unit_price, gr_mst_vd_column_rec.price)          -- 1.単価
-              ,xmvc.hot_cold               = NVL(hht_inv_tran_rec.hot_cold_div, gr_mst_vd_column_rec.hot_cold)     -- 2.H/C
+-- == 2009/04/06 V1.2 Moded START ===============================================================
+--              ,xmvc.hot_cold               = NVL(hht_inv_tran_rec.hot_cold_div, gr_mst_vd_column_rec.hot_cold)     -- 2.H/C
+              ,xmvc.hot_cold               = DECODE( gr_mst_vd_column_rec.hot_cold
+                                               ,gr_mst_vd_column_rec.lm_hot_cold
+                                               ,NVL(hht_inv_tran_rec.hot_cold_div, gr_mst_vd_column_rec.hot_cold)
+                                               ,gr_mst_vd_column_rec.hot_cold )                                    -- 2.H/C
+-- == 2009/04/06 V1.2 Moded END   ===============================================================
               ,xmvc.last_month_price       = NVL(hht_inv_tran_rec.unit_price, gr_mst_vd_column_rec.lm_price)       -- 3.前月末単価
               ,xmvc.last_month_hot_cold    = NVL(hht_inv_tran_rec.hot_cold_div, gr_mst_vd_column_rec.lm_hot_cold)  -- 4.前月末H/C
               ,xmvc.last_updated_by        = cn_last_updated_by                              --  5.最終更新者
