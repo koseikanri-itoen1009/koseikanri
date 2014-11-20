@@ -13,7 +13,7 @@ AS
  *                    自販機販売手数料を振り込むためのFBデータを作成します。
  *
  * MD.050           : FBデータファイル作成（FBデータ作成） MD050_COK_016_A02
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2009/07/02    1.5   K.Yamaguchi      [障害0000291対応]パフォーマンス障害対応
  *  2009/08/03    1.6   M.Hiruta         [障害0000843対応]振込元口座情報の取得条件の取得条件を修正
  *  2009/12/16    1.7   S.Moriyama       [E_本稼動_xxxxx対応]振手相手負担時に振込額から振手を減額して出力するように修正
+ *  2009/12/16    1.8   S.Moriyama       [E_本稼動_xxxxx対応]FBトレーラレコードに設定している出力件数を対象件数から出力件数へ修正
  *
  *****************************************************************************************/
 --
@@ -1484,7 +1485,10 @@ AS
     END IF;
 --
     lv_data_type := cv_data_type;                                -- データ区分
-    lv_total_cnt := LPAD( gn_target_cnt, 6, cv_zero );           -- 合計件数
+-- 2009/12/16 Ver.1.8 [E_本稼動_xxxxx] SCS S.Moriyama UPD START
+--    lv_total_cnt := LPAD( gn_target_cnt, 6, cv_zero );           -- 合計件数
+    lv_total_cnt := LPAD( gn_out_cnt, 6, cv_zero );           -- 合計件数
+-- 2009/12/16 Ver.1.8 [E_本稼動_xxxxx] SCS S.Moriyama UPD END
     lv_dummy     := LPAD( cv_space, 101, cv_space );             -- ダミー
 --
     ov_fb_trailer_data := lv_data_type ||            -- データ区分
