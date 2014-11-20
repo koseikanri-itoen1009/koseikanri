@@ -39,6 +39,7 @@ AS
  *  2009/11/02    1.60 SCS 廣瀬 真佐人  [共通課題IE603] EDI用に出力項目を追加(納品先チェーンコード)
  *  2009/11/16    1.70 SCS 廣瀬 真佐人  [共通課題IE678] パフォーマンス対応
  *  2009/12/02    1.80 SCS 松尾 泰生    [障害本稼動00404] 本振顧客でのデータ取得エラー対応
+ *  2010/01/04    1.90 SCS 松尾 泰生    [障害本稼動00826] EDI請求売上返品区分NULLエラー対応
  *
  *****************************************************************************************/
 --
@@ -269,6 +270,9 @@ AS
   cv_medium_class_edi   CONSTANT VARCHAR2(2)  := '00';          -- 媒体区分:EDI
   cv_medium_class_mnl   CONSTANT VARCHAR2(2)  := '01';          -- 媒体区分:手入力
 -- Modify 2009.09.29 Ver1.5 End
+-- Modify 2010.01.04 Ver1.9 Start
+  cv_sold_return_type_ar  CONSTANT VARCHAR2(1)  := '1';         -- 売上返品区分(AR部門入力用)
+-- Modify 2010.01.04 Ver1.9 End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1155,7 +1159,10 @@ AS
                    NULL                                           classify_type,          -- 分類区分
                    NULL                                           customer_dept_code,     -- お客様部門コード
                    NULL                                           customer_division_code, -- お客様課コード
-                   NULL                                           sold_return_type,       -- 売上返品区分
+-- Modify 2010.01.04 Ver1.9 Start
+--                   NULL                                           sold_return_type,       -- 売上返品区分
+                   cv_sold_return_type_ar                         sold_return_type,       -- 売上返品区分
+-- Modify 2010.01.04 Ver1.9 End
                    NULL                                           nichiriu_by_way_type,   -- ニチリウ経由区分
                    NULL                                           sale_type,              -- 特売区分
                    NULL                                           direct_num,             -- 便No
