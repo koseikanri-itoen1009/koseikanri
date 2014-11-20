@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcok_common_pkg(body)
  * Description      : 個別開発領域・共通関数
  * MD.070           : MD070_IPO_COK_共通関数
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * --------------------------   ------------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2009/03/23    1.8   K.YAMAGUCHI      [障害T1_0074] 見積書の顧客コードから問屋管理コードを導出し、
  *                                                     問屋販売条件請求書の問屋管理コードで検索を行う
  *  2009/04/09    1.9   K.YAMAGUCHI      [障害T1_0341] 請求先顧客取得 抽出条件変更
+ *  2009/04/13    1.10  K.YAMAGUCHI      [障害T1_0411] 問屋請求書見積照合 抽出条件変更
  *
  *****************************************************************************************/
   -- ==============================
@@ -897,10 +898,16 @@ AS
         AND      csoqh_sale.account_number                   = iv_sales_outlets_code
                  -- Disc品目マスタ．品目コード               = 入力パラメータ．品目コード
         AND      msi_b.segment1                              = iv_item_code
+-- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR START
+--                 -- 販売先用見積明細．期間（開始）           <= 入力パラメータ．売上対象年月
+--        AND      csoql_sale.quote_start_date                 <= TO_DATE( iv_selling_month , 'YYYY/MM' )
+--                 -- 販売先用見積明細．期間（終了）           >= 入力パラメータ．売上対象年月
+--        AND      csoql_sale.quote_end_date                   >= TO_DATE( iv_selling_month , 'YYYY/MM' )
                  -- 販売先用見積明細．期間（開始）           <= 入力パラメータ．売上対象年月
-        AND      csoql_sale.quote_start_date                 <= TO_DATE( iv_selling_month , 'YYYY/MM' )
+        AND      TO_CHAR( csoql_sale.quote_start_date, 'YYYYMM' ) <= iv_selling_month
                  -- 販売先用見積明細．期間（終了）           >= 入力パラメータ．売上対象年月
-        AND      csoql_sale.quote_end_date                   >= TO_DATE( iv_selling_month , 'YYYY/MM' )
+        AND      TO_CHAR( csoql_sale.quote_end_date  , 'YYYYMM' ) >= iv_selling_month
+-- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR END
 -- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR START
 --                 -- 帳合問屋用見積ヘッダー．顧客コード       = 入力パラメータ．帳合問屋コード
 --        AND      csoqh_wholesale.account_number              = iv_wholesale_code
@@ -911,10 +918,16 @@ AS
 -- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR END
                  -- 帳合問屋用見積ヘッダー．単価区分         = 入力パラメータ．請求単位
         AND      csoqh_wholesale.unit_type                   = iv_demand_unit_type
+-- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR START
+--                 -- 帳合問屋用見積明細．期間（開始）         <= 入力パラメータ．売上対象年月
+--        AND      csoql_wholesale.quote_start_date            <= TO_DATE( iv_selling_month , 'YYYY/MM' )
+--                 -- 帳合問屋用見積明細．期間（終了）         >= 入力パラメータ．売上対象年月
+--        AND      csoql_wholesale.quote_end_date              >= TO_DATE( iv_selling_month , 'YYYY/MM' )
                  -- 帳合問屋用見積明細．期間（開始）         <= 入力パラメータ．売上対象年月
-        AND      csoql_wholesale.quote_start_date            <= TO_DATE( iv_selling_month , 'YYYY/MM' )
+        AND      TO_CHAR( csoql_wholesale.quote_start_date, 'YYYYMM' ) <= iv_selling_month
                  -- 帳合問屋用見積明細．期間（終了）         >= 入力パラメータ．売上対象年月
-        AND      csoql_wholesale.quote_end_date              >= TO_DATE( iv_selling_month , 'YYYY/MM' )
+        AND      TO_CHAR( csoql_wholesale.quote_end_date  , 'YYYYMM' ) >= iv_selling_month
+-- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR END
                  -- 組織パラメータ．組織コード               = FND_PROFILE．VALUE('XXCOK1_ORG_CODE_SALES')
         AND      mp.organization_code                        = FND_PROFILE.VALUE( cv_organization_cd )
 -- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR START
@@ -1203,10 +1216,16 @@ AS
         AND      csoqh_sale.account_number                 = iv_sales_outlets_code
                  -- Disc品目マスタ．品目コード             = 入力パラメータ．品目コード
         AND      msi_b.segment1                            = iv_item_code
-                 -- 販売先用見積明細．期間（開始）        <= 入力パラメータ．売上対象年月
-        AND      csoql_sale.quote_start_date              <= TO_DATE (iv_selling_month , 'YYYY/MM' )
-                 -- 販売先用見積明細．期間（終了）        >= 入力パラメータ．売上対象年月
-        AND      csoql_sale.quote_end_date                >= TO_DATE (iv_selling_month , 'YYYY/MM' )
+-- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR START
+--                 -- 販売先用見積明細．期間（開始）        <= 入力パラメータ．売上対象年月
+--        AND      csoql_sale.quote_start_date              <= TO_DATE (iv_selling_month , 'YYYY/MM' )
+--                 -- 販売先用見積明細．期間（終了）        >= 入力パラメータ．売上対象年月
+--        AND      csoql_sale.quote_end_date                >= TO_DATE (iv_selling_month , 'YYYY/MM' )
+                 -- 販売先用見積明細．期間（開始）           <= 入力パラメータ．売上対象年月
+        AND      TO_CHAR( csoql_sale.quote_start_date, 'YYYYMM' ) <= iv_selling_month
+                 -- 販売先用見積明細．期間（終了）           >= 入力パラメータ．売上対象年月
+        AND      TO_CHAR( csoql_sale.quote_end_date  , 'YYYYMM' ) >= iv_selling_month
+-- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR END
 -- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR START
 --                 -- 帳合問屋用見積ヘッダー．顧客コード     = 入力パラメータ．帳合問屋コード
 --        AND      csoqh_wholesale.account_number            = iv_wholesale_code
@@ -1217,10 +1236,16 @@ AS
 -- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR END
                  -- 帳合問屋用見積ヘッダー．単価区分      <> 入力パラメータ．請求単位
         AND      csoqh_wholesale.unit_type                <> iv_demand_unit_type
-                 -- 帳合問屋用見積明細．期間（開始）      <= 入力パラメータ．売上対象年月
-        AND      csoql_wholesale.quote_start_date         <= TO_DATE ( iv_selling_month , 'YYYY/MM' )
-                 -- 帳合問屋用見積明細．期間（終了）      >= 入力パラメータ．売上対象年月
-        AND      csoql_wholesale.quote_end_date           >= TO_DATE (iv_selling_month , 'YYYY/MM' )
+-- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR START
+--                 -- 帳合問屋用見積明細．期間（開始）      <= 入力パラメータ．売上対象年月
+--        AND      csoql_wholesale.quote_start_date         <= TO_DATE ( iv_selling_month , 'YYYY/MM' )
+--                 -- 帳合問屋用見積明細．期間（終了）      >= 入力パラメータ．売上対象年月
+--        AND      csoql_wholesale.quote_end_date           >= TO_DATE (iv_selling_month , 'YYYY/MM' )
+                 -- 帳合問屋用見積明細．期間（開始）         <= 入力パラメータ．売上対象年月
+        AND      TO_CHAR( csoql_wholesale.quote_start_date, 'YYYYMM' ) <= iv_selling_month
+                 -- 帳合問屋用見積明細．期間（終了）         >= 入力パラメータ．売上対象年月
+        AND      TO_CHAR( csoql_wholesale.quote_end_date  , 'YYYYMM' ) >= iv_selling_month
+-- 2009/04/13 Ver.1.10 [障害T1_0411] SCS K.Yamaguchi REPAIR END
                  -- 組織パラメータ．組織コード             = FND_PROFILE．VALUE('XXCOK1_ORG_CODE_SALES')
         AND      mp.organization_code                      = FND_PROFILE.VALUE( cv_organization_cd )
 -- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR START
