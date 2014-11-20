@@ -8,7 +8,7 @@ AS
  * Description      : 計画・移動・在庫：在庫(帳票)
  * MD.050/070       : T_MD050_BPO_550_在庫(帳票)Issue1.0 (T_MD050_BPO_550)
  *                  : 振替明細表                         (T_MD070_BPO_55C)
- * Version          : 1.18
+ * Version          : 1.19
  * Program List
  * ---------------------------    ----------------------------------------------------------
  *  Name                           Description
@@ -54,6 +54,7 @@ AS
  *  2009/01/15    1.16 Natsuki Yoshida  I_S_50対応(帳票タイトル対応)、本番#972対応
  *  2009/01/16    1.17 Takao Ohashi     I_S_50対応(予実区分値修正)
  *  2009/01/20    1.18 Akiyoshi Shiina  本番#263対応
+ *  2009/03/06    1.19 H.Itou           本番#1283対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1201,7 +1202,7 @@ AS
     -- ------------------------------------------------------------------------------
     -- メインSQL
     -- ------------------------------------------------------------------------------
-    -- SQL本体
+    -- SQL本体 UNION ALLの上のSQLはいらない可能性あり(工順<>70 かつ 工順＝70の条件があるので)
     lv_sql_body := lv_sql_body || ' SELECT /*+ leading(gbh itp xrpm iimb ximb gic mcb mct) use_nl(gbh itp xrpm iimb ximb gic mcb mct) */' ;
     lv_sql_body := lv_sql_body || '  gbh.batch_id                AS batch_id' ;
     lv_sql_body := lv_sql_body || ' ,xlv.location_code           AS dept_code' ;
@@ -1211,7 +1212,10 @@ AS
     lv_sql_body := lv_sql_body || ' ,mcb.segment1                AS item_div_type' ;
     lv_sql_body := lv_sql_body || ' ,mct.description             AS item_div_value' ;
     lv_sql_body := lv_sql_body || ' ,gbh.batch_no                AS entry_no' ;
-    lv_sql_body := lv_sql_body || ' ,gbh.actual_cmplt_date       AS entry_date' ;
+-- 2009/03/06 H.Itou Add Start 本番障害#1283 予定なので、予定日を出力
+--    lv_sql_body := lv_sql_body || ' ,gbh.actual_cmplt_date       AS entry_date' ;
+    lv_sql_body := lv_sql_body || ' ,gbh.plan_cmplt_date       AS entry_date' ;
+-- 2009/03/06 H.Itou Add End
     lv_sql_body := lv_sql_body || ' ,xrpm.new_div_invent         AS pay_reason_code' ;
     lv_sql_body := lv_sql_body || ' ,flv.meaning                 AS pay_reason_name' ;
     lv_sql_body := lv_sql_body || ' ,flv2.attribute1             AS pay_purpose_name' ;
@@ -1468,7 +1472,10 @@ AS
     lv_sql_body := lv_sql_body || ' ,mcb.segment1                AS item_div_type' ;
     lv_sql_body := lv_sql_body || ' ,mct.description             AS item_div_value' ;
     lv_sql_body := lv_sql_body || ' ,gbh.batch_no                AS entry_no' ;
-    lv_sql_body := lv_sql_body || ' ,gbh.actual_cmplt_date       AS entry_date' ;
+-- 2009/03/06 H.Itou Add Start 本番障害#1283 予定なので、予定日を出力
+--    lv_sql_body := lv_sql_body || ' ,gbh.actual_cmplt_date       AS entry_date' ;
+    lv_sql_body := lv_sql_body || ' ,gbh.plan_cmplt_date       AS entry_date' ;
+-- 2009/03/06 H.Itou Add End
     lv_sql_body := lv_sql_body || ' ,xrpm.new_div_invent         AS pay_reason_code' ;
     lv_sql_body := lv_sql_body || ' ,flv.meaning                 AS pay_reason_name' ;
     lv_sql_body := lv_sql_body || ' ,flv2.attribute1             AS pay_purpose_name' ;
