@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A06R(body)
  * Description      : 帳合問屋に関する請求書と見積書を突き合わせ、品目別に請求書と見積書の内容を表示
  * MD.050           : 問屋販売条件支払チェック表 MD050_COK_021_A06
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,10 @@ AS
  *  2009/09/01    1.5   S.Moriyama       [障害0001230] OPM品目マスタ取得条件追加
  *  2009/12/01    1.6   S.Moriyama       [E_本稼動_00229] 支払金額=補填+問屋マージン+拡売費を満たさない場合
  *                                                        問屋マージンで金額調整を行うように修正（端数調整）
+ *  2009/12/18    1.7   S.Moriyama       [E_本稼動_00539] 横計調整を勘定科目支払時は行わないように修正
+ *                                                        勘定科目支払時に以下の設定を実施
+ *                                                        補助科目:05103は問屋マージン
+ *                                                        補助科目:05132は拡売費、その他はその他科目へ設定
  *
  *****************************************************************************************/
   -- ===============================================
@@ -94,6 +98,12 @@ AS
   -- プロファイル
   cv_prof_org_code_sales     CONSTANT VARCHAR2(25)  := 'XXCOK1_ORG_CODE_SALES';     -- 在庫組織コード_営業組織
   cv_prof_org_id             CONSTANT VARCHAR2(25)  := 'ORG_ID';                    -- 営業単位ID
+-- 2009/12/18 Ver.1.7 [E_本稼動_00543] SCS S.Moriyama ADD START
+  cv_prof_aff3_fee           CONSTANT VARCHAR2(25)  := 'XXCOK1_AFF3_SELL_FEE';      -- 勘定科目_販売手数料（問屋）
+  cv_prof_aff3_support       CONSTANT VARCHAR2(25)  := 'XXCOK1_AFF3_SELL_SUPPORT';  -- 勘定科目_販売協賛金（問屋）
+  cv_prof_aff4_fee           CONSTANT VARCHAR2(25)  := 'XXCOK1_AFF4_SELL_FEE';      -- 補助科目_問屋条件
+  cv_prof_aff4_support       CONSTANT VARCHAR2(25)  := 'XXCOK1_AFF4_SELL_SUPPORT';  -- 補助科目_拡売費
+-- 2009/12/18 Ver.1.7 [E_本稼動_00543] SCS S.Moriyama ADD END
   -- フォーマット
   cv_format_fxyyyy_mm_dd     CONSTANT VARCHAR2(12)  := 'FXYYYY/MM/DD';
   cv_format_fxyyyy_mm        CONSTANT VARCHAR2(9)   := 'FXYYYY/MM';
@@ -141,6 +151,12 @@ AS
   gn_once_store_deliver_amt    NUMBER        DEFAULT NULL;  -- 今回店納
   gn_net_selling_price         NUMBER        DEFAULT NULL;  -- NET価格
   gv_estimated_type            VARCHAR2(1)   DEFAULT NULL;  -- 見積区分
+-- 2009/12/18 Ver.1.7 [E_本稼動_00543] SCS S.Moriyama ADD START
+  gv_aff3_fee                  VARCHAR2(50);                -- プロファイル値(販売手数料（問屋）)
+  gv_aff3_support              VARCHAR2(50);                -- プロファイル値(販売協賛金（問屋）)
+  gv_aff4_fee                  VARCHAR2(50);                -- プロファイル値(問屋条件)
+  gv_aff4_support              VARCHAR2(50);                -- プロファイル値(拡売費)
+-- 2009/12/18 Ver.1.7 [E_本稼動_00543] SCS S.Moriyama ADD END
   -- ===============================================
   -- グローバルカーソル
   -- ===============================================
@@ -323,8 +339,8 @@ AS
     -- 問屋販売条件支払チェック帳票ワークテーブルデータ削除
     -- ===============================================
     BEGIN
-      DELETE FROM xxcok_rep_wholesale_pay  xrwp
-      WHERE  xrwp.request_id = cn_request_id;
+--      DELETE FROM xxcok_rep_wholesale_pay  xrwp
+--      WHERE  xrwp.request_id = cn_request_id;
       -- ===============================================
       -- 成功件数取得
       -- ===============================================
@@ -639,52 +655,114 @@ AS
 ----      END IF;
 --      ln_expansion_sales_amt := NVL( in_sales_support_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
 ---- End   2009/04/16 Ver_1.4 T1_0414 M.Hiruta
-      -- ===============================================
-      -- 補填(((実)建値-通常店納)*支払数量)
-      -- 以下の場合補填は0
-      -- (実)建値-通常店納が0より小さい場合
-      -- A-3.販売手数料がNULLの場合
-      -- A-3.販売手数料が0以下の場合
-      -- ===============================================
-      IF ( ( ln_market_amt - NVL( gn_normal_store_deliver_amt, 0 ) < cn_number_0 )
-        OR ( ( in_backmargin_amt IS NULL ) OR ( in_backmargin_amt <= cn_number_0 ) ) )
-      THEN
-        ln_coverage_amt := cn_number_0;
-      ELSE
-        ln_coverage_amt := ROUND(( ln_market_amt - NVL( gn_normal_store_deliver_amt, 0) ) * NVL( g_target_tab( in_i ).payment_qty, 0 ));
-      END IF;
-      -- ===============================================
-      -- 問屋マージン
-      -- A-3.販売手数料が0より大きい場合 A-3.販売手数料 × 支払数量 － 補填
-      -- 上記以外                        A-3.販売手数料 × 支払数量
-      -- ===============================================
-      IF ( in_backmargin_amt > cn_number_0 ) THEN
-        ln_wholesale_margin_sum := ROUND(NVL( in_backmargin_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 ) - ln_coverage_amt);
-      ELSE
-        ln_wholesale_margin_sum := ROUND(NVL( in_backmargin_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 ));
-      END IF;
-      -- ===============================================
-      -- 拡売費
-      -- A-3.販売協賛金 × 支払数量
-      -- ===============================================
-      ln_expansion_sales_amt := ROUND(NVL( in_sales_support_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 ));
-      -- ===============================================
-      -- 端数処理
-      -- 支払金額=補填+問屋マージン+拡売費を満たさない場合
-      -- 問屋マージンにて金額調整を行う
-      -- ===============================================
-      ln_fraction_amount := ROUND(ln_coverage_amt + ln_wholesale_margin_sum + ln_expansion_sales_amt);
+-- 2009/12/18 Ver.1.7 [E_本稼動_00543] SCS S.Moriyama UPD START
+--      -- ===============================================
+--      -- 補填(((実)建値-通常店納)*支払数量)
+--      -- 以下の場合補填は0
+--      -- (実)建値-通常店納が0より小さい場合
+--      -- A-3.販売手数料がNULLの場合
+--      -- A-3.販売手数料が0以下の場合
+--      -- ===============================================
+--      IF ( ( ln_market_amt - NVL( gn_normal_store_deliver_amt, 0 ) < cn_number_0 )
+--        OR ( ( in_backmargin_amt IS NULL ) OR ( in_backmargin_amt <= cn_number_0 ) ) )
+--      THEN
+--        ln_coverage_amt := cn_number_0;
+--      ELSE
+--        ln_coverage_amt := ROUND(( ln_market_amt - NVL( gn_normal_store_deliver_amt, 0) ) * NVL( g_target_tab( in_i ).payment_qty, 0 ));
+--      END IF;
+--      -- ===============================================
+--      -- 問屋マージン
+--      -- A-3.販売手数料が0より大きい場合 A-3.販売手数料 × 支払数量 － 補填
+--      -- 上記以外                        A-3.販売手数料 × 支払数量
+--      -- ===============================================
+--      IF ( in_backmargin_amt > cn_number_0 ) THEN
+--        ln_wholesale_margin_sum := ROUND(NVL( in_backmargin_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 ) - ln_coverage_amt);
+--      ELSE
+--        ln_wholesale_margin_sum := ROUND(NVL( in_backmargin_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 ));
+--      END IF;
+--      -- ===============================================
+--      -- 拡売費
+--      -- A-3.販売協賛金 × 支払数量
+--      -- ===============================================
+--      ln_expansion_sales_amt := ROUND(NVL( in_sales_support_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 ));
+--      -- ===============================================
+--      -- 端数処理
+--      -- 支払金額=補填+問屋マージン+拡売費を満たさない場合
+--      -- 問屋マージンにて金額調整を行う
+--      -- ===============================================
+--      ln_fraction_amount := ROUND(ln_coverage_amt + ln_wholesale_margin_sum + ln_expansion_sales_amt);
+----
+--      IF ( NVL(ln_payment_amt,g_target_tab( in_i ).demand_amt) != ln_fraction_amount ) THEN
+--        ln_wholesale_margin_sum := ln_wholesale_margin_sum + ( NVL(ln_payment_amt,g_target_tab( in_i ).demand_amt) - ln_fraction_amount );
+--      END IF;
+---- 2009/12/01 Ver.1.6 [E_本稼動_00229] SCS S.Moriyama UPD END
+--      -- ===============================================
+--      -- その他科目(支払金額) 勘定科目に値がある場合のみ
+--      -- ===============================================
+--      IF ( g_target_tab( in_i ).acct_code IS NOT NULL ) THEN
+--        ln_misc_acct_amt := NVL( g_target_tab( in_i ).payment_amt, 0 );
+--      END IF;
 --
-      IF ( NVL(ln_payment_amt,g_target_tab( in_i ).demand_amt) != ln_fraction_amount ) THEN
-        ln_wholesale_margin_sum := ln_wholesale_margin_sum + ( NVL(ln_payment_amt,g_target_tab( in_i ).demand_amt) - ln_fraction_amount );
+--
+      IF ( g_target_tab( in_i ).acct_code IS NULL ) THEN
+        -- ===============================================
+        -- 横計調整を含め補填・マージン・拡売費は勘定科目支払以外の未実施
+        -- 補填(((実)建値-通常店納)*支払数量)
+        -- 以下の場合補填は0
+        -- (実)建値-通常店納が0より小さい場合
+        -- A-3.販売手数料がNULLの場合
+        -- A-3.販売手数料が0以下の場合
+        -- ===============================================
+        IF ( ( ln_market_amt - NVL( gn_normal_store_deliver_amt, 0 ) < cn_number_0 )
+          OR ( ( in_backmargin_amt IS NULL ) OR ( in_backmargin_amt <= cn_number_0 ) ) )
+        THEN
+          ln_coverage_amt := cn_number_0;
+        ELSE
+          ln_coverage_amt := ROUND(( ln_market_amt - NVL( gn_normal_store_deliver_amt, 0) ) * NVL( g_target_tab( in_i ).payment_qty, 0 ));
+        END IF;
+        -- ===============================================
+        -- 問屋マージン
+        -- A-3.販売手数料が0より大きい場合 A-3.販売手数料 × 支払数量 － 補填
+        -- 上記以外                        A-3.販売手数料 × 支払数量
+        -- ===============================================
+        IF ( in_backmargin_amt > cn_number_0 ) THEN
+          ln_wholesale_margin_sum := ROUND(NVL( in_backmargin_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 ) - ln_coverage_amt);
+        ELSE
+          ln_wholesale_margin_sum := ROUND(NVL( in_backmargin_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 ));
+        END IF;
+        -- ===============================================
+        -- 拡売費
+        -- A-3.販売協賛金 × 支払数量
+        -- ===============================================
+        ln_expansion_sales_amt := ROUND(NVL( in_sales_support_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 ));
+        -- ===============================================
+        -- 端数処理
+        -- 支払金額=補填+問屋マージン+拡売費を満たさない場合
+        -- 問屋マージンにて金額調整を行う
+        -- ===============================================
+        ln_fraction_amount := ROUND(ln_coverage_amt + ln_wholesale_margin_sum + ln_expansion_sales_amt);
+--
+        IF ( NVL(ln_payment_amt,g_target_tab( in_i ).demand_amt) != ln_fraction_amount ) THEN
+          ln_wholesale_margin_sum := ln_wholesale_margin_sum + ( NVL(ln_payment_amt,g_target_tab( in_i ).demand_amt) - ln_fraction_amount );
+        END IF;
+      ELSE
+        -- ===============================================
+        -- 勘定科目支払時
+        -- 83110-05103⇒問屋マージンへ設定
+        -- 83111-05132⇒拡売費へ設定
+        -- 上記以外⇒その他科目へ設定
+        -- ===============================================
+        IF ( g_target_tab( in_i ).acct_code = gv_aff3_fee
+             AND g_target_tab( in_i ).sub_acct_code = gv_aff4_fee ) THEN
+          ln_wholesale_margin_sum := NVL( g_target_tab( in_i ).payment_amt, 0 );
+        ELSIF (g_target_tab( in_i ).acct_code = gv_aff3_support
+             AND g_target_tab( in_i ).sub_acct_code = gv_aff4_support ) THEN
+          ln_expansion_sales_amt := NVL( g_target_tab( in_i ).payment_amt, 0 );
+        ELSE
+          ln_misc_acct_amt := NVL( g_target_tab( in_i ).payment_amt, 0 );
+        END IF;
       END IF;
--- 2009/12/01 Ver.1.6 [E_本稼動_00229] SCS S.Moriyama UPD END
-      -- ===============================================
-      -- その他科目(支払金額) 勘定科目に値がある場合のみ
-      -- ===============================================
-      IF ( g_target_tab( in_i ).acct_code IS NOT NULL ) THEN
-        ln_misc_acct_amt := NVL( g_target_tab( in_i ).payment_amt, 0 );
-      END IF;
+-- 2009/12/18 Ver.1.7 [E_本稼動_00543] SCS S.Moriyama UPD END
       -- ===============================================
       -- 売上対象年月(YYYY/MM)データ変換
       -- ===============================================
@@ -1238,6 +1316,80 @@ AS
                     );
       RAISE init_fail_expt;
     END IF;
+-- 2009/12/18 Ver.1.7 [E_本稼動_00543] SCS S.Moriyama ADD START
+    -- ===============================================
+    -- プロファイル取得(販売手数料（問屋）)
+    -- ===============================================
+    gv_aff3_fee := FND_PROFILE.VALUE( cv_prof_aff3_fee );
+    IF ( gv_aff3_fee IS NULL ) THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_short_name
+                    , iv_name         => cv_msg_code_00003
+                    , iv_token_name1  => cv_token_profile
+                    , iv_token_value1 => cv_prof_aff3_fee
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.LOG
+                    , iv_message  => lv_errmsg
+                    , in_new_line => cn_number_0
+                    );
+      RAISE init_fail_expt;
+    END IF;
+    -- ===============================================
+    -- プロファイル取得(販売協賛金（問屋）)
+    -- ===============================================
+    gv_aff3_support := FND_PROFILE.VALUE( cv_prof_aff3_support );
+    IF ( gv_aff3_support IS NULL ) THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_short_name
+                    , iv_name         => cv_msg_code_00003
+                    , iv_token_name1  => cv_token_profile
+                    , iv_token_value1 => cv_prof_aff3_support
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.LOG
+                    , iv_message  => lv_errmsg
+                    , in_new_line => cn_number_0
+                    );
+      RAISE init_fail_expt;
+    END IF;
+    -- ===============================================
+    -- プロファイル取得(問屋条件)
+    -- ===============================================
+    gv_aff4_fee := FND_PROFILE.VALUE( cv_prof_aff4_fee );
+    IF ( gv_aff4_fee IS NULL ) THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_short_name
+                    , iv_name         => cv_msg_code_00003
+                    , iv_token_name1  => cv_token_profile
+                    , iv_token_value1 => cv_prof_aff4_fee
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.LOG
+                    , iv_message  => lv_errmsg
+                    , in_new_line => cn_number_0
+                    );
+      RAISE init_fail_expt;
+    END IF;
+    -- ===============================================
+    -- プロファイル取得(拡売費)
+    -- ===============================================
+    gv_aff4_support := FND_PROFILE.VALUE( cv_prof_aff4_support );
+    IF ( gv_aff4_support IS NULL ) THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_short_name
+                    , iv_name         => cv_msg_code_00003
+                    , iv_token_name1  => cv_token_profile
+                    , iv_token_value1 => cv_prof_aff4_support
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.LOG
+                    , iv_message  => lv_errmsg
+                    , in_new_line => cn_number_0
+                    );
+      RAISE init_fail_expt;
+    END IF;
+-- 2009/12/18 Ver.1.7 [E_本稼動_00543] SCS S.Moriyama ADD END
     -- ===============================================
     -- 在庫組織ID取得
     -- ===============================================
