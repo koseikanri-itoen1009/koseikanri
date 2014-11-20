@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_CSO_014_A06_HHT-EBSインターフェース：
  *                    (OUT)営業員管理ファイル
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,8 @@ AS
  *  2009-06-03    1.5   K.Satomura        T1_1304対応
  *  2009-06-09    1.6   K.Satomura        T1_1304対応(再修正)
  *  2009-10-19    1.7   K.Kubo            T4_00046対応
+ *  2009-11-23    1.8   T.Maruyama        E_本番_00331対応（当月売上実績を営業成績表と同様
+ *                                        成績計上者ベースとする）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -714,6 +716,10 @@ AS
     cv_table_name_xrcv     CONSTANT VARCHAR2(100) := '営業員担当顧客ビュー';     -- 営業員担当顧客ビュー名
     cv_table_name_xseh     CONSTANT VARCHAR2(100) := '販売実績ヘッダテーブル';   -- 販売実績ヘッダテーブル名
     cv_table_name_jtb      CONSTANT VARCHAR2(100) := 'タスクテーブル';           -- タスクテーブル
+    /* 2009.11.23 T.Maruyama E_本番_00331対応 START */
+    ct_prof_electric_fee_item_cd
+    CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_ELECTRIC_FEE_ITEM_CODE';
+    /* 2009.11.23 T.Maruyama E_本番_00331対応 END */    
     -- *** ローカル変数 ***
 --
     lt_pure_amount_sum     xxcos_sales_exp_headers.pure_amount_sum%TYPE;     -- 販売実績金額
@@ -741,22 +747,41 @@ AS
     lt_pure_amount_sum     := 0;                                -- 販売実績金額 
     lt_prsn_total_cnt      := 0;                                -- 当月訪問実績
     lt_resource_id         := io_prsncd_data_rec.resource_id;   -- リソースID
-    lt_process_back_date   := gd_process_date - 1;              -- 業務処理日前日
-    ld_process_date_next01 := TO_DATE(TO_CHAR(gd_process_date_next, 'YYYYMM') || '01', 'YYYY/MM/DD'); 
+    /* 2009.11.23 T.Maruyama E_本番_00331対応 START */    
+--    lt_process_back_date   := gd_process_date - 1;              -- 業務処理日前日
+--    ld_process_date_next01 := TO_DATE(TO_CHAR(gd_process_date_next, 'YYYYMM') || '01', 'YYYY/MM/DD'); 
+    lt_process_back_date   := gd_process_date;                  -- 業務処理日（当日分まで）
+    ld_process_date_next01 := TO_DATE(TO_CHAR(gd_process_date_next, 'YYYYMM') || '01', 'YYYYMMDD'); 
+    /* 2009.11.23 T.Maruyama E_本番_00331対応 END */    
     ln__closed_id          := TO_NUMBER(gv_closed_id);
 --
     -- 販売売り上げビュー、顧客マスタビューから販売実績金額を抽出する
     BEGIN
-      SELECT  ROUND(SUM(sfpv.pure_amount)/1000) pure_amount_sum  -- 販売実績金額(千円単位に取得)
-        INTO  lt_pure_amount_sum                                 -- 販売実績金額
-        FROM  xxcso_sales_for_sls_prsn_v sfpv                    -- 営業員用売上実績ビュー
-             ,xxcso_resource_custs_v xrcv                        -- 営業員担当顧客ビュー
-       WHERE  sfpv.account_number   = xrcv.account_number
-         AND  xrcv.employee_number  = l_prsncd_data_rec.employee_number
-         AND  gd_process_date_next BETWEEN TRUNC(xrcv.start_date_active) 
-                AND TRUNC(NVL(xrcv.end_date_active,gd_process_date_next))
-         AND  TRUNC(sfpv.delivery_date) BETWEEN ld_process_date_next01
-                AND lt_process_back_date;
+      /* 2009.11.23 T.Maruyama E_本番_00331対応 START */
+--      SELECT  ROUND(SUM(sfpv.pure_amount)/1000) pure_amount_sum  -- 販売実績金額(千円単位に取得)
+--        INTO  lt_pure_amount_sum                                 -- 販売実績金額
+--        FROM  xxcso_sales_for_sls_prsn_v sfpv                    -- 営業員用売上実績ビュー
+--             ,xxcso_resource_custs_v xrcv                        -- 営業員担当顧客ビュー
+--       WHERE  sfpv.account_number   = xrcv.account_number
+--         AND  xrcv.employee_number  = l_prsncd_data_rec.employee_number
+--         AND  gd_process_date_next BETWEEN TRUNC(xrcv.start_date_active) 
+--                AND TRUNC(NVL(xrcv.end_date_active,gd_process_date_next))
+--         AND  TRUNC(sfpv.delivery_date) BETWEEN ld_process_date_next01
+--                AND lt_process_back_date;
+
+        --販売実績テーブルの成績計上者が当該営業員のデータを抽出する。
+        SELECT ROUND(sum(sael.pure_amount) /1000) pure_amount_sum  -- 販売実績金額(千円単位に取得)
+        INTO   lt_pure_amount_sum
+        FROM  xxcos_sales_exp_headers       saeh,
+              xxcos_sales_exp_lines         sael
+        WHERE sael.sales_exp_header_id      =       saeh.sales_exp_header_id
+        AND   sael.item_code                <>      FND_PROFILE.VALUE( ct_prof_electric_fee_item_cd ) --売上に含まない
+        AND   saeh.sales_base_code       = l_prsncd_data_rec.base_code       --拠点CD
+        AND   saeh.results_employee_code = l_prsncd_data_rec.employee_number --成績計上者：従業員CD
+        AND   saeh.delivery_date BETWEEN ld_process_date_next01
+                                     AND lt_process_back_date
+        ;
+      /* 2009.11.23 T.Maruyama E_本番_00331対応 END */
 --
       --INレコードに格納
       IF (lt_pure_amount_sum IS NULL) THEN
