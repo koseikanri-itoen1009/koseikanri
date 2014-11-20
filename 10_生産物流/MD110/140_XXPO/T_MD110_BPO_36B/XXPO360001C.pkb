@@ -7,7 +7,7 @@ AS
  * Description      : 発注書
  * MD.050/070       : 仕入（帳票）Issue1.0(T_MD050_BPO_360)
  *                    仕入（帳票）Issue1.0(T_MD070_BPO_36B)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2008/10/21    1.9   T.Ohashi         指摘382対応
  *  2008/11/20    1.10  T.Ohashi         指摘664対応
  *  2009/03/30    1.11  A.Shiina         本番#1346対応
+ *  2009/04/01    1.12  T.Yoshimoto      本番#1363対応
  *
  *****************************************************************************************/
 --
@@ -830,6 +831,11 @@ AS
     -- 支給/出荷の絞込み条件
     lv_where := lv_where
              || ' AND poh.attribute7 = xps.party_site_number(+)'
+-- 2009/04/01 v1.12 T.Yoshimoto Add Start 本番#1363
+             || ' AND   xps.party_site_status     = ''A'''
+             || ' AND   xps.cust_acct_site_status = ''A'''
+             || ' AND   xps.cust_site_uses_status = ''A'''
+-- 2009/04/01 v1.12 T.Yoshimoto Add End 本番#1363
              || ' AND FND_DATE.STRING_TO_DATE(''' || ir_param.delivery_date_from || ''','''
                                                   || gc_char_d_format  || ''')'
              || '     BETWEEN xps.start_date_active(+) AND xps.end_date_active(+)'
