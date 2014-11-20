@@ -7,7 +7,7 @@ AS
  * Description      : 移動入出庫実績登録
  * MD.050           : 移動入出庫実績登録(T_MD050_BPO_570)
  * MD.070           : 移動入出庫実績登録(T_MD070_BPO_57A)
- * Version          : 1.11
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,7 +40,9 @@ AS
  *  2008/12/11    1.8   Naoki Fukuda     本番障害#441
  *  2008/12/11    1.9   Takao Ohashi     本番障害#672
  *  2008/12/11    1.10  Yuko  Kawano     本番障害#633(移動実績訂正不具合対応)
- *  2008/12/12    1.11  Yuko  Kawano     本番障害#633(移動実績訂正不具合対応)
+ *  2008/12/13    1.11  Yuko  Kawano     本番障害#633(移動実績訂正不具合対応)
+ *  2008/12/16    1.12  Yuko  Kawano     本番障害#633(移動実績訂正不具合対応)
+ *  2008/12/17    1.13  Yuko  Kawano     本番障害(移動実績訂正前数量の更新不具合対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5826,7 +5828,10 @@ AS
         WHERE mov_hdr_id        = move_data_rec_tbl(gn_rec_idx).mov_hdr_id;
         -- 訂正前実績数量更新(出庫)
         UPDATE XXINV_MOV_LOT_DETAILS
-        SET    before_actual_quantity = move_data_rec_tbl(gn_rec_idx).shipped_quantity
+--2008/12/17 Y.Kawano Upd Start
+--        SET    before_actual_quantity = move_data_rec_tbl(gn_rec_idx).shipped_quantity
+        SET    before_actual_quantity = move_data_rec_tbl(gn_rec_idx).lot_out_actual_quantity
+--2008/12/17 Y.Kawano Upd End
 --2008/12/13 Y.Kawano Add Start
               ,last_updated_by        = gn_user_id
               ,last_update_date       = gd_sysdate
@@ -5840,7 +5845,10 @@ AS
 --
         -- 訂正前実績数量更新(入庫)
         UPDATE XXINV_MOV_LOT_DETAILS
-        SET    before_actual_quantity = move_data_rec_tbl(gn_rec_idx).ship_to_quantity
+--2008/12/17 Y.Kawano Upd Start
+--        SET    before_actual_quantity = move_data_rec_tbl(gn_rec_idx).ship_to_quantity
+        SET    before_actual_quantity = move_data_rec_tbl(gn_rec_idx).lot_in_actual_quantity
+--2008/12/17 Y.Kawano Upd End
 --2008/12/13 Y.Kawano Add Start
               ,last_updated_by        = gn_user_id
               ,last_update_date       = gd_sysdate
