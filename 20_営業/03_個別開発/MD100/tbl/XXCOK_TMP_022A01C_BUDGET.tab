@@ -1,0 +1,115 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOK_TMP_022A01C_UPLOAD
+ * Description : îÃéËîÃã¶ó\éZÉAÉbÉvÉçÅ[ÉhópàÍéûï\
+ * Version     : 1.2
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2010/xx/xx    1.0   S.Arizumi        êVãKçÏê¨
+ *
+ **************************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE XXCOK.XXCOK_TMP_022A01C_UPLOAD (
+     ROW_NUM                        NUMBER        NOT NULL
+    ,COMPANY_CODE                   VARCHAR2(3)   NOT NULL
+    ,BUDGET_YEAR                    VARCHAR2(4)   NOT NULL
+    ,BASE_CODE                      VARCHAR2(4)   NOT NULL
+    ,CORP_CODE                      VARCHAR2(6)   NOT NULL
+    ,SALES_OUTLETS_CODE             VARCHAR2(9)   NOT NULL
+    ,ACCT_CODE                      VARCHAR2(5)   NOT NULL
+    ,SUB_ACCT_CODE                  VARCHAR2(5)   NOT NULL
+    ,TARGET_MONTH_01                VARCHAR2(6)   NOT NULL
+    ,BUDGET_AMT_01                  NUMBER        NOT NULL
+    ,TARGET_MONTH_02                VARCHAR2(6)   NOT NULL
+    ,BUDGET_AMT_02                  NUMBER        NOT NULL
+    ,TARGET_MONTH_03                VARCHAR2(6)   NOT NULL
+    ,BUDGET_AMT_03                  NUMBER        NOT NULL
+    ,TARGET_MONTH_04                VARCHAR2(6)   NOT NULL
+    ,BUDGET_AMT_04                  NUMBER        NOT NULL
+    ,TARGET_MONTH_05                VARCHAR2(6)   NOT NULL
+    ,BUDGET_AMT_05                  NUMBER        NOT NULL
+    ,TARGET_MONTH_06                VARCHAR2(6)   NOT NULL
+    ,BUDGET_AMT_06                  NUMBER        NOT NULL
+    ,TARGET_MONTH_07                VARCHAR2(6)   NOT NULL
+    ,BUDGET_AMT_07                  NUMBER        NOT NULL
+    ,TARGET_MONTH_08                VARCHAR2(6)   NOT NULL
+    ,BUDGET_AMT_08                  NUMBER        NOT NULL
+    ,TARGET_MONTH_09                VARCHAR2(6)   NOT NULL
+    ,BUDGET_AMT_09                  NUMBER        NOT NULL
+    ,TARGET_MONTH_10                VARCHAR2(6)   NOT NULL
+    ,BUDGET_AMT_10                  NUMBER        NOT NULL
+    ,TARGET_MONTH_11                VARCHAR2(6)   NOT NULL
+    ,BUDGET_AMT_11                  NUMBER        NOT NULL
+    ,TARGET_MONTH_12                VARCHAR2(6)   NOT NULL
+    ,BUDGET_AMT_12                  NUMBER        NOT NULL
+)
+/
+COMMENT ON TABLE XXCOK.XXCOK_TMP_022A01C_UPLOAD IS 'îÃéËîÃã¶ó\éZÉAÉbÉvÉçÅ[ÉhèÓïÒàÍéûï\'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.ROW_NUM                         IS 'çsî‘çÜ'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.COMPANY_CODE                    IS 'âÔé–ÉRÅ[Éh'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.BUDGET_YEAR                     IS 'ó\éZîNìx'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.BASE_CODE                       IS 'ãíì_ÉRÅ[Éh'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.CORP_CODE                       IS 'äÈã∆ÉRÅ[Éh'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.SALES_OUTLETS_CODE              IS 'ñ‚âÆí†çáêÊÉRÅ[Éh'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.ACCT_CODE                       IS 'ä®íËâ»ñ⁄ÉRÅ[Éh'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.SUB_ACCT_CODE                   IS 'ï‚èïâ»ñ⁄ÉRÅ[Éh'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.TARGET_MONTH_01                 IS 'ëŒè€åéìx_01'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.BUDGET_AMT_01                   IS 'ó\éZã‡äz_01'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.TARGET_MONTH_02                 IS 'ëŒè€åéìx_02'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.BUDGET_AMT_02                   IS 'ó\éZã‡äz_02'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.TARGET_MONTH_03                 IS 'ëŒè€åéìx_03'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.BUDGET_AMT_03                   IS 'ó\éZã‡äz_03'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.TARGET_MONTH_04                 IS 'ëŒè€åéìx_04'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.BUDGET_AMT_04                   IS 'ó\éZã‡äz_04'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.TARGET_MONTH_05                 IS 'ëŒè€åéìx_05'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.BUDGET_AMT_05                   IS 'ó\éZã‡äz_05'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.TARGET_MONTH_06                 IS 'ëŒè€åéìx_06'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.BUDGET_AMT_06                   IS 'ó\éZã‡äz_06'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.TARGET_MONTH_07                 IS 'ëŒè€åéìx_07'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.BUDGET_AMT_07                   IS 'ó\éZã‡äz_07'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.TARGET_MONTH_08                 IS 'ëŒè€åéìx_08'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.BUDGET_AMT_08                   IS 'ó\éZã‡äz_08'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.TARGET_MONTH_09                 IS 'ëŒè€åéìx_09'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.BUDGET_AMT_09                   IS 'ó\éZã‡äz_09'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.TARGET_MONTH_10                 IS 'ëŒè€åéìx_10'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.BUDGET_AMT_10                   IS 'ó\éZã‡äz_10'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.TARGET_MONTH_11                 IS 'ëŒè€åéìx_11'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.BUDGET_AMT_11                   IS 'ó\éZã‡äz_11'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.TARGET_MONTH_12                 IS 'ëŒè€åéìx_12'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_022A01C_UPLOAD.BUDGET_AMT_12                   IS 'ó\éZã‡äz_12'
+/
