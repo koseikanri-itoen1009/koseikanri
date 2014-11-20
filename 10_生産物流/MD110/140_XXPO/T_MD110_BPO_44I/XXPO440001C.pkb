@@ -7,7 +7,7 @@ AS
  * Description      : 有償出庫指示書
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_444)
  *                    有償支給帳票Issue1.0(T_MD070_BPO_44I)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *                                           折り返しをコンカレント側で行う。
  *  2008/06/23    1.5   Oracle山本恭久   変更要求対応No.42、91
  *                                       内部変更要求対応No.160
+ *  2008/09/19    1.6   Oracle山根一浩   T_S_439対応
  *
  *****************************************************************************************/
 --
@@ -305,6 +306,9 @@ AS
     -- ==================================================
     cv_prg_name       CONSTANT VARCHAR2(100) := 'prc_create_out_data' ; -- プログラム名
     cv_order          CONSTANT VARCHAR2(6)   := 'RETURN';               -- 受注カテゴリ
+--2008/09/19 Add ↓
+    cn_type_id        CONSTANT NUMBER        := 1029;                   -- 受注タイプID(訂正)
+--2008/09/19 Add ↑
 --
     -- ==================================================
     -- カ  ー  ソ  ル  宣  言
@@ -390,6 +394,9 @@ AS
        ,product_date                ic_lots_mst.attribute1%TYPE
        ,use_by_date                 ic_lots_mst.attribute3%TYPE
        ,original_char               ic_lots_mst.attribute2%TYPE
+--2008/09/19 Add ↓
+       ,order_type_id               xxwsh_order_headers_all.order_type_id%TYPE
+--2008/09/19 Add ↑
       ) ;
     lc_ref    ref_cursor ;
     lr_ref    ret_value ;
@@ -783,11 +790,17 @@ AS
       -- ----------------------------------------------------
       -- 総数の編集
       -- ----------------------------------------------------
+--2008/09/19 Mod ↓
+/*
       --受注タイプが返品の場合
       IF (lr_ref.order_category_code = cv_order) THEN
-        ln_quantity      := lr_ref.quantity * -1;
+*/
+      --受注タイプIDが訂正の場合
+      IF (lr_ref.order_type_id = cn_type_id) THEN
+--2008/09/19 Mod ↑
+        ln_quantity      := ABS(lr_ref.quantity) * -1;
       ELSE
-        ln_quantity      := lr_ref.quantity;
+        ln_quantity      := ABS(lr_ref.quantity);
       END IF;
       -- ----------------------------------------------------
       -- グループ開始タグ（明細）
@@ -1083,6 +1096,10 @@ AS
           ||',ilm.attribute2              AS original_char'                --固有記号
           ;
     END IF;
+--2008/09/19 Add ↓
+    lv_select := lv_select
+      ||',xoha.order_type_id              AS order_type_id';               -- 受注タイプID
+--2008/09/19 Add ↑
 --
     -- ====================================================
     -- ＦＲＯＭ句生成

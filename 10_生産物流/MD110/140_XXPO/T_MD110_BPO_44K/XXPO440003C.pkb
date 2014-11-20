@@ -7,7 +7,7 @@ AS
  * Description      : 入庫予定表
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_444)
  *                    有償支給帳票Issue1.0(T_MD070_BPO_44K)
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -26,7 +26,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/03/26    1.0   Masayuki Ikeda   新規作成
  *  2008/06/04    1.1 Yasuhisa Yamamoto  結合テスト不具合ログ#440_53
- *  2008/07/01    1.2   椎名             内部変更要求142
+ *  2008/07/01    1.2   Akiyoshi Shiina  内部変更要求142
+ *  2008/09/25    1.3   Akiyoshi Shiina  T_TE080_BPO440 指摘22対応
  *
  *****************************************************************************************/
 --
@@ -522,6 +523,11 @@ AS
     --商品区分連番
     ln_position             NUMBER DEFAULT 0 ;
 --
+-- 2008/09/25 v1.3 ADD START
+    -- カウント変数
+    ln_cont                 NUMBER DEFAULT 0 ;
+--
+-- 2008/09/25 v1.3 ADD END
     -- ==================================================
     -- Ｒｅｆカーソル宣言
     -- ==================================================
@@ -591,6 +597,10 @@ AS
       ) ;
     lc_ref_lot    ref_cursor ;
     lr_ref_lot    ret_value_lot ;
+-- 2008/09/25 v1.3 ADD START
+    -- カウント用ダミー変数
+    lr_cont_lot   ret_value_lot ;
+-- 2008/09/25 v1.3 ADD END
 --
   BEGIN
 --
@@ -618,6 +628,55 @@ AS
 --
       gn_data_cnt := gn_data_cnt + 1 ;
 --
+-- 2008/09/25 v1.3 ADD START
+      -- 指示帳票の場合
+      IF ( gr_param.use_purpose = gc_use_purpose_shij ) THEN
+--
+        -- カウント変数初期化
+        ln_cont := 0;
+--
+        -- ====================================================
+        -- カーソルオープン
+        -- ====================================================
+        OPEN lc_ref_lot FOR lc_sql_lot
+        USING lr_ref.order_line_id
+              ,lr_ref.item_id
+        ;
+--
+        <<count_loop>>
+        LOOP
+--
+          -- 1ヘッダに紐付くロット情報の件数をカウント
+          FETCH lc_ref_lot INTO lr_cont_lot;
+          ln_cont := lc_ref_lot%ROWCOUNT;
+          EXIT WHEN lc_ref_lot%NOTFOUND ;
+--
+        END LOOP count_loop;
+--
+        -- ====================================================
+        -- カーソルクローズ
+        -- ====================================================
+        CLOSE lc_ref_lot ;
+--
+      END IF;
+--
+      -- 以下の場合
+        -- 依頼帳票
+        -- 指示帳票でロット管理対象外
+        -- 指示帳票でロット情報が1件でも取得できる場合
+      IF (
+           ( gr_param.use_purpose = gc_use_purpose_irai )
+           OR
+           (
+             ( gr_param.use_purpose = gc_use_purpose_shij )
+               AND (
+                     ( lr_ref.lot_ctl = gc_lot_ctl_n )
+                     OR
+                     ( ln_cont > 0 )
+                   )
+           )
+         ) THEN
+-- 2008/09/25 v1.3 ADD END
       -- ====================================================
       -- ブレイク判定：配送先グループ
       -- ====================================================
@@ -1348,6 +1407,10 @@ AS
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := '/lg_lot' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+-- 2008/09/25 v1.3 ADD START
+--
+      END IF;
+-- 2008/09/25 v1.3 ADD END
 --
     END LOOP main_data_loop ;
 --
