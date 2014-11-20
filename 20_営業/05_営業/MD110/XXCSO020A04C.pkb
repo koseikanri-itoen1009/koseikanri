@@ -8,7 +8,7 @@ AS
  *                    作成します。
  * MD.050           : MD050_CSO_020_A04_自販機（什器）発注依頼データ連携機能
  *
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -59,6 +59,10 @@ AS
  *  2009-04-03    1.2   Kazuo.Satomura   システムテスト障害対応(障害番号T1_0109)
  *  2009-04-07    1.3   Kazuo.Satomura   システムテスト障害対応(障害番号T1_0355)
  *  2009-05-01    1.4   Tomoko.Mori      T1_0897対応
+ *  2009-05-01    1.5   Kazuo.Satomura   0001138対応
+ *                                       ・購買依頼I/FテーブルのバッチＩＤに取引ＩＤを設定
+ *                                       ・購買依頼インポート処理の第一パラメータに取引ＩＤ
+ *                                         を設定
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -1311,8 +1315,11 @@ AS
     -- ============================
     BEGIN
       INSERT INTO po_requisitions_interface_all(
-         transaction_id              -- 取引ＩＤ
-        ,process_flag                -- 処理フラグ
+        /* 2009.08.21 K.Satomura 0001138対応 START */
+        -- transaction_id              -- 取引ＩＤ
+        --,process_flag                -- 処理フラグ
+         process_flag                -- 処理フラグ
+        /* 2009.08.21 K.Satomura 0001138対応 END */
         ,request_id                  -- 要求ＩＤ
         ,program_id                  -- プログラムＩＤ
         ,program_application_id      -- プログラムアプリケーションＩＤ
@@ -1329,6 +1336,9 @@ AS
         ,quantity                    -- 数量
         ,unit_price                  -- 価格
         ,authorization_status        -- ステータス
+        /* 2009.08.21 K.Satomura 0001138対応 START */
+        ,batch_id                    -- バッチＩＤ
+        /* 2009.08.21 K.Satomura 0001138対応 END */
         ,preparer_id                 -- 作成者ＩＤ
         ,autosource_flag             -- オートソースフラグ
         ,header_description          -- ヘッダー摘要
@@ -1354,8 +1364,11 @@ AS
         ,org_id                      -- ORG_ID
         ,tax_user_override_flag)     -- 税金上書きフラグ
       VALUES(
-         lt_transaction_id                                -- 取引ＩＤ
-        ,cv_flag_yes                                      -- 処理フラグ
+        /* 2009.08.21 K.Satomura 0001138対応 START */
+        -- lt_transaction_id                                -- 取引ＩＤ
+        --,cv_flag_yes                                      -- 処理フラグ
+         cv_flag_yes                                      -- 処理フラグ
+        /* 2009.08.21 K.Satomura 0001138対応 END */
         ,cn_request_id                                    -- 要求ＩＤ
         ,cn_program_id                                    -- プログラムＩＤ
         ,cn_program_application_id                        -- プログラムアプリケーションＩＤ
@@ -1372,6 +1385,9 @@ AS
         ,it_mst_regist_info_rec.quantity                  -- 数量
         ,it_mst_regist_info_rec.unit_price                -- 価格
         ,cv_authorization_status                          -- ステータス
+        /* 2009.08.21 K.Satomura 0001138対応 START */
+        ,lt_transaction_id                                -- バッチＩＤ
+        /* 2009.08.21 K.Satomura 0001138対応 END */
         ,it_mst_regist_info_rec.person_id                 -- 作成者ＩＤ
         ,cv_flag_no                                       -- オートソースフラグ
         ,it_mst_regist_info_rec.item_description          -- ヘッダー摘要
@@ -1510,7 +1526,10 @@ AS
                        ,description => NULL
                        ,start_time  => NULL
                        ,sub_request => FALSE
-                       ,argument1   => NULL
+                       /* 2009.08.21 K.Satomura 0001138対応 START */
+                       --,argument1   => NULL
+                       ,argument1   => it_interface_source_code
+                       /* 2009.08.21 K.Satomura 0001138対応 END */
                        ,argument2   => it_interface_source_code
                        ,argument3   => NULL
                        ,argument4   => NULL
