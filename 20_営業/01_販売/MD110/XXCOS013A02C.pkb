@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A02C (body)
  * Description      : INVへの販売実績データ連携
  * MD.050           : INVへの販売実績データ連携 MD050_COS_013_A02
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,8 @@ AS
  *  2009/07/29    1.8   N.Maeda          [0000863]PT対応
  *  2009/08/06    1.8   N.Maeda          [0000942]PT対応
  *  2009/08/24    1.9   N.Maeda          [0001141]納品日考慮対応
+ *  2009/08/25    1.10  N.Maeda          [0001164]PT対応(警告データのフラグ更新処理追加[W])
+ *                                                処理対象外データのフラグ更新処理追加[S]
  *
  *****************************************************************************************/
 --
@@ -132,6 +134,11 @@ AS
 -- ************ 2009/07/29 N.Maeda 1.8 ADD START *********************** --
   cv_msg_category_id        CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12818';     --カテゴリID取得エラーメッセージ
 -- ************ 2009/07/29 N.Maeda 1.8 ADD  END  *********************** --
+-- ************************ 2009/08/25 1.10 N.Maeda ADD START *************************** --
+  cv_msg_sales_exp_nomal    CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12819'; -- 販売実績明細(正常終了データ)
+  cv_msg_sales_exp_warn     CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12820'; -- 販売実績明細(警告終了データ)
+  cv_msg_sales_exp_exclu    CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12821'; -- 販売実績明細(処理対象外データ)
+-- ************************ 2009/08/25 1.10 N.Maeda ADD  END  *************************** --
   --トークン名
   cv_tkn_nm_table_name      CONSTANT  VARCHAR2(100) := 'TABLE_NAME';           --テーブル名称
   cv_tkn_nm_table_lock      CONSTANT  VARCHAR2(100) := 'TABLE';                --テーブル名称(ロックエラー時用)
@@ -214,6 +221,10 @@ AS
   --カテゴリ／ステータス
   cv_inv_flg_n              CONSTANT  VARCHAR2(100) := 'N';                    --在庫未連携
   cv_inv_flg_y              CONSTANT  VARCHAR2(100) := 'Y';                    --在庫連携済
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
+  cv_wan_data_flg           CONSTANT  VARCHAR2(1)   := 'W';                    --INV連携警告データ
+  cv_excluded_flg           CONSTANT  VARCHAR2(1)   := 'S';                    --INV連携対象外
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
 /* 2009/05/13 Ver1.5 Add Start */
   --商品製品区分
   cv_goods_prod_sei         CONSTANT  VARCHAR2(1)   := '2';  -- 品目区分：製品= 2
@@ -335,6 +346,11 @@ AS
   );
   --勘定科目ID(CCID)コレクション型
   TYPE g_ccid_ttype IS TABLE OF g_rec_ccid_rtype INDEX BY BINARY_INTEGER;
+--************************************* 2009/08/25 N.Maeda Var1.10 ADD START *********************************************
+  TYPE g_tab_sales_exp_line_id   IS TABLE OF xxcos_sales_exp_lines.sales_exp_line_id%TYPE
+    INDEX BY PLS_INTEGER;
+  gt_sales_exp_line_id       g_tab_sales_exp_line_id;      -- 販売実績明細ID
+--************************************* 2009/08/25 N.Maeda Var1.10 ADD  END  *********************************************
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -816,8 +832,13 @@ AS
                                                  AND     NVL( look_val.end_date_active, gd_max_date )
              AND     look_val.enabled_flag       = ct_enabled_flg_y
            )
-           --INVインタフェース済フラグ(未連携)
-    AND    sel.inv_interface_flag       = cv_inv_flg_n
+-- ********** 2009/08/25 N.Maeda Var1.10 MOD START *********** --
+           --INVインタフェース済フラグ(未連携orINV連携処理警告データ)
+    AND    ( ( sel.inv_interface_flag = cv_inv_flg_n )
+             OR ( sel.inv_interface_flag = cv_wan_data_flg ) )
+--           --INVインタフェース済フラグ(未連携)
+--    AND    sel.inv_interface_flag       = cv_inv_flg_n
+-- ********** 2009/08/25 N.Maeda Var1.10 MOD  END  *********** --
     AND    msib.organization_id     = gt_org_id             -- 在庫組織ID
     AND    msib.segment1            = sel.item_code
     AND    msib.enabled_flag        = ct_enabled_flg_y      -- 品目マスタ有効フラグ
@@ -1890,6 +1911,9 @@ AS
           which  => FND_FILE.OUTPUT
          ,buff   => ''
         );
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
+        gt_sales_exp_line_id( gn_warn_cnt ) := g_sales_exp_tab(i).line_id;
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
         --該当販売実績データを処理しないので、コレクションから削除します。
         g_sales_exp_tab.DELETE( i );
       ELSE
@@ -1970,6 +1994,9 @@ AS
                  which  => FND_FILE.OUTPUT
                 ,buff   => ''
               );
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
+              gt_sales_exp_line_id( gn_warn_cnt ) := g_sales_exp_tab(i).line_id;
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
               --該当販売実績データを処理しないので、コレクションから削除します。
               g_sales_exp_tab.DELETE( i );
               --当ループ中止
@@ -2032,6 +2059,9 @@ AS
                  which  => FND_FILE.OUTPUT
                 ,buff   => ''
               );
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
+              gt_sales_exp_line_id( gn_warn_cnt ) := g_sales_exp_tab(i).line_id;
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
               --該当販売実績データを処理しないので、コレクションから削除します。
               g_sales_exp_tab.DELETE( i );
               --当ループ中止
@@ -2076,6 +2106,9 @@ AS
                which  => FND_FILE.OUTPUT
               ,buff   => ''
             );
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
+            gt_sales_exp_line_id( gn_warn_cnt ) := g_sales_exp_tab(i).line_id;
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
             --該当販売実績データを処理しないので、コレクションから削除します。
             g_sales_exp_tab.DELETE( i );
             --当ループ中止
@@ -2119,6 +2152,9 @@ AS
               ,buff   => ''
             );
             --該当販売実績データを処理しないので、コレクションから削除します。
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
+            gt_sales_exp_line_id( gn_warn_cnt ) := g_sales_exp_tab(i).line_id;
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
             g_sales_exp_tab.DELETE( i );
             --当ループ中止
             EXIT;
@@ -2571,16 +2607,23 @@ AS
     -- *** ローカル変数 ***
     lv_tkn_vl_table_name      VARCHAR2(100);      --エラー対象であるテーブル名
 -- ************************ 2009/08/06 1.18 N.Maeda ADD START *************************** --
-   ln_up_count                NUMBER;
+    ln_up_count               NUMBER;
 -- ************************ 2009/08/06 1.18 N.Maeda ADD  END  *************************** --
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
+    ln_excluded_num           NUMBER;
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
 --
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
--- ************************ 2009/08/06 1.18 N.Maeda ADD START *************************** --
+-- ************************ 2009/08/06 1.8 N.Maeda ADD START *************************** --
     TYPE line_id_tab_type IS TABLE OF xxcos_sales_exp_lines.sales_exp_line_id%TYPE INDEX BY BINARY_INTEGER;
     line_id_tab  line_id_tab_type;
--- ************************ 2009/08/06 1.18 N.Maeda ADD  END  *************************** --
+-- ************************ 2009/08/06 1.8 N.Maeda ADD  END  *************************** --
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
+    TYPE row_id_type IS TABLE OF ROWID INDEX BY BINARY_INTEGER;
+    l_row_id  row_id_type;
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
 --
   BEGIN
 --
@@ -2592,6 +2635,9 @@ AS
 --
 -- ************************ 2009/08/06 1.18 N.Maeda ADD START *************************** --
 --
+-- ************************ 2009/08/25 1.10 N.Maeda ADD START *************************** --
+    IF ( g_sales_exp_tab.COUNT > 0 ) THEN
+-- ************************ 2009/08/25 1.10 N.Maeda ADD  END  *************************** --
       ln_up_count := 0;
       -- UPDATE用変数へコピー
       <<up_co_loop>>
@@ -2604,24 +2650,24 @@ AS
 --
 -- ************************ 2009/08/06 1.18 N.Maeda ADD  END  *************************** --
 --
-    --販売実績の処理済ステータスの更新処理
-    BEGIN
--- ************************ 2009/08/06 1.18 N.Maeda MOD START *************************** --
+      --販売実績の処理済ステータスの更新処理
+      BEGIN
+-- ************************ 2009/08/06 1.8 N.Maeda MOD START *************************** --
 --
 --
-      FORALL i IN 1..line_id_tab.COUNT
+        FORALL i IN 1..line_id_tab.COUNT
 --
-          UPDATE xxcos_sales_exp_lines sel                                   --販売実績明細テーブル
-          SET    sel.inv_interface_flag       = cv_inv_flg_y,                --INVインタフェース済フラグ
-                 sel.last_updated_by          = cn_last_updated_by,          --最終更新者
-                 sel.last_update_date         = cd_last_update_date,         --最終更新日
-                 sel.last_update_login        = cn_last_update_login,        --最終更新ﾛｸﾞｲﾝ
-                 sel.request_id               = cn_request_id,               --要求ID
-                 sel.program_application_id   = cn_program_application_id,   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-                 sel.program_id               = cn_program_id,               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-                 sel.program_update_date      = cd_program_update_date       --ﾌﾟﾛｸﾞﾗﾑ更新日
-          WHERE  sel.sales_exp_line_id        = line_id_tab(i)       --明細ID
-          ;
+            UPDATE xxcos_sales_exp_lines sel                                   --販売実績明細テーブル
+            SET    sel.inv_interface_flag       = cv_inv_flg_y,                --INVインタフェース済フラグ
+                   sel.last_updated_by          = cn_last_updated_by,          --最終更新者
+                   sel.last_update_date         = cd_last_update_date,         --最終更新日
+                   sel.last_update_login        = cn_last_update_login,        --最終更新ﾛｸﾞｲﾝ
+                   sel.request_id               = cn_request_id,               --要求ID
+                   sel.program_application_id   = cn_program_application_id,   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+                   sel.program_id               = cn_program_id,               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+                   sel.program_update_date      = cd_program_update_date       --ﾌﾟﾛｸﾞﾗﾑ更新日
+            WHERE  sel.sales_exp_line_id        = line_id_tab(i)               --明細ID
+            ;
 --
 --      <<update_loop>>
 --      FOR i IN g_sales_exp_tab.FIRST .. g_sales_exp_tab.LAST LOOP
@@ -2639,20 +2685,102 @@ AS
 --        ;
 --        END IF;
 --      END LOOP update_loop;
--- ************************ 2009/08/06 1.18 N.Maeda MOD  END  *************************** --
+-- ************************ 2009/08/06 1.8 N.Maeda MOD  END  *************************** --
+      EXCEPTION
+        --対象データ更新失敗
+        WHEN OTHERS THEN
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
+          lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
+            iv_application        =>  cv_xxcos_short_name,
+            iv_name               =>  cv_msg_sales_exp_nomal
+          );
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
+          RAISE global_data_update_expt;
+      END;
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
+    END IF;
+--
+    IF ( gt_sales_exp_line_id.COUNT > 0 ) THEN
+      -- 警告データ更新
+      BEGIN
+        FORALL w IN 1..gt_sales_exp_line_id.COUNT
+            UPDATE xxcos_sales_exp_lines sel                                   --販売実績明細テーブル
+            SET    sel.inv_interface_flag       = cv_wan_data_flg,             --INVインタフェース警告終了フラグ
+                   sel.last_updated_by          = cn_last_updated_by,          --最終更新者
+                   sel.last_update_date         = cd_last_update_date,         --最終更新日
+                   sel.last_update_login        = cn_last_update_login,        --最終更新ﾛｸﾞｲﾝ
+                   sel.request_id               = cn_request_id,               --要求ID
+                   sel.program_application_id   = cn_program_application_id,   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+                   sel.program_id               = cn_program_id,               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+                   sel.program_update_date      = cd_program_update_date       --ﾌﾟﾛｸﾞﾗﾑ更新日
+            WHERE  sel.sales_exp_line_id        = gt_sales_exp_line_id(w)       --明細ID
+            ;
+      EXCEPTION
+        --対象データ更新失敗
+        WHEN OTHERS THEN
+          lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
+            iv_application        =>  cv_xxcos_short_name,
+            iv_name               =>  cv_msg_sales_exp_warn
+          );
+          RAISE global_data_update_expt;
+      END;
+    END IF;
+--
+--
+    -- 対象外データロック、対象外データ取得
+    BEGIN
+      SELECT xsel.ROWID row_id
+      BULK COLLECT INTO l_row_id
+      FROM   xxcos_sales_exp_headers xseh
+             ,xxcos_sales_exp_lines   xsel
+      WHERE  xseh.sales_exp_header_id = xsel.sales_exp_header_id
+      AND    xsel.inv_interface_flag = cv_inv_flg_n
+      AND    xseh.delivery_date     <= gd_proc_date
+      FOR UPDATE OF xsel.inv_interface_flag NOWAIT;
     EXCEPTION
-      --対象データ更新失敗
-      WHEN OTHERS THEN
-        RAISE global_data_update_expt;
+      WHEN NO_DATA_FOUND THEN
+        NULL;
     END;
+--
+    -- 処理対象外データが存在する場合
+    IF ( l_row_id.COUNT > 0 ) THEN
+--
+      -- 対象外データ更新
+      BEGIN
+        FORALL n IN 1..l_row_id.COUNT
+          UPDATE xxcos_sales_exp_lines sel                                   --販売実績明細テーブル
+          SET    sel.inv_interface_flag       = cv_excluded_flg,             --INVインタフェース警告終了フラグ
+                 sel.last_updated_by          = cn_last_updated_by,          --最終更新者
+                 sel.last_update_date         = cd_last_update_date,         --最終更新日
+                 sel.last_update_login        = cn_last_update_login,        --最終更新ﾛｸﾞｲﾝ
+                 sel.request_id               = cn_request_id,               --要求ID
+                 sel.program_application_id   = cn_program_application_id,   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+                 sel.program_id               = cn_program_id,               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+                 sel.program_update_date      = cd_program_update_date       --ﾌﾟﾛｸﾞﾗﾑ更新日
+          WHERE  sel.ROWID                    = l_row_id(n)                  --行ID
+          ;
+      EXCEPTION
+        --対象データ更新失敗
+        WHEN OTHERS THEN
+          lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
+            iv_application        =>  cv_xxcos_short_name,
+            iv_name               =>  cv_msg_sales_exp_exclu
+          );
+        RAISE global_data_update_expt;
+      END;
+    END IF;
+--
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
 --
   EXCEPTION
     --*** 対象データ更新例外ハンドラ ***
     WHEN global_data_update_expt THEN
-      lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
-        iv_application        =>  cv_xxcos_short_name,
-        iv_name               =>  cv_msg_vl_table_name1
-      );
+-- ********** 2009/08/25 N.Maeda Var1.10 DEL START *********** --
+--      lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
+--        iv_application        =>  cv_xxcos_short_name,
+--        iv_name               =>  cv_msg_vl_table_name1
+--      );
+-- ********** 2009/08/25 N.Maeda Var1.10 DEL  END  *********** --
       ov_errmsg               :=  xxccp_common_pkg.get_msg(
         iv_application        =>  cv_xxcos_short_name,
         iv_name               =>  cv_msg_update_err,
@@ -2663,6 +2791,22 @@ AS
       );
       ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg, 1, 5000 );
       ov_retcode := cv_status_error;
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
+    --*** 排他ロック取得エラーハンドラ ***
+    WHEN global_data_lock_expt THEN
+      lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcos_short_name,
+        iv_name               =>  cv_msg_sales_exp_exclu
+      );
+      ov_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcos_short_name,
+        iv_name               =>  cv_msg_lock_err,
+        iv_token_name1        =>  cv_tkn_nm_table_lock,
+        iv_token_value1       =>  lv_tkn_vl_table_name
+      );
+      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+-- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -2790,7 +2934,9 @@ AS
     -- ===============================
     -- A-5  処理済ステータス更新
     -- ===============================
-    IF ( g_sales_exp_tab.COUNT > 0 ) THEN
+-- ************************ 2009/08/25 1.10 N.Maeda DEL START *************************** --
+--    IF ( g_sales_exp_tab.COUNT > 0 ) THEN
+-- ************************ 2009/08/25 1.10 N.Maeda DEL  END  *************************** --
       update_inv_fsh_flag(
         lv_errbuf,         -- エラー・メッセージ           --# 固定 #
         lv_retcode,        -- リターン・コード             --# 固定 #
@@ -2800,7 +2946,9 @@ AS
       ELSE
         RAISE global_process_expt;
       END IF;
-    END IF;
+-- ************************ 2009/08/25 1.10 N.Maeda DEL START *************************** --
+--    END IF;
+-- ************************ 2009/08/25 1.10 N.Maeda DEL  END  *************************** --
 --
 --
 --************************************* 2009/04/28 N.Maeda Var1.4 MOD START *********************************************
