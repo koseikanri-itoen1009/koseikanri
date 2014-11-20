@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A04C(body)
  * Description      : 情報系システムインターフェースファイル作成-問屋支払
  * MD.050           : 情報系システムインターフェースファイル作成-問屋支払 MD050_COK_021_A04
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2008/12/08    1.0   A.Yano           新規作成
  *  2009/02/06    1.1   T.Abe            [障害COK_016] ディレクトリパス出力対応
  *  2009/03/19    1.2   A.Yano           [障害T1_0087] 必須項目の不具合対応
+ *  2009/04/21    1.3   M.Hiruta         [障害T1_0551] 補填額・問屋マージン額・拡売費額の取得方法を変更
  *
  *****************************************************************************************/
 --
@@ -150,9 +151,13 @@ AS
           ,xwp.payment_amt                          AS payment_amt                -- 支払金額(税抜)
           ,xwp.acct_code                            AS acct_code                  -- 勘定科目コード
           ,xwp.sub_acct_code                        AS sub_acct_code              -- 補助科目コード
-          ,xwp.coverage_amt * payment_qty           AS coverage_amt_sum           -- 補填額
-          ,xwp.wholesale_margin_sum * payment_qty   AS wholesale_margin_amt_sum   -- 問屋マージン額
-          ,xwp.expansion_sales_amt * payment_qty    AS expansion_sales_amt_sum    -- 拡売費額
+-- Start 2009/04/21 Ver_1.3 T1_0551 M.Hiruta
+--          ,xwp.coverage_amt * payment_qty           AS coverage_amt_sum           -- 補填額
+--          ,xwp.wholesale_margin_sum * payment_qty   AS wholesale_margin_amt_sum   -- 問屋マージン額
+--          ,xwp.expansion_sales_amt * payment_qty    AS expansion_sales_amt_sum    -- 拡売費額
+          ,xwp.backmargin                           AS backmargin                -- 販売手数料
+          ,xwp.sales_support_amt                    AS sales_support_amt          -- 販売協賛金
+-- End   2009/04/21 Ver_1.3 T1_0551 M.Hiruta
           ,xwp.misc_acct_amt                        AS misc_acct_amt              -- その他科目
     FROM   xxcok_wholesale_payment  xwp
           ,( SELECT msib.segment1              AS item_code
@@ -656,9 +661,40 @@ AS
     lv_payment_amt          := TO_CHAR( g_wholesale_info_tab( in_index ).payment_amt );              -- 支払金額(税抜)
     lv_acct_code            := g_wholesale_info_tab( in_index ).acct_code;                           -- 勘定科目コード
     lv_sub_acct_code        := g_wholesale_info_tab( in_index ).sub_acct_code;                       -- 補助科目コード
-    lv_coverage_amt_sum     := TO_CHAR( g_wholesale_info_tab( in_index ).coverage_amt_sum );         -- 補填額
-    lv_wholesale_margin_sum := TO_CHAR( g_wholesale_info_tab( in_index ).wholesale_margin_amt_sum ); -- 問屋マージン額
-    lv_expansion_sales_sum  := TO_CHAR( g_wholesale_info_tab( in_index ).expansion_sales_amt_sum );  -- 拡売費額
+-- Start 2009/04/21 Ver_1.3 T1_0551 M.Hiruta
+--    lv_coverage_amt_sum     := TO_CHAR( g_wholesale_info_tab( in_index ).coverage_amt_sum );         -- 補填額
+--    lv_wholesale_margin_sum := TO_CHAR( g_wholesale_info_tab( in_index ).wholesale_margin_amt_sum ); -- 問屋マージン額
+--    lv_expansion_sales_sum  := TO_CHAR( g_wholesale_info_tab( in_index ).expansion_sales_amt_sum );  -- 拡売費額
+--
+    -- 補填額
+    IF ( ( NVL( g_wholesale_info_tab( in_index ).market_amt , 0 )
+             - NVL( g_wholesale_info_tab( in_index ).selling_discount , 0 )
+             - NVL( g_wholesale_info_tab( in_index ).normal_store_deliver_amt , 0) <= 0 )
+      OR ( g_wholesale_info_tab( in_index ).backmargin IS NULL )
+      OR ( g_wholesale_info_tab( in_index ).backmargin <= 0 ) )
+    THEN
+      lv_coverage_amt_sum := '0';
+    ELSE
+      lv_coverage_amt_sum :=
+        TO_CHAR( ( NVL( g_wholesale_info_tab( in_index ).market_amt , 0 )
+                     - NVL( g_wholesale_info_tab( in_index ).selling_discount , 0 )
+                     - NVL( g_wholesale_info_tab( in_index ).normal_store_deliver_amt , 0) 
+                 ) * NVL( g_wholesale_info_tab( in_index ).payment_qty , 0 ) );
+    END IF;
+    -- 問屋マージン額
+    IF ( g_wholesale_info_tab( in_index ).backmargin >= 0 ) THEN
+      lv_wholesale_margin_sum :=
+        TO_CHAR( NVL( g_wholesale_info_tab( in_index ).backmargin , 0 )
+                   * NVL( g_wholesale_info_tab( in_index ).payment_qty , 0 ) - TO_NUMBER( lv_coverage_amt_sum ) );
+    ELSE
+      lv_wholesale_margin_sum :=
+        TO_CHAR( NVL( g_wholesale_info_tab( in_index ).backmargin , 0 )
+                   * NVL( g_wholesale_info_tab( in_index ).payment_qty , 0 ) );
+    END IF;
+    -- 拡売費額
+    lv_expansion_sales_sum := TO_CHAR( NVL( g_wholesale_info_tab( in_index ).sales_support_amt , 0 )
+                                         * NVL( g_wholesale_info_tab( in_index ).payment_qty , 0 ) );
+-- End   2009/04/21 Ver_1.3 T1_0551 M.Hiruta
     lv_misc_acct_amt        := TO_CHAR( g_wholesale_info_tab( in_index ).misc_acct_amt );            -- その他科目額
     lv_sysdate              := TO_CHAR( gd_sysdate, 'YYYYMMDDHH24MISS' );                            -- システム日付
     -- ===============================
