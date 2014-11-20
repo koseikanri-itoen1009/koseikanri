@@ -8,7 +8,7 @@ AS
  * Description      : 棚卸スナップショット作成
  * MD.050           : 在庫(帳票)               T_MD050_BPO_550
  * MD.070           : 棚卸スナップショット作成 T_MD070_BPO_55D
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2008/06/23    1.3   K.Kumamoto       システムテスト障害#260(受払残高リストが終了しない)対応
  *  2008/08/28    1.4   Oracle 山根 一浩 PT 2_1_12 #33,T_S_503対応
  *  2008/09/16    1.5   Y.Yamamoto       PT 2-1_12 #63
+ *  2008/09/24    1.6   Y.Kawano         T_S_500対応
  *
  *****************************************************************************************/
 --  
@@ -1057,7 +1058,11 @@ AS
         || '      ,SUM(NVL(ipb.loct_onhand,0)) loct_onhand ' -- OPM手持数量  手持数量
         || 'FROM   ic_perd_bal ipb '                         -- OPMロット別月次在庫 (※D-2と違う)
         || '      ,xxcmn_item_locations_v   xilv '           -- OPM保管場所情報VIEW
-        || '      ,org_acct_periods         oap '            -- 在庫会計期間
+--2008/09/24 Y.Kawano Mod Start
+--        || '      ,org_acct_periods         oap '            -- 在庫会計期間
+        || '      ,ic_cldr_dtl                 icd '         -- OPM在庫カレンダ詳細
+        || '      ,ic_whse_sts                 iws '         -- OPM倉庫別カレンダ
+--2008/09/24 Y.Kawano Mod End
         || '      ,ic_item_mst_b            iimb '           -- OPM品目マスタ
         || '      ,xxcmn_item_mst_b         ximb '           -- OPM品目アドオンマスタ
         || '      ,ic_lots_mst              ilm '            -- OPMロットマスタ
@@ -1071,8 +1076,13 @@ AS
         || 'AND    ximb.start_date_active  <= TRUNC(SYSDATE) '
         || 'AND    ximb.end_date_active    >= TRUNC(SYSDATE) '
         || 'AND    ilm.item_id              = iimb.item_id '    -- OPMロットマスタ.品目ID   = OPM品目マスタ.品目ID
-        || 'AND    oap.period_start_date    = to_date(''' || ld_pre_invent_begin_ymd || ''',''YYYY/MM/DD HH24:MI:SS'')'
-        || 'AND    xilv.mtl_organization_id = oap.organization_id ';
+--2008/09/24 Y.Kawano Mod Start
+--        || 'AND    oap.period_start_date    = to_date(''' || ld_pre_invent_begin_ymd || ''',''YYYY/MM/DD HH24:MI:SS'')'
+--        || 'AND    xilv.mtl_organization_id = oap.organization_id ';
+        || 'AND    SUBSTRB( TO_CHAR(icd.period_end_date,''YYYYMM''),1,6) = ''' || lv_pre_invent_ym || ''''
+        || 'AND    icd.period_id            = iws.period_id '
+        || 'AND    xilv.whse_code           = iws.whse_code ';
+--2008/09/24 Y.Kawano Mod End
 --
       -- SQL本体とパラメータを合流
       IF (lv_loc_where IS NOT NULL) THEN
@@ -1088,8 +1098,12 @@ AS
         || 'AND    ipb.whse_code   = xilv.whse_code '
         || 'AND    ipb.lot_id      = ilm.lot_id '
         || 'AND    ipb.location    = xilv.segment1 '            -- add 2008/05/07 #47対応
-        || 'AND    ipb.fiscal_year = to_char(oap.period_year) ' -- mod 2008/05/07 #62対応
-        || 'AND    ipb.period      = oap.period_num '
+--2008/09/24 Y.Kawano Mod Start
+--        || 'AND    ipb.fiscal_year = to_char(oap.period_year) ' -- mod 2008/05/07 #62対応
+--        || 'AND    ipb.period      = oap.period_num '
+        || 'AND    ipb.fiscal_year = icd.fiscal_year '
+        || 'AND    ipb.period      = icd.period '
+--2008/09/24 Y.Kawano Mod End
         || 'GROUP BY '
         || '      xilv.whse_code '
         || '     ,iimb.item_id '
