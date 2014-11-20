@@ -113,4 +113,5 @@ FROM   xxcff_object_headers         xoh
         WHERE   temp.ranking         = 1    -- ÅV‚ÌŒ_–ñ–¾×
        )                            xctmp  -- Œ_–ñŠÖ˜A
 WHERE  xoh.object_header_id     = xctmp.object_header_id(+)  -- •¨Œ“à•”ID
+;
 
