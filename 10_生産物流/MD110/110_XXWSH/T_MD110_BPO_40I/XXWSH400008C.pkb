@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（出荷）
  * MD.050           : 出荷依頼 T_MD050_BPO_401
  * MD.070           : 出荷調整表 T_MD070_BPO_40I
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2008/07/23    1.5   Naoki Fukuda          ST不具合対応(#475)
  *  2008/08/20    1.6   Takao Ohashi          変更#183,T_S_612対応
  *  2008/09/01    1.7   Hitomi Itou           PT 2-1_10対応
+ *  2008/11/14    1.8   Tsuyoki Yoshimoto     内部変更#168対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1442,9 +1443,15 @@ AS
                          -- 受注ヘッダアドオン.ステータス=「出荷実績計上済」以外の場合
       || '               ELSE                                                                            '
       || '                 CASE WHEN (ximv.conv_unit IS NULL) THEN                                       '
-      || '                   xola.quantity                                                               '
+-- 2008/11/14 v1.8 T.Yoshimoto Mod Start 内部変更#168
+      --|| '                   xola.quantity                                                               '
+      || '                   NVL(xola.quantity, 0)                                                       '
+-- 2008/11/14 v1.8 T.Yoshimoto Mod End 内部変更#168
       || '                 ELSE                                                                          '
-      || '                   TRUNC(xola.quantity / CASE                                                  '
+-- 2008/11/14 v1.8 T.Yoshimoto Mod Start 内部変更#168
+      --|| '                   TRUNC(xola.quantity / CASE                                                  '
+      || '                   TRUNC(NVL(xola.quantity, 0) / CASE                                          '
+-- 2008/11/14 v1.8 T.Yoshimoto Mod End 内部変更#168
       || '                                           WHEN ximv.num_of_cases IS NULL THEN ''1''           '
       || '                                           WHEN ximv.num_of_cases = ''0''   THEN ''1''         '
       || '                                           ELSE ximv.num_of_cases                              '
@@ -2643,9 +2650,15 @@ AS
                            -- 受注ヘッダアドオン.ステータス=「出荷実績計上済」以外の場合
                            CASE
                              WHEN (ximv.conv_unit IS NULL) THEN
-                               xola.quantity
+-- 2008/11/14 v1.8 T.Yoshimoto Mod Start 内部変更#168
+                               --xola.quantity
+                               NVL(xola.quantity, 0)
+-- 2008/11/14 v1.8 T.Yoshimoto Mod End 内部変更#168
                              ELSE
-                               TRUNC(xola.quantity / CASE
+-- 2008/11/14 v1.8 T.Yoshimoto Mod Start 内部変更#168
+                               --TRUNC(xola.quantity / CASE
+                               TRUNC(NVL(xola.quantity, 0) / CASE
+-- 2008/11/14 v1.8 T.Yoshimoto Mod End 内部変更#168
                                                        WHEN ximv.num_of_cases IS NULL THEN '1'
                                                        WHEN ximv.num_of_cases = '0'   THEN '1'
                                                        ELSE ximv.num_of_cases
@@ -2954,9 +2967,15 @@ AS
                       -- 受注ヘッダアドオン.ステータス=「出荷実績計上済」の場合
       || '            ELSE                                                           '
       || '              CASE WHEN (ximv.conv_unit IS NULL) THEN                      '
-      || '                     xola.quantity                                         '
+-- 2008/11/14 v1.8 T.Yoshimoto Mod Start 内部変更#168
+      --|| '                     xola.quantity                                         '
+      || '                     NVL(xola.quantity, 0)                                 '
+-- 2008/11/14 v1.8 T.Yoshimoto Mod End 内部変更#168
       || '                   ELSE                                                    '
-      || '                     TRUNC(xola.quantity                                   '
+-- 2008/11/14 v1.8 T.Yoshimoto Mod Start 内部変更#168
+      --|| '                     TRUNC(xola.quantity                                   '
+      || '                     TRUNC(NVL(xola.quantity, 0)                           '
+-- 2008/11/14 v1.8 T.Yoshimoto Mod End 内部変更#168
       || '                           / CASE                                          '
       || '                               WHEN ximv.num_of_cases IS NULL   THEN ''1'' '
       || '                               WHEN ximv.num_of_cases = ''0''   THEN ''1'' '

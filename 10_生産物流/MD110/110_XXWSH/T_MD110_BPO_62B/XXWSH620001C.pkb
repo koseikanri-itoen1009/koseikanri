@@ -7,7 +7,7 @@ AS
  * Description      : 在庫不足確認リスト
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 在庫不足確認リスト T_MD070_BPO_62B
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *                                         T_TE080_BPO_600 指摘37
  *                                         T_S_533(PT対応 動的SQLに変更)
  *  2008/10/03    1.3   Hitomi Itou        T_TE080_BPO_600 指摘37 在庫不足の場合、依頼数には不足数を表示する
+ *  2008/11/13    1.4   Tsuyoki Yoshimoto  内部変更#168
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -115,6 +116,10 @@ AS
   gc_mov_type_not_ship       CONSTANT  VARCHAR2(5)  := '2' ;        -- 積送なし
   -- 移動ステータス
   gc_move_status_ordered     CONSTANT  VARCHAR2(2)  := '02' ;       -- 依頼済
+-- 2008/11/13 v1.4 T.Yoshimoto Add Start
+  -- 指示なし実績区分
+  gc_move_instr_actual_class      CONSTANT  VARCHAR2(1)  := 'Y' ;        -- 指示なし実績
+-- 2008/11/13 v1.4 T.Yoshimoto Add End
   ------------------------------
   -- クイックコード関連
   ------------------------------
@@ -1932,6 +1937,11 @@ AS
     || ' AND  xlvv1.start_date_active  <= xmrih.schedule_ship_date '
     || ' AND ((xlvv1.end_date_active IS NULL) '
     || '   OR (xlvv1.end_date_active  >= xmrih.schedule_ship_date)) '
+-- 2008/11/13 v1.4 T.Yoshimoto Add Start
+    || ' AND ((xmrih.no_instr_actual_class <> ''' || gc_move_instr_actual_class || ''') '
+    || '   OR (xmrih.no_instr_actual_class IS NULL)) '
+-- 2008/11/13 v1.4 T.Yoshimoto Add End
+
          ----------------------------------------------------------------------------------
          -- 動的条件
          ----------------------------------------------------------------------------------
@@ -2073,6 +2083,10 @@ AS
     || ' AND  xlvv2.start_date_active  <= xmrih.schedule_ship_date '
     || ' AND ((xlvv2.end_date_active IS NULL) '
     || '   OR (xlvv2.end_date_active  >= xmrih.schedule_ship_date)) '
+-- 2008/11/13 v1.4 T.Yoshimoto Add Start
+    || ' AND ((xmrih.no_instr_actual_class <> ''' || gc_move_instr_actual_class || ''') '
+    || '   OR (xmrih.no_instr_actual_class IS NULL)) '
+-- 2008/11/13 v1.4 T.Yoshimoto Add End
     ;
 --
     -- ======================================

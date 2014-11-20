@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2008/09/22    1.19  Yasuhisa Yamamoto  PT 2_1_12 #63 再改修
  *  2008/10/02    1.20  Yasuhisa Yamamoto  PT 2-1_12 #85
  *  2008/10/22    1.21  Yasuhisa Yamamoto  仕様不備障害 T_S_492
+ *  2008/11/10    1.22  Yasuhisa Yamamoto  統合指摘 #536、#547対応
  *
  *****************************************************************************************/
 --
@@ -1262,6 +1263,9 @@ AS
                     AND    itp_xfer.doc_id                  = ixm_xfer.transfer_id
                     AND    xrpm9v.doc_type                  = itp_xfer.doc_type
                     AND    xrpm9v.reason_code               = itp_xfer.reason_code
+-- 08/11/10 v1.22 Y.Yamamoto add start
+                    AND    xrpm9v.rcv_pay_div               = SIGN( itp_xfer.trans_qty )
+-- 08/11/10 v1.22 Y.Yamamoto add end
 -- 08/05/07 Y.Yamamoto Update v1.1 Start
 --                    AND    xrpm9v.rcv_pay_div               = SIGN( itp_xfer.trans_qty )
 -- 08/10/22 Y.Yamamoto delete v1.21 Start
@@ -1530,8 +1534,14 @@ AS
                           ,0                     AS cargo_stock_be   -- 積送中在庫数
                           ,0                     AS month_stock_nw   -- 当月末在庫数
                           ,0                     AS cargo_stock_nw   -- 当月積送中在庫数
-                          ,SUM( xsir.case_amt )  AS case_amt         -- 棚卸ケース数
-                          ,SUM( xsir.loose_amt ) AS loose_amt        -- 棚卸バラ
+-- 08/11/10 v1.22 Y.Yamamoto update start
+--                          ,SUM( xsir.case_amt )  AS case_amt         -- 棚卸ケース数
+--                          ,SUM( xsir.loose_amt ) AS loose_amt        -- 棚卸バラ
+-- 月末在庫数は、先に算出してから、合計する
+                          ,SUM( ROUND( ( xsir.case_amt * xsir.content ) + xsir.loose_amt, 3 ) )
+                                                 AS case_amt         -- 棚卸ケース数
+                          ,0                     AS loose_amt        -- 棚卸バラ
+-- 08/11/10 v1.22 Y.Yamamoto update end
 -- 08/07/09 Y.Yamamoto ADD v1.14 Start
                           ,0                     AS trans_cnt        -- トランザクション系データの抽出確認用
 -- 08/07/09 Y.Yamamoto ADD v1.14 End
@@ -2132,6 +2142,9 @@ AS
                     AND    itp_xfer.doc_id                  = ixm_xfer.transfer_id
                     AND    xrpm9v.doc_type                  = itp_xfer.doc_type
                     AND    xrpm9v.reason_code               = itp_xfer.reason_code
+-- 08/11/10 v1.22 Y.Yamamoto add start
+                    AND    xrpm9v.rcv_pay_div               = SIGN( itp_xfer.trans_qty )
+-- 08/11/10 v1.22 Y.Yamamoto add end
 -- 08/05/07 Y.Yamamoto Update v1.1 Start
 --                    AND    xrpm9v.rcv_pay_div               = SIGN( itp_xfer.trans_qty )
 -- 08/10/22 Y.Yamamoto delete v1.21 Start
@@ -2400,8 +2413,14 @@ AS
                           ,0                     AS cargo_stock_be   -- 積送中在庫数
                           ,0                     AS month_stock_nw   -- 当月末在庫数
                           ,0                     AS cargo_stock_nw   -- 当月積送中在庫数
-                          ,SUM( xsir.case_amt )  AS case_amt         -- 棚卸ケース数
-                          ,SUM( xsir.loose_amt ) AS loose_amt        -- 棚卸バラ
+-- 08/11/10 v1.22 Y.Yamamoto update start
+--                          ,SUM( xsir.case_amt )  AS case_amt         -- 棚卸ケース数
+--                          ,SUM( xsir.loose_amt ) AS loose_amt        -- 棚卸バラ
+-- 月末在庫数は、先に算出してから、合計する
+                          ,SUM( ROUND( ( xsir.case_amt * xsir.content ) + xsir.loose_amt, 3 ) )
+                                                 AS case_amt         -- 棚卸ケース数
+                          ,0                     AS loose_amt        -- 棚卸バラ
+-- 08/11/10 v1.22 Y.Yamamoto update end
 -- 08/07/09 Y.Yamamoto ADD v1.14 Start
                           ,0                     AS trans_cnt        -- トランザクション系データの抽出確認用
 -- 08/07/09 Y.Yamamoto ADD v1.14 End
@@ -2847,6 +2866,9 @@ AS
     lv_data_out            VARCHAR2(1);                                        -- 出力実行フラグ
     lv_no_data_msg         VARCHAR2(5000) ;                                    --「データはありません」
 -- 08/05/09 Y.Yamamoto ADD v1.2 End
+-- 08/11/10 v1.22 Y.Yamamoto add start
+    ln_content             NUMBER;                                             -- 棚卸の入数
+-- 08/11/10 v1.22 Y.Yamamoto add end
     -- *** ローカル・例外処理 ***
     no_data_expt   EXCEPTION ;   -- 取得レコードなし
 --
@@ -3173,12 +3195,47 @@ AS
       END IF;
 --
       -- 実棚月末在庫数
-      IF ( ln_quantity = 0 ) THEN
-        BEGIN
+-- 08/11/10 v1.22 Y.Yamamoto delete start
+--      IF ( ln_quantity = 0 ) THEN
+--        BEGIN
 -- 08/05/21 v1.8 mod start
 --          SELECT ROUND( TO_NUMBER( NVL( ximv.num_of_cases, '0' ) ), 3 ) -- ケース入数
-          SELECT ROUND( TO_NUMBER( NVL( ximv.num_of_cases, '1' ) ), 3 ) -- ケース入数
+--          SELECT ROUND( TO_NUMBER( NVL( ximv.num_of_cases, '1' ) ), 3 ) -- ケース入数
 -- 08/05/21 v1.8 mod end
+--          INTO   ln_num_of_cases
+--          FROM   xxcmn_item_mst2_v  ximv                                -- OPM品目情報VIEW2
+--          WHERE  ximv.item_id     = gt_main_data(i).item_id
+--          AND    ximv.item_no     = gt_main_data(i).item_no
+--          AND    gd_date_ym_first BETWEEN ximv.start_date_active
+--                                  AND     ximv.end_date_active
+--          ;
+--        EXCEPTION
+--          WHEN NO_DATA_FOUND THEN
+--            ln_num_of_cases := 0;
+--        END;
+--      END IF;
+-- 08/11/10 v1.22 Y.Yamamoto delete end
+      IF (    ir_param.iv_um_class = gc_um_class_honsu ) THEN
+        -- 単位区分（本数）
+-- 08/11/10 v1.22 Y.Yamamoto update start
+--        IF ( ln_quantity = 0 ) THEN
+-- 08/05/21 v1.8 mod start
+--          ln_invent_month_stock := ln_num_of_cases;
+--          ln_invent_month_stock := ROUND( ( ln_num_of_cases * gt_main_data(i).case_amt ) + gt_main_data(i).loose_amt, 3 );
+          ln_invent_month_stock := gt_main_data(i).case_amt;
+-- 08/05/21 v1.8 mod end
+--        ELSE
+-- 08/05/07 Y.Yamamoto Update v1.1 Start
+--          ln_invent_month_stock := ROUND( ( ln_quantity * ln_case_amt ) + ln_loose_amt, 3 );
+--          ln_invent_month_stock := ROUND( ( ln_quantity * gt_main_data(i).case_amt ) + gt_main_data(i).loose_amt, 3 );
+-- 08/05/07 Y.Yamamoto Update v1.1 End
+--        END IF;
+-- 08/11/10 v1.22 Y.Yamamoto update end
+      ELSIF ( ir_param.iv_um_class = gc_um_class_case ) THEN
+        -- 単位区分（ケース）
+-- 08/11/10 v1.22 Y.Yamamoto add start
+        BEGIN
+          SELECT ROUND( TO_NUMBER( NVL( ximv.num_of_cases, '1' ) ), 3 ) -- ケース入数
           INTO   ln_num_of_cases
           FROM   xxcmn_item_mst2_v  ximv                                -- OPM品目情報VIEW2
           WHERE  ximv.item_id     = gt_main_data(i).item_id
@@ -3190,36 +3247,22 @@ AS
           WHEN NO_DATA_FOUND THEN
             ln_num_of_cases := 0;
         END;
-      END IF;
-      IF (    ir_param.iv_um_class = gc_um_class_honsu ) THEN
-        -- 単位区分（本数）
-        IF ( ln_quantity = 0 ) THEN
+-- 08/11/10 v1.22 Y.Yamamoto add end
+-- 08/11/10 v1.22 Y.Yamamoto update start
+--        IF ( ln_quantity = 0 ) THEN
 -- 08/05/21 v1.8 mod start
 --          ln_invent_month_stock := ln_num_of_cases;
-          ln_invent_month_stock := ROUND( ( ln_num_of_cases * gt_main_data(i).case_amt ) + gt_main_data(i).loose_amt, 3 );
+          ln_invent_month_stock := ROUND( gt_main_data(i).case_amt / ln_num_of_cases, 3 );
 -- 08/05/21 v1.8 mod end
-        ELSE
--- 08/05/07 Y.Yamamoto Update v1.1 Start
---          ln_invent_month_stock := ROUND( ( ln_quantity * ln_case_amt ) + ln_loose_amt, 3 );
-          ln_invent_month_stock := ROUND( ( ln_quantity * gt_main_data(i).case_amt ) + gt_main_data(i).loose_amt, 3 );
--- 08/05/07 Y.Yamamoto Update v1.1 End
-        END IF;
-      ELSIF ( ir_param.iv_um_class = gc_um_class_case ) THEN
-        -- 単位区分（ケース）
-        IF ( ln_quantity = 0 ) THEN
--- 08/05/21 v1.8 mod start
---          ln_invent_month_stock := ln_num_of_cases;
-          ln_invent_month_stock := ROUND( ( ( ln_num_of_cases * gt_main_data(i).case_amt ) + gt_main_data(i).loose_amt )
-                                                                          / ln_num_of_cases, 3 );
--- 08/05/21 v1.8 mod end
-        ELSE
+--        ELSE
 -- 08/05/07 Y.Yamamoto Update v1.1 Start
 --          ln_invent_month_stock := ROUND( ( ( ln_quantity * ln_case_amt ) + ln_loose_amt )
 --                                                                          / ln_quantity, 3 );
-          ln_invent_month_stock := ROUND( ( ( ln_quantity * gt_main_data(i).case_amt ) + gt_main_data(i).loose_amt )
-                                                                          / ln_quantity, 3 );
+--          ln_invent_month_stock := ROUND( ( ( ln_quantity * gt_main_data(i).case_amt ) + gt_main_data(i).loose_amt )
+--                                                                          / ln_quantity, 3 );
 -- 08/05/07 Y.Yamamoto Update v1.1 End
-        END IF;
+--        END IF;
+-- 08/11/10 v1.22 Y.Yamamoto update end
       END IF;
 --
       -- 実棚積送在庫数

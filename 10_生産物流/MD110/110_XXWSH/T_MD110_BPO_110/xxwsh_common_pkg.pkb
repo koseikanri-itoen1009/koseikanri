@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.28
+ * Version                : 1.29
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -80,6 +80,7 @@ AS
  *  2008/10/06   1.26  Oracle 伊藤ひとみ[重量容積小口個数更新関数] 統合テスト指摘240対応 積載効率チェック(合計値算出)にパラメータ.基準日追加
  *  2008/10/15   1.27  Oracle 伊藤ひとみ[混載配送区分変換関数][最大パレット枚数算出関数] 統合テスト指摘298対応
  *  2008/10/23   1.28  Oracle 二瓶大輔  [配車解除関数] TE080_BPO_600 No22対応
+ *  2008/11/13   1.29  Oracle 伊藤ひとみ[重量容積小口個数更新関数] 統合テスト指摘311対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2102,7 +2103,7 @@ AS
     cv_supply               CONSTANT VARCHAR2(1)   := '2';                   -- 支給
     cv_move                 CONSTANT VARCHAR2(1)   := '3';                   -- 移動
     cv_shiped_confirm       CONSTANT VARCHAR2(2)   := '04';                  -- 出荷実績計上済
-    cv_shiped_confirm_prov  CONSTANT VARCHAR2(2)   := '08';                 -- 出荷実績計上済(支給)
+    cv_shiped_confirm_prov  CONSTANT VARCHAR2(2)   := '08';                  -- 出荷実績計上済(支給)
     cv_shiped_report        CONSTANT VARCHAR2(2)   := '04';                  -- 出庫報告有
     cv_delivery_report      CONSTANT VARCHAR2(2)   := '06';                  -- 入出庫報告有
     cv_include              CONSTANT VARCHAR2(1)   := '1';                   -- 対象
@@ -2113,6 +2114,9 @@ AS
     cv_colon                CONSTANT VARCHAR2(1)   := ':';                   -- コロン
     cv_log_level            CONSTANT VARCHAR2(1)   := '6';                   -- ログレベル
     cv_msg_kbn              CONSTANT VARCHAR2(5)   := 'XXWSH';               -- 出荷
+-- 2008/11/13 H.Itou Add Start 統合テスト指摘311
+    cv_mode_result          CONSTANT VARCHAR2(1)   := '2';                   -- 指示/実績区分 2:実績
+-- 2008/11/13 H.Itou Add End
     cv_xoha                 CONSTANT VARCHAR2(100) := '受注ヘッダアドオン';
     cv_xola                 CONSTANT VARCHAR2(100) := '受注明細アドオン';
     cv_mrih                 CONSTANT VARCHAR2(100) := '移動依頼/指示ヘッダ(アドオン)';
@@ -2502,8 +2506,11 @@ AS
               ln_sum_capacity,                            -- 合計容積
               ln_sum_pallet_weight,                       -- 合計パレット重量
 -- 2008/10/06 H.Itou Add Start 統合テスト指摘240 INパラメータ.基準日を追加
-              ld_shipped_date                             -- 出荷日
+              ld_shipped_date,                            -- 出荷日
 -- 2008/10/06 H.Itou Add End
+-- 2008/11/13 H.Itou Add Start 統合テスト指摘311
+              cv_mode_result                              -- 指示/実績区分 2:実績 固定
+-- 2008/11/13 H.Itou Add End
               );
 --
             -- リターンコードが'1'(異常)の場合は返り値に1：処理エラーを返し終了
@@ -3032,8 +3039,11 @@ AS
               ln_sum_capacity,         -- 合計容積
               ln_sum_pallet_weight,    -- 合計パレット重量
 -- 2008/10/06 H.Itou Add Start 統合テスト指摘240 INパラメータ.基準日を追加
-              ld_shipped_date          -- 出荷日
+              ld_shipped_date,         -- 出荷日
 -- 2008/10/06 H.Itou Add End
+-- 2008/11/13 H.Itou Add Start 統合テスト指摘311
+              cv_mode_result           -- 指示/実績区分 2:実績 固定
+-- 2008/11/13 H.Itou Add End
               );
 --
             -- リターンコードが'1'(異常)の場合は返り値に1：処理エラーを返し終了
@@ -3473,8 +3483,11 @@ AS
               ln_sum_capacity,                          -- 合計容積
               ln_sum_pallet_weight,                     -- 合計パレット重量
 -- 2008/10/06 H.Itou Add Start 統合テスト指摘240 INパラメータ.基準日を追加
-              ld_actual_ship_date                       -- 出庫日
+              ld_actual_ship_date,                      -- 出庫日
 -- 2008/10/06 H.Itou Add End
+-- 2008/11/13 H.Itou Add Start 統合テスト指摘311
+              cv_mode_result                            -- 指示/実績区分 2:実績 固定
+-- 2008/11/13 H.Itou Add End
               );
 --
             -- リターンコードが'1'(異常)の場合は返り値に1：処理エラーを返し終了

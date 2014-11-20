@@ -98,13 +98,34 @@ AS
    OR    (xola.shipping_inventory_item_id <> xola.request_item_id
      AND  xicv4_a.item_class_code         = '5'
      AND  xicv4_o.item_class_code         = '5'
-     AND  xrpm.prod_div_origin            IS NOT NULL
-     AND  xrpm.prod_div_ahead             IS NOT NULL )
+-- 08/11/10 v1.3 Y.Yamamoto update start
+--     AND  xrpm.prod_div_origin            IS NOT NULL
+--     AND  xrpm.prod_div_ahead             IS NOT NULL )
+   AND  ((NVL(xrpm.prod_div_ahead,  'dummy') = DECODE(xicv4_a.prod_class_code,'1','1','dummy')
+     AND  NVL(xrpm.prod_div_origin, 'dummy') = DECODE(xicv4_o.prod_class_code,'2','2','dummy'))
+    OR   (xicv4_a.prod_class_code            = xicv4_o.prod_class_code
+     AND  NVL(xrpm.prod_div_origin, 'dummy') = 'dummy')
+    OR   (xrpm.shipment_provision_div        = '3'
+     AND  xrpm.prod_div_origin              IS NULL
+     AND  xrpm.prod_div_ahead               IS NULL)))
+-- 08/11/10 v1.3 Y.Yamamoto update end
    OR    (xola.shipping_inventory_item_id <> xola.request_item_id
-     AND (xicv4_a.item_class_code         <> '5'
-     OR   xicv4_o.item_class_code         <> '5')
+-- 08/11/10 v1.3 Y.Yamamoto update start
+--     AND (xicv4_a.item_class_code         <> '5'
+--     OR   xicv4_o.item_class_code         <> '5')
+     AND  xicv4_a.item_class_code         = '5'
+     AND  xicv4_o.item_class_code        <> '5'
+-- 08/11/10 v1.3 Y.Yamamoto update end
+     AND  xrpm.prod_div_origin            IS NULL
+-- 08/11/10 v1.3 Y.Yamamoto update start
+--     AND  xrpm.prod_div_ahead             IS NULL ))
+     AND  xrpm.prod_div_ahead             IS NULL )
+   OR    (xola.shipping_inventory_item_id <> xola.request_item_id
+     AND  xicv4_a.item_class_code        <> '5'
+     AND  xicv4_o.item_class_code        <> '5'
      AND  xrpm.prod_div_origin            IS NULL
      AND  xrpm.prod_div_ahead             IS NULL ))
+-- 08/11/10 v1.3 Y.Yamamoto update end
 -- 08/07/08 Y.Yamamoto Update v1.02 End
 -- 08/06/09 Y.Yamamoto Update v1.01 End
 UNION ALL
