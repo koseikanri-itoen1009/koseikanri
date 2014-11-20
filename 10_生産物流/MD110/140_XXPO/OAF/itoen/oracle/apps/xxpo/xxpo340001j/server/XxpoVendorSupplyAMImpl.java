@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoVendorSupplyAMImpl
 * 概要説明   : 外注出来高報告アプリケーションモジュール
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -16,6 +16,7 @@
 * 2008-10-23 1.3  伊藤ひとみ   T_TE080_BPO_340 指摘5
 * 2009-02-06 1.4  伊藤ひとみ   本番障害#1147対応
 * 2009-02-18 1.5  伊藤ひとみ   本番障害#1096,1178対応
+* 2009-03-02 1.6  伊藤ひとみ   本番障害#32対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo340001j.server;
@@ -42,7 +43,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 外注出来高報告のアプリケーションモジュールクラスです。
  * @author  ORACLE 伊藤 ひとみ
- * @version 1.5
+ * @version 1.6
  ***************************************************************************
  */
 public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -1863,10 +1864,13 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     //   または、
     //   処理タイプ2:即時仕入かつ、作成区分3:出来高報告即時仕入
     if (XxpoConstants.QT_TYPE_ON.equals(testCode)
-      && (((XxpoConstants.PRODUCT_RESULT_TYPE_I.equals(productResultType))
-        && "2".equals(createLotDiv))
-      || ((XxpoConstants.PRODUCT_RESULT_TYPE_P.equals(productResultType))
-        && "3".equals(createLotDiv))))
+// 2009-03-02 H.Itou Mod Start 本番障害#32 作成区分は見ない。
+//      && (((XxpoConstants.PRODUCT_RESULT_TYPE_I.equals(productResultType))
+//        && "2".equals(createLotDiv))
+//      || ((XxpoConstants.PRODUCT_RESULT_TYPE_P.equals(productResultType))
+//        && "3".equals(createLotDiv))))
+        )
+// 2009-03-02 H.Itou Mod End
     {
       // 品質検査依頼情報登録が正常終了でない場合
       if (XxcmnConstants.RETURN_NOT_EXE.equals(doQtInspection()))

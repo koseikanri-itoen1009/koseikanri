@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.24
+* バージョン : 1.25
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -32,6 +32,7 @@
 * 2009-01-20 1.22 吉元強樹     本番障害#739,985対応
 * 2009-02-06 1.23 伊藤ひとみ   本番障害#1147対応
 * 2009-02-18 1.24 伊藤ひとみ   本番障害#1096対応
+* 2009-02-27 1.25 伊藤ひとみ   本番障害#32対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -39,7 +40,9 @@ import com.sun.java.util.collections.HashMap;
 
 import itoen.oracle.apps.xxcmn.util.XxcmnConstants;
 import itoen.oracle.apps.xxcmn.util.XxcmnUtility;
-
+// 2009-02-27 H.Itou Add Start 本番障害#32
+import java.math.BigDecimal;
+// 2009-02-27 H.Itou Add End
 import java.sql.CallableStatement;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -53,7 +56,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仕入共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.24
+ * @version 1.25
  ***************************************************************************
  */
 public class XxpoUtility 
@@ -2691,7 +2694,10 @@ public class XxpoUtility
     String apiName = "doQtInspection";
     // INパラメータ取得
     String division       = (String)params.get("Division");            // 区分
-    String disposalDiv    = (String)params.get("ProcessFlag");         // 処理区分
+// 2009-02-27 H.Itou Add Start 本番障害#32
+//    String disposalDiv    = (String)params.get("ProcessFlag");         // 処理区分
+    String disposalDiv    = null;
+// 2009-02-27 H.Itou Add End
     Number lotId          = (Number)params.get("LotId");               // ロットID
     Number itemId         = (Number)params.get("ItemId");              // 品目ID
     String qtObject       = (String)params.get("QtObject");            // 対象先
@@ -2704,33 +2710,101 @@ public class XxpoUtility
 //    Number qtInspectReqNo = (Number)params.get("QtInspectReqNo");      // 検査依頼No
     String qtInspectReqNo = (String)params.get("QtInspectReqNo");      // 検査依頼No
 // 2009-02-18 H.Itou Mod End
+// 2009-02-27 H.Itou Add Start 本番障害#32
+    BigDecimal beforeQty = new BigDecimal(0); // 前回登録数量
+    BigDecimal inQty = new BigDecimal(0); // 品質検査APIに渡す数量
+    // 更新の場合、前回数量を取得
+  	if (!XxcmnUtility.isBlankOrNull(params.get("Quantity")))
+  	{
+      beforeQty = XxcmnUtility.bigDecimalValue(params.get("Quantity").toString());   // 前回登録数量
+    }
+    
+    // 検査依頼Noに値がある場合･･･品質検査更新
+    if (!XxcmnUtility.isBlankOrNull(qtInspectReqNo))
+    {
+      disposalDiv = "2";  // 処理区分:更新
+      // 数量 ＝ 今回登録数量 － 前回登録数量
+      inQty = XxcmnUtility.bigDecimalValue(qty).multiply(XxcmnUtility.bigDecimalValue(conversionFactor.toString())).subtract(beforeQty);
+
+
+    // 検査依頼Noに値がない場合･･･品質検査追加
+    } else
+    {
+      disposalDiv = "1";  // 処理区分:追加
+      // 数量 ＝ 今回登録数量
+      inQty = XxcmnUtility.bigDecimalValue(qty).multiply(XxcmnUtility.bigDecimalValue(conversionFactor.toString()));
+    }
+// 2009-02-27 H.Itou Add End
     
     // OUTパラメータ
     String exeType = XxcmnConstants.RETURN_NOT_EXE;
     
     //PL/SQLの作成を行います
     StringBuffer sb = new StringBuffer(100);
-    sb.append("BEGIN ");
-    sb.append("  xxwip_common_pkg.make_qt_inspection( "          );
-    sb.append("    it_division          => :1 "                  ); // IN  1.区分         必須（1:生産 2:発注 3:ロット情報 4:外注出来高 5:荒茶製造）
-    sb.append("   ,iv_disposal_div      => :2 "                  ); // IN  2.処理区分     必須（1:追加 2:更新 3:削除）
-    sb.append("   ,it_lot_id            => :3 "                  ); // IN  3.ロットID     必須
-    sb.append("   ,it_item_id           => :4 "                  ); // IN  4.品目ID       必須
-    sb.append("   ,iv_qt_object         => :5 "                  ); // IN  5.対象先       区分:5のみ必須（1:荒茶品目 2:副産物１ 3:副産物２ 4:副産物３）
-    sb.append("   ,it_batch_id          => :6 "                  ); // IN  6.生産バッチID 処理区分3以外かつ区分:1のみ必須
-    sb.append("   ,it_batch_po_id       => NULL "                ); // IN    明細番号 NULL
-    sb.append("   ,it_qty               => TO_NUMBER(:7) * :8 "  ); // IN    数量 7.外注出来高数量 × 8.換算入数        処理区分3以外かつ区分:2のみ必須
-    sb.append("   ,it_prod_dely_date    => :9 "                  ); // IN  9.納入日       処理区分3以外かつ区分:2のみ必須
-    sb.append("   ,it_vendor_line       => :10 "                 ); // IN 10.仕入先コード 処理区分3以外かつ区分:2のみ必須
-// 2009-02-18 H.Itou Mod Start 本番障害#1096
-//    sb.append("   ,it_qt_inspect_req_no => :11 "                 ); // IN 11.検査依頼No   処理区分:2、3のみ必須            
-    sb.append("   ,it_qt_inspect_req_no => TO_NUMBER(:11) "      ); // IN 11.検査依頼No   処理区分:2、3のみ必須            
-// 2009-02-18 H.Itou Mod End
-    sb.append("   ,ot_qt_inspect_req_no => :12 "                 ); // OUT 12.検査依頼No
-    sb.append("   ,ov_errbuf            => :13 "                 ); // エラー・メッセージ           --# 固定 #
-    sb.append("   ,ov_retcode           => :14 "                 ); // リターン・コード             --# 固定 #
-    sb.append("   ,ov_errmsg            => :15); "               ); // ユーザー・エラー・メッセージ --# 固定 #
-    sb.append("END; "                                            );
+// 2009-02-27 H.Itou Mod Start 本番障害#32
+    int bindCount = 1;
+
+    sb.append("DECLARE ");
+    // INパラメータ設定
+    sb.append("  it_division          VARCHAR2(1) := :" + bindCount++ + "; "             ); // IN  1.区分         必須（1:生産 2:発注 3:ロット情報 4:外注出来高 5:荒茶製造）
+    sb.append("  iv_disposal_div      VARCHAR2(1) := :" + bindCount++ + "; "             ); // IN  2.処理区分     必須（1:追加 2:更新 3:削除）
+    sb.append("  it_lot_id            NUMBER      := :" + bindCount++ + "; "             ); // IN  3.ロットID     必須
+    sb.append("  it_item_id           NUMBER      := :" + bindCount++ + "; "             ); // IN  4.品目ID       必須
+    sb.append("  iv_qt_object         VARCHAR2(1) := :" + bindCount++ + "; "             ); // IN  5.対象先       区分:5のみ必須（1:荒茶品目 2:副産物１ 3:副産物２ 4:副産物３）
+    sb.append("  it_batch_id          NUMBER      := :" + bindCount++ + "; "             ); // IN  6.生産バッチID 処理区分3以外かつ区分:1のみ必須
+    sb.append("  it_qty               NUMBER      := :" + bindCount++ + "; "             ); // IN  7.数量         処理区分3以外かつ区分:2のみ必須
+    sb.append("  it_prod_dely_date    DATE        := :" + bindCount++ + "; "             ); // IN  8.納入日       処理区分3以外かつ区分:2のみ必須
+    sb.append("  it_vendor_line       VARCHAR2(50):= :" + bindCount++ + "; "             ); // IN  9.仕入先コード 処理区分3以外かつ区分:2のみ必須    
+    sb.append("  it_qt_inspect_req_no NUMBER      := TO_NUMBER(:" + bindCount++ + "); "  ); // IN 10.検査依頼No   処理区分:2、3のみ必須
+    sb.append("  ot_qt_inspect_req_no NUMBER; "                                          ); // OUT11.検査依頼No
+    sb.append("  ov_errbuf            VARCHAR2(5000); "                                  ); // OUT12.エラー・メッセージ           --# 固定 #
+    sb.append("  ov_retcode           VARCHAR2(1); "                                     ); // OUT13.リターン・コード             --# 固定 #
+    sb.append("  ov_errmsg            VARCHAR2(5000); "                                  ); // OUT14.ユーザー・エラー・メッセージ --# 固定 #
+    sb.append("BEGIN "                                                                   );
+    sb.append("  xxwip_common_pkg.make_qt_inspection( "                                  );
+    sb.append("    it_division          => it_division "                                 );
+    sb.append("   ,iv_disposal_div      => iv_disposal_div "                             );
+    sb.append("   ,it_lot_id            => it_lot_id "                                   );
+    sb.append("   ,it_item_id           => it_item_id "                                  );
+    sb.append("   ,iv_qt_object         => iv_qt_object "                                );
+    sb.append("   ,it_batch_id          => it_batch_id "                                 );
+    sb.append("   ,it_batch_po_id       => NULL "                                        );
+    sb.append("   ,it_qty               => it_qty "                                      );
+    sb.append("   ,it_prod_dely_date    => it_prod_dely_date "                           );
+    sb.append("   ,it_vendor_line       => it_vendor_line "                              );
+    sb.append("   ,it_qt_inspect_req_no => it_qt_inspect_req_no "                        );
+    sb.append("   ,ot_qt_inspect_req_no => ot_qt_inspect_req_no "                        );
+    sb.append("   ,ov_errbuf            => ov_errbuf "                                   );
+    sb.append("   ,ov_retcode           => ov_retcode "                                  );
+    sb.append("   ,ov_errmsg            => ov_errmsg); "                                 );
+    sb.append("  :" + bindCount++ + ":= ot_qt_inspect_req_no; "                          );
+    // OUTパラメータ設定
+    sb.append("  :" + bindCount++ + ":= ov_errbuf; "                                     );
+    sb.append("  :" + bindCount++ + ":= ov_retcode; "                                    );
+    sb.append("  :" + bindCount++ + ":= ov_errmsg; "                                     );
+    sb.append("END; "                                                                    );
+//    sb.append("BEGIN ");
+//    sb.append("  xxwip_common_pkg.make_qt_inspection( "          );
+//    sb.append("    it_division          => :1 "                  ); // IN  1.区分         必須（1:生産 2:発注 3:ロット情報 4:外注出来高 5:荒茶製造）
+//    sb.append("   ,iv_disposal_div      => :2 "                  ); // IN  2.処理区分     必須（1:追加 2:更新 3:削除）
+//    sb.append("   ,it_lot_id            => :3 "                  ); // IN  3.ロットID     必須
+//    sb.append("   ,it_item_id           => :4 "                  ); // IN  4.品目ID       必須
+//    sb.append("   ,iv_qt_object         => :5 "                  ); // IN  5.対象先       区分:5のみ必須（1:荒茶品目 2:副産物１ 3:副産物２ 4:副産物３）
+//    sb.append("   ,it_batch_id          => :6 "                  ); // IN  6.生産バッチID 処理区分3以外かつ区分:1のみ必須
+//    sb.append("   ,it_batch_po_id       => NULL "                ); // IN    明細番号 NULL
+//    sb.append("   ,it_qty               => TO_NUMBER(:7) * :8 "  ); // IN    数量 7.外注出来高数量 × 8.換算入数        処理区分3以外かつ区分:2のみ必須
+//    sb.append("   ,it_prod_dely_date    => :9 "                  ); // IN  9.納入日       処理区分3以外かつ区分:2のみ必須
+//    sb.append("   ,it_vendor_line       => :10 "                 ); // IN 10.仕入先コード 処理区分3以外かつ区分:2のみ必須
+//// 2009-02-18 H.Itou Mod Start 本番障害#1096
+////    sb.append("   ,it_qt_inspect_req_no => :11 "                 ); // IN 11.検査依頼No   処理区分:2、3のみ必須            
+//    sb.append("   ,it_qt_inspect_req_no => TO_NUMBER(:11) "      ); // IN 11.検査依頼No   処理区分:2、3のみ必須            
+//// 2009-02-18 H.Itou Mod End
+//    sb.append("   ,ot_qt_inspect_req_no => :12 "                 ); // OUT 12.検査依頼No
+//    sb.append("   ,ov_errbuf            => :13 "                 ); // エラー・メッセージ           --# 固定 #
+//    sb.append("   ,ov_retcode           => :14 "                 ); // リターン・コード             --# 固定 #
+//    sb.append("   ,ov_errmsg            => :15); "               ); // ユーザー・エラー・メッセージ --# 固定 #
+//    sb.append("END; "                                            );
+// 2009-02-27 H.Itou Mod End
 
     //PL/SQLの設定を行います
     CallableStatement cstmt
@@ -2738,87 +2812,136 @@ public class XxpoUtility
 
     try
     {
+// 2009-02-27 H.Itou Mod Start 本番障害#32
+      bindCount = 1;
       // パラメータ設定(INパラメータ)
-      cstmt.setString(1, division);                            // 区分
-// 2009-02-18 H.Itou Del Start 本番障害#1096
-//      cstmt.setString(2, disposalDiv);                         // 処理区分
-// 2009-02-18 H.Itou Del End
-      cstmt.setInt(3, XxcmnUtility.intValue(lotId));           // ロットID
-      cstmt.setInt(4, XxcmnUtility.intValue(itemId));          // 品目ID
+      cstmt.setString    (bindCount++, division);                      // 区分
+      cstmt.setString    (bindCount++, disposalDiv);                   // 処理区分
+      cstmt.setInt       (bindCount++, XxcmnUtility.intValue(lotId));  // ロットID
+      cstmt.setInt       (bindCount++, XxcmnUtility.intValue(itemId)); // 品目ID
+      cstmt.setNull      (bindCount++, Types.VARCHAR);                 // 対象先
+      cstmt.setNull      (bindCount++, Types.INTEGER);                 // 生産バッチID
+      cstmt.setBigDecimal(bindCount++, inQty);                         // 数量
       // 区分が2:発注の場合
       if (XxpoConstants.DIVISION_PO.equals(division))
       {
-        cstmt.setNull(5, Types.VARCHAR);                          // 対象先    
-        cstmt.setNull(6, Types.INTEGER);                          // 生産バッチID
-// 2009-02-18 H.Itou Add Start 本番障害#1096
-        // 検査依頼Noに値がある場合･･･品質検査更新 外注出来高即時仕入は数量を更新できないので、常に差分0を渡す。
-        if (!XxcmnUtility.isBlankOrNull(qtInspectReqNo))
-        {
-          cstmt.setString(7, "0");  // 外注出来高数量
-          cstmt.setInt(8, 0);       // 換算入数
-
-        // 検査依頼Noに値がない場合･･･品質検査追加
-        } else
-        { 
-// 2009-02-18 H.Itou Add End
-          cstmt.setString(7, qty);                                  // 外注出来高数量
-          cstmt.setInt(8, XxcmnUtility.intValue(conversionFactor)); // 換算入数
-// 2009-02-18 H.Itou Add Start 本番障害#1096
-        }
-// 2009-02-18 H.Itou Add End
-
-        cstmt.setDate(9, XxcmnUtility.dateValue(prodDelyDate));   // 納入日
-        cstmt.setString(10, vendorLine);      // 仕入先コード
+        cstmt.setDate  (bindCount++, XxcmnUtility.dateValue(prodDelyDate));   // 納入日
+        cstmt.setString(bindCount++, vendorLine);      // 仕入先コード
+        
       // 区分が4:外注出来高の場合
       } else if (XxpoConstants.DIVISION_SPL.equals(division))
       {
-        cstmt.setNull(5, Types.VARCHAR);  // 対象先    
-        cstmt.setNull(6, Types.INTEGER);  // 生産バッチID
-        cstmt.setNull(7, Types.VARCHAR);  // 外注出来高数量
-        cstmt.setNull(8, Types.INTEGER);  // 換算入数
-        cstmt.setNull(9, Types.DATE);     // 納入日
-        cstmt.setNull(10, Types.INTEGER); // 仕入先コード
+        cstmt.setNull(bindCount++, Types.DATE);    // 納入日
+        cstmt.setNull(bindCount++, Types.INTEGER); // 仕入先コード
       }
-// 2009-02-18 H.Itou Mod Start 本番障害#1096
-//      // 追加以外の場合
-//      if (XxpoConstants.PROCESS_FLAG_I.equals(disposalDiv) == false)
       // 検査依頼Noに値がある場合･･･品質検査更新
       if (!XxcmnUtility.isBlankOrNull(qtInspectReqNo))
-// 2009-02-18 H.Itou Mod End
       {
-// 2009-02-18 H.Itou Add Start 本番障害#1096
-        cstmt.setString(2, "2");                         // 処理区分:更新
-// 2009-02-18 H.Itou Add End
-// 2009-02-18 H.Itou Mod Start 本番障害#1096
-//        cstmt.setInt(11, XxcmnUtility.intValue(qtInspectReqNo)); // 検査依頼No
-        cstmt.setString(11, qtInspectReqNo); // 検査依頼No
-// 2009-02-18 H.Itou Mod End
+        cstmt.setString(bindCount++, qtInspectReqNo); // 検査依頼No
 
       // 検査依頼Noに値がない場合･･･品質検査追加
       } else
       {
-// 2009-02-18 H.Itou Add Start 本番障害#1096
-        cstmt.setString(2, "1");                         // 処理区分:追加
-// 2009-02-18 H.Itou Add End
-// 2009-02-18 H.Itou Mod Start 本番障害#1096
-//        cstmt.setNull(11, Types.INTEGER); // NULL
-        cstmt.setNull(11, Types.VARCHAR); // NULL
-// 2009-02-18 H.Itou Mod End
+        cstmt.setNull(bindCount++, Types.VARCHAR); // NULL
       }
       
       // パラメータ設定(OUTパラメータ)
-      cstmt.registerOutParameter(12, Types.INTEGER);           // 検査依頼No
-      cstmt.registerOutParameter(13, Types.VARCHAR, 5000);     // エラー・メッセージ
-      cstmt.registerOutParameter(14, Types.VARCHAR, 1);        // リターン・コード
-      cstmt.registerOutParameter(15, Types.VARCHAR, 5000);     // ユーザー・エラー・メッセージ
+      int outBindStart = bindCount;
+      cstmt.registerOutParameter(bindCount++, Types.INTEGER); // 検査依頼No
+      cstmt.registerOutParameter(bindCount++, Types.VARCHAR); // エラー・メッセージ
+      cstmt.registerOutParameter(bindCount++, Types.VARCHAR); // リターン・コード
+      cstmt.registerOutParameter(bindCount++, Types.VARCHAR); // ユーザー・エラー・メッセージ
+
+//      // パラメータ設定(INパラメータ)
+//      cstmt.setString(1, division);                            // 区分
+//// 2009-02-18 H.Itou Del Start 本番障害#1096
+////      cstmt.setString(2, disposalDiv);                         // 処理区分
+//// 2009-02-18 H.Itou Del End
+//      cstmt.setInt(3, XxcmnUtility.intValue(lotId));           // ロットID
+//      cstmt.setInt(4, XxcmnUtility.intValue(itemId));          // 品目ID
+//      // 区分が2:発注の場合
+//      if (XxpoConstants.DIVISION_PO.equals(division))
+//      {
+//        cstmt.setNull(5, Types.VARCHAR);                          // 対象先    
+//        cstmt.setNull(6, Types.INTEGER);                          // 生産バッチID
+//// 2009-02-18 H.Itou Add Start 本番障害#1096
+//        // 検査依頼Noに値がある場合･･･品質検査更新 外注出来高即時仕入は数量を更新できないので、常に差分0を渡す。
+//        if (!XxcmnUtility.isBlankOrNull(qtInspectReqNo))
+//        {
+//          cstmt.setString(7, "0");  // 外注出来高数量
+//          cstmt.setInt(8, 0);       // 換算入数
+//
+//        // 検査依頼Noに値がない場合･･･品質検査追加
+//        } else
+//        { 
+//// 2009-02-18 H.Itou Add End
+//          cstmt.setString(7, qty);                                  // 外注出来高数量
+//          cstmt.setInt(8, XxcmnUtility.intValue(conversionFactor)); // 換算入数
+//// 2009-02-18 H.Itou Add Start 本番障害#1096
+//        }
+//// 2009-02-18 H.Itou Add End
+//
+//        cstmt.setDate(9, XxcmnUtility.dateValue(prodDelyDate));   // 納入日
+//        cstmt.setString(10, vendorLine);      // 仕入先コード
+//      // 区分が4:外注出来高の場合
+//      } else if (XxpoConstants.DIVISION_SPL.equals(division))
+//      {
+//        cstmt.setNull(5, Types.VARCHAR);  // 対象先    
+//        cstmt.setNull(6, Types.INTEGER);  // 生産バッチID
+//        cstmt.setNull(7, Types.VARCHAR);  // 外注出来高数量
+//        cstmt.setNull(8, Types.INTEGER);  // 換算入数
+//        cstmt.setNull(9, Types.DATE);     // 納入日
+//        cstmt.setNull(10, Types.INTEGER); // 仕入先コード
+//      }
+//// 2009-02-18 H.Itou Mod Start 本番障害#1096
+////      // 追加以外の場合
+////      if (XxpoConstants.PROCESS_FLAG_I.equals(disposalDiv) == false)
+//      // 検査依頼Noに値がある場合･･･品質検査更新
+//      if (!XxcmnUtility.isBlankOrNull(qtInspectReqNo))
+//// 2009-02-18 H.Itou Mod End
+//      {
+//// 2009-02-18 H.Itou Add Start 本番障害#1096
+//        cstmt.setString(2, "2");                         // 処理区分:更新
+//// 2009-02-18 H.Itou Add End
+//// 2009-02-18 H.Itou Mod Start 本番障害#1096
+////        cstmt.setInt(11, XxcmnUtility.intValue(qtInspectReqNo)); // 検査依頼No
+//        cstmt.setString(11, qtInspectReqNo); // 検査依頼No
+//// 2009-02-18 H.Itou Mod End
+//
+//      // 検査依頼Noに値がない場合･･･品質検査追加
+//      } else
+//      {
+//// 2009-02-18 H.Itou Add Start 本番障害#1096
+//        cstmt.setString(2, "1");                         // 処理区分:追加
+//// 2009-02-18 H.Itou Add End
+//// 2009-02-18 H.Itou Mod Start 本番障害#1096
+////        cstmt.setNull(11, Types.INTEGER); // NULL
+//        cstmt.setNull(11, Types.VARCHAR); // NULL
+//// 2009-02-18 H.Itou Mod End
+//      }
+//      
+//      // パラメータ設定(OUTパラメータ)
+//      cstmt.registerOutParameter(12, Types.INTEGER);           // 検査依頼No
+//      cstmt.registerOutParameter(13, Types.VARCHAR, 5000);     // エラー・メッセージ
+//      cstmt.registerOutParameter(14, Types.VARCHAR, 1);        // リターン・コード
+//      cstmt.registerOutParameter(15, Types.VARCHAR, 5000);     // ユーザー・エラー・メッセージ
+// 2009-02-27 H.Itou Mod End
 
       //PL/SQL実行
       cstmt.execute();
 
-      int outQtInspectReqNo = cstmt.getInt(12); // 検査依頼No
-      String errbuf = cstmt.getString(13);      // エラー・メッセージ
-      String retCode = cstmt.getString(14);     // リターン・コード
-      String errmsg = cstmt.getString(15);      // ユーザー・エラー・メッセージ
+// 2009-02-27 H.Itou Mod Start 本番障害#32
+      bindCount = outBindStart;
+      int outQtInspectReqNo = cstmt.getInt(bindCount++); // 検査依頼No
+      String errbuf  = cstmt.getString(bindCount++);     // エラー・メッセージ
+      String retCode = cstmt.getString(bindCount++);     // リターン・コード
+      String errmsg  = cstmt.getString(bindCount++);     // ユーザー・エラー・メッセージ
+
+//      int outQtInspectReqNo = cstmt.getInt(12); // 検査依頼No
+//      String errbuf = cstmt.getString(13);      // エラー・メッセージ
+//      String retCode = cstmt.getString(14);     // リターン・コード
+//      String errmsg = cstmt.getString(15);      // ユーザー・エラー・メッセージ
+// 2009-02-27 H.Itou Mod End
       
       // 正常終了の場合
       if (XxcmnConstants.API_RETURN_NORMAL.equals(retCode)) 
@@ -2837,7 +2960,7 @@ public class XxpoUtility
         rollBack(trans);
         XxcmnUtility.writeLog(trans,
                               XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
-                              cstmt.getString(13),
+                              errbuf,
                               6);
         // 追加の場合
         if (XxpoConstants.PROCESS_FLAG_I.equals(disposalDiv))
