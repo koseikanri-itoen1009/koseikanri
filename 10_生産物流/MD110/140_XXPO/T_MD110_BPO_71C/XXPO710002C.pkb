@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（仕入）
  * MD.050/070       : 生産物流（仕入）Issue1.0  (T_MD050_BPO_710)
  *                    荒茶製造表累計            (T_MD070_BPO_71C)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/07/02    1.2   Satoshi  Yunba     禁則文字対応
  *  2008/10/17    1.3   Yuko     Kawano    統合指摘#216対応
  *  2009/02/17    1.4   Akiyoshi Shiina    T_S_448対応
+ *  2009/02/25    1.5   Akiyoshi Shiina    本番#1233対応
  *
  *****************************************************************************************/
 --
@@ -569,12 +570,17 @@ AS
 -- 2008/10/17 Y.Kawano mod start
 --                       ,ROUND( NVL( xnpt.byproduct1_quantity, 0) * TO_NUMBER( NVL( ilm.attribute7, '0' ) ) ) 
 --                                                          AS amount                 -- 副産物１金額
+-- 2009/02/25 v1.5 UPDATE START
+/*
                 ,CASE
                   WHEN ( in_report_type = gc_report_type_3 ) THEN                   -- 仮単価で算出
                     ROUND( NVL( xnpt.byproduct1_quantity, 0 ) * TO_NUMBER( NVL( ilm.attribute7, '0') ) )
                   WHEN ( in_report_type = gc_report_type_4 ) THEN                   -- 正単価で算出
                     ROUND( NVL( xnpt.byproduct1_quantity, 0 ) * TO_NUMBER( NVL( xnpt.company_final_unit_price, '0') ) )
                  END                                      AS amount                 -- 副産物１金額
+*/
+                ,ROUND( NVL( xnpt.byproduct1_quantity, 0 ) * TO_NUMBER( NVL( ilm.attribute7, '0') ) ) AS amount -- 副産物１金額
+-- 2009/02/25 v1.5 UPDATE END
 -- 2008/10/17 Y.Kawano mod end
                  FROM   xxpo_namaha_prod_txns     xnpt                              -- 生葉実績（アドオン）
                        ,ic_lots_mst               ilm                               -- OPMロットマスタ
@@ -610,12 +616,17 @@ AS
 -- 2008/10/17 Y.Kawano mod start
 --                       ,ROUND( NVL( xnpt.byproduct2_quantity, 0) * TO_NUMBER( NVL( ilm.attribute7, '0' ) ) ) 
 --                                                          AS amount                 -- 副産物２金額
+-- 2009/02/25 v1.5 UPDATE START
+/*
                 ,CASE
                   WHEN ( in_report_type = gc_report_type_3 ) THEN                   -- 仮単価で算出
                     ROUND( NVL( xnpt.byproduct2_quantity, 0 ) * TO_NUMBER( NVL( ilm.attribute7, '0') ) )
                   WHEN ( in_report_type = gc_report_type_4 ) THEN                   -- 正単価で算出
                     ROUND( NVL( xnpt.byproduct2_quantity, 0 ) * TO_NUMBER( NVL( xnpt.company_final_unit_price, '0') ) )
                  END                                      AS amount                 -- 副産物２金額
+*/
+                ,ROUND( NVL( xnpt.byproduct2_quantity, 0 ) * TO_NUMBER( NVL( ilm.attribute7, '0') ) ) AS amount -- 副産物２金額
+-- 2009/02/25 v1.5 UPDATE END
 -- 2008/10/17 Y.Kawano mod end
                  FROM   xxpo_namaha_prod_txns     xnpt                              -- 生葉実績（アドオン）
                        ,ic_lots_mst               ilm                               -- OPMロットマスタ
@@ -651,12 +662,17 @@ AS
 -- 2008/10/17 Y.Kawano mod start
 --                       ,ROUND( NVL( xnpt.byproduct3_quantity, 0) * TO_NUMBER( NVL( ilm.attribute7, '0' ) ) ) 
 --                                                          AS amount                 -- 副産物３金額
+-- 2009/02/25 v1.5 UPDATE START
+/*
                 ,CASE
                   WHEN ( in_report_type = gc_report_type_3 ) THEN                   -- 仮単価で算出
                     ROUND( NVL( xnpt.byproduct3_quantity, 0 ) * TO_NUMBER( NVL( ilm.attribute7, '0') ) )
                   WHEN ( in_report_type = gc_report_type_4 ) THEN                   -- 正単価で算出
                     ROUND( NVL( xnpt.byproduct3_quantity, 0 ) * TO_NUMBER( NVL( xnpt.company_final_unit_price, '0') ) )
                  END                                      AS amount                 -- 副産物２金額
+*/
+                ,ROUND( NVL( xnpt.byproduct3_quantity, 0 ) * TO_NUMBER( NVL( ilm.attribute7, '0') ) ) AS amount -- 副産物３金額
+-- 2009/02/25 v1.5 UPDATE END
 -- 2008/10/17 Y.Kawano mod end
                  FROM   xxpo_namaha_prod_txns     xnpt                              -- 生葉実績（アドオン）
                        ,ic_lots_mst               ilm                               -- OPMロットマスタ
