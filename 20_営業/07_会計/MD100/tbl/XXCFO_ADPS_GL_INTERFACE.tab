@@ -1,0 +1,395 @@
+CREATE TABLE XXCFO.XXCFO_ADPS_GL_INTERFACE (
+     status                         VARCHAR2(50)  NOT NULL
+    ,set_of_books_id                NUMBER(15,0)  NOT NULL
+    ,accounting_date                DATE          NOT NULL
+    ,currency_code                  VARCHAR2(15)  NOT NULL
+    ,date_created                   DATE          NOT NULL
+    ,created_by                     NUMBER(15,0)  NOT NULL
+    ,actual_flag                    VARCHAR2(1)   NOT NULL
+    ,user_je_category_name          VARCHAR2(25)  NOT NULL
+    ,user_je_source_name            VARCHAR2(25)  NOT NULL
+    ,currency_conversion_date       DATE
+    ,encumbrance_type_id            NUMBER
+    ,budget_version_id              NUMBER
+    ,user_currency_conversion_type  VARCHAR2(30)
+    ,currency_conversion_rate       NUMBER
+    ,average_journal_flag           VARCHAR2(1)
+    ,originating_bal_seg_value      VARCHAR2(25)
+    ,segment1                       VARCHAR2(25)
+    ,segment2                       VARCHAR2(25)
+    ,segment3                       VARCHAR2(25)
+    ,segment4                       VARCHAR2(25)
+    ,segment5                       VARCHAR2(25)
+    ,segment6                       VARCHAR2(25)
+    ,segment7                       VARCHAR2(25)
+    ,segment8                       VARCHAR2(25)
+    ,segment9                       VARCHAR2(25)
+    ,segment10                      VARCHAR2(25)
+    ,segment11                      VARCHAR2(25)
+    ,segment12                      VARCHAR2(25)
+    ,segment13                      VARCHAR2(25)
+    ,segment14                      VARCHAR2(25)
+    ,segment15                      VARCHAR2(25)
+    ,segment16                      VARCHAR2(25)
+    ,segment17                      VARCHAR2(25)
+    ,segment18                      VARCHAR2(25)
+    ,segment19                      VARCHAR2(25)
+    ,segment20                      VARCHAR2(25)
+    ,segment21                      VARCHAR2(25)
+    ,segment22                      VARCHAR2(25)
+    ,segment23                      VARCHAR2(25)
+    ,segment24                      VARCHAR2(25)
+    ,segment25                      VARCHAR2(25)
+    ,segment26                      VARCHAR2(25)
+    ,segment27                      VARCHAR2(25)
+    ,segment28                      VARCHAR2(25)
+    ,segment29                      VARCHAR2(25)
+    ,segment30                      VARCHAR2(25)
+    ,entered_dr                     NUMBER
+    ,entered_cr                     NUMBER
+    ,accounted_dr                   NUMBER
+    ,accounted_cr                   NUMBER
+    ,transaction_date               DATE
+    ,reference1                     VARCHAR2(100)
+    ,reference2                     VARCHAR2(240)
+    ,reference3                     VARCHAR2(100)
+    ,reference4                     VARCHAR2(100)
+    ,reference5                     VARCHAR2(240)
+    ,reference6                     VARCHAR2(100)
+    ,reference7                     VARCHAR2(100)
+    ,reference8                     VARCHAR2(100)
+    ,reference9                     VARCHAR2(100)
+    ,reference10                    VARCHAR2(240)
+    ,reference11                    VARCHAR2(100)
+    ,reference12                    VARCHAR2(100)
+    ,reference13                    VARCHAR2(100)
+    ,reference14                    VARCHAR2(100)
+    ,reference15                    VARCHAR2(100)
+    ,reference16                    VARCHAR2(100)
+    ,reference17                    VARCHAR2(100)
+    ,reference18                    VARCHAR2(100)
+    ,reference19                    VARCHAR2(100)
+    ,reference20                    VARCHAR2(100)
+    ,reference21                    VARCHAR2(240)
+    ,reference22                    VARCHAR2(240)
+    ,reference23                    VARCHAR2(240)
+    ,reference24                    VARCHAR2(240)
+    ,reference25                    VARCHAR2(240)
+    ,reference26                    VARCHAR2(240)
+    ,reference27                    VARCHAR2(240)
+    ,reference28                    VARCHAR2(240)
+    ,reference29                    VARCHAR2(240)
+    ,reference30                    VARCHAR2(240)
+    ,je_batch_id                    NUMBER(15,0)
+    ,period_name                    VARCHAR2(15)
+    ,je_header_id                   NUMBER(15,0)
+    ,je_line_num                    NUMBER(15,0)
+    ,chart_of_accounts_id           NUMBER(15,0)
+    ,functional_currency_code       VARCHAR2(15)
+    ,code_combination_id            NUMBER(15,0)
+    ,date_created_in_gl             DATE
+    ,warning_code                   VARCHAR2(4)
+    ,status_description             VARCHAR2(240)
+    ,stat_amount                    NUMBER
+    ,group_id                       NUMBER(15,0)
+    ,request_id                     NUMBER(15,0)
+    ,subledger_doc_sequence_id      NUMBER
+    ,subledger_doc_sequence_value   NUMBER
+    ,attribute1                     VARCHAR2(150)
+    ,attribute2                     VARCHAR2(150)
+    ,gl_sl_link_id                  NUMBER
+    ,gl_sl_link_table               VARCHAR2(30)
+    ,attribute3                     VARCHAR2(150)
+    ,attribute4                     VARCHAR2(150)
+    ,attribute5                     VARCHAR2(150)
+    ,attribute6                     VARCHAR2(150)
+    ,attribute7                     VARCHAR2(150)
+    ,attribute8                     VARCHAR2(150)
+    ,attribute9                     VARCHAR2(150)
+    ,attribute10                    VARCHAR2(150)
+    ,attribute11                    VARCHAR2(150)
+    ,attribute12                    VARCHAR2(150)
+    ,attribute13                    VARCHAR2(150)
+    ,attribute14                    VARCHAR2(150)
+    ,attribute15                    VARCHAR2(150)
+    ,attribute16                    VARCHAR2(150)
+    ,attribute17                    VARCHAR2(150)
+    ,attribute18                    VARCHAR2(150)
+    ,attribute19                    VARCHAR2(150)
+    ,attribute20                    VARCHAR2(150)
+    ,context                        VARCHAR2(150)
+    ,context2                       VARCHAR2(150)
+    ,invoice_date                   DATE
+    ,tax_code                       VARCHAR2(15)
+    ,invoice_identifier             VARCHAR2(20)
+    ,invoice_amount                 NUMBER
+    ,context3                       VARCHAR2(150)
+    ,ussgl_transaction_code         VARCHAR2(30)
+    ,descr_flex_error_message       VARCHAR2(240)
+    ,jgzz_recon_ref                 VARCHAR2(240)
+    ,reference_date                 DATE
+    ,processing_status              VARCHAR2(1))
+ PCTFREE 5
+/
+COMMENT ON TABLE xxcfo.xxcfo_adps_gl_interface IS '人事システム用GLアドオンOIF'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.status                                 IS 'ステータス'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.set_of_books_id                        IS '会計帳簿ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.accounting_date                        IS '仕訳計上日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.currency_code                          IS '通貨コード'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.date_created                           IS '作成日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.created_by                             IS '作成者ユーザーID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.actual_flag                            IS '実績フラグ'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.user_je_category_name                  IS '仕訳カテゴリ'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.user_je_source_name                    IS '仕訳ソース名'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.currency_conversion_date               IS '通貨換算日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.encumbrance_type_id                    IS '予算引当タイプID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.budget_version_id                      IS '予算バージョンID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.user_currency_conversion_type          IS '通貨換算タイプ'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.currency_conversion_rate               IS '通貨換算レート'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.average_journal_flag                   IS '平均仕訳フラグ'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.originating_bal_seg_value              IS 'バランスセグメント値'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment1                               IS 'セグメント1（会社）'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment2                               IS 'セグメント2（部門）'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment3                               IS 'セグメント3（勘定科目）'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment4                               IS 'セグメント4（補助科目）'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment5                               IS 'セグメント5（顧客）'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment6                               IS 'セグメント6（企業）'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment7                               IS 'セグメント7(事業区分)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment8                               IS 'セグメント8(予備)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment9                               IS 'セグメント9'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment10                              IS 'セグメント10'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment11                              IS 'セグメント11'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment12                              IS 'セグメント12'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment13                              IS 'セグメント13'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment14                              IS 'セグメント14'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment15                              IS 'セグメント15'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment16                              IS 'セグメント16'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment17                              IS 'セグメント17'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment18                              IS 'セグメント18'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment19                              IS 'セグメント19'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment20                              IS 'セグメント20'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment21                              IS 'セグメント21'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment22                              IS 'セグメント22'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment23                              IS 'セグメント23'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment24                              IS 'セグメント24'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment25                              IS 'セグメント25'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment26                              IS 'セグメント26'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment27                              IS 'セグメント27'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment28                              IS 'セグメント28'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment29                              IS 'セグメント29'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.segment30                              IS 'セグメント30'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.entered_dr                             IS '借方金額'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.entered_cr                             IS '貸方金額'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.accounted_dr                           IS '機能通貨借方金額'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.accounted_cr                           IS '機能通貨貸方金額'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.transaction_date                       IS 'トランザクション日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference1                             IS 'リファレンス１(バッチ名)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference2                             IS 'リファレンス２(バッチ摘要)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference3                             IS 'リファレンス３'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference4                             IS 'リファレンス４(仕訳名)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference5                             IS 'リファレンス５(仕訳摘要)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference6                             IS 'リファレンス６(仕訳参照)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference7                             IS 'リファレンス７(逆仕訳フラグ)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference8                             IS 'リファレンス８'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference9                             IS 'リファレンス９(逆仕訳期間)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference10                            IS 'リファレンス１０(仕訳明細摘要)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference11                            IS 'リファレンス１１'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference12                            IS 'リファレンス１２'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference13                            IS 'リファレンス１３'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference14                            IS 'リファレンス１４'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference15                            IS 'リファレンス１５'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference16                            IS 'リファレンス１６'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference17                            IS 'リファレンス１７'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference18                            IS 'リファレンス１８'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference19                            IS 'リファレンス１９'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference20                            IS 'リファレンス２０'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference21                            IS 'リファレンス２１'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference22                            IS 'リファレンス２２'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference23                            IS 'リファレンス２３'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference24                            IS 'リファレンス２４'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference25                            IS 'リファレンス２５'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference26                            IS 'リファレンス２６'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference27                            IS 'リファレンス２７'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference28                            IS 'リファレンス２８'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference29                            IS 'リファレンス２９'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference30                            IS 'リファレンス３０'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.je_batch_id                            IS '仕訳バッチID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.period_name                            IS '会計期間'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.je_header_id                           IS '仕訳ヘッダID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.je_line_num                            IS '明細番号'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.chart_of_accounts_id                   IS '勘定体系ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.functional_currency_code               IS '機能通貨コード'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.code_combination_id                    IS 'CCID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.date_created_in_gl                     IS 'GL作成日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.warning_code                           IS '警告コード'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.status_description                     IS 'ステータス内容'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.stat_amount                            IS '統計数値'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.group_id                               IS 'グループID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.request_id                             IS '要求ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.subledger_doc_sequence_id              IS '副会計帳簿文書連番ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.subledger_doc_sequence_value           IS '副会計帳簿文書連番'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute1                             IS 'DFF1(税区分)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute2                             IS 'DFF2(増減事由)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.gl_sl_link_id                          IS 'GL_SLリンクID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.gl_sl_link_table                       IS 'GL_SLリンクテーブル'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute3                             IS 'DFF3(伝票番号)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute4                             IS 'DFF4(起票部門)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute5                             IS 'DFF5(伝票入力者)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute6                             IS 'DFF6(修正元伝票番号)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute7                             IS 'DFF7(予備１)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute8                             IS 'DFF8(予備２)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute9                             IS 'DFF9(予備３)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute10                            IS 'DFF10(予備４)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute11                            IS 'DFF11'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute12                            IS 'DFF12'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute13                            IS 'DFF13'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute14                            IS 'DFF14'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute15                            IS 'DFF15'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute16                            IS 'DFF16'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute17                            IS 'DFF17'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute18                            IS 'DFF18'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute19                            IS 'DFF19'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.attribute20                            IS 'DFF20'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.context                                IS 'コンテキスト'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.context2                               IS 'コンテキスト２'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.invoice_date                           IS '請求書日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.tax_code                               IS '税金コード'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.invoice_identifier                     IS '請求書識別子'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.invoice_amount                         IS '請求書金額'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.context3                               IS 'コンテキスト３'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.ussgl_transaction_code                 IS 'USSGL取引コード'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.descr_flex_error_message               IS 'DFFエラーメッセージ'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.jgzz_recon_ref                         IS '消込参照'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.reference_date                         IS '参照日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_adps_gl_interface.processing_status                      IS '処理ステータス'
+/
