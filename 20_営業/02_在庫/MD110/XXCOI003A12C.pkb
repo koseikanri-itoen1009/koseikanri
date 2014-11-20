@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A12C(body)
  * Description      : HHT入出庫データ抽出
  * MD.050           : HHT入出庫データ抽出 MD050_COI_003_A12
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2010/01/29    1.5   H.Sasaki         [E_本稼動_01372]在庫会計期間チェックのエラーハンドリング変更
  *  2010/03/23    1.6   Y.Goto           [E_本稼動_01943]拠点の有効チェックを追加
  *  2010/04/19    1.7   H.Sasaki         [E_本稼動_02365]見本の拠点有効チェックを変更
+ *  2010/04/22    1.8   N.Abe            [E_本稼動_02415]見本の拠点有効チェック修正(上様顧客)
  *
  *****************************************************************************************/
 --
@@ -166,6 +167,9 @@ AS
   cv_date_type_ym              CONSTANT VARCHAR2(6)   := 'YYYYMM';               -- 日付型（年月）
   cv_n                         CONSTANT VARCHAR2(1)   := 'N';                    -- フラグ N
 -- == 2010/04/19 V1.7 Added END   ===============================================================
+-- == 2010/04/22 V1.8 Added START ===============================================================
+  cv_cust_class_code_12        CONSTANT VARCHAR2(2)   := '12';                   -- 顧客区分（上様顧客）
+-- == 2010/04/22 V1.8 Added END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1395,9 +1399,20 @@ AS
         INTO    lt_cust_base_code
         FROM    hz_cust_accounts    hca
               , xxcmm_cust_accounts xca
+-- == 2010/04/22 V1.8 Modified START ===============================================================
+--        WHERE   hca.cust_account_id     =   xca.customer_id
+--        AND     hca.account_number      =   g_hht_inv_if_tab( in_work_count ).inside_code
+--        AND     hca.customer_class_code =   cv_cust_class_code_10;
+              , hz_parties          hp
         WHERE   hca.cust_account_id     =   xca.customer_id
         AND     hca.account_number      =   g_hht_inv_if_tab( in_work_count ).inside_code
-        AND     hca.customer_class_code =   cv_cust_class_code_10;
+        AND   ((hca.customer_class_code =   cv_cust_class_code_10
+        AND     hp.duns_number_c        IN  ('20','25','30','40','50'))
+        OR     (hca.customer_class_code =   cv_cust_class_code_12
+        AND     hp.duns_number_c        IN  ('30','40')))
+        AND     hca.party_id            =   hp.party_id
+        ;
+-- == 2010/04/22 V1.8 Modified END   ===============================================================
         --
         IF (lt_cust_base_code IS NULL) THEN
           RAISE NO_DATA_FOUND;
