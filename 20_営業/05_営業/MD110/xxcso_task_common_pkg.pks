@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO_TASK_COMMON_PKG(SPEC)
  * Description      : 共通関数(XXCSOタスク）
  * MD.050/070       :
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -15,6 +15,7 @@ AS
  *  create_task               P    -     訪問タスク登録関数
  *  update_task               P    -     訪問タスク更新関数
  *  delete_task               P    -     訪問タスク削除関数
+ *  update_task2              P    -     訪問タスク更新処理２（ATTRIBUTE15のみ更新）関数
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -24,6 +25,7 @@ AS
  *  2008/12/16    1.0   T.maruyama       訪問タスク削除関数
  *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
  *  2009-07-16    1.2   Kazuo.Satomura   0000070対応
+ *  2009-10-23    1.3   Daisuke.Abe      障害対応(E_T4_00056)
  *****************************************************************************************/
 --
   -- 訪問タスク登録関数
@@ -96,5 +98,17 @@ AS
     ov_errmsg                OUT NOCOPY VARCHAR2         -- ユーザー・エラー・メッセージ
   );
 --
+/* 2009.10.23 D.Abe E_T4_00056対応 START */
+  -- 訪問タスク更新関数2
+  PROCEDURE update_task2(
+    in_task_id               IN  NUMBER,                 -- タスクID
+    in_obj_ver_num           IN  NUMBER,                 -- オブジェクトバージョン番号
+    iv_attribute15           IN  VARCHAR2 DEFAULT jtf_task_utl.g_miss_char,  -- DFF15
+    ov_errbuf                OUT NOCOPY VARCHAR2,        -- エラー・メッセージ
+    ov_retcode               OUT NOCOPY VARCHAR2,        -- 正常:0、警告:1、異常:2
+    ov_errmsg                OUT NOCOPY VARCHAR2         -- ユーザー・エラー・メッセージ
+  );
+--
+/* 2009.10.23 D.Abe E_T4_00056対応 END */
 END XXCSO_TASK_COMMON_PKG;
 /

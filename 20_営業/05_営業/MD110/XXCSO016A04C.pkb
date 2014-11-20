@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           :  MD050_CSO_016_A04_情報系-EBSインターフェース：
  *                     (OUT)訪問実績データ
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,10 +25,11 @@ AS
  *  create_csv_rec         訪問実績データCSV出力(A-11)
  *  close_csv_file         CSVファイルクローズ処理(A-13)
  *  submain                メイン処理プロシージャ
- *                           訪問実績データ抽出(A-6)
- *                           前回訪問日抽出(A-10)
+ *                         訪問実績データ抽出(A-6)
+ *                         前回訪問日抽出(A-10)
+ *                         タスクデータ更新 (A-15)
  *  main                   コンカレント実行ファイル登録プロシージャ
- *                           終了処理(A-14)
+ *                         終了処理(A-14)
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
@@ -44,6 +45,7 @@ AS
  *  2009-07-21    1.6   Kazuo.Satomura   統合テスト障害対応(0000070)
  *  2009-09-09    1.7   Daisuke.Abe      統合テスト障害対応(0001323)
  *  2009-10-07    1.8   Daisuke.Abe      障害対応(0001454)
+ *  2009-10-23    1.9   Daisuke.Abe      障害対応(E_T4_00056)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -118,6 +120,10 @@ AS
   cv_tkn_number_12       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00018';  -- CSVファイルクローズエラー
   cv_tkn_number_13       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00127';  -- データ抽出警告メッセージ
   cv_tkn_number_14       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00022';  -- CSVファイル出力エラーメッセージ(訪問実績)
+  /* 2009.10.23 D.Abe E_T4_00056対応 START */
+  cv_tkn_number_15       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00386';  -- タスクテーブルロックエラー
+  cv_tkn_number_16       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00332';  -- タスクAPI更新エラー
+  /* 2009.10.23 D.Abe E_T4_00056対応 END */
   -- トークンコード
   cv_tkn_frm_val         CONSTANT VARCHAR2(20) := 'FROM_VALUE';
   cv_tkn_to_val          CONSTANT VARCHAR2(20) := 'TO_VALUE';
@@ -132,6 +138,12 @@ AS
   cv_tkn_vst_dt          CONSTANT VARCHAR2(20) := 'VISIT_DATE';
   cv_tkn_tsk_id          CONSTANT VARCHAR2(20) := 'TASK_ID';
   cv_tkn_cstm_cd         CONSTANT VARCHAR2(20) := 'CUSTOMER_CD';
+  /* 2009.10.23 D.Abe E_T4_00056対応 START */
+  cv_tkn_table           CONSTANT VARCHAR2(20) := 'TABLE';
+  cv_tkn_errmsg1         CONSTANT VARCHAR2(20) := 'ERRMSG';
+  cv_tkn_api_name        CONSTANT VARCHAR2(20) := 'API_NAME';
+  cv_tkn_api_msg         CONSTANT VARCHAR2(20) := 'API_MSG';
+  /* 2009.10.23 D.Abe E_T4_00056対応 END */
 --
   cb_true                 CONSTANT BOOLEAN := TRUE;
   cb_false                CONSTANT BOOLEAN := FALSE;
@@ -170,6 +182,9 @@ AS
   /* 2009.10.07 D.Abe 0001454対応 START */
   cv_debug_msg_skip1     CONSTANT VARCHAR2(200) := '<< MC訪問のためスキップしました >>';
   /* 2009.10.07 D.Abe 0001454対応 END */
+/* 2009.10.23 D.Abe E_T4_00056対応 START */
+  cv_debug_msg_skip2     CONSTANT VARCHAR2(200) := '<< タスク更新失敗のためスキップしました >>';
+/* 2009.10.23 D.Abe E_T4_00056対応 END */
 --
   cv_w                   CONSTANT VARCHAR2(1)   := 'w';  -- CSVファイルオープンモード
   -- ===============================
@@ -1543,6 +1558,127 @@ AS
 --
   END close_csv_file;
 --
+/* 2009.10.23 D.Abe E_T4_00056対応 START */
+  /**********************************************************************************
+   * Procedure Name   : update_task
+   * Description      : タスクデータ更新 (A-15)
+   ***********************************************************************************/
+  PROCEDURE update_task(
+     in_task_id           IN  NUMBER                      -- タスクID
+    ,in_obj_ver_num       IN  NUMBER                      -- オブジェクトバージョン番号
+    ,iv_attribute15       IN  VARCHAR2                    -- DFF15
+    ,ov_errbuf            OUT NOCOPY VARCHAR2             -- エラー・メッセージ            -- # 固定 #
+    ,ov_retcode           OUT NOCOPY VARCHAR2             -- リターン・コード              -- # 固定 #
+    ,ov_errmsg            OUT NOCOPY VARCHAR2             -- ユーザー・エラー・メッセージ  -- # 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name          CONSTANT VARCHAR2(100)   := 'update_task';     -- プログラム名
+--
+-- #####################  固定ローカル変数宣言部 START     #########################
+--
+    lv_errbuf            VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode           VARCHAR2(1);     -- リターン・コード
+    lv_errmsg            VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+-- #####################  固定ローカル変数宣言部 END       #########################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_task_id           CONSTANT VARCHAR2(30) := 'タスクID:';
+    cv_task_id2          CONSTANT VARCHAR2(30) := 'タスクID';
+    cv_task_table_nm     CONSTANT VARCHAR2(30) := 'タスクテーブル';
+    --
+    -- *** ローカル変数 ***
+    ln_task_id          NUMBER;
+--
+    -- *** ローカル例外 ***
+    g_lock_expt                   EXCEPTION;   -- ロック例外
+    api_expt                      EXCEPTION;   -- タスクAPI例外
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+
+    -- =======================
+    -- タスクデータロック
+    -- =======================
+    BEGIN
+      SELECT task_id
+      INTO   ln_task_id
+      FROM   jtf_tasks_b  jtb -- タスクテーブル
+      WHERE  jtb.task_id = in_task_id
+      FOR UPDATE NOWAIT
+      ;
+    EXCEPTION
+      -- *** OTHERS例外ハンドラ ***
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_name                --アプリケーション短縮名
+                      ,iv_name         => cv_tkn_number_15           --メッセージコード
+                      ,iv_token_name1  => cv_tkn_table               --トークンコード1
+                      ,iv_token_value1 => cv_task_table_nm           --トークン値1
+                      ,iv_token_name2  => cv_tkn_errmsg1             --トークンコード2
+                      ,iv_token_value2 => cv_task_id ||  in_task_id  --トークン値2
+                     );
+        lv_errbuf := lv_errmsg || SQLERRM;
+        RAISE g_lock_expt;
+    END;
+
+    -- =======================
+    -- タスクデータ更新 
+    -- =======================
+    xxcso_task_common_pkg.update_task2(
+       in_task_id
+      ,in_obj_ver_num
+      ,iv_attribute15
+      ,lv_errbuf
+      ,lv_retcode
+      ,lv_errmsg
+    );
+    -- 正常ではない場合
+    IF (lv_retcode <> cv_status_normal) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                 -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_16            -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_api_name             -- トークンコード1
+                     ,iv_token_value1 => cv_task_id2                 -- トークン値1
+                     ,iv_token_name2  => cv_tkn_api_msg              -- トークンコード2
+                     ,iv_token_value2 => in_task_id || ',' || lv_errmsg -- トークン値2
+                   );
+      lv_errbuf := lv_errbuf || cv_msg_part || lv_errmsg;
+      RAISE api_expt;
+    END IF;
+--
+  EXCEPTION
+    WHEN g_lock_expt THEN
+      -- *** SQLロックエラーハンドラ ***
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+      --
+    WHEN api_expt THEN
+      -- *** タスク更新API例外ハンドラ ***
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+      --
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+  END update_task;
+--
+/* 2009.10.23 D.Abe E_T4_00056対応 END */
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -1649,7 +1785,11 @@ AS
       --  AND  jrre.source_id              = ppf.person_id
       -- クローズされているタスク
       -- 指定した日付で作成/更新があった訪問実績/訪問予定データ（顧客）
-      SELECT jtb.actual_end_date                   actual_end_date         -- 訪問日
+      /* 2009.10.23 D.Abe E_T4_00056対応 START */
+      --SELECT jtb.actual_end_date                   actual_end_date         -- 訪問日
+      SELECT /*+ leading(jtb) index(jtb xxcso_jtf_tasks_b_n21) */
+             jtb.actual_end_date                   actual_end_date         -- 訪問日
+      /* 2009.10.23 D.Abe E_T4_00056対応 END */
             ,jtb.task_id                           task_id                 -- 訪問回数
             ,jtb.attribute1                        attribute1              -- 訪問区分コード1
             ,jtb.attribute2                        attribute2              -- 訪問区分コード2
@@ -1685,6 +1825,10 @@ AS
             /* 2009.10.07 D.Abe 0001454対応 START */
             ,jtb.attribute14                       attribute14             -- 顧客ステータス
             /* 2009.10.07 D.Abe 0001454対応 END */
+            /* 2009.10.23 D.Abe E_T4_00056対応 START */
+            ,jtb.attribute15                       attribute15             -- 情報系連携エラーステータス
+            ,jtb.object_version_number             obj_ver_num             -- オブジェクトバージョン番号
+            /* 2009.10.23 D.Abe E_T4_00056対応 END */
       FROM   jtf_tasks_b           jtb -- タスクテーブル
             ,per_people_f          ppf -- 従業員マスタ
             ,jtf_rs_resource_extns jrr -- リソースマスタ
@@ -1716,10 +1860,17 @@ AS
       AND    jtb.task_status_id          = lv_tsk_stts_cls
       AND    jtb.deleted_flag            = cv_no
       /* 2009.07.21 K.Satomura 0000070対応 END */
+      /* 2009.10.23 D.Abe E_T4_00056対応 START */
+      AND    jtb.attribute15             IS NULL
+      /* 2009.10.23 D.Abe E_T4_00056対応 END */
       -- クローズ以外の過去日付のタスク
       -- 指定した日付よりも過去に作成/更新されたレコードで当日が訪問日時の訪問実績データ（顧客）
       UNION ALL
-      SELECT jtb.actual_end_date                   actual_end_date         -- 訪問日
+      /* 2009.10.23 D.Abe E_T4_00056対応 START */
+      --SELECT jtb.actual_end_date                   actual_end_date         -- 訪問日
+      SELECT /*+ leading(jtb) index(jtb xxcso_jtf_tasks_b_n20) */
+             jtb.actual_end_date                   actual_end_date         -- 訪問日
+      /* 2009.10.23 D.Abe E_T4_00056対応 END */
             ,jtb.task_id                           task_id                 -- 訪問回数
             ,jtb.attribute1                        attribute1              -- 訪問区分コード1
             ,jtb.attribute2                        attribute2              -- 訪問区分コード2
@@ -1745,6 +1896,10 @@ AS
             /* 2009.10.07 D.Abe 0001454対応 START */
             ,jtb.attribute14                       attribute14             -- 顧客ステータス
             /* 2009.10.07 D.Abe 0001454対応 END */
+            /* 2009.10.23 D.Abe E_T4_00056対応 START */
+            ,jtb.attribute15                       attribute15             -- 情報系連携エラーステータス
+            ,jtb.object_version_number             obj_ver_num             -- オブジェクトバージョン番号
+            /* 2009.10.23 D.Abe E_T4_00056対応 END */
       FROM   jtf_tasks_b           jtb -- タスクテーブル
             ,per_people_f          ppf -- 従業員マスタ
             ,jtf_rs_resource_extns jrr -- リソースマスタ
@@ -1773,10 +1928,17 @@ AS
       AND    jtb.deleted_flag            = cv_no
       /* 2009.09.09 D.Abe 0001323対応 END */
       /* 2009.06.05 K.Satomura T1_0478再修正対応 END */
+      /* 2009.10.23 D.Abe E_T4_00056対応 START */
+      AND    jtb.attribute15             IS NULL
+      /* 2009.10.23 D.Abe E_T4_00056対応 END */
       UNION ALL
       -- クローズされている商談タスク
       -- 指定した日付で作成/更新があった訪問実績/訪問予定データ（商談）
-      SELECT jtb.actual_end_date                   actual_end_date         -- 訪問日
+      /* 2009.10.23 D.Abe E_T4_00056対応 START */
+      --SELECT jtb.actual_end_date                   actual_end_date         -- 訪問日
+      SELECT /*+ leading(jtb) index(jtb xxcso_jtf_tasks_b_n21) */
+             jtb.actual_end_date                   actual_end_date         -- 訪問日
+      /* 2009.10.23 D.Abe E_T4_00056対応 END */
             ,jtb.task_id                           task_id                 -- 訪問回数
             ,jtb.attribute1                        attribute1              -- 訪問区分コード1
             ,jtb.attribute2                        attribute2              -- 訪問区分コード2
@@ -1812,6 +1974,10 @@ AS
             /* 2009.10.07 D.Abe 0001454対応 START */
             ,jtb.attribute14                       attribute14             -- 顧客ステータス
             /* 2009.10.07 D.Abe 0001454対応 END */
+            /* 2009.10.23 D.Abe E_T4_00056対応 START */
+            ,jtb.attribute15                       attribute15             -- 情報系連携エラーステータス
+            ,jtb.object_version_number             obj_ver_num             -- オブジェクトバージョン番号
+            /* 2009.10.23 D.Abe E_T4_00056対応 END */
       FROM   jtf_tasks_b           jtb -- タスクテーブル
             ,per_people_f          ppf -- 従業員マスタ
             ,jtf_rs_resource_extns jrr -- リソースマスタ
@@ -1846,10 +2012,17 @@ AS
       AND    jtb.task_status_id          = lv_tsk_stts_cls
       AND    jtb.deleted_flag            = cv_no
       /* 2009.07.21 K.Satomura 0000070対応 END */
+      /* 2009.10.23 D.Abe E_T4_00056対応 START */
+      AND    jtb.attribute15             IS NULL
+      /* 2009.10.23 D.Abe E_T4_00056対応 END */
       UNION ALL
       -- クローズ以外の過去日付の商談タスク
       -- 指定した日付よりも過去に作成/更新されたレコードで当日が訪問日時の訪問実績データ（商談）
-      SELECT jtb.actual_end_date                   actual_end_date         -- 訪問日
+      /* 2009.10.23 D.Abe E_T4_00056対応 START */
+      --SELECT jtb.actual_end_date                   actual_end_date         -- 訪問日
+      SELECT /*+ leading(jtb) index(jtb xxcso_jtf_tasks_b_n20) */
+             jtb.actual_end_date                   actual_end_date         -- 訪問日
+      /* 2009.10.23 D.Abe E_T4_00056対応 END */
             ,jtb.task_id                           task_id                 -- 訪問回数
             ,jtb.attribute1                        attribute1              -- 訪問区分コード1
             ,jtb.attribute2                        attribute2              -- 訪問区分コード2
@@ -1875,6 +2048,10 @@ AS
             /* 2009.10.07 D.Abe 0001454対応 START */
             ,jtb.attribute14                       attribute14             -- 顧客ステータス
             /* 2009.10.07 D.Abe 0001454対応 END */
+            /* 2009.10.23 D.Abe E_T4_00056対応 START */
+            ,jtb.attribute15                       attribute15             -- 情報系連携エラーステータス
+            ,jtb.object_version_number             obj_ver_num             -- オブジェクトバージョン番号
+            /* 2009.10.23 D.Abe E_T4_00056対応 END */
       FROM   jtf_tasks_b           jtb -- タスクテーブル
             ,per_people_f          ppf -- 従業員マスタ
             ,jtf_rs_resource_extns jrr -- リソースマスタ
@@ -1907,6 +2084,107 @@ AS
       AND    ala.lead_id                 =  jtb.source_object_id
       /* 2009.06.05 K.Satomura T1_0478再修正対応 END */
       /* 2009.04.22 K.Satomura T1_0478対応 END */
+      /* 2009.10.23 D.Abe E_T4_00056対応 START */
+      AND    jtb.attribute15             IS NULL
+      /* 2009.10.23 D.Abe E_T4_00056対応 END */
+      /* 2009.10.23 D.Abe E_T4_00056対応 START */
+      UNION ALL
+      --連携エラーデータ（顧客訪問タスク）取得
+      SELECT /*+ leading(jtb) use_concat index(jtb xxcso_jtf_tasks_b_n22) */
+             jtb.actual_end_date                   actual_end_date         -- 訪問日
+            ,jtb.task_id                           task_id                 -- 訪問回数
+            ,jtb.attribute1                        attribute1              -- 訪問区分コード1
+            ,jtb.attribute2                        attribute2              -- 訪問区分コード2
+            ,jtb.attribute3                        attribute3              -- 訪問区分コード3
+            ,jtb.attribute4                        attribute4              -- 訪問区分コード4
+            ,jtb.attribute5                        attribute5              -- 訪問区分コード5
+            ,jtb.attribute6                        attribute6              -- 訪問区分コード6
+            ,jtb.attribute7                        attribute7              -- 訪問区分コード7
+            ,jtb.attribute8                        attribute8              -- 訪問区分コード8
+            ,jtb.attribute9                        attribute9              -- 訪問区分コード9
+            ,jtb.attribute10                       attribute10             -- 訪問区分コード10
+            ,TO_CHAR(jtb.actual_end_date,'hh24mi') actual_end_hour         -- 訪問時間
+            ,cv_no                                 deleted_flag            -- 削除フラグ
+            ,jtb.source_object_type_code           source_object_type_code -- ソースタイプ
+            ,jtb.source_object_id                  source_object_id        -- パーティID
+            ,jtb.attribute11                       attribute11             -- 有効訪問区分
+            ,jtb.attribute12                       attribute12             -- 登録元区分
+            ,jtb.attribute13                       attribute13             -- 登録元ソース番号
+            ,ppf.employee_number                   employee_number         -- 営業員コード
+            ,jtb.attribute14                       attribute14             -- 顧客ステータス
+            ,jtb.attribute15                       attribute15             -- 情報系連携エラーステータス
+            ,jtb.object_version_number             obj_ver_num             -- オブジェクトバージョン番号
+      FROM   jtf_tasks_b           jtb -- タスクテーブル
+            ,per_people_f          ppf -- 従業員マスタ
+            ,jtf_rs_resource_extns jrr -- リソースマスタ
+      WHERE  jtb.source_object_type_code = cv_src_obj_tp_cd
+      AND    jtb.owner_type_code         = cv_owner_tp_cd
+      AND    jtb.owner_id                = jrr.resource_id
+      AND    jrr.category                = cv_category
+      AND    jrr.source_id               = ppf.person_id
+      AND    TRUNC(jtb.actual_end_date) BETWEEN ppf.effective_start_date
+      AND    ppf.effective_end_date
+      AND    TRUNC(jtb.actual_end_date) <= ld_process_date
+      AND    jtb.task_status_id          = TO_NUMBER(lv_tsk_stts_cls)
+      AND    jtb.task_type_id            = fnd_profile.value(cv_task_type_visit)
+      AND    jtb.deleted_flag            = cv_no
+      AND    (
+              (jtb.attribute15           = cv_yes)
+              OR
+              (jtb.attribute15 BETWEEN TO_CHAR(ld_from_value,'YYYYMMDD')
+                                   AND TO_CHAR(ld_to_value  ,'YYYYMMDD')
+              )
+             )
+      UNION ALL
+      --連携エラーデータ（商談タスク）取得
+      SELECT /*+ leading(jtb) use_concat index(jtb xxcso_jtf_tasks_b_n22) */
+             jtb.actual_end_date                   actual_end_date         -- 訪問日
+            ,jtb.task_id                           task_id                 -- 訪問回数
+            ,jtb.attribute1                        attribute1              -- 訪問区分コード1
+            ,jtb.attribute2                        attribute2              -- 訪問区分コード2
+            ,jtb.attribute3                        attribute3              -- 訪問区分コード3
+            ,jtb.attribute4                        attribute4              -- 訪問区分コード4
+            ,jtb.attribute5                        attribute5              -- 訪問区分コード5
+            ,jtb.attribute6                        attribute6              -- 訪問区分コード6
+            ,jtb.attribute7                        attribute7              -- 訪問区分コード7
+            ,jtb.attribute8                        attribute8              -- 訪問区分コード8
+            ,jtb.attribute9                        attribute9              -- 訪問区分コード9
+            ,jtb.attribute10                       attribute10             -- 訪問区分コード10
+            ,TO_CHAR(jtb.actual_end_date,'hh24mi') actual_end_hour         -- 訪問時間
+            ,cv_no                                 deleted_flag            -- 削除フラグ
+            ,jtb.source_object_type_code           source_object_type_code -- ソースタイプ
+            ,ala.customer_id                       source_object_id        -- パーティID
+            ,jtb.attribute11                       attribute11             -- 有効訪問区分
+            ,jtb.attribute12                       attribute12             -- 登録元区分
+            ,jtb.attribute13                       attribute13             -- 登録元ソース番号
+            ,ppf.employee_number                   employee_number         -- 営業員コード
+            ,jtb.attribute14                       attribute14             -- 顧客ステータス
+            ,jtb.attribute15                       attribute15             -- 情報系連携エラーステータス
+            ,jtb.object_version_number             obj_ver_num             -- オブジェクトバージョン番号
+      FROM   jtf_tasks_b           jtb -- タスクテーブル
+            ,per_people_f          ppf -- 従業員マスタ
+            ,jtf_rs_resource_extns jrr -- リソースマスタ
+            ,as_leads_all          ala -- 商談テーブル
+      WHERE  jtb.source_object_type_code = cv_src_obj_tp_cd_opp
+      AND    jtb.owner_type_code         = cv_owner_tp_cd
+      AND    jtb.owner_id                = jrr.resource_id
+      AND    jrr.category                = cv_category
+      AND    jrr.source_id               = ppf.person_id
+      AND    TRUNC(jtb.actual_end_date) BETWEEN ppf.effective_start_date
+      AND    ppf.effective_end_date
+      AND    TRUNC(jtb.actual_end_date) <= ld_process_date
+      AND    jtb.task_status_id          = TO_NUMBER(lv_tsk_stts_cls)
+      AND    jtb.task_type_id            = fnd_profile.value(cv_task_type_visit)
+      AND    jtb.deleted_flag            = cv_no
+      AND    (
+              (jtb.attribute15           = cv_yes)
+              OR
+              (jtb.attribute15 BETWEEN TO_CHAR(ld_from_value,'YYYYMMDD')
+                                   AND TO_CHAR(ld_to_value  ,'YYYYMMDD')
+              )
+             )
+      AND    ala.lead_id                 = jtb.source_object_id
+      /* 2009.10.23 D.Abe E_T4_00056対応 END */
       ;
     -- 前回訪問日抽出カーソル
     CURSOR get_lst_vst_dt_cur(
@@ -1954,6 +2232,9 @@ AS
     /* 2009.10.07 D.Abe 0001454対応 START */
     status_skip_data_expt          EXCEPTION;   -- 処理対象外例外
     /* 2009.10.07 D.Abe 0001454対応 END */
+    /* 2009.10.23 D.Abe E_T4_00056対応 START */
+    update_skip_data_expt          EXCEPTION;   -- 更新例外
+    /* 2009.10.23 D.Abe E_T4_00056対応 END */
 --
   BEGIN
 --
@@ -2245,6 +2526,7 @@ AS
         END IF;
         -- カーソルクローズ
         CLOSE get_lst_vst_dt_cur;
+
         -- ========================================
         -- A-11.訪問実績データCSV出力
         -- ========================================
@@ -2258,6 +2540,28 @@ AS
         IF (lv_retcode = cv_status_error) THEN
           RAISE global_process_expt;
         END IF;
+
+        /* 2009.10.23 D.Abe E_T4_00056対応 START */
+        -- 情報系連携エラーステータスが'Y'の場合
+        IF (l_get_vst_rslt_dt_rec.attribute15 = cv_yes ) THEN
+          -- ========================================
+          -- A-15.タスクデータ更新
+          -- ========================================
+          update_task(
+            in_task_id          =>  l_get_vst_rslt_dt_rec.task_id     --タスクID
+           ,in_obj_ver_num      =>  l_get_vst_rslt_dt_rec.obj_ver_num  --オブジェクトバージョン番号
+           ,iv_attribute15      =>  TO_CHAR(ld_process_date,'YYYYMMDD')-- DFF15
+           ,ov_errbuf           =>  lv_errbuf        -- エラー・メッセージ            --# 固定 #
+           ,ov_retcode          =>  lv_retcode       -- リターン・コード              --# 固定 #
+           ,ov_errmsg           =>  lv_errmsg        -- ユーザー・エラー・メッセージ  --# 固定 #
+          );
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE update_skip_data_expt;
+          END IF;
+          --
+        END IF;
+        /* 2009.10.23 D.Abe E_T4_00056対応 END */
+
         -- 成功件数をカウントアップ
         gn_normal_cnt := gn_normal_cnt + 1;
 --
@@ -2279,6 +2583,39 @@ AS
                      lv_errbuf          || CHR(10) ||
                      ''
         );
+        /* 2009.10.23 D.Abe E_T4_00056対応 START */
+        -- ========================================
+        -- A-15.タスクデータ更新
+        -- ========================================
+        update_task(
+          in_task_id          =>  l_get_vst_rslt_dt_rec.task_id     --タスクID
+         ,in_obj_ver_num      =>  l_get_vst_rslt_dt_rec.obj_ver_num  --オブジェクトバージョン番号
+         ,iv_attribute15      =>  cv_yes           -- DFF15
+         ,ov_errbuf           =>  lv_errbuf        -- エラー・メッセージ            --# 固定 #
+         ,ov_retcode          =>  lv_retcode       -- リターン・コード              --# 固定 #
+         ,ov_errmsg           =>  lv_errmsg        -- ユーザー・エラー・メッセージ  --# 固定 #
+        );
+        IF (lv_retcode = cv_status_error) THEN
+          -- エラー出力
+          fnd_file.put_line(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_errmsg                  -- ユーザー・エラーメッセージ
+          );
+          -- 空行の挿入
+          fnd_file.put_line(
+             which  => FND_FILE.OUTPUT
+            ,buff   => ''
+          );
+          -- *** DEBUG_LOG ***
+          -- データスキップしたことをログ出力
+          fnd_file.put_line(
+             which  => FND_FILE.LOG
+            ,buff   => cv_debug_msg_skip2 || CHR(10) ||
+                       lv_errbuf          || CHR(10) ||
+                       ''
+          );
+        END IF;
+        /* 2009.10.23 D.Abe E_T4_00056対応 END */
         -- 全体の処理ステータスに警告セット
         ov_retcode := cv_status_warn;
 --
@@ -2299,6 +2636,35 @@ AS
                      ''
         );
         /* 2009.10.07 D.Abe 0001454対応 END */
+        /* 2009.10.23 D.Abe E_T4_00056対応 START */
+--
+        -- タスク更新エラーのためスキップ
+        WHEN update_skip_data_expt THEN
+        -- エラー件数カウント
+        gn_error_cnt := gn_error_cnt + 1;
+        -- *** DEBUG_LOG ***
+        -- データスキップしたことをログ出力
+        -- エラー出力
+        fnd_file.put_line(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_errmsg                  -- ユーザー・エラーメッセージ
+        );
+          -- 空行の挿入
+          fnd_file.put_line(
+             which  => FND_FILE.OUTPUT
+            ,buff   => ''
+          );
+        -- *** DEBUG_LOG ***
+        -- データスキップしたことをログ出力
+        fnd_file.put_line(
+           which  => FND_FILE.LOG
+          ,buff   => cv_debug_msg_skip2 || CHR(10) ||
+                     lv_errbuf          || CHR(10) ||
+                     ''
+        );
+        -- 全体の処理ステータスに警告セット
+        ov_retcode := cv_status_warn;
+        /* 2009.10.23 D.Abe E_T4_00056対応 END */
 --
       END;
 --

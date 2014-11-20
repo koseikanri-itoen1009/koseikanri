@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO_TASK_COMMON_PKG(BODY)
  * Description      : 共通関数(XXCSOタスク）
  * MD.050/070       :
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2009/05/01    1.1   Tomoko.Mori      T1_0897対応
  *  2009/05/22    1.2   K.Satomura       T1_1080対応
  *  2009/07/16    1.3   K.Satomura       0000070対応
+ *  2009/10/23    1.4   Daisuke.Abe      障害対応(E_T4_00056)
  *****************************************************************************************/
 --
   -- ===============================
@@ -637,6 +638,105 @@ AS
 --
 --#####################################  固定部 END   ##########################################
   END delete_task;
+/* 2009.10.23 D.Abe E_T4_00056対応 START */
+--
+   /**********************************************************************************
+   * Function Name    : update_task2
+   * Description      : 訪問タスク更新処理２（ATTRIBUTE15のみ更新）
+   ***********************************************************************************/
+  PROCEDURE update_task2(
+    in_task_id               IN  NUMBER,                 -- タスクID
+    in_obj_ver_num           IN  NUMBER,                 -- オブジェクトバージョン番号
+    iv_attribute15           IN  VARCHAR2 DEFAULT jtf_task_utl.g_miss_char,  -- DFF15
+    ov_errbuf                OUT NOCOPY VARCHAR2,        -- エラー・メッセージ
+    ov_retcode               OUT NOCOPY VARCHAR2,        -- 正常:0、警告:1、異常:2
+    ov_errmsg                OUT NOCOPY VARCHAR2         -- ユーザー・エラー・メッセージ
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                CONSTANT VARCHAR2(100)   := 'update_task2';
+--
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_errbuf                  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode                 VARCHAR2(1);     -- リターン・コード
+    lv_errmsg                  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+    ln_obj_ver_num             NUMBER;          -- オブジェクトバージョン番号
+
+    -- API戻り値
+    gx_return_status           VARCHAR2(100);
+    gx_msg_count               NUMBER;
+    gx_msg_data                VARCHAR2(100);
+    wk_msg_data                VARCHAR2(2000);
+    wk_msg_index_out           VARCHAR2(2000);
+    wk_api_err_msg             VARCHAR2(2000);
+    next_msg_index             NUMBER;
+--
+  BEGIN
+--
+    -- 初期化
+    ov_retcode := xxcso_common_pkg.gv_status_normal;
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+--
+    ln_obj_ver_num := in_obj_ver_num;
+    ------------------
+    ---- API 起動 ----
+    ------------------
+    JTF_TASKS_PUB.UPDATE_TASK(
+       p_api_version             => 1.0                 -- バージョンナンバー
+      ,p_task_id                 => in_task_id          -- タスクID
+      ,p_object_version_number   => ln_obj_ver_num      -- オブジェクトバージョン番号
+      ,p_attribute15             => iv_attribute15
+      ,x_return_status           => gx_return_status
+      ,x_msg_count               => gx_msg_count
+      ,x_msg_data                => gx_msg_data
+    );
+    IF gx_return_status = fnd_api.g_ret_sts_success THEN
+      NULL;
+    ELSE
+      BEGIN
+        <<error_msg_loop>>
+        FOR i in 1..FND_MSG_PUB.Count_Msg LOOP
+          FND_MSG_PUB.get(
+                         p_msg_index      => i
+                        ,p_encoded        => 'F'
+                        ,p_data           => wk_msg_data
+                        ,p_msg_index_out  => next_msg_index
+          );
+          wk_api_err_msg := wk_api_err_msg || ' ' || wk_msg_data;
+        END LOOP error_msg_loop;
+      EXCEPTION
+        WHEN OTHERS THEN
+          NULL;
+      END;
+      RAISE g_api_expt;
+    END IF;
+  EXCEPTION
+    -- *** 処理部例外 ***
+    WHEN g_process_expt THEN
+      ov_retcode    := xxcso_common_pkg.gv_status_error;
+      ov_errmsg     := lv_errmsg;
+      ov_errbuf     := SUBSTRB(gv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+    -- *** API例外 ***
+    WHEN g_api_expt THEN
+      ov_retcode    := xxcso_common_pkg.gv_status_error;
+      ov_errmsg     := wk_api_err_msg;
+      ov_errbuf     := SUBSTRB(gv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END update_task2;
+/* 2009.10.23 D.Abe E_T4_00056対応 END */
 --
 END XXCSO_TASK_COMMON_PKG;
 /
