@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM004A05C(body)
  * Description      : 資格ポイント・新規獲得ポイント情報系システムI/F
  * MD.050           : 資格ポイント・新規獲得ポイント情報系システムI/F MD050_CSM_004_A05
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/05    1.0   S.Son            新規作成
  *  2009/07/01    1.1   T.Tsukino        ［SCS障害管理番号0000256］対応
+ *  2009/12/22    1.2   T.Nakano         E_本番稼動_00589 対応
  *
  *****************************************************************************************/
 --
@@ -442,7 +443,10 @@ AS
              ,xncph.get_intro_kbn                                                          --獲得・紹介区分
              ,xncph.get_custom_date                                                        --顧客獲得日
              ,xncph.business_low_type                                                      --業態（小分類）
-             ,DECODE(xncph.data_kbn,1,xncph.evaluration_kbn,NULL) evaluration_kbn        --新規評価対象区分
+--//+UPD START 2009/12/22 E_本番稼動_00589 対応 T.Nakano
+--              ,DECODE(xncph.data_kbn,1,xncph.evaluration_kbn,NULL) evaluration_kbn        --新規評価対象区分
+             ,DECODE(xncph.data_kbn,1,xncph.evaluration_kbn,2,xncph.evaluration_kbn,NULL) evaluration_kbn        --新規評価対象区分
+--//+UPD END 2009/12/22 E_本番稼動_00589 対応 T.Nakano
              ,xncph.point                                                                  --ポイント
       FROM    xxcsm_new_cust_point_hst   xncph                                             --新規獲得ポイント顧客別履歴テーブル
              ,(
