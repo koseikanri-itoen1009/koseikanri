@@ -6,7 +6,7 @@
 -- BR.050        : T_BR050_CCO_200_自販_作業データ
 -- MD.050        : MD050_CSO_015_A01_自販機-EBSインタフェース：（IN）作業データ
 -- MD.070        : なし
--- Version       : 1.1
+-- Version       : 1.2
 --
 -- Target Table  : XXCSO_IN_WORK_DATA
 --
@@ -17,6 +17,7 @@
 --  2008/11/28    1.0     kyo              新規作成
 --  2009/01/27    1.1     kyo              休止処理済フラグ項目追加
 --  2009/03/10    1.1     abe              シーケンス番号の追加
+--  2009/05/29    1.2     K.Satomura       システムテスト障害対応(T1_1017,T1_1107)
 -- ************************************************************************************************
 --
 OPTIONS (SKIP=0, DIRECT=FALSE, ERRORS=99999)
@@ -76,6 +77,13 @@ FIELDS TERMINATED BY "," TRAILING NULLCOLS
     INSTALL1_PROCESSED_FLAG        CONSTANT 'N',                            -- 物件１処理済フラグ
     INSTALL2_PROCESSED_FLAG        CONSTANT 'N',                            -- 物件２処理済フラグ
     SUSPEND_PROCESSED_FLAG         CONSTANT '0',                            -- 休止処理済フラグ
+    -- 2009.05.29 K.Satomura T1_1017,T1_1107対応 START
+    INSTALL1_PROCESSED_DATE        DATE "yyyymmddhh24miss",                 -- 物件１処理済日
+    INSTALL2_PROCESSED_DATE        DATE "yyyymmddhh24miss",                 -- 物件２処理済日
+    VDMS_INTERFACE_FLAG            CHAR OPTIONALLY ENCLOSED BY '"',         -- 自販機S連携フラグ
+    VDMS_INTERFACE_DATE            DATE "yyyymmddhh24miss",                 -- 自販機S連携日
+    PROCESS_NO_TARGET_FLAG         CHAR OPTIONALLY ENCLOSED BY '"',         -- 作業依頼処理対象外フラグ
+    -- 2009.05.29 K.Satomura T1_1017,T1_1107対応 END
     CREATED_BY                     "FND_GLOBAL.USER_ID",                    -- 作成者
     CREATION_DATE                  SYSDATE,                                 -- 作成日
     LAST_UPDATED_BY                "FND_GLOBAL.USER_ID",                    -- 最終更新者

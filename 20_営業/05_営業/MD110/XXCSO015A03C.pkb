@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *                                       【T1_1066対応】T1_0530対応の取消
  *  2009-05-26    1.9   M.Ohtsuki        【T1_1141対応】初回取引日更新漏れの対応
  *  2009-05-28    1.10  M.Ohtsuki        【T1_1203対応】先月データ更新障害の対応
+ *  2009-06-01    1.11  K.Satomura       【T1_1107対応】
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2419,6 +2420,289 @@ AS
   END init;
 --
   /**********************************************************************************
+   * Procedure Name   : update_in_work_data
+   * Description      : 作業データテーブルの物件フラグ更新処理 (A-9)
+   ***********************************************************************************/
+  PROCEDURE update_in_work_data(
+     io_inst_base_data_rec   IN OUT NOCOPY g_get_data_rtype -- (IN)物件マスタ情報
+    ,id_process_date         IN     DATE                    -- 業務処理日付
+    /* 2009.06.01 K.Satomura T1_1107対応 START */
+    ,iv_skip_flag            IN     VARCHAR2                -- スキップフラグ
+    /* 2009.06.01 K.Satomura T1_1107対応 END */
+    ,ov_errbuf               OUT    NOCOPY VARCHAR2         -- エラー・メッセージ            --# 固定 #
+    ,ov_retcode              OUT    NOCOPY VARCHAR2         -- リターン・コード              --# 固定 #
+    ,ov_errmsg               OUT    NOCOPY VARCHAR2         -- ユーザー・エラー・メッセージ  --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_in_work_data'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cn_work_kbn5               CONSTANT NUMBER          := 5;                -- 引揚
+    cv_kbn1                    CONSTANT VARCHAR2(1)     := '1';
+    cv_no                      CONSTANT VARCHAR2(1)     := 'N';
+    cv_yes                     CONSTANT VARCHAR2(1)     := 'Y';
+    cv_update_process          CONSTANT VARCHAR2(100)   := '更新';
+    cv_in_work_info            CONSTANT VARCHAR2(100)   := '作業データテーブル';
+--
+    -- *** ローカル変数 ***
+    ln_seq_no                  NUMBER;                  -- シーケンス番号
+    ln_slip_num                NUMBER;                  -- 伝票No.
+    ln_slip_branch_num         NUMBER;                  -- 伝票枝番
+    ln_line_number             NUMBER;                  -- 行番
+    ln_job_kbn                 NUMBER;                  -- 作業区分
+    ln_rock_slip_num           NUMBER;                  -- ロック用伝票No.
+    ln_rock_slip_branch_num    NUMBER;                  -- ロック用伝票枝番
+    ln_rock_line_number        NUMBER;                  -- ロック用行番
+    lv_install_code            VARCHAR2(10);            -- 物件コード
+    lv_install_code1           VARCHAR2(10);            -- 物件コード１
+    lv_install_code2           VARCHAR2(10);            -- 物件コード２
+    lv_account_num1            VARCHAR2(10);            -- 顧客コード１
+    lv_account_num2            VARCHAR2(10);            -- 顧客コード２
+--
+    -- *** ローカル例外 ***
+    update_error_expt          EXCEPTION;
+--    
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--  
+    -- データの格納
+    ln_seq_no             := io_inst_base_data_rec.seq_no;
+    ln_slip_num           := io_inst_base_data_rec.slip_no;
+    ln_slip_branch_num    := io_inst_base_data_rec.slip_branch_no;
+    ln_line_number        := io_inst_base_data_rec.line_number;
+    ln_job_kbn            := io_inst_base_data_rec.job_kbn;
+    lv_install_code       := io_inst_base_data_rec.install_code;
+    lv_install_code1      := io_inst_base_data_rec.install_code1;
+    lv_install_code2      := io_inst_base_data_rec.install_code2;
+    lv_account_num1       := io_inst_base_data_rec.account_number1;
+    lv_account_num2       := io_inst_base_data_rec.account_number2;
+--
+    -- 作業データ抽出
+    BEGIN
+--
+      SELECT xiwd.slip_no                                             -- 伝票No.
+            ,xiwd.slip_branch_no                                      -- 伝票枝番
+            ,xiwd.line_number                                         -- 行番号
+      INTO   ln_rock_slip_num
+            ,ln_rock_slip_branch_num
+            ,ln_rock_line_number
+      FROM   xxcso_in_work_data xiwd                                  -- 作業データ
+      WHERE  xiwd.seq_no         = ln_seq_no
+        AND  xiwd.slip_no        = ln_slip_num
+        AND  xiwd.slip_branch_no = ln_slip_branch_num
+        AND  xiwd.line_number    = ln_line_number
+      FOR UPDATE NOWAIT
+      ;
+    EXCEPTION
+      -- ロック失敗した場合の例外
+      WHEN global_lock_expt THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                   -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_27              -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_table                  -- トークンコード1
+                       ,iv_token_value1 => cv_in_work_info               -- トークン値1
+                       ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
+                       ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
+                       ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
+                       ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
+                       ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
+                       ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
+                       ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
+                       ,iv_token_value5 => TO_CHAR(ln_line_number)       -- トークン値5
+                       ,iv_token_name6  => cv_tkn_bukken1                -- トークンコード6
+                       ,iv_token_value6 => lv_install_code1              -- トークン値6
+                       ,iv_token_name7  => cv_tkn_bukken2                -- トークンコード7
+                       ,iv_token_value7 => lv_install_code2              -- トークン値7
+                       ,iv_token_name8  => cv_tkn_account_num1           -- トークンコード8
+                       ,iv_token_value8 => lv_account_num1               -- トークン値8
+                       ,iv_token_name9  => cv_tkn_account_num2           -- トークンコード9
+                       ,iv_token_value9 => lv_account_num2               -- トークン値9
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE update_error_expt;
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                   -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_24              -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_task_nm                -- トークンコード1
+                       ,iv_token_value1 => cv_in_work_info               -- トークン値1
+                       ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
+                       ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
+                       ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
+                       ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
+                       ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
+                       ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
+                       ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
+                       ,iv_token_value5 => TO_CHAR(ln_line_number)       -- トークン値5
+                       ,iv_token_name6  => cv_tkn_bukken1                -- トークンコード6
+                       ,iv_token_value6 => lv_install_code1              -- トークン値6
+                       ,iv_token_name7  => cv_tkn_bukken2                -- トークンコード7
+                       ,iv_token_value7 => lv_install_code2              -- トークン値7
+                       ,iv_token_name8  => cv_tkn_account_num1           -- トークンコード8
+                       ,iv_token_value8 => lv_account_num1               -- トークン値8
+                       ,iv_token_name9  => cv_tkn_account_num2           -- トークンコード9
+                       ,iv_token_value9 => lv_account_num2               -- トークン値9
+                       ,iv_token_name10 => cv_tkn_errmsg                 -- トークンコード10
+                       ,iv_token_value10=> SQLERRM                       -- トークン値10
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE update_error_expt;
+    END;
+--
+    BEGIN
+      /* 2009.06.01 K.Satomura T1_1107対応 START */
+      IF (NVL(iv_skip_flag, cv_no) = cv_yes) THEN
+        UPDATE xxcso_in_work_data xiw -- 作業データ
+        SET    xiw.process_no_target_flag = cv_yes -- 作業依頼処理対象外フラグ
+              ,xiw.last_updated_by        = cn_last_updated_by
+              ,xiw.last_update_date       = cd_last_update_date
+              ,xiw.last_update_login      = cn_last_update_login
+              ,xiw.request_id             = cn_request_id
+              ,xiw.program_application_id = cn_program_application_id
+              ,xiw.program_id             = cn_program_id
+              ,xiw.program_update_date    = cd_program_update_date
+        WHERE  xiw.seq_no         = ln_seq_no
+        AND    xiw.slip_no        = ln_slip_num
+        AND    xiw.slip_branch_no = ln_slip_branch_num
+        AND    xiw.line_number    = ln_line_number
+        ;
+        --
+      ELSE
+      /* 2009.06.01 K.Satomura T1_1107対応 END */
+        -- 物件データの物件コードが作業データの物件コード１と同一の場合は
+        IF (lv_install_code = NVL(lv_install_code1, ' ')) THEN 
+--
+          -- ==========================================
+          -- 物件１処理済フラグを「Y．連携済」に更新 
+          -- ==========================================
+          UPDATE xxcso_in_work_data                                        -- 作業データ
+          SET    install1_processed_flag = cv_yes                         -- 物件１処理済フラグ
+                /* 2009.06.01 K.Satomura T1_1107対応 START */
+                ,install1_processed_date = id_process_date -- 物件１処理済日
+                /* 2009.06.01 K.Satomura T1_1107対応 END */
+                ,last_updated_by         = cn_last_updated_by
+                ,last_update_date        = cd_last_update_date
+                ,last_update_login       = cn_last_update_login
+                ,request_id              = cn_request_id
+                ,program_application_id  = cn_program_application_id
+                ,program_id              = cn_program_id
+                ,program_update_date     = cd_program_update_date
+          WHERE  seq_no         = ln_seq_no
+            AND  slip_no        = ln_slip_num
+            AND  slip_branch_no = ln_slip_branch_num
+            AND  line_number    = ln_line_number
+          ;
+--
+        -- 物件データの物件コードが作業データの物件コード２と同一の場合は
+        ELSE
+--
+          -- ==========================================
+          -- 物件２処理済フラグを「Y．連携済」に更新 
+          -- ==========================================
+          -- 作業区分が「5.引揚」の場合の休止処理済フラグの更新→'1'(休止)
+          UPDATE xxcso_in_work_data                                          -- 作業データ
+          SET    install2_processed_flag = cv_yes                           -- 物件２処理済フラグ
+                ,suspend_processed_flag  = (CASE
+                                              WHEN job_kbn = cn_work_kbn5 THEN -- 休止処理済フラグ
+                                                cv_kbn1
+                                              ELSE
+                                                suspend_processed_flag
+                                            END)
+                /* 2009.06.01 K.Satomura T1_1107対応 START */
+                ,install2_processed_date = id_process_date -- 物件２処理済日
+                /* 2009.06.01 K.Satomura T1_1107対応 END */
+                ,last_updated_by         = cn_last_updated_by
+                ,last_update_date        = cd_last_update_date
+                ,last_update_login       = cn_last_update_login
+                ,request_id              = cn_request_id
+                ,program_application_id  = cn_program_application_id
+                ,program_id              = cn_program_id
+                ,program_update_date     = cd_program_update_date
+          WHERE  seq_no         = ln_seq_no
+            AND  slip_no        = ln_slip_num
+            AND  slip_branch_no = ln_slip_branch_num
+            AND  line_number    = ln_line_number
+          ;
+--
+        END IF;
+--
+      /* 2009.06.01 K.Satomura T1_1107対応 START */
+      END IF;
+      /* 2009.06.01 K.Satomura T1_1107対応 END */
+    EXCEPTION
+      -- *** OTHERS例外ハンドラ ***
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application   => cv_app_name                   -- アプリケーション短縮名
+                       ,iv_name          => cv_tkn_number_25              -- メッセージコード
+                       ,iv_token_name1   => cv_tkn_table                  -- トークンコード1
+                       ,iv_token_value1  => cv_in_work_info               -- トークン値1
+                       ,iv_token_name2   => cv_tkn_process                -- トークンコード2
+                       ,iv_token_value2  => cv_update_process             -- トークン値2
+                       ,iv_token_name3   => cv_tkn_seq_no                 -- トークンコード3
+                       ,iv_token_value3  => TO_CHAR(ln_seq_no)            -- トークン値3
+                       ,iv_token_name4   => cv_tkn_slip_num               -- トークンコード4
+                       ,iv_token_value4  => TO_CHAR(ln_slip_num)          -- トークン値4
+                       ,iv_token_name5   => cv_tkn_slip_branch_num        -- トークンコード5
+                       ,iv_token_value5  => TO_CHAR(ln_slip_branch_num)   -- トークン値5
+                       ,iv_token_name6   => cv_tkn_bukken1                -- トークンコード6
+                       ,iv_token_value6  => lv_install_code1              -- トークン値6
+                       ,iv_token_name7   => cv_tkn_bukken2                -- トークンコード7
+                       ,iv_token_value7  => lv_install_code2              -- トークン値7
+                       ,iv_token_name8   => cv_tkn_account_num1           -- トークンコード8
+                       ,iv_token_value8  => lv_account_num1               -- トークン値8
+                       ,iv_token_name9  => cv_tkn_account_num2            -- トークンコード9
+                       ,iv_token_value9 => lv_account_num2                -- トークン値9
+                       ,iv_token_name10  => cv_tkn_errmsg                 -- トークンコード10
+                       ,iv_token_value10 => SQLERRM                       -- トークン値10
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE update_error_expt;
+    END;
+--
+  EXCEPTION
+    -- *** 更新失敗例外ハンドラ ***
+    WHEN update_error_expt THEN
+      -- 更新失敗ロールバックフラグの設定。
+      gb_rollback_flg := TRUE;
+--      
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_warn;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      -- 更新失敗ロールバックフラグの設定。
+      gb_rollback_flg := TRUE;
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_in_work_data;
+--
+  /**********************************************************************************
    * Procedure Name   : get_item_instances
    * Description      : 物件情報抽出 (A-4)
    ***********************************************************************************/
@@ -2531,6 +2815,22 @@ AS
       IF (ln_job_kbn IN (cn_jon_kbn_1, cn_jon_kbn_2, cn_jon_kbn_3, cn_jon_kbn_4, cn_jon_kbn_5, cn_jon_kbn_6)) THEN
       -- 作業区分が１：新台設置、２：旧台設置、３：新台代替、４：旧台代替、５：引揚、６：店内移動の場合
         IF (lv_po_req_number < lv_last_po_req_number) THEN
+          /* 2009.06.01 K.Satomura T1_1107対応 START */
+          update_in_work_data(
+             io_inst_base_data_rec => io_inst_base_data_rec -- (IN)物件マスタ情報
+            ,id_process_date       => id_process_date       -- 業務処理日付
+            ,iv_skip_flag          => cv_flg_y              -- スキップフラグ
+            ,ov_errbuf             => lv_errbuf             -- エラー・メッセージ            --# 固定 #
+            ,ov_retcode            => lv_retcode            -- リターン・コード              --# 固定 #
+            ,ov_errmsg             => lv_errmsg             -- ユーザー・エラー・メッセージ  --# 固定 #
+          );
+          --
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          ELSIF (lv_retcode = cv_status_warn) THEN
+            RAISE skip_process_expt;
+          END IF;
+          /* 2009.06.01 K.Satomura T1_1107対応 END */
           RAISE skip_process_expt;
           --
         END IF;
@@ -5140,255 +5440,6 @@ AS
   END update_item_instances;
 --
   /**********************************************************************************
-   * Procedure Name   : update_in_work_data
-   * Description      : 作業データテーブルの物件フラグ更新処理 (A-9)
-   ***********************************************************************************/
-  PROCEDURE update_in_work_data(
-     io_inst_base_data_rec   IN OUT NOCOPY g_get_data_rtype -- (IN)物件マスタ情報
-    ,id_process_date         IN     DATE                    -- 業務処理日付
-    ,ov_errbuf               OUT    NOCOPY VARCHAR2         -- エラー・メッセージ            --# 固定 #
-    ,ov_retcode              OUT    NOCOPY VARCHAR2         -- リターン・コード              --# 固定 #
-    ,ov_errmsg               OUT    NOCOPY VARCHAR2         -- ユーザー・エラー・メッセージ  --# 固定 #
-  )
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_in_work_data'; -- プログラム名
---
---#####################  固定ローカル変数宣言部 START   ########################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
-    cn_work_kbn5               CONSTANT NUMBER          := 5;                -- 引揚
-    cv_kbn1                    CONSTANT VARCHAR2(1)     := '1';
-    cv_no                      CONSTANT VARCHAR2(1)     := 'N';
-    cv_yes                     CONSTANT VARCHAR2(1)     := 'Y';
-    cv_update_process          CONSTANT VARCHAR2(100)   := '更新';
-    cv_in_work_info            CONSTANT VARCHAR2(100)   := '作業データテーブル';
---
-    -- *** ローカル変数 ***
-    ln_seq_no                  NUMBER;                  -- シーケンス番号
-    ln_slip_num                NUMBER;                  -- 伝票No.
-    ln_slip_branch_num         NUMBER;                  -- 伝票枝番
-    ln_line_number             NUMBER;                  -- 行番
-    ln_job_kbn                 NUMBER;                  -- 作業区分
-    ln_rock_slip_num           NUMBER;                  -- ロック用伝票No.
-    ln_rock_slip_branch_num    NUMBER;                  -- ロック用伝票枝番
-    ln_rock_line_number        NUMBER;                  -- ロック用行番
-    lv_install_code            VARCHAR2(10);            -- 物件コード
-    lv_install_code1           VARCHAR2(10);            -- 物件コード１
-    lv_install_code2           VARCHAR2(10);            -- 物件コード２
-    lv_account_num1            VARCHAR2(10);            -- 顧客コード１
-    lv_account_num2            VARCHAR2(10);            -- 顧客コード２
---
-    -- *** ローカル例外 ***
-    update_error_expt          EXCEPTION;
---    
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := cv_status_normal;
---
---###########################  固定部 END   ############################
---  
-    -- データの格納
-    ln_seq_no             := io_inst_base_data_rec.seq_no;
-    ln_slip_num           := io_inst_base_data_rec.slip_no;
-    ln_slip_branch_num    := io_inst_base_data_rec.slip_branch_no;
-    ln_line_number        := io_inst_base_data_rec.line_number;
-    ln_job_kbn            := io_inst_base_data_rec.job_kbn;
-    lv_install_code       := io_inst_base_data_rec.install_code;
-    lv_install_code1      := io_inst_base_data_rec.install_code1;
-    lv_install_code2      := io_inst_base_data_rec.install_code2;
-    lv_account_num1       := io_inst_base_data_rec.account_number1;
-    lv_account_num2       := io_inst_base_data_rec.account_number2;
---
-    -- 作業データ抽出
-    BEGIN
---
-      SELECT xiwd.slip_no                                             -- 伝票No.
-            ,xiwd.slip_branch_no                                      -- 伝票枝番
-            ,xiwd.line_number                                         -- 行番号
-      INTO   ln_rock_slip_num
-            ,ln_rock_slip_branch_num
-            ,ln_rock_line_number
-      FROM   xxcso_in_work_data xiwd                                  -- 作業データ
-      WHERE  xiwd.seq_no         = ln_seq_no
-        AND  xiwd.slip_no        = ln_slip_num
-        AND  xiwd.slip_branch_no = ln_slip_branch_num
-        AND  xiwd.line_number    = ln_line_number
-      FOR UPDATE NOWAIT
-      ;
-    EXCEPTION
-      -- ロック失敗した場合の例外
-      WHEN global_lock_expt THEN
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name                   -- アプリケーション短縮名
-                       ,iv_name         => cv_tkn_number_27              -- メッセージコード
-                       ,iv_token_name1  => cv_tkn_table                  -- トークンコード1
-                       ,iv_token_value1 => cv_in_work_info               -- トークン値1
-                       ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
-                       ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
-                       ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
-                       ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
-                       ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
-                       ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
-                       ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
-                       ,iv_token_value5 => TO_CHAR(ln_line_number)       -- トークン値5
-                       ,iv_token_name6  => cv_tkn_bukken1                -- トークンコード6
-                       ,iv_token_value6 => lv_install_code1              -- トークン値6
-                       ,iv_token_name7  => cv_tkn_bukken2                -- トークンコード7
-                       ,iv_token_value7 => lv_install_code2              -- トークン値7
-                       ,iv_token_name8  => cv_tkn_account_num1           -- トークンコード8
-                       ,iv_token_value8 => lv_account_num1               -- トークン値8
-                       ,iv_token_name9  => cv_tkn_account_num2           -- トークンコード9
-                       ,iv_token_value9 => lv_account_num2               -- トークン値9
-                     );
-        lv_errbuf := lv_errmsg;
-        RAISE update_error_expt;
-      WHEN OTHERS THEN
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name                   -- アプリケーション短縮名
-                       ,iv_name         => cv_tkn_number_24              -- メッセージコード
-                       ,iv_token_name1  => cv_tkn_task_nm                -- トークンコード1
-                       ,iv_token_value1 => cv_in_work_info               -- トークン値1
-                       ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
-                       ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
-                       ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
-                       ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
-                       ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
-                       ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
-                       ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
-                       ,iv_token_value5 => TO_CHAR(ln_line_number)       -- トークン値5
-                       ,iv_token_name6  => cv_tkn_bukken1                -- トークンコード6
-                       ,iv_token_value6 => lv_install_code1              -- トークン値6
-                       ,iv_token_name7  => cv_tkn_bukken2                -- トークンコード7
-                       ,iv_token_value7 => lv_install_code2              -- トークン値7
-                       ,iv_token_name8  => cv_tkn_account_num1           -- トークンコード8
-                       ,iv_token_value8 => lv_account_num1               -- トークン値8
-                       ,iv_token_name9  => cv_tkn_account_num2           -- トークンコード9
-                       ,iv_token_value9 => lv_account_num2               -- トークン値9
-                       ,iv_token_name10 => cv_tkn_errmsg                 -- トークンコード10
-                       ,iv_token_value10=> SQLERRM                       -- トークン値10
-                     );
-        lv_errbuf := lv_errmsg;
-        RAISE update_error_expt;
-    END;
---
-    BEGIN
-      -- 物件データの物件コードが作業データの物件コード１と同一の場合は
-      IF (lv_install_code = NVL(lv_install_code1, ' ')) THEN 
---
-        -- ==========================================
-        -- 物件１処理済フラグを「Y．連携済」に更新 
-        -- ==========================================
-        UPDATE xxcso_in_work_data                                        -- 作業データ
-        SET    install1_processed_flag = cv_yes,                         -- 物件１処理済フラグ
-               last_updated_by         = cn_last_updated_by,
-               last_update_date        = cd_last_update_date,
-               last_update_login       = cn_last_update_login,
-               request_id              = cn_request_id,
-               program_application_id  = cn_program_application_id,
-               program_id              = cn_program_id,
-               program_update_date     = cd_program_update_date
-        WHERE  seq_no         = ln_seq_no
-          AND  slip_no        = ln_slip_num
-          AND  slip_branch_no = ln_slip_branch_num
-          AND  line_number    = ln_line_number
-        ;
---
-      -- 物件データの物件コードが作業データの物件コード２と同一の場合は
-      ELSE
---
-        -- ==========================================
-        -- 物件２処理済フラグを「Y．連携済」に更新 
-        -- ==========================================
-        -- 作業区分が「5.引揚」の場合の休止処理済フラグの更新→'1'(休止)
-        UPDATE xxcso_in_work_data                                          -- 作業データ
-        SET    install2_processed_flag = cv_yes,                           -- 物件２処理済フラグ
-               suspend_processed_flag  = (CASE WHEN job_kbn = cn_work_kbn5 -- 休止処理済フラグ
-                                                THEN cv_kbn1
-                                               ELSE suspend_processed_flag END),
-               last_updated_by         = cn_last_updated_by,
-               last_update_date        = cd_last_update_date,
-               last_update_login       = cn_last_update_login,
-               request_id              = cn_request_id,
-               program_application_id  = cn_program_application_id,
-               program_id              = cn_program_id,
-               program_update_date     = cd_program_update_date
-        WHERE  seq_no         = ln_seq_no
-          AND  slip_no        = ln_slip_num
-          AND  slip_branch_no = ln_slip_branch_num
-          AND  line_number    = ln_line_number
-        ;
---
-      END IF;
---
-    EXCEPTION
-      -- *** OTHERS例外ハンドラ ***
-      WHEN OTHERS THEN
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application   => cv_app_name                   -- アプリケーション短縮名
-                       ,iv_name          => cv_tkn_number_25              -- メッセージコード
-                       ,iv_token_name1   => cv_tkn_table                  -- トークンコード1
-                       ,iv_token_value1  => cv_in_work_info               -- トークン値1
-                       ,iv_token_name2   => cv_tkn_process                -- トークンコード2
-                       ,iv_token_value2  => cv_update_process             -- トークン値2
-                       ,iv_token_name3   => cv_tkn_seq_no                 -- トークンコード3
-                       ,iv_token_value3  => TO_CHAR(ln_seq_no)            -- トークン値3
-                       ,iv_token_name4   => cv_tkn_slip_num               -- トークンコード4
-                       ,iv_token_value4  => TO_CHAR(ln_slip_num)          -- トークン値4
-                       ,iv_token_name5   => cv_tkn_slip_branch_num        -- トークンコード5
-                       ,iv_token_value5  => TO_CHAR(ln_slip_branch_num)   -- トークン値5
-                       ,iv_token_name6   => cv_tkn_bukken1                -- トークンコード6
-                       ,iv_token_value6  => lv_install_code1              -- トークン値6
-                       ,iv_token_name7   => cv_tkn_bukken2                -- トークンコード7
-                       ,iv_token_value7  => lv_install_code2              -- トークン値7
-                       ,iv_token_name8   => cv_tkn_account_num1           -- トークンコード8
-                       ,iv_token_value8  => lv_account_num1               -- トークン値8
-                       ,iv_token_name9  => cv_tkn_account_num2            -- トークンコード9
-                       ,iv_token_value9 => lv_account_num2                -- トークン値9
-                       ,iv_token_name10  => cv_tkn_errmsg                 -- トークンコード10
-                       ,iv_token_value10 => SQLERRM                       -- トークン値10
-                     );
-        lv_errbuf := lv_errmsg;
-        RAISE update_error_expt;
-    END;
---
-  EXCEPTION
-    -- *** 更新失敗例外ハンドラ ***
-    WHEN update_error_expt THEN
-      -- 更新失敗ロールバックフラグの設定。
-      gb_rollback_flg := TRUE;
---      
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_warn;
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      -- 更新失敗ロールバックフラグの設定。
-      gb_rollback_flg := TRUE;
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END update_in_work_data;
---
-  /**********************************************************************************
    * Procedure Name   : update_cust_or_party
    * Description      : 顧客アドオンマスタとパーティマスタ更新処理 (A-10)
    ***********************************************************************************/
@@ -6540,6 +6591,9 @@ AS
     cv_no                    CONSTANT  VARCHAR2(1)    := 'N';
     cv_yes                   CONSTANT  VARCHAR2(1)    := 'Y';
     cv_table_name            CONSTANT  VARCHAR2(100)  := 'xxcso_in_item_data';
+    /* 2009.06.01 K.Satomura T1_1107対応 START */
+    ct_comp_kbn_comp         CONSTANT xxcso_in_work_data.completion_kbn%TYPE := 1;
+    /* 2009.06.01 K.Satomura T1_1107対応 END */
     -- *** ローカル変数 ***
     -- *** ローカル・例外 ***
     delete_error_expt        EXCEPTION;
@@ -6556,20 +6610,32 @@ AS
       -- ==========================================
       -- 物件ワークテーブル削除処理 
       -- ==========================================
-      DELETE  FROM xxcso_in_item_data  xiid                -- 物件ワークテーブル
-      WHERE EXISTS(
-              SELECT xiwd.slip_no FROM xxcso_in_work_data  xiwd
-              WHERE xiwd.install_code1 = xiid.install_code
-              OR    xiwd.install_code2 = xiid.install_code
-            )
-      AND  NOT EXISTS(
-             SELECT xiwd2.slip_no FROM xxcso_in_work_data  xiwd2
-             WHERE (    xiwd2.install_code1           = xiid.install_code
-                    AND xiwd2.install1_processed_flag = cv_no )
-                   OR
-                   (    xiwd2.install_code2           = xiid.install_code
-                    AND xiwd2.install2_processed_flag = cv_no )
-            );
+      DELETE FROM xxcso_in_item_data  xiid                -- 物件ワークテーブル
+      WHERE  EXISTS
+             (
+               SELECT xiwd.slip_no
+               FROM   xxcso_in_work_data xiwd
+               WHERE  xiwd.install_code1 = xiid.install_code
+               OR     xiwd.install_code2 = xiid.install_code
+             )
+      AND    NOT EXISTS
+             (
+               SELECT xiwd2.slip_no
+               FROM   xxcso_in_work_data xiwd2
+               WHERE  (
+                            xiwd2.install_code1           = xiid.install_code
+                        AND xiwd2.install1_processed_flag = cv_no
+                      )
+               OR     (
+                            xiwd2.install_code2           = xiid.install_code
+                        AND xiwd2.install2_processed_flag = cv_no
+                      )
+               /* 2009.06.01 K.Satomura T1_1107対応 START */
+               -- 本処理で処理対象となる作業データについて物件の処理が行われていること
+               AND    xiwd2.process_no_target_flag = cv_no
+               AND    xiwd2.completion_kbn         = ct_comp_kbn_comp
+               /* 2009.06.01 K.Satomura T1_1107対応 END */
+             );
     EXCEPTION
       -- 削除に失敗した場合
       WHEN OTHERS THEN
@@ -6728,6 +6794,9 @@ AS
                   AND xciwd.install1_processed_flag = cv_no) OR 
                (xciid.install_code     = NVL(xciwd.install_code2, ' ') 
                   AND xciwd.install2_processed_flag = cv_no))
+         /* 2009.06.01 K.Satomura T1_1107対応 START */
+         AND   xciwd.process_no_target_flag = cv_no
+         /* 2009.06.01 K.Satomura T1_1107対応 END */
       ORDER BY xciwd.actual_work_date
               ,xciwd.actual_work_time2 
     ;
@@ -6990,6 +7059,9 @@ AS
         update_in_work_data(
            io_inst_base_data_rec   => l_g_get_data_rec --(IN)物件マスタ情報
           ,id_process_date         => ld_process_date  -- 業務処理日付
+          /* 2009.06.01 K.Satomura T1_1107対応 START */
+          ,iv_skip_flag            => cv_no            -- スキップフラグ
+          /* 2009.06.01 K.Satomura T1_1107対応 END */
           ,ov_errbuf               => lv_errbuf        -- エラー・メッセージ            --# 固定 #
           ,ov_retcode              => lv_sub_retcode   -- リターン・コード              --# 固定 #
           ,ov_errmsg               => lv_errmsg        -- ユーザー・エラー・メッセージ  --# 固定 #
