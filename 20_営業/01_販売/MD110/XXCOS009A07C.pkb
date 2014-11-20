@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A07C (body)
  * Description      : 受注一覧ファイル出力
  * MD.050           : 受注一覧ファイル出力 MD050_COS_009_A07
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2010/06/23    1.0   S.Miyakoshi      新規作成
+ *  2010/08/03    1.1   K.Kiriu          [E_本稼動_04125]出力項目の変更
  *
  *****************************************************************************************/
 --
@@ -241,8 +242,14 @@ AS
       ,xeh.shop_code                         AS shop_code                    -- 店コード
       ,xeh.shop_name                         AS shop_name                    -- 店名（漢字）
       ,xeh.shop_name_alt                     AS shop_name_alt                -- 店名（カナ）
-      ,xeh.delivery_center_code              AS delivery_center_code         -- 納入センターコード
-      ,xeh.delivery_center_name              AS delivery_center_name         -- 納入センター名（漢字）
+/* 2010/08/03 Ver1.1 Mod Start */
+--      ,xeh.delivery_center_code              AS delivery_center_code         -- 納入センターコード
+--      ,xeh.delivery_center_name              AS delivery_center_name         -- 納入センター名（漢字）
+      ,NVL( xeh.delivery_center_code, xca.deli_center_code )
+                                             AS delivery_center_code         -- 納入センターコード
+      ,NVL( xeh.delivery_center_name, xca.deli_center_name )
+                                             AS delivery_center_name         -- 納入センター名（漢字）
+/* 2010/08/03 Ver1.1 Mod End   */
       ,xeh.delivery_center_name_alt          AS delivery_center_name_alt     -- 納入センター名（カナ）
       ,TO_CHAR(xeh.order_date, cv_yyyy_mm_dd)
                                              AS order_date                   -- 発注日
@@ -267,9 +274,17 @@ AS
       ,xeh.ar_sale_class                     AS ar_sale_class                -- 特売区分
       ,xeh.delivery_classe                   AS delivery_classe              -- 配送区分
       ,xeh.opportunity_no                    AS opportunity_no               -- 便Ｎｏ
-      ,xeh.area_code                         AS area_code                    -- 地区コード
-      ,xeh.area_name                         AS area_name                    -- 地区名（漢字）
-      ,xeh.area_name_alt                     AS area_name_alt                -- 地区名（カナ）
+/* 2010/08/03 Ver1.1 Mod Start */
+--      ,xeh.area_code                         AS area_code                    -- 地区コード
+--      ,xeh.area_name                         AS area_name                    -- 地区名（漢字）
+--      ,xeh.area_name_alt                     AS area_name_alt                -- 地区名（カナ）
+      ,NVL( xeh.area_code, xca.edi_district_code )
+                                             AS area_code                    -- 地区コード
+      ,NVL( xeh.area_name, xca.edi_district_name )
+                                             AS area_name                    -- 地区名（漢字）
+      ,NVL( xeh.area_name_alt, xca.edi_district_kana )
+                                             AS area_name_alt                -- 地区名（カナ）
+/* 2010/08/03 Ver1.1 Mod End   */
       ,xeh.vendor_code                       AS vendor_code                  -- 取引先コード
       ,xeh.vendor_name                       AS vendor_name                  -- 取引先名（漢字）
       ,xeh.vendor_name1_alt                  AS vendor_name1_alt             -- 取引先名１（カナ）
