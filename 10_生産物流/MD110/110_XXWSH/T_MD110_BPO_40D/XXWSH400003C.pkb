@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼確定関数(BODY)
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_EDO_BPO_40D_出荷依頼確定関数
- * Version                : 1.27
+ * Version                : 1.28
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2009/01/09    1.25  H.Itou           本番障害894対応
  *  2009/03/03    1.26  Y.Kazama         本番障害#1243対応
  *  2009/04/16    1.27  Y.Kazama         本番障害#1398対応
+ *  2009/05/14    1.28  H.Itou           本番障害#1398対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1437,9 +1438,14 @@ AS
       -- 配送先IDを基に配送先コード取得
       SELECT xcasv.party_site_number
       INTO   lt_party_site_number
-      FROM   xxcmn_cust_acct_sites2_v  xcasv
+-- Ver1.28 H.Itou 本番障害#1398 Mod Start アドオンマスタに複数登録されている場合があるのため、VIEW1に変更
+--      FROM   xxcmn_cust_acct_sites2_v  xcasv
+      FROM   xxcmn_cust_acct_sites_v  xcasv
+-- Ver1.28 H.Itou 本番障害#1398 Mod End
       WHERE  xcasv.party_site_id     = in_deliver_to_id
-      AND    xcasv.party_site_status = 'A'  -- サイトステータス[A:有効]
+-- Ver1.28 H.Itou 本番障害#1398 Del Start
+--      AND    xcasv.party_site_status = 'A'  -- サイトステータス[A:有効]
+-- Ver1.28 H.Itou 本番障害#1398 Del End
       ;
 --
       lv_select_c2 := ' AND NVL(xoha.result_deliver_to,xoha.deliver_to) = ''' || lt_party_site_number ||  '''';

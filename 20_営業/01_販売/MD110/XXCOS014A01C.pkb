@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/04/02    1.6   T.kitajima       [T1_0114] 納品拠点情報取得方法変更
  *  2009/04/13    1.7   T.kitajima       [T1_0264] 帳票様式チェーン店コード追加対応
  *  2009/04/27    1.8   K.Kiriu          [T1_0112] 単位項目内容不正対応
+ *  2009/05/15    1.9   M.Sano           [T1_0983] チェーン店指定時の納品拠点取得修正
  *
  *****************************************************************************************/
 --
@@ -2275,7 +2276,10 @@ AS
             ,CASE
 --******************************************* 2009/04/13 1.7 T.Kitajima MOD START *************************************
 --               WHEN i_input_rec.chain_code IS NOT NULL THEN
-               WHEN i_input_rec.ssm_store_code IS NOT NULL THEN
+--******************************************* 2009/05/15 1.9 M.Sano MOD START *****************************************
+--               WHEN i_input_rec.ssm_store_code IS NOT NULL THEN
+               WHEN i_input_rec.ssm_store_code IS NULL THEN
+--******************************************* 2009/05/15 1.9 M.Sano MOD END   *****************************************
 --******************************************* 2009/04/13 1.7 T.Kitajima MOD  END  *************************************
                  i_cust_rec.cust_name
                ELSE
@@ -2284,7 +2288,10 @@ AS
             ,CASE
 --******************************************* 2009/04/13 1.7 T.Kitajima MOD START *************************************
 --               WHEN i_input_rec.chain_code IS NOT NULL THEN
-               WHEN i_input_rec.ssm_store_code IS NOT NULL THEN
+--******************************************* 2009/05/15 1.9 M.Sano MOD START *****************************************
+--               WHEN i_input_rec.ssm_store_code IS NOT NULL THEN
+               WHEN i_input_rec.ssm_store_code IS NULL THEN
+--******************************************* 2009/05/15 1.9 M.Sano MOD END   *****************************************
 --******************************************* 2009/04/13 1.7 T.Kitajima MOD  END  *************************************
                  i_cust_rec.cust_name_kana
                ELSE
