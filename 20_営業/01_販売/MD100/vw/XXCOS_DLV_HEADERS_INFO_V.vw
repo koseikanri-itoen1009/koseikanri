@@ -18,6 +18,7 @@
  *  2009/09/01    1.5   K.Kiriu          [0000929]有効訪問件数のカウント方法変更対応
  *  2009/09/03    1.6   M.Sano           [0001227]パフォーマンス対応
  *                                       (業務日付の取得方法変更)
+ *  2009/11/27    1.7   M.Sano           [E_本稼動_00130]重複データ対応
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcos_dlv_headers_info_v
 (
@@ -82,6 +83,9 @@ SELECT
 /* 2009/08/03 Ver1.4 Add Start */
        /*+ LEADING(xdh) */
 /* 2009/08/03 Ver1.4 Add End   */
+/* 2009/11/27 Ver1.7 Mod Start */
+       DISTINCT
+/* 2009/11/27 Ver1.7 Mod End   */
        xdh.order_no_hht order_no_hht,                              --受注No.（HHT)
        xdh.digestion_ln_number digestion_ln_number,                --枝番
        xdh.order_no_ebs order_no_ebs,                              --受注No.（EBS）
@@ -119,7 +123,10 @@ SELECT
        dsc.meaning department_screen_name,                         --百貨店画面種別表示用
        xdh.red_black_flag red_black_flag,                          --赤黒フラグ
        hp.duns_number_c customer_status,                           --顧客ステータス
-       xsv.employee_number employee_number,                        --営業員コード
+/* 2009/11/27 Ver1.7 Mod Start */
+--       xsv.employee_number employee_number,                        --営業員コード
+       NULL employee_number,                                       --営業員コード(null)
+/* 2009/11/27 Ver1.7 Mod End   */
        custadd.business_low_type business_low_type,                --業態小分類
        xdh.change_out_time_100 change_out_time_100,                --つり銭切れ時間100円
        xdh.change_out_time_10 change_out_time_10,                  --つり銭切れ時間10円
