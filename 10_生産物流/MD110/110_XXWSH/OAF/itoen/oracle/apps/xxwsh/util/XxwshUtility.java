@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshUtility
 * 概要説明   : 出荷・引当/配車共通関数
-* バージョン : 1.14
+* バージョン : 1.15
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -21,6 +21,7 @@
 * 2009-01-22 1.12 伊藤ひとみ   本番障害#1000対応
 * 2009-01-26 1.13 伊藤ひとみ   本番障害#936対応
 * 2009-02-13 1.14 伊藤ひとみ   本番障害#863対応
+* 2009-12-04 1.15 伊藤ひとみ     本稼動障害#11対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.util;
@@ -42,7 +43,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出荷・引当/配車共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.14
+ * @version 1.15
  ***************************************************************************
  */
 public class XxwshUtility 
@@ -6376,4 +6377,86 @@ public class XxwshUtility
     }
   } // careerCancelOrUpd
 // 2009-02-13 H.Itou ADD END
+// 2009-12-04 H.Itou Add Start 本稼動障害#11
+  /*****************************************************************************
+   * オープン日付を取得します。
+   * @param trans   - トランザクション
+   * @return String - オープン日付(YYYY/MM/DD)
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static String getOpenDate(
+    OADBTransaction trans
+  ) throws OAException
+  {
+    String apiName = "getOpenDate";  // API名
+
+    // PL/SQL作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("BEGIN "                                                                                                    );
+    sb.append("  SELECT TO_CHAR(ADD_MONTHS(TO_DATE(xxcmn_common_pkg.get_opminv_close_period,'YYYYMM'), 1), 'YYYY/MM/DD') ");
+    sb.append("  INTO   :1 "                                                                                              );
+    sb.append("  FROM   DUAL; "                                                                                           );
+    sb.append("END; "                                                                                                     );
+
+    // PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try 
+    {
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1, Types.VARCHAR); // 戻り値
+
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1, Types.VARCHAR); // エラーメッセージ
+
+      // PL/SQL実行
+      cstmt.execute();
+
+      // 戻り値取得
+      String openDate = cstmt.getString(1);
+
+      // 戻り値返却
+      return openDate;
+
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+
+      // ログ出力
+      XxcmnUtility.writeLog(trans,
+                            XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                             XxcmnConstants.XXCMN10123
+                             );
+
+    } finally 
+    {
+      try
+      {
+        // 処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+
+        // ログ出力
+        XxcmnUtility.writeLog(trans,
+                              XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // getOpenDate
+// 2009-12-04 H.Itou Add End 本稼動障害#11
 }
