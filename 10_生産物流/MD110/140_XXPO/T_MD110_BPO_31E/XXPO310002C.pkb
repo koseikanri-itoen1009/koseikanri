@@ -7,7 +7,7 @@ AS
  * Description      : HHT発注情報IF
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : HHT発注情報IF       T_MD070_BPO_31E
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/09/01    1.4   Oracle 山根 一浩 T_TE080_BPO_310 指摘9対応
  *  2008/09/17    1.5   Oracle 大橋 孝郎 指摘204対応
  *  2009/01/26    1.6   Oracle 椎名 昭圭 本番#1046対応
+ *  2010/01/19    1.7   SCS    吉元 強樹 E_本稼動#1075対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -89,6 +90,9 @@ AS
   gv_status_po_zumi      CONSTANT VARCHAR2(2)   := '20';            -- 発注作成済
   gv_status_money_zumi   CONSTANT VARCHAR2(2)   := '35';            -- 金額確定済
   gv_class_code_seihin   CONSTANT VARCHAR2(1)   := '5';             -- 製品
+-- 2010/01/19 v1.7 T.Yoshimoto Add Start 本稼動#1175
+  gv_ship_class_1         CONSTANT VARCHAR2(1)   := '1';             -- 出荷可
+-- 2010/01/19 v1.7 T.Yoshimoto Add End 本稼動#1175
 --
   -- トークン
   gv_tkn_number_31e_01    CONSTANT VARCHAR2(15) := 'APP-XXPO-10062';  -- 受入予定情報ﾌｧｲﾙ名取得ｴﾗｰ
@@ -766,7 +770,10 @@ AS
             ,pla.attribute1 as lot_no                      -- ロットNo
             ,pla.attribute11                               -- 発注数量
             ,pla.attribute10                               -- 発注単位
-            ,pla.attribute15                               -- 明細摘要
+-- 2010/01/19 v1.7 T.Yoshimoto Add Start 本稼動#1175
+            --,pla.attribute15                               -- 明細摘要
+            ,pha.attribute15                               -- ヘッダ摘要
+-- 2010/01/19 v1.7 T.Yoshimoto Add End 本稼動#1175
             ,xiv.item_no                                   -- 品目コード
             ,xiv.item_short_name                           -- 略称(品名称)
             ,ilm.attribute1                                -- 製造年月日
@@ -835,6 +842,9 @@ AS
 2008/09/01 Mod ↑ */
         AND    NVL(xic.item_class_code,'0') <> gv_class_code_seihin  -- 製品:5
       )
+-- 2010/01/19 v1.7 T.Yoshimoto Add Start 本稼動#1175
+        AND    xiv.ship_class               = gv_ship_class_1        -- 出荷可:1
+-- 2010/01/19 v1.7 T.Yoshimoto Add End 本稼動#1175
 -- 2008/09/01 Add ↓
       AND    pla.cancel_flag  = 'N'
 -- 2008/09/01 Add ↑
