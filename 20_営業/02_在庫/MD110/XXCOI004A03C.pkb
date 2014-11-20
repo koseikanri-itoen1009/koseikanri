@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcoi004a03c(body)
  * Description      : 月次スライド
  * MD.050           : 月次スライド MD050_COI_004_A03
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -22,6 +22,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/09    1.0   SCS H.Wada       新規作成
+ *  2009/12/14    1.1   T.Murakami       [E_本稼動_00271]ロック取得の対象を変更
  *
  *****************************************************************************************/
 --
@@ -273,7 +274,10 @@ AS
       WHERE  xvcm.customer_id    = hca.cust_account_id
       AND    hca.party_id        = hp.party_id
       AND    hp.duns_number_c   IN (30, 40, 50, 80)
-      FOR UPDATE NOWAIT;
+-- == 2009/12/03 V1.1 Modified START ===============================================================
+--      FOR UPDATE NOWAIT;
+      FOR UPDATE OF xvcm.vd_column_mst_id NOWAIT;
+-- == 2009/12/03 V1.1 Modified END   ===============================================================
 --
     -- VDコラム情報レコード型
     vd_column_info_rec vd_column_info_cur%ROWTYPE;
