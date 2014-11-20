@@ -7,7 +7,7 @@ AS
  * Description      : 販売手数料（自販機）の計算結果を情報系システムに
  *                    連携するインターフェースファイルを作成します
  * MD.050           : 情報系システムIFファイル作成-条件別販手販協  MD050_COK_014_A02
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *                                                     プロファイル XXCOK1_FB_TERM_NAME の値を使用する。
  *  2009/06/29    1.7   K.Yamaguchi      [障害0000200] [障害0000290] パフォーマンス障害対応
  *  2009/10/08    1.8   S.Moriyama       [障害E_最終移行リハ_00460] 定額条件の場合は割戻額をNULLでファイル出力するよう変更
+ *  2010/10/14    1.9   S.Arizumi        [E_本稼動_01952]BM支払区分が経費支払BM、現金支払の場合にも情報系へ連携するよう修正
  *
  *****************************************************************************************/
 --
@@ -109,6 +110,9 @@ AS
 -- 2009/06/29 Ver.1.7 [障害0000200] [障害0000290] SCS K.Yamaguchi DEL END
   -- フラグ
   cv_flag_no                 CONSTANT VARCHAR2(1)   := 'N';                                -- フラグ'N'
+-- 2010/10/14 Ver.1.9 [E_本稼動_01952] SCS S.Arizumi ADD START
+  cv_flag_yes                CONSTANT VARCHAR2(1)   := 'Y';                                -- フラグ'Y'
+-- 2010/10/14 Ver.1.9 [E_本稼動_01952] SCS S.Arizumi ADD END
   -- 参照タイプ
   cv_bm_calc_type            CONSTANT VARCHAR2(50)  := 'XXCOK1_BM_CALC_TYPE';              -- 参照タイプ
   -- 数値
@@ -117,6 +121,10 @@ AS
   cv_0                       CONSTANT VARCHAR2(1)   := '0';                                -- 文字'0'
   cv_1                       CONSTANT VARCHAR2(1)   := '1';                                -- 文字'1'
   cv_2                       CONSTANT VARCHAR2(1)   := '2';                                -- 文字'2'
+-- 2010/10/14 Ver.1.9 [E_本稼動_01952] SCS S.Arizumi ADD START
+  cv_3                       CONSTANT VARCHAR2(1)   := '3';                                -- 文字'3'
+  cv_4                       CONSTANT VARCHAR2(1)   := '4';                                -- 文字'4'
+-- 2010/10/14 Ver.1.9 [E_本稼動_01952] SCS S.Arizumi ADD END
   cn_1                       CONSTANT NUMBER        := 1;                                  -- 数値 1
   cn_2                       CONSTANT NUMBER        := 2;                                  -- 数値 2
   cn_minus_2                 CONSTANT NUMBER        := -2;                                 -- 数値 -2
@@ -230,79 +238,154 @@ AS
   --==================================
   -- グローバル・カーソル
   --==================================
+-- 2010/10/14 Ver.1.9 [E_本稼動_01952] SCS S.Arizumi REPAIR START
+--  --条件別販手販協情報
+---- 2009/06/29 Ver.1.7 [障害0000200] [障害0000290] SCS K.Yamaguchi REPAIR START
+----  CURSOR bm_support_cur(
+----           in_ci_cnt IN NUMBER
+----  )
+--  CURSOR bm_support_cur
+---- 2009/06/29 Ver.1.7 [障害0000200] [障害0000290] SCS K.Yamaguchi REPAIR END
+--  IS
+---- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama UPD START
+----  SELECT  xcbs.cond_bm_support_id       AS cond_bm_support_id         -- 条件別販手販協ID
+--  SELECT  /*+
+--              LEADING( xcbs , xbb )
+--              INDEX( xbb xxcok_backmargin_balance_n03 )
+--              INDEX( xcbs xxcok_cond_bm_support_n03 )
+--          */
+--          xcbs.cond_bm_support_id       AS cond_bm_support_id         -- 条件別販手販協ID
+---- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama UPD END
+--         ,xcbs.base_code                AS base_code                  -- 拠点コード
+--         ,xcbs.emp_code                 AS emp_code                   -- 担当者コード
+--         ,xcbs.delivery_cust_code       AS delivery_cust_code         -- 顧客【納品先】
+--         ,xcbs.acctg_year               AS acctg_year                 -- 会計年度
+--         ,xcbs.chain_store_code         AS chain_store_code           -- チェーン店コード
+--         ,xcbs.supplier_code            AS supplier_code              -- 仕入先コード
+--         ,pvsa.vendor_site_code         AS supplier_site_code         -- 仕入先サイトコード
+--         ,xcbs.delivery_date            AS delivery_date              -- 納品日年月
+--         ,xcbs.delivery_qty             AS delivery_qty               -- 納品数量
+--         ,xcbs.delivery_unit_type       AS delivery_unit_type         -- 納品単位
+--         ,xcbs.selling_amt_tax          AS selling_amt_tax            -- 売上金額（税込）
+--         ,xlv_v.meaning                 AS calc_type                  -- 計算条件
+--         ,xcbs.rebate_rate              AS rebate_rate                -- 割戻率
+--         ,xcbs.rebate_amt               AS rebate_amt                 -- 割戻額
+--         ,xcbs.container_type_code      AS container_type_code        -- 容器区分コード
+--         ,xcbs.selling_price            AS selling_price              -- 売価金額
+--         ,xcbs.cond_bm_amt_tax          AS cond_bm_amt_tax            -- 条件別手数料額（税込）
+--         ,xcbs.cond_bm_amt_no_tax       AS cond_bm_amt_no_tax         -- 条件別手数料額（税抜）
+--         ,xcbs.cond_tax_amt             AS cond_tax_amt               -- 条件別消費税額
+--         ,xcbs.electric_amt_tax         AS electric_amt_tax           -- 電気料（税込）
+--         ,xcbs.closing_date             AS closing_date               -- 締め日
+--         ,xcbs.expect_payment_date      AS expect_payment_date        -- 支払予定日
+--         ,xcbs.calc_target_period_from  AS calc_target_period_from    -- 計算対象期間（From）
+--         ,xcbs.calc_target_period_to    AS calc_target_period_to      -- 計算対象期間（To）
+--         ,pvsa.attribute5               AS ref_base_code              -- 問合せ担当拠点コード
+--  FROM    xxcok_cond_bm_support         xcbs                          -- 条件別販手販協テーブル
+--         ,xxcok_backmargin_balance      xbb                           -- 販手残高テーブル
+--         ,po_vendors                    pv                            -- 仕入先マスタ
+--         ,po_vendor_sites_all           pvsa                          -- 仕入先サイトマスタ
+---- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama UPD START
+----         ,xxcmn_lookup_values_v         xlv_v                         -- クイックコード
+--         ,xxcok_lookups_v               xlv_v                         -- クイックコード
+---- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama UPD END
+--  WHERE xcbs.base_code                  = xbb.base_code
+--  AND   xcbs.supplier_code              = xbb.supplier_code
+--  AND   xcbs.closing_date               = xbb.closing_date
+--  AND   xcbs.expect_payment_date        = xbb.expect_payment_date
+--  AND   xcbs.supplier_code              = pv.segment1
+--  AND   xcbs.cond_bm_interface_status   = cv_0
+--  AND   pv.vendor_id                    = pvsa.vendor_id
+--  AND   ( pvsa.inactive_date            > gd_business_date OR pvsa.inactive_date IS NULL )
+--  AND   pvsa.org_id                     = gn_org_id
+--  AND   xbb.resv_flag                   IS NULL
+--  AND   pvsa.hold_all_payments_flag     = cv_flag_no
+--  AND   xbb.cust_code                   = xcbs.delivery_cust_code
+---- 2009/06/29 Ver.1.7 [障害0000200] [障害0000290] SCS K.Yamaguchi REPAIR START
+----  AND   xbb.cust_code                   = gt_cust_info_tab( in_ci_cnt ).install_account_number
+---- 2009/06/29 Ver.1.7 [障害0000200] [障害0000290] SCS K.Yamaguchi REPAIR END
+--  AND   xlv_v.lookup_code               = xcbs.calc_type
+--  AND   xlv_v.lookup_type               = cv_bm_calc_type
+---- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama ADD START
+--  AND   gd_business_date                BETWEEN xlv_v.start_date_active
+--                                            AND NVL(xlv_v.end_date_active,gd_business_date)
+--  AND   xbb.payment_amt_tax             = cn_0
+---- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama ADD END
+--  AND   pvsa.attribute4                 IN (cv_1, cv_2);
   --条件別販手販協情報
--- 2009/06/29 Ver.1.7 [障害0000200] [障害0000290] SCS K.Yamaguchi REPAIR START
---  CURSOR bm_support_cur(
---           in_ci_cnt IN NUMBER
---  )
   CURSOR bm_support_cur
--- 2009/06/29 Ver.1.7 [障害0000200] [障害0000290] SCS K.Yamaguchi REPAIR END
   IS
--- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama UPD START
---  SELECT  xcbs.cond_bm_support_id       AS cond_bm_support_id         -- 条件別販手販協ID
-  SELECT  /*+
-              LEADING( xcbs , xbb )
-              INDEX( xbb xxcok_backmargin_balance_n03 )
-              INDEX( xcbs xxcok_cond_bm_support_n03 )
-          */
-          xcbs.cond_bm_support_id       AS cond_bm_support_id         -- 条件別販手販協ID
--- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama UPD END
-         ,xcbs.base_code                AS base_code                  -- 拠点コード
-         ,xcbs.emp_code                 AS emp_code                   -- 担当者コード
-         ,xcbs.delivery_cust_code       AS delivery_cust_code         -- 顧客【納品先】
-         ,xcbs.acctg_year               AS acctg_year                 -- 会計年度
-         ,xcbs.chain_store_code         AS chain_store_code           -- チェーン店コード
-         ,xcbs.supplier_code            AS supplier_code              -- 仕入先コード
-         ,pvsa.vendor_site_code         AS supplier_site_code         -- 仕入先サイトコード
-         ,xcbs.delivery_date            AS delivery_date              -- 納品日年月
-         ,xcbs.delivery_qty             AS delivery_qty               -- 納品数量
-         ,xcbs.delivery_unit_type       AS delivery_unit_type         -- 納品単位
-         ,xcbs.selling_amt_tax          AS selling_amt_tax            -- 売上金額（税込）
-         ,xlv_v.meaning                 AS calc_type                  -- 計算条件
-         ,xcbs.rebate_rate              AS rebate_rate                -- 割戻率
-         ,xcbs.rebate_amt               AS rebate_amt                 -- 割戻額
-         ,xcbs.container_type_code      AS container_type_code        -- 容器区分コード
-         ,xcbs.selling_price            AS selling_price              -- 売価金額
-         ,xcbs.cond_bm_amt_tax          AS cond_bm_amt_tax            -- 条件別手数料額（税込）
-         ,xcbs.cond_bm_amt_no_tax       AS cond_bm_amt_no_tax         -- 条件別手数料額（税抜）
-         ,xcbs.cond_tax_amt             AS cond_tax_amt               -- 条件別消費税額
-         ,xcbs.electric_amt_tax         AS electric_amt_tax           -- 電気料（税込）
-         ,xcbs.closing_date             AS closing_date               -- 締め日
-         ,xcbs.expect_payment_date      AS expect_payment_date        -- 支払予定日
-         ,xcbs.calc_target_period_from  AS calc_target_period_from    -- 計算対象期間（From）
-         ,xcbs.calc_target_period_to    AS calc_target_period_to      -- 計算対象期間（To）
-         ,pvsa.attribute5               AS ref_base_code              -- 問合せ担当拠点コード
-  FROM    xxcok_cond_bm_support         xcbs                          -- 条件別販手販協テーブル
-         ,xxcok_backmargin_balance      xbb                           -- 販手残高テーブル
-         ,po_vendors                    pv                            -- 仕入先マスタ
-         ,po_vendor_sites_all           pvsa                          -- 仕入先サイトマスタ
--- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama UPD START
---         ,xxcmn_lookup_values_v         xlv_v                         -- クイックコード
-         ,xxcok_lookups_v               xlv_v                         -- クイックコード
--- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama UPD END
-  WHERE xcbs.base_code                  = xbb.base_code
-  AND   xcbs.supplier_code              = xbb.supplier_code
-  AND   xcbs.closing_date               = xbb.closing_date
-  AND   xcbs.expect_payment_date        = xbb.expect_payment_date
-  AND   xcbs.supplier_code              = pv.segment1
-  AND   xcbs.cond_bm_interface_status   = cv_0
-  AND   pv.vendor_id                    = pvsa.vendor_id
-  AND   ( pvsa.inactive_date            > gd_business_date OR pvsa.inactive_date IS NULL )
-  AND   pvsa.org_id                     = gn_org_id
-  AND   xbb.resv_flag                   IS NULL
-  AND   pvsa.hold_all_payments_flag     = cv_flag_no
-  AND   xbb.cust_code                   = xcbs.delivery_cust_code
--- 2009/06/29 Ver.1.7 [障害0000200] [障害0000290] SCS K.Yamaguchi REPAIR START
---  AND   xbb.cust_code                   = gt_cust_info_tab( in_ci_cnt ).install_account_number
--- 2009/06/29 Ver.1.7 [障害0000200] [障害0000290] SCS K.Yamaguchi REPAIR END
-  AND   xlv_v.lookup_code               = xcbs.calc_type
-  AND   xlv_v.lookup_type               = cv_bm_calc_type
--- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama ADD START
-  AND   gd_business_date                BETWEEN xlv_v.start_date_active
-                                            AND NVL(xlv_v.end_date_active,gd_business_date)
-  AND   xbb.payment_amt_tax             = cn_0
--- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama ADD END
-  AND   pvsa.attribute4                 IN (cv_1, cv_2);
+    SELECT    /*+
+                  LEADING( xbb pv pvs )
+                  INDEX( xbb xxcok_backmargin_balance_n01 )
+                  INDEX( xcbs xxcok_cond_bm_support_n04 )
+               */
+              xcbs.cond_bm_support_id       AS cond_bm_support_id       -- 条件別販手販協ID
+            , xcbs.base_code                AS base_code                -- 拠点コード
+            , xcbs.emp_code                 AS emp_code                 -- 担当者コード
+            , xcbs.delivery_cust_code       AS delivery_cust_code       -- 顧客【納品先】
+            , xcbs.acctg_year               AS acctg_year               -- 会計年度
+            , xcbs.chain_store_code         AS chain_store_code         -- チェーン店コード
+            , xcbs.supplier_code            AS supplier_code            -- 仕入先コード
+            , pvsa.vendor_site_code         AS supplier_site_code       -- 仕入先サイトコード
+            , xcbs.delivery_date            AS delivery_date            -- 納品日年月
+            , xcbs.delivery_qty             AS delivery_qty             -- 納品数量
+            , xcbs.delivery_unit_type       AS delivery_unit_type       -- 納品単位
+            , xcbs.selling_amt_tax          AS selling_amt_tax          -- 売上金額（税込）
+            , flvv.meaning                  AS calc_type                -- 計算条件
+            , xcbs.rebate_rate              AS rebate_rate              -- 割戻率
+            , xcbs.rebate_amt               AS rebate_amt               -- 割戻額
+            , xcbs.container_type_code      AS container_type_code      -- 容器区分コード
+            , xcbs.selling_price            AS selling_price            -- 売価金額
+            , xcbs.cond_bm_amt_tax          AS cond_bm_amt_tax          -- 条件別手数料額（税込）
+            , xcbs.cond_bm_amt_no_tax       AS cond_bm_amt_no_tax       -- 条件別手数料額（税抜）
+            , xcbs.cond_tax_amt             AS cond_tax_amt             -- 条件別消費税額
+            , xcbs.electric_amt_tax         AS electric_amt_tax         -- 電気料（税込）
+            , xcbs.closing_date             AS closing_date             -- 締め日
+            , xcbs.expect_payment_date      AS expect_payment_date      -- 支払予定日
+            , xcbs.calc_target_period_from  AS calc_target_period_from  -- 計算対象期間（From）
+            , xcbs.calc_target_period_to    AS calc_target_period_to    -- 計算対象期間（To）
+            , pvsa.attribute5               AS ref_base_code            -- 問合せ担当拠点コード
+    FROM      xxcok_cond_bm_support     xcbs  -- 条件別販手販協テーブル
+            , xxcok_backmargin_balance  xbb   -- 販手残高テーブル
+            , po_vendors                pv    -- 仕入先マスタ
+            , po_vendor_sites_all       pvsa  -- 仕入先サイトマスタ
+            , fnd_lookup_values_vl      flvv  -- クイックコード
+    WHERE     xbb.closing_date              <= gd_business_date
+      AND     xbb.payment_amt_tax           =  cn_0       -- 支払額（税込）
+      AND     xbb.amt_fix_status            =  cv_1       -- 金額確定ステータス              ：確定
+      AND     xbb.fb_interface_status       =  cv_0       -- 連携ステータス（本振用FB）      ：未連携
+      AND     xbb.gl_interface_status       =  cv_0       -- 連携ステータス（GL）            ：未連携
+      AND     xcbs.base_code                =  xbb.base_code
+      AND     xcbs.delivery_cust_code       =  xbb.cust_code
+      AND     xcbs.supplier_code            =  xbb.supplier_code
+      AND     xcbs.supplier_site_code       =  xbb.supplier_site_code
+      AND     xcbs.closing_date             =  xbb.closing_date
+      AND     xcbs.expect_payment_date      =  xbb.expect_payment_date
+      AND     xcbs.amt_fix_status           =  xbb.amt_fix_status
+      AND     xcbs.cond_bm_interface_status =  cv_0       -- 連携ステータス（条件別販手販協）：未連携
+      AND     pv.segment1                   =  xbb.supplier_code
+      AND     pvsa.vendor_id                =  pv.vendor_id
+      AND     pvsa.org_id                   =  gn_org_id
+      AND     ( pvsa.inactive_date          >  gd_business_date OR pvsa.inactive_date IS NULL )
+      AND     pvsa.hold_all_payments_flag   =  cv_flag_no -- 全支払の保留フラグ
+      AND     (     (     pvsa.attribute4   IN( cv_1      -- BM支払区分                      ：本振（案内書あり）
+                                              , cv_2      -- BM支払区分                      ：本振（案内書なし）
+                                            )
+                      AND xbb.resv_flag     IS NULL       -- 支払保留フラグ
+                    )
+                 OR (     pvsa.attribute4   IN( cv_3      -- BM支払区分                      ：経費支払BM
+                                              , cv_4      -- BM支払区分                      ：現金支払
+                                            )
+                    )
+              )
+      AND     flvv.lookup_code              =  xcbs.calc_type
+      AND     flvv.lookup_type              =  cv_bm_calc_type
+      AND     gd_business_date              BETWEEN NVL( flvv.start_date_active, gd_business_date )
+                                                AND NVL( flvv.end_date_active  , gd_business_date )
+      AND     flvv.enabled_flag             =  cv_flag_yes
+  ;
+-- 2010/10/14 Ver.1.9 [E_本稼動_01952] SCS S.Arizumi REPAIR END
   bm_support_rec    bm_support_cur%ROWTYPE;
   -- 条件別販手販協テーブルロック情報
   CURSOR lock_cond_bm_support_cur(
@@ -1034,7 +1117,10 @@ AS
     -- 条件別販手販協テーブル更新処理を行なう
     UPDATE xxcok_cond_bm_support    xcbs                                                    -- 条件別販手販協テーブル
     SET    xcbs.cond_bm_interface_status = cv_1                                             -- 連携ステータス
-          ,xcbs.cond_bm_interface_date   = gd_sysdate                                       -- 連携日
+-- 2010/10/14 Ver.1.9 [E_本稼動_01952] SCS S.Arizumi REPAIR START
+--          ,xcbs.cond_bm_interface_date   = gd_sysdate                                       -- 連携日
+          ,xcbs.cond_bm_interface_date   = gd_business_date                                 -- 連携日
+-- 2010/10/14 Ver.1.9 [E_本稼動_01952] SCS S.Arizumi REPAIR END
           ,xcbs.last_updated_by          = cn_last_updated_by                               -- 最終更新者
           ,xcbs.last_update_date         = SYSDATE                                          -- 最終更新日
           ,xcbs.last_update_login        = cn_last_update_login                             -- 最終更新ログイン

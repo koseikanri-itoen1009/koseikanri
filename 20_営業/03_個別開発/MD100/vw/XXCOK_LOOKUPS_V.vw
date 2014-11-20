@@ -3,7 +3,7 @@
  *
  * View Name   : XXCOK_LOOKUPS_V
  * Description : クイックコードビュー
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   T.Osada          新規作成
  *  2009/02/05    1.1   K.Suenaga        [障害COK_008]抽出条件より有効日、無効日の判定を削除
+ *  2010/10/08    1.2   S.Arizumi        [E_本稼動_01952]結合条件不足の改善
  *
  **************************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcok_lookups_v
@@ -69,6 +70,10 @@ AS
   FROM   fnd_lookup_types_tl       fltt         -- クイックコードタイプ
         ,fnd_lookup_values         flv          -- クイックコード
   WHERE  fltt.lookup_type        = flv.lookup_type
+-- 2010/10/08 Ver.1.2 [E_本稼動_01952] SCS S.Arizumi ADD START
+  AND    fltt.view_application_id =  flv.view_application_id
+  AND    fltt.security_group_id   =  flv.security_group_id
+-- 2010/10/08 Ver.1.2 [E_本稼動_01952] SCS S.Arizumi ADD END
   AND    fltt.language           = flv.language
   AND    fltt.language           = USERENV( 'LANG' )
   AND    flv.enabled_flag        = 'Y'
