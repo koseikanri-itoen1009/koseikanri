@@ -145,11 +145,20 @@ AS
   gv_xxinv_status_05 CONSTANT VARCHAR2(2) := '05';   -- 入庫報告有
   gv_xxinv_status_06 CONSTANT VARCHAR2(2) := '06';   -- 入出庫報告有
   gv_xxinv_status_07 CONSTANT VARCHAR2(2) := '99';   -- 取消
+/* 2008/07/28 Mod ↓
   gv_xxpo_status_01  CONSTANT VARCHAR2(2) := '05';   -- 入力中
   gv_xxpo_status_02  CONSTANT VARCHAR2(2) := '06';   -- 入力完了
   gv_xxpo_status_03  CONSTANT VARCHAR2(2) := '07';   -- 受領済
   gv_xxpo_status_04  CONSTANT VARCHAR2(2) := '08';   -- 出荷実績計上済
   gv_xxpo_status_05  CONSTANT VARCHAR2(2) := '99';   -- 取消
+2008/07/28 Mod ↑ */
+  gv_xxpo_status_01  CONSTANT VARCHAR2(2) := '15';   -- 発注作成中
+  gv_xxpo_status_02  CONSTANT VARCHAR2(2) := '20';   -- 発注作成済
+  gv_xxpo_status_03  CONSTANT VARCHAR2(2) := '25';   -- 受入あり
+  gv_xxpo_status_04  CONSTANT VARCHAR2(2) := '30';   -- 数量確定済
+  gv_xxpo_status_05  CONSTANT VARCHAR2(2) := '35';   -- 金額確定済
+  gv_xxpo_status_06  CONSTANT VARCHAR2(2) := '99';   -- 取消
+--
   gv_xxwsh_status_01 CONSTANT VARCHAR2(2) := '01';   -- 入力中
   gv_xxwsh_status_02 CONSTANT VARCHAR2(2) := '02';   -- 拠点確定
   gv_xxwsh_status_03 CONSTANT VARCHAR2(2) := '03';   -- 締め済み
@@ -1329,10 +1338,11 @@ AS
       AND    pha.attribute7        = xpsv.party_site_number(+)
 -- ステータス
       AND    NVL(pha.attribute1,gv_status_null) IN (
-                 gv_xxpo_status_02                    -- 入力完了:06
-                ,gv_xxpo_status_03                    -- 受領済:07
-                ,gv_xxpo_status_04                    -- 出荷実績計上済:08
-                ,gv_xxpo_status_05                    -- 取消:99
+                 gv_xxpo_status_02                    -- 発注作成済:20
+                ,gv_xxpo_status_03                    -- 受入あり:25
+                ,gv_xxpo_status_04                    -- 数量確定済:30
+                ,gv_xxpo_status_05                    -- 金額確定済:35
+                ,gv_xxpo_status_06                    -- 取消:99
              )
 -- 依頼No
       AND    ((gv_req_no_from IS NULL) OR (pha.segment1 >= gv_req_no_from))

@@ -1844,7 +1844,10 @@ AS
         , gt_requested_dep_code_tab(item_cnt)       -- 依頼部署コード
         , gt_instruction_post_code_tab(item_cnt)    -- 指示部署コード
         , gt_vendor_code_tab(item_cnt)              -- 取引先コード
+/* 2008/07/28 Mod ↓
         , gt_shipped_locat_code_tab(item_cnt)       -- 配送先コード
+2008/07/28 Mod ↓ */
+        , gt_ship_to_code_tab(item_cnt)             -- 配送先コード
         , gt_shipped_locat_code_tab(item_cnt)       -- 出庫倉庫コード
         , gt_freight_carrier_code_tab(item_cnt)     -- 運送業者コード
         , gt_ship_date_tab(item_cnt)                -- 出庫日
