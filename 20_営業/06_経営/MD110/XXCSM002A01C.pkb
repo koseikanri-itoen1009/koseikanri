@@ -6,13 +6,16 @@ AS
  * Package Name     : XXCSM002A01C(body)
  * Description      : 商品計画用過年度販売実績集計
  * MD.050           : 商品計画用過年度販売実績集計 MD050_CSM_002_A01
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
  *  init                        初期処理(A-1)
+-- == 2010/03/08 V1.10 Added START ===============================================================
+ *  ins_sum_record              専門店、百貨店集約処理(A-8)
+-- == 2010/03/08 V1.10 Added END   ===============================================================
 --//+UPD START 2010/02/09 E_本稼動_01247 S.Karikomi
  *  lock_plan_result            商品計画用販売実績テーブル既存データロック(A-2)
  *  delete_plan_result          商品計画用販売実績テーブル既存データ削除(A-2)
@@ -41,6 +44,8 @@ AS
  *  2009/08/03    1.7   T.Tsukino       [障害管理番号0000479] 性能改善対応
  *  2009/09/11    1.8   T.Tsukino       [障害管理番号0001180] 性能改善対応
  *  2010/02/09    1.9   S.Karikomi      [E_本稼動_01247] 性能改善対応
+ *  2010/03/08    1.10  N.Abe           [E_本稼動_01628] 性能改善対応
+                                        [E_本稼動_01629] 百貨店、専門店での集計対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -89,6 +94,9 @@ AS
 --//+ADD START 2010/02/09 E_本稼動_01247 S.Karikomi
   cv_xxccp_msg_90008        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90008';       -- コンカレント入力パラメータなし
 --//+ADD END 2010/02/09 E_本稼動_01247 S.Karikomi
+-- == 2010/03/08 V1.10 Added START ===============================================================
+  cv_xxcsm_msg_10160        CONSTANT VARCHAR2(20)  := 'APP-XXCSM1-10160';       -- 商品計画用販売実績ワークテーブルロックエラー
+-- == 2010/03/08 V1.10 Added END   ===============================================================
   --トークン
   cv_tkn_cd_colmun          CONSTANT VARCHAR2(100) := 'COLMUN';                 --テーブル列名
   cv_tkn_cd_prof            CONSTANT VARCHAR2(100) := 'PROF_NAME';              --カスタム・プロファイル・オプションの英名
@@ -122,6 +130,11 @@ AS
 --  cv_sales_pl_item          CONSTANT VARCHAR2(20)  :='XXCSM1_SALES_PL_ITEM';           --政策群1群
 ----//+ADD START 2009/09/11 0001180 T.Tsukino
 --//+DEL END 2010/02/09 E_本稼動_01247 S.Karikomi
+-- == 2010/03/08 V1.10 Added START ===============================================================
+  cv_lookup_dept_sum        CONSTANT VARCHAR2(30)  := 'XXCSM1_ITEM_PLAN_DEPT_SUM';    -- 百貨店集計拠点
+  cv_lookup_sp_sum          CONSTANT VARCHAR2(30)  := 'XXCSM1_ITEM_PLAN_SP_SUM';      -- 専門店集計拠点
+  cv_prf_sp                 CONSTANT VARCHAR2(30)  := 'XXCSM1_SP_MANAGEMENT';         -- 専門店管理課拠点コードプロファイル名
+-- == 2010/03/08 V1.10 Added END   ===============================================================
 --
 --################################  固定部 END   ##################################
 --
@@ -203,6 +216,9 @@ AS
 --  gv_discount_cd           VARCHAR2(10);                                 --値引き用品目政策群コードプロファイル名
 ----//ADD END   2009/03/04 CT_075 S.Son
 --//+DEL END 2010/02/09 E_本稼動_01247 S.Karikomi
+-- == 2010/03/08 V1.10 Added START ===============================================================
+  gt_sp_code               xxcsm_item_plan_result.location_cd%TYPE;      -- 専門店管理課拠点コード
+-- == 2010/03/08 V1.10 Added END   ===============================================================
 --  
   /**********************************************************************************
    * Procedure Name   : init
@@ -472,6 +488,21 @@ AS
        lv_errbuf := lv_errmsg;
        RAISE global_api_expt;
     END IF;
+-- == 2010/03/08 V1.10 Added START ===============================================================
+    --専門店管理課拠点コード取得
+    gt_sp_code := FND_PROFILE.VALUE(cv_prf_sp);
+    IF gt_sp_code IS NULL THEN
+       lv_tkn_value := cv_prf_sp;
+       lv_errmsg := xxccp_common_pkg.get_msg(
+                                             iv_application  => cv_xxcsm
+                                            ,iv_name         => cv_chk_err_00005
+                                            ,iv_token_name1  => cv_tkn_cd_prof
+                                            ,iv_token_value1 => lv_tkn_value
+                                            );
+       lv_errbuf := lv_errmsg;
+       RAISE global_api_expt;
+    END IF;
+-- == 2010/03/08 V1.10 Added END   ===============================================================
 --//+DEL START 2010/02/09 E_本稼動_01247 S.Karikomi
 ----//ADD START 2009/03/04 CT_075 S.Son
 --    --値引き用品目政策群コード取得
@@ -2900,10 +2931,22 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
     OPEN sales_result_cur;
-      FETCH sales_result_cur BULK COLLECT INTO sales_result_cur_rec;
+-- == 2010/03/08 V1.10 Modified START ===============================================================
+--      FETCH sales_result_cur BULK COLLECT INTO sales_result_cur_rec;
+--      --対象件数
+--      gn_target_cnt := sales_result_cur_rec.COUNT;
+--      
+      <<bulk_loop>>
+      LOOP
+      --
+      FETCH sales_result_cur BULK COLLECT INTO sales_result_cur_rec LIMIT 500000;
       --対象件数
-      gn_target_cnt := sales_result_cur_rec.COUNT;
-      
+      gn_target_cnt := gn_target_cnt + sales_result_cur_rec.COUNT;
+      --
+      EXIT WHEN sales_result_cur_rec.COUNT = 0;
+      --
+      <<sales_loop>>
+-- == 2010/03/08 V1.10 Modified END   ===============================================================
       FOR i IN 1..sales_result_cur_rec.COUNT  LOOP
       EXIT WHEN gn_target_cnt = 0;
         BEGIN
@@ -3120,7 +3163,12 @@ AS
         lv_group_cd_pre       := lv_group_cd;        --商品群コード保存
         lv_start_date_pre     := lv_start_date;      --発売日保存
         ln_discrete_cost_pre  := ln_discrete_cost;   --営業原価保存
-      END LOOP;
+-- == 2010/03/08 V1.10 Modified START ===============================================================
+--      END LOOP;
+      END LOOP sales_loop;
+      --
+      END LOOP bulk_loop;
+-- == 2010/03/08 V1.10 Modified END   ===============================================================
 --
       --対象データ無しエラー処理
       IF gn_target_cnt = 0 THEN
@@ -3193,6 +3241,313 @@ AS
 --
   END sales_result_select;
 --
+-- == 2010/03/08 V1.10 Added START ===============================================================
+  /**********************************************************************************
+   * Procedure Name   : ins_sum_record
+   * Description      : 専門店、百貨店集約処理(A-8)
+   ***********************************************************************************/
+  PROCEDURE ins_sum_record(
+    ov_errbuf        OUT NOCOPY VARCHAR2,                           -- エラー・メッセージ
+    ov_retcode       OUT NOCOPY VARCHAR2,                           -- リターン・コード
+    ov_errmsg        OUT NOCOPY VARCHAR2)                           -- ユーザー・エラー・メッセージ
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name         CONSTANT VARCHAR2(100) := 'ins_sum_record';            -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf         VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode        VARCHAR2(1);     -- リターン・コード
+    lv_errmsg         VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    ln_cnt                        NUMBER;
+    ln_sum_cnt                    NUMBER;
+--
+    -- *** ローカル・カーソル ***
+    /**      拠点集約データロックカーソル       **/
+    CURSOR lock_wk_item_cur
+    IS
+      SELECT xwipr.location_cd
+      FROM   xxcsm_wk_item_plan_result  xwipr
+      WHERE  xwipr.location_cd IN (--百貨店
+                                   SELECT DECODE(xlllv.location_level, 'L1', xlllv.cd_level1
+                                                                     , 'L2', xlllv.cd_level2
+                                                                     , 'L3', xlllv.cd_level3
+                                                                     , 'L4', xlllv.cd_level4
+                                                                     , 'L5', xlllv.cd_level5
+                                                                     , 'L6', xlllv.cd_level6) location_id
+                                   FROM   xxcsm_loc_level_list_v    xlllv
+                                         ,fnd_lookup_values_vl      flvv
+                                   WHERE  xlllv.cd_level4    = flvv.lookup_code
+                                   AND    flvv.lookup_type   = cv_lookup_dept_sum
+                                   AND    flvv.enabled_flag  = cv_flg_y
+                                   AND    cd_process_date    BETWEEN NVL(flvv.start_date_active, cd_process_date)
+                                                             AND     NVL(flvv.end_date_active, cd_process_date)
+                                   UNION
+                                   --専門店
+                                   SELECT DECODE(xlllv.location_level, 'L1', xlllv.cd_level1
+                                                                     , 'L2', xlllv.cd_level2
+                                                                     , 'L3', xlllv.cd_level3
+                                                                     , 'L4', xlllv.cd_level4
+                                                                     , 'L5', xlllv.cd_level5
+                                                                     , 'L6', xlllv.cd_level6) location_id
+                                   FROM   xxcsm_loc_level_list_v    xlllv
+                                         ,fnd_lookup_values_vl      flvv
+                                   WHERE  xlllv.cd_level3    = flvv.lookup_code
+                                   AND    flvv.lookup_type   = cv_lookup_sp_sum
+                                   AND    flvv.enabled_flag  = cv_flg_y
+                                   AND    cd_process_date    BETWEEN NVL(flvv.start_date_active, cd_process_date)
+                                                             AND     NVL(flvv.end_date_active, cd_process_date)
+                                  )
+      FOR UPDATE OF xwipr.location_cd NOWAIT
+    ;
+--
+    /**      拠点集約データ抽出       **/
+    CURSOR get_wk_item_cur
+    IS
+      --百貨店系
+      SELECT   xwipr.subject_year               subject_year             --対象年度
+              ,xwipr.month_no                   month_no                 --月
+              ,xwipr.year_month                 year_month               --年月
+              ,xlllv.cd_level4                  location_cd              --拠点コード
+              ,xwipr.item_no                    item_no                  --商品コード
+              ,xwipr.item_group_no              item_group_no            --商品群コード
+              ,SUM(xwipr.amount)                amount                   --数量
+              ,SUM(xwipr.sales_budget)          sales_budget             --売上金額
+              ,SUM(xwipr.amount_gross_margin)   amount_gross_margin      --粗利益額
+              ,xwipr.discrete_cost              discrete_cost            --営業原価
+              ,cn_created_by                    created_by
+              ,SYSDATE                          creation_date
+              ,cn_last_updated_by               last_updated_by
+              ,SYSDATE                          last_update_date
+              ,cn_last_update_login             last_update_login
+      FROM     xxcsm_wk_item_plan_result        xwipr
+              ,xxcsm_loc_level_list_v           xlllv
+              ,fnd_lookup_values_vl             flvv
+      WHERE    xwipr.location_cd = DECODE(xlllv.location_level, 'L1', xlllv.cd_level1
+                                                              , 'L2', xlllv.cd_level2
+                                                              , 'L3', xlllv.cd_level3
+                                                              , 'L4', xlllv.cd_level4
+                                                              , 'L5', xlllv.cd_level5
+                                                              , 'L6', xlllv.cd_level6)
+      AND      xlllv.cd_level4    = flvv.lookup_code
+      AND      flvv.lookup_type   = cv_lookup_dept_sum
+      AND      flvv.enabled_flag  = cv_flg_y
+      AND      cd_process_date    BETWEEN NVL(flvv.start_date_active, cd_process_date)
+                                  AND     NVL(flvv.end_date_active, cd_process_date)
+      GROUP BY xlllv.cd_level4
+              ,xwipr.subject_year
+              ,xwipr.month_no
+              ,xwipr.year_month
+              ,xwipr.item_no
+              ,xwipr.item_group_no
+              ,xwipr.discrete_cost
+      --専門店系
+      UNION ALL
+      SELECT   sub.subject_year               subject_year             --対象年度
+              ,sub.month_no                   month_no                 --月
+              ,sub.year_month                 year_month               --年月
+              ,sub.location_cd                location_cd              --拠点コード
+              ,sub.item_no                    item_no                  --商品コード
+              ,sub.item_group_no              item_group_no            --商品群コード
+              ,SUM(sub.amount)                amount                   --数量
+              ,SUM(sub.sales_budget)          sales_budget             --売上金額
+              ,SUM(sub.amount_gross_margin)   amount_gross_margin      --粗利益額
+              ,sub.discrete_cost              discrete_cost            --営業原価
+              ,cn_created_by                  created_by
+              ,SYSDATE                        creation_date
+              ,cn_last_updated_by             last_updated_by
+              ,SYSDATE                        last_update_date
+              ,cn_last_update_login           last_update_login
+      FROM     (SELECT   xwipr.subject_year               subject_year             --対象年度
+                        ,xwipr.month_no                   month_no                 --月
+                        ,xwipr.year_month                 year_month               --年月
+                        ,gt_sp_code                       location_cd              --拠点コード
+                        ,xwipr.item_no                    item_no                  --商品コード
+                        ,xwipr.item_group_no              item_group_no            --商品群コード
+                        ,xwipr.amount                     amount                   --数量
+                        ,xwipr.sales_budget               sales_budget             --売上金額
+                        ,xwipr.amount_gross_margin        amount_gross_margin      --粗利益額
+                        ,xwipr.discrete_cost              discrete_cost            --営業原価
+                FROM     xxcsm_wk_item_plan_result        xwipr
+                        ,xxcsm_loc_level_list_v           xlllv
+                        ,fnd_lookup_values_vl             flvv
+                WHERE    xwipr.location_cd = DECODE(xlllv.location_level, 'L1', xlllv.cd_level1
+                                                                        , 'L2', xlllv.cd_level2
+                                                                        , 'L3', xlllv.cd_level3
+                                                                        , 'L4', xlllv.cd_level4
+                                                                        , 'L5', xlllv.cd_level5
+                                                                        , 'L6', xlllv.cd_level6)
+                AND      xlllv.cd_level3    = flvv.lookup_code
+                AND      flvv.lookup_type   = cv_lookup_sp_sum
+                AND      flvv.enabled_flag  = cv_flg_y
+                AND      cd_process_date    BETWEEN NVL(flvv.start_date_active, cd_process_date)
+                                                AND NVL(flvv.end_date_active, cd_process_date)
+               ) sub
+      GROUP BY sub.subject_year
+              ,sub.month_no
+              ,sub.year_month
+              ,sub.location_cd
+              ,sub.item_no
+              ,sub.item_group_no
+              ,sub.discrete_cost
+    ;
+    --テーブル型を定義
+    TYPE get_wk_item_type IS TABLE OF get_wk_item_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+    --テーブル型変数を定義
+    get_wk_item_rec  get_wk_item_type;
+    sum_wk_item_rec  get_wk_item_type;
+    --レコード型変数を定義
+    lock_wk_item_rec lock_wk_item_cur%ROWTYPE;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --ローカル変数初期化
+    ln_cnt             := 0;
+    ln_sum_cnt         := 0;
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+    --対象レコードをロック
+    OPEN  lock_wk_item_cur;
+    CLOSE lock_wk_item_cur;
+--
+    OPEN get_wk_item_cur;
+--
+      <<bulk_loop>>
+      LOOP
+--
+        FETCH get_wk_item_cur BULK COLLECT INTO get_wk_item_rec LIMIT 500000;
+        --対象件数
+        ln_sum_cnt := ln_sum_cnt + get_wk_item_rec.COUNT;
+--
+        EXIT WHEN get_wk_item_rec.COUNT = 0;
+--
+        <<sum_loop>>
+        FOR i IN 1..get_wk_item_rec.COUNT  LOOP
+--
+          ln_cnt := ln_cnt + 1;
+--
+          sum_wk_item_rec(ln_cnt).subject_year         := get_wk_item_rec(i).subject_year;            -- 対象年度
+          sum_wk_item_rec(ln_cnt).month_no             := get_wk_item_rec(i).month_no;                -- 月
+          sum_wk_item_rec(ln_cnt).year_month           := get_wk_item_rec(i).year_month;              -- 年月
+          sum_wk_item_rec(ln_cnt).location_cd          := get_wk_item_rec(i).location_cd;             -- 拠点コード
+          sum_wk_item_rec(ln_cnt).item_no              := get_wk_item_rec(i).item_no;                 -- 品目コード
+          sum_wk_item_rec(ln_cnt).item_group_no        := get_wk_item_rec(i).item_group_no;           -- 商品群コード
+          sum_wk_item_rec(ln_cnt).amount               := get_wk_item_rec(i).amount;                  -- 数量月計
+          sum_wk_item_rec(ln_cnt).sales_budget         := get_wk_item_rec(i).sales_budget;            -- 売上月計
+          sum_wk_item_rec(ln_cnt).amount_gross_margin  := get_wk_item_rec(i).amount_gross_margin;     -- 粗利益額
+          sum_wk_item_rec(ln_cnt).discrete_cost        := get_wk_item_rec(i).discrete_cost;           -- 営業原価
+          sum_wk_item_rec(ln_cnt).created_by           := get_wk_item_rec(ln_cnt).created_by;         -- 作成者
+          sum_wk_item_rec(ln_cnt).creation_date        := get_wk_item_rec(ln_cnt).creation_date;      -- 作成日
+          sum_wk_item_rec(ln_cnt).last_updated_by      := get_wk_item_rec(ln_cnt).last_updated_by;    -- 最終更新者
+          sum_wk_item_rec(ln_cnt).last_update_date     := get_wk_item_rec(ln_cnt).last_update_date;   -- 最終更新日
+          sum_wk_item_rec(ln_cnt).last_update_login    := get_wk_item_rec(ln_cnt).last_update_login;  -- 最終ログインID
+--
+        END LOOP sum_loop;
+--
+      END LOOP bulk_loop;
+--
+    CLOSE get_wk_item_cur;
+--
+    IF (ln_sum_cnt > 0) THEN
+      -- 集約した拠点のレコードを削除
+      DELETE xxcsm_wk_item_plan_result xwipr
+      WHERE  xwipr.location_cd IN (SELECT DECODE(xlllv.location_level, 'L1', xlllv.cd_level1
+                                                                     , 'L2', xlllv.cd_level2
+                                                                     , 'L3', xlllv.cd_level3
+                                                                     , 'L4', xlllv.cd_level4
+                                                                     , 'L5', xlllv.cd_level5
+                                                                     , 'L6', xlllv.cd_level6)
+                                   FROM   xxcsm_loc_level_list_v  xlllv
+                                         ,fnd_lookup_values_vl    flvv
+                                   WHERE  xlllv.cd_level4    = flvv.lookup_code
+                                   AND    flvv.lookup_type   = cv_lookup_dept_sum
+                                   AND    flvv.enabled_flag  = cv_flg_y
+                                   AND    cd_process_date    BETWEEN NVL(flvv.start_date_active, cd_process_date)
+                                                             AND     NVL(flvv.end_date_active, cd_process_date)
+                                   UNION
+                                   SELECT DECODE(xlllv.location_level, 'L1', xlllv.cd_level1
+                                                                     , 'L2', xlllv.cd_level2
+                                                                     , 'L3', xlllv.cd_level3
+                                                                     , 'L4', xlllv.cd_level4
+                                                                     , 'L5', xlllv.cd_level5
+                                                                     , 'L6', xlllv.cd_level6)
+                                   FROM   xxcsm_loc_level_list_v  xlllv
+                                         ,fnd_lookup_values_vl    flvv
+                                   WHERE  xlllv.cd_level3    = flvv.lookup_code
+                                   AND    flvv.lookup_type   = cv_lookup_sp_sum
+                                   AND    flvv.enabled_flag  = cv_flg_y
+                                   AND    cd_process_date    BETWEEN NVL(flvv.start_date_active, cd_process_date)
+                                                                 AND NVL(flvv.end_date_active, cd_process_date)
+                                  )
+      ;
+--
+      --集約データをインサート
+      FORALL j IN 1..ln_cnt
+        INSERT INTO xxcsm_wk_item_plan_result VALUES sum_wk_item_rec(j);
+--
+  END IF;
+--
+  EXCEPTION
+    -- *** ロックエラー ***
+    WHEN check_lock_expt THEN
+      IF (lock_wk_item_cur%ISOPEN) THEN
+        CLOSE lock_wk_item_cur;
+      END IF;
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                                    iv_application  =>  cv_xxcsm
+                                   ,iv_name         =>  cv_xxcsm_msg_10160
+                                    );
+      lv_errbuf  := lv_errmsg;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      IF (get_wk_item_cur%ISOPEN) THEN
+        CLOSE get_wk_item_cur;
+      END IF;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_sum_record;
+--
+-- == 2010/03/08 V1.10 Added END   ===============================================================
 --//+DEL START 2010/02/09 E_本稼動_01247 S.Karikomi
 --  /***********************************************************************************
 --   * Procedure Name   : delete_no_result
@@ -3347,6 +3702,21 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- == 2010/03/08 V1.10 Added START ===============================================================
+    -- ===============================
+    -- 専門店、百貨店集約処理(A-8)
+    -- ===============================
+    ins_sum_record(
+          ov_errbuf  => lv_errbuf         -- エラー・メッセージ
+         ,ov_retcode => lv_retcode        -- リターン・コード
+         ,ov_errmsg  => lv_errmsg         -- ユーザー・エラー・メッセージ
+    );
+    -- 例外処理
+    IF (lv_retcode <> cv_status_normal) THEN
+      --(エラー処理)
+      RAISE global_api_expt;
+    END IF;
+-- == 2010/03/08 V1.10 Added END   ===============================================================
 --//+ADD START 2010/02/09 E_本稼動_01247 S.Karikomi
     -- ===============================
 --//+UPD START 2010/02/09 E_本稼動_01247 S.Karikomi
