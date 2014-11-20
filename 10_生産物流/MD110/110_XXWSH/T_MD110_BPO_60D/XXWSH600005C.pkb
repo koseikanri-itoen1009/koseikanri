@@ -7,7 +7,7 @@ AS
  * Description      : 確定ブロック処理
  * MD.050           : 出荷依頼 T_MD050_BPO_601
  * MD.070           : 確定ブロック処理  T_MD070_BPO_60D
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/08/04    1.4  Oracle 二瓶大輔   結合テスト不具合対応(T_TE080_BPO_400#160)
  *                                       カテゴリ情報VIEW変更
  *  2008/08/07    1.5  Oracle 大橋孝郎   結合出荷テスト(出荷追加_30)修正
+ *  2008/09/04    1.6  Oracle 野村正幸   統合#45 対応
  *
  *****************************************************************************************/
 --
@@ -1094,9 +1095,8 @@ AS
     lr_temp_tab_tab       rec_temp_tab_data_tab ;   -- 中間テーブル登録用レコード変数
 --
     -- *** ローカル・カーソル ***
-    ----------------------------------------------------------------------------------------------
-    -- ＜抽出条件(A)＞出荷依頼 生産物流LT1指定の場合
-    ----------------------------------------------------------------------------------------------
+-- ##### 20080904 1.6 統合#45 対応 START #####
+/********** カーソル定義変更によりコメントアウト
     CURSOR cur_sel_order_a(lv_code_class2 VARCHAR2)
     IS
       SELECT
@@ -1199,9 +1199,229 @@ AS
                                   AND NVL( xdl2v.lt_end_date_active, gr_param.lt1_ship_date_from )
       FOR UPDATE OF xoha.order_header_id NOWAIT
      ;
+**********/
     ----------------------------------------------------------------------------------------------
-    -- ＜抽出条件(B)＞出荷依頼 生産物流LT2指定の場合
+    -- ＜抽出条件(A)＞出荷依頼 生産物流LT1指定の場合
     ----------------------------------------------------------------------------------------------
+    CURSOR cur_sel_order_a
+    IS
+      SELECT  lt1_date.data_class            -- データ区分「出荷依頼：1」「出荷取消：8」
+           ,  lt1_date.whse_code             -- 保管倉庫コード
+           ,  lt1_date.order_header_id       -- 受注ヘッダアドオンID
+           ,  lt1_date.notif_status          -- 通知ステータス
+           ,  lt1_date.prod_class            -- 商品区分
+           ,  lt1_date.item_class            -- 品目区分
+           ,  lt1_date.delivery_no           -- 配送NO
+           ,  lt1_date.request_no            -- 依頼NO
+           ,  lt1_date.freight_charge_class  -- 運賃区分
+           ,  lt1_date.d1_whse_code          -- D+1倉庫フラグ
+           ,  lt1_date.base_date             -- 基準日
+      FROM 
+        (
+          -- ＜抽出条件(A)＞配送先
+          SELECT
+            CASE WHEN xoha.req_status = gc_req_status_s_cmpb THEN gc_data_class_order
+                 WHEN xoha.req_status = gc_req_status_p_ccl THEN gc_data_class_order_cncl
+            END                              AS data_class            -- データ区分「出荷依頼：1」「出荷取消：8」
+               , xil2v.segment1              AS whse_code             -- 保管倉庫コード
+               , xoha.order_header_id        AS order_header_id       -- 受注ヘッダアドオンID
+               , xoha.notif_status           AS notif_status          -- 通知ステータス
+               , xoha.prod_class             AS prod_class            -- 商品区分
+               , NULL                        AS item_class            -- 品目区分
+               , xoha.delivery_no            AS delivery_no           -- 配送NO
+               , xoha.request_no             AS request_no            -- 依頼NO
+               , xoha.freight_charge_class   AS freight_charge_class  -- 運賃区分
+               , xil2v.d1_whse_code          AS d1_whse_code          -- D+1倉庫フラグ
+               , gr_param.lt1_ship_date_from AS base_date             -- 基準日
+          FROM xxwsh_order_headers_all            xoha,               -- 受注ヘッダアドオン
+               xxwsh_oe_transaction_types2_v      xott2v,             -- 受注タイプ
+               xxcmn_item_locations2_v            xil2v,              -- OPM保管場所情報
+               (SELECT entering_despatching_code1
+                      ,entering_despatching_code2
+                      ,code_class1
+                      ,code_class2
+                      ,leaf_lead_time_day
+                      ,drink_lead_time_day
+                      ,lt_start_date_active
+                      ,lt_end_date_active
+                FROM   xxcmn_delivery_lt2_v         -- 配送L/Tアドオン
+                GROUP BY entering_despatching_code1
+                      ,entering_despatching_code2
+                      ,code_class1
+                      ,code_class2
+                      ,leaf_lead_time_day
+                      ,drink_lead_time_day
+                      ,lt_start_date_active
+                      ,lt_end_date_active)        xdl2v       -- 配送L/Tアドオン
+          WHERE
+          -- プロファイル．商品区分
+               xoha.prod_class               = gv_item_div_security
+          -- パラメータ条件．部署
+          AND  xoha.instruction_dept         = NVL( gr_param.dept_code, xoha.instruction_dept )
+          ---------------------------------------------------------------------------------------------
+          -- ＯＰＭ保管場所
+          ---------------------------------------------------------------------------------------------
+          AND  xoha.deliver_from          = xil2v.segment1
+          -- 適用日
+          AND   gr_param.lt1_ship_date_from BETWEEN xil2v.date_from
+                                      AND NVL( xil2v.date_to, gr_param.lt1_ship_date_from )
+          -- パラメータ条件．出庫元
+          AND   ( xil2v.segment1          = gr_param.shipped_locat_code
+          -- パラメータ条件．ブロック１・２・３
+          OR      xil2v.distribution_block = gr_param.block_01
+          OR      xil2v.distribution_block = gr_param.block_02
+          OR      xil2v.distribution_block = gr_param.block_03
+          OR    (   gr_param.shipped_locat_code IS NULL
+                AND gr_param.block_01           IS NULL
+                AND gr_param.block_02           IS NULL
+                AND gr_param.block_03           IS NULL))
+          ---------------------------------------------------------------------------------------------
+          -- 受注タイプ
+          ---------------------------------------------------------------------------------------------
+          AND   xott2v.order_category_code  = gv_order_cat_o
+          AND   xott2v.shipping_shikyu_class = gv_sp_class_ship             -- 出荷依頼
+          AND   xott2v.transaction_type_id  = gv_transaction_type_id_ship   -- 出荷依頼
+          AND   xoha.order_type_id          = xott2v.transaction_type_id
+          ---------------------------------------------------------------------------------------------
+          -- 受注ヘッダアドオン
+          ---------------------------------------------------------------------------------------------
+          AND ((  xoha.req_status             = gc_req_status_s_cmpb            -- 出荷：締済み
+              AND (     xoha.notif_status           = gc_notif_status_unnotif       -- 未通知
+                  OR    xoha.notif_status           = gc_notif_status_renotif ))    -- 再通知要
+          OR  (  xoha.req_status             = gc_req_status_p_ccl              -- 出荷：取消
+              AND   xoha.notif_status           = gc_notif_status_renotif )         -- 再通知要
+              )
+          -- パラメータ条件．生産物流LT1/出荷依頼/出庫日FromTo
+          AND   xoha.schedule_ship_date BETWEEN gr_param.lt1_ship_date_from
+                                        AND  NVL( gr_param.lt1_ship_date_to, xoha.schedule_ship_date )
+          ---------------------------------------------------------------------------------------------
+          -- 配送L/Tアドオン
+          ---------------------------------------------------------------------------------------------
+          AND   xoha.deliver_from       =  xdl2v.entering_despatching_code1
+          AND   xoha.deliver_to         =  xdl2v.entering_despatching_code2
+          AND   xdl2v.code_class1          =  gv_whse_code
+          AND   xdl2v.code_class2          =  gv_deliver_to -- コード区分(9:配送先)
+          -- パラメータ条件．生産物流LT1
+          AND   CASE gv_item_div_security
+                  WHEN gv_prod_class_leaf  THEN xdl2v.leaf_lead_time_day
+                  WHEN gv_prod_class_drink THEN xdl2v.drink_lead_time_day
+                END = gr_param.lead_time_day_01
+          -- 適用日
+          AND   gr_param.lt1_ship_date_from BETWEEN xdl2v.lt_start_date_active
+                                      AND NVL( xdl2v.lt_end_date_active, gr_param.lt1_ship_date_from )
+          UNION
+          -- ＜抽出条件(A)＞拠点
+          SELECT
+            CASE WHEN xoha.req_status = gc_req_status_s_cmpb THEN gc_data_class_order
+                 WHEN xoha.req_status = gc_req_status_p_ccl THEN gc_data_class_order_cncl
+            END                              AS data_class            -- データ区分「出荷依頼：1」「出荷取消：8」
+               , xil2v.segment1              AS whse_code             -- 保管倉庫コード
+               , xoha.order_header_id        AS order_header_id       -- 受注ヘッダアドオンID
+               , xoha.notif_status           AS notif_status          -- 通知ステータス
+               , xoha.prod_class             AS prod_class            -- 商品区分
+               , NULL                        AS item_class            -- 品目区分
+               , xoha.delivery_no            AS delivery_no           -- 配送NO
+               , xoha.request_no             AS request_no            -- 依頼NO
+               , xoha.freight_charge_class   AS freight_charge_class  -- 運賃区分
+               , xil2v.d1_whse_code          AS d1_whse_code          -- D+1倉庫フラグ
+               , gr_param.lt1_ship_date_from AS base_date             -- 基準日
+          FROM xxwsh_order_headers_all            xoha,               -- 受注ヘッダアドオン
+               xxwsh_oe_transaction_types2_v      xott2v,             -- 受注タイプ
+               xxcmn_item_locations2_v            xil2v,              -- OPM保管場所情報
+               (SELECT entering_despatching_code1
+                      ,entering_despatching_code2
+                      ,code_class1
+                      ,code_class2
+                      ,leaf_lead_time_day
+                      ,drink_lead_time_day
+                      ,lt_start_date_active
+                      ,lt_end_date_active
+                FROM   xxcmn_delivery_lt2_v         -- 配送L/Tアドオン
+                GROUP BY entering_despatching_code1
+                      ,entering_despatching_code2
+                      ,code_class1
+                      ,code_class2
+                      ,leaf_lead_time_day
+                      ,drink_lead_time_day
+                      ,lt_start_date_active
+                      ,lt_end_date_active)        xdl2v       -- 配送L/Tアドオン
+          WHERE
+          -- プロファイル．商品区分
+               xoha.prod_class               = gv_item_div_security
+          -- パラメータ条件．部署
+          AND  xoha.instruction_dept         = NVL( gr_param.dept_code, xoha.instruction_dept )
+          ---------------------------------------------------------------------------------------------
+          -- ＯＰＭ保管場所
+          ---------------------------------------------------------------------------------------------
+          AND  xoha.deliver_from          = xil2v.segment1
+          -- 適用日
+          AND   gr_param.lt1_ship_date_from BETWEEN xil2v.date_from
+                                      AND NVL( xil2v.date_to, gr_param.lt1_ship_date_from )
+          -- パラメータ条件．出庫元
+          AND   ( xil2v.segment1          = gr_param.shipped_locat_code
+          -- パラメータ条件．ブロック１・２・３
+          OR      xil2v.distribution_block = gr_param.block_01
+          OR      xil2v.distribution_block = gr_param.block_02
+          OR      xil2v.distribution_block = gr_param.block_03
+          OR    (   gr_param.shipped_locat_code IS NULL
+                AND gr_param.block_01           IS NULL
+                AND gr_param.block_02           IS NULL
+                AND gr_param.block_03           IS NULL))
+          ---------------------------------------------------------------------------------------------
+          -- 受注タイプ
+          ---------------------------------------------------------------------------------------------
+          AND   xott2v.order_category_code  = gv_order_cat_o
+          AND   xott2v.shipping_shikyu_class = gv_sp_class_ship             -- 出荷依頼
+          AND   xott2v.transaction_type_id  = gv_transaction_type_id_ship   -- 出荷依頼
+          AND   xoha.order_type_id          = xott2v.transaction_type_id
+          ---------------------------------------------------------------------------------------------
+          -- 受注ヘッダアドオン
+          ---------------------------------------------------------------------------------------------
+          AND ((  xoha.req_status             = gc_req_status_s_cmpb            -- 出荷：締済み
+              AND (     xoha.notif_status           = gc_notif_status_unnotif       -- 未通知
+                  OR    xoha.notif_status           = gc_notif_status_renotif ))    -- 再通知要
+          OR  (  xoha.req_status             = gc_req_status_p_ccl              -- 出荷：取消
+              AND   xoha.notif_status           = gc_notif_status_renotif )         -- 再通知要
+              )
+          -- パラメータ条件．生産物流LT1/出荷依頼/出庫日FromTo
+          AND   xoha.schedule_ship_date BETWEEN gr_param.lt1_ship_date_from
+                                        AND  NVL( gr_param.lt1_ship_date_to, xoha.schedule_ship_date )
+          ---------------------------------------------------------------------------------------------
+          -- 配送L/Tアドオン
+          ---------------------------------------------------------------------------------------------
+          AND   xoha.deliver_from       =  xdl2v.entering_despatching_code1
+          AND   xoha.head_sales_branch  =  xdl2v.entering_despatching_code2
+          AND   xdl2v.code_class1          =  gv_whse_code
+          AND   xdl2v.code_class2          =  gv_sales_code -- コード区分(1:拠点)
+          -- パラメータ条件．生産物流LT1
+          AND   CASE gv_item_div_security
+                  WHEN gv_prod_class_leaf  THEN xdl2v.leaf_lead_time_day
+                  WHEN gv_prod_class_drink THEN xdl2v.drink_lead_time_day
+                END = gr_param.lead_time_day_01
+          -- 適用日
+          AND   gr_param.lt1_ship_date_from BETWEEN xdl2v.lt_start_date_active
+                                      AND NVL( xdl2v.lt_end_date_active, gr_param.lt1_ship_date_from )
+          ---------------------------------------------------------------------------------------------
+          -- 配送L/Tアドオン（配送先で登録されていないこと）
+          ---------------------------------------------------------------------------------------------
+          AND NOT EXISTS (  SELECT  'X'
+                            FROM    xxcmn_delivery_lt2_v  e_xdl2v       -- 配送L/Tアドオン
+                            WHERE   e_xdl2v.code_class1                 = gv_whse_code
+                            AND     e_xdl2v.entering_despatching_code1  = xoha.deliver_from
+                            AND     e_xdl2v.code_class2                 = gv_deliver_to
+                            AND     e_xdl2v.entering_despatching_code2  = xoha.deliver_to
+                            AND     gr_param.lt1_ship_date_from BETWEEN e_xdl2v.lt_start_date_active 
+                                            AND NVL( e_xdl2v.lt_end_date_active, gr_param.lt1_ship_date_from )
+                         )
+        ) lt1_date,
+        xxwsh_order_headers_all xoha_lock
+      WHERE lt1_date.order_header_id = xoha_lock.order_header_id
+      FOR UPDATE OF xoha_lock.order_header_id NOWAIT
+      ;
+-- ##### 20080904 1.6 統合#45 対応 END   #####
+--
+-- ##### 20080904 1.6 統合#45 対応 START #####
+/**********  カーソル定義変更によりコメントアウト
     CURSOR cur_sel_order_b(lv_code_class2 VARCHAR2)
     IS
       SELECT
@@ -1304,6 +1524,215 @@ AS
                                   AND NVL( xdl2v.lt_end_date_active, gr_param.lt2_ship_date_from )
       FOR UPDATE OF xoha.order_header_id NOWAIT
      ;
+**********/
+    ----------------------------------------------------------------------------------------------
+    -- ＜抽出条件(B)＞出荷依頼 生産物流LT2指定の場合
+    ----------------------------------------------------------------------------------------------
+    CURSOR cur_sel_order_b
+    IS
+      SELECT  lt1_date.data_class            -- データ区分「出荷依頼：1」「出荷取消：8」
+           ,  lt1_date.whse_code             -- 保管倉庫コード
+           ,  lt1_date.order_header_id       -- 受注ヘッダアドオンID
+           ,  lt1_date.notif_status          -- 通知ステータス
+           ,  lt1_date.prod_class            -- 商品区分
+           ,  lt1_date.item_class            -- 品目区分
+           ,  lt1_date.delivery_no           -- 配送NO
+           ,  lt1_date.request_no            -- 依頼NO
+           ,  lt1_date.freight_charge_class  -- 運賃区分
+           ,  lt1_date.d1_whse_code          -- D+1倉庫フラグ
+           ,  lt1_date.base_date             -- 基準日
+      FROM 
+        (
+          -- ＜抽出条件(B)＞配送先
+          SELECT
+            CASE WHEN xoha.req_status = gc_req_status_s_cmpb THEN gc_data_class_order
+                 WHEN xoha.req_status = gc_req_status_p_ccl THEN gc_data_class_order_cncl
+            END                              AS data_class -- データ区分「出荷依頼：1」「出荷取消：8」
+               , xil2v.segment1              AS whse_code       -- 保管倉庫コード
+               , xoha.order_header_id        AS order_header_id  -- 受注ヘッダアドオンID
+               , xoha.notif_status           AS notif_status    -- 通知ステータス
+               , xoha.prod_class             AS prod_class    -- 商品区分
+               , NULL                        AS item_class      -- 品目区分
+               , xoha.delivery_no            AS delivery_no      -- 配送NO
+               , xoha.request_no             AS request_no      -- 依頼NO
+               , xoha.freight_charge_class   AS freight_charge_class      -- 運賃区分
+               , xil2v.d1_whse_code           AS d1_whse_code      -- D+1倉庫フラグ
+               , gr_param.lt2_ship_date_from AS base_date      -- 基準日
+          FROM xxwsh_order_headers_all            xoha,       -- 受注ヘッダアドオン
+               xxwsh_oe_transaction_types2_v      xott2v,       -- 受注タイプ
+               xxcmn_item_locations2_v            xil2v,    -- OPM保管場所情報
+               (SELECT entering_despatching_code1
+                      ,entering_despatching_code2
+                      ,code_class1
+                      ,code_class2
+                      ,leaf_lead_time_day
+                      ,drink_lead_time_day
+                      ,lt_start_date_active
+                      ,lt_end_date_active
+                FROM   xxcmn_delivery_lt2_v    -- 配送L/Tアドオン
+                GROUP BY entering_despatching_code1
+                      ,entering_despatching_code2
+                      ,code_class1
+                      ,code_class2
+                      ,leaf_lead_time_day
+                      ,drink_lead_time_day
+                      ,lt_start_date_active
+                      ,lt_end_date_active)        xdl2v       -- 配送L/Tアドオン
+          WHERE
+          -- プロファイル．商品区分
+               xoha.prod_class               = gv_item_div_security
+          -- パラメータ条件．部署
+          AND  xoha.instruction_dept         = NVL( gr_param.dept_code, xoha.instruction_dept )
+          ---------------------------------------------------------------------------------------------
+          -- ＯＰＭ保管場所
+          ---------------------------------------------------------------------------------------------
+          AND  xoha.deliver_from          = xil2v.segment1
+          -- 適用日
+          AND   gr_param.lt2_ship_date_from BETWEEN xil2v.date_from
+                                      AND NVL( xil2v.date_to, gr_param.lt2_ship_date_from )
+          -- パラメータ条件．出庫元
+          AND   ( xil2v.segment1          = gr_param.shipped_locat_code
+          -- パラメータ条件．ブロック１・２・３
+          OR      xil2v.distribution_block = gr_param.block_01
+          OR      xil2v.distribution_block = gr_param.block_02
+          OR      xil2v.distribution_block = gr_param.block_03
+          OR    (   gr_param.shipped_locat_code IS NULL
+                AND gr_param.block_01           IS NULL
+                AND gr_param.block_02           IS NULL
+                AND gr_param.block_03           IS NULL))
+          ---------------------------------------------------------------------------------------------
+          -- 受注タイプ
+          ---------------------------------------------------------------------------------------------
+          AND   xott2v.order_category_code  = gv_order_cat_o
+          AND   xott2v.shipping_shikyu_class = gv_sp_class_ship     -- 出荷依頼
+          AND   xott2v.transaction_type_id  = gv_transaction_type_id_ship     -- 出荷依頼
+          AND   xoha.order_type_id          = xott2v.transaction_type_id
+          ---------------------------------------------------------------------------------------------
+          -- 受注ヘッダアドオン
+          ---------------------------------------------------------------------------------------------
+          AND ((  xoha.req_status             = gc_req_status_s_cmpb    -- 出荷：締済み
+              AND (     xoha.notif_status           = gc_notif_status_unnotif    -- 未通知
+                  OR    xoha.notif_status           = gc_notif_status_renotif ))   -- 再通知要
+          OR  (  xoha.req_status             = gc_req_status_p_ccl      -- 出荷：取消
+              AND   xoha.notif_status           = gc_notif_status_renotif )   -- 再通知要
+              )
+          -- パラメータ条件．生産物流LT2/出荷依頼/出庫日FromTo
+          AND   xoha.schedule_ship_date BETWEEN gr_param.lt2_ship_date_from
+                                        AND  NVL( gr_param.lt2_ship_date_to, xoha.schedule_ship_date )
+          ---------------------------------------------------------------------------------------------
+          -- 配送L/Tアドオン
+          ---------------------------------------------------------------------------------------------
+          AND   xoha.deliver_from       =  xdl2v.entering_despatching_code1
+          AND   xoha.deliver_to         =  xdl2v.entering_despatching_code2
+          AND   xdl2v.code_class1          =  gv_whse_code
+          AND   xdl2v.code_class2          =  gv_deliver_to -- コード区分(9:配送先)
+          -- パラメータ条件．生産物流LT2
+          AND   CASE gv_item_div_security
+                  WHEN gv_prod_class_leaf  THEN xdl2v.leaf_lead_time_day
+                  WHEN gv_prod_class_drink THEN xdl2v.drink_lead_time_day
+                END = gr_param.lead_time_day_02
+          -- 適用日
+          AND   gr_param.lt2_ship_date_from BETWEEN xdl2v.lt_start_date_active
+                                      AND NVL( xdl2v.lt_end_date_active, gr_param.lt2_ship_date_from )
+          UNION
+          -- ＜抽出条件(B)＞拠点
+          SELECT
+            CASE WHEN xoha.req_status = gc_req_status_s_cmpb THEN gc_data_class_order
+                 WHEN xoha.req_status = gc_req_status_p_ccl THEN gc_data_class_order_cncl
+            END                              AS data_class -- データ区分「出荷依頼：1」「出荷取消：8」
+               , xil2v.segment1              AS whse_code       -- 保管倉庫コード
+               , xoha.order_header_id        AS order_header_id  -- 受注ヘッダアドオンID
+               , xoha.notif_status           AS notif_status    -- 通知ステータス
+               , xoha.prod_class             AS prod_class    -- 商品区分
+               , NULL                        AS item_class      -- 品目区分
+               , xoha.delivery_no            AS delivery_no      -- 配送NO
+               , xoha.request_no             AS request_no      -- 依頼NO
+               , xoha.freight_charge_class   AS freight_charge_class      -- 運賃区分
+               , xil2v.d1_whse_code           AS d1_whse_code      -- D+1倉庫フラグ
+               , gr_param.lt2_ship_date_from AS base_date      -- 基準日
+          FROM xxwsh_order_headers_all            xoha,       -- 受注ヘッダアドオン
+               xxwsh_oe_transaction_types2_v      xott2v,       -- 受注タイプ
+               xxcmn_item_locations2_v            xil2v,    -- OPM保管場所情報
+               (SELECT entering_despatching_code1
+                      ,entering_despatching_code2
+                      ,code_class1
+                      ,code_class2
+                      ,leaf_lead_time_day
+                      ,drink_lead_time_day
+                      ,lt_start_date_active
+                      ,lt_end_date_active
+                FROM   xxcmn_delivery_lt2_v    -- 配送L/Tアドオン
+                GROUP BY entering_despatching_code1
+                      ,entering_despatching_code2
+                      ,code_class1
+                      ,code_class2
+                      ,leaf_lead_time_day
+                      ,drink_lead_time_day
+                      ,lt_start_date_active
+                      ,lt_end_date_active)        xdl2v       -- 配送L/Tアドオン
+          WHERE
+          -- プロファイル．商品区分
+               xoha.prod_class               = gv_item_div_security
+          -- パラメータ条件．部署
+          AND  xoha.instruction_dept         = NVL( gr_param.dept_code, xoha.instruction_dept )
+          ---------------------------------------------------------------------------------------------
+          -- ＯＰＭ保管場所
+          ---------------------------------------------------------------------------------------------
+          AND  xoha.deliver_from          = xil2v.segment1
+          -- 適用日
+          AND   gr_param.lt2_ship_date_from BETWEEN xil2v.date_from
+                                      AND NVL( xil2v.date_to, gr_param.lt2_ship_date_from )
+          -- パラメータ条件．出庫元
+          AND   ( xil2v.segment1          = gr_param.shipped_locat_code
+          -- パラメータ条件．ブロック１・２・３
+          OR      xil2v.distribution_block = gr_param.block_01
+          OR      xil2v.distribution_block = gr_param.block_02
+          OR      xil2v.distribution_block = gr_param.block_03
+          OR    (   gr_param.shipped_locat_code IS NULL
+                AND gr_param.block_01           IS NULL
+                AND gr_param.block_02           IS NULL
+                AND gr_param.block_03           IS NULL))
+          ---------------------------------------------------------------------------------------------
+          -- 受注タイプ
+          ---------------------------------------------------------------------------------------------
+          AND   xott2v.order_category_code  = gv_order_cat_o
+          AND   xott2v.shipping_shikyu_class = gv_sp_class_ship     -- 出荷依頼
+          AND   xott2v.transaction_type_id  = gv_transaction_type_id_ship     -- 出荷依頼
+          AND   xoha.order_type_id          = xott2v.transaction_type_id
+          ---------------------------------------------------------------------------------------------
+          -- 受注ヘッダアドオン
+          ---------------------------------------------------------------------------------------------
+          AND ((  xoha.req_status             = gc_req_status_s_cmpb    -- 出荷：締済み
+              AND (     xoha.notif_status           = gc_notif_status_unnotif    -- 未通知
+                  OR    xoha.notif_status           = gc_notif_status_renotif ))   -- 再通知要
+          OR  (  xoha.req_status             = gc_req_status_p_ccl      -- 出荷：取消
+              AND   xoha.notif_status           = gc_notif_status_renotif )   -- 再通知要
+              )
+          -- パラメータ条件．生産物流LT2/出荷依頼/出庫日FromTo
+          AND   xoha.schedule_ship_date BETWEEN gr_param.lt2_ship_date_from
+                                        AND  NVL( gr_param.lt2_ship_date_to, xoha.schedule_ship_date )
+          ---------------------------------------------------------------------------------------------
+          -- 配送L/Tアドオン
+          ---------------------------------------------------------------------------------------------
+          AND   xoha.deliver_from       =  xdl2v.entering_despatching_code1
+          AND   xoha.head_sales_branch  =  xdl2v.entering_despatching_code2
+          AND   xdl2v.code_class1          =  gv_whse_code
+          AND   xdl2v.code_class2          =  gv_sales_code -- コード区分(1:拠点)
+          -- パラメータ条件．生産物流LT2
+          AND   CASE gv_item_div_security
+                  WHEN gv_prod_class_leaf  THEN xdl2v.leaf_lead_time_day
+                  WHEN gv_prod_class_drink THEN xdl2v.drink_lead_time_day
+                END = gr_param.lead_time_day_02
+          -- 適用日
+          AND   gr_param.lt2_ship_date_from BETWEEN xdl2v.lt_start_date_active
+                                      AND NVL( xdl2v.lt_end_date_active, gr_param.lt2_ship_date_from )
+        ) lt1_date,
+        xxwsh_order_headers_all xoha_lock
+      WHERE lt1_date.order_header_id = xoha_lock.order_header_id
+      FOR UPDATE OF xoha_lock.order_header_id NOWAIT
+      ;
+-- ##### 20080904 1.6 統合#45 対応 END   #####
+--
     ----------------------------------------------------------------------------------------------
     -- ＜抽出条件(C)＞出庫形態が出荷依頼以外の場合
     ----------------------------------------------------------------------------------------------
@@ -1520,12 +1949,17 @@ AS
           --------------------------------------------------
           --＜抽出条件(A)＞
           --------------------------------------------------
-          -- カーソルオープン(コード区分：配送先)
-          OPEN cur_sel_order_a(gv_deliver_to);
+-- ##### 20080904 1.6 統合#45 対応 START #####
+--          OPEN cur_sel_order_a(gv_deliver_to);
+          -- カーソルオープン
+          OPEN cur_sel_order_a;
+-- ##### 20080904 1.6 統合#45 対応 END   #####
           -- バルクフェッチ
           FETCH cur_sel_order_a BULK COLLECT INTO lr_temp_tab_tab;
           -- カーソルクローズ
           CLOSE cur_sel_order_a;
+-- ##### 20080904 1.6 統合#45 対応 START #####
+/********** 不要の為コメントアウト
           -- コード区分：配送先で取得件数が0の場合、コード区分：拠点で検索
           IF lr_temp_tab_tab.COUNT = 0 THEN
             -- カーソルオープン(コード区分：拠点)
@@ -1535,6 +1969,8 @@ AS
             -- カーソルクローズ
             CLOSE cur_sel_order_a;
           END IF;
+**********/
+-- ##### 20080904 1.6 統合#45 対応 END   #####
           -- 処理対象データありの場合
           IF lr_temp_tab_tab.COUNT > 0 THEN
             gv_data_found_flg := gc_onoff_div_on;   -- 処理対象データあり
@@ -1563,12 +1999,17 @@ AS
           --------------------------------------------------
           --＜抽出条件(B)＞
           --------------------------------------------------
-          -- カーソルオープン(コード区分：配送先)
-          OPEN cur_sel_order_b(gv_deliver_to);
+-- ##### 20080904 1.6 統合#45 対応 START #####
+--          OPEN cur_sel_order_b(gv_deliver_to);
+          -- カーソルオープン
+          OPEN cur_sel_order_b;
+-- ##### 20080904 1.6 統合#45 対応 END   #####
           -- バルクフェッチ
           FETCH cur_sel_order_b BULK COLLECT INTO lr_temp_tab_tab;
           -- カーソルクローズ
           CLOSE cur_sel_order_b;
+-- ##### 20080904 1.6 統合#45 対応 START #####
+/********** 不要の為コメントアウト
           -- コード区分：配送先で取得件数が0の場合、コード区分：拠点で検索
           IF lr_temp_tab_tab.COUNT = 0 THEN
             -- カーソルオープン(コード区分：拠点)
@@ -1578,6 +2019,8 @@ AS
             -- カーソルクローズ
             CLOSE cur_sel_order_b;
           END IF;
+**********/
+-- ##### 20080904 1.6 統合#45 対応 END   #####
           -- 処理対象データありの場合
           IF lr_temp_tab_tab.COUNT > 0 THEN
             gv_data_found_flg := gc_onoff_div_on;   -- 処理対象データあり
