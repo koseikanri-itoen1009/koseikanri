@@ -31,6 +31,7 @@ AS
  *  2009/03/05    1.1  SCS 大川 恵      共通関数リリースに伴うSVF起動処理変更対応
  *                                      中間テーブルデータ削除処理コメントアウト削除対応
  *  2009/04/14    1.2  SCS 大川 恵      [障害T1_0533] 出力ファイル名変数文字列オーバーフロー対応
+ *  2009/04/28    1.3  SCS 萱原 伸哉    [障害T1_0742] 伝票日付セット値修正対応
  *
  *****************************************************************************************/
 --
@@ -644,7 +645,10 @@ AS
            xil.ship_cust_code        ship_cust_code,        -- 納品先顧客コード（ソート順７）
            xil.ship_cust_name        ship_cust_name,        -- 納品先顧客名
            xil.slip_num              slip_num,              -- 伝票no（ソート順９）
-           xil.delivery_date         delivery_date,         -- 伝票日付（ソート順８）
+-- Modify 2009.04.28 Ver1.3 Start
+--           xil.delivery_date         delivery_date,         -- 伝票日付（ソート順８）
+           NVL(xil.acceptance_date , xil.delivery_date) delivery_date,  -- 伝票日付（ソート順８）
+-- Modify 2009.04.28 Ver1.3 End
            SUM(xil.ship_amount)      ship_amount,           -- 金額
            SUM(xil.tax_amount)       tax_amount,            -- 税額
            NULL,                                           -- 0件メッセージ
@@ -714,7 +718,10 @@ AS
               xil.ship_cust_code        , -- 納品先顧客コード
               xil.ship_cust_name        , -- 納品先顧客名
               xil.slip_num              , -- 伝票no
-              xil.delivery_date           -- 伝票日付
+-- Modify 2009.04.28 Ver1.3 Start              
+--              xil.delivery_date           -- 伝票日付
+              NVL(xil.acceptance_date , xil.delivery_date)  -- 伝票日付
+-- Modify 2009.04.28 Ver1.3 End
       ;
 --
     -- 対象件数
