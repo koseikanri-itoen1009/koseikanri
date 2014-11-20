@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A01C(body)
  * Description      : 問屋販売条件請求書Excelアップロード
  * MD.050           : 問屋販売条件請求書Excelアップロード MD050_COK_021_A01
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009/12/24    1.7   K.Nakamura       [E_本稼動_00554] 問屋請求書テーブルデータチェック処理、明細データ削除処理に条件追加
  *  2009/12/25    1.8   K.Nakamura       [E_本稼動_00608] 請求単価、支払単価チェック修正
  *  2010/01/04    1.9   K.Yamaguchi      [E_本稼動_00752] 請求数量、支払数量、請求金額、支払金額チェック修正
+ *  2010/01/05    1.10  K.Yamaguchi      [E_本稼動_00069] 顧客マスタ・問屋の判定条件変更
  *
  *****************************************************************************************/
 --
@@ -1505,7 +1506,10 @@ AS
          , xxcmm_cust_accounts xca
     WHERE  hca.cust_account_id   = xca.customer_id
     AND    hca.account_number    = iv_cust_code
-    AND    xca.business_low_type = cv_sales_wholesale
+-- 2010/01/05 Ver.1.10 [E_本稼動_00069] SCS K.Yamaguchi REPAIR START
+--    AND    xca.business_low_type = cv_sales_wholesale
+    AND    xca.torihiki_form     = '2' -- 問屋帳合
+-- 2010/01/05 Ver.1.10 [E_本稼動_00069] SCS K.Yamaguchi REPAIR END
     AND    ROWNUM                = cn_1;
 --
     IF ( ln_count = cn_0 ) THEN
@@ -1536,7 +1540,10 @@ AS
       WHERE  hca.cust_account_id   = xca.customer_id
       AND    hca.party_id          = hp.party_id
       AND    hca.account_number    = iv_cust_code
-      AND    xca.business_low_type = cv_sales_wholesale
+-- 2010/01/05 Ver.1.10 [E_本稼動_00069] SCS K.Yamaguchi REPAIR START
+--      AND    xca.business_low_type = cv_sales_wholesale
+      AND    xca.torihiki_form     = '2' -- 問屋帳合
+-- 2010/01/05 Ver.1.10 [E_本稼動_00069] SCS K.Yamaguchi REPAIR END
       AND    ROWNUM                = cn_1;
       IF (   ( lv_cust_status = cv_cust_status_80 )
           OR ( lv_cust_status = cv_cust_status_90 )
