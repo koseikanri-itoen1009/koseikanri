@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF014A21C(body)
  * Description      : 別表16(4)リース資産
  * MD.050           : 別表16(4)リース資産 MD050_CFF_014_A21
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *                                         ・支払利息相当額、当期支払リース料（控除額）の取得条件修正
  *                                         ・未経過リース期末残高相当額、未経過リース消費税額、
  *                                           解約時リース債務残高の取得方法修正
+ *  2009/08/28    1.4   SCS 渡辺         [統合テスト障害0001062(PT対応)]
  *
  *****************************************************************************************/
 --
@@ -828,7 +829,16 @@ AS
 -- 0000417 2009/08/06 ADD START --
     CURSOR contract_cur
     IS
-      SELECT xch.contract_header_id             -- 契約内部ID
+      SELECT 
+-- 0001062 2009/08/28 ADD START --
+            /*+
+              INDEX(XCL XXCFF_CONTRACT_LINES_U01)
+              INDEX(FDP FA_DEPRN_PERIODS_U2)
+              INDEX(FDS FA_DEPRN_SUMMARY_U1)
+              INDEX(FRET FA_RETIREMENTS_N1)
+            */
+-- 0001062 2009/08/28 ADD END --
+             xch.contract_header_id             -- 契約内部ID
             ,xcl.contract_line_id               -- 契約明細内部ID
             ,xch.lease_company                  -- リース会社コード
             ,(SELECT xlcv.lease_company_name
@@ -851,19 +861,19 @@ AS
             ,xch.payment_frequency              -- 月数
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
                            fret.status <> cv_processed   THEN
-                   (CASE WHEN NVL(fdp.period_name,TO_CHAR(id_start_date_1st,'YYYY-MM')) = TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                   (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                       xcl.second_charge
                     ELSE 0 END)
                  ELSE 0 END) AS monthly_charge  -- 月間リース料
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
                            fret.status <> cv_processed   THEN
-                   (CASE WHEN NVL(fdp.period_name,TO_CHAR(id_start_date_1st,'YYYY-MM')) = TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                   (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                       xcl.gross_charge
                     ELSE 0 END)
                  ELSE 0 END) AS gross_charge    -- リース料総額
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
                            fret.status <> cv_processed   THEN
-                   (CASE WHEN NVL(fdp.period_name,TO_CHAR(id_start_date_1st,'YYYY-MM')) = TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                   (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                       xcl.original_cost
                     ELSE 0 END)
                  ELSE 0 END) AS original_cost   -- 取得価額総額
@@ -880,44 +890,57 @@ AS
                  ELSE 0 END) AS deprn_amount    -- 減価償却相当額
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
                            fret.status <> cv_processed   THEN
-                   (CASE WHEN NVL(fdp.period_name,TO_CHAR(id_start_date_1st,'YYYY-MM')) = TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                   (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                       xcl.second_deduction
                     ELSE 0 END)
                  ELSE 0 END) AS monthly_deduction -- 月間リース料（控除額）
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
                            fret.status <> cv_processed   THEN
-                   (CASE WHEN NVL(fdp.period_name,TO_CHAR(id_start_date_1st,'YYYY-MM')) = TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                   (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                    xcl.gross_deduction
                     ELSE 0 END)
                  ELSE 0 END) AS gross_deduction -- リース料総額（控除額）
             ,xcl.cancellation_date              -- 中途解約日
-            ,SUM(CASE WHEN NVL(fdp.period_name,TO_CHAR(id_start_date_1st,'YYYY-MM')) = TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+            ,SUM(CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                    xcl.original_cost
                  ELSE 0 END) - SUM(fds.deprn_amount) AS cxl_amount -- 解約時資産簿価
         FROM xxcff_contract_headers xch       -- リース契約
        INNER JOIN xxcff_contract_lines xcl    -- リース契約明細
           ON xcl.contract_header_id = xch.contract_header_id
+-- 0001062 2009/08/28 ADD START --
+         AND xcl.lease_kind         = cv_lease_kind_qfin
+-- 0001062 2009/08/28 ADD END --
        INNER JOIN xxcff_object_headers xoh    -- リース物件
           ON xcl.object_header_id = xoh.object_header_id
        INNER JOIN fa_additions_b fab           -- 資産詳細情報
-          ON fab.attribute10 = xcl.contract_line_id
+-- 0001062 2009/08/28 MOD START --
+--          ON fab.attribute10 = xcl.contract_line_id
+          ON fab.attribute10 = to_char(XCL.CONTRACT_LINE_ID)
+-- 0001062 2009/08/28 MOD END --
        LEFT JOIN fa_retirements fret  -- 除売却
           ON fret.asset_id                  = fab.asset_id
          AND fret.book_type_code            = iv_book_type_code
          AND fret.transaction_header_id_out IS NULL
        INNER JOIN fa_deprn_periods fdp         -- 減価償却期間
           ON fdp.book_type_code = iv_book_type_code
+-- 0001062 2009/08/28 ADD START --
+         AND fdp.period_name <= iv_period_to
+-- 0001062 2009/08/28 ADD END --
        LEFT JOIN fa_deprn_summary fds         -- 減価償却サマリ
           ON fds.asset_id = fab.asset_id
          AND fds.book_type_code = fdp.book_type_code
          AND fds.period_counter = fdp.period_counter
          AND fds.deprn_source_code = 'DEPRN'
        WHERE xch.lease_type = cv_lease_type1
-         AND xcl.lease_kind = cv_lease_kind_qfin
+-- 0001062 2009/08/28 DEL START --
+--         AND xcl.lease_kind = cv_lease_kind_qfin
+-- 0001062 2009/08/28 DEL END --
          AND xch.contract_date >= cd_contract_date_fr
          AND xch.contract_date <  cd_contract_date_to
-         AND xcl.contract_line_id = fab.attribute10
-         AND fdp.period_name <= iv_period_to
+-- 0001062 2009/08/28 DEL START --
+--         AND xcl.contract_line_id = fab.attribute10
+--         AND fdp.period_name <= iv_period_to
+-- 0001062 2009/08/28 DEL END --
       GROUP BY xch.lease_company
               ,xch.contract_number
               ,xcl.contract_line_num
