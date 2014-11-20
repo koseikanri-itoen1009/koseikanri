@@ -15,6 +15,8 @@
 * 2009-04-16 1.5  SCS阿部大輔  【T1_0462】コピー時の顧客名を追加
 * 2009-05-07 1.6  SCS柳平直人  【T1_0803】コピー時の商品名を追加
 * 2009-05-18 1.7  SCS阿部大輔  【T1_1023】見積明細の原価割れチェックを修正
+* 2009-05-29 1.8  SCS柳平直人  【T1_1247】改訂時の顧客名、商品名設定処理追加
+*                              【T1_1249】CSV出力制御、見積書印刷制御を修正
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017001j.server;
@@ -46,7 +48,7 @@ import java.io.UnsupportedEncodingException;
  * @version 1.0
  *******************************************************************************
  */
-public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl 
+public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
 {
   /**
    * 
@@ -85,7 +87,7 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
     XxcsoQuoteSalesInitVOImpl initVo = getXxcsoQuoteSalesInitVO1();
     if ( initVo == null )
     {
-      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteSalesInitVO1");      
+      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteSalesInitVO1");
     }
 
     initVo.executeQuery();
@@ -202,7 +204,7 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
     XxcsoQuoteSalesInitVOImpl initVo = getXxcsoQuoteSalesInitVO1();
     if ( initVo == null )
     {
-      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteSalesInitVO1");      
+      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteSalesInitVO1");
     }
 
     // 初期化
@@ -228,54 +230,54 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
     headerRow.setQuoteType(
       headerRow2.getQuoteType()
     );
-    headerRow.setPublishDate(         
-      initRow.getCurrentDate()          
+    headerRow.setPublishDate(
+      initRow.getCurrentDate()
     );
-    headerRow.setAccountNumber(       
-      headerRow2.getAccountNumber()      
+    headerRow.setAccountNumber(
+      headerRow2.getAccountNumber()
     );
-    headerRow.setEmployeeNumber(      
-      initRow.getEmployeeNumber()       
+    headerRow.setEmployeeNumber(
+      initRow.getEmployeeNumber()
     );
-    headerRow.setFullName(            
-      initRow.getFullName()             
+    headerRow.setFullName(
+      initRow.getFullName()
     );
-    headerRow.setBaseCode(            
-      initRow.getWorkBaseCode()         
+    headerRow.setBaseCode(
+      initRow.getWorkBaseCode()
     );
-    headerRow.setBaseName(            
-      initRow.getWorkBaseName()         
+    headerRow.setBaseName(
+      initRow.getWorkBaseName()
     );
-    headerRow.setDelivPlace(          
-      headerRow2.getDelivPlace()        
+    headerRow.setDelivPlace(
+      headerRow2.getDelivPlace()
     );
-    headerRow.setPaymentCondition(    
-      headerRow2.getPaymentCondition()  
+    headerRow.setPaymentCondition(
+      headerRow2.getPaymentCondition()
     );
-    headerRow.setQuoteSubmitName(     
-      headerRow2.getQuoteSubmitName()   
+    headerRow.setQuoteSubmitName(
+      headerRow2.getQuoteSubmitName()
     );
-    headerRow.setStatus(              
+    headerRow.setStatus(
       /* 20090324_abe_T1_0138 START*/
-      //XxcsoQuoteConstants.QUOTE_INPUT   
-      XxcsoQuoteConstants.QUOTE_INIT   
+      //XxcsoQuoteConstants.QUOTE_INPUT
+      XxcsoQuoteConstants.QUOTE_INIT
       /* 20090324_abe_T1_0138 END*/
     );
-    headerRow.setDelivPriceTaxType(   
-      headerRow2.getDelivPriceTaxType() 
+    headerRow.setDelivPriceTaxType(
+      headerRow2.getDelivPriceTaxType()
     );
-    headerRow.setStorePriceTaxType(   
-      headerRow2.getStorePriceTaxType() 
+    headerRow.setStorePriceTaxType(
+      headerRow2.getStorePriceTaxType()
     );
-    headerRow.setUnitType(            
-      headerRow2.getUnitType()          
+    headerRow.setUnitType(
+      headerRow2.getUnitType()
     );
-    headerRow.setSpecialNote(         
-      headerRow2.getSpecialNote()       
+    headerRow.setSpecialNote(
+      headerRow2.getSpecialNote()
     );
     /* 20090416_abe_T1_0462 START*/
-    headerRow.setPartyName(         
-      headerRow2.getPartyName()       
+    headerRow.setPartyName(
+      headerRow2.getPartyName()
     );
     /* 20090416_abe_T1_0462 END*/
 
@@ -294,40 +296,40 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
       lineVo.insertRow(lineRow);
       
       // コピー
-      lineRow.setInventoryItemId(        
-        lineRow2.getInventoryItemId()        
+      lineRow.setInventoryItemId(
+        lineRow2.getInventoryItemId()
       );
-      lineRow.setInventoryItemCode(      
-        lineRow2.getInventoryItemCode()      
+      lineRow.setInventoryItemCode(
+        lineRow2.getInventoryItemCode()
       );
 // 2009-05-08 【T1_0803】 Add Start
       lineRow.setItemShortName(
         lineRow2.getItemShortName()
       );
 // 2009-05-08 【T1_0803】 Add End
-      lineRow.setQuoteDiv(               
-        lineRow2.getQuoteDiv()               
+      lineRow.setQuoteDiv(
+        lineRow2.getQuoteDiv()
       );
-      lineRow.setUsuallyDelivPrice(      
-        lineRow2.getUsuallyDelivPrice()      
+      lineRow.setUsuallyDelivPrice(
+        lineRow2.getUsuallyDelivPrice()
       );
-      lineRow.setUsuallyStoreSalePrice(  
-        lineRow2.getUsuallyStoreSalePrice()  
+      lineRow.setUsuallyStoreSalePrice(
+        lineRow2.getUsuallyStoreSalePrice()
       );
-      lineRow.setThisTimeDelivPrice(     
-        lineRow2.getThisTimeDelivPrice()     
+      lineRow.setThisTimeDelivPrice(
+        lineRow2.getThisTimeDelivPrice()
       );
       lineRow.setThisTimeStoreSalePrice( 
         lineRow2.getThisTimeStoreSalePrice() 
       );
-      lineRow.setRemarks(                
-        lineRow2.getRemarks()                
+      lineRow.setRemarks(
+        lineRow2.getRemarks()
       );
-      lineRow.setLineOrder(              
-        lineRow2.getLineOrder()              
+      lineRow.setLineOrder(
+        lineRow2.getLineOrder()
       );
-      lineRow.setBusinessPrice(          
-        lineRow2.getBusinessPrice()          
+      lineRow.setBusinessPrice(
+        lineRow2.getBusinessPrice()
       );
 
       // コピーした後に初期化
@@ -343,7 +345,7 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
       }
       else
       {
-        lineRow.setQuoteEndDate((Date)currentDate.addMonths(3));        
+        lineRow.setQuoteEndDate((Date)currentDate.addMonths(3));
       }
 
       lineRow2 = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo2.next();
@@ -356,8 +358,8 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
     initRender();
 
     /* 20090324_abe_T1_0138 START*/
-    headerRow.setStatus(              
-      XxcsoQuoteConstants.QUOTE_INPUT   
+    headerRow.setStatus(
+      XxcsoQuoteConstants.QUOTE_INPUT
     );
     /* 20090324_abe_T1_0138 END*/
 
@@ -413,7 +415,7 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
     XxcsoQuoteSalesInitVOImpl initVo = getXxcsoQuoteSalesInitVO1();
     if ( initVo == null )
     {
-      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteSalesInitVO1");      
+      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteSalesInitVO1");
     }
 
     // 初期化
@@ -443,56 +445,61 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
       headerRow2.getQuoteType()
     );
     headerRow.setQuoteNumber(
-      headerRow2.getQuoteNumber()       
+      headerRow2.getQuoteNumber()
     );
     headerRow.setQuoteRevisionNumber(
       headerRow2.getQuoteRevisionNumber().add(1)
     );
-    headerRow.setPublishDate(         
-      initRow.getCurrentDate()          
+    headerRow.setPublishDate(
+      initRow.getCurrentDate()
     );
-    headerRow.setAccountNumber(       
-      headerRow2.getAccountNumber()      
+    headerRow.setAccountNumber(
+      headerRow2.getAccountNumber()
     );
-    headerRow.setEmployeeNumber(      
-      initRow.getEmployeeNumber()       
+    headerRow.setEmployeeNumber(
+      initRow.getEmployeeNumber()
     );
-    headerRow.setFullName(            
-      initRow.getFullName()             
+    headerRow.setFullName(
+      initRow.getFullName()
     );
-    headerRow.setBaseCode(            
-      initRow.getWorkBaseCode()         
+    headerRow.setBaseCode(
+      initRow.getWorkBaseCode()
     );
-    headerRow.setBaseName(            
-      initRow.getWorkBaseName()         
+    headerRow.setBaseName(
+      initRow.getWorkBaseName()
     );
-    headerRow.setDelivPlace(          
-      headerRow2.getDelivPlace()        
+    headerRow.setDelivPlace(
+      headerRow2.getDelivPlace()
     );
-    headerRow.setPaymentCondition(    
-      headerRow2.getPaymentCondition()  
+    headerRow.setPaymentCondition(
+      headerRow2.getPaymentCondition()
     );
-    headerRow.setQuoteSubmitName(     
-      headerRow2.getQuoteSubmitName()   
+    headerRow.setQuoteSubmitName(
+      headerRow2.getQuoteSubmitName()
     );
-    headerRow.setStatus(              
+    headerRow.setStatus(
       /* 20090324_abe_T1_0138 START*/
-      //XxcsoQuoteConstants.QUOTE_INPUT   
-      XxcsoQuoteConstants.QUOTE_INIT   
+      //XxcsoQuoteConstants.QUOTE_INPUT
+      XxcsoQuoteConstants.QUOTE_INIT
       /* 20090324_abe_T1_0138 END*/
     );
-    headerRow.setDelivPriceTaxType(   
-      headerRow2.getDelivPriceTaxType() 
+    headerRow.setDelivPriceTaxType(
+      headerRow2.getDelivPriceTaxType()
     );
-    headerRow.setStorePriceTaxType(   
-      headerRow2.getStorePriceTaxType() 
+    headerRow.setStorePriceTaxType(
+      headerRow2.getStorePriceTaxType()
     );
-    headerRow.setUnitType(            
-      headerRow2.getUnitType()          
+    headerRow.setUnitType(
+      headerRow2.getUnitType()
     );
-    headerRow.setSpecialNote(         
-      headerRow2.getSpecialNote()       
+    headerRow.setSpecialNote(
+      headerRow2.getSpecialNote()
     );
+// 2009-05-29 【T1_1247】 Add Start
+    headerRow.setPartyName(
+      headerRow2.getPartyName()
+    );
+// 2009-05-29 【T1_1247】 Add End
 
     // 改定元のステータスを旧版にする
     headerRow2.setStatus(XxcsoQuoteConstants.QUOTE_OLD);
@@ -511,35 +518,40 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
       lineVo.insertRow(lineRow);
 
       // コピー
-      lineRow.setInventoryItemId(        
-        lineRow2.getInventoryItemId()        
+      lineRow.setInventoryItemId(
+        lineRow2.getInventoryItemId()
       );
-      lineRow.setInventoryItemCode(      
-        lineRow2.getInventoryItemCode()      
+      lineRow.setInventoryItemCode(
+        lineRow2.getInventoryItemCode()
       );
-      lineRow.setQuoteDiv(               
-        lineRow2.getQuoteDiv()               
+// 2009-05-29 【T1_1247】 Add Start
+      lineRow.setItemShortName(
+        lineRow2.getItemShortName()
       );
-      lineRow.setUsuallyDelivPrice(      
-        lineRow2.getUsuallyDelivPrice()      
+// 2009-05-29 【T1_1247】 Add End
+      lineRow.setQuoteDiv(
+        lineRow2.getQuoteDiv()
       );
-      lineRow.setUsuallyStoreSalePrice(  
-        lineRow2.getUsuallyStoreSalePrice()  
+      lineRow.setUsuallyDelivPrice(
+        lineRow2.getUsuallyDelivPrice()
       );
-      lineRow.setThisTimeDelivPrice(     
-        lineRow2.getThisTimeDelivPrice()     
+      lineRow.setUsuallyStoreSalePrice(
+        lineRow2.getUsuallyStoreSalePrice()
       );
-      lineRow.setThisTimeStoreSalePrice( 
-        lineRow2.getThisTimeStoreSalePrice() 
+      lineRow.setThisTimeDelivPrice(
+        lineRow2.getThisTimeDelivPrice()
       );
-      lineRow.setRemarks(                
-        lineRow2.getRemarks()                
+      lineRow.setThisTimeStoreSalePrice(
+        lineRow2.getThisTimeStoreSalePrice()
       );
-      lineRow.setLineOrder(              
-        lineRow2.getLineOrder()              
+      lineRow.setRemarks(
+        lineRow2.getRemarks()
       );
-      lineRow.setBusinessPrice(          
-        lineRow2.getBusinessPrice()          
+      lineRow.setLineOrder(
+        lineRow2.getLineOrder()
+      );
+      lineRow.setBusinessPrice(
+        lineRow2.getBusinessPrice()
       );
 
       // コピーした後に初期化
@@ -554,7 +566,7 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
       }
       else
       {
-        lineRow.setQuoteEndDate((Date)currentDate.addMonths(3));        
+        lineRow.setQuoteEndDate((Date)currentDate.addMonths(3));
       }
       
       lineRow2 = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo2.next();
@@ -567,8 +579,8 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
     initRender();
 
     /* 20090324_abe_T1_0138 START*/
-    headerRow.setStatus(              
-      XxcsoQuoteConstants.QUOTE_INPUT   
+    headerRow.setStatus(
+      XxcsoQuoteConstants.QUOTE_INPUT
     );
     /* 20090324_abe_T1_0138 END*/
 
@@ -881,7 +893,7 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
     {
       index++;
 
-      //DB反映チェック      
+      //DB反映チェック
       errorList
         = validateLine(
             errorList
@@ -1091,21 +1103,33 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
 
     if ( XxcsoQuoteConstants.QUOTE_INPUT.equals(headerRow.getStatus()) )
     {
-      /* 20090414_abe_T1_0442 START*/
-      //if ( getTransaction().isDirty() )
-      //{
-      /* 20090414_abe_T1_0442 END*/
+// 2009-05-29 【T1_1249】 Mod Start
+//      /* 20090414_abe_T1_0442 START*/
+//      //if ( getTransaction().isDirty() )
+//      //{
+//      /* 20090414_abe_T1_0442 END*/
+//        // 問屋帳合先用見積の存在チェックを行う
+//        validateReference();
+//
+//        // 画面項目の入力チェック
+//        validateFixed();
+//
+//        // 保存処理を実行します。
+//        commit();
+//      /* 20090414_abe_T1_0442 START*/
+//      //}
+//      /* 20090414_abe_T1_0442 END*/
+      if ( getTransaction().isDirty() )
+      {
+        // データ変更がある場合のみ
         // 問屋帳合先用見積の存在チェックを行う
         validateReference();
-    
-        // 画面項目の入力チェック
-        validateFixed();
-
-        // 保存処理を実行します。
-        commit();
-      /* 20090414_abe_T1_0442 START*/
-      //}
-      /* 20090414_abe_T1_0442 END*/
+      }
+      // 画面項目の入力チェック
+      validateFixed();
+      // 保存処理を実行します。
+      commit();
+// 2009-05-29 【T1_1249】 Mod End
     }
     else
     {
@@ -1259,21 +1283,33 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
 
     if ( XxcsoQuoteConstants.QUOTE_INPUT.equals(headerRow.getStatus()) )
     {
-      /* 20090414_abe_T1_0442 START*/
-      //if ( getTransaction().isDirty() )
-      //{
-      /* 20090414_abe_T1_0442 END*/
+// 2009-05-29 【T1_1249】 Mod Start
+//      /* 20090414_abe_T1_0442 START*/
+//      //if ( getTransaction().isDirty() )
+//      //{
+//      /* 20090414_abe_T1_0442 END*/
+//        // 問屋帳合先用見積の存在チェックを行う
+//        validateReference();
+//
+//        // 画面項目の入力チェック
+//        validateFixed();
+//
+//        // 保存処理を実行します。
+//        commit();
+//      /* 20090414_abe_T1_0442 START*/
+//      //}
+//      /* 20090414_abe_T1_0442 END*/
+      if ( getTransaction().isDirty() )
+      {
+        // データ変更がある場合のみ
         // 問屋帳合先用見積の存在チェックを行う
         validateReference();
-    
-        // 画面項目の入力チェック
-        validateFixed();
-
-        // 保存処理を実行します。
-        commit();
-      /* 20090414_abe_T1_0442 START*/
-      //}
-      /* 20090414_abe_T1_0442 END*/
+      }
+      // 画面項目の入力チェック
+      validateFixed();
+      // 保存処理を実行します。
+      commit();
+// 2009-05-29 【T1_1249】 Mod End
     }
     else
     {
@@ -1977,7 +2013,7 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
     XxcsoQuoteSalesInitVOImpl initVo = getXxcsoQuoteSalesInitVO1();
     if ( initVo == null )
     {
-      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteSalesInitVO1");      
+      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteSalesInitVO1");
     }
 
     // 見積明細
@@ -2733,7 +2769,7 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
       /* 20090324_abe_T1_0138 START*/
       if ( XxcsoQuoteConstants.QUOTE_INIT.equals(status) )
       {
-        initRow.setApplicableButtonRender(Boolean.TRUE);      
+        initRow.setApplicableButtonRender(Boolean.TRUE);
       }
       /* 20090324_abe_T1_0138 END*/
       if ( XxcsoQuoteConstants.QUOTE_INPUT.equals(status) )
