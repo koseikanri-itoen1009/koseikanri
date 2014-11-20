@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCOS002A031R
+CREATE OR REPLACE PACKAGE APPS.XXCOS002A031R
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A031R(spec)
  * Description      : 営業成績表
  * MD.050           : 営業成績表 MD050_COS_002_A03
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2009/06/18    1.5   K.Kiriu          [T1_1446]PT対応
  *  2009/06/22    1.6   K.Kiriu          [T1_1437]データパージ不具合対応
  *  2009/07/07    1.7   K.Kiriu          [0000418]削除件数取得不具合対応
+ *  2009/09/03    1.8   K.Kiriu          [0000866]PT対応
  *
  *****************************************************************************************/
 --

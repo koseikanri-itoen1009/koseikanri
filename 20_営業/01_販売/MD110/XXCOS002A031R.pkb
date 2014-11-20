@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS002A031R
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS002A031R
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A031R(body)
  * Description      : 営業成績表
  * MD.050           : 営業成績表 MD050_COS_002_A03
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2009/06/18    1.5   K.Kiriu          [T1_1446]PT対応
  *  2009/06/22    1.6   K.Kiriu          [T1_1437]データパージ不具合対応
  *  2009/07/07    1.7   K.Kiriu          [0000418]削除件数取得不具合対応
+ *  2009/09/03    1.8   K.Kiriu          [0000866]PT対応
  *
  *****************************************************************************************/
 --
@@ -829,6 +830,49 @@ AS
               program_update_date
               )
       SELECT
+/* 2009/09/03 Ver1.8 Add Start */
+              /*+
+                LEADING(rsid.jrrx_n)
+                INDEX(rsid.jrgm_n jtf_rs_group_members_n2)
+                INDEX(rsid.jrgb_n jtf_rs_groups_b_u1)
+                INDEX(rsid.jrrx_n xxcso_jrre_n02)
+                USE_NL(rsid.papf_n)
+                USE_NL(rsid.pept_n)
+                USE_NL(rsid.paaf_n)
+                USE_NL(rsid.jrgm_n)
+                USE_NL(rsid.jrgb_n)
+                LEADING(rsid.jrrx_o)
+                INDEX(rsid.jrrx_o xxcso_jrre_n02)
+                INDEX(rsid.jrgm_o jtf_rs_group_members_n2)
+                INDEX(rsid.jrgb_o jtf_rs_groups_b_u1)
+                USE_NL(rsid.papf_o)
+                USE_NL(rsid.pept_o)
+                USE_NL(rsid.paaf_o)
+                USE_NL(rsid.jrgm_o)
+                USE_NL(rsid.jrgb_o)
+                USE_NL(rsid)
+                LEADING(rsig.jrrx_n)
+                INDEX(rsig.jrgm_n jtf_rs_group_members_n2)
+                INDEX(rsig.jrgb_n jtf_rs_groups_b_u1)
+                INDEX(rsig.jrrx_n xxcso_jrre_n02)
+                USE_NL(rsig.papf_n)
+                USE_NL(rsig.pept_n)
+                USE_NL(rsig.paaf_n)
+                USE_NL(rsig.jrgm_n)
+                USE_NL(rsig.jrgb_n)
+                LEADING(rsig.jrrx_o)
+                INDEX(rsig.jrrx_o xxcso_jrre_n02)
+                INDEX(rsig.jrgm_o jtf_rs_group_members_n2)
+                INDEX(rsig.jrgb_o jtf_rs_groups_b_u1)
+                USE_NL(rsig.papf_o)
+                USE_NL(rsig.pept_o)
+                USE_NL(rsig.paaf_o)
+                USE_NL(rsig.jrgm_o)
+                USE_NL(rsig.jrgb_o)
+                USE_NL(rsig)
+                USE_NL(lvsg_lv2)
+              */
+/* 2009/09/03 Ver1.8 Add End   */
               xxcos_rep_bus_perf_s01.nextval                                        AS  record_id,
               ct_sum_data_cls_employee                                              AS  sum_data_class,
               gd_common_base_date                                                   AS  target_date,
@@ -957,7 +1001,14 @@ AS
                                             =       NVL(iv_section_code, NVL(rsid.group_code, 
                                                                              cv_para_dummy_section_code)
                                                        )
-      AND     rsid.employee_number          =       NVL(iv_results_employee_code, rsid.employee_number)
+/* 2009/09/03 Ver1.8 Mod Start */
+--      AND     rsid.employee_number          =       NVL(iv_results_employee_code, rsid.employee_number)
+      AND     (
+                ( iv_results_employee_code IS NULL )
+                OR
+                ( iv_results_employee_code IS NOT NULL AND rsid.employee_number = iv_results_employee_code )
+              )
+/* 2009/09/03 Ver1.8 Mod End   */
       AND     rsid.effective_start_date     <=      gd_common_base_date
       AND     rsid.effective_end_date       >=      gd_common_first_date
       AND     gd_common_base_date           BETWEEN rsid.per_effective_start_date
