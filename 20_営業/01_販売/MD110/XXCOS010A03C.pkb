@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A03C (body)
  * Description      : 納品確定データ取込機能
  * MD.050           : 納品確定データ取込(MD050_COS_010_A03)
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -84,6 +84,7 @@ AS
  *                                       [E_本稼動_01900] EDI明細情報テーブルにEDI原単価(発注)を追加
  *  2010/05/06    1.21  K.Oomata         [E_本稼動_02569] 受注作成対象外データの担当営業員取得エラー不具合対応
  *  2010/05/10    1.22  K.Oomata         [E_本稼動_02626] EDIエラー情報テーブルのパージタイミング不具合対応
+ *  2010/07/29    1.23  K.Kiriu          [E_本稼動_04113] 顧客品目マスタの取得条件不具合対応
  *
  *****************************************************************************************/
 --
@@ -3812,15 +3813,25 @@ AS
 --****************************** 2009/10/13 1.12 K.Satomura MOD START ******************************--
       --AND     disc_item.organization_id           = gn_organization_id;              -- 在庫組織ID
       AND     disc_item.organization_id           = gn_organization_id               -- 在庫組織ID
+/* 2010/07/29 Ver1.23 Mod Start */
+--      AND     cust_xref.preference_number         = (
+--                SELECT MIN(cix.preference_number)
+--                FROM   mtl_customer_items      cit
+--                      ,mtl_customer_item_xrefs cix
+--                WHERE  cit.customer_id      = cust_chain_addon.customer_id
+--                AND    cit.inactive_flag    = cv_no
+--                AND    cit.customer_item_id = cix.customer_item_id
+--                AND    cix.inactive_flag    = cv_no
+--              )
       AND     cust_xref.preference_number         = (
-                SELECT MIN(cix.preference_number)
-                FROM   mtl_customer_items      cit
-                      ,mtl_customer_item_xrefs cix
-                WHERE  cit.customer_id      = cust_chain_addon.customer_id
-                AND    cit.inactive_flag    = cv_no
-                AND    cit.customer_item_id = cix.customer_item_id
-                AND    cix.inactive_flag    = cv_no
-              )
+                      SELECT MIN(cust_xref_ck.preference_number)
+                      FROM   mtl_customer_item_xrefs  cust_xref_ck
+                      WHERE  cust_xref_ck.customer_item_id       = cust_xref.customer_item_id
+                      AND    cust_xref_ck.master_organization_id = cust_xref.master_organization_id
+                      AND    cust_xref_ck.inactive_flag          = cv_no
+                    )                                                                -- 最小のランク
+      AND     cust_item.inactive_flag             = cv_no                            -- 有効フラグ：N
+/* 2010/07/29 Ver1.23 Mod End */
       ;
 --****************************** 2009/10/13 1.12 K.Satomura MOD END   ******************************--
 --
