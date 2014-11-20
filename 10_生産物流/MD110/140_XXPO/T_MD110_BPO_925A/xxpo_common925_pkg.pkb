@@ -6,7 +6,7 @@ AS
  * Package Name     : xxpo_common925_pkg(body)
  * Description      : 共通関数
  * MD.050/070       : 支給指示からの発注自動作成 Issue1.0  (T_MD050_BPO_925)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -36,6 +36,9 @@ AS
  *  2008/05/07    1.2   M.Imazeki        引当情報作成処理(create_reserve_data)追加
  *  2008/05/22    1.3   Y.Majikina       発注ヘッダのAttribute1に設定値を変更
  *                                       発注ヘッダ（アドオン）への登録を追加
+ *  2008/06/16    1.4   I.Higa           指摘事項修正
+ *                                        ・従業員番号の型をNUMBER型からTYPE型へ変更
+ *                                        ・ヘッダ摘要に受注ヘッダアドオンの出荷指示を設定
  *
  *****************************************************************************************/
 --
@@ -839,7 +842,7 @@ AS
       ir_order_info      IN       rec_order_info    -- 受注情報レコード
      ,ir_vendor_info     IN       rec_vendor_info   -- 仕入先情報レコード
      ,or_po_headers_if   OUT      rec_po_headers_if -- 発注ヘッダオープンインターフェースレコード
-     ,or_xxpo_headers_if OUT      rec_xxpo_headers_if
+     ,or_xxpo_headers_if OUT      rec_xxpo_headers_if  -- 発注ヘッダアドオンレコード
      ,ov_retcode         OUT      VARCHAR2          -- リターン・コード
      ,ov_errmsg_code     OUT      VARCHAR2          -- エラー・メッセージ・コード
      ,ov_errmsg          OUT      VARCHAR2          -- ユーザー・エラー・メッセージ
@@ -962,7 +965,7 @@ AS
     or_po_headers_if.delivery_to_code :=  ir_order_info.deliver_from;             -- 出荷元保管場所
     or_po_headers_if.shipping_to_code :=  ir_order_info.vendor_site_code;         -- 取引先サイト
     or_po_headers_if.dept_code        :=  ir_vendor_info.department;              -- 部署コード
-    or_po_headers_if.header_descript  :=  ir_order_info.line_description;         -- ヘッダ摘要
+    or_po_headers_if.header_descript  :=  ir_order_info.shipping_instructions;    -- ヘッダ摘要
 --
   EXCEPTION
     --*** 採番エラー・プロファイル取得エラー ***
@@ -1156,7 +1159,7 @@ AS
     cn_recovery_rate  CONSTANT po_distributions_interface.recovery_rate%TYPE := 100;
 --
     -- *** ローカル・変数 ***
-    cn_emp_num        NUMBER DEFAULT 0;
+    cn_emp_num        per_all_people_f.employee_number%TYPE;
     li_cnt            PLS_INTEGER ;                                      -- ループカウント
 --
   BEGIN
