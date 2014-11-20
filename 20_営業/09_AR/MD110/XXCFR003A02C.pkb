@@ -34,6 +34,7 @@ AS
  *  2009/07/13    1.02 SCS 廣瀬 真佐人  障害0000344対応 パフォーマンス改善
  *  2009/07/21    1.03 SCS 松尾 泰生    障害0000819対応 一意制約エラー対応
  *  2009/07/22    1.04 SCS 廣瀬 真佐人  障害0000827対応 パフォーマンス改善
+ *  2009/08/03    1.05 SCS 廣瀬 真佐人  障害0000913対応 パフォーマンス改善
  *
  *****************************************************************************************/
 --
@@ -868,7 +869,12 @@ AS
           )
 -- Modify 2009.07.22 Ver1.04 start
 --            SELECT  hzca.account_number                        bill_cust_code          -- 請求先顧客コード
-            SELECT  /*+ USE_CONCAT */
+-- Modify 2009.08.03 Ver1.05 start
+--            SELECT  /*+ USE_CONCAT */
+            SELECT  /*+ USE_CONCAT 
+                        ORDERED
+                    */
+-- Modify 2009.08.03 Ver1.05 End
                     hzca.account_number                        bill_cust_code          -- 請求先顧客コード
 -- Modify 2009.07.22 Ver1.04 start
                   , lt_get1_term_cut_date_tab(ln_loop_cnt)     cutoff_date             -- 締日
@@ -882,9 +888,14 @@ AS
                   , xxca.tax_div                               tax_div                 -- 消費税区分
                   , hzsu.attribute8                            bill_pub_cycle          -- 請求書発行サイクル
             FROM
-                   hz_cust_accounts          hzca              -- 顧客マスタ
+-- Modify 2009.08.03 Ver1.05 start
+--                   hz_cust_accounts          hzca              -- 顧客マスタ
+--                  ,hz_cust_acct_sites_all    hzsa              -- 顧客所在地
+--                  ,hz_cust_site_uses_all     hzsu              -- 顧客使用目的
+                   hz_cust_site_uses_all     hzsu              -- 顧客使用目的
                   ,hz_cust_acct_sites_all    hzsa              -- 顧客所在地
-                  ,hz_cust_site_uses_all     hzsu              -- 顧客使用目的
+                  ,hz_cust_accounts          hzca              -- 顧客マスタ
+-- Modify 2009.08.03 Ver1.05 End
                   ,xxcmm_cust_accounts       xxca              -- 顧客追加情報
                   ,hz_customer_profiles      hzcp              -- 顧客プロファイル
             WHERE
@@ -974,7 +985,12 @@ AS
           )
 -- Modify 2009.07.22 Ver1.04 start
 --            SELECT  hzca.account_number                       bill_cust_code          -- 請求先顧客コード
-            SELECT  /*+ USE_CONCAT */
+-- Modify 2009.08.03 Ver1.05 start
+--            SELECT  /*+ USE_CONCAT */
+            SELECT  /*+ USE_CONCAT 
+                        ORDERED
+                    */
+-- Modify 2009.08.03 Ver1.05 End
                     hzca.account_number                       bill_cust_code          -- 請求先顧客コード
 -- Modify 2009.07.22 Ver1.04 start
                   , lt_get2_term_cut_date_tab(ln_loop_cnt)    cutoff_date             -- 締日
@@ -988,9 +1004,14 @@ AS
                   , xxca.tax_div                              tax_div                 -- 消費税区分
                   , hzsu.attribute8                           bill_pub_cycle          -- 請求書発行サイクル
             FROM
-                   hz_cust_accounts          hzca              -- 顧客マスタ
+-- Modify 2009.08.03 Ver1.05 start
+--                   hz_cust_accounts          hzca              -- 顧客マスタ
+--                  ,hz_cust_acct_sites_all    hzsa              -- 顧客所在地
+--                  ,hz_cust_site_uses_all     hzsu              -- 顧客使用目的
+                   hz_cust_site_uses_all     hzsu              -- 顧客使用目的
                   ,hz_cust_acct_sites_all    hzsa              -- 顧客所在地
-                  ,hz_cust_site_uses_all     hzsu              -- 顧客使用目的
+                  ,hz_cust_accounts          hzca              -- 顧客マスタ
+-- Modify 2009.08.03 Ver1.05 End
                   ,xxcmm_cust_accounts       xxca              -- 顧客追加情報
                   ,hz_customer_profiles      hzcp              -- 顧客プロファイル
             WHERE
@@ -1180,7 +1201,12 @@ AS
           )
 -- Modify 2009.07.22 Ver1.04 start
 --            SELECT  hzca.account_number                      bill_cust_code          -- 請求先顧客コード
-            SELECT  /*+ USE_CONCAT */
+-- Modify 2009.08.03 Ver1.05 start
+--            SELECT  /*+ USE_CONCAT */
+            SELECT  /*+ USE_CONCAT 
+                        ORDERED
+                    */
+-- Modify 2009.08.03 Ver1.05 End
                     hzca.account_number                      bill_cust_code          -- 請求先顧客コード
 -- Modify 2009.07.22 Ver1.04 start
                   , lt_get_term_cut_date_tab(ln_loop_cnt)    cutoff_date             -- 締日
@@ -1194,9 +1220,14 @@ AS
                   , xxca.tax_div                             tax_div                 -- 消費税区分
                   , hzsu.attribute8                          bill_pub_cycle          -- 請求書発行サイクル
             FROM
-                   hz_cust_accounts          hzca              -- 顧客マスタ
+-- Modify 2009.08.03 Ver1.05 start
+--                   hz_cust_accounts          hzca              -- 顧客マスタ
+--                  ,hz_cust_acct_sites_all    hzsa              -- 顧客所在地
+--                  ,hz_cust_site_uses_all     hzsu              -- 顧客使用目的
+                   hz_cust_site_uses_all     hzsu              -- 顧客使用目的
                   ,hz_cust_acct_sites_all    hzsa              -- 顧客所在地
-                  ,hz_cust_site_uses_all     hzsu              -- 顧客使用目的
+                  ,hz_cust_accounts          hzca              -- 顧客マスタ
+-- Modify 2009.08.03 Ver1.05 start
                   ,xxcmm_cust_accounts       xxca              -- 顧客追加情報
                   ,hz_customer_profiles      hzcp              -- 顧客プロファイル
             WHERE
@@ -1882,7 +1913,28 @@ AS
 --
     --顧客情報の取得
     BEGIN
-      SELECT xxhv.bill_tax_div                        tax_type,               -- 消費税区分
+-- Modify 2009.08.03 Ver1.05 start
+--      SELECT xxhv.bill_tax_div                        tax_type,               -- 消費税区分
+      SELECT /*+ LEADING(xxhv.temp.bill_hzca_1 xxhv.temp.bill_hzca_2 xxhv.temp.ship_hzca_3 xxhv.temp.ship_hzca_4) 
+                 USE_NL(xxhv.temp.bill_hasa_1 xxhv.temp.bill_hsua_1 xxhv.temp.bill_hzad_1 
+                        xxhv.temp.bill_hzps_1 xxhv.temp.bill_hzlo_1 xxhv.temp.bill_hzcp_1 
+                        xxhv.temp.ship_hzca_1 xxhv.temp.ship_hasa_1 xxhv.temp.ship_hsua_1 
+                        xxhv.temp.ship_hzad_1 xxhv.temp.bill_hcar_1)
+                 USE_NL(xxhv.temp.cash_hasa_2 xxhv.temp.cash_hzad_2 xxhv.temp.bill_hasa_2 
+                        xxhv.temp.bill_hsua_2 xxhv.temp.bill_hzad_2 xxhv.temp.bill_hzps_2 
+                        xxhv.temp.bill_hzlo_2 xxhv.temp.bill_hzcp_2 xxhv.temp.ship_hzca_2 
+                        xxhv.temp.ship_hasa_2 xxhv.temp.ship_hsua_2 xxhv.temp.ship_hzad_2 
+                        xxhv.temp.cash_hcar_2 xxhv.temp.bill_hcar_2)
+                 USE_NL(xxhv.temp.cash_hzca_3 xxhv.temp.cash_hasa_3 xxhv.temp.cash_hzad_3 
+                        xxhv.temp.bill_hasa_3 xxhv.temp.bill_hsua_3 
+                        xxhv.temp.ship_hsua_3 xxhv.temp.bill_hzad_3 xxhv.temp.bill_hzps_3
+                        xxhv.temp.bill_hzlo_3 xxhv.temp.bill_hzcp_3 xxhv.temp.cash_hcar_3)
+                 USE_NL(xxhv.temp.bill_hasa_4 xxhv.temp.bill_hsua_4 xxhv.temp.ship_hsua_4
+                        xxhv.temp.bill_hzad_4 xxhv.temp.bill_hzps_4 xxhv.temp.bill_hzlo_4
+                        xxhv.temp.bill_hzcp_4)
+              */
+             xxhv.bill_tax_div                        tax_type,               -- 消費税区分
+-- Modify 2009.08.03 Ver1.05 End
              NULL                                     tax_gap_trx_id,         -- 税差額取引ID
              0                                        tax_gap_amount,         -- 税差額
              xxhv.bill_postal_code                    postal_code,            -- 送付先郵便番号

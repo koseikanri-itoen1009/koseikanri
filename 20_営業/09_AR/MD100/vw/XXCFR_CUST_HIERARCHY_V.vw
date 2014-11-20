@@ -32,44 +32,85 @@ CREATE OR REPLACE FORCE VIEW XXCFR_CUST_HIERARCHY_V (
   bill_tax_round_rule,                       --税金－端数処理      
   ship_sale_base_code                        --売上拠点コード      
 ) AS 
-  SELECT cash_account_id                                  --入金先顧客ID        
-        ,cash_account_number                              --入金先顧客コード    
+SELECT 
+-- Modify 2009.08.03 hirose start
+--  SELECT cash_account_id                                  --入金先顧客ID        
+--        ,cash_account_number                              --入金先顧客コード    
+--        ,xxcfr_common_pkg.get_cust_account_name(
+--                            cash_account_number,
+--                            0)                            --入金先顧客名称      
+--        ,bill_account_id                                  --請求先顧客ID        
+--        ,bill_account_number                              --請求先顧客コード    
+--        ,xxcfr_common_pkg.get_cust_account_name(
+--                            bill_account_number,
+--                            0)                            --請求先顧客名称      
+--        ,ship_account_id                                  --出荷先顧客ID        
+--        ,ship_account_number                              --出荷先顧客コード    
+--        ,xxcfr_common_pkg.get_cust_account_name(
+--                            ship_account_number,
+--                            0)                            --出荷先顧客名称      
+--        ,cash_receiv_base_code                            --入金拠点コード      
+--        ,bill_party_id                                    --パーティID          
+--        ,bill_bill_base_code                              --請求拠点コード      
+--        ,bill_postal_code                                 --郵便番号            
+--        ,bill_state                                       --都道府県            
+--        ,bill_city                                        --市・区              
+--        ,bill_address1                                    --住所1               
+--        ,bill_address2                                    --住所2               
+--        ,bill_tel_num                                     --電話番号            
+--        ,bill_cons_inv_flag                               --一括請求書発行フラグ
+--        ,bill_torihikisaki_code                           --取引先コード        
+--        ,bill_store_code                                  --店舗コード          
+--        ,bill_cust_store_name                             --顧客店舗名称        
+--        ,bill_tax_div                                     --消費税区分          
+--        ,bill_cred_rec_code1                              --売掛コード1(請求書) 
+--        ,bill_cred_rec_code2                              --売掛コード2(事業所) 
+--        ,bill_cred_rec_code3                              --売掛コード3(その他) 
+--        ,bill_invoice_type                                --請求書出力形式      
+--        ,bill_payment_term_id                             --支払条件            
+--        ,TO_NUMBER(bill_payment_term2)                    --第2支払条件         
+--        ,TO_NUMBER(bill_payment_term3)                    --第3支払条件         
+--        ,bill_tax_round_rule                              --税金－端数処理      
+--        ,ship_sale_base_code                              --売上拠点コード      
+         temp.cash_account_id                          AS cash_account_id        --入金先顧客ID        
+        ,temp.cash_account_number                      AS cash_account_number    --入金先顧客コード    
         ,xxcfr_common_pkg.get_cust_account_name(
-                            cash_account_number,
-                            0)                            --入金先顧客名称      
-        ,bill_account_id                                  --請求先顧客ID        
-        ,bill_account_number                              --請求先顧客コード    
+                            temp.cash_account_number,
+                            0)                         AS cash_account_name      --入金先顧客名称      
+        ,temp.bill_account_id                          AS bill_account_id        --請求先顧客ID        
+        ,temp.bill_account_number                      AS bill_account_number    --請求先顧客コード    
         ,xxcfr_common_pkg.get_cust_account_name(
-                            bill_account_number,
-                            0)                            --請求先顧客名称      
-        ,ship_account_id                                  --出荷先顧客ID        
-        ,ship_account_number                              --出荷先顧客コード    
+                            temp.bill_account_number,
+                            0)                         AS bill_account_name      --請求先顧客名称      
+        ,temp.ship_account_id                          AS ship_account_id        --出荷先顧客ID        
+        ,temp.ship_account_number                      AS ship_account_number    --出荷先顧客コード    
         ,xxcfr_common_pkg.get_cust_account_name(
-                            ship_account_number,
-                            0)                            --出荷先顧客名称      
-        ,cash_receiv_base_code                            --入金拠点コード      
-        ,bill_party_id                                    --パーティID          
-        ,bill_bill_base_code                              --請求拠点コード      
-        ,bill_postal_code                                 --郵便番号            
-        ,bill_state                                       --都道府県            
-        ,bill_city                                        --市・区              
-        ,bill_address1                                    --住所1               
-        ,bill_address2                                    --住所2               
-        ,bill_tel_num                                     --電話番号            
-        ,bill_cons_inv_flag                               --一括請求書発行フラグ
-        ,bill_torihikisaki_code                           --取引先コード        
-        ,bill_store_code                                  --店舗コード          
-        ,bill_cust_store_name                             --顧客店舗名称        
-        ,bill_tax_div                                     --消費税区分          
-        ,bill_cred_rec_code1                              --売掛コード1(請求書) 
-        ,bill_cred_rec_code2                              --売掛コード2(事業所) 
-        ,bill_cred_rec_code3                              --売掛コード3(その他) 
-        ,bill_invoice_type                                --請求書出力形式      
-        ,bill_payment_term_id                             --支払条件            
-        ,TO_NUMBER(bill_payment_term2)                    --第2支払条件         
-        ,TO_NUMBER(bill_payment_term3)                    --第3支払条件         
-        ,bill_tax_round_rule                              --税金－端数処理      
-        ,ship_sale_base_code                              --売上拠点コード      
+                            temp.ship_account_number,
+                            0)                         AS ship_account_name      --出荷先顧客名称      
+        ,temp.cash_receiv_base_code                    AS cash_receiv_base_code  --入金拠点コード      
+        ,temp.bill_party_id                            AS bill_party_id          --パーティID          
+        ,temp.bill_bill_base_code                      AS bill_bill_base_code    --請求拠点コード      
+        ,temp.bill_postal_code                         AS bill_postal_code       --郵便番号            
+        ,temp.bill_state                               AS bill_state             --都道府県            
+        ,temp.bill_city                                AS bill_city              --市・区              
+        ,temp.bill_address1                            AS bill_address1          --住所1               
+        ,temp.bill_address2                            AS bill_address2          --住所2               
+        ,temp.bill_tel_num                             AS bill_tel_num           --電話番号            
+        ,temp.bill_cons_inv_flag                       AS bill_cons_inv_flag     --一括請求書発行フラグ
+        ,temp.bill_torihikisaki_code                   AS bill_torihikisaki_code --取引先コード        
+        ,temp.bill_store_code                          AS bill_store_code        --店舗コード          
+        ,temp.bill_cust_store_name                     AS bill_cust_store_name   --顧客店舗名称        
+        ,temp.bill_tax_div                             AS bill_tax_div           --消費税区分          
+        ,temp.bill_cred_rec_code1                      AS bill_cred_rec_code1    --売掛コード1(請求書) 
+        ,temp.bill_cred_rec_code2                      AS bill_cred_rec_code2    --売掛コード2(事業所) 
+        ,temp.bill_cred_rec_code3                      AS bill_cred_rec_code3    --売掛コード3(その他) 
+        ,temp.bill_invoice_type                        AS bill_invoice_type      --請求書出力形式      
+        ,temp.bill_payment_term_id                     AS bill_payment_term_id   --支払条件            
+        ,TO_NUMBER(temp.bill_payment_term2)            AS bill_payment_term2     --第2支払条件         
+        ,TO_NUMBER(temp.bill_payment_term3)            AS bill_payment_term3     --第3支払条件         
+        ,temp.bill_tax_round_rule                      AS bill_tax_round_rule    --税金－端数処理      
+        ,temp.ship_sale_base_code                      AS ship_sale_base_code    --売上拠点コード      
+-- Modify 2009.08.03 hirose End
   FROM   (
   --①入金先顧客＆請求先顧客－出荷先顧客
     SELECT bill_hzca_1.cust_account_id         AS cash_account_id         --入金先顧客ID        
@@ -417,7 +458,10 @@ CREATE OR REPLACE FORCE VIEW XXCFR_CUST_HIERARCHY_V (
     AND    bill_hasa_4.party_site_id = bill_hzps_4.party_site_id             --請求先顧客所在地.パーティサイトID = 請求先パーティサイト.パーティサイトID  
     AND    bill_hzps_4.location_id = bill_hzlo_4.location_id                 --請求先パーティサイト.事業所ID = 請求先顧客事業所.事業所ID                  
     AND    bill_hsua_4.site_use_id = bill_hzcp_4.site_use_id(+)              --請求先顧客使用目的.使用目的ID = 請求先顧客プロファイル.使用目的ID
-)
+-- Modify 2009.08.03 hirose start
+--)
+) temp
+-- Modify 2009.08.03 hirose end
 ;
 --
 COMMENT ON COLUMN xxcfr_cust_hierarchy_v.cash_account_id         IS '入金先顧客ID';
