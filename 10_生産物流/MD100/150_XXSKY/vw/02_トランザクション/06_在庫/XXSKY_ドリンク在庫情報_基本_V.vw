@@ -204,6 +204,11 @@ SELECT
                          AND  MRIL.mov_line_id              = MLD.mov_line_id
                          --入庫先保管場所情報取得
                          AND  MRIH.ship_to_locat_id         = XILV.inventory_location_id
+-- 2010/01/07 T.Yoshimoto Add Start E_本稼動#684
+                         AND  mrih.actual_arrival_date     >= TRUNC(SYSDATE) - FND_PROFILE.VALUE('XXINV_TARGET_TERM')   -- E_本稼動#684
+                         AND  mrih.ITEM_CLASS = '2'                                                                     -- E_本稼動#684
+                         AND  mrih.PRODUCT_FLG = '1'                                                                    -- E_本稼動#684
+-- 2010/01/07 T.Yoshimoto Add End E_本稼動#684
                       --[ ２．移動入庫実績(入出庫報告待ち)  End ]--
                     UNION ALL
                       -------------------------------------------------------------
@@ -234,6 +239,11 @@ SELECT
                          AND  MRIL.mov_line_id              = MLD.mov_line_id
                          --入庫先保管場所情報取得
                          AND  MRIH.shipped_locat_id         = XILV.inventory_location_id
+-- 2010/01/07 T.Yoshimoto Add Start E_本稼動#684
+                         AND  mrih.actual_ship_date        >= TRUNC(SYSDATE) - FND_PROFILE.VALUE('XXINV_TARGET_TERM')   -- E_本稼動#684
+                         AND  mrih.ITEM_CLASS = '2'                                                                     -- E_本稼動#684
+                         AND  mrih.PRODUCT_FLG = '1'                                                                    -- E_本稼動#684
+-- 2010/01/07 T.Yoshimoto Add End E_本稼動#684
                       --[ ３．移動出庫実績(入出庫報告待ち)  End ]--
                     UNION ALL
                       -------------------------------------------------------------
@@ -266,6 +276,11 @@ SELECT
                          AND  MRIL.mov_line_id              = MLD.mov_line_id
                          --入庫先保管場所情報取得
                          AND  MRIH.ship_to_locat_id         = XILV.inventory_location_id
+-- 2010/01/07 T.Yoshimoto Add Start E_本稼動#684
+                         AND  mrih.actual_arrival_date     >= TRUNC(SYSDATE) - FND_PROFILE.VALUE('XXINV_TARGET_TERM')   -- E_本稼動#684
+                         AND  mrih.ITEM_CLASS = '2'                                                                     -- E_本稼動#684
+                         AND  mrih.PRODUCT_FLG = '1'                                                                    -- E_本稼動#684
+-- 2010/01/07 T.Yoshimoto Add End E_本稼動#684
                       --[ ４．移動入庫実績(実績訂正)  End ]--
                     UNION ALL
                       -------------------------------------------------------------
@@ -298,6 +313,11 @@ SELECT
                          AND  MRIL.mov_line_id              = MLD.mov_line_id
                          --入庫先保管場所情報取得
                          AND  MRIH.shipped_locat_id         = XILV.inventory_location_id
+-- 2010/01/07 T.Yoshimoto Add Start E_本稼動#684
+                         AND  mrih.actual_ship_date        >= TRUNC(SYSDATE) - FND_PROFILE.VALUE('XXINV_TARGET_TERM')   -- E_本稼動#684
+                         AND  mrih.ITEM_CLASS = '2'                                                                     -- E_本稼動#684
+                         AND  mrih.PRODUCT_FLG = '1'                                                                    -- E_本稼動#684
+-- 2010/01/07 T.Yoshimoto Add End E_本稼動#684
                       --[ ５．移動出庫実績(実績訂正)  End ]--
                     UNION ALL
                       -------------------------------------------------------------
@@ -335,6 +355,10 @@ SELECT
                          AND  MLD.mov_line_id               = OLA.order_line_id
                          --出庫元保管場所情報取得
                          AND  OHA.deliver_from_id           = XILV.inventory_location_id
+-- 2010/01/07 T.Yoshimoto Add Start E_本稼動#684
+                         AND  oha.SHIPPED_DATE             >= TRUNC(SYSDATE) - FND_PROFILE.VALUE('XXINV_TARGET_TERM')   -- E_本稼動#684
+                         AND  OHA.PROD_CLASS = '2'                                                                     -- E_本稼動#684
+-- 2010/01/07 T.Yoshimoto Add End E_本稼動#684
                       --[ ６．出荷・倉替返品実績(着荷報告待ち)  End ]--
                     UNION ALL
                       -------------------------------------------------------------
@@ -372,6 +396,10 @@ SELECT
                          AND  MLD.mov_line_id               = OLA.order_line_id
                          --出庫元保管場所情報取得
                          AND  OHA.deliver_from_id           = XILV.inventory_location_id
+-- 2010/01/07 T.Yoshimoto Add Start E_本稼動#684
+                         AND  oha.SHIPPED_DATE             >= TRUNC(SYSDATE) - FND_PROFILE.VALUE('XXINV_TARGET_TERM')   -- E_本稼動#684
+                         AND  OHA.PROD_CLASS = '2'                                                                      -- E_本稼動#684
+-- 2010/01/07 T.Yoshimoto Add End E_本稼動#684
                       --[ ７．支給実績(着荷報告待ち)  End ]--
                     --<< 現在庫数を手持ち在庫と各トランザクションから取得  END >>--
                     UNION ALL
@@ -410,10 +438,15 @@ SELECT
                          AND  MRIL.mov_line_id              = MLD.mov_line_id
                          --出庫元保管場所情報取得
                          AND  MRIH.shipped_locat_id         = XILV.inventory_location_id
+-- 2010/01/07 T.Yoshimoto Add Start E_本稼動#684
+                         AND  mrih.schedule_ship_date      >= TRUNC(SYSDATE) - FND_PROFILE.VALUE('XXINV_TARGET_TERM')   -- E_本稼動#684
+                         AND  mrih.ITEM_CLASS = '2'                                                                     -- E_本稼動#684
+                         AND  mrih.PRODUCT_FLG = '1'                                                                    -- E_本稼動#684
+-- 2010/01/07 T.Yoshimoto Add End E_本稼動#684
                       --[ １．移動出庫予定(指示 積送あり＆積送なし)  End ]--
                     UNION ALL
                       -------------------------------------------------------------
-                      -- ２．移動出庫予定(入庫報告有 積送あり)
+                      -- ２．移動出庫予定(入庫報告有 積送あり 出庫予定日ベース)
                       -------------------------------------------------------------
                       SELECT
                               XILV.whse_code                whse_code           --倉庫コード
@@ -441,7 +474,50 @@ SELECT
                          AND  MRIL.mov_line_id              = MLD.mov_line_id
                          --出庫元保管場所情報取得
                          AND  MRIH.shipped_locat_id         = XILV.inventory_location_id
-                      --[ ２．移動出庫予定(入庫報告有 積送あり)  End ]--
+-- 2010/01/07 T.Yoshimoto Add Start E_本稼動#684
+                         AND  mrih.actual_ship_date        IS NULL                                                      -- E_本稼動#684
+                         AND  mrih.schedule_ship_date      >= TRUNC(SYSDATE) - FND_PROFILE.VALUE('XXINV_TARGET_TERM')   -- E_本稼動#684
+                         AND  mrih.ITEM_CLASS = '2'                                                                     -- E_本稼動#684
+                         AND  mrih.PRODUCT_FLG = '1'                                                                    -- E_本稼動#684
+-- 2010/01/07 T.Yoshimoto Add End E_本稼動#684
+                      --[ ２．移動出庫予定(入庫報告有 積送あり 出庫予定日ベース)  End ]--
+-- 2010/01/07 T.Yoshimoto Add Start E_本稼動#684
+                    UNION ALL
+                      -------------------------------------------------------------
+                      -- ２－２．移動出庫予定(入庫報告有 積送あり 出庫実績日ベース)
+                      -------------------------------------------------------------
+                      SELECT
+                              XILV.whse_code                whse_code           --倉庫コード
+                             ,XILV.segment1                 location            --保管場所コード
+                             ,MLD.item_id                   item_id             --品目ID
+                             ,MLD.lot_id                    lot_id              --ロットID
+                             ,0                             onhand_qty          --バラ在庫数
+                             ,MLD.actual_quantity           out_qty             --出荷指示バラ数
+                        FROM
+                              xxinv_mov_req_instr_headers   MRIH                --移動依頼/指示ヘッダ(アドオン)
+                             ,xxinv_mov_req_instr_lines     MRIL                --移動依頼/指示明細(アドオン)
+                             ,xxinv_mov_lot_details         MLD                 --移動ロット詳細(アドオン)
+                             ,xxsky_item_locations2_v       XILV                --保管場所マスタ(倉庫コード取得用)
+                       WHERE
+                         --移動依頼/指示ヘッダの条件
+                              MRIH.mov_type                 = '1'               --積送あり
+                         AND  NVL( MRIH.comp_actual_flg, 'N' ) <> 'Y'           --実績未計上
+                         AND  MRIH.status                   = '05'              --05:入庫報告有
+                         --移動依頼/指示明細との結合
+                         AND  NVL( MRIL.delete_flg, 'N' )  <> 'Y'               --無効ではない
+                         AND  MRIH.mov_hdr_id               = MRIL.mov_hdr_id
+                         --移動ロット詳細との結合
+                         AND  MLD.document_type_code        = '20'              --移動
+                         AND  MLD.record_type_code          = '30'              --入庫実績
+                         AND  MRIL.mov_line_id              = MLD.mov_line_id
+                         --出庫元保管場所情報取得
+                         AND  MRIH.shipped_locat_id         = XILV.inventory_location_id
+                         AND  mrih.actual_ship_date        IS NOT NULL
+                         AND  mrih.actual_ship_date        >= TRUNC(SYSDATE) - FND_PROFILE.VALUE('XXINV_TARGET_TERM')
+                         AND  mrih.ITEM_CLASS = '2'
+                         AND  mrih.PRODUCT_FLG = '1'
+                      --[ ２－２．移動出庫予定(入庫報告有 積送あり 出庫実績日ベース)  End ]--
+-- 2010/01/07 T.Yoshimoto Add End E_本稼動#684
                     UNION ALL
                       -------------------------------------------------------------
                       -- ３．受注出荷予定
@@ -476,6 +552,10 @@ SELECT
                          AND  MLD.mov_line_id               = OLA.order_line_id
                          --出庫元保管場所情報取得
                          AND  OHA.deliver_from_id           = XILV.inventory_location_id
+-- 2010/01/07 T.Yoshimoto Add Start E_本稼動#684
+                         AND  oha.schedule_ship_date       >= TRUNC(SYSDATE) - FND_PROFILE.VALUE('XXINV_TARGET_TERM')   -- E_本稼動#684
+                         AND  OHA.PROD_CLASS = '2'                                                                      -- E_本稼動#684
+-- 2010/01/07 T.Yoshimoto Add End E_本稼動#684
                       --[ ３．受注出荷予定  End ]--
                     UNION ALL
                       -------------------------------------------------------------
@@ -512,6 +592,10 @@ SELECT
                          AND  MLD.mov_line_id               = OLA.order_line_id
                          --出庫元保管場所情報取得
                          AND  OHA.deliver_from_id           = XILV.inventory_location_id
+-- 2010/01/07 T.Yoshimoto Add Start E_本稼動#684
+                         AND  oha.schedule_ship_date       >= TRUNC(SYSDATE) - FND_PROFILE.VALUE('XXINV_TARGET_TERM')   -- E_本稼動#684
+                         AND  OHA.PROD_CLASS = '2'                                                                      -- E_本稼動#684
+-- 2010/01/07 T.Yoshimoto Add End E_本稼動#684
                       --[ ４．有償出荷予定  End ]--
                     --<< 出庫指示数を各トランザクションから取得  END >>--
                    )  TRAN
@@ -580,15 +664,21 @@ SELECT
                          AND  NVL( PLA.attribute13, 'N' )  <> 'Y'               --未承諾
                          AND  NVL( PLA.cancel_flag, 'N' )  <> 'Y'
                          AND  PHA.po_header_id              = PLA.po_header_id
+-- 2010/01/07 T.Yoshimoto Add Start E_本稼動#684
+                         AND  pha.attribute4               >= TRUNC(SYSDATE) - FND_PROFILE.VALUE('XXINV_TARGET_TERM')  -- 納入日
+-- 2010/01/07 T.Yoshimoto Add End E_本稼動#684
                          --OPM品目ID取得
                          AND  PLA.item_id                   = MSI.inventory_item_id
                          AND  MSI.organization_id           = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
                          AND  MSI.segment1                  = IIM.item_no
                          --OPMロットID取得
                          AND  IIM.item_id                   = ILM.item_id
-                         AND (   ( IIM.lot_ctl = 1 AND PLA.attribute1 = ILM.lot_no )  --ロット管理品
-                              OR ( IIM.lot_ctl = 0 AND ILM.lot_id     = 0          )  --非ロット管理品
-                             )
+-- 2010/01/07 T.Yoshimoto Mod Start E_本稼動#684
+--                         AND (   ( IIM.lot_ctl = 1 AND PLA.attribute1 = ILM.lot_no )  --ロット管理品
+--                              OR ( IIM.lot_ctl = 0 AND ILM.lot_id     = 0          )  --非ロット管理品
+--                             )
+                         AND  PLA.attribute1 = ILM.lot_no                                                               -- E_本稼動#684
+-- 2010/01/07 T.Yoshimoto Mod End E_本稼動#684
                          --入庫先保管場所情報取得
                          AND  PHA.attribute5                = XILV.segment1
                       --[ １．発注受入予定  End ]--
@@ -621,10 +711,15 @@ SELECT
                          AND  MRIL.mov_line_id              = MLD.mov_line_id
                          --入庫先保管場所情報取得
                          AND  MRIH.ship_to_locat_id         = XILV.inventory_location_id
+-- 2010/01/07 T.Yoshimoto Add Start E_本稼動#684
+                         AND  mrih.schedule_arrival_date   >= TRUNC(SYSDATE) - FND_PROFILE.VALUE('XXINV_TARGET_TERM')   -- E_本稼動#684
+                         AND  mrih.ITEM_CLASS = '2'                                                                     -- E_本稼動#684
+                         AND  mrih.PRODUCT_FLG = '1'                                                                    -- E_本稼動#684
+-- 2010/01/07 T.Yoshimoto Add End E_本稼動#684
                       --[ ２．移動入庫予定(指示 積送あり＆積送なし)  End ]--
                     UNION ALL
                       -------------------------------------------------------------
-                      -- ３．移動入庫予定(出庫報告有 積送あり)
+                      -- ３－１．移動入庫予定(出庫報告有 積送あり 入庫予定日ベース)
                       -------------------------------------------------------------
                       SELECT
                               XILV.whse_code                whse_code           --倉庫コード
@@ -652,7 +747,50 @@ SELECT
                          AND  MRIL.mov_line_id              = MLD.mov_line_id
                          --入庫先保管場所情報取得
                          AND  MRIH.ship_to_locat_id         = XILV.inventory_location_id
-                      --[ ３．移動入庫予定(出庫報告有 積送あり)  End ]--
+-- 2010/01/07 T.Yoshimoto Add Start E_本稼動#684
+                         AND  mrih.actual_arrival_date     IS NULL                                                      -- E_本稼動#684
+                         AND  mrih.schedule_arrival_date   >= TRUNC(SYSDATE) - FND_PROFILE.VALUE('XXINV_TARGET_TERM')   -- E_本稼動#684
+                         AND  mrih.ITEM_CLASS = '2'                                                                     -- E_本稼動#684
+                         AND  mrih.PRODUCT_FLG = '1'                                                                    -- E_本稼動#684
+-- 2010/01/07 T.Yoshimoto Add End E_本稼動#684
+                      --[ ３－１．移動入庫予定(出庫報告有 積送あり 入庫予定日ベース)  End ]--
+-- 2010/01/07 T.Yoshimoto Add Start E_本稼動#684
+                    UNION ALL
+                      -------------------------------------------------------------
+                      -- ３－２．移動入庫予定(出庫報告有 積送あり 入庫実績日ベース)
+                      -------------------------------------------------------------
+                      SELECT
+                              XILV.whse_code                whse_code           --倉庫コード
+                             ,XILV.segment1                 location            --保管場所コード
+                             ,MRIH.actual_arrival_date      in_whse_date        --入庫日
+                             ,MLD.item_id                   item_id             --品目ID
+                             ,MLD.lot_id                    lot_id              --ロットID
+                             ,MLD.actual_quantity           in_qty              --入庫予定バラ数
+                        FROM
+                              xxinv_mov_req_instr_headers   MRIH                --移動依頼/指示ヘッダ(アドオン)
+                             ,xxinv_mov_req_instr_lines     MRIL                --移動依頼/指示明細(アドオン)
+                             ,xxinv_mov_lot_details         MLD                 --移動ロット詳細(アドオン)
+                             ,xxsky_item_locations2_v       XILV                --保管場所マスタ(倉庫コード取得用)
+                       WHERE
+                         --移動依頼/指示ヘッダの条件
+                              MRIH.mov_type                 = '1'               --積送あり
+                         AND  NVL( MRIH.comp_actual_flg, 'N' ) <> 'Y'           --実績未計上
+                         AND  MRIH.status                   = '04'              --04:出庫報告有
+                         --移動依頼/指示明細との結合
+                         AND  NVL( MRIL.delete_flg, 'N' )  <> 'Y'               --無効ではない
+                         AND  MRIH.mov_hdr_id               = MRIL.mov_hdr_id
+                         --移動ロット詳細との結合
+                         AND  MLD.document_type_code        = '20'              --移動
+                         AND  MLD.record_type_code          = '20'              --出庫実績
+                         AND  MRIL.mov_line_id              = MLD.mov_line_id
+                         --入庫先保管場所情報取得
+                         AND  MRIH.ship_to_locat_id         = XILV.inventory_location_id
+                         AND  mrih.actual_arrival_date     IS NOT NULL
+                         AND  mrih.actual_arrival_date     >= TRUNC(SYSDATE) - FND_PROFILE.VALUE('XXINV_TARGET_TERM')
+                         AND  mrih.ITEM_CLASS = '2'
+                         AND  mrih.PRODUCT_FLG = '1'
+                      --[ ３－２．移動入庫予定(出庫報告有 積送あり 入庫実績日ベース)  End ]--
+-- 2010/01/07 T.Yoshimoto Add End E_本稼動#684
                    )  ITRAN
                   ,ic_lots_mst                              ILM                 --OPMロットマスタ
             WHERE
