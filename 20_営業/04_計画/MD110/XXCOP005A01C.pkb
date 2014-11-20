@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP005A01C(body)
  * Description      : 工場出荷計画
  * MD.050           : 工場出荷計画 MD050_COP_005_A01
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009/04/07    1.2   SCS Uda          システムテスト障害対応（T1_0277、T1_0278、T1_0280、T1_0281、T1_0368）
  *  2009/04/14    1.3   SCS Uda          システムテスト障害対応（T1_0542）
  *  2009/04/21    1.4   SCS Uda          システムテスト障害対応（T1_0722）
+ *  2009/04/28    1.5   SCS Uda          システムテスト障害対応（T1_0845、T1_0847）
  *
  *****************************************************************************************/
 --
@@ -131,7 +132,9 @@ AS
   cv_msg_00057     CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00057';      -- 配送単位取得エラーメッセージ
   cv_msg_00049     CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00049';      -- 品目情報取得エラー
   cv_msg_00050     CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00050';      -- 組織情報取得エラー
-  cv_msg_00058     CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00058';      -- 按分ゼロ計算不正エラーメッセージ
+--20090428_Ver1.5_T1_0845_SCS_Uda_DEL_START
+--  cv_msg_00058     CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00058';      -- 按分ゼロ計算不正エラーメッセージ
+--20090428_Ver1.5_T1_0845_SCS_Uda_DEL_START
   cv_msg_00059     CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00059';      -- 配送単位ゼロエラー
   cv_msg_00042     CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00042';      -- 削除処理エラー
   cv_msg_10025     CONSTANT VARCHAR2(100) := 'APP-XXCOP1-10025';      -- 工場固有記号取得エラー
@@ -144,6 +147,9 @@ AS
 --20090407_Ver1.2_T1_0368_SCS_Uda_ADD_START
   cv_msg_10042     CONSTANT VARCHAR2(100) := 'APP-XXCOP1-10042';      -- 経路エラーメッセージ
 --20090407_Ver1.2_T1_0368_SCS_Uda_ADD_END
+--20090428_Ver1.5_T1_0845_SCS_Uda_ADD_START
+  cv_msg_00063     CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00063';      -- 按分ゼロ計算不正警告
+--20090428_Ver1.5_T1_0845_SCS_Uda_ADD_END
   -- メッセージ関連
   cv_msg_application            CONSTANT VARCHAR2(100) := 'XXCOP';
   cv_others_err_msg             CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00041';
@@ -161,8 +167,10 @@ AS
   cv_msg_00049_token_1      CONSTANT VARCHAR2(100) := 'ITEMID';
   cv_msg_00050_token_1      CONSTANT VARCHAR2(100) := 'ORGID';
   cv_msg_00057_token_1      CONSTANT VARCHAR2(100) := 'ITEM';
-  cv_msg_00058_token_1      CONSTANT VARCHAR2(100) := 'ITEM_NAME1';
-  cv_msg_00058_token_2      CONSTANT VARCHAR2(100) := 'ITEM_NAME2';
+--20090428_Ver1.5_T1_0845_SCS_Uda_DEL_START
+--  cv_msg_00058_token_1      CONSTANT VARCHAR2(100) := 'ITEM_NAME1';
+--  cv_msg_00058_token_2      CONSTANT VARCHAR2(100) := 'ITEM_NAME2';
+--20090428_Ver1.5_T1_0845_SCS_Uda_DEL_END
   cv_msg_00059_token_1      CONSTANT VARCHAR2(100) := 'ITEM';
   cv_msg_00042_token_1      CONSTANT VARCHAR2(100) := 'TABLE';
 --20090407_Ver1.2_T1_0281_SCS_Uda_MOD_START
@@ -182,6 +190,9 @@ AS
   cv_msg_10042_token_3      CONSTANT VARCHAR2(100) := 'DATE';
   cv_msg_10042_token_4      CONSTANT VARCHAR2(100) := 'STATUS';
 --20090407_Ver1.2_T1_0368_SCS_Uda_ADD_END
+--20090428_Ver1.5_T1_0845_SCS_Uda_ADD_START
+  cv_msg_00063_token_1      CONSTANT VARCHAR2(100) := 'WHSE_CODE';
+--20090428_Ver1.5_T1_0845_SCS_Uda_ADD_END
 --
   --メッセージトークン値
   cv_msg_unit_delivery      CONSTANT VARCHAR2(100) := '配送単位';
@@ -191,8 +202,10 @@ AS
   cv_msg_item               CONSTANT VARCHAR2(100) := '品目';
   cv_msg_item_name          CONSTANT VARCHAR2(100) := '　品目名';
   cv_msg_org_name           CONSTANT VARCHAR2(100) := '　倉庫名';
-  cv_msg_stock_days         CONSTANT VARCHAR2(100) := '在庫日数';
-  cv_msg_sum_pace           CONSTANT VARCHAR2(100) := '総出荷ペース';
+--20090428_Ver1.5_T1_0845_SCS_Uda_DEL_START
+--  cv_msg_stock_days         CONSTANT VARCHAR2(100) := '在庫日数';
+--  cv_msg_sum_pace           CONSTANT VARCHAR2(100) := '総出荷ペース';
+--20090428_Ver1.5_T1_0845_SCS_Uda_DEL_END
   cv_msg_palette            CONSTANT VARCHAR2(100) := '配数';
   cv_msg_move_qty           CONSTANT VARCHAR2(100) := '移動数';
   cv_msg_wk_output          CONSTANT VARCHAR2(100) := '出力ワークテーブル';
@@ -245,6 +258,10 @@ AS
   cv_assign_name            CONSTANT VARCHAR2(100) := 'XXCOP1_ASSIGNMENT_NAME';        -- 割当セット名
   cv_flv_language           CONSTANT VARCHAR2(100) := USERENV('LANG');                 -- 言語
   cv_flv_enabled_flg_y      CONSTANT VARCHAR2(100) := 'Y';
+--20090428_Ver1.5_T1_0847_SCS_Uda_ADD_START
+  --移動数マイナスフラグ
+  cv_move_minus_flg_on      CONSTANT VARCHAR2(2)   := '1';                      -- 移動数マイナス
+--20090428_Ver1.5_T1_0847_SCS_Uda_ADD_END
 --
   --入力パラメータ
   cv_buy_type               CONSTANT VARCHAR2(1)   := '3';                      -- 基準計画分類（購入計画）
@@ -3287,6 +3304,9 @@ AS
     ln_move_qty NUMBER := 0;
     ln_after_stock NUMBER := 0;
     ln_palette_qty NUMBER := 0;
+--20090428_Ver1.5_T1_0847_SCS_Uda_ADD_START
+    lb_minus_flg   BOOLEAN := TRUE;
+--20090428_Ver1.5_T1_0847_SCS_Uda_ADD_END
 --
     -- *** ローカル・カーソル ***
     --ワークテーブル取得カーソル（出力データレベル）
@@ -3312,6 +3332,9 @@ AS
       AND   plant_org_id          = io_xwsp_rec.plant_org_id
       AND   inventory_item_id     = io_xwsp_rec.inventory_item_id
       AND   product_schedule_date = io_xwsp_rec.product_schedule_date
+--20090428_Ver1.5_T1_0847_SCS_Uda_ADD_START
+      AND   freshness_condition   IS NULL
+--20090428_Ver1.5_T1_0847_SCS_Uda_ADD_END
       ORDER BY product_schedule_date,item_no,plant_org_code;
     --
     -- *** ローカル・レコード ***
@@ -3334,94 +3357,158 @@ AS
        iov_debug_mode => gv_debug_mode
       ,iv_value       => cv_pkg_name || cv_msg_cont || cv_prg_name
     );
-    --総出荷ペース取得
-    SELECT
-       product_schedule_qty
-      ,SUM(NVL(under_lvl_pace,0))
-      ,SUM(NVL(before_stock,0))
-    INTO
-       ln_product_schedule_qty
-      ,ln_sum_pace
-      ,ln_sum_before_stock
-    FROM
-      xxcop_wk_ship_planning
-    WHERE org_data_lvl          = cn_data_lvl_output
-    AND   transaction_id        = io_xwsp_rec.transaction_id
-    AND   plant_org_id          = io_xwsp_rec.plant_org_id
-    AND   inventory_item_id     = io_xwsp_rec.inventory_item_id
-    AND   product_schedule_date = io_xwsp_rec.product_schedule_date
-    GROUP BY transaction_id,plant_org_id,plant_org_code
-            ,inventory_item_id,item_no,product_schedule_date,product_schedule_qty;
-    -- 按分計算ゼロチェック
-    IF NVL(ln_sum_pace,0) = 0 THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_msg_appl_cont
-                     ,iv_name         => cv_msg_00058
-                     ,iv_token_name1  => cv_msg_00058_token_1
-                     ,iv_token_value1 => cv_msg_stock_days
-                     ,iv_token_name2  => cv_msg_00058_token_2
-                     ,iv_token_value2 => cv_msg_sum_pace
-                   );
-      RAISE internal_process_expt;
-    END IF;
-    --
-    --在庫日数算出
-    IF NVL(ln_sum_pace,0) <> 0 THEN
-      ln_stock_days := ROUND((ln_product_schedule_qty + ln_sum_before_stock) / ln_sum_pace);
-    ELSE
-      ln_stock_days := 0;
-    END IF;
---
-    FOR get_wk_ship_planning_rec IN get_wk_ship_planning_cur LOOP
-      --在庫数
-      ln_stock := ln_stock_days * get_wk_ship_planning_rec.under_lvl_pace;
-      --移動数
-      IF ln_stock <> 0 THEN
-        ln_move_qty :=ln_stock - get_wk_ship_planning_rec.before_stock;
-      ELSE
-        ln_move_qty := 0;
-      END IF;
-      --移動パレット変換
-      ln_palette_qty := get_wk_ship_planning_rec.num_of_case * get_wk_ship_planning_rec.palette_max_cs_qty * get_wk_ship_planning_rec.palette_max_step_qty;
-      --
-      IF NVL(ln_palette_qty,0) = 0 THEN
+--20090428_Ver1.5_T1_0847_SCS_Uda_ADD_START
+    LOOP
+      lb_minus_flg := TRUE;
+--20090428_Ver1.5_T1_0847_SCS_Uda_ADD_END
+      --総出荷ペース取得
+      SELECT
+         product_schedule_qty
+        ,SUM(NVL(under_lvl_pace,0))
+        ,SUM(NVL(before_stock,0))
+      INTO
+         ln_product_schedule_qty
+        ,ln_sum_pace
+        ,ln_sum_before_stock
+      FROM
+        xxcop_wk_ship_planning
+      WHERE org_data_lvl          = cn_data_lvl_output
+      AND   transaction_id        = io_xwsp_rec.transaction_id
+      AND   plant_org_id          = io_xwsp_rec.plant_org_id
+      AND   inventory_item_id     = io_xwsp_rec.inventory_item_id
+      AND   product_schedule_date = io_xwsp_rec.product_schedule_date
+--20090428_Ver1.5_T1_0847_SCS_Uda_ADD_START
+      AND   freshness_condition   IS NULL
+--20090428_Ver1.5_T1_0847_SCS_Uda_ADD_END
+      GROUP BY transaction_id,plant_org_id,plant_org_code
+              ,inventory_item_id,item_no,product_schedule_date,product_schedule_qty;
+      -- 按分計算ゼロチェック
+      IF NVL(ln_sum_pace,0) = 0 THEN
+--20090428_Ver1.5_T1_0845_SCS_Uda_MOD_START
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_msg_appl_cont
+--                     ,iv_name         => cv_msg_00058
+--                     ,iv_token_name1  => cv_msg_00058_token_1
+--                     ,iv_token_value1 => cv_msg_stock_days
+--                     ,iv_token_name2  => cv_msg_00058_token_2
+--                     ,iv_token_value2 => cv_msg_sum_pace
+--                   );
+      -- 総出荷ペースゼロ警告メッセージ
         lv_errmsg := xxccp_common_pkg.get_msg(
                         iv_application  => cv_msg_appl_cont
-                       ,iv_name         => cv_msg_00058
-                       ,iv_token_name1  => cv_msg_00058_token_1
-                       ,iv_token_value1 => cv_msg_palette
-                       ,iv_token_name2  => cv_msg_00058_token_2
-                       ,iv_token_value2 => cv_msg_move_qty
+                       ,iv_name         => cv_msg_00063
+                       ,iv_token_name1  => cv_msg_00063_token_1
+                       ,iv_token_value1 => io_xwsp_rec.plant_org_code
                      );
-        RAISE internal_process_expt;
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.LOG
+          ,buff   => lv_errmsg
+        );
+        gn_warn_cnt := gn_warn_cnt + 1;
+        ov_retcode  := cv_status_warn;
+--20090428_Ver1.5_T1_0845_SCS_Uda_MOD_END
+--20090428_Ver1.5_T1_0845_SCS_Uda_DEL_START
+--      RAISE internal_process_expt;
+--20090428_Ver1.5_T1_0847_SCS_Uda_DEL_END
       END IF;
-      --移動数パレット換算後
-      ln_move_qty :=ln_palette_qty * ROUND(ln_move_qty / ln_palette_qty);
-      --後在庫
-      ln_after_stock := ln_move_qty + get_wk_ship_planning_rec.before_stock;
       --
-      BEGIN
-        UPDATE xxcop_wk_ship_planning
-        SET   schedule_qty = ln_move_qty
-             ,after_stock = ln_after_stock
-             ,stock_days = ln_stock_days
-        WHERE inventory_item_id         = get_wk_ship_planning_rec.inventory_item_id
-        AND   transaction_id            = get_wk_ship_planning_rec.transaction_id
-        AND   org_data_lvl              = cn_data_lvl_output
-        AND   plant_org_id              = get_wk_ship_planning_rec.plant_org_id
-        AND   product_schedule_date     = get_wk_ship_planning_rec.product_schedule_date
-        AND   receipt_org_id            = get_wk_ship_planning_rec.receipt_org_id;
-      EXCEPTION
-        WHEN OTHERS THEN
-          lv_errmsg :=  xxccp_common_pkg.get_msg(
-                           iv_application  => cv_msg_appl_cont
-                          ,iv_name         => cv_msg_00028
-                          ,iv_token_name1  => cv_msg_00028_token_1
-                          ,iv_token_value1 => cv_msg_wk_tbl
-                        );
-          RAISE internal_process_expt;
-      END;
-    END LOOP get_wk_ship_planning_cur;
+      --在庫日数算出
+      IF NVL(ln_sum_pace,0) <> 0 THEN
+        ln_stock_days := ROUND((ln_product_schedule_qty + ln_sum_before_stock) / ln_sum_pace);
+      ELSE
+        ln_stock_days := 0;
+      END IF;
+  --
+      FOR get_wk_ship_planning_rec IN get_wk_ship_planning_cur LOOP
+        --在庫数
+        ln_stock := ln_stock_days * get_wk_ship_planning_rec.under_lvl_pace;
+        --移動数
+        IF ln_stock <> 0 THEN
+          ln_move_qty :=ln_stock - get_wk_ship_planning_rec.before_stock;
+        ELSE
+          ln_move_qty := 0;
+        END IF;
+--20090428_Ver1.5_T1_0845_SCS_Uda_ADD_START
+        IF ln_move_qty >= 0 THEN
+--20090428_Ver1.5_T1_0845_SCS_Uda_ADD_END
+          --移動パレット変換
+          ln_palette_qty := get_wk_ship_planning_rec.num_of_case * get_wk_ship_planning_rec.palette_max_cs_qty * get_wk_ship_planning_rec.palette_max_step_qty;
+          --
+--20090428_Ver1.5_T1_0845_SCS_Uda_DEL_START
+--      IF NVL(ln_palette_qty,0) = 0 THEN
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_msg_appl_cont
+--                       ,iv_name         => cv_msg_00058
+--                       ,iv_token_name1  => cv_msg_00058_token_1
+--                       ,iv_token_value1 => cv_msg_palette
+--                       ,iv_token_name2  => cv_msg_00058_token_2
+--                       ,iv_token_value2 => cv_msg_move_qty
+--                     );
+--        RAISE internal_process_expt;
+--      END IF;
+--20090428_Ver1.5_T1_0845_SCS_Uda_DEL_END
+          --移動数パレット換算後
+          ln_move_qty :=ln_palette_qty * ROUND(ln_move_qty / ln_palette_qty);
+          --後在庫
+          ln_after_stock := ln_move_qty + get_wk_ship_planning_rec.before_stock;
+          --
+          BEGIN
+            UPDATE xxcop_wk_ship_planning
+            SET   schedule_qty = ln_move_qty
+                 ,after_stock = ln_after_stock
+                 ,stock_days = ln_stock_days
+            WHERE inventory_item_id         = get_wk_ship_planning_rec.inventory_item_id
+            AND   transaction_id            = get_wk_ship_planning_rec.transaction_id
+            AND   org_data_lvl              = cn_data_lvl_output
+            AND   plant_org_id              = get_wk_ship_planning_rec.plant_org_id
+            AND   product_schedule_date     = get_wk_ship_planning_rec.product_schedule_date
+            AND   receipt_org_id            = get_wk_ship_planning_rec.receipt_org_id;
+          EXCEPTION
+            WHEN OTHERS THEN
+              lv_errmsg :=  xxccp_common_pkg.get_msg(
+                               iv_application  => cv_msg_appl_cont
+                              ,iv_name         => cv_msg_00028
+                              ,iv_token_name1  => cv_msg_00028_token_1
+                              ,iv_token_value1 => cv_msg_wk_tbl
+                            );
+              RAISE internal_process_expt;
+          END;
+--20090428_Ver1.5_T1_0845_SCS_Uda_ADD_START
+        ELSE
+          lb_minus_flg := FALSE;
+          --移動数
+          ln_move_qty  := 0;
+          --後在庫
+          ln_after_stock := get_wk_ship_planning_rec.before_stock;
+          BEGIN
+            UPDATE xxcop_wk_ship_planning
+            SET   freshness_condition = cv_move_minus_flg_on
+                 ,schedule_qty = ln_move_qty
+                 ,after_stock = ln_after_stock
+                 ,stock_days = 0
+            WHERE inventory_item_id         = get_wk_ship_planning_rec.inventory_item_id
+            AND   transaction_id            = get_wk_ship_planning_rec.transaction_id
+            AND   org_data_lvl              = cn_data_lvl_output
+            AND   plant_org_id              = get_wk_ship_planning_rec.plant_org_id
+            AND   product_schedule_date     = get_wk_ship_planning_rec.product_schedule_date
+            AND   receipt_org_id            = get_wk_ship_planning_rec.receipt_org_id;
+          EXCEPTION
+            WHEN OTHERS THEN
+              lv_errmsg :=  xxccp_common_pkg.get_msg(
+                               iv_application  => cv_msg_appl_cont
+                              ,iv_name         => cv_msg_00028
+                              ,iv_token_name1  => cv_msg_00028_token_1
+                              ,iv_token_value1 => cv_msg_wk_tbl
+                            );
+              RAISE internal_process_expt;
+          END;
+        END IF;
+--20090428_Ver1.5_T1_0845_SCS_Uda_ADD_END
+      END LOOP get_wk_ship_planning_cur;
+--20090428_Ver1.5_T1_0847_SCS_Uda_ADD_START
+      EXIT WHEN lb_minus_flg;
+    END LOOP;
+--20090428_Ver1.5_T1_0847_SCS_Uda_ADD_END
 --
   EXCEPTION
     WHEN internal_process_expt THEN
