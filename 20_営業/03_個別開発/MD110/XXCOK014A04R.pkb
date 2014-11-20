@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2013/05/24    1.19  SCSK S.Niki      [障害E_本稼動_10411再] 支払ステータスソート順変更
  *  2013/05/28    1.20  SCSK S.Niki      [障害E_本稼動_10411再] エラーフラグ更新条件変更
  *  2013/06/11    1.21  SCSK S.Niki      [障害E_本稼動_10819]   エラー有りデータのソート順変更
+ *  2014/09/17    1.22  SCSK S.Niki      [障害E_本稼動_12185]   パフォーマンス改善対応
  *
  *****************************************************************************************/
   -- ===============================================
@@ -96,7 +97,9 @@ AS
   cv_msg_code_00047          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00047';          -- 売上計上拠点情報複数件エラー
   cv_msg_code_00035          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00035';          -- 顧客情報取得エラー
   cv_msg_code_00046          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00046';          -- 顧客情報複数件エラー
-  cv_msg_code_10333          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10333';          -- 仕入・銀行情報取得エラー
+-- Ver.1.22 DEL START
+--  cv_msg_code_10333          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10333';          -- 仕入・銀行情報取得エラー
+-- Ver.1.22 DEL END
   cv_msg_code_10334          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10334';          -- 仕入・銀行情報複数件エラー
   cv_msg_code_00015          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00015';          -- クイックコード取得エラー
   cv_msg_code_00071          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00071';          -- パラメータ(支払年月日)
@@ -215,7 +218,7 @@ AS
   cv_pdf                     CONSTANT VARCHAR2(4)   := '.pdf';               -- 出力ファイル拡張子
   -- 表示対象
   cv_target_disp1            CONSTANT VARCHAR2(1)   := '1'; -- 自拠点のみ
-  cv_target_disp2            CONSTANT VARCHAR2(1)   := '2'; -- 自拠点含む
+  cv_target_disp2            CONSTANT VARCHAR2(1)   := '2'; -- 他拠点含む
   cv_target_disp1_nm         CONSTANT VARCHAR2(1)   := '1'; -- 自拠点のみ
 -- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki ADD START
   -- 固定文字
@@ -487,16 +490,19 @@ AS
 ----
 --  g_target_rec g_target_cur%ROWTYPE;
   --
-  -- 入力パラメータの表示対象が「1:自拠点のみ」またはNULLの場合
+  -- 入力パラメータが「売上拠点基準」かつ「自拠点のみ」の場合
   CURSOR g_target_cur1
   IS
-    SELECT /*+
-             leading(xbb2 xbb pv pvsa)
-             use_nl (xbb2 xbb pv pvsa)
-             index  (xbb  XXCOK_BACKMARGIN_BALANCE_N09)
-             index  (pv   PO_VENDORS_U3)
-             index  (pvsa PO_VENDOR_SITES_U2)
-           */
+-- Ver.1.22 MOD START
+--    SELECT /*+
+--             leading(xbb2 xbb pv pvsa)
+--             use_nl (xbb2 xbb pv pvsa)
+--             index  (xbb  XXCOK_BACKMARGIN_BALANCE_N09)
+--             index  (pv   PO_VENDORS_U3)
+--             index  (pvsa PO_VENDOR_SITES_U2)
+--           */
+    SELECT
+-- Ver.1.22 MOD END
            bm_balance_id          -- 内部ID
           ,base_code              -- 拠点コード
           ,supplier_code          -- 仕入先コード
@@ -516,13 +522,17 @@ AS
           ,proc_type              -- 処理区分
 -- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD END
     FROM (SELECT /*+
-                   leading(xbb2 xbb pv pvsa)
-                   use_nl (xbb2 xbb pv pvsa)
-                   index  (xbb  XXCOK_BACKMARGIN_BALANCE_N09)
-                   index  (pv   PO_VENDORS_U3)
-                   index  (pvsa PO_VENDOR_SITES_U2)
+-- Ver.1.22 MOD START
+--                   leading(xbb2 xbb pv pvsa)
+--                   use_nl (xbb2 xbb pv pvsa)
+--                   index  (xbb  XXCOK_BACKMARGIN_BALANCE_N09)
+--                   index  (pv   PO_VENDORS_U3)
+--                   index  (pvsa PO_VENDOR_SITES_U2)
+                   leading(xca)
+                   use_nl (xca xbb)
+-- Ver.1.22 MOD END
                  */
-                  xbb.bm_balance_id                    AS  bm_balance_id         -- 内部ID
+                  xbb.bm_balance_id                    AS bm_balance_id          -- 内部ID
                  ,xbb.base_code                        AS base_code              -- 拠点コード
                  ,xbb.supplier_code                    AS supplier_code          -- 仕入先コード
                  ,xbb.supplier_site_code               AS supplier_site_code     -- 仕入先サイトコード
@@ -541,25 +551,33 @@ AS
                  ,xbb.proc_type                        AS proc_type              -- 処理区分
 -- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD END
           FROM   xxcok_backmargin_balance  xbb    -- 販手残高テーブル
-                ,po_vendors                pv     -- 仕入先マスタ
-                ,po_vendor_sites_all       pvsa   -- 仕入先サイト
+-- Ver.1.22 DEL START
+--                ,po_vendors                pv     -- 仕入先マスタ
+--                ,po_vendor_sites_all       pvsa   -- 仕入先サイト
+-- Ver.1.22 DEL END
 -- 2011/03/15 Ver.1.13 [障害E_本稼動_05408,05409] SCS S.Niki ADD START
                 ,xxcmm_cust_accounts       xca    -- 顧客追加情報
 -- 2011/03/15 Ver.1.13 [障害E_本稼動_05408,05409] SCS S.Niki ADD END
 -- 2011/03/15 Ver.1.13 [障害E_本稼動_05408,05409] SCS S.Niki UPD START
 --          WHERE  xbb.base_code                                 = NVL( gv_selling_base_code ,xbb.base_code)
           WHERE  xbb.cust_code                                 = xca.customer_code
-          AND    xca.past_sale_base_code                       = NVL( gv_selling_base_code ,xca.past_sale_base_code)
+-- Ver.1.22 MOD START
+--          AND    xca.past_sale_base_code                       = NVL( gv_selling_base_code ,xca.past_sale_base_code)
+          AND    xca.past_sale_base_code                       = gv_selling_base_code
+-- Ver.1.22 MOD END
 -- 2011/03/15 Ver.1.13 [障害E_本稼動_05408,05409] SCS S.Niki UPD END
           AND    xbb.expect_payment_date                      <= gd_payment_date
-          AND    xbb.supplier_code                             = pv.segment1
--- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
-          AND    pv.segment1                                   = NVL( gt_payment_code ,pv.segment1 )
--- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
-          AND    pv.vendor_id                                  = pvsa.vendor_id
-          AND    pvsa.attribute5                               = NVL( gv_ref_base_code ,pvsa.attribute5 )
-          AND    NVL( pvsa.inactive_date, gd_process_date + 1) > gd_process_date
-          AND    pvsa.org_id                                   = gn_org_id
+-- Ver.1.22 MOD START
+--          AND    xbb.supplier_code                             = pv.segment1
+---- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+--          AND    pv.segment1                                   = NVL( gt_payment_code ,pv.segment1 )
+---- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
+--          AND    pv.vendor_id                                  = pvsa.vendor_id
+--          AND    pvsa.attribute5                               = NVL( gv_ref_base_code ,pvsa.attribute5 )
+--          AND    NVL( pvsa.inactive_date, gd_process_date + 1) > gd_process_date
+--          AND    pvsa.org_id                                   = gn_org_id
+          AND    xbb.supplier_code                             = NVL( gt_payment_code ,xbb.supplier_code )
+-- Ver.1.22 MOD END
           )
     ORDER BY  supplier_code       -- 仕入先コード
              ,base_code           -- 拠点コード
@@ -568,16 +586,19 @@ AS
              ,closing_date        -- 締め日
     ;
   --
-  -- 入力パラメータの表示対象が「2:他拠点を含む」の場合
+  -- 入力パラメータが「売上拠点基準」かつ「他拠点を含む」の場合
   CURSOR g_target_cur2
   IS
-    SELECT /*+
-             leading(xbb2 xbb pv pvsa)
-             use_nl (xbb2 xbb pv pvsa)
-             index  (xbb  XXCOK_BACKMARGIN_BALANCE_N09)
-             index  (pv   PO_VENDORS_U3)
-             index  (pvsa PO_VENDOR_SITES_U2)
-           */
+-- Ver.1.22 MOD START
+--    SELECT /*+
+--             leading(xbb2 xbb pv pvsa)
+--             use_nl (xbb2 xbb pv pvsa)
+--             index  (xbb  XXCOK_BACKMARGIN_BALANCE_N09)
+--             index  (pv   PO_VENDORS_U3)
+--             index  (pvsa PO_VENDOR_SITES_U2)
+--           */
+    SELECT
+-- Ver.1.22 MOD END
            bm_balance_id          -- 内部ID
           ,base_code              -- 拠点コード
           ,supplier_code          -- 仕入先コード
@@ -597,11 +618,15 @@ AS
           ,proc_type              -- 処理区分
 -- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD END
     FROM (SELECT /*+
-                   leading(xbb2 xbb pv pvsa)
-                   use_nl (xbb2 xbb pv pvsa)
-                   index  (xbb  XXCOK_BACKMARGIN_BALANCE_N09)
-                   index  (pv   PO_VENDORS_U3)
-                   index  (pvsa PO_VENDOR_SITES_U2)
+-- Ver.1.22 MOD START
+--                   leading(xbb2 xbb pv pvsa)
+--                   use_nl (xbb2 xbb pv pvsa)
+--                   index  (xbb  XXCOK_BACKMARGIN_BALANCE_N09)
+--                   index  (pv   PO_VENDORS_U3)
+--                   index  (pvsa PO_VENDOR_SITES_U2)
+                   leading(xca)
+                   use_nl (xca xbb)
+-- Ver.1.22 MOD END
                  */
                   xbb.bm_balance_id                    AS bm_balance_id          -- 内部ID
                  ,xbb.base_code                        AS base_code              -- 拠点コード
@@ -622,10 +647,15 @@ AS
                  ,xbb.proc_type                        AS proc_type              -- 処理区分
 -- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD END
           FROM   xxcok_backmargin_balance xbb     -- 販手残高テーブル
-                ,po_vendors                pv     -- 仕入先マスタ
-                ,po_vendor_sites_all       pvsa   -- 仕入先サイト
+-- Ver.1.22 DEL START
+--                ,po_vendors                pv     -- 仕入先マスタ
+--                ,po_vendor_sites_all       pvsa   -- 仕入先サイト
+-- Ver.1.22 DEL END
           WHERE  xbb.supplier_code IN (SELECT /*+
-                                                index(xbb2 XXCOK_BACKMARGIN_BALANCE_N08)
+-- Ver.1.22 MOD START
+--                                                index(xbb2 XXCOK_BACKMARGIN_BALANCE_N08)
+                                                index(xbb2 XXCOK_BACKMARGIN_BALANCE_N07)
+-- Ver.1.22 MOD END
                                               */
                                               xbb2.supplier_code            -- 仕入先コード
                                        FROM   xxcok_backmargin_balance xbb2 -- 販手残高テーブル
@@ -636,14 +666,80 @@ AS
 -- 2011/03/15 Ver.1.13 [障害E_本稼動_05408,05409] SCS S.Niki UPD START
 --                                       AND    xbb2.base_code = NVL( gv_selling_base_code ,xbb2.base_code )
                                        AND    xbb2.cust_code     = xca.customer_code
-                                       AND    xca.past_sale_base_code = NVL( gv_selling_base_code ,xca.past_sale_base_code)
+-- Ver.1.22 MOD START
+--                                       AND    xca.past_sale_base_code = NVL( gv_selling_base_code ,xca.past_sale_base_code)
+                                       AND    xca.past_sale_base_code = gv_selling_base_code
+-- Ver.1.22 MOD END
 -- 2011/03/15 Ver.1.13 [障害E_本稼動_05408,05409] SCS S.Niki UPD END
                                   )
           AND    xbb.expect_payment_date                      <= gd_payment_date
+-- Ver.1.22 MOD START
+--          AND    xbb.supplier_code                             = pv.segment1
+---- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+--          AND    pv.segment1                                   = NVL( gt_payment_code ,pv.segment1 )
+---- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
+--          AND    pv.vendor_id                                  = pvsa.vendor_id
+--          AND    pvsa.attribute5                               = NVL( gv_ref_base_code ,pvsa.attribute5 )
+--          AND    NVL( pvsa.inactive_date, gd_process_date + 1) > gd_process_date
+--          AND    pvsa.org_id                                   = gn_org_id
+          AND    xbb.supplier_code                             = NVL( gt_payment_code ,xbb.supplier_code )
+-- Ver.1.22 MOD END
+          )
+    ORDER BY  supplier_code       -- 仕入先コード
+             ,base_code           -- 拠点コード
+             ,cust_code           -- 顧客コード
+             ,expect_payment_date -- 支払予定日
+             ,closing_date        -- 締め日
+    ;
+--
+-- Ver.1.22 ADD START
+  -- 入力パラメータが「問合せ拠点基準」の場合
+  CURSOR g_target_cur3
+  IS
+    SELECT bm_balance_id          -- 内部ID
+          ,base_code              -- 拠点コード
+          ,supplier_code          -- 仕入先コード
+          ,supplier_site_code     -- 仕入先サイトコード
+          ,cust_code              -- 顧客コード
+          ,closing_date           -- 締め日
+          ,backmargin             -- 販売手数料
+          ,backmargin_tax         -- 販売手数料（消費税額
+          ,electric_amt           -- 電気料
+          ,electric_amt_tax       -- 電気料（消費税額）
+          ,expect_payment_date    -- 支払予定日
+          ,expect_payment_amt_tax -- 支払予定額（税込）
+          ,resv_flag              -- 保留フラグ
+          ,payment_amt_tax        -- 支払額（税込）
+          ,fb_interface_date      -- 連携日（本振用FB）
+          ,proc_type              -- 処理区分
+    FROM (SELECT /*+
+                   leading(pv)
+                   use_nl (pv pvsa xbb)
+                   index  (xbb  XXCOK_BACKMARGIN_BALANCE_N09)
+                   index  (pvsa PO_VENDOR_SITES_U2)
+                 */
+                  xbb.bm_balance_id                    AS bm_balance_id          -- 内部ID
+                 ,xbb.base_code                        AS base_code              -- 拠点コード
+                 ,xbb.supplier_code                    AS supplier_code          -- 仕入先コード
+                 ,xbb.supplier_site_code               AS supplier_site_code     -- 仕入先サイトコード
+                 ,xbb.cust_code                        AS cust_code              -- 顧客コード
+                 ,xbb.closing_date                     AS closing_date           -- 締め日
+                 ,NVL( xbb.backmargin ,0 )             AS backmargin             -- 販売手数料
+                 ,NVL( xbb.backmargin_tax ,0 )         AS backmargin_tax         -- 販売手数料（消費税額）
+                 ,NVL( xbb.electric_amt ,0)            AS electric_amt           -- 電気料
+                 ,NVL( xbb.electric_amt_tax ,0 )       AS electric_amt_tax       -- 電気料（消費税額）
+                 ,xbb.expect_payment_date              AS expect_payment_date    -- 支払予定日
+                 ,NVL( xbb.expect_payment_amt_tax ,0 ) AS expect_payment_amt_tax -- 支払予定額（税込）
+                 ,xbb.resv_flag                        AS resv_flag              -- 保留フラグ
+                 ,NVL( xbb.payment_amt_tax ,0 )        AS payment_amt_tax        -- 支払額（税込）
+                 ,xbb.fb_interface_date                AS fb_interface_date      -- 連携日（本振用FB）
+                 ,xbb.proc_type                        AS proc_type              -- 処理区分
+          FROM   xxcok_backmargin_balance  xbb    -- 販手残高テーブル
+                ,po_vendors                pv     -- 仕入先マスタ
+                ,po_vendor_sites_all       pvsa   -- 仕入先サイト
+          WHERE  xbb.expect_payment_date                      <= gd_payment_date
           AND    xbb.supplier_code                             = pv.segment1
--- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
           AND    pv.segment1                                   = NVL( gt_payment_code ,pv.segment1 )
--- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
           AND    pv.vendor_id                                  = pvsa.vendor_id
           AND    pvsa.attribute5                               = NVL( gv_ref_base_code ,pvsa.attribute5 )
           AND    NVL( pvsa.inactive_date, gd_process_date + 1) > gd_process_date
@@ -655,6 +751,7 @@ AS
              ,expect_payment_date -- 支払予定日
              ,closing_date        -- 締め日
     ;
+-- Ver.1.22 ADD END
   --
   g_target_rec g_target_rtype;
   --
@@ -874,6 +971,22 @@ AS
     lv_errbuf                VARCHAR2(5000) DEFAULT NULL;              -- エラー・メッセージ
     lv_retcode               VARCHAR2(1)    DEFAULT cv_status_normal;  -- リターン・コード
     lv_errmsg                VARCHAR2(5000) DEFAULT NULL;              -- ユーザー・エラー・メッセージ
+-- Ver.1.22 ADD START
+    lv_proc_type             VARCHAR2(1)    DEFAULT NULL;              -- 処理区分
+    -- ===============================================
+    -- ローカルカーソル
+    -- ===============================================
+    -- 販手残高一覧データ
+    CURSOR l_worktable_cur
+    IS
+      SELECT xrbb.payment_code  AS payment_code  -- 支払先コード
+           , xrbb.cust_code     AS cust_code     -- 顧客コード
+           , xrbb.closing_date  AS closing_date  -- 締め日
+      FROM   xxcok_rep_bm_balance xrbb  -- 販手残高一覧帳票ワークテーブル
+      WHERE  xrbb.request_id  =  cn_request_id
+      AND    xrbb.resv_payment   IS NULL         -- 支払保留
+      ;
+-- Ver.1.22 ADD END
 --
   BEGIN
     -- ===============================================
@@ -885,23 +998,66 @@ AS
     -- 支払ステータス「消込済」更新処理
     -- ===============================================
     -- 対象の支払ステータスを「消込済」に更新する
-    UPDATE xxcok_rep_bm_balance xrbb              -- 販手残高一覧帳票ワークテーブル
-    SET    xrbb.resv_payment    = gv_pay_rec_name -- 支払ステータス("消込済")
-    WHERE  xrbb.request_id      = cn_request_id   -- 要求ID(今回実行分)
-    AND    xrbb.resv_payment    IS NULL           -- 支払保留
--- Ver.1.18 [障害E_本稼動_10595再] SCSK S.Niki MOD START
---    AND    xrbb.unpaid_balance  = 0               -- 未払残高
-    AND EXISTS ( SELECT 'X'
-                 FROM   xxcok_backmargin_balance xbb  -- 販手残高テーブル
-                 WHERE  xbb.supplier_code  = xrbb.payment_code  -- 支払先コード
-                 AND    xbb.cust_code      = xrbb.cust_code     -- 顧客コード
-                 AND    xbb.closing_date   = xrbb.closing_date  -- 締め日
-                 AND    xbb.proc_type      = cv_proc_type1_upd  -- 処理区分("消込済")
-               )
--- Ver.1.18 [障害E_本稼動_10595再] SCSK S.Niki MOD END
-    ;
+-- Ver.1.22 MOD START
+--    UPDATE xxcok_rep_bm_balance xrbb              -- 販手残高一覧帳票ワークテーブル
+--    SET    xrbb.resv_payment    = gv_pay_rec_name -- 支払ステータス("消込済")
+--    WHERE  xrbb.request_id      = cn_request_id   -- 要求ID(今回実行分)
+--    AND    xrbb.resv_payment    IS NULL           -- 支払保留
+---- Ver.1.18 [障害E_本稼動_10595再] SCSK S.Niki MOD START
+----    AND    xrbb.unpaid_balance  = 0               -- 未払残高
+--    AND EXISTS ( SELECT 'X'
+--                 FROM   xxcok_backmargin_balance xbb  -- 販手残高テーブル
+--                 WHERE  xbb.supplier_code  = xrbb.payment_code  -- 支払先コード
+--                 AND    xbb.cust_code      = xrbb.cust_code     -- 顧客コード
+--                 AND    xbb.closing_date   = xrbb.closing_date  -- 締め日
+--                 AND    xbb.proc_type      = cv_proc_type1_upd  -- 処理区分("消込済")
+--               )
+---- Ver.1.18 [障害E_本稼動_10595再] SCSK S.Niki MOD END
+--    ;
+    -- 帳票ワークデータをループ
+    FOR l_worktable_rec IN l_worktable_cur LOOP
+      BEGIN
+        SELECT xbb.proc_type AS proc_type
+        INTO   lv_proc_type
+        FROM   xxcok_backmargin_balance xbb  -- 販手残高テーブル
+        WHERE  xbb.supplier_code  = l_worktable_rec.payment_code -- 支払先コード
+        AND    xbb.cust_code      = l_worktable_rec.cust_code    -- 顧客コード
+        AND    xbb.closing_date   = l_worktable_rec.closing_date -- 締め日
+        AND    xbb.proc_type      = cv_proc_type1_upd            -- 処理区分("消込済")
+        AND    ROWNUM             = cn_number_1
+        ;
+        -- 対象の支払ステータスを「消込済」に更新する
+        UPDATE  xxcok_rep_bm_balance xrbb  -- 販手残高一覧帳票ワークテーブル
+        SET     xrbb.resv_payment  =  gv_pay_rec_name  -- 支払ステータス("消込済")
+        WHERE   xrbb.request_id    =  cn_request_id    -- 要求ID(今回実行分)
+        AND     xrbb.payment_code  =  l_worktable_rec.payment_code
+        AND     xrbb.cust_code     =  l_worktable_rec.cust_code
+        AND     xrbb.closing_date  =  l_worktable_rec.closing_date
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          NULL;
+        WHEN OTHERS THEN
+          -- 帳票ワークテーブル更新エラー
+          lv_errmsg  := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_xxcok_appl_short_name
+                        , iv_name         => cv_msg_code_10535
+                        , iv_token_name1  => cv_token_errmsg
+                        , iv_token_value1 => SQLERRM
+                        );
+          RAISE global_api_expt;
+      END;
+    END LOOP;
+-- Ver.1.22 MOD END
 --
   EXCEPTION
+-- Ver.1.22 ADD START
+    -- *** 共通関数例外 ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+-- Ver.1.22 ADD END
     -- *** 共通関数OTHERS例外 ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
@@ -1514,8 +1670,32 @@ AS
       END;
     END IF;
     --
+-- Ver.1.22 ADD START
     -- ===============================================
-    -- 5. 0件データ登録
+    -- 5. 仕入先情報取得失敗レコード削除
+    -- ===============================================
+    BEGIN
+      -- 仕入先情報の取得に失敗したレコードを削除
+      DELETE
+      FROM   xxcok_rep_bm_balance  xrbb
+      WHERE  xrbb.payment_name IS NULL
+      AND    xrbb.request_id   = cn_request_id
+      ;
+    --
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- 帳票ワークテーブル削除エラー
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_xxcok_appl_short_name
+                      , iv_name         => cv_msg_code_10536
+                      , iv_token_name1  => cv_token_errmsg
+                      , iv_token_value1 => SQLERRM
+                      );
+        RAISE global_process_expt;
+    END;
+-- Ver.1.22 ADD END
+    -- ===============================================
+    -- 6. 0件データ登録
     -- ===============================================
     -- 帳票ワークの件数をカウント
     SELECT COUNT(*)
@@ -1523,6 +1703,9 @@ AS
     FROM   xxcok_rep_bm_balance   xrbb
     WHERE  xrbb.request_id      = cn_request_id
     ;
+-- Ver.1.22 ADD START
+    gn_target_cnt       := ln_worktable_cnt;
+-- Ver.1.22 ADD END
     -- 帳票ワーク件数が0件の場合、0件データを登録
     IF ln_worktable_cnt = 0 THEN
       -- 対象データなし
@@ -1779,8 +1962,10 @@ AS
           g_bm_balance_ttype( gn_index ).PAYMENT_DATE              := gt_payment_date_bk;        -- 支払日
           g_bm_balance_ttype( gn_index ).CLOSING_DATE              := gt_closing_date_bk;        -- 締め日
           g_bm_balance_ttype( gn_index ).SELLING_BASE_SECTION_CODE := gt_section_code_bk;        -- 地区コード
-          -- 対象件数変数に件数を設定
-          gn_target_cnt             := gn_index;
+-- Ver.1.22 DEL START
+--          -- 対象件数変数に件数を設定
+--          gn_target_cnt             := gn_index;
+-- Ver.1.22 DEL END
         END IF;
         -------------------------
         -- 退避・集計項目の初期化
@@ -2127,20 +2312,35 @@ AS
     EXCEPTION
       -- 仕入・銀行情報取得エラー
       WHEN NO_DATA_FOUND THEN
-        lv_errmsg  := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_xxcok_appl_short_name
-                      , iv_name         => cv_msg_code_10333
-                      , iv_token_name1  => cv_token_vendor_code
-                      , iv_token_value1 => iv_supplier_code
-                      , iv_token_name2  => cv_token_vendor_site_code
-                      , iv_token_value2 => iv_supplier_site_code
-                      );
-        lb_retcode := xxcok_common_pkg.put_message_f(
-                        in_which    => FND_FILE.LOG
-                      , iv_message  => lv_errmsg
-                      , in_new_line => cn_number_0
-                      );
-        RAISE no_data_expt;
+-- Ver.1.22 MOD START
+--        lv_errmsg  := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_xxcok_appl_short_name
+--                      , iv_name         => cv_msg_code_10333
+--                      , iv_token_name1  => cv_token_vendor_code
+--                      , iv_token_value1 => iv_supplier_code
+--                      , iv_token_name2  => cv_token_vendor_site_code
+--                      , iv_token_value2 => iv_supplier_site_code
+--                      );
+--        lb_retcode := xxcok_common_pkg.put_message_f(
+--                        in_which    => FND_FILE.LOG
+--                      , iv_message  => lv_errmsg
+--                      , in_new_line => cn_number_0
+--                      );
+--        RAISE no_data_expt;
+        ov_vendor_name              := NULL;
+        ov_bank_charge_bearer       := NULL;
+        ov_hold_all_payments_flag   := NULL;
+        ov_bm_kbn_dff4              := NULL;
+        ov_ref_base_code            := NULL;
+        ov_bank_number              := NULL;
+        ov_bank_name                := NULL;
+        ov_bank_account_type        := NULL;
+        ov_bank_account_num         := NULL;
+        ov_account_holder_name_alt  := NULL;
+        ov_bank_num                 := NULL;
+        ov_bank_branch_name         := NULL;
+        ov_account_name             := NULL;
+-- Ver.1.22 MOD END
       -- 仕入・銀行情報複数件エラー
       WHEN TOO_MANY_ROWS THEN
         lv_errmsg  := xxccp_common_pkg.get_msg(
@@ -2161,34 +2361,43 @@ AS
     -- ===============================================
     -- BM支払区分情報
     -- ===============================================
-    BEGIN
-      SELECt lookup_code  -- BM支払区分
-            ,meaning      -- BM支払区分名
-      INTO   ov_bm_kbn
-            ,ov_bm_kbn_nm
+-- Ver.1.22 ADD START
+    IF ov_bm_kbn_dff4 IS NOT NULL THEN
+-- Ver.1.22 ADD END
+      BEGIN
+        SELECt lookup_code  -- BM支払区分
+              ,meaning      -- BM支払区分名
+        INTO   ov_bm_kbn
+              ,ov_bm_kbn_nm
 -- 2009/07/15 Ver.1.7 [障害0000689] SCS T.Taniguchi START
 --      FROM   xxcmn_lookup_values_v
-      FROM   xxcok_lookups_v
+        FROM   xxcok_lookups_v
 -- 2009/07/15 Ver.1.7 [障害0000689] SCS T.Taniguchi END
-      WHERE  lookup_type = cv_lookup_type_bm_kbn
-      AND    lookup_code = ov_bm_kbn_dff4
-      ;
-    EXCEPTION
-      -- BM支払区分情報取得エラー
-      WHEN NO_DATA_FOUND THEN
-        lv_errmsg  := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_xxcok_appl_short_name
-                      , iv_name         => cv_msg_code_00015
-                      , iv_token_name1  => cv_token_lookup_value_set
-                      , iv_token_value1 => cv_lookup_type_bm_kbn
-                      );
-        lb_retcode := xxcok_common_pkg.put_message_f(
-                        in_which    => FND_FILE.LOG
-                      , iv_message  => lv_errmsg
-                      , in_new_line => cn_number_0
-                      );
-        RAISE no_data_expt;
-    END;
+        WHERE  lookup_type = cv_lookup_type_bm_kbn
+        AND    lookup_code = ov_bm_kbn_dff4
+        ;
+      EXCEPTION
+        -- BM支払区分情報取得エラー
+        WHEN NO_DATA_FOUND THEN
+          lv_errmsg  := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_xxcok_appl_short_name
+                        , iv_name         => cv_msg_code_00015
+                        , iv_token_name1  => cv_token_lookup_value_set
+                        , iv_token_value1 => cv_lookup_type_bm_kbn
+                        );
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                          in_which    => FND_FILE.LOG
+                        , iv_message  => lv_errmsg
+                        , in_new_line => cn_number_0
+                        );
+          RAISE no_data_expt;
+      END;
+-- Ver.1.22 ADD START
+    ELSE
+      ov_bm_kbn     := NULL;
+      ov_bm_kbn_nm  := NULL;
+    END IF;
+-- Ver.1.22 ADD END
     -- ===============================================
     -- 口座種別情報
     -- ===============================================
@@ -2478,9 +2687,12 @@ AS
     -- ===============================================
     -- 販手残高情報抽出処理
     -- ===============================================
-    -- 入力パラメータの表示対象が「自拠点のみ」またはNULLの場合
-    IF ( gv_target_disp = cv_target_disp1_nm )
-      OR ( gv_target_disp IS NULL ) THEN
+    -- 入力パラメータが「売上拠点基準」かつ「自拠点のみ」の場合
+-- Ver.1.22 MOD START
+--    IF ( gv_target_disp = cv_target_disp1_nm )
+--      OR ( gv_target_disp IS NULL ) THEN
+    IF ( gv_selling_base_code IS NOT NULL ) AND ( gv_target_disp = cv_target_disp1 ) THEN
+-- Ver.1.22 MOD END
 -- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki UPD START
 --      lv_target_disp_flg := cv_target_disp1;
       -- 販手残高情報取得カーソル
@@ -2627,8 +2839,11 @@ AS
         --
       END LOOP main_loop;
 -- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki UPD END
-    -- 入力パラメータの表示対象が「他拠点を含む」場合
-    ELSE
+    -- 入力パラメータが「売上拠点基準」かつ「他拠点を含む」かつ支払先の指定がない場合
+-- Ver.1.22 MOD START
+--    ELSE
+    ELSIF ( gv_selling_base_code IS NOT NULL ) AND ( gv_target_disp = cv_target_disp2 ) THEN
+-- Ver.1.22 MOD END
 -- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki UPD START
 --      lv_target_disp_flg := cv_target_disp2;
       -- 販手残高情報取得カーソル
@@ -2774,6 +2989,146 @@ AS
         END IF;
         --
       END LOOP main_loop;
+-- Ver.1.22 ADD START
+    ELSE
+      -- 販手残高情報取得カーソル
+      <<main_loop>>
+      FOR g_target_rec IN g_target_cur3 LOOP
+        --
+        ln_loop_cnt := ln_loop_cnt + 1;
+        --
+        IF ( ln_loop_cnt = 1 ) OR ( g_target_rec.base_code <> gt_selling_base_code_bk ) THEN
+          -- ===============================================
+          -- 売上拠点情報抽出処理(A-3)
+          -- ===============================================
+          get_cust_data(
+            ov_errbuf             => lv_errbuf               -- エラー・メッセージ
+           ,ov_retcode            => lv_retcode              -- リターン・コード
+           ,ov_errmsg             => lv_errmsg               -- ユーザー・エラー・メッセージ
+           ,iv_process_flg        => cv_process_flg1         -- 処理フラグ(1：売上拠点情報)
+           ,iv_selling_base_code  => g_target_rec.base_code  -- 売上拠点
+           ,iv_cust_code          => g_target_rec.cust_code  -- 顧客コード
+           ,ov_selling_base_code  => lt_selling_base_code    -- 売上計上拠点コード
+           ,ov_account_name       => lt_selling_base_name    -- 売上計上拠点名
+           ,ov_address3           => lt_address3             -- 地区コード
+           ,ov_account_number     => lt_account_number_dummy -- 顧客コード
+           ,ov_party_name         => lt_party_name_dummy     -- 顧客名
+          );
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+        --
+        IF ( ln_loop_cnt = 1 ) OR ( g_target_rec.cust_code <> gt_cust_code_bk ) THEN
+          -- ===============================================
+          -- 顧客情報抽出処理(A-3)
+          -- ===============================================
+          get_cust_data(
+            ov_errbuf             => lv_errbuf                  -- エラー・メッセージ
+           ,ov_retcode            => lv_retcode                 -- リターン・コード
+           ,ov_errmsg             => lv_errmsg                  -- ユーザー・エラー・メッセージ
+           ,iv_process_flg        => cv_process_flg2            -- 処理フラグ(2：顧客情報)
+           ,iv_selling_base_code  => g_target_rec.base_code     -- 売上拠点
+           ,iv_cust_code          => g_target_rec.cust_code     -- 顧客コード
+           ,ov_selling_base_code  => lt_selling_base_code_dummy -- 売上計上拠点コード
+           ,ov_account_name       => lt_selling_base_name_dummy -- 売上計上拠点名
+           ,ov_address3           => lt_address3_dummy          -- 地区コード
+           ,ov_account_number     => lt_account_number          -- 顧客コード
+           ,ov_party_name         => lt_party_name              -- 顧客名
+          );
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+        --
+        IF ( ln_loop_cnt = 1 ) OR ( g_target_rec.supplier_code <> gt_payment_code_bk ) THEN
+          -- ===============================================
+          -- 仕入先・銀行情報抽出処理(A-4)
+          -- ===============================================
+          get_vendor_data(
+              ov_errbuf                  => lv_errbuf                       -- エラー・メッセージ
+            , ov_retcode                 => lv_retcode                      -- リターン・コード
+            , ov_errmsg                  => lv_errmsg                       -- ユーザー・エラー・メッセージ
+            , iv_supplier_code           => g_target_rec.supplier_code      -- 仕入先コード
+            , iv_supplier_site_code      => g_target_rec.supplier_site_code -- 仕入先サイトコード
+            , ov_vendor_name             => lt_vendor_name                  -- 仕入先名
+            , ov_bank_charge_bearer      => lt_bank_charge_bearer           -- 銀行手数料負担者
+            , ov_hold_all_payments_flag  => lt_hold_all_payments_flag       -- 全支払の保留フラグ
+            , ov_ref_base_code           => lv_ref_base_code                -- DFF5(問合せ担当拠点コード)
+            , ov_bm_kbn_dff4             => lv_bm_kbn_dff4                  -- DFF4(BM支払区分)
+            , ov_bank_number             => lt_bank_number                  -- 銀行番号
+            , ov_bank_name               => lt_bank_name                    -- 銀行口座名
+            , ov_bank_account_type       => lv_bank_account_type            -- 口座種別
+            , ov_bank_account_num        => lt_bank_account_num             -- 銀行口座番号
+            , ov_account_holder_name_alt => lt_account_holder_name_alt      -- 口座名義人カナ
+            , ov_bank_num                => lt_bank_num                     -- 銀行支店番号
+            , ov_bank_branch_name        => lt_bank_branch_name             -- 銀行支店名
+            , ov_account_name            => lt_ref_base_name                -- 問合せ担当拠点名
+            , ov_bm_kbn                  => lv_bm_kbn                       -- BM支払区分
+            , ov_bm_kbn_nm               => lv_bm_kbn_nm                    -- BM支払区分名
+            , ov_bk_account_type         => lv_bk_account_type              -- 口座種別
+            , ov_bk_account_type_nm      => lv_bk_account_type_nm           -- 口座種別名
+          );
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+        --
+        IF ( ln_loop_cnt = 1 )
+          OR ( g_target_rec.base_code <> gt_selling_base_code_bk )
+          OR ( g_target_rec.cust_code <> gt_cust_code_bk ) THEN
+          -- ===============================================
+          -- 販手エラー情報抽出処理(A-5)
+          -- ===============================================
+          get_bm_contract_err(
+              ov_errbuf            => lv_errbuf                       -- エラー・メッセージ
+            , ov_retcode           => lv_retcode                      -- リターン・コード
+            , ov_errmsg            => lv_errmsg                       -- ユーザー・エラー・メッセージ
+            , iv_selling_base_code => g_target_rec.base_code          -- 売上計上拠点コード
+            , iv_cust_code         => g_target_rec.cust_code          -- 顧客コード
+            , on_error_count       => ln_error_count                  -- エラーカウント
+          );
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+        --
+        -- ===============================================
+        -- ブレイク判定処理(A-6)
+        -- ===============================================
+        break_judge(
+            ov_errbuf                  => lv_errbuf                  -- エラー・メッセージ
+          , ov_retcode                 => lv_retcode                 -- リターン・コード
+          , ov_errmsg                  => lv_errmsg                  -- ユーザー・エラー・メッセージ
+          , i_target_rec               => g_target_rec               -- カーソルレコード
+          , it_bank_charge_bearer      => lt_bank_charge_bearer      -- 銀行手数料負担者
+          , it_hold_all_payments_flag  => lt_hold_all_payments_flag  -- 全支払の保留フラグ
+          , it_vendor_name             => lt_vendor_name             -- 仕入先名
+          , it_bank_number             => lt_bank_number             -- 銀行番号
+          , it_bank_name               => lt_bank_name               -- 銀行口座名
+          , it_bank_num                => lt_bank_num                -- 銀行支店番号
+          , it_bank_branch_name        => lt_bank_branch_name        -- 銀行支店名
+          , iv_bank_account_type       => lv_bank_account_type       -- 口座種別
+          , iv_bk_account_type_nm      => lv_bk_account_type_nm      -- 口座種別名
+          , it_bank_account_num        => lt_bank_account_num        -- 銀行口座番号
+          , it_account_holder_name_alt => lt_account_holder_name_alt -- 口座名義人カナ
+          , iv_ref_base_code           => lv_ref_base_code           -- DFF5(問合せ担当拠点コード)
+          , it_selling_base_name       => lt_selling_base_name       -- 売上計上拠点名
+          , iv_bm_kbn                  => lv_bm_kbn                  -- BM支払区分
+          , iv_bm_kbn_nm               => lv_bm_kbn_nm               -- BM支払区分名
+          , it_selling_base_code       => lt_selling_base_code       -- 売上計上拠点コード
+          , it_ref_base_name           => lt_ref_base_name           -- 問合せ担当拠点名
+          , it_account_number          => lt_account_number          -- 顧客コード
+          , it_party_name              => lt_party_name              -- 顧客名
+          , it_address3                => lt_address3                -- 地区コード
+          , in_error_count             => ln_error_count             -- 販手エラー件数
+        );
+        IF ( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        END IF;
+        --
+      END LOOP main_loop;
+-- Ver.1.22 ADD END
 -- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki UPD END
     END IF;
 --
