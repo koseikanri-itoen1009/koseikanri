@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼締め関数
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_BPO_40E_出荷依頼締め関数
- * Version                : 1.10
+ * Version                : 1.11
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -46,8 +46,10 @@ AS
  *  2008/10/10   1.8   Oracle 伊藤ひとみ 統合テスト指摘239対応
  *  2008/10/28   1.9   Oracle 伊藤ひとみ 統合テスト指摘141対応
  *  2008/11/14   1.10  SCS    伊藤ひとみ 統合テスト指摘650対応
- *  2008/12/01   1.11  SCS    菅原大輔   本番指摘253対応（暫定） 
+ *  2008/12/01   1.11  SCS    菅原大輔   本番指摘253対応（暫定）
  *  2008/12/07   1.12  SCS    菅原大輔   本番#386
+ *  2008/12/17   1.13  SCS    上原/福田  本番#81
+ *  2008/12/17   1.13  SCS    福田       APP-XXWSH-11204エラー発生時に即時終了しないようにする
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -854,6 +856,7 @@ AS
     ln_delivery_lt                   NUMBER;       -- 配送LT
     lv_status                        VARCHAR2(2);  -- 締めステータス
     ln_bfr_order_header_id           NUMBER DEFAULT 0;  -- 受注ヘッダアドオンID
+    ln_order_header_id_lock          NUMBER;            -- 受注ヘッダアドオンID(ロック用)  2008/12/17 本番障害#81 Add
 --
     ln_deliver_from_nullflg          NUMBER;       -- 出荷元NULLチェックフラグ
     ln_prod_class_nullflg            NUMBER;       -- 商品区分NULLチェックフラグ
@@ -863,6 +866,8 @@ AS
     ln_leaf_base_category_flg        NUMBER;       -- リーフ拠点カテゴリフラグ
     ln_tightening_prog_id_nullflg    NUMBER;       -- 締めコンカレントIDNULLチェックフラグ
     ln_order_type_id_nullflg         NUMBER;       -- 出庫形態IDNULLチェックフラグ
+    ln_lock_error_flg                NUMBER;       -- ロックエラーフラグ                    2008/12/17 本番障害#81 Add
+    ln_stschk_error_flg              NUMBER;       -- 締めステータスチェックエラーフラグ    2008/12/17 Add V1.13 APP-XXWSH-11204エラー発生時に即時終了しないようにする
     lv_user_name                     VARCHAR2(100); -- ユーザー名
     ln_transaction_type_id           NUMBER;       -- タイプID
     -- 動的SQL格納用
@@ -892,6 +897,89 @@ AS
 --2008/12/07 D.Sugahara Mod End
       ;
     -- 締め処理
+-- 2008/12/17 mod start ver1.13 M_Uehara
+    cv_main_sql1                   CONSTANT VARCHAR2(32000) :=
+        'SELECT
+              tightening_program_id,            -- 締めコンカレントID
+              order_type_id,                    -- 受注タイプID
+              lead_time_day,                    -- リードタイム
+              schedule_ship_date,               -- 出荷予定日
+              schedule_arrival_date,            -- 着荷予定日
+              deliver_to,                       -- 配送先
+              deliver_from,                     -- 出庫元
+              prod_class,                       -- 商品区分
+              request_no,                       -- 依頼No
+              order_header_id                   -- 受注ヘッダアドオンID
+         FROM (
+           -- 配送LT（倉庫・配送先）で取得
+           SELECT
+             xoha.tightening_program_id tightening_program_id
+                                           -- 受注タイプID - 受注ヘッダアドオン.締めコンカレントID
+           , xoha.order_type_id         order_type_id
+                                           -- 受注タイプID - 受注ヘッダアドオン.受注タイプID
+           , CASE xottv.transaction_type_id -- 受注タイプ
+               WHEN :ln_transaction_type_id THEN
+                    -- 引取変更
+                    xdl.receipt_change_lead_time_day  -- 引き取り変更LT（倉庫・配送先）
+               ELSE
+                    -- 引取変更以外
+                DECODE(xoha.prod_class,:cv_prod_class_2,  -- ドリンク生産物流LT
+                       xdl.drink_lead_time_day     --ドリンク生産物流LT（倉庫・配送先）
+                                       ,:cv_prod_class_1,  -- リーフ生産物流LT
+                        xdl.leaf_lead_time_day       -- リーフ生産物流LT（倉庫・配送先）
+                       )
+             END                        lead_time_day -- リードタイム
+           , xoha.schedule_ship_date    schedule_ship_date
+                                                          -- 出庫日 - 受注ヘッダアドオン.出荷予定日
+           , xoha.schedule_arrival_date schedule_arrival_date
+                                                          -- 着日 - 受注ヘッダアドオン.着荷予定日
+           , xoha.deliver_to            deliver_to
+                                                          -- 配送先コード - 受注ヘッダアドオン.出荷先
+           , xoha.deliver_from          deliver_from
+                                          -- 出荷元保管場所コード - 受注ヘッダアドオン.出荷元保管場所
+           , xoha.prod_class            prod_class
+                                                          -- 商品区分 - 受注ヘッダアドオン.商品区分
+           , xoha.request_no            request_no
+                                                          -- 依頼No - 受注ヘッダアドオン.依頼No
+           , xoha.order_header_id       order_header_id   -- 受注ヘッダアドオンID
+           FROM
+             xxwsh_oe_transaction_types2_v xottv    --①受注タイプ情報VIEW2
+            ,xxwsh_order_headers_all       xoha     --②受注ヘッダアドオン
+            ,xxcmn_cust_accounts2_v        xcav
+            ,xxcmn_cust_acct_sites2_v      xcasv
+            ,xxwsh_tightening_control      xtc
+            ,(SELECT DISTINCT
+                  lt.code_class1                  code_class1,
+                                                                --コード区分1（倉庫・配送先）
+                  lt.entering_despatching_code1   entering_despatching_code1,
+                                                                --入出庫場所コード１（倉庫・配送先）
+                  lt.code_class2                  code_class2,
+                                                                --コード区分2（倉庫・配送先）
+                  lt.entering_despatching_code2   entering_despatching_code2,
+                                                                --入出庫場所コード2（倉庫・配送先）
+                  lt.drink_lead_time_day          drink_lead_time_day,
+                                                                --ドリンク生産物流LT（倉庫・配送先）
+                  lt.leaf_lead_time_day           leaf_lead_time_day,
+                                                                --リーフ生産物流LT（倉庫・配送先）
+                  lt.receipt_change_lead_time_day receipt_change_lead_time_day,
+                                                                --引き取り変更LT（倉庫・配送先）
+                  lt.lt_start_date_active         lt_start_date_active,
+                  lt.lt_end_date_active           lt_end_date_active
+             FROM
+                   xxcmn_delivery_lt2_v          lt    --配送L/Tアドオンマスタ（倉庫・配送先）
+             WHERE lt.code_class1                   = :cv_code_class_4 --コード区分1：倉庫
+             AND   lt.code_class2                   = :cv_code_class_9 --コード区分2：配送先
+           )                           xdl    --配送L/Tアドオンマスタ（倉庫・配送先）
+         WHERE xottv.order_category_code   =  :cv_order_category_code
+                                  -- 受注タイプ.受注カテゴリ＝「受注」かつ
+         AND   xottv.shipping_shikyu_class =  :cv_shipping_shikyu_class
+                                  -- 受注タイプ.出荷支給区分＝「出荷依頼」かつ
+         AND   xoha.order_type_id          =  xottv.transaction_type_id
+                                  -- 受注ヘッダアドオン.受注タイプID＝受注タイプ.取引タイプIDかつ
+         AND   xoha.req_status             =  :gv_status_02
+                                  -- 受注ヘッダアドオン.ステータス＝「02:拠点確定」かつ
+         ';
+/**
     cv_main_sql1                   CONSTANT VARCHAR2(32000) :=
        ' SELECT
            xoha.tightening_program_id tightening_program_id
@@ -932,7 +1020,11 @@ AS
           ,xxcmn_cust_accounts2_v        xcav     --④顧客情報VIEW2
           ,xxcmn_cust_accounts2_v        xcav2    --顧客情報VIEW2-2
           ,xxcmn_cust_acct_sites2_v      xcasv2'; --顧客サイト情報VIEW2-2
+**/
+-- 2008/12/17 mod end ver1.13 M_Uehara
 --
+-- 2008/12/17 del start ver1.13 M_Uehara
+/**
     cv_retable                     CONSTANT VARCHAR2(32000) :=
         ' ,xxwsh_tightening_control      xtc';    --出荷依頼締め管理（アドオン）
 --
@@ -1017,6 +1109,9 @@ AS
                                 -- 受注ヘッダアドオン.受注タイプID＝受注タイプ.取引タイプIDかつ
        AND   xoha.req_status             =  :gv_status_02';
                                 -- 受注ヘッダアドオン.ステータス＝「02:拠点確定」かつ
+**/
+-- 2008/12/17 mod end ver1.13 M_Uehara
+--
     cv_rewhere                     CONSTANT VARCHAR2(32000) :=
      ' AND   (1 = :ln_tightening_prog_id_nullflg -- フラグが0なら締めコンカレントIDを条件に追加する
               OR xtc.concurrent_id       = :in_tightening_program_id)
@@ -1068,7 +1163,185 @@ AS
               OR (xoha.prod_class         = :iv_prod_class))';
                                 -- 受注ヘッダアドオン.商品区分＝パラメータ.商品区分 かつ
 --
-    cv_main_sql3                   CONSTANT VARCHAR2(32000) :=
+-- 2008/12/17 mod start ver1.13 M_Uehara
+    cv_main_sql2                   CONSTANT VARCHAR2(32000) :=
+     ' AND   xcav.party_number            = xoha.head_sales_branch
+                   -- パーティマスタ(管轄拠点)．組織番号＝受注ヘッダアドオン．管轄拠点かつ
+       AND   xcav.start_date_active       <= NVL(xoha.shipped_date,xoha.schedule_ship_date)
+                   -- パーティアドオンマスタ(管轄拠点)．適用開始日≦パラメータ. 出庫日かつ
+       AND   xcav.end_date_active         >= NVL(xoha.shipped_date,xoha.schedule_ship_date)
+                                -- パーティアドオンマスタ.適用終了日≧パラメータ. 出庫日かつ
+       AND   xcav.customer_class_code     = :cv_customer_class_code_1
+                                -- 顧客マスタ．顧客区分=1かつ
+       AND  ((1 = :ln_drink_base_category_flg)
+                                    -- フラグが0ならドリンク拠点カテゴリを条件に追加する
+              OR (xcav.drink_base_category         = :iv_sales_base_category))
+                                -- 顧客マスタ．ドリンク拠点カテゴリ＝パラメータ．拠点カテゴリ
+       AND  ((1 = :ln_leaf_base_category_flg)
+                                    -- フラグが0ならリーフ拠点カテゴリを条件に追加する
+              OR (xcav.leaf_base_category = :iv_sales_base_category))
+                                -- 顧客マスタ．リーフ拠点カテゴリ＝パラメータ．拠点カテゴリ
+       AND   xdl.entering_despatching_code1  = xoha.deliver_from
+                                                           -- 受注ヘッダアドオン.出荷元保管場所
+       AND   xdl.entering_despatching_code2  = xoha.deliver_to
+                                                           -- 受注ヘッダアドオン.配送先
+       AND   xcav.start_date_active          <= xoha.schedule_ship_date
+                                                           -- 受注ヘッダアドオン.出荷予定日
+       AND  (xcav.end_date_active            IS NULL
+         OR  xcav.end_date_active            >= xoha.schedule_ship_date)
+                                                           -- 受注ヘッダアドオン.出荷予定日
+       AND   xcasv.start_date_active         <= xoha.schedule_ship_date
+                                                           -- 受注ヘッダアドオン.出荷予定日
+       AND  (xcasv.end_date_active           IS NULL
+         OR  xcasv.end_date_active           >= xoha.schedule_ship_date)'
+       ;                                                   -- 受注ヘッダアドオン.出荷予定日
+     cv_lead_time_w1                   CONSTANT VARCHAR2(32000)
+     :=    ' AND  rcpt_cng_lead_time_day =  :in_lead_time_day';
+                                     -- 引き取り変更LT（倉庫・配送先）
+                                     -- 引き取り変更LT（倉庫・拠点）
+--
+     cv_lead_time_w2                   CONSTANT VARCHAR2(32000)
+     :=    ' AND  drink_lead_time_day =  :in_lead_time_day';
+                                     --ドリンク生産物流LT（倉庫・配送先）
+                                     --ドリンク生産物流LT（倉庫・拠点）
+--
+     cv_lead_time_w3                   CONSTANT VARCHAR2(32000)
+     :=    ' AND  leaf_lead_time_day =  :in_lead_time_day';
+                                     -- リーフ生産物流LT（倉庫・配送先
+                                     -- リーフ生産物流LT（倉庫・拠点）
+     cv_main_sql3                   CONSTANT VARCHAR2(32000) :=
+     ' AND   xcav.account_status            =  :gv_status_A--（有効）
+       AND   xcasv.cust_acct_site_status    =  :gv_status_A--（有効）
+       AND   xcasv.cust_site_uses_status    =  :gv_status_A--（有効）
+       AND   xottv.start_date_active        <= NVL(:id_schedule_ship_date,xoha.schedule_ship_date)
+       AND  (xottv.end_date_active          IS NULL
+       OR    xottv.end_date_active          >= NVL(:id_schedule_ship_date,xoha.schedule_ship_date)) '  ;
+--
+     cv_union                       CONSTANT VARCHAR2(32000) :=
+     ') UNION'
+     ;
+    cv_main_sql4                    CONSTANT VARCHAR2(32000) :=
+     '   -- 配送LT（倉庫・拠点）で取得
+         SELECT
+           xoha.tightening_program_id tightening_program_id
+                                         -- 受注タイプID - 受注ヘッダアドオン.締めコンカレントID
+         , xoha.order_type_id         order_type_id
+                                         -- 受注タイプID - 受注ヘッダアドオン.受注タイプID
+         , CASE xottv.transaction_type_id -- 受注タイプ
+             WHEN :ln_transaction_type_id THEN
+                  -- 引取変更
+                  xdl.receipt_change_lead_time_day  -- 引き取り変更LT（倉庫・拠点）
+             ELSE
+                  -- 引取変更以外
+              DECODE(xoha.prod_class,:cv_prod_class_2,  -- ドリンク生産物流LT
+                     xdl.drink_lead_time_day     --ドリンク生産物流LT（倉庫・拠点）
+                                     ,:cv_prod_class_1,  -- リーフ生産物流LT
+                      xdl.leaf_lead_time_day       -- リーフ生産物流LT（倉庫・拠点）
+                     )
+           END                        lead_time_day -- リードタイム
+         , xoha.schedule_ship_date    schedule_ship_date
+                                                        -- 出庫日 - 受注ヘッダアドオン.出荷予定日
+         , xoha.schedule_arrival_date schedule_arrival_date
+                                                        -- 着日 - 受注ヘッダアドオン.着荷予定日
+         , xoha.deliver_to            deliver_to
+                                                        -- 配送先コード - 受注ヘッダアドオン.出荷先
+         , xoha.deliver_from          deliver_from
+                                        -- 出荷元保管場所コード - 受注ヘッダアドオン.出荷元保管場所
+         , xoha.prod_class            prod_class
+                                                        -- 商品区分 - 受注ヘッダアドオン.商品区分
+         , xoha.request_no            request_no
+                                                        -- 依頼No - 受注ヘッダアドオン.依頼No
+         , xoha.order_header_id       order_header_id   -- 受注ヘッダアドオンID
+         FROM
+           xxwsh_oe_transaction_types2_v xottv    --①受注タイプ情報VIEW2
+          ,xxwsh_order_headers_all       xoha     --②受注ヘッダアドオン
+          ,xxcmn_cust_accounts2_v        xcav
+          ,xxcmn_cust_acct_sites2_v      xcasv
+          ,xxwsh_tightening_control      xtc
+          ,(SELECT DISTINCT
+                lt.code_class1                  code_class1,
+                                                              --コード区分1（倉庫・拠点）
+                lt.entering_despatching_code1   entering_despatching_code1,
+                                                              --入出庫場所コード１（倉庫・拠点）
+                lt.code_class2                  code_class2,
+                                                              --コード区分2（倉庫・拠点）
+                lt.entering_despatching_code2   entering_despatching_code2,
+                                                              --入出庫場所コード2（倉庫・拠点）
+                lt.drink_lead_time_day          drink_lead_time_day,
+                                                              --ドリンク生産物流LT（倉庫・拠点）
+                lt.leaf_lead_time_day           leaf_lead_time_day,
+                                                              --リーフ生産物流LT（倉庫・拠点）
+                lt.receipt_change_lead_time_day receipt_change_lead_time_day,
+                                                              --引き取り変更LT（倉庫・拠点）
+                lt.lt_start_date_active         lt_start_date_active,
+                lt.lt_end_date_active           lt_end_date_active
+           FROM
+                 xxcmn_delivery_lt2_v          lt    --配送L/Tアドオンマスタ（倉庫・拠点）
+           WHERE lt.code_class1                   = :cv_code_class_4 --コード区分1：倉庫
+           AND   lt.code_class2                   = :cv_code_class_1 --コード区分2：拠点
+         )                           xdl    --配送L/Tアドオンマスタ（倉庫・拠点）
+       WHERE xottv.order_category_code   =  :cv_order_category_code
+                                -- 受注タイプ.受注カテゴリ＝「受注」かつ
+       AND   xottv.shipping_shikyu_class =  :cv_shipping_shikyu_class
+                                -- 受注タイプ.出荷支給区分＝「出荷依頼」かつ
+       AND   xoha.order_type_id          =  xottv.transaction_type_id
+                                -- 受注ヘッダアドオン.受注タイプID＝受注タイプ.取引タイプIDかつ
+       AND   xoha.req_status             =  :gv_status_02
+                                -- 受注ヘッダアドオン.ステータス＝「02:拠点確定」かつ
+       ';
+    cv_main_sql5                   CONSTANT VARCHAR2(32000) :=
+     ' AND   xcav.party_number            = xoha.head_sales_branch
+                   -- パーティマスタ(管轄拠点)．組織番号＝受注ヘッダアドオン．管轄拠点かつ
+       AND   xcav.start_date_active       <= NVL(xoha.shipped_date,xoha.schedule_ship_date)
+                   -- パーティアドオンマスタ(管轄拠点)．適用開始日≦パラメータ. 出庫日かつ
+       AND   xcav.end_date_active         >= NVL(xoha.shipped_date,xoha.schedule_ship_date)
+                                -- パーティアドオンマスタ.適用終了日≧パラメータ. 出庫日かつ
+       AND   xcav.customer_class_code     = :cv_customer_class_code_1
+                                -- 顧客マスタ．顧客区分=1かつ
+       AND  ((1 = :ln_drink_base_category_flg)
+                                    -- フラグが0ならドリンク拠点カテゴリを条件に追加する
+              OR (xcav.drink_base_category         = :iv_sales_base_category))
+                                -- 顧客マスタ．ドリンク拠点カテゴリ＝パラメータ．拠点カテゴリ
+       AND  ((1 = :ln_leaf_base_category_flg)
+                                    -- フラグが0ならリーフ拠点カテゴリを条件に追加する
+              OR (xcav.leaf_base_category = :iv_sales_base_category))
+                                -- 顧客マスタ．リーフ拠点カテゴリ＝パラメータ．拠点カテゴリ
+       AND   xdl.entering_despatching_code1  = xoha.deliver_from
+                                                           -- 受注ヘッダアドオン.出荷元保管場所
+       AND   xdl.entering_despatching_code2  = xoha.head_sales_branch
+                                                           -- 受注ヘッダアドオン.拠点
+       AND   xcav.start_date_active          <= xoha.schedule_ship_date
+                                                           -- 受注ヘッダアドオン.出荷予定日
+       AND  (xcav.end_date_active            IS NULL
+         OR  xcav.end_date_active            >= xoha.schedule_ship_date)
+                                                           -- 受注ヘッダアドオン.出荷予定日
+       AND   xcasv.start_date_active         <= xoha.schedule_ship_date
+                                                           -- 受注ヘッダアドオン.出荷予定日
+       AND  (xcasv.end_date_active           IS NULL
+         OR  xcasv.end_date_active           >= xoha.schedule_ship_date)'
+       ;                                                   -- 受注ヘッダアドオン.出荷予定日
+     cv_main_sql6                   CONSTANT VARCHAR2(32000) :=
+     ' AND   xcav.account_status            =  :gv_status_A--（有効）
+       AND   xcasv.cust_acct_site_status    =  :gv_status_A--（有効）
+       AND   xcasv.cust_site_uses_status    =  :gv_status_A--（有効）
+       AND   xottv.start_date_active        <= NVL(:id_schedule_ship_date,xoha.schedule_ship_date)
+       AND  (xottv.end_date_active          IS NULL
+       OR    xottv.end_date_active          >= NVL(:id_schedule_ship_date,xoha.schedule_ship_date))
+          ---------------------------------------------------------------------------------------------
+          -- 配送L/Tアドオン（配送先で登録されていないこと）
+          ---------------------------------------------------------------------------------------------
+       AND NOT EXISTS ( SELECT  1
+                        FROM    xxcmn_delivery_lt2_v  xdl2v       -- 配送L/Tアドオン
+                        WHERE   xdl2v.code_class1                 = :cv_deliver_from_4
+                        AND     xdl2v.entering_despatching_code1  = xoha.deliver_from
+                        AND     xdl2v.code_class2                 = :cv_deliver_to_9
+                        AND     xdl2v.entering_despatching_code2  = xoha.deliver_to
+                        AND     NVL(xoha.shipped_date,xoha.schedule_ship_date) BETWEEN xdl2v.lt_start_date_active 
+                        AND NVL( xdl2v.lt_end_date_active, NVL(xoha.shipped_date,xoha.schedule_ship_date) )
+                     )
+           ';
+/** 
+           cv_main_sql3                   CONSTANT VARCHAR2(32000) :=
      ' AND   xcav.party_number            = xoha.head_sales_branch
                    -- パーティマスタ(管轄拠点)．組織番号＝受注ヘッダアドオン．管轄拠点かつ
        AND   xcav.start_date_active       <= NVL(xoha.shipped_date,xoha.schedule_ship_date)
@@ -1152,6 +1425,8 @@ AS
 --       FOR UPDATE OF xoha.req_status NOWAIT'
 --2008/12/07 D.Sugahara Mod End
       ;
+**/
+-- 2008/12/17 mod end ver1.13 M_Uehara
 --
     -- *** ローカル・カーソル ***
 --
@@ -1200,6 +1475,8 @@ AS
     gv_callfrom_flg := iv_callfrom_flg;
     lv_err_message := NULL;
     lv_retcode := '0';
+    ln_stschk_error_flg := 0;            -- 2008/12/17 Add V1.13
+--
     -- 共通更新情報の取得
     gn_user_id         := FND_GLOBAL.USER_ID;        -- ログインしているユーザーのID取得
     gn_login_id        := FND_GLOBAL.LOGIN_ID;       -- 最終更新ログイン
@@ -1550,6 +1827,167 @@ AS
       IF (NVL(iv_tighten_class,cv_tighten_class_1) = cv_tighten_class_1) THEN
         -- 初回カーソルオープン
 --
+-- 2008/12/17 mod start ver1.13 M_Uehara
+        -- 動的SQL本文を決める
+        lv_sql :=   cv_main_sql1
+                 || cv_where
+                 || cv_main_sql2
+                 || lv_lead_time_w
+                 || cv_main_sql3
+                 || cv_union
+                 || cv_main_sql4
+                 || cv_where
+                 || cv_main_sql5
+                 || lv_lead_time_w
+                 || cv_main_sql6;
+--
+        -- SQLの実行
+        OPEN upd_status_cur FOR lv_sql
+          USING
+            ln_transaction_type_id,
+            cv_prod_class_2,
+            cv_prod_class_1,
+            cv_code_class_4,
+            cv_code_class_9,
+            cv_order_category_code,
+            cv_shipping_shikyu_class,
+            gv_status_02,
+            ln_order_type_id_nullflg,
+            in_order_type_id,
+            ln_deliver_from_nullflg,
+            iv_deliver_from,
+            ln_request_no_nullflg,
+            iv_request_no,
+            ln_schedule_ship_date_nullflg,
+            id_schedule_ship_date,
+            ln_prod_class_nullflg,
+            iv_prod_class,
+            cv_customer_class_code_1,
+            ln_drink_base_category_flg,
+            iv_sales_base_category,
+            ln_leaf_base_category_flg,
+            iv_sales_base_category,
+            in_lead_time_day,
+            gv_status_A,
+            gv_status_A,
+            gv_status_A,
+            id_schedule_ship_date,
+            id_schedule_ship_date,
+            ln_transaction_type_id,
+            cv_prod_class_2,
+            cv_prod_class_1,
+            cv_code_class_4,
+            cv_code_class_1,
+            cv_order_category_code,
+            cv_shipping_shikyu_class,
+            gv_status_02,
+            ln_order_type_id_nullflg,
+            in_order_type_id,
+            ln_deliver_from_nullflg,
+            iv_deliver_from,
+            ln_request_no_nullflg,
+            iv_request_no,
+            ln_schedule_ship_date_nullflg,
+            id_schedule_ship_date,
+            ln_prod_class_nullflg,
+            iv_prod_class,
+            cv_customer_class_code_1,
+            ln_drink_base_category_flg,
+            iv_sales_base_category,
+            ln_leaf_base_category_flg,
+            iv_sales_base_category,
+            in_lead_time_day,
+            gv_status_A,
+            gv_status_A,
+            gv_status_A,
+            id_schedule_ship_date,
+            id_schedule_ship_date,
+            cv_deliver_from_4,
+            cv_deliver_to_9
+            ;
+--
+      ELSE
+        -- 再締めカーソルオープン
+--
+        -- 動的SQL本文を決める
+        lv_sql :=   cv_main_sql1
+                 || cv_rewhere
+                 || cv_main_sql2
+                 || cv_main_sql3
+                 || cv_union
+                 || cv_main_sql4
+                 || cv_rewhere
+                 || cv_main_sql5
+                 || cv_main_sql6;
+--
+        -- SQLの実行
+        OPEN reupd_status_cur FOR lv_sql
+          USING
+            ln_transaction_type_id,
+            cv_prod_class_2,
+            cv_prod_class_1,
+            cv_code_class_4,
+            cv_code_class_9,
+            cv_order_category_code,
+            cv_shipping_shikyu_class,
+            gv_status_02,
+            ln_tightening_prog_id_nullflg,
+            in_tightening_program_id,
+            gn_m999,
+            gn_m999,
+            gv_ALL,
+            gv_ALL,
+            gv_ALL,
+            gv_ALL,
+            gv_ALL,
+            gv_ALL,
+            cv_prod_class_2,
+            cv_prod_class_1,
+            cv_customer_class_code_1,
+            ln_drink_base_category_flg,
+            iv_sales_base_category,
+            ln_leaf_base_category_flg,
+            iv_sales_base_category,
+            gv_status_A,
+            gv_status_A,
+            gv_status_A,
+            id_schedule_ship_date,
+            id_schedule_ship_date,
+            ln_transaction_type_id,
+            cv_prod_class_2,
+            cv_prod_class_1,
+            cv_code_class_4,
+            cv_code_class_1,
+            cv_order_category_code,
+            cv_shipping_shikyu_class,
+            gv_status_02,
+            ln_tightening_prog_id_nullflg,
+            in_tightening_program_id,
+            gn_m999,
+            gn_m999,
+            gv_ALL,
+            gv_ALL,
+            gv_ALL,
+            gv_ALL,
+            gv_ALL,
+            gv_ALL,
+            cv_prod_class_2,
+            cv_prod_class_1,
+            cv_customer_class_code_1,
+            ln_drink_base_category_flg,
+            iv_sales_base_category,
+            ln_leaf_base_category_flg,
+            iv_sales_base_category,
+            gv_status_A,
+            gv_status_A,
+            gv_status_A,
+            id_schedule_ship_date,
+            id_schedule_ship_date,
+            cv_deliver_from_4,
+            cv_deliver_to_9
+            ;
+--
+/**
         -- 動的SQL本文を決める
         lv_sql :=   cv_main_sql1
                  || cv_main_sql2
@@ -1652,6 +2090,8 @@ AS
             id_schedule_ship_date,
             id_schedule_ship_date
             ;
+**/
+-- 2008/12/17 mod end ver1.13 M_Uehara
 --
       END IF;
     END IF;
@@ -1670,150 +2110,179 @@ AS
         FETCH reupd_status_cur INTO lr_u_rec;
         EXIT WHEN reupd_status_cur%NOTFOUND;
       END IF;
---2008/08/05 Mod ↓
-      ln_target_cnt := ln_target_cnt + 1;
---2008/08/05 Mod ↑
 --
-      -- 処理件数をカウント
-      IF (ln_bfr_order_header_id <> lr_u_rec.order_header_id) THEN
---2008/08/05 Mod ↓
---        ln_target_cnt := ln_target_cnt + 1;
---2008/08/05 Mod ↓
-        ln_bfr_order_header_id := lr_u_rec.order_header_id;
-      END IF;
+      -- 2008/12/17 本番障害#81 Add Start ----------------
+      ln_lock_error_flg := 0;
+      BEGIN
+        SELECT xoha.order_header_id
+        INTO   ln_order_header_id_lock
+        FROM   xxwsh_order_headers_all xoha
+        WHERE  xoha.order_header_id = lr_u_rec.order_header_id
+        FOR UPDATE NOWAIT;
+      EXCEPTION
+        WHEN OTHERS THEN
+          ln_lock_error_flg := 1;
+      END;
 --
-      ln_data_cnt := ln_data_cnt + 1;
+      IF (ln_lock_error_flg = 0) THEN
+      -- 2008/12/17 本番障害#81 Add End ----------------
 --
-      IF (iv_tightening_status_chk_class = cv_tightening_status_chk_cla_1) THEN
-        -- 締めステータスチェック区分が1:チェック有りの場合
+        ln_target_cnt := ln_target_cnt + 1;   --2008/08/05 Add
 --
-        -- **************************************************
-        -- *** 締めステータスチェック(E-3)
-        -- **************************************************
---
-        lv_status :=
-        xxwsh_common_pkg.check_tightening_status(lr_u_rec.order_type_id,  -- E-2受注タイプID
-                                                 iv_deliver_from,         -- パラメータ.出荷元
-                                                 iv_sales_base,           -- パラメータ.拠点
-                                                 iv_sales_base_category,  -- パラメータ.拠点カテゴリ
-                                                 lr_u_rec.lead_time_day,  -- E-2生産物流LT
-                                                 lr_u_rec.schedule_ship_date,   -- E-2出庫日
-                                                 lr_u_rec.prod_class);    -- E-2商品区分
---
-        -- 締めステータスが'2'または'4'の場合はエラー
-        IF ((lv_status = cv_status_2) OR (lv_status = cv_status_4)) THEN
-          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                                gv_cnst_msg_204);
-          RAISE global_api_expt;
---
-        END IF;
-      END IF;
---
-      -- 締めステータスチェック区分が0:チェック無しの場合
-      IF (iv_callfrom_flg = cv_callfrom_flg_2) THEN
-        -- 呼出元フラグ 2:画面の場合はE-4、E-5は行わない
-        NULL;
-      ELSE
---
-        -- **************************************************
-        -- *** リードタイムチェック(E-4)
-        -- **************************************************
---
-        -- 出庫日の稼働日チェック
-        ln_retcode := xxwsh_common_pkg.get_oprtn_day(lr_u_rec.schedule_ship_date, -- E-2出庫日
-                                                     lr_u_rec.deliver_from, -- E-2出荷元保管場所
-                                                     NULL,                  -- 配送先コード
-                                                     0,                     -- リードタイム
-                                                     lr_u_rec.prod_class,   -- E-2商品区分
-                                                     ld_oprtn_day);         -- 稼働日日付
---
-        -- リターン・コードにエラーが返された場合はエラー
-        IF (ln_retcode = gn_status_error) THEN
-          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                                gv_cnst_msg_205,
-                                                gv_cnst_token_api_name,
-                                                cv_get_oprtn_day_api,
-                                                'ERR_MSG',
-                                                '',
-                                                'REQUEST_NO',
-                                                lr_u_rec.request_no);
-          RAISE global_api_expt;
---
-        -- 出庫日が稼働日でない場合はエラー
-        ELSIF (ld_oprtn_day <> lr_u_rec.schedule_ship_date) THEN
-          -- 出力項目の稼働日日付≠入力パラメータで渡した日付
-          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                                gv_cnst_msg_206,
-                                                'IN_DATE',
-                                                TO_CHAR(lr_u_rec.schedule_ship_date,'YYYY/MM/DD'),
-                                                'REQUEST_NO',
-                                                lr_u_rec.request_no);
-          RAISE global_api_expt;
+        -- 処理件数をカウント
+        IF (ln_bfr_order_header_id <> lr_u_rec.order_header_id) THEN
+          --ln_target_cnt := ln_target_cnt + 1;   --2008/08/05 Del
+          ln_bfr_order_header_id := lr_u_rec.order_header_id;
         END IF;
 --
-        -- 着日の稼働日チェック
-        ln_retcode := xxwsh_common_pkg.get_oprtn_day(lr_u_rec.schedule_arrival_date, -- E-2着日
-                                                     NULL,                  -- 出荷元保管場所
-                                                     lr_u_rec.deliver_to,   -- 配送先コード
-                                                     0,                     -- リードタイム
-                                                     lr_u_rec.prod_class,   -- E-2商品区分
-                                                     ld_oprtn_day);         -- 稼働日日付
+        ln_data_cnt := ln_data_cnt + 1;
 --
-        -- リターン・コードにエラーが返された場合はエラー
-        IF (ln_retcode = gn_status_error) THEN
-          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                                gv_cnst_msg_205,
-                                                gv_cnst_token_api_name,
-                                                cv_get_oprtn_day_api,
-                                                'ERR_MSG',
-                                                '',
-                                                'REQUEST_NO',
-                                                lr_u_rec.request_no);
-          RAISE global_api_expt;
+        IF (iv_tightening_status_chk_class = cv_tightening_status_chk_cla_1) THEN
+          -- 締めステータスチェック区分が1:チェック有りの場合
 --
-        -- 着日が稼働日でない場合はエラー
-        ELSIF (ld_oprtn_day <> lr_u_rec.schedule_arrival_date) THEN
-          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                                gv_cnst_msg_206,
-                                                'IN_DATE',
-                                                TO_CHAR(lr_u_rec.schedule_arrival_date,'YYYY/MM/DD'),
-                                                'REQUEST_NO',
-                                                lr_u_rec.request_no);
--- 2008/11/14 H.Itou Mod Start 統合テスト指摘650 着荷日が稼働日でない場合、警告（登録は行う。）
---          RAISE global_api_expt;
-          ln_warn_cnt := ln_warn_cnt + 1;
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
-          ov_errmsg := gv_msg_warn_01;
--- 2008/11/14 H.Itou Mod End
+          -- **************************************************
+          -- *** 締めステータスチェック(E-3)
+          -- **************************************************
+--
+          lv_status :=
+          xxwsh_common_pkg.check_tightening_status(lr_u_rec.order_type_id,  -- E-2受注タイプID
+                                                   iv_deliver_from,         -- パラメータ.出荷元
+                                                   iv_sales_base,           -- パラメータ.拠点
+                                                   iv_sales_base_category,  -- パラメータ.拠点カテゴリ
+                                                   lr_u_rec.lead_time_day,  -- E-2生産物流LT
+                                                   lr_u_rec.schedule_ship_date,   -- E-2出庫日
+                                                   lr_u_rec.prod_class);    -- E-2商品区分
+--
+          -- 締めステータスが'2'または'4'の場合はエラー
+          IF ((lv_status = cv_status_2) OR (lv_status = cv_status_4)) THEN
+            -- 2008/12/17 Del Start Ver1.13 -----------------------------------
+            --lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+            --                                      gv_cnst_msg_204);
+            --RAISE global_api_expt;
+            -- 2008/12/17 Del Start Ver1.13 -----------------------------------
+            -- 2008/12/17 Add Start Ver1.13 -----------------------------------
+            FND_FILE.PUT_LINE(FND_FILE.LOG,
+              '締めステータスチェックエラー'                  ||
+              '/伝票No:'       || lr_u_rec.request_no         ||
+              '/受注タイプID:' || lr_u_rec.order_type_id      ||
+              '/出荷元:'       || iv_deliver_from             ||
+              '/拠点:'         || iv_sales_base               ||
+              '/拠点カテゴリ:' || iv_sales_base_category      ||
+              '/生産物流LT:'   || lr_u_rec.lead_time_day      ||
+              '/出庫日:'       || lr_u_rec.schedule_ship_date ||
+              '/商品区分:'     || lr_u_rec.prod_class);
+--
+            ln_stschk_error_flg := 1;
+            -- 2008/12/17 Add End Ver1.13 -------------------------------------
+--
+          END IF;
         END IF;
+--
+        -- 締めステータスチェック区分が0:チェック無しの場合
+        IF (iv_callfrom_flg = cv_callfrom_flg_2) THEN
+          -- 呼出元フラグ 2:画面の場合はE-4、E-5は行わない
+          NULL;
+        ELSE
+--
+          -- **************************************************
+          -- *** リードタイムチェック(E-4)
+          -- **************************************************
+--
+          -- 出庫日の稼働日チェック
+          ln_retcode := xxwsh_common_pkg.get_oprtn_day(lr_u_rec.schedule_ship_date, -- E-2出庫日
+                                                       lr_u_rec.deliver_from, -- E-2出荷元保管場所
+                                                       NULL,                  -- 配送先コード
+                                                       0,                     -- リードタイム
+                                                       lr_u_rec.prod_class,   -- E-2商品区分
+                                                       ld_oprtn_day);         -- 稼働日日付
+--
+          -- リターン・コードにエラーが返された場合はエラー
+          IF (ln_retcode = gn_status_error) THEN
+            lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                  gv_cnst_msg_205,
+                                                  gv_cnst_token_api_name,
+                                                  cv_get_oprtn_day_api,
+                                                  'ERR_MSG',
+                                                  '',
+                                                  'REQUEST_NO',
+                                                  lr_u_rec.request_no);
+            RAISE global_api_expt;
+--
+          -- 出庫日が稼働日でない場合はエラー
+          ELSIF (ld_oprtn_day <> lr_u_rec.schedule_ship_date) THEN
+            -- 出力項目の稼働日日付≠入力パラメータで渡した日付
+            lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                  gv_cnst_msg_206,
+                                                  'IN_DATE',
+                                                  TO_CHAR(lr_u_rec.schedule_ship_date,'YYYY/MM/DD'),
+                                                  'REQUEST_NO',
+                                                  lr_u_rec.request_no);
+            RAISE global_api_expt;
+          END IF;
+--
+          -- 着日の稼働日チェック
+          ln_retcode := xxwsh_common_pkg.get_oprtn_day(lr_u_rec.schedule_arrival_date, -- E-2着日
+                                                       NULL,                  -- 出荷元保管場所
+                                                       lr_u_rec.deliver_to,   -- 配送先コード
+                                                       0,                     -- リードタイム
+                                                       lr_u_rec.prod_class,   -- E-2商品区分
+                                                       ld_oprtn_day);         -- 稼働日日付
+--
+          -- リターン・コードにエラーが返された場合はエラー
+          IF (ln_retcode = gn_status_error) THEN
+            lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                  gv_cnst_msg_205,
+                                                  gv_cnst_token_api_name,
+                                                  cv_get_oprtn_day_api,
+                                                  'ERR_MSG',
+                                                  '',
+                                                  'REQUEST_NO',
+                                                  lr_u_rec.request_no);
+            RAISE global_api_expt;
+--
+          -- 着日が稼働日でない場合はエラー
+          ELSIF (ld_oprtn_day <> lr_u_rec.schedule_arrival_date) THEN
+            lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                  gv_cnst_msg_206,
+                                                  'IN_DATE',
+                                                  TO_CHAR(lr_u_rec.schedule_arrival_date,'YYYY/MM/DD'),
+                                                  'REQUEST_NO',
+                                                  lr_u_rec.request_no);
+  -- 2008/11/14 H.Itou Mod Start 統合テスト指摘650 着荷日が稼働日でない場合、警告（登録は行う。）
+  --          RAISE global_api_expt;
+            ln_warn_cnt := ln_warn_cnt + 1;
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+            ov_errmsg := gv_msg_warn_01;
+  -- 2008/11/14 H.Itou Mod End
+          END IF;
 --
 /* 20081201 D.Sugahara Deleted※暫定 Start --リードタイムエラーを回避するため
-        -- リードタイム算出
-        xxwsh_common910_pkg.calc_lead_time(cv_deliver_from_4,     -- 4:倉庫
-                                           lr_u_rec.deliver_from, -- E-2出荷元保管場所
-                                           cv_deliver_to_9,       -- 9:配送先
-                                           lr_u_rec.deliver_to,   -- E-2配送先コード
-                                           lr_u_rec.prod_class,   -- E-2商品区分
-                                           lr_u_rec.order_type_id,-- E-2受注タイプID
-                                           lr_u_rec.schedule_ship_date,-- E-2出庫日
-                                           lv_retcode,            -- リターンコード
-                                           lv_errbuf,             -- エラーメッセージコード
-                                           lv_errmsg,             -- エラーメッセージ
-                                           ln_lead_time,          -- 生産物流LT／引取変更LT
-                                           ln_delivery_lt);       -- 配送LT
+          -- リードタイム算出
+          xxwsh_common910_pkg.calc_lead_time(cv_deliver_from_4,     -- 4:倉庫
+                                             lr_u_rec.deliver_from, -- E-2出荷元保管場所
+                                             cv_deliver_to_9,       -- 9:配送先
+                                             lr_u_rec.deliver_to,   -- E-2配送先コード
+                                             lr_u_rec.prod_class,   -- E-2商品区分
+                                             lr_u_rec.order_type_id,-- E-2受注タイプID
+                                             lr_u_rec.schedule_ship_date,-- E-2出庫日
+                                             lv_retcode,            -- リターンコード
+                                             lv_errbuf,             -- エラーメッセージコード
+                                             lv_errmsg,             -- エラーメッセージ
+                                             ln_lead_time,          -- 生産物流LT／引取変更LT
+                                             ln_delivery_lt);       -- 配送LT
 --
-        -- リターン・コードにエラーが返された場合はエラー
-        IF (ln_retcode = gn_status_error) THEN
-          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                                gv_cnst_msg_205,
-                                                gv_cnst_token_api_name,
-                                                cv_calc_lead_time_api,
-                                                'ERR_MSG',
-                                                lv_errmsg,
-                                                'REQUEST_NO',
-                                                lr_u_rec.request_no);
-          RAISE global_api_expt;
-        END IF;
+          -- リターン・コードにエラーが返された場合はエラー
+          IF (ln_retcode = gn_status_error) THEN
+            lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                  gv_cnst_msg_205,
+                                                  gv_cnst_token_api_name,
+                                                  cv_calc_lead_time_api,
+                                                  'ERR_MSG',
+                                                  lv_errmsg,
+                                                  'REQUEST_NO',
+                                                  lr_u_rec.request_no);
+            RAISE global_api_expt;
+          END IF;
 --
 -- 2008/11/14 H.Itou Mod Start 統合テスト指摘650 着荷日 － 配送リードタイムは稼動日を考慮しない。
 --        -- リードタイム妥当チェック
@@ -1837,75 +2306,77 @@ AS
 --                                                lr_u_rec.request_no);
 --          RAISE global_api_expt;
 --        END IF;
-        -- 着荷日 － 配送リードタイムを取得
-        ld_oprtn_day := lr_u_rec.schedule_arrival_date - ln_delivery_lt;
+          -- 着荷日 － 配送リードタイムを取得
+          ld_oprtn_day := lr_u_rec.schedule_arrival_date - ln_delivery_lt;
 -- 2008/11/14 H.Itou Mod End
 --
-        -- E-2出庫日 < 稼働日
-        IF (lr_u_rec.schedule_ship_date > ld_oprtn_day) THEN
-          -- リードタイムを満たしていない
-          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                                gv_cnst_msg_207,
-                                                'LT_CLASS',
-                                                cv_get_oprtn_day_lt2,
-                                                'REQUEST_NO',
-                                                lr_u_rec.request_no);
-          RAISE global_api_expt;
-        END IF;
+          -- E-2出庫日 < 稼働日
+          IF (lr_u_rec.schedule_ship_date > ld_oprtn_day) THEN
+            -- リードタイムを満たしていない
+            lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                  gv_cnst_msg_207,
+                                                  'LT_CLASS',
+                                                  cv_get_oprtn_day_lt2,
+                                                  'REQUEST_NO',
+                                                  lr_u_rec.request_no);
+            RAISE global_api_expt;
+          END IF;
 --
-        -- リードタイム妥当チェック
-        ln_retcode :=
-        xxwsh_common_pkg.get_oprtn_day(lr_u_rec.schedule_ship_date,    -- E-2出庫日
-                                       NULL,                           -- 出荷元保管場所
-                                       lr_u_rec.deliver_to,            -- E-2配送先コード
-                                       ln_lead_time,                   -- リードタイム
-                                       lr_u_rec.prod_class,            -- E-2商品区分
-                                       ld_oprtn_day);                  -- 稼働日日付
+          -- リードタイム妥当チェック
+          ln_retcode :=
+          xxwsh_common_pkg.get_oprtn_day(lr_u_rec.schedule_ship_date,    -- E-2出庫日
+                                         NULL,                           -- 出荷元保管場所
+                                         lr_u_rec.deliver_to,            -- E-2配送先コード
+                                         ln_lead_time,                   -- リードタイム
+                                         lr_u_rec.prod_class,            -- E-2商品区分
+                                         ld_oprtn_day);                  -- 稼働日日付
 --
-        -- リターン・コードにエラーが返された場合はエラー
-        IF (ln_retcode = gn_status_error) THEN
-          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                                gv_cnst_msg_205,
-                                                gv_cnst_token_api_name,
-                                                cv_get_oprtn_day_api,
-                                                'ERR_MSG',
-                                                '',
-                                                'REQUEST_NO',
-                                                lr_u_rec.request_no);
-          RAISE global_api_expt;
-        END IF;
+          -- リターン・コードにエラーが返された場合はエラー
+          IF (ln_retcode = gn_status_error) THEN
+            lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                  gv_cnst_msg_205,
+                                                  gv_cnst_token_api_name,
+                                                  cv_get_oprtn_day_api,
+                                                  'ERR_MSG',
+                                                  '',
+                                                  'REQUEST_NO',
+                                                  lr_u_rec.request_no);
+            RAISE global_api_expt;
+          END IF;
 --
 -- 2008/10/28 H.Itou Mod Start 統合テスト指摘141 生産物流LT／引取変更LTチェックは、当日出荷の場合があるので、稼働日＋1 でチェックを行う。
 --        -- システム日付 > 稼働日
 --        IF (ld_sysdate > ld_oprtn_day) THEN
-        -- システム日付 > 稼働日 + 1
-        IF (ld_sysdate > ld_oprtn_day + 1) THEN
+          -- システム日付 > 稼働日 + 1
+          IF (ld_sysdate > ld_oprtn_day + 1) THEN
 -- 2008/10/28 H.Itou Mod End
-          -- 配送リードタイムが妥当でない
-          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                                gv_cnst_msg_207,
-                                                'LT_CLASS',
-                                                cv_get_oprtn_day_lt,
-                                                'REQUEST_NO',
-                                                lr_u_rec.request_no);
-          RAISE global_api_expt;
-        END IF;
-*/
-
+            -- 配送リードタイムが妥当でない
+            lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                  gv_cnst_msg_207,
+                                                  'LT_CLASS',
+                                                  cv_get_oprtn_day_lt,
+                                                  'REQUEST_NO',
+                                                  lr_u_rec.request_no);
+            RAISE global_api_expt;
+          END IF;
+  */
+--
 --20081201 D.Sugahara Deleted※暫定 End --リードタイムエラーを回避するため
 --
-      END IF;
+        END IF;
 --
-      -- **************************************************
-      -- *** PL/SQL表への挿入(E-6)
-      -- **************************************************
+        -- **************************************************
+        -- *** PL/SQL表への挿入(E-6)
+        -- **************************************************
 --
-      gt_header_id_upd_tab(ln_data_cnt) := lr_u_rec.order_header_id; -- 受注ヘッダアドオンID
+        gt_header_id_upd_tab(ln_data_cnt) := lr_u_rec.order_header_id; -- 受注ヘッダアドオンID
 --
 -- 2008/08/05 Mod ↓
 --      ln_normal_cnt := ln_target_cnt;
-      ln_normal_cnt := ln_normal_cnt + 1;
+        ln_normal_cnt := ln_normal_cnt + 1;
 -- 2008/08/05 Mod ↑
+--
+      END IF;    -- 2008/12/17 本番障害#81 Add
 --
     END LOOP data_loop;
 --
@@ -1915,6 +2386,13 @@ AS
     IF ( reupd_status_cur%ISOPEN ) THEN
       CLOSE reupd_status_cur;
     END IF;
+--
+    -- 2008/12/17 Add Start Ver1.13 --------------------------------
+    IF (ln_stschk_error_flg = 1) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,gv_cnst_msg_204);
+      RAISE global_api_expt;
+    END IF;
+    -- 2008/12/17 Add End Ver1.13 -------------------------------------
 --
 -- 2008/10/10 H.Itou Add Start 締めレコード作成は、対象データなしでも行う。
     -- **************************************************
