@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcsm_common_pkg(body)
  * Description            :
  * MD.070                 : MD070_IPO_CSM_共通関数
- * Version                : 1.4
+ * Version                : 1.5
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009-05-07    1.2  M.Ohtsuki      ［障害T1_0858］拠点コードリスト取得条件不備
  *  2009-07-01    1.3  M.Ohtsuki      ［SCS障害管理番号0000253］対応
  *  2009-08-18    1.4  T.Tsukino      ［SCS障害管理番号0001045］対応 
+ *  2010-12-14    1.5  Y.Kanami       ［E_本稼動_05803］
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -1092,14 +1093,20 @@ AS
                                    ,cv_level_2,xlllv.cd_level2
                                    ,cv_level_1,xlllv.cd_level1
                                    ,NULL)
---// ADD START 2009/05/07 T1_0858 M.Ohtsuki
-      AND EXISTS
-          (SELECT 'X'
-           FROM   xxcsm_item_plan_result   xipr                                                     -- 商品計画用販売実績
-           WHERE  (xipr.subject_year = (TO_NUMBER(iv_subject_year) - 1)                             -- 入力パラメータの1年前のデータ
-                OR xipr.subject_year = (TO_NUMBER(iv_subject_year) - 2))                            -- 入力パラメータの2年前のデータ
-           AND     xipr.location_cd  = xlnlv.base_code)
---// ADD END   2009/05/07 T1_0858 M.Ohtsuki
+--//DEL START 2012/12/14 E_本稼動_05803 Y.Kanami
+----// ADD START 2009/05/07 T1_0858 M.Ohtsuki
+--      AND EXISTS
+--          (SELECT 'X'
+--           FROM   xxcsm_item_plan_result   xipr                                                     -- 商品計画用販売実績
+--           WHERE  (xipr.subject_year = (TO_NUMBER(iv_subject_year) - 1)                             -- 入力パラメータの1年前のデータ
+--                OR xipr.subject_year = (TO_NUMBER(iv_subject_year) - 2))                            -- 入力パラメータの2年前のデータ
+--           AND     xipr.location_cd  = xlnlv.base_code)
+----// ADD END   2009/05/07 T1_0858 M.Ohtsuki
+--// DEL START 2012/12/14 E_本稼動_05803 Y.Kanami
+--// ADD START 2012/12/14 E_本稼動_05803 Y.Kanami
+    ORDER BY xlnlv.main_dept_cd ASC              -- 本部コード
+            ,xlnlv.base_code    ASC              -- 拠点コード
+--// ADD START 2012/12/14 E_本稼動_05803 Y.Kanami
     ;
     -- 抽出コードの件数が0件の場合
     IF (l_get_loc_tab.COUNT = 0) THEN
