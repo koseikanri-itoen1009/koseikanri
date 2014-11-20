@@ -7,7 +7,7 @@ AS
  * Description      : 顧客インタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 顧客インタフェース   T_MD070_BPO_80A
- * Version          : 1.5
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  get_party_num          顧客コードの取得を行うプロシージャ
  *  get_party_id           パーティIDの取得を行うプロシージャ
  *  get_party_site_id      パーティサイトマスタのサイトIDの取得を行うプロシージャ
+ *  get_party_site_id_2    パーティサイトマスタのサイトIDの取得を行うプロシージャ
  *  get_site_to_if         パーティサイトマスタのサイトIDの取得を行うプロシージャ
  *  get_site_number        パーティサイトマスタのサイトIDの取得を行うプロシージャ
  *  exists_party_id        パーティIDの取得を行うプロシージャ
@@ -81,6 +82,7 @@ AS
  *  2008/06/23    1.4   Oracle 山根 一浩 不具合No259対応
  *  2008/07/07    1.5   Oracle 山根 一浩 I_S_192対応
  *  2008/08/08    1.6   Oracle 山根 一浩 ST不具合修正
+ *  2008/08/18    1.7   Oracle 山根 一浩 変更要求No61 不具合修正対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -425,6 +427,8 @@ AS
   gv_location_addr       VARCHAR2(50);                               -- ロケーションアドレス
   gv_customer_class_code VARCHAR2(30);
 --
+-- 2008/08/18 Mod ↓
+/*
   gn_created_by              NUMBER(15);
   gd_creation_date           DATE;
   gn_last_updated_by         NUMBER(15);
@@ -433,6 +437,16 @@ AS
   gn_request_id              NUMBER(15);
   gn_program_application_id  NUMBER(15);
   gn_program_id              NUMBER(15);
+*/
+  gn_created_by              NUMBER;
+  gd_creation_date           DATE;
+  gn_last_updated_by         NUMBER;
+  gd_last_update_date        DATE;
+  gn_last_update_login       NUMBER;
+  gn_request_id              NUMBER;
+  gn_program_application_id  NUMBER;
+  gn_program_id              NUMBER;
+-- 2008/08/18 Mod ↑
   gd_program_update_date     DATE;
   gd_min_date                DATE;
   gd_max_date                DATE;
@@ -3364,14 +3378,17 @@ AS
              ir_masters_rec.site_status,
              ir_masters_rec.party_number,
              ir_masters_rec.obj_site_number
-      FROM   hz_parties       hp,                        -- パーティマスタ
-             hz_party_sites   hps,                       -- パーティサイトマスタ
-             hz_cust_accounts hca                        -- 顧客マスタ
+      FROM   hz_parties             hp,                  -- パーティマスタ
+             hz_party_sites         hps,                 -- パーティサイトマスタ
+             hz_cust_accounts       hca,                 -- 顧客マスタ
+             hz_cust_acct_sites_all hcas                 -- 顧客所在地マスタ
       WHERE  hp.party_id        = hps.party_id
       AND    hps.party_id       = hca.party_id
+      AND    hps.party_site_id  = hcas.party_site_id
       AND    hca.account_number = lv_account_number
-      AND    hps.status         = gv_status_on
-      AND    ROWNUM             = 1;
+      AND    hcas.attribute18   = ir_masters_rec.ship_to_code    -- 配送先コード
+      AND    hps.status         = gv_status_on;
+--      AND    ROWNUM             = 1;
 --
       ob_retcd := TRUE;
 --
@@ -3677,6 +3694,7 @@ AS
 --
     ob_retcd := TRUE;
 --
+/* 2008/08/18 Del ↓
     -- 2008/04/17 変更要求No61 対応
     -- 拠点紐付き
     IF ((ir_masters_rec.proc_code = gn_proc_s_upd)
@@ -3690,6 +3708,7 @@ AS
      OR (ir_masters_rec.proc_code = gn_proc_dc_del)) THEN
       lv_account_number := ir_masters_rec.party_num;       -- 顧客コード
     END IF;
+2008/08/18 Del ↑ */
 --
     BEGIN
 --
@@ -3716,8 +3735,10 @@ AS
       WHERE  hp.party_id        = hps.party_id
       AND    hp.party_id        = hca.party_id
       AND    hps.party_site_id  = hcas.party_site_id
-      AND    hca.account_number = lv_account_number
-      AND    ROWNUM = 1;
+--      AND    hca.account_number = lv_account_number            -- 2008/08/18 Del
+      AND    hps.status         = gv_status_on                   -- 有効 2008/08/18 Add
+      AND    hcas.attribute18   = ir_masters_rec.ship_to_code;   -- 配送先コード
+--      AND    ROWNUM = 1;                                       -- 2008/08/18 Del
 --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -3758,6 +3779,137 @@ AS
 --#####################################  固定部 END   #############################################
 --
   END get_party_site_id;
+--
+  /***********************************************************************************
+   * Procedure Name   : get_party_site_id_2
+   * Description      : パーティサイトマスタのサイトIDの取得を行います。
+   ***********************************************************************************/
+  PROCEDURE get_party_site_id_2(
+    ir_masters_rec  IN OUT NOCOPY masters_rec,  -- チェック対象データ
+    ob_retcd           OUT NOCOPY BOOLEAN,      -- 検索結果
+    ov_errbuf          OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode         OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg          OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_party_site_id_2'; -- プログラム名
+--
+--##############################  固定ローカル変数宣言部 START   ##################################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--#####################################  固定部 END   #############################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_cnt               NUMBER;
+    lv_status            hz_party_sites.status%TYPE;
+    lv_account_number    hz_cust_accounts.account_number%TYPE;
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--################################  固定ステータス初期化部 START   ################################
+--
+    ov_retcode := gv_status_normal;
+--
+--#####################################  固定部 END   #############################################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    ob_retcd := TRUE;
+--
+    -- 登録(拠点紐付き)
+    IF (ir_masters_rec.party_num IS NULL) THEN
+      lv_account_number := ir_masters_rec.base_code;      -- 拠点コード
+--
+    -- 登録(顧客紐付き)
+    ELSE
+      lv_account_number := ir_masters_rec.party_num;      -- 顧客コード
+    END IF;
+--
+    BEGIN
+--
+      SELECT hps.party_id,                               -- パーティID
+             hps.party_site_id,                          -- パーティサイトID
+             hps.location_id,                            -- ロケーションID
+             hps.status,                                 -- ステータス
+             hp.party_number,                            -- 組織番号
+             hps.object_version_number,                  -- オブジェクトバージョン番号
+             hcas.cust_acct_site_id,                     -- 顧客サイトID
+             hcas.object_version_number                  -- オブジェクトバージョン番号
+      INTO   ir_masters_rec.p_party_id,
+             ir_masters_rec.party_site_id,
+             ir_masters_rec.location_id,
+             ir_masters_rec.site_status,
+             ir_masters_rec.party_number,
+             ir_masters_rec.obj_site_number,
+             ir_masters_rec.cust_acct_site_id,
+             ir_masters_rec.obj_acct_number
+      FROM   hz_parties             hp,                  -- パーティマスタ
+             hz_party_sites         hps,                 -- パーティサイトマスタ
+             hz_cust_acct_sites_all hcas,                -- 顧客所在地マスタ
+             hz_cust_accounts       hca                  -- 顧客マスタ
+      WHERE  hp.party_id        = hps.party_id
+      AND    hp.party_id        = hca.party_id
+      AND    hps.party_site_id  = hcas.party_site_id
+      AND    hca.account_number = lv_account_number
+      AND    hps.status         = gv_status_off                  -- 無効
+      AND    hcas.attribute18   = ir_masters_rec.ship_to_code;   -- 配送先コード
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        ob_retcd := FALSE;
+        ir_masters_rec.p_party_id      := NULL;
+        ir_masters_rec.party_site_id   := NULL;
+        ir_masters_rec.location_id     := NULL;
+        ir_masters_rec.site_status     := NULL;
+        ir_masters_rec.party_number    := NULL;
+        ir_masters_rec.obj_site_number := NULL;
+--
+      WHEN OTHERS THEN
+        RAISE global_api_others_expt;
+    END;
+--
+    --==============================================================
+    --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   #######################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   #############################################
+--
+  END get_party_site_id_2;
 --
   /***********************************************************************************
    * Procedure Name   : get_site_to_if
@@ -4425,6 +4577,8 @@ AS
     -- ***************************************
 --
     on_kbn := gn_data_nothing;
+-- 2008/08/18 Mod ↓
+/*
 --
     -- 2008/04/17 変更要求No61 対応
     -- 登録(拠点紐付き)
@@ -4445,6 +4599,16 @@ AS
            hz_cust_accounts hca                          -- 顧客マスタ
     WHERE  hps.party_id       = hca.party_id
     AND    hca.account_number = lv_account_number;
+*/
+    SELECT SUM(NVL(DECODE(hps.status,gv_status_on,1),0)),          --ステータス有効
+           SUM(NVL(DECODE(hps.status,gv_status_off,1),0))          --ステータス無効
+    INTO   ln_on_cnt,
+           ln_off_cnt
+    FROM   hz_party_sites         hps,                   -- パーティサイトマスタ
+           hz_cust_acct_sites_all hcas                   -- 顧客所在地マスタ
+    WHERE  hps.party_site_id  = hcas.party_site_id
+    AND    hcas.attribute18   = ir_masters_rec.ship_to_code;   -- 配送先コード
+-- 2008/08/18 Mod ↑
 --
     -- 有効あり
     IF (ln_on_cnt > 0) THEN
@@ -4723,7 +4887,8 @@ AS
     ELSE
       lv_account_number := ir_masters_rec.party_num;       -- 顧客コード
     END IF;
-
+-- 2008/08/18 Mod ↓
+/*
     SELECT COUNT(hps.party_site_id)
     INTO   ln_cnt
     FROM   hz_party_sites   hps,                         -- パーティサイトマスタ
@@ -4732,6 +4897,18 @@ AS
     AND    hca.account_number = lv_account_number
     AND    hps.status         = iv_status
     AND    ROWNUM             = 1;
+*/
+-- 2008/08/18 Mod ↑
+    SELECT COUNT(hps.party_site_id)
+    INTO   ln_cnt
+    FROM   hz_party_sites         hps,                   -- パーティサイトマスタ
+           hz_cust_accounts       hca,                   -- 顧客マスタ
+           hz_cust_acct_sites_all hcas                   -- 顧客所在地マスタ
+    WHERE  hps.party_site_id  = hcas.party_site_id
+    AND    hps.party_id       = hca.party_id
+    AND    hca.account_number = lv_account_number
+    AND    hcas.attribute18   = ir_masters_rec.ship_to_code    -- 配送先コード
+    AND    hps.status         = iv_status;
 --
     IF (ln_cnt > 0) THEN
       ob_retcd := TRUE;
@@ -7699,6 +7876,8 @@ AS
     lr_cust_site_rec.party_site_id     := ln_party_site_id;               -- パーティサイトID
     lr_cust_site_rec.created_by_module := gv_created_by_module;           -- 作成モジュール
     lr_cust_site_rec.attribute18       := ir_masters_rec.ship_to_code;    -- 属性１８
+-- 2008/08/18 Add
+    lr_cust_site_rec.attribute_category := FND_PROFILE.VALUE('ORG_ID');
 --
     -- 顧客所在地マスタ(HZ_CUST_ACCOUNT_SITE_V2PUB)
     HZ_CUST_ACCOUNT_SITE_V2PUB.CREATE_CUST_ACCT_SITE (
@@ -7881,7 +8060,7 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
-    -- パーティサイトIDの取得
+    -- パーティサイトIDの取得(有効)
     get_party_site_id(ir_masters_rec,
                       lb_retcd,
                       lv_errbuf,
@@ -7891,6 +8070,16 @@ AS
     IF (lv_retcode = gv_status_error) THEN
       RAISE global_api_expt;
     END IF;
+--
+    IF (NOT lb_retcd) THEN
+      -- パーティサイトIDの取得(無効)
+      get_party_site_id_2(ir_masters_rec,
+                        lb_retcd,
+                        lv_errbuf,
+                        lv_retcode,
+                        lv_errmsg);
+    END IF;
+/*
 --
     IF (NOT lb_retcd) THEN
       -- パーティサイトIDの取得
@@ -7917,6 +8106,7 @@ AS
         END IF;
       END IF;
     END IF;
+*/
 --
     lr_party_site_rec.party_site_id := ir_masters_rec.party_site_id;
     lr_party_site_rec.party_id      := ir_masters_rec.p_party_id;
@@ -10035,7 +10225,8 @@ AS
       END IF;
     END IF;
 --
-    IF (is_file_status_nomal(lr_site_sts_rec)) THEN
+    IF ((is_file_status_nomal(lr_site_sts_rec))
+    AND (is_file_status_nomal(lr_cust_sts_rec))) THEN
       -- ===============================
       -- 配送先反映処理(A-16)
       -- ===============================
