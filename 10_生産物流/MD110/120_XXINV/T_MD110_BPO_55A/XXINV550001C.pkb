@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2008/10/02    1.20  Yasuhisa Yamamoto  PT 2-1_12 #85
  *  2008/10/22    1.21  Yasuhisa Yamamoto  仕様不備障害 T_S_492
  *  2008/11/10    1.22  Yasuhisa Yamamoto  統合指摘 #536、#547対応
+ *  2008/11/17    1.23  Yasuhisa Yamamoto  統合指摘 #659対応
  *
  *****************************************************************************************/
 --
@@ -1122,6 +1123,9 @@ AS
                     AND    itc_adji.doc_line                 = iaj_adji.doc_line
                     AND    xrpm6v.doc_type                   = itc_adji.doc_type
                     AND    xrpm6v.reason_code                = itc_adji.reason_code
+-- 08/11/17 Y.Yamamoto ADD v1.23 Start
+                    AND    xrpm6v.rcv_pay_div                = TO_CHAR( SIGN( itc_adji.trans_qty ) )
+-- 08/11/17 Y.Yamamoto ADD v1.23 End
 -- 08/05/07 Y.Yamamoto Update v1.1 Start
 --                    AND    xrpm6v.rcv_pay_div                = SIGN( itc_adji.trans_qty )
 -- 08/10/22 Y.Yamamoto delete v1.21 Start
@@ -1186,6 +1190,9 @@ AS
                     AND    itc_trni.doc_line                = iaj_trni.doc_line
                     AND    xrpm9v.doc_type                  = itc_trni.doc_type
                     AND    xrpm9v.reason_code               = itc_trni.reason_code
+-- 08/11/17 Y.Yamamoto ADD v1.23 Start
+                    AND    xrpm9v.rcv_pay_div               = TO_CHAR( SIGN( itc_trni.trans_qty ) )
+-- 08/11/17 Y.Yamamoto ADD v1.23 End
 -- 08/05/07 Y.Yamamoto Update v1.1 Start
 --                    AND    xrpm9v.rcv_pay_div               = SIGN( itc_trni.trans_qty )
 -- 08/10/22 Y.Yamamoto delete v1.21 Start
@@ -1263,9 +1270,12 @@ AS
                     AND    itp_xfer.doc_id                  = ixm_xfer.transfer_id
                     AND    xrpm9v.doc_type                  = itp_xfer.doc_type
                     AND    xrpm9v.reason_code               = itp_xfer.reason_code
+-- 08/11/17 Y.Yamamoto update v1.23 Start
 -- 08/11/10 v1.22 Y.Yamamoto add start
-                    AND    xrpm9v.rcv_pay_div               = SIGN( itp_xfer.trans_qty )
+--                    AND    xrpm9v.rcv_pay_div               = SIGN( itp_xfer.trans_qty )
 -- 08/11/10 v1.22 Y.Yamamoto add end
+                    AND    xrpm9v.rcv_pay_div               = TO_CHAR( SIGN( itp_xfer.trans_qty ) )
+-- 08/11/17 Y.Yamamoto update v1.23 End
 -- 08/05/07 Y.Yamamoto Update v1.1 Start
 --                    AND    xrpm9v.rcv_pay_div               = SIGN( itp_xfer.trans_qty )
 -- 08/10/22 Y.Yamamoto delete v1.21 Start
@@ -2001,6 +2011,9 @@ AS
                     AND    itc_adji.doc_line                 = iaj_adji.doc_line
                     AND    xrpm6v.doc_type                   = itc_adji.doc_type
                     AND    xrpm6v.reason_code                = itc_adji.reason_code
+-- 08/11/17 Y.Yamamoto ADD v1.23 Start
+                    AND    xrpm6v.rcv_pay_div                = TO_CHAR( SIGN( itc_adji.trans_qty ) )
+-- 08/11/17 Y.Yamamoto ADD v1.23 End
 -- 08/05/07 Y.Yamamoto Update v1.1 Start
 --                    AND    xrpm6v.rcv_pay_div                = SIGN( itc_adji.trans_qty )
 -- 08/10/22 Y.Yamamoto delete v1.21 Start
@@ -2065,6 +2078,9 @@ AS
                     AND    itc_trni.doc_line                = iaj_trni.doc_line
                     AND    xrpm9v.doc_type                  = itc_trni.doc_type
                     AND    xrpm9v.reason_code               = itc_trni.reason_code
+-- 08/11/17 Y.Yamamoto ADD v1.23 Start
+                    AND    xrpm9v.rcv_pay_div               = TO_CHAR( SIGN( itc_trni.trans_qty ) )
+-- 08/11/17 Y.Yamamoto ADD v1.23 End
 -- 08/05/07 Y.Yamamoto Update v1.1 Start
 --                    AND    xrpm9v.rcv_pay_div               = SIGN( itc_trni.trans_qty )
 -- 08/10/22 Y.Yamamoto delete v1.21 Start
@@ -2142,9 +2158,12 @@ AS
                     AND    itp_xfer.doc_id                  = ixm_xfer.transfer_id
                     AND    xrpm9v.doc_type                  = itp_xfer.doc_type
                     AND    xrpm9v.reason_code               = itp_xfer.reason_code
+-- 08/11/17 Y.Yamamoto update v1.23 Start
 -- 08/11/10 v1.22 Y.Yamamoto add start
-                    AND    xrpm9v.rcv_pay_div               = SIGN( itp_xfer.trans_qty )
+--                    AND    xrpm9v.rcv_pay_div               = SIGN( itp_xfer.trans_qty )
 -- 08/11/10 v1.22 Y.Yamamoto add end
+                    AND    xrpm9v.rcv_pay_div               = TO_CHAR( SIGN( itp_xfer.trans_qty ) )
+-- 08/11/17 Y.Yamamoto update v1.23 End
 -- 08/05/07 Y.Yamamoto Update v1.1 Start
 --                    AND    xrpm9v.rcv_pay_div               = SIGN( itp_xfer.trans_qty )
 -- 08/10/22 Y.Yamamoto delete v1.21 Start
