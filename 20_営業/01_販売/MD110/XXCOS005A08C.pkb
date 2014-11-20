@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A08C (body)
  * Description      : CSVファイルの受注取込
  * MD.050           : CSVファイルの受注取込 MD050_COS_005_A08
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2009/07/21    1.11  T.Miyata         [0000478指摘対応]TOO_MANY_ROWS例外取得
  *  2009/08/21    1.12  M.Sano           [0000302]JANコードからの品目取得を顧客品目経由に変更
  *  2009/10/30    1.13  N.Maeda          [0001113]XXCMN_CUST_ACCT_SITES2_Vの絞込み時のOU切替処理を追加(org_id)
+ *  2009/11/18    1.14  N.Maeda          [E_T4_00203]国際CSV「出荷依頼No.」追加に伴う修正
  *
  *****************************************************************************************/
 --
@@ -410,7 +411,10 @@ AS
   cv_con_status_warning             CONSTANT  VARCHAR2(10)  := 'WARNING';                            -- ステータス（警告）
 --****************************** 2009/07/14 1.8 T.Miyata MOD  END   ******************************--
 --
-  cn_c_header                       CONSTANT  NUMBER        := 44;                                   --項目
+-- ***************** 2009/11/18 1.14 N.Maeda ADD START ***************** --
+--  cn_c_header                       CONSTANT  NUMBER        := 44;                                   --項目
+  cn_c_header                       CONSTANT  NUMBER        := 45;                                   --項目
+-- ***************** 2009/11/18 1.14 N.Maeda ADD  END  ***************** --
   cn_begin_line                     CONSTANT  NUMBER        := 2;                                    --最初の行
   cn_line_zero                      CONSTANT  NUMBER        := 0;                                    --0行
   cn_item_header                    CONSTANT  NUMBER        := 1;                                    --項目名
@@ -445,6 +449,10 @@ AS
 --  cn_interval                       CONSTANT  NUMBER        := 30;                                   --Interval
 --  cn_max_wait                       CONSTANT  NUMBER        := 0;                                    --Max_wait
 --****************************** 2009/07/10 1.7 T.Tominaga DEL END   ******************************
+-- ***************** 2009/11/18 1.14 N.Maeda ADD START ***************** --
+  cn_packing_instructions           CONSTANT NUMBER         := 12;                                   -- 出荷依頼No.(桁数)
+  cn_pack_instructions              CONSTANT NUMBER         := 45;                                   -- 出荷依頼No.(項目順位)
+-- ***************** 2009/11/18 1.14 N.Maeda ADD  END  ***************** --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1597,6 +1605,9 @@ AS
     on_order_cases_quantity OUT NUMBER,   -- 11.<発注ケース数>
     ov_delivery             OUT VARCHAR2, -- 12.<納品先>
     od_shipping_date        OUT DATE,     -- 13.<出荷日>
+-- ********************* 2009/11/18 1.14 N.Maeda ADD START ********************* --
+    ov_packing_instructions  OUT VARCHAR2, --14.出荷依頼No.
+-- ********************* 2009/11/18 1.14 N.Maeda ADD  END  ********************* --
     ov_errbuf               OUT VARCHAR2, -- 1.エラー・メッセージ           --# 固定 #
     ov_retcode              OUT VARCHAR2, -- 2.リターン・コード             --# 固定 #
     ov_errmsg               OUT VARCHAR2) -- 3.ユーザー・エラー・メッセージ --# 固定 #
@@ -1949,6 +1960,42 @@ AS
       ELSIF ( lv_retcode = cv_status_normal ) THEN
         od_shipping_date        :=  TO_DATE(gr_order_work_data(in_cnt)(cn_shipping_date),cv_yyyymmdd_format);-- 13.<出荷日>
       END IF;
+-- ********************* 2009/11/18 1.14 N.Maeda ADD START ********************* --
+      --出荷依頼No.
+      xxccp_common_pkg2.upload_item_check(
+        iv_item_name    => gr_order_work_data(cn_item_header)(cn_pack_instructions), -- 1.項目名称(日本語名)         -- 必須
+        iv_item_value   => gr_order_work_data(in_cnt)(cn_pack_instructions),         -- 2.項目の値                   -- 任意
+        in_item_len     => cn_packing_instructions,                              -- 3.項目の長さ                 -- 必須
+        in_item_decimal => NULL,                                                 -- 4.項目の長さ(小数点以下)     -- 条件付必須
+        iv_item_nullflg => xxccp_common_pkg2.gv_null_ok,                         -- 5.必須フラグ(上記定数を設定) -- 必須
+        iv_item_attr    => xxccp_common_pkg2.gv_attr_vc2,                        -- 6.項目属性(上記定数を設定)   -- 必須
+        ov_errbuf       => lv_errbuf,   -- 1.エラー・メッセージ           --# 固定 #
+        ov_retcode      => lv_retcode,  -- 2.リターン・コード             --# 固定 #
+        ov_errmsg       => lv_errmsg    -- 3.ユーザー・エラー・メッセージ --# 固定 #
+      );
+      --ワーニング
+      IF ( lv_retcode = cv_status_warn ) THEN
+        lv_err_msg := lv_err_msg || xxccp_common_pkg.get_msg(
+                        iv_application   => ct_xxcos_appl_short_name,
+                        iv_name          => ct_msg_get_format_err,
+                        iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
+                        iv_token_value1  => gv_temp_line_no,                                                 --行番号
+                        iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
+                        iv_token_value2  => gr_order_work_data(in_cnt)(cn_order_number),                     --オーダーNO
+                        iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
+                        iv_token_value3  => gr_order_work_data(in_cnt)(cn_line_number),                      --行No
+                        iv_token_name4   => cv_tkn_err_msg ,                                                 --エラーメッセージ(トークン)
+                        iv_token_value4  => gr_order_work_data(cn_item_header)(cn_pack_instructions)         --項目名
+                      ) || cv_line_feed;
+        --
+      --共通関数エラー
+      ELSIF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_api_expt;
+      --正常終了
+      ELSIF ( lv_retcode = cv_status_normal ) THEN
+        ov_packing_instructions := gr_order_work_data(in_cnt)(cn_pack_instructions);
+      END IF;
+-- ********************* 2009/11/18 1.14 N.Maeda ADD  END  ********************* --
     END IF;
 --
     ------------------------------------
@@ -3675,6 +3722,9 @@ AS
     iv_customer_line_number  IN VARCHAR2,  -- 顧客明細番号(行No.(※設定必要))
     iv_attribute9            IN VARCHAR2,  -- フレックスフィールド9(締め時間)
     iv_salse_base_code       IN VARCHAR2,  -- 売上拠点コード
+-- ********************* 2009/11/18 1.14 N.Maeda ADD START ********************* --
+    iv_set_packing_instructions  IN VARCHAR2,  -- 出荷依頼No.
+-- ********************* 2009/11/18 1.14 N.Maeda ADD  END  ********************* --
     ov_errbuf                OUT VARCHAR2, -- エラー・メッセージ           --# 固定 #
     ov_retcode               OUT VARCHAR2, -- リターン・コード             --# 固定 #
     ov_errmsg                OUT VARCHAR2) -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3776,6 +3826,10 @@ AS
     gr_order_line_oif_data(gn_line_cnt).program_id                 := cn_program_id;             --プログラムID
     gr_order_line_oif_data(gn_line_cnt).program_update_date        := cd_program_update_date;    --プログラム更新日
     gr_order_line_oif_data(gn_line_cnt).request_id                 := NULL;             --リクエストID
+-- ********************* 2009/11/18 1.14 N.Maeda ADD START ********************* --
+    gr_order_line_oif_data(gn_line_cnt).packing_instructions       := iv_set_packing_instructions; --出荷依頼No.
+-- ********************* 2009/11/18 1.14 N.Maeda ADD  END  ********************* --
+    
 --
 --
   EXCEPTION
@@ -4156,6 +4210,10 @@ AS
     ln_order_cases_quantity    NUMBER;        -- 発注ケース数
     lv_delivery                VARCHAR2(128); -- 納品先
     ld_shipping_date           DATE;          -- 出荷日
+-- ********************* 2009/11/18 1.14 N.Maeda ADD START ********************* --
+    lv_packing_instructions    VARCHAR2(128); -- 出荷依頼No.
+    lv_set_packing_instructions    VARCHAR2(128); -- 出荷依頼No.(設定用)
+-- ********************* 2009/11/18 1.14 N.Maeda ADD  END  ********************* --
 --
     lv_account_number          VARCHAR2(40);  -- 顧客コード
     lv_delivery_code           VARCHAR2(40);  -- 配送先コード
@@ -4296,6 +4354,9 @@ AS
         on_order_cases_quantity => ln_order_cases_quantity, -- 発注ケース数
         ov_delivery             => lv_delivery,             -- 納品先
         od_shipping_date        => ld_shipping_date,        -- 出荷日
+-- ********************* 2009/11/18 1.14 N.Maeda ADD START ********************* --
+        ov_packing_instructions => lv_packing_instructions,  -- 出荷依頼No.
+-- ********************* 2009/11/18 1.14 N.Maeda ADD  END  ********************* --
         ov_errbuf               => lv_errbuf,               -- エラー・メッセージ           --# 固定 #
         ov_retcode              => lv_retcode,              -- リターン・コード             --# 固定 #
         ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ --# 固定 #
@@ -4433,6 +4494,9 @@ AS
             ld_schedule_ship_date    := ld_ship_due_date;           -- 14.<予定出荷日       (出荷予定日(SEJ))>
             ln_ordered_quantity      := ln_order_roses_quantity;    -- 15.<受注数量         (発注バラ数(SEJ)>
             lv_order_quantity_uom    := lv_primary_unit_of_measure; -- 16.<受注数量単位     (基準単位(SEJ))>
+-- ********************* 2009/11/18 1.14 N.Maeda ADD START ********************* --
+            lv_set_packing_instructions  := NULL;                   -- 出荷依頼No.
+-- ********************* 2009/11/18 1.14 N.Maeda ADD  END  ********************* --
         -- 2.国際CSV
         ELSIF ( iv_get_format_pat = cv_kokusai_format ) THEN
             lv_customer_number       := lv_delivery;             -- 9.<顧客番号（コード)納品先(国際))
@@ -4440,6 +4504,9 @@ AS
             ld_schedule_ship_date    := ld_shipping_date;        -- 14.<予定出荷日      出荷日(国際))
             ln_ordered_quantity      := ln_order_cases_quantity; -- 15.<受注数量        ケース数(国際))
             lv_order_quantity_uom    := gv_case_uom;             -- 16.<受注数量単位    ケース単位)
+-- ********************* 2009/11/18 1.14 N.Maeda ADD START ********************* --
+            lv_set_packing_instructions  := lv_packing_instructions;  -- 出荷依頼No.
+-- ********************* 2009/11/18 1.14 N.Maeda ADD  END  ********************* --
         END IF;
         --
         set_order_data(
@@ -4464,6 +4531,9 @@ AS
           iv_customer_line_number  => lv_line_number,          -- 顧客明細番号(行No.(※設定必要)>
           iv_attribute9            => lv_total_time,           -- フレックスフィールド9(締め時間>
           iv_salse_base_code       => lv_salse_base_code,      -- 売上拠点
+-- ********************* 2009/11/18 1.14 N.Maeda ADD START ********************* --
+          iv_set_packing_instructions  => lv_set_packing_instructions,  -- 出荷依頼No.
+-- ********************* 2009/11/18 1.14 N.Maeda ADD  END  ********************* --
           ov_errbuf                => lv_errbuf,               -- エラー・メッセージ           --# 固定 #
           ov_retcode               => lv_retcode,              -- リターン・コード             --# 固定 #
           ov_errmsg                => lv_errmsg                -- ユーザー・エラー・メッセージ --# 固定 #
