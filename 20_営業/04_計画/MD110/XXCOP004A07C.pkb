@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A07C(body)
  * Description      : 親コード出荷実績作成
  * MD.050           : 親コード出荷実績作成 MD050_COP_004_A07
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ----------------------   ----------------------------------------------------------
@@ -26,9 +26,10 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2008/12/17    1.00  SCS.Tsubomatsu   新規作成
+ *  2008/12/17    1.0   SCS.Tsubomatsu   新規作成
  *  2009/02/09    1.1   SCS.Kikuchi      結合不具合No.004対応(A-5.該当データ無しの場合の処理変更)
  *  2009/02/16    1.2   SCS.Tsubomatsu   結合不具合No.010対応(A-3.更新条件見直し)
+ *  2009/04/13    1.3   SCS.Kikuchi      T1_0507対応
  *
  *****************************************************************************************/
 --
@@ -928,7 +929,11 @@ AS
     --出荷実績情報抽出
     --==============================================================
     BEGIN
-      SELECT xoha.order_header_id             order_header_id       -- 受注ヘッダアドオン.受注ヘッダアドオンID
+--20090413_Ver1.3_T1_0507_SCS.Kikuchi_MOD_START
+--      SELECT xoha.order_header_id             order_header_id       -- 受注ヘッダアドオン.受注ヘッダアドオンID
+      SELECT /*+ ORDERED */
+             xoha.order_header_id             order_header_id       -- 受注ヘッダアドオン.受注ヘッダアドオンID
+--20090413_Ver1.3_T1_0507_SCS.Kikuchi_MOD_END
             ,xola.order_line_id               order_line_id         -- 受注明細アドオン.受注明細アドオンID
             ,xola.shipping_item_code          shipping_item_code    -- 受注明細アドオン.出荷品目
             ,xicv_s.parent_item_no            parent_item_no_ship   -- 計画_品目カテゴリビュー1(出荷日基準).親品目No
@@ -950,12 +955,20 @@ AS
             ,xicv_n.parent_item_no            parent_item_no_now    -- 計画_品目カテゴリビュー1(システム日付基準).親品目No
       BULK COLLECT
       INTO   o_shipment_result_tab
-      FROM   xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
-            ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
-            ,xxcop_item_categories1_v   xicv_s    -- 品目カテゴリビュー(出荷日基準)
-            ,xxcop_item_categories1_v   xicv_n    -- 品目カテゴリビュー(システム日付基準)
+--20090413_Ver1.3_T1_0507_SCS.Kikuchi_MOD_START
+--      FROM   xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
+--            ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
+--            ,xxcop_item_categories1_v   xicv_s    -- 品目カテゴリビュー(出荷日基準)
+--            ,xxcop_item_categories1_v   xicv_n    -- 品目カテゴリビュー(システム日付基準)
+--            ,oe_transaction_types_all   otta      -- 受注タイプマスタ
+--            ,oe_transaction_types_tl    ottt      -- 受注タイプマスタ詳細
+      FROM   oe_transaction_types_tl    ottt      -- 受注タイプマスタ詳細
             ,oe_transaction_types_all   otta      -- 受注タイプマスタ
-            ,oe_transaction_types_tl    ottt      -- 受注タイプマスタ詳細
+            ,xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
+            ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
+            ,xxcop_item_categories1_v   xicv_n    -- 品目カテゴリビュー(システム日付基準)
+            ,xxcop_item_categories1_v   xicv_s    -- 品目カテゴリビュー(出荷日基準)
+--20090413_Ver1.3_T1_0507_SCS.Kikuchi_MOD_END
       WHERE  xoha.order_header_id = xola.order_header_id
 --
         -- 品目カテゴリビューを出荷日基準で結合
