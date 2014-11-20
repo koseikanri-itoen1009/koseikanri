@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A01R (spec)
  * Description      : 受注一覧リスト
  * MD.050           : 受注一覧リスト MD050_COS_009_A01
- * Version          : 1.9
+ * Version          : 1.12
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *                                       [E_本稼動_00583]伝票区分、分類区分出力対応
  *                                       [E_本稼動_00700]明細金額の端数処理変更対応
  *  2010/01/22    1.9   Y.Kikuchi        [E_本稼動_00408]伝票計出力対応
+ *  2010/04/01    1.12  M.Sano           [E_本稼動_01811]受注ソース「出荷実績依頼」追加対応
  *
  *****************************************************************************************/
 --
@@ -58,7 +59,11 @@ AS
     iv_order_creation_date_from     IN     VARCHAR2,         --   受信日(FROM)
     iv_order_creation_date_to       IN     VARCHAR2,         --   受信日(TO)
     iv_ordered_date_h_from          IN     VARCHAR2,         --   納品日(ヘッダ)(FROM)
-    iv_ordered_date_h_to            IN     VARCHAR2          --   納品日(ヘッダ)(TO)
+/* 2010/04/01 Ver1.12 Mod Start */
+--    iv_ordered_date_h_to            IN     VARCHAR2          --   納品日(ヘッダ)(TO)
+    iv_ordered_date_h_to            IN     VARCHAR2,         --   納品日(ヘッダ)(TO)
+    iv_order_status                 IN     VARCHAR2          --   受注ステータス
+/* 2010/04/01 Ver1.12 Mod End   */
 /* 2009/12/28 Ver1.9 Mod End   */
   );
 END XXCOS009A01R;

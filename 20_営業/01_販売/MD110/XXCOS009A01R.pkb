@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A01R (body)
  * Description      : 受注一覧リスト
  * MD.050           : 受注一覧リスト MD050_COS_009_A01
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2010/01/22    1.9   Y.Kikuchi        [E_本稼動_00408]伝票計出力対応
  *  2010/03/08    1.10  M.Sano           [E_本稼動_01657]数量の参照元変更
  *  2010/03/29    1.11  M.Sano           [E_本稼動_02006]PT対応(その他（CSV/画面）)
+ *  2010/04/01    1.12  M.Sano           [E_本稼動_01811]受注ソース「出荷実績依頼」追加対応
  *
  *****************************************************************************************/
 --
@@ -127,6 +128,12 @@ AS
   --*** 納品日 日付逆転チェック例外 ***
   global_date_rever_odh_chk_expt    EXCEPTION;
 /* 2009/12/28 Ver1.9 Add End   */
+/* 2010/04/01 Ver1.12 Add Start */
+  --*** 受注ステータス名取得例外 ***
+  global_order_status_get_expt      EXCEPTION;
+  --*** 受注ソース参照先頭文字取得例外 ***
+  global_orig_sys_st_get_expt       EXCEPTION;
+/* 2010/04/01 Ver1.12 Add End   */
 --
   PRAGMA EXCEPTION_INIT( global_data_lock_expt, -54 );
 --
@@ -167,6 +174,10 @@ AS
   cv_msg_parameter2         CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11814';    -- パラメータ出力メッセージ(EDI用)（再出力）
   cv_msg_edi_date_err       CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11819';    -- EDI帳票日付指定なしエラー
 /* 2009/12/28 Ver1.9 Add End   */
+/* 2010/04/01 Ver1.12 Add Start */
+  cv_msg_order_status_err   CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11823';    -- 受注ステータス名称取得エラー
+  cv_msg_orig_sys_st_err    CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11824';    -- 受注ソース参照先頭文字取得エラー
+/* 2010/04/01 Ver1.12 Add End   */
   --トークン名
   cv_tkn_nm_account              CONSTANT  VARCHAR2(100) :=  'ACCOUNT_NAME';   --会計期間種別名称
   cv_tkn_nm_para_date            CONSTANT  VARCHAR2(100) :=  'PARA_DATE';      --受注日(FROM)または受注日(TO)
@@ -194,6 +205,10 @@ AS
   cv_tkn_nm_chain_code          CONSTANT  VARCHAR2(100)  :=  'CHAIN_CODE';                  --チェーン店コード
   cv_tkn_nm_order_c_date_f_t    CONSTANT  VARCHAR2(100)  :=  'ORDER_CREATION_DATE_FROM_TO'; --受信日(FROM),(TO)
 /* 2009/12/28 Ver1.9 Add End   */
+/* 2010/04/01 Ver1.12 Add Start */
+  cv_tkn_nm_order_source_name    CONSTANT  VARCHAR2(100) :=  'ORDER_SOURCE_NAME';   --受注ソース名
+  cv_tkn_nm_order_status         CONSTANT  VARCHAR2(100) :=  'ORDER_STATUS';        --ステータス
+/* 2010/04/01 Ver1.12 Add End   */
   --トークン値
   cv_msg_vl_order_date_from      CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11802';    --受注日(FROM)
   cv_msg_vl_order_date_to        CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11803';    --受注日(TO)
@@ -214,6 +229,11 @@ AS
   cv_msg_vl_order_date_h_from    CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11817';    --納品日(FROM)
   cv_msg_vl_order_date_h_to      CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11818';    --納品日(TO)
 /* 2009/12/28 Ver1.9 Add End   */
+/* 2010/04/01 Ver1.12 Add Start */
+  cv_msg_vl_order_source_edi     CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11820';    --EDI取込
+  cv_msg_vl_order_source_clik    CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11821';    --クイック受注入力
+  cv_msg_vl_order_source_ship    CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11822';    --出荷実績依頼
+/* 2010/04/01 Ver1.12 Add End   */
   --受注明細ステータス
   ct_ln_status_closed       CONSTANT  oe_order_lines_all.flow_status_code%TYPE := 'CLOSED';     --クローズ
   ct_ln_status_cancelled    CONSTANT  oe_order_lines_all.flow_status_code%TYPE := 'CANCELLED';  --取消
@@ -234,10 +254,22 @@ AS
 /* 2009/12/28 Ver1.9 Add Start */
   cv_type_rot               CONSTANT  VARCHAR2(100) :=  'XXCOS1_REPORT_OUTPUT_TYPE';
                                                                                --帳票出力区分
+/* 2010/04/01 Ver1.12 Add Start */
+  cv_type_orig_sys_st       CONSTANT  VARCHAR2(100) :=  'XXCOS1_ORDER_HEADERS_008_A06';
+                                                                               --受注ソース参照先頭文字 
+  cv_type_status_name       CONSTANT  VARCHAR2(100) :=  'XXCOS1_ODR_STATUS_009_A01';
+                                                                               --受注一覧リスト対象ステータス
+/* 2010/04/01 Ver1.12 Add End   */
   cv_code_rot_1             CONSTANT  VARCHAR2(100) :=  '1';                   --'1'(新規)
 /* 2009/12/28 Ver1.9 Add End   */
   cv_code_ost_009_a01       CONSTANT  VARCHAR2(100) :=  'XXCOS_009_A01%';      --受注ソースのクイックコード
   cv_diff_y                 CONSTANT  VARCHAR2(100) :=  'Y';                   --Y
+/* 2010/04/01 Ver1.12 Add Start */
+  ct_lookup_code_ship       CONSTANT  fnd_lookup_values.lookup_code%TYPE       --「受注ソース参照先頭文字」の
+                                                    :=  '10';                  --クイックコード(出荷実績依頼)
+  ct_lookup_code_clik       CONSTANT  fnd_lookup_values.lookup_code%TYPE       --「受注ソース参照先頭文字」の
+                                                    :=  '20';                  --クイックコード(クイック受注)
+/* 2010/04/01 Ver1.12 Add End   */
   --プロファイル関連
   cv_prof_org               CONSTANT  VARCHAR2(100) :=  'XXCOI1_ORGANIZATION_CODE';
                                                                                -- プロファイル名(在庫組織コード)
@@ -257,6 +289,11 @@ AS
   cn_record_type_detail     CONSTANT  NUMBER        := 1;                      -- レコードタイプ：明細
   cn_record_type_denpyokei  CONSTANT  NUMBER        := 2;                      -- レコードタイプ：伝票計
 /* 2010/01/22 Ver1.9 Add End E_本稼動_00408対応 */
+/* 2010/04/01 Ver1.12 Add Start */
+  --その他定数
+  cv_exists_yes             CONSTANT  VARCHAR2(1)   := 'Y';                    -- 存在チェック出力用
+  cv_multi                  CONSTANT  VARCHAR2(1)   := '%';                    -- クイックの摘要の部分検索用
+/* 2010/04/01 Ver1.12 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -278,6 +315,10 @@ AS
   gn_org_id                   NUMBER;                                            --営業単位
   gv_order_source_edi_chk     oe_order_sources.name%TYPE;                        --受注ソース（EDI取込）
   gv_order_source_clik_chk    oe_order_sources.name%TYPE;                        --受注ソース（クイック受注入力）
+/* 2010/04/01 Ver1.12 Add Start */
+  gv_order_source_ship_chk    oe_order_sources.name%TYPE;                        --受注ソース（出荷実績依頼）
+  gt_orig_sys_st_value        fnd_lookup_values.meaning%TYPE DEFAULT '';         --外部システム受注番号先頭文字
+/* 2010/04/01 Ver1.12 Add End   */
 /* 2009/12/28 Ver1.9 Add Start */
   gt_report_output_type_n     fnd_lookup_values.meaning%TYPE;                    --出力区分（新規）
 /* 2009/12/28 Ver1.9 Add End   */
@@ -308,6 +349,9 @@ AS
     iv_ordered_date_h_from          IN     VARCHAR2,         --   納品日(ヘッダ)(FROM)
     iv_ordered_date_h_to            IN     VARCHAR2,         --   納品日(ヘッダ)(TO)
 /* 2009/12/28 Ver1.9 Add Start */
+/* 2010/04/01 Ver1.12 Add Start */
+    iv_order_status                 IN     VARCHAR2,         --   受注ステータス
+/* 2010/04/01 Ver1.12 Add End   */
     ov_errbuf                       OUT    VARCHAR2,         --   エラー・メッセージ           --# 固定 #
     ov_retcode                      OUT    VARCHAR2,         --   リターン・コード             --# 固定 #
     ov_errmsg                       OUT    VARCHAR2)         --   ユーザー・エラー・メッセージ --# 固定 #
@@ -335,6 +379,10 @@ AS
     lt_org_cd        mtl_parameters.organization_code%TYPE;  -- 在庫組織コード
     lv_date_item     VARCHAR2(100);                          -- MIN日付/MAX日付
     lv_profile_name  VARCHAR2(100);                          -- 営業単位
+/* 2010/04/01 Ver1.12 Add Start */
+    lv_token_value1        VARCHAR2(100);                          -- エラーメッセージに出力するトークン値
+    lt_order_status_name   fnd_lookup_values.description%TYPE;     -- 受注ステータス名称
+/* 2010/04/01 Ver1.12 Add End   */
 --
     -- *** ローカル・カーソル ***
 --
@@ -494,6 +542,18 @@ AS
 --      AND     rownum                      = 1
 --      ;
 -- ******** 2009/10/02 1.8 N.Maeda MOD END ******** --
+/* 2010/04/01 Ver1.12 Add Start */
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_token_value1 := xxccp_common_pkg.get_msg(
+          iv_application        =>  cv_xxcos_short_name,
+          iv_name               =>  cv_msg_vl_order_source_edi
+        );
+        RAISE global_order_source_get_expt;
+    END;
+--
+    BEGIN
+/* 2010/04/01 Ver1.12 Add End   */
       --クイック受注入力 受注ソースの名称を取得
       SELECT  look_val.description        order_source_clik
       INTO    gv_order_source_clik_chk
@@ -533,8 +593,39 @@ AS
 --      AND     rownum                      = 1
 --      ;
 -- ******** 2009/10/02 1.8 N.Maeda MOD END ******** --
+/* 2010/04/01 Ver1.12 Add Start */
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
+        lv_token_value1 := xxccp_common_pkg.get_msg(
+          iv_application        =>  cv_xxcos_short_name,
+          iv_name               =>  cv_msg_vl_order_source_clik
+        );
+        RAISE global_order_source_get_expt;
+    END;
+--
+    BEGIN
+      --出荷実績依頼 受注ソースの名称を取得
+      SELECT  look_val.description        order_source_clik
+      INTO    gv_order_source_ship_chk
+      FROM    fnd_lookup_values           look_val
+      WHERE   look_val.language           = cv_lang
+      AND     look_val.lookup_type        = cv_type_ost_009_a01
+      AND     look_val.lookup_code        LIKE cv_code_ost_009_a01
+      AND     look_val.attribute6         = cv_diff_y               --クイック受注入力
+      AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+      AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+      AND     look_val.enabled_flag       = ct_enabled_flg_y
+      AND     rownum                      = 1
+      ;
+/* 2010/04/01 Ver1.12 Add End   */
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+/* 2010/04/01 Ver1.12 Add Start */
+        lv_token_value1 := xxccp_common_pkg.get_msg(
+          iv_application        =>  cv_xxcos_short_name,
+          iv_name               =>  cv_msg_vl_order_source_ship
+        );
+/* 2010/04/01 Ver1.12 Add End   */
         RAISE global_order_source_get_expt;
     END;
 --
@@ -561,10 +652,79 @@ AS
       END;
     END IF;
 /* 2009/12/28 Ver1.9 Add End   */
+/* 2010/04/01 Ver1.12 Add Start */
+--
     --========================================
-    -- 8.パラメータ出力処理
+    -- 9.外部システム受注番号先頭文字取得処理
+    --========================================
+    BEGIN
+      IF (    iv_order_source = gv_order_source_clik_chk) THEN
+        -- 「受注ソース参照先頭文字」の取得（クイック受注入力）
+        SELECT look_val.meaning
+        INTO   gt_orig_sys_st_value
+        FROM   fnd_lookup_values           look_val
+        WHERE  look_val.lookup_type        = cv_type_orig_sys_st
+        AND    look_val.language           = cv_lang
+        AND    gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+        AND    gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+        AND    look_val.enabled_flag       = ct_enabled_flg_y
+        AND    look_val.lookup_code        = ct_lookup_code_clik
+        ;
+      ELSIF ( iv_order_source = gv_order_source_ship_chk) THEN
+        -- 「受注ソース参照先頭文字」の取得（出荷実績依頼）
+        SELECT look_val.meaning
+        INTO   gt_orig_sys_st_value
+        FROM   fnd_lookup_values           look_val
+        WHERE  look_val.lookup_type        = cv_type_orig_sys_st
+        AND    look_val.language           = cv_lang
+        AND    gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+        AND    gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+        AND    look_val.enabled_flag       = ct_enabled_flg_y
+        AND    look_val.lookup_code        = ct_lookup_code_ship
+        ;
+      END IF;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_token_value1 := xxccp_common_pkg.get_msg(
+          iv_application        =>  cv_xxcos_short_name,
+          iv_name               =>  iv_order_source
+        );
+        RAISE global_orig_sys_st_get_expt;
+    END;
+--
+/* 2010/04/01 Ver1.12 Add End   */
+    --========================================
+    -- 10.パラメータ出力処理
     --========================================
     IF ( iv_order_source <> gv_order_source_edi_chk) THEN      --その他用（CSV/画面）
+/* 2010/04/01 Ver1.12 Mod Start */
+      -- 受注ステータスの名称取得
+      IF ( iv_order_status IS NOT NULL ) THEN
+        BEGIN
+          --受注ステータス名の取得
+          SELECT
+              look_val.description
+          INTO
+              lt_order_status_name
+          FROM
+              fnd_lookup_values  look_val
+          WHERE
+          -- 参照タイプ固定条件(タイプ：受注一覧リスト対象ステータス)
+              look_val.language      =  cv_lang
+          AND look_val.lookup_type   =  cv_type_status_name
+          AND gd_proc_date           >= NVL( look_val.start_date_active, gd_min_date )
+          AND gd_proc_date           <= NVL( look_val.end_date_active, gd_max_date )
+          AND look_val.enabled_flag  =  ct_enabled_flg_y
+          -- 内容と入力パラメータ.受注ステータスが同一のもの
+          AND look_val.meaning       =  iv_order_status
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            RAISE global_order_status_get_expt;
+        END;
+      END IF;
+      -- パラメータの表示
+/* 2010/04/01 Ver1.12 Mod End   */
       lv_para_msg             :=  xxccp_common_pkg.get_msg(
         iv_application        =>  cv_xxcos_short_name,
         iv_name               =>  cv_msg_parameter,
@@ -585,7 +745,12 @@ AS
         iv_token_name8        =>  cv_tkn_nm_subinventory,
         iv_token_value8       =>  iv_subinventory,
         iv_token_name9        =>  cv_tkn_nm_order_numbe,
-        iv_token_value9       =>  iv_order_number
+/* 2010/04/01 Ver1.12 Mod Start */
+--        iv_token_value9       =>  iv_order_number
+        iv_token_value9       =>  iv_order_number,
+        iv_token_name10       =>  cv_tkn_nm_order_status,
+        iv_token_value10      =>  lt_order_status_name
+/* 2010/04/01 Ver1.12 Mod End   */
       );
 /* 2009/12/28 Ver1.9 Mod Start */
 --    ELSE                                                      --EDI用
@@ -640,7 +805,12 @@ AS
     WHEN global_order_source_get_expt THEN
       ov_errmsg               :=  xxccp_common_pkg.get_msg(
         iv_application        =>  cv_xxcos_short_name,
-        iv_name               =>  cv_msg_order_source
+/* 2010/04/01 Ver1.12 Mod Start */
+--        iv_name               =>  cv_msg_order_source
+        iv_name               =>  cv_msg_order_source,
+        iv_token_name1        =>  cv_tkn_nm_order_source_name,
+        iv_token_value1       =>  lv_token_value1
+/* 2010/04/01 Ver1.12 Mod End   */
       );
       ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg, 1, 5000 );
       ov_retcode := cv_status_error;
@@ -655,6 +825,28 @@ AS
       ov_retcode := cv_status_error;
 /* 2009/12/28 Ver1.9 Add End   */
 --
+/* 2010/04/01 Ver1.12 Add Start */
+    -- *** 受注ステータス名取得例外ハンドラ ***
+    WHEN global_order_status_get_expt THEN
+      ov_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcos_short_name,
+        iv_name               =>  cv_msg_order_status_err
+      );
+      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+    -- *** 受注ソース参照先頭文字取得例外ハンドラ ***
+    WHEN global_orig_sys_st_get_expt THEN
+      ov_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcos_short_name,
+        iv_name               =>  cv_msg_orig_sys_st_err,
+        iv_token_name1        =>  cv_tkn_nm_order_source_name,
+        iv_token_value1       =>  lv_token_value1
+      );
+      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+/* 2010/04/01 Ver1.12 Add End   */
 --#################################  固定例外処理部 START   ####################################
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -1173,6 +1365,9 @@ AS
     id_ordered_date_h_from          IN     DATE,         --   納品日(ヘッダ)(FROM)
     id_ordered_date_h_to            IN     DATE,         --   納品日(ヘッダ)(TO)
 /* 2009/12/28 Ver1.9 Add End   */
+/* 2010/04/01 Ver1.12 Add Start */
+    iv_order_status                 IN     VARCHAR2,     --   受注ステータス
+/* 2010/04/01 Ver1.12 Add End   */
     ov_errbuf                       OUT    VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode                      OUT    VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg                       OUT    VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1471,7 +1666,6 @@ AS
           )
         )
 /* 2009/12/28 Ver1.9 Add  End   */
-
 --****************************** 2009/07/29 1.7 T.Tominaga DEL START ******************************--
 --        --CSV/その他の場合
 --        OR ( 
@@ -1569,6 +1763,9 @@ AS
         /*+
            LEADING(xca)
            USE_NL(xca hca ooha oos jrs jrre papf1)
+-- 2010/04/01 Ver1.12 Add Start
+           INDEX(ooha oe_order_headers_n2)
+-- 2010/04/01 Ver1.12 Add End
          */
 /* 2010/03/29 Ver1.11 Add End   */
         oola.rowid                             AS row_id                     -- rowid
@@ -1650,7 +1847,7 @@ AS
         AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
         AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
         AND     look_val.enabled_flag       = ct_enabled_flg_y
-        --受注ソース（EDI取込・CSV取込・クイック受注入力）
+        --受注ソース（EDI取込・CSV取込・クイック受注入力・出荷依頼実績）
         AND     look_val.description        = iv_order_source
 --
 --        FROM    fnd_lookup_values           look_val,
@@ -1677,6 +1874,9 @@ AS
 --        AND     look_val.description        = iv_order_source
 -- ******** 2009/10/02 1.8 N.Maeda MOD END  ******** --
       )
+/* 2010/04/01 Ver1.12 Add Start */
+      AND ooha.orig_sys_document_ref     LIKE gt_orig_sys_st_value || cv_multi
+/* 2010/04/01 Ver1.12 Add End   */
       --受注ヘッダ.顧客ID = 顧客マスタ.顧客ID
       AND ooha.sold_to_org_id               = hca.cust_account_id
       --顧客マスタ.顧客ID =顧客マスタアドオン.顧客ID
@@ -1804,6 +2004,13 @@ AS
             OR iv_order_number = ooha.order_number
           )
 /* 2009/12/28 Ver1.9 Mod End   */
+/* 2010/04/01 Ver1.12 Add Start */
+          --受注明細.ステータス=パラメータ.ステータス
+          AND (
+             iv_order_status IS NULL
+            OR oola.flow_status_code = iv_order_status
+          )
+/* 2010/04/01 Ver1.12 Add End   */
         )
       )
       --情報区分 = NULL OR 01
@@ -1818,13 +2025,20 @@ AS
 --        ,oola.line_id      --受注明細.明細ID
         DECODE(  iv_order_source
                , gv_order_source_clik_chk, papf.employee_number  --クイック受注
+/* 2010/04/01 Ver1.12 Add Start */
+               , gv_order_source_ship_chk, papf.employee_number  --出荷実績依頼
+/* 2010/04/01 Ver1.12 Add End   */
                , NULL                                            --CSV
         )                     --入力者
         ,hca.account_number   --出荷先
-/* 2010/01/22 Ver1.9 Add Start E_本稼動_00408対応 */
-        ,ooha.cust_po_number         --顧客発注番号
+/* 2010/04/01 Ver1.12 Mod Start */
+--/* 2010/01/22 Ver1.9 Add Start E_本稼動_00408対応 */
+--        ,ooha.cust_po_number         --顧客発注番号
+--        ,TRUNC(oola.request_date)    --納品日
+--/* 2010/01/22 Ver1.9 Add End   E_本稼動_00408対応 */
         ,TRUNC(oola.request_date)    --納品日
-/* 2010/01/22 Ver1.9 Add End   E_本稼動_00408対応 */
+        ,ooha.cust_po_number         --顧客発注番号
+/* 2010/04/01 Ver1.12 Mod End   */
         ,ooha.order_number    --受注番号
         ,oola.line_number     --受注明細番号
 /* 2009/12/28 Ver1.9 Mod End   */
@@ -1851,7 +2065,6 @@ AS
 --
     --ループカウント初期化
     ln_idx          := 0;
-
 /* 2010/01/22 Ver1.9 Add Start E_本稼動_00408対応 */
     ln_rowid_idx    := 0;
 /* 2010/01/22 Ver1.9 Add End E_本稼動_00408対応 */
@@ -1895,8 +2108,12 @@ AS
                )
              )
              OR
-             -- その他（画面）出力
-             ( ( iv_order_source = gv_order_source_clik_chk )
+/* 2010/04/01 Ver1.12 Mod Start */
+--             -- その他（画面）出力
+--             ( ( iv_order_source = gv_order_source_clik_chk )
+             -- その他（画面・出荷実績依頼）出力
+             ( ( iv_order_source IN ( gv_order_source_clik_chk , gv_order_source_ship_chk ) )
+/* 2010/04/01 Ver1.12 Mod End   */
                AND
                (  ( SUBSTRB( l_data_edi_or_not_rec.entered_by_code, 1, 5 )
                                                              <> g_report_data_tab(ln_idx).entered_by_code    )
@@ -1908,7 +2125,10 @@ AS
              )
              OR
              -- その他（CSV）出力
-             ( ( iv_order_source NOT IN ( gv_order_source_edi_chk ,gv_order_source_clik_chk ) )
+/* 2010/04/01 Ver1.12 Mod Start */
+--             ( ( iv_order_source NOT IN ( gv_order_source_edi_chk ,gv_order_source_clik_chk ) )
+             ( ( iv_order_source NOT IN ( gv_order_source_edi_chk ,gv_order_source_clik_chk, gv_order_source_ship_chk ) )
+/* 2010/04/01 Ver1.12 Mod End   */
                AND
                (  ( l_data_edi_or_not_rec.deliver_from_code  <> g_report_data_tab(ln_idx).deliver_from_code  )
                OR ( l_data_edi_or_not_rec.party_order_number <> g_report_data_tab(ln_idx).party_order_number )
@@ -1923,17 +2143,17 @@ AS
             FROM   dual
             ;
             ln_idx := ln_idx + 1;
-
+--
             -- SVFにてグループサプレス処理を行っており、
             -- サプレス対象項目に同一値を格納必要がある為、
             -- 前レコードを伝票計レコードに格納する。
             g_report_data_tab(ln_idx) := g_report_data_tab(ln_idx - 1);
-
+--
             -- 伝票計専用項目の設定
             g_report_data_tab(ln_idx).record_id          := lt_record_id;                                         --レコードID
             g_report_data_tab(ln_idx).record_type        := cn_record_type_denpyokei;                             --レコードタイプ：伝票計
             g_report_data_tab(ln_idx).order_amount_total := ln_denpyokei_order_amount;                            --受注金額合計（伝票計）
-
+--
             -- 伝票計金額を初期化
             ln_denpyokei_order_amount := 0;
           END IF;
@@ -1941,9 +2161,9 @@ AS
           -- 伝票計金額を初期化
           ln_denpyokei_order_amount := 0;
       END IF;
-
+--
 /* 2010/01/22 Ver1.9 Add End E_本稼動_00408対応 */
-
+--
       -- レコードIDの取得
       BEGIN
         SELECT xxcos_rep_order_list_s01.NEXTVAL     redord_id
@@ -1962,7 +2182,11 @@ AS
       --
       g_report_data_tab(ln_idx).record_id              := lt_record_id;                                --レコードID
       g_report_data_tab(ln_idx).order_source           := iv_order_source;                             --受注ソース
-      IF ( iv_order_source = gv_order_source_clik_chk ) THEN    --受注ソース：クイック受注入力の場合
+/* 2010/04/01 Ver1.12 Mod Start */
+--      IF ( iv_order_source = gv_order_source_clik_chk ) THEN    --受注ソース：クイック受注入力の場合
+      IF (   iv_order_source = gv_order_source_clik_chk
+          OR iv_order_source = gv_order_source_ship_chk ) THEN    --受注ソース：クイック受注入力・出荷実績依頼の場合
+/* 2010/04/01 Ver1.12 Mod End   */
         g_report_data_tab(ln_idx).entered_by_code      := SUBSTRB( l_data_edi_or_not_rec.entered_by_code, 1, 5 );
                                                                                                        --入力者コード
         g_report_data_tab(ln_idx).entered_by_name      := SUBSTRB( l_data_edi_or_not_rec.entered_by_name, 1, 40 );
@@ -2038,9 +2262,9 @@ AS
       -- 伝票計金額を加算
       ln_denpyokei_order_amount := ln_denpyokei_order_amount + g_report_data_tab(ln_idx).order_amount;
 /* 2010/01/22 Ver1.9 Add End E_本稼動_00408対応 */
-
+--
     END LOOP loop_get_data;
-
+--
 /* 2010/01/22 Ver1.9 Add Start E_本稼動_00408対応 */
     IF ( ln_idx > 0 ) THEN
       -- レコードIDの取得
@@ -2061,7 +2285,6 @@ AS
       g_report_data_tab(ln_idx).order_amount_total := ln_denpyokei_order_amount;                            --受注金額合計（伝票計）
     END IF;
 /* 2010/01/22 Ver1.9 Add End E_本稼動_00408対応 */
-
 --
     --処理件数カウント
     gn_target_cnt := g_report_data_tab.COUNT;
@@ -2629,6 +2852,9 @@ AS
     iv_ordered_date_h_from          IN     VARCHAR2,         --   納品日(ヘッダ)(FROM)
     iv_ordered_date_h_to            IN     VARCHAR2,         --   納品日(ヘッダ)(TO)
 /* 2009/12/28 Ver1.9 Add Start */
+/* 2010/04/01 Ver1.12 Add Start */
+    iv_order_status                 IN     VARCHAR2,         --   受注ステータス
+/* 2010/04/01 Ver1.12 Add End   */
     ov_errbuf                       OUT    VARCHAR2,         --   エラー・メッセージ           --# 固定 #
     ov_retcode                      OUT    VARCHAR2,         --   リターン・コード             --# 固定 #
     ov_errmsg                       OUT    VARCHAR2)         --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2716,6 +2942,9 @@ AS
       iv_ordered_date_h_from,       -- 納品日(ヘッダ)(FROM)
       iv_ordered_date_h_to,         -- 納品日(ヘッダ)(TO)
 /* 2009/12/28 Ver1.9 Add Start */
+/* 2010/04/01 Ver1.12 Add Start */
+      iv_order_status,              -- 受注ステータス
+/* 2010/04/01 Ver1.12 Add End   */
       lv_errbuf,                    -- エラー・メッセージ           --# 固定 #
       lv_retcode,                   -- リターン・コード             --# 固定 #
       lv_errmsg);                   -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2788,6 +3017,9 @@ AS
       ld_ordered_date_h_from,       -- 納品日(ヘッダ)(FROM)_チェックOK
       ld_ordered_date_h_to,         -- 納品日(ヘッダ)(TO)_チェックOK
 /* 2009/12/28 Ver1.9 Add To    */
+/* 2010/04/01 Ver1.12 Add Start */
+      iv_order_status,              -- 受注ステータス
+/* 2010/04/01 Ver1.12 Add End   */
       lv_errbuf,                    -- エラー・メッセージ           --# 固定 #
       lv_retcode,                   -- リターン・コード             --# 固定 #
       lv_errmsg);                   -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2876,7 +3108,7 @@ AS
     END IF;
 -- ************ 2009/10/02 1.8 N.Maeda ADD  END  ************--
 -- 2009/06/19  Ver1.5 T1_1437  Mod End
-
+--
     -- ===============================
     -- A-7  帳票ワークテーブル削除
     -- ===============================
@@ -2889,7 +3121,6 @@ AS
     ELSE
       RAISE global_process_expt;
     END IF;
-
 --
 -- 2009/06/19  Ver1.5 T1_1437  Add start
     --エラーの場合、ロールバックするのでここでコミット
@@ -2967,7 +3198,11 @@ AS
     iv_order_creation_date_from     IN     VARCHAR2,         --   受信日(FROM)
     iv_order_creation_date_to       IN     VARCHAR2,         --   受信日(TO)
     iv_ordered_date_h_from          IN     VARCHAR2,         --   納品日(ヘッダ)(FROM)
-    iv_ordered_date_h_to            IN     VARCHAR2          --   納品日(ヘッダ)(TO)
+/* 2010/04/01 Ver1.12 Mod Start */
+--    iv_ordered_date_h_to            IN     VARCHAR2          --   納品日(ヘッダ)(TO)
+    iv_ordered_date_h_to            IN     VARCHAR2,         --   納品日(ヘッダ)(TO)
+    iv_order_status                 IN     VARCHAR2          --   受注ステータス
+/* 2010/04/01 Ver1.12 Mod End   */
 /* 2009/12/28 Ver1.9 Mod End   */
   )
 --
@@ -3040,7 +3275,10 @@ AS
       ,iv_order_creation_date_to       -- 受信日(TO)
       ,iv_ordered_date_h_from          -- 納品日(ヘッダ)(FROM)
       ,iv_ordered_date_h_to            -- 納品日(ヘッダ)(TO)
-/* 2009/12/28 Ver1.9 Add Start */
+/* 2009/12/28 Ver1.9 Add End   */
+/* 2010/04/01 Ver1.12 Add Start */
+      ,iv_order_status                 -- 受注ステータス
+/* 2010/04/01 Ver1.12 Add End   */
       ,lv_errbuf                       -- エラー・メッセージ           --# 固定 #
       ,lv_retcode                      -- リターン・コード             --# 固定 #
       ,lv_errmsg                       -- ユーザー・エラー・メッセージ --# 固定 #
