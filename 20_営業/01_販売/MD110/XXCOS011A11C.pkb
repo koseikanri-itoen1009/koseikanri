@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A11C (body)
  * Description      : 個別商品販売実績ＥＤＩデータ作成
  * MD.050           : 個別商品販売実績ＥＤＩデータ作成 MD050_COS_011_A11
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2011/04/07    1.2   Oukou            [E_本稼動_07120]見本データを対象外にする対応
  *  2011/04/12    1.3   Oukou            [E_本稼動_07032]指定業種小分類の販売実績抽出対応
  *  2011/07/15    1.4   S.Niki           [E_本稼動_07905]販売実績ヘッダ更新のパフォーマンス改善対応
+ *  2011/08/11    1.5   K.Kiriu          [E_本稼動_08125]送信日・送信済フラグ更新障害修正
  *****************************************************************************************/
 --
 --
@@ -1508,6 +1509,11 @@ AS
           -- 地区コード、業種、納品日、品目が前レコードと同一の場合
           -- 合計数量
           ln_quantity := ln_quantity + gt_sale_data_tbl(ln_idx).standard_qty;
+/* 2011/08/11 Ver1.5 ADD Start */
+          -- サマリされた前レコードの販売実績ヘッダのIDを保持
+          ln_seq2 := ln_seq2 + cn_1;
+          gt_sales_exp_header_id(ln_seq2) := l_date_rec.sales_exp_header_id;
+/* 2011/08/11 Ver1.5 ADD End */
           -- 
           IF ( gt_sale_data_tbl(ln_idx).ship_to_customer_code != l_date_rec.ship_to_customer_code ) THEN
             -- 更新対象顧客編集
@@ -1555,13 +1561,20 @@ AS
             --
             -- 成功件数加算
             ln_normal_cnt := ln_normal_cnt + cn_1;
-/* 2011/07/15 Ver1.4 ADD Start */
-            ln_seq2 := ln_seq2 + cn_1;
-            gt_sales_exp_header_id(ln_seq2) := l_date_rec.sales_exp_header_id;
-/* 2011/07/15 Ver1.4 ADD End */
+/* 2011/08/11 Ver1.5 DEL Start */
+--/* 2011/07/15 Ver1.4 ADD Start */
+--            ln_seq2 := ln_seq2 + cn_1;
+--            gt_sales_exp_header_id(ln_seq2) := l_date_rec.sales_exp_header_id;
+--/* 2011/07/15 Ver1.4 ADD End */
+/* 2011/08/11 Ver1.5 DEL End */
             --
           END IF;
           --
+/* 2011/08/11 Ver1.5 ADD Start */
+          -- 前レコードの販売実績ヘッダのIDを保持
+          ln_seq2 := ln_seq2 + cn_1;
+          gt_sales_exp_header_id(ln_seq2) := l_date_rec.sales_exp_header_id;
+/* 2011/08/11 Ver1.5 ADD END */
           -- 更新処理(A-8)で使用するデータの編集
           FOR i IN 1..ln_cnt LOOP
             lv_upd_flg := cv_y;
@@ -1654,13 +1667,20 @@ AS
         );
         -- 成功件数加算
         ln_normal_cnt := ln_normal_cnt + cn_1;
-/* 2011/07/15 Ver1.4 ADD Start */
-        ln_seq2 := ln_seq2 + cn_1;
-        gt_sales_exp_header_id(ln_seq2) := l_date_rec.sales_exp_header_id;
-/* 2011/07/15 Ver1.4 ADD End */
+/* 2011/08/11 Ver1.5 DEL Start */
+--/* 2011/07/15 Ver1.4 ADD Start */
+--        ln_seq2 := ln_seq2 + cn_1;
+--        gt_sales_exp_header_id(ln_seq2) := l_date_rec.sales_exp_header_id;
+--/* 2011/07/15 Ver1.4 ADD End */
+/* 2011/08/11 Ver1.5 DEL End */
         --
       END IF;
       --
+/* 2011/08/11 Ver1.5 ADD Start */
+      -- 最終レコードの販売実績ヘッダIDを保持
+      ln_seq2 := ln_seq2 + cn_1;
+      gt_sales_exp_header_id(ln_seq2) := l_date_rec.sales_exp_header_id;
+/* 2011/08/11 Ver1.5 ADD End */
       -- 更新処理(A-8)で使用するデータの編集
       FOR i IN 1..ln_cnt LOOP
         lv_upd_flg := cv_y;
