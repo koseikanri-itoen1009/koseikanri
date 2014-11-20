@@ -77,6 +77,10 @@ AS
  *                                               (「全部門階層ビュー」->「AFF部門」)
  *                                       0000910 購買担当マスタ、出荷ロールマスタ登録・削除処理追加
  *                                       0000924 所属コード(新)が財務経理部の場合、照会範囲に'T'を設定するように変更
+ *  2009/09/04    1.11 SCS 久保島 豊     障害No.0001283 対応
+ *                                       0001283 所属拠点の判定にNVLを追加
+ *                                               従業員の割当てる順番を従業員番号 -> 職位並順の昇順,入社年月日の昇順に変更
+ *                                               管理者割当カーソルに入社日の並び順を追加
  *
  *****************************************************************************************/
 --
@@ -742,6 +746,9 @@ AS
                                                          >= id_hire_date                    -- 退職日
       ORDER BY  paa.ass_attribute11                      -- 職位並順コード（新)
                ,ppos.actual_termination_date  DESC       -- 退職日の降順
+-- 2009/09/04 Ver1.11 add start by Yutaka.Kuboshima
+               ,ppos.date_start
+-- 2009/09/04 Ver1.11 add end by Yutaka.Kuboshima
     ;
     --
   --
@@ -2512,11 +2519,17 @@ AS
       ELSE
         ir_masters_rec.proc_kbn := gv_sts_yes;  -- 連携データ（差異あり）
         -- 所属コード（拠点コード）の変更判断
-        IF (lr_check_rec.location_code <> ir_masters_rec.location_code) THEN
+-- 2009/09/04 Ver1.11 modify start by Yutaka.Kuboshima
+--        IF (lr_check_rec.location_code <> ir_masters_rec.location_code) THEN
+        IF (NVL(lr_check_rec.location_code, ' ') <> NVL(ir_masters_rec.location_code, ' ')) THEN
+-- 2009/09/04 Ver1.11 modify end by Yutaka.Kuboshima
           ir_masters_rec.resp_kbn := gv_sts_yes;  -- 職責・管理者変更あり
         END IF;
         -- 勤務地拠点コード(新)の変更判断
-        IF (lr_check_rec.office_location_code <> ir_masters_rec.office_location_code) THEN
+-- 2009/09/04 Ver1.11 modify start by Yutaka.Kuboshima
+--        IF (lr_check_rec.office_location_code <> ir_masters_rec.office_location_code) THEN
+        IF (NVL(lr_check_rec.office_location_code, ' ') <> NVL(ir_masters_rec.office_location_code, ' ')) THEN
+-- 2009/09/04 Ver1.11 modify end by Yutaka.Kuboshima
           ir_masters_rec.location_id_kbn := gv_sts_yes;  -- 事業所 変更
         END IF;
       END IF;
@@ -7675,7 +7688,11 @@ AS
              xip.consent_division_old        consent_division_old,
              xip.agent_division_old          agent_division_old
       FROM   xxcmm_in_people_if xip
-      ORDER BY xip.employee_number;
+-- 2009/09/04 Ver1.11 modify start by Yutaka.Kuboshima
+--      ORDER BY xip.employee_number;
+      ORDER BY xip.job_post_order
+              ,xip.hire_date;
+-- 2009/09/04 Ver1.11 modify start by Yutaka.Kuboshima
     --
     -- 職責自動割当ワーク
     CURSOR wk_pr2_cur(lv_emp_kbn IN VARCHAR2)
