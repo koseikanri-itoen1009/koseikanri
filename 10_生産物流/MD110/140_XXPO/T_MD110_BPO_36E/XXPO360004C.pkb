@@ -7,7 +7,7 @@ AS
  * Description      : 仕入明細表
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  *                  : 有償支給帳票Issue1.0(T_MD070_BPO_36E)
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -62,7 +62,7 @@ AS
  *                                        「工場」、「納入先」、「摘要」、「付帯コード」
  *  2008/10/21    1.16  T.Ohashi         T_S_456,T_TE080_BPO_300 指摘29対応
  *  2008/11/04    1.17  Y.Yamamoto       統合障害#470
- *
+ *  2008/12/08    1.18  H.Itou           本番障害#551
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -692,19 +692,34 @@ AS
               || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''','
               || ' rcrt.kobki_converted_unit_price,'
               || ' pla.unit_price) AS   unit_price, '                -- 単価
+-- 2008/12/08 H.Itou Mod Start 本番障害#551
+--              || ' ROUND(DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
+--              || ' , DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
+--              || ' , ( rcrt.quantity * ' || cn_sts_num || ' ) '
+--              || ' , rcrt.quantity ) * '
+--              || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''','
+--              || ' rcrt.kobki_converted_unit_price,'
+--              || ' pla.unit_price) , '
+--              || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
+--              || ' , ( rcrt.quantity * ' || cn_sts_num || ' ) '
+--              || ' , rcrt.quantity ) * '
+--              || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''','
+--              || ' rcrt.kobki_converted_unit_price,'
+--              || ' pla.unit_price) ), ' || cn_sts_num_zero
               || ' ROUND(DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
               || ' , DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
-              || ' , ( rcrt.quantity * ' || cn_sts_num || ' ) '
-              || ' , rcrt.quantity ) * '
+              || ' , ( rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' ) '
+              || ' , rcrt.rcv_rtn_quantity ) * '
               || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''','
               || ' rcrt.kobki_converted_unit_price,'
               || ' pla.unit_price) , '
               || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
-              || ' , ( rcrt.quantity * ' || cn_sts_num || ' ) '
-              || ' , rcrt.quantity ) * '
+              || ' , ( rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' ) '
+              || ' , rcrt.rcv_rtn_quantity ) * '
               || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''','
               || ' rcrt.kobki_converted_unit_price,'
               || ' pla.unit_price) ), ' || cn_sts_num_zero
+-- 2008/12/08 H.Itou Mod End
               || ' ) AS amount_pay, '                                   -- 仕入金額
               || ' xilv.segment1 AS deliver_dist,'                      -- 保管倉庫コード
 -- mod start 1.16
@@ -938,8 +953,12 @@ AS
                 || ' rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' AS total_cnt,'
                 || ' rcrt.rcv_rtn_uom           AS  rtn_uom,'
                 || ' rcrt.kobki_converted_unit_price  AS  unit_price,'
-                || ' ROUND((( rcrt.quantity * ' || cn_sts_num || ' ) * ( '
+-- 2008/12/08 H.Itou Mod Start 本番障害#551
+--                || ' ROUND((( rcrt.quantity * ' || cn_sts_num || ' ) * ( '
+--                || ' rcrt.kobki_converted_unit_price )),' || cn_sts_num_zero || ' )'
+                || ' ROUND((( rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' ) * ( '
                 || ' rcrt.kobki_converted_unit_price )),' || cn_sts_num_zero || ' )'
+-- 2008/12/08 H.Itou Mod End
                 || ' AS amount_pay,'
                 || ' rcrt.location_code         AS  deliver_dist,'
                 || ' rcrt.line_description      AS  po_attr15,'
