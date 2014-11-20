@@ -1,0 +1,14 @@
+/*************************************************************************
+ * 
+ * INDEX Name      : xxcso_in_work_data_n14
+ * Description     : 
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2010/03/15    1.0  T.Maruyama      èââÒçÏê¨
+ ************************************************************************/
+CREATE INDEX xxcso.xxcso_in_work_data_n14 ON xxcso.xxcso_in_work_data ( po_req_number ) TABLESPACE xxidx2; 

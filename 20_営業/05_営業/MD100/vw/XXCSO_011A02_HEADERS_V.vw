@@ -10,6 +10,7 @@
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2009/12/22    1.0  T.Maruyama    初回作成
+ *  2010/03/15    1.1  T.Maruyama    E_本稼動_01888 PT対策
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcso_011a02_headers_v
 (
@@ -41,7 +42,8 @@ requisition_line_id,
 category_kind,
 sale_base_code,
 po_req_ln_creation_date,
-category_id
+category_id,
+requisition_header_id
 )
 AS
 SELECT
@@ -95,7 +97,11 @@ SELECT
          END
       )                               work_base_code            -- 作成者拠点CD
 ,     (
-       SELECT  xab.base_name
+       /* 2010/03/15 t.maruyama E_本稼動_01888 PT対策 start*/
+       --SELECT  xab.base_name
+       SELECT  /*+ use_concat*/
+       /* 2010/03/15 t.maruyama E_本稼動_01888 PT対策 end*/
+               xab.base_name
        FROM    xxcso_aff_base_v xab
        WHERE   (
                  (    xev.issue_date > to_char(xxcso_util_common_pkg.get_online_sysdate, 'yyyymmdd')
@@ -112,6 +118,9 @@ SELECT
 ,     xcav.sale_base_code             sale_base_code            -- 売上担当拠点
 ,     prlv.po_req_ln_creation_date    po_req_ln_creation_date   -- 購買依頼明細作成日
 ,     prlv.category_id                category_id               -- カテゴリID
+/* 2010/03/15 t.maruyama E_本稼動_01888 PT対策 start*/
+,     prlv.requisition_header_id      requisition_header_id     -- 購買依頼ヘッダID
+/* 2010/03/15 t.maruyama E_本稼動_01888 PT対策 end*/
 FROM  (
         SELECT  prl.requisition_line_id
         ,       prl.requisition_header_id
