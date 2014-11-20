@@ -1,0 +1,24 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Index Name  : XXCOI_INV_RECEPTION_MONTH_N01
+ * Description : 月次在庫受払表インデックスN01
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/05/29    1.0   S.Moriyama       新規作成
+ *
+ ************************************************************************/
+CREATE INDEX XXCOI.XXCOI_INV_RECEPTION_MONTH_N01
+ON XXCOI.XXCOI_INV_RECEPTION_MONTHLY
+(
+  BASE_CODE
+ ,ORGANIZATION_ID
+ ,SUBINVENTORY_CODE
+ ,INVENTORY_KBN
+ ,INVENTORY_ITEM_ID
+)
+TABLESPACE XXIDX2;

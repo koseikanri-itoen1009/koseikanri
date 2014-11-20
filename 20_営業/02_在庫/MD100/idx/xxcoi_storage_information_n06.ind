@@ -1,0 +1,22 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Index Name  : XXCOI_STORAGE_INFORMATION_N06
+ * Description : 入庫情報一時表インデックスN06
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/05/29    1.0   S.Moriyama       新規作成
+ *
+ ************************************************************************/
+CREATE INDEX XXCOI.XXCOI_STORAGE_INFORMATION_N06
+ON XXCOI.XXCOI_STORAGE_INFORMATION
+(
+  BASE_CODE
+ ,SLIP_DATE
+ ,SUMMARY_DATA_FLAG
+)
+TABLESPACE XXIDX2;
