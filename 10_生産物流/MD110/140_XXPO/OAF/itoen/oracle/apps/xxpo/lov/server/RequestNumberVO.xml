@@ -17,8 +17,9 @@ SELECT pha.attribute9 request_number   -- Žx‹‹No
 FROM po_headers_all pha            -- ”­’ƒwƒbƒ_
 WHERE pha.attribute1 >= '20'
   AND pha.attribute1 != '99'
+-- 2008-10-22 H.Itou Del
+--  AND xxcmn_common_pkg.get_opminv_close_period < TO_CHAR(FND_DATE.STRING_TO_DATE(pha.attribute4, 'YYYY/MM/DD'), 'YYYYMM')
   AND pha.attribute9 IS NOT NULL
-  AND xxcmn_common_pkg.get_opminv_close_period < TO_CHAR(FND_DATE.STRING_TO_DATE(pha.attribute4, 'YYYY/MM/DD'), 'YYYYMM')
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />

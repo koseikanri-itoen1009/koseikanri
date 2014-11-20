@@ -28,6 +28,8 @@ SELECT rart.txns_id txns_id                         -- ŽæˆøID
 FROM xxpo_rcv_and_rtn_txns rart
 WHERE rart.source_document_number   = :0
   AND rart.source_document_line_num = :1
+-- 2008-10-22 H.Itou Add
+  AND rart.txns_type                = '1'
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />

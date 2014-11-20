@@ -16,8 +16,10 @@ SELECT pha.segment1 header_number      -- 発注No
       ,pha.attribute5 location_code    -- 納入先コード
 FROM po_headers_all pha            -- 発注ヘッダ
 WHERE pha.attribute1 >= '20'
+-- 2008-10-22 H.Itou Del Start 統合テスト指摘344
+--  AND xxcmn_common_pkg.get_opminv_close_period < TO_CHAR(FND_DATE.STRING_TO_DATE(pha.attribute4, 'YYYY/MM/DD'), 'YYYYMM')
+-- 2008-10-22 H.Itou Del End
   AND pha.attribute1 != '99'
-  AND xxcmn_common_pkg.get_opminv_close_period < TO_CHAR(FND_DATE.STRING_TO_DATE(pha.attribute4, 'YYYY/MM/DD'), 'YYYYMM')
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />
