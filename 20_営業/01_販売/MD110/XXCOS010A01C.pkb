@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A01C (body)
  * Description      : 受注データ取込機能
  * MD.050           : 受注データ取込(MD050_COS_010_A01)
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -80,6 +80,7 @@ AS
  *                                       ・EDIエラー情報のパージ処理追加
  *                                       ・情報区分「04」時はチェック処理を実施
  *  2010/02/23    1.16  M.Sano           [E_本稼動_01159] エラー情報にセットする品目名の定義修正
+ *  2010/03/23    1.17  M.Sano           [E_本稼動_01728] 営業担当の日付チェック変更
  *
  *****************************************************************************************/
 --
@@ -237,6 +238,9 @@ AS
   cv_tkn_shop_code       CONSTANT VARCHAR2(20)  := 'SHOP_CODE';                 -- 店コード
   cv_tkn_order_no        CONSTANT VARCHAR2(20)  := 'ORDER_NO';                  -- 伝票番号
   cv_tkn_store_deliv_dt  CONSTANT VARCHAR2(20)  := 'STORE_DELIVERY_DATE';       -- 店舗納品日
+-- 2010/03/23 Ver.1.17 M.Sano add Start
+  cv_tkn_base_deliv_dt   CONSTANT VARCHAR2(20)  := 'BASE_DELIVERY_DATE';        -- 基準納品日
+-- 2010/03/23 Ver.1.17 M.Sano add End
   cv_tkn_line_no         CONSTANT VARCHAR2(20)  := 'LINE_NO';                   -- 行番号
   cv_tkn_table_name      CONSTANT VARCHAR2(20)  := 'TABLE_NAME';                -- テーブル名
   cv_tkn_key_data        CONSTANT VARCHAR2(20)  := 'KEY_DATA';                  -- キー情報
@@ -681,6 +685,12 @@ AS
             edi.total_line_qty               total_line_qty,                    -- トータル行数
             edi.total_invoice_qty            total_invoice_qty,                 -- トータル伝票枚数
             edi.chain_peculiar_area_footer   chain_peculiar_area_footer,        -- チェーン店固有エリア（フッター）
+-- 2010/03/23 Ver.1.17 M.Sano add Start
+            NVL( edi.shop_delivery_date
+               , NVL( edi.center_delivery_date
+                    , NVL( edi.order_date, edi.creation_date ) ) )
+                                             request_date,                      -- 要求日
+-- 2010/03/23 Ver.1.17 M.Sano add End
 -- 2010/01/19 Ver1.15 M.Sano Mod Start
 --            edi.err_status                   err_status                         -- ステータス
             edi.err_status                   err_status,                        -- ステータス
@@ -1092,6 +1102,9 @@ AS
 -- 2010/01/19 Ver.1.15 M.Sano add Start
       order_connection_line_number           xxcos_edi_lines.order_connection_line_number%TYPE,          -- 受注関連明細番号
 -- 2010/01/19 Ver.1.15 M.Sano add End
+-- 2010/03/23 Ver.1.17 M.Sano add Start
+      request_date                           DATE,                                                       -- 要求日
+-- 2010/03/23 Ver.1.17 M.Sano add End
       check_status                           xxcos_edi_order_work.err_status%TYPE                        -- チェックステータス
     );
 --
@@ -3468,7 +3481,7 @@ AS
     -- -------------------------------
     PROCEDURE get_salesrep_id(
       it_customer_code         IN  hz_cust_accounts.account_number%TYPE, -- IN ：顧客コード
-      id_date                  IN  DATE,                                 -- IN ：受注日付
+      id_date                  IN  DATE,                                 -- IN ：要求日
       ot_salesrep_id           OUT jtf_rs_salesreps.salesrep_id%TYPE     -- OUT：営業担当ID
     )
     IS
@@ -4165,9 +4178,12 @@ AS
     -- 営業担当員存在チェック
     ----------------------------------------
     get_salesrep_id(
-      lt_cust_info_rec.conv_cust_code,            -- IN ：顧客コード
-      gt_edi_work(gt_edi_work.first).order_date,  -- IN ：受注日
-      lt_salesrep_id                              -- OUT：営業担当員ID
+      lt_cust_info_rec.conv_cust_code,              -- IN ：顧客コード
+-- 2010/03/23 Ver.1.17 M.Sano mod Start
+--      gt_edi_work(gt_edi_work.first).order_date,  -- IN ：受注日
+      gt_edi_work(gt_edi_work.first).request_date,  -- IN ：要求日
+-- 2010/03/23 Ver.1.17 M.Sano mod End
+      lt_salesrep_id                                -- OUT：営業担当員ID
     );
     IF ( lt_salesrep_id IS NULL AND gn_check_record_flag = cn_check_record_yes )THEN
       -- 営業担当員取得エラーを出力
@@ -4185,6 +4201,11 @@ AS
                      , cv_tkn_store_deliv_dt
                      , TO_CHAR( gt_edi_work(gt_edi_work.first).shop_delivery_date
                               , cv_format_yyyymmdds )
+-- 2010/03/23 Ver.1.17 M.Sano add Start
+                     , cv_tkn_base_deliv_dt
+                     , TO_CHAR( gt_edi_work(gt_edi_work.first).request_date
+                              , cv_format_yyyymmdds )
+-- 2010/03/23 Ver.1.17 M.Sano add End
                    );
       lv_errbuf := lv_errmsg;
       -- ログ出力
@@ -4828,6 +4849,9 @@ AS
     gt_edi_work(ln_idx).order_forward_flag             := NULL;                                          -- 受注連携済フラグ
 -- 2009/12/28 M.Sano Ver.1.14 add End
     gt_edi_work(ln_idx).check_status                   := cv_edi_status_normal;                          -- チェックステータス
+-- 2010/03/23 Ver.1.17 M.Sano add Start
+    gt_edi_work(ln_idx).request_date                   := it_edi_work.request_date;                      -- 要求日
+-- 2010/03/23 Ver.1.17 M.Sano add End
 --
   EXCEPTION
 --
