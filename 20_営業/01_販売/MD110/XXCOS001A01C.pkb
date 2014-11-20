@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,7 +39,8 @@ AS
  *  2009/04/09    1.7   N.Maeda          [T1_0465]顧客名称、拠点名称の桁数制御追加
  *  2009/04/10    1.8   T.Kitajima       [T1_0248]百貨店条件変更
  *  2009/04/10    1.9   N.Maeda          [T1_0257]リソースid取得テーブル変更
- *  2009/04/14    1.10  T.kitajima       [T1_0344]成績者コード、納品者コードチェック仕様変更
+ *  2009/04/14    1.10  T.Kitajima       [T1_0344]成績者コード、納品者コードチェック仕様変更
+ *  2009/04/20    1.11  T.Kitajima       [T1_0592]百貨店画面種別チェック削除
  *
  *****************************************************************************************/
 --
@@ -459,8 +460,10 @@ AS
       dff3     xxcos_dlv_headers.consumption_tax_class%TYPE               -- 変換後の消費税区分
     );
   TYPE g_tab_qck_tax      IS TABLE OF  g_tax_class   INDEX BY PLS_INTEGER;
-  -- 百貨店画面種別格納用変数
-  TYPE g_tab_qck_depart   IS TABLE OF  xxcos_dlv_headers.department_screen_class%TYPE INDEX BY PLS_INTEGER;
+--****************************** 2009/04/20 1.11 T.Kitajima DEL START  *****************************--
+--  -- 百貨店画面種別格納用変数
+--  TYPE g_tab_qck_depart   IS TABLE OF  xxcos_dlv_headers.department_screen_class%TYPE INDEX BY PLS_INTEGER;
+--****************************** 2009/04/20 1.11 T.Kitajima DEL  END   *****************************--
   -- 品目ステータス格納用変数
   TYPE g_tab_qck_item     IS TABLE OF  xxcmm_system_items_b.item_status%TYPE          INDEX BY PLS_INTEGER;
   -- 売上区分格納用変数
@@ -552,7 +555,9 @@ AS
   gt_qck_inp_auto           g_tab_qck_inp_auto;             -- 入力区分（フルVD納品・自動吸上）
   gt_qck_busi               g_tab_qck_busi;                 -- 業態（小分類）
   gt_qck_tax                g_tab_qck_tax;                  -- 消費税区分
-  gt_qck_depart             g_tab_qck_depart;               -- 百貨店画面種別
+--****************************** 2009/04/20 1.11 T.Kitajima DEL START  *****************************--
+--  gt_qck_depart             g_tab_qck_depart;               -- 百貨店画面種別
+--****************************** 2009/04/20 1.11 T.Kitajima DEL  END   *****************************--
   gt_qck_item               g_tab_qck_item;                 -- 品目ステータス
   gt_qck_sale               g_tab_qck_sale;                 -- 売上区分
   gt_qck_hc                 g_tab_qck_hc;                   -- H/C
@@ -985,29 +990,31 @@ AS
       AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
       AND     look_val.enabled_flag = cv_tkn_yes;
 --
-    -- クイックコード取得：百貨店画面種別
-    CURSOR get_depart_screen_cur
-    IS
-      SELECT  look_val.lookup_code  lookup_code
-      FROM    fnd_lookup_values     look_val,
-              fnd_lookup_types_tl   types_tl,
-              fnd_lookup_types      types,
-              fnd_application_tl    appl,
-              fnd_application       app
-      WHERE   appl.application_id   = types.application_id
-      AND     app.application_id    = appl.application_id
-      AND     types_tl.lookup_type  = look_val.lookup_type
-      AND     types.lookup_type     = types_tl.lookup_type
-      AND     types.security_group_id   = types_tl.security_group_id
-      AND     types.view_application_id = types_tl.view_application_id
-      AND     types_tl.language = USERENV( 'LANG' )
-      AND     look_val.language = USERENV( 'LANG' )
-      AND     appl.language     = USERENV( 'LANG' )
-      AND     app.application_short_name = cv_application
-      AND     look_val.lookup_type  = cv_qck_typ_depart
-      AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
-      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
-      AND     look_val.enabled_flag = cv_tkn_yes;
+--****************************** 2009/04/20 1.11 T.Kitajima DEL START  *****************************--
+--    -- クイックコード取得：百貨店画面種別
+--    CURSOR get_depart_screen_cur
+--    IS
+--      SELECT  look_val.lookup_code  lookup_code
+--      FROM    fnd_lookup_values     look_val,
+--              fnd_lookup_types_tl   types_tl,
+--              fnd_lookup_types      types,
+--              fnd_application_tl    appl,
+--              fnd_application       app
+--      WHERE   appl.application_id   = types.application_id
+--      AND     app.application_id    = appl.application_id
+--      AND     types_tl.lookup_type  = look_val.lookup_type
+--      AND     types.lookup_type     = types_tl.lookup_type
+--      AND     types.security_group_id   = types_tl.security_group_id
+--      AND     types.view_application_id = types_tl.view_application_id
+--      AND     types_tl.language = USERENV( 'LANG' )
+--      AND     look_val.language = USERENV( 'LANG' )
+--      AND     appl.language     = USERENV( 'LANG' )
+--      AND     app.application_short_name = cv_application
+--      AND     look_val.lookup_type  = cv_qck_typ_depart
+--      AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--      AND     look_val.enabled_flag = cv_tkn_yes;
+--****************************** 2009/04/20 1.11 T.Kitajima DEL  END   *****************************--
 --
     -- クイックコード取得：品目ステータス
     CURSOR get_item_status_cur
@@ -1327,27 +1334,29 @@ AS
         RAISE lookup_types_expt;
     END;
 --
-    -- クイックコード取得：百貨店画面種別
-    BEGIN
-      -- カーソルOPEN
-      OPEN  get_depart_screen_cur;
-      -- バルクフェッチ
-      FETCH get_depart_screen_cur BULK COLLECT INTO gt_qck_depart;
-      -- カーソルCLOSE
-      CLOSE get_depart_screen_cur;
---
-    EXCEPTION
-      WHEN OTHERS THEN
-        -- カーソルCLOSE：クイックコード取得：百貨店画面種別
-        IF ( get_depart_screen_cur%ISOPEN ) THEN
-          CLOSE get_depart_screen_cur;
-        END IF;
---
-        gv_tkn2 := xxccp_common_pkg.get_msg( cv_application, cv_qck_typ_depart );
-        gv_tkn3 := xxccp_common_pkg.get_msg( cv_application, cv_msg_depart );
---
-        RAISE lookup_types_expt;
-    END;
+--****************************** 2009/04/20 1.11 T.Kitajima DEL START  *****************************--
+--    -- クイックコード取得：百貨店画面種別
+--    BEGIN
+--      -- カーソルOPEN
+--      OPEN  get_depart_screen_cur;
+--      -- バルクフェッチ
+--      FETCH get_depart_screen_cur BULK COLLECT INTO gt_qck_depart;
+--      -- カーソルCLOSE
+--      CLOSE get_depart_screen_cur;
+----
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        -- カーソルCLOSE：クイックコード取得：百貨店画面種別
+--        IF ( get_depart_screen_cur%ISOPEN ) THEN
+--          CLOSE get_depart_screen_cur;
+--        END IF;
+----
+--        gv_tkn2 := xxccp_common_pkg.get_msg( cv_application, cv_qck_typ_depart );
+--        gv_tkn3 := xxccp_common_pkg.get_msg( cv_application, cv_msg_depart );
+----
+--        RAISE lookup_types_expt;
+--    END;
+--****************************** 2009/04/20 1.11 T.Kitajima DEL  END   *****************************--
 --
     -- クイックコード取得：品目ステータス
     BEGIN
@@ -2284,60 +2293,62 @@ AS
         END IF;
       END LOOP;
 --
-  /*-----2009/02/03-----START-------------------------------------------------------------------------------*/
-      --== 百貨店の場合、預け先コードのセット・百貨店画面種別の妥当性チェックを行います。 ==--
---    IF ( lt_hht_class = cv_depart ) THEN
---***************************** 2009/04/10 1.8 T.Kitajima MOD START  *****************************--
---      IF ( lt_hht_class IS NOT NULL ) THEN
-      IF ( lt_hht_class IS NULL ) 
-        OR ( ( lt_hht_class = ct_hht_2 )
-             AND
-             (lt_department_class = ct_disp_0 )
-           )
-        THEN
---***************************** 2009/04/10 1.8 T.Kitajima MOD START  *****************************--
-  /*-----2009/02/03-----END---------------------------------------------------------------------------------*/
+--****************************** 2009/04/20 1.11 T.Kitajima DEL START  *****************************--
+--  /*-----2009/02/03-----START-------------------------------------------------------------------------------*/
+--      --== 百貨店の場合、預け先コードのセット・百貨店画面種別の妥当性チェックを行います。 ==--
+----    IF ( lt_hht_class = cv_depart ) THEN
+----****************************** 2009/04/10 1.8 T.Kitajima MOD START  *****************************--
+----      IF ( lt_hht_class IS NOT NULL ) THEN
+--      IF ( lt_hht_class IS NULL ) 
+--        OR ( ( lt_hht_class = ct_hht_2 )
+--             AND
+--             (lt_department_class = ct_disp_0 )
+--           )
+--        THEN
+----****************************** 2009/04/10 1.8 T.Kitajima MOD START  *****************************--
+--  /*-----2009/02/03-----END---------------------------------------------------------------------------------*/
+----
+----****************************** 2009/04/03 1.5 T.Kitajima DEL START ******************************--
+----        --==============================================================
+----        -- 預け先コードに顧客コードをセット（ヘッダ部）
+----        --==============================================================
+----        lt_keep_in_code := lt_customer_number;
+----****************************** 2009/04/03 1.5 T.Kitajima DEL START ******************************--
 --
---****************************** 2009/04/03 1.5 T.Kitajima DEL START ******************************--
+--       --==============================================================
+--        -- 百貨店画面種別の妥当性チェック（ヘッダ部）
 --        --==============================================================
---        -- 預け先コードに顧客コードをセット（ヘッダ部）
---        --==============================================================
---        lt_keep_in_code := lt_customer_number;
---****************************** 2009/04/03 1.5 T.Kitajima DEL START ******************************--
+--        FOR i IN 1..gt_qck_depart.COUNT LOOP
+--          EXIT WHEN gt_qck_depart(i) = lt_department_class;
+--          IF ( i = gt_qck_depart.COUNT ) THEN
+--            -- ログ出力
+--            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_depart );
+--            lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_use, cv_tkn_colmun, gv_tkn1 );
+--            FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
+--            ov_retcode := cv_status_warn;
+--            -- エラー変数へ格納
+--            gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+--            gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
+--            gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
+--            gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
+--            gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--            gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
+--            gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
+--            gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--            gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
+--            gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
+--            gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+--            gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
+--            gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
+--            ln_err_no := ln_err_no + 1;
+--            -- エラーフラグ更新
+--            lv_err_flag := cv_hit;
+--          END IF;
+--        END LOOP;
 --
-        --==============================================================
-        -- 百貨店画面種別の妥当性チェック（ヘッダ部）
-        --==============================================================
-        FOR i IN 1..gt_qck_depart.COUNT LOOP
-          EXIT WHEN gt_qck_depart(i) = lt_department_class;
-          IF ( i = gt_qck_depart.COUNT ) THEN
-            -- ログ出力
-            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_depart );
-            lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_use, cv_tkn_colmun, gv_tkn1 );
-            FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
-            ov_retcode := cv_status_warn;
-            -- エラー変数へ格納
-            gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
-            gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
-            gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
-            gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-            gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
-            gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
-            gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-            gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
-            gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
-            gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-            gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
-            gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
-            gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
-            ln_err_no := ln_err_no + 1;
-            -- エラーフラグ更新
-            lv_err_flag := cv_hit;
-          END IF;
-        END LOOP;
+--      END IF;
 --
-      END IF;
---
+--****************************** 2009/04/20 1.11 T.Kitajima DEL  END   *****************************--
       --==============================================================
       --納品日の妥当性チェック（ヘッダ部）
       --==============================================================
