@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
  * Package Name     : XXCSM002A03C(spec)
  * Description      : 商品計画参考資料出力
  * MD.050           : 商品計画参考資料出力 MD050_CSM_002_A03
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * -------------------- --------------------------------------------------------
@@ -35,6 +35,7 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
  *  2008/12/04    1.0   SCS ohshikyo     新規作成
  *  2009/02/16    1.1   SCS K.Yamada     [障害CT024]分母0の不具合の対応
  *  2009/02/18    1.2   SCS K.Sai        [障害CT027]粗利益額の小数点2桁表示不具合＆ヘッダ日付表示対応
+ *  2009/05/25    1.3   SCS M.Ohtsuki    [障害T1_1020]
  *
  ******************************************************************************/
 --
@@ -1906,7 +1907,10 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
     -- LOOP処理用
     in_param                    NUMBER := 0;
     lb_loop_end                 BOOLEAN := FALSE;
-    
+--//+ADD START 2009/05/25 T1_1020  M.Ohtsuki
+    ln_cnt                      NUMBER;
+    ln_flag                     NUMBER;
+--//+ADD END   2009/05/25 T1_1020  M.Ohtsuki
     
     -- テンプ変数
     lv_temp_month               VARCHAR2(4000);
@@ -1917,7 +1921,6 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
     cv_year_z_r         CONSTANT VARCHAR2(100)     := SUBSTR(TO_CHAR(gv_taisyoYm-1),3,4) || lv_prf_cd_result_val;
     cv_year_z_p         CONSTANT VARCHAR2(100)     := SUBSTR(TO_CHAR(gv_taisyoYm-1),3,4) || lv_prf_cd_plan_val;
     cv_year_zero        CONSTANT VARCHAR2(10)      := '0,0' || CHR(10);
-
 -- 月計カーソル
     CURSOR get_month_data_cur(
                         in_param IN NUMBER
@@ -2153,7 +2156,27 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
     lv_line_head := NULL;
     lv_line_info := NULL;
     lv_item_info := NULL;
-    
+--//+ADD START 2009/05/25 T1_1020 M.Ohtsuki
+    ln_cnt  := 0;
+    ln_flag := 0;
+--************************************************************************************
+--*****ワークテーブルのデータが実績、計画で商品群コードの持ち方に差異がある為   ******
+--*****実績データが存在する場合は実績の商品群コード(4桁),                       ******
+--*****計画データのみ存在する場合は、計画データの商品群コード(3桁)を出力します。******
+--************************************************************************************
+    SELECT COUNT(1)                                                                                 -- 実績データ件数
+    INTO   ln_cnt
+    FROM   xxcsm_tmp_sales_plan_ref                                                                 -- 商品計画参考資料ワークテーブル
+    WHERE  item_cd = in_item_cd                                                                     -- 品目コード
+    AND    flag = 0                                                                                 -- ( 0 = 実績データ)
+    AND    ROWNUM = 1;
+--
+    IF (ln_cnt = 1) THEN                                                                            --実績データが存在する場合
+      ln_flag := 0;
+    ELSE                                                                                            --計画データのみ存在する場合
+      ln_flag := 1;
+    END IF;
+--//+ADD END   2009/05/25 T1_1020  M.Ohtsuki
     --  商品コード-商品群コード|商品名の抽出
     SELECT DISTINCT
             cv_msg_duble || 
@@ -2171,8 +2194,10 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
     FROM     
             xxcsm_tmp_sales_plan_ref           -- 商品計画参考資料ワークテーブル
     WHERE
-            item_cd = in_item_cd;
-    
+            item_cd = in_item_cd
+--//+ADD START 2009/05/25 T1_1020 M.Ohtsuki
+    AND     flag = ln_flag;                                                                         -- (実績=0、計画=1)
+--//+ADD END   2009/05/25 T1_1020 M.Ohtsuki
 --========================================================================= 
 --  0:売上・1:掛率・2:数量・3:粗利益率・4:粗利益額・5:構成比・6:群2桁構成比・7:拠点計構成比
 --=========================================================================
