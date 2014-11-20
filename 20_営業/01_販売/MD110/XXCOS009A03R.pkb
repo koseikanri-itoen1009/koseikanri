@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A03R (body)
  * Description      : 原価割れチェックリスト
  * MD.050           : 原価割れチェックリスト MD050_COS_009_A03
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/08/13    1.5   N.Maeda          [0000865]レビュー指摘対応
  *  2009/09/02    1.6   M.Sano           [0001227]PT対応
  *  2009/10/02    1.7   S.Miyakoshi      [0001378対応]帳票ワークテーブルの桁あふれ対応
+ *  2010/01/18    1.8   S.Miyakoshi      [E_本稼動_00711]PT対応 ログイン拠点情報VIEWからの取得をメインSQL外で処理する
  *
  *****************************************************************************************/
 --
@@ -147,6 +148,9 @@ AS
   cv_msg_org_id_err         CONSTANT  VARCHAR2(100) :=  'APP-XXCOI1-00006';    -- 在庫組織ID取得エラーメッセージ
   cv_msg_proc_date_err      CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00014';    -- 業務日付取得エラーメッセージ
   cv_msg_prof_err           CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00004';    -- プロファイル取得エラーメッセージ
+-- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD START ************************ --
+  cv_msg_login_view         CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00119';    -- ログイン拠点情報VIEW
+-- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD  END  ************************ --
   --トークン名
   cv_tkn_nm_account         CONSTANT  VARCHAR2(100) :=  'ACCOUNT_NAME';        --会計期間種別名称
   cv_tkn_nm_para_date       CONSTANT  VARCHAR2(100) :=  'PARA_DATE';           --納品日(FROM)または納品日(TO)
@@ -218,6 +222,15 @@ AS
   TYPE g_rpt_data_ttype IS TABLE OF xxcos_rep_cost_div_list%ROWTYPE INDEX BY BINARY_INTEGER;
   --品目コードテーブル型
   TYPE g_item_cd_ttype  IS TABLE OF xxcos_sales_exp_lines.item_code%TYPE INDEX BY BINARY_INTEGER;
+-- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD START ************************ --
+  --拠点情報テーブル型
+  TYPE g_rec_base_info  IS RECORD
+    (
+      base_code             hz_cust_accounts.account_number%TYPE,               --拠点コード
+      base_name             hz_parties.party_name%TYPE                          --拠点名称
+    );
+  TYPE g_base_info_ttype IS TABLE OF g_rec_base_info INDEX BY PLS_INTEGER;
+-- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD  END  ************************ --
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -228,6 +241,11 @@ AS
   gd_proc_date              DATE;                                               --業務日付
   gd_min_date               DATE;                                               --MIN日付
   gd_max_date               DATE;                                               --MAX日付
+-- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD START ************************ --
+  g_base_info_tab           g_base_info_ttype;                                  --拠点情報コレクション
+  gv_base_code              hz_cust_accounts.account_number%TYPE;               --拠点コード
+  gv_base_name              hz_parties.party_name%TYPE;                         --拠点名称
+-- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD  END  ************************ --
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -265,8 +283,22 @@ AS
     lv_para_msg   VARCHAR2(5000);                         -- パラメータ出力メッセージ
     lt_org_cd     mtl_parameters.organization_code%TYPE;  -- 在庫組織コード
     lv_date_item  VARCHAR2(100);                          -- MIN日付/MAX日付
+-- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD START ************************ --
+    lv_login_view VARCHAR2(100);                          -- ログイン拠点情報VIEW
+-- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD  END  ************************ --
 --
     -- *** ローカル・カーソル ***
+-- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD START ************************ --
+    --拠点情報取得
+    CURSOR base_cur
+    IS
+      SELECT  lbiv.base_code          base_code              --拠点コード
+             ,lbiv.base_name          base_name              --拠点名
+      FROM    xxcos_login_base_info_v lbiv                   --ログインユーザ拠点ビュー
+      WHERE   ( ( iv_sale_base_code IS NULL )
+                OR ( iv_sale_base_code IS NOT NULL AND iv_sale_base_code = lbiv.base_code ) )
+      ;
+-- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD  END  ************************ --
 --
     -- *** ローカル・レコード ***
 --
@@ -386,6 +418,42 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+--
+-- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD START ************************ --
+    --========================================
+    -- 7.配下拠点コード取得処理
+    --========================================
+    BEGIN
+      -- カーソルOPEN
+      OPEN  base_cur;
+      -- バルクフェッチ
+      FETCH base_cur BULK COLLECT INTO g_base_info_tab;
+      -- カーソルCLOSE
+      CLOSE base_cur;
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- カーソルCLOSE
+        IF ( base_cur%ISOPEN ) THEN
+          CLOSE base_cur;
+        END IF;
+--
+      lv_login_view           :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcos_short_name,
+        iv_name               =>  cv_msg_login_view
+      );
+      lv_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcos_short_name,
+        iv_name               =>  cv_msg_select_err,
+        iv_token_name1        =>  cv_tkn_nm_table_name,
+        iv_token_value1       =>  lv_login_view,
+        iv_token_name2        =>  cv_tkn_nm_key_data,
+        iv_token_value2       =>  NULL
+      );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END;
+-- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD  END  ************************ --
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -716,22 +784,27 @@ AS
       SELECT  
 -- 2009/09/02 Ver.1.6 Add Start
         /*+
-          LEADING ( lbiv.obc.fu )
-          INDEX   ( lbiv.obc.fu fnd_user_u1)
-          USE_NL  ( lbiv.obc.papf )
-          INDEX   ( lbiv.obc.papf per_people_f_pk)
-          USE_NL  ( lbiv.obc.ppt )
-          INDEX   ( lbiv.obc.ppt per_person_types_pk)
-          USE_NL  ( lbiv.obc.paaf )
-          INDEX   ( lbiv.obc.paaf per_assignments_f_n12)
-          USE_NL  ( lbiv.xca )
-          INDEX   ( lbiv.xca xxcmm_cust_accounts_pk )
+-- 2010/01/18 Ver1.8 Del Start
+--          LEADING ( lbiv.obc.fu )
+--          INDEX   ( lbiv.obc.fu fnd_user_u1)
+--          USE_NL  ( lbiv.obc.papf )
+--          INDEX   ( lbiv.obc.papf per_people_f_pk)
+--          USE_NL  ( lbiv.obc.ppt )
+--          INDEX   ( lbiv.obc.ppt per_person_types_pk)
+--          USE_NL  ( lbiv.obc.paaf )
+--          INDEX   ( lbiv.obc.paaf per_assignments_f_n12)
+--          USE_NL  ( lbiv.xca )
+--          INDEX   ( lbiv.xca xxcmm_cust_accounts_pk )
+-- 2010/01/18 Ver1.8 Del End
           USE_NL  ( seh )
           INDEX   ( seh xxcos_sales_exp_headers_n01 )
         */
 -- 2009/09/02 Ver.1.6 Add End
         seh.sales_base_code               base_code,        --売上拠点コード
-        lbiv.base_name                    base_name,        --売上拠点名
+-- 2010/01/18 Ver1.8 Mod Start
+--        lbiv.base_name                    base_name,        --売上拠点名
+        gv_base_name                      base_name,        --売上拠点名
+-- 2010/01/18 Ver1.8 Mod End
         seh.results_employee_code         emp_code,         --営業担当者コード
 /* 2009/04/21 Ver1.2 Mod Start */
 --        riv.employee_name                 emp_name,         --営業担当者名
@@ -752,7 +825,9 @@ AS
         xxcos_sales_exp_headers seh,                        --販売実績ヘッダ
         xxcos_sales_exp_lines   sel,                        --販売実績明細
         oe_order_sources        oos,                        --受注ソースマスタ
-        xxcos_login_base_info_v lbiv,                       --ログインユーザ拠点ビュー
+-- 2010/01/18 Ver1.8 Del Start
+--        xxcos_login_base_info_v lbiv,                       --ログインユーザ拠点ビュー
+-- 2010/01/18 Ver1.8 Del End
 /* 2009/04/21 Ver1.2 Mod Start */
 --        xxcos_rs_info_v         riv,                        --営業員情報ビュー
         per_all_people_f        papf,                       --従業員マスタ
@@ -911,28 +986,31 @@ AS
 -- ******** 2009/08/11 1.5 N.Maeda MOD END *********** --
                       )
       --売上拠点コードを絞込み
--- ******** 2009/08/13 1.5 N.Maeda MOD START *********** --
--- 2009/09/02 Ver.1.6 Mod Start
-      AND   ( ( iv_sale_base_code IS NULL )
---      AND   ( ( iv_sale_base_code IS NULL AND EXISTS( SELECT 'Y'
---                                                      FROM   xxcos_login_base_info_v lbiv1
---                                                      WHERE  seh.sales_base_code = lbiv1.base_code ) )
--- 2009/09/02 Ver.1.6 Mod End
-        OR ( iv_sale_base_code IS NOT NULL AND iv_sale_base_code = seh.sales_base_code ) )
---      AND   1 = (
---                 CASE
---                  WHEN iv_sale_base_code IS NULL AND EXISTS( SELECT 'Y' 
---                                                             FROM   xxcos_login_base_info_v lbiv1 
---                                                             WHERE  seh.sales_base_code = lbiv1.base_code 
---                                                           ) THEN
---                    1
---                  WHEN iv_sale_base_code IS NOT NULL AND iv_sale_base_code = seh.sales_base_code THEN
---                    1
---                  ELSE
---                    0
---                 END
---                )
--- ******** 2009/08/13 1.5 N.Maeda MOD END *********** --
+-- 2010/01/18 Ver1.8 Mod Start
+      AND   seh.sales_base_code                   = gv_base_code
+---- ******** 2009/08/13 1.5 N.Maeda MOD START *********** --
+---- 2009/09/02 Ver.1.6 Mod Start
+--      AND   ( ( iv_sale_base_code IS NULL )
+----      AND   ( ( iv_sale_base_code IS NULL AND EXISTS( SELECT 'Y'
+----                                                      FROM   xxcos_login_base_info_v lbiv1
+----                                                      WHERE  seh.sales_base_code = lbiv1.base_code ) )
+---- 2009/09/02 Ver.1.6 Mod End
+--        OR ( iv_sale_base_code IS NOT NULL AND iv_sale_base_code = seh.sales_base_code ) )
+----      AND   1 = (
+----                 CASE
+----                  WHEN iv_sale_base_code IS NULL AND EXISTS( SELECT 'Y' 
+----                                                             FROM   xxcos_login_base_info_v lbiv1 
+----                                                             WHERE  seh.sales_base_code = lbiv1.base_code 
+----                                                           ) THEN
+----                    1
+----                  WHEN iv_sale_base_code IS NOT NULL AND iv_sale_base_code = seh.sales_base_code THEN
+----                    1
+----                  ELSE
+----                    0
+----                 END
+----                )
+---- ******** 2009/08/13 1.5 N.Maeda MOD END *********** --
+-- 2010/01/18 Ver1.8 Mod End
       --納品日を絞込み
       AND   seh.delivery_date >= id_dlv_date_from 
       AND   seh.delivery_date <= id_dlv_date_to
@@ -1034,7 +1112,9 @@ AS
 -- ******** 2009/08/13 1.5 N.Maeda MOD END *********** --
             --営業原価 IS NULL OR 納品単価 < 営業原価
       AND   ( sel.business_cost IS NULL OR NVL( sel.standard_unit_price_excluded, 0 ) < sel.business_cost )
-      AND   seh.sales_base_code       = lbiv.base_code            --売上拠点コード
+-- 2010/01/18 Ver1.8 Del Start
+--      AND   seh.sales_base_code       = lbiv.base_code            --売上拠点コード
+-- 2010/01/18 Ver1.8 Del End
 /* 2009/04/21 Ver1.2 Mod Start */
 --      AND   seh.sales_base_code       = riv.base_code
 --      AND   seh.results_employee_code = riv.employee_number       --営業担当者コード
@@ -1057,22 +1137,27 @@ AS
       SELECT  
 -- 2009/09/02 Ver.1.6 Add Start
         /*+
-          LEADING ( lbiv.obc.fu )
-          INDEX   ( lbiv.obc.fu fnd_user_u1)
-          USE_NL  ( lbiv.obc.papf )
-          INDEX   ( lbiv.obc.papf per_people_f_pk)
-          USE_NL  ( lbiv.obc.ppt )
-          INDEX   ( lbiv.obc.ppt per_person_types_pk)
-          USE_NL  ( lbiv.obc.paaf )
-          INDEX   ( lbiv.obc.paaf per_assignments_f_n12)
-          USE_NL  ( lbiv.xca )
-          INDEX   ( lbiv.xca xxcmm_cust_accounts_pk )
+-- 2010/01/18 Ver1.8 Del Start
+--          LEADING ( lbiv.obc.fu )
+--          INDEX   ( lbiv.obc.fu fnd_user_u1)
+--          USE_NL  ( lbiv.obc.papf )
+--          INDEX   ( lbiv.obc.papf per_people_f_pk)
+--          USE_NL  ( lbiv.obc.ppt )
+--          INDEX   ( lbiv.obc.ppt per_person_types_pk)
+--          USE_NL  ( lbiv.obc.paaf )
+--          INDEX   ( lbiv.obc.paaf per_assignments_f_n12)
+--          USE_NL  ( lbiv.xca )
+--          INDEX   ( lbiv.xca xxcmm_cust_accounts_pk )
+-- 2010/01/18 Ver1.8 Del End
           USE_NL  ( seh )
           INDEX   ( seh xxcos_sales_exp_headers_n01 )
         */
 -- 2009/09/02 Ver.1.6 Add End
         seh.sales_base_code               base_code,        --売上拠点コード
-        lbiv.base_name                    base_name,        --売上拠点名
+-- 2010/01/18 Ver1.8 Mod Start
+--        lbiv.base_name                    base_name,        --売上拠点名
+        gv_base_name                      base_name,        --売上拠点名
+-- 2010/01/18 Ver1.8 Mod End
         seh.results_employee_code         emp_code,         --営業担当者コード
 /* 2009/04/21 Ver1.2 Mod Start */
 --        riv.employee_name                 emp_name,         --営業担当者名
@@ -1092,7 +1177,9 @@ AS
       FROM    
         xxcos_sales_exp_headers seh,                        --販売実績ヘッダ
         xxcos_sales_exp_lines   sel,                        --販売実績明細
-        xxcos_login_base_info_v lbiv,                       --ログインユーザ拠点ビュー
+-- 2010/01/18 Ver1.8 Del Start
+--        xxcos_login_base_info_v lbiv,                       --ログインユーザ拠点ビュー
+-- 2010/01/18 Ver1.8 Del End
 /* 2009/04/21 Ver1.2 Mod Start */
 --        xxcos_rs_info_v         riv,                        --営業員情報ビュー
         per_all_people_f        papf,                       --従業員マスタ
@@ -1213,28 +1300,31 @@ AS
 -- ******** 2009/08/11 1.5 N.Maeda MOD END *********** --
                       )
       --売上拠点コードを絞込み
--- ******** 2009/08/13 1.5 N.Maeda MOD START *********** --
--- 2009/09/02 Ver.1.6 Mod Start
-      AND  ( ( iv_sale_base_code IS NULL )
---      AND  ( ( iv_sale_base_code IS NULL AND EXISTS( SELECT 'Y' 
---                                                     FROM   xxcos_login_base_info_v lbiv1 
---                                                     WHERE  seh.sales_base_code = lbiv1.base_code ) )
--- 2009/09/02 Ver.1.6 Mod End
-             OR ( iv_sale_base_code IS NOT NULL AND iv_sale_base_code = seh.sales_base_code ) )
---      AND   1 = (
---                 CASE
---                  WHEN iv_sale_base_code IS NULL AND EXISTS( SELECT 'Y' 
---                                                             FROM   xxcos_login_base_info_v lbiv1 
---                                                             WHERE  seh.sales_base_code = lbiv1.base_code 
---                                                           ) THEN
---                    1
---                  WHEN iv_sale_base_code IS NOT NULL AND iv_sale_base_code = seh.sales_base_code THEN
---                    1
---                  ELSE
---                    0
---                 END
---                )
--- ******** 2009/08/13 1.5 N.Maeda MOD END *********** --
+-- 2010/01/18 Ver1.8 Mod Start
+      AND   seh.sales_base_code                   = gv_base_code
+---- ******** 2009/08/13 1.5 N.Maeda MOD START *********** --
+---- 2009/09/02 Ver.1.6 Mod Start
+--      AND  ( ( iv_sale_base_code IS NULL )
+----      AND  ( ( iv_sale_base_code IS NULL AND EXISTS( SELECT 'Y' 
+----                                                     FROM   xxcos_login_base_info_v lbiv1 
+----                                                     WHERE  seh.sales_base_code = lbiv1.base_code ) )
+---- 2009/09/02 Ver.1.6 Mod End
+--             OR ( iv_sale_base_code IS NOT NULL AND iv_sale_base_code = seh.sales_base_code ) )
+----      AND   1 = (
+----                 CASE
+----                  WHEN iv_sale_base_code IS NULL AND EXISTS( SELECT 'Y' 
+----                                                             FROM   xxcos_login_base_info_v lbiv1 
+----                                                             WHERE  seh.sales_base_code = lbiv1.base_code 
+----                                                           ) THEN
+----                    1
+----                  WHEN iv_sale_base_code IS NOT NULL AND iv_sale_base_code = seh.sales_base_code THEN
+----                    1
+----                  ELSE
+----                    0
+----                 END
+----                )
+---- ******** 2009/08/13 1.5 N.Maeda MOD END *********** --
+-- 2010/01/18 Ver1.8 Mod End
       --納品日を絞込み
       AND   seh.delivery_date >= id_dlv_date_from 
       AND   seh.delivery_date <= id_dlv_date_to
@@ -1336,7 +1426,9 @@ AS
 -- ******** 2009/08/13 1.5 N.Maeda MOD END *********** --
             --営業原価 IS NULL OR 納品単価 < 営業原価
       AND   ( sel.business_cost IS NULL OR NVL( sel.standard_unit_price_excluded, 0 ) < sel.business_cost )
-      AND   seh.sales_base_code       = lbiv.base_code            --売上拠点コード
+-- 2010/01/18 Ver1.8 Del Start
+--      AND   seh.sales_base_code       = lbiv.base_code            --売上拠点コード
+-- 2010/01/18 Ver1.8 Del End
 /* 2009/04/21 Ver1.2 Mod Start */
 --      AND   seh.sales_base_code       = riv.base_code
 --      AND   seh.results_employee_code = riv.employee_number       --営業担当者コード
@@ -1370,6 +1462,11 @@ AS
     --ループカウント初期化
     ln_idx          := 0;
     ln_err_item_idx := 0;
+-- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD START ************************ --
+    FOR i IN 1..g_base_info_tab.COUNT LOOP
+      gv_base_code := g_base_info_tab(i).base_code;      --拠点コード
+      gv_base_name := g_base_info_tab(i).base_name;      --拠点名称
+-- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD  END  ************************ --
     --フラグ初期化
     lb_ext_flg      := FALSE;
     --対象データ取得
@@ -1442,6 +1539,9 @@ AS
         END IF;
       END IF;
     END LOOP loop_get_data;
+-- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD START ************************ --
+    END LOOP;
+-- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD  END  ************************ --
 --
     --処理件数カウント
     gn_target_cnt := g_report_data_tab.COUNT;
