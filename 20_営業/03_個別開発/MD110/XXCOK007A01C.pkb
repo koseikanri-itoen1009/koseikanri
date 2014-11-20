@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK007A01C(body)
  * Description      : 売上実績振替情報作成(EDI)
  * MD.050           : 売上実績振替情報作成(EDI) MD050_COK_007_A01
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------------------- ---------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/02/03    1.1   S.Sasaki         [障害COK_007]一時表レイアウト変更の対応
  *  2009/02/12    1.2   S.Sasaki         [障害COK_031]顧客受注可能フラグ、売上対象区分チェック追加
  *  2009/05/14    1.3   M.Hiruta         [障害T1_1003]文字列バッファ修正
+ *  2009/05/19    1.4   M.Hiruta         [障害T1_1043]一時表作成時 売上金額・売上金額（税抜き）小数点以下切捨て
  *
  *****************************************************************************************/
   -- =========================
@@ -964,8 +965,12 @@ AS
     , it_from_cust_rec.qty                       --qty
     , it_from_cust_rec.unit_type                 --unit_type
     , it_from_cust_rec.delivery_unit_price       --delivery_unit_price
-    , it_from_cust_rec.selling_amt               --selling_amt
-    , it_from_cust_rec.selling_amt_no_tax        --selling_amt_no_tax
+-- Start 2009/05/19 Ver_1.4 T1_1043 M.Hiruta
+--    , it_from_cust_rec.selling_amt               --selling_amt
+--    , it_from_cust_rec.selling_amt_no_tax        --selling_amt_no_tax
+    , TRUNC(it_from_cust_rec.selling_amt)        --selling_amt
+    , TRUNC(it_from_cust_rec.selling_amt_no_tax) --selling_amt_no_tax
+-- End   2009/05/19 Ver_1.4 T1_1043 M.Hiruta
     , it_from_cust_rec.tax_type                  --tax_type
     , it_from_cust_rec.tax_rate                  --tax_rate
     , it_from_cust_rec.trading_cost              --trading_cost
@@ -1012,8 +1017,12 @@ AS
     , it_to_cust_rec.qty                       --qty
     , it_to_cust_rec.unit_type                 --unit_type
     , it_to_cust_rec.delivery_unit_price       --delivery_unit_price
-    , it_to_cust_rec.selling_amt               --selling_amt
-    , it_to_cust_rec.selling_amt_no_tax        --selling_amt_no_tax
+-- Start 2009/05/19 Ver_1.4 T1_1043 M.Hiruta
+--    , it_to_cust_rec.selling_amt               --selling_amt
+--    , it_to_cust_rec.selling_amt_no_tax        --selling_amt_no_tax
+    , TRUNC(it_to_cust_rec.selling_amt)        --selling_amt
+    , TRUNC(it_to_cust_rec.selling_amt_no_tax) --selling_amt_no_tax
+-- End   2009/05/19 Ver_1.4 T1_1043 M.Hiruta
     , it_to_cust_rec.tax_type                  --tax_type
     , it_to_cust_rec.tax_rate                  --tax_rate
     , it_to_cust_rec.trading_cost              --trading_cost
@@ -1108,6 +1117,9 @@ AS
       AND     xca.chain_store_code     = iv_edi_chain_store_code
       AND     xca.store_code           = iv_code
       AND     hcsua.site_use_code      = cv_ship_to
+-- Start 2009/05/19 Ver_1.4 T1_1043 M.Hiruta
+      AND     hcasa.org_id             = gn_org_id
+-- End   2009/05/19 Ver_1.4 T1_1043 M.Hiruta
       AND     hcsua.org_id             = gn_org_id;
     EXCEPTION
     -- *** 顧客コードが取得できない場合(顧客コードの変換に失敗した場合) ***
@@ -2012,6 +2024,9 @@ AS
         AND     gd_prdate BETWEEN flv.start_date_active
                           AND     NVL( flv.end_date_active, gd_prdate )
         AND     flv.language     = USERENV('LANG')
+-- Start 2009/05/19 Ver_1.4 T1_1043 M.Hiruta
+        AND     atca.org_id      = gn_org_id
+-- End   2009/05/19 Ver_1.4 T1_1043 M.Hiruta
         AND     atca.name        = flv.attribute1;
       END IF;
     EXCEPTION
