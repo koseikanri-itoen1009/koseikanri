@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,8 @@ AS
  *                                                               情報欄を最終項目に修正
  *  2013/04/17    1.9   中野 徹也        障害E_本稼動_09963追加対応 項目追加および使用制限変更
  *  2014/04/25    1.10  仁木 重人        障害E_本稼動_11616対応 項目追加
+ *  2014/06/19    1.11  仁木 重人        障害E_本稼動_12020対応 保管場所チェック不具合修正
+ *                                                              業態小分類チェック修正
  *
  *****************************************************************************************/
 --
@@ -182,7 +184,9 @@ AS
   cv_deliv_rel_err_msg        CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00379';                --納品拠点相関チェックエラー
   cv_ss_code_rel_err1_msg     CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00381';                --出荷元保管場所相関チェック１エラー
   cv_ss_code_rel_err2_msg     CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00382';                --出荷元保管場所相関チェック２エラー
-  cv_bz_low_type_err_msg      CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00383';                --業態(小分類)妥当性チェックエラー
+-- Ver1.11 del start
+--  cv_bz_low_type_err_msg      CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00383';                --業態(小分類)妥当性チェックエラー
+-- Ver1.11 del end
 -- Ver1.10 add end
 --
   cv_param                    CONSTANT VARCHAR2(5)   := 'PARAM';                           --パラメータトークン
@@ -1994,63 +1998,65 @@ AS
             lt_business_low_type_aft := lv_business_low_type;
           END IF;
 --
-          --職責管理フラグが'N'の場合
-          IF (gv_resp_flag = cv_no)
-          THEN
-            --顧客区分：12かつ、変更後の値が'21','22','27'の場合
-            IF     (lv_cust_customer_class = cv_uesama_kbn)
-              AND  (lt_business_low_type_aft IN ( cv_gyotai_inshop
-                                                , cv_gyotai_tosya_tyokuei
-                                                , cv_gyotai_syoka_vd ))
-            THEN
-              lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
-              --業態(小分類)妥当性チェックエラーメッセージ取得
-              gv_out_msg := xxccp_common_pkg.get_msg(
-                               iv_application  => gv_xxcmm_msg_kbn
-                              ,iv_name         => cv_bz_low_type_err_msg
-                              ,iv_token_name1  => cv_input_val
-                              ,iv_token_value1 => lv_cust_customer_class
-                              ,iv_token_name2  => cv_cond_col_val
-                              ,iv_token_value2 => lt_business_low_type_aft
-                              ,iv_token_name3  => cv_cust_code
-                              ,iv_token_value3 => lv_customer_code
-                             );
-              FND_FILE.PUT_LINE(
-                 which  => FND_FILE.LOG
-                ,buff   => gv_out_msg);
-                --業態(小分類)チェックフラグFALSE
-                lb_bz_low_type_chk_flg := FALSE;
---
-            --顧客区分：10以外かつ、変更後の値が'21','22','24','25','26','27'の場合
-            ELSIF  (lv_cust_customer_class <> cv_kokyaku_kbn)
-              AND  (lt_business_low_type_aft IN ( cv_gyotai_inshop
-                                                , cv_gyotai_tosya_tyokuei
-                                                , cv_gyotai_full_syoka_vd
-                                                , cv_gyotai_full_vd
-                                                , cv_gyotai_nohin_vd
-                                                , cv_gyotai_syoka_vd ))
-            THEN
-              lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
-              --業態(小分類)妥当性チェックエラーメッセージ取得
-              gv_out_msg := xxccp_common_pkg.get_msg(
-                               iv_application  => gv_xxcmm_msg_kbn
-                              ,iv_name         => cv_bz_low_type_err_msg
-                              ,iv_token_name1  => cv_input_val
-                              ,iv_token_value1 => lv_cust_customer_class
-                              ,iv_token_name2  => cv_cond_col_val
-                              ,iv_token_value2 => lt_business_low_type_aft
-                              ,iv_token_name3  => cv_cust_code
-                              ,iv_token_value3 => lv_customer_code
-                             );
-              FND_FILE.PUT_LINE(
-                 which  => FND_FILE.LOG
-                ,buff   => gv_out_msg);
-                --業態(小分類)チェックフラグFALSE
-                lb_bz_low_type_chk_flg := FALSE;
-            END IF;
-          END IF;
+-- Ver1.11 del start
+--          --職責管理フラグが'N'の場合
+--          IF (gv_resp_flag = cv_no)
+--          THEN
+--            --顧客区分：12かつ、変更後の値が'21','22','27'の場合
+--            IF     (lv_cust_customer_class = cv_uesama_kbn)
+--              AND  (lt_business_low_type_aft IN ( cv_gyotai_inshop
+--                                                , cv_gyotai_tosya_tyokuei
+--                                                , cv_gyotai_syoka_vd ))
+--            THEN
+--              lv_check_status := cv_status_error;
+--              lv_retcode      := cv_status_error;
+--              --業態(小分類)妥当性チェックエラーメッセージ取得
+--              gv_out_msg := xxccp_common_pkg.get_msg(
+--                               iv_application  => gv_xxcmm_msg_kbn
+--                              ,iv_name         => cv_bz_low_type_err_msg
+--                              ,iv_token_name1  => cv_input_val
+--                              ,iv_token_value1 => lv_cust_customer_class
+--                              ,iv_token_name2  => cv_cond_col_val
+--                              ,iv_token_value2 => lt_business_low_type_aft
+--                              ,iv_token_name3  => cv_cust_code
+--                              ,iv_token_value3 => lv_customer_code
+--                             );
+--              FND_FILE.PUT_LINE(
+--                 which  => FND_FILE.LOG
+--                ,buff   => gv_out_msg);
+--                --業態(小分類)チェックフラグFALSE
+--                lb_bz_low_type_chk_flg := FALSE;
+----
+--            --顧客区分：10以外かつ、変更後の値が'21','22','24','25','26','27'の場合
+--            ELSIF  (lv_cust_customer_class <> cv_kokyaku_kbn)
+--              AND  (lt_business_low_type_aft IN ( cv_gyotai_inshop
+--                                                , cv_gyotai_tosya_tyokuei
+--                                                , cv_gyotai_full_syoka_vd
+--                                                , cv_gyotai_full_vd
+--                                                , cv_gyotai_nohin_vd
+--                                                , cv_gyotai_syoka_vd ))
+--            THEN
+--              lv_check_status := cv_status_error;
+--              lv_retcode      := cv_status_error;
+--              --業態(小分類)妥当性チェックエラーメッセージ取得
+--              gv_out_msg := xxccp_common_pkg.get_msg(
+--                               iv_application  => gv_xxcmm_msg_kbn
+--                              ,iv_name         => cv_bz_low_type_err_msg
+--                              ,iv_token_name1  => cv_input_val
+--                              ,iv_token_value1 => lv_cust_customer_class
+--                              ,iv_token_name2  => cv_cond_col_val
+--                              ,iv_token_value2 => lt_business_low_type_aft
+--                              ,iv_token_name3  => cv_cust_code
+--                              ,iv_token_value3 => lv_customer_code
+--                             );
+--              FND_FILE.PUT_LINE(
+--                 which  => FND_FILE.LOG
+--                ,buff   => gv_out_msg);
+--                --業態(小分類)チェックフラグFALSE
+--                lb_bz_low_type_chk_flg := FALSE;
+--            END IF;
+--          END IF;
+-- Ver1.11 del end
         END IF;
 -- Ver1.10 add end
 --
@@ -6878,8 +6884,12 @@ AS
                 AND (lt_chain_store_code_aft IS NOT NULL)
               THEN
                 << check_ss_code_rel_loop >>
-                FOR check_ss_code_rel_rec IN check_ss_code_rel_cur(lt_chain_store_code_aft    --チェーン店コード(EDI)
-                                                                  ,lt_ship_storage_code_aft)  --出荷元保管場所
+-- Ver1.11 mod start
+--                FOR check_ss_code_rel_rec IN check_ss_code_rel_cur(lt_chain_store_code_aft    --チェーン店コード(EDI)
+--                                                                  ,lt_ship_storage_code_aft)  --出荷元保管場所
+                FOR check_ss_code_rel_rec IN check_ss_code_rel_cur(lt_ship_storage_code_aft    --出荷元保管場所
+                                                                  ,lt_chain_store_code_aft)    --チェーン店コード(EDI)
+-- Ver1.11 mod end
                 LOOP
                   lt_chain_store_code_mst  := check_ss_code_rel_rec.chain_store_code;
                 END LOOP check_ss_code_rel_loop;
