@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -94,6 +94,10 @@ AS
  *                                        ・新台代替／旧台代替／引揚の場合に、引揚先（搬入先）妥当性チェックを追加
  *                                        ・作業会社CD妥当性チェックを追加
  *                                        ・作業希望日妥当性チェックを追加。
+ *  2010-04-01    1.28  T.maruyama       【E_本稼動_02133】
+ *                                        ・業態小分類と機種のチェックの際、旧台作業の場合はiProで機種CDを入力しないため
+ *                                          設置物件CDからIBの機種CDを取得して使用するよう変更。
+ *                                        ・作業希望日チェックの際に、チェックしている日付を出力するようログ追加。
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -1564,6 +1568,9 @@ AS
                             , iv_token_name1  => cv_tkn_date              -- トークンコード1
                             , iv_token_value1 => lv_working_day           -- トークン値1
                           );
+            /* 2010.04.01 maruyama E_本稼動_02133 一時的に基準営業日を出力 start */
+            lv_errbuf2 := lv_errbuf2 || '(' || to_char(ld_wk_date,'yyyy/mm/dd')|| '：' || to_char(ld_working_day,'yyyy/mm/dd') || ')';
+            /* 2010.04.01 maruyama E_本稼動_02133 一時的に基準営業日を出力 end */
             --
             lv_errbuf  := CASE
                             WHEN (lv_errbuf IS NULL) THEN
@@ -1983,6 +1990,10 @@ AS
                             , iv_token_name1  => cv_tkn_date              -- トークンコード1
                             , iv_token_value1 => lv_working_day           -- トークン値1
                           );
+            /* 2010.04.01 maruyama E_本稼動_02133 一時的に基準営業日を出力 start */
+            lv_errbuf2 := lv_errbuf2 || '(' || to_char(ld_wk_date,'yyyy/mm/dd')|| '：' || to_char(ld_working_day,'yyyy/mm/dd') || ')';
+            /* 2010.04.01 maruyama E_本稼動_02133 一時的に基準営業日を出力 end */
+            --
             --
             lv_errbuf  := CASE
                             WHEN (lv_errbuf IS NULL) THEN
@@ -6636,6 +6647,9 @@ AS
     lt_business_low_type      xxcso_cust_acct_sites_v.business_low_type%TYPE;   -- 業態（小分類）
     lt_customer_class_code    xxcso_cust_acct_sites_v.customer_class_code%TYPE; -- 顧客区分
     lv_hazard_class           VARCHAR2(1);                                      -- 機器区分（危険度区分）
+    /* 2010.04.01 maruyama E_本稼動_02133 作業区分によって機種の取得先を変更する start */  
+    lv_un_number              po_un_numbers_vl.un_number%TYPE; --機種CD
+    /* 2010.04.01 maruyama E_本稼動_02133 作業区分によって機種の取得先を変更する end */  
     --
     -- *** ローカル例外 ***
     sql_expt      EXCEPTION;
@@ -6693,12 +6707,36 @@ AS
     -- ========================================
     -- 機種マスタ抽出
     -- ========================================
+    /* 2010.04.01 maruyama E_本稼動_02133 作業区分によって機種の取得先を変更する start */ 
+    IF i_requisition_rec.category_kbn in (cv_category_kbn_new_install, cv_category_kbn_new_replace) THEN
+      --新台設置・新台代替･･･iPro購買依頼の機種CD
+      lv_un_number := i_requisition_rec.un_number;
+    ELSE
+      --旧台設置・旧台代替･･･設置用物件CDから取得した機種CD
+      BEGIN
+        SELECT  attribute1              --機種CD
+        INTO    lv_un_number
+        FROM    csi_item_instances cii
+        WHERE   cii.external_reference = i_requisition_rec.install_code
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_un_number := NULL;
+      END;
+    --
+    END IF; 
+    /* 2010.04.01 maruyama E_本稼動_02133 作業区分によって機種の取得先を変更する end */ 
+    
+    
     BEGIN
       SELECT SUBSTRB(phcv.hazard_class,1,1)         -- 機器区分（危険度区分）
       INTO   lv_hazard_class
       FROM   po_un_numbers_vl     punv              -- 国連番号マスタビュー
             ,po_hazard_classes_vl phcv              -- 危険度区分マスタビュー
-      WHERE  punv.un_number        = i_requisition_rec.un_number
+      /* 2010.04.01 maruyama E_本稼動_02133 作業区分によって機種の取得先を変更する start */
+      --WHERE  punv.un_number        = i_requisition_rec.un_number
+      WHERE  punv.un_number        = lv_un_number
+      /* 2010.04.01 maruyama E_本稼動_02133 作業区分によって機種の取得先を変更する end */
       AND    punv.hazard_class_id  = phcv.hazard_class_id
       ;
       --
@@ -6713,7 +6751,10 @@ AS
                        , iv_token_name2  => cv_tkn_item                          -- トークンコード2
                        , iv_token_value2 => cv_un_num                            -- トークン値2
                        , iv_token_name3  => cv_tkn_value                         -- トークンコード3
-                       , iv_token_value3 => TO_CHAR(i_requisition_rec.un_number) -- トークン値3
+                       /* 2010.04.01 maruyama E_本稼動_02133 作業区分によって機種の取得先を変更する start */
+                       --, iv_token_value3 => TO_CHAR(i_requisition_rec.un_number) -- トークン値3
+                       , iv_token_value3 => lv_un_number -- トークン値3
+                       /* 2010.04.01 maruyama E_本稼動_02133 作業区分によって機種の取得先を変更する end */
                      );
         --
         RAISE sql_expt;
@@ -6728,7 +6769,10 @@ AS
                        , iv_token_name2  => cv_tkn_item                          -- トークンコード2
                        , iv_token_value2 => cv_un_num                            -- トークン値2
                        , iv_token_name3  => cv_tkn_base_val                      -- トークンコード3
-                       , iv_token_value3 => TO_CHAR(i_requisition_rec.un_number) -- トークン値3
+                       /* 2010.04.01 maruyama E_本稼動_02133 作業区分によって機種の取得先を変更する start */
+                       --, iv_token_value3 => TO_CHAR(i_requisition_rec.un_number) -- トークン値3
+                       , iv_token_value3 => lv_un_number -- トークン値3
+                       /* 2010.04.01 maruyama E_本稼動_02133 作業区分によって機種の取得先を変更する end */
                        , iv_token_name4  => cv_tkn_err_msg                       -- トークンコード4
                        , iv_token_value4 => SQLERRM                              -- トークン値4
                      );
@@ -6750,7 +6794,10 @@ AS
                        iv_application  => cv_sales_appl_short_name             -- アプリケーション短縮名
                      , iv_name         => cv_tkn_number_62                     -- メッセージコード
                      , iv_token_name1  => cv_tkn_kisyucd                       -- トークンコード1
-                     , iv_token_value1 => TO_CHAR(i_requisition_rec.un_number) -- トークン値1
+                     /* 2010.04.01 maruyama E_本稼動_02133 作業区分によって機種の取得先を変更する start */
+                     --, iv_token_value1 => TO_CHAR(i_requisition_rec.un_number) -- トークン値1
+                     , iv_token_value1 => lv_un_number -- トークン値1
+                     /* 2010.04.01 maruyama E_本稼動_02133 作業区分によって機種の取得先を変更する end */
                    );
       --
       RAISE sql_expt;
