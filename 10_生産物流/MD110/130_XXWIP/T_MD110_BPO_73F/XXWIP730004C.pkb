@@ -556,7 +556,7 @@ AS
             ,NVL( xdl.distance         , 0 )                AS distance_2       -- 距離２
 -- ##### 20080725 1.8 変更要求結合テスト障害対応 START #####
 --            ,xdl.dellivary_classe                           AS deliv_div        -- 配送区分
-            ,NVL(xdl.dellivary_classe, xd.dellivary_classe  AS deliv_div        -- 配送区分
+            ,NVL(xdl.dellivary_classe, xd.delivery_classe)  AS deliv_div        -- 配送区分
 -- ##### 20080725 1.8 変更要求結合テスト障害対応 END   #####
             ,NULL                                           AS deliv_div_name   -- 配送区分名
             ,NVL( xdl.qty              , 0 )                AS qty              -- 数量

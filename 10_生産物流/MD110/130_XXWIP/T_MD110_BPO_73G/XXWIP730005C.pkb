@@ -545,7 +545,7 @@ AS
             ,NVL( xdl.delivery_weight   , 0 )               AS weight           -- 重量
 -- ##### 20080725 1.8 変更要求結合テスト障害対応 START #####
 --            ,xdl.dellivary_classe                           AS deliv_div        -- 配送区分
-            ,NVL(xdl.dellivary_classe ,xd1.dellivary_classe) AS deliv_div        -- 配送区分
+            ,NVL(xdl.dellivary_classe ,xd1.delivery_classe) AS deliv_div        -- 配送区分
 -- ##### 20080725 1.8 変更要求結合テスト障害対応 END   #####
             ,NVL( xd2.charged_amount    , 0 )               AS c_kei      -- 運送業者：契約運賃
             ,NVL( xd2.consolid_surcharge, 0 )               AS c_kon      -- 運送業者：混載割増
