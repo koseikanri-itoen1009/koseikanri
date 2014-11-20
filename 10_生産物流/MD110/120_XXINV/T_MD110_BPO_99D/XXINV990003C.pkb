@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼のアップロード
  * MD.050           : ファイルアップロード   T_MD050_BPO_990
  * MD.070           : 出荷依頼のアップロード T_MD070_BPO_99D
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/04/18    1.1   Oracle 山根 一浩  変更要求No63対応
  *  2008/05/07    1.2   Oracle 河野       内部変更要求No82対応
  *  2008/07/08    1.3   Oracle 山根 一浩  I_S_192対応
+ *  2009/12/15    1.4   SCS北寒寺         本稼動障害#493対応(暫定)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -99,6 +100,9 @@ AS
   gv_c_msg_99d_101   CONSTANT VARCHAR2(15)  := 'APP-XXINV-00001'; -- ファイル名
   gv_c_msg_99d_103   CONSTANT VARCHAR2(15)  := 'APP-XXINV-00003'; -- アップロード日時
   gv_c_msg_99d_104   CONSTANT VARCHAR2(15)  := 'APP-XXINV-00004'; -- ファイルアップロード名称
+-- Ver1.4 SCSHOKKANJI 本稼動障害#493対応(暫定) START
+  gv_tkn_num_40f_06    CONSTANT VARCHAR2(15) := 'APP-XXWSH-11256';  -- 依頼Noコンバートエラー
+-- Ver1.4 SCSHOKKANJI 本稼動障害#493対応(暫定) END
 --
   -- トークン
   gv_c_tkn_ng_profile          CONSTANT VARCHAR2(10)   := 'NAME';
@@ -1100,10 +1104,20 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- Ver1.4 SCSHOKKANJI 本稼動障害#493対応(暫定) START
+     cv_1             CONSTANT VARCHAR2(1) := '1';      --'1'拠点からのInBound用
+     cn_status_normal CONSTANT NUMBER      := 0;        -- 共通関数正常終了
+     cv_app_name      CONSTANT VARCHAR2(5) := 'XXWSH';  -- アプリケーション短縮名
+     cv_cort          CONSTANT VARCHAR2(1) := ':';      -- つなぎ文字
+-- Ver1.4 SCSHOKKANJI 本稼動障害#493対応(暫定) END
 --
     -- *** ローカル変数 ***
     ln_header_id      NUMBER;   -- ヘッダID
     ln_line_id        NUMBER;   -- 明細ID
+-- Ver1.4 SCSHOKKANJI 本稼動障害#493対応(暫定) START
+    ln_result           NUMBER;
+    lv_order_source_ref xxwsh_shipping_headers_if.order_source_ref%TYPE;  -- 受注ソース参照
+-- Ver1.4 SCSHOKKANJI 本稼動障害#493対応(暫定) END
 --
     -- *** ローカル・カーソル ***
 --
@@ -1153,7 +1167,27 @@ AS
         gt_party_site_code_tab(gn_header_count)       := fdata_tbl(ln_index).party_site_code;       -- 出荷先
         gt_shipping_instructions_tab(gn_header_count) := fdata_tbl(ln_index).shipping_instructions; -- 出荷指示
         gt_cust_po_number_tab(gn_header_count)        := fdata_tbl(ln_index).cust_po_number;        -- 顧客発注
-        gt_order_source_ref_tab(gn_header_count)      := fdata_tbl(ln_index).order_source_ref;      -- 受注ソース参照
+-- Ver1.4 SCSHOKKANJI 本稼動障害#493対応(暫定) START
+        lv_order_source_ref := NULL;
+        ---------------------------------------------------------------------------
+        -- 共通関数「依頼Noコンバート関数」にて、9桁の依頼Noを12桁依頼Noへ変換
+        ---------------------------------------------------------------------------
+        ln_result := xxwsh_common_pkg.convert_request_number(
+                       cv_1                          -- in  '1'拠点からのInBound用
+                      ,fdata_tbl(ln_index).order_source_ref    -- in  受注ソース参照 変更前依頼No
+                      ,lv_order_source_ref           -- out 変更後
+                     );
+        IF (ln_result <> cn_status_normal) THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(cv_app_name,gv_tkn_num_40f_06)
+                    || gv_c_order_source_ref
+                    || cv_cort
+                    || fdata_tbl(ln_index).order_source_ref;
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+        END IF;
+        gt_order_source_ref_tab(gn_header_count)      := lv_order_source_ref;
+        --gt_order_source_ref_tab(gn_header_count)      := fdata_tbl(ln_index).order_source_ref;      -- 受注ソース参照
+-- Ver1.4 SCSHOKKANJI 本稼動障害#493対応(暫定) END
         gt_schedule_ship_date_tab(gn_header_count)    
                  := FND_DATE.STRING_TO_DATE(fdata_tbl(ln_index).schedule_ship_date, 'RR/MM/DD');    -- 出荷予定日
         gt_schedule_arrival_date_tab(gn_header_count) 
