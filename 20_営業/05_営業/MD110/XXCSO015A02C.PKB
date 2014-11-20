@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.5
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009-04-10    1.4   K.Satomura       ＳＴ障害対応(T1_0408,0492対応)
  *  2009-04-30    1.5   K.Satomura       ＳＴ障害対応(T1_0517対応)
  *  2009-05-01    1.6   Tomoko.Mori      T1_0897対応
+ *  2009-05-19    1.7   K.Satomura       ＳＴ障害対応(T1_1048対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1802,22 +1803,51 @@ AS
         lv_cur_phone_number3 := SUBSTR(lv_cur_phone_number, ln_num2 + 1);
       END IF;
 --
-      ln_num1    := INSTR(lv_new_phone_number, cv_hyphen);
-      ln_num2    := INSTR(lv_new_phone_number, cv_hyphen, 1, 2);
---
-      IF (lv_new_phone_number IS NULL OR ln_num1 = 0 OR ln_num2 = 0) THEN
-        lv_new_phone_number1 := NULL;
-        lv_new_phone_number2 := NULL;
-        lv_new_phone_number3 := NULL;
-      ELSE
-        lv_new_phone_number1 := SUBSTR(lv_new_phone_number, 1, (ln_num1-1));
-        lv_new_phone_number2 := SUBSTR(lv_new_phone_number, ln_num1 + 1, (ln_num2 - ln_num1 - 1));
-        lv_new_phone_number3 := SUBSTR(lv_new_phone_number, ln_num2 + 1);
-      END IF;
+      /* 2009.05.19 K.Satomura T1_1048対応 START */
+      --ln_num1    := INSTR(lv_new_phone_number, cv_hyphen);
+      --ln_num2    := INSTR(lv_new_phone_number, cv_hyphen, 1, 2);
+--    --
+      --IF (lv_new_phone_number IS NULL OR ln_num1 = 0 OR ln_num2 = 0) THEN
+      --  lv_new_phone_number1 := NULL;
+      --  lv_new_phone_number2 := NULL;
+      --  lv_new_phone_number3 := NULL;
+      --ELSE
+      --  lv_new_phone_number1 := SUBSTR(lv_new_phone_number, 1, (ln_num1-1));
+      --  lv_new_phone_number2 := SUBSTR(lv_new_phone_number, ln_num1 + 1, (ln_num2 - ln_num1 - 1));
+      --  lv_new_phone_number3 := SUBSTR(lv_new_phone_number, ln_num2 + 1);
+      --END IF;
+      /* 2009.05.19 K.Satomura T1_1048対応 END */
     /* 2009.04.06 D.Abe T1_0306対応 START */
     END IF;
     /* 2009.04.06 D.Abe T1_0306対応 END */
 --
+    /* 2009.05.19 K.Satomura T1_1048対応 START */
+    IF (lv_new_phone_number IS NOT NULL) THEN
+      ln_num1 := INSTR(lv_new_phone_number, cv_hyphen);
+      ln_num2 := INSTR(lv_new_phone_number, cv_hyphen, 1, 2);
+      --
+      IF (lv_new_phone_number IS NULL
+        OR ln_num1 = 0
+        OR ln_num2 = 0)
+      THEN
+        lv_new_phone_number1 := NULL;
+        lv_new_phone_number2 := NULL;
+        lv_new_phone_number3 := NULL;
+        --
+      ELSE
+        lv_new_phone_number1 := SUBSTR(lv_new_phone_number, 1, (ln_num1-1));
+        lv_new_phone_number2 := SUBSTR(lv_new_phone_number, ln_num1 + 1, (ln_num2 - ln_num1 - 1));
+        lv_new_phone_number3 := SUBSTR(lv_new_phone_number, ln_num2 + 1);
+        --
+      END IF;
+      --
+    ELSE
+      lv_new_phone_number1 := NULL;
+      lv_new_phone_number2 := NULL;
+      lv_new_phone_number3 := NULL;
+      --
+    END IF;
+    /* 2009.05.19 K.Satomura T1_1048対応 END */
     -- 物件コード１
     io_get_data_rec.install_code1          := REPLACE(lv_install_code1, cv_hyphen);
     -- 機種名１
