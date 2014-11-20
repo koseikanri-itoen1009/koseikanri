@@ -33,6 +33,9 @@ CREATE OR REPLACE PACKAGE BODY JTF_PF_CONV_PKG AS
  |    14-Apr-2002     Modified  navkumar                                     |
  |                       added a suite OF PL/SQL FUNCTIONS and procedures    |
  |    11-Apr-2002     Created   bsanghav                                     |
+ |    17-Feb-2010     Modified  SCS T.Kitagawa                               |
+ |                              BUG:9365233 increased variable to 4000 and   |
+ |                              protected against an overrun                 |
  |___________________________________________________________________________|*/
 
 	last_migrate_day DATE;
@@ -673,16 +676,37 @@ CREATE OR REPLACE PACKAGE BODY JTF_PF_CONV_PKG AS
 		COMMIT;
 	END LOOP;
   END;
+-- ##### 20100217 –{”Ô#1609‘Î‰ž START #####
+--  Function GROUP_CONCAT ( list IN JTF_PF_TABLETYPE, separator VARCHAR2)
+--  RETURN  VARCHAR2 IS
+--    ret VARCHAR2(1000) :='';
+--  BEGIN
+--    IF (list.COUNT > 0) THEN
+--      FOR j IN list.FIRST..list.LAST  LOOP
+--        IF j = 1 THEN
+--          ret := list(j);
+--        ELSE
+--          ret := ret || separator || list(j);
+--        END IF;
+--      END LOOP;
+--      RETURN ret;
+--    ELSE
+--      RETURN ret;
+--    END IF;
+--  END;
   Function GROUP_CONCAT ( list IN JTF_PF_TABLETYPE, separator VARCHAR2)
-  RETURN  VARCHAR2 IS
-    ret VARCHAR2(1000) :='';
+  RETURN VARCHAR2 IS
+    ret VARCHAR2(4000) :='';
   BEGIN
     IF (list.COUNT > 0) THEN
-      FOR j IN list.FIRST..list.LAST  LOOP
+      FOR j IN list.FIRST..list.LAST LOOP
         IF j = 1 THEN
           ret := list(j);
         ELSE
-          ret := ret || separator || list(j);
+          --9365233, increased variable to 4000 and protected against an overrun
+          IF lengthb(ret || separator || list(j)) < 4000 then
+            ret := ret || separator || list(j);
+          END IF;
         END IF;
       END LOOP;
       RETURN ret;
@@ -690,6 +714,7 @@ CREATE OR REPLACE PACKAGE BODY JTF_PF_CONV_PKG AS
       RETURN ret;
     END IF;
   END;
+-- ##### 20100217 –{”Ô#1609‘Î‰ž END #####
 END;
 /
 COMMIT;
