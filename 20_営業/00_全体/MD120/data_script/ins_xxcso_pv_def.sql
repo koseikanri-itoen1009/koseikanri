@@ -1,0 +1,29 @@
+--物件情報の汎用検索_シードデータ登録
+INSERT INTO xxcso_pv_def(
+  VIEW_ID,
+  VIEW_NAME,
+  VIEW_SIZE,
+  DEFAULT_FLAG,
+  VIEW_OPEN_CODE,
+  DESCRIPTION,
+  EXTRACT_PATTERN_CODE,
+  CREATED_BY,
+  CREATION_DATE,
+  LAST_UPDATED_BY,
+  LAST_UPDATE_DATE,
+  LAST_UPDATE_LOGIN
+) VALUES (
+  -1,
+  '自拠点の物件検索ビュー',
+  25,
+  'N',
+  '1',
+  '売上拠点が自拠点である顧客を使用者として設定されている物件情報を検索するパーソナライズビュー',
+  '1',
+  -1,
+  SYSDATE,
+  -1,
+  SYSDATE,
+  -1
+)
+;
