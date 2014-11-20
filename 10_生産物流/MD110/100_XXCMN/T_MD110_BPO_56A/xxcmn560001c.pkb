@@ -7,7 +7,7 @@ AS
  * Description      : トレーサビリティ
  * MD.050           : トレーサビリティ T_MD050_BPO_560
  * MD.070           : トレーサビリティ(56A) T_MD070_BPO_56A
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2008/09/01    1.5   ORACLE 椎名昭圭  TE080指摘事項#7対応
  *                                       PT不具合修正
  *  2008/09/03    1.6   ORACLE 丸下博宣  PT不具合修正 TYPE定義をVIEWのTYPEに修正
+ *  2008/09/10    1.7   ORACLE 椎名昭圭  PT 6-1_26 対応
  *
  *****************************************************************************************/
 --
@@ -1065,6 +1066,8 @@ AS
                      ||       ',pp.item_name    p_item_name '
                      ||       ',pp.lot_no       p_lot_no '
                      ||       ',pp.whse_code    p_whse_code '
+-- 2008/09/10 v1.7 UPDATE START
+/*
                      ||       ',cp.item_id      c_item_id '
                      ||       ',cp.lot_id       c_lot_id '
                      ||       ',cp.batch_id     c_batch_id '
@@ -1086,6 +1089,29 @@ AS
                      ||       ',ilm.attribute16 l_product_slip_dev '
                      ||       ',ilm.attribute18 l_description '
                      ||       ',ilm.attribute22 l_inspect_req ';
+*/
+                     ||       ',itp.item_id      c_item_id '
+                     ||       ',itp.lot_id       c_lot_id '
+                     ||       ',gbh.batch_id     c_batch_id '
+                     ||       ',ximv.item_no     c_item_no '
+                     ||       ',ximv.item_name   c_item_name '
+                     ||       ',ilm.lot_no       c_lot_no '
+                     ||       ',ilm2.attribute1  l_lot_date '
+                     ||       ',ilm2.attribute2  l_lot_sign '
+                     ||       ',ilm2.attribute3  l_best_bfr_date '
+                     ||       ',ilm2.attribute4  l_dlv_date_first '
+                     ||       ',ilm2.attribute5  l_dlv_date_last '
+                     ||       ',ilm2.attribute6  l_stock_ins_amount '
+                     ||       ',ilm2.attribute10 l_tea_period_dev '
+                     ||       ',ilm2.attribute11 l_product_year '
+                     ||       ',ilm2.attribute12 l_product_home '
+                     ||       ',ilm2.attribute13 l_product_type '
+                     ||       ',ilm2.attribute14 l_product_ranc_1 '
+                     ||       ',ilm2.attribute15 l_product_ranc_2 '
+                     ||       ',ilm2.attribute16 l_product_slip_dev '
+                     ||       ',ilm2.attribute18 l_description '
+                     ||       ',ilm2.attribute22 l_inspect_req ';
+-- 2008/09/10 v1.7 UPDATE END
 --
     -- SELECT文(ロットトレース)定義
     lv_sql_select_02 := ',pp.batch_no       l_batch_num '
@@ -1095,7 +1121,15 @@ AS
                      || ',pp.turn_batch_no  l_turn_batch_num ';
 --
     -- FROM句定義
-    lv_sql_from := 'FROM ic_lots_mst ilm, ';
+-- 2008/09/10 v1.7 UPDATE START
+--    lv_sql_from := 'FROM ic_lots_mst ilm, ';
+    lv_sql_from := 'FROM ic_lots_mst          ilm2'
+              ||       ',ic_tran_pnd          itp '
+              ||       ',ic_lots_mst          ilm '
+              ||       ',xxcmn_item_mst2_v    ximv'
+              ||       ',gme_material_details gmd '
+              ||       ',gme_batch_header     gbh ';
+-- 2008/09/10 v1.7 UPDATE END
 --
     -- 副問合せ(親品目ロットトレース)定義
     lv_sql_01 := 'SELECT itp.item_id '
@@ -1173,6 +1207,10 @@ AS
               || 'AND    ximv.end_date_active   >= trunc(itp.last_update_date) '
               || 'AND    (( gbh.batch_status    <> :para_batch_status ) '
               || 'OR      ( gbh.attribute4      <> :para_batch_status )) '
+-- 2008/09/10 v1.7 ADD START
+              || 'AND    itp.item_id             = :para_item_id '
+              || 'AND    itp.lot_id              = :para_lot_id '
+-- 2008/09/10 v1.7 ADD END
               || 'GROUP BY itp.item_id '
               ||         ',itp.lot_id '
               ||         ',gbh.batch_id '
@@ -1189,6 +1227,8 @@ AS
               || 'ORDER BY itp.item_id '
               ||         ',itp.lot_id ';
 --
+-- 2008/09/10 v1.7 UPDATE START
+/*
     -- 副問合せ(子品目ロットトレース)定義
     lv_sql_02 := 'SELECT itp.item_id '
               ||       ',itp.lot_id '
@@ -1229,6 +1269,8 @@ AS
               || 'ORDER BY itp.item_id '
               ||         ',itp.lot_id ';
 --
+*/
+-- 2008/09/10 v1.7 UPDATE END
     -- 副問合せ(親品目トレースバック)定義
     lv_sql_03 := 'SELECT itp.item_id '
               ||       ',itp.lot_id '
@@ -1290,6 +1332,10 @@ AS
               || 'AND    ximv.end_date_active   >= trunc(itp.last_update_date) '
               || 'AND    (( gbh.batch_status    <> :para_batch_status ) '
               || 'OR      ( gbh.attribute4      <> :para_batch_status )) '
+-- 2008/09/10 v1.7 ADD START
+              || 'AND    itp.item_id             = :para_item_id '
+              || 'AND    itp.lot_id              = :para_lot_id '
+-- 2008/09/10 v1.7 ADD END
               || 'GROUP BY itp.item_id '
               ||         ',itp.lot_id '
               ||         ',gbh.batch_id '
@@ -1306,6 +1352,8 @@ AS
               || 'ORDER BY itp.item_id '
               ||         ',itp.lot_id ';
 --
+-- 2008/09/10 v1.7 UPDATE START
+/*
     -- 副問合せ(子品目トレースバック)定義
     lv_sql_04 := 'SELECT itp.item_id '
               ||       ',itp.lot_id '
@@ -1347,13 +1395,21 @@ AS
               || 'ORDER BY itp.item_id '
               ||         ',itp.lot_id ';
 --
+*/
+-- 2008/09/10 v1.7 UPDATE END
     -- 別名(親)
     lv_sql_par  := ' pp ';
 --
+-- 2008/09/10 v1.7 UPDATE START
+/*
     -- 別名(子)
     lv_sql_chi  := ' cp ';
 --
+*/
+-- 2008/09/10 v1.7 UPDATE END
     -- WHERE句(定義)定義
+-- 2008/09/10 v1.7 UPDATE START
+/*
     lv_sql_where_01 := 'WHERE pp.batch_id    = cp.batch_id(+) '
                     || 'AND   pp.lot_id     <> cp.lot_id(+) '
                     || 'AND   pp.lot_id      = ilm.lot_id '
@@ -1361,6 +1417,64 @@ AS
                     || 'AND   cp.item_id     IS NOT NULL '
                     || 'AND   pp.item_id     = :para_item_id '
                     || 'AND   pp.lot_id      = :para_lot_id ';
+*/
+    lv_sql_where_01 := 'WHERE  itp.doc_type            = :para_doc_type '
+                    || 'AND    itp.completed_ind       = :para_comp_ind '
+                    || 'AND    itp.line_type           IN (:para_line_type_03) '
+                    || 'AND    itp.doc_line            = gmd.line_no '
+                    || 'AND    itp.doc_id              = gmd.batch_id '
+                    || 'AND    itp.item_id             = gmd.item_id '
+                    || 'AND    gmd.batch_id            = gbh.batch_id '
+                    || 'AND    itp.item_id             = ximv.item_id '
+                    || 'AND    itp.item_id             = ilm.item_id '
+                    || 'AND    itp.lot_id              = ilm.lot_id '
+                    || 'AND    ilm.lot_id             <> 0'
+                    || 'AND    ximv.start_date_active <= trunc(itp.last_update_date) '
+                    || 'AND    ximv.end_date_active   >= trunc(itp.last_update_date) '
+                    || 'AND    (( gbh.batch_status    <> :para_batch_status ) '
+                    || 'OR      ( gbh.attribute4      <> :para_batch_status )) '
+                    || 'AND    pp.batch_id             = gbh.batch_id(+) '
+                    || 'AND    pp.lot_id              <> itp.lot_id(+) '
+                    || 'AND    pp.lot_id               = ilm2.lot_id '
+                    || 'AND    pp.item_id              = ilm2.item_id '
+                    || 'AND    itp.item_id             IS NOT NULL '
+                    || 'GROUP BY pp.item_id '
+                    ||         ',pp.lot_id '
+                    ||         ',pp.batch_id '
+                    ||         ',pp.item_no '
+                    ||         ',pp.item_name '
+                    ||         ',pp.lot_no '
+                    ||         ',pp.whse_code '
+                    ||         ',itp.item_id '
+                    ||         ',itp.lot_id '
+                    ||         ',gbh.batch_id '
+                    ||         ',ximv.item_no '
+                    ||         ',ximv.item_name '
+                    ||         ',ilm.lot_no '
+                    ||         ',ilm2.attribute1 '
+                    ||         ',ilm2.attribute2 '
+                    ||         ',ilm2.attribute3 '
+                    ||         ',ilm2.attribute4 '
+                    ||         ',ilm2.attribute5 '
+                    ||         ',ilm2.attribute6 '
+                    ||         ',ilm2.attribute10 '
+                    ||         ',ilm2.attribute11 '
+                    ||         ',ilm2.attribute12 '
+                    ||         ',ilm2.attribute13 '
+                    ||         ',ilm2.attribute14 '
+                    ||         ',ilm2.attribute15 '
+                    ||         ',ilm2.attribute16 '
+                    ||         ',ilm2.attribute18 '
+                    ||         ',ilm2.attribute22 '
+                    ||         ',pp.batch_no '
+                    ||         ',pp.attribute17 '
+                    ||         ',pp.routing_no '
+                    ||         ',pp.attribute11 '
+                    ||         ',pp.turn_batch_no '
+                    || 'HAVING   SUM( itp.trans_qty ) <> 0 '
+                    || 'ORDER BY itp.item_id '
+                    ||         ',itp.lot_id ';
+-- 2008/09/10 UPDATE v1.7 END
 --
 -- 2008/09/01 UPDATE v1.5 START
 --    IF ( iv_batch_id IS NOT NULL ) THEN
@@ -1370,6 +1484,8 @@ AS
 --
 -- 2008/09/01 UPDATE v1.5 END
     -- WHERE句(定義)定義
+-- 2008/09/10 v1.7 UPDATE START
+/*
     lv_sql_where_02 := 'WHERE pp.batch_id    = cp.batch_id(+) '
                     || 'AND   pp.lot_id     <> cp.lot_id(+) '
                     || 'AND   pp.lot_id      = ilm.lot_id '
@@ -1377,6 +1493,65 @@ AS
                     || 'AND   cp.item_id     IS NOT NULL '
                     || 'AND   pp.item_id     = :para_item_id '
                     || 'AND   pp.lot_id      = :para_lot_id ';
+*/
+    lv_sql_where_02 := 'WHERE  itp.doc_type            = :para_doc_type '
+                    || 'AND    itp.completed_ind       = :para_comp_ind '
+                    || 'AND    itp.line_type           IN (:para_line_type_01,:para_line_type_02) '
+                    || 'AND    itp.doc_line            = gmd.line_no '
+                    || 'AND    itp.doc_id              = gmd.batch_id '
+                    || 'AND    itp.item_id             = gmd.item_id '
+                    || 'AND    gmd.batch_id            = gbh.batch_id '
+                    || 'AND    gbh.formula_id          IS NOT NULL '
+                    || 'AND    itp.item_id             = ximv.item_id '
+                    || 'AND    itp.item_id             = ilm.item_id '
+                    || 'AND    itp.lot_id              = ilm.lot_id '
+                    || 'AND    ilm.lot_id             <> 0'
+                    || 'AND    ximv.start_date_active <= trunc(itp.last_update_date) '
+                    || 'AND    ximv.end_date_active   >= trunc(itp.last_update_date) '
+                    || 'AND    (( gbh.batch_status    <> :para_batch_status ) '
+                    || 'OR      ( gbh.attribute4      <> :para_batch_status )) '
+                    || 'AND    pp.batch_id             = gbh.batch_id(+) '
+                    || 'AND    pp.lot_id              <> itp.lot_id(+) '
+                    || 'AND    pp.lot_id               = ilm2.lot_id '
+                    || 'AND    pp.item_id              = ilm2.item_id '
+                    || 'AND    itp.item_id             IS NOT NULL '
+                    || 'GROUP BY pp.item_id '
+                    ||         ',pp.lot_id '
+                    ||         ',pp.batch_id '
+                    ||         ',pp.item_no '
+                    ||         ',pp.item_name '
+                    ||         ',pp.lot_no '
+                    ||         ',pp.whse_code '
+                    ||         ',itp.item_id '
+                    ||         ',itp.lot_id '
+                    ||         ',gbh.batch_id '
+                    ||         ',ximv.item_no '
+                    ||         ',ximv.item_name '
+                    ||         ',ilm.lot_no '
+                    ||         ',ilm2.attribute1 '
+                    ||         ',ilm2.attribute2 '
+                    ||         ',ilm2.attribute3 '
+                    ||         ',ilm2.attribute4 '
+                    ||         ',ilm2.attribute5 '
+                    ||         ',ilm2.attribute6 '
+                    ||         ',ilm2.attribute10 '
+                    ||         ',ilm2.attribute11 '
+                    ||         ',ilm2.attribute12 '
+                    ||         ',ilm2.attribute13 '
+                    ||         ',ilm2.attribute14 '
+                    ||         ',ilm2.attribute15 '
+                    ||         ',ilm2.attribute16 '
+                    ||         ',ilm2.attribute18 '
+                    ||         ',ilm2.attribute22 '
+                    ||         ',pp.batch_no '
+                    ||         ',pp.attribute17 '
+                    ||         ',pp.routing_no '
+                    ||         ',pp.attribute11 '
+                    ||         ',pp.turn_batch_no '
+                    || 'HAVING   SUM( itp.trans_qty ) <> 0 '
+                    || 'ORDER BY itp.item_id '
+                    ||         ',itp.lot_id ';
+-- 2008/09/10 UPDATE v1.7 END
 --
 -- 2008/09/01 UPDATE v1.5 START
 --    IF ( iv_batch_id IS NOT NULL ) THEN
@@ -1389,9 +1564,15 @@ AS
     IF ( iv_out_control = cv_out_trace ) THEN
 --
       lv_sql_sel := '';
-      lv_sql_sel := lv_sql_sel || lv_sql_select_01 || lv_sql_select_02 || lv_sql_from || cv_sql_l_block;
-      lv_sql_sel := lv_sql_sel || lv_sql_01        || cv_sql_r_block   || lv_sql_par  || cv_sql_dot || cv_sql_l_block;
-      lv_sql_sel := lv_sql_sel || lv_sql_02        || cv_sql_r_block   || lv_sql_chi  || lv_sql_where_01;
+-- 2008/09/10 v1.7 UPDATE START
+--      lv_sql_sel := lv_sql_sel || lv_sql_select_01 || lv_sql_select_02 || lv_sql_from || cv_sql_l_block;
+--      lv_sql_sel := lv_sql_sel || lv_sql_01        || cv_sql_r_block   || lv_sql_par  || cv_sql_dot || cv_sql_l_block;
+--      lv_sql_sel := lv_sql_sel || lv_sql_02        || cv_sql_r_block   || lv_sql_chi  || lv_sql_where_01;
+      lv_sql_sel := lv_sql_sel || lv_sql_select_01 || lv_sql_select_02 || lv_sql_from
+                               || cv_sql_dot       || cv_sql_l_block;
+      lv_sql_sel := lv_sql_sel || lv_sql_01        || cv_sql_r_block   || lv_sql_par;
+      lv_sql_sel := lv_sql_sel || lv_sql_where_01;
+-- 2008/09/10 v1.7 UPDATE END
 --
       EXECUTE IMMEDIATE lv_sql_sel BULK COLLECT INTO ot_itp_tbl USING cv_doc_type
                                                                      ,cv_comp_ind
@@ -1406,13 +1587,20 @@ AS
 -- 2008/09/01 UPDATE v1.5 END
                                                                      ,cv_batch_status
                                                                      ,cv_batch_status
+-- 2008/09/10 v1.7 ADD START
+                                                                     ,iv_item_id
+                                                                     ,iv_lot_id
+-- 2008/09/10 v1.7 ADD END
                                                                      ,cv_doc_type
                                                                      ,cv_comp_ind
                                                                      ,cv_line_type_03
                                                                      ,cv_batch_status
                                                                      ,cv_batch_status
-                                                                     ,iv_item_id
-                                                                     ,iv_lot_id;
+-- 2008/09/10 v1.7 UPDATE START
+--                                                                     ,iv_item_id
+--                                                                     ,iv_lot_id;
+                                                                     ;
+-- 2008/09/10 v1.7 UPDATE END
 --
 -- 2008/08/18 v1.4 ADD Start
       -- 生産系情報の取得チェック
@@ -1426,9 +1614,35 @@ AS
             ,rct.transaction_date
             ,rsh.receipt_num
             ,pha.segment1
-            ,ven1.supp_name
-            ,ven1.segment1
-            ,ven2.trader_name
+-- 2008/09/10 v1.7 UPDATE START
+--            ,ven1.supp_name
+--            ,ven1.segment1
+--            ,ven2.trader_name
+            ,(
+              SELECT  xpv1.vendor_name
+              FROM    po_headers_all   pha
+                      ,xxcmn_vendors2_v xpv1
+              WHERE   pha.vendor_id    = xpv1.vendor_id(+)
+              AND     pha.org_id              = gn_org_id
+              AND     rsl.po_header_id        = pha.po_header_id
+              ) AS supp_name
+            ,(
+              SELECT  xpv1.segment1
+              FROM    po_headers_all   pha
+                      ,xxcmn_vendors2_v xpv1
+              WHERE   pha.vendor_id    = xpv1.vendor_id(+)
+              AND     pha.org_id              = gn_org_id
+              AND     rsl.po_header_id        = pha.po_header_id
+              ) AS segment1
+            ,(
+              SELECT  xpv2.vendor_name
+              FROM    po_headers_all   pha
+                      ,xxcmn_vendors2_v xpv2
+              WHERE   pha.attribute3   = xpv2.vendor_id(+)
+              AND     pha.org_id              = gn_org_id
+              AND     rsl.po_header_id        = pha.po_header_id
+              ) AS trader_name
+-- 2008/09/10 v1.7 UPDATE END
             ,ilm.attribute1
             ,ilm.attribute2
             ,ilm.attribute3
@@ -1452,6 +1666,8 @@ AS
             ,rcv_shipment_lines   rsl
             ,rcv_transactions     rct
             ,po_headers_all       pha
+-- 2008/09/10 v1.7 UPDATE START
+/*
             ,( SELECT xpv1.segment1
                      ,xpv1.vendor_name supp_name
                      ,xpv1.vendor_id   supp_id
@@ -1470,6 +1686,8 @@ AS
                GROUP BY xpv2.vendor_name
                        ,xpv2.vendor_id
              ) ven2
+*/
+-- 2008/09/10 v1.7 UPDATE END
       WHERE itp.item_id             = iv_item_id
       AND   itp.lot_id              = iv_lot_id
       AND   itp.item_id             = ximv.item_id
@@ -1485,8 +1703,10 @@ AS
       AND   rsl.po_header_id        = pha.po_header_id
       AND   ximv.start_date_active <= trunc(itp.last_update_date)
       AND   ximv.end_date_active   >= trunc(itp.last_update_date)
-      AND   pha.vendor_id           = ven1.supp_id(+)
-      AND   pha.attribute3          = ven2.trader_id(+)
+-- 2008/09/10 v1.7 UPDATE START
+--      AND   pha.vendor_id           = ven1.supp_id(+)
+--      AND   pha.attribute3          = ven2.trader_id(+)
+-- 2008/09/10 v1.7 UPDATE END
       AND   pha.org_id              = gn_org_id;
 --
 -- 2008/08/18 v1.4 ADD End
@@ -1505,9 +1725,35 @@ AS
               ,rct.transaction_date
               ,rsh.receipt_num
               ,pha.segment1
-              ,ven1.supp_name
-              ,ven1.segment1
-              ,ven2.trader_name
+-- 2008/09/10 v1.7 UPDATE START
+--              ,ven1.supp_name
+--              ,ven1.segment1
+--              ,ven2.trader_name
+              ,(
+                SELECT  xpv1.vendor_name
+                FROM    po_headers_all   pha
+                       ,xxcmn_vendors2_v xpv1
+                WHERE   pha.vendor_id    = xpv1.vendor_id(+)
+                AND     pha.org_id              = gn_org_id
+                AND     rsl.po_header_id        = pha.po_header_id
+               ) AS supp_name
+              ,(
+                SELECT  xpv1.segment1
+                FROM    po_headers_all   pha
+                       ,xxcmn_vendors2_v xpv1
+                WHERE   pha.vendor_id    = xpv1.vendor_id(+)
+                AND     pha.org_id              = gn_org_id
+                AND     rsl.po_header_id        = pha.po_header_id
+               ) AS segment1
+              ,(
+                SELECT  xpv2.vendor_name
+                FROM    po_headers_all   pha
+                       ,xxcmn_vendors2_v xpv2
+                WHERE   pha.attribute3   = xpv2.vendor_id(+)
+                AND     pha.org_id              = gn_org_id
+                AND     rsl.po_header_id        = pha.po_header_id
+               ) AS trader_name
+-- 2008/09/10 v1.7 UPDATE END
               ,ilm.attribute1
               ,ilm.attribute2
               ,ilm.attribute3
@@ -1531,6 +1777,8 @@ AS
               ,rcv_shipment_lines   rsl
               ,rcv_transactions     rct
               ,po_headers_all       pha
+-- 2008/09/10 v1.7 UPDATE START
+/*
               ,( SELECT xpv1.segment1
                        ,xpv1.vendor_name supp_name
                        ,xpv1.vendor_id   supp_id
@@ -1549,6 +1797,8 @@ AS
                  GROUP BY xpv2.vendor_name
                          ,xpv2.vendor_id
                ) ven2
+*/
+-- 2008/09/10 v1.7 UPDATE END
         WHERE itp.item_id             = iv_item_id
         AND   itp.lot_id              = iv_lot_id
         AND   itp.item_id             = ximv.item_id
@@ -1564,8 +1814,10 @@ AS
         AND   rsl.po_header_id        = pha.po_header_id
         AND   ximv.start_date_active <= trunc(itp.last_update_date)
         AND   ximv.end_date_active   >= trunc(itp.last_update_date)
-        AND   pha.vendor_id           = ven1.supp_id(+)
-        AND   pha.attribute3          = ven2.trader_id(+)
+-- 2008/09/10 v1.7 UPDATE START
+--        AND   pha.vendor_id           = ven1.supp_id(+)
+--        AND   pha.attribute3          = ven2.trader_id(+)
+-- 2008/09/10 v1.7 UPDATE END
         AND   pha.org_id              = gn_org_id;
 --
       END IF;
@@ -1575,9 +1827,15 @@ AS
 -- 2008/08/18 v1.4 ADD End
 --
       lv_sql_sel := '';
-      lv_sql_sel := lv_sql_sel || lv_sql_select_01 || lv_sql_select_02 || lv_sql_from || cv_sql_l_block;
-      lv_sql_sel := lv_sql_sel || lv_sql_03        || cv_sql_r_block   || lv_sql_par  || cv_sql_dot || cv_sql_l_block;
-      lv_sql_sel := lv_sql_sel || lv_sql_04        || cv_sql_r_block   || lv_sql_chi  || lv_sql_where_02;
+-- 2008/09/10 v1.7 UPDATE START
+--      lv_sql_sel := lv_sql_sel || lv_sql_select_01 || lv_sql_select_02 || lv_sql_from || cv_sql_l_block;
+--      lv_sql_sel := lv_sql_sel || lv_sql_03        || cv_sql_r_block   || lv_sql_par  || cv_sql_dot || cv_sql_l_block;
+--      lv_sql_sel := lv_sql_sel || lv_sql_04        || cv_sql_r_block   || lv_sql_chi  || lv_sql_where_02;
+      lv_sql_sel := lv_sql_sel || lv_sql_select_01 || lv_sql_select_02 || lv_sql_from
+                               || cv_sql_dot       || cv_sql_l_block;
+      lv_sql_sel := lv_sql_sel || lv_sql_03        || cv_sql_r_block   || lv_sql_par;
+      lv_sql_sel := lv_sql_sel || lv_sql_where_02;
+-- 2008/09/10 v1.7 UPDATE END
 --
       EXECUTE IMMEDIATE lv_sql_sel BULK COLLECT INTO ot_itp_tbl USING cv_doc_type
                                                                      ,cv_comp_ind
@@ -1588,14 +1846,21 @@ AS
                                                                      ,cv_line_type_03
                                                                      ,cv_batch_status
                                                                      ,cv_batch_status
+-- 2008/09/10 v1.7 ADD START
+                                                                     ,iv_item_id
+                                                                     ,iv_lot_id
+-- 2008/09/10 v1.7 ADD END
                                                                      ,cv_doc_type
                                                                      ,cv_comp_ind
                                                                      ,cv_line_type_01
                                                                      ,cv_line_type_02
                                                                      ,cv_batch_status
                                                                      ,cv_batch_status
-                                                                     ,iv_item_id
-                                                                     ,iv_lot_id;
+-- 2008/09/10 v1.7 UPDATE START
+--                                                                     ,iv_item_id
+--                                                                     ,iv_lot_id;
+                                                                     ;
+-- 2008/09/10 v1.7 UPDATE END
 --
 -- 2008/08/18 v1.4 ADD Start
       END IF;
