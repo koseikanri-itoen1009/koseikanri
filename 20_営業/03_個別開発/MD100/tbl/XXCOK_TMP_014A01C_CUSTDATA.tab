@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_TMP_014A01C_CUSTDATA
  * Description : 条件別販手販協計算顧客情報一時表
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/06/05    1.0   M.Hiruta         新規作成
  *  2009/10/27    1.1   K.Yamaguchi      [障害E_T4_00094] 即時払いの場合にAR連携を行うように修正
+ *  2010/02/19    1.2   S.Moriyama       [障害E_本稼動_01446]担当営業員が取得できなかった場合警告とする
  *
  **************************************************************************************/
 CREATE GLOBAL TEMPORARY TABLE XXCOK.XXCOK_TMP_014A01C_CUSTDATA
@@ -43,7 +44,10 @@ CREATE GLOBAL TEMPORARY TABLE XXCOK.XXCOK_TMP_014A01C_CUSTDATA
     PERIOD_YEAR              NUMBER,
     CALC_TARGET_PERIOD_FROM  DATE,
     CALC_TARGET_PERIOD_TO    DATE,
-    AMOUNT_FIX_DATE          DATE
+    AMOUNT_FIX_DATE          DATE,
+-- 2010/02/19 Ver.1.2 [障害E_本稼動_01446] SCS S.Moriyama ADD START
+    EMP_CODE                 VARCHAR2(5)
+-- 2010/02/19 Ver.1.2 [障害E_本稼動_01446] SCS S.Moriyama ADD END
 )
 ON COMMIT PRESERVE ROWS
 /
@@ -100,4 +104,6 @@ COMMENT ON COLUMN XXCOK.XXCOK_TMP_014A01C_CUSTDATA.CALC_TARGET_PERIOD_FROM  IS '
 COMMENT ON COLUMN XXCOK.XXCOK_TMP_014A01C_CUSTDATA.CALC_TARGET_PERIOD_TO    IS '計算対象期間(TO)'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_TMP_014A01C_CUSTDATA.AMOUNT_FIX_DATE          IS '金額確定日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_014A01C_CUSTDATA.EMP_CODE                 IS '担当者コード'
 /

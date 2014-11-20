@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.7
+ * Version          : 3.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -67,6 +67,7 @@ AS
  *  2009/12/10    3.5   K.Yamaguchi      [E_本稼動_00363] 支払日で営業日が考慮されていない点を修正
  *  2009/12/21    3.6   K.Yamaguchi      [E_本稼動_00460] 定額条件・電気料のみの場合に売上金額をセット
  *  2010/02/03    3.7   K.Yamaguchi      [E_本稼動_XXXXX] 顧客使用目的でステータス判定追加
+ *  2010/02/19    3.8   S.Moriyama       [E_本稼動_01446] 担当営業員が取得できなかった場合警告とする
  *
  *****************************************************************************************/
   --==================================================
@@ -103,6 +104,9 @@ AS
   cv_msg_cok_00003                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00003';
   cv_msg_cok_00022                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00022';
   cv_msg_cok_00028                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00028';
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD START
+  cv_msg_cok_00105                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00105';
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD END
   cv_msg_cok_00044                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00044';
   cv_msg_cok_00051                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00051';
   cv_msg_cok_00080                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00080';
@@ -139,6 +143,9 @@ AS
 -- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi ADD END
   cv_tkn_vendor_code               CONSTANT VARCHAR2(30)    := 'VENDOR_CODE';
   cv_tkn_business_date             CONSTANT VARCHAR2(30)    := 'BUSINESS_DATE';
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD START
+  cv_tkn_base_code                 CONSTANT VARCHAR2(30)    := 'BASE_CODE';
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD END
   -- セパレータ
   cv_msg_part                      CONSTANT VARCHAR2(3)     := ' : ';
   cv_msg_cont                      CONSTANT VARCHAR2(3)     := '.';
@@ -477,6 +484,9 @@ AS
                  NULL
                END
            )                                           AS calc_target_period_from    -- 計算対象期間(FROM)
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD START
+         , ship_xca.sale_base_code                     AS sale_base_code             -- 売上拠点コード
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD END
     FROM fnd_lookup_values_vl      proc_flvv
        , hz_locations              ship_hl
        , hz_party_sites            ship_hps
@@ -1789,10 +1799,13 @@ AS
                     ELSE
                       xca.past_sale_base_code
                   END                                        AS base_code                  -- 拠点コード
-                , xxcok_common_pkg.get_sales_staff_code_f(
-                    xseh.ship_to_customer_code
-                  , xt0c.closing_date
-                  )                                          AS emp_code                   -- 担当者コード
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama REPAIR START
+--                , xxcok_common_pkg.get_sales_staff_code_f(
+--                    xseh.ship_to_customer_code
+--                  , xt0c.closing_date
+--                  )                                          AS emp_code                   -- 担当者コード
+                , xt0c.emp_code                              AS emp_code                   -- 担当者コード
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama REPAIR END
                 , xseh.ship_to_customer_code                 AS ship_cust_code             -- 顧客【納品先】
                 , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho            -- 顧客【納品先】業態（小分類
                 , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu            -- 顧客【納品先】業態（中分類
@@ -1923,6 +1936,9 @@ AS
                       ELSE
                         xca.past_sale_base_code
                     END
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD START
+                  , xt0c.emp_code
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD END
                   , xseh.ship_to_customer_code
                   , xt0c.ship_gyotai_sho
                   , xt0c.ship_gyotai_tyu
@@ -4136,6 +4152,9 @@ END delete_xcbs;
   , id_expect_payment_date         IN  DATE                       -- 支払予定日
   , in_period_year                 IN  NUMBER                     -- 会計年度
   , id_amount_fix_date             IN  DATE                       -- 金額確定日
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD START
+  , it_emp_code                    IN  xxcok_tmp_014a01c_custdata.emp_code%TYPE -- 担当者コード
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD END
   )
   IS
     --==================================================
@@ -4207,6 +4226,9 @@ END delete_xcbs;
     , calc_target_period_from     -- 計算対象期間(FROM)
     , calc_target_period_to       -- 計算対象期間(TO)
     , amount_fix_date             -- 金額確定日
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD START
+    , emp_code                    -- 担当者コード
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD END
     )
     VALUES (
       i_get_cust_data_rec.ship_cust_code             -- 【出荷先】顧客コード
@@ -4235,6 +4257,9 @@ END delete_xcbs;
     , ld_calc_target_period_from                     -- 計算対象期間(FROM)
     , id_close_date                                  -- 計算対象期間(TO)
     , id_amount_fix_date                             -- 金額確定日
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD START
+    , it_emp_code                                    -- 担当者コード
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD END
     );
     --==================================================
     -- 出力パラメータ設定
@@ -4837,6 +4862,9 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_g
     ld_bm_support_period_to        DATE           DEFAULT NULL;                 -- 条件別販手販協計算終了日
     ln_period_year                 NUMBER         DEFAULT NULL;                 -- 会計年度
     ld_amount_fix_date             DATE           DEFAULT NULL;                 -- 金額確定日
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD START
+    lt_emp_code                    xxcok_tmp_014a01c_custdata.emp_code%TYPE;    -- 担当者コード
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD END
     -- ログ出力用退避項目
     lt_ship_cust_code              hz_cust_accounts.account_number      %TYPE DEFAULT NULL;
 --
@@ -4881,6 +4909,31 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_g
         -- 条件別販手販協計算顧客情報一時表への登録
         --==================================================
         IF( gd_process_date BETWEEN ld_bm_support_period_from AND ld_bm_support_period_to ) THEN
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD START
+          --==================================================
+          -- 担当営業員チェック
+          --==================================================
+          lt_emp_code := xxcok_common_pkg.get_sales_staff_code_f(
+                             iv_customer_code => get_cust_data_rec.ship_cust_code
+                           , id_proc_date     => ld_close_date
+                         );
+          IF ( lt_emp_code IS NULL ) THEN
+            lv_outmsg  := xxccp_common_pkg.get_msg(
+                            iv_application          => cv_appl_short_name_cok
+                          , iv_name                 => cv_msg_cok_00105
+                          , iv_token_name1          => cv_tkn_cust_code
+                          , iv_token_value1         => get_cust_data_rec.ship_cust_code
+                          , iv_token_name2          => cv_tkn_base_code
+                          , iv_token_value2         => get_cust_data_rec.sale_base_code
+                          );
+            lb_retcode := xxcok_common_pkg.put_message_f(
+                            in_which                => FND_FILE.OUTPUT
+                          , iv_message              => lv_outmsg
+                          , in_new_line             => 0
+                          );
+            RAISE warning_skip_expt;
+          END IF;
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD END
 -- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi ADD START
           --==================================================
           -- 税コード・税率取得
@@ -4914,6 +4967,9 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_g
           , id_expect_payment_date      => ld_expect_payment_date     -- 支払予定日
           , in_period_year              => ln_period_year             -- 会計年度
           , id_amount_fix_date          => ld_amount_fix_date         -- 金額確定日
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD START
+          , it_emp_code                 => lt_emp_code                -- 担当者コード
+-- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD END
           );
           IF( lv_retcode = cv_status_error ) THEN
             lv_end_retcode := cv_status_error;
