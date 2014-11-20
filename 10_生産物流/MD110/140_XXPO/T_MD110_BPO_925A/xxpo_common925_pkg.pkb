@@ -6,13 +6,14 @@ AS
  * Package Name     : xxpo_common925_pkg(body)
  * Description      : 共通関数
  * MD.050/070       : 支給指示からの発注自動作成 Issue1.0  (T_MD050_BPO_925)
- * Version          : 1.5
+ * Version          : 1.7
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
  *  Name                       Description
  * -------------------------- ----------------------------------------------------------
  *  create_reserve_data       FUNCTION  : 引当情報作成処理
+ *  prc_initialize            PROCEDURE : PLSQL表初期化(A-0)
  *  prc_check_param_info      PROCEDURE : パラメータチェック(A-1)
  *  prc_get_order_info        PROCEDURE : 受注情報抽出(A-2)
  *  prc_get_vendor_info       PROCEDURE : 仕入先情報取得(A-3)
@@ -41,6 +42,8 @@ AS
  *                                        ・ヘッダ摘要に受注ヘッダアドオンの出荷指示を設定
  *  2008/07/03    1.5   I.Higa           入庫予定日(着荷予定日)を発注の納入日にしているが
  *                                       出庫予定日を発注の納入日とするように変更する。
+ *  2008/12/02    1.6   Y.Suzuki         PLSQL表初期化プロシージャの追加
+ *  2008/12/02    1.6   T.Yoshimoto      本番障害#377
  *
  *****************************************************************************************/
 --
@@ -258,6 +261,9 @@ AS
     AND    xoha.req_status          = gv_received                         -- ステータス
     AND    xoha.request_no          = iv_request_no                       -- 依頼No
     AND    xoha.order_header_id     = xola.order_header_id                -- 受注ヘッダアドオンID
+-- 2008/12/02 v1.7 T.Yoshimoto Add Start 本番障害#377
+    AND    xola.delete_flag         = gv_no                               -- 削除フラグ(N)
+-- 2008/12/02 v1.7 T.Yoshimoto Add End 本番障害#377
     ORDER BY xola.order_line_number                                       -- 明細番号
     FOR UPDATE NOWAIT
   ;
@@ -379,6 +385,94 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END create_reserve_data;
+--
+--2008/12/2 yutsuzuk add
+  /**********************************************************************************
+   * Procedure Name   : prc_initialize
+   * Description      : PLSQL表初期化(A-0)
+   ***********************************************************************************/
+  PROCEDURE prc_initialize(
+      ov_retcode            OUT         VARCHAR2         -- リターン・コード
+     ,ov_errmsg_code        OUT         VARCHAR2         -- エラー・メッセージ・コード
+     ,ov_errmsg             OUT         VARCHAR2         -- ユーザー・エラー・メッセージ
+    )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'prc_initialize' ; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル・例外処理 ***
+--
+  BEGIN
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ====================================================
+    -- 初期化
+    -- ====================================================
+    -- 発注明細オープンインターフェース登録用PL/SQL表
+    tab_if_line_id_ins.DELETE;
+    tab_line_num_ins.DELETE;
+    tab_item_ins.DELETE;
+    tab_unit_price_ins.DELETE;
+    tab_quantity_ins.DELETE;
+    tab_uom_code_ins.DELETE;
+    tab_factory_code_ins.DELETE;
+    tab_futai_code_ins.DELETE;
+    tab_frequent_qty_ins.DELETE;
+    tab_stocking_price_ins.DELETE;
+    tab_order_unit_ins.DELETE;
+    tab_order_quantity_ins.DELETE;
+    tab_ship_to_org_id_ins.DELETE;
+    tab_line_description_ins.DELETE;
+    tab_attribute2_ins.DELETE;
+    tab_attribute9_ins.DELETE;
+--
+    -- 搬送明細オープンインターフェース登録用PL/SQL表
+    tab_if_distribute_id_ins.DELETE;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_retcode      :=  gv_status_error;
+      ov_errmsg       :=  lv_errmsg;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_retcode      :=  gv_status_error ;
+      ov_errmsg_code  :=  SQLCODE ;
+      ov_errmsg       :=  SQLERRM ;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_retcode      :=  gv_status_error ;
+      ov_errmsg_code  :=  SQLCODE ;
+      ov_errmsg       :=  SQLERRM ;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END prc_initialize ;
+--
+--2008/12/2 yutsuzuk add
 --
   /**********************************************************************************
    * Procedure Name   : prc_check_param_info
@@ -813,7 +907,11 @@ AS
                             iv_name          => 'APP-XXPO-10026',
                             iv_token_name1   => 'TABLE',
                             iv_token_value1  => cv_price_headers);           -- メッセージ取得
-      ov_errmsg       :=  lv_errmsg;
+-- 2008/12/02 v1.7 T.Yoshimoto Mod Start 本番障害#377
+      ov_errmsg       :=  lv_errmsg || ' 依頼No:' || gv_request_no || ' 品目コード:' || ir_order_info.shipping_item_code
+                        || ' 取引先ID:' || ir_vendor_info.vendor_id || ' 工場ID:' || ir_vendor_info.vendor_site_id
+                        || ' 支給先ID:' || ir_order_info.vendor_id;
+-- 2008/12/02 v1.7 T.Yoshimoto Mod End 本番障害#377
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -1549,6 +1647,21 @@ AS
     ov_retcode := gv_status_normal ;
 --
 --###########################  固定部 END   ############################
+--
+--2008/12/02 yutsuzuk add
+    -- =====================================================
+    -- PLSQL表の初期化(A-0)
+    -- =====================================================
+    prc_initialize(
+        ov_retcode          => lv_retcode         -- リターン・コード
+       ,ov_errmsg_code      => lv_errmsg_code     -- エラー・メッセージ・コード
+       ,ov_errmsg           => lv_errmsg          -- ユーザー・エラー・メッセージ
+      ) ;
+    IF (lv_retcode = gv_status_error) THEN
+      RAISE global_process_expt ;
+    END IF ;
+--
+--2008/12/02 yutsuzuk add
 --
     -- =====================================================
     -- パラメータチェック(A-1)
