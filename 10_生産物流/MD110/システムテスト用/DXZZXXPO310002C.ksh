@@ -7,6 +7,7 @@
 ##    [çÏê¨Å^çXêVóöó]                                                        ##
 ##        çÏê¨é“  ÅF  Oracle    óÈñÿ óYëÂ    2008/05/01 1.0.1                 ##
 ##        çXêVóöóÅF  Oracle    óÈñÿ óYëÂ    2008/05/01 1.0.1                 ##
+##                    Oracle    óÈñÿ óYëÂ    2008/07/22 1.0.2                 ##
 ##                        èâî≈                                                ##
 ##                                                                            ##
 ##    [ñﬂÇËíl]                                                                ##
@@ -109,12 +110,21 @@ output_log "Reading APPS Env File END"
 ### Argument Check ###
 L_paracount=${#}
 
-if [ ${#} -lt 1 ]
+if [ ${#} -lt 10 ]
 then
   output_log "Parameter Error"
   /usr/bin/cat <<-EOF 1>&2
   ${L_cmdname}
-  Delivery Warehouse
+  Delivery Warehouse01
+  Delivery Warehouse02
+  Delivery Warehouse03
+  Delivery Warehouse04
+  Delivery Warehouse05
+  Delivery Warehouse06
+  Delivery Warehouse07
+  Delivery Warehouse08
+  Delivery Warehouse09
+  Delivery Warehouse10
 EOF
 shell_end ${L_exit_eror}
 fi
@@ -156,7 +166,64 @@ L_user_name=${L_def_user}
 L_conc_appl="XXPO"
 L_conc_name="XXPO310002C"
 L_param_003=${1}
-L_param_004=""
+#2008/07/22 y.suzuki add
+if [ ${2} == \"\" ]
+then
+  L_param_004=""
+else
+  L_param_004=${2}
+fi
+if [ ${3} == \"\" ]
+then
+  L_param_005=""
+else
+  L_param_005=${3}
+fi
+if [ ${4} == \"\" ]
+then
+  L_param_006=""
+else
+  L_param_006=${4}
+fi
+if [ ${5} == \"\" ]
+then
+  L_param_007=""
+else
+  L_param_007=${5}
+fi
+if [ ${6} == \"\" ]
+then
+  L_param_008=""
+else
+  L_param_008=${6}
+fi
+if [ ${7} == \"\" ]
+then
+  L_param_009=""
+else
+  L_param_009=${7}
+fi
+if [ ${8} == \"\" ]
+then
+  L_param_010=""
+else
+  L_param_010=${8}
+fi
+if [ ${9} == \"\" ]
+then
+  L_param_011=""
+else
+  L_param_011=${9}
+fi
+if [ ${10} == \"\" ]
+then
+  L_param_012=""
+else
+  L_param_012=${10}
+fi
+#2008/07/22 y.suzuki change
+#L_param_004=""
+L_param_013=""
 
 L_conc_args="APPS/APPS"
 L_conc_args="${L_conc_args} \"${L_resp_appl}\""
@@ -169,6 +236,16 @@ L_conc_args="${L_conc_args} \"${L_param_001}\""
 L_conc_args="${L_conc_args} \"${L_param_002}\""
 L_conc_args="${L_conc_args} \"${L_param_003}\""
 L_conc_args="${L_conc_args} \"${L_param_004}\""
+#2008/07/22 y.suzuki add
+L_conc_args="${L_conc_args} \"${L_param_005}\""
+L_conc_args="${L_conc_args} \"${L_param_006}\""
+L_conc_args="${L_conc_args} \"${L_param_007}\""
+L_conc_args="${L_conc_args} \"${L_param_008}\""
+L_conc_args="${L_conc_args} \"${L_param_009}\""
+L_conc_args="${L_conc_args} \"${L_param_010}\""
+L_conc_args="${L_conc_args} \"${L_param_011}\""
+L_conc_args="${L_conc_args} \"${L_param_012}\""
+L_conc_args="${L_conc_args} \"${L_param_013}\""
 
 ### Set Language ###
 NLS_LANG=Japanese_Japan.JA16SJIS
@@ -190,7 +267,9 @@ EOF
   shell_end ${L_exit_eror}
 fi
 
-L_reqid=`/usr/bin/awk 'NR==1 {print $9}' ${L_std_out}`
+#2008/07/22 y.suzuki change
+#L_reqid=`/usr/bin/awk 'NR==1 {print $9}' ${L_std_out}`
+L_reqid=`/usr/bin/awk 'NR==1 {print $18}' ${L_std_out}`
 
 output_log "RequestID : ${L_reqid}"
 
