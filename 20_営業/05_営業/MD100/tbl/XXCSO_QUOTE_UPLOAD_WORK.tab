@@ -1,0 +1,109 @@
+CREATE TABLE xxcso.XXCSO_QUOTE_UPLOAD_WORK (
+     file_id                        NUMBER        NOT NULL
+    ,line_no                        NUMBER(15)    NOT NULL
+    ,data_div                       VARCHAR2(1)
+    ,cust_code_warehouse            VARCHAR2(9)
+    ,deliv_place                    VARCHAR2(20)
+    ,payment_condition              VARCHAR2(20)
+    ,store_price_tax_type           VARCHAR2(8)
+    ,deliv_price_tax_type           VARCHAR2(8)
+    ,special_note                   VARCHAR2(100)
+    ,quote_submit_name              VARCHAR2(40)
+    ,unit_type                      VARCHAR2(6)
+    ,cust_code_sale                 VARCHAR2(9)
+    ,item_code                      VARCHAR2(7)
+    ,quote_div                      VARCHAR2(8)
+    ,quotation_price                NUMBER(7,2)
+    ,sales_discount_price           NUMBER(7,2)
+    ,usually_deliv_price            NUMBER(7,2)
+    ,this_time_deliv_price          NUMBER(7,2)
+    ,usuall_net_price               NUMBER(7,2)
+    ,this_time_net_price            NUMBER(7,2)
+    ,quote_start_date               DATE
+    ,quote_end_date                 DATE
+    ,remarks                        VARCHAR2(20)
+    ,usually_store_sale_price       NUMBER(8,2)
+    ,this_time_store_sale_price     NUMBER(8,2)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcso_quote_upload_work_pk PRIMARY KEY (file_id, line_no)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 60 INITRANS 8 STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE xxcso.xxcso_quote_upload_work IS '見積書アップロード中間テーブル'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.file_id                                IS 'ファイルID'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.line_no                                IS '行番号'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.data_div                               IS 'データ区分'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.cust_code_warehouse                    IS '顧客（帳合問屋）コード'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.deliv_place                            IS '納入場所'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.payment_condition                      IS '支払条件'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.store_price_tax_type                   IS '小売価格税区分'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.deliv_price_tax_type                   IS '店納価格税区分'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.special_note                           IS '特記事項'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.quote_submit_name                      IS '見積書提出先名'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.unit_type                              IS '単価区分'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.cust_code_sale                         IS '顧客（販売先）コード'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.item_code                              IS '商品コード'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.quote_div                              IS '見積区分'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.quotation_price                        IS '建値'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.sales_discount_price                   IS '売上値引'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.usually_deliv_price                    IS '通常店納価格'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.this_time_deliv_price                  IS '今回店納価格'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.usuall_net_price                       IS '通常NET価格'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.this_time_net_price                    IS '今回NET価格'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.quote_start_date                       IS '期間（開始）'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.quote_end_date                         IS '期間（終了）'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.remarks                                IS '備考'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.usually_store_sale_price               IS '通常店頭売価'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.this_time_store_sale_price             IS '今回店頭売価'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.created_by                             IS '作成者'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.creation_date                          IS '作成日'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.last_updated_by                        IS '最終更新者'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.last_update_date                       IS '最終更新日'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.last_update_login                      IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.request_id                             IS '要求ID'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.program_id                             IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcso.xxcso_quote_upload_work.program_update_date                    IS 'プログラム更新日'
+/
