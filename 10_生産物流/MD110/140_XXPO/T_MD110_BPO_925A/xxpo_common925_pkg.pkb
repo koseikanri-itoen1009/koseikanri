@@ -6,7 +6,7 @@ AS
  * Package Name     : xxpo_common925_pkg(body)
  * Description      : 共通関数
  * MD.050/070       : 支給指示からの発注自動作成 Issue1.0  (T_MD050_BPO_925)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -39,6 +39,8 @@ AS
  *  2008/06/16    1.4   I.Higa           指摘事項修正
  *                                        ・従業員番号の型をNUMBER型からTYPE型へ変更
  *                                        ・ヘッダ摘要に受注ヘッダアドオンの出荷指示を設定
+ *  2008/07/03    1.5   I.Higa           入庫予定日(着荷予定日)を発注の納入日にしているが
+ *                                       出庫予定日を発注の納入日とするように変更する。
  *
  *****************************************************************************************/
 --
@@ -88,7 +90,7 @@ AS
   TYPE rec_order_info  IS RECORD(
       order_header_id       xxwsh_order_headers_all.order_header_id%TYPE         -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝID
      ,shipping_instructions xxwsh_order_headers_all.shipping_instructions%TYPE    -- 出荷指示
-     ,schedule_arrival_date xxwsh_order_headers_all.schedule_arrival_date%TYPE    -- 着荷予定日
+     ,schedule_ship_date    xxwsh_order_headers_all.schedule_ship_date%TYPE       -- 出荷予定日
      ,deliver_from          xxwsh_order_headers_all.deliver_from%TYPE             -- 出荷元保管場所
      ,vendor_id             xxwsh_order_headers_all.vendor_id%TYPE                -- 取引先ID
      ,vendor_site_code      xxwsh_order_headers_all.vendor_site_code%TYPE         -- 取引先サイト
@@ -238,7 +240,7 @@ AS
   IS
     SELECT xoha.order_header_id             AS  order_header_id           -- 受注ヘッダアドオンID
           ,xoha.shipping_instructions       AS  shipping_instructions     -- 出荷指示
-          ,xoha.schedule_arrival_date       AS  schedule_arrival_date     -- 着荷予定日
+          ,xoha.schedule_ship_date          AS  schedule_ship_date        -- 出荷予定日
           ,xoha.deliver_from                AS  deliver_from              -- 出荷元保管場所
           ,xoha.vendor_id                   AS  vendor_id                 -- 取引先ID
           ,xoha.vendor_site_code            AS  vendor_site_code          -- 取引先サイト
@@ -631,7 +633,7 @@ AS
       AND  xv2v.frequent_factory        = pvsa.vendor_site_code))           -- 仕入先サイトコード
     AND    xv2v.vendor_id               = pvsa.vendor_id                    -- 仕入先ID
     AND    xv2v.inactive_date IS NULL                                       -- 無効日
-    AND   (ir_order_info.schedule_arrival_date                              -- 着荷予定日
+    AND   (ir_order_info.schedule_ship_date                                 -- 出荷予定日
              BETWEEN  xv2v.start_date_active  AND  xv2v.end_date_active)    -- 適用開始・終了日
     ;
 --
@@ -798,7 +800,7 @@ AS
     AND    xph.vendor_id                =  ir_vendor_info.vendor_id          -- 取引先ID=仕入先ID
     AND    xph.factory_id               =  ir_vendor_info.vendor_site_id     -- 工場ID=仕入先ｻｲﾄID
     AND    xph.supply_to_id             =  ir_order_info.vendor_id           -- 支給先ID=取引先ID
-    AND   (ir_order_info.schedule_arrival_date                               -- 着荷予定日
+    AND   (ir_order_info.schedule_ship_date                                  -- 出荷予定日
              BETWEEN  xph.start_date_active  AND  xph.end_date_active)       -- 適用開始・終了日
     ;
 --
@@ -961,7 +963,7 @@ AS
     or_po_headers_if.vendor_site_id   :=  ir_vendor_info.vendor_site_id;          -- 仕入先サイトID
     or_po_headers_if.ship_to_location_id  :=  ir_vendor_info.location_id;         -- 納入先事業所ID
     or_po_headers_if.bill_to_location_id  :=  ir_vendor_info.location_id;         -- 請求先事業所ID
-    or_po_headers_if.delivery_date    :=  ir_order_info.schedule_arrival_date;    -- 着荷予定日
+    or_po_headers_if.delivery_date    :=  ir_order_info.schedule_ship_date;       -- 出荷予定日
     or_po_headers_if.delivery_to_code :=  ir_order_info.deliver_from;             -- 出荷元保管場所
     or_po_headers_if.shipping_to_code :=  ir_order_info.vendor_site_code;         -- 取引先サイト
     or_po_headers_if.dept_code        :=  ir_vendor_info.department;              -- 部署コード
