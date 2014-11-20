@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistValidateUtils
 * 概要説明   : 自販機設置契約情報登録検証ユーティリティクラス
-* バージョン : 1.7
+* バージョン : 1.8
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -15,6 +15,7 @@
 * 2009-06-08 1.5  SCS柳平直人  [ST障害T1_1307]半角カナチェックメッセージ修正
 * 2009-10-14 1.6  SCS阿部大輔  [共通課題IE554,IE573]住所対応
 * 2010-01-26 1.7  SCS阿部大輔  [E_本稼動_01314]契約書発効日必須対応
+* 2010-01-20 1.8  SCS阿部大輔  [E_本稼動_01212]口座番号対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -359,7 +360,7 @@ public class XxcsoContractRegistValidateUtils
 // 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
-    // 契約書発効日
+    // 契約書発行日
     // ///////////////////////////////////
     token1 = tokenMain
             + XxcsoContractRegistConstants.TOKEN_VALUE_CONTRACT_EFFECT_DATE;
@@ -981,6 +982,23 @@ public class XxcsoContractRegistValidateUtils
            ,0
           );
     }
+// 2010-01-20 [E_本稼動_01212] Add Start
+    // 整合性チェック
+    if ( ! isBankAccountNumber( bm1BankAccVoRow.getBankNumber()
+                               ,bm1BankAccVoRow.getBankAccountNumber()
+                              ))
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00591
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NUMBER
+          );
+      errorList.add(error);
+    }
+// 2010-01-20 [E_本稼動_01212] Add End
     // 禁則文字チェック
     errorList
       = utils.checkIllegalString(
@@ -1518,6 +1536,23 @@ public class XxcsoContractRegistValidateUtils
            ,0
           );
     }
+// 2010-01-20 [E_本稼動_01212] Add Start
+    // 整合性チェック
+    if ( ! isBankAccountNumber( bm2BankAccVoRow.getBankNumber()
+                               ,bm2BankAccVoRow.getBankAccountNumber()
+                               ))
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00591
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NUMBER
+          );
+      errorList.add(error);
+    }
+// 2010-01-20 [E_本稼動_01212] Add End
     // 禁則文字チェック
     errorList
       = utils.checkIllegalString(
@@ -2056,6 +2091,23 @@ public class XxcsoContractRegistValidateUtils
            ,0
           );
     }
+// 2010-01-20 [E_本稼動_01212] Add Start
+    // 整合性チェック
+    if ( ! isBankAccountNumber( bm3BankAccVoRow.getBankNumber()
+                               ,bm3BankAccVoRow.getBankAccountNumber()
+                              ))
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00591
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NUMBER
+          );
+      errorList.add(error);
+    }
+// 2010-01-20 [E_本稼動_01212] Add End
     // 禁則文字チェック
     errorList
       = utils.checkIllegalString(
@@ -2064,9 +2116,6 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
-
-
-
     // ///////////////////////////////////
     // 口座名義カナ
     // ///////////////////////////////////
@@ -3876,5 +3925,54 @@ public class XxcsoContractRegistValidateUtils
     return returnValue;
  }
 // 2009-04-27 [ST障害T1_0708] Add End
+// 2010-01-20 [E_本稼動_01212] Add Start
+  /*****************************************************************************
+   * 口座番号の検証
+   * @param  bankNumber         金融機関名
+   * @param  bankAccountNumber  口座番号
+   * @return boolean            検証結果
+   *****************************************************************************
+   */
+  private static boolean isBankAccountNumber(
+    String bankNumber
+   ,String bankAccountNumber
+  )
+  {
+    boolean returnValue = true;
+    String  bankAccountNumberValue = "";
+    
+    if ( bankAccountNumber == null || "".equals(bankAccountNumber.trim()) )
+    {
+      // null空文字時はチェック不要
+      return true;
+    }
+
+    //  金融機関名の未入力チェック
+    if ( bankNumber == null || "".equals(bankNumber.trim()) )
+    {
+      bankAccountNumberValue = bankAccountNumber;
+    }
+    else
+    {
+      //  金融機関名・口座番号のダミーチェック
+      if ("D".equals(bankNumber.substring(0,1)) &&
+          "D".equals(bankAccountNumber.substring(0,1))
+         )
+      {
+        bankAccountNumberValue = bankAccountNumber.substring(1);
+      }
+      else
+      {
+        bankAccountNumberValue = bankAccountNumber;
+      }
+    }
+    // 半角数値が指定されているか
+    if ( ! bankAccountNumberValue.matches("^[0-9]+$") )
+    {
+      returnValue = false;
+    }
+    return returnValue;
+  }
+// 2010-01-20 [E_本稼動_01212] Add End
 
 }

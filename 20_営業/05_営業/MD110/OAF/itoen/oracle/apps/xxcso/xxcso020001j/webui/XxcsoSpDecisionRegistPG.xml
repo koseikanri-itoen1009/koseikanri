@@ -96,8 +96,8 @@ HISTORY
                                  <ui:contents>
                                     <oa:messageComponentLayout id="InstallAccountMclRN">
                                        <ui:contents>
-                                          <oa:messageStyledText id="InstallAcctNumberView" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallAccountNumber" viewName="XxcsoSpDecisionInstCustFullVO1" viewAttr="InstallAccountNumber" maximumLength="10" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.InstallAcctNumberViewRender}"/>
-                                          <oa:messageLovInput id="InstallAcctNumber1" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso020001j/lov/webui/XxcsoAccountForRegistLovRN" columns="10" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallAccountNumber" viewName="XxcsoSpDecisionInstCustFullVO1" viewAttr="InstallAccountNumber" rendered="${oa.XxcsoSpDecisionInitVO1.InstallAcctNumber1Render}" maximumLength="9">
+                                          <oa:messageStyledText id="InstallAcctNumberView" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallAccountNumber" viewName="XxcsoSpDecisionInstCustFullVO1" viewAttr="InstallAccountNumber" maximumLength="10" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.InstallAcctNumberViewRender}" required="uiOnly"/>
+                                          <oa:messageLovInput id="InstallAcctNumber1" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso020001j/lov/webui/XxcsoAccountForRegistLovRN" columns="10" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallAccountNumber" viewName="XxcsoSpDecisionInstCustFullVO1" viewAttr="InstallAccountNumber" rendered="${oa.XxcsoSpDecisionInitVO1.InstallAcctNumber1Render}" maximumLength="9" required="uiOnly">
                                              <lovMappings>
                                                 <lovMap id="InstallAccountNumberMap1" lovItem="AccountNumber" resultTo="InstallAcctNumber1" criteriaFrom="InstallAcctNumber1"/>
                                                 <lovMap id="InstallPartyNameMap1" lovItem="PartyName" resultTo="InstallPartyName"/>
@@ -122,7 +122,7 @@ HISTORY
                                                 <lovMap id="ApplicationTypeMap1" lovItem="ApplicationType" criteriaFrom="ApplicationType"/>
                                              </lovMappings>
                                           </oa:messageLovInput>
-                                          <oa:messageLovInput id="InstallAcctNumber2" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso020001j/lov/webui/XxcsoAccountForRegistLovRN" columns="10" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallAccountNumber" viewName="XxcsoSpDecisionInstCustFullVO1" viewAttr="InstallAccountNumber" rendered="${oa.XxcsoSpDecisionInitVO1.InstallAcctNumber2Render}" maximumLength="9">
+                                          <oa:messageLovInput id="InstallAcctNumber2" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso020001j/lov/webui/XxcsoAccountForRegistLovRN" columns="10" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallAccountNumber" viewName="XxcsoSpDecisionInstCustFullVO1" viewAttr="InstallAccountNumber" rendered="${oa.XxcsoSpDecisionInitVO1.InstallAcctNumber2Render}" maximumLength="9" required="uiOnly">
                                              <lovMappings>
                                                 <lovMap id="InstallAccountNumberMap2" lovItem="AccountNumber" resultTo="InstallAcctNumber2" criteriaFrom="InstallAcctNumber2"/>
                                                 <lovMap id="InstallPartyNameMap2" lovItem="PartyName" resultTo="InstallPartyNameValue"/>

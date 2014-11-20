@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionValidateUtils
 * 概要説明   : SP専決登録画面用検証ユーティリティクラス
-* バージョン : 1.13
+* バージョン : 1.14
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -21,6 +21,7 @@
 * 2010-01-08 1.11 SCS阿部大輔  [E_本稼動_01030]承認権限チェック対応
 * 2010-01-12 1.12 SCS阿部大輔  [E_本稼動_00823]顧客マスタの整合性チェック対応
 * 2010-01-15 1.13 SCS阿部大輔  [E_本稼動_00950]画面値、ＤＢ値チェック対応
+* 2010-01-20 1.14 SCS阿部大輔  [E_本稼動_01176]顧客コード必須対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -112,6 +113,22 @@ public class XxcsoSpDecisionValidateUtils
     /////////////////////////////////////
     // 設置先：顧客コード
     /////////////////////////////////////
+// 2010-01-20 [E_本稼動_01176] Add Start
+    // 提出ボタンの場合
+    if (OperationMode==XxcsoSpDecisionConstants.OPERATION_SUBMIT)
+    {
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_INST_ACCOUNT_NUMBER;
+      errorList
+        =  utils.requiredCheck(
+             errorList
+            ,installRow.getInstallAccountNumber()
+            ,token1
+            ,0
+           );
+    }
+// 2010-01-20 [E_本稼動_01176] Add End
     // 提出、承認、確認ボタンの場合
     if (
         OperationMode==XxcsoSpDecisionConstants.OPERATION_SUBMIT ||

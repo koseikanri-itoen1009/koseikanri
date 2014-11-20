@@ -25,7 +25,7 @@ SELECT  pv.segment1 vendor_number
        ,xbav.bank_name
        ,xbav.bank_branch_name
        ,xxcso_util_common_pkg.get_lookup_meaning(
-          'JP_BANK_ACCOUNT_TYPE'
+          'XXCSO1_KOZA_TYPE'
          ,xbav.bank_account_type
          ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
         ) bank_account_type_name

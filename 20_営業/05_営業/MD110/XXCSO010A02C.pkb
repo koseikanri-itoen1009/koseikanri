@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -78,6 +78,7 @@ AS
  *  2009-11-26    1.11  Kazuo.Satomura   E_本稼動_00109対応
  *  2009-12-18    1.12  Daisuke.Abe      E_本稼動_00536対応
  *  2010-01-06    1.13  Kazuyo.Hosoi     E_本稼動_00890,00891対応
+ *  2010-01-20    1.14  Daisuke.Abe      E_本稼動_01176対応
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -571,7 +572,10 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    cv_bank_account_type     CONSTANT VARCHAR2(30)                          := 'JP_BANK_ACCOUNT_TYPE'; -- 預金種目参照コードタイプ
+    /* 2010.01.20 D.Abe E_本稼動_01176対応 START */
+    --cv_bank_account_type     CONSTANT VARCHAR2(30)                          := 'JP_BANK_ACCOUNT_TYPE'; -- 預金種目参照コードタイプ
+    cv_bank_account_type     CONSTANT VARCHAR2(30)                          := 'XXCSO1_KOZA_TYPE'; -- 預金種目参照コードタイプ
+    /* 2010.01.20 D.Abe E_本稼動_01176対応 END */
     ct_dummy_bank            CONSTANT fnd_lookup_values_vl.lookup_type%TYPE := 'XXCSO1_DUMMY_BANK';    -- ダミー銀行参照コードタイプ
     ct_dummy_bank_number     CONSTANT fnd_lookup_values_vl.lookup_code%TYPE := 'BANK_NUMBER';          -- ダミー銀行クイックコード
     ct_dummy_bank_num        CONSTANT fnd_lookup_values_vl.lookup_code%TYPE := 'BANK_NUM';             -- ダミー支店クイックコード

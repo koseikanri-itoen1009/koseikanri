@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistAMImpl
 * 概要説明   : 自販機設置契約情報登録画面アプリケーション・モジュールクラス
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,7 @@
 *                              [CT1-022]口座情報取得不正対応
 * 2009-04-08 1.2  SCS柳平直人  [ST障害T1_0364]仕入先重複チェック修正対応
 * 2010-01-26 1.3  SCS阿部大輔  [E_本稼動_01314]契約書発効日必須対応
+* 2010-01-20 1.4  SCS阿部大輔  [E_本稼動_01176]口座種別対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -854,7 +855,10 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     }
 
     kozaListVo.initQuery(
-      "JP_BANK_ACCOUNT_TYPE"
+// 2010-01-20 [E_本稼動_01176] Add Start
+      //"JP_BANK_ACCOUNT_TYPE"
+      "XXCSO1_KOZA_TYPE"
+// 2010-01-20 [E_本稼動_01176] Add End
      ,"lookup_code"
     );
     
@@ -946,7 +950,7 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     // ステータスが作成中の場合は入力チェック実施
     if (XxcsoContractRegistConstants.STS_INPUT.equals( mngRow.getStatus() ) )
     {
-// 2010-01-26 [E_本稼動_01314] Add Start
+ // 2010-01-26 [E_本稼動_01314] Add Start
       //if ( getTransaction().isDirty() )
       //{
 // 2010-01-26 [E_本稼動_01314] Add End
@@ -957,7 +961,7 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
 // 2010-01-26 [E_本稼動_01314] Add Start
       //}
 // 2010-01-26 [E_本稼動_01314] Add End
-    }
+   }
     else
     {
       this.rollback();

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionConstants
 * 概要説明   : SP専決固定値クラス
-* バージョン : 1.6
+* バージョン : 1.7
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -14,6 +14,7 @@
 * 2009-08-24 1.4  SCS阿部大輔  [SCS障害0001104]申請区分チェック対応
 * 2009-11-29 1.5  SCS阿部大輔  [E_本稼動_00106]アカウント複数対応
 * 2010-01-12 1.6  SCS阿部大輔  [E_本稼動_00823]顧客マスタの整合性チェック対応
+* 2010-01-20 1.7  SCS阿部大輔  [E_本稼動_01176]顧客コード必須対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -320,6 +321,10 @@ public class XxcsoSpDecisionConstants
     TOKEN_VALUE_REQUEST_CONC          = "発注依頼登録処理";
   public static final String
     TOKEN_VALUE_START                 = "起動";
+// 2010-01-20 [E_本稼動_01176] Add Start
+  public static final String 
+    TOKEN_VALUE_INST_ACCOUNT_NUMBER   = "顧客コード";
+// 2010-01-20 [E_本稼動_01176] Add End
   public static final String 
     TOKEN_VALUE_INST_PARTY_NAME       = "顧客名(全角)";
   public static final String

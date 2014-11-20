@@ -35,70 +35,111 @@ SELECT  '1'  application_type
          ,xxcso_util_common_pkg.get_online_sysdate
         ) sale_base_name
        ,xcasv.customer_status
-FROM    xxcso_employees_v2      xev
-       ,xxcso_resource_custs_v2 xrcv
-       ,xxcso_cust_acct_sites_v xcasv
-WHERE   xev.user_id            = fnd_global.user_id
-  AND   xrcv.employee_number   = xev.employee_number
-  AND   xcasv.cust_account_id  = xrcv.cust_account_id
-  AND   xcasv.customer_status IN ('10','20','25','30','40','50')
-  AND   (
-         (
-          (xcasv.customer_status IN ('10', '20'))
-          AND
-          (
-           (xcasv.business_low_type IS NULL)
-           OR
-           (
-            EXISTS (
-              SELECT  1
-              FROM    fnd_lookup_values_vl  flvv1
-                     ,fnd_lookup_values_vl  flvv2
-              WHERE   flvv1.lookup_type   = 'XXCMM_CUST_GYOTAI_SHO'
-                AND   flvv1.enabled_flag  = 'Y'
-                AND   NVL(flvv1.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
-                                         <= TRUNC(xxccp_common_pkg2.get_process_date)
-                AND   NVL(flvv1.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
-                                         >= TRUNC(xxccp_common_pkg2.get_process_date)
-                AND   flvv2.lookup_type   = 'XXCSO1_SP_CATEGORY'
-                AND   flvv2.enabled_flag  = 'Y'
-                AND   NVL(flvv2.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
-                                         <= TRUNC(xxccp_common_pkg2.get_process_date)
-                AND   NVL(flvv2.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
-                                         >= TRUNC(xxccp_common_pkg2.get_process_date)
-                AND   flvv2.lookup_code   = flvv1.lookup_code
-                AND   flvv2.lookup_code   = xcasv.business_low_type
-            )
-           )
-          )
-         )
-         OR
-         (
-          (xcasv.customer_class_code = '10')
-          AND
-          (
-           EXISTS (
-             SELECT  1
-             FROM    fnd_lookup_values_vl  flvv1
-                    ,fnd_lookup_values_vl  flvv2
-             WHERE   flvv1.lookup_type   = 'XXCMM_CUST_GYOTAI_SHO'
-               AND   flvv1.enabled_flag  = 'Y'
-               AND   NVL(flvv1.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
-                                        <= TRUNC(xxccp_common_pkg2.get_process_date)
-               AND   NVL(flvv1.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
-                                        >= TRUNC(xxccp_common_pkg2.get_process_date)
-               AND   flvv2.lookup_type   = 'XXCSO1_SP_CATEGORY'
-               AND   flvv2.enabled_flag  = 'Y'
-               AND   NVL(flvv2.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
-                                        <= TRUNC(xxccp_common_pkg2.get_process_date)
-               AND   NVL(flvv2.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
-                                        >= TRUNC(xxccp_common_pkg2.get_process_date)
-               AND   flvv2.lookup_code   = flvv1.lookup_code
-               AND   flvv2.lookup_code   = xcasv.business_low_type
-           )
-          )
-         )
+FROM    xxcso_cust_acct_sites_v xcasv
+WHERE   xcasv.customer_status IN ('10','20','25','30','40','50')
+  AND   xcasv.account_number  IN (
+        SELECT xcr1.account_number 
+        FROM   xxcso_cust_resources_v2 xcr1
+        WHERE  xcr1.employee_number IN (
+               SELECT employee_number 
+               FROM (
+                 SELECT xev3.employee_number 
+                 FROM   xxcso_employees_v2 xev3
+                 WHERE  xev3.issue_date <= TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                 AND    xev3.work_base_code_new IN (
+                        SELECT xx1.work_base_code 
+                        FROM  (SELECT xev1.work_base_code_new  work_base_code 
+                               FROM   xxcso_employees_v2 xev1 
+                               WHERE  xev1.user_id     = fnd_global.user_id 
+                               AND    xev1.issue_date <= TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                               UNION ALL
+                               SELECT xev2.work_base_code_old  work_base_code 
+                               FROM   xxcso_employees_v2 xev2 
+                               WHERE  xev2.user_id    = fnd_global.user_id 
+                               AND    xev2.issue_date > TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                              ) xx1
+                        )
+                 UNION ALL
+                 SELECT xev4.employee_number 
+                 FROM   xxcso_employees_v2 xev4
+                 WHERE  xev4.issue_date > TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                 AND    xev4.work_base_code_old IN (
+                        SELECT xx2.work_base_code 
+                        FROM  (SELECT xev1.work_base_code_new  work_base_code 
+                               FROM   xxcso_employees_v2 xev1 
+                               WHERE  xev1.user_id     = fnd_global.user_id 
+                               AND    xev1.issue_date <= TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                               UNION ALL
+                               SELECT xev2.work_base_code_old  work_base_code 
+                               FROM   xxcso_employees_v2 xev2 
+                               WHERE  xev2.user_id     = fnd_global.user_id 
+                               AND    xev2.issue_date  > TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                              ) xx2
+                        )
+                 )
+               )
+        UNION 
+        SELECT xca2.customer_code
+        FROM   xxcmm_cust_accounts xca2
+        WHERE  xca2.sale_base_code IN  (
+               SELECT xx3.work_base_code 
+               FROM  (SELECT xev1.work_base_code_new  work_base_code 
+                      FROM   xxcso_employees_v2 xev1 
+                      WHERE  xev1.user_id     = fnd_global.user_id 
+                      AND    xev1.issue_date <= TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                      UNION ALL
+                      SELECT xev2.work_base_code_old  work_base_code 
+                      FROM   xxcso_employees_v2 xev2 
+                      WHERE  xev2.user_id     = fnd_global.user_id 
+                      AND    xev2.issue_date  > TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                     ) xx3
+               )
+        UNION
+        SELECT xca3.customer_code
+        FROM   xxcmm_cust_accounts xca3
+              ,fnd_lookup_values_vl flv
+        WHERE  flv.lookup_type  = 'XXCMM_CHAIN_CODE'
+        AND    flv.lookup_code  = xca3.sales_chain_code -- 販売先チェーンコード
+        AND    flv.enabled_flag = 'Y'
+        AND    NVL(flv.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                               <= TRUNC(xxccp_common_pkg2.get_process_date)
+        AND    NVL(flv.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                               >= TRUNC(xxccp_common_pkg2.get_process_date)
+        AND    flv.attribute3 IN (
+               SELECT xx4.work_base_code 
+               FROM  (SELECT xev1.work_base_code_new  work_base_code 
+                      FROM   xxcso_employees_v2 xev1 
+                      WHERE  xev1.user_id     = fnd_global.user_id 
+                      AND    xev1.issue_date <= TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                      UNION ALL
+                      SELECT xev2.work_base_code_old  work_base_code 
+                      FROM   xxcso_employees_v2 xev2 
+                      WHERE  xev2.user_id     = fnd_global.user_id 
+                      AND    xev2.issue_date  > TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                     ) xx4
+               )
         )
+  AND  (xcasv.customer_class_code = '10' OR xcasv.customer_class_code IS NULL)
+  AND  (xcasv.business_low_type IS NULL OR 
+        xcasv.business_low_type IN (
+          SELECT  flvv2.lookup_code
+          FROM    fnd_lookup_values_vl  flvv1
+                 ,fnd_lookup_values_vl  flvv2
+          WHERE   flvv1.lookup_type   = 'XXCMM_CUST_GYOTAI_SHO'
+            AND   flvv1.enabled_flag  = 'Y'
+            AND   NVL(flvv1.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                     <= TRUNC(xxccp_common_pkg2.get_process_date)
+            AND   NVL(flvv1.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                     >= TRUNC(xxccp_common_pkg2.get_process_date)
+            AND   flvv2.lookup_type   = 'XXCSO1_SP_CATEGORY'
+            AND   flvv2.enabled_flag  = 'Y'
+            AND   NVL(flvv2.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                     <= TRUNC(xxccp_common_pkg2.get_process_date)
+            AND   NVL(flvv2.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                     >= TRUNC(xxccp_common_pkg2.get_process_date)
+            AND   flvv2.lookup_code   = flvv1.lookup_code
+        )
+      )
   AND   NOT EXISTS (
           SELECT  1
           FROM    po_hazard_classes_vl  phcv
@@ -143,70 +184,111 @@ SELECT  '2'  application_type
          ,xxcso_util_common_pkg.get_online_sysdate
         ) sale_base_name
        ,xcasv.customer_status
-FROM    xxcso_employees_v2      xev
-       ,xxcso_resource_custs_v2 xrcv
-       ,xxcso_cust_acct_sites_v xcasv
-WHERE   xev.user_id            = fnd_global.user_id
-  AND   xrcv.employee_number   = xev.employee_number
-  AND   xcasv.cust_account_id  = xrcv.cust_account_id
-  AND   xcasv.customer_status IN ('10','20','25','30','40','50')
-  AND   (
-         (
-          (xcasv.customer_status IN ('10', '20'))
-          AND
-          (
-           (xcasv.business_low_type IS NULL)
-           OR
-           (
-            EXISTS (
-              SELECT  1
-              FROM    fnd_lookup_values_vl  flvv1
-                     ,fnd_lookup_values_vl  flvv2
-              WHERE   flvv1.lookup_type   = 'XXCMM_CUST_GYOTAI_SHO'
-                AND   flvv1.enabled_flag  = 'Y'
-                AND   NVL(flvv1.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
-                                         <= TRUNC(xxccp_common_pkg2.get_process_date)
-                AND   NVL(flvv1.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
-                                         >= TRUNC(xxccp_common_pkg2.get_process_date)
-                AND   flvv2.lookup_type   = 'XXCSO1_SP_CATEGORY'
-                AND   flvv2.enabled_flag  = 'Y'
-                AND   NVL(flvv2.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
-                                         <= TRUNC(xxccp_common_pkg2.get_process_date)
-                AND   NVL(flvv2.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
-                                         >= TRUNC(xxccp_common_pkg2.get_process_date)
-                AND   flvv2.lookup_code   = flvv1.lookup_code
-                AND   flvv2.lookup_code   = xcasv.business_low_type
-            )
-           )
-          )
-         )
-         OR
-         (
-          (xcasv.customer_class_code = '10')
-          AND
-          (
-           EXISTS (
-             SELECT  1
-             FROM    fnd_lookup_values_vl  flvv1
-                    ,fnd_lookup_values_vl  flvv2
-             WHERE   flvv1.lookup_type   = 'XXCMM_CUST_GYOTAI_SHO'
-               AND   flvv1.enabled_flag  = 'Y'
-               AND   NVL(flvv1.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
-                                        <= TRUNC(xxccp_common_pkg2.get_process_date)
-               AND   NVL(flvv1.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
-                                        >= TRUNC(xxccp_common_pkg2.get_process_date)
-               AND   flvv2.lookup_type   = 'XXCSO1_SP_CATEGORY'
-               AND   flvv2.enabled_flag  = 'Y'
-               AND   NVL(flvv2.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
-                                        <= TRUNC(xxccp_common_pkg2.get_process_date)
-               AND   NVL(flvv2.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
-                                        >= TRUNC(xxccp_common_pkg2.get_process_date)
-               AND   flvv2.lookup_code   = flvv1.lookup_code
-               AND   flvv2.lookup_code   = xcasv.business_low_type
-           )
-          )
-         )
+FROM    xxcso_cust_acct_sites_v xcasv
+WHERE   xcasv.customer_status IN ('10','20','25','30','40','50')
+  AND   xcasv.account_number  IN (
+        SELECT xcr1.account_number 
+        FROM   xxcso_cust_resources_v2 xcr1
+        WHERE  xcr1.employee_number IN (
+               SELECT employee_number 
+               FROM (
+                 SELECT xev3.employee_number 
+                 FROM   xxcso_employees_v2 xev3
+                 WHERE  xev3.issue_date <= TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                 AND    xev3.work_base_code_new IN (
+                        SELECT xx1.work_base_code 
+                        FROM  (SELECT xev1.work_base_code_new  work_base_code 
+                               FROM   xxcso_employees_v2 xev1 
+                               WHERE  xev1.user_id     = fnd_global.user_id 
+                               AND    xev1.issue_date <= TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                               UNION ALL
+                               SELECT xev2.work_base_code_old  work_base_code 
+                               FROM   xxcso_employees_v2 xev2 
+                               WHERE  xev2.user_id    = fnd_global.user_id 
+                               AND    xev2.issue_date > TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                              ) xx1
+                        )
+                 UNION ALL
+                 SELECT xev4.employee_number 
+                 FROM   xxcso_employees_v2 xev4
+                 WHERE  xev4.issue_date > TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                 AND    xev4.work_base_code_old IN (
+                        SELECT xx2.work_base_code 
+                        FROM  (SELECT xev1.work_base_code_new  work_base_code 
+                               FROM   xxcso_employees_v2 xev1 
+                               WHERE  xev1.user_id     = fnd_global.user_id 
+                               AND    xev1.issue_date <= TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                               UNION ALL
+                               SELECT xev2.work_base_code_old  work_base_code 
+                               FROM   xxcso_employees_v2 xev2 
+                               WHERE  xev2.user_id     = fnd_global.user_id 
+                               AND    xev2.issue_date  > TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                              ) xx2
+                        )
+                 )
+               )
+        UNION 
+        SELECT xca2.customer_code
+        FROM   xxcmm_cust_accounts xca2
+        WHERE  xca2.sale_base_code IN  (
+               SELECT xx3.work_base_code 
+               FROM  (SELECT xev1.work_base_code_new  work_base_code 
+                      FROM   xxcso_employees_v2 xev1 
+                      WHERE  xev1.user_id     = fnd_global.user_id 
+                      AND    xev1.issue_date <= TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                      UNION ALL
+                      SELECT xev2.work_base_code_old  work_base_code 
+                      FROM   xxcso_employees_v2 xev2 
+                      WHERE  xev2.user_id     = fnd_global.user_id 
+                      AND    xev2.issue_date  > TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                     ) xx3
+               )
+        UNION
+        SELECT xca3.customer_code
+        FROM   xxcmm_cust_accounts xca3
+              ,fnd_lookup_values_vl flv
+        WHERE  flv.lookup_type  = 'XXCMM_CHAIN_CODE'
+        AND    flv.lookup_code  = xca3.sales_chain_code -- 販売先チェーンコード
+        AND    flv.enabled_flag = 'Y'
+        AND    NVL(flv.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                               <= TRUNC(xxccp_common_pkg2.get_process_date)
+        AND    NVL(flv.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                               >= TRUNC(xxccp_common_pkg2.get_process_date)
+        AND    flv.attribute3 IN (
+               SELECT xx4.work_base_code 
+               FROM  (SELECT xev1.work_base_code_new  work_base_code 
+                      FROM   xxcso_employees_v2 xev1 
+                      WHERE  xev1.user_id     = fnd_global.user_id 
+                      AND    xev1.issue_date <= TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                      UNION ALL
+                      SELECT xev2.work_base_code_old  work_base_code 
+                      FROM   xxcso_employees_v2 xev2 
+                      WHERE  xev2.user_id     = fnd_global.user_id 
+                      AND    xev2.issue_date  > TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD')
+                     ) xx4
+               )
         )
+  AND  (xcasv.customer_class_code = '10' OR xcasv.customer_class_code IS NULL)
+  AND  (xcasv.business_low_type IS NULL OR 
+        xcasv.business_low_type IN (
+          SELECT  flvv2.lookup_code
+          FROM    fnd_lookup_values_vl  flvv1
+                 ,fnd_lookup_values_vl  flvv2
+          WHERE   flvv1.lookup_type   = 'XXCMM_CUST_GYOTAI_SHO'
+            AND   flvv1.enabled_flag  = 'Y'
+            AND   NVL(flvv1.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                     <= TRUNC(xxccp_common_pkg2.get_process_date)
+            AND   NVL(flvv1.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                     >= TRUNC(xxccp_common_pkg2.get_process_date)
+            AND   flvv2.lookup_type   = 'XXCSO1_SP_CATEGORY'
+            AND   flvv2.enabled_flag  = 'Y'
+            AND   NVL(flvv2.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                     <= TRUNC(xxccp_common_pkg2.get_process_date)
+            AND   NVL(flvv2.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                     >= TRUNC(xxccp_common_pkg2.get_process_date)
+            AND   flvv2.lookup_code   = flvv1.lookup_code
+        )
+      )
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
