@@ -9,7 +9,7 @@ AS
  *                    
  * MD050            : MD050_CSO_015_A04_自販機-EBSインタフェース：（OUT）物件マスタ情報
  *                    
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009-03-16    1.2   N.Yabuki         作業依頼／発注情報処理結果テーブルのWHOカラム更新処理追加
  *  2009-04-13    1.3   K.Satomura       システムテスト障害対応(T1_0409)
  *  2009-05-01    1.4   Tomoko.Mori      T1_0897対応
+ *  2009-05-22    1.5   Tomoko.Mori      T1_1131対応 地区コード不正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1204,7 +1205,10 @@ AS
         || cv_sep_com                                                              -- 初回設置日
         || cv_sep_com                                                              -- カウンターNo．
         || cv_sep_com || cv_sep_wquot || l_get_rec.old_head_office_code
-        || l_get_rec.row_order || cv_sep_wquot                                     -- 地区コード
+    /*20090522_mori_T1_1131 START*/
+        || SUBSTR(l_get_rec.row_order, -2, 2) || cv_sep_wquot                                     -- 地区コード
+--        || l_get_rec.row_order || cv_sep_wquot                                     -- 地区コード
+    /*20090522_mori_T1_1131 END*/
         || cv_sep_com || cv_sep_wquot || l_get_rec.sale_base_code || cv_sep_wquot  -- 拠点（部門）コード
         || cv_sep_com || cv_sep_wquot || cv_sep_wquot                              -- 作業会社コード
         || cv_sep_com || cv_sep_wquot || cv_sep_wquot                              -- 事業所コード
