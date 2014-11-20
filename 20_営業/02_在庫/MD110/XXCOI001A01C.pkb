@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,8 @@ AS
  *  2009/01/20    1.0   S.Moriyama       main新規作成
  *  2009/03/16    1.1   H.Wada           障害番号T1_0041 get_subinventories
  *                                         保管場所の有効チェック取得条件変更
+ *  2009/04/02    1.2   T.Nakamura       障害番号T1_0004 get_summary_record, get_detail_record
+ *                                         出荷実績数量を小数2桁に丸めるよう変更
  *
  *****************************************************************************************/
 --
@@ -585,15 +587,27 @@ AS
             , imbc.attribute11                 AS case_in_qty         -- ケース入数
             , CASE WHEN xoha.req_status = gt_ship_status_result THEN
                 CASE WHEN otta.order_category_code = cv_order_type THEN
-                  SUM(xola.shipped_quantity)
-                     WHEN otta.order_category_code = cv_return_type THEN
-                  SUM(xola.shipped_quantity) * -1
+-- == 2009/04/02 V1.2 Moded START ===============================================================
+--                  SUM(xola.shipped_quantity)
+                  SUM( ROUND( xola.shipped_quantity, 2 ) )
+-- == 2009/04/02 V1.2 Moded END   ===============================================================
+                     WHEN otta.order_category_code = 'RETURN' THEN
+-- == 2009/04/02 V1.2 Moded START ===============================================================
+--                  SUM(xola.shipped_quantity) * -1
+                  SUM( ROUND( xola.shipped_quantity, 2 ) * -1 )
+-- == 2009/04/02 V1.2 Moded END   ===============================================================
                 END
               ELSE
-                CASE WHEN otta.order_category_code = cv_order_type THEN
-                  SUM(xola.quantity)
-                     WHEN otta.order_category_code = cv_return_type THEN
-                  SUM(xola.quantity) * -1
+                CASE WHEN otta.order_category_code = 'ORDER' THEN
+-- == 2009/04/02 V1.2 Moded START ===============================================================
+--                  SUM(xola.quantity)
+                  SUM( ROUND( xola.quantity, 2 ) )
+-- == 2009/04/02 V1.2 Moded END   ===============================================================
+                     WHEN otta.order_category_code = 'RETURN' THEN
+-- == 2009/04/02 V1.2 Moded START ===============================================================
+--                  SUM(xola.quantity) * -1
+                  SUM( ROUND( xola.quantity, 2 ) * -1 )
+-- == 2009/04/02 V1.2 Moded END   ===============================================================
                 END
               END                              AS shipped_quantity    -- 出荷実績数量
       FROM    xxwsh_order_headers_all          xoha                   -- 受注ヘッダアドオン
@@ -819,15 +833,27 @@ AS
             , xola.order_line_id               AS order_line_id       -- 受注明細ID
             , CASE WHEN xoha.req_status = gt_ship_status_result THEN
                 CASE WHEN otta.order_category_code = cv_order_type THEN
-                  SUM(xola.shipped_quantity)
-                     WHEN otta.order_category_code = cv_return_type THEN
-                  SUM(xola.shipped_quantity) * -1
+-- == 2009/04/02 V1.2 Moded START ===============================================================
+--                  SUM(xola.shipped_quantity)
+                  SUM( ROUND( xola.shipped_quantity, 2 ) )
+-- == 2009/04/02 V1.2 Moded END   ===============================================================
+                     WHEN otta.order_category_code = 'RETURN' THEN
+-- == 2009/04/02 V1.2 Moded START ===============================================================
+--                  SUM(xola.shipped_quantity) * -1
+                  SUM( ROUND( xola.shipped_quantity, 2 ) * -1 )
+-- == 2009/04/02 V1.2 Moded END   ===============================================================
                 END
               ELSE
-                CASE WHEN otta.order_category_code = cv_order_type THEN
-                  SUM(xola.quantity)
-                     WHEN otta.order_category_code = cv_return_type THEN
-                  SUM(xola.quantity) * -1
+                CASE WHEN otta.order_category_code = 'ORDER' THEN
+-- == 2009/04/02 V1.2 Moded START ===============================================================
+--                  SUM(xola.quantity)
+                  SUM( ROUND( xola.quantity, 2 ) )
+-- == 2009/04/02 V1.2 Moded END   ===============================================================
+                     WHEN otta.order_category_code = 'RETURN' THEN
+-- == 2009/04/02 V1.2 Moded START ===============================================================
+--                  SUM(xola.quantity) * -1
+                  SUM( ROUND( xola.quantity, 2 ) * -1 )
+-- == 2009/04/02 V1.2 Moded END   ===============================================================
                 END
               END                              AS shipped_quantity    -- 出荷実績数量
       FROM    xxwsh_order_headers_all          xoha                   -- 受注ヘッダアドオン
@@ -3764,3 +3790,4 @@ AS
 --###########################  固定部 END   #######################################################
 --
 END XXCOI001A01C;
+/
