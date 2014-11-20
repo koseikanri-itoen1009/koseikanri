@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2008/12/02    1.25  Natsuki Yoshida  本番障害#327対応
  *  2008/12/02    1.26  Takao Ohashi     本番障害#327対応
  *  2008/12/03    1.27  Natsuki Yoshida  本番障害#371対応
+ *  2008/12/04    1.28  Hitomi Itou      本番障害#362対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3525,11 +3526,14 @@ AS
        FROM
         (
 -------------------------------------------------------------------------------------------------------------------
-         --積送あり(出庫実績)
--- mod start 1.25
-         --SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
-         SELECT /*+ leading(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) */
+         --出庫実績
+-- mod start 1.28
+---- mod start 1.25
+--         --SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
+--         SELECT /*+ leading(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) */
 -- mod end 1.25
+         SELECT
+-- mod end 1.28
            xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
           ,gv_rectype_out                                  record_type             --レコードタイプ
           ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
@@ -3552,63 +3556,99 @@ AS
           ,xmld.lot_id                                     lot_id                  --ロットID
           ,xmld.actual_quantity                            actual_quantity         --実績数量
           ,mil.segment1                                    segment1                --保管場所コード
-          ,itp.doc_type                                    doc_type                --文書タイプ
-          ,itp.trans_qty                                   trans_qty               --数量
-          ,itp.whse_code                                   whse_code               --倉庫コード
-          ,itp.location                                    location                --保管倉庫コード
+-- mod start 1.28
+--          ,itp.doc_type                                    doc_type                --文書タイプ
+--          ,itp.trans_qty                                   trans_qty               --数量
+--          ,itp.whse_code                                   whse_code               --倉庫コード
+--          ,itp.location                                    location                --保管倉庫コード
+          ,CASE
+             WHEN xmrih.mov_type = gv_movetype_yes THEN 'XFER'   -- 積送ありの場合
+             ELSE                                       'TRNI'   -- 積送なしの場合
+           END                                             doc_type                --文書タイプ
+          ,xmld.actual_quantity                            trans_qty               --数量
+          ,mil.subinventory_code                           whse_code               --倉庫コード
+          ,xmrih.shipped_locat_code                        location                --保管倉庫コード
+-- mod end 1.28
           ,gv_newdiv_pay                                   new_div_invent          --新区分
           ,gv_rcvdiv_pay                                   rcv_pay_div             --受払区分
          FROM
            xxinv_mov_req_instr_headers      xmrih               --移動依頼/指示ヘッダ(アドオン)
           ,xxinv_mov_req_instr_lines        xmril               --移動依頼/指示明細(アドオン)
           ,xxinv_mov_lot_details            xmld                --移動ロット詳細(アドオン)
-          ,mtl_item_locations               mil
-          ,ic_xfer_mst                      ixm                 --OPM在庫転送マスタ
-          ,ic_tran_pnd                      itp                 --OPM保留在庫トランザクション
+-- mod start 1.28
+--          ,mtl_item_locations               mil
+          ,xxcmn_item_locations_v           mil                 --OPM保管倉庫情報VIEW(出庫保管場所)
+-- mod end 1.28
+-- add start 1.28
+          ,xxcmn_item_locations_v           mil_ship_to         --OPM保管倉庫情報VIEW(入庫保管場所)
+-- add end 1.28
+-- del start 1.28
+--          ,ic_xfer_mst                      ixm                 --OPM在庫転送マスタ
+--          ,ic_tran_pnd                      itp                 --OPM保留在庫トランザクション
+-- del end 1.28
           ,gmi_item_categories              gic1
           ,mtl_categories_b                 mcb1
           ,gmi_item_categories              gic2
           ,mtl_categories_b                 mcb2
          WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
-         AND xmrih.mov_type = gv_movetype_yes
+-- del start 1.28
+--         AND xmrih.mov_type = gv_movetype_yes
+-- del end 1.28
          AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
          AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
          AND xmld.record_type_code = gv_rectype_out                               --レコードタイプ
          AND xmrih.shipped_locat_id = mil.inventory_location_id                   --保管倉庫ID
--- mod start 1.25
-         --AND xmril.mov_line_id = ixm.attribute1                                   --文書ソースID
-         AND TO_CHAR(xmril.mov_line_id) = ixm.attribute1                                   --文書ソースID
--- mod start 1.25
-         AND itp.doc_type = 'XFER'                                                --文書タイプ
+-- add start 1.28
+         AND xmrih.ship_to_locat_id = mil_ship_to.inventory_location_id --保管倉庫ID(入庫)
+-- add end 1.28
+-- del start 1.28
+---- mod start 1.25
+--         --AND xmril.mov_line_id = ixm.attribute1                                   --文書ソースID
+--         AND TO_CHAR(xmril.mov_line_id) = ixm.attribute1                                   --文書ソースID
+---- mod start 1.25
+--         AND itp.doc_type = 'XFER'                                                --文書タイプ
+-- del end 1.28
          AND xmrih.actual_arrival_date                                            --入庫実績日
             BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
             AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
-         AND gic1.item_id  = itp.item_id
+-- mod start 1.28
+--         AND gic1.item_id  = itp.item_id
+         AND gic1.item_id  = xmld.item_id
+-- mod end 1.28
          AND gic1.category_set_id = cn_item_class_id
          AND gic1.category_id = mcb1.category_id
          AND mcb1.segment1 = civ_item_div
-         AND gic2.item_id = itp.item_id
+-- mod start 1.28
+--         AND gic2.item_id = itp.item_id
+         AND gic2.item_id = xmld.item_id
+-- mod end 1.28
          AND gic2.category_set_id = cn_prod_class_id
          AND gic2.category_id = mcb2.category_id
          AND mcb2.segment1 = civ_prod_div
-         AND ixm.transfer_id = itp.doc_id                                         --文書ID
-         AND xmril.item_id = itp.item_id                                          --品目ID
-         AND xmld.lot_id (+) = itp.lot_id
-         AND mil.segment1 = itp.location                                          --保管倉庫コード
-         AND itp.completed_ind = gv_tran_cmp                                      --完了フラグ
-         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
-             SELECT 1
-             FROM ic_tran_pnd itp2                                                --OPM保留在庫トランザクション
-             WHERE itp.doc_id = itp2.doc_id                                       --文書ID
-             AND   itp.whse_code = itp2.whse_code                                 --倉庫コード
-             AND   itp.trans_id <> itp2.trans_id
-             AND   ROWNUM   = 1
-             )
-         UNION ALL -- 積送あり(入庫実績)
--- mod start 1.25
-         --SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
-         SELECT /*+ leading(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) */
--- mod end 1.25
+-- mod start 1.28
+--         AND ixm.transfer_id = itp.doc_id                                         --文書ID
+--         AND xmril.item_id = itp.item_id                                          --品目ID
+--         AND xmld.lot_id (+) = itp.lot_id
+--         AND mil.segment1 = itp.location                                          --保管倉庫コード
+--         AND itp.completed_ind = gv_tran_cmp                                      --完了フラグ
+--         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
+--             SELECT 1
+--             FROM ic_tran_pnd itp2                                                --OPM保留在庫トランザクション
+--             WHERE itp.doc_id = itp2.doc_id                                       --文書ID
+--             AND   itp.whse_code = itp2.whse_code                                 --倉庫コード
+--             AND   itp.trans_id <> itp2.trans_id
+--             AND   ROWNUM   = 1
+--             )
+         AND mil.whse_code <> mil_ship_to.whse_code -- 同一倉庫内の移動情報は対象外とする。
+-- mod end 1.28
+         UNION ALL -- 入庫実績
+-- mod start 1.28
+---- mod start 1.25
+--         --SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
+--         SELECT /*+ leading(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) */
+---- mod end 1.25
+         SELECT
+-- mod end 1.28
            xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
           ,gv_rectype_in                                   record_type             --レコードタイプ
           ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
@@ -3631,25 +3671,44 @@ AS
           ,xmld.lot_id                                     lot_id                  --ロットID
           ,xmld.actual_quantity                            actual_quantity         --実績数量
           ,mil.segment1                                   segment1                --保管場所コード
-          ,itp.doc_type                                    doc_type                --文書タイプ
-          ,itp.trans_qty                                   trans_qty               --数量
-          ,itp.whse_code                                   whse_code               --倉庫コード
-          ,itp.location                                    location                --保管倉庫コード
+-- mod start 1.28
+--          ,itp.doc_type                                    doc_type                --文書タイプ
+--          ,itp.trans_qty                                   trans_qty               --数量
+--          ,itp.whse_code                                   whse_code               --倉庫コード
+--          ,itp.location                                    location                --保管倉庫コード
+          ,CASE
+             WHEN xmrih.mov_type = gv_movetype_yes THEN 'XFER'   -- 積送ありの場合
+             ELSE                                       'TRNI'   -- 積送なしの場合
+           END                                             doc_type                --文書タイプ
+          ,xmld.actual_quantity                            trans_qty               --数量
+          ,mil.subinventory_code                           whse_code               --倉庫コード
+          ,xmrih.ship_to_locat_code                        location                --保管倉庫コード
+-- mod end 1.28
           ,gv_newdiv_rcv                                   new_div_invent          --新区分
           ,gv_rcvdiv_rcv                                   rcv_pay_div             --受払区分
          FROM
            xxinv_mov_req_instr_headers      xmrih
           ,xxinv_mov_req_instr_lines        xmril               --移動依頼/指示明細(アドオン)
           ,xxinv_mov_lot_details            xmld                --移動ロット詳細(アドオン)
-          ,mtl_item_locations               mil
-          ,ic_xfer_mst                      ixm                 --OPM在庫転送マスタ
-          ,ic_tran_pnd                      itp                 --OPM保留在庫トランザクション
+-- mod start 1.28
+--          ,mtl_item_locations               mil
+          ,xxcmn_item_locations_v           mil                 --OPM保管倉庫情報VIEW(入庫保管場所)
+-- mod end 1.28
+-- add start 1.28
+          ,xxcmn_item_locations_v           mil_shipped         --OPM保管倉庫情報VIEW(出庫保管場所)
+-- add end 1.28
+-- del start 1.28
+--          ,ic_xfer_mst                      ixm                 --OPM在庫転送マスタ
+--          ,ic_tran_pnd                      itp                 --OPM保留在庫トランザクション
+-- del end 1.28
           ,gmi_item_categories              gic1
           ,mtl_categories_b                 mcb1
           ,gmi_item_categories              gic2
           ,mtl_categories_b                 mcb2
          WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
-         AND xmrih.mov_type = gv_movetype_yes
+-- del start 1.28
+--         AND xmrih.mov_type = gv_movetype_yes
+-- del end 1.28
          AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
          AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
          AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
@@ -3657,370 +3716,390 @@ AS
             BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
             AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
          AND xmrih.ship_to_locat_id = mil.inventory_location_id                          --保管倉庫ID
+-- add start 1.28
+         AND xmrih.shipped_locat_id = mil_shipped.inventory_location_id --保管倉庫ID(出庫)
+-- add end 1.28
+-- del start 1.28
 -- mod start 1.25
-         AND TO_CHAR(xmril.mov_line_id) = ixm.attribute1                                   --文書ソースID
+--         AND TO_CHAR(xmril.mov_line_id) = ixm.attribute1                                   --文書ソースID
 -- mod end 1.25
-         AND itp.doc_type = 'XFER'                                                --文書タイプ
-         AND gic1.item_id = itp.item_id
+-- del end 1.28
+-- del start 1.28
+--         AND itp.doc_type = 'XFER'                                                --文書タイプ
+-- del end 1.28
+-- mod start 1.25
+--         AND gic1.item_id = itp.item_id
+         AND gic1.item_id = xmld.item_id
+-- mod end 1.25
          AND gic1.category_set_id = cn_item_class_id
          AND gic1.category_id = mcb1.category_id
          AND mcb1.segment1 = civ_item_div
-         AND gic2.item_id  = itp.item_id
+-- mod start 1.25
+--         AND gic2.item_id  = itp.item_id
+         AND gic2.item_id  = xmld.item_id
+-- mod end 1.25
          AND gic2.category_set_id = cn_prod_class_id
          AND gic2.category_id = mcb2.category_id
          AND mcb2.segment1 = civ_prod_div
-         AND ixm.transfer_id = itp.doc_id                                         --文書ID
-         AND xmril.item_id = itp.item_id                                          --品目ID
-         AND xmld.lot_id (+) = itp.lot_id
-         AND mil.segment1 = itp.location                                         --保管倉庫コード
-         AND itp.completed_ind = gv_tran_cmp                                      --完了フラグ
-         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
-             SELECT 1
-             FROM ic_tran_pnd itp2                                                --OPM保留在庫トランザクション
-             WHERE itp.doc_id = itp2.doc_id                                       --文書ID
-             AND   itp.whse_code = itp2.whse_code                                 --倉庫コード
-             AND   itp.trans_id <> itp2.trans_id
-             AND   ROWNUM   = 1
-             )
-         UNION ALL
-         --積送あり(ADJI)(出庫実績)
--- mod start 1.25
-         --SELECT
-         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
--- mod end 1.25
-           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
-          ,gv_rectype_out                                  record_type             --レコードタイプ
-          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
-          ,xmrih.mov_type                                  mov_type                --移動タイプ
-          ,xmrih.mov_num                                   mov_num                 --移動番号
-          ,xmrih.actual_ship_date                          arvl_ship_date          --実績日(出庫実績日)
-          ,xmrih.shipped_locat_id                          locat_id                --保管倉庫ID(出庫元ID)
-          ,xmrih.shipped_locat_code                        locat_code              --保管倉庫コード(出庫元保管場所)
-          ,xmrih.actual_arrival_date                       arvl_ship_date2         --実績日(入庫実績日)
-          ,xmrih.ship_to_locat_id                          other_id                --相手先ID(入庫先ID)
-          ,xmrih.ship_to_locat_code                        other_code              --相手先(入庫先保管場所)
-          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
-          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
-          ,xmril.item_id                                   item_id                 --品目ID
-          ,xmril.delete_flg                                delete_flg              --取消フラグ
-          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
-          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
-          ,xmld.document_type_code                         document_type_code      --文書タイプ
-          ,xmld.actual_date                                actual_date             --実績日
-          ,xmld.lot_id                                     lot_id                  --ロットID
-          ,xmld.actual_quantity                            actual_quantity         --実績数量
-          ,mil3.segment1                                   segment1                --保管場所コード
-          ,itc.doc_type                                    doc_type                --文書タイプ
-          ,itc.trans_qty                                   trans_qty               --数量
-          ,itc.whse_code                                   whse_code               --倉庫コード
-          ,itc.location                                    location                --保管倉庫コード
-          ,gv_newdiv_pay                                   new_div_invent          --新区分
-          ,gv_rcvdiv_pay                                   rcv_pay_div             --受払区分
-         FROM
-           xxinv_mov_req_instr_headers                     xmrih               --移動依頼/指示ヘッダ(アドオン)
-          ,mtl_item_locations                              mil1
-          ,ic_whse_mst                                     iwm1
-          ,mtl_item_locations                              mil2
-          ,ic_whse_mst                                     iwm2
-          ,xxinv_mov_req_instr_lines                       xmril               --移動依頼/指示明細(アドオン)
-          ,xxinv_mov_lot_details                           xmld                --移動ロット詳細(アドオン)
-          ,mtl_item_locations                              mil3
-          ,ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
-          ,ic_adjs_jnl                                     iaj                 --OPM在庫調整ジャーナル
-          ,ic_tran_cmp                                     itc                 --OPM完了在庫トランザクション
-          ,gmi_item_categories                             gic1
-          ,mtl_categories_b                                mcb1
-          ,gmi_item_categories                             gic2
-          ,mtl_categories_b                                mcb2
-         --移動依頼/指示明細(アドオン)抽出条件
-         WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
-         AND xmrih.mov_type = gv_movetype_yes                                --移動タイプ(積送あり)
-          --OPM保管場所情報VIEW2(保管倉庫)抽出条件
-         AND iwm1.mtl_organization_id = mil1.organization_id
-         AND iwm2.mtl_organization_id = mil2.organization_id
-         AND xmrih.shipped_locat_id = mil1.inventory_location_id                        --保管倉庫ID
-         AND xmrih.ship_to_locat_id = mil2.inventory_location_id                        --保管倉庫ID
-         AND iwm1.whse_code <> iwm2.whse_code                      --同一倉庫内の移動情報は対象外とする
-         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
-         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
-         AND xmld.record_type_code = gv_rectype_out                            --レコードタイプ
-         AND xmrih.actual_arrival_date                                              --入庫実績日
-               BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
-               AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
-         AND xmrih.shipped_locat_id = mil3.inventory_location_id                          --保管倉庫ID
--- mod start 1.25
-         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
-         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
--- mod end 1.25
-         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
-         AND mil3.segment1 = iaj.location                                         --保管倉庫コード
-         AND itc.doc_type = 'ADJI'                                                --文書タイプ
-         AND gic1.item_id = itc.item_id
-         AND gic1.category_set_id = cn_item_class_id
-         AND gic1.category_id = mcb1.category_id
-         AND mcb1.segment1 = civ_item_div                                --品目ID
-         AND gic2.item_id = itc.item_id
-         AND gic2.category_set_id = cn_prod_class_id
-         AND gic2.category_id = mcb2.category_id
-         AND mcb2.segment1 = civ_prod_div
-         AND itc.doc_id = iaj.doc_id                                              --文書ID
-         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
-         AND xmril.item_id = itc.item_id                                          --品目ID
-         AND xmld.lot_id (+) = itc.lot_id  
-         UNION ALL
-         --積送あり(ADJI) (入庫実績)
--- mod start 1.25
-         --SELECT
-         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
--- mod end 1.25
-           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
-          ,gv_rectype_in                                   record_type             --レコードタイプ
-          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
-          ,xmrih.mov_type                                  mov_type                --移動タイプ
-          ,xmrih.mov_num                                   mov_num                 --移動番号
-          ,xmrih.actual_arrival_date                       arvl_ship_date          --実績日(入庫実績日)
-          ,xmrih.ship_to_locat_id                          locat_id                --保管倉庫ID(入庫元ID)
-          ,xmrih.ship_to_locat_code                        locat_code              --保管倉庫コード(入庫元保管場所)
-          ,xmrih.actual_ship_date                          arvl_ship_date2          --実績日(出庫実績日)
-          ,xmrih.shipped_locat_id                          other_id                --保管倉庫ID(出庫元ID)
-          ,xmrih.shipped_locat_code                        other_code              --保管倉庫コード(出庫元保管場所)
-          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
-          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
-          ,xmril.item_id                                   item_id                 --品目ID
-          ,xmril.delete_flg                                delete_flg              --取消フラグ
-          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
-          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
-          ,xmld.document_type_code                         document_type_code      --文書タイプ
-          ,xmld.actual_date                                actual_date             --実績日
-          ,xmld.lot_id                                     lot_id                  --ロットID
-          ,xmld.actual_quantity                            actual_quantity         --実績数量
-          ,mil3.segment1                                   segment1                --保管場所コード
-          ,itc.doc_type                                    doc_type                --文書タイプ
-          ,itc.trans_qty                                   trans_qty               --数量
-          ,itc.whse_code                                   whse_code               --倉庫コード
-          ,itc.location                                    location                --保管倉庫コード
-          ,gv_newdiv_rcv                                   new_div_invent          --新区分
-          ,gv_rcvdiv_rcv                                   rcv_pay_div             --受払区分
-         FROM
-           xxinv_mov_req_instr_headers                     xmrih               --移動依頼/指示ヘッダ(アドオン)
-          ,mtl_item_locations                              mil1
-          ,ic_whse_mst                                     iwm1
-          ,mtl_item_locations                              mil2
-          ,ic_whse_mst                                     iwm2
-          ,xxinv_mov_req_instr_lines                       xmril               --移動依頼/指示明細(アドオン)
-          ,xxinv_mov_lot_details                           xmld                --移動ロット詳細(アドオン)
-          ,mtl_item_locations                              mil3
-          ,ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
-          ,ic_adjs_jnl                                     iaj                 --OPM在庫調整ジャーナル
-          ,ic_tran_cmp                                     itc                 --OPM完了在庫トランザクション
-          ,gmi_item_categories                             gic1
-          ,mtl_categories_b                                mcb1
-          ,gmi_item_categories                             gic2
-          ,mtl_categories_b                                mcb2
-         --移動依頼/指示明細(アドオン)抽出条件
-         WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
-         AND xmrih.mov_type = gv_movetype_yes                                --移動タイプ(積送あり)
-         AND iwm1.mtl_organization_id = mil1.organization_id
-         AND iwm2.mtl_organization_id = mil2.organization_id
-            AND xmrih.shipped_locat_id = mil1.inventory_location_id                        --保管倉庫ID
-            AND xmrih.ship_to_locat_id = mil2.inventory_location_id                        --保管倉庫ID
-            AND iwm1.whse_code <> iwm2.whse_code                      --同一倉庫内の移動情報は対象外とする
-         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
-         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
-         AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
-         AND xmrih.actual_arrival_date                                              --入庫実績日
-            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
-            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
-         AND xmrih.ship_to_locat_id = mil3.inventory_location_id                          --保管倉庫ID
--- mod start 1.25
-         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
-         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
--- mod end 1.25
-         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
-         AND mil3.segment1 = iaj.location                                         --保管倉庫コード
-         AND itc.doc_type = 'ADJI'                                                --文書タイプ
-         AND gic1.item_id = itc.item_id
-         AND gic1.category_set_id = cn_item_class_id
-         AND gic1.category_id = mcb1.category_id
-         AND mcb1.segment1 = civ_item_div                                 --品目ID
-         AND gic2.item_id = itc.item_id
-         AND gic2.category_set_id = cn_prod_class_id
-         AND gic2.category_id = mcb2.category_id
-         AND mcb2.segment1 = civ_prod_div
-         AND itc.doc_id = iaj.doc_id                                              --文書ID
-         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
-         AND xmril.item_id = itc.item_id                                          --品目ID
-         AND ( xmld.lot_id IS NOT NULL 
-           AND xmld.lot_id = itc.lot_id                                           --ロットID
-         OR    xmld.lot_id IS NULL
-         )
--------------------------------------------------------------------------------------------------------------------
-         UNION ALL
-         --積送なし (出庫実績)
--- mod start 1.25
-         --SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
-         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
--- mod end 1.25
-           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
-          ,gv_rectype_out                                  record_type             --レコードタイプ
-          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
-          ,xmrih.mov_type                                  mov_type                --移動タイプ
-          ,xmrih.mov_num                                   mov_num                 --移動番号
-          ,xmrih.actual_ship_date                          arvl_ship_date          --実績日(出庫実績日)
-          ,xmrih.shipped_locat_id                          locat_id                --保管倉庫ID(出庫元ID)
-          ,xmrih.shipped_locat_code                        locat_code              --保管倉庫コード(出庫元保管場所)
-          ,xmrih.actual_arrival_date                       arvl_ship_date2         --実績日(入庫実績日)
-          ,xmrih.ship_to_locat_id                          other_id                --相手先ID(入庫先ID)
-          ,xmrih.ship_to_locat_code                        other_code              --相手先(入庫先保管場所)
-          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
-          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
-          ,xmril.item_id                                   item_id                 --品目ID
-          ,xmril.delete_flg                                delete_flg              --取消フラグ
-          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
-          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
-          ,xmld.document_type_code                         document_type_code      --文書タイプ
-          ,xmld.actual_date                                actual_date             --実績日
-          ,xmld.lot_id                                     lot_id                  --ロットID
-          ,xmld.actual_quantity                            actual_quantity         --実績数量
-          ,mil.segment1                                   segment1                --保管場所コード
-          ,itc.doc_type                                    doc_type                --文書タイプ
-          ,itc.trans_qty                                   trans_qty               --数量
-          ,itc.whse_code                                   whse_code               --倉庫コード
-          ,itc.location                                    location                --保管倉庫コード
-          ,gv_newdiv_pay                                   new_div_invent          --新区分
-          ,gv_rcvdiv_pay                                   rcv_pay_div             --受払区分
-         FROM
-           xxinv_mov_req_instr_headers      xmrih                   --移動依頼/指示ヘッダ(アドオン)
-          ,xxinv_mov_req_instr_lines        xmril                   --移動依頼/指示明細(アドオン)
-          ,xxinv_mov_lot_details            xmld                    --移動ロット詳細(アドオン)
-          ,mtl_item_locations               mil
-          ,ic_jrnl_mst                      ijm                     --OPMジャーナルマスタ
-          ,ic_adjs_jnl                      iaj                     --OPM在庫調整ジャーナル
-          ,ic_tran_cmp                      itc                     --OPM完了在庫トランザクション
-          ,gmi_item_categories              gic1
-          ,mtl_categories_b                 mcb1
-          ,gmi_item_categories              gic2
-          ,mtl_categories_b                 mcb2
-         WHERE xmrih.actual_ship_date = xmrih.actual_arrival_date                 --出荷実績日＝入庫実績日
-         AND  xmrih.mov_type = gv_movetype_no                                 --移動タイプ(積送なし)
-         AND xmrih.mov_hdr_id = xmril.mov_hdr_id                                  --移動ヘッダID
-         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
-         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
-         AND xmld.record_type_code = gv_rectype_out                            --レコードタイプ
-         AND xmrih.shipped_locat_id = mil.inventory_location_id                          --保管倉庫ID
--- mod start 1.25
-         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
-         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
--- mod end 1.25
-         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
-         AND mil.segment1 = iaj.location                                         --保管倉庫コード
-         AND itc.doc_type IN ('TRNI','ADJI')                                      --文書タイプ
-         AND gic1.item_id = itc.item_id
-         AND gic1.category_set_id = cn_item_class_id
-         AND gic1.category_id = mcb1.category_id
-         AND mcb1.segment1 = civ_item_div                                 --品目ID
-         AND gic2.item_id = itc.item_id
-         AND gic2.category_set_id = cn_prod_class_id
-         AND gic2.category_id = mcb2.category_id
-         AND mcb2.segment1 = civ_prod_div
-         AND xmrih.actual_arrival_date                                              --入庫実績日
-            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
-            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
-         AND itc.doc_id = iaj.doc_id                                              --文書ID
-         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
-         AND xmril.item_id = itc.item_id                                          --品目ID
-         AND xmld.lot_id (+)  = itc.lot_id
-         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
-             SELECT 1
-             FROM ic_tran_cmp itc2                                                --OPM完了在庫トランザクション
-             WHERE itc.doc_id = itc2.doc_id                                       --文書ID
-             AND   itc.whse_code = itc2.whse_code                                 --倉庫コード
-             AND   itc.trans_id <> itc2.trans_id
-             AND   ROWNUM = 1
-             )
-         UNION ALL
-         --積送なし (入庫実績)
--- mod start 1.25
-         --SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
-         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
--- mod end 1.25
-           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
-          ,gv_rectype_in                                   record_type             --レコードタイプ
-          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
-          ,xmrih.mov_type                                  mov_type                --移動タイプ
-          ,xmrih.mov_num                                   mov_num                 --移動番号
-          ,xmrih.actual_arrival_date                       arvl_ship_date          --実績日(入庫実績日)
-          ,xmrih.ship_to_locat_id                          locat_id                --保管倉庫ID(入庫元ID)
-          ,xmrih.ship_to_locat_code                        locat_code              --保管倉庫コード(入庫元保管場所)
-          ,xmrih.actual_ship_date                          arvl_ship_date2          --実績日(出庫実績日)
-          ,xmrih.shipped_locat_id                          other_id                --保管倉庫ID(出庫元ID)
-          ,xmrih.shipped_locat_code                        other_code              --保管倉庫コード(出庫元保管場所)
-          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
-          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
-          ,xmril.item_id                                   item_id                 --品目ID
-          ,xmril.delete_flg                                delete_flg              --取消フラグ
-          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
-          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
-          ,xmld.document_type_code                         document_type_code      --文書タイプ
-          ,xmld.actual_date                                actual_date             --実績日
-          ,xmld.lot_id                                     lot_id                  --ロットID
-          ,xmld.actual_quantity                            actual_quantity         --実績数量
-          ,mil.segment1                                   segment1                --保管場所コード
-          ,itc.doc_type                                    doc_type                --文書タイプ
-          ,itc.trans_qty                                   trans_qty               --数量
-          ,itc.whse_code                                   whse_code               --倉庫コード
-          ,itc.location                                    location                --保管倉庫コード
-          ,gv_newdiv_rcv                                   new_div_invent          --新区分
-          ,gv_rcvdiv_rcv                                   rcv_pay_div             --受払区分
-         FROM
-           xxinv_mov_req_instr_headers                     xmrih                   --移動依頼/指示ヘッダ(アドオン)
-          ,xxinv_mov_req_instr_lines                       xmril                   --移動依頼/指示明細(アドオン)
-          ,xxinv_mov_lot_details                           xmld                    --移動ロット詳細(アドオン)
-          ,mtl_item_locations        mil
-          ,ic_jrnl_mst                                     ijm                     --OPMジャーナルマスタ
-          ,ic_adjs_jnl                                     iaj                     --OPM在庫調整ジャーナル
-          ,ic_tran_cmp                                     itc                     --OPM完了在庫トランザクション
-          ,gmi_item_categories              gic1
-          ,mtl_categories_b                 mcb1
-          ,gmi_item_categories              gic2
-          ,mtl_categories_b                 mcb2
-         WHERE xmrih.actual_ship_date = xmrih.actual_arrival_date                 --出荷実績日＝入庫実績日
-         AND  xmrih.mov_type = gv_movetype_no                                 --移動タイプ(積送なし)
-         AND xmrih.mov_hdr_id = xmril.mov_hdr_id                                  --移動ヘッダID
-         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
-         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
-         AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
-         AND xmrih.ship_to_locat_id = mil.inventory_location_id                          --保管倉庫ID
--- mod start 1.25
-         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
-         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
--- mod end 1.25
-         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
-         AND mil.segment1 = iaj.location                                         --保管倉庫コード
-         AND itc.doc_type IN ('TRNI','ADJI')                                      --文書タイプ
-         AND gic1.item_id = itc.item_id
-         AND gic1.category_set_id = cn_item_class_id
-         AND gic1.category_id = mcb1.category_id
-         AND mcb1.segment1 = civ_item_div                                 --品目ID
-         AND gic2.item_id = itc.item_id
-         AND gic2.category_set_id = cn_prod_class_id
-         AND gic2.category_id = mcb2.category_id
-         AND mcb2.segment1 = civ_prod_div
-         AND xmrih.actual_arrival_date                                              --入庫実績日
-            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
-            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
-         AND itc.doc_id = iaj.doc_id                                              --文書ID
-         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
-         AND xmril.item_id = itc.item_id                                          --品目ID
-         AND xmld.lot_id (+) = itc.lot_id
-         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
-             SELECT 1
-             FROM ic_tran_cmp itc2                                                --OPM完了在庫トランザクション
-             WHERE itc.doc_id = itc2.doc_id                                       --文書ID
-             AND   itc.whse_code = itc2.whse_code                                 --倉庫コード
-             AND   itc.trans_id <> itc2.trans_id
-             AND   ROWNUM = 1
-             )
+-- del start 1.28
+--         AND ixm.transfer_id = itp.doc_id                                         --文書ID
+--         AND xmril.item_id = itp.item_id                                          --品目ID
+--         AND xmld.lot_id (+) = itp.lot_id
+--         AND mil.segment1 = itp.location                                         --保管倉庫コード
+--         AND itp.completed_ind = '1'                                      --完了フラグ
+-- del end 1.28
+-- mod start 1.28
+--         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
+--             SELECT 1
+--             FROM ic_tran_pnd itp2                                                --OPM保留在庫トランザクション
+--             WHERE itp.doc_id = itp2.doc_id                                       --文書ID
+--             AND   itp.whse_code = itp2.whse_code                                 --倉庫コード
+--             AND   itp.trans_id <> itp2.trans_id
+--             AND   ROWNUM   = 1
+--             )
+         AND mil.whse_code <> mil_shipped.whse_code -- 同一倉庫内の移動情報は対象外とする。
+-- mod end 1.28
+-- del start 1.28
+--         UNION ALL
+--         --積送あり(ADJI)(出庫実績)
+---- mod start 1.25
+--         --SELECT
+--         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
+---- mod end 1.25
+--           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+--          ,gv_rectype_out                                  record_type             --レコードタイプ
+--          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+--          ,xmrih.mov_type                                  mov_type                --移動タイプ
+--          ,xmrih.mov_num                                   mov_num                 --移動番号
+--          ,xmrih.actual_ship_date                          arvl_ship_date          --実績日(出庫実績日)
+--          ,xmrih.shipped_locat_id                          locat_id                --保管倉庫ID(出庫元ID)
+--          ,xmrih.shipped_locat_code                        locat_code              --保管倉庫コード(出庫元保管場所)
+--          ,xmrih.actual_arrival_date                       arvl_ship_date2         --実績日(入庫実績日)
+--          ,xmrih.ship_to_locat_id                          other_id                --相手先ID(入庫先ID)
+--          ,xmrih.ship_to_locat_code                        other_code              --相手先(入庫先保管場所)
+--          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+--          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+--          ,xmril.item_id                                   item_id                 --品目ID
+--          ,xmril.delete_flg                                delete_flg              --取消フラグ
+--          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+--          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+--          ,xmld.document_type_code                         document_type_code      --文書タイプ
+--          ,xmld.actual_date                                actual_date             --実績日
+--          ,xmld.lot_id                                     lot_id                  --ロットID
+--          ,xmld.actual_quantity                            actual_quantity         --実績数量
+--          ,mil3.segment1                                   segment1                --保管場所コード
+--          ,itc.doc_type                                    doc_type                --文書タイプ
+--          ,itc.trans_qty                                   trans_qty               --数量
+--          ,itc.whse_code                                   whse_code               --倉庫コード
+--          ,itc.location                                    location                --保管倉庫コード
+--          ,gv_newdiv_pay                                   new_div_invent          --新区分
+--          ,gv_rcvdiv_pay                                   rcv_pay_div             --受払区分
+--         FROM
+--           xxinv_mov_req_instr_headers                     xmrih               --移動依頼/指示ヘッダ(アドオン)
+--          ,mtl_item_locations                              mil1
+--          ,ic_whse_mst                                     iwm1
+--          ,mtl_item_locations                              mil2
+--          ,ic_whse_mst                                     iwm2
+--          ,xxinv_mov_req_instr_lines                       xmril               --移動依頼/指示明細(アドオン)
+--          ,xxinv_mov_lot_details                           xmld                --移動ロット詳細(アドオン)
+--          ,mtl_item_locations                              mil3
+--          ,ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
+--          ,ic_adjs_jnl                                     iaj                 --OPM在庫調整ジャーナル
+--          ,ic_tran_cmp                                     itc                 --OPM完了在庫トランザクション
+--          ,gmi_item_categories                             gic1
+--          ,mtl_categories_b                                mcb1
+--          ,gmi_item_categories                             gic2
+--          ,mtl_categories_b                                mcb2
+--         --移動依頼/指示明細(アドオン)抽出条件
+--         WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
+--         AND xmrih.mov_type = gv_movetype_yes                                --移動タイプ(積送あり)
+--          --OPM保管場所情報VIEW2(保管倉庫)抽出条件
+--         AND iwm1.mtl_organization_id = mil1.organization_id
+--         AND iwm2.mtl_organization_id = mil2.organization_id
+--         AND xmrih.shipped_locat_id = mil1.inventory_location_id                        --保管倉庫ID
+--         AND xmrih.ship_to_locat_id = mil2.inventory_location_id                        --保管倉庫ID
+--         AND iwm1.whse_code <> iwm2.whse_code                      --同一倉庫内の移動情報は対象外とする
+--         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+--         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+--         AND xmld.record_type_code = gv_rectype_out                            --レコードタイプ
+--         AND xmrih.actual_arrival_date                                              --入庫実績日
+--               BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--               AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+--         AND xmrih.shipped_locat_id = mil3.inventory_location_id                          --保管倉庫ID
+---- mod start 1.25
+--         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+--         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
+---- mod end 1.25
+--         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
+--         AND mil3.segment1 = iaj.location                                         --保管倉庫コード
+--         AND itc.doc_type = 'ADJI'                                                --文書タイプ
+--         AND gic1.item_id = itc.item_id
+--         AND gic1.category_set_id = cn_item_class_id
+--         AND gic1.category_id = mcb1.category_id
+--         AND mcb1.segment1 = civ_item_div                                --品目ID
+--         AND gic2.item_id = itc.item_id
+--         AND gic2.category_set_id = cn_prod_class_id
+--         AND gic2.category_id = mcb2.category_id
+--         AND mcb2.segment1 = civ_prod_div
+--         AND itc.doc_id = iaj.doc_id                                              --文書ID
+--         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
+--         AND xmril.item_id = itc.item_id                                          --品目ID
+--         AND xmld.lot_id (+) = itc.lot_id  
+--         UNION ALL
+--         --積送あり(ADJI) (入庫実績)
+---- mod start 1.25
+--         --SELECT
+--         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
+---- mod end 1.25
+--           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+--          ,gv_rectype_in                                   record_type             --レコードタイプ
+--          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+--          ,xmrih.mov_type                                  mov_type                --移動タイプ
+--          ,xmrih.mov_num                                   mov_num                 --移動番号
+--          ,xmrih.actual_arrival_date                       arvl_ship_date          --実績日(入庫実績日)
+--          ,xmrih.ship_to_locat_id                          locat_id                --保管倉庫ID(入庫元ID)
+--          ,xmrih.ship_to_locat_code                        locat_code              --保管倉庫コード(入庫元保管場所)
+--          ,xmrih.actual_ship_date                          arvl_ship_date2          --実績日(出庫実績日)
+--          ,xmrih.shipped_locat_id                          other_id                --保管倉庫ID(出庫元ID)
+--          ,xmrih.shipped_locat_code                        other_code              --保管倉庫コード(出庫元保管場所)
+--          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+--          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+--          ,xmril.item_id                                   item_id                 --品目ID
+--          ,xmril.delete_flg                                delete_flg              --取消フラグ
+--          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+--          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+--          ,xmld.document_type_code                         document_type_code      --文書タイプ
+--          ,xmld.actual_date                                actual_date             --実績日
+--          ,xmld.lot_id                                     lot_id                  --ロットID
+--          ,xmld.actual_quantity                            actual_quantity         --実績数量
+--          ,mil3.segment1                                   segment1                --保管場所コード
+--          ,itc.doc_type                                    doc_type                --文書タイプ
+--          ,itc.trans_qty                                   trans_qty               --数量
+--          ,itc.whse_code                                   whse_code               --倉庫コード
+--          ,itc.location                                    location                --保管倉庫コード
+--          ,gv_newdiv_rcv                                   new_div_invent          --新区分
+--          ,gv_rcvdiv_rcv                                   rcv_pay_div             --受払区分
+--         FROM
+--           xxinv_mov_req_instr_headers                     xmrih               --移動依頼/指示ヘッダ(アドオン)
+--          ,mtl_item_locations                              mil1
+--          ,ic_whse_mst                                     iwm1
+--          ,mtl_item_locations                              mil2
+--          ,ic_whse_mst                                     iwm2
+--          ,xxinv_mov_req_instr_lines                       xmril               --移動依頼/指示明細(アドオン)
+--          ,xxinv_mov_lot_details                           xmld                --移動ロット詳細(アドオン)
+--          ,mtl_item_locations                              mil3
+--          ,ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
+--          ,ic_adjs_jnl                                     iaj                 --OPM在庫調整ジャーナル
+--          ,ic_tran_cmp                                     itc                 --OPM完了在庫トランザクション
+--          ,gmi_item_categories                             gic1
+--          ,mtl_categories_b                                mcb1
+--          ,gmi_item_categories                             gic2
+--          ,mtl_categories_b                                mcb2
+--         --移動依頼/指示明細(アドオン)抽出条件
+--         WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
+--         AND xmrih.mov_type = gv_movetype_yes                                --移動タイプ(積送あり)
+--         AND iwm1.mtl_organization_id = mil1.organization_id
+--         AND iwm2.mtl_organization_id = mil2.organization_id
+--            AND xmrih.shipped_locat_id = mil1.inventory_location_id                        --保管倉庫ID
+--            AND xmrih.ship_to_locat_id = mil2.inventory_location_id                        --保管倉庫ID
+--            AND iwm1.whse_code <> iwm2.whse_code                      --同一倉庫内の移動情報は対象外とする
+--         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+--         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+--         AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
+--         AND xmrih.actual_arrival_date                                              --入庫実績日
+--            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+--         AND xmrih.ship_to_locat_id = mil3.inventory_location_id                          --保管倉庫ID
+---- mod start 1.25
+--         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+--         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
+---- mod end 1.25
+--         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
+--         AND mil3.segment1 = iaj.location                                         --保管倉庫コード
+--         AND itc.doc_type = 'ADJI'                                                --文書タイプ
+--         AND gic1.item_id = itc.item_id
+--         AND gic1.category_set_id = cn_item_class_id
+--         AND gic1.category_id = mcb1.category_id
+--         AND mcb1.segment1 = civ_item_div                                 --品目ID
+--         AND gic2.item_id = itc.item_id
+--         AND gic2.category_set_id = cn_prod_class_id
+--         AND gic2.category_id = mcb2.category_id
+--         AND mcb2.segment1 = civ_prod_div
+--         AND itc.doc_id = iaj.doc_id                                              --文書ID
+--         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
+--         AND xmril.item_id = itc.item_id                                          --品目ID
+--         AND ( xmld.lot_id IS NOT NULL 
+--           AND xmld.lot_id = itc.lot_id                                           --ロットID
+--         OR    xmld.lot_id IS NULL
+--         )
+---------------------------------------------------------------------------------------------------------------------
+--         UNION ALL
+--         --積送なし (出庫実績)
+---- mod start 1.25
+--         --SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
+--         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
+---- mod end 1.25
+--           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+--          ,gv_rectype_out                                  record_type             --レコードタイプ
+--          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+--          ,xmrih.mov_type                                  mov_type                --移動タイプ
+--          ,xmrih.mov_num                                   mov_num                 --移動番号
+--          ,xmrih.actual_ship_date                          arvl_ship_date          --実績日(出庫実績日)
+--          ,xmrih.shipped_locat_id                          locat_id                --保管倉庫ID(出庫元ID)
+--          ,xmrih.shipped_locat_code                        locat_code              --保管倉庫コード(出庫元保管場所)
+--          ,xmrih.actual_arrival_date                       arvl_ship_date2         --実績日(入庫実績日)
+--          ,xmrih.ship_to_locat_id                          other_id                --相手先ID(入庫先ID)
+--          ,xmrih.ship_to_locat_code                        other_code              --相手先(入庫先保管場所)
+--          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+--          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+--          ,xmril.item_id                                   item_id                 --品目ID
+--          ,xmril.delete_flg                                delete_flg              --取消フラグ
+--          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+--          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+--          ,xmld.document_type_code                         document_type_code      --文書タイプ
+--          ,xmld.actual_date                                actual_date             --実績日
+--          ,xmld.lot_id                                     lot_id                  --ロットID
+--          ,xmld.actual_quantity                            actual_quantity         --実績数量
+--          ,mil.segment1                                   segment1                --保管場所コード
+--          ,itc.doc_type                                    doc_type                --文書タイプ
+--          ,itc.trans_qty                                   trans_qty               --数量
+--          ,itc.whse_code                                   whse_code               --倉庫コード
+--          ,itc.location                                    location                --保管倉庫コード
+--          ,gv_newdiv_pay                                   new_div_invent          --新区分
+--          ,gv_rcvdiv_pay                                   rcv_pay_div             --受払区分
+--         FROM
+--           xxinv_mov_req_instr_headers      xmrih                   --移動依頼/指示ヘッダ(アドオン)
+--          ,xxinv_mov_req_instr_lines        xmril                   --移動依頼/指示明細(アドオン)
+--          ,xxinv_mov_lot_details            xmld                    --移動ロット詳細(アドオン)
+--          ,mtl_item_locations               mil
+--          ,ic_jrnl_mst                      ijm                     --OPMジャーナルマスタ
+--          ,ic_adjs_jnl                      iaj                     --OPM在庫調整ジャーナル
+--          ,ic_tran_cmp                      itc                     --OPM完了在庫トランザクション
+--          ,gmi_item_categories              gic1
+--          ,mtl_categories_b                 mcb1
+--          ,gmi_item_categories              gic2
+--          ,mtl_categories_b                 mcb2
+--         WHERE xmrih.actual_ship_date = xmrih.actual_arrival_date                 --出荷実績日＝入庫実績日
+--         AND  xmrih.mov_type = gv_movetype_no                                 --移動タイプ(積送なし)
+--         AND xmrih.mov_hdr_id = xmril.mov_hdr_id                                  --移動ヘッダID
+--         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+--         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+--         AND xmld.record_type_code = gv_rectype_out                            --レコードタイプ
+--         AND xmrih.shipped_locat_id = mil.inventory_location_id                          --保管倉庫ID
+---- mod start 1.25
+--         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+--         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
+---- mod end 1.25
+--         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
+--         AND mil.segment1 = iaj.location                                         --保管倉庫コード
+--         AND itc.doc_type IN ('TRNI','ADJI')                                      --文書タイプ
+--         AND gic1.item_id = itc.item_id
+--         AND gic1.category_set_id = cn_item_class_id
+--         AND gic1.category_id = mcb1.category_id
+--         AND mcb1.segment1 = civ_item_div                                 --品目ID
+--         AND gic2.item_id = itc.item_id
+--         AND gic2.category_set_id = cn_prod_class_id
+--         AND gic2.category_id = mcb2.category_id
+--         AND mcb2.segment1 = civ_prod_div
+--         AND xmrih.actual_arrival_date                                              --入庫実績日
+--            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+--         AND itc.doc_id = iaj.doc_id                                              --文書ID
+--         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
+--         AND xmril.item_id = itc.item_id                                          --品目ID
+--         AND xmld.lot_id (+)  = itc.lot_id
+--         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
+--             SELECT 1
+--             FROM ic_tran_cmp itc2                                                --OPM完了在庫トランザクション
+--             WHERE itc.doc_id = itc2.doc_id                                       --文書ID
+--             AND   itc.whse_code = itc2.whse_code                                 --倉庫コード
+--             AND   itc.trans_id <> itc2.trans_id
+--             AND   ROWNUM = 1
+--             )
+--         UNION ALL
+--         --積送なし (入庫実績)
+---- mod start 1.25
+--         --SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
+--         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
+---- mod end 1.25
+--           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+--          ,gv_rectype_in                                   record_type             --レコードタイプ
+--          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+--          ,xmrih.mov_type                                  mov_type                --移動タイプ
+--          ,xmrih.mov_num                                   mov_num                 --移動番号
+--          ,xmrih.actual_arrival_date                       arvl_ship_date          --実績日(入庫実績日)
+--          ,xmrih.ship_to_locat_id                          locat_id                --保管倉庫ID(入庫元ID)
+--          ,xmrih.ship_to_locat_code                        locat_code              --保管倉庫コード(入庫元保管場所)
+--          ,xmrih.actual_ship_date                          arvl_ship_date2          --実績日(出庫実績日)
+--          ,xmrih.shipped_locat_id                          other_id                --保管倉庫ID(出庫元ID)
+--          ,xmrih.shipped_locat_code                        other_code              --保管倉庫コード(出庫元保管場所)
+--          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+--          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+--          ,xmril.item_id                                   item_id                 --品目ID
+--          ,xmril.delete_flg                                delete_flg              --取消フラグ
+--          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+--          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+--          ,xmld.document_type_code                         document_type_code      --文書タイプ
+--          ,xmld.actual_date                                actual_date             --実績日
+--          ,xmld.lot_id                                     lot_id                  --ロットID
+--          ,xmld.actual_quantity                            actual_quantity         --実績数量
+--          ,mil.segment1                                   segment1                --保管場所コード
+--          ,itc.doc_type                                    doc_type                --文書タイプ
+--          ,itc.trans_qty                                   trans_qty               --数量
+--          ,itc.whse_code                                   whse_code               --倉庫コード
+--          ,itc.location                                    location                --保管倉庫コード
+--          ,gv_newdiv_rcv                                   new_div_invent          --新区分
+--          ,gv_rcvdiv_rcv                                   rcv_pay_div             --受払区分
+--         FROM
+--           xxinv_mov_req_instr_headers                     xmrih                   --移動依頼/指示ヘッダ(アドオン)
+--          ,xxinv_mov_req_instr_lines                       xmril                   --移動依頼/指示明細(アドオン)
+--          ,xxinv_mov_lot_details                           xmld                    --移動ロット詳細(アドオン)
+--          ,mtl_item_locations        mil
+--          ,ic_jrnl_mst                                     ijm                     --OPMジャーナルマスタ
+--          ,ic_adjs_jnl                                     iaj                     --OPM在庫調整ジャーナル
+--          ,ic_tran_cmp                                     itc                     --OPM完了在庫トランザクション
+--          ,gmi_item_categories              gic1
+--          ,mtl_categories_b                 mcb1
+--          ,gmi_item_categories              gic2
+--          ,mtl_categories_b                 mcb2
+--         WHERE xmrih.actual_ship_date = xmrih.actual_arrival_date                 --出荷実績日＝入庫実績日
+--         AND  xmrih.mov_type = gv_movetype_no                                 --移動タイプ(積送なし)
+--         AND xmrih.mov_hdr_id = xmril.mov_hdr_id                                  --移動ヘッダID
+--         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+--         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+--         AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
+--         AND xmrih.ship_to_locat_id = mil.inventory_location_id                          --保管倉庫ID
+---- mod start 1.25
+--         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+--         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
+---- mod end 1.25
+--         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
+--         AND mil.segment1 = iaj.location                                         --保管倉庫コード
+--         AND itc.doc_type IN ('TRNI','ADJI')                                      --文書タイプ
+--         AND gic1.item_id = itc.item_id
+--         AND gic1.category_set_id = cn_item_class_id
+--         AND gic1.category_id = mcb1.category_id
+--         AND mcb1.segment1 = civ_item_div                                 --品目ID
+--         AND gic2.item_id = itc.item_id
+--         AND gic2.category_set_id = cn_prod_class_id
+--         AND gic2.category_id = mcb2.category_id
+--         AND mcb2.segment1 = civ_prod_div
+--         AND xmrih.actual_arrival_date                                              --入庫実績日
+--            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+--         AND itc.doc_id = iaj.doc_id                                              --文書ID
+--         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
+--         AND xmril.item_id = itc.item_id                                          --品目ID
+--         AND xmld.lot_id (+) = itc.lot_id
+--         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
+--             SELECT 1
+--             FROM ic_tran_cmp itc2                                                --OPM完了在庫トランザクション
+--             WHERE itc.doc_id = itc2.doc_id                                       --文書ID
+--             AND   itc.whse_code = itc2.whse_code                                 --倉庫コード
+--             AND   itc.trans_id <> itc2.trans_id
+--             AND   ROWNUM = 1
+--             )
+-- del end 1.28
          )                          xm                  --移動情報
          ,ic_item_mst_b             iimb
          ,xxcmn_item_mst_b          ximb
@@ -5726,11 +5805,14 @@ AS
        FROM
         (
 -------------------------------------------------------------------------------------------------------------------
-         --積送あり(出庫実績)
--- mod start 1.25
-         --SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
-         SELECT /*+ leading(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) */
--- mod end 1.25
+         --出庫実績
+-- mod start 1.28
+---- mod start 1.25
+--         --SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
+--         SELECT /*+ leading(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) */
+---- mod end 1.25
+         SELECT
+-- mod end 1.28
            xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
           ,gv_rectype_out                                  record_type             --レコードタイプ
           ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
@@ -5753,63 +5835,99 @@ AS
           ,xmld.lot_id                                     lot_id                  --ロットID
           ,xmld.actual_quantity                            actual_quantity         --実績数量
           ,mil.segment1                                    segment1                --保管場所コード
-          ,itp.doc_type                                    doc_type                --文書タイプ
-          ,itp.trans_qty                                   trans_qty               --数量
-          ,itp.whse_code                                   whse_code               --倉庫コード
-          ,itp.location                                    location                --保管倉庫コード
+-- mod start 1.28
+--          ,itp.doc_type                                    doc_type                --文書タイプ
+--          ,itp.trans_qty                                   trans_qty               --数量
+--          ,itp.whse_code                                   whse_code               --倉庫コード
+--          ,itp.location                                    location                --保管倉庫コード
+          ,CASE
+             WHEN xmrih.mov_type = gv_movetype_yes THEN 'XFER'   -- 積送ありの場合
+             ELSE                                       'TRNI'   -- 積送なしの場合
+           END                                             doc_type                --文書タイプ
+          ,xmld.actual_quantity                            trans_qty               --数量
+          ,mil.subinventory_code                           whse_code               --倉庫コード
+          ,xmrih.shipped_locat_code                        location                --保管倉庫コード
+-- mod end 1.28
           ,gv_newdiv_pay                                   new_div_invent          --新区分
           ,gv_rcvdiv_pay                                   rcv_pay_div             --受払区分
          FROM
            xxinv_mov_req_instr_headers      xmrih               --移動依頼/指示ヘッダ(アドオン)
           ,xxinv_mov_req_instr_lines        xmril               --移動依頼/指示明細(アドオン)
           ,xxinv_mov_lot_details            xmld                --移動ロット詳細(アドオン)
-          ,mtl_item_locations               mil
-          ,ic_xfer_mst                      ixm                 --OPM在庫転送マスタ
-          ,ic_tran_pnd                      itp                 --OPM保留在庫トランザクション
+-- mod start 1.28
+--          ,mtl_item_locations               mil
+          ,xxcmn_item_locations_v           mil                 --OPM保管倉庫情報VIEW(出庫保管場所)
+-- mod end 1.28
+-- add start 1.28
+          ,xxcmn_item_locations_v           mil_ship_to         --OPM保管倉庫情報VIEW(入庫保管場所)
+-- add end 1.28
+-- del start 1.28
+--          ,ic_xfer_mst                      ixm                 --OPM在庫転送マスタ
+--          ,ic_tran_pnd                      itp                 --OPM保留在庫トランザクション
+-- del end 1.28
           ,gmi_item_categories              gic1
           ,mtl_categories_b                 mcb1
           ,gmi_item_categories              gic2
           ,mtl_categories_b                 mcb2
          WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
-         AND xmrih.mov_type = gv_movetype_yes
+-- del start 1.28
+--         AND xmrih.mov_type = gv_movetype_yes
+-- del end 1.28
          AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
          AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
          AND xmld.record_type_code = gv_rectype_out                               --レコードタイプ
          AND xmrih.shipped_locat_id = mil.inventory_location_id                   --保管倉庫ID
--- mod start 1.25
-         --AND xmril.mov_line_id = ixm.attribute1                                   --文書ソースID
-         AND TO_CHAR(xmril.mov_line_id) = ixm.attribute1                                   --文書ソースID
--- mod end 1.25
-         AND itp.doc_type = 'XFER'                                                --文書タイプ
+-- add start 1.28
+         AND xmrih.ship_to_locat_id = mil_ship_to.inventory_location_id --保管倉庫ID(入庫)
+-- add end 1.28
+-- del start 1.28
+---- mod start 1.25
+--         --AND xmril.mov_line_id = ixm.attribute1                                   --文書ソースID
+--         AND TO_CHAR(xmril.mov_line_id) = ixm.attribute1                                   --文書ソースID
+---- mod start 1.25
+--         AND itp.doc_type = 'XFER'                                                --文書タイプ
+-- del end 1.28
          AND xmrih.actual_ship_date                                            --入庫実績日
             BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
             AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
-         AND gic1.item_id  = itp.item_id
+-- mod start 1.28
+--         AND gic1.item_id  = itp.item_id
+         AND gic1.item_id  = xmld.item_id
+-- mod end 1.28
          AND gic1.category_set_id = cn_item_class_id
          AND gic1.category_id = mcb1.category_id
          AND mcb1.segment1 = civ_item_div
-         AND gic2.item_id = itp.item_id
+-- mod start 1.28
+--         AND gic2.item_id = itp.item_id
+         AND gic2.item_id = xmld.item_id
+-- mod end 1.28
          AND gic2.category_set_id = cn_prod_class_id
          AND gic2.category_id = mcb2.category_id
          AND mcb2.segment1 = civ_prod_div
-         AND ixm.transfer_id = itp.doc_id                                         --文書ID
-         AND xmril.item_id = itp.item_id                                          --品目ID
-         AND xmld.lot_id (+) = itp.lot_id
-         AND mil.segment1 = itp.location                                          --保管倉庫コード
-         AND itp.completed_ind = gv_tran_cmp                                      --完了フラグ
-         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
-             SELECT 1
-             FROM ic_tran_pnd itp2                                                --OPM保留在庫トランザクション
-             WHERE itp.doc_id = itp2.doc_id                                       --文書ID
-             AND   itp.whse_code = itp2.whse_code                                 --倉庫コード
-             AND   itp.trans_id <> itp2.trans_id
-             AND   ROWNUM   = 1
-             )
-         UNION ALL -- 積送あり(入庫実績)
--- mod start 1.25
-         --SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
-         SELECT /*+ leading(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) */
--- mod end 1.25
+-- mod start 1.28
+--         AND ixm.transfer_id = itp.doc_id                                         --文書ID
+--         AND xmril.item_id = itp.item_id                                          --品目ID
+--         AND xmld.lot_id (+) = itp.lot_id
+--         AND mil.segment1 = itp.location                                          --保管倉庫コード
+--         AND itp.completed_ind = gv_tran_cmp                                      --完了フラグ
+--         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
+--             SELECT 1
+--             FROM ic_tran_pnd itp2                                                --OPM保留在庫トランザクション
+--             WHERE itp.doc_id = itp2.doc_id                                       --文書ID
+--             AND   itp.whse_code = itp2.whse_code                                 --倉庫コード
+--             AND   itp.trans_id <> itp2.trans_id
+--             AND   ROWNUM   = 1
+--             )
+         AND mil.whse_code <> mil_ship_to.whse_code -- 同一倉庫内の移動情報は対象外とする。
+-- mod end 1.28
+         UNION ALL -- 入庫実績
+-- mod start 1.28
+---- mod start 1.25
+--         --SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
+--         SELECT /*+ leading(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) */
+---- mod end 1.25
+         SELECT
+-- mod end 1.28
            xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
           ,gv_rectype_in                                   record_type             --レコードタイプ
           ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
@@ -5832,25 +5950,44 @@ AS
           ,xmld.lot_id                                     lot_id                  --ロットID
           ,xmld.actual_quantity                            actual_quantity         --実績数量
           ,mil.segment1                                   segment1                --保管場所コード
-          ,itp.doc_type                                    doc_type                --文書タイプ
-          ,itp.trans_qty                                   trans_qty               --数量
-          ,itp.whse_code                                   whse_code               --倉庫コード
-          ,itp.location                                    location                --保管倉庫コード
+-- mod start 1.28
+--          ,itp.doc_type                                    doc_type                --文書タイプ
+--          ,itp.trans_qty                                   trans_qty               --数量
+--          ,itp.whse_code                                   whse_code               --倉庫コード
+--          ,itp.location                                    location                --保管倉庫コード
+          ,CASE
+             WHEN xmrih.mov_type = gv_movetype_yes THEN 'XFER'   -- 積送ありの場合
+             ELSE                                       'TRNI'   -- 積送なしの場合
+           END                                             doc_type                --文書タイプ
+          ,xmld.actual_quantity                            trans_qty               --数量
+          ,mil.subinventory_code                           whse_code               --倉庫コード
+          ,xmrih.ship_to_locat_code                        location                --保管倉庫コード
+-- mod end 1.28
           ,gv_newdiv_rcv                                   new_div_invent          --新区分
           ,gv_rcvdiv_rcv                                   rcv_pay_div             --受払区分
          FROM
            xxinv_mov_req_instr_headers      xmrih
           ,xxinv_mov_req_instr_lines        xmril               --移動依頼/指示明細(アドオン)
           ,xxinv_mov_lot_details            xmld                --移動ロット詳細(アドオン)
-          ,mtl_item_locations               mil
-          ,ic_xfer_mst                      ixm                 --OPM在庫転送マスタ
-          ,ic_tran_pnd                      itp                 --OPM保留在庫トランザクション
+-- mod start 1.28
+--          ,mtl_item_locations               mil
+          ,xxcmn_item_locations_v           mil                 --OPM保管倉庫情報VIEW(入庫保管場所)
+-- mod end 1.28
+-- add start 1.28
+          ,xxcmn_item_locations_v           mil_shipped         --OPM保管倉庫情報VIEW(出庫保管場所)
+-- add end 1.28
+-- del start 1.28
+--          ,ic_xfer_mst                      ixm                 --OPM在庫転送マスタ
+--          ,ic_tran_pnd                      itp                 --OPM保留在庫トランザクション
+-- del end 1.28
           ,gmi_item_categories              gic1
           ,mtl_categories_b                 mcb1
           ,gmi_item_categories              gic2
           ,mtl_categories_b                 mcb2
          WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
-         AND xmrih.mov_type = gv_movetype_yes
+-- del start 1.28
+--         AND xmrih.mov_type = gv_movetype_yes
+-- del end 1.28
          AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
          AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
          AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
@@ -5858,371 +5995,390 @@ AS
             BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
             AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
          AND xmrih.ship_to_locat_id = mil.inventory_location_id                          --保管倉庫ID
+-- add start 1.28
+         AND xmrih.shipped_locat_id = mil_shipped.inventory_location_id --保管倉庫ID(出庫)
+-- add end 1.28
+-- del start 1.28
 -- mod start 1.25
-         --AND xmril.mov_line_id = ixm.attribute1                                   --文書ソースID
-         AND TO_CHAR(xmril.mov_line_id) = ixm.attribute1                                   --文書ソースID
+--         AND TO_CHAR(xmril.mov_line_id) = ixm.attribute1                                   --文書ソースID
 -- mod end 1.25
-         AND itp.doc_type = 'XFER'                                                --文書タイプ
-         AND gic1.item_id = itp.item_id
+-- del end 1.28
+-- del start 1.28
+--         AND itp.doc_type = 'XFER'                                                --文書タイプ
+-- del end 1.28
+-- mod start 1.25
+--         AND gic1.item_id = itp.item_id
+         AND gic1.item_id = xmld.item_id
+-- mod end 1.25
          AND gic1.category_set_id = cn_item_class_id
          AND gic1.category_id = mcb1.category_id
          AND mcb1.segment1 = civ_item_div
-         AND gic2.item_id  = itp.item_id
+-- mod start 1.28
+--         AND gic2.item_id  = itp.item_id
+         AND gic2.item_id  = xmld.item_id
+-- mod end 1.28
          AND gic2.category_set_id = cn_prod_class_id
          AND gic2.category_id = mcb2.category_id
          AND mcb2.segment1 = civ_prod_div
-         AND ixm.transfer_id = itp.doc_id                                         --文書ID
-         AND xmril.item_id = itp.item_id                                          --品目ID
-         AND xmld.lot_id (+) = itp.lot_id
-         AND mil.segment1 = itp.location                                         --保管倉庫コード
-         AND itp.completed_ind = gv_tran_cmp                                      --完了フラグ
-         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
-             SELECT 1
-             FROM ic_tran_pnd itp2                                                --OPM保留在庫トランザクション
-             WHERE itp.doc_id = itp2.doc_id                                       --文書ID
-             AND   itp.whse_code = itp2.whse_code                                 --倉庫コード
-             AND   itp.trans_id <> itp2.trans_id
-             AND   ROWNUM   = 1
-             )
-         UNION ALL
-         --積送あり(ADJI)(出庫実績)
--- mod start 1.25
-         --SELECT
-         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
--- mod end 1.25
-           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
-          ,gv_rectype_out                                  record_type             --レコードタイプ
-          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
-          ,xmrih.mov_type                                  mov_type                --移動タイプ
-          ,xmrih.mov_num                                   mov_num                 --移動番号
-          ,xmrih.actual_ship_date                          arvl_ship_date          --実績日(出庫実績日)
-          ,xmrih.shipped_locat_id                          locat_id                --保管倉庫ID(出庫元ID)
-          ,xmrih.shipped_locat_code                        locat_code              --保管倉庫コード(出庫元保管場所)
-          ,xmrih.actual_arrival_date                       arvl_ship_date2         --実績日(入庫実績日)
-          ,xmrih.ship_to_locat_id                          other_id                --相手先ID(入庫先ID)
-          ,xmrih.ship_to_locat_code                        other_code              --相手先(入庫先保管場所)
-          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
-          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
-          ,xmril.item_id                                   item_id                 --品目ID
-          ,xmril.delete_flg                                delete_flg              --取消フラグ
-          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
-          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
-          ,xmld.document_type_code                         document_type_code      --文書タイプ
-          ,xmld.actual_date                                actual_date             --実績日
-          ,xmld.lot_id                                     lot_id                  --ロットID
-          ,xmld.actual_quantity                            actual_quantity         --実績数量
-          ,mil3.segment1                                   segment1                --保管場所コード
-          ,itc.doc_type                                    doc_type                --文書タイプ
-          ,itc.trans_qty                                   trans_qty               --数量
-          ,itc.whse_code                                   whse_code               --倉庫コード
-          ,itc.location                                    location                --保管倉庫コード
-          ,gv_newdiv_pay                                   new_div_invent          --新区分
-          ,gv_rcvdiv_pay                                   rcv_pay_div             --受払区分
-         FROM
-           xxinv_mov_req_instr_headers                     xmrih               --移動依頼/指示ヘッダ(アドオン)
-          ,mtl_item_locations                              mil1
-          ,ic_whse_mst                                     iwm1
-          ,mtl_item_locations                              mil2
-          ,ic_whse_mst                                     iwm2
-          ,xxinv_mov_req_instr_lines                       xmril               --移動依頼/指示明細(アドオン)
-          ,xxinv_mov_lot_details                           xmld                --移動ロット詳細(アドオン)
-          ,mtl_item_locations                              mil3
-          ,ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
-          ,ic_adjs_jnl                                     iaj                 --OPM在庫調整ジャーナル
-          ,ic_tran_cmp                                     itc                 --OPM完了在庫トランザクション
-          ,gmi_item_categories                             gic1
-          ,mtl_categories_b                                mcb1
-          ,gmi_item_categories                             gic2
-          ,mtl_categories_b                                mcb2
-         --移動依頼/指示明細(アドオン)抽出条件
-         WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
-         AND xmrih.mov_type = gv_movetype_yes                                --移動タイプ(積送あり)
-          --OPM保管場所情報VIEW2(保管倉庫)抽出条件
-         AND iwm1.mtl_organization_id = mil1.organization_id
-         AND iwm2.mtl_organization_id = mil2.organization_id
-         AND xmrih.shipped_locat_id = mil1.inventory_location_id                        --保管倉庫ID
-         AND xmrih.ship_to_locat_id = mil2.inventory_location_id                        --保管倉庫ID
-         AND iwm1.whse_code <> iwm2.whse_code                      --同一倉庫内の移動情報は対象外とする
-         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
-         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
-         AND xmld.record_type_code = gv_rectype_out                            --レコードタイプ
-         AND xmrih.actual_ship_date                                              --入庫実績日
-               BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
-               AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
-         AND xmrih.shipped_locat_id = mil3.inventory_location_id                          --保管倉庫ID
--- mod start 1.25
-         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
-         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
--- mod end 1.25
-         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
-         AND mil3.segment1 = iaj.location                                         --保管倉庫コード
-         AND itc.doc_type = 'ADJI'                                                --文書タイプ
-         AND gic1.item_id = itc.item_id
-         AND gic1.category_set_id = cn_item_class_id
-         AND gic1.category_id = mcb1.category_id
-         AND mcb1.segment1 = civ_item_div                                --品目ID
-         AND gic2.item_id = itc.item_id
-         AND gic2.category_set_id = cn_prod_class_id
-         AND gic2.category_id = mcb2.category_id
-         AND mcb2.segment1 = civ_prod_div
-         AND itc.doc_id = iaj.doc_id                                              --文書ID
-         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
-         AND xmril.item_id = itc.item_id                                          --品目ID
-         AND xmld.lot_id (+) = itc.lot_id  
-         UNION ALL
-         --積送あり(ADJI) (入庫実績)
--- mod start 1.25
-         --SELECT 
-         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
--- mod end 1.25
-           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
-          ,gv_rectype_in                                   record_type             --レコードタイプ
-          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
-          ,xmrih.mov_type                                  mov_type                --移動タイプ
-          ,xmrih.mov_num                                   mov_num                 --移動番号
-          ,xmrih.actual_arrival_date                       arvl_ship_date          --実績日(入庫実績日)
-          ,xmrih.ship_to_locat_id                          locat_id                --保管倉庫ID(入庫元ID)
-          ,xmrih.ship_to_locat_code                        locat_code              --保管倉庫コード(入庫元保管場所)
-          ,xmrih.actual_ship_date                          arvl_ship_date2          --実績日(出庫実績日)
-          ,xmrih.shipped_locat_id                          other_id                --保管倉庫ID(出庫元ID)
-          ,xmrih.shipped_locat_code                        other_code              --保管倉庫コード(出庫元保管場所)
-          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
-          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
-          ,xmril.item_id                                   item_id                 --品目ID
-          ,xmril.delete_flg                                delete_flg              --取消フラグ
-          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
-          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
-          ,xmld.document_type_code                         document_type_code      --文書タイプ
-          ,xmld.actual_date                                actual_date             --実績日
-          ,xmld.lot_id                                     lot_id                  --ロットID
-          ,xmld.actual_quantity                            actual_quantity         --実績数量
-          ,mil3.segment1                                   segment1                --保管場所コード
-          ,itc.doc_type                                    doc_type                --文書タイプ
-          ,itc.trans_qty                                   trans_qty               --数量
-          ,itc.whse_code                                   whse_code               --倉庫コード
-          ,itc.location                                    location                --保管倉庫コード
-          ,gv_newdiv_rcv                                   new_div_invent          --新区分
-          ,gv_rcvdiv_rcv                                   rcv_pay_div             --受払区分
-         FROM
-           xxinv_mov_req_instr_headers                     xmrih               --移動依頼/指示ヘッダ(アドオン)
-          ,mtl_item_locations                              mil1
-          ,ic_whse_mst                                     iwm1
-          ,mtl_item_locations                              mil2
-          ,ic_whse_mst                                     iwm2
-          ,xxinv_mov_req_instr_lines                       xmril               --移動依頼/指示明細(アドオン)
-          ,xxinv_mov_lot_details                           xmld                --移動ロット詳細(アドオン)
-          ,mtl_item_locations                              mil3
-          ,ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
-          ,ic_adjs_jnl                                     iaj                 --OPM在庫調整ジャーナル
-          ,ic_tran_cmp                                     itc                 --OPM完了在庫トランザクション
-          ,gmi_item_categories                             gic1
-          ,mtl_categories_b                                mcb1
-          ,gmi_item_categories                             gic2
-          ,mtl_categories_b                                mcb2
-         --移動依頼/指示明細(アドオン)抽出条件
-         WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
-         AND xmrih.mov_type = gv_movetype_yes                                --移動タイプ(積送あり)
-         AND iwm1.mtl_organization_id = mil1.organization_id
-         AND iwm2.mtl_organization_id = mil2.organization_id
-            AND xmrih.shipped_locat_id = mil1.inventory_location_id                        --保管倉庫ID
-            AND xmrih.ship_to_locat_id = mil2.inventory_location_id                        --保管倉庫ID
-            AND iwm1.whse_code <> iwm2.whse_code                      --同一倉庫内の移動情報は対象外とする
-         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
-         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
-         AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
-         AND xmrih.actual_ship_date                                              --入庫実績日
-            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
-            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
-         AND xmrih.ship_to_locat_id = mil3.inventory_location_id                          --保管倉庫ID
--- mod start 1.25
-         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
-         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
--- mod end 1.25
-         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
-         AND mil3.segment1 = iaj.location                                         --保管倉庫コード
-         AND itc.doc_type = 'ADJI'                                                --文書タイプ
-         AND gic1.item_id = itc.item_id
-         AND gic1.category_set_id = cn_item_class_id
-         AND gic1.category_id = mcb1.category_id
-         AND mcb1.segment1 = civ_item_div                                 --品目ID
-         AND gic2.item_id = itc.item_id
-         AND gic2.category_set_id = cn_prod_class_id
-         AND gic2.category_id = mcb2.category_id
-         AND mcb2.segment1 = civ_prod_div
-         AND itc.doc_id = iaj.doc_id                                              --文書ID
-         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
-         AND xmril.item_id = itc.item_id                                          --品目ID
-         AND ( xmld.lot_id IS NOT NULL 
-           AND xmld.lot_id = itc.lot_id                                           --ロットID
-         OR    xmld.lot_id IS NULL
-         )
--------------------------------------------------------------------------------------------------------------------
-         UNION ALL
-         --積送なし (出庫実績)
--- mod start 1.25
-         --SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
-         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
--- mod end 1.25
-           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
-          ,gv_rectype_out                                  record_type             --レコードタイプ
-          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
-          ,xmrih.mov_type                                  mov_type                --移動タイプ
-          ,xmrih.mov_num                                   mov_num                 --移動番号
-          ,xmrih.actual_ship_date                          arvl_ship_date          --実績日(出庫実績日)
-          ,xmrih.shipped_locat_id                          locat_id                --保管倉庫ID(出庫元ID)
-          ,xmrih.shipped_locat_code                        locat_code              --保管倉庫コード(出庫元保管場所)
-          ,xmrih.actual_arrival_date                       arvl_ship_date2         --実績日(入庫実績日)
-          ,xmrih.ship_to_locat_id                          other_id                --相手先ID(入庫先ID)
-          ,xmrih.ship_to_locat_code                        other_code              --相手先(入庫先保管場所)
-          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
-          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
-          ,xmril.item_id                                   item_id                 --品目ID
-          ,xmril.delete_flg                                delete_flg              --取消フラグ
-          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
-          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
-          ,xmld.document_type_code                         document_type_code      --文書タイプ
-          ,xmld.actual_date                                actual_date             --実績日
-          ,xmld.lot_id                                     lot_id                  --ロットID
-          ,xmld.actual_quantity                            actual_quantity         --実績数量
-          ,mil.segment1                                   segment1                --保管場所コード
-          ,itc.doc_type                                    doc_type                --文書タイプ
-          ,itc.trans_qty                                   trans_qty               --数量
-          ,itc.whse_code                                   whse_code               --倉庫コード
-          ,itc.location                                    location                --保管倉庫コード
-          ,gv_newdiv_pay                                   new_div_invent          --新区分
-          ,gv_rcvdiv_pay                                   rcv_pay_div             --受払区分
-         FROM
-           xxinv_mov_req_instr_headers      xmrih                   --移動依頼/指示ヘッダ(アドオン)
-          ,xxinv_mov_req_instr_lines        xmril                   --移動依頼/指示明細(アドオン)
-          ,xxinv_mov_lot_details            xmld                    --移動ロット詳細(アドオン)
-          ,mtl_item_locations               mil
-          ,ic_jrnl_mst                      ijm                     --OPMジャーナルマスタ
-          ,ic_adjs_jnl                      iaj                     --OPM在庫調整ジャーナル
-          ,ic_tran_cmp                      itc                     --OPM完了在庫トランザクション
-          ,gmi_item_categories              gic1
-          ,mtl_categories_b                 mcb1
-          ,gmi_item_categories              gic2
-          ,mtl_categories_b                 mcb2
-         WHERE xmrih.actual_ship_date = xmrih.actual_arrival_date                 --出荷実績日＝入庫実績日
-         AND  xmrih.mov_type = gv_movetype_no                                 --移動タイプ(積送なし)
-         AND xmrih.mov_hdr_id = xmril.mov_hdr_id                                  --移動ヘッダID
-         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
-         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
-         AND xmld.record_type_code = gv_rectype_out                            --レコードタイプ
-         AND xmrih.shipped_locat_id = mil.inventory_location_id                          --保管倉庫ID
--- mod start 1.25
-         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
-         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
--- mod end 1.25
-         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
-         AND mil.segment1 = iaj.location                                         --保管倉庫コード
-         AND itc.doc_type IN ('TRNI','ADJI')                                      --文書タイプ
-         AND gic1.item_id = itc.item_id
-         AND gic1.category_set_id = cn_item_class_id
-         AND gic1.category_id = mcb1.category_id
-         AND mcb1.segment1 = civ_item_div                                 --品目ID
-         AND gic2.item_id = itc.item_id
-         AND gic2.category_set_id = cn_prod_class_id
-         AND gic2.category_id = mcb2.category_id
-         AND mcb2.segment1 = civ_prod_div
-         AND xmrih.actual_ship_date                                              --入庫実績日
-            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
-            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
-         AND itc.doc_id = iaj.doc_id                                              --文書ID
-         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
-         AND xmril.item_id = itc.item_id                                          --品目ID
-         AND xmld.lot_id (+)  = itc.lot_id
-         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
-             SELECT 1
-             FROM ic_tran_cmp itc2                                                --OPM完了在庫トランザクション
-             WHERE itc.doc_id = itc2.doc_id                                       --文書ID
-             AND   itc.whse_code = itc2.whse_code                                 --倉庫コード
-             AND   itc.trans_id <> itc2.trans_id
-             AND   ROWNUM = 1
-             )
-         UNION ALL
-         --積送なし (入庫実績)
--- mod start 1.25
-         --SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
-         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
--- mod end 1.25
-           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
-          ,gv_rectype_in                                   record_type             --レコードタイプ
-          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
-          ,xmrih.mov_type                                  mov_type                --移動タイプ
-          ,xmrih.mov_num                                   mov_num                 --移動番号
-          ,xmrih.actual_arrival_date                       arvl_ship_date          --実績日(入庫実績日)
-          ,xmrih.ship_to_locat_id                          locat_id                --保管倉庫ID(入庫元ID)
-          ,xmrih.ship_to_locat_code                        locat_code              --保管倉庫コード(入庫元保管場所)
-          ,xmrih.actual_ship_date                          arvl_ship_date2          --実績日(出庫実績日)
-          ,xmrih.shipped_locat_id                          other_id                --保管倉庫ID(出庫元ID)
-          ,xmrih.shipped_locat_code                        other_code              --保管倉庫コード(出庫元保管場所)
-          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
-          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
-          ,xmril.item_id                                   item_id                 --品目ID
-          ,xmril.delete_flg                                delete_flg              --取消フラグ
-          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
-          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
-          ,xmld.document_type_code                         document_type_code      --文書タイプ
-          ,xmld.actual_date                                actual_date             --実績日
-          ,xmld.lot_id                                     lot_id                  --ロットID
-          ,xmld.actual_quantity                            actual_quantity         --実績数量
-          ,mil.segment1                                   segment1                --保管場所コード
-          ,itc.doc_type                                    doc_type                --文書タイプ
-          ,itc.trans_qty                                   trans_qty               --数量
-          ,itc.whse_code                                   whse_code               --倉庫コード
-          ,itc.location                                    location                --保管倉庫コード
-          ,gv_newdiv_rcv                                   new_div_invent          --新区分
-          ,gv_rcvdiv_rcv                                   rcv_pay_div             --受払区分
-         FROM
-           xxinv_mov_req_instr_headers                     xmrih                   --移動依頼/指示ヘッダ(アドオン)
-          ,xxinv_mov_req_instr_lines                       xmril                   --移動依頼/指示明細(アドオン)
-          ,xxinv_mov_lot_details                           xmld                    --移動ロット詳細(アドオン)
-          ,mtl_item_locations        mil
-          ,ic_jrnl_mst                                     ijm                     --OPMジャーナルマスタ
-          ,ic_adjs_jnl                                     iaj                     --OPM在庫調整ジャーナル
-          ,ic_tran_cmp                                     itc                     --OPM完了在庫トランザクション
-          ,gmi_item_categories              gic1
-          ,mtl_categories_b                 mcb1
-          ,gmi_item_categories              gic2
-          ,mtl_categories_b                 mcb2
-         WHERE xmrih.actual_ship_date = xmrih.actual_arrival_date                 --出荷実績日＝入庫実績日
-         AND  xmrih.mov_type = gv_movetype_no                                 --移動タイプ(積送なし)
-         AND xmrih.mov_hdr_id = xmril.mov_hdr_id                                  --移動ヘッダID
-         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
-         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
-         AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
-         AND xmrih.ship_to_locat_id = mil.inventory_location_id                          --保管倉庫ID
--- mod start 1.25
-         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
-         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
--- mod end 1.25
-         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
-         AND mil.segment1 = iaj.location                                         --保管倉庫コード
-         AND itc.doc_type IN ('TRNI','ADJI')                                      --文書タイプ
-         AND gic1.item_id = itc.item_id
-         AND gic1.category_set_id = cn_item_class_id
-         AND gic1.category_id = mcb1.category_id
-         AND mcb1.segment1 = civ_item_div                                 --品目ID
-         AND gic2.item_id = itc.item_id
-         AND gic2.category_set_id = cn_prod_class_id
-         AND gic2.category_id = mcb2.category_id
-         AND mcb2.segment1 = civ_prod_div
-         AND xmrih.actual_ship_date                                              --入庫実績日
-            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
-            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
-         AND itc.doc_id = iaj.doc_id                                              --文書ID
-         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
-         AND xmril.item_id = itc.item_id                                          --品目ID
-         AND xmld.lot_id (+) = itc.lot_id
-         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
-             SELECT 1
-             FROM ic_tran_cmp itc2                                                --OPM完了在庫トランザクション
-             WHERE itc.doc_id = itc2.doc_id                                       --文書ID
-             AND   itc.whse_code = itc2.whse_code                                 --倉庫コード
-             AND   itc.trans_id <> itc2.trans_id
-             AND   ROWNUM = 1
-             )
+-- del start 1.28
+--         AND ixm.transfer_id = itp.doc_id                                         --文書ID
+--         AND xmril.item_id = itp.item_id                                          --品目ID
+--         AND xmld.lot_id (+) = itp.lot_id
+--         AND mil.segment1 = itp.location                                         --保管倉庫コード
+--         AND itp.completed_ind = '1'                                      --完了フラグ
+-- del end 1.28
+-- mod start 1.28
+--         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
+--             SELECT 1
+--             FROM ic_tran_pnd itp2                                                --OPM保留在庫トランザクション
+--             WHERE itp.doc_id = itp2.doc_id                                       --文書ID
+--             AND   itp.whse_code = itp2.whse_code                                 --倉庫コード
+--             AND   itp.trans_id <> itp2.trans_id
+--             AND   ROWNUM   = 1
+--             )
+         AND mil.whse_code <> mil_shipped.whse_code -- 同一倉庫内の移動情報は対象外とする。
+-- mod end 1.28
+-- del start 1.28
+--         UNION ALL
+--         --積送あり(ADJI)(出庫実績)
+---- mod start 1.25
+--         --SELECT
+--         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
+---- mod end 1.25
+--           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+--          ,gv_rectype_out                                  record_type             --レコードタイプ
+--          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+--          ,xmrih.mov_type                                  mov_type                --移動タイプ
+--          ,xmrih.mov_num                                   mov_num                 --移動番号
+--          ,xmrih.actual_ship_date                          arvl_ship_date          --実績日(出庫実績日)
+--          ,xmrih.shipped_locat_id                          locat_id                --保管倉庫ID(出庫元ID)
+--          ,xmrih.shipped_locat_code                        locat_code              --保管倉庫コード(出庫元保管場所)
+--          ,xmrih.actual_arrival_date                       arvl_ship_date2         --実績日(入庫実績日)
+--          ,xmrih.ship_to_locat_id                          other_id                --相手先ID(入庫先ID)
+--          ,xmrih.ship_to_locat_code                        other_code              --相手先(入庫先保管場所)
+--          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+--          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+--          ,xmril.item_id                                   item_id                 --品目ID
+--          ,xmril.delete_flg                                delete_flg              --取消フラグ
+--          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+--          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+--          ,xmld.document_type_code                         document_type_code      --文書タイプ
+--          ,xmld.actual_date                                actual_date             --実績日
+--          ,xmld.lot_id                                     lot_id                  --ロットID
+--          ,xmld.actual_quantity                            actual_quantity         --実績数量
+--          ,mil3.segment1                                   segment1                --保管場所コード
+--          ,itc.doc_type                                    doc_type                --文書タイプ
+--          ,itc.trans_qty                                   trans_qty               --数量
+--          ,itc.whse_code                                   whse_code               --倉庫コード
+--          ,itc.location                                    location                --保管倉庫コード
+--          ,gv_newdiv_pay                                   new_div_invent          --新区分
+--          ,gv_rcvdiv_pay                                   rcv_pay_div             --受払区分
+--         FROM
+--           xxinv_mov_req_instr_headers                     xmrih               --移動依頼/指示ヘッダ(アドオン)
+--          ,mtl_item_locations                              mil1
+--          ,ic_whse_mst                                     iwm1
+--          ,mtl_item_locations                              mil2
+--          ,ic_whse_mst                                     iwm2
+--          ,xxinv_mov_req_instr_lines                       xmril               --移動依頼/指示明細(アドオン)
+--          ,xxinv_mov_lot_details                           xmld                --移動ロット詳細(アドオン)
+--          ,mtl_item_locations                              mil3
+--          ,ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
+--          ,ic_adjs_jnl                                     iaj                 --OPM在庫調整ジャーナル
+--          ,ic_tran_cmp                                     itc                 --OPM完了在庫トランザクション
+--          ,gmi_item_categories                             gic1
+--          ,mtl_categories_b                                mcb1
+--          ,gmi_item_categories                             gic2
+--          ,mtl_categories_b                                mcb2
+--         --移動依頼/指示明細(アドオン)抽出条件
+--         WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
+--         AND xmrih.mov_type = gv_movetype_yes                                --移動タイプ(積送あり)
+--          --OPM保管場所情報VIEW2(保管倉庫)抽出条件
+--         AND iwm1.mtl_organization_id = mil1.organization_id
+--         AND iwm2.mtl_organization_id = mil2.organization_id
+--         AND xmrih.shipped_locat_id = mil1.inventory_location_id                        --保管倉庫ID
+--         AND xmrih.ship_to_locat_id = mil2.inventory_location_id                        --保管倉庫ID
+--         AND iwm1.whse_code <> iwm2.whse_code                      --同一倉庫内の移動情報は対象外とする
+--         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+--         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+--         AND xmld.record_type_code = gv_rectype_out                            --レコードタイプ
+--         AND xmrih.actual_ship_date                                              --入庫実績日
+--               BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--               AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+--         AND xmrih.shipped_locat_id = mil3.inventory_location_id                          --保管倉庫ID
+---- mod start 1.25
+--         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+--         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
+---- mod end 1.25
+--         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
+--         AND mil3.segment1 = iaj.location                                         --保管倉庫コード
+--         AND itc.doc_type = 'ADJI'                                                --文書タイプ
+--         AND gic1.item_id = itc.item_id
+--         AND gic1.category_set_id = cn_item_class_id
+--         AND gic1.category_id = mcb1.category_id
+--         AND mcb1.segment1 = civ_item_div                                --品目ID
+--         AND gic2.item_id = itc.item_id
+--         AND gic2.category_set_id = cn_prod_class_id
+--         AND gic2.category_id = mcb2.category_id
+--         AND mcb2.segment1 = civ_prod_div
+--         AND itc.doc_id = iaj.doc_id                                              --文書ID
+--         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
+--         AND xmril.item_id = itc.item_id                                          --品目ID
+--         AND xmld.lot_id (+) = itc.lot_id  
+--         UNION ALL
+--         --積送あり(ADJI) (入庫実績)
+---- mod start 1.25
+--         --SELECT 
+--         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
+---- mod end 1.25
+--           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+--          ,gv_rectype_in                                   record_type             --レコードタイプ
+--          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+--          ,xmrih.mov_type                                  mov_type                --移動タイプ
+--          ,xmrih.mov_num                                   mov_num                 --移動番号
+--          ,xmrih.actual_arrival_date                       arvl_ship_date          --実績日(入庫実績日)
+--          ,xmrih.ship_to_locat_id                          locat_id                --保管倉庫ID(入庫元ID)
+--          ,xmrih.ship_to_locat_code                        locat_code              --保管倉庫コード(入庫元保管場所)
+--          ,xmrih.actual_ship_date                          arvl_ship_date2          --実績日(出庫実績日)
+--          ,xmrih.shipped_locat_id                          other_id                --保管倉庫ID(出庫元ID)
+--          ,xmrih.shipped_locat_code                        other_code              --保管倉庫コード(出庫元保管場所)
+--          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+--          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+--          ,xmril.item_id                                   item_id                 --品目ID
+--          ,xmril.delete_flg                                delete_flg              --取消フラグ
+--          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+--          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+--          ,xmld.document_type_code                         document_type_code      --文書タイプ
+--          ,xmld.actual_date                                actual_date             --実績日
+--          ,xmld.lot_id                                     lot_id                  --ロットID
+--          ,xmld.actual_quantity                            actual_quantity         --実績数量
+--          ,mil3.segment1                                   segment1                --保管場所コード
+--          ,itc.doc_type                                    doc_type                --文書タイプ
+--          ,itc.trans_qty                                   trans_qty               --数量
+--          ,itc.whse_code                                   whse_code               --倉庫コード
+--          ,itc.location                                    location                --保管倉庫コード
+--          ,gv_newdiv_rcv                                   new_div_invent          --新区分
+--          ,gv_rcvdiv_rcv                                   rcv_pay_div             --受払区分
+--         FROM
+--           xxinv_mov_req_instr_headers                     xmrih               --移動依頼/指示ヘッダ(アドオン)
+--          ,mtl_item_locations                              mil1
+--          ,ic_whse_mst                                     iwm1
+--          ,mtl_item_locations                              mil2
+--          ,ic_whse_mst                                     iwm2
+--          ,xxinv_mov_req_instr_lines                       xmril               --移動依頼/指示明細(アドオン)
+--          ,xxinv_mov_lot_details                           xmld                --移動ロット詳細(アドオン)
+--          ,mtl_item_locations                              mil3
+--          ,ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
+--          ,ic_adjs_jnl                                     iaj                 --OPM在庫調整ジャーナル
+--          ,ic_tran_cmp                                     itc                 --OPM完了在庫トランザクション
+--          ,gmi_item_categories                             gic1
+--          ,mtl_categories_b                                mcb1
+--          ,gmi_item_categories                             gic2
+--          ,mtl_categories_b                                mcb2
+--         --移動依頼/指示明細(アドオン)抽出条件
+--         WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
+--         AND xmrih.mov_type = gv_movetype_yes                                --移動タイプ(積送あり)
+--         AND iwm1.mtl_organization_id = mil1.organization_id
+--         AND iwm2.mtl_organization_id = mil2.organization_id
+--            AND xmrih.shipped_locat_id = mil1.inventory_location_id                        --保管倉庫ID
+--            AND xmrih.ship_to_locat_id = mil2.inventory_location_id                        --保管倉庫ID
+--            AND iwm1.whse_code <> iwm2.whse_code                      --同一倉庫内の移動情報は対象外とする
+--         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+--         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+--         AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
+--         AND xmrih.actual_ship_date                                              --入庫実績日
+--            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+--         AND xmrih.ship_to_locat_id = mil3.inventory_location_id                          --保管倉庫ID
+---- mod start 1.25
+--         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+--         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
+---- mod end 1.25
+--         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
+--         AND mil3.segment1 = iaj.location                                         --保管倉庫コード
+--         AND itc.doc_type = 'ADJI'                                                --文書タイプ
+--         AND gic1.item_id = itc.item_id
+--         AND gic1.category_set_id = cn_item_class_id
+--         AND gic1.category_id = mcb1.category_id
+--         AND mcb1.segment1 = civ_item_div                                 --品目ID
+--         AND gic2.item_id = itc.item_id
+--         AND gic2.category_set_id = cn_prod_class_id
+--         AND gic2.category_id = mcb2.category_id
+--         AND mcb2.segment1 = civ_prod_div
+--         AND itc.doc_id = iaj.doc_id                                              --文書ID
+--         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
+--         AND xmril.item_id = itc.item_id                                          --品目ID
+--         AND ( xmld.lot_id IS NOT NULL 
+--           AND xmld.lot_id = itc.lot_id                                           --ロットID
+--         OR    xmld.lot_id IS NULL
+--         )
+---------------------------------------------------------------------------------------------------------------------
+--         UNION ALL
+--         --積送なし (出庫実績)
+---- mod start 1.25
+--         --SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
+--         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
+---- mod end 1.25
+--           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+--          ,gv_rectype_out                                  record_type             --レコードタイプ
+--          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+--          ,xmrih.mov_type                                  mov_type                --移動タイプ
+--          ,xmrih.mov_num                                   mov_num                 --移動番号
+--          ,xmrih.actual_ship_date                          arvl_ship_date          --実績日(出庫実績日)
+--          ,xmrih.shipped_locat_id                          locat_id                --保管倉庫ID(出庫元ID)
+--          ,xmrih.shipped_locat_code                        locat_code              --保管倉庫コード(出庫元保管場所)
+--          ,xmrih.actual_arrival_date                       arvl_ship_date2         --実績日(入庫実績日)
+--          ,xmrih.ship_to_locat_id                          other_id                --相手先ID(入庫先ID)
+--          ,xmrih.ship_to_locat_code                        other_code              --相手先(入庫先保管場所)
+--          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+--          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+--          ,xmril.item_id                                   item_id                 --品目ID
+--          ,xmril.delete_flg                                delete_flg              --取消フラグ
+--          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+--          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+--          ,xmld.document_type_code                         document_type_code      --文書タイプ
+--          ,xmld.actual_date                                actual_date             --実績日
+--          ,xmld.lot_id                                     lot_id                  --ロットID
+--          ,xmld.actual_quantity                            actual_quantity         --実績数量
+--          ,mil.segment1                                   segment1                --保管場所コード
+--          ,itc.doc_type                                    doc_type                --文書タイプ
+--          ,itc.trans_qty                                   trans_qty               --数量
+--          ,itc.whse_code                                   whse_code               --倉庫コード
+--          ,itc.location                                    location                --保管倉庫コード
+--          ,gv_newdiv_pay                                   new_div_invent          --新区分
+--          ,gv_rcvdiv_pay                                   rcv_pay_div             --受払区分
+--         FROM
+--           xxinv_mov_req_instr_headers      xmrih                   --移動依頼/指示ヘッダ(アドオン)
+--          ,xxinv_mov_req_instr_lines        xmril                   --移動依頼/指示明細(アドオン)
+--          ,xxinv_mov_lot_details            xmld                    --移動ロット詳細(アドオン)
+--          ,mtl_item_locations               mil
+--          ,ic_jrnl_mst                      ijm                     --OPMジャーナルマスタ
+--          ,ic_adjs_jnl                      iaj                     --OPM在庫調整ジャーナル
+--          ,ic_tran_cmp                      itc                     --OPM完了在庫トランザクション
+--          ,gmi_item_categories              gic1
+--          ,mtl_categories_b                 mcb1
+--          ,gmi_item_categories              gic2
+--          ,mtl_categories_b                 mcb2
+--         WHERE xmrih.actual_ship_date = xmrih.actual_arrival_date                 --出荷実績日＝入庫実績日
+--         AND  xmrih.mov_type = gv_movetype_no                                 --移動タイプ(積送なし)
+--         AND xmrih.mov_hdr_id = xmril.mov_hdr_id                                  --移動ヘッダID
+--         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+--         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+--         AND xmld.record_type_code = gv_rectype_out                            --レコードタイプ
+--         AND xmrih.shipped_locat_id = mil.inventory_location_id                          --保管倉庫ID
+---- mod start 1.25
+--         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+--         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
+---- mod end 1.25
+--         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
+--         AND mil.segment1 = iaj.location                                         --保管倉庫コード
+--         AND itc.doc_type IN ('TRNI','ADJI')                                      --文書タイプ
+--         AND gic1.item_id = itc.item_id
+--         AND gic1.category_set_id = cn_item_class_id
+--         AND gic1.category_id = mcb1.category_id
+--         AND mcb1.segment1 = civ_item_div                                 --品目ID
+--         AND gic2.item_id = itc.item_id
+--         AND gic2.category_set_id = cn_prod_class_id
+--         AND gic2.category_id = mcb2.category_id
+--         AND mcb2.segment1 = civ_prod_div
+--         AND xmrih.actual_ship_date                                              --入庫実績日
+--            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+--         AND itc.doc_id = iaj.doc_id                                              --文書ID
+--         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
+--         AND xmril.item_id = itc.item_id                                          --品目ID
+--         AND xmld.lot_id (+)  = itc.lot_id
+--         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
+--             SELECT 1
+--             FROM ic_tran_cmp itc2                                                --OPM完了在庫トランザクション
+--             WHERE itc.doc_id = itc2.doc_id                                       --文書ID
+--             AND   itc.whse_code = itc2.whse_code                                 --倉庫コード
+--             AND   itc.trans_id <> itc2.trans_id
+--             AND   ROWNUM = 1
+--             )
+--         UNION ALL
+--         --積送なし (入庫実績)
+---- mod start 1.25
+--         --SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
+--         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
+---- mod end 1.25
+--           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+--          ,gv_rectype_in                                   record_type             --レコードタイプ
+--          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+--          ,xmrih.mov_type                                  mov_type                --移動タイプ
+--          ,xmrih.mov_num                                   mov_num                 --移動番号
+--          ,xmrih.actual_arrival_date                       arvl_ship_date          --実績日(入庫実績日)
+--          ,xmrih.ship_to_locat_id                          locat_id                --保管倉庫ID(入庫元ID)
+--          ,xmrih.ship_to_locat_code                        locat_code              --保管倉庫コード(入庫元保管場所)
+--          ,xmrih.actual_ship_date                          arvl_ship_date2          --実績日(出庫実績日)
+--          ,xmrih.shipped_locat_id                          other_id                --保管倉庫ID(出庫元ID)
+--          ,xmrih.shipped_locat_code                        other_code              --保管倉庫コード(出庫元保管場所)
+--          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+--          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+--          ,xmril.item_id                                   item_id                 --品目ID
+--          ,xmril.delete_flg                                delete_flg              --取消フラグ
+--          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+--          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+--          ,xmld.document_type_code                         document_type_code      --文書タイプ
+--          ,xmld.actual_date                                actual_date             --実績日
+--          ,xmld.lot_id                                     lot_id                  --ロットID
+--          ,xmld.actual_quantity                            actual_quantity         --実績数量
+--          ,mil.segment1                                   segment1                --保管場所コード
+--          ,itc.doc_type                                    doc_type                --文書タイプ
+--          ,itc.trans_qty                                   trans_qty               --数量
+--          ,itc.whse_code                                   whse_code               --倉庫コード
+--          ,itc.location                                    location                --保管倉庫コード
+--          ,gv_newdiv_rcv                                   new_div_invent          --新区分
+--          ,gv_rcvdiv_rcv                                   rcv_pay_div             --受払区分
+--         FROM
+--           xxinv_mov_req_instr_headers                     xmrih                   --移動依頼/指示ヘッダ(アドオン)
+--          ,xxinv_mov_req_instr_lines                       xmril                   --移動依頼/指示明細(アドオン)
+--          ,xxinv_mov_lot_details                           xmld                    --移動ロット詳細(アドオン)
+--          ,mtl_item_locations        mil
+--          ,ic_jrnl_mst                                     ijm                     --OPMジャーナルマスタ
+--          ,ic_adjs_jnl                                     iaj                     --OPM在庫調整ジャーナル
+--          ,ic_tran_cmp                                     itc                     --OPM完了在庫トランザクション
+--          ,gmi_item_categories              gic1
+--          ,mtl_categories_b                 mcb1
+--          ,gmi_item_categories              gic2
+--          ,mtl_categories_b                 mcb2
+--         WHERE xmrih.actual_ship_date = xmrih.actual_arrival_date                 --出荷実績日＝入庫実績日
+--         AND  xmrih.mov_type = gv_movetype_no                                 --移動タイプ(積送なし)
+--         AND xmrih.mov_hdr_id = xmril.mov_hdr_id                                  --移動ヘッダID
+--         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+--         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+--         AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
+--         AND xmrih.ship_to_locat_id = mil.inventory_location_id                          --保管倉庫ID
+---- mod start 1.25
+--         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+--         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
+---- mod end 1.25
+--         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
+--         AND mil.segment1 = iaj.location                                         --保管倉庫コード
+--         AND itc.doc_type IN ('TRNI','ADJI')                                      --文書タイプ
+--         AND gic1.item_id = itc.item_id
+--         AND gic1.category_set_id = cn_item_class_id
+--         AND gic1.category_id = mcb1.category_id
+--         AND mcb1.segment1 = civ_item_div                                 --品目ID
+--         AND gic2.item_id = itc.item_id
+--         AND gic2.category_set_id = cn_prod_class_id
+--         AND gic2.category_id = mcb2.category_id
+--         AND mcb2.segment1 = civ_prod_div
+--         AND xmrih.actual_ship_date                                              --入庫実績日
+--            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+--         AND itc.doc_id = iaj.doc_id                                              --文書ID
+--         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
+--         AND xmril.item_id = itc.item_id                                          --品目ID
+--         AND xmld.lot_id (+) = itc.lot_id
+--         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
+--             SELECT 1
+--             FROM ic_tran_cmp itc2                                                --OPM完了在庫トランザクション
+--             WHERE itc.doc_id = itc2.doc_id                                       --文書ID
+--             AND   itc.whse_code = itc2.whse_code                                 --倉庫コード
+--             AND   itc.trans_id <> itc2.trans_id
+--             AND   ROWNUM = 1
+--             )
+-- del end 1.28
          )                          xm                  --移動情報
          ,ic_item_mst_b             iimb
          ,xxcmn_item_mst_b          ximb
