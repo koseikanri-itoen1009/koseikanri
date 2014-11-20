@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS_TASK_PKG(spec)
  * Description      : 共通関数パッケージ(販売)
  * MD.070           : 共通関数    MD070_IPO_COS
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * --------------------------- ------ ---------- -----------------------------------------
@@ -23,6 +23,7 @@ AS
  *  2009/05/18    1.2   T.kitajima       [T1_0652]入金情報時の登録元ソース番号必須解除
  *  2009/11/24    1.3   S.Miyakoshi      TASKデータ取得時の日付の条件変更
  *  2010/11/15    1.4   K.Kiriu          [E_本稼動_05129]タスク作成PT対応
+ *  2011/03/28    1.5   Oukou            [E_本稼動_00153]HHT入金データ取込異常終了対応
  *
  ****************************************************************************************/
 --
@@ -72,6 +73,11 @@ AS
   global_api_others_expt    EXCEPTION;
 --
   PRAGMA EXCEPTION_INIT(global_api_others_expt,-20000);
+/* 2011/03/28 Ver1.5 ADD Start */
+  -- レコードロックエラー
+  record_lock_expt EXCEPTION;
+  PRAGMA EXCEPTION_INIT( record_lock_expt, -54 );
+/* 2011/03/28 Ver1.5 ADD End   */
 --
 --################################  固定部 END   ##################################
 --
@@ -124,11 +130,19 @@ AS
                                             := 'APP-XXCOS1-13582';              -- 売上金額マイナスエラー
   ct_msg_app_xxcos1_13589         CONSTANT  fnd_new_messages.message_name%TYPE
                                             := 'APP-XXCOS1-13589';              -- 消化
+/* 2011/03/28 Ver1.5 ADD Start */
+  ct_msg_app_xxcos1_00001         CONSTANT  fnd_new_messages.message_name%TYPE
+                                            := 'APP-XXCOS1-00001';              -- ロックエラー
+/* 2011/03/28 Ver1.5 ADD End   */
+
   --トークン
   cv_tkn_in_param                 CONSTANT  VARCHAR2(100) := 'PARAM';           -- 入力パラメータ
   cv_tkn_in_param1                CONSTANT  VARCHAR2(100) := 'PARAM1';          -- 入力パラメータ
   cv_tkn_in_param2                CONSTANT  VARCHAR2(100) := 'PARAM2';          -- 入力パラメータ
   cv_tkn_in_param3                CONSTANT  VARCHAR2(100) := 'PARAM3';          -- 入力パラメータ
+/* 2011/03/28 Ver1.5 ADD Start */
+  cv_tkn_table                    CONSTANT  VARCHAR2(20)  := 'TABLE';           -- テーブル
+/* 2011/03/28 Ver1.5 ADD End   */
   --登録区分
   cv_registration_division_3      CONSTANT  VARCHAR2(1)   := '3';                  -- 納品情報
   cv_registration_division_4      CONSTANT  VARCHAR2(1)   := '4';                  -- 集金情報
@@ -166,6 +180,10 @@ AS
                                                                 iv_application        =>  ct_xxcos_appl_short_name
                                                                ,iv_name               =>  ct_msg_app_xxcos1_13589
                                                              );                    -- 消化
+  --
+/* 2011/03/28 Ver1.5 ADD Start */
+  cv_table_task                   CONSTANT  VARCHAR2(20)  := 'タスク情報';         -- テーブル
+/* 2011/03/28 Ver1.5 ADD End   */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -219,6 +237,10 @@ AS
     lv_key_info            VARCHAR2(5000);                         --キー情報
     lv_description         VARCHAR2(5000);                         --詳細
     lv_effective_visi      VARCHAR2(1);                            --有効訪問区分
+/* 2011/03/28 Ver1.5 ADD Start */
+    ln_task_cnt            NUMBER;                                 --タスクデータ件数
+    lv_target_task_id      jtf_tasks_b.task_id%TYPE;               --タスクID
+/* 2011/03/28 Ver1.5 ADD End   */
     lt_msg_num             fnd_new_messages.message_name%TYPE;     --メッセージコード
     lt_task_effective_visi jtf_tasks_b.attribute11%TYPE;           --TASK有効訪問区分
     lt_task_id             jtf_tasks_b.task_id%TYPE;               --タスクID
@@ -226,6 +248,38 @@ AS
 /* 2010/11/15 Ver1.4 Add Start */
     ld_visit_date          DATE;                                   --訪問日(有効訪問区分チェック条件用)
 /* 2010/11/15 Ver1.4 Add End   */
+/* 2011/03/28 Ver1.5 ADD Start */
+--
+    -- *** ローカル・カーソル ***
+    --タスク情報
+    CURSOR task_data_cur(it_task_id  jtf_tasks_b.task_id%TYPE)
+    IS
+      SELECT
+             /*+
+               INDEX( jtb xxcso_jtf_tasks_b_n18 )
+             */
+             jtb.attribute11            attribute11,            -- 有効訪問区分
+             jtb.task_id                task_id,                -- TASK ID
+             jtb.object_version_number  object_version_number   -- オブジェクトヴァージョンNo
+      FROM   jtf_tasks_b jtb
+      WHERE  jtb.owner_id                      = in_resource_id
+      AND    jtb.source_object_id              = in_party_id
+      AND    jtb.source_object_type_code       = cv_source_party
+      AND    TRUNC(jtb.actual_end_date)        = ld_visit_date
+      AND    jtb.attribute12     IN (cv_registration_division_3,
+                                     cv_registration_division_4,
+                                     cv_registration_division_5)
+      AND    jtb.deleted_flag                  = cd_del_flg_n
+      AND    jtb.owner_type_code               = cv_own_typ
+      AND    (
+             jtb.attribute11                  != cv_effective_visit_1
+             OR     (jtb.attribute11           = cv_effective_visit_1
+                     AND
+                     jtb.task_id              != it_task_id
+                    )
+             )
+      FOR UPDATE NOWAIT;
+/* 2011/03/28 Ver1.5 ADD End   */
 --
     -- ================
     -- ユーザー定義例外
@@ -392,6 +446,64 @@ AS
       --条件用訪問日の設定
       ld_visit_date := TRUNC(id_visit_date);
 /* 2010/11/15 Ver1.4 Add End   */
+/* 2011/03/28 Ver1.5 ADD Start */
+      --タスクデータ件数取得
+      SELECT
+             /*+
+               INDEX( jtb xxcso_jtf_tasks_b_n18 )
+             */
+             COUNT(1)
+      INTO   ln_task_cnt
+      FROM   jtf_tasks_b jtb
+      WHERE  jtb.owner_id                      = in_resource_id
+      AND    jtb.source_object_id              = in_party_id
+      AND    jtb.source_object_type_code       = cv_source_party
+      AND    TRUNC(jtb.actual_end_date)        = ld_visit_date
+      AND    jtb.attribute12     IN (cv_registration_division_3,cv_registration_division_4,cv_registration_division_5)
+      AND    jtb.deleted_flag                  = cd_del_flg_n
+      AND    jtb.owner_type_code               = cv_own_typ
+      ;
+      --
+      IF ( ln_task_cnt > 1 ) THEN
+        -- 最古最終更新日タスク情報取得
+        SELECT jtb_t.task_id
+        INTO   lv_target_task_id
+        FROM   (SELECT 
+                      /*+
+                      INDEX( jtb1 xxcso_jtf_tasks_b_n18 )
+                      */
+                      jtb1.task_id                       task_id
+               FROM   jtf_tasks_b jtb1
+               WHERE  jtb1.owner_id                      = in_resource_id
+               AND    jtb1.source_object_id              = in_party_id
+               AND    jtb1.source_object_type_code       = cv_source_party
+               AND    TRUNC(jtb1.actual_end_date)        = ld_visit_date
+               AND    jtb1.attribute12     IN (cv_registration_division_3,
+                                               cv_registration_division_4,
+                                               cv_registration_division_5)
+               AND    jtb1.deleted_flag                  = cd_del_flg_n
+               AND    jtb1.owner_type_code               = cv_own_typ
+               AND    jtb1.attribute11                   = cv_effective_visit_1
+               ORDER BY jtb1.last_update_date, jtb1.task_id ASC)  jtb_t
+        WHERE  ROWNUM                             = 1
+        ;
+        -- タスクデータ削除
+        FOR task_rec IN task_data_cur(lv_target_task_id) LOOP
+          xxcso_task_common_pkg.delete_task(
+             in_task_id     => task_rec.task_id                --タスクID
+            ,in_obj_ver_num => task_rec.object_version_number  --オブジェクトヴァージョンNo
+            ,ov_errbuf      => lv_errbuf                       --エラーバッファー
+            ,ov_retcode     => lv_retcode                      --エラーコード
+            ,ov_errmsg      => lv_errmsg                       --エラーメッセージ
+          );
+          -- 削除チェック
+          IF ( lv_retcode != cv_status_normal ) THEN
+            RAISE global_api_expt;
+          END IF;
+        END LOOP;
+        --
+      END IF;
+/* 2011/03/28 Ver1.5 ADD End   */
       --TASKデータ取得(有効訪問区分)
       BEGIN
 /* 2010/11/15 Ver1.4 Mod Start */
@@ -606,6 +718,23 @@ AS
       );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_error;
+/* 2011/03/28 Ver1.5 ADD Start */
+    --ロックエラー
+    WHEN record_lock_expt THEN
+      IF ( task_data_cur%ISOPEN ) THEN
+        CLOSE task_data_cur;
+      END IF;
+      -- メッセージ作成
+      ov_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  ct_xxcos_appl_short_name
+       ,iv_name               =>  ct_msg_app_xxcos1_00001
+       ,iv_token_name1        =>  cv_tkn_table
+       ,iv_token_value1       =>  cv_table_task
+      );
+      --
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+/* 2011/03/28 Ver1.5 ADD End   */
 ---
 --#################################  固定例外処理部 START   ####################################
 --
