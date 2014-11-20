@@ -72,7 +72,12 @@ SELECT xoha.order_header_id                order_header_id           -- Žó’ƒwƒb
       ,xoha.amount_fix_class               fix_class                 -- Šm’è
       ,TO_CHAR(xoha.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
                                            xoha_last_update_date     -- ÅIXV“ú(Žó’ƒwƒbƒ_ƒAƒhƒIƒ“)
-      ,TO_CHAR(xola.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+-- 2010-12-16 K.Kiriu Mod Start E_–{‰Ò“®_02524
+--      ,TO_CHAR(xola.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+      ,( SELECT TO_CHAR( MAX(xola1.last_update_date), 'YYYY/MM/DD HH24:MI:SS' ) last_update_date
+         FROM   xxwsh_order_lines_all xola1
+         WHERE  xola1.order_header_id = xoha.order_header_id )
+-- 2010-12-16 K.Kiriu Mod End
                                            xola_last_update_date     -- ÅIXV“ú(Žó’–¾×ƒAƒhƒIƒ“)
       ,xoha.designated_item_id             designated_item_id        -- »‘¢•i–ÚID
       ,xottv.transaction_type_name         order_type_name           -- ”­¶‹æ•ª–¼(Žó’ƒ^ƒCƒv–¼)
@@ -123,11 +128,24 @@ SELECT xoha.order_header_id                order_header_id           -- Žó’ƒwƒb
       ,xoha.amount_fix_class               db_fix_class              -- Šm’è
       ,xoha.shipped_date                   db_result_shipped_date    -- oŒÉ“ú(ŽÀÑ)
       ,xoha.arrival_date                   db_result_arrival_date    -- “üŒÉ“ú(ŽÀÑ)
-      ,CASE
-         WHEN (xol1.shipped_quantity_cnt + xol1.ship_to_quantity_cnt = 0)
-           THEN '0' -- ŽÀÑ“ü—Í–³‚µ
-           ELSE '5' -- ŽÀÑ“ü—Í—L‚è
-       END                                 rcv_type                  -- Žó—Ìƒ^ƒCƒv
+-- 2010-12-16 K.Kiriu Mod Start E_–{‰Ò“®_02524
+--      ,CASE
+--         WHEN (xol1.shipped_quantity_cnt + xol1.ship_to_quantity_cnt = 0)
+--           THEN '0' -- ŽÀÑ“ü—Í–³‚µ
+--           ELSE '5' -- ŽÀÑ“ü—Í—L‚è
+--       END                                 rcv_type                  -- Žó—Ìƒ^ƒCƒv
+      ,NVL( ( SELECT '5'  -- ŽÀÑ“ü—Í—L‚è
+              FROM   xxwsh_order_lines_all xol2
+              WHERE  NVL(xol2.delete_flag, 'N') = 'N'
+              AND    xol2.order_header_id       = xoha.order_header_id
+              AND    (
+                       xol2.shipped_quantity IS NOT NULL
+                       OR
+                       xol2.ship_to_quantity IS NOT NULL
+                     )
+              AND    ROWNUM                     = 1 )
+           , '0')                          rcv_type                  -- Žó—Ìƒ^ƒCƒv
+-- 2010-12-16 K.Kiriu Mod End
 FROM   xxwsh_order_headers_all             xoha                      -- Žó’ƒwƒbƒ_ƒAƒhƒIƒ“
       ,xxwsh_oe_transaction_types2_v       xottv                     -- Žó’ƒ^ƒCƒvî•ñVIEW2
       ,xxcmn_locations2_v                  xlv1                      -- Ž–‹ÆŠî•ñVIEW2(ˆË—Š•”—p)
@@ -143,16 +161,18 @@ FROM   xxwsh_order_headers_all             xoha                      -- Žó’ƒwƒb
 --      ,xxcmn_lookup_values_v               xlvv3                     -- ƒNƒCƒbƒNƒR[ƒhî•ñVIEW(’…‰×ŽžŠÔFROM—p)
 --      ,xxcmn_lookup_values_v               xlvv4                     -- ƒNƒCƒbƒNƒR[ƒhî•ñVIEW(’…‰×ŽžŠÔTO—p)
 --      ,xxcmn_lookup_values_v               xlvv5                     -- ƒNƒCƒbƒNƒR[ƒhî•ñVIEW(”z‘—‹æ•ª—p)
-      ,(SELECT xol.order_header_id       order_header_id
-              ,MAX(xol.last_update_date) last_update_date
-        FROM   xxwsh_order_lines_all xol
-        GROUP BY xol.order_header_id)      xola                      -- Žó’–¾×ƒAƒhƒIƒ“
-      ,(SELECT xol1.order_header_id      order_header_id
-              ,SUM(DECODE(xol1.shipped_quantity,NULL,0,1)) shipped_quantity_cnt
-              ,SUM(DECODE(xol1.ship_to_quantity,NULL,0,1)) ship_to_quantity_cnt
-        FROM   xxwsh_order_lines_all xol1
-        WHERE  NVL(xol1.delete_flag,'N') = 'N'
-        GROUP BY xol1.order_header_id)     xol1                      -- Žó’–¾×ƒAƒhƒIƒ“
+-- 2010-12-16 K.Kiriu Del Start E_–{‰Ò“®_02524
+--      ,(SELECT xol.order_header_id       order_header_id
+--              ,MAX(xol.last_update_date) last_update_date
+--        FROM   xxwsh_order_lines_all xol
+--        GROUP BY xol.order_header_id)      xola                      -- Žó’–¾×ƒAƒhƒIƒ“
+--      ,(SELECT xol1.order_header_id      order_header_id
+--              ,SUM(DECODE(xol1.shipped_quantity,NULL,0,1)) shipped_quantity_cnt
+--              ,SUM(DECODE(xol1.ship_to_quantity,NULL,0,1)) ship_to_quantity_cnt
+--        FROM   xxwsh_order_lines_all xol1
+--        WHERE  NVL(xol1.delete_flag,'N') = 'N'
+--        GROUP BY xol1.order_header_id)     xol1                      -- Žó’–¾×ƒAƒhƒIƒ“
+-- 2010-12-16 K.Kiriu Del End
 -------------------- Œ‹‡ðŒ --------------------
 --Žó’ƒ^ƒCƒvî•ñVIEW2
 WHERE  xottv.transaction_type_id   = xoha.order_type_id
@@ -175,10 +195,12 @@ AND    xilv.inventory_location_id  = xoha.deliver_from_id
 -- 2008-12-09 D.Nihei Add Start
 AND    xilv.customer_stock_whse    = 0 -- ‘ŠŽèæÝŒÉˆÈŠO
 -- 2008-12-09 D.Nihei Add End
---Žó’–¾×ƒAƒhƒIƒ“(ÅIXV“úŽæ“¾—p)
-AND    xola.order_header_id        = xoha.order_header_id
---Žó’–¾×ƒAƒhƒIƒ“(ŽÀÑ“ü—ÍŠm”F—p)
-AND    xol1.order_header_id        = xoha.order_header_id
+-- 2010-12-16 K.Kiriu Del Start E_–{‰Ò“®_02524
+----Žó’–¾×ƒAƒhƒIƒ“(ÅIXV“úŽæ“¾—p)
+--AND    xola.order_header_id        = xoha.order_header_id
+----Žó’–¾×ƒAƒhƒIƒ“(ŽÀÑ“ü—ÍŠm”F—p)
+--AND    xol1.order_header_id        = xoha.order_header_id
+-- 2010-12-16 K.Kiriu Del End
 --ƒNƒCƒbƒNƒR[ƒhî•ñVIEW(ƒXƒe[ƒ^ƒX—p)
 AND    xlvv1.lookup_code             = xoha.req_status
 --ƒNƒCƒbƒNƒR[ƒhî•ñVIEW(’Ê’mƒXƒe[ƒ^ƒX—p)
@@ -230,6 +252,12 @@ AND    xlvv1.lookup_type         = 'XXPO_TRANSACTION_STATUS'  -- Žx‹‹ˆË—ŠƒXƒe[ƒ
 --Žó’ƒwƒbƒ_ƒAƒhƒIƒ“
 AND    xoha.request_no           = :1
 AND    xoha.latest_external_flag = 'Y'
+-- 2010-12-16 K.Kiriu Add Start E_–{‰Ò“®_02524
+AND    EXISTS ( SELECT 1
+                FROM   xxwsh_order_lines_all xol3
+                WHERE  NVL(xol3.delete_flag,'N') = 'N'
+                AND    xol3.order_header_id      = xoha.order_header_id )
+-- 2010-12-16 K.Kiriu Add End
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />

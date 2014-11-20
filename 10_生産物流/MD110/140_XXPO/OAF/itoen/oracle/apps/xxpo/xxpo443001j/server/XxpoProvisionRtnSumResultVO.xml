@@ -36,7 +36,12 @@ SELECT xoha.order_header_id             order_header_id         --受注ヘッダアド
       ,xoha.amount_fix_class            fix_class               --有償金額確定区分
       ,TO_CHAR(xoha.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
                                         xoha_last_update_date   --最終更新日(受注ヘッダアドオン)
-      ,TO_CHAR(xola.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+-- 2010-12-16 K.Kiriu Mod Start E_本稼動_02524
+--      ,TO_CHAR(xola.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+      ,( SELECT TO_CHAR( MAX(xola.last_update_date), 'YYYY/MM/DD HH24:MI:SS') last_update_date
+         FROM   xxwsh_order_lines_all xola
+         WHERE  xola.order_header_id = xoha.order_header_id )
+-- 2010-12-16 K.Kiriu Mod End
                                         xola_last_update_date   --最終更新日(受注明細アドオン)
       ,DECODE(xoha.req_status, 
               '99', 'RequestNoDisp',
@@ -49,16 +54,20 @@ FROM   xxwsh_order_headers_all          xoha                    --受注ヘッダアド
       ,xxcmn_vendors2_v                 xvv                     --仕入先情報view2
       ,xxcmn_vendor_sites2_v            xvsv                    --仕入先サイト情報view2
       ,xxcmn_item_locations2_v          xilv                    --OPM保管場所情報view2
-      ,(SELECT   xol.order_header_id         order_header_id
-                ,MAX(xol.last_update_date)   last_update_date
-        FROM     xxwsh_order_lines_all xol
-        GROUP BY xol.order_header_id)   xola                    --受注明細アドオン
+-- 2010-12-16 K.Kiriu Del Start E_本稼動_02524
+--      ,(SELECT   xol.order_header_id         order_header_id
+--                ,MAX(xol.last_update_date)   last_update_date
+--        FROM     xxwsh_order_lines_all xol
+--        GROUP BY xol.order_header_id)   xola                    --受注明細アドオン
+-- 2010-12-16 K.Kiriu Del End
       ,xxpo_security_supply_v           xssv                    --セキュリティview
       ,xxcmn_lookup_values_v            xlvvs                   --クイックコード情報view(セキュリティview用)
 WHERE  --受注ヘッダアドオン抽出条件
        xoha.prod_class              = FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') --商品区分
-       --受注明細抽出条件
-AND    xola.order_header_id         = xoha.order_header_id       -- 受注ヘッダアドオンID
+-- 2010-12-16 K.Kiriu Del Start E_本稼動_02524
+--       --受注明細抽出条件
+--AND    xola.order_header_id         = xoha.order_header_id       -- 受注ヘッダアドオンID
+-- 2010-12-16 K.Kiriu Del End
        --クイックコード抽出条件
 AND    xlvv.lookup_type             = 'XXPO_TRANSACTION_STATUS'  --参照タイプ
 AND    xlvv.lookup_code             = xoha.req_status            --参照コード = ステータス
