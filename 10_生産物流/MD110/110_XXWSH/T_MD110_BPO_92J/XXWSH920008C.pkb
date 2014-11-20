@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO_92J
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2009/01/19   1.7   SCS二瓶           本番障害#949対応（PT対応）
  *  2009/01/26   1.8   SCS二瓶           本番障害#936対応（鮮度条件・ロット逆転PT対応）
  *                                       本番障害#332対応（条件：出庫元不備対応）
+ *  2009/01/28   1.9   SCS伊藤           本番障害#1028対応（パラメータに指示部署追加）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3441,7 +3442,10 @@ AS
                         , iv_block3          IN  VARCHAR2 DEFAULT NULL -- ブロック３
                         , in_deliver_from_id IN  NUMBER   DEFAULT NULL -- 出庫元
                         , in_deliver_type    IN  NUMBER   DEFAULT NULL -- 出庫形態
-                        , iv_item_code       IN  VARCHAR2)             -- 品目コード
+                        , iv_item_code       IN  VARCHAR2              -- 品目コード
+-- 2009/01/28 H.Itou Add Start 本番障害#1028対応
+                        , iv_instruction_dept IN VARCHAR2)             -- 指示部署
+-- 2009/01/28 H.Itou Add End
                           RETURN VARCHAR2
   IS
     -- ===============================
@@ -3601,6 +3605,11 @@ AS
       ELSE NULL;
     END CASE;
 --
+-- 2009/01/28 H.Itou Add Start 本番障害#1028対応
+    IF (iv_instruction_dept IS NOT NULL) THEN
+      lv_fwd_sql := lv_fwd_sql || ' AND oh.instruction_dept = '''|| iv_instruction_dept ||'''';
+    END IF;
+-- 2009/01/28 H.Itou Add End
     -- ORDER句の合体3
     lv_fwd_sql := lv_fwd_sql || ' ORDER BY ol.shipping_item_code'    ||
                                 '        , oh.schedule_ship_date'    ||
@@ -3646,7 +3655,10 @@ AS
                         , iv_block3          IN  VARCHAR2 DEFAULT NULL -- ブロック３
                         , in_deliver_from_id IN  NUMBER   DEFAULT NULL -- 出庫元
                         , in_deliver_type    IN  NUMBER   DEFAULT NULL -- 出庫形態
-                        , iv_item_code       IN  VARCHAR2)             -- 品目コード
+                        , iv_item_code       IN  VARCHAR2              -- 品目コード
+-- 2009/01/28 H.Itou Add Start 本番障害#1028対応
+                        , iv_instruction_dept IN VARCHAR2)             -- 指示部署
+-- 2009/01/28 H.Itou Add End
                           RETURN VARCHAR2
   IS
     -- ===============================
@@ -3770,6 +3782,11 @@ AS
       ELSE NULL;
     END CASE;
 --
+-- 2009/01/28 H.Itou Add Start 本番障害#1028対応
+    IF (iv_instruction_dept IS NOT NULL) THEN
+      lv_mov_sql := lv_mov_sql || ' AND ih.instruction_post_code = '''|| iv_instruction_dept ||'''';
+    END IF;
+-- 2009/01/28 H.Itou Add End
     lv_mov_sql := lv_mov_sql || ' ORDER BY ml.item_code'             ||
                                 '        , ih.schedule_ship_date'    ||
                                 '        , ih.schedule_arrival_date' ||
@@ -5328,6 +5345,9 @@ AS
     iv_deliver_date_from  IN     VARCHAR2,     -- 出庫日From
     iv_deliver_date_to    IN     VARCHAR2,     -- 出庫日To
     iv_item_code          IN     VARCHAR2,     -- 品目コード
+-- 2009/01/28 H.Itou Add Start 本番障害#1028対応
+    iv_instruction_dept   IN     VARCHAR2,     -- 指示部署
+-- 2009/01/28 H.Itou Add End
     ov_errbuf             OUT  NOCOPY   VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode            OUT  NOCOPY   VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg             OUT  NOCOPY   VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -5453,6 +5473,9 @@ AS
                                  , in_deliver_from_id -- 出庫元
                                  , in_deliver_type    -- 出庫形態
                                  , iv_item_code       -- 品目コード
+-- 2009/01/28 H.Itou Add Start 本番障害#1028対応
+                                 , iv_instruction_dept  -- 指示部署
+-- 2009/01/28 H.Itou Add End
                                    );   
       -- ===============================================
       -- A-4  需要情報取得(出荷) get_demand_inf_fwd
@@ -5480,6 +5503,9 @@ AS
                                  , in_deliver_from_id -- 出庫元
                                  , in_deliver_type    -- 出庫形態
                                  , iv_item_code       -- 品目コード
+-- 2009/01/28 H.Itou Add Start 本番障害#1028対応
+                                 , iv_instruction_dept  -- 指示部署
+-- 2009/01/28 H.Itou Add End
                                    );
       -- ===============================================
       -- A-6  需要情報取得(移動) get_demand_inf_mov
@@ -5975,7 +6001,10 @@ AS
     iv_deliver_type       IN           VARCHAR2,      -- 出庫形態
     iv_deliver_date_from  IN           VARCHAR2,      -- 出庫日From
     iv_deliver_date_to    IN           VARCHAR2,      -- 出庫日To
-    iv_item_code          IN           VARCHAR2       -- 品目コード
+    iv_item_code          IN           VARCHAR2,      -- 品目コード
+-- 2009/01/28 H.Itou Add Start 本番障害#1028対応
+    iv_instruction_dept   IN           VARCHAR2       -- 指示部署
+-- 2009/01/28 H.Itou Add End
   )
 --
 --###########################  固定部 START   ###########################
@@ -6084,6 +6113,12 @@ AS
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'品目コード： ' || iv_item_code);
 --暫定END
 --
+-- 2009/01/28 H.Itou Add Start 本番障害#1028対応
+    -- 入力パラメータ「指示部署」出力
+    gv_out_msg := '指示部署：' || iv_instruction_dept;
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+-- 2009/01/28 H.Itou Add End
+--
     --区切り文字列出力
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_sep_msg);
     -- WHOカラム情報の取得
@@ -6110,6 +6145,9 @@ AS
       iv_deliver_date_from, -- 出庫日From
       iv_deliver_date_to,   -- 出庫日To
       iv_item_code,         -- 品目コード
+-- 2009/01/28 H.Itou Add Start 本番障害#1028対応
+      iv_instruction_dept,  -- 指示部署
+-- 2009/01/28 H.Itou Add End
       lv_errbuf,            -- エラー・メッセージ           --# 固定 #
       lv_retcode,           -- リターン・コード             --# 固定 #
       lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
