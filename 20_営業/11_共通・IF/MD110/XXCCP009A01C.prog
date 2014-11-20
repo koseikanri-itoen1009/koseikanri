@@ -5,7 +5,7 @@
 ## Program Name     : XXCCP009A01C                                              ##
 ## Description      : 画面起動ジョブネット対応                                  ##
 ## MD.050           : 画面起動ジョブネット対応 <MD050_CCP_009_A01>              ##
-## Version          : 1.11                                                      ##
+## Version          : 1.12                                                      ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -90,6 +90,10 @@
 ##                                         参照し、完了のデータのみを監視対象   ##
 ##                                         とする。                             ##
 ##  2009/11/23    1.11  Shigeto.Niki     ・一時ファイルパス修正                 ##
+##  2010/01/25    1.12  Koji.Oomata      [E_本稼動_01223]                       ##
+##                                       起動対象コンカレントが警告の場合(データ##
+##                                       部が0件の場合)、EDI/帳票システムへ連携 ##
+##                                       を行わない。                           ##
 ##                                                                              ##
 ##################################################################################
 
@@ -100,7 +104,7 @@
 #L_tmppath="/var/tmp"                            #一時ファイルパス[環境依存値] #2009/08/19 Ver1.7 Add
 # 2009/11/23 Ver.1.11 Shigeto.Niki mod START
 #L_tmppath="$COMMON_TOP/tmp"                      #一時ファイルパス
-L_tmppath="/ebs/PEBSITO/PEBSITOcomn/temp"        #一時ファイルパス
+L_tmppath="$COMMON_TOP/temp"         #一時ファイルパス
 # 2009/11/23 Ver.1.11 Shigeto.Niki mod END
 # 2009/04/02 Ver.1.4 Masayuki.Sano mod END
 
@@ -1551,15 +1555,17 @@ C)
   #正常
   #処理なし
   ;;
-# 2009/02/04 Ver.1.1 Koji.Oomata mod START
-#*)
-#  #正常以外
-G)
-  #警告
-  #処理なし
-  ;;
+# 2010/01/25 Ver.1.12 Koji.Oomata del START
+## 2009/02/04 Ver.1.1 Koji.Oomata mod START
+##*)
+##  #正常以外
+#G)
+#  #警告
+#  #処理なし
+#  ;;
+# 2010/01/25 Ver.1.12 Koji.Oomata del START
 *)
-  #正常・警告以外
+  #正常以外
 # 2009/02/04 Ver.1.1 Koji.Oomata mod END
   #ファイル退避処理(A-6)
   loop_cnt=1
@@ -1638,6 +1644,7 @@ sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sa
   SET HEADING OFF
   SET LINES 240
   SELECT 'C_10040_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10040')||''''
+        ,'C_10068_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10068')||''''  --2010/01/25 Ver.1.12 Koji.Oomata add
   FROM DUAL
   ;
   EXIT
@@ -1654,6 +1661,13 @@ EOF
   else
     L_status_err="${L_status_err}\n${C_10040_msg}"
   fi
+# 2010/01/25 Ver.1.12 Koji.Oomata add START
+  #(警告の場合、以下のメッセージをセット)
+  if [ "${L_status_code}" = 'G' ]
+  then
+    L_status_err="${C_10068_msg}"
+  fi
+# 2010/01/25 Ver.1.12 Koji.Oomata add END
   #(ジョブ状況ステータスを終了に更新)
   update_job_process ${L_if_job_status_id_all}
   #(処理終了)
