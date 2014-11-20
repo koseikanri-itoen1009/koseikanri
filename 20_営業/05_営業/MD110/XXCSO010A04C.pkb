@@ -8,7 +8,7 @@ AS
  *                    自動販売機設置契約書を帳票に出力します。
  * MD.050           : MD050_CSO_010_A04_自動販売機設置契約書PDFファイル作成
  *
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009-11-30    1.7   T.Maruyama       E_本稼動_00193対応
  *  2010-03-02    1.8   K.Hosoi          E_本稼動_01678対応
  *  2010-08-03    1.9   H.Sasaki         E_本稼動_00822対応
+ *  2014-02-03    1.10  S.Niki           E_本稼動_11397対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -122,6 +123,10 @@ AS
   -- アクティブ
   cv_active_status      CONSTANT VARCHAR2(1)  := 'A';
   --
+/* 2014/02/03 Ver1.10 S.Niki ADD START */
+  -- 最大行数
+  cn_max_line           CONSTANT NUMBER       := 17;
+/* 2014/02/03 Ver1.10 S.Niki ADD END */
 -- == 2010/08/03 V1.9 Added START ===============================================================
   cv_lkup_kozatype      CONSTANT VARCHAR2(30) :=  'XXCSO1_KOZA_TYPE';                 --  参照タイプ：口座種別
   cv_space              CONSTANT VARCHAR2(1)  :=  ' ';                                --  半角スペース
@@ -190,6 +195,13 @@ AS
     condition_contents_10         xxcso_rep_auto_sale_cont.condition_contents_10%TYPE,         -- 条件内容10
     condition_contents_11         xxcso_rep_auto_sale_cont.condition_contents_11%TYPE,         -- 条件内容11
     condition_contents_12         xxcso_rep_auto_sale_cont.condition_contents_12%TYPE,         -- 条件内容12
+/* 2014/02/03 Ver1.10 S.Niki ADD START */
+    condition_contents_13         xxcso_rep_auto_sale_cont.condition_contents_13%TYPE,         -- 条件内容13
+    condition_contents_14         xxcso_rep_auto_sale_cont.condition_contents_14%TYPE,         -- 条件内容14
+    condition_contents_15         xxcso_rep_auto_sale_cont.condition_contents_15%TYPE,         -- 条件内容15
+    condition_contents_16         xxcso_rep_auto_sale_cont.condition_contents_16%TYPE,         -- 条件内容16
+    condition_contents_17         xxcso_rep_auto_sale_cont.condition_contents_17%TYPE,         -- 条件内容17
+/* 2014/02/03 Ver1.10 S.Niki ADD END */
     install_support_amt           xxcso_rep_auto_sale_cont.install_support_amt%TYPE,           -- 設置協賛金
     electricity_information       xxcso_rep_auto_sale_cont.electricity_information%TYPE,       -- 電気代情報
     transfer_commission_info      xxcso_rep_auto_sale_cont.transfer_commission_info%TYPE,      -- 振り込み手数料情報
@@ -1254,6 +1266,18 @@ AS
             o_rep_cont_data_rec.condition_contents_11 := l_sales_charge_rec.condition_contents;
           ELSIF (o_rep_cont_data_rec.condition_contents_12 IS NULL) THEN
             o_rep_cont_data_rec.condition_contents_12 := l_sales_charge_rec.condition_contents;
+/* 2014/02/03 Ver1.10 S.Niki ADD START */
+          ELSIF (o_rep_cont_data_rec.condition_contents_13 IS NULL) THEN
+            o_rep_cont_data_rec.condition_contents_13 := l_sales_charge_rec.condition_contents;
+          ELSIF (o_rep_cont_data_rec.condition_contents_14 IS NULL) THEN
+            o_rep_cont_data_rec.condition_contents_14 := l_sales_charge_rec.condition_contents;
+          ELSIF (o_rep_cont_data_rec.condition_contents_15 IS NULL) THEN
+            o_rep_cont_data_rec.condition_contents_15 := l_sales_charge_rec.condition_contents;
+          ELSIF (o_rep_cont_data_rec.condition_contents_16 IS NULL) THEN
+            o_rep_cont_data_rec.condition_contents_16 := l_sales_charge_rec.condition_contents;
+          ELSIF (o_rep_cont_data_rec.condition_contents_17 IS NULL) THEN
+            o_rep_cont_data_rec.condition_contents_17 := l_sales_charge_rec.condition_contents;
+/* 2014/02/03 Ver1.10 S.Niki ADD END */
           END IF;
           lb_bm1_bm := TRUE;
 --
@@ -1428,6 +1452,13 @@ AS
           o_rep_cont_data_rec.condition_contents_10 := NULL;
           o_rep_cont_data_rec.condition_contents_11 := NULL;
           o_rep_cont_data_rec.condition_contents_12 := NULL;
+/* 2014/02/03 Ver1.10 S.Niki ADD START */
+          o_rep_cont_data_rec.condition_contents_13 := NULL;
+          o_rep_cont_data_rec.condition_contents_14 := NULL;
+          o_rep_cont_data_rec.condition_contents_15 := NULL;
+          o_rep_cont_data_rec.condition_contents_16 := NULL;
+          o_rep_cont_data_rec.condition_contents_17 := NULL;
+/* 2014/02/03 Ver1.10 S.Niki ADD END */
 --
 -- == 2010/08/03 V1.9 Modified START ===============================================================
           -- ログ出力
@@ -1482,8 +1513,12 @@ AS
         --
       END IF;
 -- == 2010/08/03 V1.9 Added START ===============================================================
-      --  条件内容が12件に満たない場合、販売手数料但書と「以下余白」をセット
-      IF  (ln_lines_cnt < 12) THEN
+/* 2014/02/03 Ver1.10 S.Niki MOD START */
+--      --  条件内容が12件に満たない場合、販売手数料但書と「以下余白」をセット
+--      IF  (ln_lines_cnt < 12) THEN
+      --  条件内容が最大行に満たない場合、販売手数料但書と「以下余白」をセット
+      IF  (ln_lines_cnt < cn_max_line) THEN
+/* 2014/02/03 Ver1.10 S.Niki MOD END */
         IF    (lv_cond_business_type IN (cv_cond_b_type_1, cv_cond_b_type_2)) THEN
           --  売上別
           IF    (o_rep_cont_data_rec.condition_contents_2   IS NULL)  THEN
@@ -1518,6 +1553,23 @@ AS
             o_rep_cont_data_rec.condition_contents_12 :=  cv_cond_conts_space;      --  以下余白
           ELSIF (o_rep_cont_data_rec.condition_contents_12  IS NULL)  THEN
             o_rep_cont_data_rec.condition_contents_12 :=  gt_terms_note_price;      --  販売手数料但書（売価別）
+/* 2014/02/03 Ver1.10 S.Niki ADD START */
+            o_rep_cont_data_rec.condition_contents_13 :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_13  IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_13 :=  gt_terms_note_price;      --  販売手数料但書（売価別）
+            o_rep_cont_data_rec.condition_contents_14 :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_14  IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_14 :=  gt_terms_note_price;      --  販売手数料但書（売価別）
+            o_rep_cont_data_rec.condition_contents_15 :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_15  IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_15 :=  gt_terms_note_price;      --  販売手数料但書（売価別）
+            o_rep_cont_data_rec.condition_contents_16 :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_16  IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_16 :=  gt_terms_note_price;      --  販売手数料但書（売価別）
+            o_rep_cont_data_rec.condition_contents_17 :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_17  IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_17 :=  gt_terms_note_price;      --  販売手数料但書（売価別）
+/* 2014/02/03 Ver1.10 S.Niki ADD END */
           END IF;
           --
         ELSIF (     lv_cond_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4)
@@ -1559,6 +1611,23 @@ AS
             o_rep_cont_data_rec.condition_contents_12 :=  cv_cond_conts_space;      --  以下余白
           ELSIF (o_rep_cont_data_rec.condition_contents_12  IS NULL)  THEN
             o_rep_cont_data_rec.condition_contents_12 :=  gt_terms_note_ves;        --  販売手数料但書（容器別）
+/* 2014/02/03 Ver1.10 S.Niki ADD START */
+            o_rep_cont_data_rec.condition_contents_13 :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_13  IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_13 :=  gt_terms_note_ves;        --  販売手数料但書（容器別）
+            o_rep_cont_data_rec.condition_contents_14 :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_14  IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_14 :=  gt_terms_note_ves;        --  販売手数料但書（容器別）
+            o_rep_cont_data_rec.condition_contents_15 :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_15  IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_15 :=  gt_terms_note_ves;        --  販売手数料但書（容器別）
+            o_rep_cont_data_rec.condition_contents_16 :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_16  IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_16 :=  gt_terms_note_ves;        --  販売手数料但書（容器別）
+            o_rep_cont_data_rec.condition_contents_17 :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_17  IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_17 :=  gt_terms_note_ves;        --  販売手数料但書（容器別）
+/* 2014/02/03 Ver1.10 S.Niki ADD END */
           END IF;
         END IF;
       END IF;
@@ -1717,6 +1786,13 @@ AS
           ,condition_contents_10            -- 条件内容10
           ,condition_contents_11            -- 条件内容11
           ,condition_contents_12            -- 条件内容12
+/* 2014/02/03 Ver1.10 S.Niki ADD START */
+          ,condition_contents_13            -- 条件内容13
+          ,condition_contents_14            -- 条件内容14
+          ,condition_contents_15            -- 条件内容15
+          ,condition_contents_16            -- 条件内容16
+          ,condition_contents_17            -- 条件内容17
+/* 2014/02/03 Ver1.10 S.Niki ADD END */
           ,install_support_amt              -- 設置協賛金
           ,electricity_information          -- 電気代情報
           ,transfer_commission_info         -- 振り込み手数料情報
@@ -1770,6 +1846,13 @@ AS
           ,i_rep_cont_data_rec.condition_contents_10            -- 条件内容10
           ,i_rep_cont_data_rec.condition_contents_11            -- 条件内容11
           ,i_rep_cont_data_rec.condition_contents_12            -- 条件内容12
+/* 2014/02/03 Ver1.10 S.Niki ADD START */
+          ,i_rep_cont_data_rec.condition_contents_13            -- 条件内容13
+          ,i_rep_cont_data_rec.condition_contents_14            -- 条件内容14
+          ,i_rep_cont_data_rec.condition_contents_15            -- 条件内容15
+          ,i_rep_cont_data_rec.condition_contents_16            -- 条件内容16
+          ,i_rep_cont_data_rec.condition_contents_17            -- 条件内容17
+/* 2014/02/03 Ver1.10 S.Niki ADD END */
           ,i_rep_cont_data_rec.install_support_amt              -- 設置協賛金
           ,i_rep_cont_data_rec.electricity_information          -- 電気代情報
           ,i_rep_cont_data_rec.transfer_commission_info         -- 振り込み手数料情報

@@ -3,7 +3,7 @@
  * TABLE Name      : xxcso_rep_auto_sale_cont
  * Description     : 自動販売機設置契約書帳票ワークテーブル
  * MD.070          : 
- * Version         : 1.5
+ * Version         : 1.6
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -19,6 +19,8 @@
  *                                    (360桁⇒660桁)
  *  2010/08/02    1.5  H.Sasaki     【E_本稼動_00822】
  *                                    項目サイズの変更（口座番号：30byte⇒35byte）
+ *  2014/02/03    1.6  S.Niki       【E_本稼動_11397】
+ *                                    条件内容13～17を追加
  ************************************************************************/
 CREATE TABLE xxcso.xxcso_rep_auto_sale_cont
 (
@@ -67,6 +69,13 @@ CREATE TABLE xxcso.xxcso_rep_auto_sale_cont
   condition_contents_10           VARCHAR2(150),
   condition_contents_11           VARCHAR2(150),
   condition_contents_12           VARCHAR2(150),
+/* 2014/02/03 Ver1.6 S.Niki ADD START */
+  condition_contents_13           VARCHAR2(150),
+  condition_contents_14           VARCHAR2(150),
+  condition_contents_15           VARCHAR2(150),
+  condition_contents_16           VARCHAR2(150),
+  condition_contents_17           VARCHAR2(150),
+/* 2014/02/03 Ver1.6 S.Niki ADD END */
   install_support_amt             NUMBER(8),
   electricity_information         VARCHAR2(50),
   transfer_commission_info        VARCHAR2(100),
@@ -124,6 +133,13 @@ COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_9           
 COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_10                  IS '条件内容10';
 COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_11                  IS '条件内容11';
 COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_12                  IS '条件内容12';
+/* 2014/02/03 Ver1.6 S.Niki ADD START */
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_13                  IS '条件内容13';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_14                  IS '条件内容14';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_15                  IS '条件内容15';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_16                  IS '条件内容16';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_17                  IS '条件内容17';
+/* 2014/02/03 Ver1.6 S.Niki ADD END */
 COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.install_support_amt                    IS '設置協賛金';
 COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.electricity_information                IS '電気代情報';
 COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.transfer_commission_info               IS '振り込み手数料情報';
