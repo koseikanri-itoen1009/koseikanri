@@ -7,7 +7,7 @@ AS
  * Description      : 支払先の顧客より問合せがあった場合、
  *                    取引条件別の金額が印字された支払案内書を印刷します。
  * MD.050           : 支払案内書印刷（明細） MD050_COK_015_A03
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2010/03/16    1.9   S.Moriyama       [障害E_本稼動_01897] 振込手数料出力対応
  *  2010/04/06    1.9   K.Yamaguchi      [障害E_本稼動_01897] 現金持参のシステムテストで発覚した障害
  *                                                            振込手数料負担者が設定されていない場合を考慮
+ *  2011/01/05    1.10  S.Niki           [障害E_本稼動_01950] ソート順を本部コード、売上拠点コード、初回取引日、顧客コードに変更
  *
  *****************************************************************************************/
   --==================================================
@@ -742,6 +743,9 @@ AS
     , org_slip_number                  -- 元伝票番号
     , bank_charge_bearer               -- 手数料負担者
     , balance_cancel_date              -- 残高取消日
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+    , start_tran_date                  -- 初回取引日
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
     )
     SELECT xbb.supplier_code                                    AS payment_code
@@ -771,7 +775,17 @@ AS
          , SUBSTR( pvsa.attribute1, 21, 20 )                    AS payment_name_2
 -- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD END
-         , hca2.contact_area_code                               AS contact_base
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD START
+--         , hca2.contact_area_code                               AS contact_base
+         , (  SELECT  CASE WHEN TO_DATE( xdv.attribute6, cv_format_fxrrrrmmdd ) > gd_process_date
+                        THEN xdv.attribute7 -- 本部コード(旧)
+                        ELSE xdv.attribute9 -- 本部コード(新)
+                      END
+              FROM    xx03_departments_v  xdv -- 部門ビュー
+              WHERE   xdv.flex_value  = hca2.contact_code
+                AND   ROWNUM = 1
+           )                                                    AS contact_base
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD END
          , hca2.contact_code                                    AS contact_base_code
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD START
 --         , hca2.contact_name                                    AS contact_base_name
@@ -805,7 +819,17 @@ AS
 --         , hca1.cust_name                                       AS cust_name
          , SUBSTR( hca1.cust_name , 1 , 40)                     AS cust_name
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD END
-         , hca3.base_area_code                                  AS selling_base
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD START
+--         , hca3.base_area_code                                  AS selling_base
+         , (  SELECT  CASE WHEN TO_DATE( xdv.attribute6, cv_format_fxrrrrmmdd ) > gd_process_date
+                        THEN xdv.attribute7 -- 本部コード(旧)
+                        ELSE xdv.attribute9 -- 本部コード(新)
+                      END
+              FROM    xx03_departments_v  xdv -- 部門ビュー
+              WHERE   xdv.flex_value  = xcbs.base_code
+                AND   ROWNUM = 1
+           )                                                    AS selling_base
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD END
          , xcbs.base_code                                       AS selling_base_code
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD START
 --         , hca3.base_name                                       AS selling_base_name
@@ -853,15 +877,27 @@ AS
          , pvsa.bank_charge_bearer                              AS bank_charge_bearer
          , xbb.balance_cancel_date                              AS balance_cancel_date
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+         , hca1.start_tran_date                                 AS start_tran_date
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
        , po_vendor_sites_all      pvsa -- 仕入先サイトマスタ
        , ( SELECT hca.account_number             AS cust_code
                 , hp.party_name                  AS cust_name
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+                , xca.start_tran_date            AS start_tran_date
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
            FROM hz_cust_accounts            hca       -- 顧客マスタ
               , hz_parties                  hp        -- パーティマスタ
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+              , xxcmm_cust_accounts         xca       -- 顧客アドオン
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
            WHERE hca.party_id        = hp.party_id
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+             AND xca.customer_id     = hca.cust_account_id
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
          )                        hca1
        , ( SELECT hca.account_number             AS contact_code
                 , hp.party_name                  AS contact_name
@@ -1004,6 +1040,9 @@ AS
            , pvsa.bank_charge_bearer
            , xbb.balance_cancel_date
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+           , hca1.start_tran_date
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
@@ -1075,6 +1114,9 @@ AS
     , org_slip_number                  -- 元伝票番号
     , bank_charge_bearer               -- 手数料負担者
     , balance_cancel_date              -- 残高取消日
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+    , start_tran_date                  -- 初回取引日
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
     )
     SELECT xbb.supplier_code                                    AS payment_code
@@ -1104,7 +1146,17 @@ AS
          , SUBSTR( pvsa.attribute1, 21, 20 )                    AS payment_name_2
 -- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD END
-         , hca2.contact_area_code                               AS contact_base
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD START
+--         , hca2.contact_area_code                               AS contact_base
+         , (  SELECT  CASE WHEN TO_DATE( xdv.attribute6, cv_format_fxrrrrmmdd ) > gd_process_date
+                        THEN xdv.attribute7 -- 本部コード(旧)
+                        ELSE xdv.attribute9 -- 本部コード(新)
+                      END
+              FROM    xx03_departments_v  xdv -- 部門ビュー
+              WHERE   xdv.flex_value  = hca2.contact_code
+                AND   ROWNUM = 1
+           )                                                    AS contact_base
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD END
          , hca2.contact_code                                    AS contact_base_code
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD START
 --         , hca2.contact_name                                    AS contact_base_name
@@ -1138,7 +1190,17 @@ AS
 --         , hca1.cust_name                                       AS cust_name
          , SUBSTR( hca1.cust_name , 1 , 40)                     AS cust_name
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD END
-         , hca3.base_area_code                                  AS selling_base
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD START
+--         , hca3.base_area_code                                  AS selling_base
+         , (  SELECT  CASE WHEN TO_DATE( xdv.attribute6, cv_format_fxrrrrmmdd ) > gd_process_date
+                        THEN xdv.attribute7 -- 本部コード(旧)
+                        ELSE xdv.attribute9 -- 本部コード(新)
+                      END
+              FROM    xx03_departments_v  xdv -- 部門ビュー
+              WHERE   xdv.flex_value  = xcbs.base_code
+                AND   ROWNUM = 1
+           )                                                    AS selling_base
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD END
          , xcbs.base_code                                       AS selling_base_code
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD START
 --         , hca3.base_name                                       AS selling_base_name
@@ -1186,15 +1248,27 @@ AS
          , pvsa.bank_charge_bearer                              AS bank_charge_bearer
          , xbb.balance_cancel_date                              AS balance_cancel_date
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+         , hca1.start_tran_date                                 AS start_tran_date
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
        , po_vendor_sites_all      pvsa -- 仕入先サイトマスタ
        , ( SELECT hca.account_number             AS cust_code
                 , hp.party_name                  AS cust_name
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+                , xca.start_tran_date            AS start_tran_date
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
            FROM hz_cust_accounts            hca       -- 顧客マスタ
               , hz_parties                  hp        -- パーティマスタ
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+              , xxcmm_cust_accounts         xca       -- 顧客アドオン
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
            WHERE hca.party_id        = hp.party_id
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+             AND xca.customer_id     = hca.cust_account_id
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
          )                        hca1
        , ( SELECT hca.account_number             AS contact_code
                 , hp.party_name                  AS contact_name
@@ -1328,6 +1402,9 @@ AS
            , pvsa.bank_charge_bearer
            , xbb.balance_cancel_date
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+           , hca1.start_tran_date
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
@@ -1399,6 +1476,9 @@ AS
     , org_slip_number                  -- 元伝票番号
     , bank_charge_bearer               -- 手数料負担者
     , balance_cancel_date              -- 残高取消日
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+    , start_tran_date                  -- 初回取引日
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
     )
     SELECT xbb.supplier_code                                    AS payment_code
@@ -1428,7 +1508,17 @@ AS
          , SUBSTR( pvsa.attribute1, 21, 20 )                    AS payment_name_2
 -- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD END
-         , hca3.base_area_code                                  AS contact_base
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD START
+--         , hca3.base_area_code                                  AS contact_base
+         , (  SELECT  CASE WHEN TO_DATE( xdv.attribute6, cv_format_fxrrrrmmdd ) > gd_process_date
+                        THEN xdv.attribute7 -- 本部コード(旧)
+                        ELSE xdv.attribute9 -- 本部コード(新)
+                      END
+              FROM    xx03_departments_v  xdv -- 部門ビュー
+              WHERE   xdv.flex_value  = hca3.base_code
+                AND   ROWNUM = 1
+           )                                                    AS contact_base
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD END
          , hca3.base_code                                       AS contact_base_code
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD START
 --         , hca3.base_name                                       AS contact_base_name
@@ -1462,7 +1552,17 @@ AS
 --         , hca1.cust_name                                       AS cust_name
          , SUBSTR( hca1.cust_name , 1 , 40)                     AS cust_name
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD END
-         , hca3.base_area_code                                  AS selling_base
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD START
+--         , hca3.base_area_code                                  AS selling_base
+         , (  SELECT  CASE WHEN TO_DATE( xdv.attribute6, cv_format_fxrrrrmmdd ) > gd_process_date
+                        THEN xdv.attribute7 -- 本部コード(旧)
+                        ELSE xdv.attribute9 -- 本部コード(新)
+                      END
+              FROM    xx03_departments_v  xdv -- 部門ビュー
+              WHERE   xdv.flex_value  = xcbs.base_code
+                AND   ROWNUM = 1
+           )                                                    AS selling_base
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD END
          , xcbs.base_code                                       AS selling_base_code
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD START
 --         , hca3.base_name                                       AS selling_base_name
@@ -1509,6 +1609,9 @@ AS
          , xbb.org_slip_number                                  AS org_slip_number
          , pvsa.bank_charge_bearer                              AS bank_charge_bearer
          , xbb.balance_cancel_date                              AS balance_cancel_date
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+         , hca1.start_tran_date                                 AS start_tran_date 
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
@@ -1516,9 +1619,18 @@ AS
        , po_vendor_sites_all      pvsa -- 仕入先サイトマスタ
        , ( SELECT hca.account_number             AS cust_code
                 , hp.party_name                  AS cust_name
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+                , xca.start_tran_date            AS start_tran_date
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
            FROM hz_cust_accounts            hca       -- 顧客マスタ
               , hz_parties                  hp        -- パーティマスタ
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+              , xxcmm_cust_accounts         xca       -- 顧客アドオン
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
            WHERE hca.party_id        = hp.party_id
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+             AND xca.customer_id     = hca.cust_account_id
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
          )                        hca1
        , ( SELECT hca.account_number             AS base_code
                 , hp.party_name                  AS base_name
@@ -1635,6 +1747,9 @@ AS
            , pvsa.bank_charge_bearer
            , xbb.balance_cancel_date
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+           , hca1.start_tran_date
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
@@ -1707,6 +1822,9 @@ AS
     , bank_charge_bearer               -- 手数料負担者
     , balance_cancel_date              -- 残高取消日
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+    , start_tran_date                  -- 初回取引日
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
     )
     SELECT xbb.supplier_code                                    AS payment_code
 -- Start 2009/05/25 Ver_1.4 T1_1168 M.Hiruta
@@ -1735,7 +1853,17 @@ AS
          , SUBSTR( pvsa.attribute1, 21 , 20 )                   AS payment_name_2
 -- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD END
-         , hca3.base_area_code                                  AS contact_base
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD START
+--         , hca3.base_area_code                                  AS contact_base
+         , (  SELECT  CASE WHEN TO_DATE( xdv.attribute6, cv_format_fxrrrrmmdd ) > gd_process_date
+                        THEN xdv.attribute7 -- 本部コード(旧)
+                        ELSE xdv.attribute9 -- 本部コード(新)
+                      END
+              FROM    xx03_departments_v  xdv -- 部門ビュー
+              WHERE   xdv.flex_value  = hca3.base_code
+                AND   ROWNUM = 1
+           )                                                    AS contact_base
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD END
          , hca3.base_code                                       AS contact_base_code
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD START
 --         , hca3.base_name                                       AS contact_base_name
@@ -1769,7 +1897,17 @@ AS
 --         , hca1.cust_name                                       AS cust_name
          , SUBSTR( hca1.cust_name , 1 , 40)                     AS cust_name
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD END
-         , hca3.base_area_code                                  AS selling_base
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD START
+--         , hca3.base_area_code                                  AS selling_base
+         , (  SELECT  CASE WHEN TO_DATE( xdv.attribute6, cv_format_fxrrrrmmdd ) > gd_process_date
+                        THEN xdv.attribute7 -- 本部コード(旧)
+                        ELSE xdv.attribute9 -- 本部コード(新)
+                      END
+              FROM    xx03_departments_v  xdv -- 部門ビュー
+              WHERE   xdv.flex_value  = xcbs.base_code
+                AND   ROWNUM = 1
+           )                                                    AS selling_base
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD END
          , xcbs.base_code                                       AS selling_base_code
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD START
 --         , hca3.base_name                                       AS selling_base_name
@@ -1817,15 +1955,27 @@ AS
          , pvsa.bank_charge_bearer                              AS bank_charge_bearer
          , xbb.balance_cancel_date                              AS balance_cancel_date
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+         , hca1.start_tran_date                                 AS start_tran_date
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
        , po_vendor_sites_all      pvsa -- 仕入先サイトマスタ
        , ( SELECT hca.account_number             AS cust_code
                 , hp.party_name                  AS cust_name
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+                , xca.start_tran_date            AS start_tran_date
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
            FROM hz_cust_accounts            hca       -- 顧客マスタ
               , hz_parties                  hp        -- パーティマスタ
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+              , xxcmm_cust_accounts         xca       -- 顧客アドオン
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
            WHERE hca.party_id        = hp.party_id
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+             AND xca.customer_id     = hca.cust_account_id
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
          )                        hca1
        , ( SELECT hca.account_number             AS base_code
                 , hp.party_name                  AS base_name
@@ -1936,6 +2086,9 @@ AS
            , pvsa.bank_charge_bearer
            , xbb.balance_cancel_date
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
+           , hca1.start_tran_date
+-- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
