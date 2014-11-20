@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A10C(body)
  * Description      : 商品計画リスト（累計）出力
  * MD.050           : 商品計画リスト（累計）出力 MD050_CSM_002_A10
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009-07-15     1.6   M.Ohtsuki      ［0000678］対象データ0件時のステータス不具合の対応
  *  2011-01-05     1.7   SCS OuKou       [E_本稼動_05803]
  *  2012-12-10     1.8   SCSK K.Taniguchi[E_本稼動_09949] 新旧原価選択可能対応
+ *  2013-01-31     1.9   SCSK K.Taniguchi[E_本稼動_09949] 年度開始日取得の不具合対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -417,6 +418,9 @@ AS
                                                    ,gl_periods                gp2                     -- 会計カレンダ
                                             WHERE   gsob2.set_of_books_id     = gn_gl_set_of_bks_id   -- 会計帳簿ID
                                             AND     gp2.period_set_name       = gsob2.period_set_name -- カレンダ名
+--//+ADD START E_本稼動_09949 K.Taniguchi
+                                            AND     gp2.adjustment_period_flag = cv_flg_n             -- 調整会計期間外
+--//+ADD END E_本稼動_09949 K.Taniguchi
                                             AND     gd_process_date           BETWEEN gp2.start_date  -- 業務日付時点
                                                                               AND     gp2.end_date
                                           )

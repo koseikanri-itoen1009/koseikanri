@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A08C(body)
  * Description      : 月別商品計画(営業原価)チェックリスト出力
  * MD.050           : 月別商品計画(営業原価)チェックリスト出力 MD050_CSM_002_A08
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2011/01/13    1.10  SCS Y.Kanami    [E_本稼動_05803]PT対応
  *  2011/12/14    1.11  SCSK K.Nakamura [E_本稼動_08817]出力判定修正
  *  2012/12/13    1.12  SCSK K.Taniguchi[E_本稼動_09949]新旧原価選択可能対応
+ *  2013/01/31    1.13  SCSK K.Taniguchi[E_本稼動_09949]年度開始日取得の不具合対応
  *
  *****************************************************************************************/
 --
@@ -454,6 +455,9 @@ AS
                                                    ,gl_periods                gp2                     -- 会計カレンダ
                                             WHERE   gsob2.set_of_books_id     = gn_gl_set_of_bks_id   -- 会計帳簿ID
                                             AND     gp2.period_set_name       = gsob2.period_set_name -- カレンダ名
+--//+ADD START E_本稼動_09949 K.Taniguchi
+                                            AND     gp2.adjustment_period_flag = cv_flg_n             -- 調整会計期間外
+--//+ADD END E_本稼動_09949 K.Taniguchi
                                             AND     gd_process_date           BETWEEN gp2.start_date  -- 業務日付時点
                                                                               AND     gp2.end_date
                                           )
