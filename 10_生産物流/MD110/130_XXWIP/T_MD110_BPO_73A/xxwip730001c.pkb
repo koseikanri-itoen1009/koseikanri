@@ -5185,12 +5185,6 @@ AS
         ln_del_deliv_no_cnt := ln_del_deliv_no_cnt + 1;
         d_can_deliv_no_tab(ln_del_deliv_no_cnt) := carcan_deliv_no_tab(ln_index);
 --
--- ##### 20081261 Ver.1.18 本番#323対応（ログ対応） START #####
-        -- 配車解除による削除 ログ出力用領域格納
-        gn_delete_data_idx := gn_delete_data_idx + 1;
-        gt_delete_data_msg(gn_delete_data_idx) :=  d_can_deliv_no_tab(ln_del_deliv_no_cnt);
--- ##### 20081261 Ver.1.18 本番#323対応（ログ対応） END   #####
---
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
     IF (gv_debug_flg = gv_debug_on) THEN
       FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_carcan_deliv_no：運賃明細に存在しない：配送No：' || d_can_deliv_no_tab(ln_del_deliv_no_cnt));
@@ -6844,12 +6838,6 @@ AS
         -- 運賃ヘッダ伝票なし配車削除用PL/SQL表へ格納
         ln_del_can_cnt := ln_del_can_cnt + 1;
         d_slip_head_deliv_no_tab(ln_del_can_cnt) := gt_carriers_schedule_tab(ln_index).delivery_no;
---
--- ##### 20081261 Ver.1.18 本番#323対応（ログ対応） START #####
-        -- 実績変更による削除 ログ出力用領域格納
-        gn_delete_data_idx := gn_delete_data_idx + 1;
-        gt_delete_data_msg(gn_delete_data_idx) :=  d_slip_head_deliv_no_tab(ln_del_can_cnt);
--- ##### 20081261 Ver.1.18 本番#323対応（ログ対応） END   #####
 --
       -- *******************************************************************************************
       -- *** 以下の条件の場合
@@ -8689,7 +8677,10 @@ AS
       -- **************************************************
       -- 件数設定
       -- **************************************************
-      gn_deliv_del_cnt := gn_deliv_del_cnt + SQL%ROWCOUNT;
+-- ##### 20081261 Ver.1.18 本番#323対応（ログ対応） START #####
+-- 件数は追加しない
+--      gn_deliv_del_cnt := gn_deliv_del_cnt + SQL%ROWCOUNT;
+-- ##### 20081261 Ver.1.18 本番#323対応（ログ対応） END   #####
 --
     END IF;
 --
