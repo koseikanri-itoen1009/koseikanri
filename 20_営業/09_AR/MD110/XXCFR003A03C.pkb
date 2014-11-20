@@ -7,7 +7,7 @@ AS
  * Description      : 請求明細データ作成
  * MD.050           : MD050_CFR_003_A03_請求明細データ作成
  * MD.070           : MD050_CFR_003_A03_請求明細データ作成
- * Version          : 1.120
+ * Version          : 1.130
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -22,6 +22,10 @@ AS
 -- *  end_auto_invoice       p 自動インボイス終了処理                  (A-7)
 -- *  update_inv_header      p 請求ヘッダ情報更新処理                  (A-8)
 -- Modify 2009.09.29 Ver1.5 End
+-- Modify 2013.01.17 Ver1.130 Start
+ *  get_update_target_bill   p 請求更新対象取得処理                  (A-10)
+ *  update_bill_amount       p 請求金額更新処理                      (A-11)
+-- Modify 2013.01.17 Ver1.130 End
  *  update_trx_status      p 取引データステータス更新処理            (A-9)
  *  submain                p メイン処理プロシージャ
  *  main                   p コンカレント実行ファイル登録プロシージャ
@@ -45,6 +49,7 @@ AS
  *  2011/10/11    1.110 SCS 白川 篤史   [障害本稼動07906] EDIの流通BMS対応
  *  2012/11/06    1.120 SCSK 中村 健一  [障害本稼動10090] 夜間ジョブパフォーマンス対応(JOBの分割対応)
  *                                                        使用していない変数の削除
+ *  2013/01/17    1.130 SCSK 中野 徹也  [障害本稼動09964] 請求書再作成時の仕様見直し対応
  *
  *****************************************************************************************/
 --
@@ -88,6 +93,9 @@ AS
 -- Modify 2012.11.06 Ver1.120 Start
 --  gn_warn_cnt             NUMBER;                    -- スキップ件数
 -- Modify 2012.11.06 Ver1.120 End
+-- Modify 2013.01.17 Ver1.130 Start
+  gn_target_up_header_cnt NUMBER;                    -- 更新件数(請求ヘッダ単位)
+-- Modify 2013.01.17 Ver1.130 End
 --
 --################################  固定部 END   ##################################
 --
@@ -187,6 +195,9 @@ AS
 -- Modify 2012.11.06 Ver1.120 Start
   cv_msg_cfr_00125  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00125'; --入力パラメータ「パラレル実行区分」チェックエラーメッセージ
 -- Modify 2012.11.06 Ver1.120 End
+-- Modify 2013.01.17 Ver1.130 Start
+  cv_msg_cfr_00146  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00146'; --更新件数メッセージ
+-- Modify 2013.01.17 Ver1.130 End
 --
   -- 日本語辞書参照コード
 -- Modify 2009.09.29 Ver1.5 Start
@@ -209,6 +220,10 @@ AS
 -- Modify 2009.09.29 Ver1.5 End
   cv_dict_cfr_00303013  CONSTANT VARCHAR2(20) := 'CFR003A03013'; -- 品目マスタ組織ID
   cv_dict_cfr_00303014  CONSTANT VARCHAR2(20) := 'CFR003A03014'; -- 処理対象コンカレント要求ID
+-- Modify 2013.01.17 Ver1.130 Start
+  cv_dict_cfr_00302009  CONSTANT VARCHAR2(20) := 'CFR003A02009'; -- 対象取引データ件数
+  cv_dict_cfr_00303015  CONSTANT VARCHAR2(20) := 'CFR003A03015'; -- 請求ヘッダデータ作成パラメータ請求先顧客
+-- Modify 2013.01.17 Ver1.130 End
 --
   -- メッセージトークン
   cv_tkn_prof_name  CONSTANT VARCHAR2(30)  := 'PROF_NAME';       -- プロファイルオプション名
@@ -340,6 +355,21 @@ AS
 --    gt_bil_loc_code_tab      get_bil_loc_code_ttype;
 -- Modify 2012.11.06 Ver1.120 End
 --
+-- Modify 2013.01.17 Ver1.130 Start
+    TYPE get_inv_id_ttype          IS TABLE OF xxcfr_invoice_headers.invoice_id%TYPE
+                                                  INDEX BY PLS_INTEGER;
+    TYPE get_amt_no_tax_ttype      IS TABLE OF xxcfr_invoice_headers.inv_amount_no_tax%TYPE
+                                                  INDEX BY PLS_INTEGER;
+    TYPE get_tax_amt_sum_ttype     IS TABLE OF xxcfr_invoice_headers.tax_amount_sum%TYPE
+                                                  INDEX BY PLS_INTEGER;
+    TYPE get_amd_inc_tax_ttype     IS TABLE OF xxcfr_invoice_headers.inv_amount_includ_tax%TYPE
+                                                  INDEX BY PLS_INTEGER;
+--
+    gt_get_inv_id_tab            get_inv_id_ttype;
+    gt_get_amt_no_tax_tab        get_amt_no_tax_ttype;
+    gt_get_tax_amt_sum_tab       get_tax_amt_sum_ttype;
+    gt_get_amd_inc_tax_tab       get_amd_inc_tax_ttype;
+-- Modify 2013.01.17 Ver1.130 End
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -371,6 +401,9 @@ AS
 -- Modify 2009.09.29 Ver1.5 End
   gt_target_request_id      xxcfr_inv_info_transfer.target_request_id%TYPE;    -- 処理対象コンカレント要求ID
   gt_mtl_organization_id mtl_parameters.organization_id%TYPE;                  -- 品目マスタ組織ID
+-- Modify 2013.01.17 Ver1.130 Start
+  gt_bill_acct_code         xxcfr_inv_info_transfer.bill_acct_code%TYPE;       -- 請求先顧客コード
+-- Modify 2013.01.17 Ver1.130 End
 --
 -- Modify 2012.11.06 Ver1.120 Start
 --  gd_target_date         DATE;                                                 -- 締日(日付型)
@@ -995,6 +1028,52 @@ AS
         RAISE global_process_expt;
     END;
 --
+-- Modify 2013.01.17 Ver1.130 Start
+    -- 請求ヘッダデータ作成パラメータ請求先顧客抽出（手動実行時用）
+    IF (gv_batch_on_judge_type != cv_judge_type_batch) THEN
+      BEGIN
+        SELECT xiit.bill_acct_code     bill_acct_code
+        INTO   gt_bill_acct_code
+        FROM   xxcfr_inv_info_transfer xiit
+        WHERE  xiit.set_of_books_id = gn_set_book_id
+        AND    xiit.org_id = gn_org_id
+        ;
+--
+      EXCEPTION
+      -- *** OTHERS例外ハンドラ ***
+        WHEN OTHERS THEN
+          lt_look_dict_word := xxcfr_common_pkg.lookup_dictionary(
+                                 iv_loopup_type_prefix => cv_msg_kbn_cfr,
+                                 iv_keyword            => cv_dict_cfr_00303015);  -- 請求ヘッダデータ作成請求先顧客
+          lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
+                                   iv_application  => cv_msg_kbn_cfr,
+                                   iv_name         => cv_msg_cfr_00015,  
+                                   iv_token_name1  => cv_tkn_data,  
+                                   iv_token_value1 => lt_look_dict_word),
+                                 1,
+                                 5000);
+          lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+          RAISE global_process_expt;
+      END;
+--
+      -- 請求ヘッダデータ作成パラメータ請求先顧客の必須チェック
+      IF ( gt_bill_acct_code IS NULL ) THEN
+        lt_look_dict_word := xxcfr_common_pkg.lookup_dictionary(
+                               iv_loopup_type_prefix => cv_msg_kbn_cfr,
+                               iv_keyword            => cv_dict_cfr_00303015);  -- 請求ヘッダデータ作成請求先顧客
+        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
+                                 iv_application  => cv_msg_kbn_cfr,
+                                 iv_name         => cv_msg_cfr_00015,  
+                                 iv_token_name1  => cv_tkn_data,  
+                                 iv_token_value1 => lt_look_dict_word),
+                               1,
+                               5000);
+        lv_errbuf  := lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+--
+    END IF;
+-- Modify 2013.01.17 Ver1.130 End
     --請求ヘッダ情報データ抽出処理
 -- Modify 2012.11.06 Ver1.120 Start
 --    -- カーソルオープン
@@ -1597,6 +1676,451 @@ AS
 -- Modify 2009.09.29 Ver1.5 End
     ;
 -- Modify 2009.08.03 Ver1.4 End
+-- Modify 2013.01.17 Ver1.130 Start
+    --手動実行用
+    CURSOR main_data_manual_cur 
+    IS
+    SELECT inlv.invoice_id                   invoice_id,                    -- 一括請求書ID
+           TO_NUMBER(TO_CHAR(SYSDATE, 'yyyymmddhh24miss') || TO_CHAR(ROWNUM))  invoice_detail_num,  -- 一括請求書明細No
+           inlv.note_line_id                 note_line_id,                  -- 伝票明細No
+           inlv.ship_cust_code               ship_cust_code,                -- 納品先顧客コード
+           inlv.ship_cust_name               ship_cust_name,                -- 納品先顧客名
+           inlv.ship_cust_kana_name          ship_cust_kana_name,           -- 納品先顧客カナ名
+           inlv.sold_location_code           sold_location_code,            -- 売上拠点コード
+           inlv.sold_location_name           sold_location_name,            -- 売上拠点名
+           inlv.ship_shop_code               ship_shop_code,                -- 納品先店舗コード
+           inlv.ship_shop_name               ship_shop_name,                -- 納品先店名
+           inlv.vd_num                       vd_num,                        -- 自動販売機番号
+           inlv.vd_cust_type                 vd_cust_type,                  -- VD顧客区分
+           inlv.inv_type                     inv_type,                      -- 請求区分
+           inlv.chain_shop_code              chain_shop_code,               -- チェーン店コード
+           inlv.delivery_date                delivery_date,                 -- 納品日
+           inlv.slip_num                     slip_num,                      -- 伝票番号
+           inlv.order_num                    order_num,                     -- オーダーNO
+           inlv.column_num                   column_num,                    -- コラムNo
+           inlv.slip_type                    slip_type,                     -- 伝票区分
+           inlv.classify_type                classify_type,                 -- 分類区分
+           inlv.customer_dept_code           customer_dept_code,            -- お客様部門コード
+           inlv.customer_division_code       customer_division_code,        -- お客様課コード
+           inlv.sold_return_type             sold_return_type,              -- 売上返品区分
+           inlv.nichiriu_by_way_type         nichiriu_by_way_type,          -- ニチリウ経由区分
+           inlv.sale_type                    sale_type,                     -- 特売区分
+           inlv.direct_num                   direct_num,                    -- 便No
+           inlv.po_date                      po_date,                       -- 発注日
+           inlv.acceptance_date              acceptance_date,               -- 検収日
+           inlv.item_code                    item_code,                     -- 商品CD
+           inlv.item_name                    item_name,                     -- 商品名
+           inlv.item_kana_name               item_kana_name,                -- 商品カナ名
+           inlv.policy_group                 policy_group,                  -- 政策群コード
+           inlv.jan_code                     jan_code,                      -- JANコード
+           inlv.vessel_type                  vessel_type,                   -- 容器区分
+           inlv.vessel_type_name             vessel_type_name,              -- 容器区分名
+           inlv.vessel_group                 vessel_group,                  -- 容器群
+           inlv.vessel_group_name            vessel_group_name,             -- 容器群名
+           inlv.quantity                     quantity,                      -- 数量
+           inlv.unit_price                   unit_price,                    -- 単価
+           inlv.dlv_qty                      dlv_qty,                       -- 納品数量
+           inlv.dlv_unit_price               dlv_unit_price,                -- 納品単価
+           inlv.dlv_uom_code                 dlv_uom_code,                  -- 納品単位
+           inlv.standard_uom_code            standard_uom_code,             -- 基準単位
+           inlv.standard_unit_price_excluded standard_unit_price_excluded,  -- 税抜基準単価
+           inlv.business_cost                business_cost,                 -- 営業原価
+           inlv.tax_amount                   tax_amount,                    -- 消費税金額
+           inlv.tax_rate                     tax_rate,                      -- 消費税率
+           inlv.ship_amount                  ship_amount,                   -- 納品金額
+           inlv.sold_amount                  sold_amount,                   -- 売上金額
+           inlv.red_black_slip_type          red_black_slip_type,           -- 赤伝黒伝区分
+           inlv.trx_id                       trx_id,                        -- 取引ID
+           inlv.trx_number                   trx_number,                    -- 取引番号
+           inlv.cust_trx_type_id             cust_trx_type_id,              -- 取引タイプID
+           inlv.batch_source_id              batch_source_id,               -- 取引ソースID
+           inlv.created_by                   created_by,                    -- 作成者
+           inlv.creation_date                creation_date,                 -- 作成日
+           inlv.last_updated_by              last_updated_by,               -- 最終更新者
+           inlv.last_update_date             last_update_date,              -- 最終更新日
+           inlv.last_update_login            last_update_login ,            -- 最終更新ログイン
+           inlv.request_id                   request_id,                    -- 要求ID
+           inlv.program_application_id       program_application_id,        -- アプリケーションID
+           inlv.program_id                   program_id,                    -- プログラムID
+           inlv.program_update_date          program_update_date,           -- プログラム更新日
+           inlv.cutoff_date                  cutoff_date,                   -- 締日
+           inlv.num_of_cases                 num_of_cases,                  -- ケース入数
+           inlv.medium_class                 medium_class,                  -- 受注ソース
+           inlv.delivery_chain_code          delivery_chain_code            -- 納品先チェーンコード
+          ,inlv.bms_header_data              bms_header_data                -- 流通ＢＭＳヘッダデータ
+    FROM   (--請求明細データ(AR部門入力) 
+            SELECT /*+ FIRST_ROWS
+                       LEADING(xih rcta hzca hp_ship xxca hc_sold hp_sold hzsa rlli rlta rgda arta fnvd)
+                       INDEX(xih  XXCFR_INVOICE_HEADERS_N02)
+                       INDEX(rcta XXCFR_RA_CUSTOMER_TRX_N02)
+                       INDEX(hzca HZ_CUST_ACCOUNTS_U1)
+                       INDEX(xxca XXCMM_CUST_ACCOUNTS_PK)
+                       INDEX(hp_ship HZ_PARTIES_U1)
+                       INDEX(hc_sold HZ_CUST_ACCOUNTS_U2)
+                       INDEX(hp_sold HZ_PARTIES_U1)
+                       INDEX(hzsa HZ_CUST_ACCT_SITES_N2)
+                       INDEX(rlli RA_CUSTOMER_TRX_LINES_N2)
+                       INDEX(rlta RA_CUSTOMER_TRX_LINES_N3)
+                       INDEX(rgda RA_CUST_TRX_LINE_GL_DIST_N6)
+                       INDEX(arta AR_VAT_TAX_ALL_B_U1)
+                       INDEX(fnvd FND_LOOKUP_VALUES_U1)
+                   */
+                   xih.invoice_id                                 invoice_id,             -- 一括請求書ID
+                   NULL                                           note_line_id,           -- 伝票明細No
+                   hzca.account_number                            ship_cust_code,         -- 納品先顧客コード
+                   hp_ship.party_name                             ship_cust_name,      -- 納品先顧客名
+                   hp_ship.organization_name_phonetic             ship_cust_kana_name, -- 納品先顧客カナ名
+                   xxca.sale_base_code                            sold_location_code,     -- 売上拠点コード
+                   hp_sold.party_name                             sold_location_name,     -- 売上拠点名
+                   xxca.store_code                                ship_shop_code,         -- 納品先店舗コード
+                   xxca.cust_store_name                           ship_shop_name,         -- 納品先店名
+                   xxca.vendor_machine_number                     vd_num,                 -- 自動販売機番号
+                   NVL(fnvd.attribute1, '0')                      vd_cust_type,           -- VD顧客区分
+                   DECODE(rcta.attribute7,
+                            cv_inv_hold_status_r, cv_inv_type_re
+                                                , cv_inv_type_no) inv_type,               -- 請求区分
+                   xxca.chain_store_code                          chain_shop_code,        -- チェーン店コード
+                   rgda.gl_date                                   delivery_date,          -- 納品日
+                   rlli.interface_line_attribute3                 slip_num,               -- 伝票番号
+                   NULL                                           order_num,              -- オーダーNO
+                   NULL                                           column_num,             -- コラムNo
+                   NULL                                           slip_type,              -- 伝票区分
+                   NULL                                           classify_type,          -- 分類区分
+                   NULL                                           customer_dept_code,     -- お客様部門コード
+                   NULL                                           customer_division_code, -- お客様課コード
+                   cv_sold_return_type_ar                         sold_return_type,       -- 売上返品区分
+                   NULL                                           nichiriu_by_way_type,   -- ニチリウ経由区分
+                   NULL                                           sale_type,              -- 特売区分
+                   NULL                                           direct_num,             -- 便No
+                   NULL                                           po_date,                -- 発注日
+                   rcta.trx_date                                  acceptance_date,        -- 検収日
+                   NULL                                           item_code,              -- 商品CD
+                   NULL                                           item_name,              -- 商品名
+                   NULL                                           item_kana_name,         -- 商品カナ名
+                   NULL                                           policy_group,           -- 政策群コード
+                   NULL                                           jan_code,               -- JANコード
+                   NULL                                           vessel_type,            -- 容器区分
+                   NULL                                           vessel_type_name,       -- 容器区分名
+                   NULL                                           vessel_group,           -- 容器群
+                   NULL                                           vessel_group_name,      -- 容器群名
+                   rlli.quantity_invoiced                         quantity,               -- 数量
+                   rlli.unit_selling_price                        unit_price,             -- 単価
+                   rlli.quantity_invoiced                         dlv_qty,                      -- 納品数量
+                   rlli.unit_selling_price                        dlv_unit_price,               -- 納品単価
+                   NULL                                           dlv_uom_code,                 -- 納品単位
+                   NULL                                           standard_uom_code,            -- 基準単位
+                   NULL                                           standard_unit_price_excluded, -- 税抜基準単価
+                   NULL                                           business_cost,                -- 営業原価
+                   rlta.extended_amount                           tax_amount,             -- 消費税金額
+                   arta.tax_rate                                  tax_rate,               -- 消費税率
+                   rlli.extended_amount                           ship_amount,            -- 納品金額
+                   DECODE(xih.tax_type,
+                            cv_tax_div_outtax,   rlli.extended_amount,    -- 外税　：税抜額
+                            cv_tax_div_notax,    rlli.extended_amount,    -- 非課税：税抜額
+                            cv_tax_div_inslip,   rlli.extended_amount,    -- 内税(伝票)：税抜額
+                            rlli.extended_amount + rlta.extended_amount)  -- 内税(単価)：税込額
+                                                                  sold_amount,            -- 売上金額
+                   NULL                                           red_black_slip_type,    -- 赤伝黒伝区分
+                   rcta.customer_trx_id                           trx_id,                 -- 取引ID
+                   rcta.trx_number                                trx_number,             -- 取引番号
+                   rcta.cust_trx_type_id                          cust_trx_type_id,       -- 取引タイプID
+                   rcta.batch_source_id                           batch_source_id,        -- 取引ソースID
+                   cn_created_by                                  created_by,             -- 作成者
+                   cd_creation_date                               creation_date,          -- 作成日
+                   cn_last_updated_by                             last_updated_by,        -- 最終更新者
+                   cd_last_update_date                            last_update_date,       -- 最終更新日
+                   cn_last_update_login                           last_update_login ,     -- 最終更新ログイン
+                   cn_request_id                                  request_id,             -- 要求ID
+                   cn_program_application_id                      program_application_id, -- アプリケーションID
+                   cn_program_id                                  program_id,             -- プログラムID
+                   cd_program_update_date                         program_update_date,    -- プログラム更新日
+                   xih.cutoff_date                                cutoff_date,            -- 締日
+                   NULL                                           num_of_cases,           -- ケース入数
+                   NULL                                           medium_class,           -- 受注ソース
+                   xxca.delivery_chain_code                       delivery_chain_code     -- 納品先チェーンコード
+                  ,NULL                                           bms_header_data         -- 流通ＢＭＳヘッダデータ
+            FROM   
+                   xxcfr_invoice_headers         xih,               -- アドオン請求書ヘッダ
+                   ra_customer_trx               rcta,              -- 取引テーブル
+                   hz_parties                    hp_sold,           -- パーティー(売上拠点)
+                   hz_cust_accounts              hc_sold,           -- 顧客マスタ(売上拠点)
+                   hz_parties                    hp_ship,           -- パーティー(納入先)
+                   hz_cust_accounts              hzca,              -- 顧客マスタ
+                   xxcmm_cust_accounts           xxca,              -- 顧客追加情報
+                   hz_cust_acct_sites            hzsa,              -- 顧客所在地
+                   ra_customer_trx_lines         rlli,              -- 取引明細(明細)テーブル
+                   ra_customer_trx_lines         rlta,              -- 取引明細(税額)テーブル
+                   ra_cust_trx_line_gl_dist      rgda,              -- 取引会計情報テーブル
+                   ar_vat_tax_all_b              arta,              -- 税金マスタ
+                   fnd_lookup_values             fnvd               -- クイックコード(VD顧客区分)
+            WHERE  xih.request_id            = gt_target_request_id       -- ターゲットとなる要求ID
+            AND    rcta.trx_date            <= xih.cutoff_date            -- 取引日
+            AND    rcta.bill_to_customer_id  = xih.bill_cust_account_id   -- 請求先顧客ID
+            AND    xih.org_id                = gn_org_id                      -- 組織ID
+            AND    xih.set_of_books_id       = gn_set_book_id        -- 会計帳簿ID
+            AND    rcta.attribute7 IN (cv_inv_hold_status_o,
+                                       cv_inv_hold_status_r)        -- 請求書保留ステータス
+            AND    rcta.set_of_books_id = gn_set_book_id            -- 会計帳簿ID
+            AND    rcta.batch_source_id = gt_arinput_trx_source_id  -- 取引ソース
+            AND    rcta.ship_to_customer_id = hzca.cust_account_id(+)
+            AND    xxca.sale_base_code  = hc_sold.account_number(+)  -- 売上拠点コード
+            AND    hc_sold.party_id     = hp_sold.party_id(+)        -- パーティーID
+            AND    hzca.party_id        = hp_ship.party_id           -- パーティーID
+            AND    rcta.ship_to_customer_id = xxca.customer_id(+)
+            AND    hzca.cust_account_id = hzsa.cust_account_id(+)
+            AND    rcta.customer_trx_id = rlli.customer_trx_id
+            AND    rlli.customer_trx_id = rlta.customer_trx_id(+)
+            AND    rlli.customer_trx_line_id = rlta.link_to_cust_trx_line_id(+)
+            AND    rlli.line_type = cv_line_type_line
+            AND    rlta.line_type(+) = cv_line_type_tax
+            AND    rcta.customer_trx_id = rgda.customer_trx_id
+            AND    rgda.account_class = cv_account_class_rec
+            AND    rlta.vat_tax_id = arta.vat_tax_id
+            AND    fnvd.lookup_type(+)  = cv_lookup_vd_class_type    -- 参照タイプ(汎用請求VD対象小分類)
+            AND    fnvd.language(+)     = USERENV( 'LANG' )
+            AND    fnvd.enabled_flag(+) = 'Y'
+            AND    gd_process_date BETWEEN  TRUNC( NVL( fnvd.start_date_active(+), gd_process_date ) )
+                                       AND  TRUNC( NVL( fnvd.end_date_active(+),   gd_process_date ) )
+            AND    xxca.business_low_type = fnvd.lookup_code(+)
+            AND    EXISTS (
+                     -- 請求ヘッダデータ作成パラメータ請求先顧客に紐付く納品先顧客を処理対象とする
+                     SELECT  'X'
+                     FROM    hz_cust_acct_relate    bill_hcar
+                            ,(
+                       SELECT  bill_hzca.account_number    bill_account_number
+                              ,ship_hzca.account_number    ship_account_number
+                              ,bill_hzca.cust_account_id   bill_account_id
+                              ,ship_hzca.cust_account_id   ship_account_id
+                       FROM    hz_cust_accounts          bill_hzca
+                              ,hz_cust_acct_sites        bill_hzsa
+                              ,hz_cust_site_uses         bill_hsua
+                              ,hz_cust_accounts          ship_hzca
+                              ,hz_cust_acct_sites        ship_hasa
+                              ,hz_cust_site_uses         ship_hsua
+                       WHERE   bill_hzca.cust_account_id   = bill_hzsa.cust_account_id
+                       AND     bill_hzsa.cust_acct_site_id = bill_hsua.cust_acct_site_id
+                       AND     ship_hzca.cust_account_id   = ship_hasa.cust_account_id
+                       AND     ship_hasa.cust_acct_site_id = ship_hsua.cust_acct_site_id
+                       AND     ship_hsua.bill_to_site_use_id = bill_hsua.site_use_id
+                       AND     ship_hzca.customer_class_code = '10'
+                       AND     bill_hsua.site_use_code = 'BILL_TO'
+                       AND     bill_hsua.status = 'A'
+                       AND     ship_hsua.status = 'A'
+                     )  ship_cust_info
+                     WHERE   hzca.cust_account_id = ship_cust_info.ship_account_id
+                     AND     ship_cust_info.bill_account_id = bill_hcar.cust_account_id(+)
+                     AND     bill_hcar.related_cust_account_id(+) = ship_cust_info.ship_account_id
+                     AND     bill_hcar.attribute1(+) = '1'
+                     AND     bill_hcar.status(+)     = 'A'
+                     AND     ship_cust_info.bill_account_number = gt_bill_acct_code
+                   )
+              UNION ALL
+            --請求明細データ(販売実績) 
+            SELECT /*+ FIRST_ROWS
+                       LEADING(xih rcta rlli xxeh hzca xxca hzsa xedh fdsc hp_ship hc_sold hp_sold)
+                       INDEX(xih  XXCFR_INVOICE_HEADERS_N02)
+                       INDEX(rcta XXCFR_RA_CUSTOMER_TRX_N02)
+                       INDEX(hzca HZ_CUST_ACCOUNTS_U2)
+                       INDEX(xxca XXCMM_CUST_ACCOUNTS_N06)
+                       INDEX(hp_ship HZ_PARTIES_U1)
+                       INDEX(hc_sold HZ_CUST_ACCOUNTS_U2)
+                       INDEX(hp_sold HZ_PARTIES_U1)
+                       INDEX(hzsa HZ_CUST_ACCT_SITES_N2)
+                       INDEX(rlli RA_CUSTOMER_TRX_LINES_N2)
+                       INDEX(arta AR_VAT_TAX_ALL_B_U1)
+                       INDEX(xxeh XXCOS_SALES_EXP_HEADERS_PK)
+                       INDEX(xxel XXCOS_SALES_EXP_LINES_N01)
+                       INDEX(xedh XXCOS_EDI_HEADERS_N03)
+                       INDEX(mtib MTL_SYSTEM_ITEMS_B_N1)
+                       INDEX(xxib XXCMN_IMB_N02)
+                       USE_NL(hzca xxca)
+                   */
+                   xih.invoice_id                                  invoice_id,             -- 一括請求書ID
+                   xxel.dlv_invoice_line_number                    note_line_id,            -- 伝票明細No
+                   xxeh.ship_to_customer_code                     ship_cust_code,         -- 納品先顧客コード
+                   hp_ship.party_name                              ship_cust_name,          -- 納品先顧客名
+                   hp_ship.organization_name_phonetic              ship_cust_kana_name,     -- 納品先顧客カナ名
+                   xxca.sale_base_code                             sold_location_code,      -- 売上拠点コード
+                   hp_sold.party_name                              sold_location_name,      -- 売上拠点名
+                   xxca.store_code                                 ship_shop_code,          -- 納品先店舗コード
+                   xxca.cust_store_name                            ship_shop_name,          -- 納品先店名
+                   xxca.vendor_machine_number                      vd_num,                  -- 自動販売機番号
+                   NVL(fvdt.attribute1, '0')                       vd_cust_type,            -- VD顧客区分
+                   DECODE(rcta.attribute7,
+                            cv_inv_hold_status_r, cv_inv_type_re
+                                                , cv_inv_type_no)  inv_type,                -- 請求区分
+                   xxca.chain_store_code                           chain_shop_code,         -- チェーン店コード
+                   xxeh.delivery_date                              delivery_date,           -- 納品日
+                   xxeh.dlv_invoice_number                         slip_num,                -- 伝票番号
+                   xxeh.order_invoice_number                       order_num,               -- オーダーNO
+                   xxel.column_no                                  column_num,              -- コラムNo
+                   xxeh.invoice_class                              slip_type,               -- 伝票区分
+                   xxeh.invoice_classification_code                classify_type,           -- 分類区分
+                   xedh.other_party_department_code                customer_dept_code,      -- お客様部門コード
+                   xedh.delivery_to_section_code                   customer_division_code,  -- お客様課コード
+                   fdsc.attribute1                                 sold_return_type,        -- 売上返品区分
+                   NULL                                            nichiriu_by_way_type,    -- ニチリウ経由区分
+                   fscl.attribute8                                 sale_type,               -- 特売区分
+                   xedh.opportunity_no                             direct_num,              -- 便No
+                   xedh.order_date                                 po_date,                 -- 発注日
+                   rcta.trx_date                                   acceptance_date,         -- 検収日
+                   xxel.item_code                                  item_code,               -- 商品CD
+                   mtib.description                                item_name,               -- 商品名
+                   xxmb.item_name_alt                              item_kana_name,          -- 商品カナ名
+                   icmb.attribute2                                 policy_group,            -- 政策群コード
+                   icmb.attribute21                                jan_code,                -- JANコード
+                   fnlv.attribute1                                 vessel_type,             -- 容器区分
+                   fykn.meaning                                    vessel_type_name,        -- 容器区分名
+                   xxib.vessel_group                               vessel_group,            -- 容器群
+                   fnlv.meaning                                    vessel_group_name,       -- 容器群名
+                   xxel.standard_qty                               quantity,                -- 数量(基準数量)
+                   xxel.standard_unit_price                        unit_price,              -- 単価(基準単価)
+                   xxel.dlv_qty                                    dlv_qty,                 -- 納品数量
+                   xxel.dlv_unit_price                             dlv_unit_price,               -- 納品単価
+                   xxel.dlv_uom_code                               dlv_uom_code,                 -- 納品単位
+                   xxel.standard_uom_code                          standard_uom_code,            -- 基準単位
+                   xxel.standard_unit_price_excluded               standard_unit_price_excluded, -- 税抜基準単価
+                   xxel.business_cost                              business_cost,                -- 営業原価
+                   xxel.tax_amount                                 tax_amount,              -- 消費税金額
+                   xxeh.tax_rate                                   tax_rate,                -- 消費税率
+                   xxel.pure_amount                                ship_amount,             -- 納品金額
+                   xxel.sale_amount                                sold_amount,             -- 売上金額
+                   NULL                                            red_black_slip_type,     -- 赤伝黒伝区分
+                   rcta.customer_trx_id                            trx_id,                  -- 取引ID
+                   rcta.trx_number                                 trx_number,              -- 取引番号
+                   rcta.cust_trx_type_id                           cust_trx_type_id,        -- 取引タイプID
+                   rcta.batch_source_id                            batch_source_id,         -- 取引ソースID
+                   cn_created_by                                   created_by,              -- 作成者
+                   cd_creation_date                                creation_date,           -- 作成日
+                   cn_last_updated_by                              last_updated_by,         -- 最終更新者
+                   cd_last_update_date                             last_update_date,        -- 最終更新日
+                   cn_last_update_login                            last_update_login ,      -- 最終更新ログイン
+                   cn_request_id                                   request_id,              -- 要求ID
+                   cn_program_application_id                       program_application_id,  -- アプリケーションID
+                   cn_program_id                                   program_id,              -- プログラムID
+                   cd_program_update_date                          program_update_date,     -- プログラム更新日
+                   xih.cutoff_date                                 cutoff_date,             -- 締日
+                   icmb.attribute11                                num_of_cases,            -- ケース入数
+                   NVL( xedh.medium_class , cv_medium_class_mnl)   medium_class,            -- 受注ソース
+                   xxca.delivery_chain_code                        delivery_chain_code      -- 納品先チェーンコード
+                  ,xedh.bms_header_data                            bms_header_data          -- 流通ＢＭＳヘッダデータ
+            FROM   
+                   xxcfr_invoice_headers         xih,            -- アドオン請求書ヘッダ
+                   ra_customer_trx               rcta,           -- 取引テーブル
+                   hz_parties                    hp_sold,        -- パーティー(売上拠点)
+                   hz_cust_accounts              hc_sold,        -- 顧客マスタ(売上拠点)
+                   hz_parties                    hp_ship,        -- パーティー(納入先)
+                   hz_cust_accounts              hzca,           -- 顧客マスタ
+                   xxcmm_cust_accounts           xxca,           -- 顧客追加情報
+                   hz_cust_acct_sites            hzsa,           -- 顧客所在地
+                   ra_customer_trx_lines         rlli,           -- 取引明細テーブル
+                   xxcos_sales_exp_headers       xxeh,           -- 販売実績ヘッダテーブル
+                   xxcos_sales_exp_lines         xxel,           -- 販売実績明細テーブル
+                   xxcos_edi_headers             xedh,           -- EDIヘッダ情報テーブル
+                   mtl_system_items_b            mtib,           -- 品目マスタ
+                   xxcmm_system_items_b          xxib,           -- Disc品目アドオン
+                   fnd_lookup_values             fnlv,           -- クイックコード(容器群)
+                   fnd_lookup_values             fykn,           -- クイックコード(容器区分)
+                   fnd_lookup_values             fdsc,           -- クイックコード(納品伝票区分)
+                   fnd_lookup_values             fscl,           -- クイックコード(売上区分)
+                   fnd_lookup_values             fvdt,           -- クイックコード(VD顧客区分)
+                   ic_item_mst_b                 icmb,           -- OPM品目マスタ
+                   xxcmn_item_mst_b              xxmb            -- OPM品目アドオン
+            WHERE  xih.request_id            = gt_target_request_id       -- ターゲットとなる要求ID
+            AND    rcta.trx_date            <= xih.cutoff_date            -- 取引日
+            AND    rcta.bill_to_customer_id  = xih.bill_cust_account_id   -- 請求先顧客ID
+            AND    xih.org_id                = gn_org_id                      -- 組織ID
+            AND    xih.set_of_books_id       = gn_set_book_id        -- 会計帳簿ID
+            AND    rcta.attribute7 IN (cv_inv_hold_status_o,
+                                       cv_inv_hold_status_r)         -- 請求書保留ステータス
+            AND    rcta.set_of_books_id = gn_set_book_id             -- 会計帳簿ID
+            AND    rcta.batch_source_id != gt_arinput_trx_source_id  -- 取引ソース(AR部門入力以外)
+            AND    xxeh.ship_to_customer_code = hzca.account_number
+            AND    xxca.sale_base_code  = hc_sold.account_number(+)  -- 売上拠点コード
+            AND    hc_sold.party_id     = hp_sold.party_id(+)        -- パーティーID
+            AND    hzca.party_id        = hp_ship.party_id           -- パーティーID
+            AND    xxeh.ship_to_customer_code = xxca.customer_code
+            AND    hzca.cust_account_id = hzsa.cust_account_id
+            AND    rcta.customer_trx_id = rlli.customer_trx_id
+            AND    rlli.line_type = cv_line_type_line
+            AND    rlli.interface_line_attribute7 = xxeh.sales_exp_header_id  -- 販売実績ヘッダ内部ID
+            AND    xxeh.sales_exp_header_id = xxel.sales_exp_header_id
+            AND   ((rlli.interface_line_attribute8 IS NULL)
+               OR  (rlli.interface_line_attribute8 = xxel.goods_prod_cls))    -- 品目区分
+            AND    xxeh.order_connection_number = xedh.order_connection_number(+)
+            AND    xxel.item_code = mtib.segment1(+)
+            AND    mtib.organization_id(+) = gt_mtl_organization_id  -- 品目マスタ組織ID
+            AND    fdsc.lookup_type(+)  = cv_lookup_slip_class    -- 参照タイプ(納品伝票区分)
+            AND    fdsc.language(+)     = USERENV( 'LANG' )
+            AND    fdsc.enabled_flag(+) = 'Y'
+            AND    gd_process_date BETWEEN  TRUNC( NVL( fdsc.start_date_active(+), gd_process_date ) )
+                                       AND  TRUNC( NVL( fdsc.end_date_active(+),   gd_process_date ) )
+            AND    xxeh.dlv_invoice_class = fdsc.lookup_code(+)
+            AND    fscl.lookup_type(+)  = cv_lookup_sale_class    -- 参照タイプ(売上区分)
+            AND    fscl.language(+)     = USERENV( 'LANG' )
+            AND    fscl.enabled_flag(+) = 'Y'
+            AND    gd_process_date BETWEEN  TRUNC( NVL( fscl.start_date_active(+), gd_process_date ) )
+                                       AND  TRUNC( NVL( fscl.end_date_active(+),   gd_process_date ) )
+            AND    xxel.sales_class = fscl.lookup_code(+)
+            AND    mtib.segment1 = icmb.item_no(+)
+            AND    icmb.item_id  = xxmb.item_id(+)
+            AND    xxmb.active_flag(+) = 'Y'
+            AND    xih.cutoff_date >= NVL(TRUNC(xxmb.start_date_active), xih.cutoff_date)
+            AND    xih.cutoff_date <= NVL(xxmb.end_date_active, xih.cutoff_date)
+            AND    icmb.item_id = xxib.item_id(+)
+            AND    fnlv.lookup_type(+)  = cv_lookup_itm_yokigun   -- 参照タイプ(容器群)
+            AND    fnlv.language(+)     = USERENV( 'LANG' )
+            AND    fnlv.enabled_flag(+) = 'Y'
+            AND    gd_process_date BETWEEN  TRUNC( NVL( fnlv.start_date_active(+), gd_process_date ) )
+                                       AND  TRUNC( NVL( fnlv.end_date_active(+),   gd_process_date ) )
+            AND    xxib.vessel_group = fnlv.lookup_code(+)
+            AND    fykn.lookup_type(+)  = cv_lookup_itm_yokikubun   -- 参照タイプ(容器区分)
+            AND    fykn.language(+)     = USERENV( 'LANG' )
+            AND    fykn.enabled_flag(+) = 'Y'
+            AND    gd_process_date BETWEEN  TRUNC( NVL( fykn.start_date_active(+), gd_process_date ) )
+                                       AND  TRUNC( NVL( fykn.end_date_active(+),   gd_process_date ) )
+            AND    fnlv.attribute1 = fykn.lookup_code(+)
+            AND    fvdt.lookup_type(+)  = cv_lookup_vd_class_type    -- 参照タイプ(汎用請求VD対象小分類)
+            AND    fvdt.language(+)     = USERENV( 'LANG' )
+            AND    fvdt.enabled_flag(+) = 'Y'
+            AND    gd_process_date BETWEEN  TRUNC( NVL( fvdt.start_date_active(+), gd_process_date ) )
+                                       AND  TRUNC( NVL( fvdt.end_date_active(+),   gd_process_date ) )
+            AND    xxca.business_low_type = fvdt.lookup_code(+)
+            AND    EXISTS (
+                     -- 請求ヘッダデータ作成パラメータ請求先顧客に紐付く納品先顧客を処理対象とする
+                     SELECT  'X'
+                     FROM    hz_cust_acct_relate    bill_hcar
+                            ,(
+                       SELECT  bill_hzca.account_number    bill_account_number
+                              ,ship_hzca.account_number    ship_account_number
+                              ,bill_hzca.cust_account_id   bill_account_id
+                              ,ship_hzca.cust_account_id   ship_account_id
+                       FROM    hz_cust_accounts          bill_hzca
+                              ,hz_cust_acct_sites        bill_hzsa
+                              ,hz_cust_site_uses         bill_hsua
+                              ,hz_cust_accounts          ship_hzca
+                              ,hz_cust_acct_sites        ship_hasa
+                              ,hz_cust_site_uses         ship_hsua
+                       WHERE   bill_hzca.cust_account_id   = bill_hzsa.cust_account_id
+                       AND     bill_hzsa.cust_acct_site_id = bill_hsua.cust_acct_site_id
+                       AND     ship_hzca.cust_account_id   = ship_hasa.cust_account_id
+                       AND     ship_hasa.cust_acct_site_id = ship_hsua.cust_acct_site_id
+                       AND     ship_hsua.bill_to_site_use_id = bill_hsua.site_use_id
+                       AND     ship_hzca.customer_class_code = '10'
+                       AND     bill_hsua.site_use_code = 'BILL_TO'
+                       AND     bill_hsua.status = 'A'
+                       AND     ship_hsua.status = 'A'
+                     )  ship_cust_info
+                     WHERE   hzca.cust_account_id = ship_cust_info.ship_account_id
+                     AND     ship_cust_info.bill_account_id = bill_hcar.cust_account_id(+)
+                     AND     bill_hcar.related_cust_account_id(+) = ship_cust_info.ship_account_id
+                     AND     bill_hcar.attribute1(+) = '1'
+                     AND     bill_hcar.status(+)     = 'A'
+                     AND     ship_cust_info.bill_account_number = gt_bill_acct_code
+                   )
+          )                inlv
+-- Modify 2013.01.17 Ver1.130 End
+    ;
 --
     -- *** ローカル・レコード ***
 -- Modify 2009.08.03 Ver1.4 Start
@@ -1604,6 +2128,11 @@ AS
                            INDEX BY PLS_INTEGER;    -- メインカーソル用
   lt_main_data_tab  get_main_data_ttype;            -- メインカーソル用
 -- Modify 2009.08.03 Ver1.4 End
+-- Modify 2013.01.17 Ver1.130 Start
+  TYPE get_main_data_manual_ttype IS TABLE OF main_data_manual_cur%ROWTYPE 
+                           INDEX BY PLS_INTEGER;          -- 手動実行メインカーソル用
+  lt_main_data_manual_tab  get_main_data_manual_ttype;    -- 手動実行メインカーソル用
+-- Modify 2013.01.17 Ver1.130 End
 --
     -- *** ローカル例外 ***
 --
@@ -1612,9 +2141,16 @@ AS
 --##################  固定ステータス初期化部 START   ###################
 --
     ov_retcode := cv_status_normal;
+-- Modify 2013.01.17 Ver1.130 Start
 -- Modify 2009.08.03 Ver1.4 Start
-    lt_main_data_tab.DELETE;  -- メインカーソル用
+--    lt_main_data_tab.DELETE;  -- メインカーソル用
 -- Modify 2009.08.03 Ver1.4 End
+    IF (gv_batch_on_judge_type = cv_judge_type_batch) THEN
+      lt_main_data_tab.DELETE;  -- メインカーソル用
+    ELSE
+      lt_main_data_manual_tab.DELETE;  -- メインカーソル用(手動実行)
+    END IF;
+-- Modify 2013.01.17 Ver1.130 End
 --
 --###########################  固定部 END   ############################
 --
@@ -2108,6 +2644,10 @@ AS
 --        RAISE global_process_expt;
 --    END;
 --
+-- Modify 2013.01.17 Ver1.130 Start
+    --夜間手動判断区分の判断(夜間ジョブと手動実行で分割)
+    IF (gv_batch_on_judge_type = cv_judge_type_batch) THEN
+-- Modify 2013.01.17 Ver1.130 End
     OPEN main_data_cur;
 --
     <<main_loop>>
@@ -2155,6 +2695,58 @@ AS
     CLOSE main_data_cur;
 --
 -- Modify 2009.08.03 Ver1.4 End
+-- Modify 2013.01.17 Ver1.130 Start
+    --手動実行用
+    ELSE
+--
+    OPEN main_data_manual_cur;
+--
+    <<main_manual_loop>>
+    LOOP
+--
+      -- 対象データを一括取得(リミット単位)
+      FETCH main_data_manual_cur BULK COLLECT INTO lt_main_data_manual_tab LIMIT gn_bulk_limit;
+--
+      -- 対象データがなくなったら終了
+      EXIT WHEN lt_main_data_manual_tab.COUNT < 1;
+--
+      BEGIN
+--
+        -- 対象データを一括登録(リミット単位)
+        FORALL ln_loop_cnt IN lt_main_data_manual_tab.FIRST..lt_main_data_manual_tab.LAST
+--
+          INSERT INTO xxcfr_invoice_lines
+          VALUES      lt_main_data_manual_tab(ln_loop_cnt)
+         ;
+--
+      --請求明細データ登録件数カウント
+      gn_target_line_cnt := gn_target_line_cnt + SQL%ROWCOUNT;
+--
+      EXCEPTION
+      -- *** OTHERS例外ハンドラ ***
+        WHEN OTHERS THEN
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                  iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
+                                 ,iv_name         => cv_msg_cfr_00016      -- データ挿入エラー
+                                 ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
+                                 ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxil))
+                                                        -- 請求明細情報テーブル
+                               ,1
+                               ,5000);
+          lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+          RAISE global_process_expt;
+      END;
+--
+      -- 変数を初期化
+      lt_main_data_manual_tab.DELETE;
+--
+    END LOOP main_manual_loop;
+--
+    -- カーソルクローズ
+    CLOSE main_data_manual_cur;
+--
+    END IF;
+-- Modify 2013.01.17 Ver1.130 End
 --
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
@@ -2162,6 +2754,10 @@ AS
 -- Modify 2009.08.03 Ver1.4 Start
       IF ( main_data_cur%ISOPEN ) THEN
         CLOSE main_data_cur;
+-- Modify 2013.01.17 Ver1.130 Start
+      ELSIF ( main_data_manual_cur%ISOPEN ) THEN
+        CLOSE main_data_manual_cur;
+-- Modify 2013.01.17 Ver1.130 End
       END IF;
 -- Modify 2009.08.03 Ver1.4 End
       ov_errmsg  := lv_errmsg;
@@ -2172,6 +2768,10 @@ AS
 -- Modify 2009.08.03 Ver1.4 Start
       IF ( main_data_cur%ISOPEN ) THEN
         CLOSE main_data_cur;
+-- Modify 2013.01.17 Ver1.130 Start
+      ELSIF ( main_data_manual_cur%ISOPEN ) THEN
+        CLOSE main_data_manual_cur;
+-- Modify 2013.01.17 Ver1.130 End
       END IF;
 -- Modify 2009.08.03 Ver1.4 End
       ov_errmsg  := lv_errmsg;
@@ -2182,6 +2782,10 @@ AS
 -- Modify 2009.08.03 Ver1.4 Start
       IF ( main_data_cur%ISOPEN ) THEN
         CLOSE main_data_cur;
+-- Modify 2013.01.17 Ver1.130 Start
+      ELSIF ( main_data_manual_cur%ISOPEN ) THEN
+        CLOSE main_data_manual_cur;
+-- Modify 2013.01.17 Ver1.130 End
       END IF;
 -- Modify 2009.08.03 Ver1.4 End
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
@@ -2191,6 +2795,10 @@ AS
 -- Modify 2009.08.03 Ver1.4 Start
       IF ( main_data_cur%ISOPEN ) THEN
         CLOSE main_data_cur;
+-- Modify 2013.01.17 Ver1.130 Start
+      ELSIF ( main_data_manual_cur%ISOPEN ) THEN
+        CLOSE main_data_manual_cur;
+-- Modify 2013.01.17 Ver1.130 End
       END IF;
 -- Modify 2009.08.03 Ver1.4 End
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
@@ -3634,6 +4242,76 @@ AS
 -- Modify 2009.08.03 Ver1.4 End
     ;
 --
+-- Modify 2013.01.17 Ver1.130 Start
+    -- 取引テーブルロックカーソル(手動実行用)
+    CURSOR get_manual_cust_trx_lock_cur
+    IS
+      SELECT /*+ LEADING(xiit)
+                 USE_NL(rcta)
+                 INDEX(xxih XXCFR_INVOICE_HEADERS_N02)
+                 INDEX(rcta XXCFR_RA_CUSTOMER_TRX_N02)
+             */
+             rcta.customer_trx_id    customer_trx_id
+      FROM   ra_customer_trx_all     rcta,                -- 取引テーブル
+             xxcfr_invoice_headers   xxih,                -- 請求ヘッダ情報テーブル
+             xxcfr_inv_info_transfer xiit                 -- 請求情報引渡テーブル
+      WHERE  rcta.set_of_books_id = xxih.set_of_books_id           -- 会計帳簿ID
+      AND    rcta.org_id = xxih.org_id                             -- 組織ID
+      AND    rcta.bill_to_customer_id = xxih.bill_cust_account_id  -- 請求先顧客ID
+      AND    rcta.trx_date <= xxih.cutoff_date                     -- 取引日
+      AND    rcta.attribute7 IN (cv_inv_hold_status_o,
+                                 cv_inv_hold_status_r)             -- 請求書保留ステータス
+      AND    xxih.request_id = xiit.target_request_id              -- 要求ID
+      AND ( ( ( gv_batch_on_judge_type  = cv_judge_type_batch ) -- 夜間手動判断区分が'2'(夜間)
+      AND     ( xxih.parallel_type      = gn_parallel_type ) )  -- パラレル実行区分が一致
+      OR    ( ( gv_batch_on_judge_type != cv_judge_type_batch ) -- 夜間手動判断区分が'0'(手動)
+      AND     ( xxih.parallel_type     IS NULL ) ) )            -- パラレル実行区分がNULL
+      AND  ( 
+             -- 請求ヘッダデータ作成パラメータ請求先顧客に紐付く納品先顧客を処理対象とする
+             ( EXISTS (
+                 SELECT  'X'
+                 FROM    hz_cust_acct_relate    bill_hcar
+                        ,(
+                   SELECT  bill_hzca.account_number    bill_account_number
+                          ,ship_hzca.account_number    ship_account_number
+                          ,bill_hzca.cust_account_id   bill_account_id
+                          ,ship_hzca.cust_account_id   ship_account_id
+                   FROM    hz_cust_accounts          bill_hzca
+                          ,hz_cust_acct_sites        bill_hzsa
+                          ,hz_cust_site_uses         bill_hsua
+                          ,hz_cust_accounts          ship_hzca
+                          ,hz_cust_acct_sites        ship_hasa
+                          ,hz_cust_site_uses         ship_hsua
+                   WHERE   bill_hzca.cust_account_id   = bill_hzsa.cust_account_id
+                   AND     bill_hzsa.cust_acct_site_id = bill_hsua.cust_acct_site_id
+                   AND     ship_hzca.cust_account_id   = ship_hasa.cust_account_id
+                   AND     ship_hasa.cust_acct_site_id = ship_hsua.cust_acct_site_id
+                   AND     ship_hsua.bill_to_site_use_id = bill_hsua.site_use_id
+                   AND     ship_hzca.customer_class_code = '10'
+                   AND     bill_hsua.site_use_code = 'BILL_TO'
+                   AND     bill_hsua.status = 'A'
+                   AND     ship_hsua.status = 'A'
+                 )  ship_cust_info
+                 WHERE   rcta.ship_to_customer_id = ship_cust_info.ship_account_id
+                 AND     ship_cust_info.bill_account_id = bill_hcar.cust_account_id(+)
+                 AND     bill_hcar.related_cust_account_id(+) = ship_cust_info.ship_account_id
+                 AND     bill_hcar.attribute1(+) = '1'
+                 AND     bill_hcar.status(+)     = 'A'
+               AND     ship_cust_info.bill_account_number = gt_bill_acct_code )
+             )
+             -- または、請求ヘッダデータ作成パラメータ請求先顧客が14番顧客の単独で存在する場合は処理対象とする
+         OR ( EXISTS (
+                SELECT  'X'
+                FROM    hz_cust_accounts          bill_hzca
+                WHERE   bill_hzca.cust_account_id = rcta.bill_to_customer_id
+                AND     bill_hzca.account_number = gt_bill_acct_code
+                AND     rcta.ship_to_customer_id IS NULL )
+            )
+         )
+      FOR UPDATE OF rcta.customer_trx_id NOWAIT -- 取引ヘッダテーブルのみをロック
+    ;
+-- Modify 2013.01.17 Ver1.130 End
+--
     TYPE get_upd_trx_id_ttype   IS TABLE OF ra_customer_trx_all.customer_trx_id%TYPE
                                             INDEX BY PLS_INTEGER;
     lt_upd_trx_id_tab           get_upd_trx_id_ttype;  -- 取引テーブル内部ID
@@ -3661,7 +4339,10 @@ AS
     --==============================================================
     -- 取引テーブルロック
 --
-    -- 請求ヘッダ情報テーブルロックカーソルオープン
+-- Modify 2013.01.17 Ver1.130 Start
+    --夜間手動判断区分の判断（夜間バッチと手動実行で分割）
+    IF (gv_batch_on_judge_type = cv_judge_type_batch) THEN
+-- Modify 2013.01.17 Ver1.130 Start
     OPEN get_cust_trx_lock_cur;
 --
 -- Modify 2009.08.03 Ver1.4 Start
@@ -3760,6 +4441,61 @@ AS
     CLOSE get_cust_trx_lock_cur;
 --
 -- Modify 2009.08.03 Ver1.4 End
+-- Modify 2013.01.17 Ver1.130 Start
+    --手動実行用
+    ELSE
+    -- 請求ヘッダ情報テーブルロックカーソルオープン
+    OPEN get_manual_cust_trx_lock_cur;
+--
+    <<main_manual_loop>>
+    LOOP
+      -- 対象データを一括取得(リミット単位)
+      FETCH get_manual_cust_trx_lock_cur BULK COLLECT INTO lt_upd_trx_id_tab LIMIT gn_bulk_limit;
+      -- 取得できなくなったら終了
+      EXIT WHEN lt_upd_trx_id_tab.COUNT < 1;
+      --
+      BEGIN
+        FORALL ln_loop_cnt IN lt_upd_trx_id_tab.FIRST..lt_upd_trx_id_tab.LAST
+          UPDATE ra_customer_trx_all rcta
+          SET    rcta.attribute7      = cv_inv_hold_status_p    -- 請求書保留ステータス(印刷済)
+                ,rcta.last_updated_by        = cn_last_updated_by         --最終更新者
+                ,rcta.last_update_date       = cd_last_update_date        --最終更新日
+                ,rcta.last_update_login      = cn_last_update_login       --最終更新ログイン
+                ,rcta.request_id             = cn_request_id              --要求ID
+                ,rcta.program_application_id = cn_program_application_id  --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+                ,rcta.program_id             = cn_program_id              --コンカレントプログラ
+                ,rcta.program_update_date    = cd_program_update_date     --ﾌﾟﾛｸﾞﾗﾑ更新日
+          WHERE  rcta.customer_trx_id = lt_upd_trx_id_tab(ln_loop_cnt)
+            ;
+--
+      EXCEPTION
+        -- *** OTHERS例外ハンドラ ***
+        WHEN OTHERS THEN
+          lt_look_dict_word := xxcfr_common_pkg.lookup_dictionary(
+                                     iv_loopup_type_prefix => cv_msg_kbn_cfr,
+                                     iv_keyword            => cv_dict_cfr_00303011);
+                                                              -- 取引テーブル
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                  iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
+                                 ,iv_name         => cv_msg_cfr_00017      -- テーブル更新エラー
+                                 ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
+                                 ,iv_token_value1 => lt_look_dict_word)    -- 取引テーブル
+                               ,1
+                               ,5000);
+          lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+          RAISE global_process_expt;
+      END;
+--
+    -- 初期化
+    lt_upd_trx_id_tab.DELETE;
+--
+    END LOOP main_manual_loop;
+--
+    -- カーソルクローズ
+    CLOSE get_manual_cust_trx_lock_cur;
+--
+    END IF;
+-- Modify 2013.01.17 Ver1.130 End
 --
   EXCEPTION
     -- *** テーブルロックエラーハンドラ ***
@@ -3767,6 +4503,10 @@ AS
 -- Modify 2009.08.03 Ver1.4 Start
       IF ( get_cust_trx_lock_cur%ISOPEN ) THEN
         CLOSE get_cust_trx_lock_cur;
+-- Modify 2013.01.17 Ver1.130 Start
+      ELSIF ( get_manual_cust_trx_lock_cur%ISOPEN ) THEN
+        CLOSE get_manual_cust_trx_lock_cur;
+-- Modify 2013.01.17 Ver1.130 End
       END IF;
 -- Modify 2009.08.03 Ver1.4 End
       lt_look_dict_word := xxcfr_common_pkg.lookup_dictionary(
@@ -3789,6 +4529,10 @@ AS
 -- Modify 2009.08.03 Ver1.4 Start
       IF ( get_cust_trx_lock_cur%ISOPEN ) THEN
         CLOSE get_cust_trx_lock_cur;
+-- Modify 2013.01.17 Ver1.130 Start
+      ELSIF ( get_manual_cust_trx_lock_cur%ISOPEN ) THEN
+        CLOSE get_manual_cust_trx_lock_cur;
+-- Modify 2013.01.17 Ver1.130 End
       END IF;
 -- Modify 2009.08.03 Ver1.4 End
       ov_errmsg  := lv_errmsg;
@@ -3799,6 +4543,10 @@ AS
 -- Modify 2009.08.03 Ver1.4 Start
       IF ( get_cust_trx_lock_cur%ISOPEN ) THEN
         CLOSE get_cust_trx_lock_cur;
+-- Modify 2013.01.17 Ver1.130 Start
+      ELSIF ( get_manual_cust_trx_lock_cur%ISOPEN ) THEN
+        CLOSE get_manual_cust_trx_lock_cur;
+-- Modify 2013.01.17 Ver1.130 End
       END IF;
 -- Modify 2009.08.03 Ver1.4 End
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
@@ -3807,6 +4555,308 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END update_trx_status;
+--
+-- Modify 2013.01.17 Ver1.130 Start
+--
+  /**********************************************************************************
+   * Procedure Name   : get_update_target_bill
+   * Description      : 請求更新対象取得処理(A-10)
+   ***********************************************************************************/
+  PROCEDURE get_update_target_bill(
+    ov_target_trx_cnt       OUT NUMBER,       -- 対象取引件数
+    ov_errbuf               OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode              OUT VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg               OUT VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_update_target_bill'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+    --対象請求書情報データロックカーソル
+    CURSOR lock_target_inv_cur
+    IS
+      SELECT  /*+ INDEX(xxih XXCFR_INVOICE_HEADERS_N02) */
+              xxih.invoice_id         invoice_id    -- 請求書ID
+      FROM    xxcfr_invoice_headers xxih            -- 請求ヘッダ情報テーブル
+      WHERE   xxih.request_id = gt_target_request_id   -- コンカレント要求ID
+      FOR UPDATE NOWAIT
+      ;
+--
+    --対象請求書情報取得カーソル
+    CURSOR get_target_inv_cur
+    IS
+      SELECT  /*+ INDEX(xxih XXCFR_INVOICE_HEADERS_N02) */
+              xxih.invoice_id         invoice_id    -- 請求書ID
+             ,SUM(NVL(xxil.ship_amount, 0))   ship_amount   -- 納品金額
+             ,SUM(NVL(xxil.tax_amount, 0))    tax_amount    -- 消費税金額
+             ,SUM(NVL(xxil.ship_amount, 0) + NVL(xxil.tax_amount, 0)) sold_amount  -- 売上金額
+      FROM    xxcfr_invoice_headers xxih            -- 請求ヘッダ情報テーブル
+             ,xxcfr_invoice_lines   xxil            -- 請求明細情報テーブル
+      WHERE   xxih.request_id = gt_target_request_id   -- コンカレント要求ID
+      AND     xxih.invoice_id = xxil.invoice_id
+      GROUP BY xxih.invoice_id
+      ;
+--
+    -- *** ローカル・レコード ***
+--
+    -- *** ローカル例外 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ローカル変数の初期化
+    ov_target_trx_cnt := 0;
+--
+    --==============================================================
+    --請求テーブルロック情報取得処理
+    --==============================================================
+    BEGIN
+      OPEN lock_target_inv_cur;
+--
+      CLOSE lock_target_inv_cur;
+--
+    EXCEPTION
+      -- *** テーブルロックエラーハンドラ ***
+      WHEN lock_expt THEN
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
+                               ,iv_name         => cv_msg_cfr_00003      -- テーブルロックエラー
+                               ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
+                               ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxih))
+                                                                         -- 請求ヘッダ情報テーブル
+                             ,1
+                             ,5000);
+        lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+        RAISE global_process_expt;
+    END;
+--
+    --==============================================================
+    --請求ヘッダ情報テーブル更新処理
+    --==============================================================
+    --対象請求書情報取得カーソルオープン
+    OPEN get_target_inv_cur;
+--
+-- データの一括取得
+    FETCH get_target_inv_cur 
+    BULK COLLECT INTO gt_get_inv_id_tab
+                     ,gt_get_amt_no_tax_tab
+                     ,gt_get_tax_amt_sum_tab
+                     ,gt_get_amd_inc_tax_tab
+    ;
+--
+    -- 処理件数のセット
+    ov_target_trx_cnt := gt_get_inv_id_tab.COUNT;
+--
+    --対象請求書情報取得カーソルクローズ
+    CLOSE get_target_inv_cur;
+--
+  EXCEPTION
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_update_target_bill;
+--
+--
+  /**********************************************************************************
+   * Procedure Name   : update_bill_amount
+   * Description      : 請求金額更新処理(A-11)
+   ***********************************************************************************/
+  PROCEDURE update_bill_amount(
+    in_invoice_id           IN  NUMBER,       -- 請求書ID
+    in_amt_no_tax           IN  NUMBER,       -- 納品金額
+    in_tax_amt_sum          IN  NUMBER,       -- 消費税金額
+    in_amd_inc_tax          IN  NUMBER,       -- 売上金額
+    ov_errbuf               OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode              OUT VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg               OUT VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_bill_amount'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_target_cnt       NUMBER;         -- 対象件数
+    lt_look_dict_word   fnd_lookup_values_vl.meaning%TYPE;
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- *** ローカル例外 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ローカル変数の初期化
+    ln_target_cnt     := 0;
+--
+    -- 請求作成対象データ取得
+    -- 請求ヘッダ情報と請求明細情報を作成せずに、明細データ削除のみを実施しているパターンがある
+    -- 上記の場合は請求ヘッダ更新として件数をカウントアップする必要がある為、取引データから請求作成対象があるか判断する
+    BEGIN
+--
+      SELECT COUNT('X')               cnt    -- レコード件数
+      INTO   ln_target_cnt
+      FROM   ra_customer_trx_all      rcta
+           , xxcfr_invoice_headers    xxih
+      WHERE  xxih.invoice_id           = in_invoice_id                        -- 請求書ID
+      AND    rcta.trx_date            <= xxih.cutoff_date                     -- 締日
+      AND    rcta.bill_to_customer_id  = xxih.bill_cust_account_id            -- 請求先顧客ID
+      AND    rcta.attribute7 IN (cv_inv_hold_status_o, cv_inv_hold_status_r)  -- 請求書保留ステータス
+      AND    xxih.org_id          = rcta.org_id                               -- 組織ID
+      AND    xxih.set_of_books_id = rcta.set_of_books_id                      -- 会計帳簿ID
+      AND    EXISTS (
+               SELECT  'X'
+               FROM    hz_cust_acct_relate    bill_hcar
+                      ,(
+                 SELECT  bill_hzca.account_number    bill_account_number
+                        ,ship_hzca.account_number    ship_account_number
+                        ,bill_hzca.cust_account_id   bill_account_id
+                        ,ship_hzca.cust_account_id   ship_account_id
+                 FROM    hz_cust_accounts          bill_hzca
+                        ,hz_cust_acct_sites        bill_hzsa
+                        ,hz_cust_site_uses         bill_hsua
+                        ,hz_cust_accounts          ship_hzca
+                        ,hz_cust_acct_sites        ship_hasa
+                        ,hz_cust_site_uses         ship_hsua
+                 WHERE   bill_hzca.cust_account_id   = bill_hzsa.cust_account_id
+                 AND     bill_hzsa.cust_acct_site_id = bill_hsua.cust_acct_site_id
+                 AND     ship_hzca.cust_account_id   = ship_hasa.cust_account_id
+                 AND     ship_hasa.cust_acct_site_id = ship_hsua.cust_acct_site_id
+                 AND     ship_hsua.bill_to_site_use_id = bill_hsua.site_use_id
+                 AND     ship_hzca.customer_class_code = '10'
+                 AND     bill_hsua.site_use_code = 'BILL_TO'
+                 AND     bill_hsua.status = 'A'
+                 AND     ship_hsua.status = 'A'
+               )  ship_cust_info
+               WHERE   rcta.ship_to_customer_id = ship_cust_info.ship_account_id
+               AND     ship_cust_info.bill_account_id = bill_hcar.cust_account_id(+)
+               AND     bill_hcar.related_cust_account_id(+) = ship_cust_info.ship_account_id
+               AND     bill_hcar.attribute1(+) = '1'
+               AND     bill_hcar.status(+)     = 'A'
+               AND     ship_cust_info.bill_account_number = gt_bill_acct_code
+               )
+      ;
+--
+    EXCEPTION
+    -- *** OTHERS例外ハンドラ ***
+      WHEN OTHERS THEN
+        lt_look_dict_word := xxcfr_common_pkg.lookup_dictionary(
+                               iv_loopup_type_prefix => cv_msg_kbn_cfr,         -- 'XXCFR'
+                               iv_keyword            => cv_dict_cfr_00302009);  -- 対象取引データ件数
+        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
+                               iv_application  => cv_msg_kbn_cfr,               -- 'XXCFR'
+                               iv_name         => cv_msg_cfr_00015,             -- データ取得エラー
+                               iv_token_name1  => cv_tkn_data,
+                               iv_token_value1 => lt_look_dict_word),
+                             1,
+                             5000);
+        lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+        RAISE global_process_expt;
+    END;
+--
+    -- 請求ヘッダ情報テーブル請求金額更新
+    BEGIN
+--
+      UPDATE  xxcfr_invoice_headers  xxih -- 請求ヘッダ情報テーブル
+      SET     xxih.inv_amount_no_tax      =  in_amt_no_tax  --税抜請求金額合計
+             ,xxih.tax_amount_sum         =  in_tax_amt_sum --税額合計
+             ,xxih.inv_amount_includ_tax  =  in_amd_inc_tax --税込請求金額合計
+      WHERE   xxih.invoice_id = in_invoice_id          -- 請求書ID
+      ;
+--
+      --==============================================================
+      --請求ヘッダ更新件数カウントアップ
+      --==============================================================
+      -- 請求ヘッダ情報を更新している、かつ請求作成対象がない場合、
+      -- 請求ヘッダ更新件数をカウントアップする(それ以外は成功件数としてカウントアップされている)
+      IF (SQL%ROWCOUNT > 0) AND (ln_target_cnt = 0) THEN
+        gn_target_up_header_cnt := gn_target_up_header_cnt + 1;
+      END IF;
+--
+    EXCEPTION
+    -- *** OTHERS例外ハンドラ ***
+      WHEN OTHERS THEN
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
+                               ,iv_name         => cv_msg_cfr_00017      -- データ更新エラー
+                               ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
+                               ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxih))
+                                                                         -- 請求ヘッダ情報テーブル
+                             ,1
+                             ,5000);
+        lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+        RAISE global_process_expt;
+    END;
+--
+  EXCEPTION
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_bill_amount;
+--
+-- Modify 2013.01.17 Ver1.130 End
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -3878,6 +4928,9 @@ AS
 -- Modify 2012.11.06 Ver1.120 Start
 --    gv_auto_inv_err_flag := 'N';
 -- Modify 2012.11.06 Ver1.120 End
+-- Modify 2013.01.17 Ver1.130 Start
+    gn_target_up_header_cnt := 0;
+-- Modify 2013.01.17 Ver1.130 End
 --
     -- =====================================================
     --  初期処理(A-1)
@@ -4042,6 +5095,54 @@ AS
 --    END IF;
 -- Modify 2009.09.29 Ver1.5 End
 --
+-- Modify 2013.01.17 Ver1.130 Start
+    --夜間手動判断区分の判断（手動実行用）
+    --手動実行では請求ヘッダ情報の請求金額を再計算する必要がある為、下記で再計算する
+    IF (gv_batch_on_judge_type != cv_judge_type_batch) THEN
+      --変数初期化
+      ln_target_trx_cnt := 0;
+      -- =====================================================
+      -- 請求更新対象取得処理 (A-10)
+      -- =====================================================
+      get_update_target_bill(
+         ln_target_trx_cnt,                      -- 対象取引件数
+         lv_errbuf,                              -- エラー・メッセージ           --# 固定 #
+         lv_retcode,                             -- リターン・コード             --# 固定 #
+         lv_errmsg                               -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      IF (lv_retcode = cv_status_error) THEN
+        --(エラー処理)
+        RAISE global_process_expt;
+      END IF;
+--
+      IF (ln_target_trx_cnt > 0) THEN
+      --ループ
+      <<for_loop>>
+      FOR ln_loop_cnt IN gt_get_inv_id_tab.FIRST..gt_get_inv_id_tab.LAST LOOP
+        -- =====================================================
+        -- 請求金額更新処理 (A-11)
+        -- =====================================================
+        update_bill_amount(
+           gt_get_inv_id_tab(ln_loop_cnt),         -- 請求書ID
+           gt_get_amt_no_tax_tab(ln_loop_cnt),     -- 納品金額
+           gt_get_tax_amt_sum_tab(ln_loop_cnt),    -- 消費税金額
+           gt_get_amd_inc_tax_tab(ln_loop_cnt),    -- 売上金額
+           lv_errbuf,                              -- エラー・メッセージ           --# 固定 #
+           lv_retcode,                             -- リターン・コード             --# 固定 #
+           lv_errmsg                               -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode = cv_status_error) THEN
+          --(エラー処理)
+          RAISE global_process_expt;
+        END IF;
+      END LOOP for_loop;
+--
+      END IF;
+--
+    END IF;
+--
+-- Modify 2013.01.17 Ver1.130 End
+--
     -- =====================================================
     -- 取引データステータス更新処理 (A-9)
     -- =====================================================
@@ -4054,9 +5155,6 @@ AS
       --(エラー処理)
       RAISE global_process_expt;
     END IF;
---
-
-
 --
     -- 警告フラグが警告となっている場合
     IF (gv_conc_status = cv_status_warn) THEN
@@ -4159,7 +5257,10 @@ AS
 --###########################  固定部 START   #####################################################
 --
     --エラーメッセージが設定されている場合、エラー出力
-    IF (lv_errmsg IS NOT NULL) THEN
+-- Modify 2013.01.17 Ver1.130 Start
+--    IF (lv_errmsg IS NOT NULL) THEN
+    IF (lv_retcode = cv_status_error) THEN
+-- Modify 2013.01.17 Ver1.130 End
       fnd_file.put_line(
          which  => FND_FILE.OUTPUT
         ,buff   => lv_errmsg --ユーザー・エラーメッセージ
@@ -4185,6 +5286,9 @@ AS
 --      gn_normal_cnt := 0;
 -- Modify 2012.11.06 Ver1.120 End
       gn_error_cnt  := 1;
+-- Modify 2013.01.17 Ver1.130 Start
+      gn_target_up_header_cnt := 0;
+-- Modify 2013.01.17 Ver1.130 End
     END IF;
     --
     --メッセージタイトル(ヘッダ部)
@@ -4214,10 +5318,13 @@ AS
                      iv_application  => cv_msg_kbn_ccp
                     ,iv_name         => cv_msg_ccp_90001
                     ,iv_token_name1  => cv_tkn_count
+-- Modify 2013.01.17 Ver1.130 Start
 -- Modify 2012.11.06 Ver1.120 Start
 --                    ,iv_token_value1 => TO_CHAR(gn_target_header_cnt - gn_target_del_head_cnt)
-                    ,iv_token_value1 => TO_CHAR(gn_target_header_cnt)
+--                    ,iv_token_value1 => TO_CHAR(gn_target_header_cnt)
 -- Modify 2012.11.06 Ver1.120 End
+                    ,iv_token_value1 => TO_CHAR(gn_target_header_cnt - gn_target_up_header_cnt)
+-- Modify 2013.01.17 Ver1.130 End
                    );
     fnd_file.put_line(
        which  => FND_FILE.OUTPUT
@@ -4254,6 +5361,20 @@ AS
       ,buff   => gv_out_msg
     );
     --
+-- Modify 2013.01.17 Ver1.130 Start
+    --更新件数出力(ヘッダ部)
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_msg_kbn_cfr
+                    ,iv_name         => cv_msg_cfr_00146
+                    ,iv_token_name1  => cv_tkn_count
+                    ,iv_token_value1 => TO_CHAR(gn_target_up_header_cnt)
+                   );
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --
+-- Modify 2013.01.17 Ver1.130 End
     --メッセージタイトル(明細部)
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_msg_kbn_cfr

@@ -5,7 +5,7 @@ CREATE TABLE xxcfr.xxcfr_inv_info_transfer
  * Description     : 請求情報引渡テーブル
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -13,11 +13,15 @@ CREATE TABLE xxcfr.xxcfr_inv_info_transfer
  * ------------- ----- ------------ -------------------------------------
  *  2008/11/12    1.0  SCS 松尾 泰生  初回作成
  *  2009/07/21    1.1  SCS 廣瀬 真佐人[0000792]障害対応
+ *  2013/01/04    1.2  SCSK 中野 徹也[09964]障害対応
  ************************************************************************/
 ( 
   target_request_id           NUMBER         NOT NULL  ,-- 処理対象要求ID
   set_of_books_id             NUMBER                   ,-- 会計帳簿ID
   org_id                      NUMBER                   ,-- 組織ID
+/* 2013.01.04 (09964対応) START */
+  bill_acct_code              VARCHAR2(30)             ,-- 請求先顧客コード
+/* 2013.01.04 (09964対応) END */
   created_by                  NUMBER         NOT NULL  ,-- 作成者
   creation_date               DATE           NOT NULL  ,-- 作成日
   last_updated_by             NUMBER         NOT NULL  ,-- 最終更新者
@@ -38,6 +42,9 @@ PCTFREE 10 PCTUSED 40 INITRANS 1 STORAGE ( INITIAL 10K)
 COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.target_request_id       IS '処理対象要求ID';
 COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.set_of_books_id         IS '会計帳簿ID';
 COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.org_id                  IS '組織ID';
+/* 2013.01.04 (09964対応) START */
+COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.bill_acct_code          IS '請求先顧客コード';
+/* 2013.01.04 (09964対応) END */
 COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.created_by              IS '作成者';
 COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.creation_date           IS '作成日';
 COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.last_updated_by         IS '最終更新者';
