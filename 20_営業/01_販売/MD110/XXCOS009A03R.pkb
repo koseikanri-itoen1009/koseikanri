@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A03R (body)
  * Description      : 原価割れチェックリスト
  * MD.050           : 原価割れチェックリスト MD050_COS_009_A03
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2010/05/24    1.10  Y.Kuboshima      [E_本稼動_02630]出荷先顧客の絞込みで前月売上拠点コードを考慮するよう修正
  *  2011/04/20    1.11  S.Ochiai         [E_本稼動_01772]ＨＨＴ画面入力、ＨＨＴ連携データの原価割れ情報も表示させるよう修正
  *  2011/06/20    1.12  T.Ishiwata       [E_本稼動_07097]異常掛率卸価格チェック対応
+ *  2012/01/24    1.13  T.Yoshimoto      [E_本稼動_08679]出力区分追加対応
  *
  *****************************************************************************************/
 --
@@ -182,6 +183,9 @@ AS
   cv_tkn_nm_item_cd         CONSTANT  VARCHAR2(100) :=  'ITEM_CODE';           --品目コード
   cv_tkn_nm_dlv_date        CONSTANT  VARCHAR2(100) :=  'DLV_DATE';            --納品日
 -- 2011/06/20 Ver1.12 T.Ishiwata Add End
+-- 2012/01/24 v1.13 T.Yoshimoto Add Start E_本稼動_08679
+  cv_tkn_nm_output_type     CONSTANT  VARCHAR2(100) :=  'OUTPUT_TYPE';         --出力区分
+-- 2012/01/24 v1.13 T.Yoshimoto Add End
   --トークン値
   cv_msg_vl_acc_cls_ar      CONSTANT  VARCHAR2(100) :=  'AR';                  --AR
   cv_msg_vl_date_from       CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11854';    --納品日FROM
@@ -303,6 +307,9 @@ AS
     iv_dlv_date_to      IN  VARCHAR2,     --   納品日(TO)
     iv_sale_emp_code    IN  VARCHAR2,     --   営業担当者コード
     iv_ship_to_code     IN  VARCHAR2,     --   出荷先コード
+-- 2012/01/24 v1.13 T.Yoshimoto Add Start E_本稼動_08679
+    iv_output_type      IN  VARCHAR2,     --   出力区分
+-- 2012/01/24 v1.13 T.Yoshimoto Add End
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -324,6 +331,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- 2012/01/24 v1.13 T.Yoshimoto Mod Start E_本稼動_08679
+    cv_lookup_type CONSTANT VARCHAR2(30):= 'XXCOS1_REPORT_OUTPUT_TYPE2';  --原価割れチェックリスト出力区分
+-- 2012/01/24 v1.13 T.Yoshimoto Mod End
 --
     -- *** ローカル変数 ***
     lv_para_msg   VARCHAR2(5000);                         -- パラメータ出力メッセージ
@@ -372,7 +382,16 @@ AS
         iv_token_name4        =>  cv_tkn_nm_sale_emp,
         iv_token_value4       =>  iv_sale_emp_code,
         iv_token_name5        =>  cv_tkn_nm_ship_to,
-        iv_token_value5       =>  iv_ship_to_code
+-- 2012/01/24 v1.13 T.Yoshimoto Mod Start E_本稼動_08679
+--        iv_token_value5       =>  iv_ship_to_code
+        iv_token_value5       =>  iv_ship_to_code,
+        iv_token_name6        =>  cv_tkn_nm_output_type,
+        iv_token_value6       =>  xxcos_common_pkg.get_specific_master(
+                                                      it_lookup_type => cv_lookup_type
+                                                     ,it_lookup_code => iv_output_type
+                                                     )
+-- 2012/01/24 v1.13 T.Yoshimoto Mod End
+
       );
     FND_FILE.PUT_LINE(
        which  => FND_FILE.LOG
@@ -890,6 +909,9 @@ AS
     id_dlv_date_to      IN  DATE,         --   納品日(TO)
     iv_sale_emp_code    IN  VARCHAR2,     --   営業担当者コード
     iv_ship_to_code     IN  VARCHAR2,     --   出荷先コード
+-- 2012/01/24 v1.13 T.Yoshimoto Add Start E_本稼動_08679
+    iv_output_type      IN  VARCHAR2,      --   出力区分
+-- 2012/01/24 v1.13 T.Yoshimoto Add End
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -911,6 +933,11 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- 2012/01/24 v1.13 T.Yoshimoto Add Start E_本稼動_08679
+    lv_output_type_1 CONSTANT VARCHAR2(1) := '1'; --出力区分:両方
+    lv_output_type_2 CONSTANT VARCHAR2(1) := '2'; --出力区分:原価割れのみ
+    lv_output_type_3 CONSTANT VARCHAR2(1) := '3'; --出力区分:異常掛率のみ
+-- 2012/01/24 v1.13 T.Yoshimoto Add End
 --
     -- *** ローカル変数 ***
     lv_tkn_vl_table_name      VARCHAR2(100);
@@ -1893,154 +1920,213 @@ AS
 -- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD  END  ************************ --
     --フラグ初期化
     lb_ext_flg      := FALSE;
-    --対象データ取得
-    <<loop_get_data>>
-    FOR l_data_rec IN data_cur LOOP
-      -- レコードIDの取得
-      BEGIN
-        SELECT
-          xxcos_rep_cost_div_list_s01.NEXTVAL     redord_id
-        INTO
-          lt_record_id
-        FROM
-          dual
-        ;
-      END;
-      --
-      ln_idx := ln_idx + 1;
-      g_report_data_tab(ln_idx).record_id              := lt_record_id;                --レコードID
-      g_report_data_tab(ln_idx).base_code              := l_data_rec.base_code;        --拠点コード
--- ************************ 2009/10/02 S.Miyakoshi Var1.7 MOD START ************************ --
---      g_report_data_tab(ln_idx).base_name              := l_data_rec.base_name;        --拠点名称
-      g_report_data_tab(ln_idx).base_name              := SUBSTRB( l_data_rec.base_name, 1, 40 );
-                                                                                       --拠点名称
--- ************************ 2009/10/02 S.Miyakoshi Var1.7 MOD  END  ************************ --
-      g_report_data_tab(ln_idx).dlv_date_start         := id_dlv_date_from;            --納品日開始
-      g_report_data_tab(ln_idx).dlv_date_end           := id_dlv_date_to;              --納品日終了
-      g_report_data_tab(ln_idx).employee_base_code     := l_data_rec.emp_code;         --営業担当者コード
-      g_report_data_tab(ln_idx).employee_base_name     := SUBSTRB( l_data_rec.emp_name, 1, 14 );
-                                                                                       --営業担当者名
-      g_report_data_tab(ln_idx).deliver_to_code        := l_data_rec.ship_to_cd;       --出荷先コード
--- 2011/06/20 Ver1.12 T.Ishiwata Mod Start
---      g_report_data_tab(ln_idx).deliver_to_name        := SUBSTRB( l_data_rec.ship_to_nm, 1, 30 );
-      g_report_data_tab(ln_idx).deliver_to_name        := SUBSTRB( l_data_rec.ship_to_nm, 1, 28 );
-                                                                                       --出荷先名
--- 2011/06/20 Ver1.12 T.Ishiwata Mod End
-      g_report_data_tab(ln_idx).dlv_date               := l_data_rec.dlv_date;         --納品日
-      g_report_data_tab(ln_idx).dlv_invoice_number     := l_data_rec.dlv_slip_num;     --納品伝票番号
-      g_report_data_tab(ln_idx).item_code              := l_data_rec.item_cd;          --品目コード
-      g_report_data_tab(ln_idx).order_item_name        := l_data_rec.item_nm;          --受注品名
-      g_report_data_tab(ln_idx).quantity               := l_data_rec.quantity;         --数量
-      g_report_data_tab(ln_idx).uom_code               := l_data_rec.unit;             --単位
-      g_report_data_tab(ln_idx).dlv_unit_price         := l_data_rec.dlv_price;        --納品単価
-      g_report_data_tab(ln_idx).sale_amount            := l_data_rec.quantity * l_data_rec.dlv_price;
-                                                                                       --売上金額
-      g_report_data_tab(ln_idx).created_by             := cn_created_by;               --作成者
-      g_report_data_tab(ln_idx).creation_date          := cd_creation_date;            --作成日
-      g_report_data_tab(ln_idx).last_updated_by        := cn_last_updated_by;          --最終更新者
-      g_report_data_tab(ln_idx).last_update_date       := cd_last_update_date;         --最終更新日
-      g_report_data_tab(ln_idx).last_update_login      := cn_last_update_login;        --最終更新ﾛｸﾞｲﾝ
-      g_report_data_tab(ln_idx).request_id             := cn_request_id;               --要求ID
-      g_report_data_tab(ln_idx).program_application_id := cn_program_application_id;   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-      g_report_data_tab(ln_idx).program_id             := cn_program_id;               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-      g_report_data_tab(ln_idx).program_update_date    := cd_program_update_date;      --ﾌﾟﾛｸﾞﾗﾑ更新日
--- 2011/06/20 Ver1.12 T.Ishiwata Add Start
-      g_report_data_tab(ln_idx).unit_price_check_mark  := l_data_rec.unit_price_check_mark; --異常掛率卸価格チェック(表示用)
-      g_report_data_tab(ln_idx).unit_price_check_sort  := l_data_rec.unit_price_check_sort; --異常掛率卸価格チェック(ソート用)
--- 2011/06/20 Ver1.12 T.Ishiwata Add End
-      --営業原価先行チェック
-      IF ( l_data_rec.biz_cost IS NULL ) THEN
-        --警告件数計上
-        gn_warn_cnt := gn_warn_cnt + 1;
-        --フラグクリア
-        lb_ext_flg  := FALSE;
-        --該当品目コードの設定済チェック
-        <<loop_search>>
-        FOR ln_search IN 1 .. g_err_item_cd_tab.COUNT LOOP
-          IF ( g_err_item_cd_tab(ln_search) = l_data_rec.item_cd ) THEN
-            lb_ext_flg := TRUE;
-            EXIT;
-          END IF;
-        END LOOP loop_search;
-        --該当品目コードが未設定の場合、設定へ
-        IF ( lb_ext_flg = FALSE ) THEN
-          ln_err_item_idx                    := ln_err_item_idx + 1;
-          --営業原価未設定の品目コードを集約して保持
-          g_err_item_cd_tab(ln_err_item_idx) := l_data_rec.item_cd;
-        END IF;
-      END IF;
-    END LOOP loop_get_data;
--- 2011/06/20 Ver1.12 T.Ishiwata Add Start
-    -- 異常掛率卸単価チェックデータ取得
-    <<get_rate_check_data>>
-    FOR l_rate_check_rec IN rate_check_cur LOOP
---
-      -- 初期化
-      lv_fixed_er_flg := 'N';
-      --
-      IF( l_rate_check_rec.price_start_date > l_rate_check_rec.dlv_date ) THEN
-        -- 旧定価の取得
+-- 2012/01/24 v1.13 T.Yoshimoto Add Start E_本稼動_08679
+    -- 出力区分が"1"(両方)または"2"(原価割れのみ)の場合
+    IF (iv_output_type IN (lv_output_type_1, lv_output_type_2)) THEN
+-- 2012/01/24 v1.13 T.Yoshimoto Add End
+      --対象データ取得
+      <<loop_get_data>>
+      FOR l_data_rec IN data_cur LOOP
+        -- レコードIDの取得
         BEGIN
           SELECT
-            item_h.fixed_price
+            xxcos_rep_cost_div_list_s01.NEXTVAL     redord_id
           INTO
-            ln_old_fixed_price
+            lt_record_id
           FROM
-            ( SELECT
-                xsibh.fixed_price  AS fixed_price
-              FROM
-                xxcmm_system_items_b_hst xsibh                         -- 品目変更履歴アドオン
-              WHERE
-                   xsibh.item_code     = l_rate_check_rec.item_cd      -- 品目コード
-              AND  xsibh.apply_date   <= l_rate_check_rec.dlv_date     -- 適用日≦納品日
-              AND  xsibh.fixed_price  IS NOT NULL                      -- 定価が改訂された
-              AND  xsibh.apply_flag    = cv_yes                        -- 適用済み
-              ORDER BY
-                 xsibh.apply_date desc
-                ,xsibh.item_hst_id desc
-            ) item_h
-          WHERE
-            ROWNUM = 1                                                 -- 先頭1件目のみ
+            dual
           ;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            --メッセージ取得
-            lv_errmsg  :=  xxccp_common_pkg.get_msg(
-                               iv_application   =>  cv_xxcos_short_name
-                              ,iv_name          =>  cv_msg_fixed_price_err
-                              ,iv_token_name1   =>  cv_tkn_nm_item_cd
-                              ,iv_token_value1  =>  l_rate_check_rec.item_cd
-                              ,iv_token_name2   =>  cv_tkn_nm_dlv_date
-                              ,iv_token_value2  =>  TO_CHAR( l_rate_check_rec.dlv_date, cv_yyyy_mm_dd )
-                              );
-            --メッセージ出力
-            FND_FILE.PUT_LINE(
-               which  => FND_FILE.LOG
-              ,buff   => lv_errmsg --ユーザー・警告・メッセージ
-            );
-            lv_fixed_er_flg := cv_yes;
-          WHEN OTHERS THEN
-            --メッセージ取得
-            lv_errmsg  :=  xxccp_common_pkg.get_msg(
-                               iv_application   =>  cv_xxcos_short_name
-                              ,iv_name          =>  cv_msg_select_err
-                              ,iv_token_name1   =>  cv_tkn_nm_table_name
-                              ,iv_token_value1  =>  cv_msg_vl_item_hst
-                              ,iv_token_name2   =>  cv_tkn_nm_key_data
-                              ,iv_token_value2  =>  SQLERRM
-                              );
-            --メッセージ出力
-            FND_FILE.PUT_LINE(
-               which  => FND_FILE.LOG
-              ,buff   => lv_errmsg --ユーザー・警告・メッセージ
-            );
-            RAISE global_api_others_expt;
         END;
+        --
+        ln_idx := ln_idx + 1;
+        g_report_data_tab(ln_idx).record_id              := lt_record_id;                --レコードID
+        g_report_data_tab(ln_idx).base_code              := l_data_rec.base_code;        --拠点コード
+-- ************************ 2009/10/02 S.Miyakoshi Var1.7 MOD START ************************ --
+--      g_report_data_tab(ln_idx).base_name              := l_data_rec.base_name;        --拠点名称
+        g_report_data_tab(ln_idx).base_name              := SUBSTRB( l_data_rec.base_name, 1, 40 );
+                                                                                         --拠点名称
+-- ************************ 2009/10/02 S.Miyakoshi Var1.7 MOD  END  ************************ --
+        g_report_data_tab(ln_idx).dlv_date_start         := id_dlv_date_from;            --納品日開始
+        g_report_data_tab(ln_idx).dlv_date_end           := id_dlv_date_to;              --納品日終了
+        g_report_data_tab(ln_idx).employee_base_code     := l_data_rec.emp_code;         --営業担当者コード
+        g_report_data_tab(ln_idx).employee_base_name     := SUBSTRB( l_data_rec.emp_name, 1, 14 );
+                                                                                         --営業担当者名
+        g_report_data_tab(ln_idx).deliver_to_code        := l_data_rec.ship_to_cd;       --出荷先コード
+-- 2011/06/20 Ver1.12 T.Ishiwata Mod Start
+--      g_report_data_tab(ln_idx).deliver_to_name        := SUBSTRB( l_data_rec.ship_to_nm, 1, 30 );
+        g_report_data_tab(ln_idx).deliver_to_name        := SUBSTRB( l_data_rec.ship_to_nm, 1, 28 );
+                                                                                         --出荷先名
+-- 2011/06/20 Ver1.12 T.Ishiwata Mod End
+        g_report_data_tab(ln_idx).dlv_date               := l_data_rec.dlv_date;         --納品日
+        g_report_data_tab(ln_idx).dlv_invoice_number     := l_data_rec.dlv_slip_num;     --納品伝票番号
+        g_report_data_tab(ln_idx).item_code              := l_data_rec.item_cd;          --品目コード
+        g_report_data_tab(ln_idx).order_item_name        := l_data_rec.item_nm;          --受注品名
+        g_report_data_tab(ln_idx).quantity               := l_data_rec.quantity;         --数量
+        g_report_data_tab(ln_idx).uom_code               := l_data_rec.unit;             --単位
+        g_report_data_tab(ln_idx).dlv_unit_price         := l_data_rec.dlv_price;        --納品単価
+        g_report_data_tab(ln_idx).sale_amount            := l_data_rec.quantity * l_data_rec.dlv_price;
+                                                                                         --売上金額
+        g_report_data_tab(ln_idx).created_by             := cn_created_by;               --作成者
+        g_report_data_tab(ln_idx).creation_date          := cd_creation_date;            --作成日
+        g_report_data_tab(ln_idx).last_updated_by        := cn_last_updated_by;          --最終更新者
+        g_report_data_tab(ln_idx).last_update_date       := cd_last_update_date;         --最終更新日
+        g_report_data_tab(ln_idx).last_update_login      := cn_last_update_login;        --最終更新ﾛｸﾞｲﾝ
+        g_report_data_tab(ln_idx).request_id             := cn_request_id;               --要求ID
+        g_report_data_tab(ln_idx).program_application_id := cn_program_application_id;   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+        g_report_data_tab(ln_idx).program_id             := cn_program_id;               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+        g_report_data_tab(ln_idx).program_update_date    := cd_program_update_date;      --ﾌﾟﾛｸﾞﾗﾑ更新日
+-- 2011/06/20 Ver1.12 T.Ishiwata Add Start
+        g_report_data_tab(ln_idx).unit_price_check_mark  := l_data_rec.unit_price_check_mark; --異常掛率卸価格チェック(表示用)
+        g_report_data_tab(ln_idx).unit_price_check_sort  := l_data_rec.unit_price_check_sort; --異常掛率卸価格チェック(ソート用)
+-- 2011/06/20 Ver1.12 T.Ishiwata Add End
+        --営業原価先行チェック
+        IF ( l_data_rec.biz_cost IS NULL ) THEN
+          --警告件数計上
+          gn_warn_cnt := gn_warn_cnt + 1;
+          --フラグクリア
+          lb_ext_flg  := FALSE;
+          --該当品目コードの設定済チェック
+          <<loop_search>>
+          FOR ln_search IN 1 .. g_err_item_cd_tab.COUNT LOOP
+            IF ( g_err_item_cd_tab(ln_search) = l_data_rec.item_cd ) THEN
+              lb_ext_flg := TRUE;
+              EXIT;
+            END IF;
+          END LOOP loop_search;
+          --該当品目コードが未設定の場合、設定へ
+          IF ( lb_ext_flg = FALSE ) THEN
+            ln_err_item_idx                    := ln_err_item_idx + 1;
+            --営業原価未設定の品目コードを集約して保持
+            g_err_item_cd_tab(ln_err_item_idx) := l_data_rec.item_cd;
+          END IF;
+        END IF;
+      END LOOP loop_get_data;
+-- 2012/01/24 v1.13 T.Yoshimoto Add Start E_本稼動_08679
+    END IF;
+-- 2012/01/24 v1.13 T.Yoshimoto Add End
 --
-        IF (   ( lv_fixed_er_flg = cv_no )
-           AND ( l_rate_check_rec.dlv_price < (ln_old_fixed_price  * gn_minimum_price_rate / 100 ))) THEN
-          --
-          -- 旧単価で異常掛率卸単価チェック
+-- 2012/01/24 v1.13 T.Yoshimoto Add Start E_本稼動_08679
+    -- 出力区分が"1"(両方)または"3"(異常掛率のみ)の場合
+    IF (iv_output_type IN (lv_output_type_1, lv_output_type_3)) THEN
+-- 2012/01/24 v1.13 T.Yoshimoto Add End
+-- 2011/06/20 Ver1.12 T.Ishiwata Add Start
+      -- 異常掛率卸単価チェックデータ取得
+      <<get_rate_check_data>>
+      FOR l_rate_check_rec IN rate_check_cur LOOP
+--
+        -- 初期化
+        lv_fixed_er_flg := 'N';
+        --
+        IF( l_rate_check_rec.price_start_date > l_rate_check_rec.dlv_date ) THEN
+          -- 旧定価の取得
+          BEGIN
+            SELECT
+              item_h.fixed_price
+            INTO
+              ln_old_fixed_price
+            FROM
+              ( SELECT
+                  xsibh.fixed_price  AS fixed_price
+                FROM
+                  xxcmm_system_items_b_hst xsibh                         -- 品目変更履歴アドオン
+                WHERE
+                     xsibh.item_code     = l_rate_check_rec.item_cd      -- 品目コード
+                AND  xsibh.apply_date   <= l_rate_check_rec.dlv_date     -- 適用日≦納品日
+                AND  xsibh.fixed_price  IS NOT NULL                      -- 定価が改訂された
+                AND  xsibh.apply_flag    = cv_yes                        -- 適用済み
+                ORDER BY
+                   xsibh.apply_date desc
+                  ,xsibh.item_hst_id desc
+              ) item_h
+            WHERE
+              ROWNUM = 1                                                 -- 先頭1件目のみ
+            ;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              --メッセージ取得
+              lv_errmsg  :=  xxccp_common_pkg.get_msg(
+                                 iv_application   =>  cv_xxcos_short_name
+                                ,iv_name          =>  cv_msg_fixed_price_err
+                                ,iv_token_name1   =>  cv_tkn_nm_item_cd
+                                ,iv_token_value1  =>  l_rate_check_rec.item_cd
+                                ,iv_token_name2   =>  cv_tkn_nm_dlv_date
+                                ,iv_token_value2  =>  TO_CHAR( l_rate_check_rec.dlv_date, cv_yyyy_mm_dd )
+                                );
+              --メッセージ出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_errmsg --ユーザー・警告・メッセージ
+              );
+              lv_fixed_er_flg := cv_yes;
+            WHEN OTHERS THEN
+              --メッセージ取得
+              lv_errmsg  :=  xxccp_common_pkg.get_msg(
+                                 iv_application   =>  cv_xxcos_short_name
+                                ,iv_name          =>  cv_msg_select_err
+                                ,iv_token_name1   =>  cv_tkn_nm_table_name
+                                ,iv_token_value1  =>  cv_msg_vl_item_hst
+                                ,iv_token_name2   =>  cv_tkn_nm_key_data
+                                ,iv_token_value2  =>  SQLERRM
+                                );
+              --メッセージ出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_errmsg --ユーザー・警告・メッセージ
+              );
+              RAISE global_api_others_expt;
+          END;
+--
+          IF (   ( lv_fixed_er_flg = cv_no )
+             AND ( l_rate_check_rec.dlv_price < (ln_old_fixed_price  * gn_minimum_price_rate / 100 ))) THEN
+            --
+            -- 旧単価で異常掛率卸単価チェック
+            BEGIN
+              -- レコードIDの取得
+              SELECT
+                xxcos_rep_cost_div_list_s01.NEXTVAL     redord_id
+              INTO
+                lt_record_id
+              FROM
+                dual
+              ;
+              --
+              ln_idx := ln_idx + 1;
+              g_report_data_tab(ln_idx).record_id              := lt_record_id;                       --レコードID
+              g_report_data_tab(ln_idx).base_code              := l_rate_check_rec.base_code;        --拠点コード
+              g_report_data_tab(ln_idx).base_name              := SUBSTRB( l_rate_check_rec.base_name, 1, 40 );
+                                                                                                     --拠点名称
+              g_report_data_tab(ln_idx).dlv_date_start         := id_dlv_date_from;                  --納品日開始
+              g_report_data_tab(ln_idx).dlv_date_end           := id_dlv_date_to;                    --納品日終了
+              g_report_data_tab(ln_idx).employee_base_code     := l_rate_check_rec.emp_code;         --営業担当者コード
+              g_report_data_tab(ln_idx).employee_base_name     := SUBSTRB( l_rate_check_rec.emp_name, 1, 14 );
+                                                                                                     --営業担当者名
+              g_report_data_tab(ln_idx).deliver_to_code        := l_rate_check_rec.ship_to_cd;       --出荷先コード
+              g_report_data_tab(ln_idx).deliver_to_name        := SUBSTRB( l_rate_check_rec.ship_to_nm, 1, 28 );
+                                                                                                     --出荷先名
+              g_report_data_tab(ln_idx).dlv_date               := l_rate_check_rec.dlv_date;         --納品日
+              g_report_data_tab(ln_idx).dlv_invoice_number     := l_rate_check_rec.dlv_slip_num;     --納品伝票番号
+              g_report_data_tab(ln_idx).item_code              := l_rate_check_rec.item_cd;          --品目コード
+              g_report_data_tab(ln_idx).order_item_name        := l_rate_check_rec.item_nm;          --受注品名
+              g_report_data_tab(ln_idx).quantity               := l_rate_check_rec.quantity;         --数量
+              g_report_data_tab(ln_idx).uom_code               := l_rate_check_rec.unit;             --単位
+              g_report_data_tab(ln_idx).dlv_unit_price         := l_rate_check_rec.dlv_price;        --納品単価
+              g_report_data_tab(ln_idx).sale_amount            := l_rate_check_rec.quantity * l_rate_check_rec.dlv_price;
+                                                                                                     --売上金額
+              g_report_data_tab(ln_idx).created_by             := cn_created_by;                     --作成者
+              g_report_data_tab(ln_idx).creation_date          := cd_creation_date;                  --作成日
+              g_report_data_tab(ln_idx).last_updated_by        := cn_last_updated_by;                --最終更新者
+              g_report_data_tab(ln_idx).last_update_date       := cd_last_update_date;               --最終更新日
+              g_report_data_tab(ln_idx).last_update_login      := cn_last_update_login;              --最終更新ﾛｸﾞｲﾝ
+              g_report_data_tab(ln_idx).request_id             := cn_request_id;                     --要求ID
+              g_report_data_tab(ln_idx).program_application_id := cn_program_application_id;         --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+              g_report_data_tab(ln_idx).program_id             := cn_program_id;                     --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+              g_report_data_tab(ln_idx).program_update_date    := cd_program_update_date;            --ﾌﾟﾛｸﾞﾗﾑ更新日
+              g_report_data_tab(ln_idx).unit_price_check_mark  := l_rate_check_rec.unit_price_check_mark; --異常掛率卸価格チェック(表示用)
+              g_report_data_tab(ln_idx).unit_price_check_sort  := l_rate_check_rec.unit_price_check_sort; --異常掛率卸価格チェック(ソート用)
+            END;
+          END IF;
+        ELSE
+          -- 新単価で異常掛率卸単価チェック
           BEGIN
             -- レコードIDの取得
             SELECT
@@ -2052,89 +2138,46 @@ AS
             ;
             --
             ln_idx := ln_idx + 1;
-            g_report_data_tab(ln_idx).record_id              := lt_record_id;                       --レコードID
-            g_report_data_tab(ln_idx).base_code              := l_rate_check_rec.base_code;        --拠点コード
+            g_report_data_tab(ln_idx).record_id              := lt_record_id;                        --レコードID
+            g_report_data_tab(ln_idx).base_code              := l_rate_check_rec.base_code;          --拠点コード
             g_report_data_tab(ln_idx).base_name              := SUBSTRB( l_rate_check_rec.base_name, 1, 40 );
-                                                                                                   --拠点名称
-            g_report_data_tab(ln_idx).dlv_date_start         := id_dlv_date_from;                  --納品日開始
-            g_report_data_tab(ln_idx).dlv_date_end           := id_dlv_date_to;                    --納品日終了
-            g_report_data_tab(ln_idx).employee_base_code     := l_rate_check_rec.emp_code;         --営業担当者コード
+                                                                                                     --拠点名称
+            g_report_data_tab(ln_idx).dlv_date_start         := id_dlv_date_from;                    --納品日開始
+            g_report_data_tab(ln_idx).dlv_date_end           := id_dlv_date_to;                      --納品日終了
+            g_report_data_tab(ln_idx).employee_base_code     := l_rate_check_rec.emp_code;           --営業担当者コード
             g_report_data_tab(ln_idx).employee_base_name     := SUBSTRB( l_rate_check_rec.emp_name, 1, 14 );
-                                                                                                   --営業担当者名
-            g_report_data_tab(ln_idx).deliver_to_code        := l_rate_check_rec.ship_to_cd;       --出荷先コード
+                                                                                                     --営業担当者名
+            g_report_data_tab(ln_idx).deliver_to_code        := l_rate_check_rec.ship_to_cd;         --出荷先コード
             g_report_data_tab(ln_idx).deliver_to_name        := SUBSTRB( l_rate_check_rec.ship_to_nm, 1, 28 );
-                                                                                                   --出荷先名
-            g_report_data_tab(ln_idx).dlv_date               := l_rate_check_rec.dlv_date;         --納品日
-            g_report_data_tab(ln_idx).dlv_invoice_number     := l_rate_check_rec.dlv_slip_num;     --納品伝票番号
-            g_report_data_tab(ln_idx).item_code              := l_rate_check_rec.item_cd;          --品目コード
-            g_report_data_tab(ln_idx).order_item_name        := l_rate_check_rec.item_nm;          --受注品名
-            g_report_data_tab(ln_idx).quantity               := l_rate_check_rec.quantity;         --数量
-            g_report_data_tab(ln_idx).uom_code               := l_rate_check_rec.unit;             --単位
-            g_report_data_tab(ln_idx).dlv_unit_price         := l_rate_check_rec.dlv_price;        --納品単価
+                                                                                                     --出荷先名
+            g_report_data_tab(ln_idx).dlv_date               := l_rate_check_rec.dlv_date;           --納品日
+            g_report_data_tab(ln_idx).dlv_invoice_number     := l_rate_check_rec.dlv_slip_num;       --納品伝票番号
+            g_report_data_tab(ln_idx).item_code              := l_rate_check_rec.item_cd;            --品目コード
+            g_report_data_tab(ln_idx).order_item_name        := l_rate_check_rec.item_nm;            --受注品名
+            g_report_data_tab(ln_idx).quantity               := l_rate_check_rec.quantity;           --数量
+            g_report_data_tab(ln_idx).uom_code               := l_rate_check_rec.unit;               --単位
+            g_report_data_tab(ln_idx).dlv_unit_price         := l_rate_check_rec.dlv_price;          --納品単価
             g_report_data_tab(ln_idx).sale_amount            := l_rate_check_rec.quantity * l_rate_check_rec.dlv_price;
-                                                                                                   --売上金額
-            g_report_data_tab(ln_idx).created_by             := cn_created_by;                     --作成者
-            g_report_data_tab(ln_idx).creation_date          := cd_creation_date;                  --作成日
-            g_report_data_tab(ln_idx).last_updated_by        := cn_last_updated_by;                --最終更新者
-            g_report_data_tab(ln_idx).last_update_date       := cd_last_update_date;               --最終更新日
-            g_report_data_tab(ln_idx).last_update_login      := cn_last_update_login;              --最終更新ﾛｸﾞｲﾝ
-            g_report_data_tab(ln_idx).request_id             := cn_request_id;                     --要求ID
-            g_report_data_tab(ln_idx).program_application_id := cn_program_application_id;         --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-            g_report_data_tab(ln_idx).program_id             := cn_program_id;                     --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-            g_report_data_tab(ln_idx).program_update_date    := cd_program_update_date;            --ﾌﾟﾛｸﾞﾗﾑ更新日
+                                                                                                     --売上金額
+            g_report_data_tab(ln_idx).created_by             := cn_created_by;                       --作成者
+            g_report_data_tab(ln_idx).creation_date          := cd_creation_date;                    --作成日
+            g_report_data_tab(ln_idx).last_updated_by        := cn_last_updated_by;                  --最終更新者
+            g_report_data_tab(ln_idx).last_update_date       := cd_last_update_date;                 --最終更新日
+            g_report_data_tab(ln_idx).last_update_login      := cn_last_update_login;                --最終更新ﾛｸﾞｲﾝ
+            g_report_data_tab(ln_idx).request_id             := cn_request_id;                       --要求ID
+            g_report_data_tab(ln_idx).program_application_id := cn_program_application_id;           --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+            g_report_data_tab(ln_idx).program_id             := cn_program_id;                       --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+            g_report_data_tab(ln_idx).program_update_date    := cd_program_update_date;              --ﾌﾟﾛｸﾞﾗﾑ更新日
             g_report_data_tab(ln_idx).unit_price_check_mark  := l_rate_check_rec.unit_price_check_mark; --異常掛率卸価格チェック(表示用)
             g_report_data_tab(ln_idx).unit_price_check_sort  := l_rate_check_rec.unit_price_check_sort; --異常掛率卸価格チェック(ソート用)
           END;
         END IF;
-      ELSE
-        -- 新単価で異常掛率卸単価チェック
-        BEGIN
-          -- レコードIDの取得
-          SELECT
-            xxcos_rep_cost_div_list_s01.NEXTVAL     redord_id
-          INTO
-            lt_record_id
-          FROM
-            dual
-          ;
-          --
-          ln_idx := ln_idx + 1;
-          g_report_data_tab(ln_idx).record_id              := lt_record_id;                        --レコードID
-          g_report_data_tab(ln_idx).base_code              := l_rate_check_rec.base_code;          --拠点コード
-          g_report_data_tab(ln_idx).base_name              := SUBSTRB( l_rate_check_rec.base_name, 1, 40 );
-                                                                                                   --拠点名称
-          g_report_data_tab(ln_idx).dlv_date_start         := id_dlv_date_from;                    --納品日開始
-          g_report_data_tab(ln_idx).dlv_date_end           := id_dlv_date_to;                      --納品日終了
-          g_report_data_tab(ln_idx).employee_base_code     := l_rate_check_rec.emp_code;           --営業担当者コード
-          g_report_data_tab(ln_idx).employee_base_name     := SUBSTRB( l_rate_check_rec.emp_name, 1, 14 );
-                                                                                                   --営業担当者名
-          g_report_data_tab(ln_idx).deliver_to_code        := l_rate_check_rec.ship_to_cd;         --出荷先コード
-          g_report_data_tab(ln_idx).deliver_to_name        := SUBSTRB( l_rate_check_rec.ship_to_nm, 1, 28 );
-                                                                                                   --出荷先名
-          g_report_data_tab(ln_idx).dlv_date               := l_rate_check_rec.dlv_date;           --納品日
-          g_report_data_tab(ln_idx).dlv_invoice_number     := l_rate_check_rec.dlv_slip_num;       --納品伝票番号
-          g_report_data_tab(ln_idx).item_code              := l_rate_check_rec.item_cd;            --品目コード
-          g_report_data_tab(ln_idx).order_item_name        := l_rate_check_rec.item_nm;            --受注品名
-          g_report_data_tab(ln_idx).quantity               := l_rate_check_rec.quantity;           --数量
-          g_report_data_tab(ln_idx).uom_code               := l_rate_check_rec.unit;               --単位
-          g_report_data_tab(ln_idx).dlv_unit_price         := l_rate_check_rec.dlv_price;          --納品単価
-          g_report_data_tab(ln_idx).sale_amount            := l_rate_check_rec.quantity * l_rate_check_rec.dlv_price;
-                                                                                                   --売上金額
-          g_report_data_tab(ln_idx).created_by             := cn_created_by;                       --作成者
-          g_report_data_tab(ln_idx).creation_date          := cd_creation_date;                    --作成日
-          g_report_data_tab(ln_idx).last_updated_by        := cn_last_updated_by;                  --最終更新者
-          g_report_data_tab(ln_idx).last_update_date       := cd_last_update_date;                 --最終更新日
-          g_report_data_tab(ln_idx).last_update_login      := cn_last_update_login;                --最終更新ﾛｸﾞｲﾝ
-          g_report_data_tab(ln_idx).request_id             := cn_request_id;                       --要求ID
-          g_report_data_tab(ln_idx).program_application_id := cn_program_application_id;           --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-          g_report_data_tab(ln_idx).program_id             := cn_program_id;                       --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-          g_report_data_tab(ln_idx).program_update_date    := cd_program_update_date;              --ﾌﾟﾛｸﾞﾗﾑ更新日
-          g_report_data_tab(ln_idx).unit_price_check_mark  := l_rate_check_rec.unit_price_check_mark; --異常掛率卸価格チェック(表示用)
-          g_report_data_tab(ln_idx).unit_price_check_sort  := l_rate_check_rec.unit_price_check_sort; --異常掛率卸価格チェック(ソート用)
-        END;
-      END IF;
-   END LOOP get_rate_check_data;
+     END LOOP get_rate_check_data;
 -- 2011/06/20 Ver1.12 T.Ishiwata Add End
+-- 2012/01/24 v1.13 T.Yoshimoto Add Start E_本稼動_08679
+    END IF;
+-- 2012/01/24 v1.13 T.Yoshimoto Add End
+--
 -- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD START ************************ --
     END LOOP;
 -- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD  END  ************************ --
@@ -2635,6 +2678,9 @@ AS
     iv_dlv_date_to      IN  VARCHAR2,     --   納品日(TO)
     iv_sale_emp_code    IN  VARCHAR2,     --   営業担当者コード
     iv_ship_to_code     IN  VARCHAR2,     --   出荷先コード
+-- 2012/01/24 v1.13 T.Yoshimoto Add Start E_本稼動_08679
+    iv_output_type      IN  VARCHAR2,     --   出力区分
+-- 2012/01/24 v1.13 T.Yoshimoto Add End
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2698,6 +2744,9 @@ AS
       iv_dlv_date_to,     -- 納品日(TO)
       iv_sale_emp_code,   -- 営業担当者コード
       iv_ship_to_code,    -- 出荷先コード
+-- 2012/01/24 v1.13 T.Yoshimoto Add Start E_本稼動_08679
+      iv_output_type,     -- 出力区分
+-- 2012/01/24 v1.13 T.Yoshimoto Add End
       lv_errbuf,          -- エラー・メッセージ           --# 固定 #
       lv_retcode,         -- リターン・コード             --# 固定 #
       lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2736,6 +2785,9 @@ AS
         ld_dlv_date_to,     -- 納品日(TO)
         iv_sale_emp_code,   -- 営業担当者コード
         iv_ship_to_code,    -- 出荷先コード
+-- 2012/01/24 v1.13 T.Yoshimoto Add Start E_本稼動_08679
+        iv_output_type,     -- 出力区分
+-- 2012/01/24 v1.13 T.Yoshimoto Add End
         lv_errbuf,          -- エラー・メッセージ           --# 固定 #
         lv_retcode,         -- リターン・コード             --# 固定 #
         lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2870,7 +2922,11 @@ AS
     iv_dlv_date_from    IN  VARCHAR2,      --   納品日(FROM)
     iv_dlv_date_to      IN  VARCHAR2,      --   納品日(TO)
     iv_sale_emp_code    IN  VARCHAR2,      --   営業担当者コード
-    iv_ship_to_code     IN  VARCHAR2       --   出荷先コード
+-- 2012/01/24 v1.13 T.Yoshimoto Mod Start E_本稼動_08679
+--    iv_ship_to_code     IN  VARCHAR2       --   出荷先コード
+    iv_ship_to_code     IN  VARCHAR2,       --   出荷先コード
+    iv_output_type      IN  VARCHAR2       --   出力区分
+-- 2012/01/24 v1.13 T.Yoshimoto Mod End
   )
 --
 --
@@ -2930,6 +2986,9 @@ AS
       ,iv_dlv_date_to
       ,iv_sale_emp_code
       ,iv_ship_to_code
+-- 2012/01/24 v1.13 T.Yoshimoto Add Start E_本稼動_08679
+      ,iv_output_type
+-- 2012/01/24 v1.13 T.Yoshimoto Add End
       ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A03R (spec)
  * Description      : 原価割れチェックリスト
  * MD.050           : 原価割れチェックリスト MD050_COS_009_A03
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/10/02    1.7   S.Miyakoshi      [0001378対応]帳票ワークテーブルの桁あふれ対応
  *  2010/01/18    1.8   S.Miyakoshi      [E_本稼動_00711]PT対応 ログイン拠点情報VIEWからの取得をメインSQL外で処理する
  *  2010/02/17    1.9   N.Maeda          [E_本稼動_01553]INパラメータ(納品日)妥当性チェック内容の修正
+ *  2012/01/24    1.10  T.Yoshimoto      [E_本稼動_08679]出力区分追加対応
  *
  *****************************************************************************************/
 --
@@ -40,7 +41,11 @@ AS
     iv_dlv_date_from  IN     VARCHAR2,         --   納品日(FROM)
     iv_dlv_date_to    IN     VARCHAR2,         --   納品日(TO)
     iv_sale_emp_code  IN     VARCHAR2,         --   営業担当者コード
-    iv_ship_to_code   IN     VARCHAR2          --   出荷先コード
+-- 2012/01/24 v1.10 T.Yoshimoto Mod Start E_本稼動_08679
+--    iv_ship_to_code   IN     VARCHAR2          --   出荷先コード
+    iv_ship_to_code   IN     VARCHAR2,         --   出荷先コード
+    iv_output_type    IN     VARCHAR2          --   出力区分
+-- 2012/01/24 v1.10 T.Yoshimoto Mod End
   );
 END XXCOS009A03R;
 /
