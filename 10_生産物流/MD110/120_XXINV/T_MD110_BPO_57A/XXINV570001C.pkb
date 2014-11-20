@@ -7,13 +7,14 @@ AS
  * Description      : 移動入出庫実績登録
  * MD.050           : 移動入出庫実績登録(T_MD050_BPO_570)
  * MD.070           : 移動入出庫実績登録(T_MD070_BPO_57A)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
  *  init_proc               初期処理 (A-1)
+ *  check_mov_num_proc      移動番号重複チェック
  *  get_move_data_proc      移動依頼/指示データ取得 (A-2)
  *  check_proc              妥当性チェック (A-3)
  *  get_data_proc           関連データ取得(A-4)
@@ -34,7 +35,7 @@ AS
  *  2008/07/24    1.3   Takao Ohashi     T_TE080_BPO_540 指摘5対応
  *  2008/08/21    1.4   Yuko  Kawano     内部変更要求対応 #202
  *  2008/09/26    1.5   Yuko  Kawano     統合テスト指摘#156,課題T_S_457,T_S_629対応
- *
+ *  2008/12/09    1.6   Naoki Fukuda     本番障害#470,#519(移動番号重複チェックcheck_mov_num_proc追加)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -111,6 +112,7 @@ AS
   gv_c_msg_57a_009   CONSTANT VARCHAR2(15) := 'APP-XXINV-10175'; -- 手持数量なしエラー
   gv_c_msg_57a_010   CONSTANT VARCHAR2(15) := 'APP-XXCMN-10002'; -- プロファイル取得エラー
 --2008/09/26 Y.Kawano Add End
+  gv_c_msg_57a_011   CONSTANT VARCHAR2(15) := 'APP-XXINV-10181'; -- 移動番号重複エラー 2008/12/09 本番障害#470,#512 Add
 --
   -- トークン
   gv_c_tkn_parameter           CONSTANT VARCHAR2(30)  := 'PARAMETER';
@@ -616,6 +618,156 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END init_proc;
+--
+  -- 2008/12/09 本番障害#470,#519 Add Start ----------------------------------------------------
+  /**********************************************************************************
+   * Procedure Name   : check_mov_num_proc
+   * Description      : 移動番号重複チェック
+   ***********************************************************************************/
+  PROCEDURE check_mov_num_proc(
+    iv_mov_num    IN  VARCHAR2,     --   移動番号
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+--
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'check_mov_num_proc'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_mov_num        xxinv_mov_req_instr_headers.mov_num%TYPE;          -- 移動番号
+    ln_rec_cnt        NUMBER;                                            -- レコード件数
+--
+    -- *** ローカル・カーソル ***
+    CURSOR xxinv_move_cur
+    IS
+      SELECT xmrih2.mov_num
+      INTO   ln_rec_cnt
+      FROM (
+        SELECT xmrih.mov_num
+              ,COUNT(xmrih.mov_num) AS mov_num_cnt
+        FROM   xxinv_mov_req_instr_headers xmrih                -- 移動依頼/指示ヘッダ(アドオン)
+        GROUP BY xmrih.mov_num
+      ) xmrih2
+      WHERE xmrih2.mov_num_cnt > 1                              -- 重複している
+      ORDER BY xmrih2.mov_num;
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    ln_rec_cnt   := 0;        -- レコード件数初期化
+--
+    -- **************************************************
+    -- パラメータ移動番号が指定されている場合
+    -- **************************************************
+    IF (iv_mov_num IS NOT NULL) THEN
+--
+      SELECT COUNT(xmrih.mov_num)
+      INTO   ln_rec_cnt
+      FROM   xxinv_mov_req_instr_headers xmrih               -- 移動依頼/指示ヘッダ(アドオン)
+      WHERE  xmrih.mov_num = iv_mov_num;                     -- 移動番号
+--
+      IF ln_rec_cnt > 1 THEN  -- パラメータ指定された移動番号が複数件ある場合
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
+                                              gv_c_msg_57a_011,     -- 移動番号重複エラー
+                                              gv_c_tkn_mov_num,     -- トークン移動番号
+                                              iv_mov_num            -- 重複移動番号
+                                              );
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_errmsg);
+        ov_retcode := gv_status_error;
+      END IF;
+--
+    -- **************************************************
+    -- パラメータ移動番号が指定されていない場合
+    -- **************************************************
+    ELSE
+--
+      OPEN xxinv_move_cur;
+      <<xxinv_mov_cur_loop>>
+      LOOP
+        FETCH xxinv_move_cur
+        INTO lv_mov_num       -- 移動番号
+          ;
+        EXIT when xxinv_move_cur%NOTFOUND;
+--
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
+                                              gv_c_msg_57a_011,     -- 移動番号重複エラー
+                                              gv_c_tkn_mov_num,     -- トークン移動番号
+                                              lv_mov_num            -- 重複移動番号
+                                              );
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_errmsg);
+        ov_retcode := gv_status_error;
+--
+      END LOOP xxinv_mov_num_cur_loop;
+--
+      CLOSE xxinv_move_cur;  -- カーソルクローズ
+--
+    END IF;
+--
+    --==============================================================
+    --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      IF (xxinv_move_cur%ISOPEN) THEN
+        CLOSE xxinv_move_cur;
+      END IF;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      IF (xxinv_move_cur%ISOPEN) THEN
+        CLOSE xxinv_move_cur;
+      END IF;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      IF (xxinv_move_cur%ISOPEN) THEN
+        CLOSE xxinv_move_cur;
+      END IF;
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      IF (xxinv_move_cur%ISOPEN) THEN
+        CLOSE xxinv_move_cur;
+      END IF;
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END check_mov_num_proc;
+  -- 2008/12/09 本番障害#470,#519 Add End ------------------------------------------------------
 --
   /**********************************************************************************
    * Procedure Name   : get_move_data_proc
@@ -5118,6 +5270,24 @@ AS
     IF (lv_retcode = gv_status_error) THEN
       RAISE global_process_expt;
     END IF;
+--
+    -- 2008/12/09 本番障害#470,#519 Add Start -------------------
+    -- ===============================
+    -- 移動番号重複チェック
+    -- ===============================
+    check_mov_num_proc(iv_move_num,    -- 移動番号
+                       lv_errbuf,      -- エラー・メッセージ           --# 固定 #
+                       lv_retcode,     -- リターン・コード             --# 固定 #
+                       lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+--
+    FND_FILE.PUT_LINE(FND_FILE.LOG,'----check_mov_num_proc----');
+--
+    -- エラーの場合
+    IF (lv_retcode = gv_status_error) THEN
+      gn_error_cnt := gn_target_cnt - gn_warn_cnt;
+      RAISE global_process_expt;
+    END IF;
+    -- 2008/12/09 本番障害#470,#519 Add End -------------------
 --
     -- ===============================
     -- 移動依頼/指示データ取得 (A-2)
