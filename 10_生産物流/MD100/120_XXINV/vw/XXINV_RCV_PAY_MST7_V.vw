@@ -44,14 +44,24 @@ AS
     OR ( xrpm.stock_adjustment_div        = otta.attribute4 ))
   AND (( xrpm.ship_prov_rcv_pay_category IS NULL )
     OR ( xrpm.ship_prov_rcv_pay_category  = otta.attribute11 ))
-  AND (( xrpm.item_div_ahead             IS NULL )
-    OR ( xrpm.item_div_ahead              = xicv4_a.item_class_code ))
-  AND (( xrpm.item_div_origin            IS NULL )
-    OR ( xrpm.item_div_origin             = xicv4_o.item_class_code ))
-  AND (( xrpm.prod_div_ahead             IS NULL )
-    OR ( xrpm.prod_div_ahead              = xicv4_a.prod_class_code ))
-  AND (( xrpm.prod_div_origin            IS NULL )
-    OR ( xrpm.prod_div_origin             = xicv4_o.prod_class_code ))
+-- 08/06/09 Y.Yamamoto Update v1.01 Start
+--  AND (( xrpm.item_div_ahead             IS NULL )
+--    OR ( xrpm.item_div_ahead              = xicv4_a.item_class_code ))
+--  AND (( xrpm.item_div_origin            IS NULL )
+--    OR ( xrpm.item_div_origin             = xicv4_o.item_class_code ))
+--  AND (( xrpm.prod_div_ahead             IS NULL )
+--    OR ( xrpm.prod_div_ahead              = xicv4_a.prod_class_code ))
+--  AND (( xrpm.prod_div_origin            IS NULL )
+--    OR ( xrpm.prod_div_origin             = xicv4_o.prod_class_code ))
+  AND NVL(xrpm.item_div_ahead, 'dummy')   = DECODE(xicv4_a.item_class_code,'5','5','dummy')
+  AND NVL(xrpm.item_div_origin,'dummy')   = DECODE(xicv4_o.item_class_code,'5','5','dummy')
+  AND ( ( xola.request_item_code          = xola.shipping_item_code
+    AND   xrpm.prod_div_ahead            IS NULL
+    AND   xrpm.prod_div_origin           IS NULL)
+   OR   ( xola.request_item_code         <> xola.shipping_item_code
+    AND   xrpm.prod_div_ahead            IS NOT NULL
+    AND   xrpm.prod_div_origin           IS NOT NULL))
+-- 08/06/09 Y.Yamamoto Update v1.01 End
   ;
 --
 COMMENT ON COLUMN xxinv_rcv_pay_mst7_v.new_div_invent       IS '新区分（在庫用）' ;
