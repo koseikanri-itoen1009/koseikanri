@@ -3,7 +3,7 @@
  *
  * View Name       : XXCMN_RCV_PAY_MST_PORC_RMA_V
  * Description     : Œo—ó•¥‹æ•ªî•ñVIEW_w”ƒŠÖ˜A_o‰×
- * Version         : 1.4
+ * Version         : 1.5
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -16,6 +16,7 @@
  *                                       'Œ©–{','”p‹p'‚Ö•ÏX
  *  2008-06-12    1.3   Y.Ishikawa       €–Ú‚Éæˆø‹æ•ª–¼‚ğ’Ç‰Á
  *  2008-06-12    1.4   Y.Ishikawa       €–Ú‚Éd“üæID‚ğ’Ç‰Á
+ *  2008-06-13    1.5   Y.Ishikawa       ƒJƒeƒSƒŠæ“¾•”•ª‚ÅGROUP BY‚Ì—˜—p‚ğ‚â‚ß‚é
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCMN_RCV_PAY_MST_PORC_RMA_V
@@ -49,10 +50,10 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
        ,xoha.deliver_to_id              AS deliver_to_id              -- o‰×æID
        ,NULL                            AS item_id                    -- •i–ÚID
-       ,xicv3_o.item_class_code         AS item_div                   -- •i–Ú‹æ•ª
-       ,xicv3_o.prod_class_code         AS prod_div                   -- ¤•i‹æ•ª
-       ,xicv3_o.crowd_code              AS crowd_code                 -- ŒS
-       ,xicv3_o.acnt_crowd_code         AS acnt_crowd_code            -- Œo—ŒS
+       ,mcb_o2.segment1                 AS item_div                   -- •i–Ú‹æ•ª
+       ,mcb_o1.segment1                 AS prod_div                   -- ¤•i‹æ•ª
+       ,mcb_o3.segment1                 AS crowd_code                 -- ŒS
+       ,mcb_o4.segment1                 AS acnt_crowd_code            -- Œo—ŒS
        ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
        ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
@@ -60,68 +61,32 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
        ,oe_order_lines_all       oola    -- ó’–¾×
        ,oe_transaction_types_all otta    -- ó’ƒ^ƒCƒv
-       ,(SELECT
-           iimb.item_id AS item_id
-          ,iimb.item_no AS item_no
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '¤•i‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS prod_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '•i–Ú‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS item_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'ŒQƒR[ƒh' THEN mcb.segment1
-                 ELSE NULL
-                END ) AS crowd_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'Œo—•”—pŒQƒR[ƒh' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS acnt_crowd_code
-         FROM ic_item_mst_b          iimb
-             ,gmi_item_categories    gic
-             ,mtl_categories_b       mcb
-             ,mtl_category_sets_tl   mcst
-        WHERE gic.category_set_id   = mcst.category_set_id
-          AND gic.category_id       = mcb.category_id
-          AND mcst.language         = 'JA'
-          AND mcst.source_lang      = 'JA'
-          AND mcst.category_set_name IN ( '¤•i‹æ•ª','•i–Ú‹æ•ª','ŒQƒR[ƒh','Œo—•”—pŒQƒR[ƒh' )
-          AND iimb.item_id          = gic.item_id
-          GROUP BY iimb.item_id
-                  ,iimb.item_no) xicv3_a
-       ,(SELECT
-           iimb.item_id AS item_id
-          ,iimb.item_no AS item_no
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '¤•i‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS prod_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '•i–Ú‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS item_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'ŒQƒR[ƒh' THEN mcb.segment1
-                 ELSE NULL
-                END ) AS crowd_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'Œo—•”—pŒQƒR[ƒh' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS acnt_crowd_code
-         FROM ic_item_mst_b          iimb
-             ,gmi_item_categories    gic
-             ,mtl_categories_b       mcb
-             ,mtl_category_sets_tl   mcst
-        WHERE gic.category_set_id   = mcst.category_set_id
-          AND gic.category_id       = mcb.category_id
-          AND mcst.language         = 'JA'
-          AND mcst.source_lang      = 'JA'
-          AND mcst.category_set_name IN ( '¤•i‹æ•ª','•i–Ú‹æ•ª','ŒQƒR[ƒh','Œo—•”—pŒQƒR[ƒh' )
-          AND iimb.item_id          = gic.item_id
-          GROUP BY iimb.item_id
-                  ,iimb.item_no) xicv3_o
+       ,ic_item_mst_b          iimb_a    -- U‘Öæ•i–Úî•ñ
+       ,ic_item_mst_b          iimb_o    -- U‘ÖŒ³•i–Úî•ñ
+       ,gmi_item_categories    gic_a1    -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a1    -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a1   -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a2   -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a3    -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a3    -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a3   -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a4    -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a4    -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a4   -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o1   -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o2    -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o2    -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o2   -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o3    -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o3    -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o3   -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o4    -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o4    -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o4   -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
        ,xxwsh_order_headers_all  xoha    -- ó’ƒwƒbƒ_ƒAƒhƒIƒ“
        ,xxwsh_order_lines_all    xola    -- ó’–¾×ƒAƒhƒIƒ“
        ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
@@ -136,8 +101,8 @@ WHERE xrpm.doc_type             = 'PORC'
   AND oola.header_id            = ooha.header_id
   AND oola.line_id              = rsl.oe_order_line_id
   AND oola.line_id              = xola.line_id
-  AND xicv3_a.item_no           = xola.request_item_code
-  AND xicv3_o.item_no           = xola.shipping_item_code
+  AND iimb_a.item_no            = xola.request_item_code
+  AND iimb_o.item_no            = xola.shipping_item_code
   AND xrpm.shipment_provision_div = otta.attribute1
   AND ((otta.attribute4           <> '2')         -- İŒÉ’²®ˆÈŠO
       OR  (otta.attribute4       IS NULL))        -- İŒÉ’²®ˆÈŠO
@@ -147,9 +112,65 @@ WHERE xrpm.doc_type             = 'PORC'
   AND xrpm.item_div_origin     IS NOT NULL
   AND xrpm.prod_div_ahead      IS NULL
   AND xrpm.prod_div_origin     IS NULL
-  AND xrpm.item_div_ahead  = xicv3_a.item_class_code
-  AND xrpm.item_div_origin = xicv3_o.item_class_code
+  AND xrpm.item_div_ahead  = mcb_a2.segment1
+  AND xrpm.item_div_origin = mcb_o2.segment1
   AND xola.request_item_code = xola.shipping_item_code
+  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_a1.category_set_id    = mcst_a1.category_set_id
+  AND gic_a1.category_id        = mcb_a1.category_id
+  AND mcst_a1.language          = 'JA'
+  AND mcst_a1.source_lang       = 'JA'
+  AND mcst_a1.category_set_name = '¤•i‹æ•ª'
+  AND iimb_a.item_id            = gic_a1.item_id
+  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_a2.category_set_id    = mcst_a2.category_set_id
+  AND gic_a2.category_id        = mcb_a2.category_id
+  AND mcst_a2.language          = 'JA'
+  AND mcst_a2.source_lang       = 'JA'
+  AND mcst_a2.category_set_name = '•i–Ú‹æ•ª'
+  AND iimb_a.item_id            = gic_a2.item_id
+  -- U‘ÖæŒSæ“¾î•ñ
+  AND gic_a3.category_set_id    = mcst_a3.category_set_id
+  AND gic_a3.category_id        = mcb_a3.category_id
+  AND mcst_a3.language          = 'JA'
+  AND mcst_a3.source_lang       = 'JA'
+  AND mcst_a3.category_set_name = 'ŒQƒR[ƒh'
+  AND iimb_a.item_id            = gic_a3.item_id
+  -- U‘ÖæŒo—ŒSæ“¾î•ñ
+  AND gic_a4.category_set_id    = mcst_a4.category_set_id
+  AND gic_a4.category_id        = mcb_a4.category_id
+  AND mcst_a4.language          = 'JA'
+  AND mcst_a4.source_lang       = 'JA'
+  AND mcst_a4.category_set_name = 'Œo—•”—pŒQƒR[ƒh'
+  AND iimb_a.item_id            = gic_a4.item_id
+  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_o1.category_set_id    = mcst_o1.category_set_id
+  AND gic_o1.category_id        = mcb_o1.category_id
+  AND mcst_o1.language          = 'JA'
+  AND mcst_o1.source_lang       = 'JA'
+  AND mcst_o1.category_set_name = '¤•i‹æ•ª'
+  AND iimb_o.item_id            = gic_o1.item_id
+  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_o2.category_set_id    = mcst_o2.category_set_id
+  AND gic_o2.category_id        = mcb_o2.category_id
+  AND mcst_o2.language          = 'JA'
+  AND mcst_o2.source_lang       = 'JA'
+  AND mcst_o2.category_set_name = '•i–Ú‹æ•ª'
+  AND iimb_o.item_id            = gic_o2.item_id
+  -- U‘ÖŒ³ŒSæ“¾î•ñ
+  AND gic_o3.category_set_id    = mcst_o3.category_set_id
+  AND gic_o3.category_id        = mcb_o3.category_id
+  AND mcst_o3.language          = 'JA'
+  AND mcst_o3.source_lang       = 'JA'
+  AND mcst_o3.category_set_name = 'ŒQƒR[ƒh'
+  AND iimb_o.item_id            = gic_o3.item_id
+  -- U‘ÖŒ³Œo—ŒSæ“¾î•ñ
+  AND gic_o4.category_set_id    = mcst_o4.category_set_id
+  AND gic_o4.category_id        = mcb_o4.category_id
+  AND mcst_o4.language          = 'JA'
+  AND mcst_o4.source_lang       = 'JA'
+  AND mcst_o4.category_set_name = 'Œo—•”—pŒQƒR[ƒh'
+  AND iimb_o.item_id            = gic_o4.item_id
 --
 UNION
 --
@@ -177,10 +198,10 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
        ,xoha.deliver_to_id              AS deliver_to_id              -- o‰×æID
        ,NULL                            AS item_id                    -- •i–ÚID
-       ,xicv3_o.item_class_code         AS item_div                   -- •i–Ú‹æ•ª
-       ,xicv3_o.prod_class_code         AS prod_div                   -- ¤•i‹æ•ª
-       ,xicv3_o.crowd_code              AS crowd_code                 -- ŒS
-       ,xicv3_o.acnt_crowd_code         AS acnt_crowd_code            -- Œo—ŒS
+       ,mcb_o2.segment1                 AS item_div                   -- •i–Ú‹æ•ª
+       ,mcb_o1.segment1                 AS prod_div                   -- ¤•i‹æ•ª
+       ,mcb_o3.segment1                 AS crowd_code                 -- ŒS
+       ,mcb_o4.segment1                 AS acnt_crowd_code            -- Œo—ŒS
        ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
        ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
@@ -188,68 +209,32 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
        ,oe_order_lines_all       oola    -- ó’–¾×
        ,oe_transaction_types_all otta    -- ó’ƒ^ƒCƒv
-       ,(SELECT
-           iimb.item_id AS item_id
-          ,iimb.item_no AS item_no
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '¤•i‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS prod_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '•i–Ú‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS item_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'ŒQƒR[ƒh' THEN mcb.segment1
-                 ELSE NULL
-                END ) AS crowd_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'Œo—•”—pŒQƒR[ƒh' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS acnt_crowd_code
-         FROM ic_item_mst_b          iimb
-             ,gmi_item_categories    gic
-             ,mtl_categories_b       mcb
-             ,mtl_category_sets_tl   mcst
-        WHERE gic.category_set_id   = mcst.category_set_id
-          AND gic.category_id       = mcb.category_id
-          AND mcst.language         = 'JA'
-          AND mcst.source_lang      = 'JA'
-          AND mcst.category_set_name IN ( '¤•i‹æ•ª','•i–Ú‹æ•ª','ŒQƒR[ƒh','Œo—•”—pŒQƒR[ƒh' )
-          AND iimb.item_id          = gic.item_id
-          GROUP BY iimb.item_id
-                  ,iimb.item_no) xicv3_a
-       ,(SELECT
-           iimb.item_id AS item_id
-          ,iimb.item_no AS item_no
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '¤•i‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS prod_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '•i–Ú‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS item_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'ŒQƒR[ƒh' THEN mcb.segment1
-                 ELSE NULL
-                END ) AS crowd_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'Œo—•”—pŒQƒR[ƒh' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS acnt_crowd_code
-         FROM ic_item_mst_b          iimb
-             ,gmi_item_categories    gic
-             ,mtl_categories_b       mcb
-             ,mtl_category_sets_tl   mcst
-        WHERE gic.category_set_id   = mcst.category_set_id
-          AND gic.category_id       = mcb.category_id
-          AND mcst.language         = 'JA'
-          AND mcst.source_lang      = 'JA'
-          AND mcst.category_set_name IN ( '¤•i‹æ•ª','•i–Ú‹æ•ª','ŒQƒR[ƒh','Œo—•”—pŒQƒR[ƒh' )
-          AND iimb.item_id          = gic.item_id
-          GROUP BY iimb.item_id
-                  ,iimb.item_no) xicv3_o
+       ,ic_item_mst_b          iimb_a    -- U‘Öæ•i–Úî•ñ
+       ,ic_item_mst_b          iimb_o    -- U‘ÖŒ³•i–Úî•ñ
+       ,gmi_item_categories    gic_a1    -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a1    -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a1   -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a2   -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a3    -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a3    -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a3   -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a4    -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a4    -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a4   -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o1   -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o2    -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o2    -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o2   -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o3    -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o3    -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o3   -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o4    -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o4    -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o4   -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
        ,xxwsh_order_headers_all  xoha    -- ó’ƒwƒbƒ_ƒAƒhƒIƒ“
        ,xxwsh_order_lines_all    xola    -- ó’–¾×ƒAƒhƒIƒ“
        ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
@@ -264,8 +249,8 @@ WHERE xrpm.doc_type             = 'PORC'
   AND oola.header_id            = ooha.header_id
   AND oola.line_id              = rsl.oe_order_line_id
   AND oola.line_id              = xola.line_id
-  AND xicv3_a.item_no           = xola.request_item_code
-  AND xicv3_o.item_no           = xola.shipping_item_code
+  AND iimb_a.item_no            = xola.request_item_code
+  AND iimb_o.item_no            = xola.shipping_item_code
   AND xrpm.shipment_provision_div = otta.attribute1
   AND ((otta.attribute4           <> '2')         -- İŒÉ’²®ˆÈŠO
       OR  (otta.attribute4       IS NULL))        -- İŒÉ’²®ˆÈŠO
@@ -275,9 +260,65 @@ WHERE xrpm.doc_type             = 'PORC'
   AND xrpm.item_div_origin     IS NULL
   AND xrpm.prod_div_ahead      IS NULL
   AND xrpm.prod_div_origin     IS NULL
-  AND xicv3_a.item_class_code  <> '5'   -- »•iˆÈŠO
-  AND xicv3_o.item_class_code  <> '5'   -- »•iˆÈŠO
+  AND mcb_a2.segment1  <> '5'   -- »•iˆÈŠO
+  AND mcb_o2.segment1  <> '5'   -- »•iˆÈŠO
   AND xola.request_item_code = xola.shipping_item_code
+  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_a1.category_set_id    = mcst_a1.category_set_id
+  AND gic_a1.category_id        = mcb_a1.category_id
+  AND mcst_a1.language          = 'JA'
+  AND mcst_a1.source_lang       = 'JA'
+  AND mcst_a1.category_set_name = '¤•i‹æ•ª'
+  AND iimb_a.item_id            = gic_a1.item_id
+  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_a2.category_set_id    = mcst_a2.category_set_id
+  AND gic_a2.category_id        = mcb_a2.category_id
+  AND mcst_a2.language          = 'JA'
+  AND mcst_a2.source_lang       = 'JA'
+  AND mcst_a2.category_set_name = '•i–Ú‹æ•ª'
+  AND iimb_a.item_id            = gic_a2.item_id
+  -- U‘ÖæŒSæ“¾î•ñ
+  AND gic_a3.category_set_id    = mcst_a3.category_set_id
+  AND gic_a3.category_id        = mcb_a3.category_id
+  AND mcst_a3.language          = 'JA'
+  AND mcst_a3.source_lang       = 'JA'
+  AND mcst_a3.category_set_name = 'ŒQƒR[ƒh'
+  AND iimb_a.item_id            = gic_a3.item_id
+  -- U‘ÖæŒo—ŒSæ“¾î•ñ
+  AND gic_a4.category_set_id    = mcst_a4.category_set_id
+  AND gic_a4.category_id        = mcb_a4.category_id
+  AND mcst_a4.language          = 'JA'
+  AND mcst_a4.source_lang       = 'JA'
+  AND mcst_a4.category_set_name = 'Œo—•”—pŒQƒR[ƒh'
+  AND iimb_a.item_id            = gic_a4.item_id
+  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_o1.category_set_id    = mcst_o1.category_set_id
+  AND gic_o1.category_id        = mcb_o1.category_id
+  AND mcst_o1.language          = 'JA'
+  AND mcst_o1.source_lang       = 'JA'
+  AND mcst_o1.category_set_name = '¤•i‹æ•ª'
+  AND iimb_o.item_id            = gic_o1.item_id
+  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_o2.category_set_id    = mcst_o2.category_set_id
+  AND gic_o2.category_id        = mcb_o2.category_id
+  AND mcst_o2.language          = 'JA'
+  AND mcst_o2.source_lang       = 'JA'
+  AND mcst_o2.category_set_name = '•i–Ú‹æ•ª'
+  AND iimb_o.item_id            = gic_o2.item_id
+  -- U‘ÖŒ³ŒSæ“¾î•ñ
+  AND gic_o3.category_set_id    = mcst_o3.category_set_id
+  AND gic_o3.category_id        = mcb_o3.category_id
+  AND mcst_o3.language          = 'JA'
+  AND mcst_o3.source_lang       = 'JA'
+  AND mcst_o3.category_set_name = 'ŒQƒR[ƒh'
+  AND iimb_o.item_id            = gic_o3.item_id
+  -- U‘ÖŒ³Œo—ŒSæ“¾î•ñ
+  AND gic_o4.category_set_id    = mcst_o4.category_set_id
+  AND gic_o4.category_id        = mcb_o4.category_id
+  AND mcst_o4.language          = 'JA'
+  AND mcst_o4.source_lang       = 'JA'
+  AND mcst_o4.category_set_name = 'Œo—•”—pŒQƒR[ƒh'
+  AND iimb_o.item_id            = gic_o4.item_id
 --
 UNION
 --
@@ -305,25 +346,25 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
        ,xoha.deliver_to_id              AS deliver_to_id              -- o‰×æID
        ,DECODE(xlvv.meaning,
-                 'U‘Ö—L_ó“ü',xicv3_a.item_id,                     -- U‘Öæ•i–ÚID
-                 'U‘Ö—L_o‰×',xicv3_a.item_id,                     -- U‘Öæ•i–ÚID
-                 'U‘Ö—L_•¥o',xicv3_o.item_id) AS item_id          -- U‘ÖŒ³•i–ÚID
+                 'U‘Ö—L_ó“ü',iimb_a.item_id,                      -- U‘Öæ•i–ÚID
+                 'U‘Ö—L_o‰×',iimb_a.item_id,                      -- U‘Öæ•i–ÚID
+                 'U‘Ö—L_•¥o',iimb_o.item_id) AS item_id           -- U‘ÖŒ³•i–ÚID
        ,DECODE(xlvv.meaning,
-                 'U‘Ö—L_ó“ü',xicv3_a.item_class_code,             -- U‘Öæ•i–Ú‹æ•ª
-                 'U‘Ö—L_o‰×',xicv3_a.item_class_code,             -- U‘Öæ•i–Ú‹æ•ª
-                 'U‘Ö—L_•¥o',xicv3_o.item_class_code) AS item_div -- U‘ÖŒ³•i–Ú‹æ•ª
+                 'U‘Ö—L_ó“ü',mcb_a2.segment1,                     -- U‘Öæ•i–Ú‹æ•ª
+                 'U‘Ö—L_o‰×',mcb_a2.segment1,                     -- U‘Öæ•i–Ú‹æ•ª
+                 'U‘Ö—L_•¥o',mcb_o2.segment1) AS item_div         -- U‘ÖŒ³•i–Ú‹æ•ª
        ,DECODE(xlvv.meaning,
-                 'U‘Ö—L_ó“ü',xicv3_a.prod_class_code,             -- U‘Öæ¤•i‹æ•ª
-                 'U‘Ö—L_o‰×',xicv3_a.prod_class_code,             -- U‘Öæ¤•i‹æ•ª
-                 'U‘Ö—L_•¥o',xicv3_o.prod_class_code) AS prod_div -- U‘ÖŒ³¤•i‹æ•ª
+                 'U‘Ö—L_ó“ü',mcb_a1.segment1,                     -- U‘Öæ¤•i‹æ•ª
+                 'U‘Ö—L_o‰×',mcb_a1.segment1,                     -- U‘Öæ¤•i‹æ•ª
+                 'U‘Ö—L_•¥o',mcb_o1.segment1) AS prod_div         -- U‘ÖŒ³¤•i‹æ•ª
        ,DECODE(xlvv.meaning,
-                 'U‘Ö—L_ó“ü',xicv3_a.crowd_code,                  -- U‘ÖæŒS
-                 'U‘Ö—L_o‰×',xicv3_a.crowd_code,                  -- U‘ÖæŒS
-                 'U‘Ö—L_•¥o',xicv3_o.crowd_code) AS crowd_code    -- U‘ÖŒ³ŒS
+                 'U‘Ö—L_ó“ü',mcb_a3.segment1,                     -- U‘ÖæŒS
+                 'U‘Ö—L_o‰×',mcb_a3.segment1,                     -- U‘ÖæŒS
+                 'U‘Ö—L_•¥o',mcb_o3.segment1) AS crowd_code       -- U‘ÖŒ³ŒS
        ,DECODE(xlvv.meaning,
-                 'U‘Ö—L_ó“ü',xicv3_a.acnt_crowd_code,             -- U‘ÖæŒo—ŒS
-                 'U‘Ö—L_o‰×',xicv3_a.acnt_crowd_code,             -- U‘ÖæŒo—ŒS
-                 'U‘Ö—L_•¥o',xicv3_o.acnt_crowd_code) AS acnt_crowd_code  -- U‘ÖŒ³Œo—ŒS
+                 'U‘Ö—L_ó“ü',mcb_a4.segment1,                     -- U‘ÖæŒo—ŒS
+                 'U‘Ö—L_o‰×',mcb_a4.segment1,                     -- U‘ÖæŒo—ŒS
+                 'U‘Ö—L_•¥o',mcb_o4.segment1) AS acnt_crowd_code  -- U‘ÖŒ³Œo—ŒS
        ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
        ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
@@ -331,68 +372,32 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
        ,oe_order_lines_all       oola    -- ó’–¾×
        ,oe_transaction_types_all otta    -- ó’ƒ^ƒCƒv
-       ,(SELECT
-           iimb.item_id AS item_id
-          ,iimb.item_no AS item_no
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '¤•i‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS prod_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '•i–Ú‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS item_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'ŒQƒR[ƒh' THEN mcb.segment1
-                 ELSE NULL
-                END ) AS crowd_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'Œo—•”—pŒQƒR[ƒh' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS acnt_crowd_code
-         FROM ic_item_mst_b          iimb
-             ,gmi_item_categories    gic
-             ,mtl_categories_b       mcb
-             ,mtl_category_sets_tl   mcst
-        WHERE gic.category_set_id   = mcst.category_set_id
-          AND gic.category_id       = mcb.category_id
-          AND mcst.language         = 'JA'
-          AND mcst.source_lang      = 'JA'
-          AND mcst.category_set_name IN ( '¤•i‹æ•ª','•i–Ú‹æ•ª','ŒQƒR[ƒh','Œo—•”—pŒQƒR[ƒh' )
-          AND iimb.item_id          = gic.item_id
-          GROUP BY iimb.item_id
-                  ,iimb.item_no) xicv3_a
-       ,(SELECT
-           iimb.item_id AS item_id
-          ,iimb.item_no AS item_no
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '¤•i‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS prod_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '•i–Ú‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS item_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'ŒQƒR[ƒh' THEN mcb.segment1
-                 ELSE NULL
-                END ) AS crowd_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'Œo—•”—pŒQƒR[ƒh' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS acnt_crowd_code
-         FROM ic_item_mst_b          iimb
-             ,gmi_item_categories    gic
-             ,mtl_categories_b       mcb
-             ,mtl_category_sets_tl   mcst
-        WHERE gic.category_set_id   = mcst.category_set_id
-          AND gic.category_id       = mcb.category_id
-          AND mcst.language         = 'JA'
-          AND mcst.source_lang      = 'JA'
-          AND mcst.category_set_name IN ( '¤•i‹æ•ª','•i–Ú‹æ•ª','ŒQƒR[ƒh','Œo—•”—pŒQƒR[ƒh' )
-          AND iimb.item_id          = gic.item_id
-          GROUP BY iimb.item_id
-                  ,iimb.item_no) xicv3_o
+       ,ic_item_mst_b          iimb_a    -- U‘Öæ•i–Úî•ñ
+       ,ic_item_mst_b          iimb_o    -- U‘ÖŒ³•i–Úî•ñ
+       ,gmi_item_categories    gic_a1    -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a1    -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a1   -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a2   -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a3    -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a3    -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a3   -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a4    -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a4    -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a4   -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o1   -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o2    -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o2    -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o2   -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o3    -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o3    -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o3   -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o4    -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o4    -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o4   -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
        ,xxwsh_order_headers_all  xoha    -- ó’ƒwƒbƒ_ƒAƒhƒIƒ“
        ,xxwsh_order_lines_all    xola    -- ó’–¾×ƒAƒhƒIƒ“
        ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
@@ -407,8 +412,8 @@ WHERE xrpm.doc_type               = 'PORC'
   AND oola.header_id              = ooha.header_id
   AND oola.line_id                = rsl.oe_order_line_id
   AND oola.line_id                = xola.line_id
-  AND xicv3_a.item_no             = xola.request_item_code
-  AND xicv3_o.item_no             = xola.shipping_item_code
+  AND iimb_a.item_no            = xola.request_item_code
+  AND iimb_o.item_no            = xola.shipping_item_code
   AND xrpm.shipment_provision_div = otta.attribute1
   AND ((otta.attribute4           <> '2')         -- İŒÉ’²®ˆÈŠO
       OR  (otta.attribute4       IS NULL))        -- İŒÉ’²®ˆÈŠO
@@ -417,8 +422,64 @@ WHERE xrpm.doc_type               = 'PORC'
   AND xrpm.item_div_origin        IS NULL
   AND xrpm.prod_div_ahead         IS NULL
   AND xrpm.prod_div_origin        IS NULL
-  AND xrpm.item_div_ahead         = xicv3_a.item_class_code
-  AND xicv3_o.item_class_code     <> '5'   -- »•iˆÈŠO
+  AND xrpm.item_div_ahead         = mcb_a2.segment1
+  AND mcb_o2.segment1          <> '5'   -- »•iˆÈŠO
+  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_a1.category_set_id    = mcst_a1.category_set_id
+  AND gic_a1.category_id        = mcb_a1.category_id
+  AND mcst_a1.language          = 'JA'
+  AND mcst_a1.source_lang       = 'JA'
+  AND mcst_a1.category_set_name = '¤•i‹æ•ª'
+  AND iimb_a.item_id            = gic_a1.item_id
+  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_a2.category_set_id    = mcst_a2.category_set_id
+  AND gic_a2.category_id        = mcb_a2.category_id
+  AND mcst_a2.language          = 'JA'
+  AND mcst_a2.source_lang       = 'JA'
+  AND mcst_a2.category_set_name = '•i–Ú‹æ•ª'
+  AND iimb_a.item_id            = gic_a2.item_id
+  -- U‘ÖæŒSæ“¾î•ñ
+  AND gic_a3.category_set_id    = mcst_a3.category_set_id
+  AND gic_a3.category_id        = mcb_a3.category_id
+  AND mcst_a3.language          = 'JA'
+  AND mcst_a3.source_lang       = 'JA'
+  AND mcst_a3.category_set_name = 'ŒQƒR[ƒh'
+  AND iimb_a.item_id            = gic_a3.item_id
+  -- U‘ÖæŒo—ŒSæ“¾î•ñ
+  AND gic_a4.category_set_id    = mcst_a4.category_set_id
+  AND gic_a4.category_id        = mcb_a4.category_id
+  AND mcst_a4.language          = 'JA'
+  AND mcst_a4.source_lang       = 'JA'
+  AND mcst_a4.category_set_name = 'Œo—•”—pŒQƒR[ƒh'
+  AND iimb_a.item_id            = gic_a4.item_id
+  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_o1.category_set_id    = mcst_o1.category_set_id
+  AND gic_o1.category_id        = mcb_o1.category_id
+  AND mcst_o1.language          = 'JA'
+  AND mcst_o1.source_lang       = 'JA'
+  AND mcst_o1.category_set_name = '¤•i‹æ•ª'
+  AND iimb_o.item_id            = gic_o1.item_id
+  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_o2.category_set_id    = mcst_o2.category_set_id
+  AND gic_o2.category_id        = mcb_o2.category_id
+  AND mcst_o2.language          = 'JA'
+  AND mcst_o2.source_lang       = 'JA'
+  AND mcst_o2.category_set_name = '•i–Ú‹æ•ª'
+  AND iimb_o.item_id            = gic_o2.item_id
+  -- U‘ÖŒ³ŒSæ“¾î•ñ
+  AND gic_o3.category_set_id    = mcst_o3.category_set_id
+  AND gic_o3.category_id        = mcb_o3.category_id
+  AND mcst_o3.language          = 'JA'
+  AND mcst_o3.source_lang       = 'JA'
+  AND mcst_o3.category_set_name = 'ŒQƒR[ƒh'
+  AND iimb_o.item_id            = gic_o3.item_id
+  -- U‘ÖŒ³Œo—ŒSæ“¾î•ñ
+  AND gic_o4.category_set_id    = mcst_o4.category_set_id
+  AND gic_o4.category_id        = mcb_o4.category_id
+  AND mcst_o4.language          = 'JA'
+  AND mcst_o4.source_lang       = 'JA'
+  AND mcst_o4.category_set_name = 'Œo—•”—pŒQƒR[ƒh'
+  AND iimb_o.item_id            = gic_o4.item_id
 --
 UNION
 --
@@ -446,25 +507,25 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
        ,xoha.deliver_to_id              AS deliver_to_id              -- o‰×æID
        ,DECODE(xlvv.meaning,
-                 '¤•iU‘Ö—L_ó“ü',xicv3_a.item_id,                     -- U‘Öæ•i–ÚID
-                 '¤•iU‘Ö—L_o‰×',xicv3_a.item_id,                     -- U‘Öæ•i–ÚID
-                 '¤•iU‘Ö—L_•¥o',xicv3_o.item_id) AS item_id          -- U‘ÖŒ³•i–ÚID
+                 '¤•iU‘Ö—L_ó“ü',iimb_a.item_id,                     -- U‘Öæ•i–ÚID
+                 '¤•iU‘Ö—L_o‰×',iimb_a.item_id,                     -- U‘Öæ•i–ÚID
+                 '¤•iU‘Ö—L_•¥o',iimb_o.item_id) AS item_id          -- U‘ÖŒ³•i–ÚID
        ,DECODE(xlvv.meaning,
-                 '¤•iU‘Ö—L_ó“ü',xicv3_a.item_class_code,             -- U‘Öæ•i–Ú‹æ•ª
-                 '¤•iU‘Ö—L_o‰×',xicv3_a.item_class_code,             -- U‘Öæ•i–Ú‹æ•ª
-                 '¤•iU‘Ö—L_•¥o',xicv3_o.item_class_code) AS item_div -- U‘ÖŒ³•i–Ú‹æ•ª
+                 '¤•iU‘Ö—L_ó“ü',mcb_a2.segment1,             -- U‘Öæ•i–Ú‹æ•ª
+                 '¤•iU‘Ö—L_o‰×',mcb_a2.segment1,             -- U‘Öæ•i–Ú‹æ•ª
+                 '¤•iU‘Ö—L_•¥o',mcb_o2.segment1) AS item_div -- U‘ÖŒ³•i–Ú‹æ•ª
        ,DECODE(xlvv.meaning,
-                 '¤•iU‘Ö—L_ó“ü',xicv3_a.prod_class_code,             -- U‘Öæ¤•i‹æ•ª
-                 '¤•iU‘Ö—L_o‰×',xicv3_a.prod_class_code,             -- U‘Öæ¤•i‹æ•ª
-                 '¤•iU‘Ö—L_•¥o',xicv3_o.prod_class_code) AS prod_div -- U‘ÖŒ³¤•i‹æ•ª
+                 '¤•iU‘Ö—L_ó“ü',mcb_a1.segment1,             -- U‘Öæ¤•i‹æ•ª
+                 '¤•iU‘Ö—L_o‰×',mcb_a1.segment1,             -- U‘Öæ¤•i‹æ•ª
+                 '¤•iU‘Ö—L_•¥o',mcb_o1.segment1) AS prod_div -- U‘ÖŒ³¤•i‹æ•ª
        ,DECODE(xlvv.meaning,
-                 '¤•iU‘Ö—L_ó“ü',xicv3_a.crowd_code,                  -- U‘ÖæŒS
-                 '¤•iU‘Ö—L_o‰×',xicv3_a.crowd_code,                  -- U‘ÖæŒS
-                 '¤•iU‘Ö—L_•¥o',xicv3_o.crowd_code) AS crowd_code    -- U‘ÖŒ³ŒS
+                 '¤•iU‘Ö—L_ó“ü',mcb_a3.segment1,                  -- U‘ÖæŒS
+                 '¤•iU‘Ö—L_o‰×',mcb_a3.segment1,                  -- U‘ÖæŒS
+                 '¤•iU‘Ö—L_•¥o',mcb_o3.segment1) AS crowd_code    -- U‘ÖŒ³ŒS
        ,DECODE(xlvv.meaning,
-                 '¤•iU‘Ö—L_ó“ü',xicv3_a.acnt_crowd_code,             -- U‘ÖæŒo—ŒS
-                 '¤•iU‘Ö—L_o‰×',xicv3_a.acnt_crowd_code,             -- U‘ÖæŒo—ŒS
-                 '¤•iU‘Ö—L_•¥o',xicv3_o.acnt_crowd_code) AS acnt_crowd_code -- U‘ÖŒ³Œo—ŒS
+                 '¤•iU‘Ö—L_ó“ü',mcb_a4.segment1,             -- U‘ÖæŒo—ŒS
+                 '¤•iU‘Ö—L_o‰×',mcb_a4.segment1,             -- U‘ÖæŒo—ŒS
+                 '¤•iU‘Ö—L_•¥o',mcb_o4.segment1) AS acnt_crowd_code -- U‘ÖŒ³Œo—ŒS
        ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
        ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
@@ -472,68 +533,32 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
        ,oe_order_lines_all       oola    -- ó’–¾×
        ,oe_transaction_types_all otta    -- ó’ƒ^ƒCƒv
-       ,(SELECT
-           iimb.item_id AS item_id
-          ,iimb.item_no AS item_no
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '¤•i‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS prod_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '•i–Ú‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS item_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'ŒQƒR[ƒh' THEN mcb.segment1
-                 ELSE NULL
-                END ) AS crowd_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'Œo—•”—pŒQƒR[ƒh' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS acnt_crowd_code
-         FROM ic_item_mst_b          iimb
-             ,gmi_item_categories    gic
-             ,mtl_categories_b       mcb
-             ,mtl_category_sets_tl   mcst
-        WHERE gic.category_set_id   = mcst.category_set_id
-          AND gic.category_id       = mcb.category_id
-          AND mcst.language         = 'JA'
-          AND mcst.source_lang      = 'JA'
-          AND mcst.category_set_name IN ( '¤•i‹æ•ª','•i–Ú‹æ•ª','ŒQƒR[ƒh','Œo—•”—pŒQƒR[ƒh' )
-          AND iimb.item_id          = gic.item_id
-          GROUP BY iimb.item_id
-                  ,iimb.item_no) xicv3_a
-       ,(SELECT
-           iimb.item_id AS item_id
-          ,iimb.item_no AS item_no
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '¤•i‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS prod_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '•i–Ú‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS item_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'ŒQƒR[ƒh' THEN mcb.segment1
-                 ELSE NULL
-                END ) AS crowd_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'Œo—•”—pŒQƒR[ƒh' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS acnt_crowd_code
-         FROM ic_item_mst_b          iimb
-             ,gmi_item_categories    gic
-             ,mtl_categories_b       mcb
-             ,mtl_category_sets_tl   mcst
-        WHERE gic.category_set_id   = mcst.category_set_id
-          AND gic.category_id       = mcb.category_id
-          AND mcst.language         = 'JA'
-          AND mcst.source_lang      = 'JA'
-          AND mcst.category_set_name IN ( '¤•i‹æ•ª','•i–Ú‹æ•ª','ŒQƒR[ƒh','Œo—•”—pŒQƒR[ƒh' )
-          AND iimb.item_id          = gic.item_id
-          GROUP BY iimb.item_id
-                  ,iimb.item_no) xicv3_o
+       ,ic_item_mst_b          iimb_a    -- U‘Öæ•i–Úî•ñ
+       ,ic_item_mst_b          iimb_o    -- U‘ÖŒ³•i–Úî•ñ
+       ,gmi_item_categories    gic_a1    -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a1    -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a1   -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a2   -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a3    -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a3    -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a3   -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a4    -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a4    -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a4   -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o1   -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o2    -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o2    -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o2   -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o3    -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o3    -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o3   -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o4    -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o4    -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o4   -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
        ,xxwsh_order_headers_all  xoha    -- ó’ƒwƒbƒ_ƒAƒhƒIƒ“
        ,xxwsh_order_lines_all    xola    -- ó’–¾×ƒAƒhƒIƒ“
        ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
@@ -548,8 +573,8 @@ WHERE xrpm.doc_type             = 'PORC'
   AND oola.header_id              = ooha.header_id
   AND oola.line_id                = rsl.oe_order_line_id
   AND oola.line_id                = xola.line_id
-  AND xicv3_a.item_no             = xola.request_item_code
-  AND xicv3_o.item_no             = xola.shipping_item_code
+  AND iimb_a.item_no           = xola.request_item_code
+  AND iimb_o.item_no           = xola.shipping_item_code
   AND xrpm.shipment_provision_div = otta.attribute1
   AND ((otta.attribute4           <> '2')         -- İŒÉ’²®ˆÈŠO
       OR  (otta.attribute4       IS NULL))        -- İŒÉ’²®ˆÈŠO
@@ -558,10 +583,66 @@ WHERE xrpm.doc_type             = 'PORC'
   AND xrpm.item_div_origin IS NOT NULL
   AND xrpm.prod_div_ahead  IS NOT NULL
   AND xrpm.prod_div_origin IS NOT NULL
-  AND xrpm.item_div_ahead  = xicv3_a.item_class_code
-  AND xrpm.item_div_origin = xicv3_o.item_class_code
-  AND xrpm.prod_div_ahead  = xicv3_a.prod_class_code
-  AND xrpm.prod_div_origin = xicv3_o.prod_class_code
+  AND xrpm.item_div_ahead  = mcb_a2.segment1
+  AND xrpm.item_div_origin = mcb_o2.segment1
+  AND xrpm.prod_div_ahead  = mcb_a1.segment1
+  AND xrpm.prod_div_origin = mcb_o1.segment1
+  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_a1.category_set_id    = mcst_a1.category_set_id
+  AND gic_a1.category_id        = mcb_a1.category_id
+  AND mcst_a1.language          = 'JA'
+  AND mcst_a1.source_lang       = 'JA'
+  AND mcst_a1.category_set_name = '¤•i‹æ•ª'
+  AND iimb_a.item_id            = gic_a1.item_id
+  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_a2.category_set_id    = mcst_a2.category_set_id
+  AND gic_a2.category_id        = mcb_a2.category_id
+  AND mcst_a2.language          = 'JA'
+  AND mcst_a2.source_lang       = 'JA'
+  AND mcst_a2.category_set_name = '•i–Ú‹æ•ª'
+  AND iimb_a.item_id            = gic_a2.item_id
+  -- U‘ÖæŒSæ“¾î•ñ
+  AND gic_a3.category_set_id    = mcst_a3.category_set_id
+  AND gic_a3.category_id        = mcb_a3.category_id
+  AND mcst_a3.language          = 'JA'
+  AND mcst_a3.source_lang       = 'JA'
+  AND mcst_a3.category_set_name = 'ŒQƒR[ƒh'
+  AND iimb_a.item_id            = gic_a3.item_id
+  -- U‘ÖæŒo—ŒSæ“¾î•ñ
+  AND gic_a4.category_set_id    = mcst_a4.category_set_id
+  AND gic_a4.category_id        = mcb_a4.category_id
+  AND mcst_a4.language          = 'JA'
+  AND mcst_a4.source_lang       = 'JA'
+  AND mcst_a4.category_set_name = 'Œo—•”—pŒQƒR[ƒh'
+  AND iimb_a.item_id            = gic_a4.item_id
+  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_o1.category_set_id    = mcst_o1.category_set_id
+  AND gic_o1.category_id        = mcb_o1.category_id
+  AND mcst_o1.language          = 'JA'
+  AND mcst_o1.source_lang       = 'JA'
+  AND mcst_o1.category_set_name = '¤•i‹æ•ª'
+  AND iimb_o.item_id            = gic_o1.item_id
+  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_o2.category_set_id    = mcst_o2.category_set_id
+  AND gic_o2.category_id        = mcb_o2.category_id
+  AND mcst_o2.language          = 'JA'
+  AND mcst_o2.source_lang       = 'JA'
+  AND mcst_o2.category_set_name = '•i–Ú‹æ•ª'
+  AND iimb_o.item_id            = gic_o2.item_id
+  -- U‘ÖŒ³ŒSæ“¾î•ñ
+  AND gic_o3.category_set_id    = mcst_o3.category_set_id
+  AND gic_o3.category_id        = mcb_o3.category_id
+  AND mcst_o3.language          = 'JA'
+  AND mcst_o3.source_lang       = 'JA'
+  AND mcst_o3.category_set_name = 'ŒQƒR[ƒh'
+  AND iimb_o.item_id            = gic_o3.item_id
+  -- U‘ÖŒ³Œo—ŒSæ“¾î•ñ
+  AND gic_o4.category_set_id    = mcst_o4.category_set_id
+  AND gic_o4.category_id        = mcb_o4.category_id
+  AND mcst_o4.language          = 'JA'
+  AND mcst_o4.source_lang       = 'JA'
+  AND mcst_o4.category_set_name = 'Œo—•”—pŒQƒR[ƒh'
+  AND iimb_o.item_id            = gic_o4.item_id
 --
 UNION
 --
@@ -589,30 +670,30 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
        ,xoha.deliver_to_id              AS deliver_to_id              -- o‰×æID
        ,DECODE(xlvv.meaning,
-                 'U‘Öo‰×_ó“ü_Œ´',xicv3_a.item_id,                  -- U‘Öæ•i–ÚID
-                 'U‘Öo‰×_ó“ü_”¼',xicv3_a.item_id,                  -- U‘Öæ•i–ÚID
-                 'U‘Öo‰×_o‰×'   ,xicv3_a.item_id,                  -- U‘Öæ•i–ÚID
-                 'U‘Öo‰×_•¥o'   ,xicv3_o.item_id) AS item_id       -- U‘ÖŒ³•i–ÚID
+                 'U‘Öo‰×_ó“ü_Œ´',iimb_a.item_id,                  -- U‘Öæ•i–ÚID
+                 'U‘Öo‰×_ó“ü_”¼',iimb_a.item_id,                  -- U‘Öæ•i–ÚID
+                 'U‘Öo‰×_o‰×'   ,iimb_a.item_id,                  -- U‘Öæ•i–ÚID
+                 'U‘Öo‰×_•¥o'   ,iimb_o.item_id) AS item_id       -- U‘ÖŒ³•i–ÚID
        ,DECODE(xlvv.meaning,
-                 'U‘Öo‰×_ó“ü_Œ´',xicv3_a.item_class_code,          -- U‘Öæ•i–Ú‹æ•ª
-                 'U‘Öo‰×_ó“ü_”¼',xicv3_a.item_class_code,          -- U‘Öæ•i–Ú‹æ•ª
-                 'U‘Öo‰×_o‰×'   ,xicv3_a.item_class_code,          -- U‘Öæ•i–Ú‹æ•ª
-                 'U‘Öo‰×_•¥o'   ,xicv3_o.item_class_code) AS item_div -- U‘ÖŒ³•i–Ú‹æ•ª
+                 'U‘Öo‰×_ó“ü_Œ´',mcb_a2.segment1,                 -- U‘Öæ•i–Ú‹æ•ª
+                 'U‘Öo‰×_ó“ü_”¼',mcb_a2.segment1,                 -- U‘Öæ•i–Ú‹æ•ª
+                 'U‘Öo‰×_o‰×'   ,mcb_a2.segment1,                 -- U‘Öæ•i–Ú‹æ•ª
+                 'U‘Öo‰×_•¥o'   ,mcb_o2.segment1) AS item_div     -- U‘ÖŒ³•i–Ú‹æ•ª
        ,DECODE(xlvv.meaning,
-                 'U‘Öo‰×_ó“ü_Œ´',xicv3_a.prod_class_code,          -- U‘Öæ¤•i‹æ•ª
-                 'U‘Öo‰×_ó“ü_”¼',xicv3_a.prod_class_code,          -- U‘Öæ¤•i‹æ•ª
-                 'U‘Öo‰×_o‰×'   ,xicv3_a.prod_class_code,          -- U‘Öæ¤•i‹æ•ª
-                 'U‘Öo‰×_•¥o'   ,xicv3_o.prod_class_code) AS prod_div -- U‘ÖŒ³¤•i‹æ•ª
+                 'U‘Öo‰×_ó“ü_Œ´',mcb_a1.segment1,                 -- U‘Öæ¤•i‹æ•ª
+                 'U‘Öo‰×_ó“ü_”¼',mcb_a1.segment1,                 -- U‘Öæ¤•i‹æ•ª
+                 'U‘Öo‰×_o‰×'   ,mcb_a1.segment1,                 -- U‘Öæ¤•i‹æ•ª
+                 'U‘Öo‰×_•¥o'   ,mcb_o1.segment1) AS prod_div     -- U‘ÖŒ³¤•i‹æ•ª
        ,DECODE(xlvv.meaning,
-                 'U‘Öo‰×_ó“ü_Œ´',xicv3_a.crowd_code,               -- U‘ÖæŒS
-                 'U‘Öo‰×_ó“ü_”¼',xicv3_a.crowd_code,               -- U‘ÖæŒS
-                 'U‘Öo‰×_o‰×'   ,xicv3_a.crowd_code,               -- U‘ÖæŒS
-                 'U‘Öo‰×_•¥o'   ,xicv3_o.crowd_code) AS crowd_code -- U‘ÖŒ³ŒS
+                 'U‘Öo‰×_ó“ü_Œ´',mcb_a3.segment1,                 -- U‘ÖæŒS
+                 'U‘Öo‰×_ó“ü_”¼',mcb_a3.segment1,                 -- U‘ÖæŒS
+                 'U‘Öo‰×_o‰×'   ,mcb_a3.segment1,                 -- U‘ÖæŒS
+                 'U‘Öo‰×_•¥o'   ,mcb_o3.segment1) AS crowd_code   -- U‘ÖŒ³ŒS
        ,DECODE(xlvv.meaning,
-                 'U‘Öo‰×_ó“ü_Œ´',xicv3_a.acnt_crowd_code,          -- U‘ÖæŒo—ŒS
-                 'U‘Öo‰×_ó“ü_”¼',xicv3_a.acnt_crowd_code,          -- U‘ÖæŒo—ŒS
-                 'U‘Öo‰×_o‰×'   ,xicv3_a.acnt_crowd_code,          -- U‘ÖæŒo—ŒS
-                 'U‘Öo‰×_•¥o'   ,xicv3_o.acnt_crowd_code) AS acnt_crowd_code -- U‘ÖŒ³Œo—ŒS
+                 'U‘Öo‰×_ó“ü_Œ´',mcb_a4.segment1,                 -- U‘ÖæŒo—ŒS
+                 'U‘Öo‰×_ó“ü_”¼',mcb_a4.segment1,                 -- U‘ÖæŒo—ŒS
+                 'U‘Öo‰×_o‰×'   ,mcb_a4.segment1,                 -- U‘ÖæŒo—ŒS
+                 'U‘Öo‰×_•¥o'   ,mcb_o4.segment1) AS acnt_crowd_code -- U‘ÖŒ³Œo—ŒS
        ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
        ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
@@ -620,68 +701,32 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
        ,oe_order_lines_all       oola    -- ó’–¾×
        ,oe_transaction_types_all otta    -- ó’ƒ^ƒCƒv
-       ,(SELECT
-           iimb.item_id AS item_id
-          ,iimb.item_no AS item_no
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '¤•i‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS prod_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '•i–Ú‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS item_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'ŒQƒR[ƒh' THEN mcb.segment1
-                 ELSE NULL
-                END ) AS crowd_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'Œo—•”—pŒQƒR[ƒh' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS acnt_crowd_code
-         FROM ic_item_mst_b          iimb
-             ,gmi_item_categories    gic
-             ,mtl_categories_b       mcb
-             ,mtl_category_sets_tl   mcst
-        WHERE gic.category_set_id   = mcst.category_set_id
-          AND gic.category_id       = mcb.category_id
-          AND mcst.language         = 'JA'
-          AND mcst.source_lang      = 'JA'
-          AND mcst.category_set_name IN ( '¤•i‹æ•ª','•i–Ú‹æ•ª','ŒQƒR[ƒh','Œo—•”—pŒQƒR[ƒh' )
-          AND iimb.item_id          = gic.item_id
-          GROUP BY iimb.item_id
-                  ,iimb.item_no) xicv3_a
-       ,(SELECT
-           iimb.item_id AS item_id
-          ,iimb.item_no AS item_no
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '¤•i‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS prod_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '•i–Ú‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS item_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'ŒQƒR[ƒh' THEN mcb.segment1
-                 ELSE NULL
-                END ) AS crowd_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'Œo—•”—pŒQƒR[ƒh' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS acnt_crowd_code
-         FROM ic_item_mst_b          iimb
-             ,gmi_item_categories    gic
-             ,mtl_categories_b       mcb
-             ,mtl_category_sets_tl   mcst
-        WHERE gic.category_set_id   = mcst.category_set_id
-          AND gic.category_id       = mcb.category_id
-          AND mcst.language         = 'JA'
-          AND mcst.source_lang      = 'JA'
-          AND mcst.category_set_name IN ( '¤•i‹æ•ª','•i–Ú‹æ•ª','ŒQƒR[ƒh','Œo—•”—pŒQƒR[ƒh' )
-          AND iimb.item_id          = gic.item_id
-          GROUP BY iimb.item_id
-                  ,iimb.item_no) xicv3_o
+       ,ic_item_mst_b          iimb_a    -- U‘Öæ•i–Úî•ñ
+       ,ic_item_mst_b          iimb_o    -- U‘ÖŒ³•i–Úî•ñ
+       ,gmi_item_categories    gic_a1    -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a1    -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a1   -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a2   -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a3    -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a3    -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a3   -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a4    -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a4    -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a4   -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o1   -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o2    -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o2    -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o2   -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o3    -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o3    -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o3   -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o4    -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o4    -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o4   -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
        ,xxwsh_order_headers_all  xoha    -- ó’ƒwƒbƒ_ƒAƒhƒIƒ“
        ,xxwsh_order_lines_all    xola    -- ó’–¾×ƒAƒhƒIƒ“
        ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
@@ -697,8 +742,8 @@ WHERE xrpm.doc_type             = 'PORC'
   AND oola.header_id              = ooha.header_id
   AND oola.line_id                = rsl.oe_order_line_id
   AND oola.line_id                = xola.line_id
-  AND xicv3_a.item_no             = xola.request_item_code
-  AND xicv3_o.item_no             = xola.shipping_item_code
+  AND iimb_a.item_no              = xola.request_item_code
+  AND iimb_o.item_no              = xola.shipping_item_code
   AND xrpm.shipment_provision_div = otta.attribute1
   AND ((otta.attribute4           <> '2')         -- İŒÉ’²®ˆÈŠO
       OR  (otta.attribute4       IS NULL))        -- İŒÉ’²®ˆÈŠO
@@ -706,8 +751,64 @@ WHERE xrpm.doc_type             = 'PORC'
   AND xrpm.item_div_origin IS NULL
   AND xrpm.prod_div_ahead  IS NULL
   AND xrpm.prod_div_origin IS NULL
-  AND xrpm.item_div_ahead  = xicv3_a.item_class_code
-  AND xicv3_o.item_class_code     <> '5'   -- »•iˆÈŠO
+  AND xrpm.item_div_ahead  = mcb_a2.segment1
+  AND mcb_o2.segment1      <> '5'   -- »•iˆÈŠO
+  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_a1.category_set_id    = mcst_a1.category_set_id
+  AND gic_a1.category_id        = mcb_a1.category_id
+  AND mcst_a1.language          = 'JA'
+  AND mcst_a1.source_lang       = 'JA'
+  AND mcst_a1.category_set_name = '¤•i‹æ•ª'
+  AND iimb_a.item_id            = gic_a1.item_id
+  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_a2.category_set_id    = mcst_a2.category_set_id
+  AND gic_a2.category_id        = mcb_a2.category_id
+  AND mcst_a2.language          = 'JA'
+  AND mcst_a2.source_lang       = 'JA'
+  AND mcst_a2.category_set_name = '•i–Ú‹æ•ª'
+  AND iimb_a.item_id            = gic_a2.item_id
+  -- U‘ÖæŒSæ“¾î•ñ
+  AND gic_a3.category_set_id    = mcst_a3.category_set_id
+  AND gic_a3.category_id        = mcb_a3.category_id
+  AND mcst_a3.language          = 'JA'
+  AND mcst_a3.source_lang       = 'JA'
+  AND mcst_a3.category_set_name = 'ŒQƒR[ƒh'
+  AND iimb_a.item_id            = gic_a3.item_id
+  -- U‘ÖæŒo—ŒSæ“¾î•ñ
+  AND gic_a4.category_set_id    = mcst_a4.category_set_id
+  AND gic_a4.category_id        = mcb_a4.category_id
+  AND mcst_a4.language          = 'JA'
+  AND mcst_a4.source_lang       = 'JA'
+  AND mcst_a4.category_set_name = 'Œo—•”—pŒQƒR[ƒh'
+  AND iimb_a.item_id            = gic_a4.item_id
+  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_o1.category_set_id    = mcst_o1.category_set_id
+  AND gic_o1.category_id        = mcb_o1.category_id
+  AND mcst_o1.language          = 'JA'
+  AND mcst_o1.source_lang       = 'JA'
+  AND mcst_o1.category_set_name = '¤•i‹æ•ª'
+  AND iimb_o.item_id            = gic_o1.item_id
+  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_o2.category_set_id    = mcst_o2.category_set_id
+  AND gic_o2.category_id        = mcb_o2.category_id
+  AND mcst_o2.language          = 'JA'
+  AND mcst_o2.source_lang       = 'JA'
+  AND mcst_o2.category_set_name = '•i–Ú‹æ•ª'
+  AND iimb_o.item_id            = gic_o2.item_id
+  -- U‘ÖŒ³ŒSæ“¾î•ñ
+  AND gic_o3.category_set_id    = mcst_o3.category_set_id
+  AND gic_o3.category_id        = mcb_o3.category_id
+  AND mcst_o3.language          = 'JA'
+  AND mcst_o3.source_lang       = 'JA'
+  AND mcst_o3.category_set_name = 'ŒQƒR[ƒh'
+  AND iimb_o.item_id            = gic_o3.item_id
+  -- U‘ÖŒ³Œo—ŒSæ“¾î•ñ
+  AND gic_o4.category_set_id    = mcst_o4.category_set_id
+  AND gic_o4.category_id        = mcb_o4.category_id
+  AND mcst_o4.language          = 'JA'
+  AND mcst_o4.source_lang       = 'JA'
+  AND mcst_o4.category_set_name = 'Œo—•”—pŒQƒR[ƒh'
+  AND iimb_o.item_id            = gic_o4.item_id
 --
 UNION
 --
@@ -735,30 +836,30 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
        ,xoha.deliver_to_id              AS deliver_to_id              -- o‰×æID
        ,DECODE(xlvv.meaning,
-                 'U‘Öo‰×_ó“ü_Œ´',xicv3_a.item_id,                  -- U‘Öæ•i–ÚID
-                 'U‘Öo‰×_ó“ü_”¼',xicv3_a.item_id,                  -- U‘Öæ•i–ÚID
-                 'U‘Öo‰×_o‰×'   ,xicv3_a.item_id,                  -- U‘Öæ•i–ÚID
-                 'U‘Öo‰×_•¥o'   ,xicv3_o.item_id) AS item_id       -- U‘ÖŒ³•i–ÚID
+                 'U‘Öo‰×_ó“ü_Œ´',iimb_a.item_id,                   -- U‘Öæ•i–ÚID
+                 'U‘Öo‰×_ó“ü_”¼',iimb_a.item_id,                   -- U‘Öæ•i–ÚID
+                 'U‘Öo‰×_o‰×'   ,iimb_a.item_id,                   -- U‘Öæ•i–ÚID
+                 'U‘Öo‰×_•¥o'   ,iimb_o.item_id) AS item_id        -- U‘ÖŒ³•i–ÚID
        ,DECODE(xlvv.meaning,
-                 'U‘Öo‰×_ó“ü_Œ´',xicv3_a.item_class_code,          -- U‘Öæ•i–Ú‹æ•ª
-                 'U‘Öo‰×_ó“ü_”¼',xicv3_a.item_class_code,          -- U‘Öæ•i–Ú‹æ•ª
-                 'U‘Öo‰×_o‰×'   ,xicv3_a.item_class_code,          -- U‘Öæ•i–Ú‹æ•ª
-                 'U‘Öo‰×_•¥o'   ,xicv3_o.item_class_code) AS item_div -- U‘ÖŒ³•i–Ú‹æ•ª
+                 'U‘Öo‰×_ó“ü_Œ´',mcb_a2.segment1,                  -- U‘Öæ•i–Ú‹æ•ª
+                 'U‘Öo‰×_ó“ü_”¼',mcb_a2.segment1,                  -- U‘Öæ•i–Ú‹æ•ª
+                 'U‘Öo‰×_o‰×'   ,mcb_a2.segment1,                  -- U‘Öæ•i–Ú‹æ•ª
+                 'U‘Öo‰×_•¥o'   ,mcb_o2.segment1) AS item_div      -- U‘ÖŒ³•i–Ú‹æ•ª
        ,DECODE(xlvv.meaning,
-                 'U‘Öo‰×_ó“ü_Œ´',xicv3_a.prod_class_code,          -- U‘Öæ¤•i‹æ•ª
-                 'U‘Öo‰×_ó“ü_”¼',xicv3_a.prod_class_code,          -- U‘Öæ¤•i‹æ•ª
-                 'U‘Öo‰×_o‰×'   ,xicv3_a.prod_class_code,          -- U‘Öæ¤•i‹æ•ª
-                 'U‘Öo‰×_•¥o'   ,xicv3_o.prod_class_code) AS prod_div -- U‘ÖŒ³¤•i‹æ•ª
+                 'U‘Öo‰×_ó“ü_Œ´',mcb_a1.segment1,                  -- U‘Öæ¤•i‹æ•ª
+                 'U‘Öo‰×_ó“ü_”¼',mcb_a1.segment1,                  -- U‘Öæ¤•i‹æ•ª
+                 'U‘Öo‰×_o‰×'   ,mcb_a1.segment1,                  -- U‘Öæ¤•i‹æ•ª
+                 'U‘Öo‰×_•¥o'   ,mcb_o1.segment1) AS prod_div      -- U‘ÖŒ³¤•i‹æ•ª
        ,DECODE(xlvv.meaning,
-                 'U‘Öo‰×_ó“ü_Œ´',xicv3_a.crowd_code,               -- U‘ÖæŒS
-                 'U‘Öo‰×_ó“ü_”¼',xicv3_a.crowd_code,               -- U‘ÖæŒS
-                 'U‘Öo‰×_o‰×'   ,xicv3_a.crowd_code,               -- U‘ÖæŒS
-                 'U‘Öo‰×_•¥o'   ,xicv3_o.crowd_code) AS crowd_code -- U‘ÖŒ³ŒS
+                 'U‘Öo‰×_ó“ü_Œ´',mcb_a3.segment1,                  -- U‘ÖæŒS
+                 'U‘Öo‰×_ó“ü_”¼',mcb_a3.segment1,                  -- U‘ÖæŒS
+                 'U‘Öo‰×_o‰×'   ,mcb_a3.segment1,                  -- U‘ÖæŒS
+                 'U‘Öo‰×_•¥o'   ,mcb_o3.segment1) AS crowd_code    -- U‘ÖŒ³ŒS
        ,DECODE(xlvv.meaning,
-                 'U‘Öo‰×_ó“ü_Œ´',xicv3_a.acnt_crowd_code,          -- U‘ÖæŒo—ŒS
-                 'U‘Öo‰×_ó“ü_”¼',xicv3_a.acnt_crowd_code,          -- U‘ÖæŒo—ŒS
-                 'U‘Öo‰×_o‰×'   ,xicv3_a.acnt_crowd_code,          -- U‘ÖæŒo—ŒS
-                 'U‘Öo‰×_•¥o'   ,xicv3_o.acnt_crowd_code) AS acnt_crowd_code -- U‘ÖŒ³Œo—ŒS
+                 'U‘Öo‰×_ó“ü_Œ´',mcb_a4.segment1,                  -- U‘ÖæŒo—ŒS
+                 'U‘Öo‰×_ó“ü_”¼',mcb_a4.segment1,                  -- U‘ÖæŒo—ŒS
+                 'U‘Öo‰×_o‰×'   ,mcb_a4.segment1,                  -- U‘ÖæŒo—ŒS
+                 'U‘Öo‰×_•¥o'   ,mcb_o4.segment1) AS acnt_crowd_code -- U‘ÖŒ³Œo—ŒS
        ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
        ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
@@ -766,68 +867,32 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
        ,oe_order_lines_all       oola    -- ó’–¾×
        ,oe_transaction_types_all otta    -- ó’ƒ^ƒCƒv
-       ,(SELECT
-           iimb.item_id AS item_id
-          ,iimb.item_no AS item_no
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '¤•i‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS prod_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '•i–Ú‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS item_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'ŒQƒR[ƒh' THEN mcb.segment1
-                 ELSE NULL
-                END ) AS crowd_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'Œo—•”—pŒQƒR[ƒh' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS acnt_crowd_code
-         FROM ic_item_mst_b          iimb
-             ,gmi_item_categories    gic
-             ,mtl_categories_b       mcb
-             ,mtl_category_sets_tl   mcst
-        WHERE gic.category_set_id   = mcst.category_set_id
-          AND gic.category_id       = mcb.category_id
-          AND mcst.language         = 'JA'
-          AND mcst.source_lang      = 'JA'
-          AND mcst.category_set_name IN ( '¤•i‹æ•ª','•i–Ú‹æ•ª','ŒQƒR[ƒh','Œo—•”—pŒQƒR[ƒh' )
-          AND iimb.item_id          = gic.item_id
-          GROUP BY iimb.item_id
-                  ,iimb.item_no) xicv3_a
-       ,(SELECT
-           iimb.item_id AS item_id
-          ,iimb.item_no AS item_no
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '¤•i‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS prod_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '•i–Ú‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS item_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'ŒQƒR[ƒh' THEN mcb.segment1
-                 ELSE NULL
-                END ) AS crowd_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'Œo—•”—pŒQƒR[ƒh' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS acnt_crowd_code
-         FROM ic_item_mst_b          iimb
-             ,gmi_item_categories    gic
-             ,mtl_categories_b       mcb
-             ,mtl_category_sets_tl   mcst
-        WHERE gic.category_set_id   = mcst.category_set_id
-          AND gic.category_id       = mcb.category_id
-          AND mcst.language         = 'JA'
-          AND mcst.source_lang      = 'JA'
-          AND mcst.category_set_name IN ( '¤•i‹æ•ª','•i–Ú‹æ•ª','ŒQƒR[ƒh','Œo—•”—pŒQƒR[ƒh' )
-          AND iimb.item_id          = gic.item_id
-          GROUP BY iimb.item_id
-                  ,iimb.item_no) xicv3_o
+       ,ic_item_mst_b          iimb_a    -- U‘Öæ•i–Úî•ñ
+       ,ic_item_mst_b          iimb_o    -- U‘ÖŒ³•i–Úî•ñ
+       ,gmi_item_categories    gic_a1    -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a1    -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a1   -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a2   -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a3    -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a3    -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a3   -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a4    -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a4    -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a4   -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o1   -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o2    -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o2    -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o2   -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o3    -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o3    -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o3   -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_o4    -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_o4    -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_o4   -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
        ,xxwsh_order_headers_all  xoha    -- ó’ƒwƒbƒ_ƒAƒhƒIƒ“
        ,xxwsh_order_lines_all    xola    -- ó’–¾×ƒAƒhƒIƒ“
        ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
@@ -843,8 +908,8 @@ WHERE xrpm.doc_type             = 'PORC'
   AND oola.header_id              = ooha.header_id
   AND oola.line_id                = rsl.oe_order_line_id
   AND oola.line_id                = xola.line_id
-  AND xicv3_a.item_no             = xola.request_item_code
-  AND xicv3_o.item_no             = xola.shipping_item_code
+  AND iimb_a.item_no            = xola.request_item_code
+  AND iimb_o.item_no            = xola.shipping_item_code
   AND xrpm.shipment_provision_div = otta.attribute1
   AND ((otta.attribute4           <> '2')         -- İŒÉ’²®ˆÈŠO
       OR  (otta.attribute4       IS NULL))        -- İŒÉ’²®ˆÈŠO
@@ -852,8 +917,64 @@ WHERE xrpm.doc_type             = 'PORC'
   AND xrpm.item_div_origin IS NOT NULL
   AND xrpm.prod_div_ahead  IS NULL
   AND xrpm.prod_div_origin IS NULL
-  AND xrpm.item_div_ahead  = xicv3_a.item_class_code
-  AND xrpm.item_div_origin = xicv3_o.item_class_code
+  AND xrpm.item_div_ahead  = mcb_a2.segment1
+  AND xrpm.item_div_origin = mcb_o2.segment1
+  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_a1.category_set_id    = mcst_a1.category_set_id
+  AND gic_a1.category_id        = mcb_a1.category_id
+  AND mcst_a1.language          = 'JA'
+  AND mcst_a1.source_lang       = 'JA'
+  AND mcst_a1.category_set_name = '¤•i‹æ•ª'
+  AND iimb_a.item_id            = gic_a1.item_id
+  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_a2.category_set_id    = mcst_a2.category_set_id
+  AND gic_a2.category_id        = mcb_a2.category_id
+  AND mcst_a2.language          = 'JA'
+  AND mcst_a2.source_lang       = 'JA'
+  AND mcst_a2.category_set_name = '•i–Ú‹æ•ª'
+  AND iimb_a.item_id            = gic_a2.item_id
+  -- U‘ÖæŒSæ“¾î•ñ
+  AND gic_a3.category_set_id    = mcst_a3.category_set_id
+  AND gic_a3.category_id        = mcb_a3.category_id
+  AND mcst_a3.language          = 'JA'
+  AND mcst_a3.source_lang       = 'JA'
+  AND mcst_a3.category_set_name = 'ŒQƒR[ƒh'
+  AND iimb_a.item_id            = gic_a3.item_id
+  -- U‘ÖæŒo—ŒSæ“¾î•ñ
+  AND gic_a4.category_set_id    = mcst_a4.category_set_id
+  AND gic_a4.category_id        = mcb_a4.category_id
+  AND mcst_a4.language          = 'JA'
+  AND mcst_a4.source_lang       = 'JA'
+  AND mcst_a4.category_set_name = 'Œo—•”—pŒQƒR[ƒh'
+  AND iimb_a.item_id            = gic_a4.item_id
+  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_o1.category_set_id    = mcst_o1.category_set_id
+  AND gic_o1.category_id        = mcb_o1.category_id
+  AND mcst_o1.language          = 'JA'
+  AND mcst_o1.source_lang       = 'JA'
+  AND mcst_o1.category_set_name = '¤•i‹æ•ª'
+  AND iimb_o.item_id            = gic_o1.item_id
+  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_o2.category_set_id    = mcst_o2.category_set_id
+  AND gic_o2.category_id        = mcb_o2.category_id
+  AND mcst_o2.language          = 'JA'
+  AND mcst_o2.source_lang       = 'JA'
+  AND mcst_o2.category_set_name = '•i–Ú‹æ•ª'
+  AND iimb_o.item_id            = gic_o2.item_id
+  -- U‘ÖŒ³ŒSæ“¾î•ñ
+  AND gic_o3.category_set_id    = mcst_o3.category_set_id
+  AND gic_o3.category_id        = mcb_o3.category_id
+  AND mcst_o3.language          = 'JA'
+  AND mcst_o3.source_lang       = 'JA'
+  AND mcst_o3.category_set_name = 'ŒQƒR[ƒh'
+  AND iimb_o.item_id            = gic_o3.item_id
+  -- U‘ÖŒ³Œo—ŒSæ“¾î•ñ
+  AND gic_o4.category_set_id    = mcst_o4.category_set_id
+  AND gic_o4.category_id        = mcb_o4.category_id
+  AND mcst_o4.language          = 'JA'
+  AND mcst_o4.source_lang       = 'JA'
+  AND mcst_o4.category_set_name = 'Œo—•”—pŒQƒR[ƒh'
+  AND iimb_o.item_id            = gic_o4.item_id
 --
 UNION
 --
@@ -881,10 +1002,10 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
        ,xoha.deliver_to_id              AS deliver_to_id              -- o‰×æID
        ,NULL                            AS item_id                    -- •i–ÚID
-       ,xicv3.item_class_code           AS item_div                   -- •i–Ú‹æ•ª
-       ,xicv3.prod_class_code           AS prod_div                   -- ¤•i‹æ•ª
-       ,xicv3.crowd_code                AS crowd_code                 -- ŒS
-       ,xicv3.acnt_crowd_code           AS acnt_crowd_code            -- Œo—ŒS
+       ,mcb_a2.segment1                 AS item_div                   -- •i–Ú‹æ•ª
+       ,mcb_a1.segment1                 AS prod_div                   -- ¤•i‹æ•ª
+       ,mcb_a3.segment1                 AS crowd_code                 -- ŒS
+       ,mcb_a4.segment1                 AS acnt_crowd_code            -- Œo—ŒS
        ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
        ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
@@ -892,37 +1013,19 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
        ,oe_order_lines_all       oola    -- ó’–¾×
        ,oe_transaction_types_all otta    -- ó’ƒ^ƒCƒv
-       ,(SELECT
-           iimb.item_id AS item_id
-          ,iimb.item_no AS item_no
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '¤•i‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS prod_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '•i–Ú‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS item_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'ŒQƒR[ƒh' THEN mcb.segment1
-                 ELSE NULL
-                END ) AS crowd_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'Œo—•”—pŒQƒR[ƒh' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS acnt_crowd_code
-         FROM ic_item_mst_b          iimb
-             ,gmi_item_categories    gic
-             ,mtl_categories_b       mcb
-             ,mtl_category_sets_tl   mcst
-        WHERE gic.category_set_id   = mcst.category_set_id
-          AND gic.category_id       = mcb.category_id
-          AND mcst.language         = 'JA'
-          AND mcst.source_lang      = 'JA'
-          AND mcst.category_set_name IN ( '¤•i‹æ•ª','•i–Ú‹æ•ª','ŒQƒR[ƒh','Œo—•”—pŒQƒR[ƒh' )
-          AND iimb.item_id          = gic.item_id
-          GROUP BY iimb.item_id
-                  ,iimb.item_no) xicv3
+       ,ic_item_mst_b          iimb_a    -- •i–Úî•ñ
+       ,gmi_item_categories    gic_a1    -- •i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a1    -- •i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a1   -- •i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a2    -- •i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a2    -- æ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a2   -- •i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a3    -- •i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a3    -- •i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a3   -- •i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a4    -- •i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a4    -- •i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a4   -- •i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
        ,xxwsh_order_headers_all  xoha    -- ó’ƒwƒbƒ_ƒAƒhƒIƒ“
        ,xxwsh_order_lines_all    xola    -- ó’–¾×ƒAƒhƒIƒ“
        ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
@@ -937,11 +1040,39 @@ WHERE xrpm.doc_type                   = 'PORC'
   AND oola.header_id                  = ooha.header_id
   AND oola.line_id                    = rsl.oe_order_line_id
   AND oola.line_id                    = xola.line_id
-  AND xicv3.item_no                   = xola.shipping_item_code
+  AND iimb_a.item_no                  = xola.shipping_item_code
   AND xrpm.shipment_provision_div     = otta.attribute1
   AND ((otta.attribute4               <> '2')         -- İŒÉ’²®ˆÈŠO
       OR  (otta.attribute4            IS NULL))       -- İŒÉ’²®ˆÈŠO
   AND xrpm.ship_prov_rcv_pay_category = otta.attribute11
+  -- ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_a1.category_set_id    = mcst_a1.category_set_id
+  AND gic_a1.category_id        = mcb_a1.category_id
+  AND mcst_a1.language          = 'JA'
+  AND mcst_a1.source_lang       = 'JA'
+  AND mcst_a1.category_set_name = '¤•i‹æ•ª'
+  AND iimb_a.item_id            = gic_a1.item_id
+  -- ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_a2.category_set_id    = mcst_a2.category_set_id
+  AND gic_a2.category_id        = mcb_a2.category_id
+  AND mcst_a2.language          = 'JA'
+  AND mcst_a2.source_lang       = 'JA'
+  AND mcst_a2.category_set_name = '•i–Ú‹æ•ª'
+  AND iimb_a.item_id            = gic_a2.item_id
+  -- ŒSæ“¾î•ñ
+  AND gic_a3.category_set_id    = mcst_a3.category_set_id
+  AND gic_a3.category_id        = mcb_a3.category_id
+  AND mcst_a3.language          = 'JA'
+  AND mcst_a3.source_lang       = 'JA'
+  AND mcst_a3.category_set_name = 'ŒQƒR[ƒh'
+  AND iimb_a.item_id            = gic_a3.item_id
+  -- Œo—ŒSæ“¾î•ñ
+  AND gic_a4.category_set_id    = mcst_a4.category_set_id
+  AND gic_a4.category_id        = mcb_a4.category_id
+  AND mcst_a4.language          = 'JA'
+  AND mcst_a4.source_lang       = 'JA'
+  AND mcst_a4.category_set_name = 'Œo—•”—pŒQƒR[ƒh'
+  AND iimb_a.item_id            = gic_a4.item_id
 --
 UNION
 --
@@ -969,10 +1100,10 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
        ,xoha.deliver_to_id              AS deliver_to_id              -- o‰×æID
        ,NULL                            AS item_id                    -- •i–ÚID
-       ,xicv3.item_class_code           AS item_div                   -- •i–Ú‹æ•ª
-       ,xicv3.prod_class_code           AS prod_div                   -- ¤•i‹æ•ª
-       ,xicv3.crowd_code                AS crowd_code                 -- ŒS
-       ,xicv3.acnt_crowd_code           AS acnt_crowd_code            -- Œo—ŒS
+       ,mcb_a2.segment1                 AS item_div                   -- •i–Ú‹æ•ª
+       ,mcb_a1.segment1                 AS prod_div                   -- ¤•i‹æ•ª
+       ,mcb_a3.segment1                 AS crowd_code                 -- ŒS
+       ,mcb_a4.segment1                 AS acnt_crowd_code            -- Œo—ŒS
        ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
        ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
@@ -980,37 +1111,19 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
        ,oe_order_lines_all       oola    -- ó’–¾×
        ,oe_transaction_types_all otta    -- ó’ƒ^ƒCƒv
-       ,(SELECT
-           iimb.item_id AS item_id
-          ,iimb.item_no AS item_no
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '¤•i‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS prod_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = '•i–Ú‹æ•ª' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS item_class_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'ŒQƒR[ƒh' THEN mcb.segment1
-                 ELSE NULL
-                END ) AS crowd_code
-          ,MAX( CASE
-                  WHEN mcst.category_set_name = 'Œo—•”—pŒQƒR[ƒh' THEN mcb.segment1
-                  ELSE NULL
-                END ) AS acnt_crowd_code
-         FROM ic_item_mst_b          iimb
-             ,gmi_item_categories    gic
-             ,mtl_categories_b       mcb
-             ,mtl_category_sets_tl   mcst
-        WHERE gic.category_set_id   = mcst.category_set_id
-          AND gic.category_id       = mcb.category_id
-          AND mcst.language         = 'JA'
-          AND mcst.source_lang      = 'JA'
-          AND mcst.category_set_name IN ( '¤•i‹æ•ª','•i–Ú‹æ•ª','ŒQƒR[ƒh','Œo—•”—pŒQƒR[ƒh' )
-          AND iimb.item_id          = gic.item_id
-          GROUP BY iimb.item_id
-                  ,iimb.item_no) xicv3
+       ,ic_item_mst_b          iimb_a    -- •i–Úî•ñ
+       ,gmi_item_categories    gic_a1    -- •i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a1    -- •i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a1   -- •i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a2    -- •i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a2    -- æ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a2   -- •i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a3    -- •i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a3    -- •i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a3   -- •i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a4    -- •i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a4    -- •i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_category_sets_tl   mcst_a4   -- •i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
        ,xxwsh_order_headers_all  xoha    -- ó’ƒwƒbƒ_ƒAƒhƒIƒ“
        ,xxwsh_order_lines_all    xola    -- ó’–¾×ƒAƒhƒIƒ“
        ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
@@ -1025,9 +1138,37 @@ WHERE xrpm.doc_type                   = 'PORC'
   AND oola.header_id                  = ooha.header_id
   AND oola.line_id                    = rsl.oe_order_line_iD
   AND oola.line_id                    = xola.line_id
-  AND xicv3.item_no                   = xola.shipping_item_code
+  AND iimb_a.item_no                   = xola.shipping_item_code
   AND xrpm.stock_adjustment_div       = otta.attribute4
   AND xrpm.ship_prov_rcv_pay_category = otta.attribute11
+  -- ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_a1.category_set_id    = mcst_a1.category_set_id
+  AND gic_a1.category_id        = mcb_a1.category_id
+  AND mcst_a1.language          = 'JA'
+  AND mcst_a1.source_lang       = 'JA'
+  AND mcst_a1.category_set_name = '¤•i‹æ•ª'
+  AND iimb_a.item_id            = gic_a1.item_id
+  -- ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_a2.category_set_id    = mcst_a2.category_set_id
+  AND gic_a2.category_id        = mcb_a2.category_id
+  AND mcst_a2.language          = 'JA'
+  AND mcst_a2.source_lang       = 'JA'
+  AND mcst_a2.category_set_name = '•i–Ú‹æ•ª'
+  AND iimb_a.item_id            = gic_a2.item_id
+  -- ŒSæ“¾î•ñ
+  AND gic_a3.category_set_id    = mcst_a3.category_set_id
+  AND gic_a3.category_id        = mcb_a3.category_id
+  AND mcst_a3.language          = 'JA'
+  AND mcst_a3.source_lang       = 'JA'
+  AND mcst_a3.category_set_name = 'ŒQƒR[ƒh'
+  AND iimb_a.item_id            = gic_a3.item_id
+  -- Œo—ŒSæ“¾î•ñ
+  AND gic_a4.category_set_id    = mcst_a4.category_set_id
+  AND gic_a4.category_id        = mcb_a4.category_id
+  AND mcst_a4.language          = 'JA'
+  AND mcst_a4.source_lang       = 'JA'
+  AND mcst_a4.category_set_name = 'Œo—•”—pŒQƒR[ƒh'
+  AND iimb_a.item_id            = gic_a4.item_id
 /
 COMMENT ON TABLE XXCMN_RCV_PAY_MST_PORC_RMA_V IS 'Œo—ó•¥‹æ•ªî•ñVIEW_w”ƒŠÖ˜A_o‰×'
 /
