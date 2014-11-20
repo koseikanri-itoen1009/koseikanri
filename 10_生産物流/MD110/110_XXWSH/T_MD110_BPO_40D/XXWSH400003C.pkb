@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼確定関数(BODY)
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_EDO_BPO_40D_出荷依頼確定関数
- * Version                : 1.11
+ * Version                : 1.12
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/7/08    1.9   N.Fukuda        ST不具合対応#405
  *  2008/7/08    1.10  M.Uehara        ST不具合対応#424
  *  2008/7/09    1.11  N.Fukuda        ST不具合対応#430
+ *  2008/7/29    1.11  D.Nihei         ST不具合対応#503
  *
  *****************************************************************************************/
 --
@@ -166,6 +167,9 @@ AS
 --
   gv_freight_charge_class_on  CONSTANT VARCHAR2(1) := '1'; -- 運賃区分「対象」  2008/07/09 ST不具合対応#430
   gv_freight_charge_class_off CONSTANT VARCHAR2(1) := '0'; -- 運賃区分「対象外」2008/07/09 ST不具合対応#430
+-- 2008/07/29 D.Nihei ADD START
+  gv_drink                    CONSTANT VARCHAR2(1) := '2'; -- 商品区分「ドリンク」2008/07/29 ST不具合対応#503
+-- 2008/07/29 D.Nihei ADD END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1263,7 +1267,12 @@ AS
         -- **************************************************
 --
         -- 最大パレット枚数算出関数               運賃区分がONの場合にチェックする(2008/07/09 ST不具合対応#430)
-        IF ( loop_cnt.freight_charge_class = gv_freight_charge_class_on ) THEN  -- 2008/07/09 ST不具合対応#430
+        --                                        商品区分がドリンクの場合にチェックする(2008/07/29 ST不具合対応#503)
+-- 2008/07/29 D.Nihei MOD START
+--        IF ( loop_cnt.freight_charge_class = gv_freight_charge_class_on ) THEN  -- 2008/07/09 ST不具合対応#430
+        IF ( (loop_cnt.freight_charge_class = gv_freight_charge_class_on )
+         AND (loop_cnt.prod_class           = gv_drink                   ) ) THEN  -- 2008/07/29 ST不具合対応#503
+-- 2008/07/29 D.Nihei MOD START
 --
           ln_retcode :=
           xxwsh_common_pkg.get_max_pallet_qty(cv_whse_code, -- クイックコード「コード区分」「倉庫」
