@@ -8,7 +8,7 @@ AS
  * Description      : 移動伝票
  * MD.050/070       : 移動実績 T_MD050_BPO_510
  *                  : 移動伝票 T_MD070_BPO_51A
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------------- ----------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2008/07/18    1.5   Yasuhisa Yamamoto  内部変更要求対応
  *  2008/07/29    1.6   Marushita          禁則文字「'」「"」「<」「>」「＆」対応
  *  2008/07/30    1.7   Yuko Kawano        内部変更要求対応#164
+ *  2008/11/04    1.8   Yasuhisa Yamamoto  統合障害#508,554
  *
  *****************************************************************************************/
 --
@@ -1063,13 +1064,27 @@ AS
           ,xmrih.description                  AS  description3          -- 13:摘要
           ,xmril.item_code                    AS  item_code             -- 14:品目
           ,xim2v.item_short_name              AS  item_short_name       -- 15:略称
-          ,ilm.lot_no                         AS  lot_no                -- 16:ロットNO
-          ,ilm.attribute1                     AS  attribute1            -- 17:DFF1
-          ,ilm.attribute2                     AS  attribute2            -- 18:DFF2
+-- 2008/11/04 Y.Yamamoto v1.8 update start
+--          ,ilm.lot_no                         AS  lot_no                -- 16:ロットNO
+--          ,ilm.attribute1                     AS  attribute1            -- 17:DFF1
+--          ,ilm.attribute2                     AS  attribute2            -- 18:DFF2
+          ,DECODE(ilm.lot_id, 0, NULL
+                 ,ilm.lot_no)                 AS  lot_no                -- 16:ロットNO
+          ,DECODE(ilm.lot_id, 0, NULL
+                 ,ilm.attribute1)             AS  attribute1            -- 17:DFF1
+          ,DECODE(ilm.lot_id, 0, NULL
+                 ,ilm.attribute2)             AS  attribute2            -- 18:DFF2
+-- 2008/11/04 Y.Yamamoto v1.8 update end
           ,xim2v.num_of_cases                 AS  num_of_cases          -- 19:ケース入数
           ,xim2v.frequent_qty                 AS  frequent_qty          -- 20:代表入数
-          ,ilm.attribute6                     AS  attribute6            -- 21:在庫入数
-          ,xmld.actual_quantity               AS  actual_quantity       -- 22:実績数量
+-- 2008/11/04 Y.Yamamoto v1.8 update start
+--          ,ilm.attribute6                     AS  attribute6            -- 21:在庫入数
+--          ,xmld.actual_quantity               AS  actual_quantity       -- 22:実績数量
+          ,DECODE(ilm.lot_id, 0, NULL
+                 ,ilm.attribute6)             AS  attribute6            -- 21:在庫入数
+          ,NVL(xmld.actual_quantity, xmril.instruct_qty)
+                                              AS  actual_quantity       -- 22:実績数量
+-- 2008/11/04 Y.Yamamoto v1.8 update end
           ,xim2v.item_um                      AS  uom_code              -- 23:単位
           ,xmrih.sum_capacity                 AS  sum_capacity          -- 24:積載容積合計
           ,xmrih.sum_weight                   AS  sum_weight            -- 25:積載重量合計
@@ -1175,10 +1190,17 @@ AS
     AND   xmrih.item_class            = cur_item_class
     AND   xmrih.mov_hdr_id            = xmril.mov_hdr_id
     AND   xmril.delete_flg            = gv_delete_flg               -- N:「OFF」
-    AND   xmril.mov_line_id           = xmld.mov_line_id
-    AND   xmld.document_type_code     = gv_docu_type_mov            -- 20:「移動」
-    AND   xmld.record_type_code       = gv_rec_type_si              -- 「指示」
-    AND   xmld.lot_id                 = ilm.lot_id
+-- 2008/11/04 Y.Yamamoto v1.8 update start
+--    AND   xmril.mov_line_id           = xmld.mov_line_id
+--    AND   xmld.document_type_code     = gv_docu_type_mov            -- 20:「移動」
+--    AND   xmld.record_type_code       = gv_rec_type_si              -- 「指示」
+--    AND   xmld.lot_id                 = ilm.lot_id
+    AND   xmril.mov_line_id           = xmld.mov_line_id(+)
+    AND   xmld.document_type_code(+)  = gv_docu_type_mov            -- 20:「移動」
+    AND   xmld.record_type_code(+)    = gv_rec_type_si              -- 「指示」
+    AND   NVL(xmld.lot_id, 0)         = ilm.lot_id
+    AND   xmrih.no_instr_actual_class IS NULL
+-- 2008/11/04 Y.Yamamoto v1.8 update end
     AND   xmril.item_id               = ilm.item_id
     AND   xmril.item_id               = xic4v.item_id
     AND   xmril.item_id               = xim2v.item_id
