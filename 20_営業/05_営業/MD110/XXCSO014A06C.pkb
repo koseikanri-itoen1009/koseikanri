@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_CSO_014_A06_HHT-EBSインターフェース：
  *                    (OUT)営業員管理ファイル
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009-05-01    1.2   Tomoko.Mori       T1_0897対応
  *  2009-05-20    1.3   K.Satomura        T1_1082対応
  *  2009-05-28    1.4   K.Satomura        T1_1236対応
+ *  2009-06-03    1.5   K.Satomura        T1_1304対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1440,7 +1441,7 @@ AS
     -- 営業員コード、拠点コード、リソースIDの取得を行うカーソルの定義
     CURSOR xrv_v_cur
     IS
-      SELECT  xrv.employee_number  employee_number  -- 営業員コード
+      SELECT xrv.employee_number  employee_number  -- 営業員コード
              /* 2009.05.20 K.Satomura T1_1082対応 START */
               --(CASE WHEN xrv.issue_date <= lv_process_date_next THEN
               --        xrv.work_dept_code_new
@@ -1456,18 +1457,45 @@ AS
              ,xrv.resource_id resource_id            -- リソースID
              ,xrv.full_name full_name                -- 営業員名称 
       FROM   xxcso_resources_v  xrv                  -- リソースマスタビュー
-      WHERE (xrv.issue_date <= lv_process_date_next
-              AND TRIM(xrv.duty_code_new) = cv_duty_cd
-               OR lv_process_date_next    < xrv.issue_date
-              AND TRIM(xrv.duty_code_old) = cv_duty_cd)
-        AND gd_process_date_next BETWEEN TRUNC(xrv.start_date)
-              AND TRUNC(NVL(xrv.end_date, gd_process_date_next)) 
-        AND gd_process_date_next BETWEEN TRUNC(xrv.employee_start_date)
-              AND TRUNC(NVL(xrv.employee_end_date,gd_process_date_next))
-        AND gd_process_date_next BETWEEN TRUNC(xrv.assign_start_date)
-              AND TRUNC(NVL(xrv.assign_end_date,gd_process_date_next))
-        AND gd_process_date_next BETWEEN TRUNC(xrv.resource_start_date) 
-              AND TRUNC(NVL(xrv.resource_end_date, gd_process_date_next));
+            /* 2009.06.03 K.Satomura T1_1304対応 START */
+            ,(
+               SELECT per.person_id                 person_id
+                     ,MAX(per.effective_start_date) max_effective_start_date
+               FROM   per_people_f per
+               WHERE  per.effective_start_date <= gd_process_date_next
+               GROUP BY per.person_id
+             ) ppf
+            /* 2009.06.03 K.Satomura T1_1304対応 END */
+      WHERE  (
+                   xrv.issue_date          <= lv_process_date_next
+               AND TRIM(xrv.duty_code_new) =  cv_duty_cd
+               OR  lv_process_date_next    <  xrv.issue_date
+               AND TRIM(xrv.duty_code_old) =  cv_duty_cd
+             )
+      /* 2009.06.03 K.Satomura T1_1304対応 START */
+      --  AND gd_process_date_next BETWEEN TRUNC(xrv.start_date)
+      --        AND TRUNC(NVL(xrv.end_date, gd_process_date_next)) 
+      --  AND gd_process_date_next BETWEEN TRUNC(xrv.employee_start_date)
+      --        AND TRUNC(NVL(xrv.employee_end_date,gd_process_date_next))
+      --  AND gd_process_date_next BETWEEN TRUNC(xrv.assign_start_date)
+      --        AND TRUNC(NVL(xrv.assign_end_date,gd_process_date_next))
+      --  AND gd_process_date_next BETWEEN TRUNC(xrv.resource_start_date) 
+      --        AND TRUNC(NVL(xrv.resource_end_date, gd_process_date_next));
+      AND    ppf.person_id = xrv.person_id
+      -- ユーザー：従業員最新レコードに紐づく
+      AND    ppf.max_effective_start_date BETWEEN TRUNC(xrv.start_date)
+      AND    TRUNC(NVL(xrv.end_date, ppf.max_effective_start_date)) -- NVLをMAX開始日
+      -- 従業員：リソースに紐づく最新レコード）
+      AND    ppf.max_effective_start_date BETWEEN TRUNC(xrv.employee_start_date)
+      AND    TRUNC(NVL(xrv.employee_end_date,ppf.max_effective_start_date)) -- NVLをMAX開始日
+      -- アサイメント：従業員最新レコードに紐づく
+      AND    ppf.max_effective_start_date BETWEEN TRUNC(xrv.assign_start_date)
+      AND    TRUNC(NVL(xrv.assign_end_date,ppf.max_effective_start_date)) -- NVLをMAX開始日
+        -- リソース：（業務処理日＋１）時点で有効（有効判断はリソースのみ。）
+      AND    gd_process_date_next BETWEEN TRUNC(xrv.resource_start_date) -- 基準日で有効判断する。
+      AND    TRUNC(NVL(xrv.resource_end_date, gd_process_date_next))
+      ;
+      /* 2009.06.03 K.Satomura T1_1304対応 END */
 --
     -- *** ローカル・レコード ***
     l_xrv_v_cur_rec       xrv_v_cur%ROWTYPE;
