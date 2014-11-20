@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOS_EDI_HEADERS
  * Description : EDIヘッダ情報テーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS K.Okaguchi   新規作成
+ *  2009/06/11    1.1   SCS K.Kiriu      [T1_1352]納品書(受注情報)出力障害対応
  *
  ****************************************************************************************/
 CREATE TABLE  XXCOS.XXCOS_EDI_HEADERS(
@@ -278,6 +279,10 @@ CREATE TABLE  XXCOS.XXCOS_EDI_HEADERS(
  ,CREATION_CLASS                  VARCHAR2(2)         NULL                                -- 作成元区分
  ,EDI_DELIVERY_SCHEDULE_FLAG      VARCHAR2(1)         NULL                                -- EDI納品予定送信済フラグ
  ,PRICE_LIST_HEADER_ID            NUMBER(15)          NULL                                -- 価格表ヘッダID
+/* 2009/06/11 Ver1.1 Add Start */
+ ,DELIV_SLIP_FLAG_AREA_CHAIN      VARCHAR2(240)       NULL                                -- 納品書発行フラグエリア（チェーン店様式）
+ ,DELIV_SLIP_FLAG_AREA_CMN        VARCHAR2(240)       NULL                                -- 納品書発行フラグエリア（共通様式）
+/* 2009/06/11 Ver1.1 Add End   */
  ,CREATED_BY                      NUMBER(15)          NOT NULL                            --作成者
  ,CREATION_DATE                   DATE                NOT NULL                            --作成日
  ,LAST_UPDATED_BY                 NUMBER(15)          NOT NULL                            --最終更新者
@@ -556,6 +561,10 @@ COMMENT ON COLUMN XXCOS.XXCOS_EDI_HEADERS.ORDER_FORWARD_FLAG                    
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_HEADERS.CREATION_CLASS                             IS  '作成元区分';
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_HEADERS.EDI_DELIVERY_SCHEDULE_FLAG                 IS  'EDI納品予定送信済フラグ';
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_HEADERS.PRICE_LIST_HEADER_ID                       IS  '価格表ヘッダID';
+/* 2009/06/11 Ver1.1 Add Start */
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_HEADERS.DELIV_SLIP_FLAG_AREA_CHAIN                 IS  '納品書発行フラグエリア（チェーン店様式）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_HEADERS.DELIV_SLIP_FLAG_AREA_CMN                   IS  '納品書発行フラグエリア（共通様式）';
+/* 2009/06/11 Ver1.1 Add End   */
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_HEADERS.CREATED_BY                                 IS '作成者';
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_HEADERS.CREATION_DATE                              IS '作成日';
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_HEADERS.LAST_UPDATED_BY                            IS '最終更新者';
