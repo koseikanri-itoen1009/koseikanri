@@ -65,6 +65,7 @@ AS
  *  2009/12/04    1.15  N.Maeda          [E_本稼動_00330]
  *                                       国際CSV取込時「締め時間」「オーダーNo」「出荷日」の任意項目化、配送先コード取得処理の削除
  *  2009/12/07          N.Maeda          [E_本稼動_00086] 出荷予定日の導出条件修正
+ *  2009/12/16    1.16  N.Maeda          [E_本稼動_00495] 締め時間のNULL判定用IF文設定箇所修正
  *
  *****************************************************************************************/
 --
@@ -4031,12 +4032,15 @@ AS
       ;
       gv_seq_no := 'I' || TO_CHAR((lpad(ln_seq_no,11,0)));
 -- *********** 2009/12/04 1.15 N.Maeda ADD START ***********--
-      IF ( iv_attribute9 IS NOT NULL ) THEN
-        lt_attribute8 := iv_attribute9 || cv_00;
-      ELSE
-        lt_attribute8 := NULL;
-      END IF;
+-- *********** 2009/12/16 1.16 N.Maeda DEL START ***********--
+--      IF ( iv_attribute9 IS NOT NULL ) THEN
+--        lt_attribute8 := iv_attribute9 || cv_00;
+--      ELSE
+--        lt_attribute8 := NULL;
+--      END IF;
+-- *********** 2009/12/16 1.16 N.Maeda DEL  END  ***********--
 --
+      -- 顧客発注番号が設定されていない場合はシーケンス取得した値を設定する。
       IF ( iv_cust_po_number IS NOT NULL ) THEN
         lv_cust_po_number := iv_cust_po_number;
       ELSE
@@ -4074,6 +4078,17 @@ AS
 ---- *********** 2009/12/04 1.15 N.Maeda ADD  END  ***********--
 -- *********** 2009/12/04 1.15 N.Maeda MOD  END  ***********--
     END IF;
+--
+-- *********** 2009/12/16 1.16 N.Maeda ADD START ***********--]
+    -- 締め時間判定処理NULL以外の場合'00'を付加して設定
+    -- (※締め時間は本来Attribute8の為変数名を変更)
+    IF ( iv_attribute9 IS NOT NULL ) THEN
+      lt_attribute8 := iv_attribute9 || cv_00;
+    ELSE
+      lt_attribute8 := NULL;
+    END IF;
+-- *********** 2009/12/16 1.16 N.Maeda ADD  END  ***********--
+--
     --受注明細OIF
     gn_line_cnt := gn_line_cnt + 1;
     gr_order_line_oif_data(gn_line_cnt).order_source_id            := in_order_source_id;        --受注ソースID(インポートソースID)
@@ -4090,7 +4105,7 @@ AS
     gr_order_line_oif_data(gn_line_cnt).customer_line_number       := iv_customer_line_number;   --顧客明細番号(行No.(※設定必要))
 -- *********** 2009/12/04 1.15 N.Maeda MOD START ***********--
 --    gr_order_line_oif_data(gn_line_cnt).attribute8                 := iv_attribute9 || cv_00;     --フレックスフィールド9(締め時間)
-    gr_order_line_oif_data(gn_line_cnt).attribute8                 := lt_attribute8;             --フレックスフィールド9(締め時間)
+    gr_order_line_oif_data(gn_line_cnt).attribute8                 := lt_attribute8;             --フレックスフィールド8(締め時間)
 -- *********** 2009/12/04 1.15 N.Maeda MOD  END  ***********--
     gr_order_line_oif_data(gn_line_cnt).request_date               := id_request_date;           --要求日(納品日)
     gr_order_line_oif_data(gn_line_cnt).created_by                 := cn_created_by;             --作成者
