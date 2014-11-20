@@ -7,7 +7,7 @@ AS
  * Description      : 原料費原価計算処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 原料費原価計算処理 T_MD070_BPO_79A
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/12/02    1.3   H.Marushita      数量合計0の取引別ロット原価作成
  *  2008/12/06    1.4   H.Marushita      削除処理条件修正
  *  2008/12/18    1.5   N.Yoshida        本番#777対応
+ *  2009/03/30    1.6   H.Iida           本番障害#1346対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -99,6 +100,9 @@ AS
                                             -- メッセージ：データ取得エラー
   gv_msg_xxcmn00005 CONSTANT VARCHAR2(100)  := 'APP-XXCMN-00005';  
                                             -- メッセージ：APP-XXCMN-00005 成功データ（見出し）
+-- 2009/03/30 H.Iida ADD START 本番障害#1346
+  gv_prf_org_id     CONSTANT VARCHAR2(100)  := 'ORG_ID';        -- プロファイル：ORG_ID
+-- 2009/03/30 H.Iida ADD END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -140,6 +144,9 @@ AS
   -- ===============================
   -- 在庫オープン期間
   gd_opening_date     DATE;
+-- 2009/03/30 H.Iida ADD START 本番障害#1346
+  gv_org_id           VARCHAR2(1000);        -- ORG_ID
+-- 2009/03/30 H.Iida ADD END
 --
   /**********************************************************************************
    * Procedure Name   : del_table_data
@@ -363,7 +370,6 @@ AS
 --    AND     oap.organization_id  = ilv.mtl_organization_id    -- 組織ID
 --    AND     oap.open_flag        = 'Y'                        -- オープンフラグ
 --    ;
---
     --  会計期間開始日 = OPM在庫会計期間CLOSE年月 + 1ヶ月
     gd_opening_date := ADD_MONTHS(TO_DATE(xxcmn_common_pkg.get_opminv_close_period, 'YYYYMM'), 1);
 --
@@ -478,6 +484,9 @@ AS
 -- 2008/12/18 ADD START
       AND   pla.attribute7          <> '0'
 -- 2008/12/18 ADD END
+-- 2009/03/30 H.Iida ADD START 本番障害#1346
+      AND   pla.org_id              =   gv_org_id
+-- 2009/03/30 H.Iida ADD END
       GROUP BY  itp.doc_type        -- 文書タイプ
               , itp.doc_id          -- 文書ID
               , ximv.item_id        -- 品目ID
@@ -976,6 +985,13 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+--
+-- 2009/03/30 H.Iida ADD START 本番障害#1346
+    --==========================
+    -- ORG_ID取得
+    --==========================
+    gv_org_id := FND_PROFILE.VALUE(gv_prf_org_id);
+-- 2009/03/30 H.Iida ADD END
 --
     -- グローバル変数の初期化
     gn_target_cnt := 0;

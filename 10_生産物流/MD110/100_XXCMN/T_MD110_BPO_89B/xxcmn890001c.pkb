@@ -7,7 +7,7 @@ AS
  * Description      : 物流構成アドオンインポート
  * MD.050           : 物流構成マスタ T_MD050_BPO_890
  * MD.070           : 物流構成アドオンインポート T_MD070_BPO_89B
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2008/11/11    1.5   ORACLE 伊藤ひとみ 仕入先サイト参照先不正対応
  *  2008/11/17    1.6   ORACLE 伊藤ひとみ 統合テスト指摘491対応
  *  2009/06/10    1.7   SCS 丸下          本番障害1204、1439対応
+ *  2009/06/29    1.8   SCS 丸下          本番障害1552対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1869,6 +1870,15 @@ AS
     -- ===============================
     -- 要求IDカーソル xsli_request
     CURSOR xsli_request_id_cur IS
+-- 2009/06/29 MOD START
+    SELECT DISTINCT xsl.request_id
+    FROM xxcmn_sr_lines_if xsl
+    WHERE EXISTS(
+     SELECT 'X'
+     FROM   fnd_concurrent_requests fcr
+     WHERE  fcr.request_id = xsl.request_id 
+    );
+/*
     SELECT fcr.request_id 
     FROM fnd_concurrent_requests fcr
     WHERE EXISTS (
@@ -1877,6 +1887,8 @@ AS
           WHERE xsl.request_id = fcr.request_id
           AND ROWNUM = 1
         );
+*/
+-- 2009/06/29 MOD END
 --
     -- 前歴＋後歴のロックカーソル xsr_lock_start_end_cur
     CURSOR xsr_lock_start_end_cur IS

@@ -7,7 +7,7 @@ AS
  * Description      : 配送先マスタインターフェース(Outbound)
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 配送先マスタインタフェース T_MD070_BPO_80F
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2008/09/18    1.6  Oracle 山根 一浩  T_S_460,T_S_453,T_S_575,T_S_559対応
  *  2008/10/08    1.7  Oracle 椎名 昭圭  I_S_329対応
  *  2008/10/16    1.6  Oracle 丸下       T_S_460再修正
+ *  2009/03/30    1.8  Oracle 飯田 甫    本番障害#1346対応
  *
  *****************************************************************************************/
 --
@@ -103,6 +104,9 @@ AS
   gv_csv_file         CONSTANT VARCHAR2(1)   := '1';                 -- CSVファイル
   gv_ship             CONSTANT VARCHAR2(1)   := '1';                 -- 出荷
   gv_pay              CONSTANT VARCHAR2(1)   := '2';                 -- 有償
+-- 2009/03/30 H.Iida ADD START 本番障害#1346
+  gv_prf_org_id       CONSTANT VARCHAR2(100) := 'ORG_ID';            -- プロファイル：ORG_ID
+-- 2009/03/30 H.Iida ADD END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -170,6 +174,9 @@ AS
   gt_pay_mst_tbl     pay_mst_tbl;                           -- 結合配列の定義(有償)
   gr_outbound_rec    xxcmn_common_pkg.outbound_rec;         -- ファイル情報のレコードの定義
   gd_sysdate         DATE;                                  -- システム現在日付
+-- 2009/03/30 H.Iida ADD START 本番障害#1346
+  gv_org_id          VARCHAR2(1000);                        -- ORG_ID
+-- 2009/03/30 H.Iida ADD END
 --
   /**********************************************************************************
    * Procedure Name   : get_ship_mst
@@ -218,6 +225,13 @@ AS
     ov_retcode := gv_status_normal;
 --
 --###########################  固定部 END   ############################
+--
+-- 2009/03/30 H.Iida ADD START 本番障害#1346
+    --==========================
+    -- ORG_ID取得
+    --==========================
+    gv_org_id := FND_PROFILE.VALUE(gv_prf_org_id);
+-- 2009/03/30 H.Iida ADD END
 --
     -- ファイル出力情報取得関数呼び出し
     xxcmn_common_pkg.get_outbound_info(iv_wf_ope_div,     -- 処理区分
@@ -351,6 +365,9 @@ AS
       WHERE pv.attribute5             =  cv_cust_class
       AND   pvsa.vendor_site_id       =  xvsa.vendor_site_id
       AND   pvsa.vendor_id            =  pv.vendor_id
+-- 2009/03/30 H.Iida ADD START 本番障害#1346
+      AND   pvsa.org_id               =  TO_NUMBER(gv_org_id)
+-- 2009/03/30 H.Iida ADD END
       AND   (EXISTS (
               SELECT 1
               FROM   po_vendor_sites_all  pvsa1
