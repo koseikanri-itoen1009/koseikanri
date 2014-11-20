@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2009-06-01    1.11  K.Satomura       【T1_1107対応】
  *  2009-06-04    1.12  K.Satomura       【T1_1107再修正対応】
  *  2009-06-15    1.13  K.Satomura       【T1_1239対応】
+ *  2009-07-10    1.14  K.Satomura       統合テスト障害対応(0000476)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3211,10 +3212,13 @@ AS
              AND ln_machinery_status3  = cn_num0) THEN
       ln_instance_status_id := gt_instance_status_id_2;
     -- 機器状態１が「２：滞留」
-    -- 機器状態２が「２：整備予定」または「３：保管」または「４：故障中」
+    -- 機器状態２が「２：整備予定」または「３：保管」または「９：故障中」
     ELSIF (ln_machinery_status1 = cn_num2
-             AND (ln_machinery_status2 = cn_num2 OR 
-                    ln_machinery_status2 = cn_num3 OR ln_machinery_status2 = cn_num4)
+             AND (ln_machinery_status2 = cn_num2 OR
+                    /* 2009.07.10 K.Satomura 統合テスト障害対応(0000476) START */
+                    --ln_machinery_status2 = cn_num3 OR ln_machinery_status2 = cn_num4)
+                    ln_machinery_status2 = cn_num3 OR ln_machinery_status2 = cn_num9)
+                    /* 2009.07.10 K.Satomura 統合テスト障害対応(0000476) END */
              AND ln_machinery_status3  = cn_num0) THEN
       ln_instance_status_id := gt_instance_status_id_3;
     -- 機器状態１が「２：滞留」
@@ -4422,10 +4426,13 @@ AS
              AND ln_machinery_status3  = cn_num0) THEN
       ln_instance_status_id := gt_instance_status_id_2;
     -- 機器状態１が「２：滞留」
-    -- 機器状態２が「２：整備予定」または「３：保管」または「４：故障中」
+    -- 機器状態２が「２：整備予定」または「３：保管」または「９：故障中」
     ELSIF (ln_machinery_status1 = cn_num2
-             AND (ln_machinery_status2 = cn_num2 OR 
-                    ln_machinery_status2 = cn_num3 OR ln_machinery_status2 = cn_num4)
+             AND (ln_machinery_status2 = cn_num2 OR
+                    /* 2009.07.10 K.Satomura 統合テスト障害対応(0000476) START */
+                    --ln_machinery_status2 = cn_num3 OR ln_machinery_status2 = cn_num4)
+                    ln_machinery_status2 = cn_num3 OR ln_machinery_status2 = cn_num9)
+                    /* 2009.07.10 K.Satomura 統合テスト障害対応(0000476) END */
              AND ln_machinery_status3  = cn_num0) THEN
       ln_instance_status_id := gt_instance_status_id_3;
     -- 機器状態１が「２：滞留」
