@@ -7,7 +7,7 @@ AS
  * Description      : 営業員別払日別入金予定表
  * MD.050           : MD050_CFR_009_A01_営業員別払日別入金予定表
  * MD.070           : MD050_CFR_009_A01_営業員別払日別入金予定表
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -16,6 +16,9 @@ AS
  *  init                   p 初期処理                                (A-1)
  *  get_profile_value      p プロファイル取得処理                    (A-2)
  *  insert_work_table      p ワークテーブルデータ登録                (A-3)
+-- Modify 2010.01.21 Ver1.7 Start
+ *  set_receipt_class      p 入金区分設定処理                        (A-8)
+-- Modify 2010.01.21 Ver1.7 End
  *  start_svf_api          p SVF起動                                 (A-4)
  *  delete_work_table      p ワークテーブルデータ削除                (A-5)
  *  submain                p メイン処理プロシージャ
@@ -33,6 +36,7 @@ AS
  *  2009/04/24    1.4  SCS S.KAYAHARA   [障害T1_0633] 組織プロファイル結合条件対応
  *  2009/07/15    1.5  SCS M.HIROSE     [障害0000481] パフォーマンス改善
  *  2009/09/29    1.6  SCS T.KANEDA     [共通課題IE542] 拠点並び順変更
+ *  2010/01/21    1.7  SCS T.KANEDA     [本稼動_01145] 支払方法の取得先を顧客マスタに変更する
  *
  *****************************************************************************************/
 --
@@ -157,6 +161,11 @@ AS
 -- Modify 2009.02.19 Ver1.1 Start
   gt_taxd_trx_source     fnd_profile_option_values.profile_option_value%TYPE;  -- 税差額取引ソース
 -- Modify 2009.02.19 Ver1.1 End
+--
+-- Modify 2010.01.21 Ver1.7 Start
+    gv_no_data_msg  VARCHAR2(5000); -- 帳票０件メッセージ
+-- Modify 2010.01.21 Ver1.7 End
+--
 --
   /**********************************************************************************
    * Function Name    : get_receipt_class_name
@@ -558,11 +567,13 @@ AS
 --
     lv_no_data_msg  VARCHAR2(5000); -- 帳票０件メッセージ
 --
-    lt_receipt_class_id1  ar_receipt_methods.receipt_class_id%TYPE;  -- 入金区分１
-    lt_receipt_class_id2  ar_receipt_methods.receipt_class_id%TYPE;  -- 入金区分２
-    lt_receipt_class_id3  ar_receipt_methods.receipt_class_id%TYPE;  -- 入金区分３
-    lt_receipt_class_id4  ar_receipt_methods.receipt_class_id%TYPE;  -- 入金区分４
-    lt_receipt_class_id5  ar_receipt_methods.receipt_class_id%TYPE;  -- 入金区分５
+-- Modify 2010.01.21 Ver1.7 Start
+--    lt_receipt_class_id1  ar_receipt_methods.receipt_class_id%TYPE;  -- 入金区分１
+--    lt_receipt_class_id2  ar_receipt_methods.receipt_class_id%TYPE;  -- 入金区分２
+--    lt_receipt_class_id3  ar_receipt_methods.receipt_class_id%TYPE;  -- 入金区分３
+--    lt_receipt_class_id4  ar_receipt_methods.receipt_class_id%TYPE;  -- 入金区分４
+--    lt_receipt_class_id5  ar_receipt_methods.receipt_class_id%TYPE;  -- 入金区分５
+-- Modify 2010.01.21 Ver1.7 End
 --
     -- *** ローカル・カーソル ***
 --
@@ -587,12 +598,18 @@ AS
                                                       )
                                                     ,1
                                                     ,5000);
+-- Modify 2010.01.21 Ver1.7 Start
+    -- 他のプロシージャで使用するので、グローバル変数に格納
+    gv_no_data_msg := lv_no_data_msg;
+-- Modify 2010.01.21 Ver1.7 End
 --
-    lt_receipt_class_id1 := TO_NUMBER( iv_receipt_class1 );
-    lt_receipt_class_id2 := TO_NUMBER( iv_receipt_class2 );
-    lt_receipt_class_id3 := TO_NUMBER( iv_receipt_class3 );
-    lt_receipt_class_id4 := TO_NUMBER( iv_receipt_class4 );
-    lt_receipt_class_id5 := TO_NUMBER( iv_receipt_class5 );
+-- Modify 2010.01.21 Ver1.7 Start
+--    lt_receipt_class_id1 := TO_NUMBER( iv_receipt_class1 );
+--    lt_receipt_class_id2 := TO_NUMBER( iv_receipt_class2 );
+--    lt_receipt_class_id3 := TO_NUMBER( iv_receipt_class3 );
+--    lt_receipt_class_id4 := TO_NUMBER( iv_receipt_class4 );
+--    lt_receipt_class_id5 := TO_NUMBER( iv_receipt_class5 );
+-- Modify 2010.01.21 Ver1.7 End
 --
     -- ====================================================
     -- ワークテーブルへの登録
@@ -635,7 +652,9 @@ AS
              /*+ INDEX(hp    HZ_PARTIES_U1 )
                  INDEX(hop   HZ_ORGANIZATION_PROFILES_N1)
                  INDEX(hopeb HZ_ORG_PROFILES_EXT_B_N1)
-                 INDEX(xca   XXCMM_CUST_ACCOUNTS_PK)
+-- Modify 2010.01.21 Ver1.7 Start
+--                 INDEX(xca   XXCMM_CUST_ACCOUNTS_PK)
+-- Modify 2010.01.21 Ver1.7 End
              */
 -- Modify 2009.07.15 Ver1.5 End
         cv_pkg_name                                 report_id,            -- 帳票ＩＤ
@@ -647,21 +666,32 @@ AS
           ELSE xdev.attribute9
         END                                           receipt_area_code,    -- 入金拠点エリアコード（本部コード）
 -- Modify 2009.09.29 Ver1.6 End
-        NVL( xca.receiv_base_code, xca.sale_base_code ) receipt_dept_code, -- 入金拠点コード
+-- Modify 2010.01.21 Ver1.7 Start
+--        NVL( xca.receiv_base_code, xca.sale_base_code ) receipt_dept_code, -- 入金拠点コード
+        ca.receiv_base_code                         receipt_dept_code, -- 入金拠点コード
+-- Modify 2010.01.21 Ver1.7 End
         xdev.description                            receipt_dept_name,    -- 入金拠点名
         hopeb.c_ext_attr1                           sales_rep_code,       -- 営業担当者コード
         papf.per_information18 || papf.per_information19 sales_rep_name,  -- 従業員氏名
         pay_sch.due_date                            due_date,             -- 支払期日
         ca.cr_account_number                        cr_account_number,    -- 入金先顧客コード
         hp.party_name                               party_name,           -- 入金先顧客名
-        pay_sch.receipt_class_id                    receipt_class_id,     -- 入金区分ID
-        pay_sch.receipt_class_name                  receipt_class_name,   -- 入金区分名
-        xca.tax_div                                 tax_div,              -- 消費税区分
+-- Modify 2010.01.21 Ver1.7 Start
+--        pay_sch.receipt_class_id                    receipt_class_id,     -- 入金区分ID
+--        pay_sch.receipt_class_name                  receipt_class_name,   -- 入金区分名
+--        xca.tax_div                                 tax_div,              -- 消費税区分
+        NULL                                        receipt_class_id,     -- 入金区分ID
+        NULL                                        receipt_class_name,   -- 入金区分名
+        ca.tax_div                                  tax_div,              -- 消費税区分
+-- Modify 2010.01.21 Ver1.7 End
         flv.meaning                                 tax_div_name,         -- 消費税区分名
         NVL( SUM( pay_sch.amount_due_original ),0 ) amount_due_original,  -- 当初残高（税込）
         NVL( SUM( pay_sch.amount_due_remaining ),0 ) amount_due_remaining, -- 未回収残高（税込）
         NVL( SUM( pay_sch.amount_due_remaining ),0 )
-         -  NVL( SUM( DECODE( pay_sch.tax_rounding_rule,
+-- Modify 2010.01.21 Ver1.7 Start
+--         -  NVL( SUM( DECODE( pay_sch.tax_rounding_rule,
+         -  NVL( SUM( DECODE( hcsua.tax_rounding_rule,
+-- Modify 2010.01.21 Ver1.7 End
                               cv_rounding_rule_n, ROUND( pay_sch.tax_due_remaining ),
                               cv_rounding_rule_u, CEIL ( pay_sch.tax_due_remaining ),
                               cv_rounding_rule_d, FLOOR( pay_sch.tax_due_remaining ),
@@ -671,7 +701,10 @@ AS
                ,0 )                                 amount_due_remaining_ex_tax,
                                                                           -- 未回収残高（税抜）
         NVL( SUM( pay_sch.tax_original ), 0 )       tax_original,         -- 当初税額
-        NVL( SUM( DECODE( pay_sch.tax_rounding_rule,
+-- Modify 2010.01.21 Ver1.7 Start
+--        NVL( SUM( DECODE( pay_sch.tax_rounding_rule,
+        NVL( SUM( DECODE( hcsua.tax_rounding_rule,
+-- Modify 2010.01.21 Ver1.7 End
                           cv_rounding_rule_n, ROUND( pay_sch.tax_due_remaining ),
                           cv_rounding_rule_u, CEIL ( pay_sch.tax_due_remaining ),
                           cv_rounding_rule_d, FLOOR( pay_sch.tax_due_remaining ),
@@ -697,9 +730,11 @@ AS
                */
 -- Modify 2009.07.15 Ver1.5 End
                rcta.bill_to_customer_id           bill_to_customer_id,    -- 請求先顧客ID
-               arm.name                           receipt_method_name,    -- 入金方法（支払方法）
-               arm.receipt_class_id               receipt_class_id,       -- 入金区分ID
-               arc.name                           receipt_class_name,     -- 入金区分
+-- Modify 2010.01.21 Ver1.7 Start
+--               arm.name                           receipt_method_name,    -- 入金方法（支払方法）
+--               arm.receipt_class_id               receipt_class_id,       -- 入金区分ID
+--               arc.name                           receipt_class_name,     -- 入金区分
+-- Modify 2010.01.21 Ver1.7 End
                apsa.due_date                      due_date,               -- 支払期日
                SUM ( apsa.amount_due_remaining )  amount_due_remaining,   -- 未回収残高（税込）
                SUM ( apsa.amount_due_original )   amount_due_original,    -- 当初残高（税込）
@@ -722,55 +757,66 @@ AS
                                                                          gt_taxd_trx_source,apsa.amount_due_original,
                                                                          apsa.tax_original ) ) )
 --                              apsa.amount_due_remaining / apsa.amount_due_original * apsa.tax_original ) )
-                                                  tax_due_remaining,      -- 未回収税額
--- Modify 2009.02.18 Ver1.1 End
-               hcsua.tax_rounding_rule            tax_rounding_rule       -- 税金－端数処理
+-- Modify 2010.01.21 Ver1.7 Start
+--                                                  tax_due_remaining,      -- 未回収税額
+---- Modify 2009.02.18 Ver1.1 End
+--               hcsua.tax_rounding_rule            tax_rounding_rule       -- 税金－端数処理
+                                                  tax_due_remaining      -- 未回収税額
+-- Modify 2010.01.21 Ver1.7 End
 -- Modify 2009.07.15 Ver1.5 Start
 --        FROM ra_customer_trx_all        rcta,     -- 取引ヘッダ
 --             ar_payment_schedules_all   apsa,     -- 支払計画
         FROM ra_customer_trx            rcta,     -- 取引ヘッダ
              ar_payment_schedules       apsa,     -- 支払計画
 -- Modify 2009.07.15 Ver1.5 End
-             ar_receipt_methods         arm,      -- 入金方法（支払方法）
-             ar_receipt_classes         arc,      -- 入金区分
-             hz_cust_accounts           hca,      -- 顧客マスタ（請求先）
+-- Modify 2010.01.21 Ver1.7 Start
+--             ar_receipt_methods         arm,      -- 入金方法（支払方法）
+--             ar_receipt_classes         arc,      -- 入金区分
+--             hz_cust_accounts           hca,      -- 顧客マスタ（請求先）
+-- Modify 2010.01.21 Ver1.7 End
 -- Modify 2009.07.15 Ver1.5 Start
 --             hz_cust_acct_sites_all     hcasa,    -- 顧客所在地マスタ
 --             hz_cust_site_uses_all      hcsua     -- 顧客使用目的マスタ
 ---- Modify 2009.02.18 Ver1.1 Start
 --            ,ra_batch_sources_all       rbsa
 ---- Modify 2009.02.18 Ver1.1 End
-             hz_cust_acct_sites         hcasa,    -- 顧客所在地マスタ
-             hz_cust_site_uses          hcsua,    -- 顧客使用目的マスタ
+-- Modify 2010.01.21 Ver1.7 Start
+--             hz_cust_acct_sites         hcasa,    -- 顧客所在地マスタ
+--             hz_cust_site_uses          hcsua,    -- 顧客使用目的マスタ
+-- Modify 2010.01.21 Ver1.7 End
              ra_batch_sources           rbsa
 -- Modify 2009.07.15 Ver1.5 End
         WHERE rcta.customer_trx_id      = apsa.customer_trx_id
-          AND rcta.receipt_method_id    = arm.receipt_method_id
-          AND arm.receipt_class_id      = arc.receipt_class_id
-          AND rcta.bill_to_customer_id  = hca.cust_account_id
-          AND hca.cust_account_id       = hcasa.cust_account_id(+)
-          AND hcasa.cust_acct_site_id   = hcsua.cust_acct_site_id(+)
-          AND hcsua.site_use_code       = cv_bill_to   -- 使用目的：請求先
+-- Modify 2010.01.21 Ver1.7 Start
+--          AND rcta.receipt_method_id    = arm.receipt_method_id
+--          AND arm.receipt_class_id      = arc.receipt_class_id
+--          AND rcta.bill_to_customer_id  = hca.cust_account_id
+--          AND hca.cust_account_id       = hcasa.cust_account_id(+)
+--          AND hcasa.cust_acct_site_id   = hcsua.cust_acct_site_id(+)
+--          AND hcsua.site_use_code       = cv_bill_to   -- 使用目的：請求先
+-- Modify 2010.01.21 Ver1.7 End
           AND rcta.set_of_books_id      = gn_set_of_bks_id
 -- Modify 2009.07.15 Ver1.5 Start
 --          AND rcta.org_id               = gn_org_id
 -- Modify 2009.07.15 Ver1.5 End
           AND apsa.status               = cv_status_op -- ステータス：オープン
-          AND (
-                ( lt_receipt_class_id1 IS NULL 
-                  AND lt_receipt_class_id2 IS NULL
-                  AND lt_receipt_class_id3 IS NULL
-                  AND lt_receipt_class_id4 IS NULL
-                  AND lt_receipt_class_id5 IS NULL
-                )
-                OR arm.receipt_class_id IN ( 
-                    lt_receipt_class_id1,
-                    lt_receipt_class_id2,
-                    lt_receipt_class_id3,
-                    lt_receipt_class_id4,
-                    lt_receipt_class_id5
-                )
-              )
+-- Modify 2010.01.21 Ver1.7 Start
+--          AND (
+--                ( lt_receipt_class_id1 IS NULL 
+--                  AND lt_receipt_class_id2 IS NULL
+--                  AND lt_receipt_class_id3 IS NULL
+--                  AND lt_receipt_class_id4 IS NULL
+--                  AND lt_receipt_class_id5 IS NULL
+--                )
+--                OR arm.receipt_class_id IN ( 
+--                    lt_receipt_class_id1,
+--                    lt_receipt_class_id2,
+--                    lt_receipt_class_id3,
+--                    lt_receipt_class_id4,
+--                    lt_receipt_class_id5
+--                )
+--              )
+-- Modify 2010.01.21 Ver1.7 End
           AND ( apsa.due_date >= xxcfr_common_pkg.get_date_param_trans ( iv_due_date_from )
                 OR iv_due_date_from IS NULL )
           AND ( apsa.due_date <= xxcfr_common_pkg.get_date_param_trans ( iv_due_date_to )
@@ -781,21 +827,39 @@ AS
 -- Modify 2009.02.18 Ver1.1 End
         GROUP BY 
           rcta.bill_to_customer_id,   -- 請求先顧客ID
-          arm.name,                   -- 入金方法（支払方法）
-          arm.receipt_class_id,       -- 入金区分ID
-          arc.name,                   -- 入金区分
-          apsa.due_date,              -- 支払期日
-          hcsua.tax_rounding_rule     -- 税金－端数処理
+-- Modify 2010.01.21 Ver1.7 Start
+--          arm.name,                   -- 入金方法（支払方法）
+--          arm.receipt_class_id,       -- 入金区分ID
+--          arc.name,                   -- 入金区分
+--          apsa.due_date,              -- 支払期日
+--          hcsua.tax_rounding_rule     -- 税金－端数処理
+          apsa.due_date              -- 支払期日
+-- Modify 2010.01.21 Ver1.7 End
         )                         pay_sch,        -- 顧客別未回収残高ビュー
         (
           SELECT
+-- Modify 2010.01.21 Ver1.7 Start
+                 /*+ USE_CONCAT
+                     LEADING( xca hca_c hcara hca )
+                     USE_NL ( xca hca_c hcara hca )
+                 */
+-- Modify 2010.01.21 Ver1.7 End
             hca.cust_account_id                     bill_cust_account_id,   -- 請求先顧客ＩＤ
             hca_c.cust_account_id                   cr_cust_account_id,     -- 入金先の顧客ＩＤ
             hca.account_number                      bill_to_account_number, -- 請求先顧客コード（請求先顧客コード）
             hca_c.account_number                    cr_account_number,      -- 入金先顧客コード
+-- Modify 2010.01.21 Ver1.7 Start
+            xca.tax_div                             tax_div,                -- 税区分
+            NVL( xca.receiv_base_code
+               , xca.sale_base_code
+            )                                       receiv_base_code,       -- NVL(入金拠点,売上拠点)
+-- Modify 2010.01.21 Ver1.7 End
             hca_c.party_id                          cr_party_id             -- 入金先顧客パーティＩＤ
           FROM hz_cust_accounts           hca_c,    -- 顧客マスタ（入金）
                hz_cust_accounts           hca,      -- 顧客マスタ（請求先）
+-- Modify 2010.01.21 Ver1.7 Start
+               xxcmm_cust_accounts        xca,      -- 顧客追加情報(入金)
+-- Modify 2010.01.21 Ver1.7 End
 -- Modify 2009.07.15 Ver1.5 Start
 --               hz_cust_acct_relate_all    hcara     -- 顧客関連
                hz_cust_acct_relate        hcara     -- 顧客関連
@@ -804,17 +868,42 @@ AS
             AND hcara.related_cust_account_id = hca.cust_account_id
             AND hcara.status              = cv_status_enabled -- ステータス：有効
             AND hcara.attribute1          = cv_relate_class   -- 関連分類：入金
+-- Modify 2010.01.21 Ver1.7 Start
+            AND hca_c.cust_account_id     = xca.customer_id   -- 顧客内部ID
+            AND ( ( iv_receive_base_code IS NULL                  )  -- パラメータがNULLか
+               OR ( xca.receiv_base_code  = iv_receive_base_code  )  -- 入金拠点がパラメータに等しいか
+               OR ( ( xca.receiv_base_code IS NULL                 ) -- 入金拠点が入力なら売上拠点に等しいか
+                AND ( xca.sale_base_code    = iv_receive_base_code )
+                  )
+                )
+-- Modify 2010.01.21 Ver1.7 End
 -- Modify 2009.07.15 Ver1.5 Start
 --          UNION
           UNION ALL
 -- Modify 2009.07.15 Ver1.5 End
           SELECT
+-- Modify 2010.01.21 Ver1.7 Start
+                 /*+ USE_CONCAT
+                     LEADING( xca hca )
+                     USE_NL( xca hca )
+                 */
+-- Modify 2010.01.21 Ver1.7 End
             hca.cust_account_id                     bill_cust_account_id,   -- 請求先顧客ＩＤ
             hca.cust_account_id                     cr_cust_account_id,     -- 入金先顧客ＩＤ
             hca.account_number                      bill_to_account_number, -- 請求先顧客コード（請求先顧客コード）
             hca.account_number                      cr_account_number,      -- 入金先顧客コード
+-- Modify 2010.01.21 Ver1.7 Start
+            xca.tax_div                             tax_div,                -- 税区分
+            NVL( xca.receiv_base_code
+               , xca.sale_base_code
+            )                                       receiv_base_code,       -- NVL(入金拠点,売上拠点)
+-- Modify 2010.01.21 Ver1.7 End
             hca.party_id                            cr_party_id             -- 入金先顧客パーティＩＤ
-          FROM hz_cust_accounts           hca      -- 顧客マスタ（入金関連なし）
+-- Modify 2010.01.21 Ver1.7 Start
+--          FROM hz_cust_accounts           hca      -- 顧客マスタ（入金関連なし）
+          FROM hz_cust_accounts           hca,      -- 顧客マスタ（入金関連なし）
+               xxcmm_cust_accounts        xca       -- 顧客追加情報（入金関連なし）
+-- Modify 2010.01.21 Ver1.7 End
           WHERE NOT EXISTS (
                   SELECT 'X'
                     FROM hz_cust_acct_relate_all   cash_hcar_1       --顧客関連マスタ(入金関連)
@@ -822,19 +911,38 @@ AS
                      AND cash_hcar_1.attribute1 = cv_relate_class    --顧客関連マスタ(入金関連).関連分類 = ‘2’ (入金)
                      AND cash_hcar_1.related_cust_account_id = hca.cust_account_id --顧客関連マスタ(入金関連).関連先顧客ID = 請求先顧客マスタ.顧客ID
                 )
+-- Modify 2010.01.21 Ver1.7 Start
+            AND hca.cust_account_id       = xca.customer_id   -- 顧客内部ID
+            AND ( ( iv_receive_base_code IS NULL                  )  -- パラメータがNULLか
+               OR ( xca.receiv_base_code  = iv_receive_base_code  )  -- 入金拠点がパラメータに等しいか
+               OR ( ( xca.receiv_base_code IS NULL                 ) -- 入金拠点が入力なら売上拠点に等しいか
+                AND ( xca.sale_base_code    = iv_receive_base_code )
+                  )
+                )
+-- Modify 2010.01.21 Ver1.7 End
         )                         ca,             -- 顧客入金関連取得ビュー
         hz_parties                hp,             -- パーティ
         hz_organization_profiles  hop,            -- 組織プロファイル
         hz_org_profiles_ext_b     hopeb,          -- 組織プロファイル拡張
         ego_attr_groups_v         eagv,           -- 組織プロファイル拡張属性グループ
         per_all_people_f          papf,           -- 従業員マスタ
-        xxcmm_cust_accounts       xca,            -- 顧客追加情報テーブル
+-- Modify 2010.01.21 Ver1.7 Start
+--        xxcmm_cust_accounts       xca,            -- 顧客追加情報テーブル
+        hz_cust_acct_sites        hcasa,    -- 顧客所在地マスタ
+        hz_cust_site_uses         hcsua,    -- 顧客使用目的マスタ
+-- Modify 2010.01.21 Ver1.7 End
         xx03_departments_ext_v    xdev,           -- 部門マスタビュー
         fnd_lookup_values         flv             -- 参照表（消費税区分）
 -- Modify 2009.07.15 Ver1.5 Start
        ,fnd_application           fapp            -- アプリケーション
 -- Modify 2009.07.15 Ver1.5 End
       WHERE pay_sch.bill_to_customer_id = ca.bill_cust_account_id
+-- Modify 2010.01.21 Ver1.7 Start
+        AND ca.bill_cust_account_id     = hcasa.cust_account_id   -- 顧客内部ID
+        AND hcasa.cust_acct_site_id     = hcsua.cust_acct_site_id -- 顧客所在地内部ID
+        AND hcsua.site_use_code         = cv_bill_to              -- 使用目的：請求先
+        AND hcsua.status                = cv_status_enabled       -- 有効('A')
+-- Modify 2010.01.21 Ver1.7 End
         AND ca.cr_party_id              = hp.party_id
         AND hp.party_id                 = hop.party_id(+)
 -- Modify 2009.04.24 Ver1.4 Start
@@ -854,18 +962,26 @@ AS
            OR hopeb.d_ext_attr2 IS NULL )
         AND papf.effective_start_date   <= TRUNC ( SYSDATE )
         AND papf.effective_end_date     >= TRUNC ( SYSDATE )
-        AND ca.cr_cust_account_id       = xca.customer_id
-        AND NVL( xca.receiv_base_code, xca.sale_base_code )
-                                        = xdev.flex_value
+-- Modify 2010.01.21 Ver1.7 Start
+--        AND ca.cr_cust_account_id       = xca.customer_id
+--        AND NVL( xca.receiv_base_code, xca.sale_base_code )
+--                                        = xdev.flex_value
+        AND ca.receiv_base_code         = xdev.flex_value
+-- Modify 2010.01.21 Ver1.7 End
         AND xdev.enabled_flag           = cv_enabled_yes
 -- Modify 2009.07.15 Ver1.5 Start
         AND xdev.set_of_books_id        = gn_set_of_bks_id
 -- Modify 2009.07.15 Ver1.5 End
-        AND NVL( xca.receiv_base_code, xca.sale_base_code )
-                                        = NVL ( iv_receive_base_code, 
-                                                NVL( xca.receiv_base_code, xca.sale_base_code ) )
+-- Modify 2010.01.21 Ver1.7 Start
+--        AND NVL( xca.receiv_base_code, xca.sale_base_code )
+--                                        = NVL ( iv_receive_base_code, 
+--                                                NVL( xca.receiv_base_code, xca.sale_base_code ) )
+-- Modify 2010.01.21 Ver1.7 End
         AND hopeb.c_ext_attr1           = NVL ( iv_sales_rep, hopeb.c_ext_attr1 )
-        AND xca.tax_div                 = flv.lookup_code
+-- Modify 2010.01.21 Ver1.7 Start
+--        AND xca.tax_div                 = flv.lookup_code
+        AND ca.tax_div                  = flv.lookup_code
+-- Modify 2010.01.21 Ver1.7 End
         AND flv.lookup_type             = cv_lookup_tax_type
         AND flv.language                = USERENV( 'LANG' )
         AND flv.enabled_flag            = cv_enabled_yes
@@ -881,7 +997,10 @@ AS
           ELSE xdev.attribute9
         END,                                  -- 入金拠点エリアコード（本部コード）
 -- Modify 2009.09.29 Ver1.6 End
-        NVL( xca.receiv_base_code, xca.sale_base_code ), -- 入金拠点コード
+-- Modify 2010.01.21 Ver1.7 Start
+--        NVL( xca.receiv_base_code, xca.sale_base_code ), -- 入金拠点コード
+        ca.receiv_base_code,                -- 入金拠点コード
+-- Modify 2010.01.21 Ver1.7 End
         xdev.description,                   -- 入金拠点名
         hopeb.c_ext_attr1,                  -- 営業担当者コード
         papf.per_information18,             -- 従業員姓
@@ -889,60 +1008,67 @@ AS
         pay_sch.due_date,                   -- 支払期日
         ca.cr_account_number,               -- 入金先顧客コード
         hp.party_name,                      -- 入金先顧客名
-        pay_sch.receipt_class_id,           -- 入金区分ID
-        pay_sch.receipt_class_name,         -- 入金区分名
-        xca.tax_div,                        -- 消費税区分
+-- Modify 2010.01.21 Ver1.7 Start
+--        pay_sch.receipt_class_id,           -- 入金区分ID
+--        pay_sch.receipt_class_name,         -- 入金区分名
+-- Modify 2010.01.21 Ver1.7 End
+-- Modify 2010.01.21 Ver1.7 Start
+--        xca.tax_div,                        -- 消費税区分
+        ca.tax_div,                         -- 消費税区分
+-- Modify 2010.01.21 Ver1.7 End
         flv.meaning                         -- 消費税区分名
       ;
 --
       gn_target_cnt := SQL%ROWCOUNT;
 --
-      -- 登録データが１件も存在しない場合、０件メッセージレコード追加
-      IF ( gn_target_cnt = 0 ) THEN
---
-        INSERT INTO xxcfr_rep_sales_rep_pay_sch ( 
-           report_id
-          ,output_date
-          ,receipt_dept_code
-          ,receipt_sales_rep_code
-          ,data_empty_message
-          ,created_by
-          ,creation_date
-          ,last_updated_by
-          ,last_update_date
-          ,last_update_login 
-          ,request_id
-          ,program_application_id
-          ,program_id
-          ,program_update_date
-        )
-        VALUES ( 
-          cv_pkg_name                                        , -- 帳票ＩＤ
-          TO_CHAR( cd_creation_date, cv_format_date_ymdhns ) , -- 出力日
-          iv_receive_base_code                               , -- 入金拠点コード
-          iv_sales_rep                                       , -- 営業担当者
-          lv_no_data_msg                                     , -- 0件メッセージ
-          cn_created_by                                      , -- 作成者
-          cd_creation_date                                   , -- 作成日
-          cn_last_updated_by                                 , -- 最終更新者
-          cd_last_update_date                                , -- 最終更新日
-          cn_last_update_login                               , -- 最終更新ログイン
-          cn_request_id                                      , -- 要求ID
-          cn_program_application_id                          , -- コンカレント・プログラム・アプリケーションID
-          cn_program_id                                      , -- コンカレント・プログラムID
-          cd_program_update_date                               -- プログラム更新日
-        );
---
-        -- 警告終了
-        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(cv_msg_kbn_cfr        -- 'XXCFR'
-                                                       ,cv_msg_009a01_016    -- 対象データ0件警告
-                                                      )
-                                                      ,1
-                                                      ,5000);
-        ov_errmsg  := lv_errmsg;
-        ov_retcode := cv_status_warn;
---
-      END IF;
+-- Modify 2010.01.21 Ver1.7 Start  後続処理で実現する。
+--      -- 登録データが１件も存在しない場合、０件メッセージレコード追加
+--      IF ( gn_target_cnt = 0 ) THEN
+----
+--        INSERT INTO xxcfr_rep_sales_rep_pay_sch ( 
+--           report_id
+--          ,output_date
+--          ,receipt_dept_code
+--          ,receipt_sales_rep_code
+--          ,data_empty_message
+--          ,created_by
+--          ,creation_date
+--          ,last_updated_by
+--          ,last_update_date
+--          ,last_update_login 
+--          ,request_id
+--          ,program_application_id
+--          ,program_id
+--          ,program_update_date
+--        )
+--        VALUES ( 
+--          cv_pkg_name                                        , -- 帳票ＩＤ
+--          TO_CHAR( cd_creation_date, cv_format_date_ymdhns ) , -- 出力日
+--          iv_receive_base_code                               , -- 入金拠点コード
+--          iv_sales_rep                                       , -- 営業担当者
+--          lv_no_data_msg                                     , -- 0件メッセージ
+--          cn_created_by                                      , -- 作成者
+--          cd_creation_date                                   , -- 作成日
+--          cn_last_updated_by                                 , -- 最終更新者
+--          cd_last_update_date                                , -- 最終更新日
+--          cn_last_update_login                               , -- 最終更新ログイン
+--          cn_request_id                                      , -- 要求ID
+--          cn_program_application_id                          , -- コンカレント・プログラム・アプリケーションID
+--          cn_program_id                                      , -- コンカレント・プログラムID
+--          cd_program_update_date                               -- プログラム更新日
+--        );
+----
+--        -- 警告終了
+--        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(cv_msg_kbn_cfr        -- 'XXCFR'
+--                                                       ,cv_msg_009a01_016    -- 対象データ0件警告
+--                                                      )
+--                                                      ,1
+--                                                      ,5000);
+--        ov_errmsg  := lv_errmsg;
+--        ov_retcode := cv_status_warn;
+----
+--      END IF;
+-- Modify 2010.01.21 Ver1.7 End
 --
     EXCEPTION
       WHEN OTHERS THEN  -- 登録時エラー
@@ -981,6 +1107,298 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END insert_work_table;
+--
+-- Modify 2010.01.21 Ver1.7 Start
+  /**********************************************************************************
+   * Procedure Name   : 入金区分設定処理
+   * Description      : 初期処理(A-8)
+   ***********************************************************************************/
+  PROCEDURE set_receipt_class(
+    iv_receive_base_code IN VARCHAR2,  -- 入金拠点
+    iv_sales_rep         IN VARCHAR2,  -- 営業担当者
+    iv_receipt_class1    IN VARCHAR2,  -- 入金区分１
+    iv_receipt_class2    IN VARCHAR2,  -- 入金区分２
+    iv_receipt_class3    IN VARCHAR2,  -- 入金区分３
+    iv_receipt_class4    IN VARCHAR2,  -- 入金区分４
+    iv_receipt_class5    IN VARCHAR2,  -- 入金区分５
+    ov_errbuf           OUT VARCHAR2,  --    エラー・メッセージ           --# 固定 #
+    ov_retcode          OUT VARCHAR2,  --    リターン・コード             --# 固定 #
+    ov_errmsg           OUT VARCHAR2)  --    ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'set_receipt_class'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    ln_count              PLS_INTEGER;  -- カウンタ
+    ln_count_inner        PLS_INTEGER;  -- カウンタ
+    ln_first              PLS_INTEGER;  -- 初めの要素
+    ld_sysdate            DATE;         -- システム日付
+--
+    lt_receipt_class_id1  ar_receipt_methods.receipt_class_id%TYPE;  -- 入金区分１
+    lt_receipt_class_id2  ar_receipt_methods.receipt_class_id%TYPE;  -- 入金区分２
+    lt_receipt_class_id3  ar_receipt_methods.receipt_class_id%TYPE;  -- 入金区分３
+    lt_receipt_class_id4  ar_receipt_methods.receipt_class_id%TYPE;  -- 入金区分４
+    lt_receipt_class_id5  ar_receipt_methods.receipt_class_id%TYPE;  -- 入金区分５
+--
+    -- *** ローカル・カーソル ***
+    -- ワークテーブルより入金先顧客を取得
+    CURSOR get_rep_sales_rep_cur
+    IS
+      SELECT xrsr.receipt_customer_code AS receipt_customer_code  -- 入金先顧客番号
+      FROM   xxcfr_rep_sales_rep_pay_sch  xrsr  -- 帳票用ワークテーブル
+      WHERE  xrsr.request_id = cn_request_id  -- 要求ID
+      GROUP BY xrsr.receipt_customer_code  -- 入金先顧客番号
+      ;
+--
+    -- 顧客に紐付く支払方法を取得
+    CURSOR get_receipt_method_cur(
+             iv_receipt_customer_code IN hz_cust_accounts.account_number%TYPE  -- 入金先顧客番号
+            ,id_sysdate               IN DATE                                  -- システム日付
+           )
+    IS
+      SELECT /*+ USE_CONCAT
+                 LEADING( hzca rcrm arm arc )
+                 USE_NL( hzca rcrm arm arc )
+             */
+             arc.receipt_class_id    AS receipt_class_id    -- 入金区分ID
+            ,arc.name                AS receipt_class_name  -- 入金区分名
+        FROM hz_cust_accounts        hzca  -- 顧客マスタ
+            ,ra_cust_receipt_methods rcrm  -- 顧客支払方法
+            ,ar_receipt_methods      arm   -- 入金方法（支払方法）
+            ,ar_receipt_classes      arc   -- 入金区分
+       WHERE hzca.cust_account_id   = rcrm.customer_id          -- 顧客内部ID
+         AND rcrm.receipt_method_id = arm.receipt_method_id     -- 支払方法ID
+         AND arm.receipt_class_id   = arc.receipt_class_id      -- 入金区分ID
+         AND hzca.account_number    = iv_receipt_customer_code  -- 入金先顧客番号
+         AND rcrm.primary_flag      = cv_enabled_yes            -- 有効('Y')
+         AND id_sysdate BETWEEN rcrm.start_date                 -- 開始日
+                            AND NVL(rcrm.end_date,id_sysdate)   -- 終了日
+         AND (
+                -- パラメータ(入金区分)が設定されていないとき
+                (     lt_receipt_class_id1 IS NULL  -- 入金区分ID1(パラメータ)
+                  AND lt_receipt_class_id2 IS NULL  -- 入金区分ID2(パラメータ)
+                  AND lt_receipt_class_id3 IS NULL  -- 入金区分ID3(パラメータ)
+                  AND lt_receipt_class_id4 IS NULL  -- 入金区分ID4(パラメータ)
+                  AND lt_receipt_class_id5 IS NULL  -- 入金区分ID5(パラメータ)
+                )
+                -- パラメータ(入金区分)が何らか設定されているとき
+             OR ( arm.receipt_class_id IN ( 
+                      lt_receipt_class_id1          -- 入金区分ID1(パラメータ)
+                     ,lt_receipt_class_id2          -- 入金区分ID2(パラメータ)
+                     ,lt_receipt_class_id3          -- 入金区分ID3(パラメータ)
+                     ,lt_receipt_class_id4          -- 入金区分ID4(パラメータ)
+                     ,lt_receipt_class_id5          -- 入金区分ID5(パラメータ)
+                  )
+                )
+             )
+      ORDER BY rcrm.primary_flag      DESC  -- 主フラグ
+              ,rcrm.end_date          DESC  -- 終了日
+              ,rcrm.start_date        DESC  -- 開始日
+      ;
+--
+    -- *** ローカル・レコード ***
+--
+    TYPE get_rep_sales_rep_ttype  IS TABLE OF get_rep_sales_rep_cur%ROWTYPE
+                                  INDEX BY PLS_INTEGER;
+    TYPE get_receipt_method_ttype IS TABLE OF get_receipt_method_cur%ROWTYPE
+                                  INDEX BY PLS_INTEGER;
+    lt_rep_sales_rep_rec     get_rep_sales_rep_ttype;
+    lt_receipt_method_rec    get_receipt_method_ttype;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- システム日付の取得
+    ld_sysdate := TRUNC(SYSDATE);
+--
+    lt_receipt_class_id1 := TO_NUMBER( iv_receipt_class1 );  -- 入金区分ID1
+    lt_receipt_class_id2 := TO_NUMBER( iv_receipt_class2 );  -- 入金区分ID2
+    lt_receipt_class_id3 := TO_NUMBER( iv_receipt_class3 );  -- 入金区分ID3
+    lt_receipt_class_id4 := TO_NUMBER( iv_receipt_class4 );  -- 入金区分ID4
+    lt_receipt_class_id5 := TO_NUMBER( iv_receipt_class5 );  -- 入金区分ID5
+--
+    -- 帳票出力対象のデータを取得する
+    OPEN get_rep_sales_rep_cur;
+--
+    FETCH get_rep_sales_rep_cur BULK COLLECT INTO lt_rep_sales_rep_rec;
+--
+    CLOSE get_rep_sales_rep_cur;
+--
+    <<get_sales_rep_loop>>
+    FOR ln_count IN 1..lt_rep_sales_rep_rec.COUNT LOOP
+--
+      -- 当該顧客の支払方法・入金区分を取得する
+      OPEN get_receipt_method_cur(
+             lt_rep_sales_rep_rec(ln_count).receipt_customer_code  -- 入金先顧客番号
+            ,ld_sysdate                                            -- システム日付
+           )
+      ;
+--
+      FETCH get_receipt_method_cur BULK COLLECT INTO lt_receipt_method_rec;
+--
+      CLOSE get_receipt_method_cur;
+--
+      -- 取得できなかった時、パラメータで入金区分が異なっていたので帳票出力対象外
+      IF ( lt_receipt_method_rec.COUNT < 1 ) THEN
+--
+        DELETE FROM xxcfr_rep_sales_rep_pay_sch  xrsr  -- 帳票用ワークテーブル
+        WHERE xrsr.request_id            = cn_request_id                               -- 要求ID
+          AND xrsr.receipt_customer_code = lt_rep_sales_rep_rec(ln_count).receipt_customer_code  -- 入金先顧客番号
+        ;
+--
+        -- 出力対象件数、成功件数を減らす
+        gn_target_cnt := gn_target_cnt - SQL%ROWCOUNT;
+        gn_normal_cnt := gn_target_cnt;
+--
+      -- 
+      -- パラメータに該当したので、入金区分を入金先顧客の値で更新する。
+      ELSE
+--
+        -- 最初のコレクションを取得
+        ln_first := lt_receipt_method_rec.FIRST;
+--
+        -- 入金区分を設定する。
+        UPDATE xxcfr_rep_sales_rep_pay_sch  xrsr  -- 帳票用ワークテーブル
+        SET    xrsr.receipt_class_id   = lt_receipt_method_rec(ln_first).receipt_class_id   -- 入金区分ID
+              ,xrsr.receipt_class_name = lt_receipt_method_rec(ln_first).receipt_class_name -- 入金区分名
+        WHERE  xrsr.request_id            = cn_request_id                                                             -- 要求ID
+          AND  xrsr.receipt_customer_code = lt_rep_sales_rep_rec(ln_count).receipt_customer_code  -- 入金先顧客番号
+        ;
+--
+      END IF;
+--
+    END LOOP get_sales_rep_loop;
+--
+    -- 登録データが１件も存在しない場合、０件メッセージレコード追加
+    IF ( gn_target_cnt = 0 ) THEN
+--
+      BEGIN
+--
+        INSERT INTO xxcfr_rep_sales_rep_pay_sch ( 
+           report_id
+          ,output_date
+          ,receipt_dept_code
+          ,receipt_sales_rep_code
+          ,data_empty_message
+          ,created_by
+          ,creation_date
+          ,last_updated_by
+          ,last_update_date
+          ,last_update_login 
+          ,request_id
+          ,program_application_id
+          ,program_id
+          ,program_update_date
+        )
+        VALUES ( 
+          cv_pkg_name                                        , -- 帳票ＩＤ
+          TO_CHAR( cd_creation_date, cv_format_date_ymdhns ) , -- 出力日
+          iv_receive_base_code                               , -- 入金拠点コード
+          iv_sales_rep                                       , -- 営業担当者
+          gv_no_data_msg                                     , -- 0件メッセージ
+          cn_created_by                                      , -- 作成者
+          cd_creation_date                                   , -- 作成日
+          cn_last_updated_by                                 , -- 最終更新者
+          cd_last_update_date                                , -- 最終更新日
+          cn_last_update_login                               , -- 最終更新ログイン
+          cn_request_id                                      , -- 要求ID
+          cn_program_application_id                          , -- コンカレント・プログラム・アプリケーションID
+          cn_program_id                                      , -- コンカレント・プログラムID
+          cd_program_update_date                               -- プログラム更新日
+        );
+--
+        -- 警告終了
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(cv_msg_kbn_cfr        -- 'XXCFR'
+                                                       ,cv_msg_009a01_016    -- 対象データ0件警告
+                                                      )
+                                                      ,1
+                                                      ,5000);
+        ov_errmsg  := lv_errmsg;
+        ov_retcode := cv_status_warn;
+--
+      EXCEPTION
+        WHEN OTHERS THEN  -- 登録時エラー
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(cv_msg_kbn_cfr        -- 'XXCFR'
+                                                         ,cv_msg_009a01_013    -- テーブル登録エラー
+                                                         ,cv_tkn_table         -- トークン'TABLE'
+                                                         ,xxcfr_common_pkg.get_table_comment(cv_table))
+                                                        -- 営業員別払日別入金予定表帳票ワークテーブル
+                                                         ,1
+                                                         ,5000);
+          lv_errbuf := lv_errmsg ||cv_msg_part|| SQLERRM;
+          raise global_api_expt;
+      END;
+--
+    END IF;
+--
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      IF ( get_receipt_method_cur%ISOPEN ) THEN
+        CLOSE get_receipt_method_cur;
+      END IF;
+      IF ( get_rep_sales_rep_cur%ISOPEN ) THEN
+        CLOSE get_rep_sales_rep_cur;
+      END IF;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      IF ( get_receipt_method_cur%ISOPEN ) THEN
+        CLOSE get_receipt_method_cur;
+      END IF;
+      IF ( get_rep_sales_rep_cur%ISOPEN ) THEN
+        CLOSE get_rep_sales_rep_cur;
+      END IF;
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      IF ( get_receipt_method_cur%ISOPEN ) THEN
+        CLOSE get_receipt_method_cur;
+      END IF;
+      IF ( get_rep_sales_rep_cur%ISOPEN ) THEN
+        CLOSE get_rep_sales_rep_cur;
+      END IF;
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END set_receipt_class;
+-- Modify 2010.01.21 Ver1.7 End
 --
   /**********************************************************************************
    * Procedure Name   : start_svf_api
@@ -1385,6 +1803,31 @@ AS
       ov_errmsg  := lv_errmsg;
       ov_retcode := lv_retcode;
     END IF;
+--
+-- Modify 2010.01.21 Ver1.7 Start
+    -- =====================================================
+    --  入金区分設定処理(A-8)
+    -- =====================================================
+    set_receipt_class(
+       iv_receive_base_code   -- 入金拠点
+      ,iv_sales_rep           -- 営業担当者
+      ,iv_receipt_class1      -- 入金区分１
+      ,iv_receipt_class2      -- 入金区分２
+      ,iv_receipt_class3      -- 入金区分３
+      ,iv_receipt_class4      -- 入金区分４
+      ,iv_receipt_class5      -- 入金区分５
+      ,lv_errbuf             -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode            -- リターン・コード             --# 固定 #
+      ,lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+    IF (lv_retcode = cv_status_error) THEN
+      --(エラー処理)
+      RAISE global_process_expt;
+    ELSIF (lv_retcode = cv_status_warn) THEN
+      --(戻り値の保存)
+      ov_errmsg  := lv_errmsg;
+      ov_retcode := lv_retcode;
+    END IF;
+-- Modify 2010.01.21 Ver1.7 End
 --
     -- =====================================================
     --  SVF起動 (A-4)
