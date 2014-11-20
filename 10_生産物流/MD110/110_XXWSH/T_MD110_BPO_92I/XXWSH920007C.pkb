@@ -26,7 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/20   1.0  Oracle 北寒寺正夫   新規作成
- *  2008/11/29   1.01 SCS MIYATA.         ロック対応
+ *  2008/12/01   1.02 SCS MIYATA.         ロック対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -915,7 +915,7 @@ AS
                 (SELECT d.id1, d.id2 FROM v$lock d 
                  WHERE d.id1=b.id1
                  AND d.id2=b.id2 AND d.request > 0) 
-            AND b.id1 = (SELECT bb.id1
+            AND b.id1 IN (SELECT bb.id1
                          FROM v$session aa, v$lock bb
                          WHERE aa.lockwait = bb.kaddr 
                          AND aa.module = 'XXWSH920008C')
@@ -1120,10 +1120,6 @@ AS
       ELSE
         COMMIT;
       END IF;
-      release_lock(reqid_rec(i)
-                  , lv_errbuf
-                  , lv_retcode
-                  , lv_errmsg);
        -- エラー処理
        IF ( lv_retcode = gv_status_error ) THEN
            gn_error_cnt := 1;
@@ -1131,6 +1127,18 @@ AS
        END IF;
 --
     END LOOP demand_inf_loop; -- 品目コードループ終わり
+--
+    -- ===============================================
+    -- ロック暫定対応
+    -- ===============================================
+    <<lock_loop>>
+    FOR k IN 1 .. i LOOP
+            -- 子要求についてロックで止まっているものを進める
+            release_lock(reqid_rec(k)
+                      , lv_errbuf
+                      , lv_retcode
+                      , lv_errmsg);
+    END LOOP lock_loop; -- ロック開放ループ終わり
 --
     -- ===============================================
     -- A-5  コンカレントステータスのチェック

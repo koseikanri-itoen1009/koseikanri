@@ -7,7 +7,7 @@ AS
  * Description      : 引当解除処理
  * MD.050/070       : 生産物流共通(出荷･移動仮引当)(T_MD050_BPO_920)
  *                    引当解除処理                 (T_MD070_BPO_92D)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/06/03    1.1   Masao Hokkanji    結合テスト不具合対応
  *  2008/06/12    1.2   Masao Hokkanji    T_TE080_BPO920不具合ログNo24対応
  *  2008/06/13    1.3   Masao Hokkanji    抽出条件変更対応
+ *  2008/12/01    1.4   SCS Miyata        ロック対応
  *
  *****************************************************************************************/
 --
@@ -392,7 +393,7 @@ AS
       AND   xola.delete_flag              <> gv_yes                -- 削除フラグ「Ｙ」以外
       AND   xola.automanual_reserve_class  = gv_auto               -- 自動手動引当区分「自動引当」
       AND   xola.order_line_id             = xmld.mov_line_id      -- 明細ID
-      FOR UPDATE NOWAIT
+      FOR UPDATE 
       ;
 --
   BEGIN
@@ -755,7 +756,7 @@ AS
       AND   xmril.delete_flg              <> gv_yes                 -- 削除フラグ「Ｙ」以外
       AND   xmril.automanual_reserve_class = gv_auto                -- 自動手動引当区分「自動引当」
       AND   xmril.mov_line_id              = xmld.mov_line_id       -- 移動明細ID
-      FOR UPDATE NOWAIT
+      FOR UPDATE 
       ;
 --
   BEGIN

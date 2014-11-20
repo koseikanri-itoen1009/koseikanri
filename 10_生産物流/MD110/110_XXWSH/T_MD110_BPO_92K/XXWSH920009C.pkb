@@ -1,13 +1,13 @@
-create or replace PACKAGE BODY xxwsh600006c
+CREATE or REPLACE PACKAGE BODY xxwsh920009c
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
  *
- * Package Name     : xxwsh600006c(body)
- * Description      : 自動配車配送計画作成処理ロック対応
- * MD.050           : 配車配送計画 T_MD050_BPO_600
- * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.0
+ * Package Name     : xxwsh920009c(body)
+ * Description      : 引当解除処理ロック対応
+ * MD.050           : 
+ * MD.070           : 
+ * Version          : 0.9
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -18,7 +18,7 @@ AS
  * ------------- ----------- --------- --------------------------------------------------
  *  Date         Ver.  Editor          Description
  * ------------- ----- --------------- --------------------------------------------------
- *  2008/11/29    1.0  MIYATA.          新規作成
+ *  2008/12/01    1.0  MIYATA.          新規作成
  *
  *****************************************************************************************/
 --
@@ -131,10 +131,8 @@ AS
                and b.id1 IN (SELECT bb.id1
                              FROM v$session aa, v$lock bb
                              WHERE aa.lockwait = bb.kaddr 
-                              and aa.module = 'XXWSH600001C')
+                              and aa.module = 'XXWSH920002C')
                and b.lmode = 6;
---
-    -- *** ローカル・レコード ***
 --
   BEGIN
 --
@@ -193,18 +191,17 @@ AS
    * Description      : コンカレント実行ファイル登録プロシージャ
    **********************************************************************************/
   PROCEDURE main(
-    errbuf        OUT NOCOPY VARCHAR2,            --  エラー・メッセージ
-    retcode       OUT NOCOPY VARCHAR2,            --  リターン・コード
-    iv_prod_class           IN  VARCHAR2,         --  1.商品区分
-    iv_shipping_biz_type    IN  VARCHAR2,         --  2.処理種別
-    iv_block_1              IN  VARCHAR2,         --  3.ブロック1
-    iv_block_2              IN  VARCHAR2,         --  4.ブロック2
-    iv_block_3              IN  VARCHAR2,         --  5.ブロック3
-    iv_storage_code         IN  VARCHAR2,         --  6.出庫元
-    iv_transaction_type_id  IN  VARCHAR2,         --  7.出庫形態ID
-    iv_date_from            IN  VARCHAR2,         --  8.出庫日From
-    iv_date_to              IN  VARCHAR2,         --  9.出庫日To
-    iv_forwarder_id         IN  VARCHAR2          -- 10.運送業者ID
+    errbuf        OUT NOCOPY VARCHAR2       --  エラー・メッセージ
+    ,retcode       OUT NOCOPY VARCHAR2       --  リターン・コード
+    ,iv_item_class         IN  VARCHAR2      -- 1.商品区分
+    ,iv_action_type        IN  VARCHAR2      -- 2.処理種別
+    ,iv_block1             IN  VARCHAR2      -- 3.ブロック１
+    ,iv_block2             IN  VARCHAR2      -- 4.ブロック２
+    ,iv_block3             IN  VARCHAR2      -- 5.ブロック３
+    ,iv_deliver_from_id    IN  VARCHAR2      -- 6.出庫元
+    ,iv_deliver_type       IN  VARCHAR2      -- 7.出庫形態
+    ,iv_deliver_date_from  IN  VARCHAR2      -- 8.出庫日From
+    ,iv_deliver_date_to    IN  VARCHAR2      -- 9.出庫日To
     )
   IS
     -- ===============================
@@ -224,20 +221,19 @@ AS
     -- ==================
     ln_reqid := fnd_request.submit_request(
       Application => 'XXWSH',
-      Program     => 'XXWSH600001C',
+      Program     => 'XXWSH920002C',
       Description => NULL,
       Start_Time  => SYSDATE,
       Sub_Request => FALSE,
-      Argument1   => iv_prod_class,
-      Argument2   => iv_shipping_biz_type,
-      Argument3   => iv_block_1,
-      Argument4   => iv_block_2,
-      Argument5   => iv_block_3,
-      Argument6   => iv_storage_code,
-      Argument7   => iv_transaction_type_id,
-      Argument8   => iv_date_from,
-      Argument9  => iv_date_to,
-      Argument10  => iv_forwarder_id
+      Argument1   => iv_item_class,
+      Argument2   => iv_action_type,
+      Argument3   => iv_block1,
+      Argument4   => iv_block2,
+      Argument5   => iv_block3,
+      Argument6   => iv_deliver_from_id,
+      Argument7   => iv_deliver_type,
+      Argument8   => iv_deliver_date_from,
+      Argument9   => iv_deliver_date_to
       );
     if ln_reqid > 0 then
       commit;
@@ -273,4 +269,4 @@ AS
       retcode := gv_status_error;
   END main;
 --
-END xxwsh600006c;
+END xxwsh920009c;

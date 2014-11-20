@@ -1,37 +1,33 @@
-CREATE OR REPLACE PACKAGE xxwsh920002c
+create or replace
+PACKAGE XXWSH920009C
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
  *
- * Package Name     : XXWSH920002C(spec)
- * Description      : 引当解除処理
- * MD.050/070       : 生産物流共通（出荷・移動仮引当）(T_MD050_BPO_920)
- *                    引当解除処理                    (T_MD070_BPO_92D)
- * Version          : 1.4
+ * Package Name     : XXWSH920009C(spec)
+ * Description      : 引当解除処理ロック対応
+ * MD.050           : 
+ * MD.070           : 
+ * Version          : 0.9
  *
  * Program List
  * -------------------- ------------------------------------------------------------
  *  Name                 Description
  * -------------------- ------------------------------------------------------------
- *  main                 コンカレント実行ファイル登録プロシージャ
+ *  main                 メイン関数
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2008/04/18    1.0   Tatsuya Kurata    main新規作成
- *  2008/06/03    1.1   Masao Hokkanji    結合テスト不具合対応
- *  2008/06/12    1.2   Masao Hokkanji    T_TE080_BPO920不具合ログNo24対応
- *  2008/06/13    1.3   Masao Hokkanji    抽出条件変更対応
- *  2008/12/01    1.4   SCS Miyata        ロック対応
+ *  2008/12/01   1.0   T.MIYATA        初回作成
  *
  *****************************************************************************************/
 --
-  --コンカレント実行ファイル登録プロシージャ
-  PROCEDURE main
-    (
-      errbuf                OUT    VARCHAR2         --   エラーメッセージ
-     ,retcode               OUT    VARCHAR2         --   エラーコード
+  -- メイン関数
+  PROCEDURE main(
+      errbuf                OUT NOCOPY  VARCHAR2         --   エラーメッセージ
+     ,retcode               OUT NOCOPY   VARCHAR2         --   エラーコード
      ,iv_item_class         IN     VARCHAR2         -- 1.商品区分
      ,iv_action_type        IN     VARCHAR2         -- 2.処理種別
      ,iv_block1             IN     VARCHAR2         -- 3.ブロック１
@@ -42,5 +38,5 @@ AS
      ,iv_deliver_date_from  IN     VARCHAR2         -- 8.出庫日From
      ,iv_deliver_date_to    IN     VARCHAR2         -- 9.出庫日To
     );
-END xxwsh920002c;
+END XXWSH920009C;
 /

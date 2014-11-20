@@ -41,7 +41,8 @@ AS
  *  2008/08/07    1.5  Oracle 大橋孝郎   結合出荷テスト(出荷追加_30)修正
  *  2008/09/04    1.6  Oracle 野村正幸   統合#45 対応
  *  2008/09/10    1.7  Oracle 福田直樹   統合#45の再修正(配送L/Tに関する条件をLT2に入れ忘れ)
- *  2008/12/01    1.8  Oracle 伊藤ひとみ 本番#148対応
+ *  2008/12/01    1.8  SCS    伊藤ひとみ 本番#148対応
+ *  2008/12/02    1.9  SCS    菅原大輔   本番#148対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2541,8 +2542,12 @@ AS
     -- ***        実処理の記述             ***
     -- ***************************************
 -- 2008/12/01 H.Itou Add Start 本番#148
-    -- 引当数に値がある場合
-    IF (gr_chk_line_data_tab(gn_cnt_line).reserved_quantity IS NOT NULL) THEN
+-- 2008/12/02 D.Sugahara Mod Start 本番#148
+    -- 引当数に値がある場合かつ0でない場合
+--    IF (gr_chk_line_data_tab(gn_cnt_line).reserved_quantity IS NOT NULL) THEN
+    IF (gr_chk_line_data_tab(gn_cnt_line).reserved_quantity IS NOT NULL) AND 
+       (gr_chk_line_data_tab(gn_cnt_line).reserved_quantity != 0)    THEN
+-- 2008/12/02 D.Sugahara Mod End 本番#148
       -- 移動ロット詳細(指示)があるかチェック
       SELECT COUNT(1) cnt  -- 移動ロット詳細(指示)件数
       INTO   ln_lot_cnt
