@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A19C(body)
  * Description      : HHT連携IFデータ作成
  * MD.050           : MD050_CMM_003_A19_HHT系連携IFデータ作成
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/08/24    1.5   Yutaka.Kuboshima 統合テスト障害0000487の対応
  *  2009/11/23    1.6   Yutaka.Kuboshima 障害E_本番_00329の対応
  *  2009/12/06    1.7   Yutaka.Kuboshima 障害E_本稼動_00327の対応
+ *  2009/12/09    1.8   Yutaka.Kuboshima 障害E_本稼動_00371の対応
  *
  *****************************************************************************************/
 --
@@ -483,12 +484,18 @@ AS
             ,( -- 顧客マスタ
                SELECT hca1.cust_account_id customer_id
                FROM   hz_cust_accounts hca1
-               WHERE  hca1.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to
+-- 2009/12/07 Ver1.8 E_本稼動_00371 modify start by Yutaka.Kuboshima
+--               WHERE  hca1.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to
+               WHERE  hca1.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to + 1
+-- 2009/12/07 Ver1.8 E_本稼動_00371 modify start by Yutaka.Kuboshima
                UNION
                -- 顧客追加情報マスタ
                SELECT xca2.customer_id customer_id
                FROM   xxcmm_cust_accounts xca2
-               WHERE  xca2.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to
+-- 2009/12/07 Ver1.8 E_本稼動_00371 modify start by Yutaka.Kuboshima
+--               WHERE  xca2.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to
+               WHERE  xca2.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to + 1
+-- 2009/12/07 Ver1.8 E_本稼動_00371 modify start by Yutaka.Kuboshima
                UNION
                -- パーティマスタ
                SELECT /*+ INDEX(hca3 hz_cust_accounts_n2) */
@@ -496,14 +503,20 @@ AS
                FROM   hz_cust_accounts hca3
                      ,hz_parties hp3
                WHERE  hca3.party_id = hp3.party_id
-                 AND  hp3.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to
+-- 2009/12/07 Ver1.8 E_本稼動_00371 modify start by Yutaka.Kuboshima
+--                 AND  hp3.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to
+                 AND  hp3.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to + 1
+-- 2009/12/07 Ver1.8 E_本稼動_00371 modify start by Yutaka.Kuboshima
                UNION
                -- 顧客使用目的マスタ
                SELECT hcas4.cust_account_id customer_id
                FROM   hz_cust_acct_sites hcas4
                      ,hz_cust_site_uses  hcsu4
                WHERE  hcas4.cust_acct_site_id = hcsu4.cust_acct_site_id
-                 AND  hcsu4.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to
+-- 2009/12/07 Ver1.8 E_本稼動_00371 modify start by Yutaka.Kuboshima
+--                 AND  hcsu4.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to
+                 AND  hcsu4.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to + 1
+-- 2009/12/07 Ver1.8 E_本稼動_00371 modify start by Yutaka.Kuboshima
                UNION
                -- 顧客事業所マスタ
                SELECT /*+ INDEX(hca5 hz_cust_accounts_n2) */
@@ -515,7 +528,10 @@ AS
                WHERE  hca5.party_id = hp5.party_id
                  AND  hp5.party_id  = hps5.party_id
                  AND  hps5.location_id = hl5.location_id
-                 AND  hl5.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to
+-- 2009/12/07 Ver1.8 E_本稼動_00371 modify start by Yutaka.Kuboshima
+--                 AND  hl5.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to
+                 AND  hl5.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to + 1
+-- 2009/12/07 Ver1.8 E_本稼動_00371 modify start by Yutaka.Kuboshima
                UNION
                -- 支払条件マスタ
                SELECT /*+ FIRST_ROWS */
@@ -525,7 +541,10 @@ AS
                      ,ra_terms           rt6
                WHERE  hcas6.cust_acct_site_id = hcsu6.cust_acct_site_id
                  AND  hcsu6.payment_term_id = rt6.term_id
-                 AND  rt6.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to
+-- 2009/12/07 Ver1.8 E_本稼動_00371 modify start by Yutaka.Kuboshima
+--                 AND  rt6.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to
+                 AND  rt6.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to + 1
+-- 2009/12/07 Ver1.8 E_本稼動_00371 modify start by Yutaka.Kuboshima
                UNION
                -- 組織拡張プロファイルマスタ
                SELECT hca7.cust_account_id customer_id
@@ -539,7 +558,10 @@ AS
 -- 2009/12/06 Ver1.7 障害E_本稼動_00327 add start by Yutaka.Kuboshima
                  AND  hop7.effective_end_date IS NULL
 -- 2009/12/06 Ver1.7 障害E_本稼動_00327 add end by Yutaka.Kuboshima
-                 AND  hopev7.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to
+-- 2009/12/07 Ver1.8 E_本稼動_00371 modify start by Yutaka.Kuboshima
+--                 AND  hopev7.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to
+                 AND  hopev7.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to + 1
+-- 2009/12/07 Ver1.8 E_本稼動_00371 modify start by Yutaka.Kuboshima
 -- 2009/12/06 Ver1.7 障害E_本稼動_00327 add start by Yutaka.Kuboshima
 -- 担当営業員、ルートの有効開始日が
 -- 最終更新日(開始) + 1 <= 有効開始日 <= 最終更新日(終了)の翌日付の場合も対象データとするように修正
