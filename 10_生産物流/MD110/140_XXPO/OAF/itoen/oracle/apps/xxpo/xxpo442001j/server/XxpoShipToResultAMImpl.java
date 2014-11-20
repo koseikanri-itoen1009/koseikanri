@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoShipToResultAMImpl
 * 概要説明   : 入庫実績要約アプリケーションモジュール
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2008-07-30 1.2  伊藤ひとみ   内部変更要求対応#176,#164対応
 * 2008-08-19 1.3  二瓶大輔     ST不具合#249対応
 * 2008-10-20 1.4  伊藤ひとみ   統合テスト指摘346,T_S_437対応
+* 2009-08-13 1.5  吉元強樹     本番障害#1610対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo442001j.server;
@@ -943,8 +944,15 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
       {
         // i番目の行を取得
         updRow = (OARow)updRows[i];
+
+// 2009-08-13 v1.5 T.Yoshimoto Mod Start 本番#1610
         // 備考が変更された場合
-        if (!XxcmnUtility.isEquals(updRow.getAttribute("LineDescription"), updRow.getAttribute("DbLineDescription")))
+        //if (!XxcmnUtility.isEquals(updRow.getAttribute("LineDescription"), updRow.getAttribute("DbLineDescription")))
+
+        // 備考または、単価が変更された場合
+        if ((!XxcmnUtility.isEquals(updRow.getAttribute("LineDescription"), updRow.getAttribute("DbLineDescription")))
+          || (!XxcmnUtility.isEquals(XxcmnUtility.commaRemoval(updRow.getAttribute("UnitPrice").toString()), updRow.getAttribute("UnitPriceNum"))))
+// 2009-08-13 v1.5 T.Yoshimoto Mod End 本番#1610
         {
           // 更新処理
           updateOrderLine(updRow);
@@ -960,7 +968,7 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
     {
       // 入庫日または摘要が変更された場合
       if ((!XxcmnUtility.isEquals(hdrRow.getAttribute("ArrivalDate"), hdrRow.getAttribute("DbArrivalDate")))
-      ||   !XxcmnUtility.isEquals(hdrRow.getAttribute("ShippingInstructions"), hdrRow.getAttribute("DbShippingInstructions")))
+        || (!XxcmnUtility.isEquals(hdrRow.getAttribute("ShippingInstructions"), hdrRow.getAttribute("DbShippingInstructions"))))
       {
         // 更新処理
         updateOrderHdr(hdrRow);
@@ -996,9 +1004,12 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
     StringBuffer sb = new StringBuffer(1000);
     sb.append("BEGIN ");
     sb.append("  UPDATE xxwsh_order_lines_all xola ");
-    sb.append("  SET    xola.unit_price        = :1 " ); // 単価
-    sb.append("        ,xola.line_description  = :2 " ); // 備考
-    sb.append("        ,xola.last_updated_by   = FND_GLOBAL.USER_ID "); // 最終更新者
+// 2009-08-13 v1.5 T.Yoshimoto Mod Start 本番#1610
+    //sb.append("  SET    xola.unit_price        = :1 " );       // 単価
+    sb.append("  SET    xola.unit_price        = TO_NUMBER(:1) " );       // 単価
+// 2009-08-13 v1.5 T.Yoshimoto Mod End 本番#1610
+    sb.append("        ,xola.line_description  = :2 " );                  // 備考
+    sb.append("        ,xola.last_updated_by   = FND_GLOBAL.USER_ID ");   // 最終更新者
     sb.append("        ,xola.last_update_date  = SYSDATE "             ); // 最終更新日
     sb.append("        ,xola.last_update_login = FND_GLOBAL.LOGIN_ID " ); // 最終更新ログイン
     sb.append("  WHERE  xola.order_line_id = :3 ; "); // 受注明細アドオンID
@@ -1017,7 +1028,10 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
       Number orderLineId     = (Number)insRow.getAttribute("OrderLineId");      // 受注明細アドオンID
 
       // パラメータ設定(INパラメータ)
-      cstmt.setInt(1, XxcmnUtility.intValue(unitPrice));            // 単価
+// 2009-08-13 v1.5 T.Yoshimoto Mod Start 本番#1610
+      //cstmt.setInt(1, XxcmnUtility.intValue(unitPrice));            // 単価
+      cstmt.setString(1, XxcmnUtility.stringValue(unitPrice));      // 単価
+// 2009-08-13 v1.5 T.Yoshimoto Mod End 本番#1610
       cstmt.setString(2, lineDescription);                          // 摘要     
       cstmt.setInt(3, XxcmnUtility.intValue(orderLineId));          // 受注明細アドオンID
 
