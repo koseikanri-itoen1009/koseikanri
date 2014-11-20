@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK023A02C(body)
  * Description      : 運送費実績算出
  * MD.050           : 運送費実績算出 MD050_COK_023_A02
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/02/23    1.2   T.Taniguchi      [障害COK_055] 日次制御、月次制御不具合対応
  *  2009/04/23    1.3   A.Yano           [障害T1_0765] ソート順不具合対応
  *  2009/07/08    1.4   K.Yamaguchi      [障害0000447] パフォーマンス障害対応
+ *  2009/08/27    1.5   K.Yamaguchi      [障害0001197] パフォーマンス障害対応
  *
  *****************************************************************************************/
 --
@@ -458,7 +459,13 @@ AS
          , cn_program_application_id                  AS program_application_id       -- プログラムアプリケーションID
          , cn_program_id                              AS program_id                   -- プログラムID
          , SYSDATE                                    AS program_update_date          -- プログラム最終更新日
-    FROM ( SELECT xdcr.target_year                           AS target_year                  -- 対象年度
+-- 2009/08/27 Ver.1.5 [障害0001197] SCS K.Yamaguchi REPAIR START
+--    FROM ( SELECT xdcr.target_year                           AS target_year                  -- 対象年度
+    FROM ( SELECT /*+
+                    INDEX( xdcr XXCOK_DLV_COST_RESULT_INFO_N02 )
+                  */
+                  xdcr.target_year                           AS target_year                  -- 対象年度
+-- 2009/08/27 Ver.1.5 [障害0001197] SCS K.Yamaguchi REPAIR END
                 , xdcr.target_month                          AS target_month                 -- 月
                 , xdcr.base_code                             AS base_code                    -- 拠点コード
                 , xdcr.item_code                             AS item_code                    -- 品目コード
@@ -517,7 +524,13 @@ AS
     -- *** ローカルカーソル ***
     CURSOR l_lock_cur
     IS
-      SELECT xdcri.result_id AS result_id         -- 運送費実績ID
+-- 2009/08/27 Ver.1.5 [障害0001197] SCS K.Yamaguchi REPAIR START
+--      SELECT xdcri.result_id AS result_id         -- 運送費実績ID
+      SELECT /*+
+               INDEX( xdcri XXCOK_DLV_COST_RESULT_INFO_N02 )
+             */
+             xdcri.result_id AS result_id         -- 運送費実績ID
+-- 2009/08/27 Ver.1.5 [障害0001197] SCS K.Yamaguchi REPAIR END
       FROM   xxcok_dlv_cost_result_info xdcri     -- 運送費実績テーブル
       WHERE  xdcri.target_year  = gv_target_year  -- 対象年度
       AND    xdcri.target_month = gv_target_month -- 月
@@ -1002,24 +1015,86 @@ AS
 --    ln_execute_count          NUMBER      DEFAULT 0;     -- バラ茶チェック通過件数
 --    ln_out_count              NUMBER      DEFAULT 0;     -- 出力件数
 -- 2009/07/08 Ver.1.4 [障害0000447] SCS K.Yamaguchi DELETE END
-    -- 振替運賃カーソル(月次用)
-    CURSOR trans_freifht_info_cur
-    IS
--- 2009/07/08 Ver.1.4 [障害0000447] SCS K.Yamaguchi REPAIR START
---      SELECT  xtfi.target_date            AS target_date        -- 対象年月
---             ,xoha.arrival_date           AS arrival_date       -- 着荷日
---             ,xtfi.jurisdicyional_hub     AS jurisdicyional_hub -- 管轄拠点
---             ,xtfi.item_code              AS item_code          -- 品目コード
---             ,seq_0_v.parent_item_id      AS parent_item_id     -- 親品行ID
---             ,xsmv.small_amount_class     AS small_amount_class -- 小口区分
---             ,xtfi.actual_qty             AS actual_qty         -- 実際数量
---             ,xtfi.amount                 AS amount             -- 金額
+-- 2009/08/27 Ver.1.5 [障害0001197] SCS K.Yamaguchi REPAIR START
+--    -- 振替運賃カーソル(月次用)
+--    CURSOR trans_freifht_info_cur
+--    IS
+---- 2009/07/08 Ver.1.4 [障害0000447] SCS K.Yamaguchi REPAIR START
+----      SELECT  xtfi.target_date            AS target_date        -- 対象年月
+----             ,xoha.arrival_date           AS arrival_date       -- 着荷日
+----             ,xtfi.jurisdicyional_hub     AS jurisdicyional_hub -- 管轄拠点
+----             ,xtfi.item_code              AS item_code          -- 品目コード
+----             ,seq_0_v.parent_item_id      AS parent_item_id     -- 親品行ID
+----             ,xsmv.small_amount_class     AS small_amount_class -- 小口区分
+----             ,xtfi.actual_qty             AS actual_qty         -- 実際数量
+----             ,xtfi.amount                 AS amount             -- 金額
+----      FROM    xxwip_transfer_fare_inf  xtfi  -- 振替運賃情報アドオンテーブル
+----             ,xxwsh_order_headers_all  xoha  -- 受注ヘッダアドオンテーブル
+----             ,xxwsh_ship_method2_v     xsmv  -- 配送区分情報VIEW2
+----             ,( SELECT ximb.parent_item_id  AS parent_item_id -- 親品目ID
+----                      ,iimb.item_id         AS item_id        -- 品目ID
+----                      ,iimb.item_no         AS item_no        -- 品目NO
+----                FROM   mtl_system_items_b      msib     -- 品目マスタ
+----                      ,ic_item_mst_b           iimb     -- OPM品目
+----                      ,xxcmn_item_mst_b        ximb     -- OPM品目アドオン
+----                      ,mtl_category_sets_b     mcsb     -- 品目カテゴリセット
+----                      ,mtl_category_sets_tl    mcst     -- 品目カテゴリセット日本語
+----                      ,mtl_categories_b        mcb      -- 品目カテゴリマスタ
+----                      ,mtl_item_categories     mic      -- 品目カテゴリ割当
+----                WHERE  iimb.item_no             = msib.segment1
+----                AND    ximb.item_id             = iimb.item_id
+----                AND    mcst.category_set_id     = mcsb.category_set_id
+----                AND    mcb.structure_id         = mcsb.structure_id
+----                AND    mcb.category_id          = mic.category_id
+----                AND    mcsb.category_set_id     = mic.category_set_id
+----                AND    mcst.language            = USERENV( 'LANG' )
+----                AND    mcst.category_set_name   = gv_item_div_h
+----                AND    mcb.segment1             = cv_office_item_drink
+----                AND    msib.organization_id     = gn_organization_id
+----                AND    msib.organization_id     = mic.organization_id
+----                AND    msib.inventory_item_id   = mic.inventory_item_id
+----             )                         seq_0_v
+----      WHERE  xtfi.request_no                  = xoha.request_no
+----      AND    xtfi.delivery_date               = xoha.arrival_date
+----      AND    xtfi.goods_classe                = xoha.prod_class
+----      AND    xtfi.jurisdicyional_hub          = xoha.head_sales_branch
+----      AND    xtfi.delivery_whs                = xoha.deliver_from
+----      AND    xtfi.ship_to                     = xoha.result_deliver_to
+----      AND    xoha.latest_external_flag        = cv_new_record
+----      AND    xoha.result_shipping_method_code = xsmv.ship_method_code
+----      AND    seq_0_v.item_no(+)               = xtfi.item_code
+----      AND    xtfi.target_date                 = gv_process_date_ym
+----      ORDER BY xoha.arrival_date             -- 着荷日
+----              ,xtfi.jurisdicyional_hub       -- 管轄拠点
+----              ,seq_0_v.parent_item_id        -- 親品目ID
+------【2009/04/23 A.Yano Ver.1.3 START】------------------------------------------------------
+------              ,xtfi.item_code                -- 品目コード
+----              ,xsmv.small_amount_class       -- 小口区分
+----              ,xtfi.item_code                -- 品目コード
+------【2009/04/23 A.Yano Ver.1.3 END  】------------------------------------------------------
+--      SELECT  xtfi.target_date                       AS target_date        -- 対象年月
+--             ,xoha.arrival_date                      AS arrival_date       -- 着荷日
+--             ,xtfi.jurisdicyional_hub                AS jurisdicyional_hub -- 管轄拠点
+--             ,seq_0_v.parent_item_id                 AS parent_item_id     -- 親品目ID
+--             ,seq_0_v.parent_item_no                 AS parent_item_no     -- 親品目コード
+--             ,xsib.baracha_div                       AS baracha_div        -- バラ茶区分
+--             ,xsmv.small_amount_class                AS small_amount_class -- 小口区分
+--             ,SUM( NVL( xtfi.actual_qty, cn_zero ) ) AS sum_actual_qty     -- 実際数量 合計値
+--             ,SUM( NVL( xtfi.amount    , cn_zero ) ) AS sum_amount         -- 金額 合計値
+--             ,CASE
+--                WHEN xsib.baracha_div IS NULL THEN
+--                  xtfi.item_code
+--                ELSE
+--                  NULL
+--              END                                    AS item_code          -- 子品目コード（バラ茶区分が取得できない場合のみ）
 --      FROM    xxwip_transfer_fare_inf  xtfi  -- 振替運賃情報アドオンテーブル
 --             ,xxwsh_order_headers_all  xoha  -- 受注ヘッダアドオンテーブル
 --             ,xxwsh_ship_method2_v     xsmv  -- 配送区分情報VIEW2
+--             ,xxcmm_system_items_b     xsib  -- Disc品目アドオンマスタ
 --             ,( SELECT ximb.parent_item_id  AS parent_item_id -- 親品目ID
 --                      ,iimb.item_id         AS item_id        -- 品目ID
 --                      ,iimb.item_no         AS item_no        -- 品目NO
+--                      ,iimb2.item_no        AS parent_item_no -- 親品目コード
 --                FROM   mtl_system_items_b      msib     -- 品目マスタ
 --                      ,ic_item_mst_b           iimb     -- OPM品目
 --                      ,xxcmn_item_mst_b        ximb     -- OPM品目アドオン
@@ -1027,6 +1102,7 @@ AS
 --                      ,mtl_category_sets_tl    mcst     -- 品目カテゴリセット日本語
 --                      ,mtl_categories_b        mcb      -- 品目カテゴリマスタ
 --                      ,mtl_item_categories     mic      -- 品目カテゴリ割当
+--                      ,ic_item_mst_b           iimb2    -- OPM品目（親）
 --                WHERE  iimb.item_no             = msib.segment1
 --                AND    ximb.item_id             = iimb.item_id
 --                AND    mcst.category_set_id     = mcsb.category_set_id
@@ -1038,7 +1114,9 @@ AS
 --                AND    mcb.segment1             = cv_office_item_drink
 --                AND    msib.organization_id     = gn_organization_id
 --                AND    msib.organization_id     = mic.organization_id
+--                AND    mic.organization_id      = gn_organization_id
 --                AND    msib.inventory_item_id   = mic.inventory_item_id
+--                AND    iimb2.item_id(+)         = ximb.parent_item_id
 --             )                         seq_0_v
 --      WHERE  xtfi.request_no                  = xoha.request_no
 --      AND    xtfi.delivery_date               = xoha.arrival_date
@@ -1050,86 +1128,149 @@ AS
 --      AND    xoha.result_shipping_method_code = xsmv.ship_method_code
 --      AND    seq_0_v.item_no(+)               = xtfi.item_code
 --      AND    xtfi.target_date                 = gv_process_date_ym
---      ORDER BY xoha.arrival_date             -- 着荷日
---              ,xtfi.jurisdicyional_hub       -- 管轄拠点
---              ,seq_0_v.parent_item_id        -- 親品目ID
-----【2009/04/23 A.Yano Ver.1.3 START】------------------------------------------------------
-----              ,xtfi.item_code                -- 品目コード
---              ,xsmv.small_amount_class       -- 小口区分
---              ,xtfi.item_code                -- 品目コード
-----【2009/04/23 A.Yano Ver.1.3 END  】------------------------------------------------------
-      SELECT  xtfi.target_date                       AS target_date        -- 対象年月
-             ,xoha.arrival_date                      AS arrival_date       -- 着荷日
-             ,xtfi.jurisdicyional_hub                AS jurisdicyional_hub -- 管轄拠点
-             ,seq_0_v.parent_item_id                 AS parent_item_id     -- 親品目ID
-             ,seq_0_v.parent_item_no                 AS parent_item_no     -- 親品目コード
-             ,xsib.baracha_div                       AS baracha_div        -- バラ茶区分
-             ,xsmv.small_amount_class                AS small_amount_class -- 小口区分
-             ,SUM( NVL( xtfi.actual_qty, cn_zero ) ) AS sum_actual_qty     -- 実際数量 合計値
-             ,SUM( NVL( xtfi.amount    , cn_zero ) ) AS sum_amount         -- 金額 合計値
-             ,CASE
-                WHEN xsib.baracha_div IS NULL THEN
-                  xtfi.item_code
-                ELSE
-                  NULL
-              END                                    AS item_code          -- 子品目コード（バラ茶区分が取得できない場合のみ）
-      FROM    xxwip_transfer_fare_inf  xtfi  -- 振替運賃情報アドオンテーブル
-             ,xxwsh_order_headers_all  xoha  -- 受注ヘッダアドオンテーブル
-             ,xxwsh_ship_method2_v     xsmv  -- 配送区分情報VIEW2
-             ,xxcmm_system_items_b     xsib  -- Disc品目アドオンマスタ
-             ,( SELECT ximb.parent_item_id  AS parent_item_id -- 親品目ID
-                      ,iimb.item_id         AS item_id        -- 品目ID
-                      ,iimb.item_no         AS item_no        -- 品目NO
-                      ,iimb2.item_no        AS parent_item_no -- 親品目コード
-                FROM   mtl_system_items_b      msib     -- 品目マスタ
-                      ,ic_item_mst_b           iimb     -- OPM品目
-                      ,xxcmn_item_mst_b        ximb     -- OPM品目アドオン
-                      ,mtl_category_sets_b     mcsb     -- 品目カテゴリセット
-                      ,mtl_category_sets_tl    mcst     -- 品目カテゴリセット日本語
-                      ,mtl_categories_b        mcb      -- 品目カテゴリマスタ
-                      ,mtl_item_categories     mic      -- 品目カテゴリ割当
-                      ,ic_item_mst_b           iimb2    -- OPM品目（親）
-                WHERE  iimb.item_no             = msib.segment1
-                AND    ximb.item_id             = iimb.item_id
-                AND    mcst.category_set_id     = mcsb.category_set_id
-                AND    mcb.structure_id         = mcsb.structure_id
-                AND    mcb.category_id          = mic.category_id
-                AND    mcsb.category_set_id     = mic.category_set_id
-                AND    mcst.language            = USERENV( 'LANG' )
-                AND    mcst.category_set_name   = gv_item_div_h
-                AND    mcb.segment1             = cv_office_item_drink
-                AND    msib.organization_id     = gn_organization_id
-                AND    msib.organization_id     = mic.organization_id
-                AND    mic.organization_id      = gn_organization_id
-                AND    msib.inventory_item_id   = mic.inventory_item_id
-                AND    iimb2.item_id(+)         = ximb.parent_item_id
-             )                         seq_0_v
-      WHERE  xtfi.request_no                  = xoha.request_no
-      AND    xtfi.delivery_date               = xoha.arrival_date
-      AND    xtfi.goods_classe                = xoha.prod_class
-      AND    xtfi.jurisdicyional_hub          = xoha.head_sales_branch
-      AND    xtfi.delivery_whs                = xoha.deliver_from
-      AND    xtfi.ship_to                     = xoha.result_deliver_to
-      AND    xoha.latest_external_flag        = cv_new_record
-      AND    xoha.result_shipping_method_code = xsmv.ship_method_code
-      AND    seq_0_v.item_no(+)               = xtfi.item_code
-      AND    xtfi.target_date                 = gv_process_date_ym
-      AND    xsib.item_code(+)                = xtfi.item_code
-      GROUP BY  xtfi.target_date
-               ,xoha.arrival_date
-               ,xtfi.jurisdicyional_hub
-               ,seq_0_v.parent_item_id
-               ,seq_0_v.parent_item_no
-               ,xsib.baracha_div
-               ,xsmv.small_amount_class
-               ,CASE
-                  WHEN xsib.baracha_div IS NULL THEN
-                    xtfi.item_code
-                  ELSE
-                    NULL
-                END
--- 2009/07/08 Ver.1.4 [障害0000447] SCS K.Yamaguchi REPAIR END
+--      AND    xsib.item_code(+)                = xtfi.item_code
+--      GROUP BY  xtfi.target_date
+--               ,xoha.arrival_date
+--               ,xtfi.jurisdicyional_hub
+--               ,seq_0_v.parent_item_id
+--               ,seq_0_v.parent_item_no
+--               ,xsib.baracha_div
+--               ,xsmv.small_amount_class
+--               ,CASE
+--                  WHEN xsib.baracha_div IS NULL THEN
+--                    xtfi.item_code
+--                  ELSE
+--                    NULL
+--                END
+---- 2009/07/08 Ver.1.4 [障害0000447] SCS K.Yamaguchi REPAIR END
+--    ;
+    -- 振替運賃カーソル(月次用)
+    CURSOR trans_freifht_info_cur
+    IS
+      SELECT target_date                                    AS target_date           -- 対象年月
+           , arrival_date                                   AS arrival_date          -- 着荷日
+           , jurisdicyional_hub                             AS jurisdicyional_hub    -- 管轄拠点
+           , parent_item_id                                 AS parent_item_id        -- 親品目ID
+           , parent_item_no                                 AS parent_item_no        -- 親品目コード
+           , baracha_div                                    AS baracha_div           -- バラ茶区分
+           , small_amount_class                             AS small_amount_class    -- 小口区分
+           , NVL( SUM( actual_qty ), cn_zero )              AS sum_actual_qty        -- 実際数量 合計値
+           , NVL( SUM( amount     ), cn_zero )              AS sum_amount            -- 金額 合計値
+           , CASE
+               WHEN    parent_item_id IS NULL
+                    OR baracha_div    IS NULL
+               THEN
+                 item_code
+               ELSE
+                 NULL
+             END                                            AS item_code             -- 子品目コード（バラ茶区分が取得できない場合のみ）
+      FROM ( SELECT /*+
+                      LEADING( xtfi, xoha )
+                      INDEX( xtfi xxwip_tfi_sales_n01 )
+                      INDEX( xoha xxwsh_oh_sales_n01 )
+                      USE_NL( xtfi, xoha )
+                    */
+                    xtfi.target_date                          AS target_date           -- 対象年月
+                  , xoha.arrival_date                         AS arrival_date          -- 着荷日
+                  , xtfi.jurisdicyional_hub                   AS jurisdicyional_hub    -- 管轄拠点
+                  , ( SELECT /*+
+                               INDEX( mcsb MTL_CATEGORY_SETS_B_U1 )
+                             */
+                             ximb.parent_item_id
+                      FROM mtl_system_items_b       msib     -- 品目マスタ
+                         , ic_item_mst_b            iimb     -- OPM品目
+                         , xxcmn_item_mst_b         ximb     -- OPM品目アドオン
+                         , mtl_category_sets_b      mcsb     -- 品目カテゴリセット
+                         , mtl_category_sets_tl     mcst     -- 品目カテゴリセット日本語
+                         , mtl_categories_b         mcb      -- 品目カテゴリマスタ
+                         , mtl_item_categories      mic      -- 品目カテゴリ割当
+                      WHERE iimb.item_no                 = msib.segment1
+                        AND ximb.item_id                 = iimb.item_id
+                        AND mcst.category_set_id         = mcsb.category_set_id
+                        AND mcb.structure_id             = mcsb.structure_id
+                        AND mcb.category_id              = mic.category_id
+                        AND mcsb.category_set_id         = mic.category_set_id
+                        AND mcst.language                = USERENV( 'LANG' )
+                        AND mcst.category_set_name       = gv_item_div_h
+                        AND mcb.segment1                 = cv_office_item_drink
+                        AND msib.organization_id         = gn_organization_id
+                        AND msib.organization_id         = mic.organization_id
+                        AND mic.organization_id          = gn_organization_id
+                        AND msib.inventory_item_id       = mic.inventory_item_id
+                        AND xoha.arrival_date           >= ximb.start_date_active
+                        AND xoha.arrival_date           <= NVL( ximb.end_date_active, xoha.arrival_date )
+                        AND iimb.item_no                 = xtfi.item_code
+                    )                                         AS parent_item_id        -- 親品目ID
+                  , ( SELECT /*+
+                               INDEX( mcsb MTL_CATEGORY_SETS_B_U1 )
+                             */
+                             ( SELECT iimb2.item_no
+                               FROM ic_item_mst_b           iimb2    -- OPM品目（親）
+                               WHERE iimb2.item_id = ximb.parent_item_id
+                             )                    AS parent_item_no -- 親品目コード
+                      FROM mtl_system_items_b      msib      -- 品目マスタ
+                         , ic_item_mst_b           iimb      -- OPM品目
+                         , xxcmn_item_mst_b        ximb      -- OPM品目アドオン
+                         , mtl_category_sets_b     mcsb      -- 品目カテゴリセット
+                         , mtl_category_sets_tl    mcst      -- 品目カテゴリセット日本語
+                         , mtl_categories_b        mcb       -- 品目カテゴリマスタ
+                         , mtl_item_categories     mic       -- 品目カテゴリ割当
+                      WHERE iimb.item_no                 = msib.segment1
+                        AND ximb.item_id                 = iimb.item_id
+                        AND mcst.category_set_id         = mcsb.category_set_id
+                        AND mcb.structure_id             = mcsb.structure_id
+                        AND mcb.category_id              = mic.category_id
+                        AND mcsb.category_set_id         = mic.category_set_id
+                        AND mcst.language                = USERENV( 'LANG' )
+                        AND mcst.category_set_name       = gv_item_div_h
+                        AND mcb.segment1                 = cv_office_item_drink
+                        AND msib.organization_id         = gn_organization_id
+                        AND msib.organization_id         = mic.organization_id
+                        AND mic.organization_id          = gn_organization_id
+                        AND msib.inventory_item_id       = mic.inventory_item_id
+                        AND xoha.arrival_date           >= ximb.start_date_active
+                        AND xoha.arrival_date           <= NVL( ximb.end_date_active, xoha.arrival_date )
+                        AND iimb.item_no                 = xtfi.item_code
+                    )                                         AS parent_item_no        -- 親品目コード
+                  , ( SELECT xsib.baracha_div
+                      FROM xxcmm_system_items_b   xsib  -- Disc品目アドオンマスタ
+                      WHERE xsib.item_code               = xtfi.item_code
+                    )                                         AS baracha_div           -- バラ茶区分
+                  , ( SELECT xsmv.small_amount_class
+                      FROM xxwsh_ship_method2_v  xsmv
+                      WHERE xoha.result_shipping_method_code = xsmv.ship_method_code
+                    )                                         AS small_amount_class    -- 小口区分
+                  , xtfi.actual_qty                           AS actual_qty            -- 実際数量 合計値
+                  , xtfi.amount                               AS amount                -- 金額 合計値
+                  , xtfi.item_code                            AS item_code             -- 子品目コード（バラ茶区分が取得できない場合のみ）
+             FROM xxwip_transfer_fare_inf  xtfi  -- 振替運賃情報アドオンテーブル
+                , xxwsh_order_headers_all  xoha  -- 受注ヘッダアドオンテーブル
+             WHERE xtfi.request_no                  = xoha.request_no
+               AND xtfi.delivery_date               = xoha.arrival_date
+               AND xtfi.goods_classe                = xoha.prod_class
+               AND xtfi.jurisdicyional_hub          = xoha.head_sales_branch
+               AND xtfi.delivery_whs                = xoha.deliver_from
+               AND xtfi.ship_to                     = xoha.result_deliver_to
+               AND xoha.latest_external_flag        = cv_new_record
+               AND xtfi.target_date                 = gv_process_date_ym
+           )
+      GROUP BY target_date
+             , arrival_date
+             , jurisdicyional_hub
+             , parent_item_id
+             , parent_item_no
+             , baracha_div
+             , small_amount_class
+             , CASE
+                 WHEN    parent_item_id IS NULL
+                      OR baracha_div    IS NULL
+                 THEN
+                   item_code
+                 ELSE
+                   NULL
+               END
     ;
+-- 2009/08/27 Ver.1.5 [障害0001197] SCS K.Yamaguchi REPAIR END
 --
   BEGIN
 --
@@ -1739,7 +1880,13 @@ AS
     -- 対象データの存在チェック
     -- =============================================
     BEGIN
-      SELECT xdcri.result_id AS result_id   -- 運送費実績ID
+-- 2009/08/27 Ver.1.5 [障害0001197] SCS K.Yamaguchi REPAIR START
+--      SELECT xdcri.result_id AS result_id   -- 運送費実績ID
+      SELECT /*+
+               INDEX( xdcri XXCOK_DLV_COST_RESULT_INFO_N01 )
+             */
+             xdcri.result_id AS result_id   -- 運送費実績ID
+-- 2009/08/27 Ver.1.5 [障害0001197] SCS K.Yamaguchi REPAIR END
       INTO   ln_result_id
       FROM   xxcok_dlv_cost_result_info xdcri     -- 運送費実績テーブル
       WHERE xdcri.target_year    = it_target_year           -- 対象年度
@@ -1965,24 +2112,88 @@ AS
 --    lt_sum_amount_get        xxwip_transfer_fare_inf.amount%TYPE             DEFAULT 0;    -- 金額(集計値)取得
 --    ln_execute_count         NUMBER      DEFAULT 0;     -- バラ茶チェック通過件数
 --    ln_out_count             NUMBER      DEFAULT 0;     -- 出力件数
--- 2009/07/08 Ver.1.4 [障害0000447] SCS K.Yamaguchi DELETE START
+-- 2009/07/08 Ver.1.4 [障害0000447] SCS K.Yamaguchi DELETE END
     -- *** ローカルカーソル ***
-    -- 振替運賃カーソル(日次用)
-    CURSOR trans_freifht_info_cur
-    IS
--- 2009/07/08 Ver.1.4 [障害0000447] SCS K.Yamaguchi REPAIR START
---      SELECT xtfi.target_date            AS target_date        -- 対象年月
---            ,xoha.arrival_date           AS arrival_date       -- 着荷日
---            ,xtfi.jurisdicyional_hub     AS jurisdicyional_hub -- 管轄拠点
---            ,xtfi.item_code              AS item_code          -- 品目コード
---            ,seq_0_v.parent_item_id      AS parent_item_id     -- 親品行ID
---            ,xsmv.small_amount_class     AS small_amount_class -- 小口区分
+-- 2009/08/27 Ver.1.5 [障害0001197] SCS K.Yamaguchi REPAIR START
+--    -- 振替運賃カーソル(日次用)
+--    CURSOR trans_freifht_info_cur
+--    IS
+---- 2009/07/08 Ver.1.4 [障害0000447] SCS K.Yamaguchi REPAIR START
+----      SELECT xtfi.target_date            AS target_date        -- 対象年月
+----            ,xoha.arrival_date           AS arrival_date       -- 着荷日
+----            ,xtfi.jurisdicyional_hub     AS jurisdicyional_hub -- 管轄拠点
+----            ,xtfi.item_code              AS item_code          -- 品目コード
+----            ,seq_0_v.parent_item_id      AS parent_item_id     -- 親品行ID
+----            ,xsmv.small_amount_class     AS small_amount_class -- 小口区分
+----      FROM   xxwip_transfer_fare_inf  xtfi     -- 振替運賃情報アドオンテーブル
+----            ,xxwsh_order_headers_all  xoha     -- 受注ヘッダアドオンテーブル
+----            ,xxwsh_ship_method2_v     xsmv     -- 配送区分情報VIEW2
+----            ,( SELECT ximb.parent_item_id  AS parent_item_id -- 親品目ID
+----                     ,iimb.item_id         AS item_id        -- 品目ID
+----                     ,iimb.item_no         AS item_no        -- 品目NO
+----               FROM   mtl_system_items_b      msib     -- 品目マスタ
+----                     ,ic_item_mst_b           iimb     -- OPM品目
+----                     ,xxcmn_item_mst_b        ximb     -- OPM品目アドオン
+----                     ,mtl_category_sets_b     mcsb     -- 品目カテゴリセット
+----                     ,mtl_category_sets_tl    mcst     -- 品目カテゴリセット日本語
+----                     ,mtl_categories_b        mcb      -- 品目カテゴリマスタ
+----                     ,mtl_item_categories     mic      -- 品目カテゴリ割当
+----               WHERE  iimb.item_no                 = msib.segment1
+----               AND    ximb.item_id                 = iimb.item_id
+----               AND    mcst.category_set_id         = mcsb.category_set_id
+----               AND    mcb.structure_id             = mcsb.structure_id
+----               AND    mcb.category_id              = mic.category_id
+----               AND    mcsb.category_set_id         = mic.category_set_id
+----               AND    mcst.language                = USERENV( 'LANG' )
+----               AND    mcst.category_set_name       = gv_item_div_h
+----               AND    mcb.segment1                 = cv_office_item_drink
+----               AND    msib.organization_id         = gn_organization_id
+----               AND    msib.organization_id         = mic.organization_id
+----               AND    msib.inventory_item_id       = mic.inventory_item_id
+----            )                         seq_0_v  -- インラインビュー
+----      WHERE  xtfi.request_no                  = xoha.request_no
+----      AND    xtfi.delivery_date               = xoha.arrival_date
+----      AND    xtfi.goods_classe                = xoha.prod_class
+----      AND    xtfi.jurisdicyional_hub          = xoha.head_sales_branch
+----      AND    xtfi.delivery_whs                = xoha.deliver_from
+----      AND    xtfi.ship_to                     = xoha.result_deliver_to
+----      AND    xoha.latest_external_flag        = cv_new_record
+----      AND    xoha.result_shipping_method_code = xsmv.ship_method_code
+----      AND    seq_0_v.item_no(+)               = xtfi.item_code
+----      AND( ( xtfi.creation_date               > gd_day_last_coprt_date )
+----        OR ( xtfi.last_update_date            > gd_day_last_coprt_date ) )
+----      ORDER BY xtfi.target_date              -- 対象年月
+----              ,xoha.arrival_date             -- 着荷日
+----              ,xtfi.jurisdicyional_hub       -- 管轄拠点
+----              ,seq_0_v.parent_item_id        -- 親品目ID
+------【2009/04/23 A.Yano Ver.1.3 START】------------------------------------------------------
+------              ,xtfi.item_code                -- 品目コード
+----              ,xsmv.small_amount_class       -- 小口区分
+----              ,xtfi.item_code                -- 品目コード
+------【2009/04/23 A.Yano Ver.1.3 END  】------------------------------------------------------
+--      SELECT xtfi.target_date                       AS target_date        -- 対象年月
+--            ,xoha.arrival_date                      AS arrival_date       -- 着荷日
+--            ,xtfi.jurisdicyional_hub                AS jurisdicyional_hub -- 管轄拠点
+--            ,seq_0_v.parent_item_id                 AS parent_item_id     -- 親品目ID
+--            ,seq_0_v.parent_item_no                 AS parent_item_no     -- 親品目コード
+--            ,xsib.baracha_div                       AS baracha_div        -- バラ茶区分
+--            ,xsmv.small_amount_class                AS small_amount_class -- 小口区分
+--            ,SUM( NVL( xtfi.actual_qty, cn_zero ) ) AS sum_actual_qty   -- 実際数量 合計値
+--            ,SUM( NVL( xtfi.amount    , cn_zero ) ) AS sum_amount       -- 金額 合計値
+--            ,CASE
+--               WHEN xsib.baracha_div IS NULL THEN
+--                 xtfi.item_code
+--               ELSE
+--                 NULL
+--             END                                    AS item_code          -- 子品目コード（バラ茶区分が取得できない場合のみ）
 --      FROM   xxwip_transfer_fare_inf  xtfi     -- 振替運賃情報アドオンテーブル
 --            ,xxwsh_order_headers_all  xoha     -- 受注ヘッダアドオンテーブル
 --            ,xxwsh_ship_method2_v     xsmv     -- 配送区分情報VIEW2
+--            ,xxcmm_system_items_b     xsib     -- Disc品目アドオンマスタ
 --            ,( SELECT ximb.parent_item_id  AS parent_item_id -- 親品目ID
 --                     ,iimb.item_id         AS item_id        -- 品目ID
 --                     ,iimb.item_no         AS item_no        -- 品目NO
+--                     ,iimb2.item_no        AS parent_item_no -- 親品目コード
 --               FROM   mtl_system_items_b      msib     -- 品目マスタ
 --                     ,ic_item_mst_b           iimb     -- OPM品目
 --                     ,xxcmn_item_mst_b        ximb     -- OPM品目アドオン
@@ -1990,6 +2201,7 @@ AS
 --                     ,mtl_category_sets_tl    mcst     -- 品目カテゴリセット日本語
 --                     ,mtl_categories_b        mcb      -- 品目カテゴリマスタ
 --                     ,mtl_item_categories     mic      -- 品目カテゴリ割当
+--                     ,ic_item_mst_b           iimb2    -- OPM品目（親）
 --               WHERE  iimb.item_no                 = msib.segment1
 --               AND    ximb.item_id                 = iimb.item_id
 --               AND    mcst.category_set_id         = mcsb.category_set_id
@@ -2000,8 +2212,10 @@ AS
 --               AND    mcst.category_set_name       = gv_item_div_h
 --               AND    mcb.segment1                 = cv_office_item_drink
 --               AND    msib.organization_id         = gn_organization_id
+--               AND    mic.organization_id          = gn_organization_id
 --               AND    msib.organization_id         = mic.organization_id
 --               AND    msib.inventory_item_id       = mic.inventory_item_id
+--               AND    iimb2.item_id(+)             = ximb.parent_item_id
 --            )                         seq_0_v  -- インラインビュー
 --      WHERE  xtfi.request_no                  = xoha.request_no
 --      AND    xtfi.delivery_date               = xoha.arrival_date
@@ -2014,88 +2228,154 @@ AS
 --      AND    seq_0_v.item_no(+)               = xtfi.item_code
 --      AND( ( xtfi.creation_date               > gd_day_last_coprt_date )
 --        OR ( xtfi.last_update_date            > gd_day_last_coprt_date ) )
---      ORDER BY xtfi.target_date              -- 対象年月
---              ,xoha.arrival_date             -- 着荷日
---              ,xtfi.jurisdicyional_hub       -- 管轄拠点
---              ,seq_0_v.parent_item_id        -- 親品目ID
-----【2009/04/23 A.Yano Ver.1.3 START】------------------------------------------------------
-----              ,xtfi.item_code                -- 品目コード
---              ,xsmv.small_amount_class       -- 小口区分
---              ,xtfi.item_code                -- 品目コード
-----【2009/04/23 A.Yano Ver.1.3 END  】------------------------------------------------------
-      SELECT xtfi.target_date                       AS target_date        -- 対象年月
-            ,xoha.arrival_date                      AS arrival_date       -- 着荷日
-            ,xtfi.jurisdicyional_hub                AS jurisdicyional_hub -- 管轄拠点
-            ,seq_0_v.parent_item_id                 AS parent_item_id     -- 親品目ID
-            ,seq_0_v.parent_item_no                 AS parent_item_no     -- 親品目コード
-            ,xsib.baracha_div                       AS baracha_div        -- バラ茶区分
-            ,xsmv.small_amount_class                AS small_amount_class -- 小口区分
-            ,SUM( NVL( xtfi.actual_qty, cn_zero ) ) AS sum_actual_qty   -- 実際数量 合計値
-            ,SUM( NVL( xtfi.amount    , cn_zero ) ) AS sum_amount       -- 金額 合計値
-            ,CASE
-               WHEN xsib.baracha_div IS NULL THEN
-                 xtfi.item_code
+--      AND    xsib.item_code(+)                = xtfi.item_code
+--    GROUP BY xtfi.target_date
+--            ,xoha.arrival_date
+--            ,xtfi.jurisdicyional_hub
+--            ,seq_0_v.parent_item_id
+--            ,seq_0_v.parent_item_no
+--            ,xsib.baracha_div
+--            ,xsmv.small_amount_class
+--            ,CASE
+--               WHEN xsib.baracha_div IS NULL THEN
+--                 xtfi.item_code
+--               ELSE
+--                 NULL
+--             END
+---- 2009/07/08 Ver.1.4 [障害0000447] SCS K.Yamaguchi REPAIR END
+--    ;
+    -- 振替運賃カーソル(日次用)
+    CURSOR trans_freifht_info_cur
+    IS
+      SELECT target_date                                    AS target_date           -- 対象年月
+           , arrival_date                                   AS arrival_date          -- 着荷日
+           , jurisdicyional_hub                             AS jurisdicyional_hub    -- 管轄拠点
+           , parent_item_id                                 AS parent_item_id        -- 親品目ID
+           , parent_item_no                                 AS parent_item_no        -- 親品目コード
+           , baracha_div                                    AS baracha_div           -- バラ茶区分
+           , small_amount_class                             AS small_amount_class    -- 小口区分
+           , NVL( SUM( actual_qty ), cn_zero )              AS sum_actual_qty        -- 実際数量 合計値
+           , NVL( SUM( amount     ), cn_zero )              AS sum_amount            -- 金額 合計値
+           , CASE
+               WHEN    parent_item_id IS NULL
+                    OR baracha_div    IS NULL
+               THEN
+                 item_code
                ELSE
                  NULL
-             END                                    AS item_code          -- 子品目コード（バラ茶区分が取得できない場合のみ）
-      FROM   xxwip_transfer_fare_inf  xtfi     -- 振替運賃情報アドオンテーブル
-            ,xxwsh_order_headers_all  xoha     -- 受注ヘッダアドオンテーブル
-            ,xxwsh_ship_method2_v     xsmv     -- 配送区分情報VIEW2
-            ,xxcmm_system_items_b     xsib     -- Disc品目アドオンマスタ
-            ,( SELECT ximb.parent_item_id  AS parent_item_id -- 親品目ID
-                     ,iimb.item_id         AS item_id        -- 品目ID
-                     ,iimb.item_no         AS item_no        -- 品目NO
-                     ,iimb2.item_no        AS parent_item_no -- 親品目コード
-               FROM   mtl_system_items_b      msib     -- 品目マスタ
-                     ,ic_item_mst_b           iimb     -- OPM品目
-                     ,xxcmn_item_mst_b        ximb     -- OPM品目アドオン
-                     ,mtl_category_sets_b     mcsb     -- 品目カテゴリセット
-                     ,mtl_category_sets_tl    mcst     -- 品目カテゴリセット日本語
-                     ,mtl_categories_b        mcb      -- 品目カテゴリマスタ
-                     ,mtl_item_categories     mic      -- 品目カテゴリ割当
-                     ,ic_item_mst_b           iimb2    -- OPM品目（親）
-               WHERE  iimb.item_no                 = msib.segment1
-               AND    ximb.item_id                 = iimb.item_id
-               AND    mcst.category_set_id         = mcsb.category_set_id
-               AND    mcb.structure_id             = mcsb.structure_id
-               AND    mcb.category_id              = mic.category_id
-               AND    mcsb.category_set_id         = mic.category_set_id
-               AND    mcst.language                = USERENV( 'LANG' )
-               AND    mcst.category_set_name       = gv_item_div_h
-               AND    mcb.segment1                 = cv_office_item_drink
-               AND    msib.organization_id         = gn_organization_id
-               AND    mic.organization_id          = gn_organization_id
-               AND    msib.organization_id         = mic.organization_id
-               AND    msib.inventory_item_id       = mic.inventory_item_id
-               AND    iimb2.item_id(+)             = ximb.parent_item_id
-            )                         seq_0_v  -- インラインビュー
-      WHERE  xtfi.request_no                  = xoha.request_no
-      AND    xtfi.delivery_date               = xoha.arrival_date
-      AND    xtfi.goods_classe                = xoha.prod_class
-      AND    xtfi.jurisdicyional_hub          = xoha.head_sales_branch
-      AND    xtfi.delivery_whs                = xoha.deliver_from
-      AND    xtfi.ship_to                     = xoha.result_deliver_to
-      AND    xoha.latest_external_flag        = cv_new_record
-      AND    xoha.result_shipping_method_code = xsmv.ship_method_code
-      AND    seq_0_v.item_no(+)               = xtfi.item_code
-      AND( ( xtfi.creation_date               > gd_day_last_coprt_date )
-        OR ( xtfi.last_update_date            > gd_day_last_coprt_date ) )
-      AND    xsib.item_code(+)                = xtfi.item_code
-    GROUP BY xtfi.target_date
-            ,xoha.arrival_date
-            ,xtfi.jurisdicyional_hub
-            ,seq_0_v.parent_item_id
-            ,seq_0_v.parent_item_no
-            ,xsib.baracha_div
-            ,xsmv.small_amount_class
-            ,CASE
-               WHEN xsib.baracha_div IS NULL THEN
-                 xtfi.item_code
-               ELSE
-                 NULL
-             END
--- 2009/07/08 Ver.1.4 [障害0000447] SCS K.Yamaguchi REPAIR END
+             END                                            AS item_code             -- 子品目コード（バラ茶区分が取得できない場合のみ）
+      FROM ( SELECT /*+
+                      LEADING( xtfi, xoha )
+                      INDEX( xtfi xxwip_tfi_sales_n01 )
+                      INDEX( xoha xxwsh_oh_sales_n01 )
+                      USE_NL( xtfi, xoha )
+                    */
+                    xtfi.target_date                          AS target_date           -- 対象年月
+                  , xoha.arrival_date                         AS arrival_date          -- 着荷日
+                  , xtfi.jurisdicyional_hub                   AS jurisdicyional_hub    -- 管轄拠点
+                  , ( SELECT /*+
+                               INDEX( mcsb MTL_CATEGORY_SETS_B_U1 )
+                             */
+                             ximb.parent_item_id
+                      FROM mtl_system_items_b       msib     -- 品目マスタ
+                         , ic_item_mst_b            iimb     -- OPM品目
+                         , xxcmn_item_mst_b         ximb     -- OPM品目アドオン
+                         , mtl_category_sets_b      mcsb     -- 品目カテゴリセット
+                         , mtl_category_sets_tl     mcst     -- 品目カテゴリセット日本語
+                         , mtl_categories_b         mcb      -- 品目カテゴリマスタ
+                         , mtl_item_categories      mic      -- 品目カテゴリ割当
+                      WHERE iimb.item_no                 = msib.segment1
+                        AND ximb.item_id                 = iimb.item_id
+                        AND mcst.category_set_id         = mcsb.category_set_id
+                        AND mcb.structure_id             = mcsb.structure_id
+                        AND mcb.category_id              = mic.category_id
+                        AND mcsb.category_set_id         = mic.category_set_id
+                        AND mcst.language                = USERENV( 'LANG' )
+                        AND mcst.category_set_name       = gv_item_div_h
+                        AND mcb.segment1                 = cv_office_item_drink
+                        AND msib.organization_id         = gn_organization_id
+                        AND msib.organization_id         = mic.organization_id
+                        AND mic.organization_id          = gn_organization_id
+                        AND msib.inventory_item_id       = mic.inventory_item_id
+                        AND xoha.arrival_date           >= ximb.start_date_active
+                        AND xoha.arrival_date           <= NVL( ximb.end_date_active, xoha.arrival_date )
+                        AND iimb.item_no                 = xtfi.item_code
+                    )                                         AS parent_item_id        -- 親品目ID
+                  , ( SELECT /*+
+                               INDEX( mcsb MTL_CATEGORY_SETS_B_U1 )
+                             */
+                             ( SELECT iimb2.item_no
+                               FROM ic_item_mst_b           iimb2    -- OPM品目（親）
+                               WHERE iimb2.item_id = ximb.parent_item_id
+                             )                    AS parent_item_no -- 親品目コード
+                      FROM mtl_system_items_b      msib      -- 品目マスタ
+                         , ic_item_mst_b           iimb      -- OPM品目
+                         , xxcmn_item_mst_b        ximb      -- OPM品目アドオン
+                         , mtl_category_sets_b     mcsb      -- 品目カテゴリセット
+                         , mtl_category_sets_tl    mcst      -- 品目カテゴリセット日本語
+                         , mtl_categories_b        mcb       -- 品目カテゴリマスタ
+                         , mtl_item_categories     mic       -- 品目カテゴリ割当
+                      WHERE iimb.item_no                 = msib.segment1
+                        AND ximb.item_id                 = iimb.item_id
+                        AND mcst.category_set_id         = mcsb.category_set_id
+                        AND mcb.structure_id             = mcsb.structure_id
+                        AND mcb.category_id              = mic.category_id
+                        AND mcsb.category_set_id         = mic.category_set_id
+                        AND mcst.language                = USERENV( 'LANG' )
+                        AND mcst.category_set_name       = gv_item_div_h
+                        AND mcb.segment1                 = cv_office_item_drink
+                        AND msib.organization_id         = gn_organization_id
+                        AND msib.organization_id         = mic.organization_id
+                        AND mic.organization_id          = gn_organization_id
+                        AND msib.inventory_item_id       = mic.inventory_item_id
+                        AND xoha.arrival_date           >= ximb.start_date_active
+                        AND xoha.arrival_date           <= NVL( ximb.end_date_active, xoha.arrival_date )
+                        AND iimb.item_no                 = xtfi.item_code
+                    )                                         AS parent_item_no        -- 親品目コード
+                  , ( SELECT xsib.baracha_div
+                      FROM xxcmm_system_items_b   xsib  -- Disc品目アドオンマスタ
+                      WHERE xsib.item_code               = xtfi.item_code
+                    )                                         AS baracha_div           -- バラ茶区分
+                  , ( SELECT xsmv.small_amount_class
+                      FROM xxwsh_ship_method2_v  xsmv
+                      WHERE xoha.result_shipping_method_code = xsmv.ship_method_code
+                    )                                         AS small_amount_class    -- 小口区分
+                  , xtfi.actual_qty                           AS actual_qty            -- 実際数量 合計値
+                  , xtfi.amount                               AS amount                -- 金額 合計値
+                  , xtfi.item_code                            AS item_code             -- 子品目コード（バラ茶区分が取得できない場合のみ）
+             FROM xxwip_transfer_fare_inf  xtfi  -- 振替運賃情報アドオンテーブル
+                , xxwsh_order_headers_all  xoha  -- 受注ヘッダアドオンテーブル
+             WHERE xtfi.request_no                  = xoha.request_no
+               AND xtfi.delivery_date               = xoha.arrival_date
+               AND xtfi.goods_classe                = xoha.prod_class
+               AND xtfi.jurisdicyional_hub          = xoha.head_sales_branch
+               AND xtfi.delivery_whs                = xoha.deliver_from
+               AND xtfi.ship_to                     = xoha.result_deliver_to
+               AND xoha.latest_external_flag        = cv_new_record
+               AND xtfi.target_date                IN (   TO_CHAR(             gd_process_date      , 'RRRRMM' ) -- 当月
+                                                        , TO_CHAR( ADD_MONTHS( gd_process_date, -1 ), 'RRRRMM' ) -- 前月
+                                                      )
+               AND (    ( xtfi.creation_date        > gd_day_last_coprt_date )
+                     OR ( xtfi.last_update_date     > gd_day_last_coprt_date )
+                   )
+           )
+      GROUP BY target_date
+             , arrival_date
+             , jurisdicyional_hub
+             , parent_item_id
+             , parent_item_no
+             , baracha_div
+             , small_amount_class
+             , CASE
+                 WHEN    parent_item_id IS NULL
+                      OR baracha_div    IS NULL
+                 THEN
+                   item_code
+                 ELSE
+                   NULL
+               END
     ;
+-- 2009/08/27 Ver.1.5 [障害0001197] SCS K.Yamaguchi REPAIR END
 --
   BEGIN
 --
