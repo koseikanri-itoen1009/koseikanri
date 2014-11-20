@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.37
+ * Version          : 1.38
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2008/12/25    1.35  Yasuhisa Yamamoto  統合指摘 #674対応
  *  2008/12/29    1.36  Akiyoshi Shiina    統合指摘 #809対応
  *  2008/12/30    1.37  Yasuhisa Yamamoto  本番指摘 #898対応
+ *  2009/01/05    1.38  Takao    Ohashi    本番指摘 #911対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2526,7 +2527,8 @@ AS
       END IF;
 --
       -- 論理月末在庫数
-      IF (    ir_param.iv_um_class = gc_um_class_honsu ) THEN
+-- mod start ver1.38
+/*      IF (    ir_param.iv_um_class = gc_um_class_honsu ) THEN
         -- 単位区分（本数）
         ln_logic_month_stock := ROUND( gt_main_data(i).month_stock_nw + gt_main_data(i).cargo_stock_nw, 3 );
       ELSIF ( ir_param.iv_um_class = gc_um_class_case ) THEN
@@ -2536,7 +2538,9 @@ AS
         ELSE
           ln_logic_month_stock := ROUND( ( gt_main_data(i).month_stock_nw + gt_main_data(i).cargo_stock_nw ) / ln_quantity, 3 );
         END IF;
-      END IF;
+      END IF;*/
+      ln_logic_month_stock := ROUND( ln_month_start_stock + ln_stock_quantity - ln_leaving_quantity, 3 );
+-- mod end ver1.38
 --
       -- 実棚月末在庫数
       IF (    ir_param.iv_um_class = gc_um_class_honsu ) THEN
@@ -2634,7 +2638,10 @@ AS
         END;
 --
         -- 論理在庫金額
-        ln_logic_stock_amount  := ROUND( ( gt_main_data(i).month_stock_nw + gt_main_data(i).cargo_stock_nw ) * ln_stock_unit_price );
+-- mod start ver1.38
+--        ln_logic_stock_amount  := ROUND( ( gt_main_data(i).month_stock_nw + gt_main_data(i).cargo_stock_nw ) * ln_stock_unit_price );
+        ln_logic_stock_amount  := ROUND( ln_logic_month_stock * ln_stock_unit_price );
+-- mod end ver1.38
         -- 実棚在庫金額
         ln_invent_stock_amount := ROUND( gt_main_data(i).case_amt * ln_stock_unit_price ) +
         -- 実棚積送在庫金額
