@@ -39,9 +39,10 @@ AS
  *                                       7.標準原価の取得処理を修正(ステップNo．2-7)
  *                                       8.営業原価(新)と営業原価(旧)の出力列を修正(ステップNo．3-1)
  *  2009/01/30    1.2   H.Yoshikawa      単体テスト不具合修正
- *                                       Q&A回答対応 親品目が設定されていない品目を抽出対象とするよう修正(ステップNo．3-1)
+ *                                       QA対応 親品目が設定されていない品目を抽出対象とするよう修正(ステップNo．3-1)
  *  2009/02/16    1.3   K.Ito            OUTBOUND用CSVファイル作成場所、ファイル名共通化
  *                                       ファイル名を出力するように修正
+ *  2009/05/12    1.4   H.Yoshikawa      障害T1_0905,T1_0906対応
  *
  *****************************************************************************************/
 --
@@ -162,6 +163,8 @@ AS
   cn_cost_level                  CONSTANT NUMBER(1)     := 0;                    -- コストレベル
   cv_categ_set_hon_prod          CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_hon_prod;
                                                                                  -- 本社商品区分
+  cv_categ_set_item_prod         CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_item_prod;
+                                                                                 -- 商品製品区分
   cv_csv_mode                    CONSTANT VARCHAR2(1)   := 'w';                  -- csvファイルオープン時のモード
 --
   -- ===============================
@@ -171,7 +174,7 @@ AS
   TYPE xxcmm004a11c_rtype IS RECORD
   (
     -- 会社コード                        文字型(3)
-     company_code               VARCHAR2(3)                                     -- 
+     company_code               VARCHAR2(3)                                     -- VARCHAR2(3)
     -- 品目コード                        文字型(7)
     ,item_code                  ic_item_mst_b.item_no%TYPE                      -- VARCHAR2(32)
     -- カナ名                            文字型(30)
@@ -186,34 +189,98 @@ AS
     ,itf_code                   VARCHAR2(240)                                   -- VARCHAR2(240)
     -- 定価（新）                        数値型(7)
     ,price_new                  VARCHAR2(240)                                   -- VARCHAR2(240)
-    -- 標準原価                          数値型(7,2)
-    ,standard_cost              cm_cmpt_dtl.cmpnt_cost%TYPE                     -- NUMBER
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+    -- 定価（旧）                        数値型(7)
+    ,price_old                  VARCHAR2(240)                                   -- VARCHAR2(240)
+    -- 定価適用開始日【YYYYMMDD】        文字型(8)
+    ,price_apply_date           VARCHAR2(240)                                   -- VARCHAR2(240)
+-- End
+-- Ver1.4 Mod 2009/05/12 ファイル項目追加対応
+--    -- 標準原価                          数値型(7,2)
+--    ,standard_cost              cm_cmpt_dtl.cmpnt_cost%TYPE                     -- NUMBER
+    -- 標準原価（新）                      数値型(7,2)
+    ,standard_cost              VARCHAR2(240)                                   -- VARCHAR2(240)
+    -- 標準原価（旧）                    数値型(7,2)
+    ,standard_cost_old          VARCHAR2(240)                                   -- VARCHAR2(240)
+    -- 標準原価適用開始日【YYYYMMDD】    文字型(8)
+    ,standard_cost_apply_date   VARCHAR2(240)                                   -- VARCHAR2(240)
+-- End
     -- 営業原価（旧）                    数値型(7)
     ,opt_cost_old               VARCHAR2(240)                                   -- VARCHAR2(240)
     -- 営業原価（新）                    数値型(7)
     ,opt_cost_new               VARCHAR2(240)                                   -- VARCHAR2(240)
     -- 営業原価変更適用日【YYYYMMDD】    文字型(8)
     ,opt_cost_apply_date        VARCHAR2(240)                                   -- VARCHAR2(240)
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+    -- 売上対象区分                      数値型(1)
+    ,sales_div                  VARCHAR2(240)                                   -- VARCHAR2(240)
+    -- 基準単位                          文字型(4)
+    ,item_um                    ic_item_mst_b.item_um%TYPE                      -- VARCHAR2(4)
+    -- 製品商品区分                      数値型(1)
+    ,item_product_class         mtl_categories_b.segment1%TYPE                  -- VARCHAR2(40)
+    -- 率区分                            数値型(1)
+    ,rate_class                 xxcmn_item_mst_b.rate_class%TYPE                -- VARCHAR2(1)
+    -- NET                               数値型(5)
+    ,net                        VARCHAR2(240)                                   -- VARCHAR2(240)
+    -- 重量/体積                         数値型(7)
+    ,unit                       VARCHAR2(240)                                   -- VARCHAR2(240)
+    -- 内容量                            数値型(5.1)
+    ,nets                       xxcmm_system_items_b.nets%TYPE                  -- NUMBER(5.1)
+    -- 内容量単位                        文字型(1)
+    ,nets_uom_code              xxcmm_system_items_b.nets_uom_code%TYPE         -- VARCHAR2(1)
+    -- 内訳入数                          数値型(5.1)
+    ,inc_num                    xxcmm_system_items_b.inc_num%TYPE               -- NUMBER(5.1)
+    -- バラ茶区分                        数値型(1)
+    ,baracha_div                xxcmm_system_items_b.baracha_div%TYPE           -- NUMBER(1.0)
+    -- 商品分類                          数値型(2)
+    ,product_class              xxcmn_item_mst_b.product_class%TYPE             -- NUMBER(2.0)
+    -- 廃止日（製造中止日）              文字型(8)
+    ,obsolete_date              VARCHAR2(8)                                     -- VARCHAR2(8)
+    -- 廃止区分                          数値型(1)
+    ,obsolete_class             xxcmn_item_mst_b.obsolete_class%TYPE            -- VARCHAR2(1)
+    -- 新商品区分                        数値型(1)
+    ,new_item_div               xxcmm_system_items_b.new_item_div%TYPE          -- VARCHAR2(1)
+    -- 専門店仕入先コード                文字型(4) ※項目定義は９桁
+    ,sp_supplier_code           xxcmm_system_items_b.sp_supplier_code%TYPE      -- VARCHAR2(9)
+-- End
     -- 発売開始日【YYYYMMDD】            文字型(8)
     ,sell_start_date            VARCHAR2(240)                                   -- VARCHAR2(240)
     -- 配数                              数値型(2)
     ,palette_max_cs_qty         xxcmn_item_mst_b.palette_max_cs_qty%TYPE        -- NUMBER(2,0)
     -- パレット当り最大段数              数値型(2)
     ,palette_max_step_qty       xxcmn_item_mst_b.palette_max_step_qty%TYPE      -- NUMBER(2,0)
-    -- パレット段                        数値型(2)
-    ,palette_step_qty           xxcmn_item_mst_b.palette_step_qty%TYPE          -- NUMBER(2,0)
+-- Ver1.4 Add 2009/05/12 ファイル項目削除対応
+--    -- パレット段                        数値型(2)
+--    ,palette_step_qty           xxcmn_item_mst_b.palette_step_qty%TYPE          -- NUMBER(2,0)
+-- End
     -- ケース入数                        数値型(5)
     ,num_of_cases               VARCHAR2(240)                                   -- VARCHAR2(240)
     -- ボール入数                        数値型(5)
     ,bowl_inc_num               xxcmm_system_items_b.bowl_inc_num%TYPE          -- NUMBER(5,0)
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+    -- ケース換算入数                    数値型(5)
+    ,case_conv_inc_num          xxcmm_system_items_b.case_conv_inc_num%TYPE     -- NUMBER(5,0)
+-- End
     -- 群コード（新）                    文字型(4)
     ,crowd_code_new             VARCHAR2(240)                                   -- VARCHAR2(240)
-    -- ドリンク・リーフ区分              文字型(1)
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+    -- 群コード（旧）                    文字型(4)
+    ,crowd_code_old             VARCHAR2(240)                                   -- VARCHAR2(240)
+    -- 群コード変更適用日【YYYYMMDD】    文字型(8)
+    ,crowd_code_apply_date      VARCHAR2(240)                                   -- VARCHAR2(240)
+-- End
+    -- 容器群                            文字型(4)
+    ,vessel_group               xxcmm_system_items_b.vessel_group%TYPE          -- VARCHAR2(4)
+    -- 本社商品区分                      文字型(1)
     ,item_div                   mtl_categories.segment1%TYPE                    -- VARCHAR2(40)
     -- 経理群                            文字型(4)
     ,acnt_group                 xxcmm_system_items_b.acnt_group%TYPE            -- VARCHAR2(4)
-    -- 容器群                            文字型(4)
-    ,vessel_group               xxcmm_system_items_b.vessel_group%TYPE          -- VARCHAR2(4)
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+    -- 経理容器群                        文字型(4)
+    ,acnt_vessel_group          xxcmm_system_items_b.acnt_vessel_group%TYPE     -- VARCHAR2(4)
+    -- ブランド群                        文字型(4)
+    ,brand_group                xxcmm_system_items_b.brand_group%TYPE           -- VARCHAR2(4)
+-- End
     -- 親商品コード                      文字型(7)
     ,parent_item_code           ic_item_mst_b.item_no%TYPE                      -- VARCHAR2(32)
     -- リニューアル元商品コード          文字型(7)
@@ -222,7 +289,7 @@ AS
 --    ,item_short_name            xxcmm_opmmtl_items_v.item_short_name%TYPE       --
     ,item_short_name            xxcmn_item_mst_b.item_short_name%TYPE           -- VARCHAR2(20)
     -- 連携日時【YYYYMMDDHH24MISS】      文字型(14)
-    ,trans_date                 VARCHAR2(14)                                    -- 
+    ,trans_date                 VARCHAR2(14)                                    -- VARCHAR2(14)
   );
 --
   -- 品目マスタIF出力（情報系）レイアウト テーブルタイプ
@@ -439,10 +506,14 @@ AS
     lv_message_token          VARCHAR2(100);                                  -- 連携日付
     ln_data_index             NUMBER;                                         -- データ用索引
     lv_parent_item_code       ic_item_mst_b.item_no%TYPE;                     -- 親商品コード
-    lv_item_div               VARCHAR2(1);                                    -- ドリンク・リーフ区分
+    lv_item_div               VARCHAR2(1);                                    -- 本社商品区分
 -- Ver1.1 Mod 2009/01/28 標準原価の取得処理を修正(ステップNo．2-7)
 --    ln_standard_cost          NUMBER(9,2);                                    -- 標準原価
     lv_standard_cost          VARCHAR2(20);                                   -- 標準原価
+-- End
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+    standard_cost_apply_date  DATE;                                           -- 標準原価適用開始日
+    lv_standard_cost_old      VARCHAR2(20);                                   -- 標準原価（旧）
 -- End
     lv_out_csv_line           VARCHAR2(1000);                                 -- 出力行
     --
@@ -478,22 +549,97 @@ AS
                  ,xoiv.parent_item_id                                         -- 親品目ID
                  ,xoiv.palette_max_cs_qty                                     -- 配数
                  ,xoiv.palette_max_step_qty                                   -- パレット当り最大段数
-                 ,xoiv.palette_step_qty                                       -- パレット段
+-- Ver1.4 Add 2009/05/12 ファイル項目削除対応
+--                 ,xoiv.palette_step_qty                                       -- パレット段
+-- End
                  ,xoiv.case_jan_code                                          -- ケースJANコード
                  ,xoiv.renewal_item_code                                      -- リニューアル元商品コード
                  ,xoiv.acnt_group                                             -- 経理群
                  ,xoiv.vessel_group                                           -- 容器群
                  ,iimb.item_no        AS parent_item_code                     -- 親商品コード
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+                 ,xoiv.price_old                                              -- 定価（旧）
+                 ,TO_CHAR( xoiv.price_apply_date, cv_date_fmt_ymd )
+                                      AS price_apply_date                     -- 定価適用開始日
+                 ,xoiv.sales_div                                              -- 売上対象区分
+                 ,TO_MULTI_BYTE( xoiv.item_um )
+                                      AS item_um                              -- 基準単位
+                 ,mcv.segment1        AS item_product_class                   -- 商品製品区分
+                 ,xoiv.rate_class                                             -- 率区分
+                 ,xoiv.net                                                    -- NET
+                 ,xoiv.unit                                                   -- 重量/体積
+                 ,xoiv.nets                                                   -- 内容量
+                 ,xoiv.nets_uom_code                                          -- 内容量単位
+                 ,xoiv.inc_num                                                -- 内訳入数
+                 ,xoiv.baracha_div                                            -- バラ茶区分
+                 ,xoiv.product_class                                          -- 商品分類
+                 ,TO_CHAR( xoiv.obsolete_date, cv_date_fmt_ymd )
+                                      AS obsolete_date                        -- 廃止日（製造中止日）
+                 ,xoiv.obsolete_class                                         -- 廃止区分
+                 ,xoiv.new_item_div                                           -- 新商品区分
+                 ,xoiv.sp_supplier_code                                       -- 専門店仕入先コード
+                 ,xoiv.case_conv_inc_num                                      -- ケース換算入数
+                 ,xoiv.crowd_code_old                                         -- 旧群コード
+                 ,TO_CHAR( xoiv.crowd_code_apply_date, cv_date_fmt_ymd )
+                                      AS crowd_code_apply_date                -- 群コード適用開始日
+                 ,xoiv.acnt_vessel_group                                      -- 経理容器群
+                 ,xoiv.brand_group                                            -- ブランド群
+-- End
       FROM        xxcmm_opmmtl_items_v    xoiv                                -- 品目ビュー
                  ,ic_item_mst_b           iimb                                -- OPM品目（親商品コード取得用）
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+                 ,gmi_item_categories     gic                                 -- カテゴリ割当
+                 ,mtl_categories_vl       mcv                                 -- カテゴリ
+                 ,mtl_category_sets_vl    mcsv                                -- カテゴリセット
+-- End
 -- Ver1.2 Mod 2009/01/30 親品目が設定されていない品目を抽出対象とするよう修正(ステップNo．3-1)
 --      WHERE       iimb.item_id            = xoiv.parent_item_id               -- 親商品コード
       WHERE       iimb.item_id(+)         = xoiv.parent_item_id               -- 親商品コード
 -- End
-      AND         xoiv.start_date_active <= gd_process_date                   -- 適用開始日
-      AND         xoiv.end_date_active   >= gd_process_date                   -- 適用終了日
+-- Ver1.4 Mod 2009/05/12 実行は夜間バッチの最後 朝一時点で翌営業日の情報を送付する
+--      AND         xoiv.start_date_active <= gd_process_date                   -- 適用開始日
+--      AND         xoiv.end_date_active   >= gd_process_date                   -- 適用終了日
+      AND         xoiv.start_date_active <= gd_process_date + 1               -- 適用開始日
+      AND         xoiv.end_date_active   >= gd_process_date + 1               -- 適用終了日
+-- End
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+      AND         mcsv.category_set_name  = cv_categ_set_item_prod
+      AND         gic.category_set_id     = mcsv.category_set_id
+      AND         gic.item_id             = xoiv.item_id
+      AND         gic.category_id         = mcv.category_id
+-- End
       ORDER BY    xoiv.item_no;
     --
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+    -- OPM原価カレンダ情報カーソル
+    CURSOR opm_cost_cur(
+      pn_item_id         NUMBER
+     ,pd_connect_date    DATE )
+    IS
+      SELECT      TO_CHAR( TRUNC( SUM( NVL( ccmd.cmpnt_cost, 0 )), 2 ))  AS standard_cost  -- 標準原価
+                 ,TO_CHAR( cclr.start_date, cv_date_fmt_ymd )            AS start_date     -- 開始日
+      FROM        cm_cmpt_dtl          ccmd           -- OPM標準原価
+                 ,cm_cldr_dtl          cclr           -- OPM原価カレンダ
+                 ,cm_cmpt_mst_vl       ccmv           -- 原価コンポーネント
+                 ,fnd_lookup_values_vl flv            -- 参照コード値
+      WHERE       ccmd.item_id             = pn_item_id                       -- 品目ID
+      AND         cclr.start_date         <= pd_connect_date                  -- 開始日
+      AND         flv.lookup_type          = cv_lookup_cost_cmpt              -- 参照タイプ
+      AND         flv.enabled_flag         = cv_enbld_flag                    -- 使用可能
+      AND         ccmv.cost_cmpntcls_code  = flv.meaning                      -- 原価コンポーネントコード
+      AND         ccmd.cost_cmpntcls_id    = ccmv.cost_cmpntcls_id            -- 原価コンポーネントID
+      AND         ccmd.calendar_code       = cclr.calendar_code               -- カレンダコード
+      AND         ccmd.period_code         = cclr.period_code                 -- 期間コード
+      AND         ccmd.whse_code           = cv_whse_code                     -- 倉庫
+      AND         ccmd.cost_mthd_code      = cv_cost_mthd_code                -- 原価方法
+      AND         ccmd.cost_analysis_code  = cv_cost_analysis_code            -- 分析コード
+      GROUP BY    cclr.start_date
+      ORDER BY    cclr.start_date DESC;
+    --
+    l_opm_cost_now_clear                opm_cost_cur%ROWTYPE;                 -- クリア用
+    l_opm_cost_now_rec                  opm_cost_cur%ROWTYPE;                 -- 標準原価（新）格納用
+    l_opm_cost_old_rec                  opm_cost_cur%ROWTYPE;                 -- 標準原価（旧）格納用
+-- End
     lt_csv_item_tab                     xxcmm004a11c_ttype;                   -- 商品IF出力データ
     --
     -- ===============================
@@ -550,14 +696,14 @@ AS
       --
       BEGIN
         lv_step := 'A-2.3';
-        lv_message_token := 'ドリンク・リーフ区分の取得';
-        -- ドリンク・リーフ区分の取得
-        SELECT      mc.segment1  AS item_div                           -- ドリンク・リーフ区分
-        INTO        lv_item_div                                        -- ドリンク・リーフ区分
-        FROM        gmi_item_categories     gic                        -- ドリンク・リーフ区分
-                   ,mtl_categories          mc                         -- ドリンク・リーフ区分
-                   ,mtl_category_sets       mcs                        -- ドリンク・リーフ区分
-        WHERE       mcs.category_set_name   = cv_categ_set_hon_prod    -- ドリンク・リーフ区分
+        lv_message_token := '本社商品区分の取得';
+        -- 本社商品区分の取得
+        SELECT      mc.segment1  AS item_div                           -- 本社商品区分
+        INTO        lv_item_div
+        FROM        gmi_item_categories     gic                        -- カテゴリ割当て
+                   ,mtl_categories          mc                         -- カテゴリ
+                   ,mtl_category_sets       mcs                        -- カテゴリセット
+        WHERE       mcs.category_set_name   = cv_categ_set_hon_prod    -- '本社商品区分'
         AND         gic.item_id             = l_csv_item_rec.item_id   -- 品目
         AND         gic.category_set_id     = mcs.category_set_id      -- カテゴリセットID
         AND         gic.category_id         = mc.category_id;          -- カテゴリID
@@ -569,33 +715,59 @@ AS
 -- End
       END;
       --
-      --
       lv_step := 'A-2.4';
       lv_message_token := '標準原価の取得';
-      -- 標準原価の取得
--- Ver1.1 Mod 2009/01/28 標準原価の取得処理を修正(ステップNo．2-7)
---      SELECT      SUM( NVL( ccmd.cmpnt_cost, 0 ) )
---      INTO        ln_standard_cost
-      SELECT      TO_CHAR( TRUNC( SUM( NVL( ccmd.cmpnt_cost, 0 )), 2 ))
-                                                      -- 標準原価
-      INTO        lv_standard_cost
+-- Ver1.4 標準原価新旧取得に変更によりカーソル化
+---- Ver1.1 Mod 2009/01/28 標準原価の取得処理を修正(ステップNo．2-7)
+----      SELECT      SUM( NVL( ccmd.cmpnt_cost, 0 ) )
+----      INTO        ln_standard_cost
+--      SELECT      TO_CHAR( TRUNC( SUM( NVL( ccmd.cmpnt_cost, 0 )), 2 ))
+--                                                      -- 標準原価
+--      INTO        lv_standard_cost
+---- End
+--      FROM        cm_cmpt_dtl          ccmd           -- OPM標準原価
+--                 ,cm_cldr_dtl          cclr           -- OPM原価カレンダ
+--                 ,cm_cmpt_mst_vl       ccmv           -- 原価コンポーネント
+--                 ,fnd_lookup_values_vl flv            -- 参照コード値
+--      WHERE       ccmd.item_id             = l_csv_item_rec.item_id           -- 品目ID
+--      AND         cclr.start_date         <= gd_process_date                  -- 開始日
+--      AND         cclr.end_date           >= gd_process_date                  -- 終了日
+--      AND         flv.lookup_type          = cv_lookup_cost_cmpt              -- 参照タイプ
+--      AND         flv.enabled_flag         = cv_enbld_flag                    -- 使用可能
+--      AND         ccmv.cost_cmpntcls_code  = flv.meaning                      -- 原価コンポーネントコード
+--      AND         ccmd.cost_cmpntcls_id    = ccmv.cost_cmpntcls_id            -- 原価コンポーネントID
+--      AND         ccmd.calendar_code       = cclr.calendar_code               -- カレンダコード
+--      AND         ccmd.period_code         = cclr.period_code                 -- 期間コード
+--      AND         ccmd.whse_code           = cv_whse_code                     -- 倉庫
+--      AND         ccmd.cost_mthd_code      = cv_cost_mthd_code                -- 原価方法
+--      AND         ccmd.cost_analysis_code  = cv_cost_analysis_code;           -- 分析コード
 -- End
-      FROM        cm_cmpt_dtl          ccmd           -- OPM標準原価
-                 ,cm_cldr_dtl          cclr           -- OPM原価カレンダ
-                 ,cm_cmpt_mst_vl       ccmv           -- 原価コンポーネント
-                 ,fnd_lookup_values_vl flv            -- 参照コード値
-      WHERE       ccmd.item_id             = l_csv_item_rec.item_id     -- 品目ID
-      AND         cclr.start_date         <= gd_process_date            -- 開始日(翌営業日じゃないの？)
-      AND         cclr.end_date           >= gd_process_date            -- 終了日(翌営業日じゃないの？)
-      AND         flv.lookup_type          = cv_lookup_cost_cmpt        -- 参照タイプ
-      AND         flv.enabled_flag         = cv_enbld_flag              -- 使用可能
-      AND         ccmv.cost_cmpntcls_code  = flv.meaning                -- 原価コンポーネントコード
-      AND         ccmd.cost_cmpntcls_id    = ccmv.cost_cmpntcls_id      -- 原価コンポーネントID
-      AND         ccmd.calendar_code       = cclr.calendar_code         -- カレンダコード
-      AND         ccmd.period_code         = cclr.period_code           -- 期間コード
-      AND         ccmd.whse_code           = cv_whse_code               -- 倉庫
-      AND         ccmd.cost_mthd_code      = cv_cost_mthd_code          -- 原価方法
-      AND         ccmd.cost_analysis_code  = cv_cost_analysis_code;     -- 分析コード
+      --
+      -- 標準原価の取得
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+      -- 初期化
+      l_opm_cost_now_rec := l_opm_cost_now_clear;
+      l_opm_cost_old_rec := l_opm_cost_now_clear;
+      --
+      -- 原価カレンダ情報取得
+      lv_step := 'A-2.4a';
+      OPEN opm_cost_cur(
+        l_csv_item_rec.item_id    -- OPM品目ID
+       ,gd_process_date + 1       -- 開始日（営業日の翌日）
+      );
+      -- フェッチ
+      -- 標準原価（新）・開始日の取得
+      lv_step := 'A-2.4b';
+      FETCH opm_cost_cur INTO l_opm_cost_now_rec;
+      --
+      -- 標準原価（旧）の取得
+      lv_step := 'A-2.4c';
+      FETCH opm_cost_cur INTO l_opm_cost_old_rec;
+      --
+      -- カーソルクローズ
+      lv_step := 'A-2.4d';
+      CLOSE opm_cost_cur;
+-- End
       --
       -- 配列に設定
       lv_step := 'A-2.company_code';
@@ -622,11 +794,37 @@ AS
       lv_step := 'A-2.price_new';
       lv_message_token := '定価（新）';
       lt_csv_item_tab( ln_data_index ).price_new            := TO_CHAR( l_csv_item_rec.price_new );
-      lv_step := 'A-2.standard_cost';
--- Ver1.1 Mod 2009/01/28 標準原価の取得処理を修正(ステップNo．2-7)
-      lv_message_token := '標準原価';
---      lt_csv_item_tab( ln_data_index ).standard_cost        := ln_standard_cost;
-      lt_csv_item_tab( ln_data_index ).standard_cost        := lv_standard_cost;
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+      lv_step := 'A-2.price_old';
+      lv_message_token := '定価（旧）';
+      lt_csv_item_tab( ln_data_index ).price_old            := TO_CHAR( l_csv_item_rec.price_old );
+      lv_step := 'A-2.price_new';
+      lv_message_token := '定価適用開始日';
+      lt_csv_item_tab( ln_data_index ).price_apply_date     := l_csv_item_rec.price_apply_date;
+-- End
+-- Ver1.4 標準原価新旧取得に変更のため削除
+---- Ver1.1 Mod 2009/01/28 標準原価の取得処理を修正(ステップNo．2-7)
+--      lv_step := 'A-2.standard_cost';
+--      lv_message_token := '標準原価';
+----      lt_csv_item_tab( ln_data_index ).standard_cost        := ln_standard_cost;
+--      lt_csv_item_tab( ln_data_index ).standard_cost        := lv_standard_cost;
+---- End
+-- End
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+      lv_step := 'A-2.standard_cost_new';
+      lv_message_token := '標準原価（新）';
+      lt_csv_item_tab( ln_data_index ).standard_cost        := l_opm_cost_now_rec.standard_cost;
+      lv_step := 'A-2.standard_cost_old';
+      lv_message_token := '標準原価（旧）';
+      lt_csv_item_tab( ln_data_index ).standard_cost_old    := l_opm_cost_old_rec.standard_cost;
+      lv_step := 'A-2.standard_cost_apply_date';
+      lv_message_token := '標準原価適用開始日';
+      IF ( l_opm_cost_now_rec.standard_cost IS NOT NULL )
+      OR ( l_opm_cost_old_rec.standard_cost IS NOT NULL ) THEN
+        -- 当期・前期どちらかにでも標準原価が設定されている場合に表示
+        lt_csv_item_tab( ln_data_index ).standard_cost_apply_date
+                                                            := l_opm_cost_now_rec.start_date;
+      END IF;
 -- End
 -- Ver1.1 Mod 2009/01/28 営業原価(新)と営業原価(旧)の出力列を修正(ステップNo．3-1)
 --      lv_step := 'A-2.opt_cost_old';
@@ -637,13 +835,62 @@ AS
 --      lt_csv_item_tab( ln_data_index ).opt_cost_new         := TO_CHAR( l_csv_item_rec.opt_cost_new );
 --      lv_step := 'A-2.opt_cost_apply_date';
       lv_step := 'A-2.opt_cost_new';
+      lv_message_token := '営業原価（新）';
       lt_csv_item_tab( ln_data_index ).opt_cost_new         := TO_CHAR( l_csv_item_rec.opt_cost_new );
       lv_step := 'A-2.opt_cost_old';
       lv_message_token := '営業原価（旧）';
       lt_csv_item_tab( ln_data_index ).opt_cost_old         := TO_CHAR( l_csv_item_rec.opt_cost_old );
 -- End
+      lv_step := 'A-2.opt_cost_apply_date';
       lv_message_token := '営業原価変更適用日';
       lt_csv_item_tab( ln_data_index ).opt_cost_apply_date  := l_csv_item_rec.opt_cost_apply_date;
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+      lv_step := 'A-2.sales_div';
+      lv_message_token := '売上対象区分';
+      lt_csv_item_tab( ln_data_index ).sales_div            := l_csv_item_rec.sales_div;
+      lv_step := 'A-2.item_um';
+      lv_message_token := '基準単位';
+      lt_csv_item_tab( ln_data_index ).item_um              := l_csv_item_rec.item_um;
+      lv_step := 'A-2.item_product_class';
+      lv_message_token := '製品商品区分';
+      lt_csv_item_tab( ln_data_index ).item_product_class   := l_csv_item_rec.item_product_class;
+      lv_step := 'A-2.rate_class';
+      lv_message_token := '率区分';
+      lt_csv_item_tab( ln_data_index ).rate_class           := l_csv_item_rec.rate_class;
+      lv_step := 'A-2.net';
+      lv_message_token := 'NET';
+      lt_csv_item_tab( ln_data_index ).net                  := l_csv_item_rec.net;
+      lv_step := 'A-2.unit';
+      lv_message_token := '重量/体積';
+      lt_csv_item_tab( ln_data_index ).unit                 := l_csv_item_rec.unit;
+      lv_step := 'A-2.nets';
+      lv_message_token := '内容量';
+      lt_csv_item_tab( ln_data_index ).nets                 := l_csv_item_rec.nets;
+      lv_step := 'A-2.nets_uom_code';
+      lv_message_token := '内容量単位';
+      lt_csv_item_tab( ln_data_index ).nets_uom_code        := l_csv_item_rec.nets_uom_code;
+      lv_step := 'A-2.inc_num';
+      lv_message_token := '内訳入数';
+      lt_csv_item_tab( ln_data_index ).inc_num              := l_csv_item_rec.inc_num;
+      lv_step := 'A-2.baracha_div';
+      lv_message_token := 'バラ茶区分';
+      lt_csv_item_tab( ln_data_index ).baracha_div          := l_csv_item_rec.baracha_div;
+      lv_step := 'A-2.product_class';
+      lv_message_token := '商品分類';
+      lt_csv_item_tab( ln_data_index ).product_class        := l_csv_item_rec.product_class;
+      lv_step := 'A-2.obsolete_date';
+      lv_message_token := '廃止日';
+      lt_csv_item_tab( ln_data_index ).obsolete_date        := l_csv_item_rec.obsolete_date;
+      lv_step := 'A-2.obsolete_class';
+      lv_message_token := '廃止区分';
+      lt_csv_item_tab( ln_data_index ).obsolete_class       := l_csv_item_rec.obsolete_class;
+      lv_step := 'A-2.new_item_div';
+      lv_message_token := '新商品区分';
+      lt_csv_item_tab( ln_data_index ).new_item_div         := l_csv_item_rec.new_item_div;
+      lv_step := 'A-2.sp_supplier_code';
+      lv_message_token := '専門店仕入先コード';
+      lt_csv_item_tab( ln_data_index ).sp_supplier_code     := SUBSTRB( l_csv_item_rec.sp_supplier_code, 1, 4 );
+-- End
       lv_step := 'A-2.sell_start_date';
       lv_message_token := '発売開始日';
       lt_csv_item_tab( ln_data_index ).sell_start_date      := l_csv_item_rec.sell_start_date;
@@ -653,27 +900,51 @@ AS
       lv_step := 'A-2.palette_max_step_qty';
       lv_message_token := 'パレット当り最大段数';
       lt_csv_item_tab( ln_data_index ).palette_max_step_qty := l_csv_item_rec.palette_max_step_qty;
-      lv_step := 'A-2.palette_step_qty';
-      lv_message_token := 'パレット段';
-      lt_csv_item_tab( ln_data_index ).palette_step_qty     := l_csv_item_rec.palette_step_qty;
+-- Ver1.4 Add 2009/05/12 ファイル項目削除対応
+--      lv_step := 'A-2.palette_step_qty';
+--      lv_message_token := 'パレット段';
+--      lt_csv_item_tab( ln_data_index ).palette_step_qty     := l_csv_item_rec.palette_step_qty;
+-- End
       lv_step := 'A-2.num_of_cases';
       lv_message_token := 'ケース入数';
       lt_csv_item_tab( ln_data_index ).num_of_cases         := TO_CHAR( l_csv_item_rec.num_of_cases );
       lv_step := 'A-2.bowl_inc_num';
       lv_message_token := 'ボール入数';
       lt_csv_item_tab( ln_data_index ).bowl_inc_num         := l_csv_item_rec.bowl_inc_num;
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+      lv_step := 'A-2.case_conv_inc_num';
+      lv_message_token := 'ケース換算入数';
+      lt_csv_item_tab( ln_data_index ).case_conv_inc_num    := l_csv_item_rec.case_conv_inc_num;
+-- End
       lv_step := 'A-2.crowd_code_new';
       lv_message_token := '群コード（新）';
       lt_csv_item_tab( ln_data_index ).crowd_code_new       := SUBSTRB( l_csv_item_rec.crowd_code_new, 1, 4 );
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+      lv_step := 'A-2.crowd_code_old';
+      lv_message_token := '群コード（旧）';
+      lt_csv_item_tab( ln_data_index ).crowd_code_old       := SUBSTRB( l_csv_item_rec.crowd_code_old, 1, 4 );
+      lv_step := 'A-2.crowd_code_new';
+      lv_message_token := '群コード適用開始日';
+      lt_csv_item_tab( ln_data_index ).crowd_code_apply_date
+                                                            := l_csv_item_rec.crowd_code_apply_date;
+-- End
+      lv_step := 'A-2.vessel_group';
+      lv_message_token := '容器群';
+      lt_csv_item_tab( ln_data_index ).vessel_group         := l_csv_item_rec.vessel_group;
       lv_step := 'A-2.item_div';
-      lv_message_token := 'ドリンク・リーフ区分';
+      lv_message_token := '本社商品区分';
       lt_csv_item_tab( ln_data_index ).item_div             := lv_item_div;
       lv_step := 'A-2.acnt_group';
       lv_message_token := '経理群';
       lt_csv_item_tab( ln_data_index ).acnt_group           := l_csv_item_rec.acnt_group;
-      lv_step := 'A-2.vessel_group';
-      lv_message_token := '容器群';
-      lt_csv_item_tab( ln_data_index ).vessel_group         := l_csv_item_rec.vessel_group;
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+      lv_step := 'A-2.acnt_vessel_group';
+      lv_message_token := '経理容器群';
+      lt_csv_item_tab( ln_data_index ).acnt_vessel_group    := l_csv_item_rec.acnt_vessel_group;
+      lv_step := 'A-2.brand_group';
+      lv_message_token := 'ブランド群';
+      lt_csv_item_tab( ln_data_index ).brand_group          := l_csv_item_rec.brand_group;
+-- End
       lv_step := 'A-2.parent_item_code';
       lv_message_token := '親商品コード';
       lt_csv_item_tab( ln_data_index ).parent_item_code     := SUBSTRB( l_csv_item_rec.parent_item_code, 1, 7 );
@@ -781,12 +1052,32 @@ AS
         lv_step := 'A-3.price_new';
         lv_out_csv_line := lv_out_csv_line || cv_sep ||
                            lt_csv_item_tab( ln_index ).price_new;
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+        -- 定価（旧）
+        lv_step := 'A-3.price_old';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           lt_csv_item_tab( ln_index ).price_old;
+        -- 定価適用開始日【YYYYMMDD】
+        lv_step := 'A-3.price_apply_date';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           lt_csv_item_tab( ln_index ).price_apply_date;
+-- End
 -- Ver1.1 Mod 2009/01/28 標準原価の取得処理を修正(ステップNo．2-7)
         -- 標準原価
         lv_step := 'A-3.standard_cost';
 --        lv_out_csv_line := lv_out_csv_line || cv_sep ||
 --                           RTRIM( TO_CHAR( TRUNC( lt_csv_item_tab( ln_index ).standard_cost, 2 ), 'FM99990.99'), '.' );
         lv_out_csv_line := lv_out_csv_line || cv_sep || lt_csv_item_tab( ln_index ).standard_cost;
+-- End
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+        -- 標準原価（旧）
+        lv_step := 'A-3.standard_cost_old';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           lt_csv_item_tab( ln_index ).standard_cost_old;
+        -- 標準原価適用開始日【YYYYMMDD】
+        lv_step := 'A-3.standard_cost_apply_date';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           lt_csv_item_tab( ln_index ).standard_cost_apply_date;
 -- End
 -- Ver1.1 Mod 2009/01/28 営業原価(新)と営業原価(旧)の出力列を修正(ステップNo．3-1)
 --        -- 営業原価（旧）
@@ -810,6 +1101,74 @@ AS
         lv_step := 'A-3.opt_cost_apply_date';
         lv_out_csv_line := lv_out_csv_line || cv_sep ||
                            lt_csv_item_tab( ln_index ).opt_cost_apply_date;
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+        -- 売上対象区分
+        lv_step := 'A-3.sales_div';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           lt_csv_item_tab( ln_index ).sales_div;
+        -- 基準単位
+        lv_step := 'A-3.item_um';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           cv_dqu ||
+                           lt_csv_item_tab( ln_index ).item_um ||
+                           cv_dqu;
+        -- 製品商品区分
+        lv_step := 'A-3.item_product_class';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           lt_csv_item_tab( ln_index ).item_product_class;
+        -- 率区分
+        lv_step := 'A-3.rate_class';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           lt_csv_item_tab( ln_index ).rate_class;
+        -- NET
+        lv_step := 'A-3.net';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           lt_csv_item_tab( ln_index ).net;
+        -- 重量/体積
+        lv_step := 'A-3.unit';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           lt_csv_item_tab( ln_index ).unit;
+        -- 内容量
+        lv_step := 'A-3.nets';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           TO_CHAR( lt_csv_item_tab( ln_index ).nets );
+        -- 内容量単位
+        lv_step := 'A-3.nets_uom_code';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           cv_dqu ||
+                           lt_csv_item_tab( ln_index ).nets_uom_code ||
+                           cv_dqu;
+        -- 内訳入数
+        lv_step := 'A-3.inc_num';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           TO_CHAR( lt_csv_item_tab( ln_index ).inc_num );
+        -- バラ茶区分
+        lv_step := 'A-3.baracha_div';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           TO_CHAR( lt_csv_item_tab( ln_index ).baracha_div );
+        -- 商品分類
+        lv_step := 'A-3.product_class';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           TO_CHAR( lt_csv_item_tab( ln_index ).product_class );
+        -- 廃止日
+        lv_step := 'A-3.obsolete_date';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           lt_csv_item_tab( ln_index ).obsolete_date;
+        -- 廃止区分
+        lv_step := 'A-3.obsolete_class';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           lt_csv_item_tab( ln_index ).obsolete_class;
+        -- 新商品区分
+        lv_step := 'A-3.new_item_div';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           lt_csv_item_tab( ln_index ).new_item_div;
+        -- 専門店仕入先コード
+        lv_step := 'A-3.sp_supplier_code';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           cv_dqu ||
+                           lt_csv_item_tab( ln_index ).sp_supplier_code ||
+                           cv_dqu;
+-- End
         -- 発売開始日【YYYYMMDD】
         lv_step := 'A-3.sell_start_date';
         lv_out_csv_line := lv_out_csv_line || cv_sep ||
@@ -822,10 +1181,12 @@ AS
         lv_step := 'A-3.palette_max_step_qty';
         lv_out_csv_line := lv_out_csv_line || cv_sep ||
                            TO_CHAR( lt_csv_item_tab( ln_index ).palette_max_step_qty );
-        -- パレット段
-        lv_step := 'A-3.palette_step_qty';
-        lv_out_csv_line := lv_out_csv_line || cv_sep ||
-                           TO_CHAR( lt_csv_item_tab( ln_index ).palette_step_qty );
+-- Ver1.4 Add 2009/05/12 ファイル項目削除対応
+--        -- パレット段
+--        lv_step := 'A-3.palette_step_qty';
+--        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+--                           TO_CHAR( lt_csv_item_tab( ln_index ).palette_step_qty );
+-- End
         -- ケース入数
         lv_step := 'A-3.num_of_cases';
         lv_out_csv_line := lv_out_csv_line || cv_sep ||
@@ -834,13 +1195,37 @@ AS
         lv_step := 'A-3.bowl_inc_num';
         lv_out_csv_line := lv_out_csv_line || cv_sep ||
                            TO_CHAR( lt_csv_item_tab( ln_index ).bowl_inc_num );
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+        -- ケース換算入数
+        lv_step := 'A-3.case_conv_inc_num';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           TO_CHAR( lt_csv_item_tab( ln_index ).case_conv_inc_num );
+-- End
         -- 群コード（新）
         lv_step := 'A-3.crowd_code_new';
         lv_out_csv_line := lv_out_csv_line || cv_sep ||
                            cv_dqu ||
                            lt_csv_item_tab( ln_index ).crowd_code_new ||
                            cv_dqu;
-        -- ドリンク・リーフ区分
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+        -- 群コード（旧）
+        lv_step := 'A-3.crowd_code_old';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           cv_dqu ||
+                           lt_csv_item_tab( ln_index ).crowd_code_old ||
+                           cv_dqu;
+        -- 群コード適用開始日【YYYYMMDD】
+        lv_step := 'A-3.crowd_code_apply_date';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           lt_csv_item_tab( ln_index ).crowd_code_apply_date;
+-- End
+        -- 容器群
+        lv_step := 'A-3.vessel_group';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           cv_dqu ||
+                           lt_csv_item_tab( ln_index ).vessel_group ||
+                           cv_dqu;
+        -- 本社商品区分
         lv_step := 'A-3.item_div';
         lv_out_csv_line := lv_out_csv_line || cv_sep ||
                            cv_dqu ||
@@ -852,12 +1237,20 @@ AS
                            cv_dqu ||
                            lt_csv_item_tab( ln_index ).acnt_group ||
                            cv_dqu;
-        -- 容器群
-        lv_step := 'A-3.vessel_group';
+-- Ver1.4 Add 2009/05/12 ファイル項目追加対応
+        -- 経理容器群
+        lv_step := 'A-3.acnt_vessel_group';
         lv_out_csv_line := lv_out_csv_line || cv_sep ||
                            cv_dqu ||
-                           lt_csv_item_tab( ln_index ).vessel_group ||
+                           lt_csv_item_tab( ln_index ).acnt_vessel_group ||
                            cv_dqu;
+        -- ブランド群
+        lv_step := 'A-3.brand_group';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           cv_dqu ||
+                           lt_csv_item_tab( ln_index ).brand_group ||
+                           cv_dqu;
+-- End
         -- 親商品コード
         lv_step := 'A-3.parent_item_code';
         lv_out_csv_line := lv_out_csv_line || cv_sep ||
