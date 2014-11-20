@@ -1,0 +1,1 @@
+CREATE INDEX xxcmn.xxcmn_rpm_n14 ON xxcmn.xxcmn_rcv_pay_mst( new_div_invent, use_div_invent_rep, rcv_pay_div ) TABLESPACE xxidx;
