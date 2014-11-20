@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2008/11/28    1.24  Hitomi Itou      本番障害#227対応
  *  2008/12/02    1.25  Natsuki Yoshida  本番障害#327対応
  *  2008/12/02    1.26  Takao Ohashi     本番障害#327対応
+ *  2008/12/03    1.27  Natsuki Yoshida  本番障害#371対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4230,18 +4231,22 @@ AS
           AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
           AND itp.doc_type = xrpm.doc_type                                    --文書タイプ
           AND xrpm.doc_type = 'OMSO'
-          AND  otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
-          AND  otta.attribute1 IN (gv_spdiv_ship,gv_spdiv_prov)
-          AND xrpm.shipment_provision_div IN (gv_spdiv_ship,gv_spdiv_prov)
+-- 2008/12/03 N.Yoshida update Start 本番障害#371
+          AND  (otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
+              OR xrpm.shipment_provision_div IS NULL)
+          --AND  otta.attribute1 IN (gv_spdiv_ship,gv_spdiv_prov)
+          --AND xrpm.shipment_provision_div IN (gv_spdiv_ship,gv_spdiv_prov)
+-- 2008/12/03 N.Yoshida update End 本番障害#371
           AND (otta.attribute11 = xrpm.ship_prov_rcv_pay_category                 --出荷支給受払カテゴリ
             OR   xrpm.ship_prov_rcv_pay_category IS NULL)
-            AND NVL(DECODE(mcb1.segment1
+-- 2008/12/03 N.Yoshida update Start 本番障害#371
+          /*  AND NVL(DECODE(mcb1.segment1
                           ,gv_item_class_prod,gv_item_class_prod,NULL),gv_dummy)
                 = NVL(xrpm.item_div_origin,gv_dummy)
             AND NVL(DECODE(mcb2.segment1
                           ,gv_item_class_prod,gv_item_class_prod
                                              ,NULL),gv_dummy)
-                = NVL(xrpm.item_div_ahead,gv_dummy)
+                = NVL(xrpm.item_div_ahead,gv_dummy)*/
           AND NVL(DECODE(otta.attribute4
                         ,gv_stock_adjm
                         ,gv_stock_adjm
@@ -4251,6 +4256,30 @@ AS
                             ,gv_stock_adjm
                             ,NULL),gv_dummy
               )
+            AND (
+                --出荷依頼・支給依頼
+                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
+            AND NVL(DECODE(mcb1.segment1
+                          ,gv_item_class_prod,gv_item_class_prod
+                                             ,NULL),gv_dummy)
+                = NVL(xrpm.item_div_origin,gv_dummy)
+                --出荷依頼・支給依頼以外
+          OR
+                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
+          )
+          --依頼品目区分=振替先品目区分
+          AND (
+                --出荷依頼・支給依頼
+                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
+            AND NVL(DECODE(mcb2.segment1
+                          ,gv_item_class_prod,gv_item_class_prod
+                                             ,NULL),gv_dummy)
+                = NVL(xrpm.item_div_ahead,gv_dummy)
+                --出荷依頼・支給依頼以外
+          OR
+                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
+          )
+-- 2008/12/03 N.Yoshida update End 本番障害#371
           AND xrpm.use_div_invent = gv_inventory                                  --在庫使用区分
           AND (mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod
             AND ( (iimb.item_id = iimb2.item_id
@@ -4424,19 +4453,23 @@ AS
           AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31', gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
           AND itp.doc_type = xrpm.doc_type                                    --文書タイプ
           AND xrpm.doc_type = 'PORC'
-          AND  otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
-          AND  otta.attribute1 IN (gv_spdiv_ship,gv_spdiv_prov)
-          AND xrpm.shipment_provision_div IN (gv_spdiv_ship,gv_spdiv_prov)
+-- 2008/12/03 N.Yoshida update Start 本番障害#371
+          AND ( otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
+             OR xrpm.shipment_provision_div IS NULL)
+          --AND  otta.attribute1 IN (gv_spdiv_ship,gv_spdiv_prov)
+          --AND xrpm.shipment_provision_div IN (gv_spdiv_ship,gv_spdiv_prov)
+-- 2008/12/03 N.Yoshida update End 本番障害#371
           AND (otta.attribute11 = xrpm.ship_prov_rcv_pay_category                 --出荷支給受払カテゴリ
             OR   xrpm.ship_prov_rcv_pay_category IS NULL)
-            AND NVL(DECODE(mcb1.segment1
+-- 2008/12/03 N.Yoshida update Start 本番障害#371
+          /*  AND NVL(DECODE(mcb1.segment1
                           ,gv_item_class_prod,gv_item_class_prod
                                              ,NULL),gv_dummy)
                 = NVL(xrpm.item_div_origin,gv_dummy)
             AND NVL(DECODE(mcb2.segment1
                           ,gv_item_class_prod,gv_item_class_prod
                                              ,NULL),gv_dummy)
-                = NVL(xrpm.item_div_ahead,gv_dummy)
+                = NVL(xrpm.item_div_ahead,gv_dummy)*/
           AND NVL(DECODE(otta.attribute4
                         ,gv_stock_adjm
                         ,gv_stock_adjm
@@ -4446,6 +4479,30 @@ AS
                             ,gv_stock_adjm
                             ,NULL),gv_dummy
               )
+            AND (
+                --出荷依頼・支給依頼
+                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
+            AND NVL(DECODE(mcb1.segment1
+                          ,gv_item_class_prod,gv_item_class_prod
+                                             ,NULL),gv_dummy)
+                = NVL(xrpm.item_div_origin,gv_dummy)
+                --出荷依頼・支給依頼以外
+          OR
+                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
+          )
+          --依頼品目区分=振替先品目区分
+          AND (
+                --出荷依頼・支給依頼
+                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
+            AND NVL(DECODE(mcb2.segment1
+                          ,gv_item_class_prod,gv_item_class_prod
+                                             ,NULL),gv_dummy)
+                = NVL(xrpm.item_div_ahead,gv_dummy)
+                --出荷依頼・支給依頼以外
+          OR
+                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
+          )
+-- 2008/12/03 N.Yoshida update End 本番障害#371
           AND xrpm.use_div_invent = gv_inventory                                  --在庫使用区分
           AND (mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod
             AND ( (iimb.item_id = iimb2.item_id
@@ -6354,18 +6411,22 @@ AS
           AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
           AND itp.doc_type = xrpm.doc_type                                    --文書タイプ
           AND xrpm.doc_type = 'OMSO'
-          AND  otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
-          AND  otta.attribute1 IN (gv_spdiv_ship,gv_spdiv_prov)
-          AND xrpm.shipment_provision_div IN (gv_spdiv_ship,gv_spdiv_prov)
+-- 2008/12/03 N.Yoshida update Start 本番障害#371
+          AND  (otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
+            OR xrpm.shipment_provision_div IS NULL)
+          --AND  otta.attribute1 IN (gv_spdiv_ship,gv_spdiv_prov)
+          --AND xrpm.shipment_provision_div IN (gv_spdiv_ship,gv_spdiv_prov)
+-- 2008/12/03 N.Yoshida update End 本番障害#371
           AND (otta.attribute11 = xrpm.ship_prov_rcv_pay_category                 --出荷支給受払カテゴリ
             OR   xrpm.ship_prov_rcv_pay_category IS NULL)
-            AND NVL(DECODE(mcb1.segment1
+-- 2008/12/03 N.Yoshida update Start 本番障害#371
+            /*AND NVL(DECODE(mcb1.segment1
                           ,gv_item_class_prod,gv_item_class_prod,NULL),gv_dummy)
                 = NVL(xrpm.item_div_origin,gv_dummy)
             AND NVL(DECODE(mcb2.segment1
                           ,gv_item_class_prod,gv_item_class_prod
                                              ,NULL),gv_dummy)
-                = NVL(xrpm.item_div_ahead,gv_dummy)
+                = NVL(xrpm.item_div_ahead,gv_dummy)*/
           AND NVL(DECODE(otta.attribute4
                         ,gv_stock_adjm
                         ,gv_stock_adjm
@@ -6375,6 +6436,30 @@ AS
                             ,gv_stock_adjm
                             ,NULL),gv_dummy
               )
+            AND (
+                --出荷依頼・支給依頼
+                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
+            AND NVL(DECODE(mcb1.segment1
+                          ,gv_item_class_prod,gv_item_class_prod
+                                             ,NULL),gv_dummy)
+                = NVL(xrpm.item_div_origin,gv_dummy)
+                --出荷依頼・支給依頼以外
+          OR
+                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
+          )
+          --依頼品目区分=振替先品目区分
+          AND (
+                --出荷依頼・支給依頼
+                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
+            AND NVL(DECODE(mcb2.segment1
+                          ,gv_item_class_prod,gv_item_class_prod
+                                             ,NULL),gv_dummy)
+                = NVL(xrpm.item_div_ahead,gv_dummy)
+                --出荷依頼・支給依頼以外
+          OR
+                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
+          )
+-- 2008/12/03 N.Yoshida update End 本番障害#371
           AND xrpm.use_div_invent = gv_inventory                                  --在庫使用区分
           AND (mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod
             AND ( (iimb.item_id = iimb2.item_id
@@ -6526,19 +6611,23 @@ AS
           AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31', gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
           AND itp.doc_type = xrpm.doc_type                                    --文書タイプ
           AND xrpm.doc_type = 'PORC'
-          AND  otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
-          AND  otta.attribute1 IN (gv_spdiv_ship,gv_spdiv_prov)
-          AND xrpm.shipment_provision_div IN (gv_spdiv_ship,gv_spdiv_prov)
+-- 2008/12/03 N.Yoshida update Start 本番障害#371
+          AND (otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
+             OR xrpm.shipment_provision_div IS NULL)
+          --AND  otta.attribute1 IN (gv_spdiv_ship,gv_spdiv_prov)
+          --AND xrpm.shipment_provision_div IN (gv_spdiv_ship,gv_spdiv_prov)
+-- 2008/12/03 N.Yoshida update Start 本番障害#371
           AND (otta.attribute11 = xrpm.ship_prov_rcv_pay_category                 --出荷支給受払カテゴリ
             OR   xrpm.ship_prov_rcv_pay_category IS NULL)
-            AND NVL(DECODE(mcb1.segment1
+-- 2008/12/03 N.Yoshida update Start 本番障害#371
+           /* AND NVL(DECODE(mcb1.segment1
                           ,gv_item_class_prod,gv_item_class_prod
                                              ,NULL),gv_dummy)
                 = NVL(xrpm.item_div_origin,gv_dummy)
             AND NVL(DECODE(mcb2.segment1
                           ,gv_item_class_prod,gv_item_class_prod
                                              ,NULL),gv_dummy)
-                = NVL(xrpm.item_div_ahead,gv_dummy)
+                = NVL(xrpm.item_div_ahead,gv_dummy)*/
           AND NVL(DECODE(otta.attribute4
                         ,gv_stock_adjm
                         ,gv_stock_adjm
@@ -6548,6 +6637,30 @@ AS
                             ,gv_stock_adjm
                             ,NULL),gv_dummy
               )
+            AND (
+                --出荷依頼・支給依頼
+                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
+            AND NVL(DECODE(mcb1.segment1
+                          ,gv_item_class_prod,gv_item_class_prod
+                                             ,NULL),gv_dummy)
+                = NVL(xrpm.item_div_origin,gv_dummy)
+                --出荷依頼・支給依頼以外
+          OR
+                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
+          )
+          --依頼品目区分=振替先品目区分
+          AND (
+                --出荷依頼・支給依頼
+                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
+            AND NVL(DECODE(mcb2.segment1
+                          ,gv_item_class_prod,gv_item_class_prod
+                                             ,NULL),gv_dummy)
+                = NVL(xrpm.item_div_ahead,gv_dummy)
+                --出荷依頼・支給依頼以外
+          OR
+                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
+          )
+-- 2008/12/03 N.Yoshida update Start 本番障害#371
           AND xrpm.use_div_invent = gv_inventory                                  --在庫使用区分
           AND (mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod
             AND ( (iimb.item_id = iimb2.item_id
