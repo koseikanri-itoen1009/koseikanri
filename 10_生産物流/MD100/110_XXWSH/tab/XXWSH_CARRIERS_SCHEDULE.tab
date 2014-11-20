@@ -33,6 +33,11 @@ CREATE TABLE xxwsh.xxwsh_carriers_schedule
   arrival_date                  DATE,
   weight_capacity_class         VARCHAR2(1),
   freight_charge_type           VARCHAR2(1),
+  slip_number                   VARCHAR2(20), 
+  small_quantity                NUMBER, 
+  label_quantity                NUMBER, 
+  prod_class                    VARCHAR2(2), 
+  non_slip_class                VARCHAR2(1),
   created_by                    NUMBER(15,0)    NOT NULL,
   creation_date                 DATE            NOT NULL,
   last_updated_by               NUMBER(15,0)    NOT NULL,
@@ -79,6 +84,11 @@ COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.shipped_date                 IS 
 COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.arrival_date                 IS '着荷日';
 COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.weight_capacity_class        IS '重量容積区分';
 COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.freight_charge_type          IS '運賃形態';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.slip_number                  IS '送り状No';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.small_quantity               IS '小口個数';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.label_quantity               IS 'ラベル枚数';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.prod_class                   IS '商品区分';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.non_slip_class               IS '伝票なし配車区分';
 COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.created_by                   IS '作成者';
 COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.creation_date                IS '作成日';
 COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.last_updated_by              IS '最終更新者';
