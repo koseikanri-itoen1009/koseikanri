@@ -22,12 +22,14 @@ import oracle.jbo.domain.Number;
  */
 public class XxcsoInventoryItemSearchLovVORowImpl extends OAViewRowImpl 
 {
+
+
   protected static final int INVENTORYITEMID = 0;
-
-
   protected static final int INVENTORYITEMCODE = 1;
   protected static final int ITEMSHORTNAME = 2;
   protected static final int BUSINESSPRICE = 3;
+  protected static final int CASEINCNUM = 4;
+  protected static final int BOWLINCNUM = 5;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -121,6 +123,10 @@ public class XxcsoInventoryItemSearchLovVORowImpl extends OAViewRowImpl
         return getItemShortName();
       case BUSINESSPRICE:
         return getBusinessPrice();
+      case CASEINCNUM:
+        return getCaseIncNum();
+      case BOWLINCNUM:
+        return getBowlIncNum();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -143,9 +149,51 @@ public class XxcsoInventoryItemSearchLovVORowImpl extends OAViewRowImpl
       case BUSINESSPRICE:
         setBusinessPrice((Number)value);
         return;
+      case CASEINCNUM:
+        setCaseIncNum((Number)value);
+        return;
+      case BOWLINCNUM:
+        setBowlIncNum((Number)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
       }
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute CaseIncNum
+   */
+  public Number getCaseIncNum()
+  {
+    return (Number)getAttributeInternal(CASEINCNUM);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute CaseIncNum
+   */
+  public void setCaseIncNum(Number value)
+  {
+    setAttributeInternal(CASEINCNUM, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BowlIncNum
+   */
+  public Number getBowlIncNum()
+  {
+    return (Number)getAttributeInternal(BOWLINCNUM);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BowlIncNum
+   */
+  public void setBowlIncNum(Number value)
+  {
+    setAttributeInternal(BOWLINCNUM, value);
   }
 }
