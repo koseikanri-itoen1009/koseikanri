@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼/出荷実績作成処理
  * MD.050           : 出荷実績 T_MD050_BPO_420
  * MD.070           : 出荷依頼出荷実績作成処理 T_MD070_BPO_42A
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2008/06/12    1.4   Oracle 丸下 博宣   受注ヘッダ、明細更新時の対象WHOカラムを追加
  *  2008/06/27    1.5   Oracle 丸下 博宣   受注明細登録時の削除フラグにNを設定
  *  2008/09/01    1.6   Oracle 山根 一浩   課題#64変更#176対応
+ *  2008/10/10    1.7   Oracle 伊藤 ひとみ 統合テスト指摘116対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3437,6 +3438,9 @@ AS
     ln_msg_index_out              NUMBER;                -- APIのエラーメッセージ・インデックス
     lt_trip_name                  wsh_trips.name%TYPE;
     ln_trip_id                    NUMBER;
+-- 2008/10/10 H.Itou Add Start 統合テスト指摘116
+    lv_sc_defer_interface_flag    VARCHAR2(1);           -- 出荷確認APIのINパラメータ.インターフェースTRIPSTOPの遅延
+-- 2008/10/10 H.Itou Add End
     -- *** ローカル・カーソル ***
 --
 --
@@ -3447,6 +3451,19 @@ AS
     ov_retcode := gv_status_normal;
 --
 --#####################################  固定部 END   #############################################
+--
+-- 2008/10/10 H.Itou Add Start 統合テスト指摘116
+    -- 入力パラメータ.依頼NoがNULLの場合、コンカレント起動
+    IF (gt_request_no IS NULL) THEN
+      -- 出荷確認APIのINパラメータ.インターフェースTRIPSTOPの遅延に「Y」を渡す。
+      lv_sc_defer_interface_flag := gv_yes;
+--
+    -- 入力パラメータ.依頼NoがNULLでない場合、画面からの起動
+    ELSE
+      -- 出荷確認APIのINパラメータ.インターフェースTRIPSTOPの遅延に「N」を渡す。
+      lv_sc_defer_interface_flag := gv_no;
+    END IF;
+-- 2008/10/10 H.Itou Add End
 --
     -- *********************************************
     -- ***       A12出荷確認API起動         ***
@@ -3463,7 +3480,10 @@ AS
     , p_sc_intransit_flag       => gv_yes           -- 輸送行程のステータスを輸送中に
     , p_sc_close_trip_flag      => gv_yes           -- 輸送行程をクローズ
     , p_sc_stage_del_flag       => gv_no
-    , p_sc_defer_interface_flag => gv_no            -- インターフェースTRIPSOTPの遅延
+-- 2008/10/10 H.Itou Mod Start 統合テスト指摘116
+--    , p_sc_defer_interface_flag => gv_no            -- インターフェースTRIPSTOPの遅延
+    , p_sc_defer_interface_flag => lv_sc_defer_interface_flag -- インターフェースTRIPSTOPの遅延
+-- 2008/10/10 H.Itou Mod End
     , p_sc_actual_dep_date      => it_shipped_date  -- 出発日
     , x_trip_id                 => ln_trip_id
     , x_trip_name               => lt_trip_name
