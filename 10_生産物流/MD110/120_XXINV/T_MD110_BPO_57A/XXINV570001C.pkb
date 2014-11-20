@@ -7,7 +7,7 @@ AS
  * Description      : 移動入出庫実績登録
  * MD.050           : 移動入出庫実績登録(T_MD050_BPO_570)
  * MD.070           : 移動入出庫実績登録(T_MD070_BPO_57A)
- * Version          : 1.13
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,8 @@ AS
  *  2008/12/13    1.11  Yuko  Kawano     本番障害#633(移動実績訂正不具合対応)
  *  2008/12/16    1.12  Yuko  Kawano     本番障害#633(移動実績訂正不具合対応)
  *  2008/12/17    1.13  Yuko  Kawano     本番障害(移動実績訂正前数量の更新不具合対応)
+ *  2008/12/25    1.14  Hitomi Itou      本番障害#821(出庫実績日・着荷実績日の未来日チェックを追加)
+ *  2008/12/25    1.15  Yuko  Kawano     本番障害#844(パラメータ予定日を実績日に変更)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -121,6 +123,9 @@ AS
 --2008/09/26 Y.Kawano Add End
   gv_c_msg_57a_011   CONSTANT VARCHAR2(15) := 'APP-XXINV-10181'; -- 移動番号重複エラー 2008/12/09 本番障害#470,#512 Add
 --
+-- 2008/12/25 H.Itou Add Start
+  gv_c_msg_57a_012   CONSTANT VARCHAR2(15)   := 'APP-XXINV-10182'; -- 未来日エラー
+-- 2008/12/25 H.Itou Add End
   -- トークン
   gv_c_tkn_parameter           CONSTANT VARCHAR2(30)  := 'PARAMETER';
   gv_c_tkn_value               CONSTANT VARCHAR2(30)  := 'VALUE';
@@ -1523,6 +1528,76 @@ AS
         END IF;
       END IF;
 --
+-- 2008/12/25 H.Itou Add Start
+      -- 前処理でエラーでない場合
+      IF ( move_data_rec_tbl(gn_rec_idx).ng_flag = 0 ) THEN
+        -- **************************************************
+        -- *** 実績日の未来日チェック 出庫実績日
+        -- **************************************************
+        -- 出庫実績日が未来日の場合
+        IF ( TRUNC(move_data_rec_tbl(gn_rec_idx).actual_ship_date) > TRUNC(SYSDATE) ) THEN
+--
+          -- 書式変換 出庫実績日
+          lv_out_actual_date := TO_CHAR(move_data_rec_tbl(gn_rec_idx).actual_ship_date,
+                                        'YYYY/MM/DD');
+--
+          -- メッセージ出力する文字列
+          lv_msg_log :=
+            gv_c_tkn_val_mov_num  ||':'|| move_data_rec_tbl(gn_rec_idx).mov_num     ||','||
+            gv_c_out_date         ||':'|| lv_out_actual_date
+            ;
+--
+          -- エラーメッセージ
+          lv_wk_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
+                                                   gv_c_msg_57a_012,   -- 未来日エラーメッセージ
+                                                   gv_c_tkn_value,     -- トークン
+                                                   gv_c_out_date,      -- トークン値
+                                                   gv_c_tkn_errmsg,    -- トークン
+                                                   lv_msg_log          -- トークン値
+                                                   );
+          -- 後続処理対象外
+          move_data_rec_tbl(gn_rec_idx).ng_flag := 1;  -- NGフラグ
+          -- エラー内容格納
+          move_data_rec_tbl(gn_rec_idx).err_msg := lv_wk_errmsg;
+--
+        END IF;
+      END IF;
+--
+      -- 前処理でエラーでない場合
+      IF ( move_data_rec_tbl(gn_rec_idx).ng_flag = 0 ) THEN
+        -- **************************************************
+        -- *** 実績日の未来日チェック 入庫実績日
+        -- **************************************************
+        -- 出庫実績日が未来日の場合
+        IF ( TRUNC(move_data_rec_tbl(gn_rec_idx).actual_arrival_date) > TRUNC(SYSDATE) ) THEN
+--
+          -- 書式変換 入庫実績日
+          lv_in_actual_date := TO_CHAR(move_data_rec_tbl(gn_rec_idx).actual_arrival_date,
+                                       'YYYY/MM/DD');
+--
+          -- メッセージ出力する文字列
+          lv_msg_log :=
+            gv_c_tkn_val_mov_num  ||':'|| move_data_rec_tbl(gn_rec_idx).mov_num     ||','||
+            gv_c_in_date          ||':'|| lv_in_actual_date
+            ;
+--
+          -- エラーメッセージ
+          lv_wk_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
+                                                   gv_c_msg_57a_012,   -- 未来日エラーメッセージ
+                                                   gv_c_tkn_value,     -- トークン
+                                                   gv_c_in_date,       -- トークン値
+                                                   gv_c_tkn_errmsg,    -- トークン
+                                                   lv_msg_log          -- トークン値
+                                                   );
+          -- 後続処理対象外
+          move_data_rec_tbl(gn_rec_idx).ng_flag := 1;  -- NGフラグ
+          -- エラー内容格納
+          move_data_rec_tbl(gn_rec_idx).err_msg := lv_wk_errmsg;
+--
+        END IF;
+      END IF;
+-- 2008/12/25 H.Itou Add End
+--
     END LOOP check_loop;
 --
     --==============================================================
@@ -2397,8 +2472,12 @@ AS
                         move_api_rec_tbl(ln_idx_move).source_location        := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元
                         move_api_rec_tbl(ln_idx_move).target_warehouse       := lv_to_whse_code;
                         move_api_rec_tbl(ln_idx_move).target_location        := move_target_tbl(gn_rec_idx).ship_to_locat_code; -- 入庫先
-                        move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
-                        move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+-- 2008/12/25 Y.Kawano Upd Start #844
+--                        move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
+--                        move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+                        move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).actual_ship_date;
+                        move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).actual_arrival_date;
+-- 2008/12/25 Y.Kawano Upd End   #844
                         move_api_rec_tbl(ln_idx_move).actual_release_date    := move_target_tbl(gn_rec_idx).actual_ship_date;    -- 出庫実績日
                         move_api_rec_tbl(ln_idx_move).actual_receive_date    := move_target_tbl(gn_rec_idx).actual_arrival_date; -- 入庫実績日
                         move_api_rec_tbl(ln_idx_move).release_quantity1      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
@@ -2429,8 +2508,12 @@ AS
                       move_api_rec_tbl(ln_idx_move).source_location        := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元
                       move_api_rec_tbl(ln_idx_move).target_warehouse       := lv_to_whse_code;
                       move_api_rec_tbl(ln_idx_move).target_location        := move_target_tbl(gn_rec_idx).ship_to_locat_code; -- 入庫先
-                      move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
-                      move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+-- 2008/12/25 Y.Kawano Upd Start #844
+--                      move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
+--                      move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+                      move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).actual_ship_date;
+                      move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).actual_arrival_date;
+-- 2008/12/25 Y.Kawano Upd End   #844
                       move_api_rec_tbl(ln_idx_move).actual_release_date    := move_target_tbl(gn_rec_idx).actual_ship_date;    -- 出庫実績日
                       move_api_rec_tbl(ln_idx_move).actual_receive_date    := move_target_tbl(gn_rec_idx).actual_arrival_date; -- 入庫実績日
                       move_api_rec_tbl(ln_idx_move).release_quantity1      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
@@ -2498,8 +2581,12 @@ AS
                       move_api_rec_tbl(ln_idx_move).source_location        := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元
                       move_api_rec_tbl(ln_idx_move).target_warehouse       := lv_to_whse_code;
                       move_api_rec_tbl(ln_idx_move).target_location        := move_target_tbl(gn_rec_idx).ship_to_locat_code; -- 入庫先
-                      move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
-                      move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+-- 2008/12/25 Y.Kawano Upd Start #844
+--                      move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
+--                      move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+                      move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).actual_ship_date;
+                      move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).actual_arrival_date;
+-- 2008/12/25 Y.Kawano Upd End   #844
                       move_api_rec_tbl(ln_idx_move).actual_release_date    := move_target_tbl(gn_rec_idx).actual_ship_date;    -- 出庫実績日
                       move_api_rec_tbl(ln_idx_move).actual_receive_date    := move_target_tbl(gn_rec_idx).actual_arrival_date; -- 入庫実績日
                       move_api_rec_tbl(ln_idx_move).release_quantity1      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
@@ -2672,8 +2759,12 @@ AS
                           move_api_rec_tbl(ln_idx_move).source_location        := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元
                           move_api_rec_tbl(ln_idx_move).target_warehouse       := lv_to_whse_code;
                           move_api_rec_tbl(ln_idx_move).target_location        := move_target_tbl(gn_rec_idx).ship_to_locat_code; -- 入庫先
-                          move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
-                          move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+-- 2008/12/25 Y.Kawano Upd Start #844
+--                          move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
+--                          move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+                          move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).actual_ship_date;
+                          move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).actual_arrival_date;
+-- 2008/12/25 Y.Kawano Upd End   #844
                           move_api_rec_tbl(ln_idx_move).actual_release_date    := move_target_tbl(gn_rec_idx).actual_ship_date;    -- 出庫実績日
                           move_api_rec_tbl(ln_idx_move).actual_receive_date    := move_target_tbl(gn_rec_idx).actual_arrival_date; -- 入庫実績日
                           move_api_rec_tbl(ln_idx_move).release_quantity1      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
@@ -2704,8 +2795,12 @@ AS
                         move_api_rec_tbl(ln_idx_move).source_location        := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元
                         move_api_rec_tbl(ln_idx_move).target_warehouse       := lv_to_whse_code;
                         move_api_rec_tbl(ln_idx_move).target_location        := move_target_tbl(gn_rec_idx).ship_to_locat_code; -- 入庫先
-                        move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
-                        move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+-- 2008/12/25 Y.Kawano Upd Start #844
+--                        move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
+--                        move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+                        move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).actual_ship_date;
+                        move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).actual_arrival_date;
+-- 2008/12/25 Y.Kawano Upd End   #844
                         move_api_rec_tbl(ln_idx_move).actual_release_date    := move_target_tbl(gn_rec_idx).actual_ship_date;    -- 出庫実績日
                         move_api_rec_tbl(ln_idx_move).actual_receive_date    := move_target_tbl(gn_rec_idx).actual_arrival_date; -- 入庫実績日
                         move_api_rec_tbl(ln_idx_move).release_quantity1      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
@@ -2923,8 +3018,12 @@ AS
                           move_api_rec_tbl(ln_idx_move).source_location        := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元
                           move_api_rec_tbl(ln_idx_move).target_warehouse       := lv_to_whse_code;
                           move_api_rec_tbl(ln_idx_move).target_location        := move_target_tbl(gn_rec_idx).ship_to_locat_code; -- 入庫先
-                          move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
-                          move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+-- 2008/12/25 Y.Kawano Upd Start #844
+--                          move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
+--                          move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+                          move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).actual_ship_date;
+                          move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).actual_arrival_date;
+-- 2008/12/25 Y.Kawano Upd End   #844
                           move_api_rec_tbl(ln_idx_move).actual_release_date    := move_target_tbl(gn_rec_idx).actual_ship_date;    -- 出庫実績日
                           move_api_rec_tbl(ln_idx_move).actual_receive_date    := move_target_tbl(gn_rec_idx).actual_arrival_date; -- 入庫実績日
                           move_api_rec_tbl(ln_idx_move).release_quantity1      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
@@ -3117,8 +3216,12 @@ AS
                               move_api_rec_tbl(ln_idx_move).source_location        := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元
                               move_api_rec_tbl(ln_idx_move).target_warehouse       := lv_to_whse_code;
                               move_api_rec_tbl(ln_idx_move).target_location        := move_target_tbl(gn_rec_idx).ship_to_locat_code; -- 入庫先
-                              move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
-                              move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+-- 2008/12/25 Y.Kawano Upd Start #844
+--                              move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
+--                              move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+                             move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).actual_ship_date;
+                             move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).actual_arrival_date;
+-- 2008/12/25 Y.Kawano Upd End   #844
                               move_api_rec_tbl(ln_idx_move).actual_release_date    := move_target_tbl(gn_rec_idx).actual_ship_date;    -- 出庫実績日
                               move_api_rec_tbl(ln_idx_move).actual_receive_date    := move_target_tbl(gn_rec_idx).actual_arrival_date; -- 入庫実績日
                               move_api_rec_tbl(ln_idx_move).release_quantity1      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
@@ -3149,8 +3252,12 @@ AS
                             move_api_rec_tbl(ln_idx_move).source_location        := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元
                             move_api_rec_tbl(ln_idx_move).target_warehouse       := lv_to_whse_code;
                             move_api_rec_tbl(ln_idx_move).target_location        := move_target_tbl(gn_rec_idx).ship_to_locat_code; -- 入庫先
-                            move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
-                            move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+-- 2008/12/25 Y.Kawano Upd Start #844
+--                            move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
+--                            move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+                            move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).actual_ship_date;
+                            move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).actual_arrival_date;
+-- 2008/12/25 Y.Kawano Upd End   #844
                             move_api_rec_tbl(ln_idx_move).actual_release_date    := move_target_tbl(gn_rec_idx).actual_ship_date;    -- 出庫実績日
                             move_api_rec_tbl(ln_idx_move).actual_receive_date    := move_target_tbl(gn_rec_idx).actual_arrival_date; -- 入庫実績日
                             move_api_rec_tbl(ln_idx_move).release_quantity1      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
@@ -3336,8 +3443,12 @@ AS
                               move_api_rec_tbl(ln_idx_move).source_location        := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元
                               move_api_rec_tbl(ln_idx_move).target_warehouse       := lv_to_whse_code;
                               move_api_rec_tbl(ln_idx_move).target_location        := move_target_tbl(gn_rec_idx).ship_to_locat_code; -- 入庫先
-                              move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
-                              move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+-- 2008/12/25 Y.Kawano Upd Start #844
+--                              move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
+--                              move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+                              move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).actual_ship_date;
+                              move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).actual_arrival_date;
+-- 2008/12/25 Y.Kawano Upd End   #844
                               move_api_rec_tbl(ln_idx_move).actual_release_date    := move_target_tbl(gn_rec_idx).actual_ship_date;    -- 出庫実績日
                               move_api_rec_tbl(ln_idx_move).actual_receive_date    := move_target_tbl(gn_rec_idx).actual_arrival_date; -- 入庫実績日
                               move_api_rec_tbl(ln_idx_move).release_quantity1      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
@@ -3368,8 +3479,12 @@ AS
                             move_api_rec_tbl(ln_idx_move).source_location        := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元
                             move_api_rec_tbl(ln_idx_move).target_warehouse       := lv_to_whse_code;
                             move_api_rec_tbl(ln_idx_move).target_location        := move_target_tbl(gn_rec_idx).ship_to_locat_code; -- 入庫先
-                            move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
-                            move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+-- 2008/12/25 Y.Kawano Upd Start #844
+--                            move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
+--                            move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+                            move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).actual_ship_date;
+                            move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).actual_arrival_date;
+-- 2008/12/25 Y.Kawano Upd End   #844
                             move_api_rec_tbl(ln_idx_move).actual_release_date    := move_target_tbl(gn_rec_idx).actual_ship_date;    -- 出庫実績日
                             move_api_rec_tbl(ln_idx_move).actual_receive_date    := move_target_tbl(gn_rec_idx).actual_arrival_date; -- 入庫実績日
                             move_api_rec_tbl(ln_idx_move).release_quantity1      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
@@ -4939,10 +5054,16 @@ AS
                                     := lv_to_whse_code;
                 move_api_rec_tbl(ln_idx_move).target_location                -- 入庫先保管倉庫
                                     := move_target_tbl(gn_rec_idx).ship_to_locat_code;
+-- 2008/12/25 Y.Kawano Upd Start #844
+--                move_api_rec_tbl(ln_idx_move).scheduled_release_date         -- 出庫予定日
+--                                    := move_target_tbl(gn_rec_idx).schedule_ship_date;
+--                move_api_rec_tbl(ln_idx_move).scheduled_receive_date         -- 入庫予定日
+--                                    := move_target_tbl(gn_rec_idx).schedule_arrival_date;
                 move_api_rec_tbl(ln_idx_move).scheduled_release_date         -- 出庫予定日
-                                    := move_target_tbl(gn_rec_idx).schedule_ship_date;
+                                    := move_target_tbl(gn_rec_idx).actual_ship_date;
                 move_api_rec_tbl(ln_idx_move).scheduled_receive_date         -- 入庫予定日
-                                    := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+                                    := move_target_tbl(gn_rec_idx).actual_arrival_date;
+-- 2008/12/25 Y.Kawano Upd End   #844
                 move_api_rec_tbl(ln_idx_move).actual_release_date            -- 出庫実績日
                                     := move_target_tbl(gn_rec_idx).actual_ship_date;
                 move_api_rec_tbl(ln_idx_move).actual_receive_date            -- 入庫実績日
