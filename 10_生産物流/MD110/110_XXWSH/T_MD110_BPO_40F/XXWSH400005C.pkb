@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼情報抽出
  * MD.050           : 出荷依頼         T_MD050_BPO_401
  * MD.070           : 出荷依頼情報抽出 T_MD070_BPO_40F
- * Version          : 1.9
+ * Version          : 2.0
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2008/09/18    1.7   Oracle 伊藤 ひとみ T_TE080_BPO_400 指摘79,T_S_630対応
  *  2008/11/06    1.8   Oracle 伊藤 ひとみ 統合テスト指摘560対応
  *  2008/12/01    1.9   Oracle 吉田 夏樹 本番#291対応
+ *  2008/12/03    2.0   Oracle 宮田      本番#255対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1576,9 +1577,18 @@ AS
 -- 2008/07/14 1.3 Update End
 --            lv_data := lv_data || cv_sep_com || mst_rec.request_class;      -- 依頼区分
 -- 2008/08/22 Mod ↓
-            lv_data := lv_data || cv_sep_com || cv_def_kbn;                 -- 本社商品区分
-            lv_data := lv_data || cv_sep_com || cv_def_kbn;                 -- 依頼区分
+--            lv_data := lv_data || cv_sep_com || cv_def_kbn;                 -- 本社商品区分
+--            lv_data := lv_data || cv_sep_com || cv_def_kbn;                 -- 依頼区分
 -- 2008/08/22 Mod ↑
+-- 2008/12/03 Mod 2.0 Update Start 出荷実績と同様の仕組みとする。本番#255
+            -- 伝票区分1
+            IF (SUBSTR(mst_rec.head_sales_branch,1,1) = '7') THEN
+              lv_data := lv_data || cv_sep_com || '2';              -- 専門店
+            ELSE
+              lv_data := lv_data || cv_sep_com || '1';              -- 拠点出荷
+            END IF;
+            lv_data := lv_data || cv_sep_com || '1';                        -- 伝票区分2
+-- 2008/12/03 Mod 2.0 Update End
             lv_data := lv_data || cv_sep_com || mst_rec.v_arrival_date;     -- 着日(YYYYMMDD)
             lv_data := lv_data || cv_sep_com || mst_rec.deliver_to;         -- 配送先コード
             lv_data := lv_data || cv_sep_com || mst_rec.customer_code;      -- 顧客コード

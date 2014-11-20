@@ -7,7 +7,7 @@ AS
  * Description      : 直送仕入・出荷実績作成処理
  * MD.050           : 仕入先出荷実績         T_MD050_BPO_320
  * MD.070           : 直送仕入・出荷実績作成 T_MD070_BPO_32B
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2008/05/26    1.6   Oracle 山根 一浩 変更要求No120対応
  *  2008/06/11    1.7   Oracle 山根 一浩 不具合ログ#440_63対応
  *  2008/10/24    1.8   Oracle 吉元 強樹 内部変更No174対応
+ *  2008/12/04    1.9   Oracle 吉元 強樹 本番障害No420対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -677,7 +678,10 @@ AS
         ,gn_created_by                                     -- created_by
         ,gn_last_update_login                              -- last_update_login
         ,gv_trans_type_correct                             -- transaction_type
-        ,SYSDATE                                           -- transaction_date
+-- 2008/12/04 v1.9 T.Yoshimoto Mod Start 本番障害#420
+        --,SYSDATE                                           -- transaction_date
+        ,TO_DATE(ir_masters_rec.pla_def5, 'YYYY/MM/DD')    -- transaction_date(仕入先出荷日)
+-- 2008/12/04 v1.9 T.Yoshimoto Mod End 本番障害#420
         ,'PENDING'                                         -- processing_status_code
         ,'BATCH'                                           -- processing_mode_code
         ,'PENDING'                                         -- transaction_status_code

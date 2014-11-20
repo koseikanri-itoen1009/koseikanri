@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績作成処理
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : 仕入実績作成        T_MD070_BPO_31D
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2008/05/21    1.4   Oracle 山根 一浩 変更要求No109対応
  *                                       結合テスト不具合ログ#300_3対応
  *  2008/10/27    1.5   Oracle 吉元 強樹 内部変更No216対応
+ *  2008/12/04    1.6   Oracle 吉元 強樹 本番障害No420対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1260,7 +1261,10 @@ AS
         ,gn_created_by                                   -- created_by
         ,gn_last_update_login                            -- last_update_login
         ,'RECEIVE'                                       -- transaction_type
-        ,SYSDATE                                         -- transaction_date
+-- 2008/12/04 v1.6 T.Yoshimoto Mod Start 本番#420
+        --,SYSDATE                                         -- transaction_date
+        ,TO_DATE(ir_mst_rec.h_attribute4, 'YYYY/MM/DD')  -- transaction_date(発注ヘッダ.納入日)
+-- 2008/12/04 v1.6 T.Yoshimoto Mod End 本番#420
         ,'PENDING'                                       -- processing_status_code
         ,'BATCH'                                         -- processing_mode_code
         ,'PENDING'                                       -- transaction_status_code
