@@ -24,9 +24,10 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/02/12    1.0   Akinori Takeshita   新規作成
- *  2009-03-09    1.1   Yutaka.Kuboshima    ファイル出力先のプロファイルの変更
- *  2009-04-02    1.2   Yutaka.Kuboshima    障害T1_0182、T1_0254の対応
- *  2009-04-15    1.3   Yutaka.Kuboshima    障害T1_0577の対応
+ *  2009/03-09    1.1   Yutaka.Kuboshima    ファイル出力先のプロファイルの変更
+ *  2009/04-02    1.2   Yutaka.Kuboshima    障害T1_0182、T1_0254の対応
+ *  2009/04-15    1.3   Yutaka.Kuboshima    障害T1_0577の対応
+ *  2009/05/28    1.4   Yutaka.Kuboshima    障害T1_1244の対応
  *
  *****************************************************************************************/
 --
@@ -6241,7 +6242,64 @@ AS
       WHEN OTHERS THEN
         RAISE;
     END;
-
+-- 2009/05/28 Ver1.3 add start by Yutaka.Kuboshima
+    -- 1-78.新規評価対象区分取得
+    DECLARE
+      CURSOR eva_code_cur
+      IS
+        SELECT flv.lookup_type AS lv_ref_type
+              ,flv.lookup_code AS lv_ref_code
+              ,flv.meaning     AS lv_ref_name
+              ,NULL            AS lv_pt_ref_type
+              ,NULL            AS lv_pt_ref_code
+        FROM   fnd_lookup_values flv
+        WHERE  flv.language = cv_language_ja
+        AND    flv.lookup_type = 'XXCSM1_EVALURATION_KBN'
+        AND    flv.enabled_flag = cv_y_flag
+        ORDER BY flv.lookup_code;
+      eva_code_rec eva_code_cur%ROWTYPE;
+    BEGIN
+      OPEN eva_code_cur;
+        << eva_code_loop >>
+        LOOP
+          FETCH eva_code_cur INTO eva_code_rec;
+          EXIT WHEN eva_code_cur%NOTFOUND;
+            -- ファイル出力
+            write_csv(
+               eva_code_rec.lv_ref_type     -- 参照タイプ
+              ,eva_code_rec.lv_ref_code     -- 参照コード
+              ,eva_code_rec.lv_ref_name     -- 名称
+              ,eva_code_rec.lv_pt_ref_type  -- 親参照タイプ
+              ,eva_code_rec.lv_pt_ref_code  -- 親参照コード
+              ,if_file_handler
+              ,lv_errbuf
+              ,lv_retcode
+              ,lv_errmsg
+            );
+            --カーソルカウント
+            ln_data_cnt := ln_data_cnt + 1;  
+        END LOOP;
+      CLOSE eva_code_cur;
+      --参照コード取得エラー
+      IF (ln_data_cnt = 0) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                              cv_no_data_err_msg,
+                                              cv_lookup_type,
+                                              'XXCSM1_EVALURATION_KBN');
+        ov_retcode := cv_status_warn;
+        --警告メッセージ出力
+        FND_FILE.PUT_LINE(which  => FND_FILE.LOG  ,buff   => lv_errmsg);
+        --警告カウントアップ
+        ln_warn_cnt := ln_warn_cnt + 1;
+      END IF;
+      --出力件数カウント
+      ln_output_cnt := ln_output_cnt + ln_data_cnt;
+      ln_data_cnt := 0;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE;
+    END;
+-- 2009/05/28 Ver1.3 add end by Yutaka.Kuboshima
     -- ===============================
     -- 2.品目カテゴリの取得
     -- =============================== 
