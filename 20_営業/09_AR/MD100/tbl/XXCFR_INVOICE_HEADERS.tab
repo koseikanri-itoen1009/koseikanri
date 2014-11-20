@@ -5,7 +5,7 @@ CREATE TABLE xxcfr.xxcfr_invoice_headers
  * Description     : 請求ヘッダ情報テーブル
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.2
+ * Version         : 1.3
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -14,6 +14,7 @@ CREATE TABLE xxcfr.xxcfr_invoice_headers
  *  2008/10/28    1.0  SCS 大川 恵    初回作成
  *  2009/07/21    1.1  SCS 廣瀬 真佐人[0000792]障害対応
  *  2012/11/13    1.2  SCSK 中村 健一 [E_本稼動_10090]対応
+ *  2013/06/13    1.3  SCSK 中野 徹也 [E_本稼動_09964]再対応
  ************************************************************************/
 ( 
   invoice_id                 NUMBER         NOT NULL  ,-- 一括請求書ID
@@ -67,6 +68,9 @@ CREATE TABLE xxcfr.xxcfr_invoice_headers
 /* 2012.11.13 (E_本稼動_10090) START */
   parallel_type              NUMBER                   ,-- パラレル実行区分
 /* 2012.11.13 (E_本稼動_10090) END */
+/* 2013.06.13 (E_本稼動_09964再対応) START */
+  inv_creation_flag          VARCHAR2(1)              ,-- 請求作成対象フラグ
+/* 2013.06.13 (E_本稼動_09964再対応) END */
   created_by                 NUMBER(15)     NOT NULL  ,-- 作成者
   creation_date              DATE           NOT NULL  ,-- 作成日
   last_updated_by            NUMBER(15)     NOT NULL  ,-- 最終更新者
@@ -135,6 +139,9 @@ COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.org_id                 IS '組織ID'
 /* 2012.11.13 (E_本稼動_10090) START */
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.parallel_type          IS 'パラレル実行区分';
 /* 2012.11.13 (E_本稼動_10090) END */
+/* 2013.06.13 (E_本稼動_09964再対応) START */
+COMMENT ON COLUMN xxcfr.inv_creation_flag                            IS '請求作成対象フラグ';
+/* 2013.06.13 (E_本稼動_09964再対応) END */
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.created_by             IS '作成者';
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.creation_date          IS '作成日';
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.last_updated_by        IS '最終更新者';

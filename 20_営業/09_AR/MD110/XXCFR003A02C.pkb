@@ -7,7 +7,7 @@ AS
  * Description      : 請求ヘッダデータ作成
  * MD.050           : MD050_CFR_003_A02_請求ヘッダデータ作成
  * MD.070           : MD050_CFR_003_A02_請求ヘッダデータ作成
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -18,15 +18,10 @@ AS
  *  ins_target_bill_acct_n p 対象請求先顧客取得処理(夜間)            (A-3)
  *  ins_target_bill_acct_o p 対象請求先顧客取得処理(手動)            (A-4)
  *  get_target_bill_acct   p 請求締対象顧客情報抽出処理              (A-5)
+ *  ins_wk_invoice_lines   p 請求明細情報ワークテーブル登録処理      (A-9)
  *  delete_last_data       p 前回処理データ削除処理                  (A-6)
  *  get_bill_info          p 請求対象取引データ取得処理              (A-7)
  *  ins_invoice_header     p 請求ヘッダ情報登録処理                  (A-8)
--- Modify 2009.09.29 Ver1.06 start
--- *  update_tax_gap         p 税差額算出処理                          (A-9)
--- Modify 2009.09.29 Ver1.06 End
--- Modify 2013.01.10 Ver1.12 Start
- * update_invoice_header  p 請求ヘッダ情報更新処理                  (A-10)
--- Modify 2013.01.10 Ver1.12 End
  *  submain                p メイン処理プロシージャ
  *  main                   p コンカレント実行ファイル登録プロシージャ
  *
@@ -47,6 +42,7 @@ AS
  *  2011/03/10    1.10 SCS 西野 裕介    障害「E_本稼動_03333」対応
  *  2012/11/09    1.11 SCSK 小野塚 香織 障害「E_本稼動_10090」対応
  *  2013/01/10    1.12 SCSK 中野 徹也   障害「E_本稼動_09964」対応
+ *  2013/06/10    1.13 SCSK 中野 徹也   障害「E_本稼動_09964再対応」対応
  *
  *****************************************************************************************/
 --
@@ -82,9 +78,12 @@ AS
   gn_normal_cnt    NUMBER;                    -- 正常件数
   gn_error_cnt     NUMBER;                    -- エラー件数
   gn_warn_cnt      NUMBER;                    -- スキップ件数
+-- Modify 2013.06.10 Ver1.13 Start
 -- Modify 2013.01.10 Ver1.12 Start
-  gn_up_cnt        NUMBER;                    -- 更新件数(請求ヘッダ単位)
+--  gn_up_cnt        NUMBER;                    -- 更新件数(請求ヘッダ単位)
 -- Modify 2013.01.10 Ver1.12 End
+  gn_ins_cnt       NUMBER;                    -- バックアップ件数
+-- Modify 2013.06.10 Ver1.13 End
 --
 --################################  固定部 END   ##################################
 --
@@ -202,6 +201,9 @@ AS
   cv_table_xxih       CONSTANT VARCHAR2(100) := 'XXCFR_INVOICE_HEADERS';       -- 請求ヘッダ情報テーブル
   cv_table_xxil       CONSTANT VARCHAR2(100) := 'XXCFR_INVOICE_LINES';         -- 請求明細情報テーブル
   cv_table_xxgt       CONSTANT VARCHAR2(100) := 'XXCFR_TAX_GAP_TRX_LIST';      -- 税差額取引作成テーブル
+-- Modify 2013.06.10 Ver1.13 Start
+  cv_table_xwil       CONSTANT VARCHAR2(100) := 'XXCFR_WK_INVOICE_LINES';      -- 請求明細情報ワークテーブル
+-- Modify 2013.06.10 Ver1.13 End
 --
   -- 参照タイプ
   cv_look_type_ar_cd  CONSTANT VARCHAR2(100) := 'XXCMM_INVOICE_GRP_CODE';     -- 売掛コード1(請求書)
@@ -229,6 +231,9 @@ AS
   cv_delete_flag_yes    CONSTANT VARCHAR2(1)  := 'Y';         -- 前回処理データ削除フラグ(Y)
   cv_delete_flag_no     CONSTANT VARCHAR2(1)  := 'N';         -- 前回処理データ削除フラグ(N)
 -- Modify 2013.01.10 Ver1.12 End
+-- Modify 2013.06.10 Ver1.13 Start
+  cv_inv_creation_flag  CONSTANT VARCHAR2(1)  := 'Y';         -- 請求作成対象フラグ(Y)
+-- Modify 2013.06.10 Ver1.13 End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1469,6 +1474,11 @@ AS
                          AND     ship_hzca.customer_class_code = '10'
                          AND     bill_hsua.site_use_code = 'BILL_TO'
                          AND     bill_hsua.status = 'A'
+-- Modify 2013.06.10 Ver1.13 Start
+                         AND  ( bill_hsua.payment_term_id = lt_get_term_term_id_tab(ln_loop_cnt)
+                           OR     bill_hsua.attribute2      = TO_CHAR(lt_get_term_term_id_tab(ln_loop_cnt))
+                           OR     bill_hsua.attribute3      = TO_CHAR(lt_get_term_term_id_tab(ln_loop_cnt)) )--支払条件
+-- Modify 2013.06.10 Ver1.13 End
                          AND     ship_hsua.status = 'A'
                        )  ship_cust_info1
                        WHERE   ship_cust_info1.bill_account_id = bill_hcar.cust_account_id(+)
@@ -1508,6 +1518,11 @@ AS
                          AND     ship_hzca.customer_class_code = '10'
                          AND     bill_hsua.site_use_code = 'BILL_TO'
                          AND     bill_hsua.status = 'A'
+-- Modify 2013.06.10 Ver1.13 Start
+                         AND  ( bill_hsua.payment_term_id = lt_get_term_term_id_tab(ln_loop_cnt)
+                           OR     bill_hsua.attribute2      = TO_CHAR(lt_get_term_term_id_tab(ln_loop_cnt))
+                           OR     bill_hsua.attribute3      = TO_CHAR(lt_get_term_term_id_tab(ln_loop_cnt)) )--支払条件
+-- Modify 2013.06.10 Ver1.13 End
                          AND     ship_hsua.status = 'A'
                        )  ship_cust_info2
                        WHERE   ship_cust_info2.bill_account_id = bill_hcar.cust_account_id(+)
@@ -1523,9 +1538,11 @@ AS
             AND    hzca.cust_account_id = xxca.customer_id
             AND    hzsu.site_use_id = hzcp.site_use_id(+)
             AND    hzca.cust_account_id = hzcp.cust_account_id
-            AND  ( hzsu.payment_term_id = lt_get_term_term_id_tab(ln_loop_cnt)
-            OR     hzsu.attribute2      = TO_CHAR(lt_get_term_term_id_tab(ln_loop_cnt))
-            OR     hzsu.attribute3      = TO_CHAR(lt_get_term_term_id_tab(ln_loop_cnt)) )--支払条件
+-- Modify 2013.06.10 Ver1.13 Start
+--            AND  ( hzsu.payment_term_id = lt_get_term_term_id_tab(ln_loop_cnt)
+--            OR     hzsu.attribute2      = TO_CHAR(lt_get_term_term_id_tab(ln_loop_cnt))
+--            OR     hzsu.attribute3      = TO_CHAR(lt_get_term_term_id_tab(ln_loop_cnt)) )--支払条件
+-- Modify 2013.06.10 Ver1.13 End
             AND    hzsu.site_use_code = 'BILL_TO'                    -- 使用目的コード(請求先)
             AND    hzsu.status = 'A'                                 -- 使用目的ステータス = 'A'
             AND    hzcp.cons_inv_flag = 'Y'                          -- 一括請求書式使用可能FLAG('Y')
@@ -1679,6 +1696,258 @@ AS
 --
   END get_target_bill_acct;
 --
+-- Modify 2013.06.10 Ver1.13 Start
+--
+  /**********************************************************************************
+   * Procedure Name   : ins_wk_invoice_lines
+   * Description      : 請求明細情報ワークテーブル登録処理(A-9)
+   ***********************************************************************************/
+  PROCEDURE ins_wk_invoice_lines(
+    in_invoice_id           IN  NUMBER,       -- 一括請求書ID
+    in_inv_line_id          IN  NUMBER,       -- 一括請求書明細ID
+    ov_errbuf               OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode              OUT VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg               OUT VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_wk_invoice_lines'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_target_cnt       NUMBER;         -- 対象件数
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- *** ローカル例外 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ローカル変数の初期化
+    ln_target_cnt     := 0;
+--
+    --==============================================================
+    --請求明細情報ワークテーブルデータ登録処理
+    --==============================================================
+    BEGIN
+      INSERT INTO xxcfr_wk_invoice_lines (
+         invoice_id
+        ,invoice_detail_num
+        ,note_line_id
+        ,ship_cust_code
+        ,ship_cust_name
+        ,ship_cust_kana_name
+        ,sold_location_code
+        ,sold_location_name
+        ,ship_shop_code
+        ,ship_shop_name
+        ,vd_num
+        ,vd_cust_type
+        ,inv_type
+        ,chain_shop_code
+        ,delivery_date
+        ,slip_num
+        ,order_num
+        ,column_num
+        ,slip_type
+        ,classify_type
+        ,customer_dept_code
+        ,customer_division_code
+        ,sold_return_type
+        ,nichiriu_by_way_type
+        ,sale_type
+        ,direct_num
+        ,po_date
+        ,acceptance_date
+        ,item_code
+        ,item_name
+        ,item_kana_name
+        ,policy_group
+        ,jan_code
+        ,vessel_type
+        ,vessel_type_name
+        ,vessel_group
+        ,vessel_group_name
+        ,quantity
+        ,unit_price
+        ,dlv_qty
+        ,dlv_unit_price
+        ,dlv_uom_code
+        ,standard_uom_code
+        ,standard_unit_price_excluded
+        ,business_cost
+        ,tax_amount
+        ,tax_rate
+        ,ship_amount
+        ,sold_amount
+        ,red_black_slip_type
+        ,trx_id
+        ,trx_number
+        ,cust_trx_type_id
+        ,batch_source_id
+        ,inv_created_by
+        ,inv_creation_date
+        ,inv_last_updated_by
+        ,inv_last_update_date
+        ,inv_last_update_login
+        ,inv_request_id
+        ,inv_program_application_id
+        ,inv_program_id
+        ,inv_program_update_date
+        ,cutoff_date
+        ,num_of_cases
+        ,medium_class
+        ,delivery_chain_code
+        ,bms_header_data
+        ,created_by
+        ,creation_date
+        ,last_updated_by
+        ,last_update_date
+        ,last_update_login
+        ,request_id
+        ,program_application_id
+        ,program_id
+        ,program_update_date
+      )
+      SELECT
+         xxil.invoice_id                    --一括請求書ID
+        ,xxil.invoice_detail_num            --一括請求書明細No
+        ,xxil.note_line_id                  --伝票明細No
+        ,xxil.ship_cust_code                --納品先顧客コード
+        ,xxil.ship_cust_name                --納品先顧客名
+        ,xxil.ship_cust_kana_name           --納品先顧客カナ名
+        ,xxil.sold_location_code            --売上拠点コード
+        ,xxil.sold_location_name            --売上拠点名
+        ,xxil.ship_shop_code                --納品先店舗コード
+        ,xxil.ship_shop_name                --納品先店名
+        ,xxil.vd_num                        --自動販売機番号
+        ,xxil.vd_cust_type                  --VD顧客区分
+        ,xxil.inv_type                      --請求区分
+        ,xxil.chain_shop_code               --チェーン店コード
+        ,xxil.delivery_date                 --納品日
+        ,xxil.slip_num                      --伝票番号
+        ,xxil.order_num                     --オーダーNO
+        ,xxil.column_num                    --コラムNo
+        ,xxil.slip_type                     --伝票区分
+        ,xxil.classify_type                 --分類区分
+        ,xxil.customer_dept_code            --お客様部門コード
+        ,xxil.customer_division_code        --お客様課コード
+        ,xxil.sold_return_type              --売上返品区分
+        ,xxil.nichiriu_by_way_type          --ニチリウ経由区分
+        ,xxil.sale_type                     --特売区分
+        ,xxil.direct_num                    --便No
+        ,xxil.po_date                       --発注日
+        ,xxil.acceptance_date               --検収日
+        ,xxil.item_code                     --商品CD
+        ,xxil.item_name                     --商品名
+        ,xxil.item_kana_name                --商品カナ名
+        ,xxil.policy_group                  --政策群コード
+        ,xxil.jan_code                      --JANコード
+        ,xxil.vessel_type                   --容器区分
+        ,xxil.vessel_type_name              --容器区分名
+        ,xxil.vessel_group                  --容器群
+        ,xxil.vessel_group_name             --容器群名
+        ,xxil.quantity                      --数量
+        ,xxil.unit_price                    --単価
+        ,xxil.dlv_qty                       --納品数量
+        ,xxil.dlv_unit_price                --納品単価
+        ,xxil.dlv_uom_code                  --納品単位
+        ,xxil.standard_uom_code             --基準単位
+        ,xxil.standard_unit_price_excluded  --税抜基準単価
+        ,xxil.business_cost                 --営業原価
+        ,xxil.tax_amount                    --消費税金額
+        ,xxil.tax_rate                      --消費税率
+        ,xxil.ship_amount                   --納品金額
+        ,xxil.sold_amount                   --売上金額
+        ,xxil.red_black_slip_type           --赤伝黒伝区分
+        ,xxil.trx_id                        --取引ID
+        ,xxil.trx_number                    --取引番号
+        ,xxil.cust_trx_type_id              --取引タイプID
+        ,xxil.batch_source_id               --取引ソースID
+        ,xxil.created_by                    --請求明細作成者
+        ,xxil.creation_date                 --請求明細作成日
+        ,xxil.last_updated_by               --請求明細最終更新者
+        ,xxil.last_update_date              --請求明細最終更新日
+        ,xxil.last_update_login             --請求明細最終更新ログイン
+        ,xxil.request_id                    --請求明細要求ID
+        ,xxil.program_application_id        --請求明細コンカレント・プログラム・アプリケーションID
+        ,xxil.program_id                    --請求明細コンカレント・プログラムID
+        ,xxil.program_update_date           --請求明細プログラム更新日
+        ,xxil.cutoff_date                   --締日
+        ,xxil.num_of_cases                  --ケース入数
+        ,xxil.medium_class                  --受注ソース
+        ,xxil.delivery_chain_code           --納品先チェーンコード
+        ,xxil.bms_header_data               --流通ＢＭＳヘッダデータ
+        ,cn_created_by                      --作成者
+        ,cd_creation_date                   --作成日
+        ,cn_last_updated_by                 --最終更新者
+        ,cd_last_update_date                --最終更新日
+        ,cn_last_update_login               --最終更新ログイン
+        ,cn_request_id                      --要求ID
+        ,cn_program_application_id          --コンカレント・プログラム・アプリケーションID
+        ,cn_program_id                      --コンカレント・プログラムID
+        ,cd_program_update_date             --プログラム更新日
+      FROM   xxcfr_invoice_lines   xxil
+      WHERE  xxil.invoice_id          = in_invoice_id
+      AND    xxil.invoice_detail_num  = in_inv_line_id
+      ;
+
+--
+    EXCEPTION
+    -- *** OTHERS例外ハンドラ ***
+      WHEN OTHERS THEN
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
+                               ,iv_name         => cv_msg_cfr_00016      -- データ挿入エラー
+                               ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
+                               ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xwil))
+                                                                         -- 請求明細情報ワークテーブル
+                             ,1
+                             ,5000);
+        lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+        RAISE global_process_expt;
+    END;
+--
+  EXCEPTION
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** テーブルロックエラーハンドラ ***
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_wk_invoice_lines;
+--
+-- Modify 2013.06.10 Ver1.13 End
+--
   /**********************************************************************************
    * Procedure Name   : delete_last_data
    * Description      : 前回処理データ削除処理(A-6)
@@ -1688,8 +1957,10 @@ AS
     id_cutoff_date          IN  DATE,         -- 締日
 -- Modify 2013.01.10 Ver1.12 Start
     iv_bill_acct_code       IN  VARCHAR2,     -- 請求先顧客コード(コンカレントパラメータ)
-    ov_delete_flag          OUT VARCHAR2,     -- 前回処理データ削除フラグ
+-- Modify 2013.06.10 Ver1.13 Start
+--    ov_delete_flag          OUT VARCHAR2,     -- 前回処理データ削除フラグ
 -- Modify 2013.01.10 Ver1.12 End
+-- Modify 2013.06.10 Ver1.13 End
     ov_errbuf               OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg               OUT VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1720,14 +1991,19 @@ AS
 --
     -- 前回処理データ抽出(ヘッダ)
     CURSOR del_target_inv_data_cur(
-      id_cutoff_date    VARCHAR2,
+-- Modify 2013.06.10 Ver1.13 Start
+--      id_cutoff_date    VARCHAR2,
+-- Modify 2013.06.10 Ver1.13 End
       iv_customer_code  VARCHAR2
     )
     IS
       SELECT xxih.invoice_id    invoice_id
       FROM   xxcfr_invoice_headers xxih
-      WHERE  xxih.cutoff_date = id_cutoff_date
-      AND    xxih.bill_cust_code = iv_customer_code
+-- Modify 2013.06.10 Ver1.13 Start
+--      WHERE  xxih.cutoff_date = id_cutoff_date
+--      AND    xxih.bill_cust_code = iv_customer_code
+      WHERE  xxih.bill_cust_code = iv_customer_code
+-- Modify 2013.06.10 Ver1.13 End
       AND    xxih.org_id = gn_org_id
       AND    xxih.set_of_books_id = gn_set_book_id
       FOR UPDATE NOWAIT
@@ -1737,7 +2013,9 @@ AS
     -- ※請求ヘッダテーブルにのみデータが存在するケースを想定し
     --   請求明細テーブルのロックを別で作成
     CURSOR del_target_inv_line_data_cur(
-      id_cutoff_date    VARCHAR2,
+-- Modify 2013.06.10 Ver1.13 Start
+--      id_cutoff_date    VARCHAR2,
+-- Modify 2013.06.10 Ver1.13 End
       iv_customer_code  VARCHAR2
     )
     IS
@@ -1749,8 +2027,11 @@ AS
       WHERE  xxil.invoice_id IN (
                SELECT xxih.invoice_id    invoice_id
                FROM   xxcfr_invoice_headers xxih
-               WHERE  xxih.cutoff_date = id_cutoff_date
-               AND    xxih.bill_cust_code = iv_customer_code
+-- Modify 2013.06.10 Ver1.13 Start
+--               WHERE  xxih.cutoff_date = id_cutoff_date
+--               AND    xxih.bill_cust_code = iv_customer_code
+               WHERE  xxih.bill_cust_code = iv_customer_code
+-- Modify 2013.06.10 Ver1.13 End
                AND    xxih.org_id = gn_org_id
                )
 -- Modify 2013.01.10 Ver1.12 Start
@@ -1810,10 +2091,12 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- Modify 2013.06.10 Ver1.13 Start
 -- Modify 2013.01.10 Ver1.12 Start
    --前回処理データ削除フラグの初期化(N)
-   ov_delete_flag     := cv_delete_flag_no;
+--   ov_delete_flag     := cv_delete_flag_no;
 -- Modify 2013.01.10 Ver1.12 End
+-- Modify 2013.06.10 Ver1.13 End
 --
     -- ローカル変数の初期化
     ln_target_cnt     := 0;
@@ -1823,8 +2106,11 @@ AS
     --==============================================================
     -- カーソルオープン(ヘッダ)
     BEGIN
-      OPEN del_target_inv_data_cur( id_cutoff_date,
-                                    iv_account_code)
+-- Modify 2013.06.10 Ver1.13 Start
+--      OPEN del_target_inv_data_cur( id_cutoff_date,
+--                                    iv_account_code)
+      OPEN del_target_inv_data_cur( iv_account_code )
+-- Modify 2013.06.10 Ver1.13 End
       ;
 --
       -- データの一括取得
@@ -1853,8 +2139,11 @@ AS
 --
     -- カーソルオープン(明細)
     BEGIN
-      OPEN del_target_inv_line_data_cur( id_cutoff_date,
-                                         iv_account_code)
+-- Modify 2013.06.10 Ver1.13 Start
+--      OPEN del_target_inv_line_data_cur( id_cutoff_date,
+--                                         iv_account_code)
+      OPEN del_target_inv_line_data_cur( iv_account_code )
+-- Modify 2013.06.10 Ver1.13 End
       ;
 --
 -- Modify 2013.01.10 Ver1.12 Start
@@ -1887,6 +2176,31 @@ AS
 --
     -- 対象データが存在する場合レコードを削除する
     IF (ln_target_cnt > 0) THEN
+--
+-- Modify 2013.06.10 Ver1.13 Start
+      <<for_loop>>
+      FOR ln_loop_cnt IN 1..ln_target_cnt LOOP
+        --請求明細データを削除する該当データをバックアップとしてワークテーブルに登録する
+        -- =====================================================
+        -- 請求明細情報ワークテーブル登録処理 (A-9)
+        -- =====================================================
+        ins_wk_invoice_lines(
+           lt_inv_line_id_tab(ln_loop_cnt),            -- 一括請求書ID
+           lt_inv_line_num_id_tab(ln_loop_cnt),        -- 一括請求書明細ID
+           lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+           lv_retcode,                                 -- リターン・コード             --# 固定 #
+           lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode = cv_status_error) THEN
+          --(エラー処理)
+          RAISE global_process_expt;
+        END IF;
+      END LOOP for_loop;
+--
+      --請求明細情報テーブルデータに登録した件数をバックアップ件数としてカウントします
+      gn_ins_cnt := gn_ins_cnt + ln_target_cnt;
+-- Modify 2013.06.10 Ver1.13 End
+--
       BEGIN
         <<del_invoice_lines_loop1>>
         FORALL ln_loop_cnt IN 1..ln_target_cnt
@@ -1896,11 +2210,13 @@ AS
           WHERE invoice_id = lt_inv_line_id_tab(ln_loop_cnt)
           AND   invoice_detail_num = lt_inv_line_num_id_tab(ln_loop_cnt);
 --
-        --請求明細データを削除する場合、前回処理データ削除フラグ(Y)とする
-        IF (SQL%ROWCOUNT > 0) THEN
-          ov_delete_flag  :=  cv_delete_flag_yes;
-        END IF;
+-- Modify 2013.06.10 Ver1.13 Start
+--        --請求明細データを削除する場合、前回処理データ削除フラグ(Y)とする
+--        IF (SQL%ROWCOUNT > 0) THEN
+--          ov_delete_flag  :=  cv_delete_flag_yes;
+--        END IF;
 -- Modify 2013.01.10 Ver1.12 End
+-- Modify 2013.06.10 Ver1.13 End
 --
       EXCEPTION
         -- *** OTHERS例外ハンドラ ***
@@ -1916,6 +2232,47 @@ AS
         lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
         RAISE global_process_expt;
       END;
+--
+-- Modify 2013.06.10 Ver1.13 Start
+      BEGIN
+        --請求明細データを削除した場合、請求金額の再計算を行う必要がある為
+        --要求IDを更新して請求明細データ作成の処理対象とする
+        --ただし、請求明細データが１件も存在しない場合は更新対象外とする
+        <<up_invoice_headers_loop>>
+        FORALL ln_loop_cnt IN 1..ln_target_cnt
+        UPDATE xxcfr_invoice_headers  xxih  -- 請求ヘッダ情報テーブル
+        SET
+              xxih.last_updated_by        =    cn_last_updated_by        --最終更新者
+             ,xxih.last_update_date       =    cd_last_update_date       --最終更新日
+             ,xxih.last_update_login      =    cn_last_update_login      --最終更新ログイン
+             ,xxih.request_id             =    cn_request_id             --要求ID
+             ,xxih.program_application_id =    cn_program_application_id --コンカレント・プログラム・アプリケーションID
+             ,xxih.program_id             =    cn_program_id             --コンカレント・プログラムID
+             ,xxih.program_update_date    =    cd_program_update_date    --プログラム更新日
+             ,xxih.parallel_type          =    NULL                      --パラレル実行区分
+             ,xxih.inv_creation_flag      =    NULL                      --請求作成対象フラグ
+        WHERE xxih.invoice_id = lt_inv_line_id_tab(ln_loop_cnt)
+        AND   EXISTS (
+                SELECT 'X'
+                FROM   xxcfr_invoice_lines xxil
+                WHERE  xxih.invoice_id = xxil.invoice_id
+        );
+      --
+      EXCEPTION
+        -- *** OTHERS例外ハンドラ ***
+        WHEN OTHERS THEN
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                  iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
+                                 ,iv_name         => cv_msg_cfr_00017      -- データ更新エラー
+                                 ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
+                                 ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxih))
+                                                                           -- 請求ヘッダ情報テーブル
+                               ,1
+                               ,5000);
+          lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+          RAISE global_process_expt;
+      END;
+-- Modify 2013.06.10 Ver1.13 End
 --
 -- Modify 2013.01.10 Ver1.12 Start
 --      BEGIN
@@ -2232,6 +2589,9 @@ AS
 -- Modify 2012.11.09 Ver1.11 Start
     iv_batch_on_judge_type  IN  VARCHAR2,     -- 夜間手動判断区分
 -- Modify 2012.11.09 Ver1.11 End
+-- Modify 2013.06.10 Ver1.13 Start
+    iv_bill_acct_code       IN  VARCHAR2,     -- 請求先顧客コード(コンカレントパラメータ)
+-- Modify 2013.06.10 Ver1.13 End
     ov_errbuf               OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg               OUT VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2259,6 +2619,9 @@ AS
     ln_target_cnt       NUMBER;                             -- 対象件数
     lv_dict_err_code    VARCHAR2(20);                       -- 日本語辞書参照コード
     lt_look_dict_word   fnd_lookup_values_vl.meaning%TYPE;  -- 日本語辞書ワード
+-- Modify 2013.06.10 Ver1.13 Start
+    ln_target_inv_cnt   NUMBER;                             -- 対象請求件数
+-- Modify 2013.06.10 Ver1.13 End
 --
     -- *** ローカル・カーソル ***
 --
@@ -2284,6 +2647,9 @@ AS
     ln_target_cnt     := 0;
     lv_dict_err_code  := NULL;
     lt_look_dict_word := NULL;
+-- Modify 2013.06.10 Ver1.13 Start
+    ln_target_inv_cnt := 0;
+-- Modify 2013.06.10 Ver1.13 End
 --
     -- グローバル変数初期化
     gt_invoice_id            := NULL;      -- 一括請求書ID
@@ -2610,6 +2976,80 @@ AS
         lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
         RAISE global_process_expt;
     END;
+--
+-- Modify 2013.06.10 Ver1.13 Start
+    --夜間手動判断区分が1(手動)、かつコンカレントパラメータ請求先顧客でない場合、
+    --コンカレントパラメータ請求先顧客の支払条件を取得する
+    IF ( iv_batch_on_judge_type !=  cv_judge_type_batch) AND 
+      ( iv_cust_acct_code != iv_bill_acct_code ) THEN
+      --
+      --更新対象の請求ヘッダ情報テーブル確認
+      SELECT COUNT('X')
+      INTO   ln_target_inv_cnt
+      FROM   xxcfr_invoice_headers xxih
+      WHERE  xxih.bill_cust_code  = iv_cust_acct_code
+      AND    xxih.cutoff_date = id_cutoff_date
+      AND    xxih.org_id = gn_org_id
+      AND    xxih.set_of_books_id = gn_set_book_id
+      AND    EXISTS (
+               SELECT 'X'
+               FROM   xxcfr_invoice_lines xxil
+               WHERE  xxih.invoice_id = xxil.invoice_id
+             );
+      --
+      IF ( ln_target_inv_cnt = 0 ) THEN
+      --
+        --顧客情報の取得
+        BEGIN
+          SELECT xxhv.bill_payment_term_id                bill_payment_term_id    -- 支払条件1
+                ,xxhv.bill_payment_term2                  bill_payment_term2      -- 支払条件2
+                ,xxhv.bill_payment_term3                  bill_payment_term3      -- 支払条件3
+          INTO   gt_bill_payment_term_id    -- 支払条件1
+                ,gt_bill_payment_term2      -- 支払条件2
+                ,gt_bill_payment_term3      -- 支払条件3
+          FROM   xxcfr_cust_hierarchy_v    xxhv        -- 顧客階層ビュー
+          WHERE  xxhv.bill_account_number = iv_bill_acct_code
+          AND    ROWNUM = 1
+          ;
+        EXCEPTION
+          -- *** NO_DATA_FOUND例外ハンドラ ***
+          WHEN NO_DATA_FOUND THEN
+            SELECT hsua_bill.payment_term_id                bill_payment_term_id    -- 支払条件1
+                  ,hsua_bill.attribute2                     bill_payment_term2      -- 支払条件2
+                  ,hsua_bill.attribute3                     bill_payment_term3      -- 支払条件3
+            INTO   gt_bill_payment_term_id    -- 支払条件1
+                  ,gt_bill_payment_term2      -- 支払条件2
+                  ,gt_bill_payment_term3      -- 支払条件3
+            FROM   hz_cust_accounts          hzca_bill   -- 顧客マスタ
+                  ,hz_cust_acct_sites        hasa_bill   -- 顧客所在地
+                  ,hz_cust_site_uses         hsua_bill   -- 顧客使用目的
+            WHERE  hzca_bill.account_number    = iv_bill_acct_code
+            AND    hasa_bill.cust_account_id   = hzca_bill.cust_account_id
+            AND    hsua_bill.cust_acct_site_id = hasa_bill.cust_acct_site_id
+            AND    hsua_bill.site_use_code     = 'BILL_TO'
+            AND    hsua_bill.status = 'A'
+            AND    ROWNUM = 1
+            ;
+          -- *** OTHERS例外ハンドラ ***
+          WHEN OTHERS THEN
+            lt_look_dict_word := xxcfr_common_pkg.lookup_dictionary(
+                                   iv_loopup_type_prefix => cv_msg_kbn_cfr,
+                                   iv_keyword            => cv_dict_cfr_00302012);    -- 請求顧客情報
+            lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
+                                   iv_application  => cv_msg_kbn_cfr,
+                                   iv_name         => cv_msg_cfr_00015,  
+                                   iv_token_name1  => cv_tkn_data,  
+                                   iv_token_value1 => lt_look_dict_word),
+                                 1,
+                                 5000);
+            lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+            RAISE global_process_expt;
+        END;
+      --
+      END IF;
+    --
+    END IF;
+-- Modify 2013.06.10 Ver1.13 End
 --
     --==============================================================
     --取得項目のNULLチェック
@@ -3074,82 +3514,129 @@ AS
       --対象データが存在する場合は、更新
       IF (ln_target_cnt > 0) THEN
 --
-      BEGIN
-        UPDATE xxcfr_invoice_headers  xxih  -- 請求ヘッダ情報テーブル
-        SET
-             xxih.set_of_books_id        =    gn_set_book_id            -- 会計帳簿ID
-            ,xxih.cutoff_date            =    id_cutoff_date            -- 締日
-            ,xxih.term_name              =    iv_term_name              -- 支払条件
-            ,xxih.term_id                =    iv_term_id                -- 支払条件ID
-            ,xxih.due_months_forword     =    gt_due_months_forword     -- サイト月数
-            ,xxih.month_remit            =    gt_month_remit            -- 月限
-            ,xxih.payment_date           =    gt_payment_date           -- 支払日
-            ,xxih.tax_type               =    gt_tax_type               -- 消費税区分
-            ,xxih.tax_gap_trx_id         =    gt_tax_gap_trx_id         -- 税差額取引ID
-            ,xxih.tax_gap_amount         =    gt_tax_gap_amount         -- 税差額
-            ,xxih.inv_amount_no_tax      =    gt_amount_no_tax          -- 税抜請求金額合計
-            ,xxih.tax_amount_sum         =    gt_tax_amount_sum         -- 税額合計
-            ,xxih.inv_amount_includ_tax  =    gt_amount_includ_tax      -- 税込請求金額合計
-            ,xxih.itoen_name             =    gt_itoen_name             -- 取引先名
-            ,xxih.postal_code            =    gt_postal_code            -- 送付先郵便番号
-            ,xxih.send_address1          =    gt_send_address1          -- 送付先住所1
-            ,xxih.send_address2          =    gt_send_address2          -- 送付先住所2
-            ,xxih.send_address3          =    gt_send_address3          -- 送付先住所3
-            ,xxih.send_to_name           =    iv_cust_acct_name         -- 送付先名
-            ,xxih.inv_creation_date      =    cd_creation_date          -- 作成日
-            ,xxih.object_month           =    TO_CHAR(id_cutoff_date, 'YYYYMM')     -- 対象年月
-            ,xxih.object_date_from       =    gt_object_date_from       -- 対象期間（自）
-            ,xxih.object_date_to         =    id_cutoff_date            -- 対象期間（至）
-            ,xxih.vender_code            =    gt_vender_code            -- 仕入先コード
-            ,xxih.receipt_location_code  =    gt_receipt_location_code  -- 入金拠点コード
-            ,xxih.bill_location_code     =    gt_bill_location_code     -- 請求拠点コード
-            ,xxih.bill_location_name     =    gt_bill_location_name     -- 請求拠点名
-            ,xxih.agent_tel_num          =    gt_agent_tel_num          -- 担当電話番号
-            ,xxih.credit_cust_code       =    NVL(gt_credit_cust_code, iv_cust_acct_code)     -- 与信先顧客コード
-            ,xxih.credit_cust_name       =    NVL(gt_credit_cust_name, iv_cust_acct_name)     -- 与信先顧客名
-            ,xxih.receipt_cust_code      =    gt_receipt_cust_code      -- 入金先顧客コード
-            ,xxih.receipt_cust_name      =    gt_receipt_cust_name      -- 入金先顧客名
-            ,xxih.payment_cust_code      =    gt_payment_cust_code      -- 親請求先顧客コード
-            ,xxih.payment_cust_name      =    gt_payment_cust_name      -- 親請求先顧客名
-            ,xxih.bill_cust_code         =    iv_cust_acct_code         -- 請求先顧客コード
-            ,xxih.bill_cust_name         =    iv_cust_acct_name         -- 請求先顧客名
-            ,xxih.bill_cust_kana_name    =    gt_bill_cust_kana_name    -- 請求先顧客カナ名
-            ,xxih.bill_cust_account_id   =    iv_cust_acct_id           -- 請求先顧客ID
-            ,xxih.bill_cust_acct_site_id =    iv_cust_acct_site_id      -- 請求先顧客所在地ID
-            ,xxih.bill_shop_code         =    gt_bill_shop_code         -- 請求先店舗コード
-            ,xxih.bill_shop_name         =    gt_bill_shop_name         -- 請求先店名
-            ,xxih.credit_receiv_code2    =    gt_credit_receiv_code2    -- 売掛コード2（事業所）
-            ,xxih.credit_receiv_name2    =    gt_credit_receiv_name2    -- 売掛コード2（事業所）名称
-            ,xxih.credit_receiv_code3    =    gt_credit_receiv_code3    -- 売掛コード3（その他）
-            ,xxih.credit_receiv_name3    =    gt_credit_receiv_name3    -- 売掛コード3（その他）名称
-            ,xxih.invoice_output_form    =    gt_invoice_output_form    -- 請求書出力形式
-            ,xxih.org_id                 =    gn_org_id                 -- 組織ID
-            ,xxih.last_updated_by        =    cn_last_updated_by        -- 最終更新者
-            ,xxih.last_update_date       =    cd_last_update_date       -- 最終更新日
-            ,xxih.last_update_login      =    cn_last_update_login      -- 最終更新ログイン
-            ,xxih.request_id             =    cn_request_id             -- 要求ID
-            ,xxih.program_application_id =    cn_program_application_id -- コンカレント・プログラム・アプリケーションID
-            ,xxih.program_id             =    cn_program_id             -- コンカレント・プログラムID
-            ,xxih.program_update_date    =    cd_program_update_date    -- プログラム更新日
-            ,xxih.parallel_type          =    gn_parallel_count         -- パラレル実行区分
-        WHERE xxih.bill_cust_code  = iv_cust_acct_code
-        AND   xxih.cutoff_date = id_cutoff_date
-        ;
+-- Modify 2013.06.10 Ver1.13 Start
+      --請求ヘッダ情報、請求明細情報データが両方存在する場合は、WHOカラムのみを更新する
+      --金額の再計算は請求明細情報作成で実施する
+        IF (ln_target_inv_cnt > 0) THEN
 --
-      EXCEPTION
-      -- *** OTHERS例外ハンドラ ***
-        WHEN OTHERS THEN
-          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
-                                  iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
-                                 ,iv_name         => cv_msg_cfr_00017      -- データ更新エラー
-                                 ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
-                                 ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxih))
-                                                                           -- 請求ヘッダ情報テーブル
-                               ,1
-                               ,5000);
-          lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
-          RAISE global_process_expt;
-      END;
+          BEGIN
+            UPDATE xxcfr_invoice_headers  xxih  -- 請求ヘッダ情報テーブル
+            SET
+                 xxih.last_updated_by        =    cn_last_updated_by        -- 最終更新者
+                ,xxih.last_update_date       =    cd_last_update_date       -- 最終更新日
+                ,xxih.last_update_login      =    cn_last_update_login      -- 最終更新ログイン
+                ,xxih.request_id             =    cn_request_id             -- 要求ID
+                ,xxih.program_application_id =    cn_program_application_id -- コンカレント・プログラム・アプリケーションID
+                ,xxih.program_id             =    cn_program_id             -- コンカレント・プログラムID
+                ,xxih.program_update_date    =    cd_program_update_date    -- プログラム更新日
+                ,xxih.parallel_type          =    NULL                      -- パラレル実行区分
+                ,xxih.inv_creation_flag      =    cv_inv_creation_flag      --請求作成対象フラグ
+            WHERE xxih.bill_cust_code  = iv_cust_acct_code
+            AND   xxih.cutoff_date = id_cutoff_date
+            ;
+--
+          EXCEPTION
+          -- *** OTHERS例外ハンドラ ***
+            WHEN OTHERS THEN
+              lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                      iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
+                                     ,iv_name         => cv_msg_cfr_00017      -- データ更新エラー
+                                     ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
+                                     ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxih))
+                                                                               -- 請求ヘッダ情報テーブル
+                                   ,1
+                                   ,5000);
+              lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+              RAISE global_process_expt;
+          END;
+--
+        --請求ヘッダ情報のみ存在する場合は、すべての情報を更新する
+        ELSE
+-- Modify 2013.06.10 Ver1.13 End
+--
+          BEGIN
+            UPDATE xxcfr_invoice_headers  xxih  -- 請求ヘッダ情報テーブル
+            SET
+                 xxih.set_of_books_id        =    gn_set_book_id            -- 会計帳簿ID
+                ,xxih.cutoff_date            =    id_cutoff_date            -- 締日
+                ,xxih.term_name              =    iv_term_name              -- 支払条件
+                ,xxih.term_id                =    iv_term_id                -- 支払条件ID
+                ,xxih.due_months_forword     =    gt_due_months_forword     -- サイト月数
+                ,xxih.month_remit            =    gt_month_remit            -- 月限
+                ,xxih.payment_date           =    gt_payment_date           -- 支払日
+                ,xxih.tax_type               =    gt_tax_type               -- 消費税区分
+                ,xxih.tax_gap_trx_id         =    gt_tax_gap_trx_id         -- 税差額取引ID
+                ,xxih.tax_gap_amount         =    gt_tax_gap_amount         -- 税差額
+                ,xxih.inv_amount_no_tax      =    gt_amount_no_tax          -- 税抜請求金額合計
+                ,xxih.tax_amount_sum         =    gt_tax_amount_sum         -- 税額合計
+                ,xxih.inv_amount_includ_tax  =    gt_amount_includ_tax      -- 税込請求金額合計
+                ,xxih.itoen_name             =    gt_itoen_name             -- 取引先名
+                ,xxih.postal_code            =    gt_postal_code            -- 送付先郵便番号
+                ,xxih.send_address1          =    gt_send_address1          -- 送付先住所1
+                ,xxih.send_address2          =    gt_send_address2          -- 送付先住所2
+                ,xxih.send_address3          =    gt_send_address3          -- 送付先住所3
+                ,xxih.send_to_name           =    iv_cust_acct_name         -- 送付先名
+                ,xxih.inv_creation_date      =    cd_creation_date          -- 作成日
+                ,xxih.object_month           =    TO_CHAR(id_cutoff_date, 'YYYYMM')     -- 対象年月
+                ,xxih.object_date_from       =    gt_object_date_from       -- 対象期間（自）
+                ,xxih.object_date_to         =    id_cutoff_date            -- 対象期間（至）
+                ,xxih.vender_code            =    gt_vender_code            -- 仕入先コード
+                ,xxih.receipt_location_code  =    gt_receipt_location_code  -- 入金拠点コード
+                ,xxih.bill_location_code     =    gt_bill_location_code     -- 請求拠点コード
+                ,xxih.bill_location_name     =    gt_bill_location_name     -- 請求拠点名
+                ,xxih.agent_tel_num          =    gt_agent_tel_num          -- 担当電話番号
+                ,xxih.credit_cust_code       =    NVL(gt_credit_cust_code, iv_cust_acct_code)     -- 与信先顧客コード
+                ,xxih.credit_cust_name       =    NVL(gt_credit_cust_name, iv_cust_acct_name)     -- 与信先顧客名
+                ,xxih.receipt_cust_code      =    gt_receipt_cust_code      -- 入金先顧客コード
+                ,xxih.receipt_cust_name      =    gt_receipt_cust_name      -- 入金先顧客名
+                ,xxih.payment_cust_code      =    gt_payment_cust_code      -- 親請求先顧客コード
+                ,xxih.payment_cust_name      =    gt_payment_cust_name      -- 親請求先顧客名
+                ,xxih.bill_cust_code         =    iv_cust_acct_code         -- 請求先顧客コード
+                ,xxih.bill_cust_name         =    iv_cust_acct_name         -- 請求先顧客名
+                ,xxih.bill_cust_kana_name    =    gt_bill_cust_kana_name    -- 請求先顧客カナ名
+                ,xxih.bill_cust_account_id   =    iv_cust_acct_id           -- 請求先顧客ID
+                ,xxih.bill_cust_acct_site_id =    iv_cust_acct_site_id      -- 請求先顧客所在地ID
+                ,xxih.bill_shop_code         =    gt_bill_shop_code         -- 請求先店舗コード
+                ,xxih.bill_shop_name         =    gt_bill_shop_name         -- 請求先店名
+                ,xxih.credit_receiv_code2    =    gt_credit_receiv_code2    -- 売掛コード2（事業所）
+                ,xxih.credit_receiv_name2    =    gt_credit_receiv_name2    -- 売掛コード2（事業所）名称
+                ,xxih.credit_receiv_code3    =    gt_credit_receiv_code3    -- 売掛コード3（その他）
+                ,xxih.credit_receiv_name3    =    gt_credit_receiv_name3    -- 売掛コード3（その他）名称
+                ,xxih.invoice_output_form    =    gt_invoice_output_form    -- 請求書出力形式
+                ,xxih.org_id                 =    gn_org_id                 -- 組織ID
+                ,xxih.last_updated_by        =    cn_last_updated_by        -- 最終更新者
+                ,xxih.last_update_date       =    cd_last_update_date       -- 最終更新日
+                ,xxih.last_update_login      =    cn_last_update_login      -- 最終更新ログイン
+                ,xxih.request_id             =    cn_request_id             -- 要求ID
+                ,xxih.program_application_id =    cn_program_application_id -- コンカレント・プログラム・アプリケーションID
+                ,xxih.program_id             =    cn_program_id             -- コンカレント・プログラムID
+                ,xxih.program_update_date    =    cd_program_update_date    -- プログラム更新日
+                ,xxih.parallel_type          =    gn_parallel_count         -- パラレル実行区分
+-- Modify 2013.06.10 Ver1.13 Start
+                ,xxih.inv_creation_flag      =    cv_inv_creation_flag      --請求作成対象フラグ
+-- Modify 2013.06.10 Ver1.13 End
+            WHERE xxih.bill_cust_code  = iv_cust_acct_code
+            AND   xxih.cutoff_date = id_cutoff_date
+            ;
+--
+          EXCEPTION
+          -- *** OTHERS例外ハンドラ ***
+            WHEN OTHERS THEN
+              lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                      iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
+                                     ,iv_name         => cv_msg_cfr_00017      -- データ更新エラー
+                                     ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
+                                     ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxih))
+                                                                               -- 請求ヘッダ情報テーブル
+                                   ,1
+                                   ,5000);
+              lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+              RAISE global_process_expt;
+          END;
+--
+-- Modify 2013.06.10 Ver1.13 Start
+        END IF;
+-- Modify 2013.06.10 Ver1.13 End
 --
       ELSE
       --対象データが存在しない場合は、新規作成
@@ -3214,7 +3701,11 @@ AS
           program_application_id,            -- コンカレント・プログラム・アプリケーションID
           program_id,                        -- コンカレント・プログラムID
           program_update_date,               -- プログラム更新日
-          parallel_type                      -- パラレル実行区分
+-- Modify 2013.06.10 Ver1.13 Start
+--          parallel_type                      -- パラレル実行区分
+          parallel_type,                     -- パラレル実行区分
+          inv_creation_flag                  -- 請求作成対象フラグ
+-- Modify 2013.06.10 Ver1.13 End
         ) VALUES (
           xxcfr_invoice_headers_s1.NEXTVAL,                             -- 一括請求書ID
           gn_set_book_id,                                               -- 会計帳簿ID
@@ -3273,7 +3764,11 @@ AS
           cn_program_application_id,                                    -- コンカレント・プログラム・アプリケーションID
           cn_program_id,                                                -- コンカレント・プログラムID
           cd_program_update_date,                                       -- プログラム更新日
-          gn_parallel_count                                             -- パラレル実行区分
+-- Modify 2013.06.10 Ver1.13 Start
+--          gn_parallel_count                                             -- パラレル実行区分
+          gn_parallel_count,                                            -- パラレル実行区分
+          cv_inv_creation_flag                                          -- 請求作成対象フラグ
+-- Modify 2013.06.10 Ver1.13 End
         );
 --
       EXCEPTION
@@ -3733,129 +4228,133 @@ AS
 --  END update_tax_gap;
 -- Modify 2009.09.29 Ver1.06 End
 --
+-- Modify 2013.06.10 Ver1.13 Start
+--
 -- Modify 2013.01.10 Ver1.12 Start
 --
-  /**********************************************************************************
-   * Procedure Name   : update_invoice_header
-   * Description      : 請求ヘッダ情報更新処理(A-10)
-   ***********************************************************************************/
-  PROCEDURE update_invoice_header(
-    iv_cust_acct_code       IN  VARCHAR2,     -- 請求先顧客コード
-    id_cutoff_date          IN  DATE,         -- 締日
-    ov_errbuf               OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
-    ov_retcode              OUT VARCHAR2,     -- リターン・コード             --# 固定 #
-    ov_errmsg               OUT VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
-  )
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_invoice_header'; -- プログラム名
---
---#####################  固定ローカル変数宣言部 START   ########################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
---
-    -- *** ローカル変数 ***
-    ln_target_cnt       NUMBER;                             -- 対象件数
---
-    -- *** ローカル・カーソル ***
---
-    -- *** ローカル・レコード ***
---
-    -- *** ローカル例外 ***
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := cv_status_normal;
---
---###########################  固定部 END   ############################
---
-    -- ローカル変数の初期化
-    ln_target_cnt     := 0;
---
-      BEGIN
-        -- 請求明細データを削除しているが、請求対象取引データが存在しなかった場合は請求明細データ作成で
-        -- 請求金額の再計算を行う必要がある為、要求IDを更新して請求明細データ作成の処理対象とする
-        -- ただし、請求明細データが１件も存在しない場合は更新対象外とする
---
-        UPDATE xxcfr_invoice_headers  xxih  -- 請求ヘッダ情報テーブル
-        SET
-             xxih.last_updated_by        =    cn_last_updated_by        --最終更新者
-            ,xxih.last_update_date       =    cd_last_update_date       --最終更新日
-            ,xxih.last_update_login      =    cn_last_update_login      --最終更新ログイン
-            ,xxih.request_id             =    cn_request_id             --要求ID
-            ,xxih.program_application_id =    cn_program_application_id --コンカレント・プログラム・アプリケーションID
-            ,xxih.program_id             =    cn_program_id             --コンカレント・プログラムID
-            ,xxih.program_update_date    =    cd_program_update_date    --プログラム更新日
-        WHERE xxih.bill_cust_code  = iv_cust_acct_code
-        AND   xxih.cutoff_date = id_cutoff_date
-        AND   EXISTS (
-                SELECT 'X'
-                FROM   xxcfr_invoice_lines xxil
-                WHERE  xxih.invoice_id = xxil.invoice_id
-        );
---
-        --==============================================================
-        --件数カウントアップ
-        --==============================================================
-        IF (SQL%ROWCOUNT > 0) THEN
-          --更新件数カウントアップ
-          gn_up_cnt := gn_up_cnt +1;
-        ELSE
-          --スキップ件数カウントアップ
-          gn_warn_cnt := gn_warn_cnt + 1;
-        END IF;
---
-      EXCEPTION
-      -- *** OTHERS例外ハンドラ ***
-        WHEN OTHERS THEN
-          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
-                                  iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
-                                 ,iv_name         => cv_msg_cfr_00017      -- データ更新エラー
-                                 ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
-                                 ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxih))
-                                                                           -- 請求ヘッダ情報テーブル
-                               ,1
-                               ,5000);
-          lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
-          RAISE global_process_expt;
-      END;
---
-  EXCEPTION
-    -- *** 処理部共通例外ハンドラ ***
-    WHEN global_process_expt THEN
-      ov_errmsg  := lv_errmsg || 
-                     SUBSTRB(xxccp_common_pkg.get_msg(
-                               iv_application  => cv_msg_kbn_cfr,
-                               iv_name         => cv_msg_cfr_00065,  --請求先顧客コードメッセージ
-                               iv_token_name1  => cv_tkn_cust_code,  
-                               iv_token_value1 => iv_cust_acct_code),
-                             1,
-                             5000);
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
+--  /**********************************************************************************
+--   * Procedure Name   : update_invoice_header
+--   * Description      : 請求ヘッダ情報更新処理(A-10)
+--   ***********************************************************************************/
+--  PROCEDURE update_invoice_header(
+--    iv_cust_acct_code       IN  VARCHAR2,     -- 請求先顧客コード
+--    id_cutoff_date          IN  DATE,         -- 締日
+--    ov_errbuf               OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+--    ov_retcode              OUT VARCHAR2,     -- リターン・コード             --# 固定 #
+--    ov_errmsg               OUT VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
+--  )
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_invoice_header'; -- プログラム名
+----
+----#####################  固定ローカル変数宣言部 START   ########################
+----
+--    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+--    lv_retcode VARCHAR2(1);     -- リターン・コード
+--    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+----
+----###########################  固定部 END   ####################################
+----
+--    -- ===============================
+--    -- ユーザー宣言部
+--    -- ===============================
+--    -- *** ローカル定数 ***
+----
+--    -- *** ローカル変数 ***
+--    ln_target_cnt       NUMBER;                             -- 対象件数
+----
+--    -- *** ローカル・カーソル ***
+----
+--    -- *** ローカル・レコード ***
+----
+--    -- *** ローカル例外 ***
+----
+--  BEGIN
+----
+----##################  固定ステータス初期化部 START   ###################
+----
+--    ov_retcode := cv_status_normal;
+----
+----###########################  固定部 END   ############################
+----
+--    -- ローカル変数の初期化
+--    ln_target_cnt     := 0;
+----
+--      BEGIN
+--        -- 請求明細データを削除しているが、請求対象取引データが存在しなかった場合は請求明細データ作成で
+--        -- 請求金額の再計算を行う必要がある為、要求IDを更新して請求明細データ作成の処理対象とする
+--        -- ただし、請求明細データが１件も存在しない場合は更新対象外とする
+----
+--        UPDATE xxcfr_invoice_headers  xxih  -- 請求ヘッダ情報テーブル
+--        SET
+--             xxih.last_updated_by        =    cn_last_updated_by        --最終更新者
+--            ,xxih.last_update_date       =    cd_last_update_date       --最終更新日
+--            ,xxih.last_update_login      =    cn_last_update_login      --最終更新ログイン
+--            ,xxih.request_id             =    cn_request_id             --要求ID
+--            ,xxih.program_application_id =    cn_program_application_id --コンカレント・プログラム・アプリケーションID
+--            ,xxih.program_id             =    cn_program_id             --コンカレント・プログラムID
+--            ,xxih.program_update_date    =    cd_program_update_date    --プログラム更新日
+--        WHERE xxih.bill_cust_code  = iv_cust_acct_code
+--        AND   xxih.cutoff_date = id_cutoff_date
+--        AND   EXISTS (
+--                SELECT 'X'
+--                FROM   xxcfr_invoice_lines xxil
+--                WHERE  xxih.invoice_id = xxil.invoice_id
+--        );
+----
+--        --==============================================================
+--        --件数カウントアップ
+--        --==============================================================
+--        IF (SQL%ROWCOUNT > 0) THEN
+--          --更新件数カウントアップ
+--          gn_up_cnt := gn_up_cnt +1;
+--        ELSE
+--          --スキップ件数カウントアップ
+--          gn_warn_cnt := gn_warn_cnt + 1;
+--        END IF;
+----
+--      EXCEPTION
+--      -- *** OTHERS例外ハンドラ ***
+--        WHEN OTHERS THEN
+--          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+--                                  iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
+--                                 ,iv_name         => cv_msg_cfr_00017      -- データ更新エラー
+--                                 ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
+--                                 ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxih))
+--                                                                           -- 請求ヘッダ情報テーブル
+--                               ,1
+--                               ,5000);
+--          lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+--          RAISE global_process_expt;
+--      END;
+----
+--  EXCEPTION
+--    -- *** 処理部共通例外ハンドラ ***
+--    WHEN global_process_expt THEN
+--      ov_errmsg  := lv_errmsg || 
+--                     SUBSTRB(xxccp_common_pkg.get_msg(
+--                               iv_application  => cv_msg_kbn_cfr,
+--                               iv_name         => cv_msg_cfr_00065,  --請求先顧客コードメッセージ
+--                               iv_token_name1  => cv_tkn_cust_code,  
+--                               iv_token_value1 => iv_cust_acct_code),
+--                             1,
+--                             5000);
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
 --
 --#####################################  固定部 END   ##########################################
 --
-  END update_invoice_header;
+--  END update_invoice_header;
 --
 -- Modify 2013.01.10 Ver1.12 End
+--
+-- Modify 2013.06.10 Ver1.13 End
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -3882,9 +4381,11 @@ AS
     lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode VARCHAR2(1);     -- リターン・コード
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+-- Modify 2013.06.10 Ver1.13 Start
 -- Modify 2013.01.10 Ver1.12 Start
-    lv_delete_flag VARCHAR2(1);     -- 前回処理データ削除フラグ
+--    lv_delete_flag VARCHAR2(1);     -- 前回処理データ削除フラグ
 -- Modify 2013.01.10 Ver1.12 End
+-- Modify 2013.06.10 Ver1.13 End
 --
     ln_target_trx_cnt   NUMBER; --請求対象取引データ件数
 --
@@ -3917,9 +4418,12 @@ AS
     gn_error_cnt   := 0;
     gn_warn_cnt    := 0;
     gv_conc_status := cv_status_normal;
+-- Modify 2013.06.10 Ver1.13 Start
 -- Modify 2013.01.10 Ver1.12 Start
-    gn_up_cnt      := 0;
+--    gn_up_cnt      := 0;
 -- Modify 2013.01.10 Ver1.12 End
+    gn_ins_cnt   := 0;
+-- Modify 2013.06.10 Ver1.13 End
 --
 -- Modify 2009.12.11 Ver1.07 start
     UPDATE ra_customer_trx_all update_tab
@@ -4038,9 +4542,11 @@ AS
     FOR ln_loop_cnt IN gt_get_acct_code_tab.FIRST..gt_get_acct_code_tab.LAST LOOP
       --変数初期化
       ln_target_trx_cnt := 0;
+-- Modify 2013.06.10 Ver1.13 Start
 -- Modify 2013.01.10 Ver1.12 Start
-      lv_delete_flag := cv_delete_flag_no;
+--      lv_delete_flag := cv_delete_flag_no;
 -- Modify 2013.01.10 Ver1.12 End
+-- Modify 2013.06.10 Ver1.13 End
 --
       --夜間手動判断区分の判断
       IF (iv_batch_on_judge_type != cv_judge_type_batch) THEN
@@ -4052,8 +4558,10 @@ AS
           ,gt_get_cutoff_date_tab(ln_loop_cnt)   -- 締日
 -- Modify 2013.01.10 Ver1.12 Start
           ,iv_bill_acct_code                     -- 請求先顧客コード(コンカレントパラメータ)
-          ,lv_delete_flag                        -- 前回処理データ削除フラグ
+-- Modify 2013.06.10 Ver1.13 Start
+--          ,lv_delete_flag                        -- 前回処理データ削除フラグ
 -- Modify 2013.01.10 Ver1.12 End
+-- Modify 2013.06.10 Ver1.13 End
           ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
           ,lv_retcode                            -- リターン・コード             --# 固定 #
           ,lv_errmsg);                           -- ユーザー・エラー・メッセージ --# 固定 #
@@ -4099,6 +4607,9 @@ AS
 -- Modify 2012.11.09 Ver1.11 Start
            iv_batch_on_judge_type,                     -- 夜間手動判断区分
 -- Modify 2012.11.09 Ver1.11 End
+-- Modify 2013.06.10 Ver1.13 Start
+           iv_bill_acct_code,                          -- 請求先顧客コード(コンカレントパラメータ)
+-- Modify 2013.06.10 Ver1.13 End
            lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
            lv_retcode,                                 -- リターン・コード             --# 固定 #
            lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
@@ -4140,38 +4651,43 @@ AS
 --
       --請求対象取引データが存在しなかった場合
       ELSE
+--
+-- Modify 2013.06.10 Ver1.13 Start
 -- Modify 2013.01.10 Ver1.12 Start
-        -- 夜間手動判断区分の判断
-        IF (iv_batch_on_judge_type = cv_judge_type_batch) THEN
+--        -- 夜間手動判断区分の判断
+--        IF (iv_batch_on_judge_type = cv_judge_type_batch) THEN
 -- Modify 2013.01.10 Ver1.12 End
+-- Modify 2013.06.10 Ver1.13 End
         -- スキップ件数をカウント
         gn_warn_cnt := gn_warn_cnt + 1;
 --
+-- Modify 2013.06.10 Ver1.13 Start
 -- Modify 2013.01.10 Ver1.12 Start
-        -- 夜間手動判断区分が手動実行、かつ請求明細データを削除している場合
-        ELSIF (iv_batch_on_judge_type != cv_judge_type_batch) AND
-          (lv_delete_flag = cv_delete_flag_yes) THEN
-          -- =====================================================
-          -- 請求ヘッダ情報更新処理(A-10)
-          -- =====================================================
-          update_invoice_header(
-             gt_get_acct_code_tab(ln_loop_cnt),          -- 請求先顧客コード
-             gt_get_cutoff_date_tab(ln_loop_cnt),        -- 締日
-             lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-             lv_retcode,                                 -- リターン・コード             --# 固定 #
-             lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-          );
-          IF (lv_retcode = cv_status_error) THEN
-            --(エラー処理)
-            RAISE global_process_expt;
-          END IF;
+--        -- 夜間手動判断区分が手動実行、かつ請求明細データを削除している場合
+--        ELSIF (iv_batch_on_judge_type != cv_judge_type_batch) AND
+--          (lv_delete_flag = cv_delete_flag_yes) THEN
+--          -- =====================================================
+--          -- 請求ヘッダ情報更新処理(A-10)
+--          -- =====================================================
+--          update_invoice_header(
+--             gt_get_acct_code_tab(ln_loop_cnt),          -- 請求先顧客コード
+--             gt_get_cutoff_date_tab(ln_loop_cnt),        -- 締日
+--             lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--             lv_retcode,                                 -- リターン・コード             --# 固定 #
+--             lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--          );
+--          IF (lv_retcode = cv_status_error) THEN
+--            --(エラー処理)
+--            RAISE global_process_expt;
+--          END IF;
 --
-        ELSE
-          -- スキップ件数をカウント
-          gn_warn_cnt := gn_warn_cnt + 1;
+--        ELSE
+--          -- スキップ件数をカウント
+--          gn_warn_cnt := gn_warn_cnt + 1;
 --
-        END IF;
+--        END IF;
 -- Modify 2013.01.10 Ver1.12 End
+-- Modify 2013.06.10 Ver1.13 End
 --
       END IF;
     END LOOP for_loop;
@@ -4299,9 +4815,12 @@ AS
       gn_normal_cnt := 0;
       gn_error_cnt  := 1;
       gn_warn_cnt   := 0;
+-- Modify 2013.06.10 Ver1.13 Start
 -- Modify 2013.01.10 Ver1.12 Start
-      gn_up_cnt     := 0;
+--      gn_up_cnt     := 0;
 -- Modify 2013.01.10 Ver1.12 End
+      gn_ins_cnt    := 0;
+-- Modify 2013.06.10 Ver1.13 End
     END IF;
     --
     --対象件数出力
@@ -4353,12 +4872,18 @@ AS
     );
     --
 -- Modify 2013.01.10 Ver1.12 Start
-    --更新件数出力(ヘッダ部)
+    --バックアップ件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => 'XXCFR'
-                    ,iv_name         => 'APP-XXCFR1-00146'
+-- Modify 2013.06.10 Ver1.13 Start
+--                    ,iv_name         => 'APP-XXCFR1-00146'
+                    ,iv_name         => 'APP-XXCFR1-00148'
+-- Modify 2013.06.10 Ver1.13 End
                     ,iv_token_name1  => 'COUNT'
-                    ,iv_token_value1 => TO_CHAR(gn_up_cnt)
+-- Modify 2013.06.10 Ver1.13 Start
+--                    ,iv_token_value1 => TO_CHAR(gn_up_cnt)
+                    ,iv_token_value1 => TO_CHAR(gn_ins_cnt)
+-- Modify 2013.06.10 Ver1.13 End
                    );
     fnd_file.put_line(
        which  => FND_FILE.OUTPUT

@@ -1,0 +1,175 @@
+CREATE TABLE xxcfr.xxcfr_wk_invoice_lines
+/*************************************************************************
+ * 
+ * Table Name      : xxcfr_wk_invoice_lines
+ * Description     : 請求明細情報ワークテーブル
+ * MD.050          : MD.050_LDM_CFR_001
+ * MD.070          : 
+ * Version         : 1.0
+ * 	
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2013/05/13   1.0   SCSK 中野 徹也  初回作成[E_本稼動_09964対応]
+ ************************************************************************/
+( 
+  invoice_id                   NUMBER                   ,     -- 一括請求書ID
+  invoice_detail_num           NUMBER                   ,     -- 一括請求書明細No
+  note_line_id                 NUMBER                   ,     -- 伝票明細No
+  ship_cust_code               VARCHAR2(30)             ,     -- 納品先顧客コード
+  ship_cust_name               VARCHAR2(360)            ,     -- 納品先顧客名
+  ship_cust_kana_name          VARCHAR2(320)            ,     -- 納品先顧客カナ名
+  sold_location_code           VARCHAR2(30)             ,     -- 売上拠点コード
+  sold_location_name           VARCHAR2(360)            ,     -- 売上拠点名
+  ship_shop_code               VARCHAR2(30)             ,     -- 納品先店舗コード
+  ship_shop_name               VARCHAR2(360)            ,     -- 納品先店名
+  vd_num                       VARCHAR2(50)             ,     -- 自動販売機番号
+  vd_cust_type                 VARCHAR2(1)              ,     -- VD顧客区分
+  inv_type                     VARCHAR2(2)              ,     -- 請求区分
+  chain_shop_code              VARCHAR2(30)             ,     -- チェーン店コード
+  delivery_date                DATE	                    ,     -- 納品日
+  slip_num                     VARCHAR2(30)             ,     -- 伝票番号
+  order_num                    VARCHAR2(30)             ,     -- オーダーNO
+  column_num                   VARCHAR2(10)             ,     -- コラムNo
+  slip_type                    VARCHAR2(10)             ,     -- 伝票区分
+  classify_type                VARCHAR2(10)             ,     -- 分類区分
+  customer_dept_code           VARCHAR2(20)             ,     -- お客様部門コード
+  customer_division_code       VARCHAR2(20)             ,     -- お客様課コード
+  sold_return_type             VARCHAR2(5)              ,     -- 売上返品区分
+  nichiriu_by_way_type         VARCHAR2(5)              ,     -- ニチリウ経由区分
+  sale_type                    VARCHAR2(5)              ,     -- 特売区分
+  direct_num                   VARCHAR2(10)             ,     -- 便No
+  po_date                      DATE                     ,     -- 発注日
+  acceptance_date              DATE                     ,     -- 検収日
+  item_code                    VARCHAR2(20)             ,     -- 商品CD
+  item_name                    VARCHAR2(360)            ,     -- 商品名
+  item_kana_name               VARCHAR2(320)            ,     -- 商品カナ名
+  policy_group                 VARCHAR2(10)             ,     -- 政策群コード
+  jan_code                     VARCHAR2(30)             ,     -- JANコード
+  vessel_type                  VARCHAR2(10)             ,     -- 容器区分
+  vessel_type_name             VARCHAR2(100)            ,     -- 容器区分名
+  vessel_group                 VARCHAR2(10)             ,     -- 容器群
+  vessel_group_name            VARCHAR2(100)            ,     -- 容器群名
+  quantity                     NUMBER                   ,     -- 数量
+  unit_price                   NUMBER                   ,     -- 単価
+  dlv_qty                      NUMBER                   ,     -- 納品数量
+  dlv_unit_price               NUMBER                   ,     -- 納品単価
+  dlv_uom_code                 VARCHAR2(10)             ,     -- 納品単位
+  standard_uom_code            VARCHAR2(10)             ,     -- 基準単位
+  standard_unit_price_excluded NUMBER                   ,     -- 税抜基準単価
+  business_cost                NUMBER                   ,     -- 営業原価
+  tax_amount                   NUMBER                   ,     -- 消費税金額
+  tax_rate                     NUMBER                   ,     -- 消費税率
+  ship_amount                  NUMBER                   ,     -- 納品金額
+  sold_amount                  NUMBER                   ,     -- 売上金額
+  red_black_slip_type          VARCHAR2(5)              ,     -- 赤伝黒伝区分
+  trx_id                       NUMBER                   ,     -- 取引ID
+  trx_number                   VARCHAR2(30)             ,     -- 取引番号
+  cust_trx_type_id             NUMBER                   ,     -- 取引タイプID
+  batch_source_id              NUMBER                   ,     -- 取引ソースID
+  inv_created_by               NUMBER(15)               ,     -- 請求明細作成者
+  inv_creation_date            DATE                     ,     -- 請求明細作成日
+  inv_last_updated_by          NUMBER(15)               ,     -- 請求明細最終更新者
+  inv_last_update_date         DATE                     ,     -- 請求明細最終更新日
+  inv_last_update_login        NUMBER(15)               ,     -- 請求明細最終更新ログイン
+  inv_request_id               NUMBER(15)               ,     -- 請求明細要求ID
+  inv_program_application_id   NUMBER(15)               ,     -- 請求明細コンカレント・プログラム・アプリケーションID
+  inv_program_id               NUMBER(15)               ,     -- 請求明細コンカレント・プログラムID
+  inv_program_update_date      DATE                     ,     -- 請求明細プログラム更新日
+  cutoff_date                  DATE                     ,     -- 締日
+  num_of_cases                 VARCHAR2(240)            ,     -- ケース入数
+  medium_class                 VARCHAR2(2)              ,     -- 受注ソース
+  delivery_chain_code          VARCHAR2(9)              ,     -- 納品先チェーンコード
+  bms_header_data              VARCHAR2(2000)           ,     -- 流通ＢＭＳヘッダデータ
+  created_by                   NUMBER(15)     NOT NULL  ,     -- 作成者
+  creation_date                DATE           NOT NULL  ,     -- 作成日
+  last_updated_by              NUMBER(15)     NOT NULL  ,     -- 最終更新者
+  last_update_date             DATE           NOT NULL  ,     -- 最終更新日
+  last_update_login            NUMBER(15)               ,     -- 最終更新ログイン
+  request_id                   NUMBER(15)               ,     -- 要求ID
+  program_application_id       NUMBER(15)               ,     -- コンカレント・プログラム・アプリケーションID
+  program_id                   NUMBER(15)               ,     -- コンカレント・プログラムID
+  program_update_date          DATE                           -- プログラム更新日
+)
+;
+--
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.invoice_id                   IS '一括請求書ID';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.invoice_detail_num           IS '一括請求書明細No';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.note_line_id                 IS '伝票明細No';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.ship_cust_code               IS '納品先顧客コード';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.ship_cust_name               IS '納品先顧客名';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.ship_cust_kana_name          IS '納品先顧客カナ名';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.sold_location_code           IS '売上拠点コード';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.sold_location_name           IS '売上拠点名';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.ship_shop_code               IS '納品先店舗コード';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.ship_shop_name               IS '納品先店名';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.vd_num                       IS '自動販売機番号';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.vd_cust_type                 IS 'VD顧客区分';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.inv_type                     IS '請求区分';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.chain_shop_code              IS 'チェーン店コード';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.delivery_date                IS '納品日';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.slip_num                     IS '伝票番号';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.order_num                    IS 'オーダーNO';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.column_num                   IS 'コラムNo';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.slip_type                    IS '伝票区分';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.classify_type                IS '分類区分';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.customer_dept_code           IS 'お客様部門コード';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.customer_division_code       IS 'お客様課コード';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.sold_return_type             IS '売上返品区分';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.nichiriu_by_way_type         IS 'ニチリウ経由区分';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.sale_type                    IS '特売区分';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.direct_num                   IS '便No';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.po_date                      IS '発注日';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.acceptance_date              IS '検収日';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.item_code                    IS '商品CD';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.item_name                    IS '商品名';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.item_kana_name               IS '商品カナ名';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.policy_group                 IS '政策群コード';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.jan_code                     IS 'JANコード';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.vessel_type                  IS '容器区分';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.vessel_type_name             IS '容器区分名';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.vessel_group                 IS '容器群';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.vessel_group_name            IS '容器群名';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.quantity                     IS '数量';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.unit_price                   IS '単価';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.dlv_qty                      IS '納品数量';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.dlv_unit_price               IS '納品単価';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.dlv_uom_code                 IS '納品単位';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.standard_uom_code            IS '基準単位';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.standard_unit_price_excluded IS '税抜基準単価';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.business_cost                IS '営業原価';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.tax_amount                   IS '消費税金額';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.tax_rate                     IS '消費税率';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.ship_amount                  IS '納品金額';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.sold_amount                  IS '売上金額';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.red_black_slip_type          IS '赤伝黒伝区分';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.trx_id                       IS '取引ID';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.trx_number                   IS '取引番号';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.cust_trx_type_id             IS '取引タイプID';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.batch_source_id              IS '取引ソースID';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.inv_created_by               IS '請求明細作成者';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.inv_creation_date            IS '請求明細作成日';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.inv_last_updated_by          IS '請求明細最終更新者';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.inv_last_update_date         IS '請求明細最終更新日';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.inv_last_update_login        IS '請求明細最終更新ログイン';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.inv_request_id               IS '請求明細要求ID';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.inv_program_application_id   IS '請求明細コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.inv_program_id               IS '請求明細コンカレント・プログラムID';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.inv_program_update_date      IS '請求明細プログラム更新日';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.cutoff_date                  IS '締日';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.num_of_cases                 IS 'ケース入数';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.medium_class                 IS '受注ソース';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.delivery_chain_code          IS '納品先チェーンコード';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.bms_header_data              IS '流通ＢＭＳヘッダデータ';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.created_by                   IS '作成者';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.creation_date                IS '作成日';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.last_updated_by              IS '最終更新者';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.last_update_date             IS '最終更新日';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.last_update_login            IS '最終更新ログイン';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.request_id                   IS '要求ID';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.program_application_id       IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.program_id                   IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcfr.xxcfr_wk_invoice_lines.program_update_date          IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxcfr.xxcfr_wk_invoice_lines IS '請求明細情報ワークテーブル';

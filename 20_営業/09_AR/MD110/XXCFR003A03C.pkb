@@ -7,7 +7,7 @@ AS
  * Description      : 請求明細データ作成
  * MD.050           : MD050_CFR_003_A03_請求明細データ作成
  * MD.070           : MD050_CFR_003_A03_請求明細データ作成
- * Version          : 1.130
+ * Version          : 1.140
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -16,16 +16,8 @@ AS
  *  init                   p 初期処理                                (A-1)
  *  get_target_inv_header  p 対象請求ヘッダデータ抽出処理            (A-2)
  *  ins_inv_detail_data    p 請求明細データ作成処理                  (A-3)
--- Modify 2009.09.29 Ver1.5 Start
--- *  ins_aroif_data         p AR取引OIF登録処理                       (A-4)
--- *  start_auto_invoice     p 自動インボイス起動処理                  (A-6)
--- *  end_auto_invoice       p 自動インボイス終了処理                  (A-7)
--- *  update_inv_header      p 請求ヘッダ情報更新処理                  (A-8)
--- Modify 2009.09.29 Ver1.5 End
--- Modify 2013.01.17 Ver1.130 Start
  *  get_update_target_bill   p 請求更新対象取得処理                  (A-10)
  *  update_bill_amount       p 請求金額更新処理                      (A-11)
--- Modify 2013.01.17 Ver1.130 End
  *  update_trx_status      p 取引データステータス更新処理            (A-9)
  *  submain                p メイン処理プロシージャ
  *  main                   p コンカレント実行ファイル登録プロシージャ
@@ -50,6 +42,7 @@ AS
  *  2012/11/06    1.120 SCSK 中村 健一  [障害本稼動10090] 夜間ジョブパフォーマンス対応(JOBの分割対応)
  *                                                        使用していない変数の削除
  *  2013/01/17    1.130 SCSK 中野 徹也  [障害本稼動09964] 請求書再作成時の仕様見直し対応
+ *  2013/06/10    1.140 SCSK 中野 徹也  [障害本稼動09964再対応] 請求書再作成時の仕様見直し対応
  *
  *****************************************************************************************/
 --
@@ -93,9 +86,11 @@ AS
 -- Modify 2012.11.06 Ver1.120 Start
 --  gn_warn_cnt             NUMBER;                    -- スキップ件数
 -- Modify 2012.11.06 Ver1.120 End
+-- Modify 2013.06.10 Ver1.140 Start
 -- Modify 2013.01.17 Ver1.130 Start
-  gn_target_up_header_cnt NUMBER;                    -- 更新件数(請求ヘッダ単位)
+--  gn_target_up_header_cnt NUMBER;                    -- 更新件数(請求ヘッダ単位)
 -- Modify 2013.01.17 Ver1.130 End
+-- Modify 2013.06.10 Ver1.140 End
 --
 --################################  固定部 END   ##################################
 --
@@ -305,6 +300,9 @@ AS
 -- Modify 2012.11.06 Ver1.120 Start
   cv_judge_type_batch   CONSTANT VARCHAR2(1)  := '2';           -- 夜間手動判断区分(夜間)
 -- Modify 2012.11.06 Ver1.120 End
+-- Modify 2013.06.10 Ver1.140 Start
+  cv_inv_creation_flag  CONSTANT VARCHAR2(1)  := 'Y';           -- 請求作成対象フラグ(Y)
+-- Modify 2013.06.10 Ver1.140 End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1858,6 +1856,9 @@ AS
             AND    rcta.bill_to_customer_id  = xih.bill_cust_account_id   -- 請求先顧客ID
             AND    xih.org_id                = gn_org_id                      -- 組織ID
             AND    xih.set_of_books_id       = gn_set_book_id        -- 会計帳簿ID
+-- Modify 2013.06.10 Ver1.140 Start
+            AND    xih.inv_creation_flag     = cv_inv_creation_flag  --請求作成対象フラグ
+-- Modify 2013.06.10 Ver1.140 End
             AND    rcta.attribute7 IN (cv_inv_hold_status_o,
                                        cv_inv_hold_status_r)        -- 請求書保留ステータス
             AND    rcta.set_of_books_id = gn_set_book_id            -- 会計帳簿ID
@@ -2031,6 +2032,9 @@ AS
             AND    rcta.bill_to_customer_id  = xih.bill_cust_account_id   -- 請求先顧客ID
             AND    xih.org_id                = gn_org_id                      -- 組織ID
             AND    xih.set_of_books_id       = gn_set_book_id        -- 会計帳簿ID
+-- Modify 2013.06.10 Ver1.140 Start
+            AND    xih.inv_creation_flag     = cv_inv_creation_flag  --請求作成対象フラグ
+-- Modify 2013.06.10 Ver1.140 End
             AND    rcta.attribute7 IN (cv_inv_hold_status_o,
                                        cv_inv_hold_status_r)         -- 請求書保留ステータス
             AND    rcta.set_of_books_id = gn_set_book_id             -- 会計帳簿ID
@@ -4745,67 +4749,70 @@ AS
     -- 請求作成対象データ取得
     -- 請求ヘッダ情報と請求明細情報を作成せずに、明細データ削除のみを実施しているパターンがある
     -- 上記の場合は請求ヘッダ更新として件数をカウントアップする必要がある為、取引データから請求作成対象があるか判断する
-    BEGIN
+-- Modify 2013.06.10 Ver1.140 Start
+--    BEGIN
 --
-      SELECT COUNT('X')               cnt    -- レコード件数
-      INTO   ln_target_cnt
-      FROM   ra_customer_trx_all      rcta
-           , xxcfr_invoice_headers    xxih
-      WHERE  xxih.invoice_id           = in_invoice_id                        -- 請求書ID
-      AND    rcta.trx_date            <= xxih.cutoff_date                     -- 締日
-      AND    rcta.bill_to_customer_id  = xxih.bill_cust_account_id            -- 請求先顧客ID
-      AND    rcta.attribute7 IN (cv_inv_hold_status_o, cv_inv_hold_status_r)  -- 請求書保留ステータス
-      AND    xxih.org_id          = rcta.org_id                               -- 組織ID
-      AND    xxih.set_of_books_id = rcta.set_of_books_id                      -- 会計帳簿ID
-      AND    EXISTS (
-               SELECT  'X'
-               FROM    hz_cust_acct_relate    bill_hcar
-                      ,(
-                 SELECT  bill_hzca.account_number    bill_account_number
-                        ,ship_hzca.account_number    ship_account_number
-                        ,bill_hzca.cust_account_id   bill_account_id
-                        ,ship_hzca.cust_account_id   ship_account_id
-                 FROM    hz_cust_accounts          bill_hzca
-                        ,hz_cust_acct_sites        bill_hzsa
-                        ,hz_cust_site_uses         bill_hsua
-                        ,hz_cust_accounts          ship_hzca
-                        ,hz_cust_acct_sites        ship_hasa
-                        ,hz_cust_site_uses         ship_hsua
-                 WHERE   bill_hzca.cust_account_id   = bill_hzsa.cust_account_id
-                 AND     bill_hzsa.cust_acct_site_id = bill_hsua.cust_acct_site_id
-                 AND     ship_hzca.cust_account_id   = ship_hasa.cust_account_id
-                 AND     ship_hasa.cust_acct_site_id = ship_hsua.cust_acct_site_id
-                 AND     ship_hsua.bill_to_site_use_id = bill_hsua.site_use_id
-                 AND     ship_hzca.customer_class_code = '10'
-                 AND     bill_hsua.site_use_code = 'BILL_TO'
-                 AND     bill_hsua.status = 'A'
-                 AND     ship_hsua.status = 'A'
-               )  ship_cust_info
-               WHERE   rcta.ship_to_customer_id = ship_cust_info.ship_account_id
-               AND     ship_cust_info.bill_account_id = bill_hcar.cust_account_id(+)
-               AND     bill_hcar.related_cust_account_id(+) = ship_cust_info.ship_account_id
-               AND     bill_hcar.attribute1(+) = '1'
-               AND     bill_hcar.status(+)     = 'A'
-               AND     ship_cust_info.bill_account_number = gt_bill_acct_code
-               )
-      ;
+--      SELECT COUNT('X')               cnt    -- レコード件数
+--      INTO   ln_target_cnt
+--      FROM   ra_customer_trx_all      rcta
+--           , xxcfr_invoice_headers    xxih
+--      WHERE  xxih.invoice_id           = in_invoice_id                        -- 請求書ID
+--      AND    rcta.trx_date            <= xxih.cutoff_date                     -- 締日
+--      AND    rcta.bill_to_customer_id  = xxih.bill_cust_account_id            -- 請求先顧客ID
+--      AND    rcta.attribute7 IN (cv_inv_hold_status_o, cv_inv_hold_status_r)  -- 請求書保留ステータス
+--      AND    xxih.org_id          = rcta.org_id                               -- 組織ID
+--      AND    xxih.set_of_books_id = rcta.set_of_books_id                      -- 会計帳簿ID
+--      AND    EXISTS (
+--               SELECT  'X'
+--               FROM    hz_cust_acct_relate    bill_hcar
+--                      ,(
+--                 SELECT  bill_hzca.account_number    bill_account_number
+--                        ,ship_hzca.account_number    ship_account_number
+--                        ,bill_hzca.cust_account_id   bill_account_id
+--                        ,ship_hzca.cust_account_id   ship_account_id
+--                 FROM    hz_cust_accounts          bill_hzca
+--                        ,hz_cust_acct_sites        bill_hzsa
+--                        ,hz_cust_site_uses         bill_hsua
+--                        ,hz_cust_accounts          ship_hzca
+--                        ,hz_cust_acct_sites        ship_hasa
+--                        ,hz_cust_site_uses         ship_hsua
+--                 WHERE   bill_hzca.cust_account_id   = bill_hzsa.cust_account_id
+--                 AND     bill_hzsa.cust_acct_site_id = bill_hsua.cust_acct_site_id
+--                 AND     ship_hzca.cust_account_id   = ship_hasa.cust_account_id
+--                 AND     ship_hasa.cust_acct_site_id = ship_hsua.cust_acct_site_id
+--                 AND     ship_hsua.bill_to_site_use_id = bill_hsua.site_use_id
+--                 AND     ship_hzca.customer_class_code = '10'
+--                 AND     bill_hsua.site_use_code = 'BILL_TO'
+--                 AND     bill_hsua.status = 'A'
+--                 AND     ship_hsua.status = 'A'
+--               )  ship_cust_info
+--               WHERE   rcta.ship_to_customer_id = ship_cust_info.ship_account_id
+--               AND     ship_cust_info.bill_account_id = bill_hcar.cust_account_id(+)
+--               AND     bill_hcar.related_cust_account_id(+) = ship_cust_info.ship_account_id
+--               AND     bill_hcar.attribute1(+) = '1'
+--               AND     bill_hcar.status(+)     = 'A'
+--               AND     ship_cust_info.bill_account_number = gt_bill_acct_code
+--               )
+--      ;
 --
-    EXCEPTION
-    -- *** OTHERS例外ハンドラ ***
-      WHEN OTHERS THEN
-        lt_look_dict_word := xxcfr_common_pkg.lookup_dictionary(
-                               iv_loopup_type_prefix => cv_msg_kbn_cfr,         -- 'XXCFR'
-                               iv_keyword            => cv_dict_cfr_00302009);  -- 対象取引データ件数
-        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
-                               iv_application  => cv_msg_kbn_cfr,               -- 'XXCFR'
-                               iv_name         => cv_msg_cfr_00015,             -- データ取得エラー
-                               iv_token_name1  => cv_tkn_data,
-                               iv_token_value1 => lt_look_dict_word),
-                             1,
-                             5000);
-        lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
-        RAISE global_process_expt;
-    END;
+--    EXCEPTION
+--    -- *** OTHERS例外ハンドラ ***
+--      WHEN OTHERS THEN
+--        lt_look_dict_word := xxcfr_common_pkg.lookup_dictionary(
+--                               iv_loopup_type_prefix => cv_msg_kbn_cfr,         -- 'XXCFR'
+--                               iv_keyword            => cv_dict_cfr_00302009);  -- 対象取引データ件数
+--        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
+--                               iv_application  => cv_msg_kbn_cfr,               -- 'XXCFR'
+--                               iv_name         => cv_msg_cfr_00015,             -- データ取得エラー
+--                               iv_token_name1  => cv_tkn_data,
+--                               iv_token_value1 => lt_look_dict_word),
+--                             1,
+--                             5000);
+--        lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+--        RAISE global_process_expt;
+--    END;
+--
+-- Modify 2013.06.10 Ver1.140 End
 --
     -- 請求ヘッダ情報テーブル請求金額更新
     BEGIN
@@ -4822,9 +4829,11 @@ AS
       --==============================================================
       -- 請求ヘッダ情報を更新している、かつ請求作成対象がない場合、
       -- 請求ヘッダ更新件数をカウントアップする(それ以外は成功件数としてカウントアップされている)
-      IF (SQL%ROWCOUNT > 0) AND (ln_target_cnt = 0) THEN
-        gn_target_up_header_cnt := gn_target_up_header_cnt + 1;
-      END IF;
+-- Modify 2013.06.10 Ver1.140 Start
+--      IF (SQL%ROWCOUNT > 0) AND (ln_target_cnt = 0) THEN
+--        gn_target_up_header_cnt := gn_target_up_header_cnt + 1;
+--      END IF;
+-- Modify 2013.06.10 Ver1.140 End
 --
     EXCEPTION
     -- *** OTHERS例外ハンドラ ***
@@ -4928,9 +4937,11 @@ AS
 -- Modify 2012.11.06 Ver1.120 Start
 --    gv_auto_inv_err_flag := 'N';
 -- Modify 2012.11.06 Ver1.120 End
+-- Modify 2013.06.10 Ver1.140 Start
 -- Modify 2013.01.17 Ver1.130 Start
-    gn_target_up_header_cnt := 0;
+--    gn_target_up_header_cnt := 0;
 -- Modify 2013.01.17 Ver1.130 End
+-- Modify 2013.06.10 Ver1.140 End
 --
     -- =====================================================
     --  初期処理(A-1)
@@ -5286,9 +5297,11 @@ AS
 --      gn_normal_cnt := 0;
 -- Modify 2012.11.06 Ver1.120 End
       gn_error_cnt  := 1;
+-- Modify 2013.06.10 Ver1.140 Start
 -- Modify 2013.01.17 Ver1.130 Start
-      gn_target_up_header_cnt := 0;
+--      gn_target_up_header_cnt := 0;
 -- Modify 2013.01.17 Ver1.130 End
+-- Modify 2013.06.10 Ver1.140 End
     END IF;
     --
     --メッセージタイトル(ヘッダ部)
@@ -5323,8 +5336,11 @@ AS
 --                    ,iv_token_value1 => TO_CHAR(gn_target_header_cnt - gn_target_del_head_cnt)
 --                    ,iv_token_value1 => TO_CHAR(gn_target_header_cnt)
 -- Modify 2012.11.06 Ver1.120 End
-                    ,iv_token_value1 => TO_CHAR(gn_target_header_cnt - gn_target_up_header_cnt)
+-- Modify 2013.06.10 Ver1.140 Start
+--                    ,iv_token_value1 => TO_CHAR(gn_target_header_cnt - gn_target_up_header_cnt)
+                    ,iv_token_value1 => TO_CHAR(gn_target_header_cnt)
 -- Modify 2013.01.17 Ver1.130 End
+-- Modify 2013.06.10 Ver1.140 End
                    );
     fnd_file.put_line(
        which  => FND_FILE.OUTPUT
@@ -5361,18 +5377,20 @@ AS
       ,buff   => gv_out_msg
     );
     --
+-- Modify 2013.06.10 Ver1.140 Start
 -- Modify 2013.01.17 Ver1.130 Start
-    --更新件数出力(ヘッダ部)
-    gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_msg_kbn_cfr
-                    ,iv_name         => cv_msg_cfr_00146
-                    ,iv_token_name1  => cv_tkn_count
-                    ,iv_token_value1 => TO_CHAR(gn_target_up_header_cnt)
-                   );
-    fnd_file.put_line(
-       which  => FND_FILE.OUTPUT
-      ,buff   => gv_out_msg
-    );
+--    --更新件数出力(ヘッダ部)
+--    gv_out_msg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_msg_kbn_cfr
+--                    ,iv_name         => cv_msg_cfr_00146
+--                    ,iv_token_name1  => cv_tkn_count
+--                    ,iv_token_value1 => TO_CHAR(gn_target_up_header_cnt)
+--                   );
+--    fnd_file.put_line(
+--       which  => FND_FILE.OUTPUT
+--      ,buff   => gv_out_msg
+--    );
+-- Modify 2013.06.10 Ver1.140 End
     --
 -- Modify 2013.01.17 Ver1.130 End
     --メッセージタイトル(明細部)

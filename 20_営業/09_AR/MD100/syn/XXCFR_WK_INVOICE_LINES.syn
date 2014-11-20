@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcfr_wk_invoice_lines FOR xxcfr.xxcfr_wk_invoice_lines;
