@@ -11,4 +11,4 @@
  * ------------- ----- ------------ -------------------------------------
  *  2009/07/02    1.0  K.Satomura    èââÒçÏê¨
  ************************************************************************/
-CREATE INDEX csi.xxcso_csi_iten_instances_n20 ON csi.csi_item_instances (instance_status_id) TABLESPACE apps_ts_tx_idx;
+CREATE INDEX csi.xxcso_csi_item_instances_n20 ON csi.csi_item_instances (instance_status_id) TABLESPACE apps_ts_tx_idx;
