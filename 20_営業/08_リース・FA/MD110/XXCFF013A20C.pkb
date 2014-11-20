@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF013A20C(body)
  * Description      : FAアドオンIF
  * MD.050           : MD050_CFF_013_A20_FAアドオンIF
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  insert_trnsf_oif             振替OIF登録                          (A-22)
  *  insert_retire_oif            除・売却OIF登録                      (A-23)
  *  update_les_trns_fa_if_flag   リース取引 FA連携フラグ更新          (A-24)
+ *  update_lease_close_period    リース月次締め期間更新               (A-27)
  *  submain                      メイン処理プロシージャ
  *  main                         コンカレント実行ファイル登録プロシージャ
  * Change Record
@@ -59,6 +60,7 @@ AS
  *                                       除・売却OIFの作成条件の変更
  *  2009/08/31    1.7   SCS渡辺学        [統合テスト障害0001058]
  *                                       統合テスト障害0000417の追加修正
+ *  2012/01/16    1.8   SCSK白川         [E_本稼動_08123] 解約時のFA連携の条件に解約日を追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -500,6 +502,94 @@ AS
 --
   END delete_collections;
 --
+-- 2012/01/16 Ver.1.8 A.Shirakawa ADD Start
+  /**********************************************************************************
+   * Procedure Name   : update_lease_close_period
+   * Description      : リース月次締め期間更新 (A-27)
+   ***********************************************************************************/
+  PROCEDURE update_lease_close_period(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_lease_close_period'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    UPDATE xxcff_lease_closed_periods
+    SET
+           period_name            = gv_period_name            -- 会計期間
+          ,last_updated_by        = cn_last_updated_by        -- 最終更新者
+          ,last_update_date       = cd_last_update_date       -- 最終更新日
+          ,last_update_login      = cn_last_update_login      -- 最終更新ログイン
+          ,request_id             = cn_request_id             -- 要求ID
+          ,program_application_id = cn_program_application_id -- コンカレントプログラムアプリケーション
+          ,program_id             = cn_program_id             -- コンカレントプログラムID
+          ,program_update_date    = cd_program_update_date    -- プログラム更新日
+    WHERE
+           set_of_books_id        = g_init_rec.set_of_books_id
+    ;
+--
+    -- メイン処理前にリース月次締め期間の更新を確定
+    COMMIT;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_lease_close_period;
+--
+-- 2012/01/16 Ver.1.8 A.Shirakawa ADD End
   /**********************************************************************************
    * Procedure Name   : update_les_trns_fa_if_flag
    * Description      : リース取引 FA連携フラグ更新 (A-24)
@@ -1493,6 +1583,10 @@ AS
                                              )      -- 満了,
                                                          -- 中途解約(自己都合),中途解約(保険対応),中途解約(満了)
 -- 0001058 2009/08/31 ADD END --
+-- 2012/01/16 Ver.1.8 A.Shirakawa ADD Start
+        AND ((ctrct_hist.cancellation_date IS NULL)                                             -- 解約日 = NULL (満了or中途解約(満了)の場合)
+          OR (ctrct_hist.cancellation_date < LAST_DAY(TO_DATE(gv_period_name, 'YYYY-MM')) + 1)) -- 解約日 < 会計期間最終日 + 1日
+-- 2012/01/16 Ver.1.8 A.Shirakawa ADD End
         AND ctrct_hist.accounting_if_flag   = cv_if_yet                               -- 未送信
         AND ctrct_hist.lease_kind           IN (cv_lease_kind_fin,cv_lease_kind_lfin) -- Fin,旧Fin
         AND ctrct_hist.contract_header_id   = ctrct_head.contract_header_id
@@ -3985,6 +4079,20 @@ AS
     IF (lv_retcode <> cv_status_normal) THEN
       RAISE global_process_expt;
     END IF;
+-- 2012/01/16 Ver.1.8 A.Shirakawa ADD Start
+--
+    -- ==============================================
+    -- リース月次締め期間更新 (A-27)
+    -- ==============================================
+    update_lease_close_period(
+       lv_errbuf         -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode        -- リターン・コード             --# 固定 #
+      ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    IF (lv_retcode <> cv_status_normal) THEN
+      RAISE global_process_expt;
+    END IF;
+-- 2012/01/16 Ver.1.8 A.Shirakawa ADD End
 --
     -- =========================================
     -- リース取引(追加)登録データ抽出 (A-4)
