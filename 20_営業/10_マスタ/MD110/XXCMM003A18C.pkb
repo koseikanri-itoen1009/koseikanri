@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A18C(body)
  * Description      : î•ñŒn˜AŒgIFƒf[ƒ^ì¬
  * MD.050           : MD050_CMM_003_A18_î•ñŒn˜AŒgIFƒf[ƒ^ì¬
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2010/02/25    1.13  Yutaka.Kuboshima áŠQE_–{‰Ò“®_01660‚Ì‘Î‰
  *  2010/04/06    1.14  Yutaka.Kuboshima áŠQE_–{‰Ò“®_01965‚Ì‘Î‰
  *  2010/09/22    1.15  Shigeto.Niki     áŠQE_–{‰Ò“®_02021‚Ì‘Î‰
+ *  2011/01/21    1.16  Shigeto.Niki     áŠQE_–{‰Ò“®_02266‚Ì‘Î‰
  *
  *****************************************************************************************/
 --
@@ -1292,7 +1293,10 @@ AS
       lv_output_str := lv_output_str || cv_comma || TO_CHAR(cust_data_rec.cnvs_date, cv_fnd_date);                                 --ŒÚ‹qŠl“¾“ú
       lv_output_str := lv_output_str || cv_comma || TO_CHAR(cust_data_rec.final_tran_date, cv_fnd_date);                           --ÅIæˆø“ú
       lv_output_str := lv_output_str || cv_comma || TO_CHAR(cust_data_rec.final_call_date, cv_fnd_date);                           --ÅI–K–â“ú
-      lv_output_str := lv_output_str || cv_comma || SUBSTRB(TO_CHAR(cust_data_rec.change_amount), 1, 4);                           --’Ş‘K
+-- 2011/01/21 Ver1.16 áŠQE_–{‰Ò“®_02266 modify start by Shigeto.Niki
+--      lv_output_str := lv_output_str || cv_comma || SUBSTRB(TO_CHAR(cust_data_rec.change_amount), 1, 4);                           --’Ş‘K
+      lv_output_str := lv_output_str || cv_comma || SUBSTRB(TO_CHAR(cust_data_rec.change_amount), 1, 10);                          --’Ş‘K
+-- 2011/01/21 Ver1.16 áŠQE_–{‰Ò“®_02266 modify end by Shigeto.Niki
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.torihiki_form, 1, 1)               || cv_dqu;  --æˆøŒ`‘Ô
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.postal_code, 1, 7)                 || cv_dqu;  --—X•Ö”Ô†
 -- 2009/06/09 Ver1.6 modify start by Yutaka.Kuboshima
