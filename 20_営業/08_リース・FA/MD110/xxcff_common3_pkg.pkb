@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF_COMMON3_PKG(body)
  * Description      : リース物件関連共通関数
  * MD.050           : なし
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * --------------------      ---- ----- --------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2009-02-10   1.1    SCS 廣瀬真佐人   [障害CFF_023] create_ob_bat、条件分岐において、NULL値を考慮するように修正。
  *  2009-02-23   1.2    SCS 廣瀬真佐人   [障害CFF_048] create_ob_bat、移動時にWHO値をセット。
  *                                       [障害CFF_051] create_contract_ass、中途解約日を業務日付に修正。
+ *  2009-05-14   1.3    SCS 松中　俊樹   [障害T1_0749] create_ob_bat、物件有効フラグ変更時に処理を起動するように修正
  *
  *****************************************************************************************/
 --
@@ -1544,6 +1545,12 @@ AS
             OR ( ( io_object_data_rec.customer_code     IS NOT NULL ) AND ( object_data_rec.customer_code     IS     NULL ) )
             OR ( ( io_object_data_rec.customer_code     <> object_data_rec.customer_code     ) )
              )                                                                                  -- 顧客コード
+          --【T1_0749】ADD START Matsunaka
+          OR ( ( ( io_object_data_rec.active_flag       IS     NULL ) AND ( object_data_rec.active_flag       IS NOT NULL ) )
+            OR ( ( io_object_data_rec.active_flag       IS NOT NULL ) AND ( object_data_rec.active_flag       IS     NULL ) )
+            OR ( ( io_object_data_rec.active_flag       <> object_data_rec.active_flag     ) )
+             )                                                                                  -- 物件有効フラグ
+          --【T1_0749】ADD END   Matsunaka
         ) THEN
           --
           io_object_data_rec.m_owner_company         := NULL;     -- 移動元本社工場
