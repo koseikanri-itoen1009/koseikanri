@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS006A04R (body)
  * Description      : 出荷依頼書
  * MD.050           : 出荷依頼書 MD050_COS_006_A04
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,11 @@ AS
  *                                       コメント化を外す。
  *  2009/03/03    1.2   N.Maeda          不要な定数の削除
  *                                       ( ct_qct_cus_class_mst , ct_qcc_cus_class_mst1 )
+ *  2009/04/01    1.3   N.Maeda          【ST障害No.T1-0085対応】
+ *                                       非在庫品目を非抽出データへ変更
+ *                                       【ST障害No.T1-0049対応】
+ *                                       備考データ取得カラム名の修正
+ *                                       descriptionへのセット内容を修正
  *
  *****************************************************************************************/
 --
@@ -179,6 +184,8 @@ AS
                                       := 'XXCOS1_HOKAN_TYPE_MST_006_A04';
   ct_qct_arrival_time       CONSTANT  fnd_lookup_types.lookup_type%TYPE
                                       := 'XXWSH_ARRIVAL_TIME';
+  ct_xxcos1_no_inv_item_code CONSTANT fnd_lookup_types.lookup_type%TYPE
+                                      := 'XXCOS1_NO_INV_ITEM_CODE';
   --クイックコード
   ct_qcc_order_type         CONSTANT  fnd_lookup_values.lookup_code%TYPE
                                       := 'XXCOS_006_A04%';
@@ -582,7 +589,7 @@ AS
                                             conversion_rate,              --換算値
         oola.ordered_quantity               ordered_quantity,             --受注数量
         oola.order_quantity_uom             order_quantity_uom,           --受注単位
-        oola.attribute8                     remark                        --備考
+        oola.attribute7                     remark                        --備考
       FROM
         oe_order_headers_all                ooha,                         --受注ヘッダテーブル
         oe_order_lines_all                  oola,                         --受注明細テーブル
@@ -701,6 +708,27 @@ AS
       AND ooha.org_id                       = gn_org_id
       AND TRUNC( ooha.ordered_date )        >= xla.start_date_active
       AND TRUNC( ooha.ordered_date )        <= NVL( xla.end_date_active, ooha.ordered_date )
+      AND msib.segment1 NOT IN (
+            SELECT  look_val.lookup_code
+            FROM    fnd_lookup_values     look_val,
+                    fnd_lookup_types_tl   types_tl,
+                    fnd_lookup_types      types,
+                    fnd_application_tl    appl,
+                    fnd_application       app
+            WHERE   appl.application_id   = types.application_id
+            AND     app.application_id    = appl.application_id
+            AND     types_tl.lookup_type  = look_val.lookup_type
+            AND     types.lookup_type     = types_tl.lookup_type
+            AND     types.security_group_id   = types_tl.security_group_id
+            AND     types.view_application_id = types_tl.view_application_id
+            AND     types_tl.language = USERENV( 'LANG' )
+            AND     look_val.language = USERENV( 'LANG' )
+            AND     appl.language     = USERENV( 'LANG' )
+            AND     app.application_short_name = ct_xxcos_appl_short_name
+            AND     gd_process_date      >= look_val.start_date_active
+            AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+            AND     look_val.enabled_flag = ct_enabled_flag_yes
+            AND     look_val.lookup_type = ct_xxcos1_no_inv_item_code )
       ;
 --
       --====================================================
@@ -818,7 +846,7 @@ AS
                                                                1, 60
                                                              );
       g_rpt_data_tab(ln_idx).telephone_no                 := SUBSTRB( l_data_rec.delivery_to_tel, 1, 15 );
-      g_rpt_data_tab(ln_idx).description                  := SUBSTRB( l_data_rec.remark, 1, 80 );
+      g_rpt_data_tab(ln_idx).description                  := SUBSTRB( l_data_rec.shipping_instructions, 1, 80 );
       g_rpt_data_tab(ln_idx).order_line_number            := l_data_rec.line_number;
       g_rpt_data_tab(ln_idx).item_code                    := l_data_rec.item_code;
       g_rpt_data_tab(ln_idx).item_name                    := l_data_rec.description;
