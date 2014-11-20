@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxwshStockCanEncQtyVOImpl
 * 概要説明   : 手持数・引当可能数一覧リージョンビューオブジェクト
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-04-17 1.0  北寒寺正夫     新規作成
+* 2008-08-07 1.1  二瓶　大輔     内部変更要求#183
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -20,7 +21,7 @@ import com.sun.java.util.collections.HashMap;
 /***************************************************************************
  * 手持数・引当可能数一覧リージョンビューオブジェクトクラスです。
  * @author  ORACLE 北寒寺 正夫
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxwshStockCanEncQtyVOImpl extends OAViewObjectImpl
@@ -63,37 +64,38 @@ public class XxwshStockCanEncQtyVOImpl extends OAViewObjectImpl
       setOrderByClause(null);
       setWhereClause(null);
       // バインド変数に値をセット
-      setWhereClauseParam(0,  lotCtl);                   // ロット管理     
-      setWhereClauseParam(1,  scheduleShipDate);         // 出庫予定日
-      setWhereClauseParam(2,  scheduleShipDate);         // 出庫予定日
-      setWhereClauseParam(3,  inputInventoryLocationId); // 入力保管倉庫ID
-      setWhereClauseParam(4,  lotCtl);                   // ロット管理
-      setWhereClauseParam(5,  scheduleShipDate);         // 出庫予定日
-      setWhereClauseParam(6,  inputInventoryLocationId); // 入力保管倉庫ID
-      setWhereClauseParam(7,  lotCtl);                   // ロット管理
-      setWhereClauseParam(8,  convUnitUseKbn);           // 入出庫換算単位使用区分
-      setWhereClauseParam(9,  inputInventoryLocationId); // 入力保管倉庫ID
-      setWhereClauseParam(10, lotCtl);                   // ロット管理
-      setWhereClauseParam(11, scheduleShipDate);         // 出庫予定日
-      setWhereClauseParam(12, numOfCases);               // ケース入数
-      setWhereClauseParam(13, inputInventoryLocationId); // 入力保管倉庫ID
-      setWhereClauseParam(14, lotCtl);                   // ロット管理
-      setWhereClauseParam(15, scheduleShipDate);         // 出庫予定日
-      setWhereClauseParam(16, convUnitUseKbn);           // 入出庫換算単位使用区分
-      setWhereClauseParam(17, inputInventoryLocationId); // 入力保管倉庫ID
-      setWhereClauseParam(18, lotCtl);                   // ロット管理
-      setWhereClauseParam(19, numOfCases);               // ケース入数
-      setWhereClauseParam(20, inputInventoryLocationId); // 入力保管倉庫ID
-      setWhereClauseParam(21, lotCtl);                   // ロット管理
-      setWhereClauseParam(22, convUnitUseKbn);           // 入出庫換算単位使用区分
-      setWhereClauseParam(23, numOfCases);               // ケース入数
-      setWhereClauseParam(24, itemId);                   // 品目ID
-      setWhereClauseParam(25, prodClass);                // 商品区分
-      setWhereClauseParam(26, lineId);                   // 明細ID
-      setWhereClauseParam(27, documentTypeCode);         // 文書タイプ
-      setWhereClauseParam(28, inputInventoryLocationId); // 入力保管倉庫ID
-      setWhereClauseParam(29, lotCtl);                   // ロット管理
-      setWhereClauseParam(30, scheduleShipDate);         // 出庫予定日
+      int i = 0;
+      setWhereClauseParam(i++, lotCtl);                   // ロット管理     
+      setWhereClauseParam(i++, inputInventoryLocationId); // 入力保管倉庫ID
+      setWhereClauseParam(i++, lotCtl);                   // ロット管理
+      setWhereClauseParam(i++, scheduleShipDate);         // 出庫予定日
+      setWhereClauseParam(i++, inputInventoryLocationId); // 入力保管倉庫ID
+      setWhereClauseParam(i++, lotCtl);                   // ロット管理
+      setWhereClauseParam(i++, convUnitUseKbn);           // 入出庫換算単位使用区分
+      setWhereClauseParam(i++, inputInventoryLocationId); // 入力保管倉庫ID
+      setWhereClauseParam(i++, lotCtl);                   // ロット管理
+      setWhereClauseParam(i++, scheduleShipDate);         // 出庫予定日
+      setWhereClauseParam(i++, numOfCases);               // ケース入数
+      setWhereClauseParam(i++, inputInventoryLocationId); // 入力保管倉庫ID
+      setWhereClauseParam(i++, lotCtl);                   // ロット管理
+      setWhereClauseParam(i++, scheduleShipDate);         // 出庫予定日
+      setWhereClauseParam(i++, convUnitUseKbn);           // 入出庫換算単位使用区分
+      setWhereClauseParam(i++, inputInventoryLocationId); // 入力保管倉庫ID
+      setWhereClauseParam(i++, lotCtl);                   // ロット管理
+      setWhereClauseParam(i++, numOfCases);               // ケース入数
+      setWhereClauseParam(i++, inputInventoryLocationId); // 入力保管倉庫ID
+      setWhereClauseParam(i++, lotCtl);                   // ロット管理
+      setWhereClauseParam(i++, convUnitUseKbn);           // 入出庫換算単位使用区分
+      setWhereClauseParam(i++, numOfCases);               // ケース入数
+      setWhereClauseParam(i++, itemId);                   // 品目ID
+      setWhereClauseParam(i++, prodClass);                // 商品区分
+      setWhereClauseParam(i++, lineId);                   // 明細ID
+      setWhereClauseParam(i++, documentTypeCode);         // 文書タイプ
+      setWhereClauseParam(i++, inputInventoryLocationId); // 入力保管倉庫ID
+      setWhereClauseParam(i++, lotCtl);                   // ロット管理
+      setWhereClauseParam(i++, scheduleShipDate);         // 出庫予定日
+      setWhereClauseParam(i++, scheduleShipDate);         // 出庫予定日
+      setWhereClauseParam(i++, scheduleShipDate);         // 出庫予定日
       // ロット管理品の場合条件をセット
       if (XxwshConstants.LOT_CTL_Y.equals(lotCtl.toString()))
       {
@@ -102,14 +104,14 @@ public class XxwshStockCanEncQtyVOImpl extends OAViewObjectImpl
         //ORDERBY句生成
         StringBuffer orderByClause = new StringBuffer(1000);  // ORDERBY句作成用オブジェクト
         //条件にロット管理品を追加
-        whereClause.append("lot_id <> " + XxwshConstants.DEFAULT_LOT.toString());
+        whereClause.append(" lot_id <> " + XxwshConstants.DEFAULT_LOT.toString());
 
         //指定製造日が入力されている場合条件を追加
         if (!XxcmnUtility.isBlankOrNull(designatedProductionDate))
         {
           XxcmnUtility.andAppend(whereClause);
           // Where句生成
-          whereClause.append("production_date >= '" + designatedProductionDate + "'");
+          whereClause.append(" production_date >= '" + designatedProductionDate + "'");
         }
         //呼出画面区分が「出荷」で拠点実績有無区分が「売上拠点」の場合条件を追加
         if (XxwshConstants.CALL_PIC_KBN_SHIP_INPUT.equals(callPictureKbn) &
@@ -117,21 +119,21 @@ public class XxwshStockCanEncQtyVOImpl extends OAViewObjectImpl
         {
           XxcmnUtility.andAppend(whereClause);
           // Where句生成
-          whereClause.append("ship_req_m_reserve = 'Y'");
+          whereClause.append(" ship_req_m_reserve = 'Y'");
         }
         // 呼出画面区分が「支給」の場合条件を追加
         else if(XxwshConstants.CALL_PIC_KBN_PROD_CREATE.equals(callPictureKbn))
         {
           XxcmnUtility.andAppend(whereClause);
           // Where句生成
-          whereClause.append("pay_provision_m_reserve = 'Y'");
+          whereClause.append(" pay_provision_m_reserve = 'Y'");
         }
         // 呼出画面区分が「移動」の場合条件を追加
         else if(XxwshConstants.CALL_PIC_KBN_MOVE_ORDER.equals(callPictureKbn))
         {
           XxcmnUtility.andAppend(whereClause);
           // Where句生成
-          whereClause.append("move_inst_m_reserve = 'Y'");
+          whereClause.append(" move_inst_m_reserve = 'Y'");
         }
         // ORDER BY句を設定
         // 品目区分が製品の場合

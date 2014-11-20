@@ -33,7 +33,7 @@ SELECT ilm.lot_no                            lot_no,                            
             TRIM(SUBSTRB(ilm.attribute18,21,10))
           ELSE
             NULL
-        END)                                  memo2,                                  -- 備考2
+        END)                                 memo2,                                  -- 備考2
         (CASE
            WHEN (LENGTHB(ilm.attribute18) >= 29) AND (MOD(LENGTHB(RTRIM(SUBSTRB(ilm.attribute18, 1, 20))), 2) <> 0) THEN
              CASE
@@ -51,52 +51,26 @@ SELECT ilm.lot_no                            lot_no,                            
              END
            ELSE
              NULL
-         END)                                   memo3,
-       (SELECT xlv1.meaning meaning
-          FROM xxcmn_lookup_values_v xlv1
-         WHERE xlv1.lookup_type = 'XXCMN_L08'
-           AND xlv1.lookup_code = ilm.attribute13
-       )                                     type,                                   -- タイプ
-       (SELECT xlv2.meaning meaning
-          FROM xxcmn_lookup_values_v xlv2
-         WHERE xlv2.lookup_type = 'XXCMN_L07'
-           AND xlv2.lookup_code = ilm.attribute12
-       )                                     product_home,                           -- 産地
-       (SELECT xlv3.meaning meaning
-          FROM xxcmn_lookup_values_v xlv3
-         WHERE xlv3.lookup_type = 'XXCMN_L06'
-           AND xlv3.lookup_code = ilm.attribute10
-       )                                     tea_period_dev,                         -- 茶期
-       (SELECT xlv4.meaning meaning
-          FROM xxcmn_lookup_values_v xlv4
-         WHERE xlv4.lookup_type = 'XXCMN_L05'
-           AND xlv4.lookup_code = ilm.attribute10
-       )                                     stock_form,                             -- 仕入形態
+         END)                                memo3,
+       xlv1.meaning                          type,                                   -- タイプ
+       xlv2.meaning                          product_home,                           -- 産地
+       xlv3.meaning                          tea_period_dev,                         -- 茶期
+       xlv4.meaning                          stock_form,                             -- 仕入形態
        ilm.attribute20                       manufacturers_factory,                  -- 原料製造工場
-       (SELECT SUBSTRB(xvv.vendor_short_name,1,10) vendor_short_name
-          FROM xxcmn_vendors2_v xvv
-         WHERE xvv.segment1 = ilm.attribute8
-           AND :1
-              BETWEEN xvv.start_date_active
-                  AND NVL(xvv.end_date_active,:2)
-       )                                    vendor_short_name,                       -- 取引先
+       SUBSTRB(xvv.vendor_short_name,1,10)   vendor_short_name,                      -- 取引先
        xxcmn_common_pkg.get_can_enc_qty(
-            :3,
+            :1,
             ilm.item_id,
-            DECODE(:4,1,ilm.lot_id,NULL),
-            :5
-       )                                    can_enc_qty,                             -- 引当可能数
+            DECODE(:2,1,ilm.lot_id,NULL),
+            :3
+       )                                     can_enc_qty,                            -- 引当可能数
        xxcmn_common_pkg.get_stock_qty(
-            :6,
+            :4,
             ilm.item_id,
-            DECODE(:7,1,ilm.lot_id,NULL)
-       )                                    stock_qty,                               -- 手持在庫数
-       NVL(xmld.actual_quantity,0)          actual_quantity,                         -- 引当数量
-       (SELECT xlv5.meaning meaning
-          FROM xxcmn_lookup_values_v xlv5
-         WHERE xlv5.lookup_type = 'XXINV_AM_RESERVE_CLASS'
-           AND xlv5.lookup_code = xmld.automanual_reserve_class
-       )                                     automanual_reserve_class,               -- 自動手動引当区分
+            DECODE(:5,1,ilm.lot_id,NULL)
+       )                                     stock_qty,                              -- 手持在庫数
+       NVL(xmld.actual_quantity,0)           actual_quantity,                        -- 引当数量
+       xlv5.meaning                          automanual_reserve_class,               -- 自動手動引当区分
        xlsv.status_desc                      lot_status_name,                        -- ロットステータス(名称)
        xmld.mov_lot_dtl_id                   mov_lot_dtl_id,                         -- ロット詳細ID
        xmld.created_by                       created_by,                             -- 作成者
@@ -104,57 +78,76 @@ SELECT ilm.lot_no                            lot_no,                            
        xmld.last_updated_by                  last_updated_by,                        -- 最終更新者
        xmld.last_update_date                 last_update_date,                       -- 最終更新日
        xmld.last_update_login                last_update_login,                      -- 最終更新ログイン
-       TO_CHAR(DECODE(:8,1,
+       TO_CHAR(DECODE(:6, 1,
          xxcmn_common_pkg.get_can_enc_qty(
-              :9,
+              :7,
               ilm.item_id,
-            DECODE(:10,1,ilm.lot_id,NULL),
-              :11
-         ) / :12,
+            DECODE(:8, 1, ilm.lot_id, NULL),
+              :9
+         ) / :10,
          xxcmn_common_pkg.get_can_enc_qty(
-              :13,
+              :11,
               ilm.item_id,
-            DECODE(:14,1,ilm.lot_id,NULL),
-              :15
+            DECODE(:12,1,ilm.lot_id,NULL),
+              :13
          )
        ),'FM999,999,990.000')                      show_can_enc_qty,                   --引当可能数(表示用)
-       TO_CHAR(DECODE(:16,1,
+       TO_CHAR(DECODE(:14,1,
           xxcmn_common_pkg.get_stock_qty(
-              :17,
+              :15,
               ilm.item_id,
-            DECODE(:18,1,ilm.lot_id,NULL)
-          ) / :19,
+            DECODE(:16,1,ilm.lot_id,NULL)
+          ) / :17,
           xxcmn_common_pkg.get_stock_qty(
-              :20,
+              :18,
               ilm.item_id,
-            DECODE(:21,1,ilm.lot_id,NULL)
+            DECODE(:19,1,ilm.lot_id,NULL)
           )
        ),'FM999,999,990.000')                    show_stock_qty,                       -- 手持在庫数(表示用)
-       TO_CHAR(DECODE(:22,1,
-         NVL(xmld.actual_quantity,0) / :23,
+       TO_CHAR(DECODE(:20,1,
+         NVL(xmld.actual_quantity,0) / :21,
          NVL(xmld.actual_quantity,0)
        ),'FM999999990.000')                    show_actual_quantity,                    -- 引当数量(表示用)
-       xlsv.pay_provision_m_reserve         pay_provision_m_reserve,                 -- 有償支給(手動引当)
-       xlsv.move_inst_m_reserve             move_inst_m_reserve,                     -- 移動指示(手動引当)
-       xlsv.ship_req_m_reserve              ship_req_m_reserve                       -- 出荷依頼(手動引当)
- FROM  ic_lots_mst ilm,                                                              -- ロットマスタ
-       xxinv_mov_lot_details xmld,                                                   -- 移動ロット詳細(アドオン)
-       xxcmn_lot_status_v xlsv                                                       -- ロットステータスビュー
-WHERE  ilm.item_id = :24
-  AND  xlsv.lot_status(+) = ilm.attribute23
-  AND  xlsv.prod_class_code(+) = :25
-  AND  xmld.mov_line_id(+) = :26
-  AND  xmld.document_type_code(+) = :27
-  AND  xmld.record_type_code(+) = '10'
-  AND  xmld.item_id(+) = ilm.item_id
-  AND  xmld.lot_id(+) = ilm.lot_id
+       xlsv.pay_provision_m_reserve            pay_provision_m_reserve,                 -- 有償支給(手動引当)
+       xlsv.move_inst_m_reserve                move_inst_m_reserve,                     -- 移動指示(手動引当)
+       xlsv.ship_req_m_reserve                 ship_req_m_reserve                       -- 出荷依頼(手動引当)
+ FROM  ic_lots_mst           ilm,     -- ロットマスタ
+       xxinv_mov_lot_details xmld,    -- 移動ロット詳細(アドオン)
+       xxcmn_lookup_values_v xlv1,    -- クイックコード情報VIEW(タイプ用)
+       xxcmn_lookup_values_v xlv2,    -- クイックコード情報VIEW(産地用)
+       xxcmn_lookup_values_v xlv3,    -- クイックコード情報VIEW(茶期用)
+       xxcmn_lookup_values_v xlv4,    -- クイックコード情報VIEW(仕入形態用)
+       xxcmn_lookup_values_v xlv5,    -- クイックコード情報VIEW(自動手動引当区分用)
+       xxcmn_vendors2_v      xvv,     -- 仕入先情報VIEW2
+       xxcmn_lot_status_v    xlsv     -- ロットステータスビュー
+WHERE  ilm.item_id                = :22
+  AND  xlsv.lot_status(+)         = ilm.attribute23
+  AND  xlsv.prod_class_code(+)    = :23
+  AND  xmld.mov_line_id(+)        = :24
+  AND  xmld.document_type_code(+) = :25
+  AND  xmld.record_type_code(+)   = '10'
+  AND  xmld.item_id(+)            = ilm.item_id
+  AND  xmld.lot_id(+)             = ilm.lot_id
+  AND  xlv1.lookup_type(+)        = 'XXCMN_L08'
+  AND  xlv1.lookup_code(+)        = ilm.attribute13
+  AND  xlv2.lookup_type(+)        = 'XXCMN_L07'
+  AND  xlv2.lookup_code(+)        = ilm.attribute12
+  AND  xlv3.lookup_type(+)        = 'XXCMN_L06'
+  AND  xlv3.lookup_code(+)        = ilm.attribute10
+  AND  xlv4.lookup_type(+)        = 'XXCMN_L05'
+  AND  xlv4.lookup_code(+)        = ilm.attribute10
+  AND  xlv5.lookup_type(+)        = 'XXINV_AM_RESERVE_CLASS'
+  AND  xlv5.lookup_code(+)        = xmld.automanual_reserve_class
+  AND  xvv.segment1(+)            = ilm.attribute8
   AND  ((NVL(xmld.actual_quantity,0) > 0) OR
         (xxcmn_common_pkg.get_can_enc_qty(
-            :28,
+            :26,
             ilm.item_id,
-            DECODE(:29,1,ilm.lot_id,NULL),
-            :30
+            DECODE(:27,1,ilm.lot_id,NULL),
+            :28
          ) > 0))
+  AND  :29   BETWEEN xvv.start_date_active(+)
+             AND     NVL(xvv.end_date_active(+), :30)
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />

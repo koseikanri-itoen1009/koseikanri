@@ -1,16 +1,17 @@
 /*============================================================================
 * ファイル名 : XxwshUtility
 * 概要説明   : 出荷・引当/配車共通関数
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-27 1.0  伊藤ひとみ   新規作成
 * 2008-06-27 1.1  伊藤ひとみ   結合不具合TE080_400#157
-* 2008-07-02 1.2  二瓶大輔     内部変更要求対応#152
+* 2008-07-02 1.2  二瓶大輔　   内部変更要求対応#152
 * 2008-07-23 1.3  伊藤ひとみ   内部課題#32 checkNumOfCases、getItemCode追加
 * 2008-08-01 1.4  伊藤ひとみ   内部変更要求#176対応
+* 2008-08-07 1.5  二瓶大輔　   内部変更要求#166対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.util;
@@ -32,7 +33,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出荷・引当/配車共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.2
+ * @version 1.5
  ***************************************************************************
  */
 public class XxwshUtility 
@@ -3114,10 +3115,17 @@ public class XxwshUtility
     sb.append("             WHEN (NVL(xola.quantity,0) = 0)"                        );
     sb.append("             THEN 0"                                                 );
     sb.append("             WHEN (ximv.num_of_deliver IS NOT NULL)"                 );
-    sb.append("             THEN xola.quantity / ximv.num_of_deliver"               );
+// 2008/08/07 D.Nihei Mod Start
+//    sb.append("             THEN xola.quantity / ximv.num_of_deliver"               );
+    sb.append("             THEN CEIL(xola.quantity / ximv.num_of_deliver)"         );
+// 2008/08/07 D.Nihei Mod End
     sb.append("             WHEN (ximv.num_of_cases IS NOT NULL)"                   );
-    sb.append("             THEN xola.quantity / ximv.num_of_cases"                 );
-    sb.append("             ELSE xola.quantity"                                     );
+// 2008/08/07 D.Nihei Mod Start
+//    sb.append("             THEN xola.quantity / ximv.num_of_cases"                 );
+//    sb.append("             ELSE xola.quantity"                                     );
+    sb.append("             THEN CEIL(xola.quantity / ximv.num_of_cases)"           );
+    sb.append("             ELSE CEIL(xola.quantity)"                               );
+// 2008/08/07 D.Nihei Mod End
     sb.append("           END"                                                      );
     sb.append("        )) small_quantity,"                                          ); // 小口個数
     sb.append("         TO_CHAR(SUM("                                               );
@@ -3125,10 +3133,17 @@ public class XxwshUtility
     sb.append("             WHEN (NVL(xola.quantity,0) = 0)"                        );
     sb.append("             THEN 0"                                                 );
     sb.append("             WHEN (ximv.num_of_deliver IS NOT NULL)"                 );
-    sb.append("             THEN xola.quantity / ximv.num_of_deliver"               );
+// 2008/08/07 D.Nihei Mod Start
+//    sb.append("             THEN xola.quantity / ximv.num_of_deliver"               );
+    sb.append("             THEN CEIL(xola.quantity / ximv.num_of_deliver)"         );
+// 2008/08/07 D.Nihei Mod End
     sb.append("             WHEN (ximv.num_of_cases IS NOT NULL)"                   );
-    sb.append("             THEN xola.quantity / ximv.num_of_cases"                 );
-    sb.append("             ELSE xola.quantity"                                     );
+// 2008/08/07 D.Nihei Mod Start
+//    sb.append("             THEN xola.quantity / ximv.num_of_cases"                 );
+//    sb.append("             ELSE xola.quantity"                                     );
+    sb.append("             THEN CEIL(xola.quantity / ximv.num_of_cases)"           );
+    sb.append("             ELSE CEIL(xola.quantity)"                               );
+// 2008/08/07 D.Nihei Mod End
     sb.append("           END"                                                      );
     sb.append("        )) label_quantity"                                           ); // ラベル枚数
     sb.append("  INTO   :1 "                                                        );

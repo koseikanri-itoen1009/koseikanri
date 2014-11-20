@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxwshReserveLotAMImpl
 * 概要説明   : 引当ロット入力:登録アプリケーションモジュール
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
-* 2008-03-17 1.0  北寒寺正夫    新規作成
+* 2008-03-17 1.0  北寒寺正夫     新規作成
+* 2008-08-07 1.1  二瓶　大輔     内部変更要求#166,#173
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -19,13 +20,13 @@ import itoen.oracle.apps.xxcmn.util.server.XxcmnOAApplicationModuleImpl;
 import itoen.oracle.apps.xxwsh.util.XxwshConstants;
 import itoen.oracle.apps.xxwsh.util.XxwshUtility;
 
+import java.math.BigDecimal;
+
 import oracle.apps.fnd.common.MessageToken;
 import oracle.apps.fnd.framework.OAAttrValException;
 import oracle.apps.fnd.framework.OAException;
 import oracle.apps.fnd.framework.OARow;
 import oracle.apps.fnd.framework.OAViewObject;
-
-import java.math.BigDecimal;
 
 import oracle.jbo.domain.Date;
 import oracle.jbo.domain.Number;
@@ -33,7 +34,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仮引当ロット入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 北寒寺 正夫
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
  
@@ -45,60 +46,6 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
    */
   public XxwshReserveLotAMImpl()
   {
-  }
-
-  /**
-   * 
-   * Container's getter for XxwshPageLayoutPVO1
-   */
-  public XxwshPageLayoutPVOImpl getXxwshPageLayoutPVO1()
-  {
-    return (XxwshPageLayoutPVOImpl)findViewObject("XxwshPageLayoutPVO1");
-  }
-
-  /**
-   * 
-   * Container's getter for XxwshSearchVO1
-   */
-  public XxwshSearchVOImpl getXxwshSearchVO1()
-  {
-    return (XxwshSearchVOImpl)findViewObject("XxwshSearchVO1");
-  }
-
-  /**
-   * 
-   * Container's getter for XxwshStockCanEncQtyVO1
-   */
-  public XxwshStockCanEncQtyVOImpl getXxwshStockCanEncQtyVO1()
-  {
-    return (XxwshStockCanEncQtyVOImpl)findViewObject("XxwshStockCanEncQtyVO1");
-  }
-
-  /**
-   * 
-   * Container's getter for XxwshLineShipVO1
-   */
-  public XxwshLineShipVOImpl getXxwshLineShipVO1()
-  {
-    return (XxwshLineShipVOImpl)findViewObject("XxwshLineShipVO1");
-  }
-
-  /**
-   * 
-   * Container's getter for XxwshLineProdVO1
-   */
-  public XxwshLineProdVOImpl getXxwshLineProdVO1()
-  {
-    return (XxwshLineProdVOImpl)findViewObject("XxwshLineProdVO1");
-  }
-
-  /**
-   * 
-   * Container's getter for XxwshLineMoveVO1
-   */
-  public XxwshLineMoveVOImpl getXxwshLineMoveVO1()
-  {
-    return (XxwshLineMoveVOImpl)findViewObject("XxwshLineMoveVO1");
   }
 
   /**
@@ -1309,25 +1256,43 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     } else if (!XxcmnUtility.isBlankOrNull(numOfDeliver))
     {
       // 小口個数に引当数量合計を出荷入数で割った値を加算します。
-      smallQuantity = smallQuantity + Math.round((sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfDeliver)));
+// 2008/08/07 D.Nihei Mod Start
+//      smallQuantity = smallQuantity + Math.round((sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfDeliver)));
+      smallQuantity = smallQuantity + Math.ceil(sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfDeliver));
+// 2008/08/07 D.Nihei Mod End
       // ラベル枚数に引当数量合計を出荷入数で割った値を加算します。
-      labelQuantity = labelQuantity + Math.round((sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfDeliver)));
+// 2008/08/07 D.Nihei Mod Start
+//      labelQuantity = labelQuantity + Math.round((sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfDeliver)));
+      labelQuantity = labelQuantity + Math.ceil(sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfDeliver));
+// 2008/08/07 D.Nihei Mod End
 
     // ケース入数が設定されている場合
     } else if (!XxcmnUtility.isBlankOrNull(numOfCases))
     {
       // 小口個数に引当数量合計をケース入数で割った値を加算します。
-      smallQuantity = smallQuantity + Math.round((sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfCases)));
+// 2008/08/07 D.Nihei Mod Start
+//      smallQuantity = smallQuantity + Math.round((sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfCases)));
+      smallQuantity = smallQuantity + Math.ceil(sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfCases));
+// 2008/08/07 D.Nihei Mod End
       // ラベル枚数に引当数量合計をケース入数で割った値を加算します。
-      labelQuantity = labelQuantity + Math.round((sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfCases)));
+// 2008/08/07 D.Nihei Mod Start
+//      labelQuantity = labelQuantity + Math.round((sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfCases)));
+      labelQuantity = labelQuantity + Math.ceil(sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfCases));
+// 2008/08/07 D.Nihei Mod End
 
     // 上記以外の場合
     } else
     {
       // 小口個数に引当数量合計を加算します。
-      smallQuantity = smallQuantity + sumReservedQuantityItem.doubleValue();
+// 2008/08/07 D.Nihei Mod Start
+//      smallQuantity = smallQuantity + sumReservedQuantityItem.doubleValue();
+      smallQuantity = smallQuantity + Math.ceil(sumReservedQuantityItem.doubleValue());
+// 2008/08/07 D.Nihei Mod End
       // ラベル枚数に引当数量合計を加算します。
-      labelQuantity = labelQuantity + sumReservedQuantityItem.doubleValue();
+// 2008/08/07 D.Nihei Mod Start
+//      labelQuantity = labelQuantity + sumReservedQuantityItem.doubleValue();
+      labelQuantity = labelQuantity + Math.ceil(sumReservedQuantityItem.doubleValue());
+// 2008/08/07 D.Nihei Mod End
     }
 
     // ********************************************************** //
@@ -1579,82 +1544,87 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
       // ヘッダの小口区分、配送区分を取得
       String shipMethodMeaning = (String)lrow.getAttribute("ShipMethodMeaning"); // 配送区分
       smallAmountClass         = (String)lrow.getAttribute("SmallAmountClass");  // 小口区分
-      // 合計重量が0より大きい場合
-      if (sumWeight > 0 )
+// 2008/08/07 D.Nihei Del Start
+//      // 合計重量が0より大きい場合
+//      if (sumWeight > 0 )
+//      {
+// 2008/08/07 D.Nihei Del End
+      // 呼出画面区分が支給の場合
+      if (XxwshConstants.CALL_PIC_KBN_PROD_CREATE.equals(callPictureKbn))
       {
-        // 呼出画面区分が支給の場合
-        if (XxwshConstants.CALL_PIC_KBN_PROD_CREATE.equals(callPictureKbn))
-        {
-          setSumWeight = new BigDecimal(String.valueOf(sumWeight)); // 合計重量
+        setSumWeight = new BigDecimal(String.valueOf(sumWeight)); // 合計重量
 
-        // 小口区分が対象の場合
-        } else if (XxwshConstants.INCLUDE_EXCLUD_INCLUDE.equals(smallAmountClass))
-        {
-          setSumWeight = new BigDecimal(String.valueOf(sumWeight)); // 合計重量
+      // 小口区分が対象の場合
+      } else if (XxwshConstants.INCLUDE_EXCLUD_INCLUDE.equals(smallAmountClass))
+      {
+        setSumWeight = new BigDecimal(String.valueOf(sumWeight)); // 合計重量
 
-        } else
-        {
-          setSumWeight = new BigDecimal(String.valueOf(sumWeight + sumPalletWeight)); // 合計重量 + パレット重量    
-        }
+      } else
+      {
+        setSumWeight = new BigDecimal(String.valueOf(sumWeight + sumPalletWeight)); // 合計重量 + パレット重量    
+      }
 
-        setSumCapacity = null; // 合計容積はNULLをセット
-        // 最大積載効率チェック
-        HashMap weightParams = XxwshUtility.calcLoadEfficiency(
-                                 getOADBTransaction(),
-                                 XxcmnUtility.stringValue(setSumWeight),
-                                 XxcmnUtility.stringValue(setSumCapacity),
-                                 codeClass1,
-                                 inputInventoryLocationCode,
-                                 codeClass2,
-                                 deliverTo,
-                                 shipMethodMeaning,
-                                 scheduleShipDate,
-                                 headerProdClass);
-        // 戻り値を取得
-        retCode                = (String)weightParams.get("retCode");                // リターンコード
-        errMsg                 = (String)weightParams.get("retCode");                // エラーメッセージ
-        systemMsg              = (String)weightParams.get("systemMsg");              // システムエラーメッセージ
-        loadingOverClass       = (String)weightParams.get("loadingOverClass");       // システムエラーメッセージ
-        shipMethod             = (String)weightParams.get("shipMethod");             // 配送区分
-        loadEfficiencyWeight   = (String)weightParams.get("loadEfficiencyWeight");   // 重量積載効率
-        loadEfficiencyCapacity = (String)weightParams.get("loadEfficiencyCapacity"); // 容積積載効率
-        mixedShipMethod        = (String)weightParams.get("mixedShipMethod");        // 混載配送区分
+      setSumCapacity = null; // 合計容積はNULLをセット
+      // 最大積載効率チェック
+      HashMap weightParams = XxwshUtility.calcLoadEfficiency(
+                               getOADBTransaction(),
+                               XxcmnUtility.stringValue(setSumWeight),
+                               XxcmnUtility.stringValue(setSumCapacity),
+                               codeClass1,
+                               inputInventoryLocationCode,
+                               codeClass2,
+                               deliverTo,
+                               shipMethodMeaning,
+                               scheduleShipDate,
+                               headerProdClass);
+      // 戻り値を取得
+      retCode                = (String)weightParams.get("retCode");                // リターンコード
+      errMsg                 = (String)weightParams.get("retCode");                // エラーメッセージ
+      systemMsg              = (String)weightParams.get("systemMsg");              // システムエラーメッセージ
+      loadingOverClass       = (String)weightParams.get("loadingOverClass");       // システムエラーメッセージ
+      shipMethod             = (String)weightParams.get("shipMethod");             // 配送区分
+      loadEfficiencyWeight   = (String)weightParams.get("loadEfficiencyWeight");   // 重量積載効率
+      loadEfficiencyCapacity = (String)weightParams.get("loadEfficiencyCapacity"); // 容積積載効率
+      mixedShipMethod        = (String)weightParams.get("mixedShipMethod");        // 混載配送区分
 
-        // 取得した重量積載効率を検索条件表示リージョンにセット
-        hrow.setAttribute("LoadingEfficiencyWeight" ,loadEfficiencyWeight.toString());
+      // 取得した重量積載効率を検索条件表示リージョンにセット
+      hrow.setAttribute("LoadingEfficiencyWeight" ,loadEfficiencyWeight.toString());
         
-      }
+// 2008/08/07 D.Nihei Del Start
+//      }
+//      // 合計容積が0より大きい場合
+//      if (sumCapacity > 0)
+//      {
+// 2008/08/07 D.Nihei Del End
+      setSumCapacity = new BigDecimal(String.valueOf(sumCapacity)); // 合計容積
+      setSumWeight = null; // 重量合計
+      // 最大積載効率チェック
+      HashMap capParams = XxwshUtility.calcLoadEfficiency(
+                            getOADBTransaction(),
+                            XxcmnUtility.stringValue(setSumWeight),
+                            XxcmnUtility.stringValue(setSumCapacity),
+                            codeClass1,
+                            inputInventoryLocationCode,
+                            codeClass2,
+                            deliverTo,
+                            shipMethodMeaning,
+                            scheduleShipDate,
+                            headerProdClass);
+      // 戻り値を取得
+      retCode                = (String)capParams.get("retCode");                // リターンコード
+      errMsg                 = (String)capParams.get("retCode");                // エラーメッセージ
+      systemMsg              = (String)capParams.get("systemMsg");              // システムエラーメッセージ
+      loadingOverClass       = (String)capParams.get("loadingOverClass");       // システムエラーメッセージ
+      shipMethod             = (String)capParams.get("shipMethod");             // 配送区分
+      loadEfficiencyWeight   = (String)capParams.get("loadEfficiencyWeight");   // 重量積載効率
+      loadEfficiencyCapacity = (String)capParams.get("loadEfficiencyCapacity"); // 容積積載効率
+      mixedShipMethod        = (String)capParams.get("mixedShipMethod");        // 混載配送区分
 
-      // 合計容積が0より大きい場合
-      if (sumCapacity > 0)
-      {
-        setSumCapacity = new BigDecimal(String.valueOf(sumCapacity)); // 合計容積
-        setSumWeight = null; // 重量合計
-        // 最大積載効率チェック
-        HashMap capParams = XxwshUtility.calcLoadEfficiency(
-                              getOADBTransaction(),
-                              XxcmnUtility.stringValue(setSumWeight),
-                              XxcmnUtility.stringValue(setSumCapacity),
-                              codeClass1,
-                              inputInventoryLocationCode,
-                              codeClass2,
-                              deliverTo,
-                              shipMethodMeaning,
-                              scheduleShipDate,
-                              headerProdClass);
-        // 戻り値を取得
-        retCode                = (String)capParams.get("retCode");                // リターンコード
-        errMsg                 = (String)capParams.get("retCode");                // エラーメッセージ
-        systemMsg              = (String)capParams.get("systemMsg");              // システムエラーメッセージ
-        loadingOverClass       = (String)capParams.get("loadingOverClass");       // システムエラーメッセージ
-        shipMethod             = (String)capParams.get("shipMethod");             // 配送区分
-        loadEfficiencyWeight   = (String)capParams.get("loadEfficiencyWeight");   // 重量積載効率
-        loadEfficiencyCapacity = (String)capParams.get("loadEfficiencyCapacity"); // 容積積載効率
-        mixedShipMethod        = (String)capParams.get("mixedShipMethod");        // 混載配送区分
-
-        // 取得した容積積載効率を検索条件表示リージョンにセット
-        hrow.setAttribute("LoadingEfficiencyCapacity" ,loadEfficiencyCapacity.toString());
-      }
+      // 取得した容積積載効率を検索条件表示リージョンにセット
+      hrow.setAttribute("LoadingEfficiencyCapacity" ,loadEfficiencyCapacity.toString());
+// 2008/08/07 D.Nihei Del Start
+//      }
+// 2008/08/07 D.Nihei Del End
     }
   }
 
@@ -2308,5 +2278,57 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     // 明細情報リージョンの依頼Noを返す
     return (String)lrow.getAttribute("RequestNo");
   }
-  
+  /**
+   * 
+   * Container's getter for XxwshPageLayoutPVO1
+   */
+  public XxwshPageLayoutPVOImpl getXxwshPageLayoutPVO1()
+  {
+    return (XxwshPageLayoutPVOImpl)findViewObject("XxwshPageLayoutPVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxwshSearchVO1
+   */
+  public XxwshSearchVOImpl getXxwshSearchVO1()
+  {
+    return (XxwshSearchVOImpl)findViewObject("XxwshSearchVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxwshStockCanEncQtyVO1
+   */
+  public XxwshStockCanEncQtyVOImpl getXxwshStockCanEncQtyVO1()
+  {
+    return (XxwshStockCanEncQtyVOImpl)findViewObject("XxwshStockCanEncQtyVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxwshLineShipVO1
+   */
+  public XxwshLineShipVOImpl getXxwshLineShipVO1()
+  {
+    return (XxwshLineShipVOImpl)findViewObject("XxwshLineShipVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxwshLineProdVO1
+   */
+  public XxwshLineProdVOImpl getXxwshLineProdVO1()
+  {
+    return (XxwshLineProdVOImpl)findViewObject("XxwshLineProdVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxwshLineMoveVO1
+   */
+  public XxwshLineMoveVOImpl getXxwshLineMoveVO1()
+  {
+    return (XxwshLineMoveVOImpl)findViewObject("XxwshLineMoveVO1");
+  }  
 }
