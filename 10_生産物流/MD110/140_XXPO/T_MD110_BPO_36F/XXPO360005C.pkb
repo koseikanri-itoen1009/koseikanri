@@ -7,7 +7,7 @@ AS
  * Description      : 仕入（帳票）
  * MD.050/070       : 仕入（帳票）Issue1.0  (T_MD050_BPO_360)
  *                    代行請求書            (T_MD070_BPO_36F)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/10/22    1.9   I.Higa           取引先の取得項目が不正（仕入先名⇒正式名）
  *  2008/10/24    1.10  T.Ohashi         T_S_432対応（敬称の付与）
  *  2008/11/04    1.11  Y.Yamamoto       統合障害#471
+ *  2008/11/28    1.12  T.Yoshimoto      本番障害#204
  *
  *****************************************************************************************/
 --
@@ -623,7 +624,14 @@ AS
       || '        poh.vendor_id   AS vendor_id '  -- 仕入先番号(取引先)
       || '       ,poh.attribute3  AS attribute3'  -- 仕入先番号(斡旋者)
       || '       ,poh.attribute10 AS attribute10' -- 部署コード
-      || '       ,pla.unit_price  AS unit_price'  -- 単価(粉引後単価)
+-- 2008/11/28 v1.12 T.Yoshimoto Mod Start 本番#204
+--      || '       ,pla.unit_price  AS unit_price'  -- 単価(粉引後単価)
+      || '       ,('
+      || '         SELECT SUM(NVL(plla.attribute2,0)) AS unit_price'  -- 単価(粉引後単価)
+      || '         FROM   po_line_locations_all plla' -- 発注納入明細
+      || '         WHERE  plla.po_line_id = pla.po_line_id'
+      || '        ) AS unit_price'
+-- 2008/11/28 v1.12 T.Yoshimoto Mod End 本番#204
       || '       ,('
       || '         SELECT SUM(NVL(plla.attribute5,0)) AS attribute5'-- 預かり口銭金額
       || '         FROM   po_line_locations_all plla' -- 発注納入明細
