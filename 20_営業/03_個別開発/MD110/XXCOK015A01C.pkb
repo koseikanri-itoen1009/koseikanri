@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK015A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : EDIシステムにてイセトー社へ送信する支払案内書(圧着はがき)用データファイル作成
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/01/19    1.0   K.Iwabuchi       新規作成
  *  2009/02/06    1.1   K.Iwabuchi       [障害COK_014] クイックコードビュー有効判定追加、ディレクトリパス取得変更対応
  *  2009/02/20    1.2   K.Iwabuchi       [障害COK_050] 仕入先サイト無効日判定追加
+ *  2009/05/22    1.3   M.Hiruta         [障害T1_1144] フッタレコード作成時にデータ種コードを使用するよう変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -185,6 +186,11 @@ AS
   gv_bm_tax          fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL;  -- 販売手数料_消費税率
   gv_if_data         fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL;  -- IFレコード区分_データ
   g_file_handle      UTL_FILE.FILE_TYPE;    -- ファイルハンドル
+-- Start 2009/05/22 Ver_1.3 T1_1144 M.Hiruta
+  gv_data_kind       VARCHAR2(2)     DEFAULT NULL;         -- データ種コード
+  gv_from_series     VARCHAR2(2)     DEFAULT NULL;         -- ＩＦ元業務系列コード
+-- End   2009/05/22 Ver_1.3 T1_1144 M.Hiruta
+--
   -- ===============================================
   -- グローバルカーソル
   -- ===============================================
@@ -366,7 +372,10 @@ AS
     , iv_base_name       => NULL            -- 拠点名称
     , iv_chain_code      => NULL            -- チェーン店コード
     , iv_chain_name      => NULL            -- チェーン店名称
-    , iv_data_kind       => NULL            -- データ種コード
+-- Start 2009/05/22 Ver_1.3 T1_1144 M.Hiruta
+--    , iv_data_kind       => NULL            -- データ種コード
+    , iv_data_kind       => gv_data_kind    -- データ種コード
+-- End   2009/05/22 Ver_1.3 T1_1144 M.Hiruta
     , iv_row_number      => NULL            -- 並列処理番号
     , in_num_of_records  => gn_normal_cnt   -- レコード件数
     , ov_output          => gv_footer_data  -- 出力値
@@ -517,8 +526,11 @@ AS
     lv_outmsg            VARCHAR2(5000) DEFAULT NULL;              -- 出力用メッセージ
     lb_msg_return        BOOLEAN        DEFAULT TRUE;              -- メッセージ関数戻り値用
     lv_out_file_data     VARCHAR2(2000) DEFAULT NULL;              -- ファイル出力用データ
-    lv_data_kind         VARCHAR2(2)    DEFAULT NULL;              -- データ種コード
-    lv_from_series       VARCHAR2(2)    DEFAULT NULL;              -- ＩＦ元業務系列コード
+-- Start 2009/05/22 Ver_1.3 T1_1144 M.Hiruta
+-- グローバル変数化
+--    lv_data_kind         VARCHAR2(2)    DEFAULT NULL;              -- データ種コード
+--    lv_from_series       VARCHAR2(2)    DEFAULT NULL;              -- ＩＦ元業務系列コード
+-- End   2009/05/22 Ver_1.3 T1_1144 M.Hiruta
     lv_dummy_v           VARCHAR2(100)  DEFAULT cv_space;          -- 未設定項目用(文字)
     lv_dummy_n           VARCHAR2(100)  DEFAULT cv_0;              -- 未設定項目用(数値)
     -- 出力ファイル用変数
@@ -576,11 +588,14 @@ AS
     lv_dtl_total_bm3     VARCHAR2(11)   DEFAULT NULL;              -- 販売手数料3
     lv_jpn_calendar      VARCHAR2(4)    DEFAULT NULL;              -- 年号
     lv_reserve           VARCHAR2(53)   DEFAULT NULL;              -- 予備
-    -- ===============================================
-    -- ローカル例外
-    -- ===============================================
-    --*** クイックコードデータ取得エラー ***
-    no_data_expt  EXCEPTION;
+--
+-- Start 2009/05/22 Ver_1.3 T1_1144 M.Hiruta
+--    -- ===============================================
+--    -- ローカル例外
+--    -- ===============================================
+--    --*** クイックコードデータ取得エラー ***
+--    no_data_expt  EXCEPTION;
+-- End   2009/05/22 Ver_1.3 T1_1144 M.Hiruta
 --
   BEGIN
     -- ===============================================
@@ -591,34 +606,36 @@ AS
     -- ヘッダレコード取得・ファイルへ出力(初回のみ)
     -- ===============================================
     IF ( gv_header_data IS NULL ) THEN
-      BEGIN
-        -- ===============================================
-        -- データ種コード、ＩＦ元業務系列コード取得
-        -- ===============================================
-        SELECT xlv.meaning       -- データ種コード
-             , xlv.attribute1    -- I/F元業務系列コード
-        INTO   lv_data_kind
-             , lv_from_series
-        FROM   xxcok_lookups_v xlv
-        WHERE  xlv.lookup_type = cv_lookup_type
-        AND    xlv.lookup_code = cv_lookup_code_i
-        AND    gd_process_date BETWEEN NVL( xlv.start_date_active, gd_process_date )
-                               AND     NVL( xlv.end_date_active,   gd_process_date );
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          lv_outmsg       := xxccp_common_pkg.get_msg(
-                               iv_application   => cv_appli_short_name_xxcok
-                             , iv_name          => cv_msg_xxcok1_00015
-                             , iv_token_name1   => cv_token_lookup_value_set
-                             , iv_token_value1  => cv_lookup_type
-                             );
-          lb_msg_return   := xxcok_common_pkg.put_message_f(
-                               in_which         => FND_FILE.OUTPUT
-                             , iv_message       => lv_outmsg
-                             , in_new_line      => cn_number_0
-                             );
-          RAISE no_data_expt;
-      END;
+-- Start 2009/05/22 Ver_1.3 T1_1144 M.Hiruta
+--      BEGIN
+--        -- ===============================================
+--        -- データ種コード、ＩＦ元業務系列コード取得
+--        -- ===============================================
+--        SELECT xlv.meaning       -- データ種コード
+--             , xlv.attribute1    -- I/F元業務系列コード
+--        INTO   lv_data_kind
+--             , lv_from_series
+--        FROM   xxcok_lookups_v xlv
+--        WHERE  xlv.lookup_type = cv_lookup_type
+--        AND    xlv.lookup_code = cv_lookup_code_i
+--        AND    gd_process_date BETWEEN NVL( xlv.start_date_active, gd_process_date )
+--                               AND     NVL( xlv.end_date_active,   gd_process_date );
+--      EXCEPTION
+--        WHEN NO_DATA_FOUND THEN
+--          lv_outmsg       := xxccp_common_pkg.get_msg(
+--                               iv_application   => cv_appli_short_name_xxcok
+--                             , iv_name          => cv_msg_xxcok1_00015
+--                             , iv_token_name1   => cv_token_lookup_value_set
+--                             , iv_token_value1  => cv_lookup_type
+--                             );
+--          lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                               in_which         => FND_FILE.OUTPUT
+--                             , iv_message       => lv_outmsg
+--                             , in_new_line      => cn_number_0
+--                             );
+--          RAISE no_data_expt;
+--      END;
+-- End   2009/05/22 Ver_1.3 T1_1144 M.Hiruta
       -- ===============================================
       -- ヘッダレコード取得
       -- ===============================================
@@ -627,12 +644,18 @@ AS
       , ov_retcode         => lv_retcode
       , ov_errmsg          => lv_errmsg
       , iv_add_area        => cv_add_area_h   -- 付与区分
-      , iv_from_series     => lv_from_series  -- ＩＦ元業務系列コード
+-- Start 2009/05/22 Ver_1.3 T1_1144 M.Hiruta
+--      , iv_from_series     => lv_from_series  -- ＩＦ元業務系列コード
+      , iv_from_series     => gv_from_series  -- ＩＦ元業務系列コード
+-- End   2009/05/22 Ver_1.3 T1_1144 M.Hiruta
       , iv_base_code       => cv_space        -- 拠点コード
       , iv_base_name       => cv_space        -- 拠点名称
       , iv_chain_code      => cv_space        -- チェーン店コード
       , iv_chain_name      => cv_space        -- チェーン店名称
-      , iv_data_kind       => lv_data_kind    -- データ種コード
+-- Start 2009/05/22 Ver_1.3 T1_1144 M.Hiruta
+--      , iv_data_kind       => lv_data_kind    -- データ種コード
+      , iv_data_kind       => gv_data_kind    -- データ種コード
+-- End   2009/05/22 Ver_1.3 T1_1144 M.Hiruta
       , iv_row_number      => cv_row_number   -- 並列処理番号
       , in_num_of_records  => NULL            -- レコード件数
       , ov_output          => gv_header_data  -- 出力値
@@ -642,9 +665,13 @@ AS
                              iv_application   => cv_appli_short_name_xxcok
                            , iv_name          => cv_msg_xxcok1_10428
                            , iv_token_name1   => cv_data_kind
-                           , iv_token_value1  => lv_data_kind
+-- Start 2009/05/22 Ver_1.3 T1_1144 M.Hiruta
+--                           , iv_token_value1  => lv_data_kind
+                           , iv_token_value1  => gv_data_kind
                            , iv_token_name2   => cv_from_series
-                           , iv_token_value2  => lv_from_series
+--                           , iv_token_value2  => lv_from_series
+                           , iv_token_value2  => gv_from_series
+-- End   2009/05/22 Ver_1.3 T1_1144 M.Hiruta
                            );
         lb_msg_return   := xxcok_common_pkg.put_message_f(
                              in_which         => FND_FILE.OUTPUT
@@ -802,11 +829,14 @@ AS
     , buffer    => lv_out_file_data
     );
   EXCEPTION
-    -- *** クイックコードデータ取得エラー***
-    WHEN no_data_expt THEN
-      ov_errmsg  := NULL;
-      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
-      ov_retcode := cv_status_error;
+-- Start 2009/05/22 Ver_1.3 T1_1144 M.Hiruta
+--    -- *** クイックコードデータ取得エラー***
+--    WHEN no_data_expt THEN
+--      ov_errmsg  := NULL;
+--      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+--      ov_retcode := cv_status_error;
+-- End   2009/05/22 Ver_1.3 T1_1144 M.Hiruta
+--
     -- *** 共通関数例外 ***
     WHEN global_api_expt THEN
       ov_errmsg  := lv_errmsg;
@@ -1584,6 +1614,10 @@ AS
     -- ===============================================
     --*** 初期処理エラー ***
     init_fail_expt  EXCEPTION;
+-- Start 2009/05/22 Ver_1.3 T1_1144 M.Hiruta
+    --*** クイックコードデータ取得エラー ***
+    no_data_expt    EXCEPTION;
+-- End   2009/05/22 Ver_1.3 T1_1144 M.Hiruta
 --
   BEGIN
     -- ===============================================
@@ -1849,7 +1883,45 @@ AS
                       , iv_message       => lv_outmsg
                       , in_new_line      => cn_number_1
                       );
+-- Start 2009/05/22 Ver_1.3 T1_1144 M.Hiruta
+    BEGIN
+      -- ===============================================
+      -- データ種コード、ＩＦ元業務系列コード取得
+      -- ===============================================
+      SELECT xlv.meaning       -- データ種コード
+           , xlv.attribute1    -- I/F元業務系列コード
+      INTO   gv_data_kind
+           , gv_from_series
+      FROM   xxcok_lookups_v xlv
+      WHERE  xlv.lookup_type = cv_lookup_type
+      AND    xlv.lookup_code = cv_lookup_code_i
+      AND    gd_process_date BETWEEN NVL( xlv.start_date_active, gd_process_date )
+                             AND     NVL( xlv.end_date_active,   gd_process_date );
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_outmsg       := xxccp_common_pkg.get_msg(
+                             iv_application   => cv_appli_short_name_xxcok
+                           , iv_name          => cv_msg_xxcok1_00015
+                           , iv_token_name1   => cv_token_lookup_value_set
+                           , iv_token_value1  => cv_lookup_type
+                           );
+        lb_msg_return   := xxcok_common_pkg.put_message_f(
+                             in_which         => FND_FILE.OUTPUT
+                           , iv_message       => lv_outmsg
+                           , in_new_line      => cn_number_0
+                           );
+        RAISE no_data_expt;
+    END;
+-- End   2009/05/22 Ver_1.3 T1_1144 M.Hiruta
+--
   EXCEPTION
+-- Start 2009/05/22 Ver_1.3 T1_1144 M.Hiruta
+    -- *** クイックコードデータ取得エラー***
+    WHEN no_data_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+-- End   2009/05/22 Ver_1.3 T1_1144 M.Hiruta
     -- *** 初期処理エラー ***
     WHEN init_fail_expt THEN
       ov_errmsg  := NULL;
