@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionSearchCO
 * 概要説明   : SP専決登録画面コントローラクラス
-* バージョン : 1.0
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-10 1.0  SCS小川浩    新規作成
 * 2009-03-23 1.1  SCS柳平直人  [ST障害T1_0163]課題No.115取り込み
+* 2009-08-24 1.2  SCS阿部大輔  [SCS障害0001104]申請区分チェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.webui;
@@ -460,6 +461,12 @@ public class XxcsoSpDecisionRegistCO extends OAControllerImpl
       };
 
       am.invokeMethod("handleAttachAddButton", params, classes);
+
+      // 2009-08-24 [障害0001104] Add Start
+      // 添付の初期化
+      fileUploadData = null;
+      pageContext.putNamedDataObject("AttachFileUp",fileUploadData);
+      // 2009-08-24 [障害0001104] Add End
     }
 
     if ( pageContext.getParameter("AttachDelButton") != null )
