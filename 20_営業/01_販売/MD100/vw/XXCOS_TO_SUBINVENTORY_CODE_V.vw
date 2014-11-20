@@ -3,13 +3,14 @@
  *
  * View Name       : xxcos_to_subinventory_code_v
  * Description     : EDI搬送先保管場所ビュー
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/01    1.0   S.Nakamura       新規作成
+ *  2009/05/08    1.1   K.Kiriu          [T1_0594]並列処理番号の条件削除
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_to_subinventory_code_v (
   secondary_inventory_name  --保管場所コード
@@ -32,7 +33,9 @@ AS
   AND    flvv.lookup_type              = 'XXCOS1_EDI_CONTROL_LIST'                        --EDI制御情報
   AND    flvv.attribute1               = xca.chain_store_code                             --結合(クイック=顧客追加)
   AND    flvv.attribute2               = '22'                                             --入庫予定対象
-  AND    flvv.attribute3               = '01'                                             --並列処理番号('01'固定)
+/* 2009/05/08 Ver1.1 Del Start */
+--  AND    flvv.attribute3               = '01'                                             --並列処理番号('01'固定)
+/* 2009/05/08 Ver1.1 Del End   */
   AND    flvv.enabled_flag             = 'Y'                                              --有効
   AND    (
            ( flvv.start_date_active IS NULL )
