@@ -7,7 +7,7 @@ AS
  * Description      : 物流構成アドオンインポート
  * MD.050           : 物流構成マスタ T_MD050_BPO_890
  * MD.070           : 物流構成アドオンインポート T_MD070_BPO_89B
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2007/12/10    1.0   ORACLE 青木祐介  main新規作成
  *  2008/04/17    1.1   ORACLE 丸下博宣  拠点、配送先が指定なしの場合存在チェックを実施しない
  *  2008/05/23    1.2   ORACLE 椎名昭圭  内部変更要求#110対応
+ *  2008/06/09    1.3   ORACLE 椎名昭圭  仕入先配送先チェックの不具合修正
  *
  *****************************************************************************************/
 --
@@ -1044,7 +1045,7 @@ AS
         INTO ln_count
         FROM xxcmn_vendors2_v xvv    -- 仕入先VIEW
         WHERE xvv.segment1 = ir_sr_line.ship_to_code
-          AND xvv.product_result_type = cv_customer_supply
+          AND xvv.vendor_div = cv_customer_supply
           AND ROWNUM = 1;
   --
         IF (ln_count = 0) THEN
@@ -1070,7 +1071,7 @@ AS
         INTO ln_count
         FROM xxcmn_vendors_v xvv    -- 仕入先VIEW
         WHERE xvv.segment1 = ir_sr_line.ship_to_code
-          AND xvv.product_result_type = cv_customer_supply
+          AND xvv.vendor_div = cv_customer_supply
           AND ROWNUM = 1;
   --
         IF (ln_count = 0) THEN
