@@ -1,6 +1,10 @@
 CREATE OR REPLACE VIEW xxinv_stc_trans_p0_v 
 (
-  ownership_code
+-- 2008/12/07 N.Yoshida start
+--  ownership_code
+  po_trans_id
+ ,ownership_code
+-- 2008/12/07 N.Yoshida end
  ,inventory_location_id
  ,item_id
  ,lot_no
@@ -23,7 +27,11 @@ AS
   -- 入庫予定
   ------------------------------------------------------------------------
   -- 発注受入予定
-  SELECT iwm_in_po.attribute1                          AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--    SELECT iwm_in_po.attribute1                          AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_in_po.attribute1                          AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_in_po.inventory_location_id               AS inventory_location_id
         ,iimb_in_po.item_id                            AS item_id
         ,NULL                                          AS lot_no
@@ -80,7 +88,11 @@ AS
   AND    iwm_in_po.mtl_organization_id  = mil_in_po.organization_id
   UNION ALL
   -- 移動入庫予定(指示 積送あり)
-  SELECT iwm_in_xf.attribute1                          AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_in_xf.attribute1                          AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_in_xf.attribute1                          AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_in_xf.inventory_location_id               AS inventory_location_id
         ,xmld_in_xf.item_id                            AS item_id
         ,NULL                                          AS lot_no
@@ -132,7 +144,11 @@ AS
   AND    xmril_in_xf.delete_flg             = 'N'                  -- OFF
   UNION ALL
   -- 移動入庫予定(指示 積送なし)
-  SELECT iwm_in_tr.attribute1                          AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_in_tr.attribute1                          AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_in_tr.attribute1                          AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_in_tr.inventory_location_id               AS inventory_location_id
         ,xmld_in_tr.item_id                            AS item_id
         ,NULL                                          AS lot_no
@@ -184,7 +200,11 @@ AS
   AND    xmril_in_tr.delete_flg             = 'N'               -- OFF
   UNION ALL
   -- 移動入庫予定(出庫報告有 積送あり)
-  SELECT iwm_in_xf20.attribute1                        AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_in_xf20.attribute1                        AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_in_xf20.attribute1                        AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_in_xf20.inventory_location_id             AS inventory_location_id
         ,xmld_in_xf20.item_id                          AS item_id
         ,NULL                                          AS lot_no
@@ -235,7 +255,11 @@ AS
   AND    xmril_in_xf20.delete_flg             = 'N'                -- OFF
   UNION ALL
   -- 生産入庫予定
-  SELECT iwm_in_pr.attribute1                          AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_in_pr.attribute1                          AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_in_pr.attribute1                          AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_in_pr.inventory_location_id               AS inventory_location_id
         ,gmd_in_pr.item_id                             AS item_id
         ,NULL                                          AS lot_no
@@ -331,7 +355,11 @@ AS
   -- 出庫予定
   ------------------------------------------------------------------------
   -- 移動出庫予定(指示 積送あり)
-  SELECT iwm_out_xf.attribute1                         AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_xf.attribute1                         AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_xf.attribute1                         AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_xf.inventory_location_id              AS inventory_location_id
         ,xmld_out_xf.item_id                           AS item_id
         ,NULL                                          AS lot_no
@@ -383,7 +411,11 @@ AS
   AND    xmril_out_xf.delete_flg             = 'N'                 -- OFF
   UNION ALL
   -- 移動出庫予定(指示 積送なし)
-  SELECT iwm_out_tr.attribute1                         AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_tr.attribute1                         AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_tr.attribute1                         AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_tr.inventory_location_id              AS inventory_location_id
         ,xmld_out_tr.item_id                           AS item_id
         ,NULL                                          AS lot_no
@@ -435,7 +467,11 @@ AS
   AND    xmril_out_tr.delete_flg             = 'N'               -- OFF
   UNION ALL
   -- 移動出庫予定(入庫報告有 積送あり)
-  SELECT iwm_out_xf20.attribute1                       AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_xf20.attribute1                       AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_xf20.attribute1                       AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_xf20.inventory_location_id            AS inventory_location_id
         ,xmld_out_xf20.item_id                         AS item_id
         ,NULL                                          AS lot_no
@@ -486,7 +522,11 @@ AS
   AND    xmril_out_xf20.delete_flg             = 'N'                -- OFF
   UNION ALL
   -- 受注出荷予定
-  SELECT iwm_out_om.attribute1                         AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_om.attribute1                         AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_om.attribute1                         AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_om.inventory_location_id              AS inventory_location_id
         ,xmld_out_om.item_id                           AS item_id
         ,NULL                                          AS lot_no
@@ -581,7 +621,11 @@ AS
 -- 2008/12/01 Upd Y.Kawano End
   UNION ALL
   -- 有償出荷予定
-  SELECT iwm_out_om2.attribute1                        AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_om2.attribute1                        AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_om2.attribute1                        AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_om2.inventory_location_id             AS inventory_location_id
         ,xmld_out_om2.item_id                          AS item_id
         ,NULL                                          AS lot_no
@@ -688,7 +732,11 @@ AS
   AND    xvsa_out_om2.start_date_active               <= TRUNC(SYSDATE)
   AND    xvsa_out_om2.end_date_active                 >= TRUNC(SYSDATE)
   UNION ALL
-  SELECT iwm_out_om2.attribute1                        AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_om2.attribute1                        AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_om2.attribute1                        AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_om2.inventory_location_id             AS inventory_location_id
         ,xmld_out_om2.item_id                          AS item_id
         ,NULL                                          AS lot_no
@@ -797,7 +845,11 @@ AS
   AND    xvsa_out_om2.end_date_active                 >= TRUNC(SYSDATE)
 -- 2008/10/24 Y.Yamamoto v1.1 add start
   UNION ALL
-  SELECT iwm_out_om2.attribute1                        AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_om2.attribute1                        AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_om2.attribute1                        AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_om2.inventory_location_id             AS inventory_location_id
         ,xmld_out_om2.item_id                          AS item_id
         ,NULL                                          AS lot_no
@@ -897,7 +949,11 @@ AS
 -- 2008/10/24 Y.Yamamoto v1.1 add end
   UNION ALL
   -- 生産原料投入予定
-  SELECT iwm_out_pr.attribute1                         AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_pr.attribute1                         AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_pr.attribute1                         AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_pr.inventory_location_id              AS inventory_location_id
         ,xmld_out_pr.item_id                           AS item_id
         ,NULL                                          AS lot_no
@@ -982,7 +1038,11 @@ AS
   AND    grt_out_pr.language                 = 'JA'
   UNION ALL
   -- 相手先在庫出庫予定
-  SELECT iwm_out_ad.attribute1                          AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_ad.attribute1                          AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_ad.attribute1                          AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_ad.inventory_location_id               AS inventory_location_id
         ,iimb_out_ad.item_id                            AS item_id
         ,NULL                                           AS lot_no
@@ -1048,7 +1108,11 @@ AS
   -- 入庫実績
   ------------------------------------------------------------------------
   --発注受入実績
-  SELECT iwm_in_po_e.attribute1                        AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_in_po_e.attribute1                        AS ownership_code
+  SELECT DISTINCT xrart_in_po_e.txns_id                AS po_trans_id
+        ,iwm_in_po_e.attribute1                        AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_in_po_e.inventory_location_id             AS inventory_location_id
         ,iimb_in_po_e.item_id                          AS item_id
         ,NULL                                          AS lot_no
@@ -1115,7 +1179,11 @@ AS
   AND    xv_in_po_e.end_date_active       >= TRUNC( SYSDATE )
   UNION ALL
   -- 移動入庫実績(積送あり)
-  SELECT iwm_in_xf_e.attribute1                        AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_in_xf_e.attribute1                        AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_in_xf_e.attribute1                        AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_in_xf_e.inventory_location_id             AS inventory_location_id
         ,xmld_in_xf_e.item_id                          AS item_id
         ,NULL                                          AS lot_no
@@ -1163,7 +1231,11 @@ AS
                                                  ,'05' )             -- 入庫報告有
   UNION ALL
   -- 移動入庫実績(積送なし)
-  SELECT iwm_in_tr_e.attribute1                        AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_in_tr_e.attribute1                        AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_in_tr_e.attribute1                        AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_in_tr_e.inventory_location_id             AS inventory_location_id
         ,xmld_in_tr_e.item_id                          AS item_id
         ,NULL                                          AS lot_no
@@ -1210,7 +1282,11 @@ AS
   AND    xmril_in_tr_e.delete_flg             = 'N'               -- OFF
   UNION ALL
   -- 生産入庫実績
-  SELECT iwm_in_pr_e.attribute1                        AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_in_pr_e.attribute1                        AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_in_pr_e.attribute1                        AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_in_pr_e.inventory_location_id             AS inventory_location_id
         ,gmd_in_pr_e.item_id                           AS item_id
         ,NULL                                          AS lot_no
@@ -1286,7 +1362,11 @@ AS
     )
   UNION ALL
   -- 生産入庫実績 品目振替 品種振替
-  SELECT iwm_in_pr_e70.attribute1                      AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_in_pr_e70.attribute1                      AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_in_pr_e70.attribute1                      AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_in_pr_e70.inventory_location_id           AS inventory_location_id
         ,gmd_in_pr_e70a.item_id                        AS item_id
         ,NULL                                          AS lot_no
@@ -1369,7 +1449,11 @@ AS
   AND    gmd_in_pr_e70b.line_type               = -1                  -- 投入品
   UNION ALL
   -- 生産入庫実績 解体
-  SELECT iwm_in_pr_e70.attribute1                      AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_in_pr_e70.attribute1                      AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_in_pr_e70.attribute1                      AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_in_pr_e70.inventory_location_id           AS inventory_location_id
         ,gmd_in_pr_e70.item_id                         AS item_id
         ,NULL                                          AS lot_no
@@ -1432,7 +1516,11 @@ AS
   AND    xrpm.line_type                         = gmd_in_pr_e70.line_type
   UNION ALL
   -- 倉替返品 入庫実績
-  SELECT iwm_in_po_e_rma.attribute1                    AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_in_po_e_rma.attribute1                    AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_in_po_e_rma.attribute1                    AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_in_po_e_rma.inventory_location_id         AS inventory_location_id
         ,xmld_in_po_e_rma.item_id                      AS item_id
         ,NULL                                          AS lot_no
@@ -1514,7 +1602,11 @@ AS
 -- 2008/12/01 Upd Y.Kawano End
   UNION ALL
   -- 在庫調整 入庫実績(相手先在庫)
-  SELECT iwm_in_ad_e_x97.attribute1                    AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_in_ad_e_x97.attribute1                    AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_in_ad_e_x97.attribute1                    AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_in_ad_e_x97.inventory_location_id         AS inventory_location_id
         ,itc_in_ad_e_x97.item_id                       AS item_id
         ,NULL                                          AS lot_no
@@ -1566,7 +1658,11 @@ AS
   AND    ijm_in_ad_e_x97.attribute1             IS NULL                         --OPMジャーナルマスタ.実績IDがNULL
   UNION ALL
   -- 在庫調整 入庫実績(外注出来高)
-  SELECT iwm_in_ad_e_x97.attribute1                    AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_in_ad_e_x97.attribute1                    AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_in_ad_e_x97.attribute1                    AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_in_ad_e_x97.inventory_location_id         AS inventory_location_id
         ,itc_in_ad_e_x97.item_id                       AS item_id
         ,NULL                                          AS lot_no
@@ -1627,7 +1723,11 @@ AS
   AND    xv_in_ad_e_x97.end_date_active         >= TRUNC( SYSDATE )
   UNION ALL
   -- 在庫調整 入庫実績(浜岡入庫)
-  SELECT iwm_in_ad_e_x9.attribute1                     AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_in_ad_e_x9.attribute1                     AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_in_ad_e_x9.attribute1                     AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_in_ad_e_x9.inventory_location_id          AS inventory_location_id
         ,itc_in_ad_e_x9.item_id                        AS item_id
         ,NULL                                          AS lot_no
@@ -1750,7 +1850,11 @@ AS
 --  UNION ALL
 -- 2008/12/3 Y.Kawano delete end
   -- 在庫調整 入庫実績(上記以外)
-  SELECT iwm_in_ad_e_xx.attribute1                     AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_in_ad_e_xx.attribute1                     AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_in_ad_e_xx.attribute1                     AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_in_ad_e_xx.inventory_location_id          AS inventory_location_id
         ,itc_in_ad_e_xx.item_id                        AS item_id
         ,NULL                                          AS lot_no
@@ -1805,7 +1909,11 @@ AS
   -- 出庫実績
   ------------------------------------------------------------------------
   -- 移動出庫実績(積送あり)
-  SELECT iwm_out_xf_e.attribute1                       AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_xf_e.attribute1                       AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_xf_e.attribute1                       AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_xf_e.inventory_location_id            AS inventory_location_id
         ,xmld_out_xf_e.item_id                         AS item_id
         ,NULL                                          AS lot_no
@@ -1853,7 +1961,11 @@ AS
                                                   ,'04' )             -- 出庫報告有
   UNION ALL
   -- 移動出庫実績(積送なし)
-  SELECT iwm_out_tr_e.attribute1                       AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_tr_e.attribute1                       AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_tr_e.attribute1                       AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_tr_e.inventory_location_id            AS inventory_location_id
         ,xmld_out_tr_e.item_id                         AS item_id
         ,NULL                                          AS lot_no
@@ -1900,7 +2012,11 @@ AS
   AND    xmril_out_tr_e.delete_flg             = 'N'               -- OFF
   UNION ALL
   -- 生産出庫実績
-  SELECT iwm_out_pr_e.attribute1                       AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_pr_e.attribute1                       AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_pr_e.attribute1                       AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_pr_e.inventory_location_id            AS inventory_location_id
         ,itp_out_pr_e.item_id                          AS item_id
         ,NULL                                          AS lot_no
@@ -1974,7 +2090,11 @@ AS
     )
   UNION ALL
   -- 生産出庫実績 品目振替 品種振替
-  SELECT iwm_out_pr_e70.attribute1                     AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_pr_e70.attribute1                     AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_pr_e70.attribute1                     AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_pr_e70.inventory_location_id          AS inventory_location_id
         ,gmd_out_pr_e70a.item_id                       AS item_id
         ,NULL                                          AS lot_no
@@ -2069,7 +2189,11 @@ AS
 -- 2008/10/31 Y.Yamamoto v1.1 update start
   UNION ALL
   -- 生産出庫実績 解体
-  SELECT iwm_out_pr_e70.attribute1                     AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_pr_e70.attribute1                     AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_pr_e70.attribute1                     AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_pr_e70.inventory_location_id          AS inventory_location_id
         ,gmd_out_pr_e70.item_id                        AS item_id
         ,NULL                                          AS lot_no
@@ -2134,7 +2258,11 @@ AS
                                                     ,FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING_RET'))
   UNION ALL
   -- 受注出荷実績
-  SELECT iwm_out_om_e.attribute1                       AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_om_e.attribute1                       AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_om_e.attribute1                       AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_om_e.inventory_location_id            AS inventory_location_id
         ,xmld_out_om_e.item_id                         AS item_id
         ,NULL                                          AS lot_no
@@ -2230,7 +2358,11 @@ AS
 -- 2008/12/01 Upd Y.Kawano End
   UNION ALL
   -- 有償出荷実績
-  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_om2_e.attribute1                      AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_om2_e.inventory_location_id           AS inventory_location_id
         ,xmld_out_om2_e.item_id                        AS item_id
         ,NULL                                          AS lot_no
@@ -2335,7 +2467,11 @@ AS
   AND    xvsa_out_om2_e.start_date_active             <= TRUNC(SYSDATE)
   AND    xvsa_out_om2_e.end_date_active               >= TRUNC(SYSDATE)
   UNION ALL
-  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_om2_e.attribute1                      AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_om2_e.inventory_location_id           AS inventory_location_id
         ,xmld_out_om2_e.item_id                        AS item_id
         ,NULL                                          AS lot_no
@@ -2441,7 +2577,11 @@ AS
   AND    xvsa_out_om2_e.start_date_active             <= TRUNC(SYSDATE)
   AND    xvsa_out_om2_e.end_date_active               >= TRUNC(SYSDATE)
   UNION ALL
-  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_om2_e.attribute1                      AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_om2_e.inventory_location_id           AS inventory_location_id
         ,xmld_out_om2_e.item_id                        AS item_id
         ,NULL                                          AS lot_no
@@ -2547,7 +2687,11 @@ AS
   AND    xvsa_out_om2_e.start_date_active             <= TRUNC(SYSDATE)
   AND    xvsa_out_om2_e.end_date_active               >= TRUNC(SYSDATE)
   UNION ALL
-  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_om2_e.attribute1                      AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_om2_e.inventory_location_id           AS inventory_location_id
         ,xmld_out_om2_e.item_id                        AS item_id
         ,NULL                                          AS lot_no
@@ -2655,7 +2799,11 @@ AS
   AND    xvsa_out_om2_e.end_date_active               >= TRUNC(SYSDATE)
 -- 2008/10/24 Y.Yamamoto v1.1 add start
   UNION ALL
-  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_om2_e.attribute1                      AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_om2_e.inventory_location_id           AS inventory_location_id
         ,xmld_out_om2_e.item_id                        AS item_id
         ,NULL                                          AS lot_no
@@ -2751,7 +2899,11 @@ AS
   AND    xvsa_out_om2_e.start_date_active             <= TRUNC(SYSDATE)
   AND    xvsa_out_om2_e.end_date_active               >= TRUNC(SYSDATE)
   UNION ALL
-  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_om2_e.attribute1                      AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_om2_e.inventory_location_id           AS inventory_location_id
         ,xmld_out_om2_e.item_id                        AS item_id
         ,NULL                                          AS lot_no
@@ -2850,7 +3002,11 @@ AS
 -- 2008/10/24 Y.Yamamoto v1.1 add end
   UNION ALL
   -- 在庫調整 出庫実績(出荷 見本出庫 廃却出庫)
-  SELECT iwm_out_om3_e.attribute1                      AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_om3_e.attribute1                      AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_om3_e.attribute1                      AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_om3_e.inventory_location_id           AS inventory_location_id
         ,xmld_out_om3_e.item_id                        AS item_id
         ,NULL                                          AS lot_no
@@ -2935,7 +3091,11 @@ AS
 -- 2008/12/01 Upd Y.Kawano End
   UNION ALL
   -- 在庫調整 出庫実績(相手先在庫)
-  SELECT iwm_out_ad_e_x97.attribute1                   AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_ad_e_x97.attribute1                   AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_ad_e_x97.attribute1                   AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_ad_e_x97.inventory_location_id        AS inventory_location_id
         ,itc_out_ad_e_x97.item_id                      AS item_id
         ,NULL                                          AS lot_no
@@ -2988,7 +3148,11 @@ AS
   AND    ijm_out_ad_e_x97.attribute1             IS NULL                          -- OPMジャーナルマスタ.実績IDがNULL
   UNION ALL
   -- 相手先在庫出庫実績
-  SELECT iwm_out_ad_e_x97.attribute1                   AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_ad_e_x97.attribute1                   AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_ad_e_x97.attribute1                   AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_ad_e_x97.inventory_location_id        AS inventory_location_id
         ,itc_out_ad_e_x97.item_id                      AS item_id
         ,NULL                                          AS lot_no
@@ -3050,7 +3214,11 @@ AS
   AND    xv_out_ad_e_x97.end_date_active         >= TRUNC( SYSDATE )
   UNION ALL
   -- 在庫調整 出庫実績(仕入先返品)
-  SELECT iwm_out_ad_e_x2.attribute1                    AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_ad_e_x2.attribute1                    AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_ad_e_x2.attribute1                    AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_ad_e_x2.inventory_location_id         AS inventory_location_id
         ,itc_out_ad_e_x2.item_id                       AS item_id
         ,NULL                                          AS lot_no
@@ -3181,7 +3349,11 @@ AS
 --  UNION ALL
 -- 2008/12/3 Y.Kawano delete end
   -- 在庫調整 出庫実績(上記以外)
-  SELECT iwm_out_ad_e_xx.attribute1                    AS ownership_code
+-- 2008/12/07 N.Yoshida start
+--  SELECT iwm_out_ad_e_xx.attribute1                    AS ownership_code
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_ad_e_xx.attribute1                    AS ownership_code
+-- 2008/12/07 N.Yoshida end
         ,mil_out_ad_e_xx.inventory_location_id         AS inventory_location_id
         ,itc_out_ad_e_xx.item_id                       AS item_id
         ,NULL                                          AS lot_no
@@ -3244,6 +3416,9 @@ AS
   AND    itc_out_ad_e_xx.doc_line                = iaj_out_ad_e_xx.doc_line
 ;
 --
+-- 2008/12/07 N.Yoshida start
+COMMENT ON COLUMN xxinv_stc_trans_p0_v.po_trans_id           IS '発注実績用ID';
+-- 2008/12/07 N.Yoshida end
 COMMENT ON COLUMN xxinv_stc_trans_p0_v.ownership_code        IS '名義コード';
 COMMENT ON COLUMN xxinv_stc_trans_p0_v.inventory_location_id IS '保管倉庫ID';
 COMMENT ON COLUMN xxinv_stc_trans_p0_v.item_id               IS '品目ID';
