@@ -31,6 +31,7 @@ AS
  *  conv_multi_byte           F    -     半角文字全角置換関数
  *  get_rs_base_code          F    -     所属拠点取得
  *  get_current_rs_base_code  F    -     現所属拠点取得
+ *  conv_ng_char_vdms         F    -     自販機管理S禁則文字変換関数
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
@@ -64,6 +65,7 @@ AS
  *  2009/05/12    1.3   K.Satomura       get_rs_base_code
  *                                       get_current_rs_base_code 新規作成(T1_0593対応)
  *  2009/05/20    1.4   K.Satomura       T1_1082対応
+ *  2009/12/14    1.5   T.Maruyama       conv_ng_char_vdms新規作成（E_本稼動_00469）
  *****************************************************************************************/
 --
   -- ===============================
@@ -1706,6 +1708,118 @@ AS
 --#####################################  固定部 END   ##########################################
   END get_current_rs_base_code;
   /* 2009.05.12 K.Satomura T1_0593対応 END */
+--
+--
+  /* 2009.12.14 T.Maruyama E_本稼動_00469 START */
+  /**********************************************************************************
+   * Function  Name   : conv_ng_char_vdms
+   * Description      : 自販機管理S禁則文字変換関数
+   *                    禁則文字チェックに該当する文字を"○"に変換する。
+   *                    禁則文字は共通関数chk_mojiと合わせる。
+   *                    ＜前提＞禁則文字が1byteの場合も、2byte固定の"○"で変換する。
+   ***********************************************************************************/
+  FUNCTION conv_ng_char_vdms(
+    iv_char IN VARCHAR2 -- 文字列
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cv_prg_name              CONSTANT VARCHAR2(100) := 'conv_ng_char_vdms'; -- プログラム名
+    cv_conv_char             CONSTANT VARCHAR2(2)   := '○'; -- 変換文字列
+  --自販機システムチェック
+  --半角文字
+    cn_chr_code_tab          CONSTANT NUMBER        := 9;                            -- '	'の文字コード
+    cn_chr_code_exmark       CONSTANT NUMBER        := 33;                           -- '!'の文字コード
+    cn_chr_code_plus         CONSTANT NUMBER        := 43;                           -- '+'の文字コード
+    cn_chr_code_colon        CONSTANT NUMBER        := 58;                           -- ':'の文字コード
+    cn_chr_code_atmark       CONSTANT NUMBER        := 64;                           -- '@'の文字コード
+    cn_chr_code_bracket      CONSTANT NUMBER        := 91;                           -- '['の文字コード
+    cn_chr_code_caret        CONSTANT NUMBER        := 94;                           -- '^'の文字コード
+    cn_chr_code_acsan        CONSTANT NUMBER        := 96;                           -- '`'の文字コード
+    cn_chr_code_brace        CONSTANT NUMBER        := 123;                          -- '{'の文字コード
+    cn_chr_code_tilde        CONSTANT NUMBER        := 126;                          -- '~'の文字コード
+  --全角文字
+    cn_chr_code_wavy_line    CONSTANT NUMBER        := 33120;                        -- '0'の文字コード
+    cn_chr_code_union        CONSTANT NUMBER        := 33214;                        -- '∪'の文字コード
+    cn_chr_code_intersection CONSTANT NUMBER        := 33215;                        -- '∩'の文字コード
+    cn_chr_code_corner       CONSTANT NUMBER        := 33242;                        -- '∠'の文字コード
+    cn_chr_code_vertical     CONSTANT NUMBER        := 33243;                        -- '⊥'の文字コード
+    cn_chr_code_combination  CONSTANT NUMBER        := 33247;                        -- '≡'の文字コード
+    cn_chr_code_route        CONSTANT NUMBER        := 33251;                        -- '√'の文字コード
+    cn_chr_code_because      CONSTANT NUMBER        := 33254;                        -- '∵'の文字コード^
+    cn_chr_code_integration  CONSTANT NUMBER        := 33255;                        -- '∫'の文字コード
+    cn_chr_code_maruone      CONSTANT NUMBER        := 34624;                        -- '①'の文字コード
+    cn_chr_code_some         CONSTANT NUMBER        := 33248;                        -- '≒'の文字コード
+    cn_chr_code_difference   CONSTANT NUMBER        := 34713;                        -- '⊿'の文字コード
+  --文字化けチェック
+  --半角文字
+    cn_chr_code_yen_mark     CONSTANT NUMBER        := 92;                           -- '\'の文字コード
+  --全角文字
+    cn_chr_code_over_line    CONSTANT NUMBER        := 33104;                        -- '￣'の文字コード
+    cn_chr_code_darshi       CONSTANT NUMBER        := 33116;                        -- '―'の文字コード
+    cn_chr_code_backslash    CONSTANT NUMBER        := 33119;                        -- '＼'の文字コード
+    cn_chr_code_parallel     CONSTANT NUMBER        := 33121;                        -- '∥'の文字コード
+    cn_chr_code_three_reader CONSTANT NUMBER        := 33123;                        -- '…'の文字コード
+    cn_chr_code_two_darshi   CONSTANT NUMBER        := 33148;                        -- '－'の文字コード
+    cn_chr_code_yen_mark_b   CONSTANT NUMBER        := 33167;                        -- '￥'の文字コード
+    cn_chr_code_cent         CONSTANT NUMBER        := 33169;                        -- '￠'の文字コード
+    cn_chr_code_pound        CONSTANT NUMBER        := 33170;                        -- '￡'の文字コード
+    cn_chr_code_not          CONSTANT NUMBER        := 33226;                        -- '￢'の文字コード
+--
+    -- *** ローカル定数 ***
+--
+    lv_return     VARCHAR2(5000); -- リターン用文字列変数
+    lv_check_char VARCHAR2(2);    -- チェック対象文字
+    ln_check_char NUMBER;         -- チェック対象文字コード
+    
+  BEGIN
+--
+    --チェック対象文字列NULLチェック
+    IF (iv_char IS NULL) THEN
+      RETURN NULL;
+    END IF;
+--
+    --チェック対象文字列を1文字づつチェック
+    FOR ln_position IN 1..LENGTH(iv_char) LOOP
+      --チェック対象文字列を1文字づつに切り取り
+      lv_check_char := SUBSTR(iv_char,ln_position,1);
+      --チェック対象文字を文字コードに変換
+      ln_check_char := ASCII(lv_check_char);
+--
+      IF ((ln_check_char BETWEEN cn_chr_code_colon AND cn_chr_code_atmark)
+        OR (ln_check_char BETWEEN cn_chr_code_exmark AND cn_chr_code_plus)
+        OR (ln_check_char BETWEEN cn_chr_code_bracket AND cn_chr_code_caret)
+        OR (ln_check_char BETWEEN cn_chr_code_brace AND cn_chr_code_tilde)
+        OR (ln_check_char IN (cn_chr_code_tab,cn_chr_code_acsan))
+        OR (ln_check_char BETWEEN cn_chr_code_maruone AND cn_chr_code_difference)
+        OR (ln_check_char IN (cn_chr_code_some,cn_chr_code_combination,cn_chr_code_integration,
+          cn_chr_code_route,cn_chr_code_vertical,cn_chr_code_corner,cn_chr_code_because,
+            cn_chr_code_intersection,cn_chr_code_union,cn_chr_code_wavy_line)))
+      THEN
+        --禁則文字の場合
+        lv_return := lv_return || cv_conv_char;
+      ELSE
+        --禁則文字でない場合
+        lv_return := lv_return || lv_check_char;
+      END IF;
+--
+    END LOOP;
+--
+    RETURN lv_return;
+--
+  EXCEPTION
+--
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--###################################  固定部 END   #########################################
+--
+  END conv_ng_char_vdms;
+  /* 2009.12.14 T.Maruyama E_本稼動_00469 END */
 --
 END xxcso_util_common_pkg;
 /

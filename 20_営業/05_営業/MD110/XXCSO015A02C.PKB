@@ -56,6 +56,8 @@ AS
  *  2009-11-27    1.18  K.Satomura       E_本稼動_00121対応
  *  2009-12-01    1.19  K.Satomura       E_本稼動_00264対応 依頼日時を固定値で出力する暫定対応
  *  2009-12-05    1.20  Daisuke.Abe      E_本稼動_00334対応
+ *  2009-12-14    1.21  T.Maruyama       E_本稼動_00469対応 顧客名称、顧客住所について禁則文字
+ *                                       が存在する場合は、該当文字を変換して連携する
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -801,6 +803,13 @@ AS
     cv_phone_old           CONSTANT VARCHAR2(100) := '現設置先';
     cv_phone_new           CONSTANT VARCHAR2(100) := '新設置先';
     /* 2009.05.22 K.Satomura T1_1142対応 END */
+    /* 2009.12.14 T.Maruyama E_本稼動_00469 START */
+    cv_cust_name_size  CONSTANT NUMBER := 40; --設置先名連携桁数
+    cv_cust_add1_size  CONSTANT NUMBER := 8;  --設置先住所１連携桁数
+    cv_cust_add2_size  CONSTANT NUMBER := 20; --設置先住所２連携桁数
+    cv_cust_add3_size  CONSTANT NUMBER := 20; --設置先住所３連携桁数
+    cv_cust_add4_size  CONSTANT NUMBER := 40; --設置先住所４連携桁数
+    /* 2009.12.14 T.Maruyama E_本稼動_00469 END */
 --
     -- *** ローカル変数 ***
     lv_instance_type_code      VARCHAR2(30);            -- インスタンスタイプコード
@@ -2549,13 +2558,26 @@ AS
     ---- 事業所電話３
     io_get_data_rec.work_locatn_tel3       := NVL(lv_work_locatn_tel3,cv_phone_num);
     /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
-    /* 2009.05.21 M.Maruyama T1_1093対応 START */
-    -- -- 現設置先名
-    --io_get_data_rec.cur_organization_name  := lv_cur_organization_name;
+--
+    /* 2009.12.14 T.Maruyama E_本稼動_00469 START */
+    --/* 2009.05.21 M.Maruyama T1_1093対応 START */
+    ---- -- 現設置先名
+    ----io_get_data_rec.cur_organization_name  := lv_cur_organization_name;
+    ---- 現設置先名
+    --io_get_data_rec.cur_organization_name
+    --           := SUBSTRB(xxcso_util_common_pkg.conv_multi_byte(lv_cur_organization_name),1,40);
+    --/* 2009.05.21 M.Maruyama T1_1093対応 END */
     -- 現設置先名
+    -- 半角変換
     io_get_data_rec.cur_organization_name
-               := SUBSTRB(xxcso_util_common_pkg.conv_multi_byte(lv_cur_organization_name),1,40);
-    /* 2009.05.21 M.Maruyama T1_1093対応 END */
+               := SUBSTRB(xxcso_util_common_pkg.conv_multi_byte(lv_cur_organization_name)
+                          ,1,cv_cust_name_size);
+    -- 禁則文字変換
+    io_get_data_rec.cur_organization_name
+               := SUBSTRB(xxcso_util_common_pkg.conv_ng_char_vdms(io_get_data_rec.cur_organization_name)
+                         ,1,cv_cust_name_size);
+    /* 2009.12.14 T.Maruyama E_本稼動_00469 END */
+--
     -- 現設置先担当者氏名
     io_get_data_rec.cur_full_name          := lv_cur_full_name;
     
@@ -2594,25 +2616,62 @@ AS
     --io_get_data_rec.cur_postal_code        := lv_cur_postal_code;
     io_get_data_rec.cur_postal_code        := SUBSTRB(lv_cur_postal_code, 1, 7);
     /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
+    /* 2009.12.14 T.Maruyama E_本稼動_00469 START */
+    ---- 現設置先住所１
+    --io_get_data_rec.cur_est_site_adress1   := lv_cur_est_site_adress1;
+    ---- 現設置先住所２
+    --io_get_data_rec.cur_est_site_adress2   := lv_cur_est_site_adress2;
+    ---- 現設置先住所３
+    --io_get_data_rec.cur_est_site_adress3   := lv_cur_est_site_adress3;
     -- 現設置先住所１
-    io_get_data_rec.cur_est_site_adress1   := lv_cur_est_site_adress1;
+    io_get_data_rec.cur_est_site_adress1   
+                       := SUBSTRB(xxcso_util_common_pkg.conv_ng_char_vdms(
+                            lv_cur_est_site_adress1
+                          )
+                         ,1,cv_cust_add1_size);
     -- 現設置先住所２
-    io_get_data_rec.cur_est_site_adress2   := lv_cur_est_site_adress2;
+    io_get_data_rec.cur_est_site_adress2  
+                       := SUBSTRB(xxcso_util_common_pkg.conv_ng_char_vdms(
+                            lv_cur_est_site_adress2
+                          )
+                         ,1,cv_cust_add2_size);
     -- 現設置先住所３
-    io_get_data_rec.cur_est_site_adress3   := lv_cur_est_site_adress3;
+    io_get_data_rec.cur_est_site_adress3
+                       := SUBSTRB(xxcso_util_common_pkg.conv_ng_char_vdms(
+                            lv_cur_est_site_adress3
+                          )
+                         ,1,cv_cust_add3_size);
+    /* 2009.12.14 T.Maruyama E_本稼動_00469 END */
     /* 2009.05.21 M.Maruyama T1_1093対応 START */
     -- -- 現設置先住所４
     --io_get_data_rec.cur_est_site_adress4   := lv_cur_est_site_adress4;
     -- 現設置先住所４
-    /* 2009.05.22 K.Satomura T1_1152対応 START */
-    --io_get_data_rec.cur_est_site_adress4   := NVL(lv_cur_est_site_adress4,cv_adddrss_chr);
-    io_get_data_rec.cur_est_site_adress4   := lv_cur_est_site_adress4;
-    /* 2009.05.22 K.Satomura T1_1152対応 END */
+    /* 2009.12.14 T.Maruyama E_本稼動_00469 START */
+    --/* 2009.05.22 K.Satomura T1_1152対応 START */
+    ----io_get_data_rec.cur_est_site_adress4   := NVL(lv_cur_est_site_adress4,cv_adddrss_chr);
+    --io_get_data_rec.cur_est_site_adress4   := lv_cur_est_site_adress4;
+    --/* 2009.05.22 K.Satomura T1_1152対応 END */
+    io_get_data_rec.cur_est_site_adress4
+                       := SUBSTRB(xxcso_util_common_pkg.conv_ng_char_vdms(
+                            lv_cur_est_site_adress4
+                          )
+                         ,1,cv_cust_add4_size);
+    /* 2009.12.14 T.Maruyama E_本稼動_00469 END */
     -- -- 新設置先名
     --io_get_data_rec.new_organization_name  := lv_new_organization_name;
+    /* 2009.12.14 T.Maruyama E_本稼動_00469 START */
     -- 新設置先名
+    --io_get_data_rec.new_organization_name  
+    --           := SUBSTRB(xxcso_util_common_pkg.conv_multi_byte(lv_new_organization_name),1,40);
+    -- 半角変換
     io_get_data_rec.new_organization_name  
-               := SUBSTRB(xxcso_util_common_pkg.conv_multi_byte(lv_new_organization_name),1,40);
+               := SUBSTRB(xxcso_util_common_pkg.conv_multi_byte(lv_new_organization_name)
+                         ,1,cv_cust_name_size);   
+    -- 禁則文字変換
+    io_get_data_rec.new_organization_name  
+               := SUBSTRB(xxcso_util_common_pkg.conv_ng_char_vdms(io_get_data_rec.new_organization_name)
+                         ,1,cv_cust_name_size);
+    /* 2009.12.14 T.Maruyama E_本稼動_00469 END */
     /* 2009.05.21 M.Maruyama T1_1093対応 END */
     -- 新設置先担当者氏名
     io_get_data_rec.new_full_name          := lv_new_full_name;
@@ -2655,21 +2714,47 @@ AS
     --io_get_data_rec.new_postal_code        := lv_new_postal_code;
     io_get_data_rec.new_postal_code        := SUBSTRB(lv_new_postal_code, 1, 7);
     /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
-    -- 新設置先住所１
-    io_get_data_rec.new_est_site_adress1   := lv_new_est_site_adress1;
-    -- 新設置先住所２
-    io_get_data_rec.new_est_site_adress2   := lv_new_est_site_adress2;
-    -- 新設置先住所３
-    io_get_data_rec.new_est_site_adress3   := lv_new_est_site_adress3;
-    /* 2009.05.21 M.Maruyama T1_1093対応 START */
-    -- -- 新設置先住所４
+    /* 2009.12.14 T.Maruyama E_本稼動_00469 START */
+    ---- 新設置先住所１
+    --io_get_data_rec.new_est_site_adress1   := lv_new_est_site_adress1;
+    ---- 新設置先住所２
+    --io_get_data_rec.new_est_site_adress2   := lv_new_est_site_adress2;
+    ---- 新設置先住所３
+    --io_get_data_rec.new_est_site_adress3   := lv_new_est_site_adress3;
+    --/* 2009.05.21 M.Maruyama T1_1093対応 START */
+    ---- -- 新設置先住所４
+    ----io_get_data_rec.new_est_site_adress4   := lv_new_est_site_adress4;
+    ---- 新設置先住所４
+    --/* 2009.05.22 K.Satomura T1_1152対応 START */
+    ----io_get_data_rec.new_est_site_adress4   := NVL(lv_new_est_site_adress4,cv_adddrss_chr);
     --io_get_data_rec.new_est_site_adress4   := lv_new_est_site_adress4;
+    --/* 2009.05.22 K.Satomura T1_1152対応 END */
+    --/* 2009.05.21 M.Maruyama T1_1093対応 END */
+    -- 新設置先住所１
+    io_get_data_rec.new_est_site_adress1
+                       := SUBSTRB(xxcso_util_common_pkg.conv_ng_char_vdms(
+                            lv_new_est_site_adress1
+                          )
+                         ,1,cv_cust_add1_size);
+    -- 新設置先住所２
+    io_get_data_rec.new_est_site_adress2
+                       := SUBSTRB(xxcso_util_common_pkg.conv_ng_char_vdms(
+                            lv_new_est_site_adress2
+                          )
+                         ,1,cv_cust_add2_size);
+    -- 新設置先住所３
+    io_get_data_rec.new_est_site_adress3
+                       := SUBSTRB(xxcso_util_common_pkg.conv_ng_char_vdms(
+                            lv_new_est_site_adress3
+                          )
+                         ,1,cv_cust_add3_size);
     -- 新設置先住所４
-    /* 2009.05.22 K.Satomura T1_1152対応 START */
-    --io_get_data_rec.new_est_site_adress4   := NVL(lv_new_est_site_adress4,cv_adddrss_chr);
-    io_get_data_rec.new_est_site_adress4   := lv_new_est_site_adress4;
-    /* 2009.05.22 K.Satomura T1_1152対応 END */
-    /* 2009.05.21 M.Maruyama T1_1093対応 END */
+    io_get_data_rec.new_est_site_adress4
+                       := SUBSTRB(xxcso_util_common_pkg.conv_ng_char_vdms(
+                            lv_new_est_site_adress4
+                          )
+                         ,1,cv_cust_add4_size);
+    /* 2009.12.14 T.Maruyama E_本稼動_00469 END */
     -- 顧客コード１（新設置先)
     io_get_data_rec.new_customer_code1     := lv_new_customer_code1;
     -- 顧客コード２（現設置先)
@@ -3267,7 +3352,7 @@ AS
                      );
         lv_errbuf := lv_errmsg;
         RAISE update_error_expt;
-    END IF;
+    END IF; 
 --
     -- 新設置先住所2
     lb_str_check_flg := xxccp_common_pkg2.chk_moji(

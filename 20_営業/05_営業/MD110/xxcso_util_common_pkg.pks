@@ -29,6 +29,7 @@ AS
  *  get_working_days          F    N     営業日数取得関数
  *  chk_responsibility        F    -     ログイン者職責判定関数
  *  conv_multi_byte           F    -     半角文字全角置換関数
+ *  conv_ng_char_vdms         F    -     自販機管理S禁則文字変換関数
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
@@ -52,6 +53,7 @@ AS
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *  2009/05/12    1.3   K.Satomura       get_rs_base_code
  *                                       get_current_rs_base_code 新規作成(T1_0593対応)
+ *  2009/12/14    1.4   T.Maruyama       E_本稼動_00469対応 conv_ng_char_vdms新規作成
  *****************************************************************************************/
 --
   /**********************************************************************************
@@ -247,6 +249,16 @@ AS
   FUNCTION  get_current_rs_base_code
   RETURN VARCHAR2;
   /* 2009.05.12 K.Satomura T1_0593対応 END */
+--
+  /* 2009.12.14 T.Maruyama E_本稼動_00469 START */
+  /**********************************************************************************
+   * Function Name    : conv_ng_char_vdms
+   * Description      : 自販機管理S禁則文字変換関数
+   ***********************************************************************************/
+  FUNCTION conv_ng_char_vdms(
+    iv_char IN VARCHAR2 -- 文字列
+  ) RETURN VARCHAR2;
+  /* 2009.12.14 T.Maruyama E_本稼動_00469 END */
 --
 END xxcso_util_common_pkg;
 --
