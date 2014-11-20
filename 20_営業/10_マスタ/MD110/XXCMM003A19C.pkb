@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A19C(body)
  * Description      : HHT連携IFデータ作成
  * MD.050           : MD050_CMM_003_A19_HHT系連携IFデータ作成
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  2009/02/24    1.0   Takuya Kaihara   新規作成
  *  2009/03/09    1.1   Takuya Kaihara   プロファイル値共通化
  *  2009/04/13    1.2   Yutaka.Kuboshima 障害T1_0499,T1_0509の対応
+ *  2009/04/28    1.3   Yutaka.Kuboshima 障害T1_0831の対応
  *
  *****************************************************************************************/
 --
@@ -493,7 +494,10 @@ AS
                      erea.resource_no            resource_no,
                      erea.resource_s_date        resource_s_date,
                      hopev.last_update_date      last_update_date
-             FROM    hz_cust_accounts            hcaviw1,   --顧客マスタ
+-- 2009/04/28 Ver1.3 modify start by Yutaka.Kuboshima
+--             FROM    hz_cust_accounts            hcaviw1,   --顧客マスタ
+             FROM    hz_parties                  hcaviw1,   --パーティマスタ
+-- 2009/04/28 Ver1.3 modify end by Yutaka.Kuboshima
                      hz_organization_profiles    hopviw1,   --組織プロファイルマスタ
                      ego_resource_agv            erea,      --組織プロファイル拡張マスタ(営業員)
                      hz_org_profiles_ext_vl      hopev
@@ -517,7 +521,10 @@ AS
                      hopev.last_update_date      last_update_date,
                      ereanm.resource_no          resource_no,
                      ereanm.resource_s_date      resource_s_date
-             FROM    hz_cust_accounts            hcanm,     --顧客マスタ
+-- 2009/04/28 Ver1.3 modify start by Yutaka.Kuboshima
+--             FROM    hz_cust_accounts            hcanm,     --顧客マスタ
+             FROM    hz_parties                  hcanm,     --パーティマスタ
+-- 2009/04/28 Ver1.3 modify end by Yutaka.Kuboshima
                      hz_organization_profiles    hopnm,     --組織プロファイルマスタ
                      ego_resource_agv            ereanm,    --組織プロファイル拡張マスタ(営業員)
                      hz_org_profiles_ext_vl      hopev
@@ -548,7 +555,10 @@ AS
                      eroa.route_no               route_no,
                      eroa.route_s_date           route_s_date,
                      hopev2.last_update_date     last_update_date
-             FROM    hz_cust_accounts            hcaviw2,   --顧客マスタ
+-- 2009/04/28 Ver1.3 modify start by Yutaka.Kuboshima
+--             FROM    hz_cust_accounts            hcaviw2,   --顧客マスタ
+             FROM    hz_parties                  hcaviw2,   --パーティマスタ
+-- 2009/04/28 Ver1.3 modify end by Yutaka.Kuboshima
                      hz_organization_profiles    hopviw2,   --組織プロファイルマスタ
                      ego_route_agv               eroa,      --組織プロファイル拡張マスタ(ルート)
                      hz_org_profiles_ext_vl      hopev2
@@ -572,7 +582,10 @@ AS
                      hopev.last_update_date      last_update_date,
                      ereanm.route_no             route_no,
                      ereanm.route_s_date         route_s_date
-             FROM    hz_cust_accounts            hcanm,     --顧客マスタ
+-- 2009/04/28 Ver1.3 modify start by Yutaka.Kuboshima
+--             FROM    hz_cust_accounts            hcanm,     --顧客マスタ
+             FROM    hz_parties                  hcanm,     --パーティマスタ
+-- 2009/04/28 Ver1.3 modify end by Yutaka.Kuboshima
                      hz_organization_profiles    hopnm,     --組織プロファイルマスタ
                      ego_route_agv               ereanm,    --組織プロファイル拡張マスタ(営業員)
                      hz_org_profiles_ext_vl      hopev
@@ -652,6 +665,10 @@ AS
                                       WHERE   hcasiv.cust_account_id = hca.cust_account_id
                                       AND     hcasiv.party_site_id   = hpsiv.party_site_id
                                       AND     hpsiv.status           = cv_a_flag)      --ロケーションIDの最小値
+-- 2009/04/28 Ver1.3 add start by Yutaka.Kuboshima
+      AND    hp.party_id            = hps.party_id
+      AND    hcas.party_site_id     = hps.party_site_id
+-- 2009/04/28 Ver1.3 add end by Yutaka.Kuboshima
       ORDER BY hca.account_number;
 --
     --ノートカーソル
