@@ -7,7 +7,7 @@ AS
  * Description      : éÛï•écçÇï\ÅiáUÅj
  * MD.050/070       : åééüÅYêÿèàóùí†ï[Issue1.0(T_MD050_BPO_770)
  *                  : åééüÅYêÿèàóùí†ï[Issue1.0(T_MD070_BPO_77C)
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2009/03/05    1.18  H.Marushita      ñ{î‘è·äQ1274ëŒâû
  *  2009/05/29    1.19  Marushita        ñ{î‘è·äQ1511ëŒâû
  *  2009/08/12    1.20  Marushita        ñ{î‘è·äQ1608ëŒâû
+ *  2009/09/07    1.21  Marushita        ñ{î‘è·äQ1639ëŒâû
  *
  *****************************************************************************************/
 --
@@ -1246,7 +1247,12 @@ AS
       AND    itp.line_type           = xrpm.line_type
       AND    xrpm.break_col_03       IS NOT NULL
 -- 2009/08/12 MOD START
-      AND    xrpm.dealings_div IN('306','309')
+-- 2009/09/07 MOD START
+--      AND    xrpm.dealings_div IN('306','309')
+      AND    ((xrpm.dealings_div = '306' AND mcb2.segment1 = '5') OR 
+              (xrpm.dealings_div = '309' AND mcb2.segment1 IN ('1','4'))
+             )
+-- 2009/09/07 MOD END
       AND ((xrpm.routing_class    <> '70') OR 
            ((xrpm.routing_class     = '70')
             AND    (EXISTS (SELECT 1
@@ -2023,7 +2029,12 @@ AS
       AND    itp.line_type           = xrpm.line_type
       AND    xrpm.break_col_03       IS NOT NULL
 -- 2009/08/12 MOD START
-      AND    xrpm.dealings_div IN('306','309')
+-- 2009/09/07 MOD START
+--      AND    xrpm.dealings_div IN('306','309')
+      AND    ((xrpm.dealings_div = '306' AND mcb2.segment1 = '5') OR 
+              (xrpm.dealings_div = '309' AND mcb2.segment1 IN ('1','4'))
+             )
+-- 2009/09/07 MOD END
       AND ((xrpm.routing_class    <> '70') OR 
            ((xrpm.routing_class     = '70')
             AND    (EXISTS (SELECT 1
@@ -2809,7 +2820,12 @@ AS
       AND    itp.line_type           = xrpm.line_type
       AND    xrpm.break_col_03       IS NOT NULL
 -- 2009/08/12 MOD START
-      AND    xrpm.dealings_div IN('306','309')
+-- 2009/09/07 MOD START
+--      AND    xrpm.dealings_div IN('306','309')
+      AND    ((xrpm.dealings_div = '306' AND mcb2.segment1 = '5') OR 
+              (xrpm.dealings_div = '309' AND mcb2.segment1 IN ('1','4'))
+             )
+-- 2009/09/07 MOD END
       AND ((xrpm.routing_class    <> '70') OR 
            ((xrpm.routing_class     = '70')
             AND    (EXISTS (SELECT 1
@@ -3595,7 +3611,12 @@ AS
       AND    itp.line_type           = xrpm.line_type
       AND    xrpm.break_col_03       IS NOT NULL
 -- 2009/08/12 MOD START
-      AND    xrpm.dealings_div IN('306','309')
+-- 2009/09/07 MOD START
+--      AND    xrpm.dealings_div IN('306','309')
+      AND    ((xrpm.dealings_div = '306' AND mcb2.segment1 = '5') OR 
+              (xrpm.dealings_div = '309' AND mcb2.segment1 IN ('1','4'))
+             )
+-- 2009/09/07 MOD END
       AND ((xrpm.routing_class    <> '70') OR 
            ((xrpm.routing_class     = '70')
             AND    (EXISTS (SELECT 1
@@ -4378,7 +4399,12 @@ AS
       AND    itp.line_type           = xrpm.line_type
       AND    xrpm.break_col_03       IS NOT NULL
 -- 2009/08/12 MOD START
-      AND    xrpm.dealings_div IN('306','309')
+-- 2009/09/07 MOD START
+--      AND    xrpm.dealings_div IN('306','309')
+      AND    ((xrpm.dealings_div = '306' AND mcb2.segment1 = '5') OR 
+              (xrpm.dealings_div = '309' AND mcb2.segment1 IN ('1','4'))
+             )
+-- 2009/09/07 MOD END
       AND ((xrpm.routing_class    <> '70') OR 
            ((xrpm.routing_class     = '70')
             AND    (EXISTS (SELECT 1
@@ -5155,7 +5181,12 @@ AS
       AND    itp.line_type           = xrpm.line_type
       AND    xrpm.break_col_03       IS NOT NULL
 -- 2009/08/12 MOD START
-      AND    xrpm.dealings_div IN('306','309')
+-- 2009/09/07 MOD START
+--      AND    xrpm.dealings_div IN('306','309')
+      AND    ((xrpm.dealings_div = '306' AND mcb2.segment1 = '5') OR 
+              (xrpm.dealings_div = '309' AND mcb2.segment1 IN ('1','4'))
+             )
+-- 2009/09/07 MOD END
       AND ((xrpm.routing_class    <> '70') OR 
            ((xrpm.routing_class     = '70')
             AND    (EXISTS (SELECT 1
