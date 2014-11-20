@@ -3,13 +3,14 @@
  * Table Name      : xxcff_object_histories
  * Description     : 自販機物件管理履歴
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------- -------------------------------------
  *  Date          Ver.  Editor        Description
  * ------------- ----- ------------- -------------------------------------
  *  2014/07/09    1.0  SCSK 山下翔太  初回作成
+ *  2014/09/30    1.1  SCSK 山下翔太  E_本稼動_11719対応
  ************************************************************************/
 CREATE TABLE xxcff.xxcff_vd_object_histories (
      object_header_id               NUMBER(9)     NOT NULL
@@ -52,6 +53,9 @@ CREATE TABLE xxcff.xxcff_vd_object_histories (
     ,program_application_id         NUMBER(15)
     ,program_id                     NUMBER(15)
     ,program_update_date            DATE
+-- 2014/09/30 S.Yamashita ADD START
+    ,cash_price                     NUMBER(10)
+-- 2014/09/30 S.Yamashita ADD END
     ,CONSTRAINT xxcff_vd_object_histories_pk PRIMARY KEY (object_header_id,history_num)
   USING INDEX TABLESPACE xxidx2)
  TABLESPACE xxdata2 PCTFREE 20 PCTUSED 50 INITRANS 8 STORAGE ( INITIAL 1030M)
@@ -97,3 +101,6 @@ COMMENT ON COLUMN xxcff.xxcff_vd_object_histories.request_id                    
 COMMENT ON COLUMN xxcff.xxcff_vd_object_histories.program_application_id         IS 'コンカレント・プログラム・アプリケーションID';
 COMMENT ON COLUMN xxcff.xxcff_vd_object_histories.program_id                     IS 'コンカレント・プログラムID';
 COMMENT ON COLUMN xxcff.xxcff_vd_object_histories.program_update_date            IS 'プログラム更新日';
+-- 2014/09/30 S.Yamashita ADD START
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.cash_price                       IS '購入価格';
+-- 2014/09/30 S.Yamashita ADD END
