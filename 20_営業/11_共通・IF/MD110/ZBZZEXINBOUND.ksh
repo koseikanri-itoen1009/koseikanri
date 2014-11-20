@@ -34,8 +34,10 @@
 ##  2009/04/03    1.4   Masayuki.Sano    障害番号[T1-0286]                      ##
 ##                                       ・処理開始時に"AZBZZAPPS.env"を 　　　 ##
 ##                                         読み込むように修正。                 ##
-##  2009/04/03    1.5   Masayuki.Sano    障害番号[T1-0312]                      ##
+##  2009/04/06    1.5   Masayuki.Sano    障害番号[T1-0312]                      ##
 ##                                       ・警告終了を"4"、異常終了を"8"に変更   ##
+##  2009/04/07    1.6   Masayuki.Sano    障害番号[T1-0377]                      ##
+##                                       ・起動対象コンカレントの引数を変更     ##
 ##                                                                              ##
 ##################################################################################
                                                                                 
@@ -964,7 +966,10 @@ then
     L_ksh_para="${L_ksh_para} ${G_con_app_name}"    #アプリケーション短縮名(コンカレント)
     L_ksh_para="${L_ksh_para} ${G_con_name}"        #コンカレント短縮名
     L_set_para_flag=0
-    for L_file in "${@}"
+#2009/04/07 UPDATE BY Masayuki.Sano Ver.1.6 Start
+#    for L_file in "${@}"
+    for L_file in ${@+"$@"}
+#2009/04/07 UPDATE BY Masayuki.Sano Ver.1.6 End
     do
       if [ L_set_para_flag -eq 0 ]
       then
@@ -974,7 +979,19 @@ then
         L_ksh_para="${L_ksh_para} \"${G_path_nas}\""            #I/Fファイルパス(NASサーバ)
         L_set_para_flag=2
       else
-        L_ksh_para="${L_ksh_para} \"${L_file}\""                #コンカレントパラメータ
+#2009/04/07 UPDATE BY Masayuki.Sano Ver.1.6 Start
+#        L_ksh_para="${L_ksh_para} \"${L_file}\""               #コンカレントパラメータ
+        #入力パラメータ2以降は、コンカレント引数となる
+        #⇒CONCSUB実行ファンクションの引数に追加する。
+        if [ -z "${L_file}" ]
+        then
+          #コンカレント引数が""の場合、最初と最後にダブルクォートを追加
+          L_ksh_para="${L_ksh_para} \"${L_file}\""
+        else
+          #コンカレント引数が""以外の場合、そのまま渡す。
+          L_ksh_para="${L_ksh_para} ${L_file}"
+        fi
+#2009/04/07 UPDATE BY Masayuki.Sano Ver.1.6 End
       fi
     done
     #EBS共通コンカレント起動シェル経由で業務コンカレント実行する
@@ -1032,13 +1049,28 @@ then
   L_ksh_para="${L_ksh_para} ${G_con_app_name}"    #アプリケーション短縮名(コンカレント)
   L_ksh_para="${L_ksh_para} ${G_con_name}"        #コンカレント短縮名
   L_set_para_flag=0
-  for L_file in "${@}"
+#2009/04/07 UPDATE BY Masayuki.Sano Ver.1.6 Start
+#  for L_file in "${@}"
+  for L_file in ${@+"$@"}
+#2009/04/07 UPDATE BY Masayuki.Sano Ver.1.6 End
   do
     if [ L_set_para_flag -eq 0 ]
     then
       L_set_para_flag=1
     else
-      L_ksh_para="${L_ksh_para} \"${L_file}\""    #コンカレントパラメータ
+#2009/04/07 UPDATE BY Masayuki.Sano Ver.1.6 Start
+#      L_ksh_para="${L_ksh_para} \"${L_file}\""    #コンカレントパラメータ
+      #入力パラメータ2以降は、コンカレント引数となる
+      #⇒CONCSUB実行ファンクションの引数に追加する。
+      if [ -z "${L_file}" ]
+      then
+        #コンカレント引数が""の場合、最初と最後にダブルクォートを追加
+        L_ksh_para="${L_ksh_para} \"${L_file}\""
+      else
+        #コンカレント引数が""以外の場合、そのまま渡す。
+        L_ksh_para="${L_ksh_para} ${L_file}"
+      fi
+#2009/04/07 UPDATE BY Masayuki.Sano Ver.1.6 End
     fi
   done
   #EBS共通コンカレント起動シェル経由で業務コンカレント実行する
