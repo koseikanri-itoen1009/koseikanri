@@ -7,7 +7,7 @@ AS
  * Description      : 顧客発注からの出荷依頼自動作成
  * MD.050/070       : 出荷依頼                        (T_MD050_BPO_400)
  *                    顧客発注からの出荷依頼自動作成  (T_MD070_BPO_40B)
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ------------------------ ----------------------------------------------------------
@@ -76,6 +76,8 @@ AS
  *  2008/11/20    1.22  伊藤  ひとみ     統合テスト指摘141,658対応
  *  2009/01/09    1.23  伊藤  ひとみ     本番障害#894対応
  *  2009/02/19    1.24  加波  由香里     本番障害#147対応
+ *  2009/08/03    1.25  宮田  隆史       SCS障害管理表（0000918）対応：営業システム対応
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -125,6 +127,9 @@ AS
 -- 2008/10/14 H.Itou Add Start 統合テスト指摘240
      ,dup_item_msg_seq   NUMBER                                         -- 品目重複メッセージ格納SEQ
 -- 2008/10/14 H.Itou Add End
+-- 2009/08/03 T.Miyata Add Start SCS障害管理表（0000918）対応
+     ,arr_t_to     xxwsh_shipping_headers_if.arrival_time_to%TYPE       -- 着荷時間To
+-- 2009/08/03 T.Miyata Add End   SCS障害管理表（0000918）対応
     );
   TYPE tab_data_head_line IS TABLE OF rec_head_line INDEX BY PLS_INTEGER;
 --
@@ -959,6 +964,9 @@ AS
 -- 2008/10/14 H.Itou Add Start 統合テスト指摘240
             ,NULL                                       -- 品目重複メッセージ格納SEQ
 -- 2008/10/14 H.Itou Add End
+-- 2009/08/03 T.Miyata Add Start SCS障害管理表（0000918）対応
+            ,xshi.arrival_time_to        AS arr_t_to    -- 着荷時間To
+-- 2009/08/03 T.Miyata Add End   SCS障害管理表（0000918）対応
       FROM (SELECT xshi1.header_id
                   ,MAX (xshi1.last_update_date)
                    OVER (PARTITION BY xshi1.order_source_ref) max_date
@@ -1000,6 +1008,9 @@ AS
 -- 2008/10/14 H.Itou Add Start 統合テスト指摘240
             ,NULL                                       -- 品目重複メッセージ格納SEQ
 -- 2008/10/14 H.Itou Add End
+-- 2009/08/03 T.Miyata Add Start SCS障害管理表（0000918）対応
+            ,xshi.arrival_time_to        AS arr_t_to    -- 着荷時間To
+-- 2009/08/03 T.Miyata Add End   SCS障害管理表（0000918）対応
       FROM (SELECT xshi1.header_id
                   ,MAX (xshi1.last_update_date)
                    OVER (PARTITION BY xshi1.order_source_ref) max_date
@@ -1426,15 +1437,20 @@ AS
       RAISE err_header_expt;
     END IF;
 --
-    ---------------------------------------------------------------------------
-    -- 共通関数「依頼Noコンバート関数」にて、9桁の依頼Noを12桁依頼Noへ変換
-    ---------------------------------------------------------------------------
-    ln_result := xxwsh_common_pkg.convert_request_number
-                                  (
-                                    gv_1                          -- in  '1'拠点からのInBound用
-                                   ,gt_head_line(gn_i).o_r_ref    -- in  受注ソース参照 変更前依頼No
-                                   ,gv_new_order_no               -- out 変更後
-                                  );
+-- 2009/08/03 T.Miyata Mod Start SCS障害管理表（0000918）対応
+--    ---------------------------------------------------------------------------
+--    -- 共通関数「依頼Noコンバート関数」にて、9桁の依頼Noを12桁依頼Noへ変換
+--    ---------------------------------------------------------------------------
+--    ln_result := xxwsh_common_pkg.convert_request_number
+--                                  (
+--                                    gv_1                          -- in  '1'拠点からのInBound用
+--                                   ,gt_head_line(gn_i).o_r_ref    -- in  受注ソース参照 変更前依頼No
+--                                   ,gv_new_order_no               -- out 変更後
+--                                  );
+--
+    -- 依頼No12桁の設定
+    gv_new_order_no := gt_head_line(gn_i).o_r_ref;
+-- 2009/08/03 T.Miyata Mod End   SCS障害管理表（0000918）対応
 --
     -- 出荷依頼作成件数(依頼Ｎｏ単位)用カウント
     IF ((gn_i       = 1)
@@ -4468,6 +4484,9 @@ AS
     ord_h_all.input_sales_branch           := gt_head_line(gn_i).in_sales_br;  -- 入力拠点
     ord_h_all.prod_class                   := gr_skbn;                         -- 商品区分
     ord_h_all.arrival_time_from            := gt_head_line(gn_i).arr_t_from;   -- 着荷時間FROM
+-- 2009/08/03 T.Miyata Add Start SCS障害管理表（0000918）対応
+    ord_h_all.arrival_time_to              := gt_head_line(gn_i).arr_t_to;     -- 着荷時間To
+-- 2009/08/03 T.Miyata Add End   SCS障害管理表（0000918）対応
     ord_h_all.sum_quantity                 := gn_ttl_amount;                   -- 合計数量
     ord_h_all.small_quantity               := gn_ttl_ship_am;                  -- 小口個数
     ord_h_all.label_quantity               := gn_ttl_ship_am;                  -- ラベル枚数
@@ -4701,6 +4720,9 @@ AS
        ,input_sales_branch
        ,prod_class
        ,arrival_time_from
+-- 2009/08/03 T.Miyata Add Start SCS障害管理表（0000918）対応
+       ,arrival_time_to
+-- 2009/08/03 T.Miyata Add End   SCS障害管理表（0000918）対応
        ,sum_quantity
        ,small_quantity
        ,label_quantity
@@ -4755,6 +4777,9 @@ AS
        ,ord_h_all.input_sales_branch
        ,ord_h_all.prod_class
        ,ord_h_all.arrival_time_from
+-- 2009/08/03 T.Miyata Add Start SCS障害管理表（0000918）対応
+       ,ord_h_all.arrival_time_to
+-- 2009/08/03 T.Miyata Add End   SCS障害管理表（0000918）対応
        ,ord_h_all.sum_quantity
        ,ord_h_all.small_quantity
        ,ord_h_all.label_quantity
