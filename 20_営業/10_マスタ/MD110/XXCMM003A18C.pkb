@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A18C(body)
  * Description      : 情報系連携IFデータ作成
  * MD.050           : MD050_CMM_003_A18_情報系連携IFデータ作成
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2010/04/06    1.14  Yutaka.Kuboshima 障害E_本稼動_01965の対応
  *  2010/09/22    1.15  Shigeto.Niki     障害E_本稼動_02021の対応
  *  2011/01/21    1.16  Shigeto.Niki     障害E_本稼動_02266の対応
+ *  2011/02/21    1.17  Shigeto.Niki     障害E_本稼動_06495の対応
  *
  *****************************************************************************************/
 --
@@ -904,6 +905,11 @@ AS
         AND hr.object_id            = p_party_id
         AND hca.customer_class_code = cv_yosin_kbn
         AND hr.status               = cv_a_flag
+-- 2011/02/21 Ver1.17 障害E_本稼動_06495 add start by Shigeto.Niki
+        AND TO_DATE(gv_process_date, cv_fnd_slash_date)
+            BETWEEN hr.start_date
+            AND NVL(hr.end_date, TO_DATE(cv_eff_last_date, cv_fnd_slash_date))
+-- 2011/02/21 Ver1.17 障害E_本稼動_06495 add end by Shigeto.Niki
         AND ROWNUM = 1;
     -- パーティ関連取得カーソルレコード型
     hz_relationships_rec hz_relationships_cur%ROWTYPE;
