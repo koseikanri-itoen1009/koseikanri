@@ -1503,6 +1503,9 @@ AS
                 AND    ilm.attribute3 = ''
                                      || TO_CHAR(ld_limit_date, gv_date) || ''--賞味期限2008/05/02
                 AND    ilm.item_id    = ln_item_id;
+-- 2009/01/08 H.Sakuma Add Start 本番障害#692 賞味期限・固有記号でロットマスタに存在している場合、マスタの製造年月日を設定
+              gtbl_data(ln_cnt_loop).maker_date := TO_CHAR(FND_DATE.STRING_TO_DATE(lv_maker_date, gc_char_d_format), gc_char_d_format);
+-- 2009/01/08 H.Sakuma Add End   本番障害#692 賞味期限・固有記号でロットマスタに存在している場合、マスタの製造年月日を設定
               EXCEPTION
                 WHEN NO_DATA_FOUND THEN
                   -- OPMロットマスタに未登録(保留)
