@@ -7,7 +7,7 @@ AS
  * Description      : 直送仕入・出荷実績作成処理
  * MD.050           : 仕入先出荷実績         T_MD050_BPO_320
  * MD.070           : 直送仕入・出荷実績作成 T_MD070_BPO_32B
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2008/12/30    1.13  Oracle 吉元 強樹 標準-ｱﾄﾞｵﾝ受入差異対応
  *  2009/01/08    1.14  Oracle 吉元 強樹 受入明細番号採番不備対応
  *  2009/01/13    1.15  Oracle 吉元 強樹 受入明細番号採番不備対応
+ *  2009/01/15    1.16  Oracle 吉元 強樹 標準-ｱﾄﾞｵﾝ受入差異対応(訂正処理不備)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -91,6 +92,9 @@ AS
   gn_normal_cnt    NUMBER;                    -- 正常件数
   gn_error_cnt     NUMBER;                    -- エラー件数
   gn_warn_cnt      NUMBER;                    -- スキップ件数
+-- 2009/01/15 v1.16 T.Yoshimoto Add Start
+  gn_group_id_cnt  NUMBER := 0;               -- GROUP_ID(カウント)
+-- 2009/01/15 v1.16 T.Yoshimoto Add End
 --
 --################################  固定部 END   ##################################
 --
@@ -159,6 +163,9 @@ AS
   -- 受入取引処理
   gv_rcv_app             CONSTANT VARCHAR2(50) := 'PO';
   gv_rcv_stage           CONSTANT VARCHAR2(50) := 'STAGE10';
+-- 2009/01/15 v1.16 T.Yoshimoto Add Start
+  gv_rcv_stage2          CONSTANT VARCHAR2(50) := 'STAGE20';
+-- 2009/01/15 v1.16 T.Yoshimoto Add End
   gv_rcv_app_name        CONSTANT VARCHAR2(50) := 'RVCTP';
 --
   -- 出荷依頼/出荷実績作成処理
@@ -314,12 +321,24 @@ AS
     def_qty6                     NUMBER
   );
 --
+-- 2009/01/15 v1.16 T.Yoshimoto Add Start
+  TYPE mst_group_id_rec IS RECORD(
+    po_header_id                 po_headers_all.po_header_id%TYPE,     -- 発注ヘッダID
+    po_line_id                   po_lines_all.po_line_id%TYPE,         -- 発注明細ID
+    group_id                     NUMBER,                               -- グループID
+    exec_flg                     NUMBER                                -- 処理フラグ
+  );
+-- 2009/01/15 v1.16 T.Yoshimoto Add End
+--
   -- 各マスタへ反映するデータを格納する結合配列
   TYPE masters_tbl  IS TABLE OF masters_rec  INDEX BY PLS_INTEGER;
   TYPE mst_b_5_tbl  IS TABLE OF mst_b_5_rec  INDEX BY PLS_INTEGER;
   TYPE mst_b_6_tbl  IS TABLE OF mst_b_6_rec  INDEX BY PLS_INTEGER;
   TYPE mst_b_7_tbl  IS TABLE OF mst_b_7_rec  INDEX BY PLS_INTEGER;
   TYPE mst_b_12_tbl IS TABLE OF mst_b_12_rec INDEX BY PLS_INTEGER;
+-- 2009/01/15 v1.16 T.Yoshimoto Add Start
+  TYPE mst_group_id_tbl IS TABLE OF mst_group_id_rec INDEX BY PLS_INTEGER;
+-- 2009/01/15 v1.16 T.Yoshimoto Add End
 --
   -- ***************************************
   -- ***      登録用項目テーブル型       ***
@@ -330,6 +349,10 @@ AS
   gt_b_06_mast                mst_b_6_tbl;  -- 各マスタへ登録するデータ
   gt_b_07_mast                mst_b_7_tbl;  -- 各マスタへ登録するデータ
   gt_b_12_mast                mst_b_12_tbl; -- 各マスタへ登録するデータ
+-- 2009/01/15 v1.16 T.Yoshimoto Add Start
+  gt_group_id_mast            mst_group_id_tbl; -- group_id
+-- 2009/01/15 v1.16 T.Yoshimoto Add End
+--
   -- ***************************************
   -- ***      項目格納テーブル型定義     ***
   -- ***************************************
@@ -1655,6 +1678,10 @@ AS
    * Description      : 受入取引処理起動(B-15)
    ***********************************************************************************/
   PROCEDURE proc_rcv_exec(
+-- 2009/01/15 v1.16 T.Yoshimoto Add Start
+    in_group_id    IN         NUMBER,       -- グループID
+    iv_rcv_stage   IN         VARCHAR2,     -- 要求セット.ステージ
+-- 2009/01/15 v1.16 T.Yoshimoto Add End
     ov_errbuf      OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg      OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1700,8 +1727,13 @@ AS
     -- 要求セットの設定
     lb_ret := FND_SUBMIT.SUBMIT_PROGRAM(gv_rcv_app,
                                         gv_rcv_app_name,
-                                        gv_rcv_stage,
-                                        'BATCH',TO_CHAR(gn_group_id));
+-- 2009/01/15 v1.16 T.Yoshimoto Mod Start
+                                        --gv_rcv_stage,
+                                        iv_rcv_stage,
+                                        'BATCH',
+                                        --TO_CHAR(gn_group_id));
+                                        TO_CHAR(in_group_id));
+-- 2009/01/15 v1.16 T.Yoshimoto Mod End
 --
     IF (NOT lb_ret) THEN
       lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
@@ -2033,9 +2065,13 @@ AS
 --
       IF (ir_masters_rec.rcv_cov_qty > 0) THEN
 --
+-- 2009/01/15 v1.16 T.Yoshimoto Del Start
+/*
         SELECT rcv_interface_groups_s.NEXTVAL
         INTO   gn_group_id2
         FROM   DUAL;
+*/
+-- 2009/01/15 v1.16 T.Yoshimoto Del End
 --
         -- 受入訂正
         mod_open_rcv_if(
@@ -2049,9 +2085,13 @@ AS
           RAISE global_api_expt;
         END IF;
 --
+-- 2009/01/15 v1.16 T.Yoshimoto Del Start
+/*
         SELECT rcv_interface_groups_s.NEXTVAL
         INTO   gn_group_id
         FROM   DUAL;
+*/
+-- 2009/01/15 v1.16 T.Yoshimoto Del End
 --
         -- 搬送訂正
         mod_open_deli_if(
@@ -2067,9 +2107,13 @@ AS
 --
       ELSE
 --
+-- 2009/01/15 v1.16 T.Yoshimoto Del Start
+/*
         SELECT rcv_interface_groups_s.NEXTVAL
         INTO   gn_group_id2
         FROM   DUAL;
+*/
+-- 2009/01/15 v1.16 T.Yoshimoto Del End
 --
         -- 搬送訂正
         mod_open_deli_if(
@@ -2083,9 +2127,13 @@ AS
           RAISE global_api_expt;
         END IF;
 --
+-- 2009/01/15 v1.16 T.Yoshimoto Del Start
+/*
         SELECT rcv_interface_groups_s.NEXTVAL
         INTO   gn_group_id
         FROM   DUAL;
+*/
+-- 2009/01/15 v1.16 T.Yoshimoto Del End
 --
         -- 受入訂正
         mod_open_rcv_if(
@@ -4143,21 +4191,53 @@ AS
           IF (lr_mst_rec.trans_type = gv_trans_type_receive) THEN
 --
             SELECT rcv_interface_groups_s.NEXTVAL
+-- 2009/01/15 v1.16 T.Yoshimoto Mod Start
+                  ,gn_mode_ins             -- 新規
             INTO   gn_group_id
+                  ,gt_group_id_mast(gn_group_id_cnt).exec_flg
+-- 2009/01/15 v1.16 T.Yoshimoto Mod End
             FROM   DUAL;
+--
+-- 2009/01/15 v1.16 T.Yoshimoto Add Start
+            gt_group_id_mast(gn_group_id_cnt).group_id := gn_group_id;
+            gn_group_id_cnt := gn_group_id_cnt + 1;
+--
+            ln_flg := 1;
+-- 2009/01/15 v1.16 T.Yoshimoto Add End
 --
           -- 訂正
           ELSIF (lr_mst_rec.trans_type = gv_trans_type_correct) THEN
 --
               SELECT rcv_interface_groups_s.NEXTVAL
+-- 2009/01/15 v1.16 T.Yoshimoto Mod Start
+                    ,gn_mode_upd             -- 訂正
               INTO   gn_group_id2
+                  ,gt_group_id_mast(gn_group_id_cnt).exec_flg
+-- 2009/01/15 v1.16 T.Yoshimoto Mod End
               FROM   DUAL;
 --
+-- 2009/01/15 v1.16 T.Yoshimoto Add Start
+              gt_group_id_mast(gn_group_id_cnt).group_id := gn_group_id2;
+              gn_group_id_cnt := gn_group_id_cnt + 1;
+-- 2009/01/15 v1.16 T.Yoshimoto Add Start
+--
               SELECT rcv_interface_groups_s.NEXTVAL
+-- 2009/01/15 v1.16 T.Yoshimoto Mod Start
+                    ,gn_mode_upd             -- 訂正
               INTO   gn_group_id
+                  ,gt_group_id_mast(gn_group_id_cnt).exec_flg
+-- 2009/01/15 v1.16 T.Yoshimoto Mod End
               FROM   DUAL;
+--
+-- 2009/01/15 v1.16 T.Yoshimoto Add Start
+              gt_group_id_mast(gn_group_id_cnt).group_id := gn_group_id;
+              gn_group_id_cnt := gn_group_id_cnt + 1;
+-- 2009/01/15 v1.16 T.Yoshimoto Add End
+--
           END IF;
-          ln_flg := 1;
+-- 2009/01/15 v1.16 T.Yoshimoto Del Start
+          --ln_flg := 1;
+-- 2009/01/15 v1.16 T.Yoshimoto Del End
         END IF;
 --
         -- 新規登録
@@ -4718,6 +4798,15 @@ AS
     WHERE  pha.segment1 = gv_header_number
     AND    ROWNUM = 1;
 --
+-- 2009/01/15 v1.16 T.Yoshimoto Add Start
+    -- 依頼NOの出力
+    lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                          'APP-XXPO-30023',
+                                          gv_tkn_request_num,
+                                          gv_request_no);
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- 2009/01/15 v1.16 T.Yoshimoto Add End
+--
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -4912,6 +5001,9 @@ AS
     lb_ret        BOOLEAN;
     lb_qty_ret    BOOLEAN;
     ln_ret        NUMBER;
+-- 2009/01/15 v1.16 T.Yoshimoto Add Start
+    ln_group_id_count NUMBER := 0;
+-- 2009/01/15 v1.16 T.Yoshimoto Add End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -5031,6 +5123,8 @@ AS
     -- 異常終了以外
     IF (lv_retcode <> gv_status_error) THEN
 --
+-- 2009/01/15 v1.16 T.Yoshimoto Del Start
+/*
       IF ((gn_b_5_cnt > 0) OR (gn_b_9_cnt > 0)) THEN
 --
         IF ((gn_b_5_cnt > 0) AND (gn_group_id2 IS NOT NULL)) THEN
@@ -5063,11 +5157,19 @@ AS
           RAISE global_process_expt;
         END IF;
       END IF;
+*/
+-- 2009/01/15 v1.16 T.Yoshimoto Del End
 --
       -- 受入オープンIFにデータ登録あり
       -- 受注ヘッダアドオンの登録・更新あり
       IF ((gn_b_5_cnt > 0) OR (gn_b_9_cnt > 0)) THEN
 --
+-- 2009/01/15 v1.16 T.Yoshimoto Add Start
+        <<proc_rcv_exec_loop>>
+        LOOP
+-- 2009/01/15 v1.16 T.Yoshimoto Add End
+-- 2009/01/15 v1.16 T.Yoshimoto Mod Start
+/*
         -- ================================
         -- B-15.受入取引処理起動
         -- ================================
@@ -5075,11 +5177,79 @@ AS
           lv_errbuf,        -- エラー・メッセージ           --# 固定 #
           lv_retcode,       -- リターン・コード             --# 固定 #
           lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+*/
+          -- 新規作成処理
+          IF (gt_group_id_mast(ln_group_id_count).exec_flg = gn_mode_ins) THEN
 --
-        IF (lv_retcode = gv_status_error) THEN
-          RAISE global_api_expt;
-        END IF;
+            -- 受入取引処理
+            ln_ret := FND_REQUEST.SUBMIT_REQUEST(
+                          application  => gv_rcv_app              -- アプリケーション短縮名
+                         ,program      => gv_rcv_app_name         -- プログラム名
+                         ,argument1    => 'BATCH'                 -- 処理モード
+                         ,argument2    => TO_CHAR(gt_group_id_mast(ln_group_id_count).group_id)   -- グループID
+                        );
+            IF (ln_ret = 0) THEN
+              RAISE global_api_expt;
+            END IF;
 --
+            EXIT ;  -- ループ処理終了
+          END IF;
+--
+          -- 訂正処理
+          IF (gt_group_id_mast(ln_group_id_count).exec_flg = gn_mode_upd) THEN
+--
+            -- 要求セットの準備
+            lb_ret := FND_SUBMIT.SET_REQUEST_SET(gv_app_name, gv_request_set_name);
+--
+            IF (NOT lb_ret) THEN
+              lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                                    'APP-XXPO-10024',
+                                                    gv_tkn_conc_name,
+                                                    gv_request_name);
+              lv_errbuf := lv_errmsg;
+              RAISE global_process_expt;
+          END IF;
+--
+            -- ================================
+            -- B-15.受入取引処理起動(要求セット用訂正1)
+            -- ================================
+            proc_rcv_exec(
+              gt_group_id_mast(ln_group_id_count).group_id,
+              gv_rcv_stage,
+              lv_errbuf,        -- エラー・メッセージ           --# 固定 #
+              lv_retcode,       -- リターン・コード             --# 固定 #
+              lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+            IF (lv_retcode = gv_status_error) THEN
+--
+              lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                                    'APP-XXPO-10056');
+              lv_errbuf := lv_errmsg;
+              RAISE global_process_expt;
+            END IF;
+--
+            ln_group_id_count := ln_group_id_count + 1;
+--
+            -- ================================
+            -- B-15.受入取引処理起動(要求セット用訂正2)
+            -- ================================
+            proc_rcv_exec(
+              gt_group_id_mast(ln_group_id_count).group_id,
+              gv_rcv_stage2,
+              lv_errbuf,        -- エラー・メッセージ           --# 固定 #
+              lv_retcode,       -- リターン・コード             --# 固定 #
+              lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+            IF (lv_retcode = gv_status_error) THEN
+--
+              lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                                    'APP-XXPO-10056');
+              lv_errbuf := lv_errmsg;
+              RAISE global_process_expt;
+            END IF;
+          END IF;
+--
+/*
         -- ================================
         -- B-16.出荷依頼/出荷実績作成処理起動
         -- ================================
@@ -5092,6 +5262,7 @@ AS
           RAISE global_api_expt;
         END IF;
       END IF;
+*/
 --
       -- 要求セットに設定あり
       IF ((gn_b_15_flg = 1) OR (gn_b_16_flg = 1)) THEN
@@ -5117,7 +5288,16 @@ AS
                                               gv_tkn_conc_id,
                                               ln_req_id);
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+          END IF;
+--
+          -- 訂正処理の終了条件
+          EXIT WHEN (ln_group_id_count = gn_group_id_cnt-1);
+--
+          ln_group_id_count := ln_group_id_count + 1;
+--
+        END LOOP proc_rcv_exec_loop;
       END IF;
+-- 2009/01/15 v1.16 T.Yoshimoto Mod End
 --
       -- ================================
       -- B-17.処理結果情報出力
