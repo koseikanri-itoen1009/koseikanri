@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.0
+ * Version          : 1.4
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -31,6 +31,8 @@ AS
  *  2009/02/17    1.1   R.HAN            get_msgのパッケージ名修正
  *  2009/02/23    1.2   R.HAN            パラメータのログファイル出力対応
  *  2009/02/23    1.3   R.HAN            税コードの結合条件を追加
+ *  2009/03/25    1.4   K.KIN            T1_0015、T1_0019、T1_0052、T1_0053、
+ *                                       T1_0056、T1_0057、T1_0144対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START  ###############################
@@ -165,6 +167,13 @@ AS
   cv_n_flag                 CONSTANT  VARCHAR2(1)  := 'N';               -- フラグ値:N
   cv_card_class             CONSTANT  VARCHAR2(1)  := '1';               -- カード売り区分：カード= 1
   cv_cash_class             CONSTANT  VARCHAR2(1)  := '0';               -- カード売り区分：現金= 0
+  cn_min_day                CONSTANT  NUMBER       := 1;                 -- 支払条件マスタの初日
+  cn_max_day                CONSTANT  NUMBER       := 32;                -- 支払条件マスタの最大日
+  cv_goods_prod_syo         CONSTANT  VARCHAR2(1)  := '1';               -- 品目区分：商品= 1
+  cv_goods_prod_sei         CONSTANT  VARCHAR2(1)  := '2';               -- 品目区分：製品= 2
+  cv_site_code              CONSTANT  VARCHAR2(10)  := 'BILL_TO';        -- サイトコード
+  cn_ship_flg_on            CONSTANT  NUMBER       := 1;                 -- 出荷先顧客フラグがON
+  cn_ship_flg_off           CONSTANT  NUMBER       := 0;                 -- 出荷先顧客フラグがOFF
 --
   -- クイックコードタイプ
   cv_qct_card_cls           CONSTANT  VARCHAR2(50) := 'XXCOS1_CARD_SALE_CLASS';         -- カード売区分特定マスタ
@@ -193,6 +202,7 @@ AS
   cv_tax                   CONSTANT  VARCHAR2(3)   := 'TAX';                            -- 税金行
   cv_user                  CONSTANT  VARCHAR2(4)   := 'User';                           -- 換算タイプ用(Userを設定)
   cv_open                  CONSTANT  VARCHAR2(4)   := 'OPEN';                           -- ヘッダーDFF7(予備１)
+  cv_hold                  CONSTANT  VARCHAR2(4)   := 'HOLD';                           -- ヘッダーDFF7(予備１)
   cv_wait                  CONSTANT  VARCHAR2(7)   := 'WAITING';                        -- ヘッダーDFF(予備)
   cv_round_rule_up         CONSTANT  VARCHAR2(10)  := 'UP';                             -- 切り上げ
   cv_round_rule_down       CONSTANT  VARCHAR2(10)  := 'DOWN';                           -- 切り下げ
@@ -210,6 +220,8 @@ AS
 --
   -- 日付フォーマット
   cv_date_format_non_sep      CONSTANT VARCHAR2(20) := 'YYYYMMDD';
+  cv_date_format_on_sep       CONSTANT VARCHAR2(20) := 'YYYY/MM/DD';
+  cv_date_format_yyyymm       CONSTANT VARCHAR2(8)  := 'YYYY/MM/';
   cv_substr_st                CONSTANT NUMBER       := 7;
   cv_substr_cnt               CONSTANT NUMBER       := 2;
 --
@@ -246,6 +258,7 @@ AS
     , rcrm_receipt_id           ra_cust_receipt_methods.receipt_method_id%TYPE      -- 顧客支払方法ID
     , xchv_cust_id_s            xxcos_cust_hierarchy_v.ship_account_id%TYPE         -- 出荷先顧客ID
     , xchv_cust_id_b            xxcos_cust_hierarchy_v.bill_account_id%TYPE         -- 請求先顧客ID
+    , xchv_cust_number_b        xxcos_cust_hierarchy_v.bill_account_number%TYPE     -- 請求先顧客コード
     , xchv_cust_id_c            xxcos_cust_hierarchy_v.cash_account_id%TYPE         -- 入金先顧客ID
     , hcss_org_sys_id           hz_cust_acct_sites_all.cust_acct_site_id%TYPE       -- 顧客所在地参照ID(出荷先)
     , hcsb_org_sys_id           hz_cust_acct_sites_all.cust_acct_site_id%TYPE       -- 顧客所在地参照ID(請求先)
@@ -254,10 +267,10 @@ AS
     , xchv_bill_pay_id2         xxcos_cust_hierarchy_v.bill_payment_term2%TYPE      -- 支払条件2
     , xchv_bill_pay_id3         xxcos_cust_hierarchy_v.bill_payment_term3%TYPE      -- 支払条件3
     , xchv_tax_round            xxcos_cust_hierarchy_v.bill_tax_round_rule%TYPE     -- 税金－端数処理
-    , rtt1_term_dd1             ra_terms_tl.name%TYPE                               -- 支払名称1
-    , rtt2_term_dd2             ra_terms_tl.name%TYPE                               -- 支払名称2
-    , rtt3_term_dd3             ra_terms_tl.name%TYPE                               -- 支払名称3
     , xseh_rowid                ROWID                                               -- ROWID
+    , oif_trx_number            ra_interface_lines_all.trx_number%TYPE              -- AR取引番号
+    , oif_dff4                  ra_interface_lines_all.interface_line_attribute4%TYPE -- DFF4：伝票No＋シーケンス
+    , oif_tax_dff4              ra_interface_lines_all.interface_line_attribute4%TYPE -- DFF4税金用：伝票No＋シーケンス
   );
 --
   -- 仕訳パターンワークテーブル定義
@@ -315,9 +328,14 @@ AS
   TYPE g_sales_exp_ttype IS TABLE OF gr_sales_exp_rec INDEX BY BINARY_INTEGER;
   gt_sales_exp_tbl              g_sales_exp_ttype;                                  -- 販売実績データ
   gt_sales_norm_tbl             g_sales_exp_ttype;                                  -- 販売実績非大手量販店データ
+  gt_sales_norm_tbl2            g_sales_exp_ttype;                                  -- 販売実績非大手量販店データ（併用展開）
   gt_sales_bulk_tbl             g_sales_exp_ttype;                                  -- 販売実績大手量販店データ
-  gt_norm_card_tbl              g_sales_exp_ttype;                                  -- 販売実績非大手量販店カードデータ
-  gt_bulk_card_tbl              g_sales_exp_ttype;                                  -- 販売実績大手量販店カードデータ
+  gt_sales_bulk_tbl2            g_sales_exp_ttype;                                  -- 販売実績大手量販店データ（併用展開）
+--
+--*** MIYATA DELETE START ***
+gt_norm_card_tbl              g_sales_exp_ttype;                                  -- 販売実績非大手量販店カードデータ
+gt_bulk_card_tbl              g_sales_exp_ttype;                                  -- 販売実績大手量販店カードデータ
+--*** MIYATA DELETE END   ***
 --
   TYPE g_sales_h_ttype   IS TABLE OF ROWID INDEX BY BINARY_INTEGER;
   gt_sales_h_tbl                     g_sales_h_ttype;                               -- 販売実績フラグ更新用
@@ -450,7 +468,7 @@ AS
                                                                -- XXCOS:変動電気料(品目コード)
     ct_busi_dept_cd          CONSTANT VARCHAR2(30) := 'XXCOS1_BIZ_MAN_DEPT_CODE';
                                                                -- XXCOS:業務管理部
-    ct_busi_emp_cd           CONSTANT VARCHAR2(30) := 'XXCOS1_BIZ_MAN_EMP';
+    ct_busi_emp_cd           CONSTANT VARCHAR2(30) := 'XXCOS1_BIZ_MAN_DEPT_EMP';
                                                                -- XXCOS:業務管理部担当者
     ct_dis_item_cd           CONSTANT VARCHAR2(30) := 'XXCOS1_DISCOUNT_ITEM_CODE';
                                                                -- XXCOS:売上値引品目
@@ -665,7 +683,7 @@ AS
     --==================================
     -- XXCOS:業務管理部担当者
     --==================================
-    gv_busi_emp_cd := FND_PROFILE.VALUE( ct_busi_dept_cd );
+    gv_busi_emp_cd := FND_PROFILE.VALUE( ct_busi_emp_cd );
 --
     -- プロファイルが取得できない場合はエラー
     IF ( gv_busi_emp_cd IS NULL ) THEN
@@ -985,6 +1003,9 @@ AS
     lv_table_name VARCHAR2(255);                                       -- テーブル名
     ln_bulk_idx   NUMBER DEFAULT 0;                                    -- 非大手量販店インデックス
     ln_norm_idx   NUMBER DEFAULT 0;                                    -- 大手量販店インデックス
+    ln_start_idx  NUMBER DEFAULT 1;                                    --開始位置
+    ln_end_idx    NUMBER DEFAULT 1;                                    --終了位置
+    ln_key_bef    NUMBER DEFAULT 1;                                    --比較キー
 --
     -- *** ローカル・カーソル (販売実績データ抽出)***
     CURSOR sales_data_cur
@@ -1019,6 +1040,7 @@ AS
            , rcrm.receipt_method_id            rcrm_receipt_id         -- 顧客支払方法ID
            , xchv.ship_account_id              xchv_cust_id_s          -- 出荷先顧客ID
            , xchv.bill_account_id              xchv_cust_id_b          -- 請求先顧客ID
+           , xchv.bill_account_number          xchv_cust_number_b      -- 請求先顧客コード
            , xchv.cash_account_id              xchv_cust_id_c          -- 入金先顧客ID
            , hcss.cust_acct_site_id            hcss_org_sys_id         -- 顧客所在地参照ID（出荷先）
            , hcsb.cust_acct_site_id            hcsb_org_sys_id         -- 顧客所在地参照ID（請求先）
@@ -1027,10 +1049,10 @@ AS
            , xchv.bill_payment_term2           xchv_bill_pay_id2       -- 支払条件2
            , xchv.bill_payment_term3           xchv_bill_pay_id3       -- 支払条件3
            , xchv.bill_tax_round_rule          xchv_tax_round          -- 税金－端数処理
-           , SUBSTR(rtt1.name,1,2)             rtt1_term_dd1           -- 支払名称1の先頭２バイト
-           , SUBSTR(rtt2.name,1,2)             rtt2_term_dd2           -- 支払名称2の先頭２バイト
-           , SUBSTR(rtt3.name,1,2)             rtt3_term_dd3           -- 支払名称3の先頭２バイト
            , xseh.rowid                        xseh_rowid              -- ROWID
+           , NULL                              oif_trx_number          -- AR取引番号
+           , NULL                              oif_dff4                -- DFF4：伝票No＋シーケンス
+           , NULL                              oif_tax_dff4            -- DFF4税金用：伝票No＋シーケンス
       FROM
              xxcos_sales_exp_headers           xseh                    -- 販売実績ヘッダテーブル
            , xxcos_sales_exp_lines             xsel                    -- 販売実績明細テーブル
@@ -1044,9 +1066,6 @@ AS
            , hz_cust_acct_sites_all            hcss                    -- 顧客所在地（出荷先）
            , hz_cust_acct_sites_all            hcsb                    -- 顧客所在地（請求先）
            , hz_cust_acct_sites_all            hcsc                    -- 顧客所在地（入金先）
-           , ra_terms_tl                       rtt1                    -- AR支払条件(1)
-           , ra_terms_tl                       rtt2                    -- AR支払条件(2)
-           , ra_terms_tl                       rtt3                    -- AR支払条件(3)
            , ra_cust_receipt_methods           rcrm                    -- 顧客支払方法
            , xxcos_good_prod_class_v           xgpc                    -- 品目区分View
            , xxcos_cust_hierarchy_v            xchv                    -- 顧客階層ビュー
@@ -1120,18 +1139,13 @@ AS
       AND rcrm.site_use_id                      = scsua.site_use_id
       AND gd_process_date BETWEEN               NVL( rcrm.start_date, gd_process_date )
                           AND                   NVL( rcrm.end_date,   gd_process_date )
-      AND scsua.site_use_code                   = 'BILL_TO'
-      AND rtt1.term_id                          = xchv.bill_payment_term_id
-      AND rtt1.language                         = USERENV( 'LANG' )
-      AND rtt2.term_id                          = xchv.bill_payment_term2
-      AND rtt2.language                         = USERENV( 'LANG' )
-      AND rtt3.term_id                          = xchv.bill_payment_term3
-      AND rtt3.language                         = USERENV( 'LANG' )
+      AND scsua.site_use_code                   = cv_site_code
       ORDER BY xseh.sales_exp_header_id
              , xseh.dlv_invoice_number
              , xseh.dlv_invoice_class
              , NVL( xseh.card_sale_class, cv_cash_class )
              , xseh.cust_gyotai_sho
+             , xgpc.goods_prod_class_code
              , xsel.item_code
              , xsel.red_black_flag
              , gcc.segment3
@@ -1164,6 +1178,7 @@ AS
     gn_target_cnt   := gt_sales_exp_tbl.COUNT;
 --
     IF ( gn_target_cnt > 0 ) THEN
+--
       -- 非大手量販店データと大手量販店データの分離
       -- 抽出された販売実績データのループ
       <<gt_sales_exp_tbl_loop>>
@@ -1277,12 +1292,12 @@ AS
       ov_errbuf     := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode    := cv_status_error;
 --
-    -- *** 対象データなし *** 
+    -- *** 対象データなし ***
     WHEN global_no_data_expt THEN
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_warn;
-    -- *** データ取得例外 *** 
+    -- *** データ取得例外 ***
     WHEN global_select_data_expt THEN
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
@@ -1364,12 +1379,15 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
 --
+    cv_pad_char             CONSTANT VARCHAR2(1) := '0';     -- PAD関数で埋め込む文字
+    cn_pad_num_char         CONSTANT NUMBER := 8;            -- PAD関数で埋め込む文字数
+--
     -- *** ローカル変数 ***
-    ln_card_idx             NUMBER DEFAULT 0;           -- 生成したカードレコードのインデックス
+    ln_sale_norm_idx2       NUMBER DEFAULT 0;           -- 生成したカードレコードのインデックス
     ln_card_pt              NUMBER DEFAULT 1;           -- カードレコードのインデックス現行位置
     ln_ar_idx               NUMBER DEFAULT 0;           -- 請求取引OIFインデックス
-    ln_ar_sum               NUMBER DEFAULT 0;           -- AR配分OIF集約データインデックス;
     ln_trx_idx              NUMBER DEFAULT 0;           -- AR配分OIF集約データインデックス;
+--
     lv_trx_type_nm          VARCHAR2(30);               -- 取引タイプ名称
     lv_trx_idx              VARCHAR2(30);               -- 取引タイプ(インデックス)
     lv_item_idx             VARCHAR2(30);               -- 品目明細摘要(インデックス)
@@ -1380,37 +1398,27 @@ AS
     ln_tax_amount           NUMBER DEFAULT 0;           -- カードレコードの消費税金額
     ln_tax                  NUMBER DEFAULT 0;           -- 集約後消費税金額
     ln_amount               NUMBER DEFAULT 0;           -- 集約後金額
-    ln_tax_card             NUMBER DEFAULT 0;           -- 集約後消費税金額(カードレコード)
-    ln_amount_card          NUMBER DEFAULT 0;           -- 集約後金額(カードレコード)
     ln_trx_number_id        NUMBER;                     -- 取引明細DFF3用:自動採番番号
+    ln_trx_number_tax_id    NUMBER;                     -- 取引明細DFF3用税金用:自動採番番号
+    lv_trx_sent_dv          VARCHAR2(30);               -- 請求書発行区分
+    lv_trx_number           VARCHAR2(20);               -- AR取引番号
+    ln_trx_number_small     NUMBER;                     -- 取引番号:自動採番
 --
-    -- 集約キー(販売実績)
-    lt_header_id            xxcos_sales_exp_headers.sales_exp_header_id%TYPE;
-                                                        -- 集約キー：販売実績ヘッダID
+    -- *** 取引NO取得キー
+      -- 作成区分
+    lt_create_class         xxcos_sales_exp_headers.create_class%TYPE;
+      -- 納品伝票番号
     lt_invoice_number       xxcos_sales_exp_headers.dlv_invoice_number%TYPE;
-                                                        -- 集約キー：納品伝票番号
+      -- 納品伝票区分
     lt_invoice_class        xxcos_sales_exp_headers.dlv_invoice_class%TYPE;
-                                                        -- 集約キー：納品伝票区分
-    lt_goods_prod_cls       xxcos_good_prod_class_v.goods_prod_class_code%TYPE;
-                                                        -- 集約キー：品目区分（製品・商品）
-    lt_item_code            xxcos_sales_exp_lines.item_code%TYPE;
-                                                        -- 集約キー：品目コード（非在庫）
-    lt_card_sale_class      xxcos_sales_exp_headers.card_sale_class%TYPE;
-                                                        -- 集約キー：カード売り区分
-    lt_red_black_flag       xxcos_sales_exp_lines.red_black_flag%TYPE;
-                                                        -- 集約キー：赤黒フラグ
+      -- 請求先顧客
+    lt_xchv_cust_id_b       xxcos_cust_hierarchy_v.bill_account_id%TYPE;
 --
-    -- 集約キー(生成したカードレコード)
-    lt_header_id_card       xxcos_sales_exp_headers.sales_exp_header_id%TYPE;
-                                                        -- 集約キー：販売実績ヘッダID
-    lt_invo_number_card     xxcos_sales_exp_headers.dlv_invoice_number%TYPE;
-                                                        -- 集約キー：納品伝票番号
-    lt_invo_class_card      xxcos_sales_exp_headers.dlv_invoice_class%TYPE;
-                                                        -- 集約キー：納品伝票区分
-    lt_goods_prod_card      xxcos_good_prod_class_v.goods_prod_class_code%TYPE;
-                                                        -- 集約キー：品目区分コード（製品・商品）
-    lt_item_code_card       xxcos_sales_exp_lines.item_code%TYPE;
-                                                        -- 集約キー：品目コード（非在庫）
+    -- *** 集約キー(販売実績)
+      -- 販売実績ヘッダID
+    lt_header_id            xxcos_sales_exp_headers.sales_exp_header_id%TYPE;
+      -- AR取引番号
+    lt_trx_number           VARCHAR2(20);
 --
     lv_sum_flag             VARCHAR2(1);                -- 集約フラグ
     lv_sum_card_flag        VARCHAR2(1);                -- カード集約フラグ
@@ -1430,10 +1438,84 @@ AS
 --###########################  固定部 END   ############################
 --
     --=====================================================================
-    -- ４．フルサービスVDとフルサービス（消化）VDのカード・現金併用データの編集
+    -- 集計前データ展開
     --=====================================================================
+--
+--
     <<gt_sales_norm_tbl_loop>>
     FOR sale_norm_idx IN 1 .. gt_sales_norm_tbl.COUNT LOOP
+--
+--
+      -- AR取引番号の自動採番
+      IF (  NVL( lt_create_class, 'X' )        <> gt_sales_norm_tbl( sale_norm_idx ).create_class        -- 作成元区分
+         OR NVL( lt_invoice_number, 'X' )     <> gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_number  -- 納品伝票No
+         OR NVL( lt_invoice_class, 'X' )      <> NVL( gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_class, 'X' )   -- 納品伝票区分
+         OR lt_xchv_cust_id_b                  <> gt_sales_norm_tbl( sale_norm_idx ).xchv_cust_id_b      -- 請求先顧客
+         )
+      THEN
+--
+        BEGIN
+          SELECT
+            xxcos_trx_number_small_s01.NEXTVAL
+          INTO
+            ln_trx_number_small
+          FROM
+            dual
+          ;
+        END;
+--
+        -- AR取引番号の編集 納品伝票番号＋シーケンス8桁
+        lv_trx_number := gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_number
+                           || LPAD( TO_CHAR( ln_trx_number_small )
+                                            ,cn_pad_num_char
+                                            ,cv_pad_char
+                                           );
+--
+      END IF;
+--
+--
+      -- 納品伝票番号＋シーケンスの採番
+      IF (   NVL( lt_trx_number , 'X' )     <> lv_trx_number                                            -- AR取引番号
+         OR  lt_header_id                   <> gt_sales_norm_tbl( sale_norm_idx ).sales_exp_header_id   -- 販売実績ヘッダID
+         )
+      THEN
+          -- 取引明細DFF4用:自動採番番号
+        BEGIN
+--
+          SELECT
+            xxcos_trx_number_s01.NEXTVAL
+          INTO
+            ln_trx_number_id
+          FROM
+            dual
+          ;
+        END;
+--
+        BEGIN
+--
+          SELECT
+            xxcos_trx_number_s01.NEXTVAL
+          INTO
+            ln_trx_number_tax_id
+          FROM
+            dual
+          ;
+        END;
+      END IF;
+--
+--
+      -- 取引番号キー
+      lt_invoice_class    := gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_class;
+      lt_create_class     := gt_sales_norm_tbl( sale_norm_idx ).create_class;
+      lt_invoice_number   := gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_number;
+      lt_xchv_cust_id_b   := gt_sales_norm_tbl( sale_norm_idx ).xchv_cust_id_b;
+--
+--
+      -- 納品伝票番号＋シーケンスの採番の集約キーの値セット
+      lt_trx_number       := lv_trx_number;
+      lt_header_id        := gt_sales_norm_tbl( sale_norm_idx ).sales_exp_header_id;
+--
+--
       -- 現金・カード併用の場合-->カード売り区分=現金:0 かつ 現金カード併用額>0
       IF ( (   gt_sales_norm_tbl( sale_norm_idx ).cust_gyotai_sho = gt_fvd_xiaoka
             OR gt_sales_norm_tbl( sale_norm_idx ).cust_gyotai_sho = gt_gyotai_fvd )
@@ -1465,194 +1547,297 @@ AS
           ln_tax_amount := 0;
         END IF;
 --
-        --==============================================================
-        --販売実績カードワークテーブルへのカードレコード登録
-        --==============================================================
-        ln_card_idx := ln_card_idx + 1;
 --
-        -- カードレコード全カラムの設定
-        gt_norm_card_tbl( ln_card_idx ) := gt_sales_norm_tbl( sale_norm_idx );
+      --*** 現金レコード全カラムの設定 ***
+        ln_sale_norm_idx2                                        := ln_sale_norm_idx2 + 1;
+        gt_sales_norm_tbl2( ln_sale_norm_idx2 )                  := gt_sales_norm_tbl( sale_norm_idx );
+          -- AR取引番号
+        gt_sales_norm_tbl2( ln_sale_norm_idx2 ).oif_trx_number   := lv_trx_number;
+          -- DFF4
+        gt_sales_norm_tbl2( ln_sale_norm_idx2 ).oif_dff4         := gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_number
+                                                                    || TO_CHAR( ln_trx_number_id );
+          -- DFF4税金用
+        gt_sales_norm_tbl2( ln_sale_norm_idx2 ).oif_tax_dff4     := gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_number
+                                                                    || TO_CHAR( ln_trx_number_tax_id );
 --
-        -- カードレコードカード売り区分、本体金額、消費税金額の設定
-        gt_norm_card_tbl( ln_card_idx ).card_sale_class     := cv_card_class;
-                                                            -- カード売り区分（１：カード）
-        gt_norm_card_tbl( ln_card_idx ).pure_amount         := ln_pure_amount;
-                                                            -- 本体金額
-        gt_norm_card_tbl( ln_card_idx ).tax_amount          := ln_tax_amount;
-                                                            -- 消費税金額
+--
+      --*** カードレコード全カラムの設定 ***
+        ln_sale_norm_idx2 := ln_sale_norm_idx2 + 1;
+        gt_sales_norm_tbl2( ln_sale_norm_idx2 ) := gt_sales_norm_tbl( sale_norm_idx );
+--
+          -- カード売り区分（１：カード）
+        gt_sales_norm_tbl2( ln_sale_norm_idx2 ).card_sale_class  := cv_card_class;
+          -- 本体金額
+        gt_sales_norm_tbl2( ln_sale_norm_idx2 ).pure_amount      := ln_pure_amount;
+          -- 消費税金額
+        gt_sales_norm_tbl2( ln_sale_norm_idx2 ).tax_amount       := ln_tax_amount;
+          -- AR取引番号
+        gt_sales_norm_tbl2( ln_sale_norm_idx2 ).oif_trx_number   := lv_trx_number;
+          -- DFF4
+        gt_sales_norm_tbl2( ln_sale_norm_idx2 ).oif_dff4         := gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_number
+                                                                    || TO_CHAR( ln_trx_number_id );
+          -- DFF4税金用
+        gt_sales_norm_tbl2( ln_sale_norm_idx2 ).oif_tax_dff4     := gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_number
+                                                                    || TO_CHAR( ln_trx_number_tax_id );
+--
+      ELSE
+--
+      --*** 併用以外のレコード全カラムの設定
+        ln_sale_norm_idx2                                        := ln_sale_norm_idx2 + 1;
+        gt_sales_norm_tbl2( ln_sale_norm_idx2 )                  := gt_sales_norm_tbl( sale_norm_idx );
+          -- AR取引番号
+        gt_sales_norm_tbl2( ln_sale_norm_idx2 ).oif_trx_number   := lv_trx_number;
+          -- DFF4
+        gt_sales_norm_tbl2( ln_sale_norm_idx2 ).oif_dff4         := gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_number
+                                                                    || TO_CHAR( ln_trx_number_id );
+          -- DFF4税金用
+        gt_sales_norm_tbl2( ln_sale_norm_idx2 ).oif_tax_dff4     := gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_number
+                                                                    || TO_CHAR( ln_trx_number_tax_id );
+--
       END IF;
-    END LOOP gt_sales_norm_tbl_loop;                        -- 非大手量販店併用データ編集終了
+--
+      -- 業態小分類の編集
+      IF ( gt_sales_norm_tbl( sale_norm_idx ).cust_gyotai_sho <> gt_fvd_xiaoka
+        AND gt_sales_norm_tbl( sale_norm_idx ).cust_gyotai_sho <> gt_gyotai_fvd) THEN
+--
+          gt_sales_norm_tbl2( ln_sale_norm_idx2 ).cust_gyotai_sho := cv_nvd;                 -- VD以外の業態・納品VD
+--
+      END IF;
+--
+    END LOOP gt_sales_norm_tbl_loop;
 --
       --=====================================================================
       -- 請求取引集約処理（非大手量販店）開始
       --=====================================================================
     -- 集約キーの値セット
-    lt_header_id        := gt_sales_norm_tbl( 1 ).sales_exp_header_id;
-    lt_invoice_number   := gt_sales_norm_tbl( 1 ).dlv_invoice_number;
-    lt_invoice_class    := gt_sales_norm_tbl( 1 ).dlv_invoice_class;
-    lt_goods_prod_cls   := gt_sales_norm_tbl( 1 ).goods_prod_cls;
-    lt_item_code        := gt_sales_norm_tbl( 1 ).item_code;
-    lt_card_sale_class  := gt_sales_norm_tbl( 1 ).card_sale_class;
-    lt_red_black_flag   := gt_sales_norm_tbl( 1 ).red_black_flag;
+    lt_trx_number       := gt_sales_norm_tbl2( 1 ).oif_trx_number;            -- AR取引番号
+    lt_header_id        := gt_sales_norm_tbl2( 1 ).sales_exp_header_id;   -- 販売実績ヘッダID
 --
     -- ラストデータ登録為に、ダミーデータをセット
-    gt_sales_norm_tbl( gt_sales_norm_tbl.COUNT + 1 ).sales_exp_header_id 
-                        := gt_sales_norm_tbl( gt_sales_norm_tbl.COUNT ).sales_exp_header_id;
-    IF ( gt_norm_card_tbl.COUNT > 0 ) THEN
-      gt_norm_card_tbl( gt_norm_card_tbl.COUNT + 1 ).sales_exp_header_id 
-                        := gt_norm_card_tbl( gt_norm_card_tbl.COUNT ).sales_exp_header_id;
-    END IF;
+    gt_sales_norm_tbl2( gt_sales_norm_tbl2.COUNT + 1 ).sales_exp_header_id
+                        := gt_sales_norm_tbl2( gt_sales_norm_tbl2.COUNT ).sales_exp_header_id;
 --
     <<gt_sales_norm_sum_loop>>
-    FOR sale_norm_idx IN 1 .. gt_sales_norm_tbl.COUNT LOOP
+    FOR sale_norm_idx IN 1 .. gt_sales_norm_tbl2.COUNT LOOP
 --
-      --=====================================
-      --5-1.販売実績元データの集約
-      --=====================================
-      IF (  lt_header_id        = gt_sales_norm_tbl( sale_norm_idx ).sales_exp_header_id
-        AND lt_invoice_number   = gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_number
-        AND lt_invoice_class    = gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_class
-        AND ( lt_goods_prod_cls = gt_sales_norm_tbl( sale_norm_idx ).goods_prod_cls
-          OR lt_item_code       = gt_sales_norm_tbl( sale_norm_idx ).item_code )
-        AND lt_card_sale_class  = gt_sales_norm_tbl( sale_norm_idx ).card_sale_class
-        AND lt_red_black_flag   = gt_sales_norm_tbl( sale_norm_idx ).red_black_flag
-        ) THEN
+     --=====================================
+     --  販売実績元データの集約
+     --=====================================
+      IF (  lt_trx_number   = gt_sales_norm_tbl2( sale_norm_idx ).oif_trx_number
+         AND lt_header_id   = gt_sales_norm_tbl2( sale_norm_idx ).sales_exp_header_id
+         )
+      THEN
 --
         -- 集約するフラグ初期設定
         lv_sum_flag      := cv_y_flag;
-        lv_sum_card_flag := cv_y_flag;
 --
         -- 本体金額を集約する
-        ln_amount := ln_amount + gt_sales_norm_tbl( sale_norm_idx ).pure_amount;
+        ln_amount := ln_amount + gt_sales_norm_tbl2( sale_norm_idx ).pure_amount;
 --
         -- 課税の場合、消費税額を集約する
-        IF ( gt_sales_norm_tbl( sale_norm_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
-          ln_tax := ln_tax + gt_sales_norm_tbl( sale_norm_idx ).tax_amount;
+        IF ( gt_sales_norm_tbl2( sale_norm_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
+          ln_tax := ln_tax + gt_sales_norm_tbl2( sale_norm_idx ).tax_amount;
         END IF;
 --
-        --=====================================
-        --5-2.上記4で生成したカードレコードの集約
-        --=====================================
-        IF ( gt_sales_norm_tbl( sale_norm_idx ).card_sale_class = cv_card_class ) THEN
-          <<gt_norm_card_tbl_loop>>
-          FOR i IN ln_card_pt .. gt_norm_card_tbl.COUNT LOOP
-            IF (  lt_header_id        = gt_norm_card_tbl( i ).sales_exp_header_id
-              AND lt_invoice_number   = gt_norm_card_tbl( i ).dlv_invoice_number
-              AND lt_invoice_class    = gt_norm_card_tbl( i ).dlv_invoice_class
-              AND ( lt_goods_prod_cls = gt_norm_card_tbl( i ).goods_prod_cls
-                OR  lt_item_code      = gt_norm_card_tbl( i ).item_code )
-              ) THEN
-              -- 本体金額を集約する
-              ln_amount   := ln_amount + gt_norm_card_tbl( i ).pure_amount;
-              -- 課税の場合、消費税額を集約する
-              IF ( gt_norm_card_tbl( i ).consumption_tax_class != gt_no_tax_cls ) THEN
-                ln_tax := ln_tax + gt_norm_card_tbl( i ).tax_amount;
-              END IF;
-            END IF;
-            -- カードレコードの現ポイントをカウントする
-            ln_card_pt := i;
-          END LOOP gt_norm_card_tbl_loop;
---
-        -- 生成したカードレコードだけの集約
-        ELSIF ( ( gt_sales_norm_tbl( sale_norm_idx ).cust_gyotai_sho = gt_fvd_xiaoka
-            OR gt_sales_norm_tbl( sale_norm_idx ).cust_gyotai_sho = gt_gyotai_fvd )
-          AND gt_sales_norm_tbl( sale_norm_idx ).card_sale_class = gt_cash_sale_cls
-          AND gt_sales_norm_tbl( sale_norm_idx ).cash_and_card > 0
-          AND ln_card_pt < gt_norm_card_tbl.COUNT
-          ) THEN
---
-          ln_amount_card := 0;
-          ln_tax_card  := 0;
---
-          -- 生成したカードレコードだけの集約開始
-          <<gt_norm_card_tbl_loop>>
-          FOR i IN ln_card_pt .. gt_norm_card_tbl.COUNT LOOP
-            IF (  lt_header_id        = gt_norm_card_tbl( i ).sales_exp_header_id
-              AND lt_invoice_number   = gt_norm_card_tbl( i ).dlv_invoice_number
-              AND lt_invoice_class    = gt_norm_card_tbl( i ).dlv_invoice_class
-              AND ( lt_goods_prod_cls = gt_norm_card_tbl( i ).goods_prod_cls
-                OR lt_item_code       = gt_norm_card_tbl( i ).item_code )
-            ) THEN
-              -- 本体金額を集約する
-              ln_amount_card := ln_amount_card + gt_norm_card_tbl( i ).pure_amount;
-              -- 課税の場合、消費税額を集約する
-              IF ( gt_norm_card_tbl( i ).consumption_tax_class != gt_no_tax_cls ) THEN
-                ln_tax_card  := ln_tax_card + gt_norm_card_tbl( i ).tax_amount;
-              END IF;
-            ELSE
-              -- カードレコードの現ポイントをカウントする
-              ln_card_pt := i;
-              -- 集約フラグ’N'を設定
-              lv_sum_card_flag := cv_n_flag;
---
-            END IF;
---
-          END LOOP gt_norm_card_tbl_loop;
---
-        END IF; -- 生成したカードレコードだけの集約終了
       ELSE
 --
         lv_sum_flag := cv_n_flag;
         ln_trx_idx  := sale_norm_idx - 1;
       END IF;
---
-      IF ( lv_sum_flag = cv_n_flag OR lv_sum_card_flag = cv_n_flag ) THEN
+--      
+      IF ( lv_sum_flag = cv_n_flag ) THEN
         --=====================================================================
         -- １．支払条件IDの取得
         --=====================================================================
-        IF ( SUBSTR( TO_CHAR( gt_sales_norm_tbl( ln_trx_idx ).delivery_date, cv_date_format_non_sep )
-                   , cv_substr_st, cv_substr_cnt )
-             <= gt_sales_norm_tbl( ln_trx_idx ).rtt1_term_dd1 ) THEN
-          -- 支払条件 ID
-          ln_term_id := gt_sales_norm_tbl( ln_trx_idx ).xchv_bill_pay_id;
+        BEGIN
 --
-        ELSIF( SUBSTR( TO_CHAR( gt_sales_norm_tbl( ln_trx_idx ).delivery_date, cv_date_format_non_sep )
-                     , cv_substr_st, cv_substr_cnt )
-               > gt_sales_norm_tbl( ln_trx_idx ).rtt1_term_dd1
-           AND SUBSTR( TO_CHAR( gt_sales_norm_tbl( ln_trx_idx ).delivery_date, cv_date_format_non_sep )
-                     , cv_substr_st, cv_substr_cnt )
-               <= gt_sales_norm_tbl( ln_trx_idx ).rtt2_term_dd2 ) THEN
-          -- 第2支払条件 ID
-          ln_term_id := gt_sales_norm_tbl( ln_trx_idx ).xchv_bill_pay_id2;
+          SELECT term_id
+          INTO   ln_term_id
+          FROM
+            ( SELECT term_id
+                    ,cutoff_date
+              FROM
+                ( --****支払条件１（当月）
+                   SELECT rtv11.term_id
+                         ,CASE WHEN rtv11.due_cutoff_day = cn_max_day                             -- 支払日、最大の32日
+                                 THEN  LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date )  -- 納品月の末日
+                                 ELSE  DECODE( rtv11.due_cutoff_day -1, 0
+                                                -- 月日付0日の場合、納品月の前月末日を取得
+                                               ,TO_DATE( TO_CHAR( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                                                  cn_min_day, cv_date_format_on_sep ) -1
+                                                -- 指定日の-1日を取得
+                                               ,TO_DATE( TO_CHAR  ( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                                         TO_NUMBER( rtv11.due_cutoff_day -1 ), cv_date_format_on_sep
+                                                       )
+                                             )
+                          END cutoff_date
+                   FROM   ra_terms_vl      rtv11                           -- 支払条件マスタ
+                   WHERE  gd_process_date  BETWEEN NVL( rtv11.start_date_active, gd_process_date ) -- 業務日付時点で有効
+                                               AND NVL( rtv11.end_date_active  , gd_process_date )
+                     AND  rtv11.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
+                     AND  rtv11.term_id = gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id         -- 顧客階層ビューの支払条件１
+                     AND  ROWNUM = 1
 --
-        ELSIF( SUBSTR( TO_CHAR( gt_sales_norm_tbl( ln_trx_idx ).delivery_date, cv_date_format_non_sep )
-                     , cv_substr_st, cv_substr_cnt )
-               > gt_sales_norm_tbl( ln_trx_idx ).rtt2_term_dd2
-           AND SUBSTR( TO_CHAR( gt_sales_norm_tbl( ln_trx_idx ).delivery_date, cv_date_format_non_sep )
-                     , cv_substr_st, cv_substr_cnt )
-               <= gt_sales_norm_tbl( ln_trx_idx ).rtt3_term_dd3 ) THEN
-          -- 第3支払条件 ID
-          ln_term_id := gt_sales_norm_tbl( ln_trx_idx ).xchv_bill_pay_id3;
-        ELSE
-          -- 支払条件IDの取得ができない場合
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                          iv_application   => cv_xxcos_short_nm
-                        , iv_name          => cv_term_id_msg
-                      );
-          lv_errbuf  := lv_errmsg;
+                  UNION ALL
 --
-          RAISE global_term_id_expt;
-        END IF;
+                   --****支払条件１（翌月）
+                   SELECT rtv12.term_id
+                         ,CASE WHEN rtv12.due_cutoff_day = cn_max_day                                            -- 支払日、最大の32日
+                                 THEN  LAST_DAY(ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 ) ) -- 納品翌月の末日
+                                 ELSE  DECODE( rtv12.due_cutoff_day -1 ,0
+                                                -- 月日付0日の場合、納品月の末日
+                                               ,LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date )
+                                                -- 指定日の-1日を取得
+                                               ,TO_DATE( TO_CHAR( ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 ),
+                                                                  cv_date_format_yyyymm ) || TO_NUMBER( rtv12.due_cutoff_day -1 )
+                                                                  , cv_date_format_on_sep
+                                                       )
+                                             )
+                          END cutoff_date
+                   FROM   ra_terms_vl      rtv12           -- 支払条件マスタ
+                   WHERE  gd_process_date  BETWEEN NVL( rtv12.start_date_active, gd_process_date ) -- 業務日付時点で有効
+                                               AND NVL( rtv12.end_date_active  , gd_process_date )
+                     AND  rtv12.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
+                     AND  rtv12.term_id = gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id         -- 顧客階層ビューの支払条件１
+                     AND  ROWNUM = 1
+--
+                  UNION ALL
+--
+                  --****支払条件２（当月）
+                   SELECT rtv21.term_id
+                         ,CASE WHEN rtv21.due_cutoff_day = cn_max_day          -- 支払日、最大の32日
+                                 THEN  LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date )  -- 納品月の末日
+                                 ELSE  DECODE( rtv21.due_cutoff_day -1, 0
+                                                -- 月日付0日の場合、納品月の前月末日を取得
+                                               ,TO_DATE( TO_CHAR( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                                                  cn_min_day, cv_date_format_on_sep ) -1
+                                                -- 指定日の-1日を取得
+                                               ,TO_DATE( TO_CHAR  ( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                                         TO_NUMBER( rtv21.due_cutoff_day -1 )
+                                                         , cv_date_format_on_sep
+                                                       )
+                                             )
+                          END cutoff_date
+                   FROM   ra_terms_vl      rtv21           -- 支払条件マスタ
+                   WHERE  gd_process_date  BETWEEN NVL( rtv21.start_date_active, gd_process_date ) -- 業務日付時点で有効
+                                               AND NVL( rtv21.end_date_active  , gd_process_date )
+                     AND  rtv21.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
+                     AND  rtv21.term_id = gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id2        -- 顧客階層ビューの支払条件２
+                     AND  ROWNUM = 1
+--
+                  UNION ALL
+--
+                  --****支払条件２（翌月）
+                   SELECT rtv22.term_id
+                         ,CASE WHEN rtv22.due_cutoff_day = cn_max_day          -- 支払日、最大の32日
+                                 THEN  LAST_DAY(ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 ) ) -- 納品翌月の末日
+                                 ELSE  DECODE( rtv22.due_cutoff_day -1 ,0
+                                                -- 月日付0日の場合、納品月の末日
+                                               ,LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date )
+                                                -- 指定日の-1日を取得
+                                               ,TO_DATE( TO_CHAR( ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 ),
+                                                                  cv_date_format_yyyymm ) || TO_NUMBER( rtv22.due_cutoff_day -1 )
+                                                                  , cv_date_format_on_sep
+                                                       )
+                                             )
+                          END cutoff_date
+                   FROM   ra_terms_vl      rtv22           -- 支払条件マスタ
+                   WHERE  gd_process_date  BETWEEN NVL( rtv22.start_date_active, gd_process_date ) -- 業務日付時点で有効
+                                               AND NVL( rtv22.end_date_active  , gd_process_date )
+                     AND  rtv22.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
+                     AND  rtv22.term_id = gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id2        -- 顧客階層ビューの支払条件２
+                     AND  ROWNUM = 1
+--
+                  UNION ALL
+--
+                  --****支払条件３（当月）
+                   SELECT rtv31.term_id
+                         ,CASE WHEN rtv31.due_cutoff_day = cn_max_day          -- 支払日、最大の32日
+                                 THEN  LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date )  -- 納品月の末日
+                                 ELSE  DECODE( rtv31.due_cutoff_day -1, 0
+                                                -- 月日付0日の場合、納品月の前月末日を取得
+                                               ,TO_DATE( TO_CHAR( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                                                  cn_min_day, cv_date_format_on_sep ) -1
+                                                -- 指定日の-1日を取得
+                                               ,TO_DATE( TO_CHAR  ( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                                         TO_NUMBER( rtv31.due_cutoff_day -1 )
+                                                         , cv_date_format_on_sep
+                                                       )
+                                             )
+                          END cutoff_date
+                   FROM   ra_terms_vl      rtv31           -- 支払条件マスタ
+                   WHERE  gd_process_date  BETWEEN NVL( rtv31.start_date_active, gd_process_date ) -- 業務日付時点で有効
+                                               AND NVL( rtv31.end_date_active  , gd_process_date )
+                     AND  rtv31.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
+                     AND  rtv31.term_id = gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id3        -- 顧客階層ビューの支払条件３
+                     AND  ROWNUM = 1
+--
+                  UNION ALL
+--
+                  --****支払条件３（翌月）
+                   SELECT rtv32.term_id
+                         ,CASE WHEN rtv32.due_cutoff_day = cn_max_day          -- 支払日、最大の32日
+                                 THEN  LAST_DAY(ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 ) ) -- 納品翌月の末日
+                                 ELSE  DECODE( rtv32.due_cutoff_day -1 ,0
+                                                -- 月日付0日の場合、納品月の末日
+                                               ,LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date )
+                                                -- 指定日の-1日を取得
+                                               ,TO_DATE( TO_CHAR( ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 ),
+                                                                  cv_date_format_yyyymm ) || TO_NUMBER( rtv32.due_cutoff_day -1 )
+                                                                  , cv_date_format_on_sep
+                                                       )
+                                             )
+                          END cutoff_date
+                   FROM   ra_terms_vl      rtv32           -- 支払条件マスタ
+                   WHERE  gd_process_date  BETWEEN NVL( rtv32.start_date_active, gd_process_date ) -- 業務日付時点で有効
+                                               AND NVL( rtv32.end_date_active  , gd_process_date )
+                     AND  rtv32.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
+                     AND  rtv32.term_id = gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id3        -- 顧客階層ビューの支払条件３
+                     AND  ROWNUM = 1
+                ) rtv
+              WHERE TRUNC( rtv.cutoff_date ) >= gd_process_date                                    -- 業務日付
+                AND TRUNC( rtv.cutoff_date ) >= gt_sales_norm_tbl2( ln_trx_idx ).delivery_date      -- 納品日
+              ORDER BY rtv.cutoff_date
+            )
+          WHERE  ROWNUM = 1;
+--
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              -- 支払条件IDの取得ができない場合
+              lv_errmsg := xxccp_common_pkg.get_msg(
+                              iv_application   => cv_xxcos_short_nm
+                            , iv_name          => cv_term_id_msg
+                          );
+              lv_errbuf  := lv_errmsg;
+--
+              RAISE global_term_id_expt;
+          END;
 --
         --=====================================================================
         -- ２．取引タイプの取得
         --=====================================================================
-        lv_trx_idx := gt_sales_norm_tbl( ln_trx_idx ).create_class
-                   || gt_sales_norm_tbl( ln_trx_idx ).dlv_invoice_class;
+--
+        lv_trx_idx := gt_sales_norm_tbl2( ln_trx_idx ).create_class
+                   || gt_sales_norm_tbl2( ln_trx_idx ).dlv_invoice_class;
         IF ( gt_sel_trx_type_tbl.EXISTS( lv_trx_idx ) ) THEN
           lv_trx_type_nm := gt_sel_trx_type_tbl( lv_trx_idx ).attribute1;
         ELSE
           BEGIN
             SELECT flvm.attribute1 || flvd.attribute1
+                 , rctt.attribute1
             INTO   lv_trx_type_nm
+                 , lv_trx_sent_dv
             FROM   fnd_lookup_values              flvm                     -- 作成元区分特定マスタ
                  , fnd_lookup_values              flvd                     -- 納品伝票区分特定マスタ
+                 , ra_cust_trx_types_all          rctt                     -- 取引タイプマスタ
             WHERE  flvm.lookup_type               = cv_qct_mkorg_cls
               AND  flvd.lookup_type               = cv_qct_dlv_slp_cls
               AND  flvm.lookup_code               LIKE cv_qcc_code
               AND  flvd.lookup_code               LIKE cv_qcc_code
-              AND  flvm.meaning                   = gt_sales_norm_tbl( ln_trx_idx ).create_class
-              AND  flvd.meaning                   = gt_sales_norm_tbl( ln_trx_idx ).dlv_invoice_class
+              AND  flvm.meaning                   = gt_sales_norm_tbl2( ln_trx_idx ).create_class
+              AND  flvd.meaning                   = gt_sales_norm_tbl2( ln_trx_idx ).dlv_invoice_class
+              AND  rctt.name                      = flvm.attribute1 || flvd.attribute1
+              AND  rctt.org_id                    = gv_mo_org_id
               AND  flvm.enabled_flag              = cv_enabled_yes
               AND  flvd.enabled_flag              = cv_enabled_yes
               AND  flvm.language                  = USERENV( 'LANG' )
@@ -1669,7 +1854,7 @@ AS
                               iv_application   => cv_xxcos_short_nm
                             , iv_name          => cv_trxtype_err_msg
                             , iv_token_name1   => cv_tkn_lookup_type
-                            , iv_token_value1  => cv_qct_mkorg_cls 
+                            , iv_token_value1  => cv_qct_mkorg_cls
                                                || cv_and
                                                || cv_qct_dlv_slp_cls
                           );
@@ -1684,16 +1869,16 @@ AS
         END IF;
 --
         --=====================================================================
-        -- 3．品目明細摘要の取得(「仮受消費税等」以外)
+        -- ３．品目明細摘要の取得(「仮受消費税等」以外)
         --=====================================================================
 --
         -- 品目明細摘要の存在チェック-->存在している場合、取得必要がない
-        IF ( gt_sales_norm_tbl( ln_trx_idx ).goods_prod_cls IS NULL ) THEN
-          lv_item_idx := gt_sales_norm_tbl( ln_trx_idx ).dlv_invoice_class
-                      || gt_sales_norm_tbl( ln_trx_idx ).item_code;
+        IF ( gt_sales_norm_tbl2( ln_trx_idx ).goods_prod_cls IS NULL ) THEN
+          lv_item_idx := gt_sales_norm_tbl2( ln_trx_idx ).dlv_invoice_class
+                      || gt_sales_norm_tbl2( ln_trx_idx ).item_code;
         ELSE
-          lv_item_idx := gt_sales_norm_tbl( ln_trx_idx ).dlv_invoice_class
-                      || gt_sales_norm_tbl( ln_trx_idx ).goods_prod_cls;
+          lv_item_idx := gt_sales_norm_tbl2( ln_trx_idx ).dlv_invoice_class
+                      || gt_sales_norm_tbl2( ln_trx_idx ).goods_prod_cls;
         END IF;
 --
         IF ( gt_sel_item_desp_tbl.EXISTS( lv_item_idx ) ) THEN
@@ -1705,9 +1890,9 @@ AS
             FROM   fnd_lookup_values              flvi                     -- AR品目明細摘要特定マスタ
             WHERE  flvi.lookup_type               = cv_qct_item_cls
               AND  flvi.lookup_code               LIKE cv_qcc_code
-              AND  flvi.attribute1                = gt_sales_norm_tbl( ln_trx_idx ).dlv_invoice_class
-              AND  flvi.attribute2                = NVL( gt_sales_norm_tbl( ln_trx_idx ).goods_prod_cls,
-                                                         gt_sales_norm_tbl( ln_trx_idx ).item_code )
+              AND  flvi.attribute1                = gt_sales_norm_tbl2( ln_trx_idx ).dlv_invoice_class
+              AND  flvi.attribute2                = NVL( gt_sales_norm_tbl2( ln_trx_idx ).goods_prod_cls,
+                                                         gt_sales_norm_tbl2( ln_trx_idx ).item_code )
               AND  flvi.enabled_flag              = cv_enabled_yes
               AND  flvi.language                  = USERENV( 'LANG' )
               AND  gd_process_date BETWEEN        NVL( flvi.start_date_active, gd_process_date )
@@ -1734,70 +1919,14 @@ AS
       END IF;
 --
       --==============================================================
-      -- ６．AR請求取引OIFデータ作成
+      -- ４．AR請求取引OIFデータ作成
       --==============================================================
 --
       -- -- 集約フラグ’N'の場合、AR請求取引OIFデータ作成する
-      IF ( lv_sum_flag = cv_n_flag ) THEN 
+      IF ( lv_sum_flag = cv_n_flag ) THEN
 --
         -- AR請求取引OIFの収益行
         ln_ar_idx   := ln_ar_idx  + 1;
-        ln_ar_sum   := ln_ar_sum  + 1;
---
-        -- 取引明細DFF4用:自動採番番号
-        BEGIN
-          SELECT
-            xxcos_trx_number_s01.NEXTVAL
-          INTO
-            ln_trx_number_id
-          FROM
-            dual
-          ;
-        END;
---
-        -- AR会計配分集約用データ格納
-        gt_ar_dis_sum_tbl( ln_ar_sum ).sales_exp_header_id
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).sales_exp_header_id;
-                                                        -- 販売実績ヘッダID
-        gt_ar_dis_sum_tbl( ln_ar_sum ).dlv_invoice_number
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).dlv_invoice_number;
-                                                        -- 納品伝票番号
-        gt_ar_dis_sum_tbl( ln_ar_sum ).interface_line_dff4
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).dlv_invoice_number
-                                                        || TO_CHAR( ln_trx_number_id );
-                                                        -- 納品伝票番号+自動採番
-        gt_ar_dis_sum_tbl( ln_ar_sum ).dlv_invoice_class
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).dlv_invoice_class;
-                                                        -- 納品伝票区分
-        gt_ar_dis_sum_tbl( ln_ar_sum ).item_code        := gt_sales_norm_tbl( ln_trx_idx ).item_code;
-                                                        -- 品目コード
-        gt_ar_dis_sum_tbl( ln_ar_sum ).goods_prod_cls   := gt_sales_norm_tbl( ln_trx_idx ).goods_prod_cls;
-                                                        -- 品目区分（製品・商品）
-        -- 業態小分類の編集
-        IF ( gt_sales_norm_tbl( ln_trx_idx ).cust_gyotai_sho <> gt_fvd_xiaoka
-          OR gt_sales_norm_tbl( ln_trx_idx ).cust_gyotai_sho <> gt_gyotai_fvd
-          OR gt_sales_norm_tbl( ln_trx_idx ).cust_gyotai_sho <> gt_vd_xiaoka ) THEN
-          lv_cust_gyotai_sho := cv_nvd;                 -- VD以外の業態・納品VD
-        ELSE
-          lv_cust_gyotai_sho := gt_sales_norm_tbl( ln_trx_idx ).cust_gyotai_sho;
-                                                        -- フル(消化)VD・フルVD・消化VD
-        END IF;
-        gt_ar_dis_sum_tbl( ln_ar_sum ).cust_gyotai_sho  := lv_cust_gyotai_sho;
-                                                        -- 業態小分類
-        gt_ar_dis_sum_tbl( ln_ar_sum ).sales_base_code  := gt_sales_norm_tbl( ln_trx_idx ).sales_base_code;
-                                                        -- 売上拠点コード
-        gt_ar_dis_sum_tbl( ln_ar_sum ).card_sale_class  := gt_sales_norm_tbl( ln_trx_idx ).card_sale_class;
-                                                        -- カード売り区分
-        gt_ar_dis_sum_tbl( ln_ar_sum ).red_black_flag   := gt_sales_norm_tbl( ln_trx_idx ).red_black_flag;
-                                                        -- 赤黒フラグ
-        gt_ar_dis_sum_tbl( ln_ar_sum ).pure_amount      := ln_amount;
-                                                        -- 集約後本体金額
-        gt_ar_dis_sum_tbl( ln_ar_sum ).gccs_segment3    := gt_sales_norm_tbl( ln_trx_idx ).gccs_segment3;
-                                                        -- 売上勘定科目コード
-        gt_ar_dis_sum_tbl( ln_ar_sum ).tax_amount       := ln_tax;
-                                                        -- 集約後消費税額
-        gt_ar_dis_sum_tbl( ln_ar_sum ).gcct_segment3    := gt_sales_norm_tbl( ln_trx_idx ).gcct_segment3;
-                                                        -- 消費税勘定科目コード
 --
         -- AR請求取引OIFデータ作成(収益行)===>NO.1
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_context
@@ -1807,17 +1936,16 @@ AS
                                                         := gv_sales_nm;
                                                         -- 取引明細DFF1:「販売実績」を設定
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute3
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).dlv_invoice_number;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).dlv_invoice_number;
                                                         -- 取引明細DFF3
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute4
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).dlv_invoice_number
-                                                        || TO_CHAR( ln_trx_number_id );
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).oif_dff4;
                                                         -- 取引明細DFF4
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute5
                                                         := gv_sales_nm;
                                                         -- 取引明細DFF5:「販売実績」を設定
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute7
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).sales_exp_header_id;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).sales_exp_header_id;
                                                         -- 取引明細DFF7
         gt_ar_interface_tbl( ln_ar_idx ).batch_source_name  := gv_sales_nm;
                                                         -- 取引ソース:「販売実績」を設定
@@ -1837,32 +1965,32 @@ AS
                                                         -- 取引タイプ名
         gt_ar_interface_tbl( ln_ar_idx ).term_id        := ln_term_id;
                                                         -- 支払条件ID
-        IF (  gt_sales_norm_tbl( sale_norm_idx ).card_sale_class = cv_cash_class
-          AND gt_sales_norm_tbl( sale_norm_idx ).cash_and_card   = 0 ) THEN
+        IF (  gt_sales_norm_tbl2( sale_norm_idx ).card_sale_class = cv_cash_class
+          AND gt_sales_norm_tbl2( sale_norm_idx ).cash_and_card   = 0 ) THEN
         -- 現金の場合
           gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_address_id
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).hcsb_org_sys_id;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).hcsb_org_sys_id;
                                                         -- 請求先顧客所在地参照ID
           gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_customer_id
-                                                        :=gt_sales_norm_tbl( ln_trx_idx ).xchv_cust_id_b;
+                                                        :=gt_sales_norm_tbl2( ln_trx_idx ).xchv_cust_id_b;
                                                         -- 請求先顧客ID
         ELSE
         -- カードの場合
           gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_address_id
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).hcsc_org_sys_id;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).hcsc_org_sys_id;
                                                         -- 入金先顧客所在地参照ID
           gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_customer_id
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).xchv_cust_id_c;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).xchv_cust_id_c;
                                                         -- 入金先顧客ID
         END IF;
         gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_address_id
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).hcss_org_sys_id;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).hcss_org_sys_id;
                                                         -- 出荷先顧客所在地参照ID
         gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_customer_id
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).xchv_cust_id_s;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).xchv_cust_id_s;
                                                         -- 出荷先顧客ID
         gt_ar_interface_tbl( ln_ar_idx ).receipt_method_id
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).rcrm_receipt_id;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).rcrm_receipt_id;
                                                         -- 支払方法ID
         gt_ar_interface_tbl( ln_ar_idx ).conversion_type
                                                         := cv_user;
@@ -1870,34 +1998,41 @@ AS
         gt_ar_interface_tbl( ln_ar_idx ).conversion_rate
                                                         := cn_con_rate;
                                                         -- 換算レート:1 を設定
-        gt_ar_interface_tbl( ln_ar_idx ).trx_date       := gt_sales_norm_tbl( ln_trx_idx ).inspect_date;
+        gt_ar_interface_tbl( ln_ar_idx ).trx_date       := gt_sales_norm_tbl2( ln_trx_idx ).inspect_date;
                                                         -- 取引日(請求書日付):販.検収日
-        gt_ar_interface_tbl( ln_ar_idx ).gl_date        := gt_sales_norm_tbl( ln_trx_idx ).delivery_date;
+        gt_ar_interface_tbl( ln_ar_idx ).gl_date        := gt_sales_norm_tbl2( ln_trx_idx ).delivery_date;
                                                         -- GL記帳日(仕訳計上日):販.納品日
-        gt_ar_interface_tbl( ln_ar_idx ).trx_number     := gt_sales_norm_tbl( ln_trx_idx ).dlv_invoice_number
-                                                        || TO_CHAR( ln_trx_number_id );
+        gt_ar_interface_tbl( ln_ar_idx ).trx_number     := gt_sales_norm_tbl2( ln_trx_idx ).oif_trx_number;
                                                         -- 収益行のみ：AR取引番号
-        gt_ar_interface_tbl( ln_ar_idx ).line_number    := gt_sales_norm_tbl( ln_trx_idx ).dlv_inv_line_no;
+
+        gt_ar_interface_tbl( ln_ar_idx ).line_number    := gt_sales_norm_tbl2( ln_trx_idx ).dlv_inv_line_no;
                                                         -- 収益行のみ：AR取引明細番号
+
         gt_ar_interface_tbl( ln_ar_idx ).quantity       := cn_quantity;
                                                         -- 収益行のみ：数量=1
         gt_ar_interface_tbl( ln_ar_idx ).unit_selling_price
                                                         := ln_amount;
                                                         -- 収益行のみ：販売単価=本体金額
-        gt_ar_interface_tbl( ln_ar_idx ).tax_code       := gt_sales_norm_tbl( ln_trx_idx ).tax_code;
+        gt_ar_interface_tbl( ln_ar_idx ).tax_code       := gt_sales_norm_tbl2( ln_trx_idx ).tax_code;
                                                         -- 税金コード(税区分)
         gt_ar_interface_tbl( ln_ar_idx ).header_attribute_category
                                                         := gv_mo_org_id;
                                                         -- ヘッダーDFFカテゴリ
         gt_ar_interface_tbl( ln_ar_idx ).header_attribute5
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).sales_base_code;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).sales_base_code;
                                                         -- ヘッダーdff5(起票部門)
         gt_ar_interface_tbl( ln_ar_idx ).header_attribute6
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).results_employee_code;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).results_employee_code;
                                                         -- ヘッダーdff6(伝票入力者)
-        gt_ar_interface_tbl( ln_ar_idx ).header_attribute7
+        IF( lv_trx_sent_dv = cv_n_flag ) THEN
+          gt_ar_interface_tbl( ln_ar_idx ).header_attribute7
+                                                        := cv_hold;
+                                                        -- ヘッダーDFF7(予備１)
+        ELSIF( lv_trx_sent_dv = cv_y_flag ) THEN
+          gt_ar_interface_tbl( ln_ar_idx ).header_attribute7
                                                         := cv_open;
                                                         -- ヘッダーDFF7(予備１)
+        END IF;
         gt_ar_interface_tbl( ln_ar_idx ).header_attribute8
                                                         := cv_wait;
                                                         -- ヘッダーdff8(予備２)
@@ -1905,16 +2040,16 @@ AS
                                                         := cv_wait;
                                                         -- ヘッダーdff9(予備3)
         gt_ar_interface_tbl( ln_ar_idx ).header_attribute11
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).receiv_base_code;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).receiv_base_code;
                                                         -- ヘッダーDFF11(入金拠点)
         gt_ar_interface_tbl( ln_ar_idx ).org_id         := TO_NUMBER( gv_mo_org_id );
                                                         -- 営業単位ID
-        IF ( gt_sales_norm_tbl( ln_trx_idx ).tax_code = gt_in_tax_cls ) THEN
+        IF ( gt_sales_norm_tbl2( ln_trx_idx ).tax_code = gt_in_tax_cls ) THEN
           -- 内税の場合、'Y'を設定
           gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
                                                         := cv_y_flag;
                                                         -- 税込金額フラグ
-        ELSIF( gt_sales_norm_tbl( ln_trx_idx ).tax_code = gt_out_tax_cls ) THEN
+        ELSIF( gt_sales_norm_tbl2( ln_trx_idx ).tax_code = gt_out_tax_cls ) THEN
           -- 外税の場合、'N'を設定
           gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
                                                         := cv_n_flag;
@@ -1928,23 +2063,6 @@ AS
         -- AR請求取引OIFデータ作成(税金行)===>NO.2
         ln_ar_idx := ln_ar_idx + 1;
 --
-        -- 取引明細DFF4用:自動採番番号
-        BEGIN
-          SELECT
-            xxcos_trx_number_s01.NEXTVAL
-          INTO
-            ln_trx_number_id
-          FROM
-            dual
-          ;
-        END;
---
-        -- AR会計配分集約用データ格納
-        gt_ar_dis_sum_tbl( ln_ar_sum ).interface_tax_dff4
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).dlv_invoice_number
-                                                        || TO_CHAR( ln_trx_number_id );
-                                                        -- 納品伝票番号+自動採番
---
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_context
                                                         := gv_sales_nm;
                                                         -- 取引明細コンテキスト:「販売実績」を設定
@@ -1952,17 +2070,16 @@ AS
                                                         := gv_sales_nm;
                                                         -- 取引明細DFF1:「販売実績」を設定
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute3
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).dlv_invoice_number;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).dlv_invoice_number;
                                                         -- 取引明細DFF3
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute4
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).dlv_invoice_number
-                                                        || TO_CHAR( ln_trx_number_id );
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).oif_tax_dff4;
                                                         -- 取引明細DFF4
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute5
                                                         := gv_sales_nm;
                                                         -- 取引明細DFF5:「販売実績」を設定
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute7
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).sales_exp_header_id;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).sales_exp_header_id;
                                                         -- 取引明細DFF7
         gt_ar_interface_tbl( ln_ar_idx ).batch_source_name
                                                         := gv_sales_nm;
@@ -1972,8 +2089,10 @@ AS
                                                         -- 会計帳簿ID
         gt_ar_interface_tbl( ln_ar_idx ).line_type      := cv_tax;
                                                         -- 税金行
+
         gt_ar_interface_tbl( ln_ar_idx ).description    := gv_item_tax;
                                                         -- 品目明細摘要
+
         gt_ar_interface_tbl( ln_ar_idx ).currency_code  := cv_currency_code;
                                                         -- 通貨
         gt_ar_interface_tbl( ln_ar_idx ).amount         := ln_tax;
@@ -1983,29 +2102,29 @@ AS
                                                         -- 取引タイプ名
         gt_ar_interface_tbl( ln_ar_idx ).term_id        := ln_term_id;
                                                         -- 支払条件ID
-        IF (  gt_sales_norm_tbl( ln_trx_idx ).card_sale_class = cv_cash_class
-          AND gt_sales_norm_tbl( ln_trx_idx ).cash_and_card   = 0 ) THEN
+        IF (  gt_sales_norm_tbl2( ln_trx_idx ).card_sale_class = cv_cash_class
+          AND gt_sales_norm_tbl2( ln_trx_idx ).cash_and_card   = 0 ) THEN
           -- 現金の場合
           gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_address_id
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).hcsb_org_sys_id;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).hcsb_org_sys_id;
                                                         -- 請求先顧客所在地参照ID
           gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_customer_id
-                                                        :=gt_sales_norm_tbl( ln_trx_idx ).xchv_cust_id_b;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).xchv_cust_id_b;
                                                         -- 請求先顧客ID
         ELSE
         -- カードの場合
           gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_address_id
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).hcsc_org_sys_id;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).hcsc_org_sys_id;
                                                         -- 入金先顧客所在地参照ID
           gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_customer_id
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).xchv_cust_id_c;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).xchv_cust_id_c;
                                                         -- 入金先顧客ID
         END IF;
         gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_address_id
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).hcss_org_sys_id;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).hcss_org_sys_id;
                                                         -- 出荷先顧客所在地参照ID
         gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_customer_id
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).xchv_cust_id_s;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).xchv_cust_id_s;
                                                         -- 出荷先顧客ID
         gt_ar_interface_tbl( ln_ar_idx ).link_to_line_context
                                                         := gv_sales_nm;
@@ -2014,20 +2133,19 @@ AS
                                                         := gv_sales_nm;
                                                         -- リンク先明細DFF1:「販売実績」を設定
         gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute3
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).dlv_invoice_number;
+                                                        := gt_ar_interface_tbl( ln_ar_idx - 1 ).interface_line_attribute3;
                                                         -- リンク先明細DFF3
         gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute4
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).dlv_invoice_number
-                                                        || TO_CHAR( ln_trx_number_id );
+                                                        := gt_ar_interface_tbl( ln_ar_idx - 1 ).interface_line_attribute4;
                                                         -- リンク先明細DFF4
         gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute5
                                                         := gv_sales_nm;
                                                         -- リンク先明細DFF5:「販売実績」を設定
         gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute7
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).sales_exp_header_id;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).sales_exp_header_id;
                                                         -- リンク先明細DFF7
         gt_ar_interface_tbl( ln_ar_idx ).receipt_method_id
-                                                        := gt_sales_norm_tbl( ln_trx_idx ).rcrm_receipt_id;
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).rcrm_receipt_id;
                                                         -- 支払方法ID
         gt_ar_interface_tbl( ln_ar_idx ).conversion_type
                                                         := cv_user;
@@ -2035,20 +2153,20 @@ AS
         gt_ar_interface_tbl( ln_ar_idx ).conversion_rate
                                                         := cn_con_rate;
                                                         -- 換算レート:1 を設定
-        gt_ar_interface_tbl( ln_ar_idx ).trx_date       := gt_sales_norm_tbl( ln_trx_idx ).inspect_date;
+        gt_ar_interface_tbl( ln_ar_idx ).trx_date       := gt_sales_norm_tbl2( ln_trx_idx ).inspect_date;
                                                         -- 取引日(請求書日付):販.検収日
-        gt_ar_interface_tbl( ln_ar_idx ).gl_date        := gt_sales_norm_tbl( ln_trx_idx ).delivery_date;
+        gt_ar_interface_tbl( ln_ar_idx ).gl_date        := gt_sales_norm_tbl2( ln_trx_idx ).delivery_date;
                                                         -- GL記帳日(仕訳計上日):販.納品日
-        gt_ar_interface_tbl( ln_ar_idx ).tax_code       := gt_sales_norm_tbl( ln_trx_idx ).tax_code;
+        gt_ar_interface_tbl( ln_ar_idx ).tax_code       := gt_sales_norm_tbl2( ln_trx_idx ).tax_code;
                                                         -- 税金コード
         gt_ar_interface_tbl( ln_ar_idx ).org_id         := TO_NUMBER( gv_mo_org_id );
                                                         -- 営業単位ID
-        IF ( gt_sales_norm_tbl( ln_trx_idx ).tax_code = gt_in_tax_cls ) THEN
+        IF ( gt_sales_norm_tbl2( ln_trx_idx ).tax_code = gt_in_tax_cls ) THEN
           -- 内税の場合、'Y'を設定
-          gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag 
+          gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
                                                         := cv_y_flag;
                                                         -- 税込金額フラグ
-        ELSIF( gt_sales_norm_tbl( ln_trx_idx ).tax_code = gt_out_tax_cls ) THEN
+        ELSIF( gt_sales_norm_tbl2( ln_trx_idx ).tax_code = gt_out_tax_cls ) THEN
           -- 外税の場合、'N'を設定
           gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
                                                         := cv_n_flag;
@@ -2058,282 +2176,24 @@ AS
                                                         -- 作成者
         gt_ar_interface_tbl( ln_ar_idx ).creation_date  := cd_creation_date;
                                                         -- 作成日
+--
       END IF;
 --
-      -- カード集約フラグ’N'の場合、カードのAR請求取引OIFデータ作成する
-      IF ( lv_sum_card_flag = cv_n_flag AND ln_amount_card > 0 ) THEN   
---
-        -- AR請求取引OIFの収益行
-        ln_ar_idx   := ln_ar_idx  + 1;
-        ln_card_idx := ln_card_pt - 1;
---
-        -- 取引明細DFF4用:自動採番番号
-        BEGIN
-          SELECT
-            xxcos_trx_number_s01.NEXTVAL
-          INTO
-            ln_trx_number_id
-          FROM
-            dual
-          ;
-        END;
---
-        -- AR請求取引OIFデータ作成(収益行)===>NO.3
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_context
-                                                        := gv_sales_nm;
-                                                        -- 取引明細コンテキスト:「販売実績」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute1
-                                                        := gv_sales_nm;
-                                                        -- 取引明細DFF1
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute3
-                                                        := gt_norm_card_tbl( ln_card_idx ).dlv_invoice_number;
-                                                        -- 取引明細DFF3
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute4
-                                                        := gt_norm_card_tbl( ln_card_idx ).dlv_invoice_number
-                                                        || TO_CHAR( ln_trx_number_id );
-                                                        -- 取引明細DFF4
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute5
-                                                        := gv_sales_nm;
-                                                        -- 取引明細DFF5:「販売実績」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute7
-                                                        := gt_norm_card_tbl( ln_card_idx ).sales_exp_header_id;
-                                                        -- 取引明細DFF7
-        gt_ar_interface_tbl( ln_ar_idx ).batch_source_name  := gv_sales_nm;
-                                                        -- 取引ソース:「販売実績」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).set_of_books_id
-                                                        := TO_NUMBER ( gv_set_bks_id );
-                                                        -- 会計帳簿ID
-        gt_ar_interface_tbl( ln_ar_idx ).line_type      := cv_line;
-                                                        -- 収益行
-        gt_ar_interface_tbl( ln_ar_idx ).description    := lv_item_desp;
-                                                        -- 品目明細摘要
-        gt_ar_interface_tbl( ln_ar_idx ).currency_code  := cv_currency_code;
-                                                        -- 通貨
-        gt_ar_interface_tbl( ln_ar_idx ).amount         := ln_amount_card;
-                                                        -- 収益行：本体金額
-        gt_ar_interface_tbl( ln_ar_idx ).cust_trx_type_name
-                                                        := lv_trx_type_nm;
-                                                        -- 取引タイプ名
-        gt_ar_interface_tbl( ln_ar_idx ).term_id        := ln_term_id;
-                                                        -- 支払条件ID
-        gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_address_id
-                                                        := gt_norm_card_tbl( ln_card_idx ).hcsc_org_sys_id;
-                                                        -- 入金先顧客所在地参照ID
-        gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_customer_id
-                                                        := gt_norm_card_tbl( ln_card_idx ).xchv_cust_id_c;
-                                                        -- 入金先顧客ID
-        gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_address_id
-                                                        := gt_norm_card_tbl( ln_card_idx ).hcss_org_sys_id;
-                                                        -- 出荷先顧客所在地参照ID
-        gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_customer_id
-                                                        := gt_norm_card_tbl( ln_card_idx ).xchv_cust_id_s;
-                                                        -- 出荷先顧客ID
-        gt_ar_interface_tbl( ln_ar_idx ).receipt_method_id
-                                                        := gt_norm_card_tbl( ln_card_idx ).rcrm_receipt_id;
-                                                        -- 支払方法ID
-        gt_ar_interface_tbl( ln_ar_idx ).conversion_type
-                                                        := cv_user;
-                                                        -- 換算タイプ:「User」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).conversion_rate
-                                                        := cn_con_rate;
-                                                        -- 換算レート:1 を設定
-        gt_ar_interface_tbl( ln_ar_idx ).trx_date       := gt_norm_card_tbl( ln_card_idx ).inspect_date;
-                                                        -- 取引日(請求書日付):販.検収日
-        gt_ar_interface_tbl( ln_ar_idx ).gl_date        := gt_norm_card_tbl( ln_card_idx ).delivery_date;
-                                                        -- GL記帳日(仕訳計上日):販.納品日
-        gt_ar_interface_tbl( ln_ar_idx ).trx_number     := gt_norm_card_tbl( ln_card_idx ).dlv_invoice_number
-                                                        || TO_CHAR( ln_trx_number_id );
-                                                        -- 収益行のみ：AR取引番号
-        gt_ar_interface_tbl( ln_ar_idx ).line_number    := gt_norm_card_tbl( ln_card_idx ).dlv_inv_line_no;
-                                                        -- 収益行のみ：AR取引明細番号
-        gt_ar_interface_tbl( ln_ar_idx ).quantity       := cn_quantity;
-                                                        -- 収益行のみ：数量=1
-        gt_ar_interface_tbl( ln_ar_idx ).unit_selling_price
-                                                        := ln_amount_card;
-                                                        -- 収益行のみ：販売単価=本体金額
-        gt_ar_interface_tbl( ln_ar_idx ).tax_code       := gt_norm_card_tbl( ln_card_idx ).tax_code;
-                                                        -- 税金コード(税区分)
-        gt_ar_interface_tbl( ln_ar_idx ).header_attribute_category
-                                                        := gv_mo_org_id;
-                                                        -- ヘッダーDFFカテゴリ
-        gt_ar_interface_tbl( ln_ar_idx ).header_attribute5
-                                                        := gt_norm_card_tbl( ln_card_idx ).sales_base_code;
-                                                        -- ヘッダーdff5(起票部門)
-        gt_ar_interface_tbl( ln_ar_idx ).header_attribute6
-                                                        := gt_norm_card_tbl( ln_card_idx ).results_employee_code;
-                                                        -- ヘッダーdff6(伝票入力者)
-        gt_ar_interface_tbl( ln_ar_idx ).header_attribute7
-                                                        := cv_open;
-                                                        -- ヘッダーDFF7(予備１)
-        gt_ar_interface_tbl( ln_ar_idx ).header_attribute8
-                                                        := cv_wait;
-                                                        -- ヘッダーdff8(予備２)
-        gt_ar_interface_tbl( ln_ar_idx ).header_attribute9
-                                                        := cv_wait;
-                                                        -- ヘッダーdff9(予備3)
-        gt_ar_interface_tbl( ln_ar_idx ).header_attribute11
-                                                        := gt_norm_card_tbl( ln_card_idx ).receiv_base_code;
-                                                        -- ヘッダーDFF11(入金拠点)
-        gt_ar_interface_tbl( ln_ar_idx ).org_id         := TO_NUMBER( gv_mo_org_id );
-                                                        -- 営業単位ID
-        IF ( gt_norm_card_tbl( ln_card_idx ).tax_code = gt_in_tax_cls ) THEN
-          -- 内税の場合、'Y'を設定
-          gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
-                                                        := cv_y_flag;
-                                                        -- 税込金額フラグ
-        ELSIF( gt_norm_card_tbl( ln_card_idx ).tax_code = gt_out_tax_cls ) THEN
-          -- 外税の場合、'N'を設定
-          gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
-                                                        := cv_n_flag;
-                                                        -- 税込金額フラグ
-        END IF;
-        gt_ar_interface_tbl( ln_ar_idx ).created_by     := cn_created_by;
-                                                        -- 作成者
-        gt_ar_interface_tbl( ln_ar_idx ).creation_date  := cd_creation_date;
-                                                        -- 作成日
---
-        -- AR請求取引OIFデータ作成(税金行)===>NO.4
-        ln_ar_idx := ln_ar_idx + 1;
---
-        -- 取引明細DFF4用:自動採番番号
-        BEGIN
-          SELECT
-            xxcos_trx_number_s01.NEXTVAL
-          INTO
-            ln_trx_number_id
-          FROM
-            dual
-          ;
-        END;
---
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_context
-                                                        := gv_sales_nm;
-                                                        -- 取引明細コンテキスト:「販売実績」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute1
-                                                        := gv_sales_nm;
-                                                        -- 取引明細DFF1
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute3
-                                                        := gt_norm_card_tbl( ln_card_idx ).dlv_invoice_number;
-                                                        -- 取引明細DFF3
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute4
-                                                        := gt_norm_card_tbl( ln_card_idx ).dlv_invoice_number
-                                                        || TO_CHAR( ln_trx_number_id );
-                                                        -- 取引明細DFF4
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute5
-                                                        := gv_sales_nm;
-                                                        -- 取引明細DFF5:「販売実績」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute7
-                                                        := gt_norm_card_tbl( ln_card_idx ).sales_exp_header_id;
-                                                        -- 取引明細DFF7
-        gt_ar_interface_tbl( ln_ar_idx ).batch_source_name
-                                                        := gv_sales_nm;
-                                                        -- 取引ソース:「販売実績」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).set_of_books_id
-                                                        := TO_NUMBER ( gv_set_bks_id );
-                                                        -- 会計帳簿ID
-        gt_ar_interface_tbl( ln_ar_idx ).line_type      := cv_tax;
-                                                        -- 税金行
-        gt_ar_interface_tbl( ln_ar_idx ).description    := gv_item_tax;
-                                                        -- 品目明細摘要
-        gt_ar_interface_tbl( ln_ar_idx ).currency_code  := cv_currency_code;
-                                                        -- 通貨
-        gt_ar_interface_tbl( ln_ar_idx ).amount         := ln_tax_card;
-                                                        -- 税金行：消費税金額
-        gt_ar_interface_tbl( ln_ar_idx ).cust_trx_type_name
-                                                        := lv_trx_type_nm;
-                                                        -- 取引タイプ名
-        gt_ar_interface_tbl( ln_ar_idx ).term_id        := ln_term_id;
-                                                        -- 支払条件ID
-        gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_address_id
-                                                        := gt_norm_card_tbl( ln_card_idx ).hcsc_org_sys_id;
-                                                        -- 入金先顧客所在地参照ID
-        gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_customer_id
-                                                        := gt_norm_card_tbl( ln_card_idx ).xchv_cust_id_c;
-                                                        -- 入金先顧客ID
-        gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_address_id
-                                                        := gt_norm_card_tbl( ln_card_idx ).hcss_org_sys_id;
-                                                        -- 出荷先顧客所在地参照ID
-        gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_customer_id
-                                                        := gt_norm_card_tbl( ln_card_idx ).xchv_cust_id_s;
-                                                        -- 出荷先顧客ID
-        gt_ar_interface_tbl( ln_ar_idx ).link_to_line_context
-                                                        := gv_sales_nm;
-                                                        -- リンク先明細コンテキスト:「販売実績」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute1
-                                                        := gv_sales_nm;
-                                                        -- リンク先明細DFF1:「販売実績」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute3
-                                                        := gt_norm_card_tbl( ln_card_idx ).dlv_invoice_number;
-                                                        -- リンク先明細DFF3
-        gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute4
-                                                        := gt_norm_card_tbl( ln_card_idx ).dlv_invoice_number
-                                                        || TO_CHAR( ln_trx_number_id );
-                                                        -- リンク先明細DFF4
-        gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute5
-                                                        := gv_sales_nm;
-                                                        -- リンク先明細DFF5
-        gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute7
-                                                        := gt_norm_card_tbl( ln_card_idx ).sales_exp_header_id;
-                                                        -- リンク先明細DFF7
-        gt_ar_interface_tbl( ln_ar_idx ).receipt_method_id
-                                                        := gt_norm_card_tbl( ln_card_idx ).rcrm_receipt_id;
-                                                        -- 支払方法ID
-        gt_ar_interface_tbl( ln_ar_idx ).conversion_type
-                                                        := cv_user;
-                                                        -- 換算タイプ:「User」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).conversion_rate
-                                                        := cn_con_rate;
-                                                        -- 換算レート:1 を設定
-        gt_ar_interface_tbl( ln_ar_idx ).trx_date       := gt_norm_card_tbl( ln_card_idx ).inspect_date;
-                                                        -- 取引日(請求書日付):販.検収日
-        gt_ar_interface_tbl( ln_ar_idx ).gl_date        := gt_norm_card_tbl( ln_card_idx ).delivery_date;
-                                                        -- GL記帳日(仕訳計上日):販.納品日
-        gt_ar_interface_tbl( ln_ar_idx ).tax_code       := gt_norm_card_tbl( ln_card_idx ).tax_code;
-                                                        -- 税金コード
-        gt_ar_interface_tbl( ln_ar_idx ).org_id         := TO_NUMBER( gv_mo_org_id );
-                                                        -- 営業単位ID
-        IF ( gt_norm_card_tbl( ln_card_idx ).tax_code = gt_in_tax_cls ) THEN
-          -- 内税の場合、'Y'を設定
-          gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag 
-                                                        := cv_y_flag;
-                                                        -- 税込金額フラグ
-        ELSIF( gt_norm_card_tbl( ln_card_idx ).tax_code = gt_out_tax_cls ) THEN
-          -- 外税の場合、'N'を設定
-          gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
-                                                        := cv_n_flag;
-                                                        -- 税込金額フラグ
-        END IF;
-        gt_ar_interface_tbl( ln_ar_idx ).created_by     := cn_created_by;
-                                                        -- 作成者
-        gt_ar_interface_tbl( ln_ar_idx ).creation_date  := cd_creation_date;
-                                                        -- 作成日
-        -- 集約フラグのリセット
-        lv_sum_card_flag := cv_y_flag;
-        ln_amount_card := 0;
---
-      END IF;                                           -- 集約キー毎にAR OIFデータの集約終了
---
-      IF ( lv_sum_flag = cv_n_flag ) THEN 
+      IF ( lv_sum_flag = cv_n_flag ) THEN
         -- 集約キーと集約金額のリセット
-        lt_header_id       := gt_sales_norm_tbl( sale_norm_idx ).sales_exp_header_id;
-        lt_invoice_number  := gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_number;
-        lt_invoice_class   := gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_class;
-        lt_goods_prod_cls  := gt_sales_norm_tbl( sale_norm_idx ).goods_prod_cls;
-        lt_item_code       := gt_sales_norm_tbl( sale_norm_idx ).item_code;
-        lt_card_sale_class := gt_sales_norm_tbl( sale_norm_idx ).card_sale_class;
-        lt_red_black_flag  := gt_sales_norm_tbl( sale_norm_idx ).red_black_flag;
-        lv_sum_card_flag := cv_y_flag;
+        lt_trx_number      := gt_sales_norm_tbl2( sale_norm_idx ).oif_trx_number;        -- AR取引番号
+        lt_header_id       := gt_sales_norm_tbl2( sale_norm_idx ).sales_exp_header_id;   -- 販売実績ヘッダID
 --
-        ln_amount := gt_sales_norm_tbl( sale_norm_idx ).pure_amount;
-        IF ( gt_sales_norm_tbl( sale_norm_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
-          ln_tax  := gt_sales_norm_tbl( sale_norm_idx ).tax_amount;
+        ln_amount := gt_sales_norm_tbl2( sale_norm_idx ).pure_amount;
+        IF ( gt_sales_norm_tbl2( sale_norm_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
+          ln_tax  := gt_sales_norm_tbl2( sale_norm_idx ).tax_amount;
         ELSE
           ln_tax  := 0;
         END IF;
       END IF;
 --
       -- 販売実績ヘッダ更新のため：ROWIDの設定
-      gt_sales_h_tbl( sale_norm_idx ) := gt_sales_norm_tbl( sale_norm_idx ).xseh_rowid;
+      gt_sales_h_tbl( sale_norm_idx ) := gt_sales_norm_tbl2( sale_norm_idx ).xseh_rowid;
 --
     END LOOP gt_sales_norm_sum_loop;                    -- 販売実績データループ終了
 --
@@ -2416,11 +2276,15 @@ AS
     lt_red_black_flag   xxcos_sales_exp_lines.red_black_flag%TYPE;       -- 集約キー：赤黒フラグ
     lt_gccs_segment3    gl_code_combinations.segment3%TYPE;              -- 集約キー：売上勘定科目コード
     lt_tax_code         xxcos_sales_exp_headers.tax_code%TYPE;           -- 集約キー：税金コード
+    lt_header_id        xxcos_sales_exp_headers.sales_exp_header_id%TYPE; -- 集約キー：販売実績ヘッダID
     ln_amount           NUMBER DEFAULT 0;                                -- 集約後金額
     ln_tax              NUMBER DEFAULT 0;                                -- 集約後消費税金額
     ln_ar_dis_idx       NUMBER DEFAULT 0;                                -- AR会計配分集約インデックス
     ln_dis_idx          NUMBER DEFAULT 0;                                -- AR会計配分OIFインデックス
     ln_jour_cnt         NUMBER DEFAULT 0;                                -- 仕訳生成カウント
+    lv_rec_flag         VARCHAR2(1);                                     -- RECフラグ
+    -- AR取引番号
+    lt_trx_number       VARCHAR2(20);
 --
     -- *** ローカル・カーソル ***
 --
@@ -2476,50 +2340,74 @@ AS
     --=====================================
     -- 3.AR会計配分データ作成
     --=====================================
---
     -- 集約キーの値セット
-    lt_invoice_number   := gt_ar_dis_sum_tbl( 1 ).dlv_invoice_number;
-    lt_invoice_class    := gt_ar_dis_sum_tbl( 1 ).dlv_invoice_class;
-    lt_item_code        := gt_ar_dis_sum_tbl( 1 ).item_code;
-    lt_prod_cls         := gt_ar_dis_sum_tbl( 1 ).goods_prod_cls;
-    lt_gyotai_sho       := gt_ar_dis_sum_tbl( 1 ).cust_gyotai_sho;
-    lt_card_sale_class  := gt_ar_dis_sum_tbl( 1 ).card_sale_class;
-    lt_red_black_flag   := gt_ar_dis_sum_tbl( 1 ).red_black_flag;
-    lt_gccs_segment3    := gt_ar_dis_sum_tbl( 1 ).gccs_segment3;
-    lt_tax_code         := gt_ar_dis_sum_tbl( 1 ).gcct_segment3;
+    lt_invoice_number   := gt_sales_norm_tbl2( 1 ).dlv_invoice_number;
+    lt_item_code        := gt_sales_norm_tbl2( 1 ).item_code;
+    lt_prod_cls         := gt_sales_norm_tbl2( 1 ).goods_prod_cls;
+    lt_gyotai_sho       := gt_sales_norm_tbl2( 1 ).cust_gyotai_sho;
+    lt_card_sale_class  := gt_sales_norm_tbl2( 1 ).card_sale_class;
+    lt_gccs_segment3    := gt_sales_norm_tbl2( 1 ).gccs_segment3;
+    lt_tax_code         := gt_sales_norm_tbl2( 1 ).tax_code;
+    lt_invoice_class    := gt_sales_norm_tbl2( 1 ).dlv_invoice_class;
+    lt_red_black_flag   := gt_sales_norm_tbl2( 1 ).red_black_flag;
+    lt_header_id        := gt_sales_norm_tbl2( 1 ).sales_exp_header_id;
 --
     -- ラストデータ登録為に、ダミーデータをセットする
-    gt_ar_dis_sum_tbl( gt_ar_dis_sum_tbl.COUNT + 1 ).sales_exp_header_id 
-                        := gt_ar_dis_sum_tbl( gt_ar_dis_sum_tbl.COUNT ).sales_exp_header_id;
+    gt_sales_norm_tbl2( gt_sales_norm_tbl2.COUNT + 1 ).sales_exp_header_id
+                        := gt_sales_norm_tbl2( gt_sales_norm_tbl2.COUNT ).sales_exp_header_id;
 --
-    <<gt_ar_dis_sum_tbl_loop>>
-    FOR dis_sum_idx IN 1 .. gt_ar_dis_sum_tbl.COUNT LOOP
+    <<gt_sales_norm_tbl2_loop>>
+    FOR dis_sum_idx IN 1 .. gt_sales_norm_tbl2.COUNT LOOP
 --
       -- AR会計配分データ集約開始
-      IF (  lt_invoice_number  = gt_ar_dis_sum_tbl( dis_sum_idx ).dlv_invoice_number
-        AND lt_invoice_class   = gt_ar_dis_sum_tbl( dis_sum_idx ).dlv_invoice_class
-        AND ( lt_item_code     = gt_ar_dis_sum_tbl( dis_sum_idx ).item_code
-          OR lt_prod_cls       = gt_ar_dis_sum_tbl( dis_sum_idx ).goods_prod_cls )
-        AND lt_gyotai_sho      = gt_ar_dis_sum_tbl( dis_sum_idx ).cust_gyotai_sho
-        AND lt_card_sale_class = gt_ar_dis_sum_tbl( dis_sum_idx ).card_sale_class
-        AND lt_red_black_flag  = gt_ar_dis_sum_tbl( dis_sum_idx ).red_black_flag
-        AND lt_gccs_segment3   = gt_ar_dis_sum_tbl( dis_sum_idx ).gccs_segment3
-        AND lt_tax_code        = gt_ar_dis_sum_tbl( dis_sum_idx ).gcct_segment3
-        ) THEN
+      IF ( lt_invoice_number = gt_sales_norm_tbl2( dis_sum_idx ).dlv_invoice_number
+        AND
+          (
+            (
+              (
+                 NVL( lt_prod_cls, 'X' ) = cv_goods_prod_syo
+              OR NVL( lt_prod_cls, 'X' ) = cv_goods_prod_sei
+              )
+            AND
+              NVL( lt_prod_cls, 'X' ) = NVL( gt_sales_norm_tbl2( dis_sum_idx ).goods_prod_cls, 'X' )
+            )
+          OR
+            (
+              (
+                  NVL( lt_prod_cls, 'X' ) <> cv_goods_prod_syo
+              AND NVL( lt_prod_cls, 'X' ) <> cv_goods_prod_sei
+              )
+              AND lt_item_code = gt_sales_norm_tbl2( dis_sum_idx ).item_code
+            )
+          )
+        AND lt_gyotai_sho      = gt_sales_norm_tbl2( dis_sum_idx ).cust_gyotai_sho
+        AND lt_card_sale_class = gt_sales_norm_tbl2( dis_sum_idx ).card_sale_class
+        AND lt_gccs_segment3   = gt_sales_norm_tbl2( dis_sum_idx ).gccs_segment3
+        AND lt_tax_code        = gt_sales_norm_tbl2( dis_sum_idx ).tax_code
+        AND lt_header_id       = gt_sales_norm_tbl2( dis_sum_idx ).sales_exp_header_id
+        )
+      THEN
 --
         -- 集約するフラグ初期設定
         lv_sum_flag := cv_y_flag;
 --
         -- 本体金額と消費税額を集約する
-        ln_amount := ln_amount + gt_ar_dis_sum_tbl( dis_sum_idx ).pure_amount;
-        ln_tax    := ln_tax    + gt_ar_dis_sum_tbl( dis_sum_idx ).tax_amount;
+        ln_amount := ln_amount + gt_sales_norm_tbl2( dis_sum_idx ).pure_amount;
+        ln_tax    := ln_tax    + gt_sales_norm_tbl2( dis_sum_idx ).tax_amount;
       ELSE
         lv_sum_flag := cv_n_flag;
         ln_dis_idx  := dis_sum_idx - 1;
       END IF;
 --
       -- -- 集約フラグ’N'の場合、下記AR会計配分OIF作成処理を行う
-      IF ( lv_sum_flag = cv_n_flag ) THEN   
+      IF ( lv_sum_flag = cv_n_flag ) THEN
+
+        IF ( NVL( lt_trx_number, 'X' ) <> gt_sales_norm_tbl2( ln_dis_idx ).oif_trx_number ) THEN
+          lv_rec_flag := cv_y_flag;
+        ELSE
+          lv_rec_flag := cv_n_flag;
+        END IF;
+        lt_trx_number      := gt_sales_norm_tbl2( ln_dis_idx ).oif_trx_number;        -- AR取引番号
 --
         -- 仕訳生成カウント初期値
         ln_jour_cnt := 1;
@@ -2548,10 +2436,10 @@ AS
               OR gt_jour_cls_tbl( jcls_idx ).segment3_nm = gv_prod_msg
               OR gt_jour_cls_tbl( jcls_idx ).segment3_nm = gv_disc_msg ) THEN
               --売上勘定科目コード
-              lt_segment3 := gt_ar_dis_sum_tbl( ln_dis_idx ).gccs_segment3;
+              lt_segment3 := gt_sales_norm_tbl2( ln_dis_idx ).gccs_segment3;
             ELSIF ( gt_jour_cls_tbl( jcls_idx ).segment3_nm = gv_tax_msg ) THEN
               --税金勘定科目コード
-              lt_segment3 := gt_ar_dis_sum_tbl( ln_dis_idx ).gcct_segment3;
+              lt_segment3 := gt_sales_norm_tbl2( ln_dis_idx ).gcct_segment3;
             ELSE
               --OTHER勘定科目コード
               lt_segment3 := gt_jour_cls_tbl( jcls_idx ).segment3;
@@ -2563,7 +2451,7 @@ AS
             -- 勘定科目セグメント１～セグメント８よりCCID取得
             lv_ccid_idx := gv_company_code                                   -- セグメント１(会社コード)
                         || NVL( gt_jour_cls_tbl( jcls_idx ).segment2,        -- セグメント２（部門コード）
-                                gt_ar_dis_sum_tbl( ln_dis_idx ).sales_base_code )
+                                gt_sales_norm_tbl2( ln_dis_idx ).sales_base_code )
                                                                              -- セグメント２(販売実績の売上拠点コード)
                         || lt_segment3                                       -- セグメント３(勘定科目コード)
                         || gt_jour_cls_tbl( jcls_idx ).segment4              -- セグメント４(補助科目コード:現金のみ設定)
@@ -2581,7 +2469,7 @@ AS
                              gd_process_date
                            , gv_company_code
                            , NVL( gt_jour_cls_tbl( jcls_idx ).segment2,
-                                  gt_ar_dis_sum_tbl( ln_dis_idx ).sales_base_code )
+                                  gt_sales_norm_tbl2( ln_dis_idx ).sales_base_code )
                            , lt_segment3
                            , gt_jour_cls_tbl( jcls_idx ).segment4
                            , gt_jour_cls_tbl( jcls_idx ).segment5
@@ -2599,7 +2487,7 @@ AS
                                 , iv_token_value1      => gv_company_code
                                 , iv_token_name2       => cv_tkn_segment2
                                 , iv_token_value2      => NVL( gt_jour_cls_tbl( jcls_idx ).segment2,
-                                                               gt_ar_dis_sum_tbl( ln_dis_idx ).sales_base_code )
+                                                               gt_sales_norm_tbl2( ln_dis_idx ).sales_base_code )
                                 , iv_token_name3       => cv_tkn_segment3
                                 , iv_token_value3      => lt_segment3
                                 , iv_token_name4       => cv_tkn_segment4
@@ -2629,12 +2517,6 @@ AS
               -- 収益行
               ln_ar_dis_idx := ln_ar_dis_idx + 1;
 --
-              -- フルVD（消化）とフルVD場合の金額編集
-              IF ( gt_jour_cls_tbl( jcls_idx ).cust_gyotai_sho = gt_fvd_xiaoka
-                OR gt_jour_cls_tbl( jcls_idx ).cust_gyotai_sho = gt_gyotai_fvd ) THEN
-                ln_amount := ln_amount + ln_tax;
-              END IF;
---
               -- AR会計配分OIFの設定項目
               gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_context
                                                           := gv_sales_nm;
@@ -2643,24 +2525,24 @@ AS
                                                           := gv_sales_nm;
                                                           -- 取引明細DFF1「販売実績」を設定
               gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute3
-                                                          := gt_ar_dis_sum_tbl( ln_dis_idx ).dlv_invoice_number;
+                                                          := gt_sales_norm_tbl2( ln_dis_idx ).dlv_invoice_number;
                                                           -- 取引明細DFF3：納品伝票番号
               gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute4
-                                                          := gt_ar_dis_sum_tbl( ln_dis_idx ).interface_line_dff4;
+                                                          := gt_sales_norm_tbl2( ln_dis_idx ).oif_dff4;
                                                           -- 取引明細DFF4:納品伝票番号+自動採番
               gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute5
                                                           := gv_sales_nm;
                                                           -- 取引明細DFF5：「販売実績」を設定
               gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute7
-                                                          := gt_ar_dis_sum_tbl( ln_dis_idx ).sales_exp_header_id;
+                                                          := gt_sales_norm_tbl2( ln_dis_idx ).sales_exp_header_id;
                                                           -- 取引明細DFF7：販売実績ヘッダID
               gt_ar_dis_tbl( ln_ar_dis_idx ).account_class
                                                           := cv_acct_rev;
                                                           -- 勘定科目区分(配分タイプ)
               gt_ar_dis_tbl( ln_ar_dis_idx ).amount       := ln_amount;
                                                           -- 金額(明細金額)
-              gt_ar_dis_tbl( ln_ar_dis_idx ).percent      := cn_percent;
-                                                          -- パーセント(割合)100
+              gt_ar_dis_tbl( ln_ar_dis_idx ).percent      := ln_amount;
+                                                          -- パーセント(割合)
               gt_ar_dis_tbl( ln_ar_dis_idx ).code_combination_id
                                                           := lt_ccid;
                                                           -- 勘定科目組合せID(CCID)
@@ -2676,7 +2558,7 @@ AS
                                                           := cd_creation_date;
                                                           -- 作成日
 --
-            ELSIF ( gt_jour_cls_tbl( jcls_idx ).acct_type = cv_acct_rec ) THEN
+            ELSIF ( gt_jour_cls_tbl( jcls_idx ).acct_type = cv_acct_rec AND lv_rec_flag = cv_y_flag ) THEN
               -- 債権行(金額設定なし)
               ln_ar_dis_idx := ln_ar_dis_idx + 1;
 --
@@ -2687,22 +2569,22 @@ AS
                                                           := gv_sales_nm;
                                                           -- 取引明細DFF1「販売実績」を設定
               gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute3
-                                                          := gt_ar_dis_sum_tbl( ln_dis_idx ).dlv_invoice_number;
+                                                          := gt_sales_norm_tbl2( ln_dis_idx ).dlv_invoice_number;
                                                           -- 取引明細DFF3：納品伝票番号
               gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute4
-                                                          := gt_ar_dis_sum_tbl( ln_dis_idx ).interface_line_dff4;
+                                                          := gt_sales_norm_tbl2( ln_dis_idx ).oif_dff4;
                                                           -- 取引明細DFF4納品伝票番号+自動採番
               gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute5
                                                           := gv_sales_nm;
                                                           -- 取引明細DFF5	「販売実績」を設定
               gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute7
-                                                          := gt_ar_dis_sum_tbl( ln_dis_idx ).sales_exp_header_id;
+                                                          := gt_sales_norm_tbl2( ln_dis_idx ).sales_exp_header_id;
                                                           -- 取引明細DFF7：販売実績ヘッダID
               gt_ar_dis_tbl( ln_ar_dis_idx ).account_class
                                                           := cv_acct_rec;
                                                           -- 勘定科目区分(配分タイプ)
               gt_ar_dis_tbl( ln_ar_dis_idx ).percent      := cn_percent;
-                                                          -- パーセント(割合)100
+                                                          -- パーセント(割合)
               gt_ar_dis_tbl( ln_ar_dis_idx ).code_combination_id
                                                           := lt_ccid;
                                                           -- 勘定科目組合せID(CCID)
@@ -2728,24 +2610,24 @@ AS
                                                           := gv_sales_nm;
                                                           -- 取引明細DFF1「販売実績」を設定
               gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute3
-                                                          := gt_ar_dis_sum_tbl( ln_dis_idx ).dlv_invoice_number;
+                                                          := gt_sales_norm_tbl2( ln_dis_idx ).dlv_invoice_number;
                                                           -- 取引明細DFF3：納品伝票番号
               gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute4
-                                                          := gt_ar_dis_sum_tbl( ln_dis_idx ).interface_tax_dff4;
+                                                          := gt_sales_norm_tbl2( ln_dis_idx ).oif_tax_dff4;
                                                           -- 取引明細DFF4：納品伝票番号+自動採番
               gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute5
                                                           := gv_sales_nm;
                                                           -- 取引明細DFF5「販売実績」を設定
               gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute7
-                                                          := gt_ar_dis_sum_tbl( ln_dis_idx ).sales_exp_header_id;
+                                                          := gt_sales_norm_tbl2( ln_dis_idx ).sales_exp_header_id;
                                                           -- 取引明細DFF7：販売実績ヘッダID
               gt_ar_dis_tbl( ln_ar_dis_idx ).account_class
                                                           := cv_acct_tax;
                                                           -- 勘定科目区分(配分タイプ)
               gt_ar_dis_tbl( ln_ar_dis_idx ).amount       := ln_tax;
                                                           -- 金額(明細金額)
-              gt_ar_dis_tbl( ln_ar_dis_idx ).percent      := cn_percent;
-                                                          -- パーセント(割合)100
+              gt_ar_dis_tbl( ln_ar_dis_idx ).percent      := ln_tax;
+                                                          -- パーセント(割合)
               gt_ar_dis_tbl( ln_ar_dis_idx ).code_combination_id
                                                           := lt_ccid;
                                                           -- 勘定科目組合せID(CCID)
@@ -2768,24 +2650,25 @@ AS
 --
         END LOOP gt_jour_cls_tbl_loop;                    -- 仕訳パターンよりデータ作成処理終了
 --
-      END IF;                                             -- 集約キー毎にAR会計配分OIFデータの集約終了
---
-        -- 集約キーのリセット
-        lt_invoice_number   := gt_ar_dis_sum_tbl( dis_sum_idx ).dlv_invoice_number;
-        lt_invoice_class    := gt_ar_dis_sum_tbl( dis_sum_idx ).dlv_invoice_class;
-        lt_item_code        := gt_ar_dis_sum_tbl( dis_sum_idx ).item_code;
-        lt_prod_cls         := gt_ar_dis_sum_tbl( dis_sum_idx ).goods_prod_cls;
-        lt_gyotai_sho       := gt_ar_dis_sum_tbl( dis_sum_idx ).cust_gyotai_sho;
-        lt_card_sale_class  := gt_ar_dis_sum_tbl( dis_sum_idx ).card_sale_class;
-        lt_red_black_flag   := gt_ar_dis_sum_tbl( dis_sum_idx ).red_black_flag;
-        lt_gccs_segment3    := gt_ar_dis_sum_tbl( dis_sum_idx ).gccs_segment3;
-        lt_tax_code         := gt_ar_dis_sum_tbl( dis_sum_idx ).gcct_segment3;
 --
         -- 金額の設定
-        ln_amount        := gt_ar_dis_sum_tbl( dis_sum_idx ).pure_amount;
-        ln_tax           := gt_ar_dis_sum_tbl( dis_sum_idx ).tax_amount;
+        ln_amount        := gt_sales_norm_tbl2( dis_sum_idx ).pure_amount;
+        ln_tax           := gt_sales_norm_tbl2( dis_sum_idx ).tax_amount;
+      END IF;                                             -- 集約キー毎にAR会計配分OIFデータの集約終了
 --
-    END LOOP gt_ar_dis_sum_tbl_loop;                      -- AR会計配分集約データループ終了
+      -- 集約キーのリセット
+      lt_invoice_number   := gt_sales_norm_tbl2( dis_sum_idx ).dlv_invoice_number;
+      lt_item_code        := gt_sales_norm_tbl2( dis_sum_idx ).item_code;
+      lt_prod_cls         := gt_sales_norm_tbl2( dis_sum_idx ).goods_prod_cls;
+      lt_gyotai_sho       := gt_sales_norm_tbl2( dis_sum_idx ).cust_gyotai_sho;
+      lt_card_sale_class  := gt_sales_norm_tbl2( dis_sum_idx ).card_sale_class;
+      lt_gccs_segment3    := gt_sales_norm_tbl2( dis_sum_idx ).gccs_segment3;
+      lt_tax_code         := gt_sales_norm_tbl2( dis_sum_idx ).tax_code;
+      lt_invoice_class    := gt_sales_norm_tbl2( dis_sum_idx ).dlv_invoice_class;
+      lt_red_black_flag   := gt_sales_norm_tbl2( dis_sum_idx ).red_black_flag;
+      lt_header_id        := gt_sales_norm_tbl2( dis_sum_idx ).sales_exp_header_id;
+--
+    END LOOP gt_sales_norm_tbl2_loop;                      -- AR会計配分集約データループ終了
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -2873,13 +2756,14 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
 --
+    cv_pad_char             CONSTANT VARCHAR2(1) := '0';     -- PAD関数で埋め込む文字
+    cn_pad_num_char         CONSTANT NUMBER := 3;            -- PAD関数で埋め込む文字数
+--
     -- *** ローカル変数 ***
-    ln_card_idx             NUMBER DEFAULT 0;           -- 生成したカードレコードのインデックス
+    ln_sale_bulk_idx2       NUMBER DEFAULT 0;           -- 生成したカードレコードのインデックス
     ln_card_pt              NUMBER DEFAULT 1;           -- カードレコードのインデックス現行位置
     ln_ar_idx               NUMBER DEFAULT 0;           -- 請求取引OIFインデックス
-    ln_ar_bul               NUMBER DEFAULT 0;           -- AR会計配分集約インデックス
     ln_trx_idx              NUMBER DEFAULT 0;           -- AR配分OIF集約データインデックス;
---
     lv_trx_type_nm          VARCHAR2(30);               -- 取引タイプ名称
     lv_trx_idx              VARCHAR2(30);               -- 取引タイプ(インデックス)
     lv_item_idx             VARCHAR2(30);               -- 品目明細摘要(インデックス)
@@ -2890,38 +2774,35 @@ AS
     ln_tax_amount           NUMBER DEFAULT 0;           -- カードレコードの消費税金額
     ln_tax                  NUMBER DEFAULT 0;           -- 集約後消費税金額
     ln_amount               NUMBER DEFAULT 0;           -- 集約後金額
-    ln_tax_card             NUMBER DEFAULT 0;           -- 集約後消費税金額(カードレコード)
-    ln_amount_card          NUMBER DEFAULT 0;           -- 集約後金額(カードレコード)
+    ln_trx_number_id        NUMBER;                     -- 取引明細DFF3用:自動採番番号
+    ln_trx_number_tax_id    NUMBER;                     -- 取引明細DFF3用税金用:自動採番番号
+    lv_trx_sent_dv          VARCHAR2(30);               -- 請求書発行区分
+    lv_trx_number           VARCHAR2(20);               -- AR取引番号
+    ln_trx_number_large     NUMBER;                    -- 取引番号:自動採番
     ln_sales_h_tbl_idx      NUMBER DEFAULT 0;           -- 販売実績ヘッダ更新用インデックス
-    ln_trx_number_id        NUMBER;                     -- 取引明細DFF4用:自動採番番号
+    ln_key_trx_number       VARCHAR2(20);               -- 取引No
+    ln_key_dff4             VARCHAR2(100);              -- DFF4
+    ln_key_ship_customer_id NUMBER;                     -- 出荷先顧客ID
+    ln_start_index          NUMBER;                     -- 取引No毎の開始位置
+    ln_ship_flg             NUMBER DEFAULT 0;           -- 出荷先顧客フラグ
 --
-    -- 集約キー(販売実績)
-    lt_header_id            xxcos_sales_exp_headers.sales_exp_header_id%TYPE;
-                                                        -- 集約キー：販売実績ヘッダID
+    -- *** 取引NO取得キー
+      -- 作成区分
+    lt_create_class         xxcos_sales_exp_headers.create_class%TYPE;
+      -- 納品伝票番号
     lt_invoice_number       xxcos_sales_exp_headers.dlv_invoice_number%TYPE;
-                                                        -- 集約キー：納品伝票番号
+      -- 納品伝票区分
     lt_invoice_class        xxcos_sales_exp_headers.dlv_invoice_class%TYPE;
-                                                        -- 集約キー：納品伝票区分
-    lt_goods_prod_cls       xxcos_good_prod_class_v.goods_prod_class_code%TYPE;
-                                                        -- 集約キー：品目区分（製品・商品）
-    lt_item_code            xxcos_sales_exp_lines.item_code%TYPE;
-                                                        -- 集約キー：品目コード（非在庫）
-    lt_card_sale_class      xxcos_sales_exp_headers.card_sale_class%TYPE;
-                                                        -- 集約キー：カード売り区分
-    lt_red_black_flag       xxcos_sales_exp_lines.red_black_flag%TYPE;
-                                                        -- 集約キー：赤黒フラグ
+      -- 請求先顧客
+    lt_xchv_cust_id_b       xxcos_cust_hierarchy_v.bill_account_id%TYPE;
+      -- 売上計上日
+    lt_sales_date           xxcos_sales_exp_headers.inspect_date%TYPE;
 --
-    -- 集約キー(生成したカードレコード)
-    lt_header_id_card       xxcos_sales_exp_headers.sales_exp_header_id%TYPE;
-                                                        -- 集約キー：販売実績ヘッダID
-    lt_invo_number_card     xxcos_sales_exp_headers.dlv_invoice_number%TYPE;
-                                                        -- 集約キー：納品伝票番号
-    lt_invo_class_card      xxcos_sales_exp_headers.dlv_invoice_class%TYPE;
-                                                        -- 集約キー：納品伝票区分
-    lt_goods_prod_card      xxcos_good_prod_class_v.goods_prod_class_code%TYPE;
-                                                        -- 集約キー：品目区分コード（製品・商品）
-    lt_item_code_card       xxcos_sales_exp_lines.item_code%TYPE;
-                                                        -- 集約キー：品目コード（非在庫）
+    -- *** 集約キー(販売実績)
+      -- 販売実績ヘッダID
+    lt_header_id            xxcos_sales_exp_headers.sales_exp_header_id%TYPE;
+      -- AR取引番号
+    lt_trx_number           VARCHAR2(20);
 --
     lv_sum_flag             VARCHAR2(1);                -- 集約フラグ
     lv_sum_card_flag        VARCHAR2(1);                -- カード集約フラグ
@@ -2940,17 +2821,90 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+    --=====================================================================
+    -- 集計前データ展開
+    --=====================================================================
+--
     -- 請求取引テーブルの非大手量販店データカウントセット
     ln_ar_idx := gt_ar_interface_tbl.COUNT;
 --
     -- 販売実績ヘッダ更新用インデックス
     ln_sales_h_tbl_idx := gt_sales_h_tbl.COUNT;
---
-    --=====================================================================
-    -- ４．フルサービスVDとフルサービス（消化）VDのカード・現金併用データの編集
-    --=====================================================================
     <<gt_sales_bulk_tbl_loop>>
     FOR sale_bulk_idx IN 1 .. gt_sales_bulk_tbl.COUNT LOOP
+--
+--
+      -- AR取引番号の自動採番
+      IF (  NVL( lt_create_class, 'X' )        <> gt_sales_bulk_tbl( sale_bulk_idx ).create_class        -- 作成元区分
+         OR lt_sales_date                      <> gt_sales_bulk_tbl( sale_bulk_idx ).inspect_date  -- 売上計上日
+         OR NVL( lt_invoice_class, 'X' )       <> NVL( gt_sales_bulk_tbl( sale_bulk_idx ).dlv_invoice_class, 'X' )   -- 納品伝票区分
+         OR lt_xchv_cust_id_b                  <> gt_sales_bulk_tbl( sale_bulk_idx ).xchv_cust_id_b      -- 請求先顧客
+         )
+      THEN
+--
+        BEGIN
+          SELECT
+            xxcos_trx_number_large_s01.NEXTVAL
+          INTO
+            ln_trx_number_large
+          FROM
+            dual
+          ;
+        END;
+--
+        -- AR取引番号の編集 売上計上日(YYYYMMDD：8桁) + 請求先顧客番号(9桁)＋シーケンス3桁
+        lv_trx_number := TO_CHAR( gt_sales_bulk_tbl( sale_bulk_idx ).inspect_date,cv_date_format_non_sep )
+                           || gt_sales_bulk_tbl( sale_bulk_idx ).xchv_cust_number_b
+                           || LPAD( TO_CHAR( ln_trx_number_large )
+                                            ,cn_pad_num_char
+                                            ,cv_pad_char
+                                           );
+--
+      END IF;
+--
+--
+      -- 納品伝票番号＋シーケンスの採番
+      IF (  NVL(  lt_trx_number, 'X' )    <> lv_trx_number                                            -- AR取引番号
+         OR  lt_header_id                 <> gt_sales_bulk_tbl( sale_bulk_idx ).sales_exp_header_id   -- 販売実績ヘッダID
+         )
+      THEN
+          -- 取引明細DFF4用:自動採番番号
+        BEGIN
+--
+          SELECT
+            xxcos_trx_number_s01.NEXTVAL
+          INTO
+            ln_trx_number_id
+          FROM
+            dual
+          ;
+        END;
+--
+        BEGIN
+--
+          SELECT
+            xxcos_trx_number_s01.NEXTVAL
+          INTO
+            ln_trx_number_tax_id
+          FROM
+            dual
+          ;
+        END;
+      END IF;
+--
+--
+      -- 取引番号キー
+      lt_invoice_class    := gt_sales_bulk_tbl( sale_bulk_idx ).dlv_invoice_class;
+      lt_create_class     := gt_sales_bulk_tbl( sale_bulk_idx ).create_class;
+      lt_sales_date       := gt_sales_bulk_tbl( sale_bulk_idx ).inspect_date;
+      lt_xchv_cust_id_b   := gt_sales_bulk_tbl( sale_bulk_idx ).xchv_cust_id_b;
+--
+--
+      -- 納品伝票番号＋シーケンスの採番の集約キーの値セット
+      lt_trx_number       := lv_trx_number;
+      lt_header_id        := gt_sales_bulk_tbl( sale_bulk_idx ).sales_exp_header_id;
+--
+--
       -- 現金・カード併用の場合-->カード売り区分=現金:0 かつ 現金カード併用額>0
       IF ( (   gt_sales_bulk_tbl( sale_bulk_idx ).cust_gyotai_sho = gt_fvd_xiaoka
             OR gt_sales_bulk_tbl( sale_bulk_idx ).cust_gyotai_sho = gt_gyotai_fvd )
@@ -2982,193 +2936,294 @@ AS
           ln_tax_amount := 0;
         END IF;
 --
-        --==============================================================
-        --販売実績カードワークテーブルへのカードレコード登録
-        --==============================================================
-        ln_card_idx := ln_card_idx + 1;
 --
-        -- カードレコード全カラムの設定
-        gt_bulk_card_tbl( ln_card_idx ) := gt_sales_bulk_tbl( sale_bulk_idx );
+      --*** 現金レコード全カラムの設定 ***
+        ln_sale_bulk_idx2                                        := ln_sale_bulk_idx2 + 1;
+        gt_sales_bulk_tbl2( ln_sale_bulk_idx2 )                  := gt_sales_bulk_tbl( sale_bulk_idx );
+          -- AR取引番号
+        gt_sales_bulk_tbl2( ln_sale_bulk_idx2 ).oif_trx_number   := lv_trx_number;
+          -- DFF4
+        gt_sales_bulk_tbl2( ln_sale_bulk_idx2 ).oif_dff4         := gt_sales_bulk_tbl( sale_bulk_idx ).dlv_invoice_number
+                                                                    || TO_CHAR( ln_trx_number_id );
+        gt_sales_bulk_tbl2( ln_sale_bulk_idx2 ).oif_tax_dff4     := gt_sales_bulk_tbl( sale_bulk_idx ).dlv_invoice_number
+                                                                    || TO_CHAR( ln_trx_number_tax_id );
 --
-        -- カードレコードの売り区分、本体金額、消費税金額の設定
-        gt_bulk_card_tbl( ln_card_idx ).card_sale_class  := cv_card_class;
-                                                         -- カード売り区分（１：カード）
-        gt_bulk_card_tbl( ln_card_idx ).pure_amount      := ln_pure_amount;
-                                                         -- 本体金額
-        gt_bulk_card_tbl( ln_card_idx ).tax_amount       := ln_tax_amount;
-                                                         -- 消費税金額
+--
+      --*** カードレコード全カラムの設定 ***
+        ln_sale_bulk_idx2 := ln_sale_bulk_idx2 + 1;
+        gt_sales_bulk_tbl2( ln_sale_bulk_idx2 ) := gt_sales_bulk_tbl( sale_bulk_idx );
+--
+          -- カード売り区分（１：カード）
+        gt_sales_bulk_tbl2( ln_sale_bulk_idx2 ).card_sale_class  := cv_card_class;
+          -- 本体金額
+        gt_sales_bulk_tbl2( ln_sale_bulk_idx2 ).pure_amount      := ln_pure_amount;
+          -- 消費税金額
+        gt_sales_bulk_tbl2( ln_sale_bulk_idx2 ).tax_amount       := ln_tax_amount;
+          -- AR取引番号
+        gt_sales_bulk_tbl2( ln_sale_bulk_idx2 ).oif_trx_number   := lv_trx_number;
+          -- DFF4
+        gt_sales_bulk_tbl2( ln_sale_bulk_idx2 ).oif_dff4         := gt_sales_bulk_tbl( sale_bulk_idx ).dlv_invoice_number
+                                                                    || TO_CHAR( ln_trx_number_id );
+        gt_sales_bulk_tbl2( ln_sale_bulk_idx2 ).oif_tax_dff4     := gt_sales_bulk_tbl( sale_bulk_idx ).dlv_invoice_number
+                                                                    || TO_CHAR( ln_trx_number_tax_id );
+--
+      ELSE
+--
+      --*** 併用以外のレコード全カラムの設定
+        ln_sale_bulk_idx2                                        := ln_sale_bulk_idx2 + 1;
+        gt_sales_bulk_tbl2( ln_sale_bulk_idx2 )                  := gt_sales_bulk_tbl( sale_bulk_idx );
+          -- AR取引番号
+        gt_sales_bulk_tbl2( ln_sale_bulk_idx2 ).oif_trx_number   := lv_trx_number;
+          -- DFF4
+        gt_sales_bulk_tbl2( ln_sale_bulk_idx2 ).oif_dff4         := gt_sales_bulk_tbl( sale_bulk_idx ).dlv_invoice_number
+                                                                    || TO_CHAR( ln_trx_number_id );
+        gt_sales_bulk_tbl2( ln_sale_bulk_idx2 ).oif_tax_dff4     := gt_sales_bulk_tbl( sale_bulk_idx ).dlv_invoice_number
+                                                                    || TO_CHAR( ln_trx_number_tax_id );
+--
       END IF;
 --
-    END LOOP gt_sales_bulk_tbl_loop;                                   -- 大手量販店併用データ編集終了
+        -- 業態小分類の編集
+      IF ( gt_sales_bulk_tbl( sale_bulk_idx ).cust_gyotai_sho <> gt_fvd_xiaoka
+        AND gt_sales_bulk_tbl( sale_bulk_idx ).cust_gyotai_sho <> gt_gyotai_fvd) THEN
+--
+          gt_sales_bulk_tbl2( ln_sale_bulk_idx2 ).cust_gyotai_sho := cv_nvd;                 -- VD以外の業態・納品VD
+--
+      END IF;
+--
+    END LOOP gt_sales_bulk_tbl_loop;
 --
       --=====================================================================
       -- 請求取引集約処理（大手量販店）開始
       --=====================================================================
     -- 集約キーの値セット
-    lt_header_id        := gt_sales_bulk_tbl( 1 ).sales_exp_header_id;
-    lt_invoice_number   := gt_sales_bulk_tbl( 1 ).dlv_invoice_number;
-    lt_invoice_class    := gt_sales_bulk_tbl( 1 ).dlv_invoice_class;
-    lt_goods_prod_cls   := gt_sales_bulk_tbl( 1 ).goods_prod_cls;
-    lt_item_code        := gt_sales_bulk_tbl( 1 ).item_code;
-    lt_card_sale_class  := gt_sales_bulk_tbl( 1 ).card_sale_class;
-    lt_red_black_flag   := gt_sales_bulk_tbl( 1 ).red_black_flag;
+    lt_trx_number       := gt_sales_bulk_tbl2( 1 ).oif_trx_number;            -- AR取引番号
+    lt_header_id        := gt_sales_bulk_tbl2( 1 ).sales_exp_header_id;   -- 販売実績ヘッダID
 --
     -- ラストデータ登録為に、ダミーデータをセット
-    gt_sales_bulk_tbl( gt_sales_bulk_tbl.COUNT + 1 ).sales_exp_header_id 
-                        := gt_sales_bulk_tbl( gt_sales_bulk_tbl.COUNT ).sales_exp_header_id;
-    IF ( gt_bulk_card_tbl.COUNT > 0 ) THEN
-      gt_bulk_card_tbl( gt_bulk_card_tbl.COUNT + 1 ).sales_exp_header_id 
-                        := gt_bulk_card_tbl( gt_bulk_card_tbl.COUNT ).sales_exp_header_id;
-    END IF;
+    gt_sales_bulk_tbl2( gt_sales_bulk_tbl2.COUNT + 1 ).sales_exp_header_id
+                        := gt_sales_bulk_tbl2( gt_sales_bulk_tbl2.COUNT ).sales_exp_header_id;
 --
     <<gt_sales_bulk_sum_loop>>
-    FOR sale_bulk_idx IN 1 .. gt_sales_bulk_tbl.COUNT LOOP
+    FOR sale_bulk_idx IN 1 .. gt_sales_bulk_tbl2.COUNT LOOP
 --
-      --=====================================
-      --5-1.販売実績元データの集約
-      --=====================================
-      IF (  lt_header_id        = gt_sales_bulk_tbl( sale_bulk_idx ).sales_exp_header_id
-        AND lt_invoice_number   = gt_sales_bulk_tbl( sale_bulk_idx ).dlv_invoice_number
-        AND lt_invoice_class    = gt_sales_bulk_tbl( sale_bulk_idx ).dlv_invoice_class
-        AND ( lt_goods_prod_cls = gt_sales_bulk_tbl( sale_bulk_idx ).goods_prod_cls
-          OR  lt_item_code      = gt_sales_bulk_tbl( sale_bulk_idx ).item_code )
-        AND lt_card_sale_class  = gt_sales_bulk_tbl( sale_bulk_idx ).card_sale_class
-        AND lt_red_black_flag   = gt_sales_bulk_tbl( sale_bulk_idx ).red_black_flag
-         ) THEN
+     --=====================================
+     --  販売実績元データの集約
+     --=====================================
+      IF (  lt_trx_number   = gt_sales_bulk_tbl2( sale_bulk_idx ).oif_trx_number
+         AND lt_header_id   = gt_sales_bulk_tbl2( sale_bulk_idx ).sales_exp_header_id
+         )
+      THEN
 --
         -- 集約するフラグ初期設定
         lv_sum_flag      := cv_y_flag;
-        lv_sum_card_flag := cv_y_flag;
 --
         -- 本体金額を集約する
-        ln_amount := ln_amount + gt_sales_bulk_tbl( sale_bulk_idx ).pure_amount;
+        ln_amount := ln_amount + gt_sales_bulk_tbl2( sale_bulk_idx ).pure_amount;
 --
         -- 課税の場合、消費税額を集約する
-        IF ( gt_sales_bulk_tbl( sale_bulk_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
-          ln_tax := ln_tax + gt_sales_bulk_tbl( sale_bulk_idx ).tax_amount;
+        IF ( gt_sales_bulk_tbl2( sale_bulk_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
+          ln_tax := ln_tax + gt_sales_bulk_tbl2( sale_bulk_idx ).tax_amount;
         END IF;
 --
-        --=====================================
-        --5-2.上記4で生成したカードレコードの集約
-        --=====================================
-        IF ( gt_sales_bulk_tbl( sale_bulk_idx ).card_sale_class = cv_card_class ) THEN
-          <<gt_bulk_card_tbl_loop>>
-          FOR i IN ln_card_pt .. gt_bulk_card_tbl.COUNT LOOP
-            IF (  lt_header_id        = gt_bulk_card_tbl( i ).sales_exp_header_id
-              AND lt_invoice_number   = gt_bulk_card_tbl( i ).dlv_invoice_number
-              AND lt_invoice_class    = gt_bulk_card_tbl( i ).dlv_invoice_class
-              AND ( lt_goods_prod_cls = gt_bulk_card_tbl( i ).goods_prod_cls
-                OR  lt_item_code      = gt_bulk_card_tbl( i ).item_code )
-            ) THEN
-              -- 本体金額を集約する
-              ln_amount   := ln_amount + gt_bulk_card_tbl( i ).pure_amount;
-              -- 課税の場合、消費税額を集約する
-              IF ( gt_bulk_card_tbl( i ).consumption_tax_class != gt_no_tax_cls ) THEN
-                ln_tax := ln_tax + gt_bulk_card_tbl( i ).tax_amount;
-              END IF;
-            END IF;
-            -- カードレコードの現ポイントをカウントする
-            ln_card_pt := i;
-          END LOOP gt_bulk_card_tbl_loop;
---
-        -- 生成したカードレコードだけの集約
-        ELSIF ( ( gt_sales_bulk_tbl( sale_bulk_idx ).cust_gyotai_sho = gt_fvd_xiaoka
-            OR gt_sales_bulk_tbl( sale_bulk_idx ).cust_gyotai_sho = gt_gyotai_fvd )
-          AND gt_sales_bulk_tbl( sale_bulk_idx ).card_sale_class = gt_cash_sale_cls
-          AND gt_sales_bulk_tbl( sale_bulk_idx ).cash_and_card > 0
-          AND ln_card_pt < gt_bulk_card_tbl.COUNT
-          ) THEN
-          ln_amount_card := 0;
-          ln_tax_card  := 0;
---
-          -- 生成したカードレコードだけの集約開始
-          FOR i IN ln_card_pt .. gt_bulk_card_tbl.COUNT LOOP
-            IF (  lt_header_id        = gt_bulk_card_tbl( i ).sales_exp_header_id
-              AND lt_invoice_number   = gt_bulk_card_tbl( i ).dlv_invoice_number
-              AND lt_invoice_class    = gt_bulk_card_tbl( i ).dlv_invoice_class
-              AND ( lt_goods_prod_cls = gt_bulk_card_tbl( i ).goods_prod_cls
-                OR  lt_item_code      = gt_bulk_card_tbl( i ).item_code )
-            ) THEN
-              -- 本体金額を集約する
-              ln_amount_card := ln_amount_card + gt_bulk_card_tbl( i ).pure_amount;
-              -- 課税の場合、消費税額を集約する
-              IF ( gt_bulk_card_tbl( i ).consumption_tax_class != gt_no_tax_cls ) THEN
-                ln_tax_card  := ln_tax_card + gt_bulk_card_tbl( i ).tax_amount;
-              END IF;
-            ELSE
-              -- カードレコードの現ポイントをカウントする
-              ln_card_pt := i;
-              -- 集約フラグ’N'を設定
-              lv_sum_card_flag := cv_n_flag;
-            END IF;
---
-          END LOOP gt_bulk_card_tbl_loop;
---
-        END IF; -- 生成したカードレコードだけの集約終了
       ELSE
 --
         lv_sum_flag := cv_n_flag;
         ln_trx_idx  := sale_bulk_idx - 1;
       END IF;
---
-      IF ( lv_sum_flag = cv_n_flag OR lv_sum_card_flag = cv_n_flag ) THEN
-      --=====================================================================
+--      
+      IF ( lv_sum_flag = cv_n_flag ) THEN
+        --=====================================================================
         -- １．支払条件IDの取得
         --=====================================================================
-        IF ( SUBSTR( TO_CHAR( gt_sales_bulk_tbl( ln_trx_idx ).delivery_date, cv_date_format_non_sep )
-                   , cv_substr_st, cv_substr_cnt )
-             <= gt_sales_bulk_tbl( ln_trx_idx ).rtt1_term_dd1 ) THEN
-          -- 支払条件 ID
-          ln_term_id := gt_sales_bulk_tbl( ln_trx_idx ).xchv_bill_pay_id;
+        BEGIN
 --
-        ELSIF( SUBSTR( TO_CHAR( gt_sales_bulk_tbl( ln_trx_idx ).delivery_date, cv_date_format_non_sep )
-                     , cv_substr_st, cv_substr_cnt )
-               > gt_sales_bulk_tbl( ln_trx_idx ).rtt1_term_dd1
-           AND SUBSTR( TO_CHAR( gt_sales_bulk_tbl( ln_trx_idx ).delivery_date, cv_date_format_non_sep )
-                     , cv_substr_st, cv_substr_cnt )
-               <= gt_sales_bulk_tbl( ln_trx_idx ).rtt2_term_dd2 ) THEN
-          -- 第2支払条件 ID
-          ln_term_id := gt_sales_bulk_tbl( ln_trx_idx ).xchv_bill_pay_id2;
+          SELECT term_id
+          INTO   ln_term_id
+          FROM
+            ( SELECT term_id
+                    ,cutoff_date
+              FROM
+                ( --****支払条件１（当月）
+                   SELECT rtv11.term_id
+                         ,CASE WHEN rtv11.due_cutoff_day = cn_max_day                             -- 支払日、最大の32日
+                                 THEN  LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date )  -- 納品月の末日
+                                 ELSE  DECODE( rtv11.due_cutoff_day -1, 0
+                                                -- 月日付0日の場合、納品月の前月末日を取得
+                                               ,TO_DATE( TO_CHAR( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                                                  cn_min_day, cv_date_format_on_sep ) -1
+                                                -- 指定日の-1日を取得
+                                               ,TO_DATE( TO_CHAR  ( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                                         TO_NUMBER( rtv11.due_cutoff_day -1 ), cv_date_format_on_sep
+                                                       )
+                                             )
+                          END cutoff_date
+                   FROM   ra_terms_vl      rtv11                           -- 支払条件マスタ
+                   WHERE  gd_process_date  BETWEEN NVL( rtv11.start_date_active, gd_process_date ) -- 業務日付時点で有効
+                                               AND NVL( rtv11.end_date_active  , gd_process_date )
+                     AND  rtv11.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
+                     AND  rtv11.term_id = gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id         -- 顧客階層ビューの支払条件１
+                     AND  ROWNUM = 1
 --
-        ELSIF( SUBSTR( TO_CHAR( gt_sales_bulk_tbl( ln_trx_idx ).delivery_date, cv_date_format_non_sep )
-                     , cv_substr_st, cv_substr_cnt )
-               > gt_sales_bulk_tbl( ln_trx_idx ).rtt2_term_dd2
-           AND SUBSTR( TO_CHAR( gt_sales_bulk_tbl( ln_trx_idx ).delivery_date, cv_date_format_non_sep )
-                     , cv_substr_st, cv_substr_cnt )
-               <= gt_sales_bulk_tbl( ln_trx_idx ).rtt3_term_dd3 ) THEN
-          -- 第3支払条件 ID
-          ln_term_id := gt_sales_bulk_tbl( ln_trx_idx ).xchv_bill_pay_id3;
+                  UNION ALL
 --
-        ELSE
-          -- 支払条件IDの取得ができない場合
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                          iv_application   => cv_xxcos_short_nm
-                        , iv_name          => cv_term_id_msg
-                      );
-          lv_errbuf  := lv_errmsg;
+                   --****支払条件１（翌月）
+                   SELECT rtv12.term_id
+                         ,CASE WHEN rtv12.due_cutoff_day = cn_max_day                                            -- 支払日、最大の32日
+                                 THEN  LAST_DAY(ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ) ) -- 納品翌月の末日
+                                 ELSE  DECODE( rtv12.due_cutoff_day -1 ,0
+                                                -- 月日付0日の場合、納品月の末日
+                                               ,LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date )
+                                                -- 指定日の-1日を取得
+                                               ,TO_DATE( TO_CHAR( ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ),
+                                                                  cv_date_format_yyyymm ) || TO_NUMBER( rtv12.due_cutoff_day -1 )
+                                                                  , cv_date_format_on_sep
+                                                       )
+                                             )
+                          END cutoff_date
+                   FROM   ra_terms_vl      rtv12           -- 支払条件マスタ
+                   WHERE  gd_process_date  BETWEEN NVL( rtv12.start_date_active, gd_process_date ) -- 業務日付時点で有効
+                                               AND NVL( rtv12.end_date_active  , gd_process_date )
+                     AND  rtv12.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
+                     AND  rtv12.term_id = gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id         -- 顧客階層ビューの支払条件１
+                     AND  ROWNUM = 1
 --
-          RAISE global_term_id_expt;
-        END IF;
+                  UNION ALL
+--
+                  --****支払条件２（当月）
+                   SELECT rtv21.term_id
+                         ,CASE WHEN rtv21.due_cutoff_day = cn_max_day          -- 支払日、最大の32日
+                                 THEN  LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date )  -- 納品月の末日
+                                 ELSE  DECODE( rtv21.due_cutoff_day -1, 0
+                                                -- 月日付0日の場合、納品月の前月末日を取得
+                                               ,TO_DATE( TO_CHAR( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                                                  cn_min_day, cv_date_format_on_sep ) -1
+                                                -- 指定日の-1日を取得
+                                               ,TO_DATE( TO_CHAR  ( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                                         TO_NUMBER( rtv21.due_cutoff_day -1 )
+                                                         , cv_date_format_on_sep
+                                                       )
+                                             )
+                          END cutoff_date
+                   FROM   ra_terms_vl      rtv21           -- 支払条件マスタ
+                   WHERE  gd_process_date  BETWEEN NVL( rtv21.start_date_active, gd_process_date ) -- 業務日付時点で有効
+                                               AND NVL( rtv21.end_date_active  , gd_process_date )
+                     AND  rtv21.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
+                     AND  rtv21.term_id = gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id2        -- 顧客階層ビューの支払条件２
+                     AND  ROWNUM = 1
+--
+                  UNION ALL
+--
+                  --****支払条件２（翌月）
+                   SELECT rtv22.term_id
+                         ,CASE WHEN rtv22.due_cutoff_day = cn_max_day          -- 支払日、最大の32日
+                                 THEN  LAST_DAY(ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ) ) -- 納品翌月の末日
+                                 ELSE  DECODE( rtv22.due_cutoff_day -1 ,0
+                                                -- 月日付0日の場合、納品月の末日
+                                               ,LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date )
+                                                -- 指定日の-1日を取得
+                                               ,TO_DATE( TO_CHAR( ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ),
+                                                                  cv_date_format_yyyymm ) || TO_NUMBER( rtv22.due_cutoff_day -1 )
+                                                                  , cv_date_format_on_sep
+                                                       )
+                                             )
+                          END cutoff_date
+                   FROM   ra_terms_vl      rtv22           -- 支払条件マスタ
+                   WHERE  gd_process_date  BETWEEN NVL( rtv22.start_date_active, gd_process_date ) -- 業務日付時点で有効
+                                               AND NVL( rtv22.end_date_active  , gd_process_date )
+                     AND  rtv22.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
+                     AND  rtv22.term_id = gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id2        -- 顧客階層ビューの支払条件２
+                     AND  ROWNUM = 1
+--
+                  UNION ALL
+--
+                  --****支払条件３（当月）
+                   SELECT rtv31.term_id
+                         ,CASE WHEN rtv31.due_cutoff_day = cn_max_day          -- 支払日、最大の32日
+                                 THEN  LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date )  -- 納品月の末日
+                                 ELSE  DECODE( rtv31.due_cutoff_day -1, 0
+                                                -- 月日付0日の場合、納品月の前月末日を取得
+                                               ,TO_DATE( TO_CHAR( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                                                  cn_min_day, cv_date_format_on_sep ) -1
+                                                -- 指定日の-1日を取得
+                                               ,TO_DATE( TO_CHAR  ( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                                         TO_NUMBER( rtv31.due_cutoff_day -1 )
+                                                         , cv_date_format_on_sep
+                                                       )
+                                             )
+                          END cutoff_date
+                   FROM   ra_terms_vl      rtv31           -- 支払条件マスタ
+                   WHERE  gd_process_date  BETWEEN NVL( rtv31.start_date_active, gd_process_date ) -- 業務日付時点で有効
+                                               AND NVL( rtv31.end_date_active  , gd_process_date )
+                     AND  rtv31.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
+                     AND  rtv31.term_id = gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id3        -- 顧客階層ビューの支払条件３
+                     AND  ROWNUM = 1
+--
+                  UNION ALL
+--
+                  --****支払条件３（翌月）
+                   SELECT rtv32.term_id
+                         ,CASE WHEN rtv32.due_cutoff_day = cn_max_day          -- 支払日、最大の32日
+                                 THEN  LAST_DAY(ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ) ) -- 納品翌月の末日
+                                 ELSE  DECODE( rtv32.due_cutoff_day -1 ,0
+                                                -- 月日付0日の場合、納品月の末日
+                                               ,LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date )
+                                                -- 指定日の-1日を取得
+                                               ,TO_DATE( TO_CHAR( ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ),
+                                                                  cv_date_format_yyyymm ) || TO_NUMBER( rtv32.due_cutoff_day -1 )
+                                                                  , cv_date_format_on_sep
+                                                       )
+                                             )
+                          END cutoff_date
+                   FROM   ra_terms_vl      rtv32           -- 支払条件マスタ
+                   WHERE  gd_process_date  BETWEEN NVL( rtv32.start_date_active, gd_process_date ) -- 業務日付時点で有効
+                                               AND NVL( rtv32.end_date_active  , gd_process_date )
+                     AND  rtv32.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
+                     AND  rtv32.term_id = gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id3        -- 顧客階層ビューの支払条件３
+                     AND  ROWNUM = 1
+                ) rtv
+              WHERE TRUNC( rtv.cutoff_date ) >= gd_process_date                                    -- 業務日付
+                AND TRUNC( rtv.cutoff_date ) >= gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date      -- 納品日
+              ORDER BY rtv.cutoff_date
+            )
+          WHERE  ROWNUM = 1;
+--
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              -- 支払条件IDの取得ができない場合
+              lv_errmsg := xxccp_common_pkg.get_msg(
+                              iv_application   => cv_xxcos_short_nm
+                            , iv_name          => cv_term_id_msg
+                          );
+              lv_errbuf  := lv_errmsg;
+--
+              RAISE global_term_id_expt;
+          END;
 --
         --=====================================================================
         -- ２．取引タイプの取得
         --=====================================================================
-        lv_trx_idx := gt_sales_bulk_tbl( ln_trx_idx ).create_class
-                   || gt_sales_bulk_tbl( ln_trx_idx ).dlv_invoice_class;
+--
+        lv_trx_idx := gt_sales_bulk_tbl2( ln_trx_idx ).create_class
+                   || gt_sales_bulk_tbl2( ln_trx_idx ).dlv_invoice_class;
         IF ( gt_sel_trx_type_tbl.EXISTS( lv_trx_idx ) ) THEN
           lv_trx_type_nm := gt_sel_trx_type_tbl( lv_trx_idx ).attribute1;
         ELSE
           BEGIN
             SELECT flvm.attribute1 || flvd.attribute1
+                 , rctt.attribute1
             INTO   lv_trx_type_nm
+                 , lv_trx_sent_dv
             FROM   fnd_lookup_values              flvm                     -- 作成元区分特定マスタ
                  , fnd_lookup_values              flvd                     -- 納品伝票区分特定マスタ
+                 , ra_cust_trx_types_all          rctt                     -- 取引タイプマスタ
             WHERE  flvm.lookup_type               = cv_qct_mkorg_cls
               AND  flvd.lookup_type               = cv_qct_dlv_slp_cls
               AND  flvm.lookup_code               LIKE cv_qcc_code
               AND  flvd.lookup_code               LIKE cv_qcc_code
-              AND  flvm.meaning                   = gt_sales_bulk_tbl( ln_trx_idx ).create_class
-              AND  flvd.meaning                   = gt_sales_bulk_tbl( ln_trx_idx ).dlv_invoice_class
+              AND  flvm.meaning                   = gt_sales_bulk_tbl2( ln_trx_idx ).create_class
+              AND  flvd.meaning                   = gt_sales_bulk_tbl2( ln_trx_idx ).dlv_invoice_class
+              AND  rctt.name                      = flvm.attribute1 || flvd.attribute1
+              AND  rctt.org_id                    = gv_mo_org_id
               AND  flvm.enabled_flag              = cv_enabled_yes
               AND  flvd.enabled_flag              = cv_enabled_yes
               AND  flvm.language                  = USERENV( 'LANG' )
@@ -3178,9 +3233,9 @@ AS
               AND  gd_process_date BETWEEN        NVL( flvd.start_date_active, gd_process_date )
                                    AND            NVL( flvd.end_date_active,   gd_process_date );
 --
+          -- 取引タイプ取得出来ない場合
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
-              -- 取引タイプ取得出来ない場合
               lv_errmsg := xxccp_common_pkg.get_msg(
                               iv_application   => cv_xxcos_short_nm
                             , iv_name          => cv_trxtype_err_msg
@@ -3188,7 +3243,7 @@ AS
                             , iv_token_value1  => cv_qct_mkorg_cls
                                                || cv_and
                                                || cv_qct_dlv_slp_cls
-                         );
+                          );
               lv_errbuf  := lv_errmsg;
 --
               RAISE global_no_lookup_expt;
@@ -3200,16 +3255,16 @@ AS
         END IF;
 --
         --=====================================================================
-        -- 3．品目明細摘要の取得(「仮受消費税等」以外)
+        -- ３．品目明細摘要の取得(「仮受消費税等」以外)
         --=====================================================================
 --
         -- 品目明細摘要の存在チェック-->存在している場合、取得必要がない
-        IF ( gt_sales_bulk_tbl( ln_trx_idx ).goods_prod_cls IS NULL ) THEN
-          lv_item_idx := gt_sales_bulk_tbl( ln_trx_idx ).dlv_invoice_class
-                      || gt_sales_bulk_tbl( ln_trx_idx ).item_code;
+        IF ( gt_sales_bulk_tbl2( ln_trx_idx ).goods_prod_cls IS NULL ) THEN
+          lv_item_idx := gt_sales_bulk_tbl2( ln_trx_idx ).dlv_invoice_class
+                      || gt_sales_bulk_tbl2( ln_trx_idx ).item_code;
         ELSE
-          lv_item_idx := gt_sales_bulk_tbl( ln_trx_idx ).dlv_invoice_class
-                      || gt_sales_bulk_tbl( ln_trx_idx ).goods_prod_cls;
+          lv_item_idx := gt_sales_bulk_tbl2( ln_trx_idx ).dlv_invoice_class
+                      || gt_sales_bulk_tbl2( ln_trx_idx ).goods_prod_cls;
         END IF;
 --
         IF ( gt_sel_item_desp_tbl.EXISTS( lv_item_idx ) ) THEN
@@ -3221,9 +3276,9 @@ AS
             FROM   fnd_lookup_values              flvi                     -- AR品目明細摘要特定マスタ
             WHERE  flvi.lookup_type               = cv_qct_item_cls
               AND  flvi.lookup_code               LIKE cv_qcc_code
-              AND  flvi.attribute1                = gt_sales_bulk_tbl( ln_trx_idx ).dlv_invoice_class
-              AND  flvi.attribute2                = NVL( gt_sales_bulk_tbl( ln_trx_idx ).goods_prod_cls,
-                                                         gt_sales_bulk_tbl( ln_trx_idx ).item_code )
+              AND  flvi.attribute1                = gt_sales_bulk_tbl2( ln_trx_idx ).dlv_invoice_class
+              AND  flvi.attribute2                = NVL( gt_sales_bulk_tbl2( ln_trx_idx ).goods_prod_cls,
+                                                         gt_sales_bulk_tbl2( ln_trx_idx ).item_code )
               AND  flvi.enabled_flag              = cv_enabled_yes
               AND  flvi.language                  = USERENV( 'LANG' )
               AND  gd_process_date BETWEEN        NVL( flvi.start_date_active, gd_process_date )
@@ -3250,68 +3305,14 @@ AS
       END IF;
 --
       --==============================================================
-      -- ６．AR請求取引OIFデータ作成
+      -- ４．AR請求取引OIFデータ作成
       --==============================================================
 --
-      -- 集約フラグ’N'の場合、AR請求取引OIFデータ作成する
-      IF ( lv_sum_flag = cv_n_flag ) THEN 
+      -- -- 集約フラグ’N'の場合、AR請求取引OIFデータ作成する
+      IF ( lv_sum_flag = cv_n_flag ) THEN
+--
         -- AR請求取引OIFの収益行
-        ln_ar_idx := ln_ar_idx + 1;
-        ln_ar_bul := ln_ar_bul + 1;
---
-        -- 取引明細DFF4用:自動採番番号
-        BEGIN
-          SELECT
-            xxcos_trx_number_s01.NEXTVAL
-          INTO
-            ln_trx_number_id
-          FROM
-            dual
-          ;
-        END;
---
-        -- AR会計配分集約用データ格納(BULK)
-        gt_ar_dis_bul_tbl( ln_ar_bul ).sales_exp_header_id
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).sales_exp_header_id;
-                                                        -- 販売実績ヘッダID
-        gt_ar_dis_bul_tbl( ln_ar_bul ).dlv_invoice_number
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).dlv_invoice_number;
-                                                        -- 納品伝票番号
-        gt_ar_dis_bul_tbl( ln_ar_bul ).interface_line_dff4
-                                                        := TO_CHAR( ln_trx_number_id );
-                                                        -- 自動採番
-        gt_ar_dis_bul_tbl( ln_ar_bul ).dlv_invoice_class
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).dlv_invoice_class;
-                                                        -- 納品伝票区分
-        gt_ar_dis_bul_tbl( ln_ar_bul ).item_code        := gt_sales_bulk_tbl( ln_trx_idx ).item_code;
-                                                        -- 品目コード
-        gt_ar_dis_bul_tbl( ln_ar_bul ).goods_prod_cls   := gt_sales_bulk_tbl( ln_trx_idx ).goods_prod_cls;
-                                                        -- 品目区分（製品・商品）
-        -- 業態小分類の編集
-        IF ( gt_sales_bulk_tbl( ln_trx_idx ).cust_gyotai_sho <> gt_fvd_xiaoka
-          OR gt_sales_bulk_tbl( ln_trx_idx ).cust_gyotai_sho <> gt_gyotai_fvd
-          OR gt_sales_bulk_tbl( ln_trx_idx ).cust_gyotai_sho <> gt_vd_xiaoka ) THEN
-          lv_cust_gyotai_sho := cv_nvd;                 -- VD以外の業態・納品VD
-        ELSE
-          lv_cust_gyotai_sho := gt_sales_bulk_tbl( ln_trx_idx ).cust_gyotai_sho;
-                                                        -- フル(消化)VD・フルVD・消化VD
-        END IF;
-        gt_ar_dis_bul_tbl( ln_ar_bul ).cust_gyotai_sho  := lv_cust_gyotai_sho;
-                                                        -- 業態小分類
-        gt_ar_dis_bul_tbl( ln_ar_bul ).sales_base_code  := gt_sales_bulk_tbl( ln_trx_idx ).sales_base_code;
-                                                        -- 売上拠点コード
-        gt_ar_dis_bul_tbl( ln_ar_bul ).card_sale_class  := gt_sales_bulk_tbl( ln_trx_idx ).card_sale_class;
-                                                        -- カード売り区分
-        gt_ar_dis_bul_tbl( ln_ar_bul ).red_black_flag   := gt_sales_bulk_tbl( ln_trx_idx ).red_black_flag;
-                                                        -- 赤黒フラグ
-        gt_ar_dis_bul_tbl( ln_ar_bul ).gccs_segment3    := gt_sales_bulk_tbl( ln_trx_idx ).gccs_segment3;
-                                                        -- 売上勘定科目コード
-        gt_ar_dis_bul_tbl( ln_ar_bul ).pure_amount      := ln_amount;
-                                                        -- 集約後本体金額
-        gt_ar_dis_bul_tbl( ln_ar_bul ).gcct_segment3    := gt_sales_bulk_tbl( ln_trx_idx ).gcct_segment3;
-                                                        -- 税金勘定科目コード(仮受消費税等)
-        gt_ar_dis_bul_tbl( ln_ar_bul ).tax_amount       := ln_tax;
-                                                        -- 集約後本体金額
+        ln_ar_idx   := ln_ar_idx  + 1;
 --
         -- AR請求取引OIFデータ作成(収益行)===>NO.1
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_context
@@ -3319,18 +3320,18 @@ AS
                                                         -- 取引明細コンテキスト:「販売実績」を設定
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute1
                                                         := gv_sales_nm;
-                                                        -- 取引明細DFF1
+                                                        -- 取引明細DFF1:「販売実績」を設定
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute3
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).dlv_invoice_number;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).dlv_invoice_number;
                                                         -- 取引明細DFF3
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute4
-                                                        := TO_CHAR( ln_trx_number_id );
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).oif_dff4;
                                                         -- 取引明細DFF4
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute5
                                                         := gv_sales_nm;
                                                         -- 取引明細DFF5:「販売実績」を設定
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute7
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).sales_exp_header_id;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).sales_exp_header_id;
                                                         -- 取引明細DFF7
         gt_ar_interface_tbl( ln_ar_idx ).batch_source_name  := gv_sales_nm;
                                                         -- 取引ソース:「販売実績」を設定
@@ -3350,32 +3351,32 @@ AS
                                                         -- 取引タイプ名
         gt_ar_interface_tbl( ln_ar_idx ).term_id        := ln_term_id;
                                                         -- 支払条件ID
-        IF (  gt_sales_bulk_tbl( ln_trx_idx ).card_sale_class = cv_cash_class
-          AND gt_sales_bulk_tbl( ln_trx_idx ).cash_and_card   = 0 ) THEN
+        IF (  gt_sales_bulk_tbl2( sale_bulk_idx ).card_sale_class = cv_cash_class
+          AND gt_sales_bulk_tbl2( sale_bulk_idx ).cash_and_card   = 0 ) THEN
         -- 現金の場合
           gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_address_id
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).hcsb_org_sys_id;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).hcsb_org_sys_id;
                                                         -- 請求先顧客所在地参照ID
           gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_customer_id
-                                                        :=gt_sales_bulk_tbl( ln_trx_idx ).xchv_cust_id_b;
+                                                        :=gt_sales_bulk_tbl2( ln_trx_idx ).xchv_cust_id_b;
                                                         -- 請求先顧客ID
         ELSE
         -- カードの場合
           gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_address_id
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).hcsc_org_sys_id;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).hcsc_org_sys_id;
                                                         -- 入金先顧客所在地参照ID
           gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_customer_id
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).xchv_cust_id_c;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).xchv_cust_id_c;
                                                         -- 入金先顧客ID
         END IF;
         gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_address_id
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).hcss_org_sys_id;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).hcss_org_sys_id;
                                                         -- 出荷先顧客所在地参照ID
         gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_customer_id
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).xchv_cust_id_s;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).xchv_cust_id_s;
                                                         -- 出荷先顧客ID
         gt_ar_interface_tbl( ln_ar_idx ).receipt_method_id
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).rcrm_receipt_id;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).rcrm_receipt_id;
                                                         -- 支払方法ID
         gt_ar_interface_tbl( ln_ar_idx ).conversion_type
                                                         := cv_user;
@@ -3383,33 +3384,39 @@ AS
         gt_ar_interface_tbl( ln_ar_idx ).conversion_rate
                                                         := cn_con_rate;
                                                         -- 換算レート:1 を設定
-        gt_ar_interface_tbl( ln_ar_idx ).trx_date       := gt_sales_bulk_tbl( ln_trx_idx ).inspect_date;
+        gt_ar_interface_tbl( ln_ar_idx ).trx_date       := gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date;
                                                         -- 取引日(請求書日付):販.検収日
-        gt_ar_interface_tbl( ln_ar_idx ).gl_date        := gt_sales_bulk_tbl( ln_trx_idx ).delivery_date;
+        gt_ar_interface_tbl( ln_ar_idx ).gl_date        := gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date;
                                                         -- GL記帳日(仕訳計上日):販.納品日
-        gt_ar_interface_tbl( ln_ar_idx ).trx_number     := TO_CHAR( ln_trx_number_id );
+        gt_ar_interface_tbl( ln_ar_idx ).trx_number     := gt_sales_bulk_tbl2( ln_trx_idx ).oif_trx_number;
                                                         -- 収益行のみ：AR取引番号
-        gt_ar_interface_tbl( ln_ar_idx ).line_number    := gt_sales_bulk_tbl( ln_trx_idx ).dlv_inv_line_no;
+        gt_ar_interface_tbl( ln_ar_idx ).line_number    := gt_sales_bulk_tbl2( ln_trx_idx ).dlv_inv_line_no;
                                                         -- 収益行のみ：AR取引明細番号
         gt_ar_interface_tbl( ln_ar_idx ).quantity       := cn_quantity;
                                                         -- 収益行のみ：数量=1
         gt_ar_interface_tbl( ln_ar_idx ).unit_selling_price
                                                         := ln_amount;
                                                         -- 収益行のみ：販売単価=本体金額
-        gt_ar_interface_tbl( ln_ar_idx ).tax_code       := gt_sales_bulk_tbl( ln_trx_idx ).tax_code;
+        gt_ar_interface_tbl( ln_ar_idx ).tax_code       := gt_sales_bulk_tbl2( ln_trx_idx ).tax_code;
                                                         -- 税金コード(税区分)
         gt_ar_interface_tbl( ln_ar_idx ).header_attribute_category
                                                         := gv_mo_org_id;
                                                         -- ヘッダーDFFカテゴリ
         gt_ar_interface_tbl( ln_ar_idx ).header_attribute5
-                                                        := gv_busi_dept_cd;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).sales_base_code;
                                                         -- ヘッダーdff5(起票部門)
         gt_ar_interface_tbl( ln_ar_idx ).header_attribute6
-                                                        := gv_busi_emp_cd;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).results_employee_code;
                                                         -- ヘッダーdff6(伝票入力者)
-        gt_ar_interface_tbl( ln_ar_idx ).header_attribute7
+        IF( lv_trx_sent_dv = cv_n_flag ) THEN
+          gt_ar_interface_tbl( ln_ar_idx ).header_attribute7
+                                                        := cv_hold;
+                                                        -- ヘッダーDFF7(予備１)
+        ELSIF( lv_trx_sent_dv = cv_y_flag ) THEN
+          gt_ar_interface_tbl( ln_ar_idx ).header_attribute7
                                                         := cv_open;
                                                         -- ヘッダーDFF7(予備１)
+        END IF;
         gt_ar_interface_tbl( ln_ar_idx ).header_attribute8
                                                         := cv_wait;
                                                         -- ヘッダーdff8(予備２)
@@ -3417,16 +3424,16 @@ AS
                                                         := cv_wait;
                                                         -- ヘッダーdff9(予備3)
         gt_ar_interface_tbl( ln_ar_idx ).header_attribute11
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).receiv_base_code;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).receiv_base_code;
                                                         -- ヘッダーDFF11(入金拠点)
         gt_ar_interface_tbl( ln_ar_idx ).org_id         := TO_NUMBER( gv_mo_org_id );
                                                         -- 営業単位ID
-        IF ( gt_sales_bulk_tbl( ln_trx_idx ).tax_code = gt_in_tax_cls ) THEN
+        IF ( gt_sales_bulk_tbl2( ln_trx_idx ).tax_code = gt_in_tax_cls ) THEN
           -- 内税の場合、'Y'を設定
           gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
                                                         := cv_y_flag;
                                                         -- 税込金額フラグ
-        ELSIF( gt_sales_bulk_tbl( ln_trx_idx ).tax_code = gt_out_tax_cls ) THEN
+        ELSIF( gt_sales_bulk_tbl2( ln_trx_idx ).tax_code = gt_out_tax_cls ) THEN
           -- 外税の場合、'N'を設定
           gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
                                                         := cv_n_flag;
@@ -3440,39 +3447,23 @@ AS
         -- AR請求取引OIFデータ作成(税金行)===>NO.2
         ln_ar_idx := ln_ar_idx + 1;
 --
-        -- 取引明細DFF4用:自動採番番号
-        BEGIN
-          SELECT
-            xxcos_trx_number_s01.NEXTVAL
-          INTO
-            ln_trx_number_id
-          FROM
-            dual
-          ;
-        END;
---
-        -- AR会計配分集約用データ格納(BULK)
-        gt_ar_dis_bul_tbl( ln_ar_bul ).interface_tax_dff4
-                                                        := TO_CHAR( ln_trx_number_id );
-                                                        -- 自動採番
---
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_context
                                                         := gv_sales_nm;
                                                         -- 取引明細コンテキスト:「販売実績」を設定
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute1
                                                         := gv_sales_nm;
-                                                        -- 取引明細DFF1
+                                                        -- 取引明細DFF1:「販売実績」を設定
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute3
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).dlv_invoice_number;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).dlv_invoice_number;
                                                         -- 取引明細DFF3
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute4
-                                                        := TO_CHAR( ln_trx_number_id );
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).oif_tax_dff4;
                                                         -- 取引明細DFF4
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute5
                                                         := gv_sales_nm;
                                                         -- 取引明細DFF5:「販売実績」を設定
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute7
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).sales_exp_header_id;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).sales_exp_header_id;
                                                         -- 取引明細DFF7
         gt_ar_interface_tbl( ln_ar_idx ).batch_source_name
                                                         := gv_sales_nm;
@@ -3493,29 +3484,29 @@ AS
                                                         -- 取引タイプ名
         gt_ar_interface_tbl( ln_ar_idx ).term_id        := ln_term_id;
                                                         -- 支払条件ID
-        IF (  gt_sales_bulk_tbl( ln_trx_idx ).card_sale_class = cv_cash_class
-          AND gt_sales_bulk_tbl( ln_trx_idx ).cash_and_card   = 0 ) THEN
-        -- 現金の場合
+        IF (  gt_sales_bulk_tbl2( ln_trx_idx ).card_sale_class = cv_cash_class
+          AND gt_sales_bulk_tbl2( ln_trx_idx ).cash_and_card   = 0 ) THEN
+          -- 現金の場合
           gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_address_id
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).hcsb_org_sys_id;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).hcsb_org_sys_id;
                                                         -- 請求先顧客所在地参照ID
           gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_customer_id
-                                                        :=gt_sales_bulk_tbl( ln_trx_idx ).xchv_cust_id_b;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).xchv_cust_id_b;
                                                         -- 請求先顧客ID
         ELSE
         -- カードの場合
           gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_address_id
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).hcsc_org_sys_id;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).hcsc_org_sys_id;
                                                         -- 入金先顧客所在地参照ID
           gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_customer_id
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).xchv_cust_id_c;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).xchv_cust_id_c;
                                                         -- 入金先顧客ID
         END IF;
         gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_address_id
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).hcss_org_sys_id;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).hcss_org_sys_id;
                                                         -- 出荷先顧客所在地参照ID
         gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_customer_id
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).xchv_cust_id_s;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).xchv_cust_id_s;
                                                         -- 出荷先顧客ID
         gt_ar_interface_tbl( ln_ar_idx ).link_to_line_context
                                                         := gv_sales_nm;
@@ -3524,19 +3515,19 @@ AS
                                                         := gv_sales_nm;
                                                         -- リンク先明細DFF1:「販売実績」を設定
         gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute3
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).dlv_invoice_number;
+                                                        := gt_ar_interface_tbl( ln_ar_idx - 1 ).interface_line_attribute3;
                                                         -- リンク先明細DFF3
         gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute4
-                                                        := TO_CHAR( ln_trx_number_id );
+                                                        := gt_ar_interface_tbl( ln_ar_idx - 1 ).interface_line_attribute4;
                                                         -- リンク先明細DFF4
         gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute5
                                                         := gv_sales_nm;
                                                         -- リンク先明細DFF5:「販売実績」を設定
         gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute7
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).sales_exp_header_id;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).sales_exp_header_id;
                                                         -- リンク先明細DFF7
         gt_ar_interface_tbl( ln_ar_idx ).receipt_method_id
-                                                        := gt_sales_bulk_tbl( ln_trx_idx ).rcrm_receipt_id;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).rcrm_receipt_id;
                                                         -- 支払方法ID
         gt_ar_interface_tbl( ln_ar_idx ).conversion_type
                                                         := cv_user;
@@ -3544,20 +3535,20 @@ AS
         gt_ar_interface_tbl( ln_ar_idx ).conversion_rate
                                                         := cn_con_rate;
                                                         -- 換算レート:1 を設定
-        gt_ar_interface_tbl( ln_ar_idx ).trx_date       := gt_sales_bulk_tbl( ln_trx_idx ).inspect_date;
+        gt_ar_interface_tbl( ln_ar_idx ).trx_date       := gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date;
                                                         -- 取引日(請求書日付):販.検収日
-        gt_ar_interface_tbl( ln_ar_idx ).gl_date        := gt_sales_bulk_tbl( ln_trx_idx ).delivery_date;
+        gt_ar_interface_tbl( ln_ar_idx ).gl_date        := gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date;
                                                         -- GL記帳日(仕訳計上日):販.納品日
-        gt_ar_interface_tbl( ln_ar_idx ).tax_code       := gt_sales_bulk_tbl( ln_trx_idx ).tax_code;
+        gt_ar_interface_tbl( ln_ar_idx ).tax_code       := gt_sales_bulk_tbl2( ln_trx_idx ).tax_code;
                                                         -- 税金コード
         gt_ar_interface_tbl( ln_ar_idx ).org_id         := TO_NUMBER( gv_mo_org_id );
-                                                        -- 営業単位id
-        IF ( gt_sales_bulk_tbl( ln_trx_idx ).tax_code = gt_in_tax_cls ) THEN
+                                                        -- 営業単位ID
+        IF ( gt_sales_bulk_tbl2( ln_trx_idx ).tax_code = gt_in_tax_cls ) THEN
           -- 内税の場合、'Y'を設定
-          gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag 
+          gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
                                                         := cv_y_flag;
                                                         -- 税込金額フラグ
-        ELSIF( gt_sales_bulk_tbl( ln_trx_idx ).tax_code = gt_out_tax_cls ) THEN
+        ELSIF( gt_sales_bulk_tbl2( ln_trx_idx ).tax_code = gt_out_tax_cls ) THEN
           -- 外税の場合、'N'を設定
           gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
                                                         := cv_n_flag;
@@ -3567,269 +3558,17 @@ AS
                                                         -- 作成者
         gt_ar_interface_tbl( ln_ar_idx ).creation_date  := cd_creation_date;
                                                         -- 作成日
+--
       END IF;
 --
-      -- -- カード集約フラグ’N'の場合、カードのAR請求取引OIFデータ作成する
-      IF ( lv_sum_card_flag = cv_n_flag AND ln_amount_card > 0 ) THEN   
-        -- AR請求取引OIFの収益行
-        ln_ar_idx   := ln_ar_idx  + 1;
-        ln_card_idx := ln_card_pt - 1;
---
-        -- 取引明細DFF4用:自動採番番号
-        BEGIN
-          SELECT
-            xxcos_trx_number_s01.NEXTVAL
-          INTO
-            ln_trx_number_id
-          FROM
-            dual
-          ;
-        END;
---
-        --  AR請求取引OIFデータ作成(収益行)===>NO.3
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_context
-                                                        := gv_sales_nm;
-                                                        -- 取引明細コンテキスト:「販売実績」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute1
-                                                        := gv_sales_nm;
-                                                        -- 取引明細DFF1
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute3
-                                                        := gt_bulk_card_tbl( ln_card_idx ).dlv_invoice_number;
-                                                        -- 取引明細DFF3
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute4
-                                                        := TO_CHAR( ln_trx_number_id );
-                                                        -- 取引明細DFF4
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute5
-                                                        := gv_sales_nm;
-                                                        -- 取引明細DFF5:「販売実績」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute7
-                                                        := gt_bulk_card_tbl( ln_card_idx ).sales_exp_header_id;
-                                                        -- 取引明細DFF7
-        gt_ar_interface_tbl( ln_ar_idx ).batch_source_name  := gv_sales_nm;
-                                                        -- 取引ソース:「販売実績」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).set_of_books_id
-                                                        := TO_NUMBER ( gv_set_bks_id );
-                                                        -- 会計帳簿ID
-        gt_ar_interface_tbl( ln_ar_idx ).line_type      := cv_line;
-                                                        -- 収益行
-        gt_ar_interface_tbl( ln_ar_idx ).description    := lv_item_desp;
-                                                        -- 品目明細摘要
-        gt_ar_interface_tbl( ln_ar_idx ).currency_code  := cv_currency_code;
-                                                        -- 通貨
-        gt_ar_interface_tbl( ln_ar_idx ).amount         := ln_amount_card;
-                                                        -- 収益行：本体金額
-        gt_ar_interface_tbl( ln_ar_idx ).cust_trx_type_name
-                                                        := lv_trx_type_nm;
-                                                        -- 取引タイプ名
-        gt_ar_interface_tbl( ln_ar_idx ).term_id        := ln_term_id;
-                                                        -- 支払条件ID
-        gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_address_id
-                                                        := gt_bulk_card_tbl( ln_card_idx ).hcsc_org_sys_id;
-                                                        -- 入金先顧客所在地参照ID
-        gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_customer_id
-                                                        := gt_bulk_card_tbl( ln_card_idx ).xchv_cust_id_c;
-                                                        -- 入金先顧客ID
-        gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_address_id
-                                                        := gt_bulk_card_tbl( ln_card_idx ).hcss_org_sys_id;
-                                                        -- 出荷先顧客所在地参照ID
-        gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_customer_id
-                                                        := gt_bulk_card_tbl( ln_card_idx ).xchv_cust_id_s;
-                                                        -- 出荷先顧客ID
-        gt_ar_interface_tbl( ln_ar_idx ).receipt_method_id
-                                                        := gt_bulk_card_tbl( ln_card_idx ).rcrm_receipt_id;
-                                                        -- 支払方法ID
-        gt_ar_interface_tbl( ln_ar_idx ).conversion_type
-                                                        := cv_user;
-                                                        -- 換算タイプ:「User」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).conversion_rate
-                                                        := cn_con_rate;
-                                                        -- 換算レート:1 を設定
-        gt_ar_interface_tbl( ln_ar_idx ).trx_date       := gt_bulk_card_tbl( ln_card_idx ).inspect_date;
-                                                        -- 取引日(請求書日付):販.検収日
-        gt_ar_interface_tbl( ln_ar_idx ).gl_date        := gt_bulk_card_tbl( ln_card_idx ).delivery_date;
-                                                        -- GL記帳日(仕訳計上日):販.納品日
-        gt_ar_interface_tbl( ln_ar_idx ).trx_number     := TO_CHAR( ln_trx_number_id );
-                                                        -- AR取引番号
-        gt_ar_interface_tbl( ln_ar_idx ).line_number    := gt_bulk_card_tbl( ln_card_idx ).dlv_inv_line_no;
-                                                        -- 収益行のみ：AR取引明細番号
-        gt_ar_interface_tbl( ln_ar_idx ).quantity       := cn_quantity;
-                                                        -- 収益行のみ：数量=1
-        gt_ar_interface_tbl( ln_ar_idx ).unit_selling_price
-                                                        := ln_amount_card;
-                                                        -- 収益行のみ：販売単価=本体金額
-        gt_ar_interface_tbl( ln_ar_idx ).tax_code       := gt_bulk_card_tbl( ln_card_idx ).tax_code;
-                                                        -- 税金コード(税区分)
-        gt_ar_interface_tbl( ln_ar_idx ).header_attribute_category
-                                                        := gv_mo_org_id;
-                                                        -- ヘッダーDFFカテゴリ
-        gt_ar_interface_tbl( ln_ar_idx ).header_attribute5
-                                                        := gv_busi_dept_cd;
-                                                        -- ヘッダーdff5(起票部門)
-        gt_ar_interface_tbl( ln_ar_idx ).header_attribute6
-                                                        := gv_busi_emp_cd;
-                                                        -- ヘッダーdff6(伝票入力者)
-        gt_ar_interface_tbl( ln_ar_idx ).header_attribute7
-                                                        := cv_open;
-                                                        -- ヘッダーDFF7(予備１)
-        gt_ar_interface_tbl( ln_ar_idx ).header_attribute8
-                                                        := cv_wait;
-                                                        -- ヘッダーdff8(予備２)
-        gt_ar_interface_tbl( ln_ar_idx ).header_attribute9
-                                                        := cv_wait;
-                                                        -- ヘッダーdff9(予備3)
-        gt_ar_interface_tbl( ln_ar_idx ).header_attribute11
-                                                        := gt_bulk_card_tbl( ln_card_idx ).receiv_base_code;
-                                                        -- ヘッダーDFF11(入金拠点)
-        gt_ar_interface_tbl( ln_ar_idx ).org_id         := TO_NUMBER( gv_mo_org_id );
-                                                        -- 営業単位ID
-        IF ( gt_bulk_card_tbl( ln_card_idx ).tax_code = gt_in_tax_cls ) THEN
-          -- 内税の場合、'Y'を設定
-          gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
-                                                        := cv_y_flag;
-                                                        -- 税込金額フラグ
-        ELSIF( gt_bulk_card_tbl( ln_card_idx ).tax_code = gt_out_tax_cls ) THEN
-          -- 外税の場合、'N'を設定
-          gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
-                                                        := cv_n_flag;
-                                                        -- 税込金額フラグ
-        END IF;
-        gt_ar_interface_tbl( ln_ar_idx ).created_by     := cn_created_by;
-                                                        -- 作成者
-        gt_ar_interface_tbl( ln_ar_idx ).creation_date  := cd_creation_date;
-                                                        -- 作成日
---
-        -- AR請求取引OIFデータ作成(税金行)===>NO.4
-        ln_ar_idx := ln_ar_idx + 1;
---
-        -- 取引明細DFF4用:自動採番番号
-        BEGIN
-          SELECT
-            xxcos_trx_number_s01.NEXTVAL
-          INTO
-            ln_trx_number_id
-          FROM
-            dual
-          ;
-        END;
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_context
-                                                        := gv_sales_nm;
-                                                        -- 取引明細コンテキスト:「販売実績」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute1
-                                                        := gv_sales_nm;
-                                                        -- 取引明細DFF1
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute3
-                                                        := gt_bulk_card_tbl( ln_card_idx ).dlv_invoice_number;
-                                                        -- 取引明細DFF3
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute4
-                                                        := TO_CHAR( ln_trx_number_id );
-                                                        -- 取引明細DFF4
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute5
-                                                        := gv_sales_nm;
-                                                        -- 取引明細DFF5:「販売実績」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute7
-                                                        := gt_bulk_card_tbl( ln_card_idx ).sales_exp_header_id;
-                                                        -- 取引明細DFF7
-        gt_ar_interface_tbl( ln_ar_idx ).batch_source_name
-                                                        := gv_sales_nm;
-                                                        -- 取引ソース:「販売実績」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).set_of_books_id
-                                                        := TO_NUMBER ( gv_set_bks_id );
-                                                        -- 会計帳簿ID
-        gt_ar_interface_tbl( ln_ar_idx ).line_type      := cv_tax;
-                                                        -- 税金行
-        gt_ar_interface_tbl( ln_ar_idx ).description    := gv_item_tax;
-                                                        -- 品目明細摘要
-        gt_ar_interface_tbl( ln_ar_idx ).currency_code  := cv_currency_code;
-                                                        -- 通貨
-        gt_ar_interface_tbl( ln_ar_idx ).amount         := ln_tax_card;
-                                                        -- 税金行：消費税金額
-        gt_ar_interface_tbl( ln_ar_idx ).cust_trx_type_name
-                                                        := lv_trx_type_nm;
-                                                        -- 取引タイプ名
-        gt_ar_interface_tbl( ln_ar_idx ).term_id        := ln_term_id;
-                                                        -- 支払条件ID
-        gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_address_id
-                                                        := gt_bulk_card_tbl( ln_card_idx ).hcsc_org_sys_id;
-                                                        -- 入金先顧客所在地参照ID
-        gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_customer_id
-                                                        := gt_bulk_card_tbl( ln_card_idx ).xchv_cust_id_c;
-                                                        -- 入金先顧客ID
-        gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_address_id
-                                                        := gt_bulk_card_tbl( ln_card_idx ).hcss_org_sys_id;
-                                                        -- 出荷先顧客所在地参照ID
-        gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_customer_id
-                                                        := gt_bulk_card_tbl( ln_card_idx ).xchv_cust_id_s;
-                                                        -- 出荷先顧客ID
-        gt_ar_interface_tbl( ln_ar_idx ).link_to_line_context
-                                                        := gv_sales_nm;
-                                                        -- リンク先明細コンテキスト:「販売実績」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute1
-                                                        := gv_sales_nm;
-                                                        -- リンク先明細DFF1:「販売実績」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute3
-                                                        := gt_bulk_card_tbl( ln_card_idx ).dlv_invoice_number;
-                                                        -- リンク先明細DFF3
-        gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute4
-                                                        := TO_CHAR( ln_trx_number_id );
-                                                        -- リンク先明細DFF4
-        gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute5
-                                                        := gv_sales_nm;
-                                                        -- リンク先明細DFF5:「販売実績」を設定
-        gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute7
-                                                        := gt_bulk_card_tbl( ln_card_idx ).sales_exp_header_id;
-                                                        -- リンク先明細DFF7
-        gt_ar_interface_tbl( ln_ar_idx ).receipt_method_id
-                                                        := gt_bulk_card_tbl( ln_card_idx ).rcrm_receipt_id;
-                                                        -- 支払方法ID
-        gt_ar_interface_tbl( ln_ar_idx ).conversion_type
-                                                        := cv_user;
-                                                        -- 換算タイプ（「User」を設定）
-        gt_ar_interface_tbl( ln_ar_idx ).conversion_rate
-                                                        := cn_con_rate;
-                                                        -- 換算レート（1 を設定）
-        gt_ar_interface_tbl( ln_ar_idx ).trx_date       := gt_bulk_card_tbl( ln_card_idx ).inspect_date;
-                                                        -- 取引日(請求書日付):販.検収日
-        gt_ar_interface_tbl( ln_ar_idx ).gl_date        := gt_bulk_card_tbl( ln_card_idx ).delivery_date;
-                                                        -- GL記帳日(仕訳計上日):販.納品日
-        gt_ar_interface_tbl( ln_ar_idx ).tax_code       := gt_bulk_card_tbl( ln_card_idx ).tax_code;
-                                                        -- 税金コード
-        gt_ar_interface_tbl( ln_ar_idx ).org_id         := TO_NUMBER( gv_mo_org_id );
-                                                        -- 営業単位ID
-        IF ( gt_bulk_card_tbl( ln_card_idx ).tax_code = gt_in_tax_cls ) THEN
-          -- 内税の場合、'Y'を設定
-          gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag 
-                                                        := cv_y_flag;
-                                                        -- 税込金額フラグ
-        ELSIF( gt_bulk_card_tbl( ln_card_idx ).tax_code = gt_out_tax_cls ) THEN
-          -- 外税の場合、'N'を設定
-          gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
-                                                        := cv_n_flag;
-                                                        -- 税込金額フラグ
-        END IF;
-        gt_ar_interface_tbl( ln_ar_idx ).created_by     := cn_created_by;
-                                                        -- 作成者
-        gt_ar_interface_tbl( ln_ar_idx ).creation_date  := cd_creation_date;
-                                                        -- 作成日
-        -- 集約フラグのリセット
-        lv_sum_card_flag := cv_y_flag;
-        ln_amount_card := 0;
---
-      END IF;                                           -- 集約キー毎にAR OIFデータの集約終了
---
-      IF ( lv_sum_flag = cv_n_flag ) THEN 
+      IF ( lv_sum_flag = cv_n_flag ) THEN
         -- 集約キーと集約金額のリセット
-        lt_header_id       := gt_sales_bulk_tbl( sale_bulk_idx ).sales_exp_header_id;
-        lt_invoice_number  := gt_sales_bulk_tbl( sale_bulk_idx ).dlv_invoice_number;
-        lt_invoice_class   := gt_sales_bulk_tbl( sale_bulk_idx ).dlv_invoice_class;
-        lt_goods_prod_cls  := gt_sales_bulk_tbl( sale_bulk_idx ).goods_prod_cls;
-        lt_item_code       := gt_sales_bulk_tbl( sale_bulk_idx ).item_code;
-        lt_card_sale_class := gt_sales_bulk_tbl( sale_bulk_idx ).card_sale_class;
-        lt_red_black_flag  := gt_sales_bulk_tbl( sale_bulk_idx ).red_black_flag;
-        lv_sum_card_flag := cv_y_flag;
+        lt_trx_number      := gt_sales_bulk_tbl2( sale_bulk_idx ).oif_trx_number;        -- AR取引番号
+        lt_header_id       := gt_sales_bulk_tbl2( sale_bulk_idx ).sales_exp_header_id;   -- 販売実績ヘッダID
 --
-        ln_amount := gt_sales_bulk_tbl( sale_bulk_idx ).pure_amount;
-        IF ( gt_sales_bulk_tbl( sale_bulk_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
-          ln_tax  := gt_sales_bulk_tbl( sale_bulk_idx ).tax_amount;
+        ln_amount := gt_sales_bulk_tbl2( sale_bulk_idx ).pure_amount;
+        IF ( gt_sales_bulk_tbl2( sale_bulk_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
+          ln_tax  := gt_sales_bulk_tbl2( sale_bulk_idx ).tax_amount;
         ELSE
           ln_tax  := 0;
         END IF;
@@ -3837,7 +3576,7 @@ AS
 --
       -- 販売実績ヘッダ更新のため：ROWIDの設定
       ln_sales_h_tbl_idx                   := ln_sales_h_tbl_idx + 1;
-      gt_sales_h_tbl( ln_sales_h_tbl_idx ) := gt_sales_bulk_tbl( sale_bulk_idx ).xseh_rowid;
+      gt_sales_h_tbl( ln_sales_h_tbl_idx ) := gt_sales_bulk_tbl2( sale_bulk_idx ).xseh_rowid;
 --
     END LOOP gt_sales_bulk_sum_loop;                    -- 販売実績データループ終了
 --
@@ -3903,7 +3642,7 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    lv_ccid_idx         VARCHAR2(225);                                   -- セグメント１0８の結合（CCIDインデックス用）
+    lv_ccid_idx         VARCHAR2(225);                                   -- セグメント１～８の結合（CCIDインデックス用）
     lv_tbl_nm           VARCHAR2(100);                                   -- 勘定科目組合せマスタテーブル
     lv_sum_flag         VARCHAR2(1);                                     -- 集約フラグ
     lt_ccid             gl_code_combinations.code_combination_id%TYPE;   -- 勘定科目CCID
@@ -3920,11 +3659,17 @@ AS
     lt_red_black_flag   xxcos_sales_exp_lines.red_black_flag%TYPE;       -- 集約キー：赤黒フラグ
     lt_gccs_segment3    gl_code_combinations.segment3%TYPE;              -- 集約キー：売上勘定科目コード
     lt_tax_code         xxcos_sales_exp_headers.tax_code%TYPE;           -- 集約キー：税金コード
+    lt_header_id        xxcos_sales_exp_headers.sales_exp_header_id%TYPE; -- 集約キー：販売実績ヘッダID
     ln_amount           NUMBER DEFAULT 0;                                -- 集約後金額
     ln_tax              NUMBER DEFAULT 0;                                -- 集約後消費税金額
-    ln_ar_dis_bul       NUMBER DEFAULT 0;                                -- AR会計配分集約インデックス
+    ln_ar_dis_idx       NUMBER DEFAULT 0;                                -- AR会計配分集約インデックス
     ln_dis_idx          NUMBER DEFAULT 0;                                -- AR会計配分OIFインデックス
     ln_jour_cnt         NUMBER DEFAULT 0;                                -- 仕訳生成カウント
+    lv_rec_flag         VARCHAR2(1);                                     -- RECフラグ
+    -- AR取引番号
+    lt_trx_number       VARCHAR2(20);
+--
+    -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
 --
@@ -3940,33 +3685,20 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    -- AR会計配分テーブルの非大手量販店データカウントセット
-    ln_ar_dis_bul := gt_ar_dis_tbl.COUNT;
+    -- 請求取引テーブルの非大手量販店データカウントセット
+    ln_ar_dis_idx := gt_ar_dis_tbl.COUNT;
 --
     --=====================================
     -- 1.AR会計配分仕訳パターンの取得
     --=====================================
 --
-    -- 仕訳パターン取得されてない場合
-    IF ( gt_jour_cls_tbl.COUNT = 0 ) THEN
-     -- カーソルオープン
-      BEGIN
-        OPEN  jour_cls_cur;
-        FETCH jour_cls_cur BULK COLLECT INTO gt_jour_cls_tbl;
-      EXCEPTION
-      -- 仕訳パターン取得失敗した場合
-        WHEN OTHERS THEN
-          lv_errmsg    := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_xxcos_short_nm
-                           , iv_name         => cv_jour_nodata_msg
-                           , iv_token_name1  => cv_tkn_lookup_type
-                           , iv_token_value1 => cv_qct_jour_cls
-                         );
-          lv_errbuf := lv_errmsg;
-          RAISE non_jour_cls_expt;
-      END;
-      -- 仕訳パターン取得失敗した場合
-      IF ( gt_jour_cls_tbl.COUNT = 0 ) THEN
+    -- カーソルオープン
+    BEGIN
+      OPEN  jour_cls_cur;
+      FETCH jour_cls_cur BULK COLLECT INTO gt_jour_cls_tbl;
+    EXCEPTION
+    -- 仕訳パターン取得失敗した場合
+      WHEN OTHERS THEN
         lv_errmsg    := xxccp_common_pkg.get_msg(
                            iv_application  => cv_xxcos_short_nm
                          , iv_name         => cv_jour_nodata_msg
@@ -3975,58 +3707,93 @@ AS
                        );
         lv_errbuf := lv_errmsg;
         RAISE non_jour_cls_expt;
-      END IF;
---
-      -- カーソルクローズ
-      CLOSE jour_cls_cur;
+    END;
+    -- 仕訳パターン取得失敗した場合
+    IF ( gt_jour_cls_tbl.COUNT = 0 ) THEN
+      lv_errmsg    := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_xxcos_short_nm
+                       , iv_name         => cv_jour_nodata_msg
+                       , iv_token_name1  => cv_tkn_lookup_type
+                       , iv_token_value1 => cv_qct_jour_cls
+                     );
+      lv_errbuf := lv_errmsg;
+      RAISE non_jour_cls_expt;
     END IF;
+--
+    -- カーソルクローズ
+    CLOSE jour_cls_cur;
 --
     --=====================================
     -- 3.AR会計配分データ作成
     --=====================================
---
     -- 集約キーの値セット
-    lt_invoice_number   := gt_ar_dis_bul_tbl( 1 ).dlv_invoice_number;
-    lt_invoice_class    := gt_ar_dis_bul_tbl( 1 ).dlv_invoice_class;
-    lt_item_code        := gt_ar_dis_bul_tbl( 1 ).item_code;
-    lt_prod_cls         := gt_ar_dis_bul_tbl( 1 ).goods_prod_cls;
-    lt_gyotai_sho       := gt_ar_dis_bul_tbl( 1 ).cust_gyotai_sho;
-    lt_card_sale_class  := gt_ar_dis_bul_tbl( 1 ).card_sale_class;
-    lt_red_black_flag   := gt_ar_dis_bul_tbl( 1 ).red_black_flag;
-    lt_gccs_segment3    := gt_ar_dis_bul_tbl( 1 ).gccs_segment3;
-    lt_tax_code         := gt_ar_dis_bul_tbl( 1 ).gcct_segment3;
+    lt_invoice_number   := gt_sales_bulk_tbl2( 1 ).dlv_invoice_number;
+    lt_item_code        := gt_sales_bulk_tbl2( 1 ).item_code;
+    lt_prod_cls         := gt_sales_bulk_tbl2( 1 ).goods_prod_cls;
+    lt_gyotai_sho       := gt_sales_bulk_tbl2( 1 ).cust_gyotai_sho;
+    lt_card_sale_class  := gt_sales_bulk_tbl2( 1 ).card_sale_class;
+    lt_gccs_segment3    := gt_sales_bulk_tbl2( 1 ).gccs_segment3;
+    lt_tax_code         := gt_sales_bulk_tbl2( 1 ).tax_code;
+    lt_invoice_class    := gt_sales_bulk_tbl2( 1 ).dlv_invoice_class;
+    lt_red_black_flag   := gt_sales_bulk_tbl2( 1 ).red_black_flag;
+    lt_header_id        := gt_sales_bulk_tbl2( 1 ).sales_exp_header_id;
 --
     -- ラストデータ登録為に、ダミーデータをセットする
-    gt_ar_dis_bul_tbl( gt_ar_dis_bul_tbl.COUNT + 1 ).sales_exp_header_id 
-                        := gt_ar_dis_bul_tbl( gt_ar_dis_bul_tbl.COUNT ).sales_exp_header_id;
+    gt_sales_bulk_tbl2( gt_sales_bulk_tbl2.COUNT + 1 ).sales_exp_header_id
+                        := gt_sales_bulk_tbl2( gt_sales_bulk_tbl2.COUNT ).sales_exp_header_id;
 --
-    <<gt_ar_dis_bul_tbl_loop>>
-    FOR dis_sum_idx IN 1 .. gt_ar_dis_bul_tbl.COUNT LOOP
+    <<gt_sales_bulk_tbl2_loop>>
+    FOR dis_sum_idx IN 1 .. gt_sales_bulk_tbl2.COUNT LOOP
 --
-      -- AR会計配分データ集約開始(大手量)
-      IF (  lt_invoice_number  = gt_ar_dis_bul_tbl( dis_sum_idx ).dlv_invoice_number
-        AND lt_invoice_class   = gt_ar_dis_bul_tbl( dis_sum_idx ).dlv_invoice_class
-        AND ( lt_item_code     = gt_ar_dis_bul_tbl( dis_sum_idx ).item_code
-          OR lt_prod_cls       = gt_ar_dis_bul_tbl( dis_sum_idx ).goods_prod_cls )
-        AND lt_gyotai_sho      = gt_ar_dis_bul_tbl( dis_sum_idx ).cust_gyotai_sho
-        AND lt_card_sale_class = gt_ar_dis_bul_tbl( dis_sum_idx ).card_sale_class
-        AND lt_red_black_flag  = gt_ar_dis_bul_tbl( dis_sum_idx ).red_black_flag
-        AND lt_gccs_segment3   = gt_ar_dis_bul_tbl( dis_sum_idx ).gccs_segment3
-        AND lt_tax_code        = gt_ar_dis_bul_tbl( dis_sum_idx ).gcct_segment3
-        ) THEN
+      -- AR会計配分データ集約開始
+      IF ( lt_invoice_number = gt_sales_bulk_tbl2( dis_sum_idx ).dlv_invoice_number
+        AND
+          (
+            (
+              (
+                 NVL( lt_prod_cls, 'X' ) = cv_goods_prod_syo
+              OR NVL( lt_prod_cls, 'X' ) = cv_goods_prod_sei
+              )
+            AND
+              NVL( lt_prod_cls, 'X' ) = NVL( gt_sales_bulk_tbl2( dis_sum_idx ).goods_prod_cls, 'X' )
+            )
+          OR
+            (
+              (
+                  NVL( lt_prod_cls, 'X' ) <> cv_goods_prod_syo
+              AND NVL( lt_prod_cls, 'X' ) <> cv_goods_prod_sei
+              )
+              AND lt_item_code = gt_sales_bulk_tbl2( dis_sum_idx ).item_code
+            )
+          )
+        AND lt_gyotai_sho      = gt_sales_bulk_tbl2( dis_sum_idx ).cust_gyotai_sho
+        AND lt_card_sale_class = gt_sales_bulk_tbl2( dis_sum_idx ).card_sale_class
+        AND lt_gccs_segment3   = gt_sales_bulk_tbl2( dis_sum_idx ).gccs_segment3
+        AND lt_tax_code        = gt_sales_bulk_tbl2( dis_sum_idx ).tax_code
+        AND lt_header_id       = gt_sales_bulk_tbl2( dis_sum_idx ).sales_exp_header_id
+        )
+      THEN
+--
         -- 集約するフラグ初期設定
         lv_sum_flag := cv_y_flag;
 --
         -- 本体金額と消費税額を集約する
-        ln_amount := ln_amount + gt_ar_dis_bul_tbl( dis_sum_idx ).pure_amount;
-        ln_tax    := ln_tax    + gt_ar_dis_bul_tbl( dis_sum_idx ).tax_amount;
+        ln_amount := ln_amount + gt_sales_bulk_tbl2( dis_sum_idx ).pure_amount;
+        ln_tax    := ln_tax    + gt_sales_bulk_tbl2( dis_sum_idx ).tax_amount;
       ELSE
         lv_sum_flag := cv_n_flag;
         ln_dis_idx  := dis_sum_idx - 1;
       END IF;
 --
-      -- 集約フラグ’N'の場合、下記AR会計配分OIF作成処理を行う
-      IF ( lv_sum_flag = cv_n_flag ) THEN   
+      -- -- 集約フラグ’N'の場合、下記AR会計配分OIF作成処理を行う
+      IF ( lv_sum_flag = cv_n_flag ) THEN
+--
+        IF ( NVL( lt_trx_number, 'X' ) <> gt_sales_bulk_tbl2( ln_dis_idx ).oif_trx_number ) THEN
+          lv_rec_flag := cv_y_flag;
+        ELSE
+          lv_rec_flag := cv_n_flag;
+        END IF;
+        lt_trx_number      := gt_sales_bulk_tbl2( ln_dis_idx ).oif_trx_number;        -- AR取引番号
 --
         -- 仕訳生成カウント初期値
         ln_jour_cnt := 1;
@@ -4055,10 +3822,10 @@ AS
               OR gt_jour_cls_tbl( jcls_idx ).segment3_nm = gv_prod_msg
               OR gt_jour_cls_tbl( jcls_idx ).segment3_nm = gv_disc_msg ) THEN
               --売上勘定科目コード
-              lt_segment3 := gt_ar_dis_bul_tbl( ln_dis_idx ).gccs_segment3;
+              lt_segment3 := gt_sales_bulk_tbl2( ln_dis_idx ).gccs_segment3;
             ELSIF ( gt_jour_cls_tbl( jcls_idx ).segment3_nm = gv_tax_msg ) THEN
               --税金勘定科目コード
-              lt_segment3 := gt_ar_dis_bul_tbl( ln_dis_idx ).gcct_segment3;
+              lt_segment3 := gt_sales_bulk_tbl2( ln_dis_idx ).gcct_segment3;
             ELSE
               --OTHER勘定科目コード
               lt_segment3 := gt_jour_cls_tbl( jcls_idx ).segment3;
@@ -4070,7 +3837,7 @@ AS
             -- 勘定科目セグメント１～セグメント８よりCCID取得
             lv_ccid_idx := gv_company_code                                   -- セグメント１(会社コード)
                         || NVL( gt_jour_cls_tbl( jcls_idx ).segment2,        -- セグメント２（部門コード）
-                                gt_ar_dis_bul_tbl( ln_dis_idx ).sales_base_code )
+                                gt_sales_bulk_tbl2( ln_dis_idx ).sales_base_code )
                                                                              -- セグメント２(販売実績の売上拠点コード)
                         || lt_segment3                                       -- セグメント３(勘定科目コード)
                         || gt_jour_cls_tbl( jcls_idx ).segment4              -- セグメント４(補助科目コード:現金のみ設定)
@@ -4083,12 +3850,12 @@ AS
             IF ( gt_sel_ccid_tbl.EXISTS(  lv_ccid_idx ) ) THEN
               lt_ccid := gt_sel_ccid_tbl( lv_ccid_idx ).code_combination_id;
             ELSE
-              -- CCID取得共通関数よりCCIDを取得する
+                  -- CCID取得共通関数よりCCIDを取得する
               lt_ccid := xxcok_common_pkg.get_code_combination_id_f (
                              gd_process_date
                            , gv_company_code
                            , NVL( gt_jour_cls_tbl( jcls_idx ).segment2,
-                                  gt_ar_dis_bul_tbl( ln_dis_idx ).sales_base_code )
+                                  gt_sales_bulk_tbl2( ln_dis_idx ).sales_base_code )
                            , lt_segment3
                            , gt_jour_cls_tbl( jcls_idx ).segment4
                            , gt_jour_cls_tbl( jcls_idx ).segment5
@@ -4096,6 +3863,7 @@ AS
                            , gt_jour_cls_tbl( jcls_idx ).segment7
                            , gt_jour_cls_tbl( jcls_idx ).segment8
                          );
+--
               IF ( lt_ccid IS NULL ) THEN
                 -- CCIDが取得できない場合
                 lv_errmsg  := xxccp_common_pkg.get_msg(
@@ -4105,7 +3873,7 @@ AS
                                 , iv_token_value1      => gv_company_code
                                 , iv_token_name2       => cv_tkn_segment2
                                 , iv_token_value2      => NVL( gt_jour_cls_tbl( jcls_idx ).segment2,
-                                                               gt_ar_dis_bul_tbl( ln_dis_idx ).sales_base_code )
+                                                               gt_sales_bulk_tbl2( ln_dis_idx ).sales_base_code )
                                 , iv_token_name3       => cv_tkn_segment3
                                 , iv_token_value3      => lt_segment3
                                 , iv_token_name4       => cv_tkn_segment4
@@ -4128,140 +3896,136 @@ AS
 --
             END IF;                                       -- CCID編集終了
 --
-          --=====================================
-          -- AR会計配分OIFデータ設定
-          --=====================================
+            --=====================================
+            -- AR会計配分OIFデータ設定
+            --=====================================
             IF ( gt_jour_cls_tbl( jcls_idx ).acct_type = cv_acct_rev ) THEN
               -- 収益行
-              ln_ar_dis_bul := ln_ar_dis_bul + 1;
---
-              -- フルVD（消化）とフルVD場合の金額編集
-              IF ( gt_jour_cls_tbl( jcls_idx ).cust_gyotai_sho = gt_fvd_xiaoka
-                OR gt_jour_cls_tbl( jcls_idx ).cust_gyotai_sho = gt_gyotai_fvd ) THEN
-                ln_amount := ln_amount + ln_tax;
-              END IF;
+              ln_ar_dis_idx := ln_ar_dis_idx + 1;
 --
               -- AR会計配分OIFの設定項目
-              gt_ar_dis_tbl( ln_ar_dis_bul ).interface_line_context
+              gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_context
                                                           := gv_sales_nm;
-                                                          -- 取引明細コンテキスト値:「販売実績」をセット
-              gt_ar_dis_tbl( ln_ar_dis_bul ).interface_line_attribute1
+                                                          -- 取引明細コンテキスト値「販売実績」をセット
+              gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute1
                                                           := gv_sales_nm;
-                                                          -- 取引明細DFF1:「販売実績」を設定
-              gt_ar_dis_tbl( ln_ar_dis_bul ).interface_line_attribute3
-                                                          := gt_ar_dis_bul_tbl( ln_dis_idx ).dlv_invoice_number;
+                                                          -- 取引明細DFF1「販売実績」を設定
+              gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute3
+                                                          := gt_sales_bulk_tbl2( ln_dis_idx ).dlv_invoice_number;
                                                           -- 取引明細DFF3：納品伝票番号
-              gt_ar_dis_tbl( ln_ar_dis_bul ).interface_line_attribute4
-                                                          := gt_ar_dis_bul_tbl( ln_dis_idx ).interface_line_dff4;
-                                                          -- 取引明細DFF4:自動採番
-              gt_ar_dis_tbl( ln_ar_dis_bul ).interface_line_attribute5
+              gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute4
+                                                          := gt_sales_bulk_tbl2( ln_dis_idx ).oif_dff4;
+                                                          -- 取引明細DFF4:納品伝票番号+自動採番
+              gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute5
                                                           := gv_sales_nm;
-                                                          -- 取引明細DFF5:「販売実績」を設定
-              gt_ar_dis_tbl( ln_ar_dis_bul ).interface_line_attribute7
-                                                          := gt_ar_dis_bul_tbl( ln_dis_idx ).sales_exp_header_id;
-                                                          -- 取引明細DFF7:販売実績ヘッダID
-              gt_ar_dis_tbl( ln_ar_dis_bul ).account_class
+                                                          -- 取引明細DFF5：「販売実績」を設定
+              gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute7
+                                                          := gt_sales_bulk_tbl2( ln_dis_idx ).sales_exp_header_id;
+                                                          -- 取引明細DFF7：販売実績ヘッダID
+              gt_ar_dis_tbl( ln_ar_dis_idx ).account_class
                                                           := cv_acct_rev;
                                                           -- 勘定科目区分(配分タイプ)
-              gt_ar_dis_tbl( ln_ar_dis_bul ).amount       := ln_amount;
+              gt_ar_dis_tbl( ln_ar_dis_idx ).amount       := ln_amount;
                                                           -- 金額(明細金額)
-              gt_ar_dis_tbl( ln_ar_dis_bul ).percent      := cn_percent;
-                                                          -- パーセント(割合):100
-              gt_ar_dis_tbl( ln_ar_dis_bul ).code_combination_id
+              gt_ar_dis_tbl( ln_ar_dis_idx ).percent      := ln_amount;
+                                                          -- パーセント(割合)
+              gt_ar_dis_tbl( ln_ar_dis_idx ).code_combination_id
                                                           := lt_ccid;
                                                           -- 勘定科目組合せID(CCID)
-              gt_ar_dis_tbl( ln_ar_dis_bul ).attribute_category
+              gt_ar_dis_tbl( ln_ar_dis_idx ).attribute_category
                                                           := gv_mo_org_id;
                                                           -- 仕訳明細カテゴリ:営業単位IDをセット
-              gt_ar_dis_tbl( ln_ar_dis_bul ).org_id       := TO_NUMBER( gv_mo_org_id );
+              gt_ar_dis_tbl( ln_ar_dis_idx ).org_id       := TO_NUMBER( gv_mo_org_id );
                                                           -- 営業単位ID
-              gt_ar_dis_tbl( ln_ar_dis_bul ).created_by
+              gt_ar_dis_tbl( ln_ar_dis_idx ).created_by
                                                           := cn_created_by;
                                                           -- 作成者
-              gt_ar_dis_tbl( ln_ar_dis_bul ).creation_date
+              gt_ar_dis_tbl( ln_ar_dis_idx ).creation_date
                                                           := cd_creation_date;
                                                           -- 作成日
 --
-            ELSIF ( gt_jour_cls_tbl( jcls_idx ).acct_type = cv_acct_rec ) THEN
+            ELSIF ( gt_jour_cls_tbl( jcls_idx ).acct_type = cv_acct_rec AND lv_rec_flag = cv_y_flag ) THEN
               -- 債権行(金額設定なし)
-              ln_ar_dis_bul := ln_ar_dis_bul + 1;
-              gt_ar_dis_tbl( ln_ar_dis_bul ).interface_line_context
+              ln_ar_dis_idx := ln_ar_dis_idx + 1;
+--
+              gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_context
                                                           := gv_sales_nm;
-                                                          -- 取引明細コンテキスト:「販売実績」をセット
-              gt_ar_dis_tbl( ln_ar_dis_bul ).interface_line_attribute1
+                                                          -- 取引明細コンテキスト値「販売実績」をセット
+              gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute1
                                                           := gv_sales_nm;
-                                                          -- 取引明細DFF1:「販売実績」を設定
-              gt_ar_dis_tbl( ln_ar_dis_bul ).interface_line_attribute3
-                                                          := gt_ar_dis_bul_tbl( ln_dis_idx ).dlv_invoice_number;
-                                                          -- 取引明細DFF3:納品伝票番号をセット
-              gt_ar_dis_tbl( ln_ar_dis_bul ).interface_line_attribute4
-                                                          := gt_ar_dis_bul_tbl( ln_dis_idx ).interface_line_dff4;
-                                                          -- 取引明細DFF4:自動採番
-              gt_ar_dis_tbl( ln_ar_dis_bul ).interface_line_attribute5
+                                                          -- 取引明細DFF1「販売実績」を設定
+              gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute3
+                                                          := gt_sales_bulk_tbl2( ln_dis_idx ).dlv_invoice_number;
+                                                          -- 取引明細DFF3：納品伝票番号
+              gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute4
+                                                          := gt_sales_bulk_tbl2( ln_dis_idx ).oif_dff4;
+                                                          -- 取引明細DFF4納品伝票番号+自動採番
+              gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute5
                                                           := gv_sales_nm;
-                                                          -- 取引明細DFF5:「販売実績」を設定
-              gt_ar_dis_tbl( ln_ar_dis_bul ).interface_line_attribute7
-                                                          := gt_ar_dis_bul_tbl( ln_dis_idx ).sales_exp_header_id;
+                                                          -- 取引明細DFF5	「販売実績」を設定
+              gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute7
+                                                          := gt_sales_bulk_tbl2( ln_dis_idx ).sales_exp_header_id;
                                                           -- 取引明細DFF7：販売実績ヘッダID
-              gt_ar_dis_tbl( ln_ar_dis_bul ).account_class
+              gt_ar_dis_tbl( ln_ar_dis_idx ).account_class
                                                           := cv_acct_rec;
                                                           -- 勘定科目区分(配分タイプ)
-              gt_ar_dis_tbl( ln_ar_dis_bul ).percent      := cn_percent;
-                                                          -- パーセント(割合)100
-              gt_ar_dis_tbl( ln_ar_dis_bul ).code_combination_id
+              gt_ar_dis_tbl( ln_ar_dis_idx ).percent      := cn_percent;
+                                                          -- パーセント(割合)
+              gt_ar_dis_tbl( ln_ar_dis_idx ).code_combination_id
                                                           := lt_ccid;
                                                           -- 勘定科目組合せID(CCID)
-              gt_ar_dis_tbl( ln_ar_dis_bul ).attribute_category
+              gt_ar_dis_tbl( ln_ar_dis_idx ).attribute_category
                                                           := gv_mo_org_id;
                                                           -- 仕訳明細カテゴリ:営業単位IDをセット
-              gt_ar_dis_tbl( ln_ar_dis_bul ).org_id       := TO_NUMBER( gv_mo_org_id );
+              gt_ar_dis_tbl( ln_ar_dis_idx ).org_id       := TO_NUMBER( gv_mo_org_id );
                                                           -- 営業単位ID
-              gt_ar_dis_tbl( ln_ar_dis_bul ).created_by
+              gt_ar_dis_tbl( ln_ar_dis_idx ).created_by
                                                           := cn_created_by;
                                                           -- 作成者
-              gt_ar_dis_tbl( ln_ar_dis_bul ).creation_date
+              gt_ar_dis_tbl( ln_ar_dis_idx ).creation_date
                                                           := cd_creation_date;
                                                           -- 作成日
+--
             ELSIF ( gt_jour_cls_tbl( jcls_idx ).acct_type = cv_acct_tax ) THEN
               -- 税金行
-              ln_ar_dis_bul := ln_ar_dis_bul + 1;
-              gt_ar_dis_tbl( ln_ar_dis_bul ).interface_line_context
+              ln_ar_dis_idx := ln_ar_dis_idx + 1;
+              gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_context
                                                           := gv_sales_nm;
-                                                          -- 取引明細コンテキスト値:「販売実績」をセット
-              gt_ar_dis_tbl( ln_ar_dis_bul ).interface_line_attribute1
+                                                          -- 取引明細コンテキスト値「販売実績」をセット
+              gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute1
                                                           := gv_sales_nm;
-                                                          -- 取引明細DFF1:「販売実績」を設定
-              gt_ar_dis_tbl( ln_ar_dis_bul ).interface_line_attribute3
-                                                          := gt_ar_dis_bul_tbl( ln_dis_idx ).dlv_invoice_number;
+                                                          -- 取引明細DFF1「販売実績」を設定
+              gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute3
+                                                          := gt_sales_bulk_tbl2( ln_dis_idx ).dlv_invoice_number;
                                                           -- 取引明細DFF3：納品伝票番号
-              gt_ar_dis_tbl( ln_ar_dis_bul ).interface_line_attribute4
-                                                          := gt_ar_dis_bul_tbl( ln_dis_idx ).interface_tax_dff4;
-                                                          -- 取引明細DFF4:自動採番
-              gt_ar_dis_tbl( ln_ar_dis_bul ).interface_line_attribute5
+              gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute4
+                                                          := gt_sales_bulk_tbl2( ln_dis_idx ).oif_tax_dff4;
+                                                          -- 取引明細DFF4：納品伝票番号+自動採番
+              gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute5
                                                           := gv_sales_nm;
-                                                          -- 取引明細DFF5:「販売実績」を設定
-              gt_ar_dis_tbl( ln_ar_dis_bul ).interface_line_attribute7
-                                                          := gt_ar_dis_bul_tbl( ln_dis_idx ).sales_exp_header_id;
+                                                          -- 取引明細DFF5「販売実績」を設定
+              gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute7
+                                                          := gt_sales_bulk_tbl2( ln_dis_idx ).sales_exp_header_id;
                                                           -- 取引明細DFF7：販売実績ヘッダID
-              gt_ar_dis_tbl( ln_ar_dis_bul ).account_class
+              gt_ar_dis_tbl( ln_ar_dis_idx ).account_class
                                                           := cv_acct_tax;
                                                           -- 勘定科目区分(配分タイプ)
-              gt_ar_dis_tbl( ln_ar_dis_bul ).amount       := ln_tax;
+              gt_ar_dis_tbl( ln_ar_dis_idx ).amount       := ln_tax;
                                                           -- 金額(明細金額)
-              gt_ar_dis_tbl( ln_ar_dis_bul ).percent      := cn_percent;
-                                                          -- パーセント(割合):100
-              gt_ar_dis_tbl( ln_ar_dis_bul ).code_combination_id
+              gt_ar_dis_tbl( ln_ar_dis_idx ).percent      := ln_tax;
+                                                          -- パーセント(割合)
+              gt_ar_dis_tbl( ln_ar_dis_idx ).code_combination_id
                                                           := lt_ccid;
                                                           -- 勘定科目組合せID(CCID)
-              gt_ar_dis_tbl( ln_ar_dis_bul ).attribute_category
+              gt_ar_dis_tbl( ln_ar_dis_idx ).attribute_category
                                                           := gv_mo_org_id;
-                                                          -- 仕訳明細カテゴリ:営業単位IDをセット
-              gt_ar_dis_tbl( ln_ar_dis_bul ).org_id       := TO_NUMBER( gv_mo_org_id );
+                                                          -- 仕訳明細カテゴリ:営業単位ID
+              gt_ar_dis_tbl( ln_ar_dis_idx ).org_id       := TO_NUMBER( gv_mo_org_id );
                                                           -- 営業単位ID
-              gt_ar_dis_tbl( ln_ar_dis_bul ).created_by
+              gt_ar_dis_tbl( ln_ar_dis_idx ).created_by
                                                           := cn_created_by;
                                                           -- 作成者
-              gt_ar_dis_tbl( ln_ar_dis_bul ).creation_date
+              gt_ar_dis_tbl( ln_ar_dis_idx ).creation_date
                                                           := cd_creation_date;
                                                           -- 作成日
             END IF;
@@ -4272,23 +4036,25 @@ AS
 --
         END LOOP gt_jour_cls_tbl_loop;                    -- 仕訳パターンよりデータ作成処理終了
 --
-      END IF;                                             -- 集約キー毎にAR会計配分OIFデータの集約終了
-        -- 集約キーのリセット
-        lt_invoice_number   := gt_ar_dis_bul_tbl( dis_sum_idx ).dlv_invoice_number;
-        lt_invoice_class    := gt_ar_dis_bul_tbl( dis_sum_idx ).dlv_invoice_class;
-        lt_item_code        := gt_ar_dis_bul_tbl( dis_sum_idx ).item_code;
-        lt_prod_cls         := gt_ar_dis_bul_tbl( dis_sum_idx ).goods_prod_cls;
-        lt_gyotai_sho       := gt_ar_dis_bul_tbl( dis_sum_idx ).cust_gyotai_sho;
-        lt_card_sale_class  := gt_ar_dis_bul_tbl( dis_sum_idx ).card_sale_class;
-        lt_red_black_flag   := gt_ar_dis_bul_tbl( dis_sum_idx ).red_black_flag;
-        lt_gccs_segment3    := gt_ar_dis_bul_tbl( dis_sum_idx ).gccs_segment3;
-        lt_tax_code         := gt_ar_dis_bul_tbl( dis_sum_idx ).gcct_segment3;
 --
         -- 金額の設定
-        ln_amount := gt_ar_dis_bul_tbl( dis_sum_idx ).pure_amount;
-        ln_tax    := gt_ar_dis_bul_tbl( dis_sum_idx ).tax_amount;
+        ln_amount        := gt_sales_bulk_tbl2( dis_sum_idx ).pure_amount;
+        ln_tax           := gt_sales_bulk_tbl2( dis_sum_idx ).tax_amount;
+      END IF;                                             -- 集約キー毎にAR会計配分OIFデータの集約終了
 --
-    END LOOP gt_ar_dis_bul_tbl_loop;                      -- AR会計配分集約データループ終了
+      -- 集約キーのリセット
+      lt_invoice_number   := gt_sales_bulk_tbl2( dis_sum_idx ).dlv_invoice_number;
+      lt_item_code        := gt_sales_bulk_tbl2( dis_sum_idx ).item_code;
+      lt_prod_cls         := gt_sales_bulk_tbl2( dis_sum_idx ).goods_prod_cls;
+      lt_gyotai_sho       := gt_sales_bulk_tbl2( dis_sum_idx ).cust_gyotai_sho;
+      lt_card_sale_class  := gt_sales_bulk_tbl2( dis_sum_idx ).card_sale_class;
+      lt_gccs_segment3    := gt_sales_bulk_tbl2( dis_sum_idx ).gccs_segment3;
+      lt_tax_code         := gt_sales_bulk_tbl2( dis_sum_idx ).tax_code;
+      lt_invoice_class    := gt_sales_bulk_tbl2( dis_sum_idx ).dlv_invoice_class;
+      lt_red_black_flag   := gt_sales_bulk_tbl2( dis_sum_idx ).red_black_flag;
+      lt_header_id        := gt_sales_bulk_tbl2( dis_sum_idx ).sales_exp_header_id;
+--
+    END LOOP gt_sales_bulk_tbl2_loop;                      -- AR会計配分集約データループ終了
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -4347,6 +4113,7 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END edit_dis_bulk_data;
+--
 --
   /***********************************************************************************
    * Procedure Name   : insert_aroif_data
@@ -4768,7 +4535,7 @@ AS
       -- ===============================
       -- A-4.AR会計配分仕訳作成（非大手量販店）
       -- ===============================
-    IF ( gt_ar_dis_sum_tbl.COUNT > 0 ) THEN
+    IF ( gt_sales_norm_tbl2.COUNT > 0 ) THEN
       edit_dis_data(
            ov_errbuf  => lv_errbuf        -- エラー・メッセージ           --# 固定 #
          , ov_retcode => lv_retcode       -- リターン・コード             --# 固定 #
@@ -4798,7 +4565,7 @@ AS
       -- ===============================
       -- A-6.AR会計配分仕訳作成（大手量販店）
       -- ===============================
-    IF ( gt_ar_dis_bul_tbl.COUNT > 0 ) THEN
+    IF ( gt_sales_bulk_tbl2.COUNT > 0 ) THEN
       edit_dis_bulk_data(
            ov_errbuf  => lv_errbuf        -- エラー・メッセージ           --# 固定 #
          , ov_retcode => lv_retcode       -- リターン・コード             --# 固定 #
@@ -4855,12 +4622,12 @@ AS
     gn_normal_cnt := gn_aroif_cnt + gn_ardis_cnt;
 --
   EXCEPTION
-    -- *** 対象データなし *** 
+    -- *** 対象データなし ***
     WHEN global_no_data_expt THEN
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_warn;
-    -- *** データ取得例外 *** 
+    -- *** データ取得例外 ***
     WHEN global_select_data_expt THEN
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
