@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK016A01C(spec)
  * Description      : 組み戻し・残高取消・保留情報(CSVファイル)の取込処理
  * MD.050           : 残高更新Excelアップロード MD050_COK_016_A01
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -30,6 +30,8 @@ AS
  *  2010/03/19    1.4   S.Moriyama       [E_本稼動_01897]組み戻し時に元伝票番号、連携日時のクリアを行うように変更
  *  2011/02/22    1.5   T.Ishiwata       [E_本稼動_05408]年次切替対応
  *  2011/04/14    1.6   S.Niki           [E_本稼動_07143]前月担当拠点の管理元拠点ユーザーが処理できるよう変更
+ *  2012/07/04    1.7   K.Onotsuka       [E_本稼動_08365]処理区分が以下の場合、販手残高テーブルの処理区分に各々の区分値を更新する
+ *                                                       「残高取消」⇒'1'「保留」⇒'2'「保留解除」⇒'0'
  *
  *****************************************************************************************/
 --
@@ -89,6 +91,11 @@ AS
   cv_status_lock    CONSTANT VARCHAR2(1)  := '7';                                -- ロックエラー:7
   cv_status_update  CONSTANT VARCHAR2(1)  := '8';                                -- 更新エラー:8
 -- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+-- 2012/07/04 Ver.1.7 [E_本稼動_08365] SCSK K.Onotsuka ADD START
+  cv_proc_type0_upd CONSTANT VARCHAR2(1)  := '0';                                -- (UPDATE用)処理区分：保留解除
+  cv_proc_type1_upd CONSTANT VARCHAR2(1)  := '1';                                -- (UPDATE用)処理区分：消込済
+  cv_proc_type2_upd CONSTANT VARCHAR2(1)  := '2';                                -- (UPDATE用)処理区分：保留
+-- 2012/07/04 Ver.1.7 [E_本稼動_08365] SCSK K.Onotsuka ADD END
   -- 共通メッセージ定義
   cv_normal_msg     CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90004';                 -- 正常終了メッセージ
   cv_warn_msg       CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90005';                 -- 警告終了メッセージ
@@ -678,6 +685,9 @@ AS
               ,xbb.gl_interface_date      = gd_proc_date               -- 連携日（GL）
               ,xbb.return_flag            = NULL                       -- 組み戻しフラグ
               ,xbb.balance_cancel_date    = gd_proc_date               -- 残高取消日
+-- 2012/07/04 Ver.1.7 [E_本稼動_08365] SCSK K.Onotsuka ADD START
+              ,xbb.proc_type              = cv_proc_type1_upd          -- 処理区分：'1'(消込済)
+-- 2012/07/04 Ver.1.7 [E_本稼動_08365] SCSK K.Onotsuka ADD END
               ,xbb.last_updated_by        = APPS.FND_GLOBAL.USER_ID    -- 最終更新者
               ,xbb.last_update_date       = SYSDATE                    -- 最終更新日
               ,xbb.last_update_login      = APPS.FND_GLOBAL.LOGIN_ID   -- 最終更新ログインID
@@ -701,6 +711,9 @@ AS
         -- 更新処理
         UPDATE xxcok_backmargin_balance xbb -- 販手残高テーブル
         SET    xbb.resv_flag              = cv_yes                    -- 保留フラグ
+-- 2012/07/04 Ver.1.7 [E_本稼動_08365] SCSK K.Onotsuka ADD START
+              ,xbb.proc_type              = cv_proc_type2_upd         -- 処理区分：'2'(保留)
+-- 2012/07/04 Ver.1.7 [E_本稼動_08365] SCSK K.Onotsuka ADD END
               ,xbb.last_updated_by        = APPS.FND_GLOBAL.USER_ID   -- 最終更新者
               ,xbb.last_update_date       = SYSDATE                   -- 最終更新日
               ,xbb.last_update_login      = APPS.FND_GLOBAL.LOGIN_ID  -- 最終更新ログインID
@@ -721,6 +734,9 @@ AS
         -- 更新処理
         UPDATE xxcok_backmargin_balance xbb -- 販手残高テーブル
         SET    xbb.resv_flag         = NULL                           -- 保留フラグ
+-- 2012/07/04 Ver.1.7 [E_本稼動_08365] SCSK K.Onotsuka ADD START
+              ,xbb.proc_type         = cv_proc_type0_upd              -- 処理区分：'0'(保留解除)
+-- 2012/07/04 Ver.1.7 [E_本稼動_08365] SCSK K.Onotsuka ADD END
               ,xbb.last_updated_by   = APPS.FND_GLOBAL.USER_ID        -- 最終更新者
               ,xbb.last_update_date  = SYSDATE                        -- 最終更新日
               ,xbb.last_update_login = APPS.FND_GLOBAL.LOGIN_ID       -- 最終更新ログインID
@@ -744,6 +760,9 @@ AS
         -- 更新処理
         UPDATE xxcok_backmargin_balance xbb -- 販手残高テーブル
         SET    xbb.resv_flag              = cv_yes                    -- 保留フラグ
+-- 2012/07/04 Ver.1.7 [E_本稼動_08365] SCSK K.Onotsuka ADD START
+              ,xbb.proc_type              = cv_proc_type2_upd         -- 処理区分：'2'(保留)
+-- 2012/07/04 Ver.1.7 [E_本稼動_08365] SCSK K.Onotsuka ADD END
               ,xbb.last_updated_by        = APPS.FND_GLOBAL.USER_ID   -- 最終更新者
               ,xbb.last_update_date       = SYSDATE                   -- 最終更新日
               ,xbb.last_update_login      = APPS.FND_GLOBAL.LOGIN_ID  -- 最終更新ログインID
@@ -764,6 +783,9 @@ AS
         -- 更新処理
         UPDATE xxcok_backmargin_balance xbb -- 販手残高テーブル
         SET    xbb.resv_flag              = NULL                      -- 保留フラグ
+-- 2012/07/04 Ver.1.7 [E_本稼動_08365] SCSK K.Onotsuka ADD START
+              ,xbb.proc_type              = cv_proc_type0_upd         -- 処理区分：'0'(保留解除)
+-- 2012/07/04 Ver.1.7 [E_本稼動_08365] SCSK K.Onotsuka ADD END
               ,xbb.last_updated_by        = APPS.FND_GLOBAL.USER_ID   -- 最終更新者
               ,xbb.last_update_date       = SYSDATE                   -- 最終更新日
               ,xbb.last_update_login      = APPS.FND_GLOBAL.LOGIN_ID  -- 最終更新ログインID
@@ -798,6 +820,9 @@ AS
                 ,xbb.gl_interface_date      = gd_proc_date               -- 連携日（GL）
                 ,xbb.return_flag            = NULL                       -- 組み戻しフラグ
                 ,xbb.balance_cancel_date    = gd_proc_date               -- 残高取消日
+-- 2012/07/04 Ver.1.7 [E_本稼動_08365] SCSK K.Onotsuka ADD START
+                ,xbb.proc_type              = cv_proc_type1_upd          -- 処理区分：'1'(消込済)
+-- 2012/07/04 Ver.1.7 [E_本稼動_08365] SCSK K.Onotsuka ADD END
                 ,xbb.last_updated_by        = APPS.FND_GLOBAL.USER_ID    -- 最終更新者
                 ,xbb.last_update_date       = SYSDATE                    -- 最終更新日
                 ,xbb.last_update_login      = APPS.FND_GLOBAL.LOGIN_ID   -- 最終更新ログインID
@@ -816,6 +841,9 @@ AS
         -- 更新処理
         UPDATE xxcok_backmargin_balance xbb -- 販手残高テーブル
         SET    xbb.resv_flag              = cv_yes                    -- 保留フラグ
+-- 2012/07/04 Ver.1.7 [E_本稼動_08365] SCSK K.Onotsuka ADD START
+              ,xbb.proc_type              = cv_proc_type2_upd         -- 処理区分：'2'(保留)
+-- 2012/07/04 Ver.1.7 [E_本稼動_08365] SCSK K.Onotsuka ADD END
               ,xbb.last_updated_by        = APPS.FND_GLOBAL.USER_ID   -- 最終更新者
               ,xbb.last_update_date       = SYSDATE                   -- 最終更新日
               ,xbb.last_update_login      = APPS.FND_GLOBAL.LOGIN_ID  -- 最終更新ログインID
@@ -853,6 +881,9 @@ AS
         -- 更新処理
         UPDATE xxcok_backmargin_balance xbb -- 販手残高テーブル
         SET    xbb.resv_flag              = NULL                      -- 保留フラグ
+-- 2012/07/04 Ver.1.7 [E_本稼動_08365] SCSK K.Onotsuka ADD START
+              ,xbb.proc_type              = cv_proc_type0_upd         -- 処理区分：'0'(保留解除)
+-- 2012/07/04 Ver.1.7 [E_本稼動_08365] SCSK K.Onotsuka ADD END
               ,xbb.last_updated_by        = APPS.FND_GLOBAL.USER_ID   -- 最終更新者
               ,xbb.last_update_date       = SYSDATE                   -- 最終更新日
               ,xbb.last_update_login      = APPS.FND_GLOBAL.LOGIN_ID  -- 最終更新ログインID

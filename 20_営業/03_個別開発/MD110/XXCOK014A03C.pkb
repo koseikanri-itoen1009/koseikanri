@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A03C(body)
  * Description      : 販手残高計算処理
  * MD.050           : 販売手数料（自販機）の支払予定額（未払残高）を計算 MD050_COK_014_A03
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/03/25    1.2   S.Kayahara       最終行にスラッシュ追加
  *  2009/05/28    1.3   M.Hiruta         [障害T1_1138] 販手残高保留情報の初期化で正しく保留情報を初期化できるよう変更
  *  2009/12/12    1.4   K.Yamaguchi      [E_本稼動_00360] 未確定データで削除されないデータが残るため再作成
+ *  2012/07/09    1.5   K.Onotsuka       [E_本稼動_08365] 販手残高テーブルに項目追加(処理区分)※初期値：0
  *
  *****************************************************************************************/
   --==================================================
@@ -114,6 +115,9 @@ AS
   cn_proc_type_after               CONSTANT NUMBER          := 2;  -- 後
   -- 販手残高テーブル・保留フラグ
   cv_reserve                       CONSTANT VARCHAR2(1)     := 'Y'; -- 保留
+-- 2012/07/06 Ver.1.5 [E_本稼動_08365] SCSK K.Onotsuka ADD START
+  cv_proc_type_default             CONSTANT VARCHAR2(1)     := '0'; -- 処理区分デフォルト値(登録用)
+-- 2012/07/06 Ver.1.5 [E_本稼動_08365] SCSK K.Onotsuka ADD END
   --==================================================
   -- グローバル変数
   --==================================================
@@ -410,6 +414,9 @@ AS
     , gl_interface_status          -- 連携ステータス（GL）
     , gl_interface_date            -- 連携日（GL）
     , amt_fix_status               -- 金額確定ステータス
+-- 2012/07/04 Ver.1.5 [E_本稼動_08365] SCSK K.Onotsuka ADD START
+    , proc_type                    -- 処理区分
+-- 2012/07/04 Ver.1.5 [E_本稼動_08365] SCSK K.Onotsuka ADD END
     -- WHOカラム
     , created_by                   -- 作成者
     , creation_date                -- 作成日
@@ -450,6 +457,9 @@ AS
     , cv_xbb_if_status_no                    -- gl_interface_status
     , NULL                                   -- gl_interface_date
     , i_xcbs_data_rec.amt_fix_status         -- amt_fix_status
+-- 2012/07/06 Ver.1.5 [E_本稼動_08365] SCSK K.Onotsuka ADD START
+    , cv_proc_type_default                   -- proc_type
+-- 2012/07/06 Ver.1.5 [E_本稼動_08365] SCSK K.Onotsuka ADD END
     -- WHOカラム
     , cn_created_by                          -- created_by
     , SYSDATE                                -- creation_date

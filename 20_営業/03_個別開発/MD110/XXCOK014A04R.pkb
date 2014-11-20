@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,8 @@ AS
  *  2011/01/24    1.12  SCS S.Niki       [障害E_本稼動_06199] パフォーマンス改善対応
  *  2011/03/15    1.13  SCS S.Niki       [障害E_本稼動_05408,05409] 年次切替対応
  *  2011/04/28    1.14  SCS S.Niki       [障害E_本稼動_02100] 現金支払の場合、銀行情報に固定文字を出力する対応
+ *  2012/07/23    1.15  SCSK K.Onotsuka  [障害E_本稼動_08365,08367] VDBM残高一覧の支払ステータスに「消込済」「自動繰越」
+ *                                                              残高取消後も「前月まで未払」金額を出力
  *
  *****************************************************************************************/
   -- ===============================================
@@ -131,6 +133,10 @@ AS
   cv_prof_bk_trns_fee_we     CONSTANT VARCHAR2(23)  := 'XXCOK1_BANK_TRNS_FEE_WE';            --振込手数料_当方
   cv_prof_bk_trns_fee_ctpty  CONSTANT VARCHAR2(26)  := 'XXCOK1_BANK_TRNS_FEE_CTPTY';         --振込手数料_相手方
   cv_prof_pay_res_name       CONSTANT VARCHAR2(34)  := 'XXCOK1_BL_LIST_PROMPT_PAY_RES_NAME'; --残高一覧_保留見出し
+-- 2012/07/04 Ver.1.15 [障害E_本稼動_08365] SCSK K.Onotsuka ADD START
+  cv_prof_pay_rec_name       CONSTANT VARCHAR2(34)  := 'XXCOK1_BL_LIST_PROMPT_PAY_REC_NAME';      --残高一覧_消込済見出し
+  cv_prof_pay_auto_res_name  CONSTANT VARCHAR2(39)  := 'XXCOK1_BL_LIST_PROMPT_PAY_AUTO_RES_NAME'; --残高一覧_自動繰越見出し
+-- 2012/07/04 Ver.1.15 [障害E_本稼動_08365] SCSK K.Onotsuka ADD END
 -- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
 --  cv_prof_org_code_sales     CONSTANT VARCHAR2(25)  := 'XXCOK1_ORG_CODE_SALES';              --在庫組織コード_営業組織
 -- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
@@ -138,6 +144,9 @@ AS
   -- フォーマット
   cv_format_yyyymmdd         CONSTANT VARCHAR2(8)   := 'YYYYMMDD';
   cv_format_yyyymmdd2        CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';
+-- 2012/07/10 Ver.1.15 [障害E_本稼動_08367] SCSK K.Onotsuka ADD START
+  cv_format_mm               CONSTANT VARCHAR2(6)   := 'MM';
+-- 2012/07/10 Ver.1.15 [障害E_本稼動_08367] SCSK K.Onotsuka ADD END
   -- セパレータ
   cv_msg_part                CONSTANT VARCHAR2(3)   := ' : ';
   cv_msg_cont                CONSTANT VARCHAR2(1)   := '.';
@@ -171,6 +180,11 @@ AS
   -- 固定文字
   cv_em_dash                 CONSTANT VARCHAR2(2)   := '―'; -- 全角ダッシュ
 -- 20.1/04/26 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki ADD END
+-- 2012/07/04 Ver.1.15 [障害E_本稼動_08365] SCSK K.Onotsuka ADD START
+  cv_proc_type0_upd          CONSTANT VARCHAR2(1)  := '0';  -- (UPDATE用)処理区分：保留解除(初期値)
+  cv_proc_type1_upd          CONSTANT VARCHAR2(1)  := '1';  -- (UPDATE用)処理区分：消込済
+  cv_proc_type2_upd          CONSTANT VARCHAR2(1)  := '2';  -- (UPDATE用)処理区分：保留
+-- 2012/07/04 Ver.1.15 [障害E_本稼動_08365] SCSK K.Onotsuka ADD END
   -- ===============================================
   -- グローバル変数
   -- ===============================================
@@ -187,6 +201,10 @@ AS
   gv_bk_trns_fee_we          VARCHAR2(10)  DEFAULT NULL; -- 振込手数料_当方
   gv_bk_trns_fee_ctpty       VARCHAR2(8)   DEFAULT NULL; -- 振込手数料_相手方
   gv_pay_res_name            VARCHAR2(4)   DEFAULT NULL; -- 保留見出し
+-- 2012/07/04 Ver.1.15 [障害E_本稼動_08365] SCSK K.Onotsuka ADD START
+  gv_pay_rec_name            VARCHAR2(6)   DEFAULT NULL; -- 消込済見出し
+  gv_pay_auto_res_name       VARCHAR2(8)   DEFAULT NULL; -- 自動繰越見出し
+-- 2012/07/04 Ver.1.15 [障害E_本稼動_08365] SCSK K.Onotsuka ADD END
   gv_ref_base_code           VARCHAR2(4)   DEFAULT NULL; -- 問合せ担当拠点
   gv_selling_base_code       VARCHAR2(4)   DEFAULT NULL; -- 売上計上拠点
   gv_target_disp             VARCHAR2(12)  DEFAULT NULL; -- 表示対象
@@ -282,7 +300,10 @@ AS
    ,ELECTRIC_AMT                 NUMBER        -- 電気料
    ,UNPAID_LAST_MONTH            NUMBER        -- 前月までの未払
    ,UNPAID_BALANCE               NUMBER        -- 未払残高
-   ,RESV_PAYMENT                 VARCHAR2(4)   -- 支払保留
+-- 2012/07/11 Ver.1.15 [障害E_本稼動_08367] SCSK K.Onotsuka UPD START
+--   ,RESV_PAYMENT                 VARCHAR2(4)   -- 支払保留
+   ,RESV_PAYMENT                 VARCHAR2(8)   -- 支払保留
+-- 2012/07/11 Ver.1.15 [障害E_本稼動_08367] SCSK K.Onotsuka UPD START
    ,PAYMENT_DATE                 DATE          -- 支払日
    ,CLOSING_DATE                 DATE          -- 締め日
    ,SELLING_BASE_SECTION_CODE    VARCHAR2(5)   -- 地区コード（売上計上拠点）
@@ -302,6 +323,11 @@ AS
    ,expect_payment_date          xxcok_backmargin_balance.expect_payment_date%TYPE     -- 支払予定日
    ,expect_payment_amt_tax       xxcok_backmargin_balance.expect_payment_amt_tax%TYPE  -- 支払予定額（税込）
    ,resv_flag                    xxcok_backmargin_balance.resv_flag%TYPE               -- 保留フラグ
+-- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD START
+   ,payment_amt_tax              xxcok_backmargin_balance.payment_amt_tax%TYPE         -- 支払額（税込）
+   ,fb_interface_date            xxcok_backmargin_balance.fb_interface_date%TYPE       -- 連携日（本振用FB）
+   ,proc_type                    xxcok_backmargin_balance.proc_type%TYPE               -- 処理区分
+-- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD END
   );
 -- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki ADD END
   -- ===============================
@@ -420,6 +446,11 @@ AS
           ,expect_payment_date    -- 支払予定日
           ,expect_payment_amt_tax -- 支払予定額（税込）
           ,resv_flag              -- 保留フラグ
+-- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD START
+          ,payment_amt_tax        -- 支払額（税込）
+          ,fb_interface_date      -- 連携日（本振用FB）
+          ,proc_type              -- 処理区分
+-- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD END
     FROM (SELECT /*+
                    leading(xbb2 xbb pv pvsa)
                    use_nl (xbb2 xbb pv pvsa)
@@ -440,6 +471,11 @@ AS
                  ,xbb.expect_payment_date              AS expect_payment_date    -- 支払予定日
                  ,NVL( xbb.expect_payment_amt_tax ,0 ) AS expect_payment_amt_tax -- 支払予定額（税込）
                  ,xbb.resv_flag                        AS resv_flag              -- 保留フラグ
+-- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD START
+                 ,NVL( xbb.payment_amt_tax ,0 )        AS payment_amt_tax        -- 支払額（税込）
+                 ,xbb.fb_interface_date                AS fb_interface_date      -- 連携日（本振用FB）
+                 ,xbb.proc_type                        AS proc_type              -- 処理区分
+-- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD END
           FROM   xxcok_backmargin_balance  xbb    -- 販手残高テーブル
                 ,po_vendors                pv     -- 仕入先マスタ
                 ,po_vendor_sites_all       pvsa   -- 仕入先サイト
@@ -488,6 +524,11 @@ AS
           ,expect_payment_date    -- 支払予定日
           ,expect_payment_amt_tax -- 支払予定額（税込）
           ,resv_flag              -- 保留フラグ
+-- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD START
+          ,payment_amt_tax        -- 支払額（税込）
+          ,fb_interface_date      -- 連携日（本振用FB）
+          ,proc_type              -- 処理区分
+-- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD END
     FROM (SELECT /*+
                    leading(xbb2 xbb pv pvsa)
                    use_nl (xbb2 xbb pv pvsa)
@@ -508,6 +549,11 @@ AS
                  ,xbb.expect_payment_date              AS expect_payment_date    -- 支払予定日
                  ,NVL( xbb.expect_payment_amt_tax ,0 ) AS expect_payment_amt_tax -- 支払予定額（税込）
                  ,xbb.resv_flag                        AS resv_flag              -- 保留フラグ
+-- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD START
+                 ,NVL( xbb.payment_amt_tax ,0 )        AS payment_amt_tax        -- 支払額（税込）
+                 ,xbb.fb_interface_date                AS fb_interface_date      -- 連携日（本振用FB）
+                 ,xbb.proc_type                        AS proc_type              -- 処理区分
+-- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD END
           FROM   xxcok_backmargin_balance xbb     -- 販手残高テーブル
                 ,po_vendors                pv     -- 仕入先マスタ
                 ,po_vendor_sites_all       pvsa   -- 仕入先サイト
@@ -1089,9 +1135,23 @@ AS
     ----------------------------
     -- 「前月までの未払」の集計
     ----------------------------
-    IF ( i_target_rec.expect_payment_date <= LAST_DAY( ADD_MONTHS( gd_payment_date ,-1 ) ) ) THEN
-      gt_unpaid_last_month_sum := gt_unpaid_last_month_sum + i_target_rec.expect_payment_amt_tax;
+-- 2012/07/10 Ver.1.15 [障害E_本稼動_08367] SCSK K.Onotsuka UPD START
+--    IF ( i_target_rec.expect_payment_date <= LAST_DAY( ADD_MONTHS( gd_payment_date ,-1 ) ) ) THEN
+--      gt_unpaid_last_month_sum := gt_unpaid_last_month_sum + i_target_rec.expect_payment_amt_tax;
+    IF i_target_rec.fb_interface_date IS NULL THEN
+      IF ( i_target_rec.expect_payment_date <= LAST_DAY( ADD_MONTHS( gd_payment_date ,-1 ) ) ) THEN
+        gt_unpaid_last_month_sum := gt_unpaid_last_month_sum
+                                  + i_target_rec.expect_payment_amt_tax;
+      END IF;
+    ELSE
+      IF ( i_target_rec.expect_payment_date <= LAST_DAY( ADD_MONTHS( gd_payment_date ,-1 ) ) )
+        AND ( TRUNC(gd_payment_date ,cv_format_mm) <= TRUNC(i_target_rec.fb_interface_date ,cv_format_mm)) THEN
+        gt_unpaid_last_month_sum := gt_unpaid_last_month_sum
+                                  + i_target_rec.payment_amt_tax;
+      END IF;
     END IF;
+    --
+-- 2012/07/10 Ver.1.15 [障害E_本稼動_08367] SCSK K.Onotsuka UPD END
     ----------------------------
     -- 「未払残高」の集計
     ----------------------------
@@ -1108,8 +1168,27 @@ AS
     ----------------------------
     -- 支払保留の設定
     ----------------------------
-    IF ( gt_resv_payment_bk IS NULL ) AND ( i_target_rec.resv_flag = cv_flag_y ) THEN
-      gt_resv_payment_bk := gv_pay_res_name;
+-- 2012/07/20 Ver.1.15 [障害E_本稼動_08367] SCSK K.Onotsuka UPD START
+--    IF ( gt_resv_payment_bk IS NULL ) AND ( i_target_rec.resv_flag = cv_flag_y ) THEN
+    IF ( i_target_rec.resv_flag = cv_flag_y ) THEN
+-- 2012/07/20 Ver.1.15 [障害E_本稼動_08367] SCSK K.Onotsuka UPD END
+-- 2012/07/11 Ver.1.15 [障害E_本稼動_08367] SCSK K.Onotsuka UPD START
+--      gt_resv_payment_bk := gv_pay_res_name;
+      IF ( i_target_rec.proc_type = cv_proc_type0_upd ) THEN
+      --保留フラグ='Y'且つ、処理区分が'0'の場合は「自動繰越」
+        gt_resv_payment_bk := gv_pay_auto_res_name; -- 自動繰越
+      ELSIF ( i_target_rec.proc_type = cv_proc_type2_upd ) THEN
+      --保留フラグ='Y'且つ、処理区分が'2'の場合は「保留」
+        gt_resv_payment_bk := gv_pay_res_name; -- 保留
+      END IF;
+    ELSIF ( i_target_rec.resv_flag IS NULL )
+      AND ( i_target_rec.proc_type = cv_proc_type1_upd ) THEN
+        --保留フラグ=NULL且つ、処理区分が'1'の場合は「消込済」
+        gt_resv_payment_bk := gv_pay_rec_name; -- 消込済
+    ELSE
+      -- 保留解除時の残高、残高アップロード機能以外での残高更新データの場合、何も出力しない
+      gt_resv_payment_bk := NULL;
+-- 2012/07/11 Ver.1.15 [障害E_本稼動_08367] SCSK K.Onotsuka UPD END
     END IF;
     ----------------------------
     -- 警告マークの設定
@@ -2498,6 +2577,24 @@ AS
       lv_profile_nm := cv_prof_pay_res_name;
       RAISE no_profile_expt;
     END IF;
+-- 2012/07/04 Ver.1.15 [障害E_本稼動_08365] SCSK K.Onotsuka ADD START
+    -- ===============================================
+    -- プロファイル取得(残高一覧_消込済見出し)
+    -- ===============================================
+    gv_pay_rec_name := FND_PROFILE.VALUE( cv_prof_pay_rec_name );
+    IF ( gv_pay_rec_name IS NULL ) THEN
+      lv_profile_nm := cv_prof_pay_rec_name;
+      RAISE no_profile_expt;
+    END IF;
+    -- ===============================================
+    -- プロファイル取得(残高一覧_自動繰越見出し)
+    -- ===============================================
+    gv_pay_auto_res_name := FND_PROFILE.VALUE( cv_prof_pay_auto_res_name );
+    IF ( gv_pay_auto_res_name IS NULL ) THEN
+      lv_profile_nm := cv_prof_pay_auto_res_name;
+      RAISE no_profile_expt;
+    END IF;
+-- 2012/07/04 Ver.1.15 [障害E_本稼動_08365] SCSK K.Onotsuka ADD END
     -- ===============================================
     -- プロファイル取得(在庫組織コード_営業組織)
     -- ===============================================

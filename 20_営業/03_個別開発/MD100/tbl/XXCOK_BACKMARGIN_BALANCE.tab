@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_BACKMARGIN_BALANCE
  * Description : 販手残高テーブル
- * Version     : 1.3
+ * Version     : 1.4
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -13,6 +13,7 @@
  *  2009/07/09    1.1   K.Yamaguchi      [障害0000515]STORAGE句追加
  *  2009/12/16    1.2   K.Yamaguchi      [E_本稼動_00360]項目追加：atm_fix_status（金額確定ステータス）
  *  2010/03/09    1.3   K.Yamaguchi      [E_本稼動_01596]項目追加：org_slip_number（元伝票番号）
+ *  2012/07/04    1.4   K.Onotsuka       [E_本稼動_08365]項目追加：proc_type（処理区分）
  *
  ****************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_BACKMARGIN_BALANCE
@@ -48,6 +49,9 @@ CREATE TABLE XXCOK.XXCOK_BACKMARGIN_BALANCE
 -- 2010/03/09 Ver.1.3 [E_本稼動_01596] SCS K.Yamaguchi ADD START
    ORG_SLIP_NUMBER           VARCHAR2(50),
 -- 2010/03/09 Ver.1.3 [E_本稼動_01596] SCS K.Yamaguchi ADD END
+-- 2012/07/04 Ver.1.4 [E_本稼動_08365] SCSK K.Onotsuka ADD START
+   PROC_TYPE                 VARCHAR2(1),
+-- 2012/07/04 Ver.1.4 [E_本稼動_08365] SCSK K.Onotsuka ADD END
    CREATED_BY                NUMBER(15,0)   NOT NULL,
    CREATION_DATE             DATE           NOT NULL,
    LAST_UPDATED_BY           NUMBER(15,0)   NOT NULL,
@@ -124,6 +128,10 @@ COMMENT ON COLUMN XXCOK.XXCOK_BACKMARGIN_BALANCE.AMT_FIX_STATUS         IS '金額
 COMMENT ON COLUMN XXCOK.XXCOK_BACKMARGIN_BALANCE.ORG_SLIP_NUMBER        IS '元伝票番号'
 /
 -- 2010/03/09 Ver.1.3 [E_本稼動_01596] SCS K.Yamaguchi ADD END
+-- 2012/07/04 Ver.1.4 [E_本稼動_08365] SCSK K.Onotsuka ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_BACKMARGIN_BALANCE.PROC_TYPE              IS '処理区分'
+/
+-- 2012/07/04 Ver.1.4 [E_本稼動_08365] SCSK K.Onotsuka ADD END
 COMMENT ON COLUMN XXCOK.XXCOK_BACKMARGIN_BALANCE.CREATED_BY             IS '作成者'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_BACKMARGIN_BALANCE.CREATION_DATE          IS '作成日'

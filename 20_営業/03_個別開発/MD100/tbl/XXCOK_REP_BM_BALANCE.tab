@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_REP_BM_BALANCE
  * Description : 販手残高一覧帳票ワークテーブル
- * Version     : 1.4
+ * Version     : 1.5
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -14,6 +14,7 @@
  *  2009/07/09    1.2   K.Yamaguchi      [障害0000515]STORAGE句追加
  *  2010/01/04    1.3   S.Moriyama       [E_本稼動_00461]BM支払区分（コード値）追加
  *  2011/04/28    1.4   S.Niki           [E_本稼動_02100]口座種別の桁数を拡張
+ *  2012/07/04    1.5   K.Onotsuka       [E_本稼動_08365]支払保留の桁数を拡張
  *
  ****************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_REP_BM_BALANCE
@@ -53,7 +54,10 @@ CREATE TABLE XXCOK.XXCOK_REP_BM_BALANCE
    ELECTRIC_AMT                 NUMBER,
    UNPAID_LAST_MONTH            NUMBER,
    UNPAID_BALANCE               NUMBER,
-   RESV_PAYMENT                 VARCHAR2(4),
+-- 2012/07/04 Ver.1.5 [E_本稼動_08365] SCSK K.Onotsuka MOD START
+--   RESV_PAYMENT                 VARCHAR2(4),
+   RESV_PAYMENT                 VARCHAR2(8),
+-- 2012/07/04 Ver.1.5 [E_本稼動_08365] SCSK K.Onotsuka MOD END
    PAYMENT_DATE                 DATE,
    CLOSING_DATE                 DATE,
    SELLING_BASE_SECTION_CODE    VARCHAR2(5),
