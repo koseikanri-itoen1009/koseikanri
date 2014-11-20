@@ -1,2 +1,2 @@
-CREATE INDEX ont.xxcos_oe_order_lines_all_n21 ON oe_order_lines_all (request_date desc) TABLESPACE apps_ts_tx_idx
+CREATE INDEX ont.xxcos_oe_order_lines_all_n21 ON oe_order_lines_all (header_id, request_date desc, flow_status_code ) TABLESPACE apps_ts_tx_idx
 /
