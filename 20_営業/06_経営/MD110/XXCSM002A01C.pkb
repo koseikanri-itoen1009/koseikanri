@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A01C(body)
  * Description      : 商品計画用過年度販売実績集計
  * MD.050           : 商品計画用過年度販売実績集計 MD050_CSM_002_A01
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/03/04    1.3   S.Son           [障害CT_075] 値引用品目不具合の対応
  *  2009/03/18    1.4   S.Son            仕様変更対応
  *  2009/05/01    1.5   M.Ohtsuki       [障害T1_0861] 特殊品目の処理対象除外 
+ *  2009/06/03    1.6   M.Ohtsuki       [障害T1_1174] センター納品の不具合の対応 
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1543,6 +1544,11 @@ AS
 --//ADD START 2009/05/01 T1_0861 M.Ohtsuki
     cv_sp_item_cd        CONSTANT VARCHAR2(100) := 'XXCSM1_SPECIAL_ITEM';          --特殊品目コード
 --//ADD END   2009/05/01 T1_0861 M.Ohtsuki
+--//ADD START 2009/06/03 T1_1174 M.Ohtsuki
+    cv_flg_on            CONSTANT VARCHAR2(1) := '1';                              --フラグON
+    cv_flg_off           CONSTANT VARCHAR2(1) := '0';                              --フラグOFF
+    
+--//ADD END   2009/06/03 T1_1174 M.Ohtsuki
     -- *** ローカル変数 ***
 --
     ln_result_cnt                 NUMBER;                      --販売実績抽出件数
@@ -1573,65 +1579,195 @@ AS
     CURSOR sales_result_cur
     IS
 --//+UPD START   2009/03/18  仕様変更  S.Son
-/*      SELECT  xsh.year_month                               year_month                 --納品年月
-             ,xsh.month                                    month                      --納品月
-             ,xsh.sale_base_code                           sale_base_code             --売上拠点コード
-             ,xselv.item_code                               item_code                 --品目コード
-             ,SUM(xselv.standard_qty)                       month_sumary_qty          --基準数量
-             ,SUM(xselv.pure_amount)                        month_sumary_pure_amount  --本体金額
-             ,SUM(xselv.standard_qty * NVL(xselv.business_cost,0))  month_sumary_margin       --粗利益算出用
-      FROM   (SELECT xsehv.sales_exp_header_id              sales_exp_header_id       --販売実績ヘッダID
-                    ,TO_CHAR(xsehv.delivery_date,'YYYYMM')  year_month                --納品年月
-                    ,TO_CHAR(xsehv.delivery_date,'MM')      month                     --納品月
-                    ,DECODE(xca.rsv_sale_base_act_date                                --予約売上拠点有効開始日
-                           ,gt_start_date                                             --予算年度開始日
-                           ,xca.rsv_sale_base_code                                    --予約売上拠点コード
-                           ,xca.sale_base_code                                        --売上拠点コード
-                           )  sale_base_code                 --年次切替拠点の場合、対象年度に適用される拠点を導出
-              FROM   xxcsm_sales_exp_headers_v   xsehv                                --販売実績ヘッダテーブルビュー
-                     ,xxcmm_cust_accounts      xca                                    --顧客追加情報
-              WHERE  TRUNC(xsehv.delivery_date,'MM') >= TRUNC(ADD_MONTHS(gt_start_date,-24),'MM')      --予算作成年度開始月－24ヶ月
-              AND    TRUNC(xsehv.delivery_date,'MM') < TRUNC(gt_start_date,'MM')
-              AND    TRUNC(xsehv.delivery_date,'MM') < TRUNC(cd_process_date,'MM')    --コンカレント起動年月前のデータを対象とする
-              AND    xsehv.ship_to_customer_code = xca.customer_code                  --顧客【納品先】=顧客コード(顧客追加情報)
-             ) xsh                                                                    --販売実績インラインビュー
-             ,xxcsm_sales_exp_lines_v    xselv                                        --販売実績明細テーブルビュー
-             ,xxcsm_tmp_cust_accounts         xtca                                     --顧客情報ワークテーブル（拠点のデータのみ）
+--      SELECT  xsh.year_month                               year_month                 --納品年月
+--             ,xsh.month                                    month                      --納品月
+--             ,xsh.sale_base_code                           sale_base_code             --売上拠点コード
+--             ,xselv.item_code                               item_code                 --品目コード
+--             ,SUM(xselv.standard_qty)                       month_sumary_qty          --基準数量
+--             ,SUM(xselv.pure_amount)                        month_sumary_pure_amount  --本体金額
+--             ,SUM(xselv.standard_qty * NVL(xselv.business_cost,0))  month_sumary_margin       --粗利益算出用
+--      FROM   (SELECT xsehv.sales_exp_header_id              sales_exp_header_id       --販売実績ヘッダID
+--                    ,TO_CHAR(xsehv.delivery_date,'YYYYMM')  year_month                --納品年月
+--                    ,TO_CHAR(xsehv.delivery_date,'MM')      month                     --納品月
+--                    ,DECODE(xca.rsv_sale_base_act_date                                --予約売上拠点有効開始日
+--                           ,gt_start_date                                             --予算年度開始日
+--                           ,xca.rsv_sale_base_code                                    --予約売上拠点コード
+--                           ,xca.sale_base_code                                        --売上拠点コード
+--                           )  sale_base_code                 --年次切替拠点の場合、対象年度に適用される拠点を導出
+--              FROM   xxcsm_sales_exp_headers_v   xsehv                                --販売実績ヘッダテーブルビュー
+--                     ,xxcmm_cust_accounts      xca                                    --顧客追加情報
+--              WHERE  TRUNC(xsehv.delivery_date,'MM') >= TRUNC(ADD_MONTHS(gt_start_date,-24),'MM')      --予算作成年度開始月－24ヶ月
+--              AND    TRUNC(xsehv.delivery_date,'MM') < TRUNC(gt_start_date,'MM')
+--              AND    TRUNC(xsehv.delivery_date,'MM') < TRUNC(cd_process_date,'MM')    --コンカレント起動年月前のデータを対象とする
+--              AND    xsehv.ship_to_customer_code = xca.customer_code                  --顧客【納品先】=顧客コード(顧客追加情報)
+--             ) xsh                                                                    --販売実績インラインビュー
+--             ,xxcsm_sales_exp_lines_v    xselv                                        --販売実績明細テーブルビュー
+--             ,xxcsm_tmp_cust_accounts         xtca                                     --顧客情報ワークテーブル（拠点のデータのみ）
 --//+ADD START 2009/03/04 CT075 S.Son
-             ,xxcsm_commodity_group4_v   xcg4v                                         --商品群４ビュー
+--             ,xxcsm_commodity_group4_v   xcg4v                                         --商品群４ビュー
 --//+ADD END 2009/03/04 CT075 S.Son
-      WHERE  xsh.sales_exp_header_id = xselv.sales_exp_header_id                      --販売実績ヘッダIDの紐付け
-      AND    xsh.sale_base_code = xtca.account_number                                 --売上拠点コード=顧客コード
+--      WHERE  xsh.sales_exp_header_id = xselv.sales_exp_header_id                      --販売実績ヘッダIDの紐付け
+--      AND    xsh.sale_base_code = xtca.account_number                                 --売上拠点コード=顧客コード
 --//+UPD START 2009/02/26 CT057 S.Son
-    --AND    MOD(xtca.cust_account_id,TO_NUMBER(gv_parallel_cnt)) 
-      AND    xtca.cust_account_id 
-                  = TO_NUMBER(gv_parallel_value_no)                                   --拠点のIDにてパラレル
+--    --AND    MOD(xtca.cust_account_id,TO_NUMBER(gv_parallel_cnt)) 
+--      AND    xtca.cust_account_id 
+--                  = TO_NUMBER(gv_parallel_value_no)                                   --拠点のIDにてパラレル
 --//+UPD START 2009/02/26 CT057 S.Son
-      AND    xsh.sale_base_code = NVL(gv_location_cd,xsh.sale_base_code)              --入力パラメータ拠点コードNULLの場合
-                                                                                      --パラレルより、拠点コードを取得
-      AND    xselv.item_code     = NVL(gv_item_no,xselv.item_code)                    --入力パラメータ品目コードNULLの場合
-                                                                                      --対象品目コードすべてを取得
+--      AND    xsh.sale_base_code = NVL(gv_location_cd,xsh.sale_base_code)              --入力パラメータ拠点コードNULLの場合
+--                                                                                      --パラレルより、拠点コードを取得
+--      AND    xselv.item_code     = NVL(gv_item_no,xselv.item_code)                    --入力パラメータ品目コードNULLの場合
+--                                                                                      --対象品目コードすべてを取得
 --//+ADD START 2009/03/04 CT075 S.Son
-      AND    xcg4v.item_cd  =  xselv.item_code                                        --商品群４ビューを紐付く
-      AND    xcg4v.group4_cd <> gv_discount_cd                                        --値引用品目(DAAE)以外
+--      AND    xcg4v.item_cd  =  xselv.item_code                                        --商品群４ビューを紐付く
+--      AND    xcg4v.group4_cd <> gv_discount_cd                                        --値引用品目(DAAE)以外
 --//+ADD END 2009/03/04 CT075 S.Son
-      AND    NOT EXISTS (SELECT 'X'
-                         FROM   fnd_lookup_values flv                                            --クイックコード値
-                         WHERE  flv.lookup_type = cv_sales_class                                 --販売実績集計除外売上区分
-                         AND    flv.enabled_flag = cv_flg_y                                      --有効フラグ
-                         AND    flv.language = cv_language_ja                                    --言語
-                         AND    NVL(flv.start_date_active,cd_process_date)  <= cd_process_date   --開始日
-                         AND    NVL(flv.end_date_active,cd_process_date)    >= cd_process_date   --終了日
-                         AND    flv.lookup_code = xselv.sales_class)                             --ルックアップコード=売上区分
-      GROUP BY  xsh.sale_base_code                 --売上拠点コード
-               ,xselv.item_code                    --品目コード
-               ,xsh.year_month                     --納品年月
-               ,xsh.month                          --納品月
-      ORDER BY  xsh.sale_base_code                 --売上拠点コード
-               ,xselv.item_code                    --品目コード
-               ,xsh.year_month                     --納品年月
-    ;
-*/
+--      AND    NOT EXISTS (SELECT 'X'
+--                         FROM   fnd_lookup_values flv                                            --クイックコード値
+--                         WHERE  flv.lookup_type = cv_sales_class                                 --販売実績集計除外売上区分
+--                         AND    flv.enabled_flag = cv_flg_y                                      --有効フラグ
+--                         AND    flv.language = cv_language_ja                                    --言語
+--                         AND    NVL(flv.start_date_active,cd_process_date)  <= cd_process_date   --開始日
+--                         AND    NVL(flv.end_date_active,cd_process_date)    >= cd_process_date   --終了日
+--                         AND    flv.lookup_code = xselv.sales_class)                             --ルックアップコード=売上区分
+--      GROUP BY  xsh.sale_base_code                 --売上拠点コード
+--               ,xselv.item_code                    --品目コード
+--               ,xsh.year_month                     --納品年月
+--               ,xsh.month                          --納品月
+--      ORDER BY  xsh.sale_base_code                 --売上拠点コード
+--              ,xselv.item_code                    --品目コード
+--               ,xsh.year_month                     --納品年月
+--    ;
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+--//+UPD START 2009/06/03 T1_1174 M.Ohtsuki
+--   SELECT  xse.year_month                                        year_month                         -- 年月
+--          ,xse.month                                             month                              -- 月
+--          ,xse.sale_base_code                                    sale_base_code                     -- 売上拠点コード
+--          ,xse.item_code                                         item_code                          -- 品目コード
+--          ,SUM(xse.month_sumary_qty)                             month_sumary_qty                   -- 売上金額
+--          ,SUM(xse.month_sumary_pure_amount)                     month_sumary_pure_amount           -- 数量
+--          ,SUM(xse.month_sumary_margin)                          month_sumary_margin                -- 粗利益算出用
+--   FROM   (SELECT  TO_CHAR(xsti.selling_date,'YYYYMM')           year_month                         -- 売上計上日(年月)
+--                  ,TO_CHAR(xsti.selling_date,'MM')               month                              -- 売上計上日(月)
+--                  ,xcai.sale_base_code                            sale_base_code                    -- 売上拠点コード
+--                  ,xsti.item_code                                item_code                          -- 品目コード
+--                  ,SUM(xsti.qty)                                 month_sumary_qty                   -- 基準数量
+--                  ,SUM(xsti.selling_amt)                         month_sumary_pure_amount           -- 本体金額
+--                  ,SUM(xsti.qty * NVL(xsti.trading_cost,0))      month_sumary_margin                -- 粗利益算出用
+--          FROM    (SELECT  DISTINCT xsti.slip_no                 slip_no                            -- 伝票番号
+--                   FROM    xxcok_selling_trns_info               xsti                               -- 実績振替テーブル
+--                          ,xxcmm_cust_accounts                   xca                                -- 追加顧客情報テーブル
+--                          ,xxcsm_sales_exp_headers_v             xsehv                              -- 販売実績ヘッダビュー
+--                   WHERE  xsehv.ship_to_customer_code = xca.customer_code                           -- 顧客コードで紐付け
+--                   AND    xsehv.ship_to_customer_code = xsti.cust_code                              -- 顧客コードで紐付け
+--                   )                                             sti
+--                  ,(SELECT      DISTINCT xsti.cust_code          cust_code
+--                               ,DECODE(xca.rsv_sale_base_act_date                                   -- 予約売上拠点有効開始日
+--                                       ,gt_start_date                                               -- 予算年度開始日
+--                                       ,xca.rsv_sale_base_code                                      -- 予約売上拠点コード
+--                                       ,xca.sale_base_code                                          -- 売上拠点コード
+--                                       )                         sale_base_code
+--                   FROM    xxcok_selling_trns_info               xsti                               -- 実績振替テーブル
+--                          ,xxcmm_cust_accounts                   xca                                -- 追加顧客情報テーブル
+--                   WHERE  xsti.cust_code = xca.customer_code                                        -- 顧客コードで紐付け
+--                   )   xcai
+--                  ,xxcok_selling_trns_info                       xsti                               -- 実績振替テーブル
+--                  ,xxcsm_tmp_cust_accounts                       xtca                               -- 顧客情報ワークテーブル（拠点のデータのみ）
+--                  ,xxcsm_commodity_group4_v                      xcg4v                              -- 商品群４ビュー
+--          WHERE   xcai.sale_base_code  = xtca.account_number                                        -- 売上拠点コード = 顧客コード
+--          AND     xtca.cust_account_id = TO_NUMBER(gv_parallel_value_no)                            -- 拠点のIDにてパラレル
+--          AND     xcai.sale_base_code  = NVL(gv_location_cd,xcai.sale_base_code)                    -- 入力パラメータ拠点コードNULLの場合
+--          AND     xsti.item_code       = NVL(gv_item_no,xsti.item_code)                             -- 入力パラメータ品目コードNULLの場合
+--          AND     sti.slip_no          = xsti.slip_no                                               -- 伝票番号紐付け
+--          AND     xcai.cust_code       = xsti.cust_code                                             -- 顧客コード紐付け
+--          AND     TRUNC(xsti.selling_date,'MM')   >= TRUNC(ADD_MONTHS(gt_start_date,-24),'MM')      -- 予算作成年度開始月－24ヶ月
+--          AND     TRUNC(xsti.selling_date,'MM')   <  TRUNC(gt_start_date,'MM')                      -- 年度開始日より前のデータ
+--          AND     TRUNC(xsti.selling_date,'MM')   <  TRUNC(cd_process_date,'MM')                    -- コンカレント起動年月前のデータを対象とする
+--          AND     (xsti.report_decision_flag = 1                                                    -- 速報確定フラグ = 確定
+--                  OR 
+--                  (TRUNC(xsti.selling_date,'MM')   = TRUNC(ADD_MONTHS(cd_process_date,-1),'MM')     -- 業務日付前月
+--                     AND xsti.report_decision_flag = 0                                              -- 速報確定フラグ = 速報
+--                     AND xsti.correction_flag      = 0)                                             -- 振戻フラグ = 0 (最新のデータ)
+--                   )
+--          AND      xsti.item_code   = xcg4v.item_cd                                                 -- 品目コード紐付け
+--          AND      xcg4v.group4_cd <> gv_discount_cd                                                -- 値引用品目(DAAE)以外
+--//+ADD START 2009/05/01 T1_0861 M.Ohtsuki
+--          AND    NOT EXISTS (SELECT 'X'
+--                             FROM   fnd_lookup_values flv                                           --クイックコード値
+--                             WHERE  flv.lookup_type = cv_sp_item_cd                                 --処理対象外特殊品目
+--                             AND    flv.enabled_flag = cv_flg_y                                     --有効フラグ
+--                             AND    flv.language = cv_language_ja                                   --言語
+--                             AND    NVL(flv.start_date_active,cd_process_date)  <= cd_process_date  --開始日
+--                             AND    NVL(flv.end_date_active,cd_process_date)    >= cd_process_date  --終了日
+--                             AND    flv.lookup_code = xsti.item_code)                               --ルックアップコード=品目コード
+--//+ADD END   2009/05/01 T1_0861 M.Ohtsuki
+--          GROUP BY xcai.sale_base_code                                                              -- 売上拠点コード
+--                  ,xsti.item_code                                                                   -- 品目コード
+--                  ,TO_CHAR(xsti.selling_date,'YYYYMM')                                              -- 納品年月
+--                  ,TO_CHAR(xsti.selling_date,'MM')                                                  -- 納品月
+--        UNION ALL
+--          SELECT  xsh.year_month                                 year_month                         -- 年月
+--                 ,xsh.month                                      month                              -- 月
+--                 ,xsh.sale_base_code                             sale_base_code                     -- 売上拠点コード
+--                 ,xselv.item_code                                item_code                          -- 品目コード
+--                 ,SUM(xselv.standard_qty)                        month_sumary_qty                   -- 基準数量
+--                 ,SUM(xselv.pure_amount)                         month_sumary_pure_amount           -- 本体金額
+--                 ,SUM(xselv.standard_qty * NVL(xselv.business_cost,0))
+--                                                                 month_sumary_margin                -- 粗利益算出用
+--          FROM   (SELECT xsehv.sales_exp_header_id               sales_exp_header_id                -- 販売実績ヘッダID
+--                        ,xsehv.ship_to_customer_code             ship_to_customer_code              -- 顧客コード
+--                        ,TO_CHAR(xsehv.delivery_date,'YYYYMM')   year_month                         -- 納品日(年月)
+--                        ,TO_CHAR(xsehv.delivery_date,'MM')       month                              -- 納品日(月)
+--                        ,DECODE(xca.rsv_sale_base_act_date                                          -- 予約売上拠点有効開始日
+--                               ,gt_start_date                                                       -- 予算年度開始日
+--                               ,xca.rsv_sale_base_code                                              -- 予約売上拠点コード
+--                               ,xca.sale_base_code                                                  -- 売上拠点コード
+--                               )                                 sale_base_code                     -- 年次切替拠点の場合、対象年度に適用される拠点を導出
+--                  FROM   xxcsm_sales_exp_headers_v               xsehv                              -- 販売実績ヘッダテーブルビュー
+--                        ,xxcmm_cust_accounts      xca                                               -- 顧客追加情報
+--                  WHERE  TRUNC(xsehv.delivery_date,'MM') >= TRUNC(ADD_MONTHS(gt_start_date,-24),'MM')-- 予算作成年度開始月－24ヶ月
+--                  AND    TRUNC(xsehv.delivery_date,'MM') < TRUNC(gt_start_date,'MM')                -- 年度開始日前のデータが対象
+--                  AND    TRUNC(xsehv.delivery_date,'MM') < TRUNC(cd_process_date,'MM')              -- コンカレント起動年月前のデータを対象とする
+--                  AND    xsehv.ship_to_customer_code = xca.customer_code                            -- 顧客【納品先】=顧客コード(顧客追加情報)
+--                 )                                               xsh                                -- 販売実績インラインビュー
+--                 ,xxcsm_sales_exp_lines_v                        xselv                              -- 販売実績明細テーブルビュー
+--                 ,xxcsm_tmp_cust_accounts                        xtca                               -- 顧客情報ワークテーブル（拠点のデータのみ）
+--                 ,xxcsm_commodity_group4_v                       xcg4v                              -- 商品群４ビュー
+--          WHERE   xsh.sales_exp_header_id = xselv.sales_exp_header_id                               -- 販売実績ヘッダIDの紐付け
+--          AND     xsh.sale_base_code      = xtca.account_number                                     -- 売上拠点コード=顧客コード
+--          AND     xtca.cust_account_id    = TO_NUMBER(gv_parallel_value_no)                         -- 拠点のIDにてパラレル
+--          AND     xsh.sale_base_code      = NVL(gv_location_cd,xsh.sale_base_code)                  -- 入力パラメータ拠点コードNULLの場合全件
+--          AND     xselv.item_code         = NVL(gv_item_no,xselv.item_code)                         -- 入力パラメータ品目コードNULLの場合全件
+--          AND     xcg4v.item_cd           =  xselv.item_code                                        -- 商品群４ビューを紐付く
+--          AND     xcg4v.group4_cd        <> gv_discount_cd                                          -- 値引用品目(DAAE)以外
+--          AND     NOT EXISTS (SELECT xsti.base_code                                                 -- 実績振替テーブルに存在しない
+--                              FROM   xxcok_selling_trns_info     xsti                               -- 実績振替テーブル
+--                              WHERE  TO_CHAR(xsti.selling_date,'YYYYMM') = xsh.year_month           -- 売上計上日 = 納品日
+--                              AND    xsti.cust_code     = xsh.ship_to_customer_code                 -- 顧客コード
+--                              AND    xsti.item_code     = xselv.item_code                           -- 品目コード
+--                              )
+--//+ADD START 2009/05/01 T1_0861 M.Ohtsuki
+--          AND    NOT EXISTS (SELECT 'X'
+--                             FROM   fnd_lookup_values flv                                           --クイックコード値
+--                             WHERE  flv.lookup_type = cv_sp_item_cd                                 --処理対象外特殊品目
+--                             AND    flv.enabled_flag = cv_flg_y                                     --有効フラグ
+--                             AND    flv.language = cv_language_ja                                   --言語
+--                             AND    NVL(flv.start_date_active,cd_process_date)  <= cd_process_date  --開始日
+--                             AND    NVL(flv.end_date_active,cd_process_date)    >= cd_process_date  --終了日
+--                             AND    flv.lookup_code = xselv.item_code)                              --ルックアップコード=品目コード
+--//+ADD END   2009/05/01 T1_0861 M.Ohtsuki
+--          GROUP BY  xsh.sale_base_code                                                              -- 売上拠点コード
+--                   ,xselv.item_code                                                                 -- 品目コード
+--                   ,xsh.year_month                                                                  -- 納品年月
+--                   ,xsh.month                                                                       -- 納品月
+--          ) xse
+--   GROUP BY  xse.year_month                                                                         -- 年月
+--            ,xse.sale_base_code                                                                     -- 売上拠点コード
+--            ,xse.item_code                                                                          -- 品目コード
+--            ,xse.month                                                                              -- 月
+--   ORDER BY  xse.sale_base_code                                                                     -- 売上拠点コード
+--            ,xse.item_code                                                                          -- 品目コード
+--            ,xse.year_month;                                                                        -- 年月
+--//+UPD END   2009/03/18  仕様変更  S.Son
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
    SELECT  xse.year_month                                        year_month                         -- 年月
           ,xse.month                                             month                              -- 月
@@ -1640,65 +1776,60 @@ AS
           ,SUM(xse.month_sumary_qty)                             month_sumary_qty                   -- 売上金額
           ,SUM(xse.month_sumary_pure_amount)                     month_sumary_pure_amount           -- 数量
           ,SUM(xse.month_sumary_margin)                          month_sumary_margin                -- 粗利益算出用
-   FROM   (SELECT  TO_CHAR(xsti.selling_date,'YYYYMM')           year_month                         -- 売上計上日(年月)
-                  ,TO_CHAR(xsti.selling_date,'MM')               month                              -- 売上計上日(月)
-                  ,xcai.sale_base_code                            sale_base_code                    -- 売上拠点コード
-                  ,xsti.item_code                                item_code                          -- 品目コード
-                  ,SUM(xsti.qty)                                 month_sumary_qty                   -- 基準数量
-                  ,SUM(xsti.selling_amt)                         month_sumary_pure_amount           -- 本体金額
-                  ,SUM(xsti.qty * NVL(xsti.trading_cost,0))      month_sumary_margin                -- 粗利益算出用
-          FROM    (SELECT  DISTINCT xsti.slip_no                 slip_no                            -- 伝票番号
-                   FROM    xxcok_selling_trns_info               xsti                               -- 実績振替テーブル
-                          ,xxcmm_cust_accounts                   xca                                -- 追加顧客情報テーブル
-                          ,xxcsm_sales_exp_headers_v             xsehv                              -- 販売実績ヘッダビュー
-                   WHERE  xsehv.ship_to_customer_code = xca.customer_code                           -- 顧客コードで紐付け
-                   AND    xsehv.ship_to_customer_code = xsti.cust_code                              -- 顧客コードで紐付け
-                   )                                             sti
-                  ,(SELECT      DISTINCT xsti.cust_code          cust_code
-                               ,DECODE(xca.rsv_sale_base_act_date                                   -- 予約売上拠点有効開始日
-                                       ,gt_start_date                                               -- 予算年度開始日
-                                       ,xca.rsv_sale_base_code                                      -- 予約売上拠点コード
-                                       ,xca.sale_base_code                                          -- 売上拠点コード
-                                       )                         sale_base_code
-                   FROM    xxcok_selling_trns_info               xsti                               -- 実績振替テーブル
-                          ,xxcmm_cust_accounts                   xca                                -- 追加顧客情報テーブル
-                   WHERE  xsti.cust_code = xca.customer_code                                        -- 顧客コードで紐付け
-                   )   xcai
-                  ,xxcok_selling_trns_info                       xsti                               -- 実績振替テーブル
-                  ,xxcsm_tmp_cust_accounts                       xtca                               -- 顧客情報ワークテーブル（拠点のデータのみ）
-                  ,xxcsm_commodity_group4_v                      xcg4v                              -- 商品群４ビュー
+   FROM   (
+          --実績振替
+          SELECT  xcai.selling_date                              year_month                         -- 売上計上日(年月)
+                 ,substrb(xcai.selling_date,5,2)                 month                              -- 売上計上日(月)
+                 ,xcai.sale_base_code                            sale_base_code                     -- 売上拠点コード
+                 ,xcai.item_code                                 item_code                          -- 品目コード
+                 ,SUM(xcai.qty)                                  month_sumary_qty                   -- 基準数量
+                 ,SUM(xcai.selling_amt)                          month_sumary_pure_amount           -- 本体金額
+                 ,SUM(xcai.qty * NVL(xcai.trading_cost,0))       month_sumary_margin                -- 粗利益算出用
+          FROM   (SELECT DISTINCT xsti.cust_code                 cust_code                          -- 顧客コード
+                        ,xsti.item_code                          item_code                          -- 品目コード
+                        ,TO_CHAR(xsti.selling_date,'YYYYMM')     selling_date                       -- 売上計上日
+                        ,DECODE(xca.rsv_sale_base_act_date                                          -- 予約売上拠点有効開始日
+                               ,gt_start_date                                                       -- 予算年度開始日
+                               ,xca.rsv_sale_base_code                                              -- 予約売上拠点コード
+                               ,xca.sale_base_code                                                  -- 売上拠点コード
+                               )                                 sale_base_code
+                        ,xsti.qty                                qty                                -- 数量
+                        ,xsti.selling_amt                        selling_amt                        -- 本体金額
+                        ,xsti.trading_cost                       trading_cost                       -- 営業原価
+                  FROM   xxcok_selling_trns_info                 xsti                               -- 実績振替テーブル
+                        ,xxcmm_cust_accounts                     xca                                -- 追加顧客情報テーブル
+                  WHERE  xsti.cust_code = xca.customer_code                                         -- 顧客コードで紐付け
+                  AND    xsti.item_code = NVL(gv_item_no,xsti.item_code)                            -- 入力パラメータ品目コードNULLの場合
+                  AND   (xsti.report_decision_flag = cv_flg_on                                         -- 速報確定フラグ = 確定
+                    OR  (TRUNC(xsti.selling_date,'MM')   = TRUNC(ADD_MONTHS(cd_process_date,-1),'MM')  -- 業務日付前月
+                           AND xsti.report_decision_flag = cv_flg_off                                           -- 速報確定フラグ = 速報
+                           AND xsti.correction_flag      = cv_flg_off)                                          -- 振戻フラグ = 0 (最新のデータ)
+                        )
+                  AND    TRUNC(xsti.selling_date,'MM')   >= TRUNC(ADD_MONTHS(gt_start_date,-24),'MM')  -- 予算作成年度開始月－24ヶ月
+                  AND    TRUNC(xsti.selling_date,'MM')   <  TRUNC(gt_start_date,'MM')                  -- 年度開始日より前のデータ
+                  AND    TRUNC(xsti.selling_date,'MM')   <  TRUNC(cd_process_date,'MM')                -- コンカレント起動年月前のデータを対象とする
+                  )   xcai                                                                          -- 実績振替インラインビュー
+                 ,xxcsm_tmp_cust_accounts                       xtca                                -- 顧客情報ワークテーブル（拠点のデータのみ）
+                 ,xxcsm_commodity_group4_v                      xcg4v                               -- 商品群４ビュー
           WHERE   xcai.sale_base_code  = xtca.account_number                                        -- 売上拠点コード = 顧客コード
           AND     xtca.cust_account_id = TO_NUMBER(gv_parallel_value_no)                            -- 拠点のIDにてパラレル
           AND     xcai.sale_base_code  = NVL(gv_location_cd,xcai.sale_base_code)                    -- 入力パラメータ拠点コードNULLの場合
-          AND     xsti.item_code       = NVL(gv_item_no,xsti.item_code)                             -- 入力パラメータ品目コードNULLの場合
-          AND     sti.slip_no          = xsti.slip_no                                               -- 伝票番号紐付け
-          AND     xcai.cust_code       = xsti.cust_code                                             -- 顧客コード紐付け
-          AND     TRUNC(xsti.selling_date,'MM')   >= TRUNC(ADD_MONTHS(gt_start_date,-24),'MM')      -- 予算作成年度開始月－24ヶ月
-          AND     TRUNC(xsti.selling_date,'MM')   <  TRUNC(gt_start_date,'MM')                      -- 年度開始日より前のデータ
-          AND     TRUNC(xsti.selling_date,'MM')   <  TRUNC(cd_process_date,'MM')                    -- コンカレント起動年月前のデータを対象とする
-          AND     (xsti.report_decision_flag = 1                                                    -- 速報確定フラグ = 確定
-                  OR 
-                  (TRUNC(xsti.selling_date,'MM')   = TRUNC(ADD_MONTHS(cd_process_date,-1),'MM')     -- 業務日付前月
-                     AND xsti.report_decision_flag = 0                                              -- 速報確定フラグ = 速報
-                     AND xsti.correction_flag      = 0)                                             -- 振戻フラグ = 0 (最新のデータ)
-                   )
-          AND      xsti.item_code   = xcg4v.item_cd                                                 -- 品目コード紐付け
-          AND      xcg4v.group4_cd <> gv_discount_cd                                                -- 値引用品目(DAAE)以外
---//+ADD START 2009/05/01 T1_0861 M.Ohtsuki
-          AND    NOT EXISTS (SELECT 'X'
-                             FROM   fnd_lookup_values flv                                           --クイックコード値
-                             WHERE  flv.lookup_type = cv_sp_item_cd                                 --処理対象外特殊品目
-                             AND    flv.enabled_flag = cv_flg_y                                     --有効フラグ
-                             AND    flv.language = cv_language_ja                                   --言語
-                             AND    NVL(flv.start_date_active,cd_process_date)  <= cd_process_date  --開始日
-                             AND    NVL(flv.end_date_active,cd_process_date)    >= cd_process_date  --終了日
-                             AND    flv.lookup_code = xsti.item_code)                               --ルックアップコード=品目コード
---//+ADD END   2009/05/01 T1_0861 M.Ohtsuki
+          AND     xcai.item_code       = xcg4v.item_cd                                              -- 品目コード紐付け
+          AND     xcg4v.group4_cd     <> gv_discount_cd                                             -- 値引用品目(DAAE)以外
+          AND     NOT EXISTS (SELECT 'X'
+                             FROM   fnd_lookup_values flv                                           -- クイックコード値
+                             WHERE  flv.lookup_type = cv_sp_item_cd                                 -- 処理対象外特殊品目
+                             AND    flv.enabled_flag = cv_flg_y                                     -- 有効フラグ
+                             AND    flv.language = cv_language_ja                                   -- 言語
+                             AND    NVL(flv.start_date_active,cd_process_date)  <= cd_process_date  -- 開始日
+                             AND    NVL(flv.end_date_active,cd_process_date)    >= cd_process_date  -- 終了日
+                             AND    flv.lookup_code = xcai.item_code)                               -- ルックアップコード=品目コード
           GROUP BY xcai.sale_base_code                                                              -- 売上拠点コード
-                  ,xsti.item_code                                                                   -- 品目コード
-                  ,TO_CHAR(xsti.selling_date,'YYYYMM')                                              -- 納品年月
-                  ,TO_CHAR(xsti.selling_date,'MM')                                                  -- 納品月
+                  ,xcai.item_code                                                                   -- 品目コード
+                  ,xcai.selling_date                                                                -- 納品年月
+                  ,substrb(xcai.selling_date,5,2)                                                   -- 納品月
         UNION ALL
+          --販売実績
           SELECT  xsh.year_month                                 year_month                         -- 年月
                  ,xsh.month                                      month                              -- 月
                  ,xsh.sale_base_code                             sale_base_code                     -- 売上拠点コード
@@ -1718,7 +1849,7 @@ AS
                                )                                 sale_base_code                     -- 年次切替拠点の場合、対象年度に適用される拠点を導出
                   FROM   xxcsm_sales_exp_headers_v               xsehv                              -- 販売実績ヘッダテーブルビュー
                         ,xxcmm_cust_accounts      xca                                               -- 顧客追加情報
-                  WHERE  TRUNC(xsehv.delivery_date,'MM') >= TRUNC(ADD_MONTHS(gt_start_date,-24),'MM')-- 予算作成年度開始月－24ヶ月
+                  WHERE  TRUNC(xsehv.delivery_date,'MM') >= TRUNC(ADD_MONTHS(gt_start_date,-24),'MM')  -- 予算作成年度開始月－24ヶ月
                   AND    TRUNC(xsehv.delivery_date,'MM') < TRUNC(gt_start_date,'MM')                -- 年度開始日前のデータが対象
                   AND    TRUNC(xsehv.delivery_date,'MM') < TRUNC(cd_process_date,'MM')              -- コンカレント起動年月前のデータを対象とする
                   AND    xsehv.ship_to_customer_code = xca.customer_code                            -- 顧客【納品先】=顧客コード(顧客追加情報)
@@ -1733,13 +1864,6 @@ AS
           AND     xselv.item_code         = NVL(gv_item_no,xselv.item_code)                         -- 入力パラメータ品目コードNULLの場合全件
           AND     xcg4v.item_cd           =  xselv.item_code                                        -- 商品群４ビューを紐付く
           AND     xcg4v.group4_cd        <> gv_discount_cd                                          -- 値引用品目(DAAE)以外
-          AND     NOT EXISTS (SELECT xsti.base_code                                                 -- 実績振替テーブルに存在しない
-                              FROM   xxcok_selling_trns_info     xsti                               -- 実績振替テーブル
-                              WHERE  TO_CHAR(xsti.selling_date,'YYYYMM') = xsh.year_month           -- 売上計上日 = 納品日
-                              AND    xsti.cust_code     = xsh.ship_to_customer_code                 -- 顧客コード
-                              AND    xsti.item_code     = xselv.item_code                           -- 品目コード
-                              )
---//+ADD START 2009/05/01 T1_0861 M.Ohtsuki
           AND    NOT EXISTS (SELECT 'X'
                              FROM   fnd_lookup_values flv                                           --クイックコード値
                              WHERE  flv.lookup_type = cv_sp_item_cd                                 --処理対象外特殊品目
@@ -1748,8 +1872,6 @@ AS
                              AND    NVL(flv.start_date_active,cd_process_date)  <= cd_process_date  --開始日
                              AND    NVL(flv.end_date_active,cd_process_date)    >= cd_process_date  --終了日
                              AND    flv.lookup_code = xselv.item_code)                              --ルックアップコード=品目コード
---//+ADD END   2009/05/01 T1_0861 M.Ohtsuki
-
           GROUP BY  xsh.sale_base_code                                                              -- 売上拠点コード
                    ,xselv.item_code                                                                 -- 品目コード
                    ,xsh.year_month                                                                  -- 納品年月
@@ -1762,7 +1884,7 @@ AS
    ORDER BY  xse.sale_base_code                                                                     -- 売上拠点コード
             ,xse.item_code                                                                          -- 品目コード
             ,xse.year_month;                                                                        -- 年月
---//+UPD END   2009/03/18  仕様変更  S.Son
+--//+UPD END   2009/06/03 T1_1174 M.Ohtsuki
     --テーブル型を定義
     TYPE sales_result_type IS TABLE OF sales_result_cur%ROWTYPE INDEX BY BINARY_INTEGER;
     --テーブル型変数を定義
