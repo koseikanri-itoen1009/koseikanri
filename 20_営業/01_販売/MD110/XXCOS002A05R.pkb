@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,8 @@ AS
  *                                         ・（旧定価）定価適用開始 < 納品日   ⇒定価適用開始 > 納品日
  *                                       障害[T1_1361]対応
  *                                       delete_rpt_wrk_dataコール部分のコメント削除
+ *  2009/06/10    1.10  T.Tominaga       障害[T1_1404]対応
+ *                                       メインカーソルの変更（端数処理区分の取得先変更）
  *
  *****************************************************************************************/
 --
@@ -927,7 +929,7 @@ AS
         ,hccl.meaning                              AS h_and_c                         -- H/C
         ,infd.payment_class                        AS payment_class                   -- 入金区分
         ,infd.payment_amount                       AS payment_amount                  -- 入金額
-        ,infd.tax_rounding_rule                    AS tax_rounding_rule
+        ,infd.tax_rounding_rule                    AS tax_rounding_rule               -- 端数処理区分
         ,infd.tax_rate                             AS tax_rate                        -- 消費税税率
         ,infd.consumption_tax_class                AS consumption_tax_class           -- 消費税区分
       FROM
@@ -1075,13 +1077,19 @@ AS
                                                      , cn_zero )
                 ELSE  NULL
               END                                    AS payment_amount                  -- 入金額
-             ,MAX( cust.tax_rounding_rule )          AS tax_rounding_rule
+-- ******************** 2009/06/10 Var.1.10 T.Tominaga MOD START  *****************************************
+--             ,MAX( cust.tax_rounding_rule )          AS tax_rounding_rule
+             ,MAX( xchv.bill_tax_round_rule )          AS tax_rounding_rule             -- 端数処理区分
+-- ******************** 2009/06/10 Var.1.10 T.Tominaga MOD END    *****************************************
              ,MAX( seh.tax_rate )                    AS tax_rate                        -- 消費税税率
            FROM
                xxcos_sales_exp_lines     sel           -- 販売実績明細テーブル
               ,xxcos_sales_exp_headers   seh           -- 販売実績ヘッダテーブル
               ,hz_cust_accounts          cust          -- 顧客マスタ_顧客
               ,xxcmm_cust_accounts       cuac          -- 顧客追加情報
+-- ******************** 2009/06/10 Var.1.10 T.Tominaga ADD START  *****************************************
+              ,xxcos_cust_hierarchy_v    xchv          -- 顧客ビュー
+-- ******************** 2009/06/10 Var.1.10 T.Tominaga ADD END    *****************************************
               ,hz_parties                parc          -- パーティ_顧客
               ,(
                   SELECT  look_val.meaning            meaning
@@ -1104,6 +1112,9 @@ AS
                                                                                     -- 顧客区分IN 顧客,上様顧客
            AND cust.cust_account_id      = cuac.customer_id                         -- 顧客マスタ_顧客＝顧客追加情報
            AND cust.party_id             = parc.party_id                            -- 顧客マスタ_顧客＝パーティ_顧客
+-- ******************** 2009/06/10 Var.1.10 T.Tominaga ADD START  *****************************************
+           AND xchv.ship_account_number  = seh.ship_to_customer_code
+-- ******************** 2009/06/10 Var.1.10 T.Tominaga ADD END    *****************************************
            AND cuac.business_low_type    = gysm.meaning( + )                        -- 業態小分類
            GROUP BY
               seh.delivery_date                      -- 納品日

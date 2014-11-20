@@ -7,7 +7,7 @@ AS
  * Description      : 返品予定日の到来した拠点出荷の返品受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 返品実績データ作成（ＨＨＴ以外）  MD050_COS_007_A02
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *                                       [T1_1122] 端数処理区分が切上時の計算の修正
  *  2009/06/01    1.6   N.Maeda          [T1_1269] 消費税区分3(内税(単価込み)):税抜基準単価算出方法修正
  *  2009/06/08    1.7   T.Kitajima       [T1_1368] 消費税端数処理対応
+ *  2009/06/10    1.8   T.Kitajima       [T1_1407] 消費税小数点なし対応
  *
  *****************************************************************************************/
 --
@@ -1559,6 +1560,10 @@ AS
         IF ( ln_tax_amount - TRUNC( ln_tax_amount ) <> 0 ) THEN
 --
           io_order_rec.tax_amount := TRUNC( ln_tax_amount ) - 1;
+--****************************** 2009/06/10 1.8 T.Kitajima ADD START ******************************--
+        ELSE
+          io_order_rec.tax_amount := ln_tax_amount;
+--****************************** 2009/06/10 1.8 T.Kitajima ADD  END  ******************************--
 --
         END IF;
 --
@@ -2168,6 +2173,10 @@ AS
             IF ( ln_tax_amount_sum - TRUNC( ln_tax_amount_sum ) <> 0 ) THEN
 --
               g_sale_hdr_tab(j).tax_amount_sum := TRUNC( ln_tax_amount_sum ) - 1;
+--****************************** 2009/06/10 1.8 T.Kitajima ADD START ******************************--
+            ELSE
+              g_sale_hdr_tab(j).tax_amount_sum := ln_tax_amount_sum;
+--****************************** 2009/06/10 1.8 T.Kitajima ADD  END  ******************************--
 --
             END IF;
 --
@@ -2476,6 +2485,10 @@ AS
         -- 小数点以下が存在する場合
         IF ( ln_tax_amount_sum - TRUNC( ln_tax_amount_sum ) <> 0 ) THEN
           g_sale_hdr_tab(j).tax_amount_sum := TRUNC( ln_tax_amount_sum ) - 1;
+--****************************** 2009/06/10 1.8 T.Kitajima ADD START ******************************--
+        ELSE
+          g_sale_hdr_tab(j).tax_amount_sum := ln_tax_amount_sum;
+--****************************** 2009/06/10 1.8 T.Kitajima ADD  END  ******************************--
         END IF;
       --切捨て
       ELSIF ( g_order_data_sort_tab( ln_bfr_index ).bill_tax_round_rule = cv_amount_down ) THEN

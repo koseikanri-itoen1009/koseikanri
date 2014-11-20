@@ -7,7 +7,7 @@ AS
  * Description      : 納品予定日の到来した拠点出荷の受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 出荷確認（納品予定日）  MD050_COS_007_A01
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *                                       [T1_1122] 端数処理区分が切上時の計算の修正
  *  2009/06/01    1.6   N.Maeda          [T1_1269] 消費税区分3(内税(単価込み)):税抜基準単価算出方法修正
  *  2009/06/08    1.7   K.Kiriu          [T1_1368] 消費税金額合計のDB精度対応
+ *  2009/06/10    1.8   K.Kiriu          [T1_1407] 消費税金額合計のDB精度対応(再対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1396,6 +1397,9 @@ AS
     lv_key_data               VARCHAR(5000);              --  キー情報
     ln_tax                    NUMBER;                     --  消費税
     ln_pure_amount            NUMBER;                     --  本体金額
+/* 2009/06/10 Ver1.8 Add Start */
+    ln_tax_amount             NUMBER;                     --  消費税金額計算用(小数点考慮)
+/* 2009/06/10 Ver1.8 Add End   */
 --
     -- *** ローカル・レコード ***
 --
@@ -1560,8 +1564,15 @@ AS
     -- 消費税区分 ＝ 内税(単価込み)
     ELSIF ( io_order_rec.consumption_tax_class = g_tax_class_rec.tax_included ) THEN
 --
+/* 2009/06/10 Ver1.8 Mod Start */
       -- 消費税 ＝ (受注数量 × 販売単価) - (受注数量 × 販売単価 × 100÷(消費税率＋100))
-      io_order_rec.tax_amount := ( io_order_rec.ordered_quantity * io_order_rec.unit_selling_price )
+--      io_order_rec.tax_amount := ( io_order_rec.ordered_quantity * io_order_rec.unit_selling_price )
+--                                   - ( io_order_rec.ordered_quantity * io_order_rec.unit_selling_price
+--                                       * 100 / ( io_order_rec.tax_rate + 100 ) );
+      --初期化
+      ln_tax_amount := 0;
+--
+      ln_tax_amount := ( io_order_rec.ordered_quantity * io_order_rec.unit_selling_price )
                                    - ( io_order_rec.ordered_quantity * io_order_rec.unit_selling_price
                                        * 100 / ( io_order_rec.tax_rate + 100 ) );
 --
@@ -1569,32 +1580,44 @@ AS
       IF ( io_order_rec.bill_tax_round_rule = cv_amount_up ) THEN
 --
         -- 小数点以下が存在する場合
-        IF ( io_order_rec.tax_amount - TRUNC( io_order_rec.tax_amount ) <> 0 ) THEN
+--        IF ( io_order_rec.tax_amount - TRUNC( io_order_rec.tax_amount ) <> 0 ) THEN
+        IF ( ln_tax_amount - TRUNC( ln_tax_amount ) <> 0 ) THEN
 --
           -- 返品(数量がマイナス)以外の場合
-          IF ( SIGN( io_order_rec.tax_amount ) <> -1 ) THEN
+--          IF ( SIGN( io_order_rec.tax_amount ) <> -1 ) THEN
+          IF ( SIGN( ln_tax_amount ) <> -1 ) THEN
 --
-            io_order_rec.tax_amount := TRUNC( io_order_rec.tax_amount ) + 1;
+--            io_order_rec.tax_amount := TRUNC( io_order_rec.tax_amount ) + 1;
+            io_order_rec.tax_amount := TRUNC( ln_tax_amount ) + 1;
 --
           -- 返品(数量がマイナス)の場合
           ELSE
 --
-            io_order_rec.tax_amount := TRUNC( io_order_rec.tax_amount ) - 1;
+--            io_order_rec.tax_amount := TRUNC( io_order_rec.tax_amount ) - 1;
+            io_order_rec.tax_amount := TRUNC( ln_tax_amount ) - 1;
 --
           END IF;
+--
+        --小数点以下が存在しない場合
+        ELSE
+--
+          io_order_rec.tax_amount := ln_tax_amount;
 --
         END IF;
 --
       -- 切捨て
       ELSIF ( io_order_rec.bill_tax_round_rule = cv_amount_down ) THEN
 --
-        io_order_rec.tax_amount := TRUNC( io_order_rec.tax_amount );
+--        io_order_rec.tax_amount := TRUNC( io_order_rec.tax_amount );
+        io_order_rec.tax_amount := TRUNC( ln_tax_amount );
 --
       -- 四捨五入
       ELSIF ( io_order_rec.bill_tax_round_rule = cv_amount_nearest ) THEN
 --
-        io_order_rec.tax_amount := ROUND( io_order_rec.tax_amount );
+--        io_order_rec.tax_amount := ROUND( io_order_rec.tax_amount );
+        io_order_rec.tax_amount := ROUND( ln_tax_amount );
 --
+/* 2009/06/10 Ver1.8 Mod End */
       END IF;
 --
     ELSE
@@ -2183,6 +2206,13 @@ AS
                 g_sale_hdr_tab(j).tax_amount_sum := TRUNC( ln_tax_amount_sum ) - 1;
 --
               END IF;
+/* 2009/06/10 Ver1.8 Mod Start */
+--
+            --小数点以下が存在しない場合
+            ELSE
+--
+              g_sale_hdr_tab(j).tax_amount_sum := ln_tax_amount_sum;
+/* 2009/06/10 Ver1.8 Mod End   */
 --
             END IF;
 --
@@ -2490,6 +2520,11 @@ AS
 --            g_sale_hdr_tab(j).tax_amount_sum := TRUNC( g_sale_hdr_tab(j).tax_amount_sum ) - 1;
             g_sale_hdr_tab(j).tax_amount_sum := TRUNC( ln_tax_amount_sum ) - 1;
           END IF;
+/* 2009/06/10 Ver1.8 Add Start */
+        --小数点以下が存在しない場合
+        ELSE
+          g_sale_hdr_tab(j).tax_amount_sum := ln_tax_amount_sum;
+/* 2009/06/10 Ver1.8 Add End   */
         END IF;
       --切捨て
       ELSIF ( g_order_data_sort_tab( ln_bfr_index ).bill_tax_round_rule = cv_amount_down ) THEN
