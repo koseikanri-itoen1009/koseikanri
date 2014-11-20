@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding='windows-31j'?>
+<!DOCTYPE JboPackage SYSTEM "jbo_03_01.dtd">
+
+<JboPackage
+   Name="server"
+   SeparateXMLFiles="true"
+   PackageName="itoen.oracle.apps.xxwsh.xxwsh920002j.server" >
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_ejbPackage" Value="false" />
+   </DesignTime>
+   <Containee
+      Name="XxwshPageLayoutPVO"
+      FullName="itoen.oracle.apps.xxwsh.xxwsh920002j.server.XxwshPageLayoutPVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxwshSearchVO"
+      FullName="itoen.oracle.apps.xxwsh.xxwsh920002j.server.XxwshSearchVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxwshStockCanEncQtyVO"
+      FullName="itoen.oracle.apps.xxwsh.xxwsh920002j.server.XxwshStockCanEncQtyVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxwshLineShipVO"
+      FullName="itoen.oracle.apps.xxwsh.xxwsh920002j.server.XxwshLineShipVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxwshLineProdVO"
+      FullName="itoen.oracle.apps.xxwsh.xxwsh920002j.server.XxwshLineProdVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxwshLineMoveVO"
+      FullName="itoen.oracle.apps.xxwsh.xxwsh920002j.server.XxwshLineMoveVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxwshReserveLotAM"
+      FullName="itoen.oracle.apps.xxwsh.xxwsh920002j.server.XxwshReserveLotAM"
+      ObjectType="AppModule" >
+   </Containee>
+</JboPackage>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="LovAM"
+   ComponentClass="oracle.apps.fnd.framework.server.OAApplicationModuleImpl" >
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="KoyuCodeVO1"
+      ViewObjectName="itoen.oracle.apps.xxwsh.lov.server.KoyuCodeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="LotNoVO1"
+      ViewObjectName="itoen.oracle.apps.xxwsh.lov.server.LotNoVO" >
+   </ViewUsage>
+</AppModule>

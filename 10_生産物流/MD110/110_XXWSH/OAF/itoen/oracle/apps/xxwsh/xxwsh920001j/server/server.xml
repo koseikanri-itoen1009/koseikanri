@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE JboPackage SYSTEM "jbo_03_01.dtd">
+
+<JboPackage
+   Name="server"
+   SeparateXMLFiles="true"
+   PackageName="itoen.oracle.apps.xxwsh.xxwsh920001j.server" >
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_ejbPackage" Value="false" />
+   </DesignTime>
+   <Containee
+      Name="XxwshShipLotInputAM"
+      FullName="itoen.oracle.apps.xxwsh.xxwsh920001j.server.XxwshShipLotInputAM"
+      ObjectType="AppModule" >
+   </Containee>
+   <Containee
+      Name="XxwshLineVO"
+      FullName="itoen.oracle.apps.xxwsh.xxwsh920001j.server.XxwshLineVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxwshIndicateLotVO"
+      FullName="itoen.oracle.apps.xxwsh.xxwsh920001j.server.XxwshIndicateLotVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxwshResultLotVO"
+      FullName="itoen.oracle.apps.xxwsh.xxwsh920001j.server.XxwshResultLotVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxwshShipLotInputPVO"
+      FullName="itoen.oracle.apps.xxwsh.xxwsh920001j.server.XxwshShipLotInputPVO"
+      ObjectType="ViewObject" >
+   </Containee>
+</JboPackage>

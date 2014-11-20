@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE JboPackage SYSTEM "jbo_03_01.dtd">
+
+<JboPackage
+   Name="server"
+   SeparateXMLFiles="true"
+   PackageName="itoen.oracle.apps.xxwsh.lov.server" >
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_ejbPackage" Value="false" />
+   </DesignTime>
+   <Containee
+      Name="KoyuCodeVO"
+      FullName="itoen.oracle.apps.xxwsh.lov.server.KoyuCodeVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="LovAM"
+      FullName="itoen.oracle.apps.xxwsh.lov.server.LovAM"
+      ObjectType="AppModule" >
+   </Containee>
+   <Containee
+      Name="LotNoVO"
+      FullName="itoen.oracle.apps.xxwsh.lov.server.LotNoVO"
+      ObjectType="ViewObject" >
+   </Containee>
+</JboPackage>

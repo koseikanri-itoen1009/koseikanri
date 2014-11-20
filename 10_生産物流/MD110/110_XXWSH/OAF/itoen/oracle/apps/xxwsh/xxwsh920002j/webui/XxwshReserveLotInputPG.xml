@@ -1,0 +1,427 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <oa:pageLayout id="PageLayoutRN" windowTitle="引当ロット入力" title="引当ロット入力" amDefName="itoen.oracle.apps.xxwsh.xxwsh920002j.server.XxwshReserveLotAM" controllerClass="itoen.oracle.apps.xxwsh.xxwsh920002j.webui.XxwshReserveLotInputCO" warnAboutChanges="true">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:flowLayout id="MainRN" standalone="true">
+               <ui:contents>
+                  <oa:tableLayout id="BatchTblRN" width="70%" standalone="false">
+                     <ui:contents>
+                        <oa:rowLayout id="BatchTblRow1">
+                           <ui:contents>
+                              <oa:cellFormat id="BatchTblCell11" hAlign="right">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="RequestNoPrompt" prompt="伝票No"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="BatchTblCell12" styleClass="OraTableCellText" columnSpan="2">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="RequestNo" dataType="VARCHAR2" shortDesc="手配No" styleClass="LegendText" maximumLength="12" viewName="XxwshSearchVO1" viewAttr="RequestNo" columns="12"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="BatchTblCell15" hAlign="right">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="designated_production_date_prompt" prompt="指定製造日"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="BatchTblCell16" styleClass="OraTableCellText">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="designated_production_date" dataType="VARCHAR2" shortDesc="指定製造日" styleClass="LegendText" viewName="XxwshSearchVO1" viewAttr="DesignatedProductionDate" maximumLength="10" columns="10"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="BatchTblCell17" hAlign="right">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="UomCodePrompt" prompt="単位"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="BatchTblCell18" styleClass="OraTableCellText">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="UomCode" dataType="VARCHAR2" shortDesc="単位" styleClass="LegendText" viewName="XxwshSearchVO1" viewAttr="UomCode" maximumLength="3" columns="3"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                        <oa:rowLayout id="BatchTblRow2">
+                           <ui:contents>
+                              <oa:cellFormat id="BatchTblCell21" hAlign="right">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="ItemCodePrompt" prompt="品目"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="BatchTblCell22" styleClass="OraTableCellText">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="ItemCode" dataType="VARCHAR2" shortDesc="品目No" styleClass="LegendText" viewName="XxwshSearchVO1" viewAttr="ItemCode" maximumLength="7" columns="7"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="BatchTblCell23" styleClass="OraTableCellText" columnSpan="1">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="ItemShortName" dataType="VARCHAR2" shortDesc="品目名称" styleClass="LegendText" viewName="XxwshSearchVO1" viewAttr="ItemShortName" maximumLength="20" columns="20"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="BatchTblCell24" hAlign="right">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="quantityPrompt" prompt="数量"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="BatchTblCell25" styleClass="OraTableCellText" hAlign="right">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="quantity" dataType="VARCHAR2" shortDesc="数量" styleClass="LegendText" viewName="XxwshSearchVO1" viewAttr="Quantity" maximumLength="19" columns="19"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="BatchTblCell26" hAlign="right">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="sumReservedQuantityPrompt" prompt="引当数量合計" dataType="VARCHAR2"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="BatchTblCell27" styleClass="OraTableCellText" hAlign="right">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="sumReservedQuantity" dataType="VARCHAR2" shortDesc="ロットNo" styleClass="LegendText" viewName="XxwshSearchVO1" viewAttr="SumReservedQuantity" maximumLength="19" columns="19"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                     </ui:contents>
+                  </oa:tableLayout>
+                  <oa:tableLayout id="ReqFieldDescRN" extends="/oracle/apps/fnd/framework/webui/OAReqFieldDescRG"/>
+                  <oa:advancedTable id="LotAdvTblRN" viewName="XxwshStockCanEncQtyVO1" tableBanding="rowBanding" blockSize="200" width="100%">
+                     <ui:contents>
+                        <oa:columnGroup id="LotColumnGroup1">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="ShowLotNoPrompt" prompt="ロットNo"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:columnGroup id="LotColumnGroup11">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="AutomanualReserveClassPrompt" prompt="自動/手動"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:column id="LotColumn1" columnDataFormat="iconButtonFormat">
+                                       <ui:contents>
+                                          <oa:tableLayout id="LotTblLayout1" width="100%" hAlign="left">
+                                             <ui:contents>
+                                                <oa:rowLayout id="LotRow1" width="100%" hAlign="left">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="LotCell1" width="100%" hAlign="left">
+                                                         <ui:contents>
+                                                            <oa:messageTextInput id="ShowLotNo" viewAttr="ShowLotNo" readOnly="true" maximumLength="10" columns="15" styleClass="LegendText"/>
+                                                            <oa:messageTextInput id="AutomanualReserveClass" viewAttr="AutomanualReserveClass" readOnly="true" maximumLength="8" columns="13" styleClass="LegendText"/>
+                                                            <oa:messageTextInput id="VendorShortName" readOnly="true" viewAttr="VendorShortName" columns="15" maximumLength="10" styleClass="LegendText"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                             </ui:contents>
+                                          </oa:tableLayout>
+                                       </ui:contents>
+                                       <ui:columnHeader>
+                                          <oa:sortableHeader id="VendorShortNamePrompt" prompt="取引先"/>
+                                       </ui:columnHeader>
+                                    </oa:column>
+                                 </ui:contents>
+                              </oa:columnGroup>
+                           </ui:contents>
+                        </oa:columnGroup>
+                        <oa:columnGroup id="LotColumnGroup2">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="ProductionDatePrompt" prompt="製造年月日"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:columnGroup id="LotColumnGroup21">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="ProductHomePrompt" prompt="産地"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:column id="LotColumn2" columnDataFormat="iconButtonFormat">
+                                       <ui:contents>
+                                          <oa:tableLayout id="LotTblLayout2" width="100%" hAlign="left">
+                                             <ui:contents>
+                                                <oa:rowLayout id="LotRow2" width="100%" hAlign="left">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="LotCell2" width="100%" hAlign="left">
+                                                         <ui:contents>
+                                                            <oa:messageTextInput id="ProductionDate" viewAttr="ProductionDate" readOnly="true" maximumLength="10" columns="15" styleClass="LegendText"/>
+                                                            <oa:messageTextInput id="ProductHome" readOnly="true" viewAttr="ProductHome" maximumLength="8" columns="13" styleClass="LegendText"/>
+                                                            <oa:messageTextInput id="Rank1" readOnly="true" viewAttr="Rank1" maximumLength="10" styleClass="LegendText" columns="15"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                             </ui:contents>
+                                          </oa:tableLayout>
+                                       </ui:contents>
+                                       <ui:columnHeader>
+                                          <oa:sortableHeader id="Rank1Prompt" prompt="ランク1"/>
+                                       </ui:columnHeader>
+                                    </oa:column>
+                                 </ui:contents>
+                              </oa:columnGroup>
+                           </ui:contents>
+                        </oa:columnGroup>
+                        <oa:columnGroup id="LotColumnGroup3">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="ExpirationDatePrompt" prompt="賞味期限"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:columnGroup id="LotColumnGroup31">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="TeaPeriodDevPrompt" prompt="茶期"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:column id="LotColumn3" columnDataFormat="iconButtonFormat">
+                                       <ui:contents>
+                                          <oa:tableLayout id="LotTblLayout3" width="100%" hAlign="left">
+                                             <ui:contents>
+                                                <oa:rowLayout id="LotRow3" width="100%" hAlign="left">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="LotCell3" width="100%" hAlign="left">
+                                                         <ui:contents>
+                                                            <oa:messageTextInput id="ExpirationDate" viewAttr="ExpirationDate" readOnly="true" maximumLength="10" columns="15" styleClass="LegendText"/>
+                                                            <oa:messageTextInput id="TeaPeriodDev" viewAttr="TeaPeriodDev" readOnly="true" maximumLength="8" columns="13" styleClass="LegendText"/>
+                                                            <oa:messageTextInput id="Rank2" readOnly="true" viewAttr="Rank2" maximumLength="10" columns="15" styleClass="LegendText"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                             </ui:contents>
+                                          </oa:tableLayout>
+                                       </ui:contents>
+                                       <ui:columnHeader>
+                                          <oa:sortableHeader id="Rank2Prompt" prompt="ランク2"/>
+                                       </ui:columnHeader>
+                                    </oa:column>
+                                 </ui:contents>
+                              </oa:columnGroup>
+                           </ui:contents>
+                        </oa:columnGroup>
+                        <oa:columnGroup id="LotColumnGroup4">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="UniqeSignPrompt" prompt="固有記号"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:columnGroup id="LotColumnGroup41">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="YearPrompt" prompt="年度"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:column id="LotColumn4" columnDataFormat="iconButtonFormat">
+                                       <ui:contents>
+                                          <oa:tableLayout id="LotTblLayout4" width="100%" hAlign="left">
+                                             <ui:contents>
+                                                <oa:rowLayout id="LotRow4" width="100%" hAlign="left">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="LotCell4" width="100%" hAlign="left">
+                                                         <ui:contents>
+                                                            <oa:messageTextInput id="UniqeSign" viewAttr="UniqeSign" readOnly="true" maximumLength="6" columns="11" styleClass="LegendText"/>
+                                                            <oa:messageTextInput id="Year" viewAttr="Year" readOnly="true" maximumLength="4" columns="9" styleClass="LegendText"/>
+                                                            <oa:messageTextInput id="Rank3" readOnly="true" viewAttr="Rank3" maximumLength="10" columns="15" styleClass="LegendText"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                             </ui:contents>
+                                          </oa:tableLayout>
+                                       </ui:contents>
+                                       <ui:columnHeader>
+                                          <oa:sortableHeader id="Rank3Prompt" prompt="ランク3"/>
+                                       </ui:columnHeader>
+                                    </oa:column>
+                                 </ui:contents>
+                              </oa:columnGroup>
+                           </ui:contents>
+                        </oa:columnGroup>
+                        <oa:columnGroup id="LotColumnGroup5">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="LotStatusNamePrompt" prompt="ﾛｯﾄｽﾃｰﾀｽ"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:columnGroup id="LotColumnGroup51">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="StockFormPrompt" prompt="仕入形態"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:column id="LotColumn5" columnDataFormat="iconButtonFormat">
+                                       <ui:contents>
+                                          <oa:tableLayout id="LotTblLayout5" width="100%" hAlign="left">
+                                             <ui:contents>
+                                                <oa:rowLayout id="LotRow5" width="100%" hAlign="left">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="LotCell5" width="100%" hAlign="left">
+                                                         <ui:contents>
+                                                            <oa:messageTextInput id="LotStatusName" viewAttr="LotStatusName" readOnly="true" maximumLength="10" styleClass="LegendText" columns="15"/>
+                                                            <oa:messageTextInput id="StockForm" viewAttr="StockForm" readOnly="true" maximumLength="4" columns="9" styleClass="LegendText"/>
+                                                            <oa:messageTextInput id="Type" readOnly="true" viewAttr="Type" maximumLength="8" styleClass="LegendText" columns="13"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                             </ui:contents>
+                                          </oa:tableLayout>
+                                       </ui:contents>
+                                       <ui:columnHeader>
+                                          <oa:sortableHeader id="TypePrompt" prompt="タイプ"/>
+                                       </ui:columnHeader>
+                                    </oa:column>
+                                 </ui:contents>
+                              </oa:columnGroup>
+                           </ui:contents>
+                        </oa:columnGroup>
+                        <oa:columnGroup id="LotColumnGroup6">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="ManufacturersFactoryPrompt" prompt="製造工場"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:columnGroup id="LotColumnGroup61">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="ManufacturersLotNoPrompt" prompt="製造ロットNo"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:column id="LotColumn6" columnDataFormat="iconButtonFormat">
+                                       <ui:contents>
+                                          <oa:tableLayout id="LotTblLayout6" width="100%" hAlign="left">
+                                             <ui:contents>
+                                                <oa:rowLayout id="LotRow6" width="100%" hAlign="left">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="LotCell6" width="100%" hAlign="left">
+                                                         <ui:contents>
+                                                            <oa:messageTextInput id="ManufacturersFactory" viewAttr="ManufacturersFactory" readOnly="true" maximumLength="20" columns="25" styleClass="LegendText"/>
+                                                            <oa:messageTextInput id="ManufacturersLotNo" viewAttr="ManufacturersLotNo" readOnly="true" maximumLength="20" columns="25" styleClass="LegendText"/>
+                                                            <oa:messageTextInput id="Memo1" readOnly="true" viewAttr="Memo1" maximumLength="20" columns="25" styleClass="LegendText"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                             </ui:contents>
+                                          </oa:tableLayout>
+                                       </ui:contents>
+                                       <ui:columnHeader>
+                                          <oa:sortableHeader id="Memo1Prompt" prompt="備考1"/>
+                                       </ui:columnHeader>
+                                    </oa:column>
+                                 </ui:contents>
+                              </oa:columnGroup>
+                           </ui:contents>
+                        </oa:columnGroup>
+                        <oa:columnGroup id="LotColumnGroup7">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="ShowStockQtyPrompt" prompt="手持在庫数"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:columnGroup id="LotColumnGroup71">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="StockInsAmountPrompt" prompt="在庫入数"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:column id="LotColumn7" columnDataFormat="iconButtonFormat">
+                                       <ui:contents>
+                                          <oa:tableLayout id="LotTblLayout7" width="100%" hAlign="right">
+                                             <ui:contents>
+                                                <oa:rowLayout id="ShowStockQtyRow" width="100%" hAlign="right">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="ShowStockQtyCell" hAlign="right" width="100%">
+                                                         <ui:contents>
+                                                            <oa:messageTextInput id="ShowStockQty" viewAttr="ShowStockQty" readOnly="true" columns="20" maximumLength="15" styleClass="OraFieldNumber"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="StockInsAmountRow" width="100%" hAlign="right">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="StockInsAmountCell" hAlign="right" width="100%">
+                                                         <ui:contents>
+                                                            <oa:messageTextInput id="StockInsAmount" viewAttr="StockInsAmount" readOnly="true" columns="20" maximumLength="15" styleClass="OraFieldNumber"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="Memo2Row" hAlign="left" width="100%">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="Memo2Cell" width="100%" hAlign="left">
+                                                         <ui:contents>
+                                                            <oa:messageTextInput id="Memo2" readOnly="true" viewAttr="Memo2" columns="15" maximumLength="10" styleClass="LegendText"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                             </ui:contents>
+                                          </oa:tableLayout>
+                                       </ui:contents>
+                                       <ui:columnHeader>
+                                          <oa:sortableHeader id="Memo2Prompt" prompt="備考2"/>
+                                       </ui:columnHeader>
+                                    </oa:column>
+                                 </ui:contents>
+                              </oa:columnGroup>
+                           </ui:contents>
+                        </oa:columnGroup>
+                        <oa:columnGroup id="LotColumnGroup8">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="ShowCanEncQtyPrompt" prompt="引当可能数"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:columnGroup id="LotColumnGroup81">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="ShowActualQuantityPrompt" prompt="引当数量" required="uiOnly"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:column id="LotColumn8" columnDataFormat="iconButtonFormat">
+                                       <ui:contents>
+                                          <oa:tableLayout id="LotTblLayout8" width="100%" hAlign="right">
+                                             <ui:contents>
+                                                <oa:rowLayout id="ShowCanEncQtyRow" width="100%" hAlign="right">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="ShowCanEncQtyCell" hAlign="right" width="100%">
+                                                         <ui:contents>
+                                                            <oa:messageTextInput id="ShowCanEncQty" viewAttr="ShowCanEncQty" readOnly="true" columns="20" maximumLength="15" styleClass="OraFieldNumber"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="ShowActualQuantityRow" width="100%" hAlign="right">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="ShowActualQuantityCell" hAlign="right" width="100%">
+                                                         <ui:contents>
+                                                            <oa:messageTextInput id="ShowActualQuantity" viewAttr="ShowActualQuantity" readOnly="false" styleClass="OraFieldNumber" maximumLength="13" columns="18"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="Memo3Row" hAlign="left" width="100%">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="Memo3Cell" width="100%" hAlign="left">
+                                                         <ui:contents>
+                                                            <oa:messageTextInput id="Memo3" readOnly="true" viewAttr="Memo3" columns="15" styleClass="LegendText" maximumLength="10"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                             </ui:contents>
+                                          </oa:tableLayout>
+                                       </ui:contents>
+                                       <ui:columnHeader>
+                                          <oa:sortableHeader id="Memo3Prompt" prompt="備考3"/>
+                                       </ui:columnHeader>
+                                    </oa:column>
+                                 </ui:contents>
+                              </oa:columnGroup>
+                           </ui:contents>
+                        </oa:columnGroup>
+                     </ui:contents>
+                  </oa:advancedTable>
+               </ui:contents>
+            </oa:flowLayout>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="Cancel" prompt="一括解除" text="一括解除" rendered="${oa.XxwshPageLayoutPVO1.CancelRendered}"/>
+                  <oa:submitButton id="Calc" prompt="計算" text="計算" rendered="${oa.XxwshPageLayoutPVO1.CalcRendered}" serverUnvalidated="false" unvalidated="false"/>
+                  <oa:submitButton id="Apply" prompt="適用" text="適用" disabled="${oa.XxwshPageLayoutPVO1.ApplyDisabled}" rendered="true"/>
+                  <oa:submitButton id="Return" disabled="false" text="支給指示画面へ戻る" prompt="支給指示画面へ戻る" unvalidated="true" rendered="${oa.XxwshPageLayoutPVO1.ReturnRendered}"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

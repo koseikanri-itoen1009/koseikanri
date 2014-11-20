@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxwshShipLotInputAM"
+   ComponentClass="itoen.oracle.apps.xxwsh.xxwsh920001j.server.XxwshShipLotInputAMImpl" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+      <Attr Name="_superClassName" Value="itoen.oracle.apps.xxcmn.util.server.XxcmnOAApplicationModuleImpl" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxwshLineVO1"
+      ViewObjectName="itoen.oracle.apps.xxwsh.xxwsh920001j.server.XxwshLineVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxwshIndicateLotVO1"
+      ViewObjectName="itoen.oracle.apps.xxwsh.xxwsh920001j.server.XxwshIndicateLotVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxwshResultLotVO1"
+      ViewObjectName="itoen.oracle.apps.xxwsh.xxwsh920001j.server.XxwshResultLotVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxwshShipLotInputPVO1"
+      ViewObjectName="itoen.oracle.apps.xxwsh.xxwsh920001j.server.XxwshShipLotInputPVO" >
+   </ViewUsage>
+</AppModule>

@@ -1,0 +1,251 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxwsh.xxwsh920001j.server.XxwshShipLotInputAM" controllerClass="itoen.oracle.apps.xxwsh.xxwsh920001j.webui.XxwshStockLotInputCO" windowTitle="入庫実績ロット入力" title="入庫実績ロット入力" warnAboutChanges="true">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="Go" text="適用" prompt="適用" disabled="${oa.XxwshShipLotInputPVO1.GoDisabled}"/>
+                  <oa:submitButton id="Return" text="支給指示画面へ戻る" prompt="支給指示画面へ戻る" rendered="${oa.XxwshShipLotInputPVO1.ReturnRendered}" warnAboutChanges="true"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:tableLayout id="LineRN" hAlign="center" width="100%">
+               <ui:contents>
+                  <oa:rowLayout id="LineRow01">
+                     <ui:contents>
+                        <oa:cellFormat id="LineCell0100" width="10%" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ReqNoPrompt" prompt="依頼No"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="LineCell0101" width="5%">
+                           <ui:contents>
+                              <oa:messageStyledText id="RequestNo" styleClass="LegendText" shortDesc="依頼No" viewName="XxwshLineVO1" viewAttr="RequestNo"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="LineCell0102" width="15%"/>
+                        <oa:cellFormat id="LineCell0103" width="10%" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="QtyPrompt" prompt="数量"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="LineCell0104" width="60%">
+                           <ui:contents>
+                              <oa:messageStyledText id="Quantity" shortDesc="数量" styleClass="OraFieldNumber" viewName="XxwshLineVO1" viewAttr="Quantity"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="LineRow02">
+                     <ui:contents>
+                        <oa:cellFormat id="region7" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ItemPrompt" prompt="品目"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="region8">
+                           <ui:contents>
+                              <oa:messageStyledText id="ItemCode" shortDesc="品目" styleClass="LegendText" viewName="XxwshLineVO1" viewAttr="ItemCode"/>
+                              <oa:formValue id="OpmItemId" viewName="XxwshLineVO1" viewAttr="OpmItemId" dataType="NUMBER"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="region9">
+                           <ui:contents>
+                              <oa:messageStyledText id="ItemName" shortDesc="品目名" styleClass="LegendText" viewName="XxwshLineVO1" viewAttr="ItemName"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="region10" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="UmPrompt" prompt="単位"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="region11">
+                           <ui:contents>
+                              <oa:messageStyledText id="Um" shortDesc="単位" styleClass="LegendText" viewName="XxwshLineVO1" viewAttr="Um"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+               </ui:contents>
+            </oa:tableLayout>
+            <oa:header id="IndicateLotRN" text="指示ロット">
+               <ui:contents>
+                  <oa:advancedTable id="IndicateLotTabRN" viewName="XxwshIndicateLotVO1" width="100%" text="" shortDesc="指示ロット" blockSize="200">
+                     <ui:contents>
+                        <oa:column id="IndicateLotCell01" width="17%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="IndicateLotCell01Hdr" prompt="ロットNo"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:messageStyledText id="IndLotNo" viewAttr="LotNo" shortDesc="ロットNo" styleClass="LegendText"/>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="IndicateLotCell02" width="17%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="IndicateLotCell02Hdr" prompt="製造年月日"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:messageStyledText id="IndManufacturedDate" viewAttr="ManufacturedDate" shortDesc="製造年月日" styleClass="LegendText"/>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="IndicateLotCell03" width="17%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="IndicateLotCell03Hdr" prompt="賞味期限"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:messageStyledText id="IndUseByDate" viewAttr="UseByDate" styleClass="LegendText" shortDesc="賞味期限"/>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="IndicateLotCell04" width="17%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="IndicateLotCell04Hdr" prompt="固有記号"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:messageStyledText id="IndKoyuCode" viewAttr="KoyuCode" styleClass="LegendText" shortDesc="固有記号"/>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="IndicateLotCell05" columnDataFormat="numberFormat" width="17%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="IndicateLotCell05Hdr" prompt="在庫入数"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:messageStyledText id="IndStockQuantity" styleClass="OraFieldNumber" viewAttr="StockQuantity" shortDesc="在庫入数"/>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="IndicateLotCell06" columnDataFormat="numberFormat" width="15%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="IndicateLotCell06Hdr" prompt="指示数量"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:messageStyledText id="IndConvertQuantity" styleClass="OraFieldNumber" viewAttr="ConvertQuantity" shortDesc="指示数量"/>
+                           </ui:contents>
+                        </oa:column>
+                     </ui:contents>
+                  </oa:advancedTable>
+               </ui:contents>
+            </oa:header>
+            <oa:header id="ResultLotRN" text="入庫実績ロット">
+               <ui:contents>
+                  <oa:advancedTable id="ResultLotTabRN" text="" viewName="XxwshResultLotVO1" shortDesc="実績ロット" width="100%" blockSize="200">
+                     <ui:contents>
+                        <oa:column id="ResultLotCell01" width="17%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="ResultLotCell01Hdr" prompt="ロットNo"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:switcher id="LotNoSwitcher" viewAttr="LotNoSwitcher">
+                                 <ui:case name="LotNoEnabled">
+                                    <oa:messageLovInput id="LotNoEnabled" viewAttr="LotNo" shortDesc="ロットNo" styleClass="LegendText" maximumLength="10" columns="14" externalListOfValues="/itoen/oracle/apps/xxwsh/lov/webui/LotNoLovRN">
+                                       <lovMappings>
+                                          <lovMap id="LotNoLov" criteriaFrom="LotNoEnabled" lovItem="LotNo"/>
+                                          <lovMap id="LotNoRetLov" lovItem="LotNo" resultTo="LotNoEnabled"/>
+                                          <lovMap id="OpmItemIdLov" lovItem="OpmItemId" criteriaFrom="OpmItemId"/>
+                                          <lovMap id="LotIdLov" lovItem="LotId" resultTo="LotId"/>
+                                       </lovMappings>
+                                    </oa:messageLovInput>
+                                 </ui:case>
+                                 <ui:case name="LotNoDisabled">
+                                    <oa:messageStyledText id="LotNoDisabled" viewAttr="LotNo" shortDesc="ロットNo"/>
+                                 </ui:case>
+                              </oa:switcher>
+                              <oa:formValue id="LotId" viewAttr="LotId" dataType="NUMBER"/>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="ResultLotCell02" width="17%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="ResultLotCell02Hdr" prompt="製造年月日"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:switcher id="ManufacturedDateSwitcher" viewAttr="ManufacturedDateSwitcher">
+                                 <ui:case name="ManufacturedDateEnabled">
+                                    <oa:messageTextInput id="ManufacturedDateEnabled" viewAttr="ManufacturedDate" shortDesc="製造年月日" styleClass="LegendText" dataType="DATE" columns="13" maximumLength="10"/>
+                                 </ui:case>
+                                 <ui:case name="ManufacturedDateDisabled">
+                                    <oa:messageStyledText id="ManufacturedDateDisabled" viewAttr="ManufacturedDate" shortDesc="製造年月日"/>
+                                 </ui:case>
+                              </oa:switcher>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="ResultLotCell03" width="17%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="ResultLotCell03Hdr" prompt="賞味期限"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:switcher id="UseByDateSwitcher" viewAttr="UseByDateSwitcher">
+                                 <ui:case name="UseByDateEnabled">
+                                    <oa:messageTextInput id="UseByDateEnabled" viewAttr="UseByDate" styleClass="LegendText" shortDesc="賞味期限" dataType="DATE" columns="13" maximumLength="10"/>
+                                 </ui:case>
+                                 <ui:case name="UseByDateDisabled">
+                                    <oa:messageStyledText id="UseByDateDisabled" viewAttr="UseByDate" shortDesc="賞味期限"/>
+                                 </ui:case>
+                              </oa:switcher>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="ResultLotCell04" width="17%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="ResultLotCell04Hdr" prompt="固有記号"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:switcher id="KoyuCodeSwitcher" viewAttr="KoyuCodeSwitcher">
+                                 <ui:case name="KoyuCodeEnabled">
+                                    <oa:messageLovInput id="KoyuCodeEnabled" viewAttr="KoyuCode" styleClass="LegendText" shortDesc="固有記号" maximumLength="6" columns="8" externalListOfValues="/itoen/oracle/apps/xxwsh/lov/webui/KoyuCodeLovRN">
+                                       <lovMappings>
+                                          <lovMap id="KoyuCodeLov" lovItem="KoyuCode" criteriaFrom="KoyuCodeEnabled"/>
+                                          <lovMap id="KoyuCodeRetLov" lovItem="KoyuCode" resultTo="KoyuCodeEnabled"/>
+                                       </lovMappings>
+                                    </oa:messageLovInput>
+                                 </ui:case>
+                                 <ui:case name="KoyuCodeDisabled">
+                                    <oa:messageStyledText id="KoyuCodeDisabled" viewAttr="KoyuCode" shortDesc="固有記号"/>
+                                 </ui:case>
+                              </oa:switcher>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="ResultLotCell05" columnDataFormat="numberFormat" width="17%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="ResultLotCell05Hdr" prompt="在庫入数"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:messageStyledText id="StockQuantity" styleClass="OraFieldNumber" viewAttr="StockQuantity" shortDesc="在庫入数"/>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="ResultLotCell06" columnDataFormat="numberFormat" width="15%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="ResultLotCell06Hdr" prompt="実績数量"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:messageTextInput id="ConvertQuantity" styleClass="OraFieldNumber" viewAttr="ConvertQuantity" shortDesc="実績数量" columns="16" readOnly="${oa.XxwshShipLotInputPVO1.ConvertQuantityReadOnly}" maximumLength="13"/>
+                           </ui:contents>
+                        </oa:column>
+                     </ui:contents>
+                     <ui:tableActions>
+                        <oa:flowLayout id="ButtonBarLayout">
+                           <ui:contents>
+                              <oa:pageButtonBar id="ButtonBarRN">
+                                 <ui:contents>
+                                    <oa:spacer id="Spacer" width="48"/>
+                                    <oa:submitButton id="Check" text="チェック" prompt="チェック" rendered="${oa.XxwshShipLotInputPVO1.CheckRendered}"/>
+                                 </ui:contents>
+                              </oa:pageButtonBar>
+                           </ui:contents>
+                        </oa:flowLayout>
+                     </ui:tableActions>
+                     <ui:footer>
+                        <oa:tableFooter id="tableFooter">
+                           <ui:contents>
+                              <oa:addTableRow id="addRow" rendered="${oa.XxwshShipLotInputPVO1.AddRowRendered}" autoInsertion="false" text="行挿入" shortDesc="行挿入"/>
+                              <oa:submitButton id="Check1" text="チェック" prompt="チェック" rendered="${oa.XxwshShipLotInputPVO1.CheckRendered}"/>
+                           </ui:contents>
+                        </oa:tableFooter>
+                     </ui:footer>
+                  </oa:advancedTable>
+               </ui:contents>
+            </oa:header>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

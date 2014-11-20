@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding='windows-31j'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxwshReserveLotAM"
+   ComponentClass="itoen.oracle.apps.xxwsh.xxwsh920002j.server.XxwshReserveLotAMImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+      <Attr Name="_superClassName" Value="itoen.oracle.apps.xxcmn.util.server.XxcmnOAApplicationModuleImpl" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxwshPageLayoutPVO1"
+      ViewObjectName="itoen.oracle.apps.xxwsh.xxwsh920002j.server.XxwshPageLayoutPVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxwshSearchVO1"
+      ViewObjectName="itoen.oracle.apps.xxwsh.xxwsh920002j.server.XxwshSearchVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxwshStockCanEncQtyVO1"
+      ViewObjectName="itoen.oracle.apps.xxwsh.xxwsh920002j.server.XxwshStockCanEncQtyVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxwshLineShipVO1"
+      ViewObjectName="itoen.oracle.apps.xxwsh.xxwsh920002j.server.XxwshLineShipVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxwshLineProdVO1"
+      ViewObjectName="itoen.oracle.apps.xxwsh.xxwsh920002j.server.XxwshLineProdVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxwshLineMoveVO1"
+      ViewObjectName="itoen.oracle.apps.xxwsh.xxwsh920002j.server.XxwshLineMoveVO" >
+   </ViewUsage>
+</AppModule>
