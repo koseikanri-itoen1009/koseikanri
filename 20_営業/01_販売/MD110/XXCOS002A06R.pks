@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A06R(spec)
  * Description      : 自販機販売報告書
  * MD.050           : 自販機販売報告書 <MD050_COS_002_A06>
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -19,6 +19,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  * 2012/02/16    1.0   K.Kiriu          main新規作成
+ * 2013/11/12    1.2   T.Ishiwata       E_本稼働_11134対応
+ *                                        入力パラメータに「納品日FROM」と「納品日TO」を追加する
  *
  *****************************************************************************************/
 --
@@ -29,7 +31,11 @@ AS
     ,iv_manager_flag     IN  VARCHAR2  --  1.管理者フラグ(Y:管理者 N:拠点)
     ,iv_execute_type     IN  VARCHAR2  --  2.実行区分(1:顧客指定 2:仕入先指定)
     ,iv_target_date      IN  VARCHAR2  --  3.対象年月
-    ,iv_sales_base_code  IN  VARCHAR2  --  4.売上拠点コード(顧客指定時のみ)
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD START
+    ,iv_dlv_date_from    IN  VARCHAR2  --    納品日FROM
+    ,iv_dlv_date_to      IN  VARCHAR2  --    納品日TO
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
+   ,iv_sales_base_code  IN  VARCHAR2  --  4.売上拠点コード(顧客指定時のみ)
     ,iv_customer_code_01 IN  VARCHAR2  --  5.顧客コード1(顧客指定時のみ)
     ,iv_customer_code_02 IN  VARCHAR2  --  6.顧客コード2(顧客指定時のみ)
     ,iv_customer_code_03 IN  VARCHAR2  --  7.顧客コード3(顧客指定時のみ)

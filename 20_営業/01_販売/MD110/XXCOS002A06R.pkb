@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A06R(body)
  * Description      : 自販機販売報告書
  * MD.050           : 自販機販売報告書 <MD050_COS_002_A06>
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,8 @@ AS
  * 2012/02/16    1.0   K.Kiriu          新規作成
  * 2012/12/19    1.1   K.Onotsuka       E_本稼働_10275対応[入力パラメータ.顧客コード(仕入先コード)で重複しているデータは、
  *                                                         配列格納処理から除外する]
+ * 2013/11/12    1.2   T.Ishiwata       E_本稼働_11134対応
+ *                                        入力パラメータに「納品日FROM」と「納品日TO」を追加する
  *
  *****************************************************************************************/
 --
@@ -134,6 +136,13 @@ AS
   cv_msg_nodata_err        CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-00018';          -- 明細0件エラーメッセージ
   cv_msg_api_err           CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-00017';          -- APIエラーメッセージ
   cv_msg_price_wrn         CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14359';          -- 売価小数点メッセージ
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD START
+  cv_msg_date_rever_err    CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-00005';          -- 日付逆転エラー
+  cv_msg_prim_chk          CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14361';          -- パラメータ納品日優先メッセージ
+  cv_msg_pram_set_err      CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14362';          -- パラメータ期間情報未設定エラーメッセージ
+  cv_msg_required_err      CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14363';          -- パラメータ納品日FROM-TO設定チェック
+  cv_msg_range_err         CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14364';          -- パラメータ納品日FROM-TO範囲チェック
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
   --メッセージトークン用
   cv_msg_tkn_org           CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-00047';          -- MO:営業単位
   cv_msg_tkn_organization  CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-00048';          -- XXCOI:在庫組織コード
@@ -144,6 +153,10 @@ AS
   cv_msg_tkn_rep_table     CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14358';          -- 自販機販売報告書帳票ワークテーブル
   cv_msg_tkn_emp_table     CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14360';          -- 担当営業
   cv_msg_tkn_svf_api       CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-00041';          -- SVF起動API
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD START
+  cv_msg_date_from         CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14365';          -- 納品日FROM
+  cv_msg_date_to           CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14366';          -- 納品日TO
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
 --
   --トークンコード
   cv_tkn_manager_flag      CONSTANT VARCHAR2(12)  := 'MANAGER_FLAG';              -- 管理者フラグ
@@ -172,6 +185,12 @@ AS
   cv_tkn_cust              CONSTANT VARCHAR2(9)   := 'CUST_CODE';                 -- 顧客コード
   cv_tkn_item              CONSTANT VARCHAR2(9)   := 'ITEM_CODE';                 -- 品目コード
   cv_tkn_dlv_price         CONSTANT VARCHAR2(9)   := 'DLV_PRICE';                 -- 売価
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD START
+  cv_tkn_dlv_date_from     CONSTANT VARCHAR2(15)  := 'DLV_DATE_FROM';             -- 納品日FROM
+  cv_tkn_dlv_date_to       CONSTANT VARCHAR2(15)  := 'DLV_DATE_TO';               -- 納品日TO
+  cv_tkn_date_from         CONSTANT VARCHAR2(15)  := 'DATE_FROM';                 -- 文字列「納品日FROM」
+  cv_tkn_date_to           CONSTANT VARCHAR2(15)  := 'DATE_TO';                   -- 文字列「納品日TO」
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
 --
   --プロファイル
   cv_prf_org               CONSTANT VARCHAR2(6)   := 'ORG_ID';                    -- MO:営業単位
@@ -193,6 +212,10 @@ AS
      manager_flag      VARCHAR2(1)                             -- 管理者フラグ
     ,execute_type      VARCHAR2(1)                             -- 実行区分
     ,target_date       VARCHAR2(7)                             -- 対象年月
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD START
+    ,dlv_date_from     DATE                                    -- 納品日FROM
+    ,dlv_date_to       DATE                                    -- 納品日TO
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
     ,sales_base_code   xxcmm_cust_accounts.sale_base_code%TYPE -- 売上拠点コード
   );
 --
@@ -310,10 +333,16 @@ AS
                         ,iv_token_value7  => g_cust_tab(3)                -- 顧客コード3
                         ,iv_token_name8   => cv_tkn_cust_04               -- トークンコード８
                         ,iv_token_value8  => g_cust_tab(4)                -- 顧客コード4
-                        ,iv_token_name9   => cv_tkn_cust_05               -- トークンコード９
-                        ,iv_token_value9  => g_cust_tab(5)                -- 顧客コード5
-                        ,iv_token_name10  => cv_tkn_cust_06               -- トークンコード１０
-                        ,iv_token_value10 => g_cust_tab(6)                -- 顧客コード6
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 MOD START
+--                        ,iv_token_name9   => cv_tkn_cust_05               -- トークンコード９
+--                        ,iv_token_value9  => g_cust_tab(5)                -- 顧客コード5
+--                        ,iv_token_name10  => cv_tkn_cust_06               -- トークンコード１０
+--                        ,iv_token_value10 => g_cust_tab(6)                -- 顧客コード6
+                        ,iv_token_name9   => cv_tkn_dlv_date_from                                     -- トークンコード９
+                        ,iv_token_value9  => TO_CHAR( g_input_rec.dlv_date_from , cv_date_yyyymmdd )  -- 納品日FROM
+                        ,iv_token_name10  => cv_tkn_dlv_date_to                                       -- トークンコード１０
+                        ,iv_token_value10 => TO_CHAR( g_input_rec.dlv_date_to   , cv_date_yyyymmdd )  -- 納品日TO
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 MOD END
                       );
       --1～10のパラメータをログへ出力
       FND_FILE.PUT_LINE(
@@ -330,8 +359,14 @@ AS
                         ,iv_token_value2  => g_cust_tab(8)                 -- 顧客コード8
                         ,iv_token_name3   => cv_tkn_cust_09                -- トークンコード３
                         ,iv_token_value3  => g_cust_tab(9)                 -- 顧客コード9
-                        ,iv_token_name4   => cv_tkn_cust_10                -- トークンコード３
+                        ,iv_token_name4   => cv_tkn_cust_10                -- トークンコード４
                         ,iv_token_value4  => g_cust_tab(10)                -- 顧客コード10
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD START
+                        ,iv_token_name5   => cv_tkn_cust_05               -- トークンコード５
+                        ,iv_token_value5  => g_cust_tab(5)                -- 顧客コード5
+                        ,iv_token_name6   => cv_tkn_cust_06               -- トークンコード６
+                        ,iv_token_value6  => g_cust_tab(6)                -- 顧客コード6
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
                       );
       --11～13のパラメータをログへ出力
       FND_FILE.PUT_LINE(
@@ -356,6 +391,12 @@ AS
                         ,iv_token_value5  => g_vend_tab(2)                 -- 仕入先コード2
                         ,iv_token_name6   => cv_tkn_vend_03                -- トークンコード６
                         ,iv_token_value6  => g_vend_tab(3)                 -- 仕入先コード3
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD START
+                        ,iv_token_name7   => cv_tkn_dlv_date_from                                     -- トークンコード９
+                        ,iv_token_value7  => TO_CHAR( g_input_rec.dlv_date_from , cv_date_yyyymmdd )  -- 納品日FROM
+                        ,iv_token_name8   => cv_tkn_dlv_date_to                                       -- トークンコード１０
+                        ,iv_token_value8  => TO_CHAR( g_input_rec.dlv_date_to   , cv_date_yyyymmdd )  -- 納品日TO
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
                       );
       --ログへ出力
       FND_FILE.PUT_LINE(
@@ -608,6 +649,109 @@ AS
         ov_retcode := cv_status_error;
     END;
 --
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD START
+    --=========================================
+    -- 期間パラメータ優先確認メッセージの出力
+    --=========================================
+    IF(    g_input_rec.target_date   IS NOT NULL 
+       AND g_input_rec.dlv_date_from IS NOT NULL 
+       AND g_input_rec.dlv_date_to   IS NOT NULL ) THEN   -- 年月、納品日FROM、納品日TO設定あり
+      --メッセージ取得
+      lv_err_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => cv_msg_prim_chk      --メッセージコード
+                    );
+      --ログへ出力
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => lv_err_msg
+      );
+      --リターンコードにエラーを設定
+      ov_retcode := cv_status_warn;
+    END IF;
+    --=========================================
+    -- 期間パラメータの入力チェック
+    --=========================================
+    IF(    g_input_rec.target_date   IS NULL
+       AND g_input_rec.dlv_date_from IS NULL
+       AND g_input_rec.dlv_date_to   IS NULL ) THEN   -- 年月、納品日FROM、納品日TO設定なし
+      --メッセージ取得
+      lv_err_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => cv_msg_pram_set_err      --メッセージコード
+                    );
+      --ログへ出力
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => lv_err_msg
+      );
+      --リターンコードにエラーを設定
+      ov_retcode := cv_status_error;
+    END IF;
+    --
+    --=========================================
+    -- 入力パラメータ「納品日」の必須チェック
+    --=========================================
+    --「納品日FROM」と「納品日TO」がともに未設定の場合
+    IF (   (( g_input_rec.dlv_date_from IS NOT NULL ) AND ( g_input_rec.dlv_date_to   IS     NULL ))
+        OR (( g_input_rec.dlv_date_from IS     NULL ) AND ( g_input_rec.dlv_date_to   IS NOT NULL ))
+       )  THEN
+      --メッセージ取得
+      lv_err_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => cv_msg_required_err      --メッセージコード
+                    );
+      --ログへ出力
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => lv_err_msg
+      );
+      --リターンコードにエラーを設定
+      ov_retcode := cv_status_error;
+    ELSE
+      --=========================================
+      -- 入力パラメータ「納品日」日付逆転チェック
+      --=========================================
+      --「納品日FROM」＞「納品日TO」である場合
+      IF ( g_input_rec.dlv_date_from  >  g_input_rec.dlv_date_to ) THEN
+        --メッセージ取得
+        lv_err_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application
+                        ,iv_name         => cv_msg_date_rever_err      --メッセージコード
+                        ,iv_token_name1  => cv_tkn_date_from
+                        ,iv_token_value1 => cv_msg_date_from           -- 納品日FROM
+                        ,iv_token_name2  => cv_tkn_date_to
+                        ,iv_token_value2 => cv_msg_date_to             -- 納品日TO
+                      );
+        --ログへ出力
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.LOG
+          ,buff   => lv_err_msg
+        );
+        --リターンコードにエラーを設定
+        ov_retcode := cv_status_error;
+      ELSE
+        --=========================================
+        -- 入力パラメータ「納品日」日付範囲チェック
+        --=========================================
+        --パラメータ「納品日FROM」が パラメータ「納品日TO」の１ヶ月前より過去の場合
+        IF ( g_input_rec.dlv_date_from  < ADD_MONTHS( g_input_rec.dlv_date_to, -1 ) ) THEN
+          --メッセージ取得
+          lv_err_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application
+                          ,iv_name         => cv_msg_range_err      --メッセージコード
+                        );
+          --ログへ出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => lv_err_msg
+          );
+          --リターンコードにエラーを設定
+          ov_retcode := cv_status_error;
+        END IF;
+      END IF;
+    END IF;
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
     --エラーの場合、ログ出力用にERRBUFを設定
     IF ( ov_retcode = cv_status_error ) THEN
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
@@ -806,34 +950,83 @@ AS
                   ELSE
                     NULL
                  END                        address_line2       -- 住所２
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 MOD START
+--                ,CASE
+--                   -- 末締の場合(NULL=販売手数料なしの場合も)
+--                   WHEN NVL( xcm.close_day_code, cv_30 ) = cv_30 THEN
+--                     -- 指定月の1日
+--                     ld_first_date
+--                   -- 2月の28日,29日締考慮
+--                   WHEN TO_NUMBER( xcm.close_day_code ) >= TO_NUMBER( TO_CHAR( LAST_DAY( ld_first_date ),cv_date_dd ) ) THEN
+--                     TO_DATE(    TO_CHAR( ADD_MONTHS( ld_first_date, -1 ), cv_date_yyyymm )
+--                              || xcm.close_day_code, cv_date_yyyymmdd) + 1
+--                   -- 末締以外
+--                   ELSE
+--                     -- 前月締日+1日
+--                     ADD_MONTHS(TO_DATE( g_input_rec.target_date || cv_slash || xcm.close_day_code, cv_date_yyyymmdd ),-1 ) + 1
+--                 END                        date_from           -- 対象期間開始日
                 ,CASE
-                   -- 末締の場合(NULL=販売手数料なしの場合も)
-                   WHEN NVL( xcm.close_day_code, cv_30 ) = cv_30 THEN
-                     -- 指定月の1日
-                     ld_first_date
-                   -- 2月の28日,29日締考慮
-                   WHEN TO_NUMBER( xcm.close_day_code ) >= TO_NUMBER( TO_CHAR( LAST_DAY( ld_first_date ),cv_date_dd ) ) THEN
-                     TO_DATE(    TO_CHAR( ADD_MONTHS( ld_first_date, -1 ), cv_date_yyyymm )
-                              || xcm.close_day_code, cv_date_yyyymmdd) + 1
-                   -- 末締以外
+                   -- 入力パラメータ「年月」で検索
+                   WHEN g_input_rec.dlv_date_from IS NULL THEN
+                     --
+                     CASE
+                       -- 末締の場合(NULL=販売手数料なしの場合も)
+                       WHEN NVL( xcm.close_day_code, cv_30 ) = cv_30 THEN
+                         -- 指定月の1日
+                         ld_first_date
+                       -- 2月の28日,29日締考慮
+                       WHEN TO_NUMBER( xcm.close_day_code ) >= TO_NUMBER( TO_CHAR( LAST_DAY( ld_first_date ),cv_date_dd ) ) THEN
+                         TO_DATE(    TO_CHAR( ADD_MONTHS( ld_first_date, -1 ), cv_date_yyyymm )
+                                  || xcm.close_day_code, cv_date_yyyymmdd) + 1
+                       -- 末締以外
+                       ELSE
+                         -- 前月締日+1日
+                         ADD_MONTHS(TO_DATE( g_input_rec.target_date || cv_slash || xcm.close_day_code, cv_date_yyyymmdd ),-1 ) + 1
+                     END
+                   -- 入力パラメータ「納品日FROM/TO」で検索
                    ELSE
-                     -- 前月締日+1日
-                     ADD_MONTHS(TO_DATE( g_input_rec.target_date || cv_slash || xcm.close_day_code, cv_date_yyyymmdd ),-1 ) + 1
+                     -- 入力パラメータ「納品日FROM」
+                     g_input_rec.dlv_date_from 
                  END                        date_from           -- 対象期間開始日
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 MOD END
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 MOD START
+--                ,CASE
+--                   -- 末締の場合(NULL=販売手数料なしの場合も)
+--                   WHEN NVL( xcm.close_day_code, cv_30 ) = cv_30 THEN
+--                     -- 指定月の最終日
+--                     ld_last_date
+--                   --2月の28日,29日締考慮
+--                   WHEN TO_NUMBER( xcm.close_day_code ) >= TO_NUMBER( TO_CHAR( LAST_DAY( ld_first_date ), cv_date_dd ) ) THEN
+--                     -- 指定月の最終日(2月28 or 29)
+--                     ld_last_date
+--                   -- 末締以外
+--                   ELSE
+--                     --指定月の締日
+--                     TO_DATE( g_input_rec.target_date || cv_slash || xcm.close_day_code, cv_date_yyyymmdd )
+--                 END                        date_to             -- 対象期間終了日
                 ,CASE
-                   -- 末締の場合(NULL=販売手数料なしの場合も)
-                   WHEN NVL( xcm.close_day_code, cv_30 ) = cv_30 THEN
-                     -- 指定月の最終日
-                     ld_last_date
-                   --2月の28日,29日締考慮
-                   WHEN TO_NUMBER( xcm.close_day_code ) >= TO_NUMBER( TO_CHAR( LAST_DAY( ld_first_date ), cv_date_dd ) ) THEN
-                     -- 指定月の最終日(2月28 or 29)
-                     ld_last_date
-                   -- 末締以外
+                   -- 入力パラメータ「年月」で検索
+                   WHEN g_input_rec.dlv_date_to IS NULL THEN
+                     CASE
+                       -- 末締の場合(NULL=販売手数料なしの場合も)
+                       WHEN NVL( xcm.close_day_code, cv_30 ) = cv_30 THEN
+                         -- 指定月の最終日
+                         ld_last_date
+                       --2月の28日,29日締考慮
+                       WHEN TO_NUMBER( xcm.close_day_code ) >= TO_NUMBER( TO_CHAR( LAST_DAY( ld_first_date ), cv_date_dd ) ) THEN
+                         -- 指定月の最終日(2月28 or 29)
+                         ld_last_date
+                       -- 末締以外
+                       ELSE
+                         --指定月の締日
+                         TO_DATE( g_input_rec.target_date || cv_slash || xcm.close_day_code, cv_date_yyyymmdd )
+                     END
+                   -- 入力パラメータ「納品日FROM/TO」で検索
                    ELSE
-                     --指定月の締日
-                     TO_DATE( g_input_rec.target_date || cv_slash || xcm.close_day_code, cv_date_yyyymmdd )
+                     -- 入力パラメータ「納品日TO」
+                     g_input_rec.dlv_date_to
                  END                        date_to             -- 対象期間終了日
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 MOD END
           FROM   hz_cust_accounts           hca       -- 顧客マスタ(顧客)
                 ,xxcmm_cust_accounts        xca       -- 顧客追加情報(顧客)
                 ,hz_parties                 hp        -- パーティマスタ(顧客)
@@ -958,34 +1151,84 @@ AS
                 ,pvs.zip                    vendor_zip          -- 郵便番号
                 ,pvs.address_line1          address_line1       -- 住所１
                 ,pvs.address_line2          address_line2       -- 住所２
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 MOD START
+--                ,CASE
+--                   -- 末締の場合
+--                   WHEN NVL( xcm.close_day_code, cv_30 ) = cv_30 THEN
+--                     -- 指定月の1日
+--                     ld_first_date
+--                   -- 2月の28日,29日締考慮
+--                   WHEN TO_NUMBER( xcm.close_day_code ) >= TO_NUMBER( TO_CHAR( LAST_DAY( ld_first_date ),cv_date_dd ) ) THEN
+--                     TO_DATE(    TO_CHAR( ADD_MONTHS( ld_first_date, -1 ), cv_date_yyyymm )
+--                              || xcm.close_day_code, cv_date_yyyymmdd) + 1
+--                   -- 末締以外
+--                   ELSE
+--                     -- 前月締日+1日
+--                     ADD_MONTHS(TO_DATE( g_input_rec.target_date || cv_slash || xcm.close_day_code, cv_date_yyyymmdd ),-1 ) + 1
+--                 END                        date_from           -- 対象期間開始日
                 ,CASE
-                   -- 末締の場合
-                   WHEN NVL( xcm.close_day_code, cv_30 ) = cv_30 THEN
-                     -- 指定月の1日
-                     ld_first_date
-                   -- 2月の28日,29日締考慮
-                   WHEN TO_NUMBER( xcm.close_day_code ) >= TO_NUMBER( TO_CHAR( LAST_DAY( ld_first_date ),cv_date_dd ) ) THEN
-                     TO_DATE(    TO_CHAR( ADD_MONTHS( ld_first_date, -1 ), cv_date_yyyymm )
-                              || xcm.close_day_code, cv_date_yyyymmdd) + 1
-                   -- 末締以外
+                   -- 入力パラメータ「年月」で検索
+                   WHEN g_input_rec.dlv_date_from IS NULL THEN
+                     --
+                     CASE
+                       -- 末締の場合
+                       WHEN NVL( xcm.close_day_code, cv_30 ) = cv_30 THEN
+                         -- 指定月の1日
+                         ld_first_date
+                       -- 2月の28日,29日締考慮
+                       WHEN TO_NUMBER( xcm.close_day_code ) >= TO_NUMBER( TO_CHAR( LAST_DAY( ld_first_date ),cv_date_dd ) ) THEN
+                         TO_DATE(    TO_CHAR( ADD_MONTHS( ld_first_date, -1 ), cv_date_yyyymm )
+                                  || xcm.close_day_code, cv_date_yyyymmdd) + 1
+                       -- 末締以外
+                       ELSE
+                         -- 前月締日+1日
+                         ADD_MONTHS(TO_DATE( g_input_rec.target_date || cv_slash || xcm.close_day_code, cv_date_yyyymmdd ),-1 ) + 1
+                     END
+                   -- 入力パラメータ「納品日FROM/TO」で検索
                    ELSE
-                     -- 前月締日+1日
-                     ADD_MONTHS(TO_DATE( g_input_rec.target_date || cv_slash || xcm.close_day_code, cv_date_yyyymmdd ),-1 ) + 1
+                     -- 入力パラメータ「納品日FROM」
+                     g_input_rec.dlv_date_from 
                  END                        date_from           -- 対象期間開始日
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 MOD END
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 MOD START
+--                ,CASE
+--                   -- 末締の場合
+--                   WHEN NVL( xcm.close_day_code, cv_30 ) = cv_30 THEN
+--                     -- 指定月の最終日
+--                     ld_last_date
+--                   --2月の28日,29日締考慮
+--                   WHEN TO_NUMBER( xcm.close_day_code ) >= TO_NUMBER( TO_CHAR( LAST_DAY( ld_first_date ), cv_date_dd ) ) THEN
+--                     -- 指定月の最終日(2月28 or 29)
+--                     ld_last_date
+--                   -- 末締以外
+--                   ELSE
+--                     --指定月の締日
+--                     TO_DATE( g_input_rec.target_date || cv_slash || xcm.close_day_code, cv_date_yyyymmdd )
+--                 END                        date_to             -- 対象期間終了日
                 ,CASE
-                   -- 末締の場合
-                   WHEN NVL( xcm.close_day_code, cv_30 ) = cv_30 THEN
-                     -- 指定月の最終日
-                     ld_last_date
-                   --2月の28日,29日締考慮
-                   WHEN TO_NUMBER( xcm.close_day_code ) >= TO_NUMBER( TO_CHAR( LAST_DAY( ld_first_date ), cv_date_dd ) ) THEN
-                     -- 指定月の最終日(2月28 or 29)
-                     ld_last_date
-                   -- 末締以外
+                   -- 入力パラメータ「年月」で検索
+                   WHEN g_input_rec.dlv_date_to IS NULL THEN
+                     --
+                     CASE
+                       -- 末締の場合
+                       WHEN NVL( xcm.close_day_code, cv_30 ) = cv_30 THEN
+                         -- 指定月の最終日
+                         ld_last_date
+                       --2月の28日,29日締考慮
+                       WHEN TO_NUMBER( xcm.close_day_code ) >= TO_NUMBER( TO_CHAR( LAST_DAY( ld_first_date ), cv_date_dd ) ) THEN
+                         -- 指定月の最終日(2月28 or 29)
+                         ld_last_date
+                       -- 末締以外
+                       ELSE
+                         --指定月の締日
+                         TO_DATE( g_input_rec.target_date || cv_slash || xcm.close_day_code, cv_date_yyyymmdd )
+                     END
+                   -- 入力パラメータ「納品日FROM/TO」で検索
                    ELSE
-                     --指定月の締日
-                     TO_DATE( g_input_rec.target_date || cv_slash || xcm.close_day_code, cv_date_yyyymmdd )
+                     -- 入力パラメータ「納品日TO」
+                     g_input_rec.dlv_date_to
                  END                        date_to             -- 対象期間終了日
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 MOD END
           FROM   hz_cust_accounts           hca       -- 顧客マスタ(顧客)
                 ,xxcmm_cust_accounts        xca       -- 顧客追加情報(顧客)
                 ,hz_parties                 hp        -- パーティマスタ(顧客)
@@ -1944,6 +2187,10 @@ AS
      iv_manager_flag     IN  VARCHAR2  --  1.管理者フラグ(Y:管理者 N:拠点)
     ,iv_execute_type     IN  VARCHAR2  --  2.実行区分(1:顧客指定 2:仕入先指定)
     ,iv_target_date      IN  VARCHAR2  --  3.対象年月
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD START
+    ,iv_dlv_date_from    IN  VARCHAR2  --    納品日FROM
+    ,iv_dlv_date_to      IN  VARCHAR2  --    納品日TO
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
     ,iv_sales_base_code  IN  VARCHAR2  --  4.売上拠点コード(顧客指定時のみ)
     ,iv_customer_code_01 IN  VARCHAR2  --  5.顧客コード1(顧客指定時のみ)
     ,iv_customer_code_02 IN  VARCHAR2  --  6.顧客コード2(顧客指定時のみ)
@@ -2015,6 +2262,10 @@ AS
     g_input_rec.execute_type     := iv_execute_type;     --  2.実行区分(1:顧客指定 2:仕入先指定)
     g_input_rec.target_date      := iv_target_date;      --  3.対象年月
     g_input_rec.sales_base_code  := iv_sales_base_code;  --  4.売上拠点コード(顧客指定時のみ)
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD START
+    g_input_rec.dlv_date_from    := fnd_date.string_to_date( iv_dlv_date_from, cv_date_yyyymmdd );    -- 納品日FROM
+    g_input_rec.dlv_date_to      := fnd_date.string_to_date( iv_dlv_date_to  , cv_date_yyyymmdd );    --    納品日TO
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
 --
     --実行区分が1(顧客指定で実行）の場合
     IF ( g_input_rec.execute_type = cv_1 ) THEN
@@ -2064,6 +2315,10 @@ AS
 --
     IF (lv_retcode = cv_status_error) THEN
       RAISE global_process_expt;
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD START
+    ELSIF (lv_retcode = cv_status_warn ) THEN
+      ov_retcode := cv_status_warn;
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
     END IF;
 --
     -- ===============================
@@ -2183,6 +2438,10 @@ AS
     ,iv_manager_flag     IN  VARCHAR2  --  1.管理者フラグ(Y:管理者 N:拠点)
     ,iv_execute_type     IN  VARCHAR2  --  2.実行区分(1:顧客指定 2:仕入先指定)
     ,iv_target_date      IN  VARCHAR2  --  3.対象年月
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD START
+    ,iv_dlv_date_from    IN  VARCHAR2  --    納品日FROM
+    ,iv_dlv_date_to      IN  VARCHAR2  --    納品日TO
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
     ,iv_sales_base_code  IN  VARCHAR2  --  4.売上拠点コード(顧客指定時のみ)
     ,iv_customer_code_01 IN  VARCHAR2  --  5.顧客コード1(顧客指定時のみ)
     ,iv_customer_code_02 IN  VARCHAR2  --  6.顧客コード2(顧客指定時のみ)
@@ -2253,6 +2512,10 @@ AS
        iv_manager_flag     --管理者フラグ
       ,iv_execute_type     --実行区分
       ,iv_target_date      --対象年月
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD START
+      ,iv_dlv_date_from    --納品日FROM
+      ,iv_dlv_date_to      --納品日TO
+-- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
       ,iv_sales_base_code  --売上拠点コード
       ,iv_customer_code_01 --顧客コード1
       ,iv_customer_code_02 --顧客コード2
