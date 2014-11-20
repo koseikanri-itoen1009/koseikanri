@@ -3,13 +3,15 @@
  *
  * Table Name  : XXCOS_REP_COST_DIV_LIST
  * Description : 原価割れチェックリスト帳票ワークテーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS H.Ri       新規作成
+ *  2009/10/02    1.1   SCS S.Miyakoshi  [0001378]桁あふれ対応 DLV_UNIT_PRICE(NUMBER(8,2)→NUMBER(13,2))
+ *                                                             SALE_AMOUNT(NUMBER(15,0)→NUMBER)
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_COST_DIV_LIST
@@ -29,8 +31,8 @@ CREATE TABLE XXCOS.XXCOS_REP_COST_DIV_LIST
     ORDER_ITEM_NAME           VARCHAR2(20),                                --受注品名
     QUANTITY                  NUMBER(9,2),                                 --数量
     UOM_CODE                  VARCHAR2(3),                                 --単位
-    DLV_UNIT_PRICE            NUMBER(8,2),                                 --納品単価
-    SALE_AMOUNT               NUMBER(15,0),                                --売上金額
+    DLV_UNIT_PRICE            NUMBER(13,2),                                --納品単価
+    SALE_AMOUNT               NUMBER,                                      --売上金額
     CREATED_BY                NUMBER(15,0)        NOT NULL,                --作成者
     CREATION_DATE             DATE                NOT NULL,                --作成日
     LAST_UPDATED_BY           NUMBER(15,0)        NOT NULL,                --最終更新者
