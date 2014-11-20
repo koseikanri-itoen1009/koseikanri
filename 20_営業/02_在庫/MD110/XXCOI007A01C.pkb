@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI007A01C(body)
  * Description      : 資材配賦情報の差額仕訳※の生成。※原価差額(標準原価-営業原価)
  * MD.050           : 調整仕訳自動生成 MD050_COI_007_A01
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/14    1.0   T.Kojima        新規作成
  *  2009/03/26    1.1   H.Sasaki        [障害T1_0120]
+ *  2009/05/11    1.2   T.Nakamura      [障害T1_0933]
  *
  *****************************************************************************************/
 --
@@ -1101,10 +1102,13 @@ AS
         -- ===============================
         -- GLインターフェース格納 (A-8)
         -- ===============================
-        -- 原価差額が－なら借方金額にセット
-        IF xwcv_sumr_rec.xwcv_cost_variance_sum < 0 THEN
-          lt_entered_dr := ABS( xwcv_sumr_rec.xwcv_cost_variance_sum );
         -- 原価差額が＋なら借方金額にセット
+-- == 2009/05/11 V1.2 Modified START ===============================================================
+--        IF xwcv_sumr_rec.xwcv_cost_variance_sum < 0 THEN
+        IF xwcv_sumr_rec.xwcv_cost_variance_sum > 0 THEN
+-- == 2009/05/11 V1.2 Modified END   ===============================================================
+          lt_entered_dr := ABS( xwcv_sumr_rec.xwcv_cost_variance_sum );
+        -- 原価差額が－なら貸方金額にセット
         ELSE
           lt_entered_cr := ABS( xwcv_sumr_rec.xwcv_cost_variance_sum );
         END IF;

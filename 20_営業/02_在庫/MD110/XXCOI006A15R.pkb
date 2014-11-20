@@ -8,7 +8,7 @@ AS
  * Description      : 倉庫毎に日次または月中、月末の受払残高情報を受払残高表に出力します。
  *                    預け先毎に月末の受払残高情報を受払残高表に出力します。
  * MD.050           : 受払残高表(倉庫・預け先)    MD050_COI_006_A15
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/18    1.0   Sai.u            新規作成
  *  2009/03/05    1.1   T.Nakamura       [障害COI_036] 件数出力の不具合対応
+ *  2009/04/12    1.2   H.Sasaki         [T1_0842]倉替入出庫の帳票への出力を修正
  *
  *****************************************************************************************/
 --
@@ -331,8 +332,16 @@ AS
           ,ird.warehouse_stock         ird_warehouse_stock           -- 倉庫より入庫
           ,ird.truck_stock             ird_truck_stock               -- 営業車より入庫
           ,ird.others_stock            ird_others_stock              -- 入出庫＿その他入庫
-          ,ird.change_stock            ird_change_stock              -- 倉替入庫
-          ,ird.change_ship             ird_change_ship               -- 倉替出庫
+-- == 2009/05/12 V1.2 Modified START ===============================================================
+--          ,ird.change_stock            ird_change_stock              -- 倉替入庫
+--          ,ird.change_ship             ird_change_ship               -- 倉替出庫
+          ,DECODE(msi.attribute1, cv_subinv_2, 0
+                                      , ird.change_stock
+           )                           ird_change_stock              -- 倉替入庫
+          ,DECODE(msi.attribute1, cv_subinv_2, 0
+                                      , ird.change_ship
+           )                           ird_change_ship               -- 倉替出庫
+-- == 2009/05/12 V1.2 Modified END   ===============================================================
           ,ird.goods_transfer_old      ird_goods_transfer_old        -- 商品振替(旧商品)
           ,ird.goods_transfer_new      ird_goods_transfer_new        -- 商品振替(新商品)
           ,ird.sample_quantity         ird_sample_quantity           -- 見本出庫
@@ -360,6 +369,14 @@ AS
           ,ird.selfbase_ship           ird_selfbase_ship             -- 保管場所移動＿自拠点出庫
           ,ird.selfbase_stock          ird_selfbase_stock            -- 保管場所移動＿自拠点入庫
           ,ird.book_inventory_quantity ird_book_inventory_quantity   -- 帳簿在庫数
+-- == 2009/05/12 V1.2 Added START ===============================================================
+          ,DECODE(msi.attribute1, cv_subinv_2, ird.change_stock
+                                      , 0
+           )                           ird_truck_change_stock        -- 倉替入庫（営業員）
+          ,DECODE(msi.attribute1, cv_subinv_2, ird.change_ship
+                                      , 0
+           )                           ird_truck_change_ship         -- 倉替出庫（営業員）
+-- == 2009/05/12 V1.2 Added END   ===============================================================
     FROM   xxcoi_inv_reception_daily   ird                           -- 月次在庫受払表(日次)
           ,xxcoi_base_info2_v          biv                           -- 拠点情報ビュー
           ,mtl_secondary_inventories   msi                           -- 保管場所マスタ (INV)
@@ -374,24 +391,43 @@ AS
     AND    ird.practice_date         = gd_inventory_date
     AND    ird.inventory_item_id     = sib.inventory_item_id
     AND    sib.organization_id       = ird.organization_id
-    AND    sib.segment1              = iib.item_no                   -- OPM品目コード
+    AND    sib.segment1              = iib.item_no                    -- OPM品目コード
     AND    iib.item_id               = imb.item_id
     AND  ((iv_output_kbn             = cv_out_kbn1
     AND    SUBSTR(msi.secondary_inventory_name,6,2)
                                      = NVL(iv_warehouse,SUBSTR(msi.secondary_inventory_name,6,2)))
     OR    (iv_output_kbn            <> cv_out_kbn1
-    AND    msi.attribute4            = NVL(iv_left_base,msi.attribute4)))
-    AND (((iv_output_kbn             = cv_out_kbn1
-    AND    msi.attribute1            = cv_subinv_1)
-    OR    (iv_output_kbn            <> cv_out_kbn1
-    AND    msi.attribute1            = cv_subinv_3))                 -- 保管場所区分(預け先)
-    OR  (((iv_output_kbn             = cv_out_kbn1
-    AND    msi.attribute1            = cv_subinv_1)
-    OR    (iv_output_kbn            <> cv_out_kbn1
-    AND    msi.attribute1            = cv_subinv_4))                 -- 保管場所区分(専門店)
-    AND  ((msi.attribute13          <> cv_subinv_7                   -- 保管場所分類(消化VD)
-    AND    iv_left_base IS NULL)
-    OR    (iv_left_base IS NOT NULL))))
+    AND    msi.attribute4            = NVL(iv_left_base, msi.attribute4)))
+    AND (     (
+                    (    iv_output_kbn   =  cv_out_kbn1
+                     AND msi.attribute1  =  cv_subinv_1
+                    )
+               OR   (    iv_output_kbn  <>  cv_out_kbn1
+                     AND msi.attribute1  =  cv_subinv_3
+                    )
+              )                                                       -- 保管場所区分(預け先)
+              OR
+              (    (    (    iv_output_kbn   =  cv_out_kbn1
+                         AND msi.attribute1  =  cv_subinv_1
+                        )
+                        OR
+                        (    iv_output_kbn  <>  cv_out_kbn1
+                         AND msi.attribute1  =  cv_subinv_4
+                        )
+                   )                                                  -- 保管場所区分(専門店)
+                   AND
+                   (    (    msi.attribute13  <>  cv_subinv_7         -- 保管場所分類(消化VD)
+                         AND iv_left_base IS NULL
+                        )
+                        OR
+                        (iv_left_base IS NOT NULL)
+                   )
+              )
+-- == 2009/05/12 V1.2 Added START ===============================================================
+              OR
+              (msi.attribute1 = cv_subinv_2)
+-- == 2009/05/12 V1.2 Added END   ===============================================================
+        )
     AND    msi.attribute4            = hca.account_number(+)
     AND    msi.attribute7            = ird.base_code
     ORDER BY
@@ -511,9 +547,17 @@ AS
                 daily_rec.ird_others_stock                  +
                 daily_rec.ird_vd_supplement_stock           +
                 daily_rec.ird_inventory_change_in                         -- 倉替入庫(数量)
-               ,daily_rec.ird_truck_stock                                 -- 営業車より入庫(数量)
+-- == 2009/05/12 V1.2 Modified START ===============================================================
+--               ,daily_rec.ird_truck_stock                                 -- 営業車より入庫(数量)
+               ,daily_rec.ird_truck_stock                   +
+                daily_rec.ird_truck_change_stock                          -- 営業車より入庫(数量)
+-- == 2009/05/12 V1.2 Modified END   ===============================================================
                ,daily_rec.ird_goods_transfer_new                          -- 振替入庫(数量)
-               ,daily_rec.ird_truck_ship                                  -- 営業車へ出庫(数量)
+-- == 2009/05/12 V1.2 Modified START ===============================================================
+--               ,daily_rec.ird_truck_ship                                  -- 営業車へ出庫(数量)
+               ,daily_rec.ird_truck_ship                    +
+                daily_rec.ird_truck_change_ship                           -- 営業車へ出庫(数量)
+-- == 2009/05/12 V1.2 Modified END   ===============================================================
                ,daily_rec.ird_sales_shipped                 -
                 daily_rec.ird_sales_shipped_b               -
                 daily_rec.ird_return_goods                  +
@@ -552,12 +596,22 @@ AS
                        daily_rec.ird_vd_supplement_stock    +
                        daily_rec.ird_inventory_change_in)
                      * daily_rec.ird_operation_cost)                      -- 倉替入庫(金額)
-               ,ROUND( daily_rec.ird_truck_stock
-                     * daily_rec.ird_operation_cost)                      -- 営業車より入庫(金額)
+-- == 2009/05/12 V1.2 Modified START ===============================================================
+--               ,ROUND( daily_rec.ird_truck_stock
+--                     * daily_rec.ird_operation_cost)                      -- 営業車より入庫(金額)
+               ,ROUND((daily_rec.ird_truck_stock            +
+                       daily_rec.ird_truck_change_stock
+                      ) * daily_rec.ird_operation_cost)                   -- 営業車より入庫(金額)
+-- == 2009/05/12 V1.2 Modified END   ===============================================================
                ,ROUND( daily_rec.ird_goods_transfer_new
                      * daily_rec.ird_operation_cost)                      -- 振替入庫(金額)
-               ,ROUND( daily_rec.ird_truck_ship
-                     * daily_rec.ird_operation_cost)                      -- 営業車へ出庫(金額)
+-- == 2009/05/12 V1.2 Modified START ===============================================================
+--               ,ROUND( daily_rec.ird_truck_ship
+--                     * daily_rec.ird_operation_cost)                      -- 営業車へ出庫(金額)
+               ,ROUND((daily_rec.ird_truck_ship             +
+                       daily_rec.ird_truck_change_ship
+                      ) * daily_rec.ird_operation_cost)                   -- 営業車へ出庫(金額)
+-- == 2009/05/12 V1.2 Modified START ===============================================================
                ,ROUND((daily_rec.ird_sales_shipped          -
                        daily_rec.ird_sales_shipped_b        -
                        daily_rec.ird_return_goods           +
@@ -783,8 +837,16 @@ AS
           ,irm.warehouse_stock         irm_warehouse_stock           -- 倉庫より入庫
           ,irm.truck_stock             irm_truck_stock               -- 営業車より入庫
           ,irm.others_stock            irm_others_stock              -- 入出庫＿その他入庫
-          ,irm.change_stock            irm_change_stock              -- 倉替入庫
-          ,irm.change_ship             irm_change_ship               -- 倉替出庫
+-- == 2009/05/12 V1.2 Modified START ===============================================================
+--          ,irm.change_stock            irm_change_stock              -- 倉替入庫
+--          ,irm.change_ship             irm_change_ship               -- 倉替出庫
+          ,DECODE(msi.attribute1, cv_subinv_2, 0
+                                      , irm.change_stock
+           )                           irm_change_stock              -- 倉替入庫
+          ,DECODE(msi.attribute1, cv_subinv_2, 0
+                                      , irm.change_ship
+           )                           irm_change_ship               -- 倉替出庫
+-- == 2009/05/12 V1.2 Modified END   ===============================================================
           ,irm.goods_transfer_old      irm_goods_transfer_old        -- 商品振替(旧商品)
           ,irm.goods_transfer_new      irm_goods_transfer_new        -- 商品振替(新商品)
           ,irm.sample_quantity         irm_sample_quantity           -- 見本出庫
@@ -815,6 +877,14 @@ AS
           ,irm.inv_result_bad          irm_inv_result_bad            -- 棚卸結果(不良品)
           ,irm.inv_wear                irm_inv_wear                  -- 棚卸減耗
           ,irm.month_begin_quantity    irm_month_begin_quantity      -- 月首棚卸高
+-- == 2009/05/12 V1.2 Added START ===============================================================
+          ,DECODE(msi.attribute1, cv_subinv_2, irm.change_stock
+                                      , 0
+           )                           irm_truck_change_stock        -- 倉替入庫（営業員）
+          ,DECODE(msi.attribute1, cv_subinv_2, irm.change_ship
+                                      , 0
+           )                           irm_truck_change_ship         -- 倉替出庫（営業員）
+-- == 2009/05/12 V1.2 Added END   ===============================================================
     FROM   xxcoi_inv_reception_monthly irm                           -- 月次在庫受払表(月次)
           ,xxcoi_base_info2_v          biv                           -- 拠点情報ビュー
           ,mtl_secondary_inventories   msi                           -- 保管場所マスタ (INV)
@@ -843,17 +913,36 @@ AS
                                      = NVL(iv_warehouse,SUBSTR(msi.secondary_inventory_name,6,2)))
     OR    (iv_output_kbn            <> cv_out_kbn1
     AND    msi.attribute4            = NVL(iv_left_base,msi.attribute4)))
-    AND (((iv_output_kbn             = cv_out_kbn1
-    AND    msi.attribute1            = cv_subinv_1)
-    OR    (iv_output_kbn            <> cv_out_kbn1
-    AND    msi.attribute1            = cv_subinv_3))                 -- 保管場所区分(預け先)
-    OR  (((iv_output_kbn             = cv_out_kbn1
-    AND    msi.attribute1            = cv_subinv_1)
-    OR    (iv_output_kbn            <> cv_out_kbn1
-    AND    msi.attribute1            = cv_subinv_4))                 -- 保管場所区分(専門店)
-    AND  ((msi.attribute13          <> cv_subinv_7                   -- 保管場所分類(消化VD)
-    AND    iv_left_base IS NULL)
-    OR    (iv_left_base IS NOT NULL))))
+    AND (     (    (    iv_output_kbn             = cv_out_kbn1
+                    AND msi.attribute1            = cv_subinv_1
+                   )
+                   OR
+                   (    iv_output_kbn            <> cv_out_kbn1
+                    AND msi.attribute1            = cv_subinv_3
+                   )
+              )                 -- 保管場所区分(預け先)
+              OR
+              (    (    (    iv_output_kbn             = cv_out_kbn1
+                         AND msi.attribute1            = cv_subinv_1
+                        )
+                        OR
+                        (    iv_output_kbn            <> cv_out_kbn1
+                         AND msi.attribute1            = cv_subinv_4
+                        )
+                   )                 -- 保管場所区分(専門店)
+                   AND
+                   (    (    msi.attribute13          <> cv_subinv_7                   -- 保管場所分類(消化VD)
+                         AND iv_left_base IS NULL
+                        )
+                        OR
+                        (iv_left_base IS NOT NULL)
+                   )
+              )
+-- == 2009/05/12 V1.2 Added START ===============================================================
+              OR
+              (msi.attribute1 = cv_subinv_2)
+-- == 2009/05/12 V1.2 Added END   ===============================================================
+        )
     AND    msi.attribute4            = hca.account_number(+)
     AND    msi.attribute7            = irm.base_code
     ORDER BY
@@ -979,9 +1068,17 @@ AS
                 month_rec.irm_others_stock                  +
                 month_rec.irm_vd_supplement_stock           +
                 month_rec.irm_inventory_change_in                         -- 倉替入庫(数量)
-               ,month_rec.irm_truck_stock                                 -- 営業車より入庫(数量)
+-- == 2009/05/12 V1.2 Modified START ===============================================================
+--               ,month_rec.irm_truck_stock                                 -- 営業車より入庫(数量)
+               ,month_rec.irm_truck_stock                   +
+                month_rec.irm_truck_change_stock                          -- 営業車より入庫(数量)
+-- == 2009/05/12 V1.2 Modified END ===============================================================
                ,month_rec.irm_goods_transfer_new                          -- 振替入庫(数量)
-               ,month_rec.irm_truck_ship                                  -- 営業車へ出庫(数量)
+-- == 2009/05/12 V1.2 Modified START ===============================================================
+--               ,month_rec.irm_truck_ship                                  -- 営業車へ出庫(数量)
+               ,month_rec.irm_truck_ship                    +
+                month_rec.irm_truck_change_ship                           -- 営業車へ出庫(数量)
+-- == 2009/05/12 V1.2 Modified END   ===============================================================
                ,month_rec.irm_sales_shipped                 -
                 month_rec.irm_sales_shipped_b               -
                 month_rec.irm_return_goods                  +
@@ -1023,12 +1120,22 @@ AS
                        month_rec.irm_vd_supplement_stock    +
                        month_rec.irm_inventory_change_in)
                      * month_rec.irm_operation_cost)                      -- 倉替入庫(金額)
-               ,ROUND( month_rec.irm_truck_stock
-                     * month_rec.irm_operation_cost)                      -- 営業車より入庫(金額)
+-- == 2009/05/12 V1.2 Modified START ===============================================================
+--               ,ROUND( month_rec.irm_truck_stock
+--                     * month_rec.irm_operation_cost)                      -- 営業車より入庫(金額)
+               ,ROUND((month_rec.irm_truck_stock            +
+                       month_rec.irm_truck_change_stock
+                      ) * month_rec.irm_operation_cost)                   -- 営業車より入庫(金額)
+-- == 2009/05/12 V1.2 Modified END   ===============================================================
                ,ROUND( month_rec.irm_goods_transfer_new
                      * month_rec.irm_operation_cost)                      -- 振替入庫(金額)
-               ,ROUND( month_rec.irm_truck_ship
-                     * month_rec.irm_operation_cost)                      -- 営業車へ出庫(金額)
+-- == 2009/05/12 V1.2 Modified START ===============================================================
+--               ,ROUND( month_rec.irm_truck_ship
+--                     * month_rec.irm_operation_cost)                      -- 営業車へ出庫(金額)
+               ,ROUND((month_rec.irm_truck_ship             +
+                       month_rec.irm_truck_change_ship
+                      ) * month_rec.irm_operation_cost)                   -- 営業車へ出庫(金額)
+-- == 2009/05/12 V1.2 Modified END   ===============================================================
                ,ROUND((month_rec.irm_sales_shipped          -
                        month_rec.irm_sales_shipped_b        -
                        month_rec.irm_return_goods           +

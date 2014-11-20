@@ -25,7 +25,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/26    1.0   N.Abe            新規作成
- *  2009/04/11    1.1   H.Sasaki         [T1_0840]倉替入出庫の帳票への出力を追加
+ *  2009/04/12    1.1   H.Sasaki         [T1_0840]倉替入出庫の帳票への出力を追加
  *
  *****************************************************************************************/
 --
@@ -110,9 +110,6 @@ AS
   cv_2                CONSTANT VARCHAR2(1)   := '2';
   cv_y                CONSTANT VARCHAR2(1)   := 'Y';
   cv_type_emp         CONSTANT VARCHAR2(3)   := 'EMP';
--- == 2009/05/11 V1.1 Added START ===============================================================
-  cv_subinv_c         CONSTANT VARCHAR2(1)   := 'C';
--- == 2009/05/11 V1.1 Added END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -146,9 +143,7 @@ AS
 --                                                    vd_sp_stock         -- 8.倉庫より入庫
              ,  xird.warehouse_stock                                    --   倉庫より入庫
               + xird.vd_supplement_stock                                --   消化VD補充入庫
-              + DECODE(SUBSTRB(xird.subinventory_code, 1, 1), cv_subinv_c, xird.change_stock
-                                                                 , 0
-                )                                                       --   倉替入庫
+              + xird.change_stock                                       --   倉替入庫
                                                     vd_sp_stock         -- 8.倉庫より入庫
 -- == 2009/05/11 V1.1 Modified END   ===============================================================
              ,  xird.sales_shipped                                      --   売上出庫
@@ -174,9 +169,7 @@ AS
 --                                                    warehouse_ship      --14.倉庫へ返庫
              ,  xird.warehouse_ship                                     --   倉庫へ返庫
               + xird.vd_supplement_ship                                 --   消化VD補充出庫
-              + DECODE(SUBSTRB(xird.subinventory_code, 1, 1), cv_subinv_c, xird.change_ship
-                                                                 , 0
-                )                                                       --   倉替出庫
+              + xird.change_ship                                        --   倉替出庫
                                                     warehouse_ship      --14.倉庫へ返庫
 -- == 2009/05/11 V1.1 Modified END   ===============================================================
              ,  xird.book_inventory_quantity        tyoubo_stock        --15.帳簿在庫
@@ -231,9 +224,7 @@ AS
 --                                                    vd_sp_stock         -- 8.倉庫より入庫
              ,  xirm.warehouse_stock                                    --   倉庫より入庫
               + xirm.vd_supplement_stock                                --   消化VD補充入庫
-              + DECODE(SUBSTRB(xirm.subinventory_code, 1, 1), cv_subinv_c, xirm.change_stock
-                                                                 , 0
-                )                                                       --   倉替入庫
+              + xirm.change_stock                                       --   倉替入庫
                                                     vd_sp_stock         -- 8.倉庫より入庫
 -- == 2009/05/11 V1.1 Modified START ===============================================================
              ,  xirm.sales_shipped                                      --   売上出庫
@@ -257,11 +248,9 @@ AS
 --             ,  xirm.warehouse_ship                                     --   倉庫へ返庫
 --              + xirm.vd_supplement_ship                                 --   消化VD補充出庫
 --                                                    warehouse_ship      --14.倉庫へ返庫
-             ,  xirm.warehouse_ship                                       --   倉庫へ返庫
+             ,  xirm.warehouse_ship                                     --   倉庫へ返庫
               + xirm.vd_supplement_ship                                 --   消化VD補充出庫
-              + DECODE(SUBSTRB(xirm.subinventory_code, 1, 1), cv_subinv_c, xirm.change_ship
-                                                                 , 0
-                )                                                       --   倉替出庫
+              + xirm.change_ship                                        --   倉替出庫
                                                     warehouse_ship      --14.倉庫へ返庫
 -- == 2009/05/11 V1.1 Modified START ===============================================================
              ,  xirm.inv_result                                         --   棚卸結果

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *                                       ・修正後
  *                                          ⇒卸単価:納品単価（売上単)
  *                                          ⇒売価:定価単価
+ *  2009/05/01    1.6   N.Maeda          [T1_0885]抽出対象に｢上様顧客｣を追加
  *
  *****************************************************************************************/
 --
@@ -199,6 +200,9 @@ AS
   -- 顧客区分
   ct_cust_class_base            CONSTANT hz_cust_accounts.customer_class_code%TYPE    := '1';   -- 拠点
   ct_cust_class_customer        CONSTANT hz_cust_accounts.customer_class_code%TYPE    := '10';  -- 顧客
+-- ******************** 2009/05/01 Var.1.6 N.Maeda ADD START  ******************************************
+  ct_cust_class_customer_u      CONSTANT hz_cust_accounts.customer_class_code%TYPE    := '12';  -- 上様顧客
+-- ******************** 2009/05/01 Var.1.6 N.Maeda ADD  END   ******************************************
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -751,7 +755,10 @@ AS
       AND base.customer_class_code   = ct_cust_class_base              -- 顧客区分＝拠点
       AND infh.sales_base_code       = base.account_number             -- 販売実績ヘッダ＝顧客マスタ_拠点
       AND base.party_id              = parb.party_id                   -- 顧客マスタ_拠点＝パーティ_拠点
-      AND cust.customer_class_code   = ct_cust_class_customer          -- 顧客区分＝顧客
+-- ******************** 2009/05/01 Var.1.6 N.Maeda MOD START  ******************************************
+--      AND cust.customer_class_code   = ct_cust_class_customer          -- 顧客区分＝顧客
+      AND cust.customer_class_code   IN ( ct_cust_class_customer , ct_cust_class_customer_u ) -- 顧客区分IN 顧客,上様顧客
+-- ******************** 2009/05/01 Var.1.6 N.Maeda MOD  END   ******************************************
       AND infh.ship_to_customer_code = cust.account_number             -- 販売実績ヘッダ＝顧客マスタ_顧客
       AND cust.cust_account_id       = cuac.customer_id                -- 顧客マスタ_顧客＝顧客追加情報
       AND cust.party_id              = parc.party_id                   -- 顧客マスタ_顧客＝パーティ_顧客
@@ -1431,7 +1438,10 @@ AS
         AND base.customer_class_code = ct_cust_class_base
         AND base.party_id            = parb.party_id
         AND pay.customer_number      = cust.account_number
-        AND cust.customer_class_code = ct_cust_class_customer
+-- ******************** 2009/05/01 Var.1.6 N.Maeda MOD START  ******************************************
+--      AND cust.customer_class_code = ct_cust_class_customer
+        AND cust.customer_class_code   IN ( ct_cust_class_customer , ct_cust_class_customer_u )
+-- ******************** 2009/05/01 Var.1.6 N.Maeda MOD  END   ******************************************
         AND cust.party_id            = parc.party_id
         ;
 --
@@ -1876,11 +1886,11 @@ AS
     --  ===============================
     --  帳票ワークテーブルデータ削除(A-8)
     --  ===============================
-    delete_rpt_wrk_data(
+  /*  delete_rpt_wrk_data(
        lv_errbuf   -- エラー・メッセージ           --# 固定 #
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
-    );
+    );*/
 --
     -- エラー処理
     IF ( lv_retcode = cv_status_error ) THEN

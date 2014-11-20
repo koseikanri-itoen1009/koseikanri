@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.15
+ * Version          : 1.16
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -44,6 +44,7 @@ AS
  *  2009/04/22    1.13  K.KIN            T1_0116
  *  2009/05/07    1.14  K.KIN            T1_0908
  *  2009/05/07    1.15  K.KIN            T1_0914、T1_0915
+ *  2009/05/08    1.16  K.KIN            T1_0453
  *
  *****************************************************************************************/
 --
@@ -289,8 +290,6 @@ AS
     , pure_amount               xxcos_sales_exp_lines.pure_amount%TYPE              -- 本体金額
     , tax_amount                xxcos_sales_exp_lines.tax_amount%TYPE               -- 消費税金額
     , cash_and_card             xxcos_sales_exp_lines.cash_and_card%TYPE            -- 現金・カード併用額
-    , gccs_segment3             gl_code_combinations.segment3%TYPE                  -- 売上勘定科目コード
-    , gcct_segment3             gl_code_combinations.segment3%TYPE                  -- 税金勘定科目コード
     , rcrm_receipt_id           ra_cust_receipt_methods.receipt_method_id%TYPE      -- 顧客支払方法ID
     , xchv_cust_id_s            xxcos_cust_hierarchy_v.ship_account_id%TYPE         -- 出荷先顧客ID
     , xchv_cust_id_b            xxcos_cust_hierarchy_v.bill_account_id%TYPE         -- 請求先顧客ID
@@ -1103,8 +1102,6 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
            , xsel.pure_amount                  pure_amount             -- 本体金額
            , xsel.tax_amount                   tax_amount              -- 消費税額
            , NVL( xsel.cash_and_card, 0 )      cash_and_card           -- 現金・カード併用額
-           , gcc.segment3                      gccs_segment3           -- 売上勘定科目コード
-           , gcct.segment3                     gcct_segment3           -- 税金勘定科目コード
            , rcrm.receipt_method_id            rcrm_receipt_id         -- 顧客支払方法ID
            , xchv.ship_account_id              xchv_cust_id_s          -- 出荷先顧客ID
            , xchv.bill_account_id              xchv_cust_id_b          -- 請求先顧客ID
@@ -1127,9 +1124,6 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
       FROM
              xxcos_sales_exp_headers           xseh                    -- 販売実績ヘッダテーブル
            , xxcos_sales_exp_lines             xsel                    -- 販売実績明細テーブル
-           , mtl_system_items_b                msib                    -- 品目マスタ
-           , gl_code_combinations              gcc                     -- 勘定科目組合せマスタ
-           , gl_code_combinations              gcct                    -- 勘定科目組合せマスタ（TAX用）
            , ar_vat_tax_all_b                  avta                    -- 税金マスタ
            , hz_cust_accounts                  hcas                    -- 顧客マスタ（出荷先）
            , hz_cust_accounts                  hcab                    -- 顧客マスタ（請求先）
@@ -1168,10 +1162,6 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
       AND avta.enabled_flag                     = cv_enabled_yes
       AND gd_process_date BETWEEN               NVL( avta.start_date, gd_process_date )
                           AND                   NVL( avta.end_date,   gd_process_date )
-      AND gcct.code_combination_id              = avta.tax_account_id
-          AND msib.organization_id              = TO_NUMBER( gv_org_id )
-          AND xsel.item_code                    = msib.segment1
-          AND gcc.code_combination_id           = msib.sales_account
           AND xgpc.segment1( + )                = xsel.item_code
       AND xseh.create_class                     NOT IN (
           SELECT
@@ -1218,8 +1208,6 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
              , xseh.cust_gyotai_sho
              , xsel.item_code
              , xsel.red_black_flag
-             , gcc.segment3
-             , gcct.segment3
     FOR UPDATE OF  xseh.sales_exp_header_id
     NOWAIT;
 --
@@ -1823,8 +1811,6 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                     || gt_sales_norm_tbl(i).goods_prod_cls
                     || gt_sales_norm_tbl(i).item_code
                     || gt_sales_norm_tbl(i).red_black_flag
-                    || gt_sales_norm_tbl(i).gccs_segment3
-                    || gt_sales_norm_tbl(i).gcct_segment3
                     || gt_sales_norm_tbl(i).line_id;
       gt_sales_norm_order_tbl(lv_idx_key) := gt_sales_norm_tbl(i);
     END LOOP loop_make_sort_data;
@@ -2903,7 +2889,6 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     lt_gyotai_sho       xxcos_sales_exp_headers.cust_gyotai_sho%TYPE;    -- 集約キー：業態小分類
     lt_card_sale_class  xxcos_sales_exp_headers.card_sale_class%TYPE;    -- 集約キー：カード売り区分
     lt_red_black_flag   xxcos_sales_exp_lines.red_black_flag%TYPE;       -- 集約キー：赤黒フラグ
-    lt_gccs_segment3    gl_code_combinations.segment3%TYPE;              -- 集約キー：売上勘定科目コード
     lt_tax_code         xxcos_sales_exp_headers.tax_code%TYPE;           -- 集約キー：税金コード
     lt_header_id        xxcos_sales_exp_headers.sales_exp_header_id%TYPE; -- 集約キー：販売実績ヘッダID
     ln_amount           NUMBER DEFAULT 0;                                -- 集約後金額
@@ -2980,7 +2965,6 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     lt_prod_cls         := gt_sales_norm_tbl2( 1 ).goods_prod_cls;
     lt_gyotai_sho       := gt_sales_norm_tbl2( 1 ).cust_gyotai_sho;
     lt_card_sale_class  := gt_sales_norm_tbl2( 1 ).card_sale_class;
-    lt_gccs_segment3    := gt_sales_norm_tbl2( 1 ).gccs_segment3;
     lt_tax_code         := gt_sales_norm_tbl2( 1 ).tax_code;
     lt_invoice_class    := gt_sales_norm_tbl2( 1 ).dlv_invoice_class;
     lt_red_black_flag   := gt_sales_norm_tbl2( 1 ).red_black_flag;
@@ -3016,7 +3000,6 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
           )
         AND lt_gyotai_sho      = gt_sales_norm_tbl2( dis_sum_idx ).cust_gyotai_sho
         AND lt_card_sale_class = gt_sales_norm_tbl2( dis_sum_idx ).card_sale_class
-        AND lt_gccs_segment3   = gt_sales_norm_tbl2( dis_sum_idx ).gccs_segment3
         AND lt_tax_code        = gt_sales_norm_tbl2( dis_sum_idx ).tax_code
         AND lt_header_id       = gt_sales_norm_tbl2( dis_sum_idx ).sales_exp_header_id
         )
@@ -3067,18 +3050,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
             EXIT WHEN ( ln_jour_cnt > cn_jour_cnt );
 --
             -- 勘定科目の編集
-            IF ( gt_jour_cls_tbl( jcls_idx ).segment3_nm = gv_goods_msg
-              OR gt_jour_cls_tbl( jcls_idx ).segment3_nm = gv_prod_msg
-              OR gt_jour_cls_tbl( jcls_idx ).segment3_nm = gv_disc_msg ) THEN
-              --売上勘定科目コード
-              lt_segment3 := gt_sales_norm_tbl2( ln_dis_idx ).gccs_segment3;
-            ELSIF ( gt_jour_cls_tbl( jcls_idx ).segment3_nm = gv_tax_msg ) THEN
-              --税金勘定科目コード
-              lt_segment3 := gt_sales_norm_tbl2( ln_dis_idx ).gcct_segment3;
-            ELSE
-              --OTHER勘定科目コード
-              lt_segment3 := gt_jour_cls_tbl( jcls_idx ).segment3;
-            END IF;
+            lt_segment3 := gt_jour_cls_tbl( jcls_idx ).segment3;
 --
             --=====================================
             -- 2.勘定科目CCIDの取得
@@ -3415,7 +3387,6 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
       lt_prod_cls         := gt_sales_norm_tbl2( dis_sum_idx ).goods_prod_cls;
       lt_gyotai_sho       := gt_sales_norm_tbl2( dis_sum_idx ).cust_gyotai_sho;
       lt_card_sale_class  := gt_sales_norm_tbl2( dis_sum_idx ).card_sale_class;
-      lt_gccs_segment3    := gt_sales_norm_tbl2( dis_sum_idx ).gccs_segment3;
       lt_tax_code         := gt_sales_norm_tbl2( dis_sum_idx ).tax_code;
       lt_invoice_class    := gt_sales_norm_tbl2( dis_sum_idx ).dlv_invoice_class;
       lt_red_black_flag   := gt_sales_norm_tbl2( dis_sum_idx ).red_black_flag;
@@ -3612,8 +3583,6 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                     || gt_sales_bulk_tbl(i).goods_prod_cls
                     || gt_sales_bulk_tbl(i).item_code
                     || gt_sales_bulk_tbl(i).red_black_flag
-                    || gt_sales_bulk_tbl(i).gccs_segment3
-                    || gt_sales_bulk_tbl(i).gcct_segment3
                     || gt_sales_bulk_tbl(i).line_id;
       gt_sales_bulk_order_tbl(lv_idx_key) := gt_sales_bulk_tbl(i);
     END LOOP loop_make_sort_data;
@@ -4687,7 +4656,6 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     lt_gyotai_sho       xxcos_sales_exp_headers.cust_gyotai_sho%TYPE;    -- 集約キー：業態小分類
     lt_card_sale_class  xxcos_sales_exp_headers.card_sale_class%TYPE;    -- 集約キー：カード売り区分
     lt_red_black_flag   xxcos_sales_exp_lines.red_black_flag%TYPE;       -- 集約キー：赤黒フラグ
-    lt_gccs_segment3    gl_code_combinations.segment3%TYPE;              -- 集約キー：売上勘定科目コード
     lt_tax_code         xxcos_sales_exp_headers.tax_code%TYPE;           -- 集約キー：税金コード
     lt_header_id        xxcos_sales_exp_headers.sales_exp_header_id%TYPE; -- 集約キー：販売実績ヘッダID
     ln_amount           NUMBER DEFAULT 0;                                -- 集約後金額
@@ -4767,7 +4735,6 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     lt_prod_cls         := gt_sales_bulk_tbl2( 1 ).goods_prod_cls;
     lt_gyotai_sho       := gt_sales_bulk_tbl2( 1 ).cust_gyotai_sho;
     lt_card_sale_class  := gt_sales_bulk_tbl2( 1 ).card_sale_class;
-    lt_gccs_segment3    := gt_sales_bulk_tbl2( 1 ).gccs_segment3;
     lt_tax_code         := gt_sales_bulk_tbl2( 1 ).tax_code;
     lt_invoice_class    := gt_sales_bulk_tbl2( 1 ).dlv_invoice_class;
     lt_red_black_flag   := gt_sales_bulk_tbl2( 1 ).red_black_flag;
@@ -4803,7 +4770,6 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
           )
         AND lt_gyotai_sho      = gt_sales_bulk_tbl2( dis_sum_idx ).cust_gyotai_sho
         AND lt_card_sale_class = gt_sales_bulk_tbl2( dis_sum_idx ).card_sale_class
-        AND lt_gccs_segment3   = gt_sales_bulk_tbl2( dis_sum_idx ).gccs_segment3
         AND lt_tax_code        = gt_sales_bulk_tbl2( dis_sum_idx ).tax_code
         AND lt_header_id       = gt_sales_bulk_tbl2( dis_sum_idx ).sales_exp_header_id
         )
@@ -4854,18 +4820,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
             EXIT WHEN ( ln_jour_cnt > cn_jour_cnt );
 --
             -- 勘定科目の編集
-            IF ( gt_jour_cls_tbl( jcls_idx ).segment3_nm = gv_goods_msg
-              OR gt_jour_cls_tbl( jcls_idx ).segment3_nm = gv_prod_msg
-              OR gt_jour_cls_tbl( jcls_idx ).segment3_nm = gv_disc_msg ) THEN
-              --売上勘定科目コード
-              lt_segment3 := gt_sales_bulk_tbl2( ln_dis_idx ).gccs_segment3;
-            ELSIF ( gt_jour_cls_tbl( jcls_idx ).segment3_nm = gv_tax_msg ) THEN
-              --税金勘定科目コード
-              lt_segment3 := gt_sales_bulk_tbl2( ln_dis_idx ).gcct_segment3;
-            ELSE
-              --OTHER勘定科目コード
-              lt_segment3 := gt_jour_cls_tbl( jcls_idx ).segment3;
-            END IF;
+            lt_segment3 := gt_jour_cls_tbl( jcls_idx ).segment3;
 --
             --=====================================
             -- 2.勘定科目CCIDの取得
@@ -5203,7 +5158,6 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
       lt_prod_cls         := gt_sales_bulk_tbl2( dis_sum_idx ).goods_prod_cls;
       lt_gyotai_sho       := gt_sales_bulk_tbl2( dis_sum_idx ).cust_gyotai_sho;
       lt_card_sale_class  := gt_sales_bulk_tbl2( dis_sum_idx ).card_sale_class;
-      lt_gccs_segment3    := gt_sales_bulk_tbl2( dis_sum_idx ).gccs_segment3;
       lt_tax_code         := gt_sales_bulk_tbl2( dis_sum_idx ).tax_code;
       lt_invoice_class    := gt_sales_bulk_tbl2( dis_sum_idx ).dlv_invoice_class;
       lt_red_black_flag   := gt_sales_bulk_tbl2( dis_sum_idx ).red_black_flag;
