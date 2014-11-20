@@ -6,14 +6,14 @@ AS
  * Package Name     : XXCSO019A10C(body)
  * Description      : 訪問売上計画管理表（随時実行の帳票）用にサマリテーブルを作成します。
  * MD.050           :  MD050_CSO_019_A10_訪問売上計画管理集計バッチ
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
  *  init                   初期処理 (A-1)
- *  （なし）               データ抽出パラメータ(年度)取得 (A-2)
+ *  check_parm             パラメータチェック (A-2)
  *  delete_data            処理対象データ削除 (A-3)
  *  get_day_acct_data      日別顧客別データ取得 (A-4)
  *  insert_day_acct_dt     訪問売上計画管理表サマリテーブルに登録 (A-5)
@@ -51,6 +51,7 @@ AS
  *  2009-11-06    1.6   Kazuo.Satomura   【E_T4_00135(I_E_636)】
  *  2009-12-28    1.7   Kazuyo.Hosoi     【E_本稼動_00686】対応
  *  2010-05-14    1.8   SCS 吉元強樹     【E_本稼動_02763】対応
+ *  2012-02-17    1.9   SCSK白川篤史     【E_本稼動_08750】対応
  *
  *****************************************************************************************/
 --
@@ -123,6 +124,11 @@ AS
   /* 2009.11.06 K.Satomura E_T4_00135対応 START*/
   cv_tkn_number_12    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00580';  -- 顧客CD／売上担当拠点CDエラー
   /* 2009.11.06 K.Satomura E_T4_00135対応 END */
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD Start
+  cv_tkn_number_13    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00382';  -- 入力パラメータ必須エラーメッセージ
+  cv_tkn_number_14    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00250';  -- パラメータ処理区分
+  cv_tkn_number_15    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00252';  -- パラメータ妥当性チェックエラーメッセージ
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD End
   -- トークンコード
   cv_tkn_errmsg           CONSTANT VARCHAR2(20) := 'ERR_MSG';
   cv_tkn_errmessage       CONSTANT VARCHAR2(20) := 'ERR_MESSAGE';
@@ -136,6 +142,12 @@ AS
   cv_tkn_sales_date       CONSTANT VARCHAR2(20) := 'SALES_DATE';
   cv_tkn_sqlerrm          CONSTANT VARCHAR2(20) := 'SQLERRM';
   /* 2009.11.06 K.Satomura E_T4_00135対応 END */
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD Start
+  cv_tkn_item             CONSTANT VARCHAR2(20) := 'ITEM';
+  cv_tkn_entry            CONSTANT VARCHAR2(20) := 'ENTRY';
+  -- メッセージ用固定文字列
+  cv_tkn_msg_proc_div     CONSTANT VARCHAR2(200) := '処理区分';
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD End
 --
   cb_true                 CONSTANT BOOLEAN := TRUE;
   cv_true                 CONSTANT VARCHAR2(10) := 'TRUE';
@@ -231,6 +243,11 @@ AS
   cv_sum_org_type_area         CONSTANT VARCHAR2(1) := '5';        -- 「5」地区営業部コード
   -- 新規ポイント区分
   cv_new_point_div_1           CONSTANT VARCHAR2(1) := '1';        -- 「1」新規
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD Start
+  -- 処理区分
+  cv_process_div_ins           CONSTANT VARCHAR2(1) := '1';        -- 「1」作成
+  cv_process_div_del           CONSTANT VARCHAR2(1) := '9';        -- 「9」削除
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD End
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -248,6 +265,10 @@ AS
   gv_ym_lst_4          VARCHAR2(8);
   gv_ym_lst_5          VARCHAR2(8);
   gv_ym_lst_6          VARCHAR2(8);
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD Start
+  -- パラメータ格納用
+  gv_prm_process_div   VARCHAR2(1);         -- 処理区分
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD End
   -- ===============================
   -- ユーザー定義カーソル型
   -- ===============================
@@ -1801,6 +1822,106 @@ AS
 --
   END init;
 --
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD Start
+  /**********************************************************************************
+   * Procedure Name   : check_parm
+   * Description      : パラメータチェック (A-2)
+   ***********************************************************************************/
+  PROCEDURE check_parm(
+     ov_errbuf           OUT NOCOPY VARCHAR2  -- エラー・メッセージ            --# 固定 #
+    ,ov_retcode          OUT NOCOPY VARCHAR2  -- リターン・コード              --# 固定 #
+    ,ov_errmsg           OUT NOCOPY VARCHAR2  -- ユーザー・エラー・メッセージ  --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name             CONSTANT VARCHAR2(100)   := 'check_parm';     -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(4000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(4000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- *** ローカル変数 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- INパラメータ：処理区分のNULLチェック
+    IF (gv_prm_process_div IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name                  --アプリケーション短縮名
+                    ,iv_name         => cv_tkn_number_13             --メッセージコード
+                    ,iv_token_name1  => cv_tkn_item
+                    ,iv_token_value1 => cv_tkn_msg_proc_div
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    --空行の出力
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => ''
+    );
+    -- INパラメータ：処理区分出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name
+                    ,iv_name         => cv_tkn_number_14
+                    ,iv_token_name1  => cv_tkn_entry
+                    ,iv_token_value1 => gv_prm_process_div
+                   );
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    -- INパラメータ：処理区分の妥当性チェック
+    IF (gv_prm_process_div NOT IN (cv_process_div_ins, cv_process_div_del)) THEN
+      -- パラメータ処理区分が'1','9'ではない場合
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name                  --アプリケーション短縮名
+                    ,iv_name         => cv_tkn_number_15             --メッセージコード
+                    ,iv_token_name1  => cv_tkn_item
+                    ,iv_token_value1 => cv_tkn_msg_proc_div
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END check_parm;
+--
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD End
   /**********************************************************************************
    * Procedure Name   : delete_data
    * Description      : 処理対象データ削除 (A-3)
@@ -1910,20 +2031,22 @@ AS
     -- =======================
     -- 月別処理対象データ削除処理 
     -- =======================
-      SELECT COUNT(xsvsr.sum_org_code)
-      INTO  ln_delete_cnt
-      FROM  xxcso_sum_visit_sale_rep xsvsr  -- 訪問売上計画管理表サマリ
-      WHERE  xsvsr.month_date_div = cv_month_date_div_mon  -- 月日区分
-        AND  xsvsr.sales_date IN (
-                                   gv_ym_lst_1
-                                  ,gv_ym_lst_2
-                                  ,gv_ym_lst_3
-                                  ,gv_ym_lst_4
-                                  ,gv_ym_lst_5
-                                  ,gv_ym_lst_6
-                                 )  -- 販売年月日
-      ;
-      gn_delete_cnt := gn_delete_cnt + ln_delete_cnt;
+-- 2012/02/17 Ver.1.9 A.Shirakawa DEL Start
+--      SELECT COUNT(xsvsr.sum_org_code)
+--      INTO  ln_delete_cnt
+--      FROM  xxcso_sum_visit_sale_rep xsvsr  -- 訪問売上計画管理表サマリ
+--      WHERE  xsvsr.month_date_div = cv_month_date_div_mon  -- 月日区分
+--        AND  xsvsr.sales_date IN (
+--                                   gv_ym_lst_1
+--                                  ,gv_ym_lst_2
+--                                  ,gv_ym_lst_3
+--                                  ,gv_ym_lst_4
+--                                  ,gv_ym_lst_5
+--                                  ,gv_ym_lst_6
+--                                 )  -- 販売年月日
+--      ;
+--      gn_delete_cnt := gn_delete_cnt + ln_delete_cnt;
+-- 2012/02/17 Ver.1.9 A.Shirakawa DEL End
       DELETE
       FROM  xxcso_sum_visit_sale_rep xsvsr  -- 訪問売上計画管理表サマリ
       WHERE  xsvsr.month_date_div = cv_month_date_div_mon  -- 月日区分
@@ -1936,6 +2059,10 @@ AS
                                   ,gv_ym_lst_6
                                  )  -- 販売年月日
       ;
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD Start
+      ln_delete_cnt := SQL%ROWCOUNT;
+      gn_delete_cnt := gn_delete_cnt + ln_delete_cnt;
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD End
       /* 2009.12.28 K.Hosoi E_本稼動_00686対応 START */
       -- コミットを行う
       COMMIT;
@@ -6944,33 +7071,52 @@ AS
       RAISE global_process_expt;
     END IF;
 --
---
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD Start
     -- ========================================
-    -- A-3.処理対象データ削除 
+    -- A-2.パラメータチェック 
     -- ========================================
-    delete_data(
-       ov_errbuf      => lv_errbuf      -- エラー・メッセージ            --# 固定 #
-      ,ov_retcode     => lv_retcode     -- リターン・コード              --# 固定 #
-      ,ov_errmsg      => lv_errmsg      -- ユーザー・エラー・メッセージ  --# 固定 #
+    check_parm(
+       ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+      ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
+      ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
     );
 --
     IF (lv_retcode = cv_status_error) THEN
       RAISE global_process_expt;
     END IF;
 --
+    IF (gv_prm_process_div = cv_process_div_del) THEN
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD End
 --
-    -- =================================================
-    -- A-4.日別顧客別データ取得 
-    -- =================================================
-    get_day_acct_data(
-       ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
-      ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
-      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
-    );
+      -- ========================================
+      -- A-3.処理対象データ削除 
+      -- ========================================
+      delete_data(
+         ov_errbuf      => lv_errbuf      -- エラー・メッセージ            --# 固定 #
+        ,ov_retcode     => lv_retcode     -- リターン・コード              --# 固定 #
+        ,ov_errmsg      => lv_errmsg      -- ユーザー・エラー・メッセージ  --# 固定 #
+      );
 --
-    IF (lv_retcode = cv_status_error) THEN
-      RAISE global_process_expt;
-    END IF;
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD Start
+    ELSIF (gv_prm_process_div = cv_process_div_ins) THEN
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD End
+--
+      -- =================================================
+      -- A-4.日別顧客別データ取得 
+      -- =================================================
+      get_day_acct_data(
+         ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
+        ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
+        ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
+      );
+--
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
 --
 /* 20090828_abe_0001194 START*/
 ----
@@ -7031,18 +7177,18 @@ AS
 ----
 /* 20090828_abe_0001194 END*/
 --
-    -- =================================================
-    -- A-10.月別顧客別取得登録 
-    -- =================================================
-    insert_mon_acct_dt(
-       ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
-      ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
-      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
-    );
+      -- =================================================
+      -- A-10.月別顧客別取得登録 
+      -- =================================================
+      insert_mon_acct_dt(
+         ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
+        ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
+        ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
+      );
 --
-    IF (lv_retcode = cv_status_error) THEN
-      RAISE global_process_expt;
-    END IF;
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
 --
 /* 20090828_abe_0001194 START*/
 ----
@@ -7103,6 +7249,9 @@ AS
 ----
 /* 20090828_abe_0001194 END*/
 --
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD Start
+    END IF;
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD End
     /* 2009.11.06 K.Satomura E_T4_00135対応 START */
     IF (gn_warn_cnt > 0) THEN
       ov_retcode := cv_status_warn;
@@ -7139,7 +7288,11 @@ AS
 --
   PROCEDURE main(
      errbuf        OUT NOCOPY VARCHAR2    --   エラー・メッセージ  --# 固定 #
-    ,retcode       OUT NOCOPY VARCHAR2 )  --   リターン・コード    --# 固定 #
+-- 2012/02/17 Ver.1.9 A.Shirakawa MOD Start
+--    ,retcode       OUT NOCOPY VARCHAR2 )  --   リターン・コード    --# 固定 #
+    ,retcode       OUT NOCOPY VARCHAR2    --   リターン・コード    --# 固定 #
+    ,iv_process_div IN        VARCHAR2 )  --   処理区分
+-- 2012/02/17 Ver.1.9 A.Shirakawa MOD End
 --
 --###########################  固定部 START   ###########################
 --
@@ -7185,6 +7338,13 @@ AS
 --
 --###########################  固定部 END   #############################
 --
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD Start
+    -- ===============================================
+    -- パラメータの格納
+    -- ===============================================
+    gv_prm_process_div := iv_process_div;
+--
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD End
     -- ===============================================
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
@@ -7208,6 +7368,13 @@ AS
        );
     END IF;
 --
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD Start
+    -- 処理区分が'9'(削除)の場合、削除件数を表示
+    IF (gv_prm_process_div = cv_process_div_del) THEN
+      gn_extrct_cnt := gn_delete_cnt;
+      gn_output_cnt := gn_delete_cnt;
+    END IF;
+-- 2012/02/17 Ver.1.9 A.Shirakawa ADD End
     -- =======================
     -- A-15.終了処理 
     -- =======================
