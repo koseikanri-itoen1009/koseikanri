@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionRegistAMImpl
 * 概要説明   : SP専決登録画面アプリケーション・モジュールクラス
-* バージョン : 1.10
+* バージョン : 1.11
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -17,6 +17,7 @@
 * 2009-11-29 1.8  SCS阿部大輔   [E_本稼動_00106]アカウント複数対応
 * 2010-01-08 1.9  SCS阿部大輔   [E_本稼動_01031]取引条件チェック対応
 * 2010-01-15 1.10 SCS阿部大輔   [E_本稼動_00950]画面値、ＤＢ値チェック対応
+* 2010-03-01 1.11 SCS阿部大輔   [E_本稼動_01678]現金支払対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -1741,12 +1742,24 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     
     if ( ! XxcsoSpDecisionConstants.PAYMENT_TYPE_NONE.equals(bmPaymentType) )
     {
-      if ( transferType == null || "".equals(transferType) )
+// 2010-03-01 [E_本稼動_01678] Add Start
+      // 現金支払の場合
+      if ( XxcsoSpDecisionConstants.PAYMENT_TYPE_CASH.equals(bmPaymentType))
       {
-        bm1Row.setTransferCommissionType(
-          XxcsoSpDecisionConstants.TRANSFER_CUST
-        );
+        bm1Row.setTransferCommissionType(null);
       }
+      else
+      {
+// 2010-03-01 [E_本稼動_01678] Add End
+        if ( transferType == null || "".equals(transferType) )
+        {
+          bm1Row.setTransferCommissionType(
+            XxcsoSpDecisionConstants.TRANSFER_CUST
+          );
+        }
+// 2010-03-01 [E_本稼動_01678] Add Start
+      }
+// 2010-03-01 [E_本稼動_01678] Add End
       
       if ( bm1SendType == null || "".equals(bm1SendType) )
       {
@@ -1812,12 +1825,24 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     
     if ( ! XxcsoSpDecisionConstants.PAYMENT_TYPE_NONE.equals(bmPaymentType) )
     {
-      if ( transferType == null || "".equals(transferType) )
+// 2010-03-01 [E_本稼動_01678] Add Start
+      // 現金支払の場合
+      if ( XxcsoSpDecisionConstants.PAYMENT_TYPE_CASH.equals(bmPaymentType))
       {
-        bm2Row.setTransferCommissionType(
-          XxcsoSpDecisionConstants.TRANSFER_CUST
-        );
+        bm2Row.setTransferCommissionType(null);
       }
+      else
+      {
+// 2010-03-01 [E_本稼動_01678] Add End
+        if ( transferType == null || "".equals(transferType) )
+        {
+          bm2Row.setTransferCommissionType(
+            XxcsoSpDecisionConstants.TRANSFER_CUST
+          );
+        }
+// 2010-03-01 [E_本稼動_01678] Add Start
+      }
+// 2010-03-01 [E_本稼動_01678] Add End
     }
 
     XxcsoSpDecisionReflectUtils.reflectBm2(
@@ -1882,12 +1907,24 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     
     if ( ! XxcsoSpDecisionConstants.PAYMENT_TYPE_NONE.equals(bmPaymentType) )
     {
-      if ( transferType == null || "".equals(transferType) )
+// 2010-03-01 [E_本稼動_01678] Add Start
+      // 現金支払の場合
+      if ( XxcsoSpDecisionConstants.PAYMENT_TYPE_CASH.equals(bmPaymentType))
       {
-        bm3Row.setTransferCommissionType(
-          XxcsoSpDecisionConstants.TRANSFER_CUST
-        );
+        bm3Row.setTransferCommissionType(null);
       }
+      else
+      {
+// 2010-03-01 [E_本稼動_01678] Add End
+        if ( transferType == null || "".equals(transferType) )
+        {
+          bm3Row.setTransferCommissionType(
+            XxcsoSpDecisionConstants.TRANSFER_CUST
+          );
+        }
+// 2010-03-01 [E_本稼動_01678] Add Start
+      }
+// 2010-03-01 [E_本稼動_01678] Add End
     }
 
     XxcsoSpDecisionReflectUtils.reflectBm3(
@@ -3886,6 +3923,11 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
       XxcsoSpDecisionValidateUtils.validateSend(
         txn
        ,headerVo
+// 2010-03-01 [E_本稼動_01678] Add Start
+       ,bm1Vo
+       ,bm2Vo
+       ,bm3Vo
+// 2010-03-01 [E_本稼動_01678] Add End
        ,scVo
        ,allCcVo
        ,selCcVo
@@ -3908,12 +3950,57 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
        ,headerVo
       )
     );
-
     if ( errorList.size() > 0 )
     {
       OAException.raiseBundledOAException(errorList);
     }
 // 2010-01-15 [E_本稼動_00950] Add End
+// 2010-03-01 [E_本稼動_01678] Add Start
+    String OperationMode = requestRow.getOperationMode();
+    // 提出、承認、確認ボタンの場合
+    if (
+        OperationMode == XxcsoSpDecisionConstants.OPERATION_SUBMIT ||
+        OperationMode == XxcsoSpDecisionConstants.OPERATION_CONFIRM ||
+        OperationMode == XxcsoSpDecisionConstants.OPERATION_APPROVE
+       )
+    {
+      // BM1,2,3の支払方法・明細書が現金支払の場合
+      if ( bm1CustomerId == null )
+      {
+        if (XxcsoSpDecisionConstants.PAYMENT_TYPE_CASH.equals(bm1Row.getBmPaymentType()))
+        {
+          if (bm1Row.getTransferCommissionType() != null && ! "".equals(bm1Row.getTransferCommissionType()))
+          {
+            // 振込手数料をNULLに更新
+            bm1Row.setTransferCommissionType(null);
+          }
+        }
+      }
+      if ( bm2CustomerId == null )
+      {
+        if (XxcsoSpDecisionConstants.PAYMENT_TYPE_CASH.equals(bm2Row.getBmPaymentType()))
+        {
+          if (bm2Row.getTransferCommissionType() != null && ! "".equals(bm2Row.getTransferCommissionType()))
+          {
+            // 振込手数料をNULLに更新
+            bm2Row.setTransferCommissionType(null);
+          }
+        }
+      }
+      if ( bm3CustomerId == null )
+      {
+        if (XxcsoSpDecisionConstants.PAYMENT_TYPE_CASH.equals(bm3Row.getBmPaymentType()))
+        {
+          if (bm3Row.getTransferCommissionType() != null && ! "".equals(bm3Row.getTransferCommissionType()))
+          {
+            // 振込手数料をNULLに更新
+            bm3Row.setTransferCommissionType(null);
+          }
+        }
+      }
+    }
+// 2010-03-01 [E_本稼動_01678] Add End
+
     XxcsoUtils.debug(txn, "[END]");
   }
 

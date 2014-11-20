@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(SPEC)
  * Description      : フルベンダーSP専決
  * MD.050/070       : 
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  get_appr_auth_level_num_2 F    N     承認権限レベル番号２取得
  *  get_appr_auth_level_num_3 F    N     承認権限レベル番号３取得
  *  get_appr_auth_level_num_4 F    N     承認権限レベル番号４取得
+ *  get_appr_auth_level_num_5 F    N     承認権限レベル番号５取得
  *  get_appr_auth_level_num_0 F    N     承認権限レベル番号（デフォルト）取得
  *  chk_double_byte_kana      F    V     全角カナチェック（共通関数ラッピング）
  *  chk_tel_format            F    V     電話番号チェック（共通関数ラッピング）
@@ -51,6 +52,7 @@ AS
  *  2009/11/29    1.3   D.Abe            [E_本稼動_00106]アカウント複数判定
  *  2010/01/12    1.4   D.Abe            [E_本稼動_00823]顧客マスタの整合性チェック対応
  *  2010/01/15    1.5   D.Abe            [E_本稼動_00950]ＤＢ更新判定チェック対応
+ *  2010/03/01    1.6   D.Abe            [E_本稼動_01678]現金支払対応
  *****************************************************************************************/
 --
   -- トランザクション初期化処理
@@ -229,6 +231,15 @@ AS
     iv_construction_charge         IN  VARCHAR2
   ) RETURN NUMBER;
 --
+/* 2010.03.01 D.Abe E_本稼動_01678対応 START */
+  -- 承認権限レベル番号５取得
+  FUNCTION get_appr_auth_level_num_5(
+    iv_bm1_bm_payment_type     IN  VARCHAR2
+   ,iv_bm2_bm_payment_type     IN  VARCHAR2
+   ,iv_bm3_bm_payment_type     IN  VARCHAR2
+  ) RETURN NUMBER;
+--
+/* 2010.03.01 D.Abe E_本稼動_01678対応 END */
   -- 承認権限レベル番号（デフォルト）取得
   PROCEDURE get_appr_auth_level_num_0(
     on_appr_auth_level_num         OUT NUMBER

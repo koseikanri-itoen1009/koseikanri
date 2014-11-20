@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -27,6 +27,8 @@ AS
  *  chk_cooperate_wait        F    V      マスタ連携待ちチェック
  *  reflect_contract_status   P    -      契約書確定情報反映処理
  *  chk_validate_db           P    -      ＤＢ更新判定チェック
+ *  chk_cash_payment          F    V      現金支払チェック
+ *  chk_install_code          F    V      物件コードチェック
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -45,6 +47,7 @@ AS
  *  2009/06/05    1.5   N.Yanagitaira    [ST障害T1_1307]chk_single_byte_kana修正
  *  2009/09/09    1.6   Daisuke.Abe      統合テスト障害対応(0001323)
  *  2010/02/10    1.7   D.Abe            E_本稼動_01538対応
+ *  2010/03/01    1.8   D.Abe            E_本稼動_01678,E_本稼動_01868対応
  *****************************************************************************************/
 --
   -- ===============================
@@ -1427,8 +1430,144 @@ AS
 --#####################################  固定部 END   ##########################################
   END chk_validate_db;
 --
-
 /* 2010.02.10 D.Abe E_本稼動_01538対応 END */
+/* 2010.03.01 D.Abe E_本稼動_01678対応 START */
+  /**********************************************************************************
+   * Function Name    : chk_payment_type_cash
+   * Description      : 現金支払チェック
+   ***********************************************************************************/
+  FUNCTION chk_payment_type_cash(
+     in_sp_decision_header_id     IN  NUMBER           -- SP専決ヘッダID
+    ,in_supplier_id               IN  NUMBER           -- 送付先ID
+    ,iv_delivery_div              IN  VARCHAR2         -- 送付区分
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_payment_type_cash';
+    cv_bm_payment_type4          CONSTANT VARCHAR2(1)     := '4'; -- 現金支払
+    ct_sp_cust_class_bm1         CONSTANT xxcso_sp_decision_custs.sp_decision_customer_class%TYPE := '3'; -- ＳＰ専決顧客ＢＭ１
+    ct_sp_cust_class_bm2         CONSTANT xxcso_sp_decision_custs.sp_decision_customer_class%TYPE := '4'; -- ＳＰ専決顧客ＢＭ２
+    ct_sp_cust_class_bm3         CONSTANT xxcso_sp_decision_custs.sp_decision_customer_class%TYPE := '5'; -- ＳＰ専決顧客ＢＭ３
+    ct_delivery_div_bm1          CONSTANT xxcso_destinations.delivery_div%TYPE                    := '1'; -- 送付先ＢＭ１
+    ct_delivery_div_bm2          CONSTANT xxcso_destinations.delivery_div%TYPE                    := '2'; -- 送付先ＢＭ２
+    ct_delivery_div_bm3          CONSTANT xxcso_destinations.delivery_div%TYPE                    := '3'; -- 送付先ＢＭ３
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_bm_payment_type           xxcso_sp_decision_custs.bm_payment_type%TYPE;
+    ln_customer_id               xxcso_sp_decision_custs.customer_id%TYPE;
+    lv_return_value              VARCHAR2(1);
+--
+  BEGIN
+--
+    lv_return_value := NULL;
+--
+    -- SPの支払区分、ベンダIDを取得
+    SELECT xsdc.bm_payment_type
+          ,xsdc.customer_id
+    INTO   lv_bm_payment_type
+          ,ln_customer_id
+    FROM   xxcso_sp_decision_custs xsdc
+    WHERE  xsdc.sp_decision_header_id = in_sp_decision_header_id
+    AND    xsdc.sp_decision_customer_class = DECODE(iv_delivery_div
+                                                   ,ct_delivery_div_bm1, ct_sp_cust_class_bm1
+                                                   ,ct_delivery_div_bm2, ct_sp_cust_class_bm2
+                                                   ,ct_delivery_div_bm3, ct_sp_cust_class_bm3
+                                                   ) -- ＳＰ専決顧客区分
+    ;
+
+    -- ベンダIDが入力されている場合
+    IF (ln_customer_id IS NOT NULL) THEN
+      -- ＳＰのベンダIDで送付先マスタの支払方法を取得
+      SELECT pvs.attribute4
+      INTO   lv_bm_payment_type
+      FROM   po_vendor_sites pvs
+      WHERE  pvs.vendor_id   = ln_customer_id
+      ;
+    END IF;
+    -- 支払方法が現金支払以外の場合
+    IF (lv_bm_payment_type <> cv_bm_payment_type4) THEN
+      lv_return_value := '1';
+    END IF;
+
+    -- SPの支払方法が現金支払　かつ契約書が送付先指定の場合
+    IF (lv_return_value IS NULL AND in_supplier_id IS NOT NULL) THEN
+      -- 契約書の送付先マスタの現金支払を取得
+      SELECT pvs.attribute4
+      INTO   lv_bm_payment_type
+      FROM   po_vendor_sites pvs
+      WHERE  pvs.vendor_id   = in_supplier_id
+      ;
+      IF (lv_bm_payment_type <> cv_bm_payment_type4) THEN
+        lv_return_value := '2';
+      END IF;
+    END IF;
+--
+    RETURN lv_return_value;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_payment_type_cash;
+--
+/* 2010.03.01 D.Abe E_本稼動_01678対応 END */
+/* 2010.03.01 D.Abe E_本稼動_01868対応 START */
+  /**********************************************************************************
+   * Function Name    : chk_install_code
+   * Description      : 物件コードチェック
+   ***********************************************************************************/
+  FUNCTION chk_install_code(
+     iv_install_code              IN  VARCHAR2       -- 物件コード
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_install_code';
+    cv_flag_no                   CONSTANT VARCHAR2(1)     := 'N';      -- フラグN
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    ln_count                     NUMBER;
+    lv_return_value              VARCHAR2(1);
+--
+  BEGIN
+--
+    lv_return_value := '1';
+--
+    SELECT COUNT('x')
+    INTO   ln_count
+    FROM   csi_item_instances cii -- インストールベースマスタ
+    WHERE  cii.external_reference = iv_install_code
+    AND    cii.attribute4         = cv_flag_no;
+
+    IF (ln_count = 0) THEN
+      lv_return_value := '1';
+    ELSE
+      lv_return_value := '0';
+    END IF;
+--
+    RETURN lv_return_value;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_install_code;
+--
+/* 2010.03.01 D.Abe E_本稼動_01868対応 END */
+
 --
 END xxcso_010003j_pkg;
 /

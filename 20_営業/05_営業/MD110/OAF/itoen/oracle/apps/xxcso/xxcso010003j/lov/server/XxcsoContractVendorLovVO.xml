@@ -20,15 +20,15 @@ SELECT  pv.segment1                          AS vendor_number
        ,SUBSTRB(pvs.address_line1, 1, 35)    AS address_line1
        ,SUBSTRB(pvs.address_line2, 1, 35)    AS address_line2
        ,pvs.phone                            AS phone_number
-       ,xbav.bank_number                     AS bank_number
-       ,xbav.bank_name                       AS bank_name
-       ,xbav.bank_num                        AS bank_branch_number
-       ,xbav.bank_branch_name                AS bank_branch_name
-       ,xbav.bank_account_type               AS bank_account_type
-       ,xbav.bank_account_num                AS bank_account_num
-       ,xbav.account_holder_name_alt         AS bank_account_holder_name_alt
-       ,xbav.account_holder_name             AS bank_account_holder_name
-       ,pvs.bank_charge_bearer               AS bm_transfer_commission_type
+       ,DECODE(pvs.attribute4,'4',NULL,xbav.bank_number)              AS bank_number
+       ,DECODE(pvs.attribute4,'4',NULL,xbav.bank_name)                AS bank_name
+       ,DECODE(pvs.attribute4,'4',NULL,xbav.bank_num)                 AS bank_branch_number
+       ,DECODE(pvs.attribute4,'4',NULL,xbav.bank_branch_name)         AS bank_branch_name
+       ,DECODE(pvs.attribute4,'4',NULL,xbav.bank_account_type)        AS bank_account_type
+       ,DECODE(pvs.attribute4,'4',NULL,xbav.bank_account_num)         AS bank_account_num
+       ,DECODE(pvs.attribute4,'4',NULL,xbav.account_holder_name_alt)  AS bank_account_holder_name_alt
+       ,DECODE(pvs.attribute4,'4',NULL,xbav.account_holder_name)      AS bank_account_holder_name
+       ,DECODE(pvs.attribute4,'4',NULL,pvs.bank_charge_bearer)        AS bm_transfer_commission_type
        ,pvs.attribute4                       AS bm_payment_type
        ,pvs.attribute5                       AS inquiry_base_code
        ,xxcso_util_common_pkg.get_base_name(
@@ -36,10 +36,12 @@ SELECT  pv.segment1                          AS vendor_number
          ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
         )                                 AS inquiry_base_name
        ,pv.vendor_id                      AS vendor_id2
-       ,xxcso_util_common_pkg.get_lookup_meaning(
-          'XXCSO1_KOZA_TYPE'
-         ,xbav.bank_account_type
-         ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+       ,DECODE(pvs.attribute4,'4',NULL,
+          xxcso_util_common_pkg.get_lookup_meaning(
+            'XXCSO1_KOZA_TYPE'
+           ,xbav.bank_account_type
+           ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+          )
         ) bank_account_type_name
 FROM    po_vendors            pv
        ,po_vendor_sites       pvs

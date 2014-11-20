@@ -23,8 +23,8 @@ SELECT  xxcso_010003j_pkg.decode_bm_info(
          ,'1'
          ,'1'
          ,'0'
-         ,xsdc.transfer_commission_type
-         ,pvs.bank_charge_bearer
+         ,DECODE(xsdc.bm_payment_type,'4',NULL,xsdc.transfer_commission_type)
+         ,DECODE(pvs.attribute4,'4',NULL,pvs.bank_charge_bearer)
         )                                    AS transfer_commission_type
        ,xxcso_010003j_pkg.decode_bm_info(
           xsdc.customer_id
@@ -147,7 +147,7 @@ SELECT  xxcso_010003j_pkg.decode_bm_info(
          ,'1'
          ,'0'
          ,NULL
-         ,xbav.bank_number
+         ,DECODE(pvs.attribute4,'4',NULL,xbav.bank_number)
         )                                    AS bank_number
        ,xxcso_010003j_pkg.decode_bm_info(
           xsdc.customer_id
@@ -155,7 +155,7 @@ SELECT  xxcso_010003j_pkg.decode_bm_info(
          ,'1'
          ,'0'
          ,NULL
-         ,xbav.bank_name
+         ,DECODE(pvs.attribute4,'4',NULL,xbav.bank_name)
         )                                    AS bank_name
        ,xxcso_010003j_pkg.decode_bm_info(
           xsdc.customer_id
@@ -163,7 +163,7 @@ SELECT  xxcso_010003j_pkg.decode_bm_info(
          ,'1'
          ,'0'
          ,NULL
-         ,xbav.bank_num
+         ,DECODE(pvs.attribute4,'4',NULL,xbav.bank_num)
         )                                    AS bank_num
        ,xxcso_010003j_pkg.decode_bm_info(
           xsdc.customer_id
@@ -171,7 +171,7 @@ SELECT  xxcso_010003j_pkg.decode_bm_info(
          ,'1'
          ,'0'
          ,NULL
-         ,xbav.bank_branch_name
+         ,DECODE(pvs.attribute4,'4',NULL,xbav.bank_branch_name)
         )                                    AS bank_branch_name
        ,xxcso_010003j_pkg.decode_bm_info(
           xsdc.customer_id
@@ -179,7 +179,7 @@ SELECT  xxcso_010003j_pkg.decode_bm_info(
          ,'1'
          ,'0'
          ,NULL
-         ,xbav.bank_account_type
+         ,DECODE(pvs.attribute4,'4',NULL,xbav.bank_account_type)
         )                                    AS bank_account_type
        ,xxcso_010003j_pkg.decode_bm_info(
           xsdc.customer_id
@@ -187,7 +187,7 @@ SELECT  xxcso_010003j_pkg.decode_bm_info(
          ,'1'
          ,'0'
          ,NULL
-         ,xbav.bank_account_num
+         ,DECODE(pvs.attribute4,'4',NULL,xbav.bank_account_num)
         )                                    AS bank_account_num
        ,xxcso_010003j_pkg.decode_bm_info(
           xsdc.customer_id
@@ -195,7 +195,7 @@ SELECT  xxcso_010003j_pkg.decode_bm_info(
          ,'1'
          ,'0'
          ,NULL
-         ,xbav.account_holder_name_alt
+         ,DECODE(pvs.attribute4,'4',NULL,xbav.account_holder_name_alt)
         )                                    AS account_holder_name_alt
        ,xxcso_010003j_pkg.decode_bm_info(
           xsdc.customer_id
@@ -203,7 +203,7 @@ SELECT  xxcso_010003j_pkg.decode_bm_info(
          ,'1'
          ,'0'
          ,NULL
-         ,xbav.account_holder_name
+         ,DECODE(pvs.attribute4,'4',NULL,xbav.account_holder_name)
         )                                    AS account_holder_name
        ,xsdc.customer_id                     AS customer_id
 FROM    xxcso_sp_decision_custs  xsdc

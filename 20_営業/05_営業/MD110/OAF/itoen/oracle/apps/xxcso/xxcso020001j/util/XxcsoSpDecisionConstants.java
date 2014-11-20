@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionConstants
 * 概要説明   : SP専決固定値クラス
-* バージョン : 1.7
+* バージョン : 1.8
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -15,6 +15,7 @@
 * 2009-11-29 1.5  SCS阿部大輔  [E_本稼動_00106]アカウント複数対応
 * 2010-01-12 1.6  SCS阿部大輔  [E_本稼動_00823]顧客マスタの整合性チェック対応
 * 2010-01-20 1.7  SCS阿部大輔  [E_本稼動_01176]顧客コード必須対応
+* 2010-03-04 1.8  SCS阿部大輔  [E_本稼動_01678]現金支払対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -87,16 +88,22 @@ public class XxcsoSpDecisionConstants
    ,"VdInfo2Layout"
    ,"VdInfo3RequiredLayout"
    ,"Bm1PostalCodeLayout"
-   ,"Bm1TransferTypeLayout"
+// 2010-03-01 [E_本稼動_01678] Add Start
+//   ,"Bm1TransferTypeLayout"
+// 2010-03-01 [E_本稼動_01678] Add End
    ,"Bm1PaymentTypeLayout"
    ,"Bm2PostalCodeLayout"
-   ,"Bm2TransferTypeLayout"
+// 2010-03-01 [E_本稼動_01678] Add Start
+//   ,"Bm2TransferTypeLayout"
+// 2010-03-01 [E_本稼動_01678] Add End
    ,"Bm2PaymentTypeLayout"
    ,"CntrPostalCodeLayout"
    ,"CntrTransferTypeLayout"
    ,"CntrPaymentTypeLayout"
    ,"Bm3PostalCodeLayout"
-   ,"Bm3TransferTypeLayout"
+// 2010-03-01 [E_本稼動_01678] Add Start
+//   ,"Bm3TransferTypeLayout"
+// 2010-03-01 [E_本稼動_01678] Add End
    ,"Bm3PaymentTypeLayout"
    ,"BmRateLayout"
   };
@@ -225,6 +232,9 @@ public class XxcsoSpDecisionConstants
    * 支払方法・明細書
    *****************************************************************************
    */
+// 2010-03-01 [E_本稼動_01678] Add Start
+  public static final String PAYMENT_TYPE_CASH = "4";
+// 2010-03-01 [E_本稼動_01678] Add End
   public static final String PAYMENT_TYPE_NONE = "5";
 
   /*****************************************************************************

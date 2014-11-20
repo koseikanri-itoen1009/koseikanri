@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -27,6 +27,8 @@ AS
  *  chk_cooperate_wait        F    V      マスタ連携待ちチェック
  *  reflect_contract_status   P    -      契約書確定情報反映処理
  *  chk_validate_db           P    -      ＤＢ更新判定チェック
+ *  chk_cash_payment          F    V      現金支払チェック
+ *  chk_install_code          F    V      物件コードチェック
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -43,6 +45,7 @@ AS
  *                                                      chk_single_byte_kana
  *  2009-05-01    1.4   Tomoko.Mori      T1_0897対応
  *  2010/02/10    1.5   D.Abe            E_本稼動_01538対応
+ *  2010/03/01    1.6   D.Abe            E_本稼動_01678,E_本稼動_01868対応
  *****************************************************************************************/
 --
   -- BM情報分岐取得
@@ -169,6 +172,23 @@ AS
   );
 --
 /* 2010.02.10 D.Abe E_本稼動_01538対応 END */
+/* 2010.03.01 D.Abe E_本稼動_01678対応 START */
+  -- 現金支払チェック
+  FUNCTION chk_payment_type_cash(
+     in_sp_decision_header_id     IN  NUMBER           -- SP専決ヘッダID
+    ,in_supplier_id               IN  NUMBER           -- 送付先ID
+    ,iv_delivery_div              IN  VARCHAR2         -- 送付区分
+  ) RETURN VARCHAR2;
+--
+/* 2010.03.01 D.Abe E_本稼動_01678対応 END */
+/* 2010.03.01 D.Abe E_本稼動_01868対応 START */
+  -- 物件コードチェック
+  FUNCTION chk_install_code(
+     iv_install_code              IN  VARCHAR2         -- 物件コード
+  ) RETURN VARCHAR2;
+--
+/* 2010.03.01 D.Abe E_本稼動_01868対応 END */
+
 --
 END xxcso_010003j_pkg;
 /

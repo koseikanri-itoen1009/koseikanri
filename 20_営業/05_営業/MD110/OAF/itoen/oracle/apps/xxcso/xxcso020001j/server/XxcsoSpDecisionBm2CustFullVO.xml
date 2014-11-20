@@ -106,8 +106,14 @@ SELECT XxcsoSpDecisionCustsVEO.SP_DECISION_CUSTOMER_ID,
        XxcsoSpDecisionCustsVEO.EMPLOYEE_NUMBER, 
        XxcsoSpDecisionCustsVEO.PUBLISH_BASE_CODE, 
        XxcsoSpDecisionCustsVEO.REPRESENTATIVE_NAME, 
-       XxcsoSpDecisionCustsVEO.TRANSFER_COMMISSION_TYPE, 
-       XxcsoSpDecisionCustsVEO.BM_PAYMENT_TYPE, 
+       xxcso_020001j_pkg.get_bm2_info_parameter(
+         XxcsoSpDecisionCustsVEO.CUSTOMER_ID
+        ,XxcsoSpDecisionCustsVEO.BM_PAYMENT_TYPE
+        ,XxcsoSpDecisionCustsVEO.TRANSFER_COMMISSION_TYPE
+        ,DECODE(pvs.attribute4,'4',NULL,pvs.bank_charge_bearer)
+       ) transfer_commission_type, 
+       DECODE(XxcsoSpDecisionCustsVEO.CUSTOMER_ID,NULL,XxcsoSpDecisionCustsVEO.BM_PAYMENT_TYPE
+                                                 ,pvs.attribute4) bm_payment_type, 
        xxcso_020001j_pkg.get_bm2_info_parameter(
          XxcsoSpDecisionCustsVEO.CUSTOMER_ID
         ,XxcsoSpDecisionCustsVEO.BM_PAYMENT_TYPE
@@ -125,11 +131,16 @@ SELECT XxcsoSpDecisionCustsVEO.SP_DECISION_CUSTOMER_ID,
        XxcsoSpDecisionCustsVEO.REQUEST_ID, 
        XxcsoSpDecisionCustsVEO.PROGRAM_APPLICATION_ID, 
        XxcsoSpDecisionCustsVEO.PROGRAM_ID, 
-       XxcsoSpDecisionCustsVEO.PROGRAM_UPDATE_DATE
-      ,pv.segment1 vendor_number
-      ,(SELECT  xabv.base_name
-        FROM    xxcso_aff_base_v2  xabv
-        WHERE   xabv.base_code = XxcsoSpDecisionCustsVEO.INQUIRY_BASE_CODE
+       XxcsoSpDecisionCustsVEO.PROGRAM_UPDATE_DATE,
+       pv.segment1 vendor_number,
+       xxcso_util_common_pkg.get_base_name(
+         xxcso_020001j_pkg.get_bm2_info_parameter(
+           XxcsoSpDecisionCustsVEO.CUSTOMER_ID
+          ,XxcsoSpDecisionCustsVEO.BM_PAYMENT_TYPE
+          ,XxcsoSpDecisionCustsVEO.INQUIRY_BASE_CODE
+          ,pvs.attribute5
+         )
+        ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
        ) inquiry_base_name
 FROM XXCSO_SP_DECISION_CUSTS_V XxcsoSpDecisionCustsVEO
     ,po_vendors                pv

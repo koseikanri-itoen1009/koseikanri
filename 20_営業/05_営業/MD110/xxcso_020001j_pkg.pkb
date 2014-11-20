@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(BODY)
  * Description      : フルベンダーSP専決
  * MD.050/070       : 
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  get_appr_auth_level_num_2 F    N     承認権限レベル番号２取得
  *  get_appr_auth_level_num_3 F    N     承認権限レベル番号３取得
  *  get_appr_auth_level_num_4 F    N     承認権限レベル番号４取得
+ *  get_appr_auth_level_num_5 F    N     承認権限レベル番号５取得
  *  get_appr_auth_level_num_0 F    N     承認権限レベル番号（デフォルト）取得
  *  conv_number_separate      P    -     数値セパレート変換
  *  conv_line_number_separate P    -     数値セパレート変換（明細）
@@ -57,6 +58,7 @@ AS
  *  2009/11/29    1.11  D.Abe            [E_本稼動_00106]アカウント複数判定
  *  2010/01/12    1.12  D.Abe            [E_本稼動_00823]顧客マスタの整合性チェック対応
  *  2010/01/15    1.13  D.Abe            [E_本稼動_00950]ＤＢ更新判定チェック対応
+ *  2010/03/01    1.14  D.Abe            [E_本稼動_01678]現金支払対応
 *****************************************************************************************/
 --
   -- ===============================
@@ -1864,6 +1866,62 @@ AS
 --#####################################  固定部 END   ##########################################
   END get_appr_auth_level_num_4;
 --
+/* 2010.03.01 D.Abe E_本稼動_01678対応 START */
+  /**********************************************************************************
+   * Function Name    : get_appr_auth_level_num_5
+   * Description      : 承認権限レベル番号５取得
+   ***********************************************************************************/
+  FUNCTION get_appr_auth_level_num_5(
+    iv_bm1_bm_payment_type     IN  VARCHAR2
+   ,iv_bm2_bm_payment_type     IN  VARCHAR2
+   ,iv_bm3_bm_payment_type     IN  VARCHAR2
+  ) RETURN NUMBER
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'get_appr_auth_level_num_5';
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    ln_appr_auth_level_num      NUMBER;
+--
+  BEGIN
+--
+
+    BEGIN
+      SELECT  NVL(MAX(TO_NUMBER(flvv.attribute1)), 0)
+      INTO    ln_appr_auth_level_num
+      FROM    fnd_lookup_values_vl  flvv
+      WHERE   flvv.lookup_type                                  = 'XXCSO1_SP_WF_RULE_DETAIL_5'
+      AND     flvv.enabled_flag                                 = 'Y'
+      AND     flvv.attribute2 IN (iv_bm1_bm_payment_type
+                                 ,iv_bm2_bm_payment_type
+                                 ,iv_bm3_bm_payment_type
+                                 )
+      AND     NVL(flvv.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+                <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+      AND     NVL(flvv.end_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+                >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+       ln_appr_auth_level_num := 0;
+    END;
+--
+    RETURN ln_appr_auth_level_num;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END get_appr_auth_level_num_5;
+--
+/* 2010.03.01 D.Abe E_本稼動_01678対応 END */
   /**********************************************************************************
    * Function Name    : get_appr_auth_level_num_0
    * Description      : 承認権限レベル番号（デフォルト）取得

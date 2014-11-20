@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistConstants
 * 概要説明   : 自販機設置契約情報登録共通固定値クラス
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,8 @@
 * 2009-04-08 1.2  SCS柳平直人  [ST障害T1_0364]仕入先重複チェック修正対応
 * 2009-04-27 1.3  SCS柳平直人  [ST障害T1_0708]文字列チェック処理統一修正
 * 2010-02-09 1.4  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
+* 2010-03-01 1.5  SCS阿部大輔  [E_本稼動_01678]現金支払対応
+* 2010-03-01 1.5  SCS阿部大輔  [E_本稼動_01868]物件対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -70,21 +72,29 @@ public class XxcsoContractRegistConstants
     "CloseDayLayout"
    ,"TransferDayLayout"
    ,"CancellationOfferLayout"
-   ,"Bm1BankTransferFeeDivLayout"
+// 2010-03-01 [E_本稼動_01678] Add Start
+//   ,"Bm1BankTransferFeeDivLayout"
+// 2010-03-01 [E_本稼動_01678] Add End
    ,"Bm1BellingDetailsDivLayout"
    ,"Bm1InqueryBaseLayout"
-   ,"Bm1BankNameLayout"
-   ,"Bm1BankAccountTypeLayout"
-   ,"Bm2BankTransferFeeDivLayout"
+// 2010-03-01 [E_本稼動_01678] Add Start
+//   ,"Bm1BankNameLayout"
+//   ,"Bm1BankAccountTypeLayout"
+//   ,"Bm2BankTransferFeeDivLayout"
+// 2010-03-01 [E_本稼動_01678] Add End
    ,"Bm2BellingDetailsDivLayout"
    ,"Bm2InqueryBaseLayout"
-   ,"Bm2BankNameLayout"
-   ,"Bm2BankAccountTypeLayout"
-   ,"Bm3BankTransferFeeDivLayout"
+// 2010-03-01 [E_本稼動_01678] Add Start
+//   ,"Bm2BankNameLayout"
+//   ,"Bm2BankAccountTypeLayout"
+//   ,"Bm3BankTransferFeeDivLayout"
+// 2010-03-01 [E_本稼動_01678] Add End
    ,"Bm3BellingDetailsDivLayout"
    ,"Bm3InqueryBaseLayout"
-   ,"Bm3BankNameLayout"
-   ,"Bm3BankAccountTypeLayout"
+// 2010-03-01 [E_本稼動_01678] Add Start
+//   ,"Bm3BankNameLayout"
+//   ,"Bm3BankAccountTypeLayout"
+// 2010-03-01 [E_本稼動_01678] Add End
    ,"PublishBaseLayout"
    ,"InstallCodeLayout"
   };
@@ -194,6 +204,9 @@ public class XxcsoContractRegistConstants
    * BM支払区分
    *****************************************************************************
    */
+// 2010-03-01 [E_本稼動_01678] Add Start
+  public static final String BM_PAYMENT_TYPE4         = "4";
+// 2010-03-01 [E_本稼動_01678] Add End
   public static final String BM_PAYMENT_TYPE5         = "5";
 
 // 2009-04-08 [ST障害T1_0364] Add Start
@@ -350,6 +363,14 @@ public class XxcsoContractRegistConstants
   public static final String 
     TOKEN_VALUE_VALIDATE_DB_CHK         = "DB値検証チェック";
 // 2010-02-09 [E_本稼動_01538] Mod End
+// 2010-03-01 [E_本稼動_01678] Add Start
+  public static final String 
+    TOKEN_VALUE_PAYMENT_TYPE_CASH_CHK   = "現金支払検証チェック";
+// 2010-03-01 [E_本稼動_01678] Add End
+// 2010-03-01 [E_本稼動_01868] Add Start
+  public static final String 
+    TOKEN_VALUE_INSTALL_CODE_CHK        = "物件コード検証チェック";
+// 2010-03-01 [E_本稼動_01868] Add End
 
   // PDF出力時付加文言
   public static final String

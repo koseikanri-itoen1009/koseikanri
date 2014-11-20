@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionValidateUtils
 * 概要説明   : SP専決登録画面用検証ユーティリティクラス
-* バージョン : 1.14
+* バージョン : 1.15
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -22,6 +22,7 @@
 * 2010-01-12 1.12 SCS阿部大輔  [E_本稼動_00823]顧客マスタの整合性チェック対応
 * 2010-01-15 1.13 SCS阿部大輔  [E_本稼動_00950]画面値、ＤＢ値チェック対応
 * 2010-01-20 1.14 SCS阿部大輔  [E_本稼動_01176]顧客コード必須対応
+* 2010-03-01 1.15 SCS阿部大輔  [E_本稼動_01678]現金支払対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -1747,13 +1748,21 @@ public class XxcsoSpDecisionValidateUtils
             + XxcsoSpDecisionConstants.TOKEN_VALUE_TRANSFER;
     if ( submitFlag )
     {
-      errorList
-        = utils.requiredCheck(
-            errorList
-           ,bm1Row.getTransferCommissionType()
-           ,token1
-           ,0
-          );
+// 2010-03-01 [E_本稼動_01678] Add Start
+      // BM1の支払方法・明細書が現金支払以外の場合
+      if (! XxcsoSpDecisionConstants.PAYMENT_TYPE_CASH.equals(bm1Row.getBmPaymentType()))
+      {
+// 2010-03-01 [E_本稼動_01678] Add End
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,bm1Row.getTransferCommissionType()
+             ,token1
+             ,0
+            );
+// 2010-03-01 [E_本稼動_01678] Add Start
+      }
+// 2010-03-01 [E_本稼動_01678] Add End
     }
     
     XxcsoUtils.debug(txn, "[END]");
@@ -2129,13 +2138,21 @@ public class XxcsoSpDecisionValidateUtils
             + XxcsoSpDecisionConstants.TOKEN_VALUE_TRANSFER;
     if ( submitFlag )
     {
-      errorList
-        = utils.requiredCheck(
-            errorList
-           ,bm2Row.getTransferCommissionType()
-           ,token1
-           ,0
-          );
+// 2010-03-01 [E_本稼動_01678] Add Start
+      // BM2の支払方法・明細書が現金支払以外の場合
+      if (! XxcsoSpDecisionConstants.PAYMENT_TYPE_CASH.equals(bm2Row.getBmPaymentType()))
+      {
+// 2010-03-01 [E_本稼動_01678] Add End
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,bm2Row.getTransferCommissionType()
+             ,token1
+             ,0
+            );
+// 2010-03-01 [E_本稼動_01678] Add Start
+      }
+// 2010-03-01 [E_本稼動_01678] Add End
     }
     
     XxcsoUtils.debug(txn, "[END]");
@@ -2498,13 +2515,21 @@ public class XxcsoSpDecisionValidateUtils
             + XxcsoSpDecisionConstants.TOKEN_VALUE_TRANSFER;
     if ( submitFlag )
     {
-      errorList
-        = utils.requiredCheck(
-            errorList
-           ,bm3Row.getTransferCommissionType()
-           ,token1
-           ,0
-          );
+// 2010-03-01 [E_本稼動_01678] Add Start
+      // BM3の支払方法・明細書が現金支払以外の場合
+      if (! XxcsoSpDecisionConstants.PAYMENT_TYPE_CASH.equals(bm3Row.getBmPaymentType()))
+      {
+// 2010-03-01 [E_本稼動_01678] Add End
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,bm3Row.getTransferCommissionType()
+             ,token1
+             ,0
+            );
+// 2010-03-01 [E_本稼動_01678] Add Start
+      }
+// 2010-03-01 [E_本稼動_01678] Add End
     }
     
     XxcsoUtils.debug(txn, "[END]");
@@ -2824,6 +2849,9 @@ public class XxcsoSpDecisionValidateUtils
    * 回送先の検証
    * @param txn         OADBTransactionインスタンス
    * @param headerVo    SP専決ヘッダ登録／更新用ビューインスタンス
+   * @param bm1Vo       BM1登録／更新用ビューインスタンス
+   * @param bm2Vo       BM2登録／更新用ビューインスタンス
+   * @param bm3Vo       BM3登録／更新用ビューインスタンス
    * @param scVo        売価別条件登録／更新用ビューインスタンス
    * @param allCcVo     全容器一律条件登録／更新用ビューインスタンス
    * @param selCcVo     容器別条件登録／更新用ビューインスタンス
@@ -2835,6 +2863,11 @@ public class XxcsoSpDecisionValidateUtils
   public static List validateSend(
     OADBTransaction                     txn
    ,XxcsoSpDecisionHeaderFullVOImpl     headerVo
+// 2010-03-01 [E_本稼動_01678] Add Start
+   ,XxcsoSpDecisionBm1CustFullVOImpl    bm1Vo
+   ,XxcsoSpDecisionBm2CustFullVOImpl    bm2Vo
+   ,XxcsoSpDecisionBm3CustFullVOImpl    bm3Vo
+// 2010-03-01 [E_本稼動_01678] Add End
    ,XxcsoSpDecisionScLineFullVOImpl     scVo
    ,XxcsoSpDecisionAllCcLineFullVOImpl  allCcVo
    ,XxcsoSpDecisionSelCcLineFullVOImpl  selCcVo
@@ -2852,6 +2885,14 @@ public class XxcsoSpDecisionValidateUtils
     /////////////////////////////////////
     XxcsoSpDecisionHeaderFullVORowImpl headerRow
       = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+// 2010-03-01 [E_本稼動_01678] Add Start
+    XxcsoSpDecisionBm1CustFullVORowImpl bm1Row
+      = (XxcsoSpDecisionBm1CustFullVORowImpl)bm1Vo.first();
+    XxcsoSpDecisionBm2CustFullVORowImpl bm2Row
+      = (XxcsoSpDecisionBm2CustFullVORowImpl)bm2Vo.first();
+    XxcsoSpDecisionBm3CustFullVORowImpl bm3Row
+      = (XxcsoSpDecisionBm3CustFullVORowImpl)bm3Vo.first();
+// 2010-03-01 [E_本稼動_01678] Add End
     XxcsoSpDecisionScLineFullVORowImpl scRow
       = (XxcsoSpDecisionScLineFullVORowImpl)scVo.first();
     XxcsoSpDecisionAllCcLineFullVORowImpl allCcRow
@@ -3220,7 +3261,52 @@ public class XxcsoSpDecisionValidateUtils
       }
 
       sql.delete(0, sql.length());
-        
+
+// 2010-03-01 [E_本稼動_01678] Add Start
+      /////////////////////////////////////
+      // 承認権限レベル番号５
+      /////////////////////////////////////
+      sql.append("BEGIN");
+      sql.append("  :1 := xxcso_020001j_pkg.get_appr_auth_level_num_5(");
+      sql.append("          :2, :3, :4);");
+      sql.append("END;");
+
+      XxcsoUtils.debug(txn, "execute = " + sql.toString());
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.registerOutParameter(1, OracleTypes.NUMBER);
+      stmt.setString(2, bm1Row.getBmPaymentType());
+      stmt.setString(3, bm2Row.getBmPaymentType());
+      stmt.setString(4, bm3Row.getBmPaymentType());
+
+      stmt.execute();
+
+      returnValue = stmt.getNUMBER(1);
+      XxcsoUtils.debug(
+        txn, "return = " + returnValue.stringValue()
+      );
+
+      XxcsoUtils.debug(
+        txn, "lastApprAuthLevel = " + lastApprAuthLevel.stringValue()
+      );
+
+      checkValue = returnValue.compareTo(lastApprAuthLevel);
+          
+      if ( checkValue > 0 )
+      {
+        lastApprAuthLevel = returnValue;
+      }
+
+      if ( stmt != null )
+      {
+        stmt.close();
+      }
+
+      sql.delete(0, sql.length());
+// 2010-03-01 [E_本稼動_01678] Add End
       if ( lastApprAuthLevel.compareTo(NUMBER.zero()) == 0 )
       {
         /////////////////////////////////////

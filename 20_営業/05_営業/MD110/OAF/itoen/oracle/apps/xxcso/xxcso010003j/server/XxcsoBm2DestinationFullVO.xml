@@ -43,8 +43,8 @@ SELECT XxcsoDestinationsEO.DELIVERY_ID                 AS delivery_id,
         ,xcm.status
         ,xcm.cooperate_flag
         ,xcm.batch_proc_status
-        ,XxcsoDestinationsEO.BANK_TRANSFER_FEE_CHARGE_DIV
-        ,pvs.bank_charge_bearer
+        ,DECODE(XxcsoDestinationsEO.BELLING_DETAILS_DIV,'4',NULL,XxcsoDestinationsEO.BANK_TRANSFER_FEE_CHARGE_DIV)
+        ,DECODE(pvs.attribute4,'4',NULL,pvs.bank_charge_bearer)
        )                                               AS bank_transfer_fee_charge_div,
        xxcso_010003j_pkg.decode_bm_info(
          XxcsoDestinationsEO.SUPPLIER_ID

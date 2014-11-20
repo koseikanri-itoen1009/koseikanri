@@ -17,64 +17,64 @@ SELECT XxcsoBankAccountsEO.BANK_ACCOUNT_ID            AS bank_account_id,
         ,xcm.status
         ,xcm.cooperate_flag
         ,xcm.batch_proc_status
-        ,XxcsoBankAccountsEO.BANK_NUMBER
-        ,xbav.bank_number
+        ,DECODE(xdc.belling_details_div,'4',NULL,XxcsoBankAccountsEO.BANK_NUMBER)
+        ,DECODE(pvs.attribute4,'4',NULL,xbav.bank_number)
        )                                              AS bank_number,
        xxcso_010003j_pkg.decode_bm_info(
          xdc.supplier_id
         ,xcm.status
         ,xcm.cooperate_flag
         ,xcm.batch_proc_status
-        ,XxcsoBankAccountsEO.BANK_NAME
-        ,xbav.bank_name
+        ,DECODE(xdc.belling_details_div,'4',NULL,XxcsoBankAccountsEO.BANK_NAME)
+        ,DECODE(pvs.attribute4,'4',NULL,xbav.bank_name)
        )                                              AS bank_name,
        xxcso_010003j_pkg.decode_bm_info(
          xdc.supplier_id
         ,xcm.status
         ,xcm.cooperate_flag
         ,xcm.batch_proc_status
-        ,XxcsoBankAccountsEO.BRANCH_NUMBER
-        ,xbav.bank_num
+        ,DECODE(xdc.belling_details_div,'4',NULL,XxcsoBankAccountsEO.BRANCH_NUMBER)
+        ,DECODE(pvs.attribute4,'4',NULL,xbav.bank_num)
        )                                              AS branch_number,
        xxcso_010003j_pkg.decode_bm_info(
          xdc.supplier_id
         ,xcm.status
         ,xcm.cooperate_flag
         ,xcm.batch_proc_status
-        ,XxcsoBankAccountsEO.BRANCH_NAME
-        ,xbav.bank_branch_name
+        ,DECODE(xdc.belling_details_div,'4',NULL,XxcsoBankAccountsEO.BRANCH_NAME)
+        ,DECODE(pvs.attribute4,'4',NULL,xbav.bank_branch_name)
        )                                              AS branch_name,
        xxcso_010003j_pkg.decode_bm_info(
          xdc.supplier_id
         ,xcm.status
         ,xcm.cooperate_flag
         ,xcm.batch_proc_status
-        ,XxcsoBankAccountsEO.BANK_ACCOUNT_TYPE
-        ,xbav.bank_account_type
+        ,DECODE(xdc.belling_details_div,'4',NULL,XxcsoBankAccountsEO.BANK_ACCOUNT_TYPE)
+        ,DECODE(pvs.attribute4,'4',NULL,xbav.bank_account_type)
        )                                              AS bank_account_type,
        xxcso_010003j_pkg.decode_bm_info(
          xdc.supplier_id
         ,xcm.status
         ,xcm.cooperate_flag
         ,xcm.batch_proc_status
-        ,XxcsoBankAccountsEO.BANK_ACCOUNT_NUMBER
-        ,xbav.bank_account_num
+        ,DECODE(xdc.belling_details_div,'4',NULL,XxcsoBankAccountsEO.BANK_ACCOUNT_NUMBER)
+        ,DECODE(pvs.attribute4,'4',NULL,xbav.bank_account_num)
        )                                              AS bank_account_number,
        xxcso_010003j_pkg.decode_bm_info(
          xdc.supplier_id
         ,xcm.status
         ,xcm.cooperate_flag
         ,xcm.batch_proc_status
-        ,XxcsoBankAccountsEO.BANK_ACCOUNT_NAME_KANA
-        ,xbav.account_holder_name_alt
+        ,DECODE(xdc.belling_details_div,'4',NULL,XxcsoBankAccountsEO.BANK_ACCOUNT_NAME_KANA)
+        ,DECODE(pvs.attribute4,'4',NULL,xbav.account_holder_name_alt)
        )                                              AS bank_account_name_kana,
        xxcso_010003j_pkg.decode_bm_info(
          xdc.supplier_id
         ,xcm.status
         ,xcm.cooperate_flag
         ,xcm.batch_proc_status
-        ,XxcsoBankAccountsEO.BANK_ACCOUNT_NAME_KANJI
-        ,xbav.account_holder_name
+        ,DECODE(xdc.belling_details_div,'4',NULL,XxcsoBankAccountsEO.BANK_ACCOUNT_NAME_KANJI)
+        ,DECODE(pvs.attribute4,'4',NULL,xbav.account_holder_name)
        )                                              AS bank_account_name_kanji,
        XxcsoBankAccountsEO.BANK_ACCOUNT_DUMMY_FLAG, 
        XxcsoBankAccountsEO.CREATED_BY, 
@@ -91,9 +91,11 @@ FROM   XXCSO_BANK_ACCOUNTS        XxcsoBankAccountsEO
       ,xxcso_destinations         xdc
       ,xxcso_contract_managements xcm
       ,xxcso_bank_accts_v         xbav
+      ,po_vendor_sites            pvs
 WHERE  xdc.delivery_id            = XxcsoBankAccountsEO.DELIVERY_ID
 AND    xcm.contract_management_id = xdc.contract_management_id
 AND    xbav.vendor_id(+)          = xdc.supplier_id
+AND    pvs.vendor_id(+)           = xdc.supplier_id
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistValidateUtils
 * 概要説明   : 自販機設置契約情報登録検証ユーティリティクラス
-* バージョン : 1.9
+* バージョン : 1.10
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -17,6 +17,8 @@
 * 2010-01-26 1.7  SCS阿部大輔  [E_本稼動_01314]契約書発効日必須対応
 * 2010-01-20 1.8  SCS阿部大輔  [E_本稼動_01212]口座番号対応
 * 2010-02-09 1.9  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
+* 2010-03-01 1.10 SCS阿部大輔  [E_本稼動_01678]現金支払対応
+* 2010-03-01 1.10 SCS阿部大輔  [E_本稼動_01868]物件コード対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -544,6 +546,7 @@ public class XxcsoContractRegistValidateUtils
    * ＢＭ１指定情報の検証
    * @param txn          OADBTransactionインスタンス
    * @param pageRndrVo   ページ属性設定用ビューインスタンス
+   * @param mngVo        契約管理テーブル情報ビューインスタンス
    * @param bm1DestVo    送付先テーブル情報用ビューインスタンス
    * @param bm1BankAccVo 銀行口座アドオンマスタ情報用ビューインスタンス
    * @param isFixed      確定ボタン押下フラグ
@@ -553,6 +556,9 @@ public class XxcsoContractRegistValidateUtils
   public static List validateBm1Dest(
     OADBTransaction                     txn
    ,XxcsoPageRenderVOImpl               pageRndrVo
+// 2010-03-01 [E_本稼動_01678] Add Start
+   ,XxcsoContractManagementFullVOImpl   mngVo
+// 2010-03-01 [E_本稼動_01678] Add End
    ,XxcsoBm1DestinationFullVOImpl       bm1DestVo
    ,XxcsoBm1BankAccountFullVOImpl       bm1BankAccVo
    ,boolean                             fixedFrag
@@ -574,6 +580,11 @@ public class XxcsoContractRegistValidateUtils
     // ***********************************
     XxcsoPageRenderVORowImpl pageRndrVoRow
       = (XxcsoPageRenderVORowImpl) pageRndrVo.first();
+
+// 2010-03-01 [E_本稼動_01678] Add Start
+    XxcsoContractManagementFullVORowImpl mngVoRow
+      = (XxcsoContractManagementFullVORowImpl) mngVo.first();
+// 2010-03-01 [E_本稼動_01678] Add End
 
     XxcsoBm1DestinationFullVORowImpl bm1DestVoRow
       = (XxcsoBm1DestinationFullVORowImpl) bm1DestVo.first();
@@ -599,13 +610,21 @@ public class XxcsoContractRegistValidateUtils
     // 確定ボタン時のみ必須入力チェック
     if ( fixedFrag )
     {
-      errorList
-        =  utils.requiredCheck(
-             errorList
-            ,bm1DestVoRow.getBankTransferFeeChargeDiv()
-            ,token1
-            ,0
-           );
+// 2010-03-01 [E_本稼動_01678] Add Start
+      // 支払方法、明細書が現金支払以外の場合
+      if (! XxcsoContractRegistConstants.BM_PAYMENT_TYPE4.equals(bm1DestVoRow.getBellingDetailsDiv()))
+      {
+// 2010-03-01 [E_本稼動_01678] Add End
+        errorList
+          =  utils.requiredCheck(
+               errorList
+              ,bm1DestVoRow.getBankTransferFeeChargeDiv()
+              ,token1
+              ,0
+             );
+// 2010-03-01 [E_本稼動_01678] Add Start
+      }
+// 2010-03-01 [E_本稼動_01678] Add End
     }
 
     // ///////////////////////////////////
@@ -625,6 +644,38 @@ public class XxcsoContractRegistValidateUtils
           );
     }
 
+// 2010-03-01 [E_本稼動_01678] Add Start
+    // 現金支払のみ検証処理
+    if ( XxcsoContractRegistConstants.BM_PAYMENT_TYPE4.equals(bm1DestVoRow.getBellingDetailsDiv()))
+    {
+      String retCode  = chkPaymentTypeCash(
+                                 txn
+                                ,mngVoRow.getSpDecisionHeaderId()
+                                ,bm1DestVoRow.getSupplierId()
+                                ,bm1DestVoRow.getDeliveryDiv()
+                               );
+      if ( "1".equals(retCode) )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00596
+             ,XxcsoConstants.TOKEN_REGION
+             ,token1
+            );
+        errorList.add(error);
+      }
+      else if ( "2".equals(retCode) )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00601
+             ,XxcsoConstants.TOKEN_VALUES
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1
+            );
+        errorList.add(error);
+      }
+    }
+// 2010-03-01 [E_本稼動_01678] Add End
     // ///////////////////////////////////
     // 問合せ担当拠点
     // ///////////////////////////////////
@@ -932,163 +983,169 @@ public class XxcsoContractRegistValidateUtils
           );
       errorList.add(error);
     }
-
-    // ///////////////////////////////////
-    // 金融機関名
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_NUMBER;
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
+// 2010-03-01 [E_本稼動_01678] Add Start
+    // 支払方法、明細書が現金支払以外の場合
+    if (! XxcsoContractRegistConstants.BM_PAYMENT_TYPE4.equals(bm1DestVoRow.getBellingDetailsDiv()))
     {
-      errorList
-        = utils.requiredCheck(
-            errorList
-           ,bm1BankAccVoRow.getBankNumber()
-           ,token1
-           ,0
-          );
-    }
+// 2010-03-01 [E_本稼動_01678] Add End
+      // ///////////////////////////////////
+      // 金融機関名
+      // ///////////////////////////////////
+      token1 = tokenMain
+              + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_NUMBER;
+      // 確定ボタン時のみ必須入力チェック
+      if ( fixedFrag )
+      {
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,bm1BankAccVoRow.getBankNumber()
+             ,token1
+             ,0
+            );
+      }
 
-    // ///////////////////////////////////
-    // 口座種別
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_TYPE;
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
-    {
-      errorList
-        = utils.requiredCheck(
-            errorList
-           ,bm1BankAccVoRow.getBankAccountType()
-           ,token1
-           ,0
-          );
-    }
+      // ///////////////////////////////////
+      // 口座種別
+      // ///////////////////////////////////
+      token1 = tokenMain
+              + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_TYPE;
+      // 確定ボタン時のみ必須入力チェック
+      if ( fixedFrag )
+      {
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,bm1BankAccVoRow.getBankAccountType()
+             ,token1
+             ,0
+            );
+      }
 
-    // ///////////////////////////////////
-    // 口座番号
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NUMBER;
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
-    {
+      // ///////////////////////////////////
+      // 口座番号
+      // ///////////////////////////////////
+      token1 = tokenMain
+              + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NUMBER;
+      // 確定ボタン時のみ必須入力チェック
+      if ( fixedFrag )
+      {
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,bm1BankAccVoRow.getBankAccountNumber()
+             ,token1
+             ,0
+            );
+      }
+  // 2010-01-20 [E_本稼動_01212] Add Start
+      // 整合性チェック
+      if ( ! isBankAccountNumber( bm1BankAccVoRow.getBankNumber()
+                                 ,bm1BankAccVoRow.getBankAccountNumber()
+                                ))
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00591
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NUMBER
+            );
+        errorList.add(error);
+      }
+  // 2010-01-20 [E_本稼動_01212] Add End
+      // 禁則文字チェック
       errorList
-        = utils.requiredCheck(
+        = utils.checkIllegalString(
             errorList
            ,bm1BankAccVoRow.getBankAccountNumber()
            ,token1
            ,0
           );
-    }
-// 2010-01-20 [E_本稼動_01212] Add Start
-    // 整合性チェック
-    if ( ! isBankAccountNumber( bm1BankAccVoRow.getBankNumber()
-                               ,bm1BankAccVoRow.getBankAccountNumber()
-                              ))
-    {
-      OAException error
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00591
-           ,XxcsoConstants.TOKEN_REGION
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
-           ,XxcsoConstants.TOKEN_COLUMN
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NUMBER
-          );
-      errorList.add(error);
-    }
-// 2010-01-20 [E_本稼動_01212] Add End
-    // 禁則文字チェック
-    errorList
-      = utils.checkIllegalString(
-          errorList
-         ,bm1BankAccVoRow.getBankAccountNumber()
-         ,token1
-         ,0
-        );
 
-    // ///////////////////////////////////
-    // 口座名義カナ
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANA;
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
-    {
+      // ///////////////////////////////////
+      // 口座名義カナ
+      // ///////////////////////////////////
+      token1 = tokenMain
+              + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANA;
+      // 確定ボタン時のみ必須入力チェック
+      if ( fixedFrag )
+      {
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,bm1BankAccVoRow.getBankAccountNameKana()
+             ,token1
+             ,0
+            );
+      }
+
+      // 禁則文字チェック
       errorList
-        = utils.requiredCheck(
+        = utils.checkIllegalString(
             errorList
            ,bm1BankAccVoRow.getBankAccountNameKana()
            ,token1
            ,0
           );
-    }
 
-    // 禁則文字チェック
-    errorList
-      = utils.checkIllegalString(
-          errorList
-         ,bm1BankAccVoRow.getBankAccountNameKana()
-         ,token1
-         ,0
-        );
+      // 半角カナチェック（BFA関数）
+      if ( ! isBfaSingleByteKana(txn, bm1BankAccVoRow.getBankAccountNameKana()) )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00533
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANA
+            );
+        errorList.add(error);
+      }
 
-    // 半角カナチェック（BFA関数）
-    if ( ! isBfaSingleByteKana(txn, bm1BankAccVoRow.getBankAccountNameKana()) )
-    {
-      OAException error
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00533
-           ,XxcsoConstants.TOKEN_REGION
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
-           ,XxcsoConstants.TOKEN_COLUMN
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANA
-          );
-      errorList.add(error);
-    }
-
-    // ///////////////////////////////////
-    // 口座名義漢字
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANJI;
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
-    {
+      // ///////////////////////////////////
+      // 口座名義漢字
+      // ///////////////////////////////////
+      token1 = tokenMain
+              + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANJI;
+      // 確定ボタン時のみ必須入力チェック
+      if ( fixedFrag )
+      {
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,bm1BankAccVoRow.getBankAccountNameKanji()
+             ,token1
+             ,0
+            );
+      }
+      // 禁則文字チェック
       errorList
-        = utils.requiredCheck(
+        = utils.checkIllegalString(
             errorList
            ,bm1BankAccVoRow.getBankAccountNameKanji()
            ,token1
            ,0
           );
+  // 2009-04-27 [ST障害T1_0708] Add Start
+      // 全角文字チェック
+      if ( ! isDoubleByte( txn, bm1BankAccVoRow.getBankAccountNameKanji() ) )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00565
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANJI
+            );
+        errorList.add(error);
+      }
+  // 2009-04-27 [ST障害T1_0708] Add End
+// 2010-03-01 [E_本稼動_01678] Add Start
     }
-    // 禁則文字チェック
-    errorList
-      = utils.checkIllegalString(
-          errorList
-         ,bm1BankAccVoRow.getBankAccountNameKanji()
-         ,token1
-         ,0
-        );
-// 2009-04-27 [ST障害T1_0708] Add Start
-    // 全角文字チェック
-    if ( ! isDoubleByte( txn, bm1BankAccVoRow.getBankAccountNameKanji() ) )
-    {
-      OAException error
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00565
-           ,XxcsoConstants.TOKEN_REGION
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
-           ,XxcsoConstants.TOKEN_COLUMN
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANJI
-          );
-      errorList.add(error);
-    }
-// 2009-04-27 [ST障害T1_0708] Add End
-
+// 2010-03-01 [E_本稼動_01678] Add End
     XxcsoUtils.debug(txn, "[END]");
     return errorList;
   }
@@ -1097,6 +1154,7 @@ public class XxcsoContractRegistValidateUtils
    * ＢＭ２指定情報の検証
    * @param txn          OADBTransactionインスタンス
    * @param pageRndrVo   ページ属性設定用ビューインスタンス
+   * @param mngVo        契約管理テーブル情報ビューインスタンス
    * @param bm1DestVo    送付先テーブル情報用ビューインスタンス
    * @param bm1BankAccVo 銀行口座アドオンマスタ情報用ビューインスタンス
    * @param isFixed      確定ボタン押下フラグ
@@ -1106,6 +1164,9 @@ public class XxcsoContractRegistValidateUtils
   public static List validateBm2Dest(
     OADBTransaction                     txn
    ,XxcsoPageRenderVOImpl               pageRndrVo
+// 2010-03-01 [E_本稼動_01678] Add Start
+   ,XxcsoContractManagementFullVOImpl   mngVo
+// 2010-03-01 [E_本稼動_01678] Add End
    ,XxcsoBm2DestinationFullVOImpl       bm2DestVo
    ,XxcsoBm2BankAccountFullVOImpl       bm2BankAccVo
    ,boolean                             fixedFrag
@@ -1127,6 +1188,11 @@ public class XxcsoContractRegistValidateUtils
     // ***********************************
     XxcsoPageRenderVORowImpl pageRndrVoRow
       = (XxcsoPageRenderVORowImpl) pageRndrVo.first();
+
+// 2010-03-01 [E_本稼動_01678] Add Start
+    XxcsoContractManagementFullVORowImpl mngVoRow
+      = (XxcsoContractManagementFullVORowImpl) mngVo.first();
+// 2010-03-01 [E_本稼動_01678] Add End
 
     XxcsoBm2DestinationFullVORowImpl bm2DestVoRow
       = (XxcsoBm2DestinationFullVORowImpl) bm2DestVo.first();
@@ -1152,13 +1218,21 @@ public class XxcsoContractRegistValidateUtils
     // 確定ボタン時のみ必須入力チェック
     if ( fixedFrag )
     {
-      errorList
-        =  utils.requiredCheck(
-             errorList
-            ,bm2DestVoRow.getBankTransferFeeChargeDiv()
-            ,token1
-            ,0
-           );
+// 2010-03-01 [E_本稼動_01678] Add Start
+      // 支払方法、明細書が現金支払以外の場合
+      if (! XxcsoContractRegistConstants.BM_PAYMENT_TYPE4.equals(bm2DestVoRow.getBellingDetailsDiv()))
+      {
+// 2010-03-01 [E_本稼動_01678] Add End
+        errorList
+          =  utils.requiredCheck(
+               errorList
+              ,bm2DestVoRow.getBankTransferFeeChargeDiv()
+              ,token1
+              ,0
+             );
+// 2010-03-01 [E_本稼動_01678] Add Start
+      }
+// 2010-03-01 [E_本稼動_01678] Add End
     }
 
     // ///////////////////////////////////
@@ -1177,6 +1251,39 @@ public class XxcsoContractRegistValidateUtils
            ,0
           );
     }
+
+// 2010-03-01 [E_本稼動_01678] Add Start
+    // 現金支払のみ検証処理
+    if ( XxcsoContractRegistConstants.BM_PAYMENT_TYPE4.equals(bm2DestVoRow.getBellingDetailsDiv()))
+    {
+      String retCode  = chkPaymentTypeCash(
+                                 txn
+                                ,mngVoRow.getSpDecisionHeaderId()
+                                ,bm2DestVoRow.getSupplierId()
+                                ,bm2DestVoRow.getDeliveryDiv()
+                               );
+      if ( "1".equals(retCode) )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00596
+             ,XxcsoConstants.TOKEN_REGION
+             ,token1
+            );
+        errorList.add(error);
+      }
+      else if ( "2".equals(retCode) )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00601
+             ,XxcsoConstants.TOKEN_VALUES
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2
+            );
+        errorList.add(error);
+      }
+    }
+// 2010-03-01 [E_本稼動_01678] Add End
 
     // ///////////////////////////////////
     // 問合せ担当拠点
@@ -1487,162 +1594,169 @@ public class XxcsoContractRegistValidateUtils
       errorList.add(error);
     }
 
-    // ///////////////////////////////////
-    // 金融機関名
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_NUMBER;
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
+// 2010-03-01 [E_本稼動_01678] Add Start
+    // 支払方法、明細書が現金支払以外の場合
+    if (! XxcsoContractRegistConstants.BM_PAYMENT_TYPE4.equals(bm2DestVoRow.getBellingDetailsDiv()))
     {
-      errorList
-        = utils.requiredCheck(
-            errorList
-           ,bm2BankAccVoRow.getBankNumber()
-           ,token1
-           ,0
-          );
-    }
+// 2010-03-01 [E_本稼動_01678] Add End
+      // ///////////////////////////////////
+      // 金融機関名
+      // ///////////////////////////////////
+      token1 = tokenMain
+              + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_NUMBER;
+      // 確定ボタン時のみ必須入力チェック
+      if ( fixedFrag )
+      {
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,bm2BankAccVoRow.getBankNumber()
+             ,token1
+             ,0
+            );
+      }
 
-    // ///////////////////////////////////
-    // 口座種別
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_TYPE;
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
-    {
-      errorList
-        = utils.requiredCheck(
-            errorList
-           ,bm2BankAccVoRow.getBankAccountType()
-           ,token1
-           ,0
-          );
-    }
+      // ///////////////////////////////////
+      // 口座種別
+      // ///////////////////////////////////
+      token1 = tokenMain
+              + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_TYPE;
+      // 確定ボタン時のみ必須入力チェック
+      if ( fixedFrag )
+      {
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,bm2BankAccVoRow.getBankAccountType()
+             ,token1
+             ,0
+            );
+      }
 
-    // ///////////////////////////////////
-    // 口座番号
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NUMBER;
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
-    {
+      // ///////////////////////////////////
+      // 口座番号
+      // ///////////////////////////////////
+      token1 = tokenMain
+              + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NUMBER;
+      // 確定ボタン時のみ必須入力チェック
+      if ( fixedFrag )
+      {
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,bm2BankAccVoRow.getBankAccountNumber()
+             ,token1
+             ,0
+            );
+      }
+  // 2010-01-20 [E_本稼動_01212] Add Start
+      // 整合性チェック
+      if ( ! isBankAccountNumber( bm2BankAccVoRow.getBankNumber()
+                                 ,bm2BankAccVoRow.getBankAccountNumber()
+                                 ))
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00591
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NUMBER
+            );
+        errorList.add(error);
+      }
+  // 2010-01-20 [E_本稼動_01212] Add End
+      // 禁則文字チェック
       errorList
-        = utils.requiredCheck(
+        = utils.checkIllegalString(
             errorList
            ,bm2BankAccVoRow.getBankAccountNumber()
            ,token1
            ,0
           );
-    }
-// 2010-01-20 [E_本稼動_01212] Add Start
-    // 整合性チェック
-    if ( ! isBankAccountNumber( bm2BankAccVoRow.getBankNumber()
-                               ,bm2BankAccVoRow.getBankAccountNumber()
-                               ))
-    {
-      OAException error
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00591
-           ,XxcsoConstants.TOKEN_REGION
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
-           ,XxcsoConstants.TOKEN_COLUMN
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NUMBER
-          );
-      errorList.add(error);
-    }
-// 2010-01-20 [E_本稼動_01212] Add End
-    // 禁則文字チェック
-    errorList
-      = utils.checkIllegalString(
-          errorList
-         ,bm2BankAccVoRow.getBankAccountNumber()
-         ,token1
-         ,0
-        );
 
-    // ///////////////////////////////////
-    // 口座名義カナ
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANA;
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
-    {
+      // ///////////////////////////////////
+      // 口座名義カナ
+      // ///////////////////////////////////
+      token1 = tokenMain
+              + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANA;
+      // 確定ボタン時のみ必須入力チェック
+      if ( fixedFrag )
+      {
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,bm2BankAccVoRow.getBankAccountNameKana()
+             ,token1
+             ,0
+            );
+      }
+
+      // 禁則文字チェック
       errorList
-        = utils.requiredCheck(
+        = utils.checkIllegalString(
             errorList
            ,bm2BankAccVoRow.getBankAccountNameKana()
            ,token1
            ,0
           );
-    }
 
-    // 禁則文字チェック
-    errorList
-      = utils.checkIllegalString(
-          errorList
-         ,bm2BankAccVoRow.getBankAccountNameKana()
-         ,token1
-         ,0
-        );
+      // 半角カナチェック（BFA関数）
+      if ( ! isBfaSingleByteKana(txn, bm2BankAccVoRow.getBankAccountNameKana()) )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00533
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANA
+            );
+        errorList.add(error);
+      }
 
-    // 半角カナチェック（BFA関数）
-    if ( ! isBfaSingleByteKana(txn, bm2BankAccVoRow.getBankAccountNameKana()) )
-    {
-      OAException error
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00533
-           ,XxcsoConstants.TOKEN_REGION
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
-           ,XxcsoConstants.TOKEN_COLUMN
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANA
-          );
-      errorList.add(error);
-    }
-
-    // ///////////////////////////////////
-    // 口座名義漢字
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANJI;
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
-    {
+      // ///////////////////////////////////
+      // 口座名義漢字
+      // ///////////////////////////////////
+      token1 = tokenMain
+              + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANJI;
+      // 確定ボタン時のみ必須入力チェック
+      if ( fixedFrag )
+      {
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,bm2BankAccVoRow.getBankAccountNameKanji()
+             ,token1
+             ,0
+            );
+      }
+      // 禁則文字チェック
       errorList
-        = utils.requiredCheck(
+        = utils.checkIllegalString(
             errorList
            ,bm2BankAccVoRow.getBankAccountNameKanji()
            ,token1
            ,0
           );
+  // 2009-04-27 [ST障害T1_0708] Add Start
+      // 全角文字チェック
+      if ( ! isDoubleByte( txn, bm2BankAccVoRow.getBankAccountNameKanji() ) )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00565
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANJI
+            );
+        errorList.add(error);
+      }
+  // 2009-04-27 [ST障害T1_0708] Add End
+// 2010-03-01 [E_本稼動_01678] Add Start
     }
-    // 禁則文字チェック
-    errorList
-      = utils.checkIllegalString(
-          errorList
-         ,bm2BankAccVoRow.getBankAccountNameKanji()
-         ,token1
-         ,0
-        );
-// 2009-04-27 [ST障害T1_0708] Add Start
-    // 全角文字チェック
-    if ( ! isDoubleByte( txn, bm2BankAccVoRow.getBankAccountNameKanji() ) )
-    {
-      OAException error
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00565
-           ,XxcsoConstants.TOKEN_REGION
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
-           ,XxcsoConstants.TOKEN_COLUMN
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANJI
-          );
-      errorList.add(error);
-    }
-// 2009-04-27 [ST障害T1_0708] Add End
-
+// 2010-03-01 [E_本稼動_01678] Add End
     XxcsoUtils.debug(txn, "[END]");
 
     return errorList;
@@ -1652,6 +1766,7 @@ public class XxcsoContractRegistValidateUtils
    * ＢＭ３指定情報の検証
    * @param txn          OADBTransactionインスタンス
    * @param pageRndrVo   ページ属性設定用ビューインスタンス
+   * @param mngVo        契約管理テーブル情報ビューインスタンス
    * @param bm1DestVo    送付先テーブル情報用ビューインスタンス
    * @param bm1BankAccVo 銀行口座アドオンマスタ情報用ビューインスタンス
    * @param isFixed      確定ボタン押下フラグ
@@ -1661,6 +1776,9 @@ public class XxcsoContractRegistValidateUtils
   public static List validateBm3Dest(
     OADBTransaction                     txn
    ,XxcsoPageRenderVOImpl               pageRndrVo
+// 2010-03-01 [E_本稼動_01678] Add Start
+   ,XxcsoContractManagementFullVOImpl   mngVo
+// 2010-03-01 [E_本稼動_01678] Add End
    ,XxcsoBm3DestinationFullVOImpl       bm3DestVo
    ,XxcsoBm3BankAccountFullVOImpl       bm3BankAccVo
    ,boolean                             fixedFrag
@@ -1681,6 +1799,11 @@ public class XxcsoContractRegistValidateUtils
     // ***********************************
     XxcsoPageRenderVORowImpl pageRndrVoRow
       = (XxcsoPageRenderVORowImpl) pageRndrVo.first(); 
+
+// 2010-03-01 [E_本稼動_01678] Add Start
+    XxcsoContractManagementFullVORowImpl mngVoRow
+      = (XxcsoContractManagementFullVORowImpl) mngVo.first();
+// 2010-03-01 [E_本稼動_01678] Add End
 
     XxcsoBm3DestinationFullVORowImpl bm3DestVoRow
       = (XxcsoBm3DestinationFullVORowImpl) bm3DestVo.first();
@@ -1706,13 +1829,21 @@ public class XxcsoContractRegistValidateUtils
     // 確定ボタン時のみ必須入力チェック
     if ( fixedFrag )
     {
-      errorList
-        =  utils.requiredCheck(
-             errorList
-            ,bm3DestVoRow.getBankTransferFeeChargeDiv()
-            ,token1
-            ,0
-           );
+// 2010-03-01 [E_本稼動_01678] Add Start
+      // 支払方法、明細書が現金支払以外の場合
+      if (! XxcsoContractRegistConstants.BM_PAYMENT_TYPE4.equals(bm3DestVoRow.getBellingDetailsDiv()))
+      {
+// 2010-03-01 [E_本稼動_01678] Add End
+        errorList
+          =  utils.requiredCheck(
+               errorList
+              ,bm3DestVoRow.getBankTransferFeeChargeDiv()
+              ,token1
+              ,0
+             );
+// 2010-03-01 [E_本稼動_01678] Add Start
+      }
+// 2010-03-01 [E_本稼動_01678] Add End
     }
 
     // ///////////////////////////////////
@@ -1731,6 +1862,38 @@ public class XxcsoContractRegistValidateUtils
            ,0
           );
     }
+// 2010-03-01 [E_本稼動_01678] Add Start
+    // 現金支払のみ検証処理
+    if ( XxcsoContractRegistConstants.BM_PAYMENT_TYPE4.equals(bm3DestVoRow.getBellingDetailsDiv()))
+    {
+      String retCode  = chkPaymentTypeCash(
+                                 txn
+                                ,mngVoRow.getSpDecisionHeaderId()
+                                ,bm3DestVoRow.getSupplierId()
+                                ,bm3DestVoRow.getDeliveryDiv()
+                               );
+      if ( "1".equals(retCode) )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00596
+             ,XxcsoConstants.TOKEN_REGION
+             ,token1
+            );
+        errorList.add(error);
+      }
+      else if ( "2".equals(retCode) )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00601
+             ,XxcsoConstants.TOKEN_VALUES
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3
+            );
+        errorList.add(error);
+      }
+    }
+// 2010-03-01 [E_本稼動_01678] Add End
 
     // ///////////////////////////////////
     // 問合せ担当拠点
@@ -2042,160 +2205,167 @@ public class XxcsoContractRegistValidateUtils
       errorList.add(error);
     }
 
-    // ///////////////////////////////////
-    // 金融機関名
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_NUMBER;
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
+// 2010-03-01 [E_本稼動_01678] Add Start
+    // 支払方法、明細書が現金支払以外の場合
+    if (! XxcsoContractRegistConstants.BM_PAYMENT_TYPE4.equals(bm3DestVoRow.getBellingDetailsDiv()))
     {
-      errorList
-        = utils.requiredCheck(
-            errorList
-           ,bm3BankAccVoRow.getBankNumber()
-           ,token1
-           ,0
-          );
-    }
+// 2010-03-01 [E_本稼動_01678] Add End
+      // ///////////////////////////////////
+      // 金融機関名
+      // ///////////////////////////////////
+      token1 = tokenMain
+              + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_NUMBER;
+      // 確定ボタン時のみ必須入力チェック
+      if ( fixedFrag )
+      {
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,bm3BankAccVoRow.getBankNumber()
+             ,token1
+             ,0
+            );
+      }
 
-    // ///////////////////////////////////
-    // 口座種別
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_TYPE;
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
-    {
-      errorList
-        = utils.requiredCheck(
-            errorList
-           ,bm3BankAccVoRow.getBankAccountType()
-           ,token1
-           ,0
-          );
-    }
+      // ///////////////////////////////////
+      // 口座種別
+      // ///////////////////////////////////
+      token1 = tokenMain
+              + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_TYPE;
+      // 確定ボタン時のみ必須入力チェック
+      if ( fixedFrag )
+      {
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,bm3BankAccVoRow.getBankAccountType()
+             ,token1
+             ,0
+            );
+      }
 
-    // ///////////////////////////////////
-    // 口座番号
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NUMBER;
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
-    {
+      // ///////////////////////////////////
+      // 口座番号
+      // ///////////////////////////////////
+      token1 = tokenMain
+              + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NUMBER;
+      // 確定ボタン時のみ必須入力チェック
+      if ( fixedFrag )
+      {
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,bm3BankAccVoRow.getBankAccountNumber()
+             ,token1
+             ,0
+            );
+      }
+  // 2010-01-20 [E_本稼動_01212] Add Start
+      // 整合性チェック
+      if ( ! isBankAccountNumber( bm3BankAccVoRow.getBankNumber()
+                                 ,bm3BankAccVoRow.getBankAccountNumber()
+                                ))
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00591
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NUMBER
+            );
+        errorList.add(error);
+      }
+  // 2010-01-20 [E_本稼動_01212] Add End
+      // 禁則文字チェック
       errorList
-        = utils.requiredCheck(
+        = utils.checkIllegalString(
             errorList
            ,bm3BankAccVoRow.getBankAccountNumber()
            ,token1
            ,0
           );
-    }
-// 2010-01-20 [E_本稼動_01212] Add Start
-    // 整合性チェック
-    if ( ! isBankAccountNumber( bm3BankAccVoRow.getBankNumber()
-                               ,bm3BankAccVoRow.getBankAccountNumber()
-                              ))
-    {
-      OAException error
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00591
-           ,XxcsoConstants.TOKEN_REGION
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
-           ,XxcsoConstants.TOKEN_COLUMN
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NUMBER
-          );
-      errorList.add(error);
-    }
-// 2010-01-20 [E_本稼動_01212] Add End
-    // 禁則文字チェック
-    errorList
-      = utils.checkIllegalString(
-          errorList
-         ,bm3BankAccVoRow.getBankAccountNumber()
-         ,token1
-         ,0
-        );
-    // ///////////////////////////////////
-    // 口座名義カナ
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANA;
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
-    {
+      // ///////////////////////////////////
+      // 口座名義カナ
+      // ///////////////////////////////////
+      token1 = tokenMain
+              + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANA;
+      // 確定ボタン時のみ必須入力チェック
+      if ( fixedFrag )
+      {
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,bm3BankAccVoRow.getBankAccountNameKana()
+             ,token1
+             ,0
+            );
+      }
+
+      // 禁則文字チェック
       errorList
-        = utils.requiredCheck(
+        = utils.checkIllegalString(
             errorList
            ,bm3BankAccVoRow.getBankAccountNameKana()
            ,token1
            ,0
           );
-    }
+      // 半角カナチェック
+      if ( ! isBfaSingleByteKana(txn, bm3BankAccVoRow.getBankAccountNameKana()) )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00533
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANA
+            );
+        errorList.add(error);
+      }
 
-    // 禁則文字チェック
-    errorList
-      = utils.checkIllegalString(
-          errorList
-         ,bm3BankAccVoRow.getBankAccountNameKana()
-         ,token1
-         ,0
-        );
-    // 半角カナチェック
-    if ( ! isBfaSingleByteKana(txn, bm3BankAccVoRow.getBankAccountNameKana()) )
-    {
-      OAException error
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00533
-           ,XxcsoConstants.TOKEN_REGION
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
-           ,XxcsoConstants.TOKEN_COLUMN
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANA
-          );
-      errorList.add(error);
-    }
-
-    // ///////////////////////////////////
-    // 口座名義漢字
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANJI;
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
-    {
+      // ///////////////////////////////////
+      // 口座名義漢字
+      // ///////////////////////////////////
+      token1 = tokenMain
+              + XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANJI;
+      // 確定ボタン時のみ必須入力チェック
+      if ( fixedFrag )
+      {
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,bm3BankAccVoRow.getBankAccountNameKanji()
+             ,token1
+             ,0
+            );
+      }
+      // 禁則文字チェック
       errorList
-        = utils.requiredCheck(
+        = utils.checkIllegalString(
             errorList
            ,bm3BankAccVoRow.getBankAccountNameKanji()
            ,token1
            ,0
           );
+  // 2009-04-27 [ST障害T1_0708] Add Start
+      // 全角文字チェック
+      if ( ! isDoubleByte( txn, bm3BankAccVoRow.getBankAccountNameKanji() ) )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00565
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANJI
+            );
+        errorList.add(error);
+      }
+  // 2009-04-27 [ST障害T1_0708] Add Start
+// 2010-03-01 [E_本稼動_01678] Add Start
     }
-    // 禁則文字チェック
-    errorList
-      = utils.checkIllegalString(
-          errorList
-         ,bm3BankAccVoRow.getBankAccountNameKanji()
-         ,token1
-         ,0
-        );
-// 2009-04-27 [ST障害T1_0708] Add Start
-    // 全角文字チェック
-    if ( ! isDoubleByte( txn, bm3BankAccVoRow.getBankAccountNameKanji() ) )
-    {
-      OAException error
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00565
-           ,XxcsoConstants.TOKEN_REGION
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
-           ,XxcsoConstants.TOKEN_COLUMN
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANJI
-          );
-      errorList.add(error);
-    }
-// 2009-04-27 [ST障害T1_0708] Add Start
-
+// 2010-03-01 [E_本稼動_01678] Add End
     XxcsoUtils.debug(txn, "[END]");
 
     return errorList;
@@ -2494,6 +2664,21 @@ public class XxcsoContractRegistValidateUtils
             ,token1
             ,0
            );
+// 2010-03-01 [E_本稼動_01868] Add Start
+      // 確定ボタン時のみ物件コードチェック
+      if ( fixedFrag )
+      {
+        if ( ! chkInstallCode( txn, contMngVoRow.getInstallCode() ) )
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00602
+              );
+          errorList.add(error);
+        }
+      
+      }
+// 2010-03-01 [E_本稼動_01868] Add End
     }
 
     XxcsoUtils.debug(txn, "[END]");
@@ -2721,30 +2906,54 @@ public class XxcsoContractRegistValidateUtils
     // BM1銀行口座情報
     if (bm1BankAccVoRow != null)
     {
-      bm1BankName             = bm1BankAccVoRow.getBankName();
-      bm1BranchNumber         = bm1BankAccVoRow.getBranchNumber();
-      bm1BankAccountNumber    = bm1BankAccVoRow.getBankAccountNumber();
-      bm1BankAccountNameKana  = bm1BankAccVoRow.getBankAccountNameKana();
-      bm1BankAccountNameKanji = bm1BankAccVoRow.getBankAccountNameKanji();
+// 2010-03-01 [E_本稼動_01678] Add Start
+      // 支払方法、明細書が現金支払以外の場合
+      if (! XxcsoContractRegistConstants.BM_PAYMENT_TYPE4.equals(bm1DestVoRow.getBellingDetailsDiv()))
+      {
+// 2010-03-01 [E_本稼動_01678] Add End
+        bm1BankName             = bm1BankAccVoRow.getBankName();
+        bm1BranchNumber         = bm1BankAccVoRow.getBranchNumber();
+        bm1BankAccountNumber    = bm1BankAccVoRow.getBankAccountNumber();
+        bm1BankAccountNameKana  = bm1BankAccVoRow.getBankAccountNameKana();
+        bm1BankAccountNameKanji = bm1BankAccVoRow.getBankAccountNameKanji();
+// 2010-03-01 [E_本稼動_01678] Add Start
+      }
+// 2010-03-01 [E_本稼動_01678] Add End
     }
     // BM2銀行口座情報
     if (bm2BankAccVoRow != null)
     {
-      bm2BankName             = bm2BankAccVoRow.getBankName();
-      bm2BranchNumber         = bm2BankAccVoRow.getBranchNumber();
-      bm2BankAccountNumber    = bm2BankAccVoRow.getBankAccountNumber();
-      bm2BankAccountNameKana  = bm2BankAccVoRow.getBankAccountNameKana();
-      bm2BankAccountNameKanji = bm2BankAccVoRow.getBankAccountNameKanji();
+// 2010-03-01 [E_本稼動_01678] Add Start
+      // 支払方法、明細書が現金支払以外の場合
+      if (! XxcsoContractRegistConstants.BM_PAYMENT_TYPE4.equals(bm2DestVoRow.getBellingDetailsDiv()))
+      {
+// 2010-03-01 [E_本稼動_01678] Add End
+        bm2BankName             = bm2BankAccVoRow.getBankName();
+        bm2BranchNumber         = bm2BankAccVoRow.getBranchNumber();
+        bm2BankAccountNumber    = bm2BankAccVoRow.getBankAccountNumber();
+        bm2BankAccountNameKana  = bm2BankAccVoRow.getBankAccountNameKana();
+        bm2BankAccountNameKanji = bm2BankAccVoRow.getBankAccountNameKanji();
+// 2010-03-01 [E_本稼動_01678] Add Start
+      }
+// 2010-03-01 [E_本稼動_01678] Add End
     }
 
     // BM3銀行口座情報
     if (bm3BankAccVoRow != null)
     {
-      bm3BankName             = bm3BankAccVoRow.getBankName();
-      bm3BranchNumber         = bm3BankAccVoRow.getBranchNumber();
-      bm3BankAccountNumber    = bm3BankAccVoRow.getBankAccountNumber();
-      bm3BankAccountNameKana  = bm3BankAccVoRow.getBankAccountNameKana();
-      bm3BankAccountNameKanji = bm3BankAccVoRow.getBankAccountNameKanji();
+// 2010-03-01 [E_本稼動_01678] Add Start
+      // 支払方法、明細書が現金支払以外の場合
+      if (! XxcsoContractRegistConstants.BM_PAYMENT_TYPE4.equals(bm3DestVoRow.getBellingDetailsDiv()))
+      {
+// 2010-03-01 [E_本稼動_01678] Add End
+        bm3BankName             = bm3BankAccVoRow.getBankName();
+        bm3BranchNumber         = bm3BankAccVoRow.getBranchNumber();
+        bm3BankAccountNumber    = bm3BankAccVoRow.getBankAccountNumber();
+        bm3BankAccountNameKana  = bm3BankAccVoRow.getBankAccountNameKana();
+        bm3BankAccountNameKanji = bm3BankAccVoRow.getBankAccountNameKanji();
+// 2010-03-01 [E_本稼動_01678] Add Start
+      }
+// 2010-03-01 [E_本稼動_01678] Add End
     }
 
     // ***********************************
@@ -4073,5 +4282,143 @@ public class XxcsoContractRegistValidateUtils
     return returnValue;
   }
 // 2010-01-20 [E_本稼動_01212] Add End
+// 2010-03-01 [E_本稼動_01678] Add Start
+  /*****************************************************************************
+   * 現金支払の検証
+   * @param  txn                 OADBTransactionインスタンス
+   * @param  SpDecisionHeaderId  SP専決ヘッダID
+   * @param  SupplierId          送付先ID
+   * @param  DeliveryDiv         送付区分
+   * @return String              検証結果
+   *****************************************************************************
+   */
+  private static String chkPaymentTypeCash(
+    OADBTransaction   txn
+   ,Number            SpDecisionHeaderId
+   ,Number            SupplierId
+   ,String            DeliveryDiv
+  )
+  {
+    OracleCallableStatement stmt = null;
+    String returnValue = null;
+
+    try
+    {
+      StringBuffer sql = new StringBuffer(100);
+      sql.append("BEGIN");
+      sql.append("  :1 := xxcso_010003j_pkg.chk_payment_type_cash(:2 ,:3 ,:4);");
+      sql.append("END;");
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+      stmt.setNUMBER(2, SpDecisionHeaderId);
+      stmt.setNUMBER(3, SupplierId);
+      stmt.setString(4, DeliveryDiv);
+
+      stmt.execute();
+
+      returnValue = stmt.getString(1);
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoContractRegistConstants.TOKEN_VALUE_PAYMENT_TYPE_CASH_CHK
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+    return returnValue;
+ }
+// 2010-03-01 [E_本稼動_01678] Add End
+// 2010-03-01 [E_本稼動_01868] Add Start
+  /*****************************************************************************
+   * 物件コードの検証
+   * @param  txn                 OADBTransactionインスタンス
+   * @param  InstallCode         物件コード
+   * @return boolean             検証結果
+   *****************************************************************************
+   */
+  private static boolean chkInstallCode(
+    OADBTransaction   txn
+   ,String            InstallCode
+  )
+  {
+    OracleCallableStatement stmt = null;
+    boolean returnValue = true;
+
+    if ( InstallCode == null || "".equals(InstallCode.trim()) )
+    {
+      // null空文字時はチェック不要
+      return returnValue;
+    }
+
+    try
+    {
+      StringBuffer sql = new StringBuffer(100);
+      sql.append("BEGIN");
+      sql.append("  :1 := xxcso_010003j_pkg.chk_install_code(:2);");
+      sql.append("END;");
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+      stmt.setString(2, InstallCode);
+
+      stmt.execute();
+
+
+      String returnString = stmt.getString(1);
+      if ( ! "0".equals(returnString) )
+      {
+        returnValue = false;
+      }
+
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoContractRegistConstants.TOKEN_VALUE_INSTALL_CODE_CHK
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+    return returnValue;
+ }
+// 2010-03-01 [E_本稼動_01868] Add End
 
 }

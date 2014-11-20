@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistAMImpl
 * 概要説明   : 自販機設置契約情報登録画面アプリケーション・モジュールクラス
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -14,6 +14,7 @@
 * 2010-01-26 1.3  SCS阿部大輔  [E_本稼動_01314]契約書発効日必須対応
 * 2010-01-20 1.4  SCS阿部大輔  [E_本稼動_01176]口座種別対応
 * 2010-02-09 1.5  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
+* 2010-03-01 1.6  SCS阿部大輔  [E_本稼動_01678]現金支払対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -935,6 +936,56 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
         XxcsoMessage.createInstanceLostError("XxcsoContractManagementFullVO1");
     }
 
+// 2010-03-01 [E_本稼動_01678] Add Start
+    XxcsoBm1DestinationFullVOImpl dest1Vo
+      = getXxcsoBm1DestinationFullVO1();
+    if ( dest1Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm1DestinationFullVO1");
+    }
+
+    XxcsoBm2DestinationFullVOImpl dest2Vo
+      = getXxcsoBm2DestinationFullVO1();
+    if ( dest2Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm2DestinationFullVO1");
+    }
+
+    XxcsoBm3DestinationFullVOImpl dest3Vo
+      = getXxcsoBm3DestinationFullVO1();
+    if ( dest3Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm3DestinationFullVO1");
+    }
+
+    XxcsoBm1BankAccountFullVOImpl bank1Vo
+      = getXxcsoBm1BankAccountFullVO1();
+    if ( bank1Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm1BankAccountFullVO1");
+    }
+
+    XxcsoBm2BankAccountFullVOImpl bank2Vo
+      = getXxcsoBm2BankAccountFullVO1();
+    if ( bank2Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm2BankAccountFullVO1");
+    }
+
+    XxcsoBm3BankAccountFullVOImpl bank3Vo
+      = getXxcsoBm3BankAccountFullVO1();
+    if ( bank3Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm3BankAccountFullVO1");
+    }
+// 2010-03-01 [E_本稼動_01678] Add End
+
     XxcsoContractManagementFullVORowImpl mngRow
       = (XxcsoContractManagementFullVORowImpl) mngVo.first();
 
@@ -972,6 +1023,17 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
         throw oaeMsg;
       }
 // 2010-02-09 [E_本稼動_01538] Mod End
+// 2010-03-01 [E_本稼動_01678] Add Start
+      // 口座情報反映処理
+      XxcsoContractRegistReflectUtils.reflectBankAccount(
+        dest1Vo
+       ,bank1Vo
+       ,dest2Vo
+       ,bank2Vo
+       ,dest3Vo
+       ,bank3Vo
+      );
+// 2010-03-01 [E_本稼動_01678] Add End
       // 保存処理を実行します。
       this.commit();
 // 2010-01-26 [E_本稼動_01314] Add Start
@@ -1164,9 +1226,58 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
         XxcsoMessage.createInstanceLostError("XxcsoContractManagementFullVO1");
     }
 
+// 2010-03-01 [E_本稼動_01678] Add Start
+    XxcsoBm1DestinationFullVOImpl dest1Vo
+      = getXxcsoBm1DestinationFullVO1();
+    if ( dest1Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm1DestinationFullVO1");
+    }
+
+    XxcsoBm2DestinationFullVOImpl dest2Vo
+      = getXxcsoBm2DestinationFullVO1();
+    if ( dest2Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm2DestinationFullVO1");
+    }
+
+    XxcsoBm3DestinationFullVOImpl dest3Vo
+      = getXxcsoBm3DestinationFullVO1();
+    if ( dest3Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm3DestinationFullVO1");
+    }
+
+    XxcsoBm1BankAccountFullVOImpl bank1Vo
+      = getXxcsoBm1BankAccountFullVO1();
+    if ( bank1Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm1BankAccountFullVO1");
+    }
+
+    XxcsoBm2BankAccountFullVOImpl bank2Vo
+      = getXxcsoBm2BankAccountFullVO1();
+    if ( bank2Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm2BankAccountFullVO1");
+    }
+
+    XxcsoBm3BankAccountFullVOImpl bank3Vo
+      = getXxcsoBm3BankAccountFullVO1();
+    if ( bank3Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm3BankAccountFullVO1");
+    }
+// 2010-03-01 [E_本稼動_01678] Add End
+
     XxcsoContractManagementFullVORowImpl mngRow
       = (XxcsoContractManagementFullVORowImpl) mngVo.first();
-
 // 2010-02-09 [E_本稼動_01538] Mod Start
     /////////////////////////////////////
     // 検証処理：ＤＢ値検証
@@ -1197,6 +1308,18 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
       // ステータス
       mngRow.setStatus(XxcsoContractRegistConstants.STS_INPUT);
     }
+
+// 2010-03-01 [E_本稼動_01678] Add Start
+    // 口座情報反映処理
+    XxcsoContractRegistReflectUtils.reflectBankAccount(
+      dest1Vo
+     ,bank1Vo
+     ,dest2Vo
+     ,bank2Vo
+     ,dest3Vo
+     ,bank3Vo
+    );
+// 2010-03-01 [E_本稼動_01678] Add End
 
     this.commit();
 
@@ -1527,6 +1650,9 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
       XxcsoContractRegistValidateUtils.validateBm1Dest(
         txn
        ,pageRenderVo
+// 2010-03-01 [E_本稼動_01678] Add Start
+       ,mngVo
+// 2010-03-01 [E_本稼動_01678] Add End
        ,dest1Vo
        ,bank1Vo
        ,fixedFlag
@@ -1540,6 +1666,9 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
       XxcsoContractRegistValidateUtils.validateBm2Dest(
         txn
        ,pageRenderVo
+// 2010-03-01 [E_本稼動_01678] Add Start
+       ,mngVo
+// 2010-03-01 [E_本稼動_01678] Add End
        ,dest2Vo
        ,bank2Vo
        ,fixedFlag
@@ -1553,6 +1682,9 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
       XxcsoContractRegistValidateUtils.validateBm3Dest(
         txn
        ,pageRenderVo
+// 2010-03-01 [E_本稼動_01678] Add Start
+       ,mngVo
+// 2010-03-01 [E_本稼動_01678] Add End
        ,dest3Vo
        ,bank3Vo
        ,fixedFlag

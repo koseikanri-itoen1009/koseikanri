@@ -20,6 +20,30 @@ SELECT  'Y'                                                 AS vendor_flag
 FROM    po_vendors       pv
        ,po_vendor_sites  pvs
 WHERE   pvs.vendor_id         = pv.vendor_id
+UNION
+SELECT  'Y'                                                 AS vendor_flag
+       ,pv.vendor_id                                        AS vendor_id
+       ,(SELECT  xxcso_util_common_pkg.get_emp_parameter(
+                   xev.work_base_code_new
+                  ,xev.work_base_code_old
+                  ,xev.issue_date
+                  ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+                 )
+         FROM    xxcso_employees_v2  xev
+         WHERE   xev.user_id = fnd_global.user_id
+       )                     AS inquery_base_code
+       ,(SELECT  xxcso_util_common_pkg.get_emp_parameter(
+                   xev.work_base_name_new
+                  ,xev.work_base_name_old
+                  ,xev.issue_date
+                  ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+                 )
+         FROM    xxcso_employees_v2  xev
+         WHERE   xev.user_id = fnd_global.user_id
+        )                    AS inquery_base_name
+FROM    po_vendors       pv
+       ,po_vendor_sites  pvs
+WHERE   pvs.vendor_id         = pv.vendor_id
 UNION ALL
 SELECT  'N'                                                 AS vendor_flag
        ,NULL                                                AS vendor_id
