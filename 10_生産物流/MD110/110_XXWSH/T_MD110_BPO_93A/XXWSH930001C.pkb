@@ -120,6 +120,7 @@ AS
  *  2008/12/07    1.33 Oracle 福田 直樹  本番障害対応(引当可能チェック・ロット逆転防止チェックを行わないようにする)
  *  2008/12/07    1.33 Oracle 福田 直樹  本番障害対応(A-3での出荷依頼IFのヘッダ・明細相互間の存在チェック結果出力先をLOGに変更)
  *  2008/12/07    1.33 Oracle 福田 直樹  本番障害対応#470(配送Noの実績訂正を行うとヘッダに同一依頼Noのレコードが複数件作成されてしまう)
+ *  2008/12/09    1.34 Oracle 福田 直樹  本番障害対応#594(A-3での出荷依頼IFのヘッダ・明細相互間の存在チェックエラーでもLOGだけ出力し警告にしない)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4073,7 +4074,7 @@ AS
       --FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_dspbuf); -- 2008/12/07 Del 本番障害対応(A-3での出荷依頼IFのヘッダ・明細相互間の存在チェック結果出力先をLOGに変更)
       FND_FILE.PUT_LINE(FND_FILE.LOG, lv_dspbuf);      -- 2008/12/07 Add 本番障害対応(A-3での出荷依頼IFのヘッダ・明細相互間の存在チェック結果出力先をLOGに変更)
 --
-      lv_warn_flg := gv_status_warn;
+      --lv_warn_flg := gv_status_warn;  -- 2008/12/09 本番障害#594 Del
 --
     END LOOP ifh_exists_ifm_not_loop;
 --
@@ -4110,7 +4111,7 @@ AS
       --FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_dspbuf); -- 2008/12/07 Del 本番障害対応(A-3での出荷依頼IFのヘッダ・明細相互間の存在チェック結果出力先をLOGに変更)
       FND_FILE.PUT_LINE(FND_FILE.LOG, lv_dspbuf);      -- 2008/12/07 Add 本番障害対応(A-3での出荷依頼IFのヘッダ・明細相互間の存在チェック結果出力先をLOGに変更)
 --
-      lv_warn_flg := gv_status_warn;
+      --lv_warn_flg := gv_status_warn;  -- 2008/12/09 本番障害#594 Del
 --
     END LOOP ifm_exists_ifh_not_loop;
 --
