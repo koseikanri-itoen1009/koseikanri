@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A18C(body)
  * Description      : 情報系連携IFデータ作成
  * MD.050           : MD050_CMM_003_A18_情報系連携IFデータ作成
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2009/03/09    1.2   Takuya Kaihara   プロファイル値共通化
  *  2009/05/12    1.3   Yutaka.Kuboshima 障害T1_0176,T1_0831の対応
  *  2009/05/21    1.4   Yutaka.Kuboshima 障害T1_1131の対応
+ *  2009/05/29    1.5   Yutaka.Kuboshima 障害T1_1263の対応
  *
  *****************************************************************************************/
 --
@@ -918,9 +919,15 @@ AS
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.intro_business_person, 1, 5)       || cv_dqu;  --紹介営業員コード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.intro_base_code, 1, 4)             || cv_dqu;  --紹介拠点コード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.route_no, 1, 7)                    || cv_dqu;  --ルートNo
-      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.business_low_type, 1, 2)           || cv_dqu;  --業態大分類
+-- 2009/05/29 Ver1.5 modify start by Yutaka.Kuboshima
+--      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.business_low_type, 1, 2)           || cv_dqu;  --業態大分類
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.lookup_code_s, 1, 2)               || cv_dqu;  --業態大分類
+-- 2009/05/29 Ver1.5 modify end by Yutaka.Kuboshima
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.lookup_code_c, 1, 2)               || cv_dqu;  --業態中分類
-      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.lookup_code_s, 1, 2)               || cv_dqu;  --業態小分類
+-- 2009/05/29 Ver1.5 modify start by Yutaka.Kuboshima
+--      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.lookup_code_s, 1, 2)               || cv_dqu;  --業態小分類
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.business_low_type, 1, 2)           || cv_dqu;  --業態小分類
+-- 2009/05/29 Ver1.5 modify end by Yutaka.Kuboshima
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.delivery_form, 1, 1)               || cv_dqu;  --配送形態
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.establishment_location, 1, 2)      || cv_dqu;  --設置ロケーション
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.open_close_div, 1, 1)              || cv_dqu;  --オープン・クローズ
