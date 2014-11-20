@@ -1,0 +1,3 @@
+CREATE UNIQUE INDEX xxcok.xxcok_bm_balance_rtn_info_u01 ON 
+xxcok_bm_balance_rtn_info (bm_balance_id, publication_date DESC, org_slip_number) TABLESPACE xxidx2
+/
