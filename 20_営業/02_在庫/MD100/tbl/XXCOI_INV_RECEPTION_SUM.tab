@@ -1,0 +1,189 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * View Name   : XXCOI_INV_RECEPTION_SUM
+ * Description : 月次在庫受払表（累計）
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/04/01    1.0   H.Sasaki         新規作成
+ *
+ ************************************************************************/
+ CREATE TABLE xxcoi.xxcoi_inv_reception_sum (
+     base_code                      VARCHAR2(4)   NOT NULL
+    ,organization_id                NUMBER        NOT NULL
+    ,subinventory_code              VARCHAR2(10)  NOT NULL
+    ,subinventory_type              VARCHAR2(1)
+    ,practice_date                  VARCHAR2(6)   NOT NULL
+    ,inventory_item_id              NUMBER        NOT NULL
+    ,operation_cost                 NUMBER(7)
+    ,standard_cost                  NUMBER(7,2)
+    ,sales_shipped                  NUMBER(11,2)
+    ,sales_shipped_b                NUMBER(11,2)
+    ,return_goods                   NUMBER(11,2)
+    ,return_goods_b                 NUMBER(11,2)
+    ,warehouse_ship                 NUMBER(11,2)
+    ,truck_ship                     NUMBER(11,2)
+    ,others_ship                    NUMBER(11,2)
+    ,warehouse_stock                NUMBER(11,2)
+    ,truck_stock                    NUMBER(11,2)
+    ,others_stock                   NUMBER(11,2)
+    ,change_stock                   NUMBER(11,2)
+    ,change_ship                    NUMBER(11,2)
+    ,goods_transfer_old             NUMBER(11,2)
+    ,goods_transfer_new             NUMBER(11,2)
+    ,sample_quantity                NUMBER(11,2)
+    ,sample_quantity_b              NUMBER(11,2)
+    ,customer_sample_ship           NUMBER(11,2)
+    ,customer_sample_ship_b         NUMBER(11,2)
+    ,customer_support_ss            NUMBER(11,2)
+    ,customer_support_ss_b          NUMBER(11,2)
+    ,ccm_sample_ship                NUMBER(11,2)
+    ,ccm_sample_ship_b              NUMBER(11,2)
+    ,vd_supplement_stock            NUMBER(11,2)
+    ,vd_supplement_ship             NUMBER(11,2)
+    ,inventory_change_in            NUMBER(11,2)
+    ,inventory_change_out           NUMBER(11,2)
+    ,factory_return                 NUMBER(11,2)
+    ,factory_return_b               NUMBER(11,2)
+    ,factory_change                 NUMBER(11,2)
+    ,factory_change_b               NUMBER(11,2)
+    ,removed_goods                  NUMBER(11,2)
+    ,removed_goods_b                NUMBER(11,2)
+    ,factory_stock                  NUMBER(11,2)
+    ,factory_stock_b                NUMBER(11,2)
+    ,wear_decrease                  NUMBER(11,2)
+    ,wear_increase                  NUMBER(11,2)
+    ,selfbase_ship                  NUMBER(11,2)
+    ,selfbase_stock                 NUMBER(11,2)
+    ,book_inventory_quantity        NUMBER(11,2)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcoi_inv_reception_sum_pk PRIMARY KEY (base_code, organization_id, subinventory_code, practice_date, inventory_item_id)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 20 PCTUSED 60 INITRANS 32 STORAGE ( INITIAL 65M)
+/
+COMMENT ON TABLE xxcoi.xxcoi_inv_reception_sum IS '月次在庫受払表（累計）'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.base_code                    IS '拠点コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.organization_id              IS '組織ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.subinventory_code            IS '保管場所'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.subinventory_type            IS '保管場所区分'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.practice_date                IS '年月'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.inventory_item_id            IS '品目ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.operation_cost               IS '営業原価'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.standard_cost                IS '標準原価'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.sales_shipped                IS '売上出庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.sales_shipped_b              IS '売上出庫振戻'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.return_goods                 IS '返品'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.return_goods_b               IS '返品振戻'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.warehouse_ship               IS '倉庫へ返庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.truck_ship                   IS '営業車へ出庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.others_ship                  IS '入出庫＿その他出庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.warehouse_stock              IS '倉庫より入庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.truck_stock                  IS '営業車より入庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.others_stock                 IS '入出庫＿その他入庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.change_stock                 IS '倉替入庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.change_ship                  IS '倉替出庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.goods_transfer_old           IS '商品振替（旧商品）'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.goods_transfer_new           IS '商品振替（新商品）'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.sample_quantity              IS '見本出庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.sample_quantity_b            IS '見本出庫振戻'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.customer_sample_ship         IS '顧客見本出庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.customer_sample_ship_b       IS '顧客見本出庫振戻'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.customer_support_ss          IS '顧客協賛見本出庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.customer_support_ss_b        IS '顧客協賛見本出庫振戻'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.ccm_sample_ship              IS '顧客広告宣伝費A自社商品'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.ccm_sample_ship_b            IS '顧客広告宣伝費A自社商品振戻'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.vd_supplement_stock          IS '消化VD補充入庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.vd_supplement_ship           IS '消化VD補充出庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.inventory_change_in          IS '基準在庫変更入庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.inventory_change_out         IS '基準在庫変更出庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.factory_return               IS '工場返品'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.factory_return_b             IS '工場返品振戻'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.factory_change               IS '工場倉替'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.factory_change_b             IS '工場倉替振戻'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.removed_goods                IS '廃却'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.removed_goods_b              IS '廃却振戻'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.factory_stock                IS '工場入庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.factory_stock_b              IS '工場入庫振戻'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.wear_decrease                IS '棚卸減耗増'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.wear_increase                IS '棚卸減耗減'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.selfbase_ship                IS '保管場所移動＿自拠点出庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.selfbase_stock               IS '保管場所移動＿自拠点入庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.book_inventory_quantity      IS '帳簿在庫数'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.created_by                   IS '作成者'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.creation_date                IS '作成日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.last_updated_by              IS '最終更新者'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.last_update_date             IS '最終更新日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.last_update_login            IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.request_id                   IS '要求ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.program_application_id       IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.program_id                   IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_reception_sum.program_update_date          IS 'プログラム更新日'
+/
