@@ -3,7 +3,7 @@
  *
  * View Name       : XXCOS_CREATED_BY_OWN_BASE_V
  * Description     : 全ユーザ所属する自拠点ビュー
- * Version         : 1.1
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,8 +11,9 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/21    1.0   T.Tyou           新規作成
  *  2009/07/22    1.1   M.Maruyama       障害番号0000640 対応
+ *  2009/09/03    1.2   M.Sano           障害番号0001227 対応
  ************************************************************************/
-CREATE OR REPLACE VIEW xxcos_created_by_own_base_v (
+CREATE OR REPLACE VIEW apps.xxcos_created_by_own_base_v (
   base_code,                            --拠点コード
   user_id                               --ユーザID
 )
@@ -41,10 +42,16 @@ AS
         per_all_assignments_f           paaf, 
         per_person_types                ppt, 
         (
+-- 2009/09/03 Ver1.2 Mod Start
+--          SELECT
+--            TRUNC( xxccp_common_pkg2.get_process_date )     process_date     
+--          FROM
+--            dual
           SELECT
-            TRUNC( xxccp_common_pkg2.get_process_date )     process_date     
+            TRUNC( xpd.process_date )   process_date
           FROM
-            dual
+            xxccp_process_dates         xpd
+-- 2009/09/03 Ver1.2 Mod End
         )                               pd                             
       WHERE 
       --fu.user_id                  = NVL( :order.created_by, fnd_global.user_id )

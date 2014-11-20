@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_dlv_lines_info_v
  * Description     : 納品伝票明細情報ビュー
- * Version         : 1.5
+ * Version         : 1.6
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -15,8 +15,10 @@
  *  2009/06/09    1.3   K.Kiriu          [T1_1382]基準在庫数量取得不具合の修正
  *  2009/07/06    1.4   T.Miyata         [0000409]パフォーマンス対応
  *  2009/08/03    1.5   K.Kiriu          [0000872]パフォーマンス対応
+ *  2009/09/03    1.6   M.Sano           [0001227]パフォーマンス対応
+ *                                       (業務日付の取得方法変更)
  ************************************************************************/
-CREATE OR REPLACE VIEW xxcos_dlv_lines_info_v (
+CREATE OR REPLACE VIEW apps.xxcos_dlv_lines_info_v (
   order_no_hht
  ,line_no_hht
  ,digestion_ln_number
@@ -87,13 +89,16 @@ SELECT
        xdl.replenish_number replenish_number,                      --補充数（DB値）
        abs(xdl.cash_and_card) abs_cash_and_card,                   --現金・カード併用額（画面用:絶対値）
        xdl.cash_and_card cash_and_card,                            --現金・カード併用額（DB値）
-/* 2009/07/06 Ver1.4 Mod Start */
---/* 2009/06/09 Ver1.3 Mod Start */
-----       CASE WHEN xdh.dlv_date < xxccp_common_pkg2.get_process_date THEN
---       CASE WHEN TO_CHAR( xdh.dlv_date, 'YYYYMM' ) < TO_CHAR( xxccp_common_pkg2.get_process_date, 'YYYYMM') THEN
-       CASE WHEN TRUNC( xdh.dlv_date, 'MM' ) < TRUNC( xxccp_common_pkg2.get_process_date, 'MM') THEN
---/* 2009/06/09 Ver1.3 Mod End   */
-/* 2009/07/06 Ver1.4 Mod End   */
+/* 2009/09/03 Ver1.6 Mod Start */
+--/* 2009/07/06 Ver1.4 Mod Start */
+----/* 2009/06/09 Ver1.3 Mod Start */
+------       CASE WHEN xdh.dlv_date < xxccp_common_pkg2.get_process_date THEN
+----       CASE WHEN TO_CHAR( xdh.dlv_date, 'YYYYMM' ) < TO_CHAR( xxccp_common_pkg2.get_process_date, 'YYYYMM') THEN
+--       CASE WHEN TRUNC( xdh.dlv_date, 'MM' ) < TRUNC( xxccp_common_pkg2.get_process_date, 'MM') THEN
+       CASE WHEN TRUNC( xdh.dlv_date, 'MM' ) < TRUNC( pd.process_date, 'MM') THEN
+----/* 2009/06/09 Ver1.3 Mod End   */
+--/* 2009/07/06 Ver1.4 Mod End   */
+/* 2009/09/03 Ver1.6 Mod Start */
          xmvc.last_month_inventory_quantity
        ELSE
          xmvc.inventory_quantity
@@ -211,8 +216,12 @@ FROM
        fnd_lookup_values      hac,
        (
        --営業日
-       SELECT xxccp_common_pkg2.get_process_date process_date
-       FROM   DUAL
+/* 2009/09/03 Ver1.6 Mod Start */
+--       SELECT xxccp_common_pkg2.get_process_date process_date
+--       FROM   DUAL
+       SELECT TRUNC( xpd.process_date ) process_date
+       FROM   xxccp_process_dates xpd
+/* 2009/09/03 Ver1.6 Mod End   */
        )                      pd,
        (
        --在庫組織ID

@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_dlv_headers_info_v
  * Description     : 納品伝票ヘッダ情報ビュー
- * Version         : 1.5
+ * Version         : 1.6
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -16,8 +16,10 @@
  *  2009/07/06    1.3   T.Miyata         [0000409]パフォーマンス対応
  *  2009/08/03    1.4   K.Kiriu          [0000872]パフォーマンス対応
  *  2009/09/01    1.5   K.Kiriu          [0000929]有効訪問件数のカウント方法変更対応
+ *  2009/09/03    1.6   M.Sano           [0001227]パフォーマンス対応
+ *                                       (業務日付の取得方法変更)
  ************************************************************************/
-CREATE OR REPLACE VIEW xxcos_dlv_headers_info_v
+CREATE OR REPLACE VIEW apps.xxcos_dlv_headers_info_v
 (
   order_no_hht,
   digestion_ln_number,
@@ -274,8 +276,12 @@ FROM
 /* 2009/08/03 Ver1.4 Mod End   */
        (
        --営業日
-       SELECT xxccp_common_pkg2.get_process_date process_date
-       FROM   DUAL
+/* 2009/09/03 Ver1.6 Mod Start */
+--       SELECT xxccp_common_pkg2.get_process_date process_date
+--       FROM   DUAL
+       SELECT TRUNC( xpd.process_date ) process_date
+       FROM   xxccp_process_dates xpd
+/* 2009/09/03 Ver1.6 Mod End   */
        ) pd
 /* 2009/06/03 Ver1.2 Add End   */
 WHERE  xdh.customer_number = xsv.account_number

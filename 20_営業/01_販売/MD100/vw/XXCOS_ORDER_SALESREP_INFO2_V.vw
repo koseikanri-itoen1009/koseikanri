@@ -3,16 +3,17 @@
  *
  * View Name       : xxcos_order_salesrep_info2_v
  * Description     : 営業担当ビュー(クイック受注用:顧客なし)
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/05/13    1.0   S.Tomita         [T1_0976]新規作成
+ *  2009/09/03    1.1   M.Sano           障害番号0001227 対応
  *
  ************************************************************************/
-CREATE OR REPLACE VIEW xxcos_order_salesrep_info2_v (
+CREATE OR REPLACE VIEW apps.xxcos_order_salesrep_info2_v (
   name,
   salesrep_id,
   salesrep_number,
@@ -44,10 +45,16 @@ FROM   jtf_rs_salesreps         jrs
       ,per_all_people_f         papf
       ,per_person_types         pept
       ,(
+-- 2009/09/03 Ver1.1 Mod Start
+--        SELECT
+--          TRUNC( xxccp_common_pkg2.get_process_date )     process_date        --業務日付
+--        FROM
+--          dual
         SELECT
-          TRUNC( xxccp_common_pkg2.get_process_date )     process_date        --業務日付
+          TRUNC( xpd.process_date )                       process_date        --業務日付
         FROM
-          dual
+          xxccp_process_dates   xpd
+-- 2009/09/03 Ver1.1 Mod End
       )                               pd
 WHERE
       jrre.category             =   'EMPLOYEE'

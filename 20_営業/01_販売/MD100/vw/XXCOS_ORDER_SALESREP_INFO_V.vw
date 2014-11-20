@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_order_salesrep_info_v
  * Description     : 営業担当ビュー(クイック受注用)
- * Version         : 1.0
+ * Version         : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,9 +12,10 @@
  *  2009/1/26     1.0   T.Tyou           新規作成
  *  2009/5/12     1.1   S.Tomita         [T1_0964]カラムコメント間違い修正
  *  2009/5/13     1.2   S.Tomita         [T1_0976]クイック受注オーガナイザセキュリティ対応
+ *  2009/09/03    1.3   M.Sano           障害番号0001227 対応
  *
  ************************************************************************/
-CREATE OR REPLACE VIEW xxcos_order_salesrep_info_v (
+CREATE OR REPLACE VIEW apps.xxcos_order_salesrep_info_v (
   name,
   salesrep_id,                            --
   salesrep_number,                        --
@@ -63,8 +64,12 @@ FROM   jtf_rs_salesreps          jrs
         WHERE  hca.cust_account_id   = xca.customer_id
        ) cust
       ,(
-        SELECT TRUNC( xxccp_common_pkg2.get_process_date )     process_date        --業務日付
-        FROM   dual
+-- 2009/09/03 Ver1.3 Mod Start
+--        SELECT TRUNC( xxccp_common_pkg2.get_process_date )     process_date        --業務日付
+--        FROM   dual
+        SELECT TRUNC( xpd.process_date ) process_date
+        FROM   xxccp_process_dates  xpd
+-- 2009/09/03 Ver1.3 Mod End
        ) pd
 WHERE
       jrre.category             =   'EMPLOYEE'

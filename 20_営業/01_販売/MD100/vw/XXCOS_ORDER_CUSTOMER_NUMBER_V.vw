@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_order_customer_number_v
  * Description     : 顧客コードのセキュリティ（クイック受注用）
- * Version         : 1.3
+ * Version         : 1.5
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -18,9 +18,10 @@
  *                                       ・ヒント句追加、EXISTSからINへの変更
  *  2009/07/15    1.4   K.Kakishita      [T3_0757]重複データが表示される障害対応
  *                                       ・GROUP BY句を追加
+ *  2009/09/03    1.5   M.Sano           [0001277]業務日付取得方法をテーブル参照へ変更
  *
  ************************************************************************/
-CREATE OR REPLACE VIEW xxcos_order_customer_number_v (
+CREATE OR REPLACE VIEW apps.xxcos_order_customer_number_v (
   account_number,
   account_description,
   registry_id,
@@ -58,12 +59,20 @@ AS
   AND EXISTS(
         SELECT 'Y' exists_flag
         FROM fnd_lookup_values flv
+-- 2009/09/03 Ver1.5 Add Start
+            ,( SELECT TRUNC( xpd.process_date ) process_date
+               FROM   xxccp_process_dates xpd ) pd
+-- 2009/09/03 Ver1.5 Add End
         WHERE flv.lookup_type = 'XXCOS1_CUS_CLASS_MST_005_A01'
         AND flv.meaning = acct.customer_class_code
         AND flv.enabled_flag = 'Y'
         AND flv.language = userenv('LANG')
-        AND xxccp_common_pkg2.get_process_date >= flv.start_date_active
-        AND xxccp_common_pkg2.get_process_date <= NVL(flv.end_date_active, xxccp_common_pkg2.get_process_date )
+-- 2009/09/03 Ver1.5 Mod Start
+--        AND xxccp_common_pkg2.get_process_date >= flv.start_date_active
+--        AND xxccp_common_pkg2.get_process_date <= NVL(flv.end_date_active, xxccp_common_pkg2.get_process_date )
+        AND pd.process_date >= flv.start_date_active
+        AND pd.process_date <= NVL(flv.end_date_active, pd.process_date )
+-- 2009/09/03 Ver1.5 Mod End
       )
   GROUP BY
     acct.account_number,

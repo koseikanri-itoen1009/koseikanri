@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_login_own_base_info_v
  * Description     : ログインユーザ自拠点ビュー
- * Version         : 1.0
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,8 +11,9 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/01    1.0   K.Kakishita      新規作成
  *  2009/07/22    1.1   M.Maruyama       障害番号0000640 対応
+ *  2009/09/03    1.2   M.Sano           障害番号0001227 対応
  ************************************************************************/
-CREATE OR REPLACE VIEW xxcos_login_own_base_info_v (
+CREATE OR REPLACE VIEW apps.xxcos_login_own_base_info_v (
   base_code,                            --拠点コード
   base_name,                            --拠点名称
   base_short_name                       --拠点略称
@@ -43,10 +44,14 @@ AS
         per_all_assignments_f           paaf,                                   --アサインメントマスタ
         per_person_types                ppt,                                    --従業員タイプマスタ
         (
-          SELECT
-            TRUNC( xxccp_common_pkg2.get_process_date )     process_date        --業務日付
-          FROM
-            dual
+-- 2009/09/03 Ver1.2 Mod Start
+--          SELECT
+--            TRUNC( xxccp_common_pkg2.get_process_date )     process_date        --業務日付
+--          FROM
+--            dual
+          SELECT TRUNC( xpd.process_date )                  process_date        --業務日付
+          FROM   xxccp_process_dates xpd
+-- 2009/09/03 Ver1.2 Mod End
         )                               pd                                      --業務日付
       WHERE
         fu.user_id                      = fnd_global.user_id
