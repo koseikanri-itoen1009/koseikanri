@@ -1,1 +1,1 @@
-CREATE INDEX xxinv.xxinv_mld_n04 ON xxinv.xxinv_mov_lot_details( item_id,document_type_code,record_type_code ) TABLESPACE apps_ts_tx_data initrans 16 ;
+CREATE INDEX xxinv.xxinv_mld_n04 ON xxinv.xxinv_mov_lot_details( item_id,document_type_code,record_type_code ) TABLESPACE xxidx initrans 16 ;
