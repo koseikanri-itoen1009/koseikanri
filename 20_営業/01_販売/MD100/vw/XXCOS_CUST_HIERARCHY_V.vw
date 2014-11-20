@@ -3,7 +3,7 @@
  *
  * View Name       : XXCOS_CUST_HIERARCHY_V
  * Description     : 顧客階層ビュー
- * Version         : 1.3
+ * Version         : 1.5
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -21,49 +21,58 @@
  *  2009/08/05    1.4   K.Kakishita      [0000938] 修正ミス
  *                                       ・条件追加
  *                                       ・ROWNUMを'X'に変更
+ *  2009/09/11    1.5   K.Kiriu          [0001337]ヒント句追加
+ *                                                SELECT句に別名追加 ※コメント化なし
  ************************************************************************/
   CREATE OR REPLACE FORCE VIEW "APPS"."XXCOS_CUST_HIERARCHY_V" ("CASH_ACCOUNT_ID", "CASH_ACCOUNT_NUMBER", "CASH_ACCOUNT_NAME", "BILL_ACCOUNT_ID", "BILL_ACCOUNT_NUMBER", "BILL_ACCOUNT_NAME", "SHIP_ACCOUNT_ID", "SHIP_ACCOUNT_NUMBER", "SHIP_ACCOUNT_NAME", "CASH_RECEIV_BASE_CODE", "BILL_PARTY_ID", "BILL_BILL_BASE_CODE", "BILL_POSTAL_CODE", "BILL_STATE", "BILL_CITY", "BILL_ADDRESS1", "BILL_ADDRESS2", "BILL_TEL_NUM", "BILL_CONS_INV_FLAG", "BILL_TORIHIKISAKI_CODE", "BILL_STORE_CODE", "BILL_CUST_STORE_NAME", "BILL_TAX_DIV", "BILL_CRED_REC_CODE1", "BILL_CRED_REC_CODE2", "BILL_CRED_REC_CODE3", "BILL_INVOICE_TYPE", "BILL_PAYMENT_TERM_ID", "BILL_PAYMENT_TERM2", "BILL_PAYMENT_TERM3", "BILL_TAX_ROUND_RULE", "SHIP_SALE_BASE_CODE") AS
-  SELECT cust_hier.cash_account_id                        --入金先顧客ID
-        ,cust_hier.cash_account_number                    --入金先顧客コード
+  SELECT cust_hier.cash_account_id                          AS cash_account_id        --入金先顧客ID
+        ,cust_hier.cash_account_number                      AS cash_account_number    --入金先顧客コード
         ,xxcfr_common_pkg.get_cust_account_name(
                             cust_hier.cash_account_number,
-                            0)                            --入金先顧客名称
-        ,cust_hier.bill_account_id                        --請求先顧客ID
-        ,cust_hier.bill_account_number                    --請求先顧客コード
+                            0)                              AS cash_account_name      --入金先顧客名称
+        ,cust_hier.bill_account_id                          AS bill_account_id        --請求先顧客ID
+        ,cust_hier.bill_account_number                      AS bill_account_number    --請求先顧客コード
         ,xxcfr_common_pkg.get_cust_account_name(
                             cust_hier.bill_account_number,
-                            0)                            --請求先顧客名称
-        ,cust_hier.ship_account_id                        --出荷先顧客ID
-        ,cust_hier.ship_account_number                    --出荷先顧客コード
+                            0)                              AS bill_account_name      --請求先顧客名称
+        ,cust_hier.ship_account_id                          AS ship_account_id        --出荷先顧客ID
+        ,cust_hier.ship_account_number                      AS ship_account_number    --出荷先顧客コード
         ,xxcfr_common_pkg.get_cust_account_name(
                             cust_hier.ship_account_number,
-                            0)                            --出荷先顧客名称
-        ,cust_hier.cash_receiv_base_code                  --入金拠点コード
-        ,cust_hier.bill_party_id                          --パーティID
-        ,cust_hier.bill_bill_base_code                    --請求拠点コード
-        ,cust_hier.bill_postal_code                       --郵便番号
-        ,cust_hier.bill_state                             --都道府県
-        ,cust_hier.bill_city                              --市・区
-        ,cust_hier.bill_address1                          --住所1
-        ,cust_hier.bill_address2                          --住所2
-        ,cust_hier.bill_tel_num                           --電話番号
-        ,cust_hier.bill_cons_inv_flag                     --一括請求書発行フラグ
-        ,cust_hier.bill_torihikisaki_code                 --取引先コード
-        ,cust_hier.bill_store_code                        --店舗コード
-        ,cust_hier.bill_cust_store_name                   --顧客店舗名称
-        ,cust_hier.bill_tax_div                           --消費税区分
-        ,cust_hier.bill_cred_rec_code1                    --売掛コード1(請求書)
-        ,cust_hier.bill_cred_rec_code2                    --売掛コード2(事業所)
-        ,cust_hier.bill_cred_rec_code3                    --売掛コード3(その他)
-        ,cust_hier.bill_invoice_type                      --請求書出力形式
-        ,cust_hier.bill_payment_term_id                   --支払条件
-        ,TO_NUMBER(cust_hier.bill_payment_term2)          --第2支払条件
-        ,TO_NUMBER(cust_hier.bill_payment_term3)          --第3支払条件
-        ,cust_hier.bill_tax_round_rule                    --税金－端数処理
-        ,cust_hier.ship_sale_base_code                    --売上拠点コード
+                            0)                              AS ship_account_name      --出荷先顧客名称
+        ,cust_hier.cash_receiv_base_code                    AS cash_receiv_base_code  --入金拠点コード
+        ,cust_hier.bill_party_id                            AS bill_party_id          --パーティID
+        ,cust_hier.bill_bill_base_code                      AS bill_bill_base_code    --請求拠点コード
+        ,cust_hier.bill_postal_code                         AS bill_postal_code       --郵便番号
+        ,cust_hier.bill_state                               AS bill_state             --都道府県
+        ,cust_hier.bill_city                                AS bill_city              --市・区
+        ,cust_hier.bill_address1                            AS bill_address1          --住所1
+        ,cust_hier.bill_address2                            AS bill_address2          --住所2
+        ,cust_hier.bill_tel_num                             AS bill_tel_num           --電話番号
+        ,cust_hier.bill_cons_inv_flag                       AS bill_cons_inv_flag     --一括請求書発行フラグ
+        ,cust_hier.bill_torihikisaki_code                   AS bill_torihikisaki_code --取引先コード
+        ,cust_hier.bill_store_code                          AS bill_store_code        --店舗コード
+        ,cust_hier.bill_cust_store_name                     AS bill_cust_store_name   --顧客店舗名称
+        ,cust_hier.bill_tax_div                             AS bill_tax_div           --消費税区分
+        ,cust_hier.bill_cred_rec_code1                      AS bill_cred_rec_code1    --売掛コード1(請求書)
+        ,cust_hier.bill_cred_rec_code2                      AS bill_cred_rec_code2    --売掛コード2(事業所)
+        ,cust_hier.bill_cred_rec_code3                      AS bill_cred_rec_code3    --売掛コード3(その他)
+        ,cust_hier.bill_invoice_type                        AS bill_invoice_type      --請求書出力形式
+        ,cust_hier.bill_payment_term_id                     AS bill_payment_term_id   --支払条件
+        ,TO_NUMBER(cust_hier.bill_payment_term2)            AS bill_payment_term2     --第2支払条件
+        ,TO_NUMBER(cust_hier.bill_payment_term3)            AS bill_payment_term3     --第3支払条件
+        ,cust_hier.bill_tax_round_rule                      AS bill_tax_round_rule    --税金－端数処理
+        ,cust_hier.ship_sale_base_code                      AS ship_sale_base_code    --売上拠点コード
   FROM   (
   --①入金先顧客＆請求先顧客－出荷先顧客
-    SELECT bill_hzca_1.cust_account_id         AS cash_account_id         --入金先顧客ID
+    SELECT
+/* 2009/09/11 Ver1.5 Add Start */
+           /*+
+             LEADING(ship_hzca_1)
+             USE_NL(ship_hzca_1 bill_hzca_1 bill_hcar_1 bill_hzad_1 ship_hzad_1)
+           */
+/* 2009/09/11 Ver1.5 Add End   */
+           bill_hzca_1.cust_account_id         AS cash_account_id         --入金先顧客ID
           ,bill_hzca_1.account_number          AS cash_account_number     --入金先顧客コード
           ,bill_hzca_1.cust_account_id         AS bill_account_id         --請求先顧客ID
           ,bill_hzca_1.account_number          AS bill_account_number     --請求先顧客コード
@@ -130,7 +139,14 @@
                      )
     UNION ALL
     --②入金先顧客－請求先顧客－出荷先顧客
-    SELECT cash_hzca_2.cust_account_id           AS cash_account_id         --入金先顧客ID
+    SELECT
+/* 2009/09/11 Ver1.5 Add Start */
+           /*+
+             LEADING(ship_hzca_2)
+             USE_NL(ship_hzca_2 bill_hzca_2 cash_hzca_2 bill_hcar_2 cash_hcar_2 cash_hzad_2 bill_hzad_2 ship_hzad_2)
+           */
+/* 2009/09/11 Ver1.5 Add End   */
+           cash_hzca_2.cust_account_id           AS cash_account_id         --入金先顧客ID
           ,cash_hzca_2.account_number            AS cash_account_number     --入金先顧客コード
           ,bill_hzca_2.cust_account_id           AS bill_account_id         --請求先顧客ID
           ,bill_hzca_2.account_number            AS bill_account_number     --請求先顧客コード
@@ -200,7 +216,17 @@
     AND    bill_hsua_2.site_use_id = bill_hzcp_2.site_use_id(+)              --請求先顧客使用目的.使用目的ID = 請求先顧客プロファイル.使用目的ID
     UNION ALL
     --③入金先顧客－請求先顧客＆出荷先顧客
-    SELECT cash_hzca_3.cust_account_id             AS cash_account_id         --入金先顧客ID
+    SELECT
+/* 2009/09/11 Ver1.5 Add Start */
+           /*+
+             LEADING(ship_hzca_3)
+             USE_NL(ship_hzca_3 cash_hzca_3 cash_hcar_3)
+             USE_NL(bill_hzad_3)
+             USE_NL(cash_hasa_3)
+             USE_NL(bill_hasa_3)
+           */
+/* 2009/09/11 Ver1.5 Add End   */
+           cash_hzca_3.cust_account_id             AS cash_account_id         --入金先顧客ID
           ,cash_hzca_3.account_number              AS cash_account_number     --入金先顧客コード
           ,ship_hzca_3.cust_account_id             AS bill_account_id         --請求先顧客ID
           ,ship_hzca_3.account_number              AS bill_account_number     --請求先顧客コード
@@ -267,7 +293,15 @@
     AND    bill_hsua_3.site_use_id = bill_hzcp_3.site_use_id(+)              --請求先顧客使用目的.使用目的ID = 請求先顧客プロファイル.使用目的ID
     UNION ALL
     --④入金先顧客＆請求先顧客＆出荷先顧客
-    SELECT ship_hzca_4.cust_account_id               AS cash_account_id         --入金先顧客ID
+    SELECT
+/* 2009/09/11 Ver1.5 Add Start */
+           /*+
+             LEADING(ship_hzca_4)
+             USE_NL(ship_hzca_4 bill_hasa_4 bill_hsua_4 ship_hsua_4)
+             USE_NL(bill_hzad_4)
+           */
+/* 2009/09/11 Ver1.5 Add End   */
+           ship_hzca_4.cust_account_id               AS cash_account_id         --入金先顧客ID
           ,ship_hzca_4.account_number                AS cash_account_number     --入金先顧客コード
           ,ship_hzca_4.cust_account_id               AS bill_account_id         --請求先顧客ID
           ,ship_hzca_4.account_number                AS bill_account_number     --請求先顧客コード
