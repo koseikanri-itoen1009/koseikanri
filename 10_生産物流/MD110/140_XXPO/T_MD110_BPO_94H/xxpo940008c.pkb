@@ -7,7 +7,7 @@ AS
  * Description      : ロット引当情報取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : ロット引当情報取込処理 T_MD070_BPO_94H
- * Version          : 1.6
+ * Version          : 1.8
  * Program List
  * --------------------------- ----------------------------------------------------------
  *  Name                        Description
@@ -39,6 +39,8 @@ AS
  *  2008/10/08    1.4  Oracle 伊藤ひとみ 統合テスト指摘240対応
  *  2009/02/09    1.5  Oracle 吉田 夏樹  本番#15、1121対応
  *  2009/02/25    1.6  Oracle 吉田 夏樹  本番#1121対応、863対応再対応
+ *  2009/04/15    1.7  SCS    伊藤ひとみ 本番#1403,1405対応
+ *  2009/04/17    1.8  SCS    椎名 昭圭  ロット管理外品はロットIDをNULLとして取得
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -130,6 +132,10 @@ AS
   gv_msg_xxpo10283        CONSTANT VARCHAR2(100) := 'APP-XXPO-10283';  -- メッセージ:APP-XXPO-10283  受注明細存在エラー
   gv_msg_xxpo10284        CONSTANT VARCHAR2(100) := 'APP-XXPO-10284';  -- メッセージ:APP-XXPO-10284  引当数量エラー
 -- 2009/02/13 v1.5 N.Yoshida Mod End
+-- 2009/04/15 v1.7 ADD START
+  gv_msg_xxpo10289        CONSTANT VARCHAR2(100) := 'APP-XXPO-10289';  -- メッセージ:APP-XXPO-10289  ロット管理品エラー
+  gv_msg_xxpo10290        CONSTANT VARCHAR2(100) := 'APP-XXPO-10290';  -- メッセージ:APP-XXPO-10290  ロット管理外品エラー
+-- 2009/04/15 v1.7 ADD END
 --
   -- トークン
   gv_tkn_ng_profile       CONSTANT VARCHAR2(100) := 'NG_PROFILE';
@@ -816,7 +822,12 @@ AS
     IS
       SELECT ilm.item_id                   item_id                -- 品目ID
             ,ximv2.item_no                 item_no                -- 品目コード
-            ,ilm.lot_id                    lot_id                 -- ロットID
+-- 2009/04/17 v1.8 UPDATE START
+--            ,ilm.lot_id                    lot_id                 -- ロットID
+            ,DECODE(ilm.lot_id
+                   ,0 ,NULL
+                      ,ilm.lot_id)         lot_id                 -- ロットID
+-- 2009/04/17 v1.8 UPDATE END
             ,ilm.lot_no                    lot_no                 -- ロットNo
             ,xlris.sum_reserved_quantity   sum_reserved_quantity  -- 引当数量合計
             ,xlris.inventory_location_id   inventory_location_id  -- 保管倉庫ID
@@ -1160,15 +1171,17 @@ AS
           ,xlri.reserved_quantity            -- 引当数量
           ,xola.order_line_id                -- 明細ID
           ,xola.quantity                     -- 引当数量合計
--- 2009/02/25 v1.6 N.Yoshida Mod Start
---          ,ilm.lot_id                        -- ロットID
-          ,CASE WHEN EXISTS(SELECT 1 FROM ic_lots_mst ilm2
-                       WHERE xlri.lot_no = ilm2.lot_no
-                       AND   ximv.item_id = ilm2.item_id)
-                THEN ilm.lot_id
-                ELSE NULL
-           END lot_id                        -- ロットID
--- 2009/02/25 v1.6 N.Yoshida Mod End
+-- 2009/04/15 v1.7 Del Start 本番障害#1403 ロットマスタを外部結合できないので、チェック処理でロットIDを取得するよう変更
+---- 2009/02/25 v1.6 N.Yoshida Mod Start
+----          ,ilm.lot_id                        -- ロットID
+--          ,CASE WHEN EXISTS(SELECT 1 FROM ic_lots_mst ilm2
+--                       WHERE xlri.lot_no = ilm2.lot_no
+--                       AND   ximv.item_id = ilm2.item_id)
+--                THEN ilm.lot_id
+--                ELSE NULL
+--           END lot_id                        -- ロットID
+---- 2009/02/25 v1.6 N.Yoshida Mod End
+-- 2009/04/15 v1.7 Del End
           ,ximv.item_id                      -- 品目ID
           ,ximv.conv_unit                    -- 入出庫換算単位
           ,ximv.num_of_cases                 -- ケース入り数
@@ -1177,7 +1190,9 @@ AS
           ,xoha.schedule_arrival_date        -- 着荷予定日
           ,NVL(xoha.shipped_date, xoha.schedule_ship_date) -- 出荷日
           ,xoha.order_header_id              -- 受注ヘッダアドオンID
-          ,ilm.attribute1                    -- 製造年月日(OPMロットマスタ)
+-- 2009/04/15 v1.7 Del Start 本番障害#1403 ロットマスタを外部結合できないので、チェック処理で製造年月日を取得するよう変更
+--          ,ilm.attribute1                    -- 製造年月日(OPMロットマスタ)
+-- 2009/04/15 v1.7 Del End
           ,xicv.prod_class_code              -- 商品区分
           ,xicv.item_class_code              -- 品目区分
           ,xoha.vendor_site_code             -- 配送先コード
@@ -1206,7 +1221,9 @@ AS
             gt_lr_reserved_quantity_tbl,
             gt_lr_order_line_id_tbl,
             gt_lr_quantity_tbl,
-            gt_lr_lot_id_tbl,
+-- 2009/04/15 v1.7 Del Start 本番障害#1403 ロットマスタを外部結合できないので、チェック処理でロットIDを取得するよう変更
+--            gt_lr_lot_id_tbl,
+-- 2009/04/15 v1.7 Del End
             gt_lr_item_id_tbl,
             gt_lr_conv_unit_tbl,
             gt_lr_num_of_cases_tbl,
@@ -1215,7 +1232,9 @@ AS
             gt_lr_sche_arrival_date_tbl,
             gt_lr_shipped_date_tbl,
             gt_lr_order_header_id_tbl,
-            gt_lr_lot_date_tbl,
+-- 2009/04/15 v1.7 Del Start 本番障害#1403 ロットマスタを外部結合できないので、チェック処理で製造年月日を取得するよう変更
+--            gt_lr_lot_date_tbl,
+-- 2009/04/15 v1.7 Del End
             gt_lr_prod_class_code_tbl,
             gt_lr_item_class_code_tbl,
             gt_lr_deliver_to_tbl,
@@ -1238,7 +1257,9 @@ AS
 -- 2009/02/25 v1.6 N.Yoshida Mod Start
 --          ,xxcmn_item_locations2_v     xilv2                 -- OPM保管場所情報VIEW2
 -- 2009/02/25 v1.6 N.Yoshida Mod End
-          ,ic_lots_mst                 ilm                   -- OPMロットマスタ
+-- 2009/04/15 v1.7 Del Start 本番障害#1403 ロットマスタを外部結合できないので、チェック処理でロットIDと製造年月日を取得するよう変更
+--          ,ic_lots_mst                 ilm                   -- OPMロットマスタ
+-- 2009/04/15 v1.7 Del End
 -- 2008/08/22 Mod ↓
 /*
     WHERE
@@ -1323,7 +1344,9 @@ AS
 -- 2009/02/10 v1.5 N.Yoshida Mod Start
 --    AND    xlri.lot_no                = ilm.lot_no
 --    AND    ilm.item_id                = ximv.item_id
-    AND    xlri.lot_no                = ilm.lot_no(+)
+-- 2009/04/15 v1.7 Del Start 本番障害#1403 ロットマスタを外部結合できないので、チェック処理でロットIDと製造年月日を取得するよう変更
+--    AND    xlri.lot_no                = ilm.lot_no(+)
+-- 2009/04/15 v1.7 Del End
 -- 2009/02/25 v1.6 N.Yoshida Mod Start
 --    AND   ((ximv.item_id IS NULL OR ilm.item_id IS NULL)
 --     OR    (ximv.item_id IS NOT NULL AND ilm.item_id IS NOT NULL AND ximv.item_id = ilm.item_id))
@@ -1687,22 +1710,51 @@ AS
     -- ===========================
     -- 不正ロットチェック
     -- ===========================
-    -- ロット引当情報IFテーブルのロットNoが存在しない場合、エラーとする。
-    IF (gt_lr_lot_id_tbl(gn_i) IS NULL) THEN
-      lv_errmsg  := SUBSTRB(
-                      xxcmn_common_pkg.get_msg(
-                        gv_xxpo                    -- モジュール名略称:XXPO
-                       ,gv_msg_xxpo10280           -- メッセージ:APP-XXPO-10280 不正エラー
-                       ,gv_tkn_request_no          -- トークン:REQUEST_NO
-                       ,gt_lr_request_no_tbl(gn_i) -- 依頼No.
-                       ,gv_tkn_item_no             -- トークン:ITEM_NO
-                       ,gt_lr_item_code_tbl(gn_i)    -- 品目コード
-                       ,gv_tkn_lot_no              -- トークン:LOT_NO
-                       ,gt_lr_lot_no_tbl(gn_i))    -- ロットNo.
-                       ,1,5000);
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
+-- 2009/04/15 v1.7 Mod Start 本番障害#1403 ロットマスタを外部結合できないので、ここで取得する。取得できない場合はエラーとする。
+--    -- ロット引当情報IFテーブルのロットNoが存在しない場合、エラーとする。
+--    IF (gt_lr_lot_id_tbl(gn_i) IS NULL) THEN
+--      lv_errmsg  := SUBSTRB(
+--                      xxcmn_common_pkg.get_msg(
+--                        gv_xxpo                    -- モジュール名略称:XXPO
+--                       ,gv_msg_xxpo10280           -- メッセージ:APP-XXPO-10280 不正エラー
+--                       ,gv_tkn_request_no          -- トークン:REQUEST_NO
+--                       ,gt_lr_request_no_tbl(gn_i) -- 依頼No.
+--                       ,gv_tkn_item_no             -- トークン:ITEM_NO
+--                       ,gt_lr_item_code_tbl(gn_i)    -- 品目コード
+--                       ,gv_tkn_lot_no              -- トークン:LOT_NO
+--                       ,gt_lr_lot_no_tbl(gn_i))    -- ロットNo.
+--                       ,1,5000);
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+    BEGIN
+      -- ロットID、製造年月日取得
+      SELECT ilm.lot_id      lot_id                -- ロットID
+            ,ilm.attribute1  lot_date              -- 製造年月日
+      INTO   gt_lr_lot_id_tbl(gn_i)                -- lot_id
+            ,gt_lr_lot_date_tbl(gn_i)              -- lot_date
+      FROM   ic_lots_mst     ilm                   -- OPMロットマスタ
+      WHERE  ilm.item_id = gt_lr_item_id_tbl(gn_i) -- 品目ID
+      AND    ilm.lot_no  = gt_lr_lot_no_tbl(gn_i)  -- ロットNo
+      ;
+    EXCEPTION
+      -- 取得できない場合は不正ロットエラー
+      WHEN NO_DATA_FOUND THEN
+        lv_errmsg  := SUBSTRB(
+                        xxcmn_common_pkg.get_msg(
+                          gv_xxpo                    -- モジュール名略称:XXPO
+                         ,gv_msg_xxpo10280           -- メッセージ:APP-XXPO-10280 不正エラー
+                         ,gv_tkn_request_no          -- トークン:REQUEST_NO
+                         ,gt_lr_request_no_tbl(gn_i) -- 依頼No.
+                         ,gv_tkn_item_no             -- トークン:ITEM_NO
+                         ,gt_lr_item_code_tbl(gn_i)    -- 品目コード
+                         ,gv_tkn_lot_no              -- トークン:LOT_NO
+                         ,gt_lr_lot_no_tbl(gn_i))    -- ロットNo.
+                         ,1,5000);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+-- 2009/04/15 v1.7 Mod End
 --
     -- ロット引当情報IFテーブルに同一の依頼No、品目コード、ロットNoが存在する場合、エラーとする。
     SELECT COUNT(1)
@@ -1731,6 +1783,49 @@ AS
 --
     END IF;
 -- 2009/02/10 v1.5 N.Yoshida Mod End
+-- 2009/04/15 v1.7 Add Start 本番障害#1405
+    -- ===========================
+    -- ロット不正チェック２
+    -- ===========================
+    -- ロット管理品の場合
+    IF (gt_lr_lot_ctl_tbl(gn_i) = gv_flg_on) THEN
+      -- デフォルトロットはエラー
+      IF (gt_lr_lot_id_tbl(gn_i) = 0) THEN
+      lv_errmsg  := SUBSTRB(
+                      xxcmn_common_pkg.get_msg(
+                        gv_xxpo                    -- モジュール名略称:XXPO
+                       ,gv_msg_xxpo10289           -- メッセージ:APP-XXPO-10289 ロット管理品エラー
+                       ,gv_tkn_request_no          -- トークン:REQUEST_NO
+                       ,gt_lr_request_no_tbl(gn_i) -- 依頼No.
+                       ,gv_tkn_item_no             -- トークン:ITEM_NO
+                       ,gt_lr_item_code_tbl(gn_i)    -- 品目コード
+                       ,gv_tkn_lot_no              -- トークン:LOT_NO
+                       ,gt_lr_lot_no_tbl(gn_i))    -- ロットNo.
+                       ,1,5000);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+--
+    -- ロット管理外品の場合
+    ELSE
+      -- デフォルトロット以外はエラー
+      IF (gt_lr_lot_id_tbl(gn_i) <> 0) THEN
+      lv_errmsg  := SUBSTRB(
+                      xxcmn_common_pkg.get_msg(
+                        gv_xxpo                    -- モジュール名略称:XXPO
+                       ,gv_msg_xxpo10290           -- メッセージ:APP-XXPO-10290 ロット管理外品エラー
+                       ,gv_tkn_request_no          -- トークン:REQUEST_NO
+                       ,gt_lr_request_no_tbl(gn_i) -- 依頼No.
+                       ,gv_tkn_item_no             -- トークン:ITEM_NO
+                       ,gt_lr_item_code_tbl(gn_i)    -- 品目コード
+                       ,gv_tkn_lot_no              -- トークン:LOT_NO
+                       ,gt_lr_lot_no_tbl(gn_i))    -- ロットNo.
+                       ,1,5000);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+    END IF;
+-- 2009/04/15 v1.7 Add End
 --
 -- 2008/08/22 Add ↓
     -- ===========================
