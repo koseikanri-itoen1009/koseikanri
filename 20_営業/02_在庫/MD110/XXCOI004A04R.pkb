@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI004A04R(body)
  * Description      : VD機内在庫表
  * MD.050           : MD050_COI_004_A04
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ------------------------ --------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/05/19    1.2   T.Nakamura       [T1_0980]ワークテーブルデータ登録項目に出力期間を追加
  *                                       [T1_0991]VD機内在庫表のH/Cに出力する値を変更
  *  2009/06/26    1.3   H.Wada           [0000257]顧客抽出SQLの変更
+ *  2009/07/09    1.4   H.Sasaki         [0000500]顧客抽出SQLの変更
  *
  *****************************************************************************************/
 --
@@ -1846,7 +1847,9 @@ AS
                                          OR       (NVL(xmvc2.price, -1)       !=  NVL(xmvc2.last_month_price, -1))
                                          OR       (NVL(xmvc2.hot_cold, cv_0)  !=  NVL(xmvc2.last_month_hot_cold, cv_0))
                                         )
-                               AND      ROWNUM = 1
+-- == 2009/07/09 V1.4 Delete START ==================================================================
+--                               AND      ROWNUM = 1
+-- == 2009/07/09 V1.4 Delete END   ==================================================================
                               )         sub_query
                       WHERE   sub_query.customer_id = hca1.cust_account_id
               )
@@ -1934,13 +1937,13 @@ AS
           ,DECODE(lv_output_period
             ,'0' ,xmvc.inventory_quantity ,'1' ,xmvc.last_month_inventory_quantity) AS inventory_qnt -- 6.基準在庫数
     FROM   xxcoi_mst_vd_column                                                      xmvc        -- 1.VDコラムマスタ
-         ,(SELECT msib.segment1          AS item_code  -- 1.品目コード
-                 ,ximb.item_short_name   AS short_name -- 2.品目名(略称)
-                 ,msib.inventory_item_id AS item_id    -- 3.品目ID
-           FROM   mtl_system_items_b     msib   -- 1.DISC品目マスタ
-                 ,ic_item_mst_b          iimb   -- 2.OPM品目マスタ
-                 ,xxcmn_item_mst_b       ximb   -- 3.OPOM品目マスタ
-                 ,xxcmm_system_items_b   xsib   -- 4.DISC品目アドオン
+         ,(SELECT msib.segment1          AS item_code   -- 1.品目コード
+                 ,ximb.item_short_name   AS short_name  -- 2.品目名(略称)
+                 ,msib.inventory_item_id AS item_id     -- 3.品目ID
+           FROM   mtl_system_items_b     msib           -- 1.DISC品目マスタ
+                 ,ic_item_mst_b          iimb           -- 2.OPM品目マスタ
+                 ,xxcmn_item_mst_b       ximb           -- 3.OPOM品目マスタ
+                 ,xxcmm_system_items_b   xsib           -- 4.DISC品目アドオン
            WHERE  msib.segment1        = iimb.item_no
            AND    msib.organization_id = xxcoi_common_pkg.get_organization_id('S01')
            AND    iimb.item_id         = ximb.item_id
@@ -2260,6 +2263,7 @@ AS
         CLOSE get_column_info_cur;
 -- == 2009/06/26 V1.3 Added START ==================================================================
       END IF; -- 顧客スキップ終了位置
+      lv_skip_flg :=  cv_staff_prm_no;
 -- == 2009/06/26 V1.3 Added END   ==================================================================
     END LOOP get_customer_info_loop;
     CLOSE get_customer_info_cur;
