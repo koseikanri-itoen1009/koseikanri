@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A07C (body)
  * Description      : ó’ˆê——ƒtƒ@ƒCƒ‹o—Í
  * MD.050           : ó’ˆê——ƒtƒ@ƒCƒ‹o—Í MD050_COS_009_A07
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2010/06/23    1.0   S.Miyakoshi      V‹Kì¬
  *  2010/08/03    1.1   K.Kiriu          [E_–{‰Ò“®_04125]o—Í€–Ú‚Ì•ÏX
+ *  2011/02/04    1.2   OuKou            [E_–{‰Ò“®_04871]o—Í€–Ú‚Ì’Ç‰Á
  *
  *****************************************************************************************/
 --
@@ -387,6 +388,18 @@ AS
          ELSE gv_msg_flag_out
        END                                   AS edi_delivery_schedule_flag   -- EDI”[•i—\’è‘—MÏƒtƒ‰ƒO
       ,oola.rowid                            AS row_id                       -- rowid
+-- ADD DATE:2011/02/04 AUTHOR:OUKOU VERF1.2 CONTENT:E_–{‰Ò“®_04871 START
+      ,xel.general_succeeded_item1           AS general_succeeded_item1      -- ”Ä—pˆøŒp‚¬€–Ú‚P
+      ,xel.general_succeeded_item2           AS general_succeeded_item2      -- ”Ä—pˆøŒp‚¬€–Ú‚Q
+      ,xel.general_succeeded_item3           AS general_succeeded_item3      -- ”Ä—pˆøŒp‚¬€–Ú‚R
+      ,xel.general_succeeded_item4           AS general_succeeded_item4      -- ”Ä—pˆøŒp‚¬€–Ú‚S
+      ,xel.general_succeeded_item5           AS general_succeeded_item5      -- ”Ä—pˆøŒp‚¬€–Ú‚T
+      ,xel.general_succeeded_item6           AS general_succeeded_item6      -- ”Ä—pˆøŒp‚¬€–Ú‚U
+      ,xel.general_succeeded_item7           AS general_succeeded_item7      -- ”Ä—pˆøŒp‚¬€–Ú‚V
+      ,xel.general_succeeded_item8           AS general_succeeded_item8      -- ”Ä—pˆøŒp‚¬€–Ú‚W
+      ,xel.general_succeeded_item9           AS general_succeeded_item9      -- ”Ä—pˆøŒp‚¬€–Ú‚X
+      ,xel.general_succeeded_item10          AS general_succeeded_item10     -- ”Ä—pˆøŒp‚¬€–Ú‚P‚O0
+-- ADD DATE:2011/02/04 AUTHOR:OUKOU VERF1.2 CONTENT:E_–{‰Ò“®_04871 END
     FROM
        oe_order_headers_all      ooha    -- ó’ƒwƒbƒ_
       ,oe_order_lines_all        oola    -- ó’–¾×
@@ -1365,6 +1378,18 @@ AS
                       || lv_delimit || gt_out_file_tab(i).stockout_price_amt           -- ”„‰¿‹àŠziŒ‡•ij
                       || lv_delimit || gt_out_file_tab(i).chain_peculiar_area_line     -- ƒ`ƒF[ƒ““XŒÅ—LƒGƒŠƒAi–¾×j
                       || lv_delimit || gt_out_file_tab(i).edi_delivery_schedule_flag   -- EDI”[•i—\’è‘—MÏƒtƒ‰ƒO
+-- ADD DATE:2011/02/04 AUTHOR:OUKOU VERF1.2 CONTENT:E_–{‰Ò“®_04871 START
+                      || lv_delimit || gt_out_file_tab(i).general_succeeded_item1      -- ”Ä—pˆøŒp‚¬€–Ú‚P
+                      || lv_delimit || gt_out_file_tab(i).general_succeeded_item2      -- ”Ä—pˆøŒp‚¬€–Ú‚Q
+                      || lv_delimit || gt_out_file_tab(i).general_succeeded_item3      -- ”Ä—pˆøŒp‚¬€–Ú‚R
+                      || lv_delimit || gt_out_file_tab(i).general_succeeded_item4      -- ”Ä—pˆøŒp‚¬€–Ú‚S
+                      || lv_delimit || gt_out_file_tab(i).general_succeeded_item5      -- ”Ä—pˆøŒp‚¬€–Ú‚T
+                      || lv_delimit || gt_out_file_tab(i).general_succeeded_item6      -- ”Ä—pˆøŒp‚¬€–Ú‚U
+                      || lv_delimit || gt_out_file_tab(i).general_succeeded_item7      -- ”Ä—pˆøŒp‚¬€–Ú‚V
+                      || lv_delimit || gt_out_file_tab(i).general_succeeded_item8      -- ”Ä—pˆøŒp‚¬€–Ú‚W
+                      || lv_delimit || gt_out_file_tab(i).general_succeeded_item9      -- ”Ä—pˆøŒp‚¬€–Ú‚X
+                      || lv_delimit || gt_out_file_tab(i).general_succeeded_item10     -- ”Ä—pˆøŒp‚¬€–Ú‚P‚O
+-- ADD DATE:2011/02/04 AUTHOR:OUKOU VERF1.2 CONTENT:E_–{‰Ò“®_04871 END
                       ;
 --
       --ó’–¾×ƒe[ƒuƒ‹XV‚Ì‚½‚ß‚ÌROWID‚ğŠi”[
