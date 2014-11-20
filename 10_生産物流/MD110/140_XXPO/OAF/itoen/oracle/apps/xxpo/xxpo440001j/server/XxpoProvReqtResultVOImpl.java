@@ -50,7 +50,10 @@ public class XxpoProvReqtResultVOImpl extends OAViewObjectImpl
   {
     StringBuffer whereClause = new StringBuffer(1000);  // WHERE句作成用オブジェクト
     ArrayList parameters = new ArrayList();             // バインド変数設定値
-    int bindCount = 0;                                  // バインド変数カウント
+// 2009-11-26 v1.4 T.Yoshimoto Mod Start 本稼動障害#59対応
+    //int bindCount = 0;                                  // バインド変数カウント
+    int bindCount = 2;                                  // バインド変数カウント
+// 2009-11-26 v1.4 T.Yoshimoto Mod End 本稼動障害#59対応
 
     // 初期化
     setWhereClauseParams(null);
@@ -94,7 +97,7 @@ public class XxpoProvReqtResultVOImpl extends OAViewObjectImpl
       whereClause.append("          AND    NVL(xssv.vendor_site_code, ship_to_code) = ship_to_code "        );
       whereClause.append("          AND    xssv.user_id                             = FND_GLOBAL.USER_ID "  );
       whereClause.append("          AND    xlvvs.lookup_type                        = 'XXPO_START_UP_TYPE'" );
-      whereClause.append("          AND    xlvvs.lookup_code                        = " + bindCount++ );
+      whereClause.append("          AND    xlvvs.lookup_code                        = :" + bindCount++ );
       whereClause.append("         ) ");
       //起動タイプ
       parameters.add(exeType);      
@@ -113,7 +116,7 @@ public class XxpoProvReqtResultVOImpl extends OAViewObjectImpl
       whereClause.append("          AND    xssv.segment1      = ship_whse_code "       );
       whereClause.append("          AND    xssv.user_id       = FND_GLOBAL.USER_ID "   );
       whereClause.append("          AND    xlvvs.lookup_type  = 'XXPO_START_UP_TYPE' " );
-      whereClause.append("          AND    xlvvs.lookup_code  = " + bindCount++ );
+      whereClause.append("          AND    xlvvs.lookup_code  = :" + bindCount++ );
       whereClause.append("         ) ");
       //起動タイプ
       parameters.add(exeType);      
