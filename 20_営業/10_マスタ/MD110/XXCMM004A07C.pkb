@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxcmm004a07c
+CREATE OR REPLACE PACKAGE BODY XXCMM004A07C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -40,14 +40,15 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/17    1.0   H.Yoshikawa      新規作成
- *  2009/1/22     1.1   R.Takigawa       BLOBデータ変換共通関数の後にretcodeがエラーかどうか判断するIF文を追記
- *  2009/1/27     1.2   R.Takigawa       ファイル内重複エラーにトークンを追加
- *  2009/1/28     1.3   R.Takigawa       データ抽出エラーを追加
- *  2009/2/2      1.4   R.Takigawa       プロファイル名を追加
- *  2009/2/3      1.5   R.Takigawa       proc_init共通関数の例外処理メッセージ変更
- *  2009/2/3      1.6   R.Takigawa       データ抽出エラーのメッセージ変更
- *  2009/2/4      1.7   R.Takigawa       SQLのデータ型修正
- *  2009/2/9      1.8   R.Takigawa       ロックエラー時のメッセージ変更
+ *  2009/01/22    1.01  R.Takigawa       BLOBデータ変換共通関数の後にretcodeがエラーかどうか判断するIF文を追記
+ *  2009/01/27    1.02  R.Takigawa       ファイル内重複エラーにトークンを追加
+ *  2009/01/28    1.03  R.Takigawa       データ抽出エラーを追加
+ *  2009/02/02    1.04  R.Takigawa       プロファイル名を追加
+ *  2009/02/03    1.05  R.Takigawa       proc_init共通関数の例外処理メッセージ変更
+ *  2009/02/03    1.06  R.Takigawa       データ抽出エラーのメッセージ変更
+ *  2009/02/04    1.07  R.Takigawa       SQLのデータ型修正
+ *  2009/02/09    1.08  R.Takigawa       ロックエラー時のメッセージ変更
+ *  2009/05/15    1.1   H.Yoshikawa      障害T1_0569,T1_0588 対応
  *
  *****************************************************************************************/
 --
@@ -131,16 +132,19 @@ AS
   cv_msg_xxcmm_00002         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00002';   -- プロファイル取得エラー
   cv_msg_xxcmm_00008         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00008';   -- ロック取得エラー
   cv_msg_xxcmm_00028         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00028';   -- データ項目数エラー
--- Ver1.3
+-- Ver1.03
 --  cv_msg_xxcmm_00409         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00409';   -- データ抽出エラー
--- End1.3
--- Ver1.6
+-- End1.03
+-- Ver1.1  2009/05/15  Add  T1_0588 対応
+  cv_msg_xxcmm_00429         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00429';   -- 品目ステータスエラー
+-- End
+-- Ver1.06
   cv_msg_xxcmm_00439         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00439';   -- データ抽出エラー
--- End1.3
+-- End1.03
   cv_msg_xxcmm_00440         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00440';   -- パラメータチェックエラー
--- Ver1.8 Add メッセージ追加 2009/02/09
+-- Ver1.08 Add メッセージ追加 2009/02/09
   cv_msg_xxcmm_00443         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00443';   -- ロック取得エラー
--- End1.8
+-- End1.08
   cv_msg_xxcmm_00455         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00455';   -- 起動種別エラー
   cv_msg_xxcmm_00456         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00456';   -- ファイル項目チェックエラー
   cv_msg_xxcmm_00457         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00457';   -- 適用日チェックエラー
@@ -156,9 +160,9 @@ AS
   --
   --トークンコード
   cv_tkn_table               CONSTANT VARCHAR2(20)  := 'TABLE';              -- テーブル名
--- Ver1.8 Add メッセージ追加 2009/02/09
+-- Ver1.08 Add メッセージ追加 2009/02/09
   cv_tkn_item_code           CONSTANT VARCHAR2(20)  := 'ITEM_CODE';          -- 品目コード
--- End1.8
+-- End1.08
   cv_tkn_ng_table            CONSTANT VARCHAR2(20)  := 'NG_TABLE';           -- ロック取得エラーテーブル名
   cv_tkn_count               CONSTANT VARCHAR2(20)  := 'COUNT';              -- 項目数チェック件数
   cv_tkn_profile             CONSTANT VARCHAR2(20)  := 'NG_PROFILE';         -- プロファイル名
@@ -171,13 +175,15 @@ AS
   cv_tkn_input_item          CONSTANT VARCHAR2(20)  := 'INPUT_ITEM';         -- 品目コード
   cv_tkn_input_apply_date    CONSTANT VARCHAR2(20)  := 'INPUT_APPLY_DATE';   -- 適用日
   cv_tkn_err_msg             CONSTANT VARCHAR2(20)  := 'ERR_MSG';            -- エラーメッセージ
--- Ver1.3
+-- Ver1.03
   --cv_tkn_errmsg              CONSTANT VARCHAR2(20)  := 'ERRMSG';             -- エラー内容
   cv_tkn_input_line_no       CONSTANT VARCHAR2(20)  := 'INPUT_LINE_NO';      -- インタフェースの行番号
   cv_tkn_input_item_code     CONSTANT VARCHAR2(20)  := 'INPUT_ITEM_CODE';    -- インタフェースの品名コード
-  --
+-- Ver1.1  2009/05/15  Add  T1_0588 対応
+  cv_tkn_item_status         CONSTANT VARCHAR2(20)  := 'ITEM_STATUS';        -- 品目ステータス名
+-- End  --
   cv_table_flv               CONSTANT VARCHAR2(30)  := 'LOOKUP表';           -- FND_LOOKUP_VALUES_VL
--- End1.3
+-- End1.03
   cv_tkn_val_proc_name       CONSTANT VARCHAR2(30)  := '営業原価一括改定';
   cv_tkn_val_fmt_pattern     CONSTANT VARCHAR2(30)  := 'フォーマットパターン';
   cv_tkn_val_disc_cost       CONSTANT VARCHAR2(30)  := '営業原価';
@@ -185,9 +191,9 @@ AS
   cv_tkn_val_wk_disc_cost    CONSTANT VARCHAR2(30)  := '営業原価一括改定ワーク';
   cv_tkn_val_disc_hst        CONSTANT VARCHAR2(30)  := 'Disc品目変更履歴アドオン';
   cv_tkn_val_disc_item       CONSTANT VARCHAR2(30)  := 'Disc品目マスタ';
--- Ver1.4
+-- Ver1.04
   cv_tkn_val_profile         CONSTANT VARCHAR2(50)  := 'XXCMM:営業原価一括改定データ項目数';
--- End1.4
+-- End1.04
   --
   cv_lookup_cost_cmpt        CONSTANT VARCHAR2(20)  := 'XXCMM1_COST_CMPT';   -- 標準原価コンポーネント
   --
@@ -476,7 +482,7 @@ AS
 --
     -- *** ロックエラー例外ハンドラ ***
     WHEN global_check_lock_expt THEN
--- Ver1.8 Mod ロックエラー時のメッセージ変更 2009/02/09
+-- Ver1.08 Mod ロックエラー時のメッセージ変更 2009/02/09
       lv_errmsg  := xxccp_common_pkg.get_msg(
                       iv_application  => cv_appl_name_xxcmm        -- アプリケーション短縮名
 --                     ,iv_name         => cv_msg_xxcmm_00008      -- メッセージコード
@@ -487,7 +493,7 @@ AS
 --                     ,iv_token_name2  => cv_tkn_input_item         -- トークンコード2
                      ,iv_token_name2  => cv_tkn_item_code         -- トークンコード2
                     ,iv_token_value2 => i_disc_hst_rec.item_code  -- トークン値2
--- End1.8
+-- End1.08
                      );
       -- メッセージ出力
       xxcmm_004common_pkg.put_message(
@@ -804,6 +810,16 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- Ver1.1  2009/05/15  Add  T1_0588 対応
+    -- ルックアップ
+    cv_lookup_item_status      CONSTANT VARCHAR2(20)  := 'XXCMM_ITM_STATUS';   -- 品目ステータス
+    --
+    -- 品目ステータス
+    cn_itm_status_num_tmp      CONSTANT NUMBER        := xxcmm_004common_pkg.cn_itm_status_num_tmp;
+                                                                               -- 仮採番
+    cn_itm_status_no_use       CONSTANT NUMBER        := xxcmm_004common_pkg.cn_itm_status_no_use;
+                                                                               -- Ｄ
+-- End
     -- 標準原価
     cv_whse_code               CONSTANT VARCHAR2(3)   := xxcmm_004common_pkg.cv_whse_code;
                                                                                -- 倉庫
@@ -822,6 +838,10 @@ AS
     ln_inventory_item_id       mtl_system_items_b.inventory_item_id%TYPE;
     ln_opm_cost                NUMBER;
     --
+-- Ver1.1  2009/05/15  Add  T1_0588 対応
+    ln_item_status             xxcmm_system_items_b.item_status%TYPE;
+    lv_item_status_name        VARCHAR2(10);
+-- End
     l_validate_disc_cost_tab   g_check_data_ttype;
     l_disc_hst_rec             g_disc_hst_rtype;
     --
@@ -866,10 +886,10 @@ AS
       );
       --
       -- 戻り値が異常の場合
--- Ver1.1
+-- Ver1.01
 --      IF ( lv_retcode = cv_status_error ) THEN
       IF ( lv_retcode != cv_status_normal ) THEN
--- End1.1
+-- End1.01
         -- ファイル項目チェックエラー
         lv_errmsg  :=  xxccp_common_pkg.get_msg(
                          iv_application   =>  cv_appl_name_xxcmm                        -- アプリケーション短縮名
@@ -906,13 +926,30 @@ AS
       --==============================================================
       BEGIN
         --
-        SELECT    xoiv.item_no                                         -- 品目コード
+        SELECT    xoiv.item_no                                            -- 品目コード
+-- Ver1.1  2009/05/15  Add  T1_0588 対応
+                 ,NVL( xoiv.item_status, cn_itm_status_num_tmp )
+                                      AS item_status                      -- 品目ステータス
+                 ,flvv.meaning        AS item_status_name                 -- 品目ステータス名
+-- End
         INTO      lv_item_no
-        FROM      xxcmm_opmmtl_items_v       xoiv                      -- 品目ビュー
-        WHERE     xoiv.item_id             = l_disc_hst_rec.item_id    -- 品目ID
-        AND       xoiv.item_id             = xoiv.parent_item_id       -- 親品目
-        AND       xoiv.start_date_active  <= TRUNC( SYSDATE )          -- 適用開始日
-        AND       xoiv.end_date_active    >= TRUNC( SYSDATE );         -- 適用終了日
+-- Ver1.1  2009/05/15  Add  T1_0588 対応
+                 ,ln_item_status
+                 ,lv_item_status_name
+-- End
+        FROM      xxcmm_opmmtl_items_v       xoiv                         -- 品目ビュー
+-- Ver1.1  2009/05/15  Add  T1_0588 対応
+                 ,fnd_lookup_values_vl       flvv                         -- LOOKUP表
+-- End
+        WHERE     xoiv.item_id             = l_disc_hst_rec.item_id       -- 品目ID
+        AND       xoiv.item_id             = xoiv.parent_item_id          -- 親品目
+-- Ver1.1  2009/05/15  Add  T1_0588 対応
+        AND       flvv.lookup_type         = cv_lookup_item_status        -- XXCMM_ITM_STATUS
+        AND       flvv.lookup_code         = TO_CHAR( NVL( xoiv.item_status, cn_itm_status_num_tmp ))
+                                                                          -- 品目ステータス
+-- End
+        AND       xoiv.start_date_active  <= TRUNC( SYSDATE )             -- 適用開始日
+        AND       xoiv.end_date_active    >= TRUNC( SYSDATE );            -- 適用終了日
         --
         l_disc_hst_rec.item_code     := lv_item_no;
         --
@@ -936,6 +973,34 @@ AS
           -- ステータスをエラーにする。
           lv_warnig_flg := cv_status_error;
       END;
+      --
+-- Ver1.1  2009/05/15  Add  T1_0588 対応
+      -- 品目ステータス：仮採番、または、Ｄの場合エラー。
+      --   仮採番：営業組織(S01)に品目割当されていないため
+      --   Ｄ    ：品目情報変更不可のため
+      IF ( ln_item_status IN ( cn_itm_status_num_tmp, cn_itm_status_no_use ) ) THEN
+        -- 営業原価チェックエラー
+        lv_errmsg  :=  xxccp_common_pkg.get_msg(
+                         iv_application   =>  cv_appl_name_xxcmm              -- アプリケーション短縮名
+                        ,iv_name          =>  cv_msg_xxcmm_00429              -- メッセージコード
+                        ,iv_token_name1   =>  cv_tkn_input_item               -- トークンコード1
+                        ,iv_token_value1  =>  i_disc_cost_rec.item_no         -- トークン値1
+                        ,iv_token_name2   =>  cv_tkn_item_status              -- トークンコード2
+                        ,iv_token_value2  =>  TO_CHAR( ln_item_status ) || cv_msg_part || 
+                                              lv_item_status_name             -- トークン値2
+                       );
+        -- メッセージ出力
+        xxcmm_004common_pkg.put_message(
+          iv_message_buff  =>  lv_errmsg
+         ,ov_errbuf        =>  lv_errbuf
+         ,ov_retcode       =>  lv_retcode
+         ,ov_errmsg        =>  lv_errmsg
+        );
+        --
+        -- ステータスをエラーにする。
+        lv_warnig_flg := cv_status_error;
+      END IF;
+-- End
       --
       --==============================================================
       --A-4.3 Disc品目存在チェック
@@ -1009,9 +1074,9 @@ AS
       FROM      xxcmm_wk_disccost_batch_regist    xwdbr                     -- 営業原価一括改定ワーク
       WHERE     xwdbr.file_id             = gn_file_id                      -- ファイルID
       AND       xwdbr.update_div          = cv_upd_div_upd                  -- 更新区分
--- Ver1.7 Mod TRIMを追加
+-- Ver1.07 Mod TRIMを追加
       AND       TRIM( xwdbr.item_id )     = i_disc_cost_rec.item_id         -- 品目ID
--- End1.7
+-- End1.07
       AND       TRIM( xwdbr.apply_date )  = i_disc_cost_rec.apply_date      -- 適用日
       AND       xwdbr.file_seq           != i_disc_cost_rec.file_seq        -- ファイルシーケンス
       AND       ROWNUM                    = 1;
@@ -1021,10 +1086,10 @@ AS
         lv_errmsg  :=  xxccp_common_pkg.get_msg(
                          iv_application   =>  cv_appl_name_xxcmm            -- アプリケーション短縮名
                         ,iv_name          =>  cv_msg_xxcmm_00463            -- メッセージコード
--- Ver1.2
+-- Ver1.02
                         ,iv_token_name1   =>  cv_tkn_cost_type              -- トークンコード1
                         ,iv_token_value1  =>  cv_tkn_val_disc_cost          -- トークン値1
--- End1.2
+-- End1.02
                         ,iv_token_name2   =>  cv_tkn_input_item             -- トークンコード2
                         ,iv_token_value2  =>  i_disc_cost_rec.item_no       -- トークン値2
                         ,iv_token_name3   =>  cv_tkn_input_apply_date       -- トークンコード3
@@ -1049,10 +1114,10 @@ AS
       SELECT    COUNT( xsibh.ROWID )
       INTO      ln_exists_cnt
       FROM      xxcmm_system_items_b_hst    xsibh                     -- Disc品目変更履歴アドオン
--- Ver1.7 Mod 品目IDの型をVARCHAR2からNUMBERに変更
+-- Ver1.07 Mod 品目IDの型をVARCHAR2からNUMBERに変更
 --      WHERE     xsibh.item_id        = i_disc_cost_rec.item_id        -- 品目ID
       WHERE     xsibh.item_id        = l_disc_hst_rec.item_id        -- 品目ID
--- End1.7
+-- End1.07
       AND       xsibh.apply_date     = l_disc_hst_rec.apply_date      -- 適用日
       AND       xsibh.apply_flag     = cv_no                          -- 適用フラグ
       AND       xsibh.discrete_cost IS NOT NULL                       -- 営業原価
@@ -1380,7 +1445,6 @@ AS
     lv_update_div              VARCHAR2(1);                             -- 更新区分
     ln_ins_item_cnt            NUMBER;                                  -- 登録件数カウンタ
     --
-    --
     l_if_data_tab              xxccp_common_pkg2.g_file_data_tbl;
     --
     l_disc_cost_tab            g_check_data_ttype;
@@ -1416,12 +1480,12 @@ AS
      ,ov_errmsg     =>  lv_errmsg
     );
     --
--- Ver1.1 Add
+-- Ver1.01 Add
     -- ステータスがエラーの場合
     IF ( lv_retcode != cv_status_normal ) THEN
       RAISE global_api_expt;
     END IF;
--- End1.1
+-- End1.01
     ------------------
     -- レコードLOOP
     ------------------
@@ -1445,7 +1509,11 @@ AS
           lv_step := 'A-2.4';
           lv_cost_div := SUBSTRB( TRIM( REPLACE( l_if_data_tab( ln_line_cnt ), cv_cost_div_str, '' ) ), 1, 1 );
           --
-          IF ( lv_cost_div != cv_cost_div_disc ) THEN
+-- Ver1.1  2009/05/15  Mod  T1_0569対応
+--          IF ( lv_cost_div != cv_cost_div_disc ) THEN
+          IF ( lv_cost_div != cv_cost_div_disc )
+          OR ( lv_cost_div IS NULL ) THEN
+-- End
             -- 営業原価改定ではないためエラー
             RAISE cost_div_expt;
           END IF;
@@ -1690,9 +1758,9 @@ AS
     lv_tkn_value               VARCHAR2(4000);                                                      -- トークン値
     ln_cnt                     NUMBER;                                                              -- カウンタ
     lv_upload_obj              VARCHAR2(100);                                                       -- ファイルアップロード名称
--- Ver1.6
+-- Ver1.06
     lv_sqlerrm                VARCHAR2(5000);                         -- SQLERRMを退避
--- End1.6
+-- End1.06
     --
     -- ファイルアップロードIFテーブル項目
     lv_csv_file_name           xxccp_mrp_file_ul_interface.file_name%TYPE;                          -- ファイル名格納用
@@ -1726,9 +1794,9 @@ AS
     --
     get_param_expt             EXCEPTION;
     get_profile_expt           EXCEPTION;
--- Ver1.3
+-- Ver1.03
     select_expt                EXCEPTION;                              -- データ抽出エラー
--- End1.3
+-- End1.03
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -1778,7 +1846,7 @@ AS
     --==============================================================
     lv_step := 'A-1.4';
     --
--- Ver1.3 Mod
+-- Ver1.03 Mod
 /*
     SELECT   flv.meaning  meaning
     INTO     lv_upload_obj
@@ -1800,12 +1868,12 @@ AS
       AND      NVL( flv.end_date_active,   gd_process_date ) >= gd_process_date;    -- 適用終了
     EXCEPTION
       WHEN OTHERS THEN
--- Ver1.6 Add
+-- Ver1.06 Add
         lv_sqlerrm := SQLERRM;
--- End1.6
+-- End1.06
         RAISE select_expt;
     END;
--- End1.3
+-- End1.03
     --
     --==============================================================
     --A-1.5 対象データロックの取得
@@ -1836,11 +1904,11 @@ AS
       g_def_info_tab(ln_cnt).decim     := l_get_def_info_rec.decim;        -- 項目の長さ(小数)
     END LOOP def_info_loop;
     --
--- Ver1.3
+-- Ver1.03
     IF ( ln_cnt = 0 ) THEN
       RAISE select_expt;
     END IF;
--- End1.3
+-- End1.03
     --
     --==============================================================
     --A-1.7 INパラメータの出力
@@ -1909,8 +1977,8 @@ AS
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
       ov_retcode := cv_status_error;
       --
--- Ver1.3 Add データ抽出エラー
--- Ver1.6 Mod データ抽出エラー
+-- Ver1.03 Add データ抽出エラー
+-- Ver1.06 Mod データ抽出エラー
 /*
     --*** データ抽出エラー(アップロードファイル名称) ***
     WHEN select_expt THEN
@@ -1944,8 +2012,8 @@ AS
       ov_errmsg  := lv_errmsg;                                                  --# 任意 #
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_cont||lv_step||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;                                            --# 任意 #
--- End1.6
--- End1.3
+-- End1.06
+-- End1.03
     -- *** ロックエラー例外ハンドラ ***
     WHEN global_check_lock_expt THEN
       lv_errmsg  := xxccp_common_pkg.get_msg(
@@ -1967,18 +2035,18 @@ AS
       ov_retcode := cv_status_error;
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
--- Ver1.5
+-- Ver1.05
       --ov_errmsg  := lv_errmsg;
       ov_errmsg  := SUBSTRB( SQLERRM, 1, 5000 );  --2009/02/03 メッセージ変更
--- End1.5
+-- End1.05
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
--- Ver1.5
+-- Ver1.05
       ov_errmsg  := lv_errmsg;
 --      ov_errmsg  := SUBSTRB( SQLERRM, 1, 5000 );  --2009/02/03 メッセージ変更
--- End1.5
+-- End1.05
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
 --
@@ -2356,5 +2424,5 @@ AS
       ROLLBACK;
   END main;
 --
-END xxcmm004a07c;
+END XXCMM004A07C;
 /
