@@ -3,7 +3,7 @@
  * Table Name      : xxcff_cont_obj_work
  * Description     : リース物件ワーク
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -11,6 +11,9 @@
  * ------------- ----- ------------ -------------------------------------
  *  2009/01/30    1.0  SCS 奥河美樹  初回作成
  *  2009/02/06    1.1  SCS 奥河美樹  物件コード9桁→10桁へ変更
+ *  2009/09/04    1.2  SCS 渡辺学    統合障害0001279
+ *                                      発注番号 NUMBER(10)⇒VARCHAR2(10)
+ *                                      機番     VARCHAR2(14)⇒VARCHAR2(100)
 ************************************************************************/
 CREATE TABLE xxcff.xxcff_cont_obj_work (
      seqno                          NUMBER(5)     NOT NULL
@@ -18,11 +21,17 @@ CREATE TABLE xxcff.xxcff_cont_obj_work (
     ,contract_line_num              VARCHAR2(5)   NOT NULL
     ,lease_company                  VARCHAR2(2)   NOT NULL
     ,object_code                    VARCHAR2(10)  NOT NULL
-    ,po_number                      NUMBER(10)
+    -- 0001279 MOD START
+    --,po_number                      NUMBER(10)
+    ,po_number                      VARCHAR2(10)
+    -- 0001279 MOD END
     ,registration_number            VARCHAR2(20)
     ,age_type                       VARCHAR2(50)
     ,model                          VARCHAR2(14)
-    ,serial_number                  VARCHAR2(14)
+    -- 0001279 MOD START
+    --,serial_number                  VARCHAR2(14)
+    ,serial_number                  VARCHAR2(100)
+    -- 0001279 MOD END
     ,quantity                       NUMBER(12)
     ,manufacturer_name              VARCHAR2(50)
     ,department_code                VARCHAR2(5)
