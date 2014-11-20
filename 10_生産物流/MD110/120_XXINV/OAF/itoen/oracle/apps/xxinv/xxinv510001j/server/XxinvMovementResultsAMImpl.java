@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsAMImpl
 * 概要説明   : 入出庫実績要約:検索アプリケーションモジュール
-* バージョン : 1.13
+* バージョン : 1.14
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -19,6 +19,7 @@
 * 2009-02-09 1.11 伊藤ひとみ   本番障害#1143対応
 * 2009-02-26 1.12 二瓶大輔     本番障害#885対応
 * 2009-03-11 1.13 伊藤ひとみ   本番障害#885対応(再対応)
+* 2009-06-18 1.14 伊藤ひとみ   本番障害#1314対応
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.server;
@@ -48,7 +49,7 @@ import itoen.oracle.apps.xxinv.util.XxinvConstants;
 /***************************************************************************
  * 入出庫実績要約:検索アプリケーションモジュールです。
  * @author  ORACLE 大橋 孝郎
- * @version 1.13
+ * @version 1.14
  ***************************************************************************
  */
 public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -1376,8 +1377,28 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     String shippedLocat    = (String)row.getAttribute("ShippedLocatCode"); // 出庫元保管場所
     String shipToLocat     = (String)row.getAttribute("ShipToLocatCode");  // 入庫先保管場所
     // add end ver1.3
+// 2009-06-18 H.Itou Add Start 本番障害#1314
+    // 移動指示部署を取得
+    String instructionPostCode = (String)row.getAttribute("InstructionPostCode"); // 移動指示部署
+// 2009-06-18 H.Itou Add End
     
-
+// 2009-06-18 H.Itou Add Start 本番障害#1314
+    // 移動指示部署が未入力の場合
+    if (XxcmnUtility.isBlankOrNull(instructionPostCode))
+    {
+      // メッセージ取得
+      exceptions.add( new OAAttrValException(
+                            OAAttrValException.TYP_VIEW_OBJECT,
+                            vo.getName(),
+                            row.getKey(),
+                            "InstructionPostCode",
+                            instructionPostCode,
+                            XxcmnConstants.APPL_XXINV,
+                            XxinvConstants.XXINV10128,
+                            null));
+      retCode = XxcmnConstants.STRING_FALSE;
+    }
+// 2009-06-18 H.Itou Add End
     // 指示あり新規登録の場合
     if (XxinvConstants.INPUT_FLAG_1.equals(exeType))
     {
@@ -1402,7 +1423,10 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
                                 "ShippedLocatCode",
                                 shippedLocat,
                                 XxcmnConstants.APPL_XXINV,
-                                XxinvConstants.XXINV10064,
+// 2009-06-18 H.Itou Mod Start
+//                                XxinvConstants.XXINV10064,
+                                XxinvConstants.XXINV10128,
+// 2009-06-18 H.Itou Mod End
                                 null));
           retCode = XxcmnConstants.STRING_FALSE;
         }
@@ -1420,7 +1444,10 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
                                 "ActualShipDate",
                                 actualShipDate,
                                 XxcmnConstants.APPL_XXINV,
-                                XxinvConstants.XXINV10131,
+// 2009-06-18 H.Itou Mod Start
+//                                XxinvConstants.XXINV10131,
+                                XxinvConstants.XXINV10128,
+// 2009-06-18 H.Itou Mod End
                                 tokens));
           retCode = XxcmnConstants.STRING_FALSE;
         }
@@ -1440,7 +1467,10 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
                                 "ShipToLocatCode",
                                 shipToLocat,
                                 XxcmnConstants.APPL_XXINV,
-                                XxinvConstants.XXINV10064,
+// 2009-06-18 H.Itou Mod Start
+//                                XxinvConstants.XXINV10064,
+                                XxinvConstants.XXINV10128,
+// 2009-06-18 H.Itou Mod End
                                 null));
           retCode = XxcmnConstants.STRING_FALSE;
         }
@@ -1458,7 +1488,10 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
                                 "ActualArrivalDate",
                                 actualArrivalDate,
                                 XxcmnConstants.APPL_XXINV,
-                                XxinvConstants.XXINV10131,
+// 2009-06-18 H.Itou Mod Start
+//                                XxinvConstants.XXINV10131,
+                                XxinvConstants.XXINV10128,
+// 2009-06-18 H.Itou Mod End
                                 tokens));
           retCode = XxcmnConstants.STRING_FALSE;
         }
@@ -1479,7 +1512,10 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
                               "ShippedLocatCode",
                               shippedLocat,
                               XxcmnConstants.APPL_XXINV,
-                              XxinvConstants.XXINV10064,
+// 2009-06-18 H.Itou Mod Start
+//                              XxinvConstants.XXINV10064,
+                              XxinvConstants.XXINV10128,
+// 2009-06-18 H.Itou Mod End
                               null));
         retCode = XxcmnConstants.STRING_FALSE;
 
@@ -1495,7 +1531,10 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
                               "ShipToLocatCode",
                               shipToLocat,
                               XxcmnConstants.APPL_XXINV,
-                              XxinvConstants.XXINV10064,
+// 2009-06-18 H.Itou Mod Start
+//                              XxinvConstants.XXINV10064,
+                              XxinvConstants.XXINV10128,
+// 2009-06-18 H.Itou Mod End
                               null));
         retCode = XxcmnConstants.STRING_FALSE;
       }
@@ -1513,7 +1552,10 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
                               "ActualShipDate",
                               actualShipDate,
                               XxcmnConstants.APPL_XXINV,
-                              XxinvConstants.XXINV10131,
+// 2009-06-18 H.Itou Mod Start
+//                              XxinvConstants.XXINV10131,
+                              XxinvConstants.XXINV10128,
+// 2009-06-18 H.Itou Mod End
                               tokens));
         retCode = XxcmnConstants.STRING_FALSE;
 
@@ -1534,7 +1576,10 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
                               "ActualArrivalDate",
                               actualArrivalDate,
                               XxcmnConstants.APPL_XXINV,
-                              XxinvConstants.XXINV10131,
+// 2009-06-18 H.Itou Mod Start
+//                              XxinvConstants.XXINV10131,
+                              XxinvConstants.XXINV10128,
+// 2009-06-18 H.Itou Mod End
                               tokens));
         retCode = XxcmnConstants.STRING_FALSE;
       }
