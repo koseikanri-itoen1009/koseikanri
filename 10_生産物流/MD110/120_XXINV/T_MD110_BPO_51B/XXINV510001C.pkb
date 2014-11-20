@@ -8,7 +8,7 @@ AS
  * Description      : 移動伝票
  * MD.050/070       : 移動実績 T_MD050_BPO_510
  *                  : 移動伝票 T_MD070_BPO_51A
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------------- ----------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2008/07/29    1.6   Marushita          禁則文字「'」「"」「<」「>」「＆」対応
  *  2008/07/30    1.7   Yuko Kawano        内部変更要求対応#164
  *  2008/11/04    1.8   Yasuhisa Yamamoto  統合障害#508,554
+ *  2008/12/25    1.9   Yuko Kawano        本番障害対応#438
  *
  *****************************************************************************************/
 --
@@ -123,6 +124,9 @@ AS
   gv_pkg_name         CONSTANT VARCHAR2(100) := 'XXINV510001C' ;  -- パッケージ名
   gv_report_id        CONSTANT VARCHAR2(12)  := 'XXINV510001T' ;  -- プログラム名帳票出力用
   gv_status_out       CONSTANT VARCHAR2(2)   := '04';             -- ステータス 04:「出庫報告有」
+--2008/12/25 Y.Kawano Add Start #438
+  gv_status_in        CONSTANT VARCHAR2(2)   := '05';             -- ステータス 05:「入庫報告有」
+--2008/12/25 Y.Kawano Add End   #438
   gv_status_in_out    CONSTANT VARCHAR2(2)   := '06';             -- ステータス 06:「入出庫報告有」
   gv_status_irai      CONSTANT VARCHAR2(2)   := '02';             -- ステータス 02:「依頼済」
   gv_status_chosei    CONSTANT VARCHAR2(2)   := '03';             -- ステータス 02:「調整中」
@@ -1184,8 +1188,12 @@ AS
             xmrih.schedule_ship_date <= TRUNC( cur_schedule_ship_dt_to ) )
     --入力パラメータ：配送№が入力済の場合
     AND   (( cur_delivery_no IS NULL ) OR ( cur_delivery_no = xmrih.delivery_no ))
-    AND   xmrih.status                IN (gv_status_irai, gv_status_chosei, gv_status_out)
-                                                -- 02:「依頼済」OR 03:「調整中」OR 04:「入庫報告有」
+--2008/12/25 Y.Kawano Upd Start  #438
+--    AND   xmrih.status                IN (gv_status_irai, gv_status_chosei, gv_status_out)
+--                                                -- 02:「依頼済」OR 03:「調整中」OR 04:「入庫報告有」
+    AND   xmrih.status                IN (gv_status_irai, gv_status_chosei, gv_status_in)
+                                                -- 02:「依頼済」OR 03:「調整中」OR 05:「入庫報告有」
+--2008/12/25 Y.Kawano Upd End    #438
     AND   xmrih.product_flg           = cur_product_flg
     AND   xmrih.item_class            = cur_item_class
     AND   xmrih.mov_hdr_id            = xmril.mov_hdr_id
