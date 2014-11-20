@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *  2011/04/28    1.21  T.Ishiwata       [E_本稼動_07218] 事由取得の共通関数化対応
  *  2011/09/29    1.22  A.Shirakawa      [E_本稼動_07906] EDIの流通BMS対応
  *  2012/01/06    1.23  K.Kiriu          [E_本稼動_08891] 顧客品目二重出力障害対応
+ *  2013/07/26    1.24  R.Watanabe       [E_本稼動_10904] 消費税率の取得基準日についての対応
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -3482,9 +3483,25 @@ AS
                       AND    avtab.set_of_books_id      = i_prf_rec.set_of_books_id
                       AND    avtab.org_id               = i_prf_rec.org_id                                                 --MO:営業単位
                       AND    avtab.enabled_flag         = cv_enabled_flag                                                  --使用可能フラグ
-                      AND    i_other_rec.process_date
-                        BETWEEN NVL( avtab.start_date ,i_other_rec.process_date )
-                        AND     NVL( avtab.end_date   ,i_other_rec.process_date )
+-- 2013/07/26 v1.24 R.Watanabe Mod Start E_本稼動_10904
+--                      AND    i_other_rec.process_date
+--                        BETWEEN NVL( avtab.start_date ,i_other_rec.process_date )
+--                        AND     NVL( avtab.end_date   ,i_other_rec.process_date )
+                      AND    NVL(xeh.shop_delivery_date
+                                ,NVL(xeh.center_delivery_date
+                                    ,NVL(xeh.order_date
+                                        ,xeh.data_creation_date_edi_data)))
+                      BETWEEN NVL(avtab.start_date
+                                 ,NVL(xeh.shop_delivery_date
+                                     ,NVL(xeh.center_delivery_date
+                                         ,NVL(xeh.order_date
+                                       ,xeh.data_creation_date_edi_data))))
+                      AND     NVL(avtab.end_date
+                                  ,NVL(xeh.shop_delivery_date
+                                     ,NVL(xeh.center_delivery_date
+                                         ,NVL(xeh.order_date
+                                             ,xeh.data_creation_date_edi_data))))
+-- 2013/07/26 v1.24 R.Watanabe Mod End E_本稼動_10904
 -- ********* 2009/10/06 1.14 N.Maeda ADD START ********* --
                       AND xca.delivery_base_code = cdm.base_account_number
 -- ********* 2009/10/06 1.14 N.Maeda ADD  END  ********* --
@@ -5015,9 +5032,14 @@ AS
 -- 2009/02/16 T.Nakamura Ver.1.3 add start
               AND   avtab.org_id                    = i_prf_rec.org_id                                                 --MO:営業単位
               AND   avtab.enabled_flag              = cv_enabled_flag                                                  --使用可能フラグ
-              AND   i_other_rec.process_date
-                BETWEEN NVL( avtab.start_date ,i_other_rec.process_date )
-                AND     NVL( avtab.end_date   ,i_other_rec.process_date )
+-- 2013/07/26 v1.24 R.Watanabe Mod Start E_本稼動_10904
+--              AND   i_other_rec.process_date
+--                BETWEEN NVL( avtab.start_date ,i_other_rec.process_date )
+--                AND     NVL( avtab.end_date   ,i_other_rec.process_date )
+              AND   ooha.request_date
+                BETWEEN NVL(avtab.start_date , ooha.request_date)
+                AND     NVL(avtab.end_date , ooha.request_date)
+-- 2013/07/26 v1.24 R.Watanabe Mod End E_本稼動_10904
               AND   ooha.org_id                     = i_prf_rec.org_id
               AND   oola.org_id                     = ooha.org_id
 --******************************************* 2009/04/02 1.9 T.Kitajima ADD START *************************************
