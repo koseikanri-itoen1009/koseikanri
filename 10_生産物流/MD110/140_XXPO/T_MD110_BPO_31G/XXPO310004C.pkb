@@ -7,7 +7,7 @@ AS
  * Description      : HHT受入実績計上
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : HHT受入実績計上     T_MD070_BPO_31G
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *                                       結合テスト不具合ログ#300_3対応
  *  2008/05/23    1.3   Oracle 山根 一浩 結合テスト不具合ログ対応
  *  2008/06/26    1.4   Oracle 山根 一浩 結合テスト不具合No84,86対応
+ *  2008/07/09    1.5   Oracle 山根一浩  I_S_192対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3188,6 +3189,15 @@ AS
       IF (lv_retcode = gv_status_error) THEN
         RAISE global_process_expt;
       END IF;
+--
+    -- 2008/07/09 Add ↓
+    ELSE
+      lv_errmsg := xxcmn_common_pkg.get_msg('XXCMN',
+                                            'APP-XXCMN-10036');
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+      ov_retcode := gv_status_warn;
+      RETURN;
+    -- 2008/07/09 Add ↑
     END IF;
 --
     -- ================================

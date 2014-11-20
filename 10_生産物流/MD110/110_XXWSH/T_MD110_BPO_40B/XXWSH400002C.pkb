@@ -7,7 +7,7 @@ AS
  * Description      : 顧客発注からの出荷依頼自動作成
  * MD.050/070       : 出荷依頼                        (T_MD050_BPO_400)
  *                    顧客発注からの出荷依頼自動作成  (T_MD070_BPO_40B)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2008/07/07    1.14  上原  正好       ST不具合#401対応
  *                                       積載効率チェックでのパレット最大枚数超過チェックの対象を
  *                                       ドリンク製品のみとする。
+ *  2008/07/09    1.15  Oracle 山根一浩  I_S_192対応
  *
  *****************************************************************************************/
 --
@@ -4400,6 +4401,16 @@ AS
     IF (lv_retcode = gv_status_error) THEN
       RAISE global_process_expt;
     END IF;
+--
+    -- 2008/07/09 Add ↓
+    IF (gt_head_line.COUNT = 0) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg('XXCMN',
+                                            'APP-XXCMN-10036');
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+      ov_retcode := gv_status_warn;
+      RETURN;
+    END IF;
+    -- 2008/07/09 Add ↑
 --
     <<headers_data_loop>>
     FOR i IN 1..gt_head_line.COUNT LOOP

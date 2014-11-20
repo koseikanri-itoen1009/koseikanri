@@ -7,7 +7,7 @@ AS
  * Description      : 引取計画からのリーフ出荷依頼自動作成
  * MD.050/070       : 出荷依頼                              (T_MD050_BPO_400)
  *                    引取計画からのリーフ出荷依頼自動作成  (T_MD070_BPO_40A)
- * Version          : 1.6
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,7 +43,7 @@ AS
  *  2008/06/27    1.6   石渡  賢和       不具合修正(着荷日がずれる、TRUNC対応）
  *  2008/07/04    1.7   上原  正好       ST不具合#392対応(運賃区分、物流担当確認依頼区分、
  *                                       契約外運賃区分のデフォルト値設定)
- *
+ *  2008/07/09    1.8   Oracle 山根一浩  I_S_192対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3078,6 +3078,16 @@ AS
     IF (lv_retcode = gv_status_error) THEN
       RAISE global_process_expt;
     END IF;
+--
+    -- 2008/07/09 Add ↓
+    IF (gt_to_plan.COUNT = 0) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg('XXWSH',
+                                            'APP-XXWSH-10002');
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+      ov_retcode := gv_status_warn;
+      RETURN;
+    END IF;
+    -- 2008/07/09 Add ↑
 --
     -- 拠点/出荷元/着荷予定日/重量容積区分の変数初期化
     gv_ktn      := NULL;

@@ -7,7 +7,7 @@ AS
  * Description      : 標準原価取込
  * MD.050           : 標準原価マスタ T_MD050_BPO_820
  * MD.070           : 標準原価取込   T_MD070_BPO_82A
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,7 +32,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/01/11    1.0   ORACLE 青木祐介  main新規作成
  *  2008/06/23    1.1   ORACLE 椎名昭圭  適用終了日更新不具合修正
- *
+ *  2008/07/09    1.2   Oracle 山根一浩  I_S_192対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1910,6 +1910,16 @@ AS
       END IF;
 --
     END LOOP get_req_count_loop;
+--
+    -- 2008/07/09 Add ↓
+    IF (gn_target_cnt = 0) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg('XXCMN',
+                                            'APP-XXCMN-10036');
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+      ov_retcode := gv_status_warn;
+      RETURN;
+    END IF;
+    -- 2008/07/09 Add ↑
 --
     -- 警告データが存在する場合
     IF (gn_data_status = gn_data_status_warn) THEN

@@ -7,7 +7,7 @@ AS
  * Description      : 出来高実績アップロード
  * MD.050           : 生産バッチ T_MD050_BPO_202
  * MD.070           : 出来高実績アップロード T_MD070_BPO_20F
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2008/02/06    1.0   Oracle 山根 一浩 初回作成
  *  2008/05/27    1.1   Oracle 二瓶 大輔 結合テスト不具合対応(割当関数実行時に倉庫コード指定追加)
  *  2008/06/12    1.2   Oracle 二瓶 大輔 STテスト不具合対応#81
+ *  2008/07/09    1.3   Oracle 山根一浩  I_S_192対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -415,6 +416,9 @@ AS
   EXCEPTION
     WHEN check_get_if_data_expt THEN
       FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+      -- 2008/07/09 Add ↓
+      ov_retcode := gv_status_warn;
+      -- 2008/07/09 Add ↑
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -1577,6 +1581,12 @@ AS
 --
     IF (lv_retcode = gv_status_error) THEN
       RAISE check_sub_main_expt;
+--
+    -- 2008/07/09 Add ↓
+    ELSIF (lv_retcode = gv_status_warn) THEN
+      ov_retcode := lv_retcode;
+      RETURN;
+    -- 2008/07/09 Add ↓
     END IF;
 --
     <<chk_price_loop>>
