@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A06C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : 売上実績振替情報の作成（振替割合） MD050_COK_008_A06
- * Version          : 2.5
+ * Version          : 2.6
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2009/11/27    2.3   K.Yamaguchi      [E_本稼動_00141]振り戻しデータの数量に-1を掛けるように修正
  *  2009/12/04    2.4   K.Yamaguchi      [E_本稼動_00292]振替元顧客はチェーン店コード(EDI)が設定されている場合にも対象とする
  *  2010/01/26    2.5   K.Yamaguchi      [E_本稼動_01297]売上原価は按分後の数量（基準単位）に営業原価を掛けて算出
+ *  2010/02/08    2.6   K.Kiriu          [E_本稼動_01550]会計期間取得時の参照カレンダー変更(AR⇒INV)
  *  
  *****************************************************************************************/
   --==================================================
@@ -68,7 +69,9 @@ AS
   cv_appl_short_name_cok           CONSTANT VARCHAR2(10)    := 'XXCOK';
   cv_appl_short_name_ccp           CONSTANT VARCHAR2(10)    := 'XXCCP';
   cv_appl_short_name_gl            CONSTANT VARCHAR2(10)    := 'SQLGL';
-  cv_appl_short_name_ar            CONSTANT VARCHAR2(10)    := 'AR';
+-- 2010/02/08 Ver.2.6 [E_本稼動_01550] SCS K.Kiriu DELETE START
+--  cv_appl_short_name_ar            CONSTANT VARCHAR2(10)    := 'AR';
+-- 2010/02/08 Ver.2.6 [E_本稼動_01550] SCS K.Kiriu DELETE END
   -- ステータス・コード
   cv_status_normal                 CONSTANT VARCHAR2(1)     := xxccp_common_pkg.set_status_normal;  -- 正常:0
   cv_status_warn                   CONSTANT VARCHAR2(1)     := xxccp_common_pkg.set_status_warn;    -- 警告:1
@@ -182,6 +185,10 @@ AS
   -- 顧客マスタ有効ステータス
   cv_cust_status_available         CONSTANT VARCHAR2(1)     := 'A';  -- 有効
 -- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi ADD END
+-- 2010/02/08 Ver.2.6 [E_本稼動_01550] SCS K.Kiriu ADD START
+  cv_get_period_inv                CONSTANT VARCHAR2(2)     := '01';   --INV会計期間取得
+  cv_period_status                 CONSTANT VARCHAR2(4)     := 'OPEN'; -- 会計期間ステータス(オープン)
+-- 2010/02/08 Ver.2.6 [E_本稼動_01550] SCS K.Kiriu ADD END
   --==================================================
   -- グローバル変数
   --==================================================
@@ -1677,7 +1684,12 @@ AS
     lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
     lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
     lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
-    lb_period_status               BOOLEAN        DEFAULT TRUE;                 -- 会計期間ステータスチェック用戻り値
+-- 2010/02/08 Ver.2.6 [E_本稼動_01550] SCS K.Kiriu REPAIR START
+--    lb_period_status               BOOLEAN        DEFAULT TRUE;                 -- 会計期間ステータスチェック用戻り値
+    lv_period_status               VARCHAR2(10)   DEFAULT NULL;                 -- 会計期間ステータスチェック用戻り値
+    ld_target_date_from            DATE           DEFAULT NULL;                 -- 会計期間関数OUT取得用(ダミー)
+    ld_target_date_to              DATE           DEFAULT NULL;                 -- 会計期間関数OUT取得用(ダミー)
+-- 2010/02/08 Ver.2.6 [E_本稼動_01550] SCS K.Kiriu REPAIR END
 --
   BEGIN
     --==================================================
@@ -1761,14 +1773,36 @@ AS
       RAISE error_proc_expt;
     END IF;
     --==================================================
-    -- 当月会計期間ステータスチェック
+    -- 当月会計期間ステータスチェック(販売共通関数より)
     --==================================================
-    lb_period_status := xxcok_common_pkg.check_acctg_period_f(
-                          in_set_of_books_id           => gn_set_of_books_id         -- IN NUMBER   会計帳簿ID
-                        , id_proc_date                 => gd_process_date            -- IN DATE     処理日(対象日)
-                        , iv_application_short_name    => cv_appl_short_name_ar      -- IN VARCHAR2 アプリケーション短縮名
-                        );
-    IF( lb_period_status = TRUE ) THEN
+-- 2010/02/08 Ver.2.6 [E_本稼動_01550] SCS K.Kiriu REPAIR START
+--    lb_period_status := xxcok_common_pkg.check_acctg_period_f(
+--                          in_set_of_books_id           => gn_set_of_books_id         -- IN NUMBER   会計帳簿ID
+--                        , id_proc_date                 => gd_process_date            -- IN DATE     処理日(対象日)
+--                        , iv_application_short_name    => cv_appl_short_name_ar      -- IN VARCHAR2 アプリケーション短縮名
+--                        );
+--    IF( lb_period_status = TRUE ) THEN
+    xxcos_common_pkg.get_account_period(
+      iv_account_period   => cv_get_period_inv       -- IN  VARCHAR2 '01'(会計期間INV)
+    , id_base_date        => gd_process_date         -- IN  DATE     処理日(対象日)
+    , ov_status           => lv_period_status        -- OUT VARCHAR2 ステータス
+    , od_start_date       => ld_target_date_from     -- OUT DATE     会計期間(FROM)
+    , od_end_date         => ld_target_date_to       -- OUT DATE     会計期間(TO)
+    , ov_errbuf           => lv_errbuf               -- OUT VARCHAR2 エラー・メッセージエラー
+    , ov_retcode          => lv_retcode              -- OUT VARCHAR2 リターン・コード
+    , ov_errmsg           => lv_errmsg               -- OUT VARCHAR2 ユーザー・エラー・メッセージ
+    );
+    IF( lv_retcode = cv_status_error ) THEN
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_errmsg
+                    , in_new_line             => 0
+                    );
+      lv_end_retcode := lv_retcode;
+      RAISE global_process_expt;
+    END IF;
+    IF( lv_period_status = cv_period_status ) THEN
+-- 2010/02/08 Ver.2.6 [E_本稼動_01550] SCS K.Kiriu REPAIR END
       gd_target_date_from := TRUNC( gd_process_date, 'MM' );
       gd_target_date_to   := gd_process_date;
     ELSE
@@ -1786,14 +1820,36 @@ AS
       RAISE error_proc_expt;
     END IF;
     --==================================================
-    -- 前月会計期間ステータスチェック
+    -- 前月会計期間ステータスチェック(販売共通関数より)
     --==================================================
-    lb_period_status := xxcok_common_pkg.check_acctg_period_f(
-                          in_set_of_books_id           => gn_set_of_books_id                 -- IN NUMBER   会計帳簿ID
-                        , id_proc_date                 => ADD_MONTHS( gd_process_date, - 1 ) -- IN DATE     処理日(対象日)
-                        , iv_application_short_name    => cv_appl_short_name_ar              -- IN VARCHAR2 アプリケーション短縮名
-                        );
-    IF( lb_period_status = TRUE ) THEN
+-- 2010/02/08 Ver.2.6 [E_本稼動_01550] SCS K.Kiriu REPAIR START
+--    lb_period_status := xxcok_common_pkg.check_acctg_period_f(
+--                          in_set_of_books_id           => gn_set_of_books_id                 -- IN NUMBER   会計帳簿ID
+--                        , id_proc_date                 => ADD_MONTHS( gd_process_date, - 1 ) -- IN DATE     処理日(対象日)
+--                        , iv_application_short_name    => cv_appl_short_name_ar              -- IN VARCHAR2 アプリケーション短縮名
+--                        );
+--    IF( lb_period_status = TRUE ) THEN
+    xxcos_common_pkg.get_account_period(
+      iv_account_period   => cv_get_period_inv                  -- IN  VARCHAR2 '01'(会計期間INV)
+    , id_base_date        => ADD_MONTHS( gd_process_date, - 1 ) -- IN  DATE     処理日(対象日)
+    , ov_status           => lv_period_status                   -- OUT VARCHAR2 ステータス
+    , od_start_date       => ld_target_date_from                -- OUT DATE     会計期間(FROM)
+    , od_end_date         => ld_target_date_to                  -- OUT DATE     会計期間(TO)
+    , ov_errbuf           => lv_errbuf                          -- OUT VARCHAR2 エラー・メッセージエラー
+    , ov_retcode          => lv_retcode                         -- OUT VARCHAR2 リターン・コード
+    , ov_errmsg           => lv_errmsg                          -- OUT VARCHAR2 ユーザー・エラー・メッセージ
+    );
+    IF( lv_retcode = cv_status_error ) THEN
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_errmsg
+                    , in_new_line             => 0
+                    );
+      lv_end_retcode := lv_retcode;
+      RAISE global_process_expt;
+    END IF;
+    IF( lv_period_status = cv_period_status ) THEN
+-- 2010/02/08 Ver.2.6 [E_本稼動_01550] SCS K.Kiriu REPAIR END
       gd_target_date_from := TRUNC( ADD_MONTHS( gd_process_date, - 1 ), 'MM' );
       gd_target_date_to   := gd_process_date;
     END IF;
