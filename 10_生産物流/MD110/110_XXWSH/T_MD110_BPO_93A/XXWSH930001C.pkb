@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -79,12 +79,12 @@ AS
  *                                       TE080指摘事項930#13,17対応
  *                                       ST不具合420-001#195対応
  *                                       ST不具合440-002#374対応
- *                                       内部変更#168対応-
+ *                                       内部変更#168対応
  *                                       T_S_426対応
  *                                       I_S_192対応
  *                                       T_TE110_BPO_280#363対応
  *                                       課題#32,内部変更#173,174
- *  2008/08/01    1.13 Oracle 椎名 昭圭  ｢出荷先｣マスタチェックエラーメッセージ項目名修正
+ *  2008/08/01    1.13 Oracle 福田 直樹  ｢出荷先｣マスタチェックエラーメッセージ項目名修正
  *  2008/08/06    1.14 Oracle 福田 直樹  最大配送区分算出関数(get_max_ship_method)入力パラメータコード区分２
  *                                       支給の場合の設定値不正(正しくは11なのに9をセットしている)
  *  2008/08/13    1.15 Oracle 福田 直樹  結合テスト不具合対応
@@ -99,6 +99,7 @@ AS
  *  2008/09/22    1.17 Oracle 福田 直樹  TE080_400指摘#76(出荷依頼I/F済みフラグ・出荷実績I/F済みフラグの更新条件追加)
  *  2008/09/24    1.17 Oracle 福田 直樹  TE080_930指摘#39(移動のステータス設定処理で'依頼済'が考慮されていない)
  *  2008/09/29    1.17 Oracle 福田 直樹  出荷の実績計上・訂正時に複写元からの引継項目が不足している
+ *  2008/10/01    1.18 Oracle 福田 直樹  TE080_930指摘#40(出荷の実績訂正時に指示(レコードタイプ:10)の移動ロット詳細が複写されない)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5815,7 +5816,8 @@ AS
                           ,1
                           ,5000);
 --
-            -- 配送NO-EOSデータ種別単位にエラーflagセット
+--
+           -- 配送NO-EOSデータ種別単位にエラーflagセット
             set_deliveryno_unit_errflg(
               lt_delivery_no,         -- 配送No
               lt_eos_data_type,       -- EOSデータ種別
@@ -5976,7 +5978,8 @@ AS
                           ,1
                           ,5000);
 --
-            -- 配送NO-EOSデータ種別単位にエラーflagセット
+--
+           -- 配送NO-EOSデータ種別単位にエラーflagセット
             set_deliveryno_unit_errflg(
               lt_delivery_no,         -- 配送No
               lt_eos_data_type,       -- EOSデータ種別
@@ -6058,7 +6061,8 @@ AS
                            ,1
                            ,5000);
 --
-            -- 配送NO-EOSデータ種別単位にエラーflagセット
+--
+-- 配送NO-EOSデータ種別単位にエラーflagセット
             set_deliveryno_unit_errflg(
               lt_delivery_no,         -- 配送No
               lt_eos_data_type,       -- EOSデータ種別
@@ -6147,7 +6151,6 @@ AS
 --
           -- 配送Noと移動Noの組み合わせチェック。(外部倉庫発番の場合実施しない)
           IF (gr_interface_info_rec(i).out_warehouse_flg <> gv_flg_on) THEN
---
             --チェック有無をIF_H.運賃区分で判定
             IF (gr_interface_info_rec(i).freight_charge_class = gv_include_exclude_1) THEN
 --
@@ -6259,7 +6262,8 @@ AS
                           ,1
                           ,5000);
 --
-            -- 配送NO-EOSデータ種別単位にエラーflagセット
+--
+           -- 配送NO-EOSデータ種別単位にエラーflagセット
             set_deliveryno_unit_errflg(
               lt_delivery_no,         -- 配送No
               lt_eos_data_type,       -- EOSデータ種別
@@ -6339,7 +6343,8 @@ AS
                           ,1
                           ,5000);
 --
-            -- 配送NO-EOSデータ種別単位にエラーflagセット
+--
+           -- 配送NO-EOSデータ種別単位にエラーflagセット
             set_deliveryno_unit_errflg(
               lt_delivery_no,         -- 配送No
               lt_eos_data_type,       -- EOSデータ種別
@@ -10948,6 +10953,9 @@ AS
         GROUP BY  xoha.delivery_no                 --配送No
                  ,xoha.order_source_ref            --受注ソース参照
         ;
+        --********** debug_log ********** START ***
+        debug_log(FND_FILE.LOG,'(A-8-6)訂正前情報取得ln_order_header_id:' || ln_order_header_id);
+        --********** debug_log ********** END   ***
 --
         -- 訂正前の明細情報を取得
         SELECT   xola.based_request_quantity
@@ -10985,6 +10993,9 @@ AS
         gr_order_l_rec.case_quantity            := ln_case_quantity;            --ケース数            2008/09/29 複写元引継項目不足対応 Add
         gr_order_l_rec.pallet_quantity          := ln_pallet_quantity;          --パレット数          2008/09/29 複写元引継項目不足対応 Add
         gr_order_l_rec.layer_quantity           := ln_layer_quantity;           --段数                2008/09/29 複写元引継項目不足対応 Add
+        --********** debug_log ********** START ***
+        debug_log(FND_FILE.LOG,'(A-8-6)訂正前情報取得完了');
+        --********** debug_log ********** END   ***
 --
         -- 2008/09/22 TE080_400指摘#76 Add Start ----------------------------------------------------------------
         IF (gr_interface_info_rec(in_idx).lot_ctl = gv_lotkr_kbn_cd_0) THEN  -- ロット管理外品の場合
@@ -11019,6 +11030,9 @@ AS
           gr_order_l_rec.case_quantity            := 0;          --ケース数            2008/09/29 複写元引継項目不足対応 Add
           gr_order_l_rec.pallet_quantity          := 0;          --パレット数          2008/09/29 複写元引継項目不足対応 Add
           gr_order_l_rec.layer_quantity           := 0;          --段数                2008/09/29 複写元引継項目不足対応 Add
+          --********** debug_log ********** START ***
+          debug_log(FND_FILE.LOG,'(A-8-6)訂正前情報取得できず');
+          --********** debug_log ********** END   ***
 --
       END;
 --
@@ -11252,9 +11266,13 @@ AS
         WHERE     NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_interface_info_rec(in_idx).delivery_no,gv_delivery_no_null)
         AND       xoha.request_no = gr_interface_info_rec(in_idx).order_source_ref
         AND       xoha.actual_confirm_class = gv_yesno_y
+        AND       xoha.latest_external_flag = gv_yesno_n  -- 2008/10/01 TE080_930指摘#40 Add これがないと最新のヘッダを取得してしまう
         GROUP BY  xoha.delivery_no                 --配送No
                  ,xoha.order_source_ref            --受注ソース参照
         ;
+        --********** debug_log ********** START ***
+        debug_log(FND_FILE.LOG,'(A-8-7)訂正前情報取得ln_order_header_id:' || ln_order_header_id);
+        --********** debug_log ********** END   ***
 --
         -- 訂正前の移動ロット情報（指示）を取得する。
         SELECT  xmld.mov_lot_dtl_id               -- ロット詳細ID
@@ -11286,11 +11304,17 @@ AS
 --
         WHEN NO_DATA_FOUND THEN
         lr_movlot_detail_ins.mov_lot_dtl_id := NULL;
+        --********** debug_log ********** START ***
+        debug_log(FND_FILE.LOG,'(A-8-7)訂正前移動ロット取得できず');
+        --********** debug_log ********** END   ***
 --
       END;
 --
       -- 訂正前の移動ロット詳細があった場合
       IF (lr_movlot_detail_ins.mov_lot_dtl_id IS NOT NULL) THEN
+        --********** debug_log ********** START ***
+        debug_log(FND_FILE.LOG,'(A-8-7)訂正前移動ロット取得完了');
+        --********** debug_log ********** END   ***
 --
         -- ロット詳細ID取得
         SELECT xxinv_mov_lot_s1.nextval

@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -63,8 +63,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2008/02/07    1.0  Oracle 齋藤 俊治  初回作成(xxwsh930001cをコピーして一部削除して作成)
- *                                       削除した部分は【--*HHT*】を行頭に付けコメント化しています
+ *  2008/02/07    1.0  Oracle 齋藤 俊治  初回作成(xxwsh930001cをコピーして一部削除して作成、削除した部分は【--*HHT*】を行頭に付けコメント化しています)
  *  2008/05/19    1.1  Oracle 宮田 隆史  指摘事項Seq262，263，
  *  2008/06/05    1.2  Oracle 宮田 隆史  結合テスト実施に伴う改修
  *  2008/06/13    1.3  Oracle 宮田 隆史  結合テスト実施に伴う改修
@@ -98,6 +97,10 @@ AS
  *  2008/09/02    1.16 Oracle 福田 直樹  統合テスト障害#27対応(内部変更#176の再修正)
  *  2008/09/03    1.17 Oracle 福田 直樹  内部変更#211対応(処理対象となるデータのみチェック対象とする)
  *  2008/09/12    1.17 Oracle 福田 直樹  TE080_930指摘#37(運賃区分OFFのとき運送業者・配送区分のチェックは行わない)
+ *  2008/09/22    1.17 Oracle 福田 直樹  TE080_400指摘#76(出荷依頼I/F済みフラグ・出荷実績I/F済みフラグの更新条件追加)
+ *  2008/09/24    1.17 Oracle 福田 直樹  TE080_930指摘#39(移動のステータス設定処理で'依頼済'が考慮されていない)
+ *  2008/09/29    1.17 Oracle 福田 直樹  出荷の実績計上・訂正時に複写元からの引継項目が不足している
+ *  2008/10/01    1.18 Oracle 福田 直樹  TE080_930指摘#40(出荷の実績訂正時に指示(レコードタイプ:10)の移動ロット詳細が複写されない)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -10954,6 +10957,9 @@ AS
         GROUP BY  xoha.delivery_no                 --配送No
                  ,xoha.order_source_ref            --受注ソース参照
         ;
+        --********** debug_log ********** START ***
+        debug_log(FND_FILE.LOG,'(A-8-6)訂正前情報取得ln_order_header_id:' || ln_order_header_id);
+        --********** debug_log ********** END   ***
 --
         -- 訂正前の明細情報を取得
         SELECT   xola.based_request_quantity
@@ -10991,6 +10997,9 @@ AS
         gr_order_l_rec.case_quantity            := ln_case_quantity;            --ケース数            2008/09/29 複写元引継項目不足対応 Add
         gr_order_l_rec.pallet_quantity          := ln_pallet_quantity;          --パレット数          2008/09/29 複写元引継項目不足対応 Add
         gr_order_l_rec.layer_quantity           := ln_layer_quantity;           --段数                2008/09/29 複写元引継項目不足対応 Add
+        --********** debug_log ********** START ***
+        debug_log(FND_FILE.LOG,'(A-8-6)訂正前情報取得完了');
+        --********** debug_log ********** END   ***
 --
         -- 2008/09/22 TE080_400指摘#76 Add Start ----------------------------------------------------------------
         IF (gr_interface_info_rec(in_idx).lot_ctl = gv_lotkr_kbn_cd_0) THEN  -- ロット管理外品の場合
@@ -11025,6 +11034,9 @@ AS
           gr_order_l_rec.case_quantity            := 0;          --ケース数            2008/09/29 複写元引継項目不足対応 Add
           gr_order_l_rec.pallet_quantity          := 0;          --パレット数          2008/09/29 複写元引継項目不足対応 Add
           gr_order_l_rec.layer_quantity           := 0;          --段数                2008/09/29 複写元引継項目不足対応 Add
+          --********** debug_log ********** START ***
+          debug_log(FND_FILE.LOG,'(A-8-6)訂正前情報取得できず');
+          --********** debug_log ********** END   ***
 --
       END;
 --
@@ -11258,9 +11270,13 @@ AS
         WHERE     NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_interface_info_rec(in_idx).delivery_no,gv_delivery_no_null)
         AND       xoha.request_no = gr_interface_info_rec(in_idx).order_source_ref
         AND       xoha.actual_confirm_class = gv_yesno_y
+        AND       xoha.latest_external_flag = gv_yesno_n  -- 2008/10/01 TE080_930指摘#40 Add これがないと最新のヘッダを取得してしまう
         GROUP BY  xoha.delivery_no                 --配送No
                  ,xoha.order_source_ref            --受注ソース参照
         ;
+        --********** debug_log ********** START ***
+        debug_log(FND_FILE.LOG,'(A-8-7)訂正前情報取得ln_order_header_id:' || ln_order_header_id);
+        --********** debug_log ********** END   ***
 --
         -- 訂正前の移動ロット情報（指示）を取得する。
         SELECT  xmld.mov_lot_dtl_id               -- ロット詳細ID
@@ -11292,11 +11308,17 @@ AS
 --
         WHEN NO_DATA_FOUND THEN
         lr_movlot_detail_ins.mov_lot_dtl_id := NULL;
+        --********** debug_log ********** START ***
+        debug_log(FND_FILE.LOG,'(A-8-7)訂正前移動ロット取得できず');
+        --********** debug_log ********** END   ***
 --
       END;
 --
       -- 訂正前の移動ロット詳細があった場合
       IF (lr_movlot_detail_ins.mov_lot_dtl_id IS NOT NULL) THEN
+        --********** debug_log ********** START ***
+        debug_log(FND_FILE.LOG,'(A-8-7)訂正前移動ロット取得完了');
+        --********** debug_log ********** END   ***
 --
         -- ロット詳細ID取得
         SELECT xxinv_mov_lot_s1.nextval
