@@ -7,7 +7,7 @@ AS
  * Description      : 入金情報データ連携
  * MD.050           : MD050_CFR_001_A03_入金情報データ連携
  * MD.070           : MD050_CFR_001_A03_入金情報データ連携
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2008/11/13    1.00 SCS 中村 博      初回作成
  *  2009/02/27    1.1  SCS T.KANEDA     [障害CFR_001] 金額取得不具合対応
  *  2010/01/06    1.2  SCS 安川 智博    障害「E_本稼動_00753」対応
+ *  2010/03/08    1.3  SCS 安川 智博    障害「E_本稼動_01859」対応
  *
  *****************************************************************************************/
 --
@@ -133,6 +134,11 @@ AS
     cv_format_date_ym CONSTANT VARCHAR2(6)      := 'YYYYMM';            -- 日付フォーマット（年月）
     cv_format_date_ymdhns CONSTANT VARCHAR2(16) := 'YYYYMMDDHH24MISS';  -- 日付フォーマット（年月日時分秒）
 --
+-- Modify 2010.03.08 Ver1.3 Start
+  cv_receivable_status_unid CONSTANT ar_receivable_applications_all.status%TYPE := 'UNID'; -- 不明入金ステータス
+  cv_receivable_source_table CONSTANT ar_distributions_all.source_table%TYPE := 'CRH'; -- 会計情報内ソーステーブル名
+-- Modify 2010.03.08 Ver1.3 End
+--
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -179,6 +185,8 @@ AS
 --        hca_b.account_number
 --      ORDER BY 
 --        hca_b.account_number
+-- Modify 2010.03.08 Ver1.3 Start
+/*
       SELECT sub_bal.bill_to_account_number                bill_to_account_number -- 顧客コード（請求先顧客コード）
             ,sub_bal.customer_id                           customer_id            -- 顧客ＩＤ
             ,sub_bal.company_code                          company_code           -- 会社コード
@@ -227,6 +235,59 @@ AS
        WHERE sub_bal.customer_id = sub_unapp.customer_id(+)
        ORDER BY sub_bal.bill_to_account_number
     ;
+*/
+      SELECT hca_b.account_number                          bill_to_account_number, -- 顧客コード（請求先顧客コード）
+             jzabv.customer_id                             customer_id,            -- 会社コード
+             gcc.segment1                                  company_code,           -- 会社コード
+             (
+              SELECT 
+              SUM( NVL(ada.amount_dr,0) - NVL(ada.amount_cr,0)) amount_applied
+              FROM 
+              ar_cash_receipts_all acra,
+              ar_cash_receipt_history acrh,
+              ar_distributions_all ada
+              WHERE acra.pay_from_customer = jzabv.customer_id
+                AND acra.set_of_books_id = gn_set_of_bks_id
+                AND acra.org_id = gn_org_id
+                AND acra.cash_receipt_id = acrh.cash_receipt_id
+                AND acrh.gl_date >= gd_start_date
+                AND acrh.gl_date <= gd_end_date
+                AND ada.source_table = cv_receivable_source_table
+                AND ada.source_id = acrh.cash_receipt_history_id
+             ) amount_receive,                                                     -- ①当月入金額
+             (
+              SELECT 
+              SUM( NVL(araa.amount_applied,0))
+              FROM 
+              ar_cash_receipts_all acra,
+              ar_receivable_applications_all araa
+              WHERE acra.pay_from_customer = jzabv.customer_id
+                AND acra.set_of_books_id = gn_set_of_bks_id
+                AND acra.org_id = gn_org_id
+                AND araa.cash_receipt_id = acra.cash_receipt_id
+                AND araa.status = cv_receivable_status_unid
+                AND araa.gl_date >= gd_start_date
+                AND araa.gl_date <= gd_end_date
+             ) amount_uid,                                                         -- ②不明入金当月紐付け分
+             SUM(  jzabv.begin_bal_entered_dr
+                 - jzabv.begin_bal_entered_cr
+                 + jzabv.period_net_entered_dr
+                 - jzabv.period_net_entered_cr) amount_balance                     -- ③月末残高
+      FROM jg_zz_ar_balances_v         jzabv,                           -- JG顧客残高テーブル
+           hz_cust_accounts            hca_b,                           -- 顧客マスタ（請求先）
+           gl_code_combinations        gcc                              -- 勘定科目組合せマスタ
+      WHERE jzabv.period_name = gv_period_name
+        AND jzabv.set_of_books_id = gn_set_of_bks_id
+        AND (( jzabv.begin_bal_entered_dr - jzabv.begin_bal_entered_cr <> 0 )
+            OR jzabv.period_net_entered_dr <> 0
+            OR jzabv.period_net_entered_cr <> 0 )
+        AND jzabv.customer_id = hca_b.cust_account_id
+        AND jzabv.code_combination_id = gcc.code_combination_id
+      GROUP BY gcc.segment1,
+               hca_b.account_number,
+               jzabv.customer_id
+      ORDER BY hca_b.account_number;
+-- Modify 2010.03.08 Ver1.3 End
 -- Modify 2009.02.27 Ver1.1 End
 --
     TYPE g_cash_receipts_ttype IS TABLE OF get_cash_receipts_cur%ROWTYPE INDEX BY PLS_INTEGER;
@@ -410,6 +471,22 @@ AS
                                                    ,5000);
       RAISE global_api_expt;
     END IF;
+--
+-- Modify 2010.03.08 Ver1.3 Start
+    -- プロファイルから組織IDを取得
+    gn_org_id := FND_PROFILE.VALUE(cv_org_id);
+    -- 取得エラー時
+    IF (gn_org_id IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr    -- 'XXCFR'
+                                                    ,cv_msg_001a03_010 -- プロファイル取得エラー
+                                                    ,cv_tkn_prof       -- トークン'PROF_NAME'
+                                                    ,xxcfr_common_pkg.get_user_profile_name(cv_org_id))
+                                                       -- 会計帳簿ID
+                                                   ,1
+                                                   ,5000);
+      RAISE global_api_expt;
+    END IF;
+-- Modify 2010.03.08 Ver1.3 End
 --
   EXCEPTION
 --
@@ -752,8 +829,17 @@ AS
       lv_csv_text := cv_enclosed || gt_cash_receipts_data(ln_loop_cnt).company_code || cv_enclosed || cv_delimiter
                   || gv_start_date_yymm || cv_delimiter
                   || cv_enclosed || gt_cash_receipts_data(ln_loop_cnt).bill_to_account_number || cv_enclosed || cv_delimiter
-                  || TO_CHAR ( gt_cash_receipts_data(ln_loop_cnt).amount_due_remaining ) ||  cv_delimiter
-                  || TO_CHAR ( gt_cash_receipts_data(ln_loop_cnt).amount_applied ) || cv_delimiter
+-- Modify 2010.03.08 Ver1.3 Start
+--                  || TO_CHAR ( gt_cash_receipts_data(ln_loop_cnt).amount_due_remaining ) ||  cv_delimiter
+                  -- 入金予定額 = 月末残高 + 当月計上入金額(①当月入金額に②不明入金当月紐付け分を加味)
+                  || TO_CHAR ( NVL(gt_cash_receipts_data(ln_loop_cnt).amount_balance,0) 
+                             + NVL(gt_cash_receipts_data(ln_loop_cnt).amount_receive,0) 
+                             - NVL(gt_cash_receipts_data(ln_loop_cnt).amount_uid,0) )||  cv_delimiter
+--                  || TO_CHAR ( gt_cash_receipts_data(ln_loop_cnt).amount_applied ) || cv_delimiter
+                  -- 入金実績 = 当月計上入金額(①当月入金額に②不明入金当月紐付け分を加味)
+                  || TO_CHAR ( NVL(gt_cash_receipts_data(ln_loop_cnt).amount_receive,0) 
+                             - NVL(gt_cash_receipts_data(ln_loop_cnt).amount_uid,0) ) ||  cv_delimiter
+-- Modify 2010.03.08 Ver1.3 End
                   || TO_CHAR ( cd_last_update_date, cv_format_date_ymdhns)
       ;
 --
