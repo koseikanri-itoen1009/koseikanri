@@ -6,7 +6,7 @@ AS
  * Package Name           : xxpo_common2_pkg(BODY)
  * Description            : 共通関数(有償支給用)(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_140_共通関数（補足資料）.xls
- * Version                : 1.1
+ * Version                : 1.2
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  2008/03/12   1.0   D.Nihei         新規作成
  *  2008/05/29   1.0   D.Nihei         結合テスト不具合対応(全数出庫時ステータス更新誤り)
  *  2008/07/18   1.1   D.Nihei         ST#445対応
+ *  2010/09/22   1.2   H.Sasaki        [E_本稼動_02515]出荷日、着荷日の更新条件追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -175,12 +176,20 @@ AS
                                                  ,'20', '08'                       -- 出荷実績計上済(出庫時更新)
 -- 2008/05/29 D.Nihei MOD END
                                                  ,xoha.req_status )                -- 入庫時はそのまま
-          ,xoha.shipped_date            = DECODE( iv_record_type_code
-                                                 ,'20', xoha.schedule_ship_date    -- 出荷日を出荷予定日で更新
-                                                 ,xoha.shipped_date )
-          ,xoha.arrival_date            = DECODE( iv_record_type_code
-                                                 ,'30', xoha.schedule_arrival_date -- 着荷日を着荷予定日で更新
-                                                 ,xoha.arrival_date )
+-- == 2010/09/22 V1.2 Modified START ===============================================================
+--          ,xoha.shipped_date            = DECODE( iv_record_type_code
+--                                                 ,'20', xoha.schedule_ship_date    -- 出荷日を出荷予定日で更新
+--                                                 ,xoha.shipped_date )
+--          ,xoha.arrival_date            = DECODE( iv_record_type_code
+--                                                 ,'30', xoha.schedule_arrival_date -- 着荷日を着荷予定日で更新
+--                                                 ,xoha.arrival_date )
+          ,xoha.shipped_date            = CASE  WHEN  iv_record_type_code = '20' AND xoha.shipped_date IS NULL THEN xoha.schedule_ship_date
+                                                ELSE  xoha.shipped_date
+                                          END   -- 出荷日未設定の場合、出荷予定日で更新
+          ,xoha.arrival_date            = CASE  WHEN  iv_record_type_code = '30' AND xoha.arrival_date IS NULL THEN xoha.schedule_arrival_date
+                                                ELSE  xoha.arrival_date
+                                          END   -- 着荷日未設定の場合、着荷予定日で更新
+-- == 2010/09/22 V1.2 Modified END   ===============================================================
 -- 2008/07/18 D.Nihei ADD START
           ,xoha.result_freight_carrier_id   = DECODE( iv_record_type_code
                                                      ,'20', xoha.career_id                      -- 全数出庫の場合、運送業者_実績IDを運送業者IDで更新
@@ -308,7 +317,7 @@ AS
     END get_operand;
 --
   BEGIN
---	
+--  
     -- 初期化
     ln_unit_price := NULL;
     lb_get_represent := FALSE;
