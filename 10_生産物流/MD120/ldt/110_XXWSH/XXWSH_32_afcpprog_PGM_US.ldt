@@ -8610,50 +8610,6 @@ BEGIN EXECUTABLE "XXWSH400007C" "XXWSH"
   DESCRIPTION = "出荷依頼締め処理"
 END EXECUTABLE
 
-BEGIN VALUE_SET "10 Characters"
-  OWNER = "ORACLE"
-  LAST_UPDATE_DATE = "2005/08/31 00:00:00"
-  VALIDATION_TYPE = "N"
-  PROTECTED_FLAG = "N"
-  SECURITY_ENABLED_FLAG = "N"
-  LONGLIST_FLAG = "N"
-  FORMAT_TYPE = "C"
-  MAXIMUM_SIZE = "10"
-  ALPHANUMERIC_ALLOWED_FLAG = "Y"
-  UPPERCASE_ONLY_FLAG = "N"
-  NUMERIC_MODE_ENABLED_FLAG = "N"
-  DESCRIPTION = "検証なしの10文字の自由形式テキスト"
-
-
-
-
-
-
-
-END VALUE_SET
-
-BEGIN VALUE_SET "15 Characters"
-  OWNER = "ORACLE"
-  LAST_UPDATE_DATE = "2006/03/08 00:00:00"
-  VALIDATION_TYPE = "N"
-  PROTECTED_FLAG = "N"
-  SECURITY_ENABLED_FLAG = "N"
-  LONGLIST_FLAG = "N"
-  FORMAT_TYPE = "C"
-  MAXIMUM_SIZE = "15"
-  ALPHANUMERIC_ALLOWED_FLAG = "Y"
-  UPPERCASE_ONLY_FLAG = "N"
-  NUMERIC_MODE_ENABLED_FLAG = "N"
-  DESCRIPTION = "15文字"
-
-
-
-
-
-
-
-END VALUE_SET
-
 BEGIN VALUE_SET "XXWSH_HEAD_SALES_BRANCH1"
   OWNER = "XX_SETUP_USER01"
   LAST_UPDATE_DATE = "2008/05/13 00:00:00"
@@ -8945,6 +8901,287 @@ BEGIN VALUE_SET "XXWSH_15_NUM"
 
 
 END VALUE_SET
+
+BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH400007C"
+  OWNER = "XX_SETUP_USER01"
+  LAST_UPDATE_DATE = "2008/07/16 00:00:00"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXWSH400007C"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "出荷依頼締め処理"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "XX_SETUP_USER01"
+    LAST_UPDATE_DATE = "2008/04/11 00:00:00"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+    BEGIN DFF_SEGMENT "iv_order_type_id" "ATTRIBUTE1"
+      OWNER = "XX_SETUP_USER01"
+      LAST_UPDATE_DATE = "2008/07/16 15:13:05"
+      COLUMN_SEQ_NUM = "10"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_ORD_TYPE_SHIP_ONLY"
+      DISPLAY_SIZE = "30"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "出庫形態ID"
+      FORM_ABOVE_PROMPT = "出庫形態ID"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_deliver_from" "ATTRIBUTE2"
+      OWNER = "XX_SETUP_USER01"
+      LAST_UPDATE_DATE = "2008/07/16 15:13:05"
+      COLUMN_SEQ_NUM = "20"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_ITEM_LOCATION_CODE1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "出荷元"
+      FORM_ABOVE_PROMPT = "出荷元"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_sales_base" "ATTRIBUTE12"
+      OWNER = "XX_SETUP_USER01"
+      LAST_UPDATE_DATE = "2008/07/16 00:00:00"
+      COLUMN_SEQ_NUM = "25"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_HEAD_SALES_BRANCH1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "拠点"
+      FORM_ABOVE_PROMPT = "拠点"
+      DESCRIPTION = "拠点"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_sales_base_category" "ATTRIBUTE3"
+      OWNER = "XX_SETUP_USER01"
+      LAST_UPDATE_DATE = "2008/07/16 15:13:05"
+      COLUMN_SEQ_NUM = "30"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_401_BASE_CATEGORY"
+      DISPLAY_SIZE = "2"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "拠点カテゴリ"
+      FORM_ABOVE_PROMPT = "拠点カテゴリ"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_lead_time_day" "ATTRIBUTE4"
+      OWNER = "XX_SETUP_USER01"
+      LAST_UPDATE_DATE = "2008/07/16 15:13:05"
+      COLUMN_SEQ_NUM = "40"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_LEAD_TIME_DAY"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "生産物流LT"
+      FORM_ABOVE_PROMPT = "生産物流LT"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_schedule_ship_date" "ATTRIBUTE5"
+      OWNER = "XX_SETUP_USER01"
+      LAST_UPDATE_DATE = "2008/07/16 15:13:05"
+      COLUMN_SEQ_NUM = "50"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_YYYYMMDD"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "出庫日"
+      FORM_ABOVE_PROMPT = "出庫日"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_base_record_class" "ATTRIBUTE6"
+      OWNER = "XX_SETUP_USER01"
+      LAST_UPDATE_DATE = "2008/07/16 15:13:05"
+      COLUMN_SEQ_NUM = "60"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_YES_NO"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "Y"
+      FORM_LEFT_PROMPT = "基準レコード区分"
+      FORM_ABOVE_PROMPT = "基準レコード区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_request_no" "ATTRIBUTE7"
+      OWNER = "XX_SETUP_USER01"
+      LAST_UPDATE_DATE = "2008/07/16 15:13:05"
+      COLUMN_SEQ_NUM = "70"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_REQ_NO_SHIP_ONLY_02"
+      DISPLAY_SIZE = "12"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "依頼No"
+      FORM_ABOVE_PROMPT = "依頼No"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_tighten_class" "ATTRIBUTE8"
+      OWNER = "XX_SETUP_USER01"
+      LAST_UPDATE_DATE = "2008/07/16 15:13:05"
+      COLUMN_SEQ_NUM = "80"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_401H_CLOSE_PROCESS_CLASS"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1"
+      FORM_LEFT_PROMPT = "締め処理区分"
+      FORM_ABOVE_PROMPT = "締め処理区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_prod_class" "ATTRIBUTE10"
+      OWNER = "XX_SETUP_USER01"
+      LAST_UPDATE_DATE = "2008/07/16 00:00:00"
+      COLUMN_SEQ_NUM = "85"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_PROD_DIV"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "商品区分"
+      FORM_ABOVE_PROMPT = "商品区分"
+      DESCRIPTION = "商品区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_tightening_program_id" "ATTRIBUTE9"
+      OWNER = "XX_SETUP_USER01"
+      LAST_UPDATE_DATE = "2008/07/16 15:13:05"
+      COLUMN_SEQ_NUM = "90"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_15_NUM"
+      DISPLAY_SIZE = "15"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "締めコンカレントID"
+      FORM_ABOVE_PROMPT = "締めコンカレントID"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_instruction_dept" "ATTRIBUTE11"
+      OWNER = "XX_SETUP_USER01"
+      LAST_UPDATE_DATE = "2008/07/16 15:13:05"
+      COLUMN_SEQ_NUM = "110"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_DEPT_CODE_RF"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "部署"
+      FORM_ABOVE_PROMPT = "部署"
+    END DFF_SEGMENT
+    
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXWSH400007C" "XXWSH"
+  OWNER = "XX_SETUP_USER01"
+  LAST_UPDATE_DATE = "2008/07/16"
+  USER_CONCURRENT_PROGRAM_NAME = "出荷依頼締め処理"
+  EXEC = "XXWSH400007C" "XXWSH"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "I"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "出荷依頼締め処理"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXWSH" "$SRS$.XXWSH400007C"
+  AUTO_ANNOTATION =
+ "/**\n\
+  * @param iv_order_type_id 出庫形態ID\n\
+  * @rep:paraminfo {@rep:type XXWSH_ORD_TYPE_SHIP_ONLY} {@rep:displayed Y}\n\
+  * @param iv_deliver_from 出荷元\n\
+  * @rep:paraminfo {@rep:type XXWSH_ITEM_LOCATION_CODE1} {@rep:displayed Y}\n\
+  * @param iv_sales_base 拠点\n\
+  * @rep:paraminfo {@rep:type XXWSH_HEAD_SALES_BRANCH1} {@rep:displayed Y}\n\
+  * @param iv_sales_base_category 拠点カテゴリ\n\
+  * @rep:paraminfo {@rep:type XXWSH_401_BASE_CATEGORY} {@rep:displayed Y}\n\
+  * @param iv_lead_time_day 生産物流LT\n\
+  * @rep:paraminfo {@rep:type XXWSH_LEAD_TIME_DAY} {@rep:displayed Y}\n\
+  * @param iv_schedule_ship_date 出庫日\n\
+  * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y}\n\
+  * @param iv_base_record_class 基準レコード区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_YES_NO} {@rep:displayed Y}\n\
+  * @param iv_request_no 依頼No\n\
+  * @rep:paraminfo {@rep:type XXWSH_REQ_NO_SHIP_ONLY_02} {@rep:displayed Y}\n\
+  * @param iv_tighten_class 締め処理区分\n\
+  * @rep:paraminfo {@rep:type XXWSH_401H_CLOSE_PROCESS_CLASS} {@rep:displayed Y}\n\
+  * @param iv_prod_class 商品区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed Y}\n\
+  * @param iv_tightening_program_id 締めコンカレントID\n\
+  * @rep:paraminfo {@rep:type XXWSH_15_NUM} {@rep:displayed Y}\n\
+  * @param iv_instruction_dept 部署\n\
+  * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE_RF} {@rep:displayed Y}\n\
+  */"
+
+
+END PROGRAM
 
 BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH400007C_01"
   OWNER = "XX_SETUP_USER01"
