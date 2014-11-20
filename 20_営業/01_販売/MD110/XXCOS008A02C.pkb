@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流システムの工場直送出荷実績データから販売実績を作成し、
  *                    販売実績を作成したＯＭ受注をクローズします。
  * MD.050           : 出荷確認（生産物流出荷）  MD050_COS_008_A02
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,9 @@ AS
  *  2009/06/01    1.8   N.Maeda          [T1_1269] 消費税区分3(内税(単価込み)):税抜基準単価算出方法修正
  *  2009/06/09    1.9   K.Kiriu          [T1_1368] 消費税金額合計のDB精度対応
  *  2009/07/08    1.10  K.Kiriu          [0000484] 品目不一致障害対応
+ *  2009/07/09    1.11  K.Kiriu          [0000063] 情報区分の課題対応
+ *                                       [0000064] 受注ヘッダDFF項目漏れ対応
+ *                                       [0000435] PT対応
  *
  *****************************************************************************************/
 --
@@ -180,6 +183,10 @@ AS
                                        :=  'APP-XXCOS1-11680';   -- 基準数量不一致エラー
   ct_msg_dlv_date_err       CONSTANT  fnd_new_messages.message_name%TYPE
                                        :=  'APP-XXCOS1-11681';   -- 納品日不一致エラー
+/* 2009/07/09 Ver1.11 Add Strat */
+  ct_msg_close_note         CONSTANT  fnd_new_messages.message_name%TYPE
+                                       :=  'APP-XXCOS1-11683';   -- 受注明細クローズ件数
+/* 2009/07/09 Ver1.11 Add End   */
 --
   --トークン
   cv_tkn_para_date          CONSTANT  VARCHAR2(100)  :=  'PARA_DATE';      -- 処理日付
@@ -306,6 +313,13 @@ AS
   cv_amount_up                  CONSTANT  VARCHAR(5)  := 'UP';      -- 消費税_端数(切上)
   cv_amount_down                CONSTANT  VARCHAR(5)  := 'DOWN';    -- 消費税_端数(切捨て)
   cv_amount_nearest             CONSTANT  VARCHAR(10) := 'NEAREST'; -- 消費税_端数(四捨五入)
+/* 2009/07/09 Ver1.11 Add Start */
+  --情報区分
+  cv_target_order_01            CONSTANT  VARCHAR2(2) := '01';      -- 受注作成対象01
+  cv_target_order_02            CONSTANT  VARCHAR2(2) := '02';      -- 受注作成対象02
+  --LANGUAGE
+  cv_lang                       CONSTANT  VARCHAR2(256) := USERENV( 'LANG' );
+/* 2009/07/09 Ver1.11 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -316,6 +330,9 @@ AS
   -- ===============================
   gn_normal_header_cnt    NUMBER;   -- 正常件数(ヘッダ)
   gn_normal_line_cnt      NUMBER;   -- 正常件数(明細)
+/* 2009/07/09 Ver1.11 Add Start */
+  gn_line_close_cnt       NUMBER;   -- 受注明細クローズ件数
+/* 2009/07/09 Ver1.11 Add End   */
   -- 登録業務日付
   gd_business_date        DATE;
   -- 業務日付
@@ -332,6 +349,10 @@ AS
   gv_add_status_sum_up    fnd_lookup_values.attribute1%TYPE;  -- 出荷実績計上済
   -- 保管場所分類（直送）
   gv_direct_ship_code     fnd_lookup_values.meaning%TYPE;
+/* 2009/07/09 Ver1.11 Add Start */
+  gn_seq_1                PLS_INTEGER;  --販売実績作成用変数の添字保持用
+  gn_seq_2                PLS_INTEGER;  --受注クローズ用変数の添字保持用
+/* 2009/07/09 Ver1.11 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバルRECORD型宣言
@@ -415,6 +436,9 @@ AS
     , shipping_item_code          xxwsh_order_lines_all.shipping_item_code%TYPE     -- 出荷品目
     , arrival_date                xxwsh_order_headers_all.arrival_date%TYPE         -- 着荷日
     , shipped_quantity            xxwsh_order_lines_all.shipped_quantity%TYPE       -- 出荷実績数量
+/* 2009/07/09 Ver1.11 Add Start */
+    , info_class                  oe_order_headers_all.global_attribute3%TYPE       -- 情報区分
+/* 2009/07/09 Ver1.11 Add End   */
     , check_status                NUMBER                                            -- チェックステータス
   );
 --
@@ -439,6 +463,13 @@ AS
     , tax_slip                    xxcos_sales_exp_headers.consumption_tax_class%TYPE  -- 内税(伝票課税)
     , tax_included                xxcos_sales_exp_headers.consumption_tax_class%TYPE  -- 内税(単価込み)
    );
+/* 2009/07/09 Ver1.11 Add Start */
+  -- 受注明細ID
+  TYPE line_id_rtype IS RECORD(
+    line_id                       oe_order_lines_all.line_id%TYPE      -- 受注明細ID
+    , line_number                 oe_order_lines_all.line_number%TYPE  -- 受注明細番号
+   );
+/* 2009/07/09 Ver1.11 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバルレコード宣言
@@ -465,6 +496,11 @@ AS
         IS TABLE OF tax_rtype INDEX BY BINARY_INTEGER;
   TYPE g_tax_ttype
         IS TABLE OF tax_rtype INDEX BY xxcos_sales_exp_headers.consumption_tax_class%TYPE;
+/* 2009/07/09 Ver1.11 Add Start */
+  -- 受注明細ID
+  TYPE g_line_id_ttype
+        IS TABLE OF line_id_rtype INDEX BY PLS_INTEGER;
+/* 2009/07/09 Ver1.11 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバルPL/SQL表
@@ -474,6 +510,10 @@ AS
   g_tax_sub_tab               g_tax_sub_ttype;                -- 消費税コード
   g_tax_tab                   g_tax_ttype;                    -- 消費税コード
   g_order_data_tab            g_n_order_data_ttype;           -- 受注データ
+/* 2009/07/09 Ver1.11 Add Start */
+  g_order_data_all_tab        g_n_order_data_ttype;           -- 受注データ(受注作成対象全データ取得用)
+  g_line_id_tab               g_line_id_ttype;                -- 受注明細ID(受注クローズ用)
+/* 2009/07/09 Ver1.11 Add End   */
   g_order_req_tab             g_v_order_data_ttype;           -- 受注データ(依頼No・品目単位の数量チェック用)
   g_order_exp_tab             g_v_order_data_ttype;           -- 受注データ(販売実績作成用)
   g_sale_hdr_tab              g_sale_results_headers_ttype;   -- 販売実績ヘッダ
@@ -749,7 +789,10 @@ AS
       AND flv.start_date_active      <= gd_process_date
       AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
       AND flv.enabled_flag            = ct_yes_flg
-      AND flv.language                = USERENV( 'LANG' );
+/* 2009/07/09 Ver1.11 Mod Start */
+--      AND flv.language                = USERENV( 'LANG' );
+      AND flv.language                = cv_lang;
+/* 2009/07/09 Ver1.11 Mod End   */
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -785,7 +828,10 @@ AS
       AND flv.start_date_active      <= gd_process_date
       AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
       AND flv.enabled_flag            = ct_yes_flg
-      AND flv.language                = USERENV( 'LANG' );
+/* 2009/07/09 Ver1.11 Mod Start */
+--      AND flv.language                = USERENV( 'LANG' );
+      AND flv.language                = cv_lang;
+/* 2009/07/09 Ver1.11 Mod End   */
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -827,7 +873,10 @@ AS
           AND flv.start_date_active      <= gd_process_date
           AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
           AND flv.enabled_flag            = ct_yes_flg
-          AND flv.language                = USERENV( 'LANG' )
+/* 2009/07/09 Ver1.11 Mod Start */
+--          AND flv.language                = USERENV( 'LANG' )
+          AND flv.language                = cv_lang
+/* 2009/07/09 Ver1.11 Mod End   */
         ) tax_code_mst
       WHERE
         tax_code_mst.tax_code     = avtab.tax_code
@@ -870,7 +919,10 @@ AS
       AND flv.start_date_active      <= gd_process_date
       AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
       AND flv.enabled_flag            = ct_yes_flg
-      AND flv.language                = USERENV( 'LANG' );
+/* 2009/07/09 Ver1.11 Mod Start */
+--      AND flv.language                = USERENV( 'LANG' );
+      AND flv.language                = cv_lang;
+/* 2009/07/09 Ver1.11 Mod End   */
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -901,7 +953,10 @@ AS
       AND flv.start_date_active      <= gd_process_date
       AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
       AND flv.enabled_flag            = ct_yes_flg
-      AND flv.language                = USERENV( 'LANG' )
+/* 2009/07/09 Ver1.11 Mod Start */
+--      AND flv.language                = USERENV( 'LANG' )
+      AND flv.language                = cv_lang
+/* 2009/07/09 Ver1.11 Mod End   */
       AND ROWNUM = 1;
 --
     EXCEPTION
@@ -939,7 +994,10 @@ AS
       AND flv.start_date_active      <= gd_process_date
       AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
       AND flv.enabled_flag            = ct_yes_flg
-      AND flv.language                = USERENV( 'LANG' );
+/* 2009/07/09 Ver1.11 Mod Start */
+--      AND flv.language                = USERENV( 'LANG' );
+      AND flv.language                = cv_lang;
+/* 2009/07/09 Ver1.11 Mod End   */
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -1084,8 +1142,12 @@ AS
     , ooha.order_source_id                  AS order_source_id            -- 受注ソースID
     , ooha.orig_sys_document_ref            AS order_connection_number    -- 外部システム受注番号
     , NULL                                  AS card_sale_class            -- カード売り区分
-    , xeh.invoice_class                     AS invoice_class              -- 伝票区分
-    , xeh.big_classification_code           AS invoice_classification_code-- 伝票分類コード
+/* 2009/07/09 Ver1.11 Mod Start */
+--    , xeh.invoice_class                     AS invoice_class              -- 伝票区分
+--    , xeh.big_classification_code           AS invoice_classification_code-- 伝票分類コード
+    , ooha.attribute5                       AS invoice_class              -- 伝票区分
+    , ooha.attribute20                      AS invoice_classification_code-- 伝票分類コード
+/* 2009/07/09 Ver1.11 Mod End   */
     , NULL                                  AS change_out_time_100        -- つり銭切れ時間１００円
     , NULL                                  AS change_out_time_10         -- つり銭切れ時間１０円
     , ct_no_flg                             AS ar_interface_flag          -- ARインタフェース済フラグ
@@ -1138,14 +1200,22 @@ AS
 /* 2009/07/08 Ver1.10 Mod End   */
     , xoha.arrival_date                     AS arrival_date               -- 着荷日
     , xola.shipped_quantity                 AS shipped_quantity           -- 出荷実績数量
+/* 2009/07/09 Ver1.11 Add Start */
+    , ooha.global_attribute3                AS info_class                 -- 情報区分
+/* 2009/07/09 Ver1.11 Add End   */
     , cn_check_status_normal                AS check_status               -- チェックステータス
     BULK COLLECT INTO
-      g_order_data_tab
+/* 2009/07/09 Ver1.11 Mod Start */
+--      g_order_data_tab
+      g_order_data_all_tab
+/* 2009/07/09 Ver1.11 Mod End   */
     FROM
       oe_order_headers_all  ooha                        -- 受注ヘッダ
-      LEFT JOIN xxcos_edi_headers xeh                   -- EDIヘッダ情報
-        -- 受注ヘッダ.外部システム受注番号 = EDIヘッダ情報.受注関連番号
-        ON ooha.orig_sys_document_ref = xeh.order_connection_number     
+/* 2009/07/09 Ver1.11 Del Start */
+--      LEFT JOIN xxcos_edi_headers xeh                   -- EDIヘッダ情報
+--        -- 受注ヘッダ.外部システム受注番号 = EDIヘッダ情報.受注関連番号
+--        ON ooha.orig_sys_document_ref = xeh.order_connection_number     
+/* 2009/07/09 Ver1.11 Del End   */
     , oe_order_lines_all  oola                          -- 受注明細
       INNER JOIN xxwsh_order_headers_all  xoha          -- 受注ヘッダアドオン
         ON  oola.packing_instructions = xoha.request_no -- 受注明細.梱包指示＝受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No
@@ -1173,8 +1243,12 @@ AS
     AND oola.line_type_id  = otttl.transaction_type_id
     -- 受注明細.明細タイプID＝受注明細取引タイプ.取引タイプID
     AND oola.line_type_id  = ottal.transaction_type_id
-    AND ottth.language = USERENV( 'LANG' )
-    AND otttl.language = USERENV( 'LANG' )
+/* 2009/07/09 Ver1.11 Mod Start */
+--    AND ottth.language = USERENV( 'LANG' )
+--    AND otttl.language = USERENV( 'LANG' )
+    AND ottth.language = cv_lang
+    AND otttl.language = cv_lang
+/* 2009/07/09 Ver1.11 Mod End   */
     AND ooha.flow_status_code = ct_hdr_status_booked                -- 受注ヘッダ.ステータス＝記帳済(BOOKED)
     AND ooha.order_category_code != ct_order_category               -- 受注ヘッダ.受注カテゴリコード≠返品(RETURN)
     -- 受注明細.ステータス≠ｸﾛｰｽﾞor取消
@@ -1183,7 +1257,10 @@ AS
     AND TRUNC( oola.request_date ) <= TRUNC( gd_process_date )      -- 受注明細.要求日≦業務日付
     AND ooha.sold_to_org_id = xca.customer_id                       -- 受注ヘッダ.顧客ID = ｱｶｳﾝﾄｱﾄﾞｵﾝﾏｽﾀ.顧客ID
     AND ooha.sold_to_org_id = xchv.ship_account_id                  -- 受注ヘッダ.顧客ID = 顧客階層VIEW.出荷先顧客ID
-    AND oola.ordered_item NOT IN (                                  -- 受注明細.受注品目≠非在庫品目
+/* 2009/07/09 Ver1.11 Mod Start */
+--    AND oola.ordered_item NOT IN (                                  -- 受注明細.受注品目≠非在庫品目
+    AND NOT EXISTS (                                  -- 受注明細.受注品目≠非在庫品目
+/* 2009/07/09 Ver1.11 Mod End   */
                                   SELECT
                                     flv.lookup_code
                                   FROM
@@ -1198,7 +1275,11 @@ AS
                                   AND flv.start_date_active      <= gd_process_date
                                   AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
                                   AND flv.enabled_flag            = ct_yes_flg
-                                  AND flv.language                = USERENV( 'LANG' )
+/* 2009/07/09 Ver1.11 Mod Start */
+--                                  AND flv.language                = USERENV( 'LANG' )
+                                  AND flv.language                = cv_lang
+                                  AND flv.lookup_code             = oola.ordered_item
+/* 2009/07/09 Ver1.11 Mod End   */
                                  )
     AND oola.subinventory = msi.secondary_inventory_name    -- 受注明細.保管場所=保管場所マスタ.保管場所コード
     AND oola.ship_from_org_id = msi.organization_id         -- 出荷元組織ID = 組織ID
@@ -1223,13 +1304,23 @@ AS
                   AND flv.start_date_active      <= gd_process_date
                   AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
                   AND flv.enabled_flag            = ct_yes_flg
-                  AND flv.language                = USERENV( 'LANG' )
+/* 2009/07/09 Ver1.11 Mod Start */
+--                  AND flv.language                = USERENV( 'LANG' )
+                  AND flv.language                = cv_lang
+/* 2009/07/09 Ver1.11 Mod End   */
                 ) flvs
               WHERE
                   msi.attribute13 = flvs.subinventory                  -- 保管場所分類
               AND ottth.name      = NVL( flvs.order_type, ottth.name ) -- 受注タイプ
               AND otttl.name      = NVL( flvs.line_type,  otttl.name ) -- 明細タイプ
         )
+/* 2009/07/09 Ver1.11 Add Start */
+    AND (
+          ooha.global_attribute3 IS NULL
+        OR
+          ooha.global_attribute3 IN ( cv_target_order_01, cv_target_order_02 )
+        )
+/* 2009/07/09 Ver1.11 Add End   */
     ORDER BY
       ooha.header_id                              -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID
     , oola.request_date                           -- 受注明細.要求日
@@ -1240,19 +1331,29 @@ AS
     NOWAIT;
 --
     --データが無い時は「対象データなしエラーメッセージ」
-    IF ( g_order_data_tab.COUNT = 0 ) THEN
+/* 2009/07/09 Ver1.11 Mod Start */
+--    IF ( g_order_data_tab.COUNT = 0 ) THEN
+    IF ( g_order_data_all_tab.COUNT = 0 ) THEN
+/* 2009/07/09 Ver1.11 Mod End   */
       RAISE global_no_data_warm_expt;
     END IF;
 --
     -- 対象件数
-    gn_target_cnt := g_order_data_tab.COUNT;
+/* 2009/07/09 Ver1.11 Mod Start */
+--    gn_target_cnt := g_order_data_tab.COUNT;
+    gn_target_cnt := g_order_data_all_tab.COUNT;
+/* 2009/07/09 Ver1.11 Mod End   */
 --
 --
     -- 受注明細の行ロック処理
     -- 外部結合に対する行ロックを行うことができないため、ここで行ロックを行う
     <<loop_lock>>
-    FOR i IN 1..g_order_data_tab.COUNT LOOP
-      OPEN order_lines_cur( g_order_data_tab(i).line_id );
+/* 2009/07/09 Ver1.11 Mod Start */
+--    FOR i IN 1..g_order_data_tab.COUNT LOOP
+--      OPEN order_lines_cur( g_order_data_tab(i).line_id );
+    FOR i IN 1..g_order_data_all_tab.COUNT LOOP
+      OPEN order_lines_cur( g_order_data_all_tab(i).line_id );
+/* 2009/07/09 Ver1.11 Mod End   */
       CLOSE order_lines_cur;
     END LOOP loop_lock;
 --
@@ -1787,7 +1888,10 @@ AS
       AND flv.start_date_active      <= gd_process_date
       AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
       AND flv.enabled_flag            = ct_yes_flg
-      AND flv.language                = USERENV( 'LANG' )
+/* 2009/07/09 Ver1.11 Mod Start */
+--      AND flv.language                = USERENV( 'LANG' )
+      AND flv.language                = cv_lang
+/* 2009/07/09 Ver1.11 Mod End   */
       AND flv.attribute1              = io_order_rec.order_type  -- ヘッダ取引タイプ
       AND flv.attribute2              = io_order_rec.line_type   -- 明細取引タイプ
       AND ROWNUM = 1;
@@ -3292,7 +3396,11 @@ AS
 --
     -- *** ローカル変数 ***
     lv_api_name   VARCHAR2(100);
-    ln_now_index  VARCHAR2(100);
+/* 2009/07/09 Ver1.11 Mod Start */
+--    ln_now_index  VARCHAR2(100);
+    ln_now_index   PLS_INTEGER;
+    lt_line_number oe_order_lines_all.line_number%TYPE;
+/* 2009/07/09 Ver1.11 Mod End   */
 --
     -- *** ローカル・カーソル ***
 --
@@ -3309,29 +3417,49 @@ AS
 --
 --
 --
-    ln_now_index := g_order_exp_tab.first;
+/* 2009/07/09 Ver1.11 Mod Start */
+--    ln_now_index := g_order_exp_tab.first;
 --
-    WHILE ln_now_index IS NOT NULL LOOP
+--    WHILE ln_now_index IS NOT NULL LOOP
+    <<loop_line_update>>
+    FOR ln_now_index IN 1..g_line_id_tab.COUNT LOOP
+/* 2009/07/09 Ver1.11 Mod End   */
 --
       BEGIN
         WF_ENGINE.COMPLETEACTIVITY(
             Itemtype => cv_close_type
-          , Itemkey  => g_order_exp_tab(ln_now_index).line_id  -- 受注明細ID
+/* 2009/07/09 Ver1.11 Mod Start */
+--          , Itemkey  => g_order_exp_tab(ln_now_index).line_id  -- 受注明細ID
+          , Itemkey  => g_line_id_tab(ln_now_index).line_id  -- 受注明細ID
+/* 2009/07/09 Ver1.11 Mod End   */
           , Activity => cv_activity
           , Result   => cv_result
         );
 --
-        -- 次のインデックスを取得する
-        ln_now_index := g_order_exp_tab.next(ln_now_index);
+/* 2009/07/09 Ver1.11 Del Start */
+--        -- 次のインデックスを取得する
+--        ln_now_index := g_order_exp_tab.next(ln_now_index);
 --
+/* 2009/07/09 Ver1.11 Del End   */
       EXCEPTION
         WHEN OTHERS THEN
           lv_errmsg := SQLERRM;
+/* 2009/07/09 Ver1.11 Add Start */
+          lt_line_number := g_line_id_tab(ln_now_index).line_number;
+/* 2009/07/09 Ver1.11 Add End   */
           RAISE global_api_err_expt;
       END;
 --
-    END LOOP;
+/* 2009/07/09 Ver1.11 Mod Start */
+--    END LOOP;
+    END LOOP loop_line_update;
+/* 2009/07/09 Ver1.11 Mod End   */
 --
+/* 2009/07/09 Ver1.11 Add Start */
+    --受注明細クローズ件数
+    gn_line_close_cnt := g_line_id_tab.COUNT;
+--
+/* 2009/07/09 Ver1.11 Add End   */
   EXCEPTION
 --
     --*** API呼び出し例外ハンドラ ***
@@ -3348,7 +3476,10 @@ AS
                    iv_token_name2 => cv_tkn_err_msg,
                    iv_token_value2=> lv_errmsg,
                    iv_token_name3 => cv_tkn_line_number,
-                   iv_token_value3=> g_order_exp_tab(ln_now_index).line_number
+/* 2009/07/09 Ver1.11 Mod Start */
+--                   iv_token_value3=> g_order_exp_tab(ln_now_index).line_number
+                   iv_token_value3=> TO_CHAR(lt_line_number)
+/* 2009/07/09 Ver1.11 Mod End   */
                   );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_error;
@@ -3429,6 +3560,9 @@ AS
     gn_warn_cnt   := 0;
     gn_normal_header_cnt := 0;
     gn_normal_line_cnt   := 0;
+/* 2009/07/09 Ver1.11 Add Start */
+    gn_line_close_cnt    := 0;
+/* 2009/07/09 Ver1.11 Add End   */
 --
     ln_err_flag := cn_check_status_normal;
 --
@@ -3472,6 +3606,26 @@ AS
       RAISE global_no_data_warm_expt;
     END IF;
 --
+/* 2009/07/09 Ver1.11 Add Start */
+    --初期化
+    gn_seq_1 := 0;
+    gn_seq_2 := 0;
+    --販売実績作成対象判定チェック
+    <<loop_make_check_data>>
+    FOR i IN 1..g_order_data_all_tab.COUNT LOOP
+      IF ( NVL( g_order_data_all_tab(i).info_class, cv_target_order_01 ) <> cv_target_order_02 ) THEN
+        gn_seq_1 := gn_seq_1 + 1;
+        --販売実績作成対象
+        g_order_data_tab(gn_seq_1) := g_order_data_all_tab(i);
+      ELSE
+        gn_seq_2 := gn_seq_2 + 1;
+        --受注クローズ用の変数の編集(受注クローズのみ行うデータ)
+        g_line_id_tab(gn_seq_2).line_id     := g_order_data_all_tab(i).line_id;
+        g_line_id_tab(gn_seq_2).line_number := g_order_data_all_tab(i).line_number;
+      END IF;
+    END LOOP loop_make_check_data;
+--
+/* 2009/07/09 Ver1.11 Add End   */
     ln_err_flag := cn_check_status_normal;
 --
     <<loop_make_data>>
@@ -3634,6 +3788,23 @@ AS
         RAISE global_process_expt;
       END IF;
 --
+/* 2009/07/09 Ver1.11 Add Start */
+    END IF;
+--
+    lv_idx_key := g_order_exp_tab.first;
+--
+    --受注クローズ用の変数の編集(販売実績作成データ)
+    WHILE lv_idx_key IS NOT NULL LOOP
+      gn_seq_2 := gn_seq_2 + 1;
+      g_line_id_tab(gn_seq_2).line_id     := g_order_exp_tab(lv_idx_key).line_id;
+      g_line_id_tab(gn_seq_2).line_number := g_order_exp_tab(lv_idx_key).line_number;
+      --次のインデックスを取得する
+      lv_idx_key := g_order_exp_tab.next(lv_idx_key);
+    END LOOP;
+--
+    --受注クローズ用の変数に値がある場合、受注クローズ処理を実行
+    IF ( g_line_id_tab.COUNT <> 0 ) THEN
+/* 2009/07/09 Ver1.11 Add End   */
       -- ===============================
       -- A-11.受注クローズ設定
       -- ===============================
@@ -3760,6 +3931,9 @@ AS
       IF ( lv_retcode = cv_status_error ) THEN
         gn_normal_header_cnt := 0;
         gn_normal_line_cnt   := 0;
+/* 2009/07/09 Ver1.11 Add Start */
+        gn_line_close_cnt    := 0;
+/* 2009/07/09 Ver1.11 Add End   */
         gn_error_cnt  := gn_target_cnt;
         gn_warn_cnt   := 0;
       END IF;
@@ -3805,6 +3979,20 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
+/* 2009/07/09 Ver1.11 Add Start */
+--
+    --受注明細クローズ件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_xxcos_appl_short_nm
+                    ,iv_name         => ct_msg_close_note
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_line_close_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+/* 2009/07/09 Ver1.11 Add End   */
 --
     --エラー件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(

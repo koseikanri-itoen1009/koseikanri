@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS009A01R
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS009A01R
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2009. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A01R (body)
  * Description      : 受注一覧リスト
  * MD.050           : 受注一覧リスト MD050_COS_009_A01
- * Version          : 1.5
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,8 @@ AS
  *  2009/04/14    1.3   T.Kiriu          [T1_0470]顧客発注番号取得元修正
  *  2009/05/08    1.4   T.Kitajima       [T1_0925]出荷先コード変更
  *  2009/06/19    1.5   N.Nishimura      [T1_1437]データパージ不具合対応
+ *  2009/07/13    1.6   K.Kiriu          [0000063]情報区分の課題対応
+ *  2009/07/29    1.7   T.Tominaga       [0000271]受注ソースがEDI受注とそれ以外とでカーソルを分ける（EDI受注のみロック）
  *
  *****************************************************************************************/
 --
@@ -204,6 +206,10 @@ AS
   cv_prof_max_date          CONSTANT  VARCHAR2(100) :=  'XXCOS1_MAX_DATE';     -- プロファイル名(MAX日付)
   --MO:営業単位
   ct_prof_org_id            CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'ORG_ID';
+/* 2009/07/13 Ver1.6 Add Start */
+  --情報区分
+  cv_target_order_01        CONSTANT  VARCHAR2(100) :=  '01';                  -- 受注作成対象01
+/* 2009/07/13 Ver1.6 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -866,7 +872,11 @@ AS
     lt_record_id              xxcos_rep_order_list.record_id%TYPE;    --レコードID
 --
     -- *** ローカル・カーソル ***
-    CURSOR data_edi_or_not_cur
+--****************************** 2009/07/29 1.7 T.Tominaga MOD START ******************************--
+--    CURSOR data_edi_or_not_cur
+    -- 受注ソースタイプ：EDI取込の場合
+    CURSOR data_edi_cur
+--****************************** 2009/07/29 1.7 T.Tominaga MOD END   ******************************--
     IS
       SELECT
         oola.rowid                             AS row_id                     -- rowid
@@ -1012,11 +1022,221 @@ AS
           -- 受注明細.受注日の年月≧業務日付－１の年月
           AND TO_CHAR( TRUNC( NVL( ooha.ordered_date, gd_proc_date ) ), cv_yyyy_mm ) 
             >= TO_CHAR( ADD_MONTHS( TRUNC( gd_proc_date ), -1 ), cv_yyyy_mm )
-          -- 受注明細.ステータス≠ｸﾛｰｽﾞor取消
+          -- 受注明細.ステータス≠取消
           AND oola.flow_status_code NOT IN ( ct_ln_status_cancelled )
         )
-        --CSV/その他の場合
-        OR ( 
+--****************************** 2009/07/29 1.7 T.Tominaga DEL START ******************************--
+--        --CSV/その他の場合
+--        OR ( 
+--          iv_order_source <> gv_order_source_edi_chk 
+--          -- 受注明細.ステータス≠ｸﾛｰｽﾞor取消
+--          AND oola.flow_status_code NOT IN ( ct_ln_status_closed, ct_ln_status_cancelled )
+--          AND (
+--            --受注ヘッダとパラメータの受注日両方NULLの場合 退避する
+--            ooha.ordered_date IS NULL
+--            AND ld_ordered_date_from IS NULL
+--            AND ld_ordered_date_to IS NULL
+--            OR (
+--              --受注ヘッダ.受注日≧パラメータ.受注日（FROM）
+--              TRUNC( ooha.ordered_date )           >= NVL( ld_ordered_date_from, TRUNC( ooha.ordered_date ) )
+--              --受注ヘッダ.受注日≦パラメータ.受注日（TO）
+--              AND TRUNC( ooha.ordered_date )       <= NVL( ld_ordered_date_to, TRUNC( ooha.ordered_date ) )
+--            )
+--          )
+--          AND (
+--            --受注明細とパラメータの予定出荷日両方NULLの場合 退避する
+--            oola.schedule_ship_date IS NULL
+--            AND ld_schedule_ship_date_from IS NULL
+--            AND ld_schedule_ship_date_to IS NULL
+--            OR (
+--              --受注明細.予定出荷日≧パラメータ.出荷予定日（FROM）
+--              TRUNC( oola.schedule_ship_date )     >= 
+--                  NVL( ld_schedule_ship_date_from, TRUNC( oola.schedule_ship_date ) )
+--              --受注明細.予定出荷日≦パラメータ.出荷予定日（TO）
+--              AND TRUNC( oola.schedule_ship_date ) <= NVL( ld_schedule_ship_date_to, TRUNC( oola.schedule_ship_date ) )
+--            )
+--          )
+--          AND (
+--            --受注明細とパラメータの要求日両方NULLの場合 退避する
+--            oola.request_date IS NULL
+--            AND ld_schedule_ordered_date_from IS NULL
+--            AND ld_schedule_ordered_date_to IS NULL
+--            OR (
+--              --受注明細.要求日≧パラメータ.納品予定日（FROM）
+--              TRUNC( oola.request_date )           >= NVL( ld_schedule_ordered_date_from, TRUNC( oola.request_date ) )
+--              --受注明細.要求日≦パラメータ.納品予定日（TO）
+--              AND TRUNC( oola.request_date )       <= NVL( ld_schedule_ordered_date_to, TRUNC( oola.request_date ) )
+--            )
+--          )
+--          --従業員マスタ.従業員番号＝パラメータ.入力者
+--          AND papf.employee_number             = NVL( iv_entered_by_code, papf.employee_number )
+--          --顧客マスタ.顧客コード＝パラメータ.出荷先
+--          AND hca.account_number               = NVL( iv_ship_to_code, hca.account_number )
+--          AND (
+--            --受注明細とパラメータの保管場所両方NULLの場合 退避する
+--            oola.subinventory IS NULL
+--            AND iv_subinventory IS NULL
+--            OR (
+--              --受注明細.保管場所＝パラメータ.保管場所
+--              oola.subinventory                = NVL( iv_subinventory, oola.subinventory )
+--            )
+--          )
+--          --受注ヘッダ.受注番号=パラメータ.受注番号
+--          AND ooha.order_number                = NVL( iv_order_number, ooha.order_number )
+--        )
+--****************************** 2009/07/29 1.7 T.Tominaga DEL END   ******************************--
+      )
+/* 2009/07/13 Ver1.6 Add Start */
+      --情報区分 = NULL OR 01
+      AND (
+            ooha.global_attribute3 IS NULL
+          OR
+            ooha.global_attribute3 = cv_target_order_01
+          )
+/* 2009/07/13 Ver1.6 Add End   */
+      ORDER BY
+        ooha.header_id     --受注ヘッダ.ヘッダID
+        ,oola.line_id      --受注明細.明細ID
+      FOR UPDATE OF
+        ooha.header_id     --受注ヘッダ.ヘッダID
+        ,oola.line_id      --受注明細.明細ID
+      NOWAIT
+      ;
+--
+--****************************** 2009/07/29 1.7 T.Tominaga ADD START ******************************--
+    -- 受注ソースタイプ：その他（CSV/画面）の場合
+    CURSOR data_edi_not_cur
+    IS
+      SELECT
+        oola.rowid                             AS row_id                     -- rowid
+        ,ooha.order_source_id                  AS order_source_id            -- 受注ソース
+        ,oos.name                              AS order_source               -- 受注ソース
+        ,papf.employee_number                  AS entered_by_code            -- 入力者コード
+        ,papf.per_information18 || ' ' || papf.per_information19
+                                               AS entered_by_name            -- 入力者名
+        ,hca.account_number                    AS deliver_from_code          -- 出荷先コード
+        ,hp.party_name                         AS deliver_to_name            -- 顧客名称
+        ,ooha.order_number                     AS order_number               -- 受注番号
+        ,oola.line_number                      AS line_number                -- 明細番号
+        ,ooha.cust_po_number                   AS party_order_number         -- 顧客発注番号
+        ,oola.schedule_ship_date               AS shipped_date               -- 出荷日
+        ,oola.request_date                     AS dlv_date                   -- 納品日
+        ,oola.ordered_item                     AS order_item_no              -- 受注品番号
+        ,ximb.item_short_name                  AS order_item_name            -- 受注品目名
+        ,otta.order_category_code              AS order_category_code        -- カテゴリ
+        ,oola.ordered_quantity                 AS quantity                   -- 数量
+        ,oola.order_quantity_uom               AS uom_code                   -- 受注単位
+        ,oola.unit_selling_price               AS dlv_unit_price             -- 販売単価
+        ,oola.subinventory                     AS locat_code                 -- 保管場所コード
+        ,msi.description                       AS locat_name                 -- 保管場所名称
+        ,ooha.shipping_instructions            AS shipping_instructions      -- 出荷指示
+        ,ooha.attribute19                      AS order_no                   -- オーダーNo.
+        ,jrre.source_number                    AS base_employee_num          -- 営業担当コード
+        ,papf1.per_information18 || ' ' || papf1.per_information19
+                                               AS base_employee_name         -- 営業担当名
+      FROM
+        oe_order_headers_all       ooha    -- 受注ヘッダ
+        ,oe_order_lines_all        oola    -- 受注明細
+        ,oe_order_sources          oos     -- 受注ソース
+        ,hz_cust_accounts          hca     -- 顧客マスタ
+        ,xxcmm_cust_accounts       xca     -- 顧客アドオン
+        ,hz_parties                hp      -- パーティマスタ
+        ,mtl_secondary_inventories msi     -- 保管場所マスタ
+        ,mtl_system_items_b        msib    -- DISC品目
+        ,ic_item_mst_b             iimb    -- OPM品目
+        ,xxcmn_item_mst_b          ximb    -- OPM品目アドオン
+        ,fnd_user                  fu      -- ユーザマスタ
+        ,per_all_people_f          papf    -- 従業員マスタ
+        ,per_person_types          ppt     -- 従業員タイプマスタ
+        ,jtf_rs_resource_extns     jrre    -- リソースマスタ
+        ,jtf_rs_salesreps          jrs     -- jtf_rs_salesreps
+        ,per_all_people_f          papf1   -- 従業員マスタ1
+        ,per_person_types          ppt1    -- 従業員タイプマスタ1
+        ,oe_transaction_types_all  otta    -- 受注明細摘要用取引タイプALL
+        ,oe_transaction_types_tl   otttl   -- 受注明細摘要用取引タイプ
+      WHERE
+      -- 受注ヘッダ.受注ヘッダID＝受注明細.受注ヘッダID
+      ooha.header_id                        = oola.header_id
+      -- 組織ID
+      AND ooha.org_id                       = gn_org_id
+      -- 受注ヘッダ.ソースID＝受注ソース.ソースID
+      AND ooha.order_source_id              = oos.order_source_id
+      -- 受注ソース名称（EDI受注、問屋CSV、国際CSV、Online）
+      AND oos.name IN ( 
+        SELECT  look_val.attribute1
+        FROM    fnd_lookup_values           look_val,
+                fnd_lookup_types_tl         types_tl,
+                fnd_lookup_types            types,
+                fnd_application_tl          appl,
+                fnd_application             app
+        WHERE   appl.application_id         = types.application_id
+        AND     app.application_id          = appl.application_id
+        AND     types_tl.lookup_type        = look_val.lookup_type
+        AND     types.lookup_type           = types_tl.lookup_type
+        AND     types.security_group_id     = types_tl.security_group_id
+        AND     types.view_application_id   = types_tl.view_application_id
+        AND     types_tl.language           = cv_lang
+        AND     look_val.language           = cv_lang
+        AND     appl.language               = cv_lang
+        AND     app.application_short_name  = cv_xxcos_short_name
+        AND     look_val.lookup_type        = cv_type_ost_009_a01
+        AND     look_val.lookup_code        LIKE cv_code_ost_009_a01
+        AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+        AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+        AND     look_val.enabled_flag       = ct_enabled_flg_y
+        --受注ソース（EDI取込・CSV取込・クイック受注入力）
+        AND     look_val.description        = iv_order_source
+      )
+      --受注ヘッダ.顧客ID = 顧客マスタ.顧客ID
+      AND ooha.sold_to_org_id               = hca.cust_account_id
+      --顧客マスタ.顧客ID =顧客マスタアドオン.顧客ID
+      AND hca.cust_account_id               = xca.customer_id
+      --顧客マスタアドオン.納品拠点コード=パラメータ.拠点コード
+      AND xca.delivery_base_code            = iv_delivery_base_code
+      --顧客マスタ.パーティID = パーティマスタ.パーティID
+      AND hca.party_id                      = hp.party_id 
+      --ユーザマスタ.ユーザID=受注ヘッダ.最終更新者
+      AND fu.user_id                        = ooha.last_updated_by
+      --ユーザマスタ.従業員ID=従業員マスタ.従業員ID
+      AND fu.employee_id                    = papf.person_id
+      AND gd_proc_date                      >= NVL( papf.effective_start_date, gd_min_date )
+      AND gd_proc_date                      <= NVL( papf.effective_end_date, gd_max_date )
+      AND ppt.business_group_id             = cn_per_business_group_id
+      AND ppt.system_person_type            = cv_emp
+      AND ppt.active_flag                   = ct_enabled_flg_y
+      AND papf.person_type_id               = ppt.person_type_id
+      --受注ヘッダ.営業担当ID=jtf_rs_salesreps.salesrep_id
+      AND ooha.salesrep_id                  = jrs.salesrep_id
+      --jtf_rs_salesreps.リソースID=リソースマスタ.リソースID
+      AND jrs.resource_id                   = jrre.resource_id
+      --リソースマスタ.ソース番号=従業員マスタ.従業員ID
+      AND jrre.source_id                    = papf1.person_id
+      AND gd_proc_date                      >= NVL( papf1.effective_start_date, gd_min_date )
+      AND gd_proc_date                      <= NVL( papf1.effective_end_date, gd_max_date )
+      AND ppt1.business_group_id            = cn_per_business_group_id
+      AND ppt1.system_person_type           = cv_emp
+      AND ppt1.active_flag                  = ct_enabled_flg_y
+      AND papf1.person_type_id              = ppt1.person_type_id
+      -- 受注明細.保管場所=保管場所マスタ.保管場所コード
+      AND oola.subinventory                 = msi.secondary_inventory_name(+)
+      -- 受注明細.出荷元組織ID = 保管場所マスタ.組織ID
+      AND oola.ship_from_org_id             = msi.organization_id(+)
+      --受注明細.品目ID= 品目マスタ.品目ID
+      AND oola.inventory_item_id            = msib.inventory_item_id
+      AND msib.organization_id              = gt_org_id
+      AND msib.segment1                     = iimb.item_no
+      AND iimb.item_id                      = ximb.item_id
+      AND gd_proc_date                      >= NVL( ximb.start_date_active, gd_min_date )
+      AND gd_proc_date                      <= NVL( ximb.end_date_active, gd_max_date )
+      --受注明細.明細タイプ＝受注タイプ.タイプ
+      AND oola.line_type_id                 = otttl.transaction_type_id
+      --受注タイプ.タイプ＝受注タイプALL.タイプ
+      AND otttl.transaction_type_id         = otta.transaction_type_id
+      --言語：JA
+      AND otttl.language                    = cv_lang
+      AND ( 
+        --その他（CSV/画面）の場合
+        ( 
           iv_order_source <> gv_order_source_edi_chk 
           -- 受注明細.ステータス≠ｸﾛｰｽﾞor取消
           AND oola.flow_status_code NOT IN ( ct_ln_status_closed, ct_ln_status_cancelled )
@@ -1074,17 +1294,23 @@ AS
           AND ooha.order_number                = NVL( iv_order_number, ooha.order_number )
         )
       )
+      --情報区分 = NULL OR 01
+      AND (
+            ooha.global_attribute3 IS NULL
+          OR
+            ooha.global_attribute3 = cv_target_order_01
+          )
       ORDER BY
         ooha.header_id     --受注ヘッダ.ヘッダID
         ,oola.line_id      --受注明細.明細ID
-      FOR UPDATE OF
-        ooha.header_id     --受注ヘッダ.ヘッダID
-        ,oola.line_id      --受注明細.明細ID
-      NOWAIT
       ;
+--****************************** 2009/07/29 1.7 T.Tominaga ADD END   ******************************--
 --
     -- *** ローカル・レコード ***
-    l_data_edi_or_not_rec                data_edi_or_not_cur%ROWTYPE;
+--****************************** 2009/07/29 1.7 T.Tominaga MOD START ******************************--
+--    l_data_edi_or_not_rec                data_edi_or_not_cur%ROWTYPE;
+    l_data_edi_or_not_rec                data_edi_cur%ROWTYPE;
+--****************************** 2009/07/29 1.7 T.Tominaga MOD END   ******************************--
 --
   BEGIN
 --
@@ -1097,9 +1323,29 @@ AS
     --ループカウント初期化
     ln_idx          := 0;
 --
-    --対象データ取得
+--****************************** 2009/07/29 1.7 T.Tominaga MOD START ******************************--
+--    FOR l_data_edi_or_not_rec IN data_edi_or_not_cur LOOP
+    -- EDI取込
+    IF iv_order_source = gv_order_source_edi_chk THEN
+      OPEN data_edi_cur;
+    -- その他（CSV/画面）
+    ELSE
+      OPEN data_edi_not_cur;
+    END IF;
+--
     <<loop_get_data>>
-    FOR l_data_edi_or_not_rec IN data_edi_or_not_cur LOOP
+    LOOP
+--
+      --対象データ取得
+      IF iv_order_source = gv_order_source_edi_chk THEN
+        FETCH data_edi_cur INTO l_data_edi_or_not_rec;
+        EXIT WHEN data_edi_cur%NOTFOUND;
+      -- その他（CSV/画面）
+      ELSE
+        FETCH data_edi_not_cur INTO l_data_edi_or_not_rec;
+        EXIT WHEN data_edi_not_cur%NOTFOUND;
+      END IF;
+--****************************** 2009/07/29 1.7 T.Tominaga MOD END   ******************************--
       -- レコードIDの取得
       BEGIN
         SELECT xxcos_rep_order_list_s01.NEXTVAL     redord_id
@@ -1173,10 +1419,28 @@ AS
     --処理件数カウント
     gn_target_cnt := g_report_data_tab.COUNT;
 --
+--****************************** 2009/07/29 1.7 T.Tominaga ADD START ******************************--
+    -- EDI取込
+    IF iv_order_source = gv_order_source_edi_chk THEN
+      CLOSE data_edi_cur;
+    -- その他（CSV/画面）
+    ELSE
+      CLOSE data_edi_not_cur;
+    END IF;
+--****************************** 2009/07/29 1.7 T.Tominaga ADD START ******************************--
+--
   EXCEPTION
 --
     -- *** 処理対象データロック例外ハンドラ ***
     WHEN global_data_lock_expt THEN
+--****************************** 2009/07/29 1.7 T.Tominaga ADD START ******************************--
+      -- EDI取込
+      IF iv_order_source = gv_order_source_edi_chk THEN
+        IF ( data_edi_cur%ISOPEN ) THEN
+          CLOSE data_edi_cur;
+        END IF;
+      END IF;
+--****************************** 2009/07/29 1.7 T.Tominaga ADD END   ******************************--
       lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
         iv_application        =>  cv_xxcos_short_name,
         iv_name               =>  cv_msg_vl_table_name2
@@ -1202,6 +1466,19 @@ AS
       ov_retcode := cv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
+--****************************** 2009/07/29 1.7 T.Tominaga ADD START ******************************--
+      -- EDI取込
+      IF iv_order_source = gv_order_source_edi_chk THEN
+        IF ( data_edi_cur%ISOPEN ) THEN
+          CLOSE data_edi_cur;
+        END IF;
+      -- その他（CSV/画面）
+      ELSE
+        IF ( data_edi_not_cur%ISOPEN ) THEN
+          CLOSE data_edi_not_cur;
+        END IF;
+      END IF;
+--****************************** 2009/07/29 1.7 T.Tominaga ADD START ******************************--
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
 --

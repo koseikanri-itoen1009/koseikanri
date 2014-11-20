@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS006A04R (body)
  * Description      : 出荷依頼書
  * MD.050           : 出荷依頼書 MD050_COS_006_A04
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,8 @@ AS
  *                                       descriptionへのセット内容を修正
  *  2009/06/22    1.4   K.Kiriu          【ST障害No.T1-1437対応】
  *                                       データパージ不具合対応
+ *  2009/07/09    1.5   M.Sano           【SCS障害No.0000063対応】
+ *                                       情報区分によるデータ作成対象の制御
  *
  *****************************************************************************************/
 --
@@ -224,6 +226,9 @@ AS
   --文字定数
   cv_hyphen                 CONSTANT  VARCHAR2(1)   := '-';           --ハイフン
   cv_space                  CONSTANT  VARCHAR2(1)   := ' ';           --スペース
+/* 2009/07/09 Ver1.5 Add Start */
+  ct_info_class_01          CONSTANT  VARCHAR2(2)   := '01';          --情報区分：「01」
+/* 2009/07/09 Ver1.5 Add End */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -710,6 +715,9 @@ AS
       AND ooha.org_id                       = gn_org_id
       AND TRUNC( ooha.ordered_date )        >= xla.start_date_active
       AND TRUNC( ooha.ordered_date )        <= NVL( xla.end_date_active, ooha.ordered_date )
+/* 2009/07/09 Ver1.5 Add Start */
+      AND ct_info_class_01                  =  NVL(ooha.global_attribute3, ct_info_class_01)
+/* 2009/07/09 Ver1.5 Add End */
       AND msib.segment1 NOT IN (
             SELECT  look_val.lookup_code
             FROM    fnd_lookup_values     look_val,

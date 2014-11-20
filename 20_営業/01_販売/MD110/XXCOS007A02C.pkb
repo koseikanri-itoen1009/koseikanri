@@ -7,7 +7,7 @@ AS
  * Description      : 返品予定日の到来した拠点出荷の返品受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 返品実績データ作成（ＨＨＴ以外）  MD050_COS_007_A02
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,10 @@ AS
  *  2009/06/01    1.6   N.Maeda          [T1_1269] 消費税区分3(内税(単価込み)):税抜基準単価算出方法修正
  *  2009/06/08    1.7   T.Kitajima       [T1_1368] 消費税端数処理対応
  *  2009/06/10    1.8   T.Kitajima       [T1_1407] 消費税小数点なし対応
+ *  2009/07/08    1.9   M.Sano           [0000063] 情報区分によるデータ作成対象の制御
+ *                                       [0000064] 受注DFF項目追加に伴う、連携項目追加
+ *                                       [0000434] PT対応
+ *  2009/07/28    1.9   M.Sano           [0000434] PT対応(修正漏れ対応)
  *
  *****************************************************************************************/
 --
@@ -171,6 +175,10 @@ AS
                                        :=  'APP-XXCOS1-11581';   -- 明細成功件数
   ct_msg_select_odr_err     CONSTANT  fnd_new_messages.message_name%TYPE
                                        :=  'APP-XXCOS1-11583';   -- データ取得エラー
+-- 2009/07/08 Ver.1.9 M.Sano Add Start --
+  ct_msg_cls_success_note   CONSTANT  fnd_new_messages.message_name%TYPE
+                                       :=  'APP-XXCOS1-11585';   -- データ取得エラー
+-- 2009/07/08 Ver.1.9 M.Sano Add  End  --
 --
   --トークン
   cv_tkn_para_date        CONSTANT  VARCHAR2(100)  :=  'PARA_DATE';      -- 処理日付
@@ -298,6 +306,15 @@ AS
   cv_amount_up                  CONSTANT  VARCHAR(5)  := 'UP';      -- 消費税_端数(切上)
   cv_amount_down                CONSTANT  VARCHAR(5)  := 'DOWN';    -- 消費税_端数(切捨て)
   cv_amount_nearest             CONSTANT  VARCHAR(10) := 'NEAREST'; -- 消費税_端数(四捨五入)
+-- 2009/07/08 Ver.1.9 M.Sano Add Start
+--
+  -- 情報区分
+  cv_info_class_01              CONSTANT  VARCHAR2(2) := '01';      -- 情報区分:01
+  cv_info_class_02              CONSTANT  VARCHAR2(2) := '02';      -- 情報区分:02
+--
+  -- 言語コード
+  ct_lang                       CONSTANT  fnd_lookup_values.language%TYPE := USERENV('LANG');
+-- 2009/07/08 Ver.1.9 M.Sano Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -308,6 +325,9 @@ AS
   -- ===============================
   gn_normal_header_cnt    NUMBER;   -- 正常件数(ヘッダ)
   gn_normal_line_cnt      NUMBER;   -- 正常件数(明細)
+-- 2009/07/08 Ver.1.9 M.Sano Add Start
+  gn_normal_close_cnt     NUMBER;   -- 正常件数(クローズ)
+-- 2009/07/08 Ver.1.9 M.Sano Add End
   -- 登録業務日付
   gd_business_date        DATE;
   -- 業務日付
@@ -398,6 +418,9 @@ AS
     , packing_instructions        oe_order_lines_all.packing_instructions%type      -- 出荷依頼No
     , subinventory_class          mtl_secondary_inventories.attribute1%type         -- 保管場所区分
     , check_status                NUMBER                                            -- チェックステータス
+-- 2009/07/08 Ver.1.9 M.Sano Add Start
+    , info_class                  oe_order_headers_all.global_attribute3%type       -- 情報区分
+-- 2009/07/08 Ver.1.9 M.Sano Add End
   );
 --
   -- 売上区分
@@ -427,6 +450,12 @@ AS
     , tax_slip                    xxcos_sales_exp_headers.consumption_tax_class%TYPE  -- 内税(伝票課税)
     , tax_included                xxcos_sales_exp_headers.consumption_tax_class%TYPE  -- 内税(単価込み)
    );
+-- 2009/07/08 Ver.1.9 M.Sano Add Start
+  -- 受注明細データレコード型
+  TYPE order_line_data_rtype IS RECORD(
+    line_id                       oe_order_lines_all.line_id%type                     -- 受注明細ID
+  );
+-- 2009/07/08 Ver.1.9 M.Sano Add End
 --
   -- ===============================
   -- ユーザー定義グローバルレコード宣言
@@ -458,6 +487,8 @@ AS
         IS TABLE OF tax_rtype INDEX BY BINARY_INTEGER;
   TYPE g_tax_ttype
         IS TABLE OF tax_rtype INDEX BY xxcos_sales_exp_headers.consumption_tax_class%type;
+  --受注明細データ
+  TYPE order_line_data_ttype IS TABLE OF order_line_data_rtype INDEX BY BINARY_INTEGER;
 --
   -- ===============================
   -- ユーザー定義グローバルPL/SQL表
@@ -473,6 +504,10 @@ AS
   g_sale_hdr_tab              g_sale_results_headers_ttype;   -- 販売実績ヘッダ
   g_sale_line_tab             g_sale_results_lines_ttype;     -- 販売実績明細
   g_tax_class_rec             tax_class_rtype;                -- 消費税区分
+-- 2009/07/08 Ver.1.9 M.Sano Add Start
+  g_order_all_data_tab        g_n_order_data_ttype;           -- 受注データ(処理対象全データ)
+  g_order_cls_data_tab        order_line_data_ttype;          -- 受注データ(受注CLOSE対象)
+-- 2009/07/08 Ver.1.9 M.Sano Add End
 --
 --
   /**********************************************************************************
@@ -732,18 +767,27 @@ AS
       BULK COLLECT INTO
          g_sale_class_sub_tab
       FROM
-        fnd_application               fa,
-        fnd_lookup_types              flt,
+-- 2009/07/28 Ver.1.9 M.Sano Del Start
+--        fnd_application               fa,
+--        fnd_lookup_types              flt,
+-- 2009/07/28 Ver.1.9 M.Sano Del End
         fnd_lookup_values             flv
       WHERE
-          fa.application_id           = flt.application_id
-      AND flt.lookup_type             = flv.lookup_type
-      AND fa.application_short_name   = cv_xxcos_appl_short_nm
-      AND flv.lookup_type             = ct_qct_sales_class_type
+-- 2009/07/28 Ver.1.9 M.Sano Mod Start
+--          fa.application_id           = flt.application_id
+--      AND flt.lookup_type             = flv.lookup_type
+--      AND fa.application_short_name   = cv_xxcos_appl_short_nm
+--      AND flv.lookup_type             = ct_qct_sales_class_type
+          flv.lookup_type             = ct_qct_sales_class_type
+-- 2009/07/28 Ver.1.9 M.Sano Mod End
       AND flv.start_date_active      <= gd_process_date
       AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
       AND flv.enabled_flag            = ct_yes_flg
-      AND flv.language                = USERENV( 'LANG' );
+-- 2009/07/08 Ver.1.9 M.Sano Mod Start
+--      AND flv.language                = USERENV( 'LANG' );
+      AND flv.language                = ct_lang
+      ;
+-- 2009/07/08 Ver.1.9 M.Sano Mod End
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -768,18 +812,27 @@ AS
       BULK COLLECT INTO
          g_red_black_flag_sub_tab
       FROM
-        fnd_application               fa,
-        fnd_lookup_types              flt,
+-- 2009/07/28 Ver.1.9 M.Sano Del Start
+--        fnd_application               fa,
+--        fnd_lookup_types              flt,
+-- 2009/07/28 Ver.1.9 M.Sano Del End
         fnd_lookup_values             flv
       WHERE
-          fa.application_id           = flt.application_id
-      AND flt.lookup_type             = flv.lookup_type
-      AND fa.application_short_name   = cv_xxcos_appl_short_nm
-      AND flv.lookup_type             = ct_qct_red_black_flag_type
+-- 2009/07/28 Ver.1.9 M.Sano Mod Start
+--          fa.application_id           = flt.application_id
+--      AND flt.lookup_type             = flv.lookup_type
+--      AND fa.application_short_name   = cv_xxcos_appl_short_nm
+--      AND flv.lookup_type             = ct_qct_red_black_flag_type
+          flv.lookup_type             = ct_qct_red_black_flag_type
+-- 2009/07/28 Ver.1.9 M.Sano Mod End
       AND flv.start_date_active      <= gd_process_date
       AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
       AND flv.enabled_flag            = ct_yes_flg
-      AND flv.language                = USERENV( 'LANG' );
+-- 2009/07/08 Ver.1.9 M.Sano Mod Start
+--      AND flv.language                = USERENV( 'LANG' );
+      AND flv.language                = ct_lang
+      ;
+-- 2009/07/08 Ver.1.9 M.Sano Mod End
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -814,18 +867,26 @@ AS
             , flv.attribute2      AS tax_code     -- 税コード
             , flv.attribute5      AS tax_include  -- 内税フラグ
           FROM
-            fnd_application       fa,
-            fnd_lookup_types      flt,
+-- 2009/07/28 Ver.1.9 M.Sano Del Start
+--            fnd_application       fa,
+--            fnd_lookup_types      flt,
+-- 2009/07/28 Ver.1.9 M.Sano Del End
             fnd_lookup_values     flv
           WHERE
-              fa.application_id           = flt.application_id
-          AND flt.lookup_type             = flv.lookup_type
-          AND fa.application_short_name   = cv_xxcos_appl_short_nm
-          AND flv.lookup_type             = ct_qct_tax_type
+-- 2009/07/28 Ver.1.9 M.Sano Mod Start
+--              fa.application_id           = flt.application_id
+--          AND flt.lookup_type             = flv.lookup_type
+--          AND fa.application_short_name   = cv_xxcos_appl_short_nm
+--          AND flv.lookup_type             = ct_qct_tax_type
+              flv.lookup_type             = ct_qct_tax_type
+-- 2009/07/28 Ver.1.9 M.Sano Mod End
           AND flv.start_date_active      <= gd_process_date
           AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
           AND flv.enabled_flag            = ct_yes_flg
-          AND flv.language                = USERENV( 'LANG' )
+-- 2009/07/08 Ver.1.9 M.Sano Mod Start
+--          AND flv.language                = USERENV( 'LANG' )
+          AND flv.language                = ct_lang
+-- 2009/07/08 Ver.1.9 M.Sano Mod End
         ) tax_code_mst
       WHERE
         tax_code_mst.tax_code     = avtab.tax_code
@@ -862,18 +923,27 @@ AS
         ,g_tax_class_rec.tax_slip                 -- 内税(伝票課税)
         ,g_tax_class_rec.tax_included             -- 内税(単価込み)
       FROM
-        fnd_application       fa,
-        fnd_lookup_types      flt,
+-- 2009/07/28 Ver.1.9 M.Sano Del Start
+--        fnd_application       fa,
+--        fnd_lookup_types      flt,
+-- 2009/07/28 Ver.1.9 M.Sano Del End
         fnd_lookup_values     flv
       WHERE
-          fa.application_id           = flt.application_id
-      AND flt.lookup_type             = flv.lookup_type
-      AND fa.application_short_name   = cv_xxcos_appl_short_nm
-      AND flv.lookup_type             = ct_qct_tax_class_type
+-- 2009/07/28 Ver.1.9 M.Sano Mod Start
+--          fa.application_id           = flt.application_id
+--      AND flt.lookup_type             = flv.lookup_type
+--      AND fa.application_short_name   = cv_xxcos_appl_short_nm
+--      AND flv.lookup_type             = ct_qct_tax_class_type
+          flv.lookup_type             = ct_qct_tax_class_type
+-- 2009/07/28 Ver.1.9 M.Sano Mod End
       AND flv.start_date_active      <= gd_process_date
       AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
       AND flv.enabled_flag            = ct_yes_flg
-      AND flv.language                = USERENV( 'LANG' );
+-- 2009/07/08 Ver.1.9 M.Sano Mod Start
+--      AND flv.language                = USERENV( 'LANG' );
+      AND flv.language                = ct_lang
+      ;
+-- 2009/07/08 Ver.1.9 M.Sano Mod End
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -958,7 +1028,9 @@ AS
 --
     -- *** ローカル変数 ***
     lv_lock_table   VARCHAR(5000);
---
+-- 2009/07/08 Ver.1.9 M.Sano Mod Start
+    lv_create_data_seq NUMBER;
+-- 2009/07/08 Ver.1.9 M.Sano Mod End
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -1008,8 +1080,12 @@ AS
       , ooha.order_source_id                  AS order_source_id            -- 受注ソースID
       , ooha.orig_sys_document_ref            AS order_connection_number    -- 外部システム受注番号
       , NULL                                  AS card_sale_class            -- カード売り区分
-      , xeh.invoice_class                     AS invoice_class              -- 伝票区分
-      , xeh.big_classification_code           AS invoice_classification_code-- 伝票分類コード
+-- 2009/07/08 Ver.1.9 M.Sano Add Start
+--      , xeh.invoice_class                     AS invoice_class              -- 伝票区分
+--      , xeh.big_classification_code           AS invoice_classification_code-- 伝票分類コード
+      , ooha.attribute5                       AS invoice_class              -- 伝票区分
+      , ooha.attribute20                      AS invoice_classification_code-- 伝票分類コード
+-- 2009/07/08 Ver.1.9 M.Sano Add Start
       , NULL                                  AS change_out_time_100        -- つり銭切れ時間１００円
       , NULL                                  AS change_out_time_10         -- つり銭切れ時間１０円
       , ct_no_flg                             AS ar_interface_flag          -- ARインタフェース済フラグ
@@ -1056,8 +1132,14 @@ AS
       , oola.packing_instructions             AS packing_instructions       -- 出荷依頼No
       , msi.attribute1                        AS subinventory_class         -- 保管場所区分
       , cn_check_status_normal                AS check_status               -- チェックステータス
+-- 2009/07/08 Ver.1.9 M.Sano Add Start
+      , ooha.global_attribute3                AS info_class                 -- 情報区分
+-- 2009/07/08 Ver.1.9 M.Sano Add  End 
     BULK COLLECT INTO
-      g_order_data_tab
+-- 2009/07/08 Ver.1.9 M.Sano Add Start
+--      g_order_data_tab
+      g_order_all_data_tab
+-- 2009/07/08 Ver.1.9 M.Sano Add  End 
     FROM
       oe_order_headers_all        ooha    -- 受注ヘッダ
       , oe_order_lines_all        oola    -- 受注明細
@@ -1065,7 +1147,9 @@ AS
       , oe_transaction_types_tl   otttl   -- 受注明細摘要用取引タイプ
       , oe_transaction_types_all  ottal   -- 受注明細取引タイプ
       , mtl_secondary_inventories msi     -- 保管場所マスタ
-      , xxcos_edi_headers         xeh     -- EDIヘッダ情報
+-- 2009/07/08 Ver.1.9 M.Sano Del Start
+--      , xxcos_edi_headers         xeh     -- EDIヘッダ情報
+-- 2009/07/08 Ver.1.9 M.Sano Del  End 
       , xxcmm_cust_accounts       xca     -- アカウントアドオンマスタ
       , xxcos_cust_hierarchy_v    xchv    -- 顧客階層VIEW
     WHERE
@@ -1076,34 +1160,54 @@ AS
       AND oola.line_type_id  = otttl.transaction_type_id
       -- 受注明細.明細タイプID＝受注明細取引タイプ.取引タイプID
       AND oola.line_type_id  = ottal.transaction_type_id
-      AND ottth.language = USERENV('LANG')
-      AND otttl.language = USERENV('LANG')
+-- 2009/07/08 Ver.1.9 M.Sano Mod Start
+--      AND ottth.language = USERENV('LANG')
+--      AND otttl.language = USERENV('LANG')
+      AND ottth.language = ct_lang
+      AND otttl.language = ct_lang
+-- 2009/07/08 Ver.1.9 M.Sano Mod  End 
       AND ooha.flow_status_code = ct_hdr_status_booked                -- 受注ヘッダ.ステータス≠記帳済(BOOKED)
       AND ooha.order_category_code  = ct_order_category               -- 受注ヘッダ.受注カテゴリコード＝返品(RETURN)
       -- 受注明細.ステータス≠ｸﾛｰｽﾞor取消
       AND oola.flow_status_code NOT IN (ct_ln_status_closed, ct_ln_status_cancelled)
       AND ooha.org_id = gn_org_id                                     -- 組織ID
       AND TRUNC(oola.request_date) <= TRUNC(gd_process_date)          -- 受注明細.要求日≦業務日付
-      AND ooha.orig_sys_document_ref = xeh.order_connection_number(+) -- 受注ヘッダ.外部システム受注番号
-                                                                      --    = EDIヘッダ情報.受注関連番号
+-- 2009/07/08 Ver.1.9 M.Sano Mod Start
+--      AND ooha.orig_sys_document_ref = xeh.order_connection_number(+) -- 受注ヘッダ.外部システム受注番号
+--                                                                      --    = EDIヘッダ情報.受注関連番号
+      -- 受注ヘッダ.情報区分 = NULL or 01 or 02
+      AND NVL(ooha.global_attribute3, cv_info_class_01) IN (cv_info_class_01, cv_info_class_02)
+-- 2009/07/08 Ver.1.9 M.Sano Mod  End 
       AND ooha.sold_to_org_id = xca.customer_id                       -- 受注ヘッダ.顧客ID = ｱｶｳﾝﾄｱﾄﾞｵﾝﾏｽﾀ.顧客ID
       AND ooha.sold_to_org_id = xchv.ship_account_id                  -- 受注ヘッダ.顧客ID = 顧客階層VIEW.出荷先顧客ID
-      AND oola.ordered_item NOT IN (                                  -- 受注明細.受注品目≠エラー品目
+-- 2009/07/08 Ver.1.9 M.Sano Mod Start
+--      AND oola.ordered_item NOT IN (                                  -- 受注明細.受注品目≠エラー品目
+      AND NOT EXISTS (
+-- 2009/07/08 Ver.1.9 M.Sano Mod  End 
                                     SELECT
                                       flv.lookup_code
                                     FROM
-                                      fnd_application               fa,
-                                      fnd_lookup_types              flt,
+-- 2009/07/28 Ver.1.9 M.Sano Del Start
+--                                      fnd_application               fa,
+--                                      fnd_lookup_types              flt,
+-- 2009/07/28 Ver.1.9 M.Sano Del End
                                       fnd_lookup_values             flv
                                     WHERE
-                                        fa.application_id           = flt.application_id
-                                    AND flt.lookup_type             = flv.lookup_type
-                                    AND fa.application_short_name   = cv_xxcos_appl_short_nm
-                                    AND flv.lookup_type             = ct_qct_edi_item_err_type
+-- 2009/07/28 Ver.1.9 M.Sano Mod Start
+--                                        fa.application_id           = flt.application_id
+--                                    AND flt.lookup_type             = flv.lookup_type
+--                                    AND fa.application_short_name   = cv_xxcos_appl_short_nm
+--                                    AND flv.lookup_type             = ct_qct_edi_item_err_type
+                                        flv.lookup_type             = ct_qct_edi_item_err_type
+-- 2009/07/28 Ver.1.9 M.Sano Mod End
                                     AND flv.start_date_active      <= gd_process_date
                                     AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
                                     AND flv.enabled_flag            = ct_yes_flg
-                                    AND flv.language                = USERENV( 'LANG' )
+-- 2009/07/08 Ver.1.9 M.Sano Mod Start
+--                                    AND flv.language                = USERENV( 'LANG' )
+                                    AND flv.language                = ct_lang
+                                    AND flv.lookup_code             = oola.ordered_item
+-- 2009/07/08 Ver.1.9 M.Sano Mod  End 
                                  )
       AND oola.subinventory = msi.secondary_inventory_name    -- 受注明細.保管場所=保管場所マスタ.保管場所コード
       AND oola.ship_from_org_id = msi.organization_id         -- 出荷元組織ID = 
@@ -1116,19 +1220,27 @@ AS
                        , flv.attribute2 AS order_type
                        , flv.attribute3 AS line_type
                      FROM
-                       fnd_application               fa,
-                       fnd_lookup_types              flt,
+-- 2009/07/28 Ver.1.9 M.Sano Del Start
+--                       fnd_application               fa,
+--                       fnd_lookup_types              flt,
+-- 2009/07/28 Ver.1.9 M.Sano Del End
                        fnd_lookup_values             flv
                      WHERE
-                         fa.application_id           = flt.application_id
-                     AND flt.lookup_type             = flv.lookup_type
-                     AND fa.application_short_name   = cv_xxcos_appl_short_nm
-                     AND flv.lookup_type             = ct_qct_sale_exp_condition
+-- 2009/07/28 Ver.1.9 M.Sano Mod Start
+--                         fa.application_id           = flt.application_id
+--                     AND flt.lookup_type             = flv.lookup_type
+--                     AND fa.application_short_name   = cv_xxcos_appl_short_nm
+--                     AND flv.lookup_type             = ct_qct_sale_exp_condition
+                         flv.lookup_type             = ct_qct_sale_exp_condition
+-- 2009/07/28 Ver.1.9 M.Sano Mod End
                      AND flv.lookup_code          LIKE ct_qcc_sale_exp_condition
                      AND flv.start_date_active      <= gd_process_date
                      AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
                      AND flv.enabled_flag            = ct_yes_flg
-                     AND flv.language                = USERENV( 'LANG' )
+-- 2009/07/08 Ver.1.9 M.Sano Mod Start
+--                     AND flv.language                = USERENV( 'LANG' )
+                     AND flv.language                = ct_lang
+-- 2009/07/08 Ver.1.9 M.Sano Mod End
                   ) flvs
                 WHERE
                   msi.attribute13  = flvs.subinventory                -- 保管場所分類
@@ -1144,12 +1256,29 @@ AS
     NOWAIT;
 --
     --データが無い時は「対象データなしエラーメッセージ」
-    IF ( g_order_data_tab.COUNT = 0 ) THEN
+-- 2009/07/08 Ver.1.9 M.Sano Mod Start
+--    IF ( g_order_data_tab.COUNT = 0 ) THEN
+    IF ( g_order_all_data_tab.COUNT = 0 ) THEN
+-- 2009/07/08 Ver.1.9 M.Sano Mod End
       RAISE global_no_data_warm_expt;
     END IF;
 --
     -- 対象件数
-    gn_target_cnt := g_order_data_tab.COUNT;
+-- 2009/07/08 Ver.1.9 M.Sano Mod Start
+--    gn_target_cnt := g_order_data_tab.COUNT;
+    gn_target_cnt := g_order_all_data_tab.COUNT;
+--
+    -- 取得した受注データから返品実績作成対象のものを抽出する。
+    lv_create_data_seq := 0;
+    <<get_sales_created_data_loop>>
+    FOR i in 1..g_order_all_data_tab.COUNT LOOP
+      IF ( NVL(g_order_all_data_tab(i).info_class, cv_info_class_01) = cv_info_class_01 ) THEN
+        lv_create_data_seq := lv_create_data_seq + 1;
+        g_order_data_tab(lv_create_data_seq) := g_order_all_data_tab(i);
+      END IF;
+    END LOOP get_sales_created_data_loop;
+-- 2009/07/08 Ver.1.9 M.Sano Mod End
+--
 --
   EXCEPTION
     -- *** 対象データなし例外ハンドラ ***
@@ -1672,19 +1801,27 @@ AS
         INTO
           io_order_rec.dlv_invoice_class
         FROM
-          fnd_application               fa,
-          fnd_lookup_types              flt,
+-- 2009/07/28 Ver.1.9 M.Sano DEL Start
+--          fnd_application               fa,
+--          fnd_lookup_types              flt,
+-- 2009/07/28 Ver.1.9 M.Sano DEL End
           fnd_lookup_values             flv
         WHERE
-              fa.application_id           = flt.application_id
-          AND flt.lookup_type             = flv.lookup_type
-          AND fa.application_short_name   = cv_xxcos_appl_short_nm
-          AND flv.lookup_type             = ct_qct_dlv_slp_cls_type
+-- 2009/07/28 Ver.1.9 M.Sano Mod End
+--              fa.application_id           = flt.application_id
+--          AND flt.lookup_type             = flv.lookup_type
+--          AND fa.application_short_name   = cv_xxcos_appl_short_nm
+--          AND flv.lookup_type             = ct_qct_dlv_slp_cls_type
+              flv.lookup_type             = ct_qct_dlv_slp_cls_type
+-- 2009/07/28 Ver.1.9 M.Sano MOd End
           AND flv.lookup_code          LIKE ct_qcc_dlv_slp_cls_type
           AND flv.start_date_active      <= gd_process_date
           AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
           AND flv.enabled_flag            = ct_yes_flg
-          AND flv.language                = USERENV( 'LANG' )
+-- 2009/07/08 Ver.1.9 M.Sano Mod Start
+--          AND flv.language                = USERENV( 'LANG' )
+          AND flv.language                = ct_lang
+-- 2009/07/08 Ver.1.9 M.Sano Mod End
           AND flv.attribute1              = io_order_rec.order_type  -- ヘッダ取引タイプ
           AND flv.attribute2              = io_order_rec.line_type   -- 明細取引タイプ
           AND ROWNUM = 1;
@@ -2766,7 +2903,10 @@ AS
 --
 --
 --
-    ln_now_index := g_order_data_sort_tab.first;
+-- 2009/07/08 Ver.1.9 M.Sano Mod Start
+--    ln_now_index := g_order_data_sort_tab.first;
+    ln_now_index := g_order_cls_data_tab.first;
+-- 2009/07/08 Ver.1.9 M.Sano Mod End
 --
     WHILE ln_now_index IS NOT NULL LOOP
 --
@@ -2774,13 +2914,20 @@ AS
 --
         WF_ENGINE.COMPLETEACTIVITY(
             Itemtype => cv_close_type
-          , Itemkey  => g_order_data_sort_tab(ln_now_index).line_id  -- 受注明細ID
+-- 2009/07/08 Ver.1.9 M.Sano Mod Start
+--          , Itemkey  => g_order_data_sort_tab(ln_now_index).line_id  -- 受注明細ID
+          , Itemkey  => g_order_cls_data_tab(ln_now_index).line_id  -- 受注明細ID
+-- 2009/07/08 Ver.1.9 M.Sano Mod End
           , Activity => cv_activity
           , Result   => cv_result
         );
 --
         -- 次のインデックスを取得する
-        ln_now_index := g_order_data_sort_tab.next(ln_now_index);
+-- 2009/07/08 Ver.1.9 M.Sano Mod Start
+--        ln_now_index := g_order_data_sort_tab.next(ln_now_index);
+        ln_now_index := g_order_cls_data_tab.next(ln_now_index);
+        gn_normal_close_cnt := gn_normal_close_cnt + 1;
+-- 2009/07/08 Ver.1.9 M.Sano Mod End
 --
       EXCEPTION
         WHEN OTHERS THEN
@@ -2805,7 +2952,10 @@ AS
                    iv_token_name2 => cv_tkn_err_msg,
                    iv_token_value2=> SQLERRM,
                    iv_token_name3 => cv_tkn_line_number,
-                   iv_token_value3=> g_order_data_sort_tab(ln_now_index).line_id
+-- 2009/07/08 Ver.1.9 M.Sano Mod Start
+--                   iv_token_value3=> g_order_data_sort_tab(ln_now_index).line_id
+                   iv_token_value3=> g_order_cls_data_tab(ln_now_index).line_id
+-- 2009/07/08 Ver.1.9 M.Sano Mod End
                   );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_error;
@@ -2866,6 +3016,9 @@ AS
     ln_err_flag               NUMBER;       -- 販売実績ヘッダを作成する単位のデータにエラーがあるか判断するフラグ
                                             -- 値は、ユーザー定義グローバル定数のデータチェックステータス値に依存する
     lv_idx_key                VARCHAR(100); -- PL/SQL表ソート用インデックス文字列
+-- 2009/07/08 Ver.1.9 M.Sano Add Start
+    ln_cls_data_seq           NUMBER;       -- 受注クローズ対象の受注明細一覧の件数
+-- 2009/07/08 Ver.1.9 M.Sano Add End
 --
     -- *** ローカル・レコード ***
 --
@@ -2886,6 +3039,9 @@ AS
     gn_warn_cnt   := 0;
     gn_normal_header_cnt := 0;
     gn_normal_line_cnt   := 0;
+-- 2009/07/08 Ver.1.9 M.Sano Add Start
+    gn_normal_close_cnt  := 0;
+-- 2009/07/08 Ver.1.9 M.Sano Add End
 --
     ln_err_flag := cn_check_status_normal;
 --
@@ -3080,6 +3236,32 @@ AS
       -- ===============================
       -- A-9.受注クローズ設定
       -- ===============================
+-- 2009/07/08 Ver.1.9 M.Sano Add Start
+    END IF;
+    ln_cls_data_seq := 0;
+--
+    -- 受注クローズの対象となるデータを取得する。
+    -- (情報区分が「02」の受注データ ※チェック処理未実施の受注データから取得）
+    <<get_close_date_01_loop>>
+    FOR i in 1..g_order_all_data_tab.COUNT LOOP
+      IF ( g_order_all_data_tab(i).info_class = cv_info_class_02 ) THEN
+        ln_cls_data_seq := ln_cls_data_seq + 1;
+        g_order_cls_data_tab(ln_cls_data_seq).line_id := g_order_all_data_tab(i).line_id;
+      END IF;
+    END LOOP get_close_date_01_loop;
+--
+    -- (販売実績データ作成済の受注データ)
+    lv_idx_key := g_order_data_sort_tab.first;
+    <<get_close_date_02_loop>>
+    WHILE lv_idx_key IS NOT NULL LOOP
+      ln_cls_data_seq := ln_cls_data_seq + 1;
+      g_order_cls_data_tab(ln_cls_data_seq).line_id := g_order_data_sort_tab(lv_idx_key).line_id;
+      lv_idx_key      := g_order_data_sort_tab.next(lv_idx_key);
+    END LOOP get_close_date_02_loop;
+--
+    -- 受注明細をクローズする。(件数が1件以上存在した場合)
+    IF ( ln_cls_data_seq > 0 ) THEN
+-- 2009/07/08 Ver.1.9 M.Sano Add End
       set_order_line_close_status(
           lv_errbuf               -- エラー・メッセージ           --# 固定 #
         , lv_retcode              -- リターン・コード             --# 固定 #
@@ -3203,6 +3385,9 @@ AS
       IF ( lv_retcode = cv_status_error ) THEN
         gn_normal_header_cnt := 0;
         gn_normal_line_cnt   := 0;
+-- 2009/07/08 Ver.1.9 M.Sano Add Start
+        gn_normal_close_cnt  := 0;
+-- 2009/07/08 Ver.1.9 M.Sano Add End
       END IF;
 --
     END IF;
@@ -3246,6 +3431,19 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
+-- 2009/07/08 Ver.1.9 M.Sano Add Start
+    --明細のクローズ成功件数
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_xxcos_appl_short_nm
+                    ,iv_name         => ct_msg_cls_success_note
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_normal_close_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+-- 2009/07/08 Ver.1.9 M.Sano Add End
 --
     --エラー件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(

@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_order_number_v
  * Description     : 記帳済受注番号取得
- * Version         : 1.2
+ * Version         : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2009/01/01    1.0   K.Atsushiba      新規作成
  *  2009/06/04    1.1   T.Miyata         T1_1314対応
  *  2009/07/07    1.2   T.Miyata         0000478対応
+ *  2009/07/14    1.3   K.Kiriu          0000063対応
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_order_number_v (
   order_number,                         -- 受注番号
@@ -39,6 +40,13 @@ AS
         ,hr_operating_units                     hou                -- 営業単位マスタ
   WHERE ooha.header_id                          = oola.header_id                         -- ヘッダーID
   AND   ooha.booked_flag                        = 'Y'                                    -- ステータス(記帳)
+/* 2009/07/14 Ver1.3 Add Start */
+  AND   (
+          ooha.global_attribute3 IS NULL
+        OR
+          ooha.global_attribute3 = '01'
+        )                                                                                --情報区分
+/* 2009/07/14 Ver1.3 Add End   */
   AND   oola.flow_status_code                   NOT IN ('CANCELLED','CLOSED')            -- ステータス(明細)
   AND   ooha.sold_to_org_id                     = hca.cust_account_id                    -- 顧客ID
   AND   ooha.order_type_id                      = ottah.transaction_type_id              -- 取引タイプID(ヘッダー)

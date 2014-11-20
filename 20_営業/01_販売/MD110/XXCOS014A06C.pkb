@@ -43,7 +43,8 @@ AS
  *  2009/06/22          M.Sano           [T1_1158] 店舗コードNULL対応
  *  2009/07/01          N.Maeda          [T1_1359] 数量出力項目の編集追加(共通関数による処理)
  *  2009/07/03          N.Maeda          [T1_1158] 店舗コードNULL対応(ログイン拠点出力)
- *  2009/07/23          N.Maeda          [T1_1359] レビュー指摘修正
+ *  2009/07/06          N.Maeda          [0000063] 対象データ抽出条件追加
+ *                                       [0000064] 伝票区分、大分類の取得先変更
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -218,6 +219,9 @@ AS
 -- 2009/02/20 T.Nakamura Ver.1.7 add start
   cv_handwritten_slip_div_tg      CONSTANT VARCHAR2(1)   := '1';                                    --手書伝票伝送区分:伝送対象
 -- 2009/02/20 T.Nakamura Ver.1.7 add end
+-- ************************** 2009/07/06 N.Maeda 1.11 MOD START ******************************* --
+  cv_global_attribute3_target     CONSTANT oe_order_headers_all.global_attribute3%TYPE := '02';
+-- ************************** 2009/07/06 N.Maeda 1.11 MOD  END  ******************************* --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -359,9 +363,9 @@ AS
    * Description      : 共通初期処理(A-0)
    ***********************************************************************************/
   PROCEDURE init(
-    ov_errbuf     OUT VARCHAR2     --   エラー・メッセージ           --# 固定 #
-   ,ov_retcode    OUT VARCHAR2     --   リターン・コード             --# 固定 #
-   ,ov_errmsg     OUT VARCHAR2     --   ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf     OUT NOCOPY VARCHAR2     --   エラー・メッセージ           --# 固定 #
+   ,ov_retcode    OUT NOCOPY VARCHAR2     --   リターン・コード             --# 固定 #
+   ,ov_errmsg     OUT NOCOPY VARCHAR2     --   ユーザー・エラー・メッセージ --# 固定 #
   )
   IS
     -- ===============================
@@ -512,9 +516,9 @@ AS
    * Description      : 初期処理(A-1)
    ***********************************************************************************/
   PROCEDURE proc_init(
-    ov_errbuf     OUT VARCHAR2        --    エラー・メッセージ           --# 固定 #
-   ,ov_retcode    OUT VARCHAR2        --    リターン・コード             --# 固定 #
-   ,ov_errmsg     OUT VARCHAR2        --    ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf     OUT NOCOPY VARCHAR2        --    エラー・メッセージ           --# 固定 #
+   ,ov_retcode    OUT NOCOPY VARCHAR2        --    リターン・コード             --# 固定 #
+   ,ov_errmsg     OUT NOCOPY VARCHAR2        --    ユーザー・エラー・メッセージ --# 固定 #
    )
   IS
     -- ===============================
@@ -1006,9 +1010,9 @@ AS
    * Description      : ヘッダレコード作成処理(A-2)
    ***********************************************************************************/
   PROCEDURE proc_out_header_record(
-    ov_errbuf     OUT VARCHAR2      --    エラー・メッセージ           --# 固定 #
-   ,ov_retcode    OUT VARCHAR2      --    リターン・コード             --# 固定 #
-   ,ov_errmsg     OUT VARCHAR2      --    ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf     OUT NOCOPY VARCHAR2      --    エラー・メッセージ           --# 固定 #
+   ,ov_retcode    OUT NOCOPY VARCHAR2      --    リターン・コード             --# 固定 #
+   ,ov_errmsg     OUT NOCOPY VARCHAR2      --    ユーザー・エラー・メッセージ --# 固定 #
   )
   IS
     -- ===============================
@@ -1130,9 +1134,9 @@ AS
    * Description      : CSVヘッダレコード作成処理(A-4)
    ***********************************************************************************/
   PROCEDURE proc_out_csv_header(
-    ov_errbuf     OUT VARCHAR2     --   エラー・メッセージ           --# 固定 #
-   ,ov_retcode    OUT VARCHAR2     --   リターン・コード             --# 固定 #
-   ,ov_errmsg     OUT VARCHAR2     --   ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf     OUT NOCOPY VARCHAR2     --   エラー・メッセージ           --# 固定 #
+   ,ov_retcode    OUT NOCOPY VARCHAR2     --   リターン・コード             --# 固定 #
+   ,ov_errmsg     OUT NOCOPY VARCHAR2     --   ユーザー・エラー・メッセージ --# 固定 #
    )
   IS
     -- ===============================
@@ -1207,9 +1211,9 @@ AS
   PROCEDURE proc_out_data_record(
     it_header_id  IN  oe_order_headers_all.header_id%TYPE
    ,i_data_tab    IN  xxcos_common2_pkg.g_layout_ttype
-   ,ov_errbuf     OUT VARCHAR2     --   エラー・メッセージ           --# 固定 #
-   ,ov_retcode    OUT VARCHAR2     --   リターン・コード             --# 固定 #
-   ,ov_errmsg     OUT VARCHAR2     --   ユーザー・エラー・メッセージ --# 固定 #
+   ,ov_errbuf     OUT NOCOPY VARCHAR2     --   エラー・メッセージ           --# 固定 #
+   ,ov_retcode    OUT NOCOPY VARCHAR2     --   リターン・コード             --# 固定 #
+   ,ov_errmsg     OUT NOCOPY VARCHAR2     --   ユーザー・エラー・メッセージ --# 固定 #
   )
   IS
     -- ===============================
@@ -1304,9 +1308,9 @@ AS
    * Description      : フッタレコード作成処理(A-6)
    ***********************************************************************************/
   PROCEDURE proc_out_footer_record(
-    ov_errbuf     OUT VARCHAR2     --   エラー・メッセージ           --# 固定 #
-   ,ov_retcode    OUT VARCHAR2     --   リターン・コード             --# 固定 #
-   ,ov_errmsg     OUT VARCHAR2     --   ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf     OUT NOCOPY VARCHAR2     --   エラー・メッセージ           --# 固定 #
+   ,ov_retcode    OUT NOCOPY VARCHAR2     --   リターン・コード             --# 固定 #
+   ,ov_errmsg     OUT NOCOPY VARCHAR2     --   ユーザー・エラー・メッセージ --# 固定 #
   )
   IS
     -- ===============================
@@ -1419,9 +1423,9 @@ AS
    * Description      : データ取得処理(A-3)
    ***********************************************************************************/
   PROCEDURE proc_get_data(
-    ov_errbuf     OUT VARCHAR2     --   エラー・メッセージ           --# 固定 #
-   ,ov_retcode    OUT VARCHAR2     --   リターン・コード             --# 固定 #
-   ,ov_errmsg     OUT VARCHAR2     --   ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf     OUT NOCOPY VARCHAR2     --   エラー・メッセージ           --# 固定 #
+   ,ov_retcode    OUT NOCOPY VARCHAR2     --   リターン・コード             --# 固定 #
+   ,ov_errmsg     OUT NOCOPY VARCHAR2     --   ユーザー・エラー・メッセージ --# 固定 #
   )
   IS
     -- ===============================
@@ -1491,9 +1495,6 @@ AS
 -- 2009/02/19 T.Nakamura Ver.1.6 add start
     lv_errbuf_all                      VARCHAR2(32767);                           --ログ出力メッセージ格納変数
 -- 2009/02/19 T.Nakamura Ver.1.6 add end
--- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
-    lt_order_quantity_uom              oe_order_lines_all.order_quantity_uom%TYPE;-- 単位(受注明細)
--- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
 --
     -- *** ローカル・カーソル ***
     CURSOR cur_data_record(i_input_rec    g_input_rtype
@@ -2276,13 +2277,25 @@ AS
                     ,TO_CHAR(xeh.shop_delivery_date,cv_date_fmt)                        shop_delivery_date            --店舗納品日
                     ,TO_CHAR(xeh.data_creation_date_edi_data,cv_date_fmt)               data_creation_date_edi_data   --データ作成日（ＥＤＩデータ中）
                     ,xeh.data_creation_time_edi_data                                    data_creation_time_edi_data   --データ作成時刻（ＥＤＩデータ中）
-                    ,xeh.invoice_class                                                  invoice_class                 --伝票区分
+-- ***************************************** 2009/07/06 1.11 N.Maeda  MOD START ************************************* --
+--                    ,xeh.invoice_class                                                  invoice_class                 --伝票区分
+                    ,TO_CHAR(ooha.attribute5)                                           invoice_class                 --伝票区分
+-- ***************************************** 2009/07/06 1.11 N.Maeda  MOD  END  ************************************* --
                     ,xeh.small_classification_code                                      small_classification_code     --小分類コード
                     ,xeh.small_classification_name                                      small_classification_name     --小分類名
                     ,xeh.middle_classification_code                                     middle_classification_code    --中分類コード
                     ,xeh.middle_classification_name                                     middle_classification_name    --中分類名
-                    ,xeh.big_classification_code                                        big_classification_code       --大分類コード
-                    ,xeh.big_classification_name                                        big_classification_name       --大分類名
+-- ***************************************** 2009/07/06 1.11 N.Maeda  MOD START ************************************* --
+--                    ,xeh.big_classification_code                                        big_classification_code       --大分類コード
+                    ,TO_CHAR(ooha.attribute20)                                          big_classification_code       --大分類コード
+--                    ,xeh.big_classification_name                                        big_classification_name       --大分類名
+                    ,CASE
+                      WHEN ( ooha.attribute20 = xeh.big_classification_code ) THEN
+                        xeh.big_classification_name
+                      ELSE
+                        NULL
+                     END                                                                big_classification_name       --大分類名
+-- ***************************************** 2009/07/06 1.11 N.Maeda  MOD  END  ************************************* --
                     ,xeh.other_party_department_code                                    other_party_department_code   --相手先部門コード
                     ,xeh.other_party_order_number                                       other_party_order_number      --相手先発注番号
                     ,xeh.check_digit_class                                              check_digit_class             --チェックデジット有無区分
@@ -2643,9 +2656,6 @@ AS
                     ,TO_CHAR(xeh.total_line_qty)                                        total_line_qty                --トータル行数
                     ,TO_CHAR(xeh.total_invoice_qty)                                     total_invoice_qty             --トータル伝票枚数
                     ,xeh.chain_peculiar_area_footer                                     chain_peculiar_area_footer    --チェーン店固有エリア（フッター）
--- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
-                    ,oola.order_quantity_uom                                            order_quantity_uom            -- 単位(受注明細)
--- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
               FROM   (SELECT xeh.medium_class                                            medium_class                  --媒体区分
                             ,xeh.file_no                                                 file_no                       --ファイルＮｏ
                             ,xeh.info_class                                              info_class                    --情報区分
@@ -3335,6 +3345,10 @@ AS
               AND   ooha.org_id                 = i_prf_rec.org_id                                                    --MO:営業単位
               AND   oola.org_id                 = ooha.org_id                                                         --MO:営業単位
               AND   xeh.delivery_base_code     = cdm.account_number(+)
+-- ************************** 2009/07/06 N.Maeda 1.11 MOD START ******************************* --
+              AND   ( ooha.global_attribute3 IS NULL
+               OR     ooha.global_attribute3 = cv_global_attribute3_target )
+-- ************************** 2009/07/06 N.Maeda 1.11 MOD  END  ******************************* --
 -- 2009/06/22 1.11 M.Sano MOD End
               UNION ALL
               SELECT TO_CHAR(ooha.header_id)                                            header_id                     --ヘッダID(更新キー)
@@ -3388,12 +3402,18 @@ AS
                     ,TO_CHAR(ooha.request_date,cv_date_fmt)                             shop_delivery_date            --店舗納品日
                     ,NULL                                                               data_creation_date_edi_data   --データ作成日（ＥＤＩデータ中）
                     ,NULL                                                               data_creation_time_edi_data   --データ作成時刻（ＥＤＩデータ中）
-                    ,xlvv.attribute8                                                    invoice_class                 --伝票区分
+-- ***************************************** 2009/07/06 1.11 N.Maeda  MOD START ************************************* --
+--                    ,xlvv.attribute8                                                    invoice_class                 --伝票区分
+                    ,ooha.invoice_class                                                 invoice_class                 --伝票区分
+-- ***************************************** 2009/07/06 1.11 N.Maeda  MOD  END  ************************************* --
                     ,NULL                                                               small_classification_code     --小分類コード
                     ,NULL                                                               small_classification_name     --小分類名
                     ,NULL                                                               middle_classification_code    --中分類コード
                     ,NULL                                                               middle_classification_name    --中分類名
-                    ,NULL                                                               big_classification_code       --大分類コード
+-- ***************************************** 2009/07/06 1.11 N.Maeda  MOD START ************************************* --
+--                    ,NULL                                                               big_classification_code       --大分類コード
+                    ,ooha.big_classification_code                                       big_classification_code       --大分類コード
+-- ***************************************** 2009/07/06 1.11 N.Maeda  MOD  END  ************************************* --
                     ,NULL                                                               big_classification_name       --大分類名
                     ,NULL                                                               other_party_department_code   --相手先部門コード
                     ,ooha.attribute19                                                   other_party_order_number      --相手先発注番号
@@ -3818,9 +3838,6 @@ AS
                     ,NULL                                                               total_line_qty                --トータル行数
                     ,NULL                                                               total_invoice_qty             --トータル伝票枚数
                     ,NULL                                                               chain_peculiar_area_footer    --チェーン店固有エリア（フッター）
--- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
-                    ,oola.order_quantity_uom                                            order_quantity_uom            -- 単位(受注明細)
--- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
                     --受注ヘッダ情報インラインビュー
               FROM (SELECT ooha.header_id                                               header_id
 -- 2009/02/16 T.Nakamura Ver.1.3 add start
@@ -3832,6 +3849,10 @@ AS
                            ,ooha.attribute19                                            attribute19
                            ,ooha.order_number                                           order_number
                            ,ooha.order_type_id                                          order_type_id
+-- ***************************************** 2009/07/06 1.11 N.Maeda  ADD START ************************************* --
+                           ,ooha.attribute5                                             invoice_class
+                           ,ooha.attribute20                                            big_classification_code
+-- ***************************************** 2009/07/06 1.11 N.Maeda  ADD  END  ************************************* --
                            ,oos.name                                                    name
                            ,hca.cust_account_id                                         cust_account_id
                            ,hca.party_id                                                party_id
@@ -4558,9 +4579,6 @@ AS
        ,l_data_tab('TOTAL_LINE_QTY')                                                                          --トータル行数
        ,l_data_tab('TOTAL_INVOICE_QTY')                                                                       --トータル伝票枚数
        ,l_data_tab('CHAIN_PECULIAR_AREA_FOOTER')                                                              --チェーン店固有エリア（フッター）
--- ********************************** 2009/07/23 N.Maeda 1.11 ADD START **************************************** --
-       ,lt_order_quantity_uom                                                                                 --単位(受注明細)
--- ********************************** 2009/07/23 N.Maeda 1.11 ADD  END  **************************************** --
       ;            
 out_line(buff => '1');
       EXIT WHEN cur_data_record%NOTFOUND;
@@ -4742,10 +4760,7 @@ out_line(buff => 'i:' || i);
 --*************************** 2009/07/01 Var1.11 N.Maeda ADD START **********************************--
 --
         xxcos_common2_pkg.convert_quantity(
---*************************** 2009/07/23 Var1.11 N.Maeda MOD START **********************************--
---                     iv_uom_code           =>  l_data_tab('UOM_CODE')                              --単位コード
-                     iv_uom_code           =>  lt_order_quantity_uom
---*************************** 2009/07/23 Var1.11 N.Maeda MOD  END  **********************************--
+                     iv_uom_code           =>  l_data_tab('UOM_CODE')                              --単位コード
                     ,in_case_qty           =>  NVL( TO_NUMBER(l_data_tab('NUM_OF_CASES') ),0 )     --ケース入数
                     ,in_ball_qty           =>  NVL( TO_NUMBER(l_data_tab('NUM_OF_BALL') ),0 )      --ボール入数
                     ,in_sum_indv_order_qty =>  NVL( TO_NUMBER(l_data_tab('SUM_ORDER_QTY') ),0 )    --発注数量(合計・バラ)
@@ -4938,9 +4953,9 @@ out_line(buff => 'i:' || i);
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
-    ov_errbuf     OUT VARCHAR2     --   エラー・メッセージ           --# 固定 #
-   ,ov_retcode    OUT VARCHAR2     --   リターン・コード             --# 固定 #
-   ,ov_errmsg     OUT VARCHAR2     --   ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf     OUT NOCOPY VARCHAR2     --   エラー・メッセージ           --# 固定 #
+   ,ov_retcode    OUT NOCOPY VARCHAR2     --   リターン・コード             --# 固定 #
+   ,ov_errmsg     OUT NOCOPY VARCHAR2     --   ユーザー・エラー・メッセージ --# 固定 #
   )
   IS
 --

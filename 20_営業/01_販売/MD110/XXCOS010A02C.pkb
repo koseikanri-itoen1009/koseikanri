@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A02C(body)
  * Description      : 受注OIFへの取込機能
  * MD.050           : 受注OIFへの取込(MD050_COS_010_A02)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,8 @@ AS
  *                                       [T1_0469]受注明細OIF.顧客発注番号の編集修正
  *  2009/05/08    1.5   T.Kitajima       [T1_0780]価格計算フラグ設定方法変更
  *  2009/06/17    1.6   K.Kiriu          [T1_1462]ロック不備対応
+ *  2009/07/01    1.7   M.Sano           [0000064]受注DFF項目追加に伴う、連携項目追加
+ *  2009/08/04    1.7   M.Sano           [0000923]情報区分がNULL、01、02のみ対象とするように変更
  *
  *****************************************************************************************/
 --
@@ -166,7 +168,11 @@ AS
   cv_order_forward_flag     CONSTANT VARCHAR2(10)  := 'N';                            -- 受注連携済フラグ(N)
   cv_cust_class_18          CONSTANT VARCHAR2(10)  := '18';                             -- 顧客区分(チェーン店)
   cv_cust_class_10          CONSTANT VARCHAR2(10)  := '10';                             -- 顧客区分(顧客)
-  cv_info_class_10          CONSTANT VARCHAR2(10)  := '10';                             -- 情報区分
+-- 2009/08/04 Ver.1.7 M.Sano add Start
+--  cv_info_class_10          CONSTANT VARCHAR2(10)  := '10';                             -- 情報区分
+  cv_info_class_01          CONSTANT VARCHAR2(10)  := '01';                             -- 情報区分(作成対象)
+  cv_info_class_02          CONSTANT VARCHAR2(10)  := '02';                             -- 情報区分(作成対象)
+-- 2009/08/04 Ver.1.7 M.Sano add End
   cv_creat_class_order      CONSTANT VARCHAR2(10)  := '01';                             -- 作成元区分(受注データ)
   cv_tsukagatazaiko_11      CONSTANT VARCHAR2(10)  := '11';                             -- 通貨在庫型区分
   cv_tsukagatazaiko_12      CONSTANT VARCHAR2(10)  := '12';                             -- 通貨在庫型区分
@@ -241,6 +247,11 @@ AS
                xca.past_sale_base_code
              END                             sale_base_code                 -- 売上拠点コード
          , xca.tsukagatazaiko_div            tsukagatazaiko_div             -- 通過在庫型区分（EDI）
+-- 2009/07/01 Ver.1.7 M.Sano add Start
+         , xeh.info_class                    info_class                     -- 情報区分
+         , xeh.invoice_class                 invoice_class                  -- 伝票区分
+         , xeh.big_classification_code       big_classification_code        -- 大分類コード
+-- 2009/07/01 Ver.1.7 M.Sano add End
   FROM     xxcos_edi_headers     xeh                                        -- EDIヘッダ情報テーブル
          , hz_cust_accounts      hca                                        -- 顧客マスタ
          , xxcmm_cust_accounts   xca                                        -- 顧客追加情報
@@ -248,7 +259,11 @@ AS
          , xxcos_lookup_values_v xlvv2                                      -- クイックコード
   WHERE    xeh.order_forward_flag    =  cv_order_forward_flag
   AND     (( xeh.info_class          IS NULL )
-  OR       ( xeh.info_class          = cv_info_class_10  ))
+-- 2009/08/04 Ver.1.7 M.Sano mod Start
+--  OR       ( xeh.info_class          = cv_info_class_10  ))
+  OR       ( xeh.info_class          IN (cv_info_class_01,
+                                         cv_info_class_02 ) ) )
+-- 2009/08/04 Ver.1.7 M.Sano mod End
   AND      hca.account_number        =  xeh.conv_customer_code
   AND      hca.cust_account_id       =  xca.customer_id
   AND      hca.customer_class_code   = cv_cust_class_10
@@ -327,8 +342,7 @@ AS
       customer_id                   oe_headers_iface_all.customer_id%TYPE,                -- 顧客ID
       customer_number               oe_headers_iface_all.customer_number%TYPE,            -- 顧客コード
       customer_name                 oe_headers_iface_all.customer_name%TYPE,              -- 顧客名
-      context                       oe_headers_iface_all.context%TYPE,                    -- コンテキスト
-      request_date                  oe_headers_iface_all.request_date%TYPE                -- 要求日
+      context                       oe_headers_iface_all.context%TYPE                    -- コンテキスト
     );
 --
   -- 受注明細OIFテーブルレコードタイプ定義
@@ -404,6 +418,14 @@ AS
     INDEX BY PLS_INTEGER;                                                                         -- 売上拠点コード
   TYPE  g_tab_name_h                     IS TABLE OF oe_headers_iface_all.context%TYPE
     INDEX BY PLS_INTEGER;                                                                         -- 取引タイプ名称
+-- 2009/07/01 Ver.1.7 M.Sano mod Start
+  TYPE  g_tab_h_global_attribute3        IS TABLE OF oe_headers_iface_all.global_attribute3%TYPE  -- 情報区分
+    INDEX BY PLS_INTEGER;
+  TYPE  g_tab_h_attribute5               IS TABLE OF oe_headers_iface_all.attribute5%TYPE  -- 伝票区分
+    INDEX BY PLS_INTEGER;
+  TYPE  g_tab_h_attribute20              IS TABLE OF oe_headers_iface_all.attribute20%TYPE -- 分類区分
+    INDEX BY PLS_INTEGER;
+-- 2009/07/01 Ver.1.7 M.Sano mod End
   -- 受注明細OIF テーブルタイプ定義
   TYPE  g_tab_order_source_id_l          IS TABLE OF oe_lines_iface_all.order_source_id%TYPE
     INDEX BY PLS_INTEGER;                                                                         -- インポートソースID
@@ -460,6 +482,11 @@ AS
   gt_request_date                         g_tab_request_date;                -- 要求日
   gt_sale_base_code                       g_tab_sale_base_code;              -- 売上拠点コード
   gt_name_h                               g_tab_name_h;                      -- 取引タイプ名称
+-- 2009/07/01 Ver.1.7 M.Sano mod Start
+  gt_h_global_attribute3                   g_tab_h_global_attribute3;         -- 情報区分
+  gt_h_attribute5                          g_tab_h_attribute5;                -- 伝票区分
+  gt_h_attribute20                         g_tab_h_attribute20;               -- 大分類コード
+-- 2009/07/01 Ver.1.7 M.Sano mod End
 --
   -- 受注明細OIFインサート用変数
   gt_order_source_id_l                    g_tab_order_source_id_l;           -- インポートソースID
@@ -1059,6 +1086,11 @@ AS
 --
     -- EDI連携フラグ更新用変数に格納
     gt_edi_header_info_id ( gn_idx )     :=  gt_edi_headers ( gn_idx ).edi_header_info_id;  -- EDIヘッダ情報ID
+-- 2009/07/01 Ver.1.7 M.Sano add Start
+    gt_h_global_attribute3 ( gn_idx )    :=  gt_edi_headers ( gn_idx ).info_class;                -- 情報区分
+    gt_h_attribute5 ( gn_idx )           :=  gt_edi_headers ( gn_idx ).invoice_class;             -- 伝票区分
+    gt_h_attribute20 ( gn_idx )          :=  gt_edi_headers ( gn_idx ).big_classification_code;   -- 大分類コード
+-- 2009/07/01 Ver.1.7 M.Sano add End
 --
   EXCEPTION
 --
@@ -1630,6 +1662,11 @@ AS
          , request_date                                                 -- 要求日
          , context                                                      -- コンテキスト
          , attribute12                                                  -- 検索用拠点コード(DFF12)
+-- 2009/07/01 Ver.1.7 M.Sano add Start
+         , global_attribute3                                            -- 情報区分
+         , attribute5                                                   -- 伝票区分(DFF5)
+         , attribute20                                                  -- 分類区分(DFF20)
+-- 2009/07/01 Ver.1.7 M.Sano add End
          , created_by                                                   -- 作成者
          , creation_date                                                -- 作成日
          , last_updated_by                                              -- 最終更新者
@@ -1652,6 +1689,11 @@ AS
          , gt_request_date ( gn_idx )                                   -- 要求日
          , gt_name_h ( gn_idx )                                         -- コンテキスト
          , gt_sale_base_code ( gn_idx )                                 -- 検索用拠点コード(DFF12)
+-- 2009/07/01 Ver.1.7 M.Sano add Start
+         , gt_h_global_attribute3 (gn_idx)                              -- 情報区分
+         , gt_h_attribute5 (gn_idx)                                     -- 伝票区分(DFF5)
+         , gt_h_attribute20 (gn_idx)                                    -- 分類区分(DFF20)
+-- 2009/07/01 Ver.1.7 M.Sano add End
          , cn_created_by                                                -- 作成者
          , cd_creation_date                                             -- 作成日
          , cn_last_updated_by                                           -- 最終更新者

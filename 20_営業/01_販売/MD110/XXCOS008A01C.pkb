@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A01C(body)
  * Description      : 工場直送出荷依頼IF作成を行う
  * MD.050           : 工場直送出荷依頼IF作成 MD050_COS_008_A01
- * Version          : 1.9
+ * Version          : 1.11
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -41,6 +41,8 @@ AS
  *  2009/05/26    1.7   T.Kitajima       [T1_0457]再送対応
  *  2009/07/07    1.8   T.Miyata         [0000478]顧客所在地の抽出条件に有効フラグを追加
  *  2009/07/13    1.9   T.Miyata         [0000293]出荷予定日／受注日算出時のリードタイム変更
+ *  2009/07/14    1.10  K.Kiriu          [0000063]情報区分の課題対応
+ *  2009/07/28    1.11  M.Sano           [0000137]待機間隔と最大待機時間をプロファイルにて取得
  *
  *****************************************************************************************/
 --
@@ -145,9 +147,18 @@ AS
   cv_msg_col_name               CONSTANT VARCHAR2(20) := 'APP-XXCOS1-11636';    -- 名称
   cv_msg_ou_org_name            CONSTANT VARCHAR2(20) := 'APP-XXCOS1-11637';    -- 生産営業単位
   cv_msg_shipping_class         CONSTANT VARCHAR2(20) := 'APP-XXCOS1-11324';    -- 依頼区分取得エラー
+/* 2009/07/28 Ver.1.11 Add Start */
+  cv_msg_interval               CONSTANT VARCHAR2(30) := 'APP-XXCOS1-11645';    -- 待機間隔
+  cv_msg_max_wait               CONSTANT VARCHAR2(30) := 'APP-XXCOS1-11646';    -- 最大待機間隔
+/* 2009/07/28 Ver.1.11 Add End   */
+
   -- プロファイル
   cv_pf_org_id                  CONSTANT VARCHAR2(30) := 'ORG_ID';              -- MO:営業単位
   cv_pf_ou_mfg                  CONSTANT VARCHAR2(30) := 'XXCOS1_ITOE_OU_MFG';  -- 生産営業単位
+/* 2009/07/28 Ver.1.11 Add Start */
+  cv_pf_interval                CONSTANT VARCHAR2(30) := 'XXCOS1_INTERVAL';      -- 待機間隔
+  cv_pf_max_wait                CONSTANT VARCHAR2(30) := 'XXCOS1_MAX_WAIT';      -- 最大待機間隔
+/* 2009/07/28 Ver.1.11 Add End   */
   -- メッセージトークン
   cv_tkn_profile                CONSTANT VARCHAR2(20) := 'PROFILE';             -- プロファイル名
   cv_tkn_param1                 CONSTANT VARCHAR2(20) := 'PARAM1';              -- パラメータ1
@@ -214,6 +225,11 @@ AS
   --顧客マスタ系の有効フラグ
   cv_cust_status_active         CONSTANT VARCHAR2(1)  := 'A';             -- 有効
 --****************************** 2009/07/07 1.8 T.Miyata ADD  END   ******************************--
+/* 2009/07/14 Ver1.10 Add Start */
+  --情報区分
+  cv_target_order_01            CONSTANT VARCHAR2(2)  := '01';            -- 受注作成対象01
+/* 2009/07/14 Ver1.10 Add End   */
+
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -223,6 +239,10 @@ AS
   gd_business_date              DATE;                                                     -- 業務日付
   gn_prod_ou_id                 NUMBER;                                                   -- 生産営業単位ID
   gv_hokan_direct_class         VARCHAR2(10);                                             -- 保管場所分類(直送倉庫)
+/* 2009/07/28 Ver.1.11 Add Start */
+  gt_max_wait                   fnd_profile_option_values.profile_option_value%TYPE;      -- 最大監視時間
+  gt_interval                   fnd_profile_option_values.profile_option_value%TYPE;      -- 監視間隔
+/* 2009/07/28 Ver.1.11 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -285,6 +305,13 @@ AS
           ,fnd_lookup_values                      flv_tran         -- LookUp参照テーブル(明細.受注タイプ)
     WHERE ooha.header_id                          = oola.header_id                            -- ヘッダーID
     AND   ooha.booked_flag                        = cv_booked_flag_end                        -- ステータス
+/* 2009/07/14 Ver1.10 Add Start */
+    AND   (
+            ooha.global_attribute3 IS NULL
+          OR
+            ooha.global_attribute3 = cv_target_order_01
+          )
+/* 2009/07/14 Ver1.10 Add End   */
     AND   oola.flow_status_code                   NOT IN (cv_flow_status_cancelled
                                                          ,cv_flow_status_closed)              -- ステータス(明細)
     AND   ooha.sold_to_org_id                     = hca.cust_account_id                       -- 顧客ID
@@ -707,6 +734,52 @@ AS
         -- 直送倉庫保管場所分類取得エラー
         RAISE notfound_hokan_direct_expt;
     END;
+/* 2009/07/28 Ver.1.11 Add Start */
+--
+    -- ===============================
+    --  待機間隔
+    -- ===============================
+    gt_interval := FND_PROFILE.VALUE( name => cv_pf_interval );
+    --
+    IF ( gt_interval IS NULL ) THEN
+      -- プロファイルが取得できない場合
+      -- プロファイル名取得(待機間隔)
+      lv_profile_name := xxccp_common_pkg.get_msg(
+         iv_application => cv_xxcos_short_name             -- アプリケーション短縮名
+        ,iv_name        => cv_msg_interval                 -- メッセージID
+      );
+      -- メッセージ作成
+      lv_errmsg := xxccp_common_pkg.get_msg(
+         iv_application  => cv_xxcos_short_name         -- アプリケーション短縮名
+        ,iv_name         => cv_msg_notfound_profile     -- メッセージ
+        ,iv_token_name1  => cv_tkn_profile              -- トークン1名
+        ,iv_token_value1 => lv_profile_name);           -- トークン1値
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    -- ===============================
+    --  最大待機時間
+    -- ===============================
+    gt_max_wait := FND_PROFILE.VALUE( name => cv_pf_max_wait );
+    --
+    IF ( gt_max_wait IS NULL ) THEN
+      -- プロファイルが取得できない場合
+      -- プロファイル名取得(最大待機時間)
+      lv_profile_name := xxccp_common_pkg.get_msg(
+         iv_application => cv_xxcos_short_name             -- アプリケーション短縮名
+        ,iv_name        => cv_msg_max_wait                 -- メッセージID
+      );
+      -- メッセージ作成
+      lv_errmsg := xxccp_common_pkg.get_msg(
+         iv_application  => cv_xxcos_short_name         -- アプリケーション短縮名
+        ,iv_name         => cv_msg_notfound_profile     -- メッセージ
+        ,iv_token_name1  => cv_tkn_profile              -- トークン1名
+        ,iv_token_value1 => lv_profile_name);           -- トークン1値
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+/* 2009/07/28 Ver.1.11 Add End */
     --
   EXCEPTION
     WHEN notfound_ou_org_id_expt THEN
@@ -3146,8 +3219,12 @@ AS
     --コンカレントの終了待機
     lb_wait_result := fnd_concurrent.wait_for_request(
                         request_id => ln_request_id,
-                        interval   => cn_interval,
-                        max_wait   => cn_max_wait,
+/* 2009/07/28 Ver.1.11 Mod Start */
+--                        interval   => cn_interval,
+--                        max_wait   => cn_max_wait,
+                        interval   => gt_interval,
+                        max_wait   => gt_max_wait,
+/* 2009/07/28 Ver.1.11 Mod End   */
                         phase      => lv_phase,
                         status     => lv_status,
                         dev_phase  => lv_dev_phase,

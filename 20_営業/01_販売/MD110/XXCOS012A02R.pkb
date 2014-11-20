@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS012A02R
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS012A02R
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A02R (body)
  * Description      : ピックリスト（出荷先・販売先・製品別）
  * MD.050           : ピックリスト（出荷先・販売先・製品別） MD050_COS_012_A02
- * Version          : 1.6
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,10 @@ AS
  *  2009/06/09    1.5   T.Kitajima       [T1_1375]入数が0の場合、ケース数に0設定、
  *                                                バラ数に数量を設定する。
  *  2009/06/15    1.6   K.Kiriu          [T1_1358]定番特売区分クイックコード値変更対応
+ *  2009/07/10    1.7   M.Sano           [0000063]情報区分によるデータ作成対象の制御
+ *  2009/07/22    1.8   M.Sano           [T1_1437]データパージ不具合対応
+ *  2009/08/11    1.9   M.Sano           [0000008]ピッキングリスト性能懸念対応
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -288,6 +292,18 @@ AS
   cn_substr_16              CONSTANT NUMBER        := 16;
   cn_substr_40              CONSTANT NUMBER        := 40;
 --****************************** 2009/06/09 1.4 T.Kitajima MOD  END  ******************************--
+-- 2009/07/10 Ver1.7 Add Start *
+  --情報区分
+  cv_info_class_01          CONSTANT  VARCHAR2(2)   := '01';          --情報区分：「01」
+  cv_info_class_02          CONSTANT  VARCHAR2(2)   := '02';          --情報区分：「02」
+-- 2009/07/10 Ver1.7 Add End   *
+/* 2009/08/11 Ver1.9 Add Start */
+  -- 言語コード
+  ct_lang                   CONSTANT fnd_lookup_values.language%TYPE := USERENV('LANG');
+  -- 時間（最小、最大)
+  cv_time_min               CONSTANT VARCHAR2(8)  := '00:00:00';
+  cv_time_max               CONSTANT VARCHAR2(8)  := '23:59:59';
+/* 2009/08/11 Ver1.9 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -473,8 +489,16 @@ AS
     --==================================
     gv_login_base_code        := iv_login_base_code;
     gv_login_chain_store_code := iv_login_chain_store_code;
-    gd_request_date_from      := TO_DATE( iv_request_date_from, cv_fmt_datetime );
-    gd_request_date_to        := TO_DATE( iv_request_date_to, cv_fmt_datetime );
+/* 2009/08/11 Ver1.9 Mod Start */
+--    gd_request_date_from      := TO_DATE( iv_request_date_from, cv_fmt_datetime );
+--    gd_request_date_to        := TO_DATE( iv_request_date_to, cv_fmt_datetime );
+    gd_request_date_from        := TO_DATE( TO_CHAR( TO_DATE(iv_request_date_from, cv_fmt_date)
+                                                    ,cv_fmt_date) || cv_time_min
+                                           ,cv_fmt_datetime );
+    gd_request_date_to          := TO_DATE( TO_CHAR( TO_DATE(iv_request_date_to,   cv_fmt_date)
+                                                    ,cv_fmt_date) || cv_time_max
+                                           ,cv_fmt_datetime );
+/* 2009/08/11 Ver1.9 Mod End   */
 /* 2009/06/15 Ver1.6 Mod Start */
 --    gv_bargain_class          := SUBSTRB( iv_bargain_class, 1, 1 );
     gv_bargain_class          := iv_bargain_class;
@@ -629,18 +653,26 @@ AS
       INTO
         gt_bargain_class_name
       FROM
-        fnd_application                 fa,
-        fnd_lookup_types                flt,
+/* 2009/08/11 Ver1.9 Del Start */
+--        fnd_application                 fa,
+--        fnd_lookup_types                flt,
+/* 2009/08/11 Ver1.9 Del End   */
         fnd_lookup_values               flv
       WHERE
-        fa.application_id               = flt.application_id
-      AND flt.lookup_type               = flv.lookup_type
-      AND fa.application_short_name     = ct_xxcos_appl_short_name
-      AND flt.lookup_type               = ct_qct_bargain_class
+/* 2009/08/11 Ver1.9 Mod Start */
+--        fa.application_id               = flt.application_id
+--      AND flt.lookup_type               = flv.lookup_type
+--      AND fa.application_short_name     = ct_xxcos_appl_short_name
+--      AND flt.lookup_type               = ct_qct_bargain_class
+          flv.lookup_type               = ct_qct_bargain_class
+/* 2009/08/11 Ver1.9 Mod End   */
       AND flv.lookup_code               = gv_bargain_class
       AND gd_process_date               >= flv.start_date_active
       AND gd_process_date               <= NVL( flv.end_date_active, gd_max_date )
-      AND flv.language                  = USERENV( 'LANG' )
+/* 2009/08/11 Ver1.9 Mod Start */
+--      AND flv.language                  = USERENV( 'LANG' )
+      AND flv.language                  = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
       AND flv.enabled_flag              = ct_enabled_flag_yes
       ;
     EXCEPTION
@@ -872,19 +904,28 @@ AS
             NVL( flv.end_date_active, gd_max_date )
                                               end_date_active                 --有効終了日
           FROM
-            fnd_application                   fa,                             --アプリケーションマスタ
-            fnd_lookup_types                  flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del Start */
+--            fnd_application                   fa,                             --アプリケーションマスタ
+--            fnd_lookup_types                  flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del End   */
             fnd_lookup_values                 flv                             --クイックコードマスタ
           WHERE
-            fa.application_id                 = flt.application_id
-          AND flt.lookup_type                 = flv.lookup_type
-          AND fa.application_short_name       = ct_xxcos_appl_short_name
-          AND flt.lookup_type                 = ct_qct_edi_item_err_type
-          AND flv.language                    = USERENV( 'LANG' )
+/* 2009/08/11 Ver1.9 Mod Start */
+--            fa.application_id                 = flt.application_id
+--          AND flt.lookup_type                 = flv.lookup_type
+--          AND fa.application_short_name       = ct_xxcos_appl_short_name
+--          AND flt.lookup_type                 = ct_qct_edi_item_err_type
+--          AND flv.language                    = USERENV( 'LANG' )
+              flv.lookup_type                 = ct_qct_edi_item_err_type
+          AND flv.language                    = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
           AND flv.enabled_flag                = ct_enabled_flag_yes
         ) xeiet,                                                              --EDI品目エラータイプマスタ
         (
           SELECT
+-- 2009/08/11 Ver1.9 Add Start *
+            /*+ leading(xca1) use_nl(xca1 hca2 xca3) */
+-- 2009/08/11 Ver1.9 Add End   *
             xca1.delivery_base_code           base_code,                      --拠点コード
             hp2.party_name                    base_name,                      --拠点名称
             oola.subinventory                 subinventory,                   --倉庫
@@ -939,16 +980,24 @@ AS
                 NVL( flv.end_date_active, gd_max_date )
                                               end_date_active                 --有効終了日
               FROM
-                fnd_application               fa,                             --アプリケーションマスタ
-                fnd_lookup_types              flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del Start */
+--                fnd_application               fa,                             --アプリケーションマスタ
+--                fnd_lookup_types              flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del End   */
                 fnd_lookup_values             flv                             --クイックコードマスタ
               WHERE
-                fa.application_id             = flt.application_id
-              AND flt.lookup_type             = flv.lookup_type
-              AND fa.application_short_name   = ct_xxcos_appl_short_name
-              AND flt.lookup_type             = ct_qct_sale_class_default
+/* 2009/08/11 Ver1.9 Mod Start */
+--                fa.application_id             = flt.application_id
+--              AND flt.lookup_type             = flv.lookup_type
+--              AND fa.application_short_name   = ct_xxcos_appl_short_name
+--              AND flt.lookup_type             = ct_qct_sale_class_default
+                  flv.lookup_type             = ct_qct_sale_class_default
+/* 2009/08/11 Ver1.9 Mod End   */
               AND flv.lookup_code             LIKE ct_qcc_sale_class_default
-              AND flv.language                = USERENV( 'LANG' )
+/* 2009/08/11 Ver1.9 Mod Start */
+--              AND flv.language                = USERENV( 'LANG' )
+              AND flv.language                = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
               AND flv.enabled_flag            = ct_enabled_flag_yes
             ) scdm,                                                           --売上区分初期値マスタ
             (
@@ -959,16 +1008,24 @@ AS
                 NVL( flv.end_date_active, gd_max_date )
                                               end_date_active                 --有効終了日
               FROM
-                fnd_application               fa,                             --アプリケーションマスタ
-                fnd_lookup_types              flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del Start */
+--                fnd_application               fa,                             --アプリケーションマスタ
+--                fnd_lookup_types              flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del End   */
                 fnd_lookup_values             flv                             --クイックコードマスタ
               WHERE
-                fa.application_id             = flt.application_id
-              AND flt.lookup_type             = flv.lookup_type
-              AND fa.application_short_name   = ct_xxcos_appl_short_name
-              AND flt.lookup_type             = ct_qct_sale_class
+/* 2009/08/11 Ver1.9 Mod Start */
+--                fa.application_id             = flt.application_id
+--              AND flt.lookup_type             = flv.lookup_type
+--              AND fa.application_short_name   = ct_xxcos_appl_short_name
+--              AND flt.lookup_type             = ct_qct_sale_class
+                  flv.lookup_type             = ct_qct_sale_class
+/* 2009/08/11 Ver1.9 Mod End   */
               AND flv.lookup_code             LIKE ct_qcc_sale_class || cv_multi
-              AND flv.language                = USERENV( 'LANG' )
+/* 2009/08/11 Ver1.9 Mod Start */
+--              AND flv.language                = USERENV( 'LANG' )
+              AND flv.language                = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
               AND flv.enabled_flag            = ct_enabled_flag_yes
             ) scm                                                             --売上区分マスタ
           WHERE
@@ -978,23 +1035,33 @@ AS
                 SELECT
                   cv_exists_flag_yes          exists_flag
                 FROM
-                  fnd_application             fa,                             --アプリケーションマスタ
-                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del Start */
+--                  fnd_application             fa,                             --アプリケーションマスタ
+--                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del End   */
                   fnd_lookup_values           flv                             --クイックコードマスタ
                 WHERE
-                  fa.application_id           = flt.application_id
-                AND flt.lookup_type           = flv.lookup_type
-                AND fa.application_short_name = ct_xxcos_appl_short_name
-                AND flt.lookup_type           = ct_qct_order_source
+/* 2009/08/11 Ver1.9 Mod Start */
+--                  fa.application_id           = flt.application_id
+--                AND flt.lookup_type           = flv.lookup_type
+--                AND fa.application_short_name = ct_xxcos_appl_short_name
+--                AND flt.lookup_type           = ct_qct_order_source
+                    flv.lookup_type           = ct_qct_order_source
+/* 2009/08/11 Ver1.9 Mod End   */
                 AND flv.lookup_code           LIKE ct_qcc_ord_src_manual
                 AND flv.meaning               = oos.name
                 AND TRUNC( ooha.ordered_date )
                                               >= flv.start_date_active
                 AND TRUNC( ooha.ordered_date )
                                               <= NVL( flv.end_date_active, gd_max_date )
-                AND flv.language              = USERENV( 'LANG' )
+/* 2009/08/11 Ver1.9 Mod Start */
+--                AND flv.language              = USERENV( 'LANG' )
+                AND flv.language              = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
                 AND flv.enabled_flag          = ct_enabled_flag_yes
-                AND ROWNUM                    = 1
+/* 2009/08/11 Ver1.9 Del Start */
+--                AND ROWNUM                    = 1
+/* 2009/08/11 Ver1.9 Del End   */
              )
           AND ooha.order_type_id              = otta.transaction_type_id
           AND otta.transaction_type_id        = ottt.transaction_type_id
@@ -1003,14 +1070,19 @@ AS
                 SELECT
                   cv_exists_flag_yes          exists_flag
                 FROM
-                  fnd_application             fa,                             --アプリケーションマスタ
-                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del Start */
+--                  fnd_application             fa,                             --アプリケーションマスタ
+--                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del End   */
                   fnd_lookup_values           flv                             --クイックコードマスタ
                 WHERE
-                  fa.application_id           = flt.application_id
-                AND flt.lookup_type           = flv.lookup_type
-                AND fa.application_short_name = ct_xxcos_appl_short_name
-                AND flt.lookup_type           = ct_qct_order_type
+/* 2009/08/11 Ver1.9 Mod Start */
+--                  fa.application_id           = flt.application_id
+--                AND flt.lookup_type           = flv.lookup_type
+--                AND fa.application_short_name = ct_xxcos_appl_short_name
+--                AND flt.lookup_type           = ct_qct_order_type
+                    flv.lookup_type           = ct_qct_order_type
+/* 2009/08/11 Ver1.9 Mod End   */
                 AND flv.lookup_code           LIKE ct_qcc_order_type
                 AND flv.meaning               = ottt.name
                 AND TRUNC( ooha.ordered_date )
@@ -1018,21 +1090,34 @@ AS
                 AND TRUNC( ooha.ordered_date )
                                               <= NVL( flv.end_date_active, gd_max_date )
                 AND flv.enabled_flag          = ct_enabled_flag_yes
-                AND flv.language              = USERENV( 'LANG' )
-                AND ROWNUM                    = 1
+/* 2009/08/11 Ver1.9 Mod Start */
+--                AND flv.language              = USERENV( 'LANG' )
+--                AND ROWNUM                    = 1
+                AND flv.language              = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
               )
-          AND ottt.language                   = USERENV( 'LANG' )
+/* 2009/08/11 Ver1.9 Mod Start */
+--          AND ottt.language                   = USERENV( 'LANG' )
+          AND ottt.language                   = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
           AND oola.line_type_id               = otta2.transaction_type_id
           AND otta2.transaction_type_id       = ottt2.transaction_type_id
           AND otta2.transaction_type_code     = ct_tran_type_code_line
-          AND ottt2.language                  = USERENV( 'LANG' )
+/* 2009/08/11 Ver1.9 Mod Start */
+--          AND ottt2.language                  = USERENV( 'LANG' )
+          AND ottt2.language                  = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
           AND scdm.line_type_name             = ottt2.name
           AND TRUNC( ooha.ordered_date )      >= scdm.start_date_active
           AND TRUNC( ooha.ordered_date )      <= scdm.end_date_active
           AND ooha.flow_status_code           = ct_hdr_status_booked
           AND oola.flow_status_code           NOT IN ( ct_ln_status_closed, ct_ln_status_cancelled )
-          AND TRUNC( oola.request_date )      >= gd_request_date_from
-          AND TRUNC( oola.request_date )      <= gd_request_date_to
+/* 2009/08/11 Ver1.9 Mod Start */
+--          AND TRUNC( oola.request_date )      >= gd_request_date_from
+--          AND TRUNC( oola.request_date )      <= gd_request_date_to
+          AND oola.request_date              >= gd_request_date_from
+          AND oola.request_date              <= gd_request_date_to
+/* 2009/08/11 Ver1.9 Mod End   */
           AND oola.subinventory               = msi.secondary_inventory_name
           AND oola.ship_from_org_id           = msi.organization_id
           AND msi.attribute1                  = ct_subinv_class
@@ -1050,14 +1135,19 @@ AS
                 SELECT
                   cv_exists_flag_yes          exists_flag
                 FROM
-                  fnd_application             fa,                             --アプリケーションマスタ
-                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del Start */
+--                  fnd_application             fa,                             --アプリケーションマスタ
+--                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del End   */
                   fnd_lookup_values           flv                             --クイックコードマスタ
                 WHERE
-                  fa.application_id           = flt.application_id
-                AND flt.lookup_type           = flv.lookup_type
-                AND fa.application_short_name = ct_xxcos_appl_short_name
-                AND flv.lookup_type           = ct_qct_cus_class_mst
+/* 2009/08/11 Ver1.9 Mod Start */
+--                  fa.application_id           = flt.application_id
+--                AND flt.lookup_type           = flv.lookup_type
+--                AND fa.application_short_name = ct_xxcos_appl_short_name
+--                AND flv.lookup_type           = ct_qct_cus_class_mst
+                    flv.lookup_type           = ct_qct_cus_class_mst
+/* 2009/08/11 Ver1.9 Mod End   */
                 AND flv.lookup_code           LIKE ct_qcc_cus_class_mst1
                 AND flv.meaning               = hca2.customer_class_code
                 AND TRUNC( ooha.ordered_date )
@@ -1065,8 +1155,11 @@ AS
                 AND TRUNC( ooha.ordered_date )
                                               <= NVL( flv.end_date_active, gd_max_date )
                 AND flv.enabled_flag          = ct_enabled_flag_yes
-                AND flv.language              = USERENV( 'LANG' )
-                AND ROWNUM                    = 1
+/* 2009/08/11 Ver1.9 Mod Start */
+--                AND flv.language              = USERENV( 'LANG' )
+--                AND ROWNUM                    = 1
+                AND flv.language              = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
               )
           AND xca1.chain_store_code           = xca3.chain_store_code
           AND hca3.cust_account_id            = xca3.customer_id
@@ -1075,14 +1168,19 @@ AS
                 SELECT
                   cv_exists_flag_yes          exists_flag
                 FROM
-                  fnd_application             fa,                             --アプリケーションマスタ
-                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del Start */
+--                  fnd_application             fa,                             --アプリケーションマスタ
+--                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del End   */
                   fnd_lookup_values           flv                             --クイックコードマスタ
                 WHERE
-                  fa.application_id           = flt.application_id
-                AND flt.lookup_type           = flv.lookup_type
-                AND fa.application_short_name = ct_xxcos_appl_short_name
-                AND flv.lookup_type           = ct_qct_cus_class_mst
+/* 2009/08/11 Ver1.9 Mod Start */
+--                  fa.application_id           = flt.application_id
+--                AND flt.lookup_type           = flv.lookup_type
+--                AND fa.application_short_name = ct_xxcos_appl_short_name
+--                AND flv.lookup_type           = ct_qct_cus_class_mst
+                    flv.lookup_type           = ct_qct_cus_class_mst
+/* 2009/08/11 Ver1.9 Mod End   */
                 AND flv.lookup_code           LIKE ct_qcc_cus_class_mst2
                 AND flv.meaning               = hca3.customer_class_code
                 AND TRUNC( ooha.ordered_date )
@@ -1090,58 +1188,85 @@ AS
                 AND TRUNC( ooha.ordered_date )
                                               <= NVL( flv.end_date_active, gd_max_date )
                 AND flv.enabled_flag          = ct_enabled_flag_yes
-                AND flv.language              = USERENV( 'LANG' )
-                AND ROWNUM                    = 1
+/* 2009/08/11 Ver1.9 Mod Start */
+--                AND flv.language              = USERENV( 'LANG' )
+--                AND ROWNUM                    = 1
+                AND flv.language              = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
               )
           AND ooha.org_id                     = gn_org_id
           AND EXISTS(
                 SELECT
                   cv_exists_flag_yes          exists_flag
                 FROM
-                  fnd_application             fa,                             --アプリケーションマスタ
-                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del Start */
+--                  fnd_application             fa,                             --アプリケーションマスタ
+--                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del End   */
                   fnd_lookup_values           flv                             --クイックコードマスタ
                 WHERE
-                  fa.application_id           = flt.application_id
-                AND flt.lookup_type           = flv.lookup_type
-                AND fa.application_short_name = ct_xxcos_appl_short_name
-                AND flt.lookup_type           = ct_qct_sale_class
+/* 2009/08/11 Ver1.9 Mod Start */
+--                  fa.application_id           = flt.application_id
+--                AND flt.lookup_type           = flv.lookup_type
+--                AND fa.application_short_name = ct_xxcos_appl_short_name
+--                AND flt.lookup_type           = ct_qct_sale_class
+                    flv.lookup_type           = ct_qct_sale_class
+/* 2009/08/11 Ver1.9 Mod End   */
                 AND flv.lookup_code           LIKE gt_qcc_sale_class
                 AND flv.meaning               = NVL( oola.attribute5, scdm.sale_class_default )
                 AND TRUNC( ooha.ordered_date )
                                               >= flv.start_date_active
                 AND TRUNC( ooha.ordered_date )
                                               <= NVL( flv.end_date_active, gd_max_date )
-                AND flv.language              = USERENV( 'LANG' )
+/* 2009/08/11 Ver1.9 Mod Start */
+--                AND flv.language              = USERENV( 'LANG' )
+                AND flv.language              = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
                 AND flv.enabled_flag          = ct_enabled_flag_yes
-                AND ROWNUM                    = 1
+/* 2009/08/11 Ver1.9 Del Start */
+--                AND ROWNUM                    = 1
+/* 2009/08/11 Ver1.9 Del End */
              )
           AND scm.sale_class                  = NVL( oola.attribute5, scdm.sale_class_default )
           AND TRUNC( ooha.ordered_date )      >= scm.start_date_active
           AND TRUNC( ooha.ordered_date )      <= scm.end_date_active
-          AND msib.segment1                   NOT IN (
-                SELECT  look_val.lookup_code    -- 非在庫品目
-                FROM    fnd_lookup_values     look_val,
-                        fnd_lookup_types_tl   types_tl,
-                        fnd_lookup_types      types,
-                        fnd_application_tl    appl,
-                        fnd_application       app
-                WHERE   appl.application_id   = types.application_id
-                AND     app.application_id    = appl.application_id
-                AND     types_tl.lookup_type  = look_val.lookup_type
-                AND     types.lookup_type     = types_tl.lookup_type
-                AND     types.security_group_id   = types_tl.security_group_id
-                AND     types.view_application_id = types_tl.view_application_id
-                AND     types_tl.language = USERENV( 'LANG' )
-                AND     look_val.language = USERENV( 'LANG' )
-                AND     appl.language     = USERENV( 'LANG' )
-                AND     app.application_short_name = ct_xxcos_appl_short_name
+/* 2009/08/11 Ver1.9 Mod Start */
+--          AND msib.segment1                   NOT IN (
+--                SELECT  look_val.lookup_code    -- 非在庫品目
+--                FROM    fnd_lookup_values     look_val,
+--                        fnd_lookup_types_tl   types_tl,
+--                        fnd_lookup_types      types,
+--                        fnd_application_tl    appl,
+--                        fnd_application       app
+--                WHERE   appl.application_id   = types.application_id
+--                AND     app.application_id    = appl.application_id
+--                AND     types_tl.lookup_type  = look_val.lookup_type
+--                AND     types.lookup_type     = types_tl.lookup_type
+--                AND     types.security_group_id   = types_tl.security_group_id
+--                AND     types.view_application_id = types_tl.view_application_id
+--                AND     types_tl.language = USERENV( 'LANG' )
+--                AND     look_val.language = USERENV( 'LANG' )
+--                AND     appl.language     = USERENV( 'LANG' )
+--                AND     app.application_short_name = ct_xxcos_appl_short_name
+          AND NOT EXISTS (
+                SELECT  cv_exists_flag_yes          exists_flag
+                FROM    fnd_lookup_values     look_val
+                WHERE   look_val.lookup_code  = msib.segment1
+                AND     look_val.language     = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
                 AND     gd_process_date      >= look_val.start_date_active
                 AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
                 AND     look_val.enabled_flag = ct_enabled_flag_yes
                 AND     look_val.lookup_type = ct_xxcos1_no_inv_item_code )
+-- 2009/07/10 Ver1.7 Add Start *
+          AND (   ooha.global_attribute3 IS NULL
+               OR ooha.global_attribute3 IN ( cv_info_class_01, cv_info_class_02 ) )
+-- 2009/07/10 Ver1.7 Add End   *
           UNION ALL
           SELECT
+-- 2009/08/11 Ver1.9 Add Start *
+            /*+ leading(xca1) use_nl(xca1 hca2 xca3) */
+-- 2009/08/11 Ver1.9 Add End   *
             xca1.delivery_base_code           base_code,                      --拠点コード
             hp2.party_name                    base_name,                      --拠点名称
             oola.subinventory                 subinventory,                   --倉庫
@@ -1198,14 +1323,19 @@ AS
                 NVL( flv.end_date_active, gd_max_date )
                                               end_date_active                 --有効終了日
               FROM
-                fnd_application               fa,                             --アプリケーションマスタ
-                fnd_lookup_types              flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del Start */
+--                fnd_application               fa,                             --アプリケーションマスタ
+--                fnd_lookup_types              flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del End   */
                 fnd_lookup_values             flv                             --クイックコードマスタ
               WHERE
-                fa.application_id             = flt.application_id
-              AND flt.lookup_type             = flv.lookup_type
-              AND fa.application_short_name   = ct_xxcos_appl_short_name
-              AND flt.lookup_type             = ct_qct_sale_class_default
+/* 2009/08/11 Ver1.9 Mod Start */
+--                fa.application_id             = flt.application_id
+--              AND flt.lookup_type             = flv.lookup_type
+--              AND fa.application_short_name   = ct_xxcos_appl_short_name
+--              AND flt.lookup_type             = ct_qct_sale_class_default
+                  flv.lookup_type             = ct_qct_sale_class_default
+/* 2009/08/11 Ver1.9 Mod End   */
               AND flv.lookup_code             LIKE ct_qcc_sale_class_default
               AND flv.language                = USERENV( 'LANG' )
               AND flv.enabled_flag            = ct_enabled_flag_yes
@@ -1218,16 +1348,24 @@ AS
                 NVL( flv.end_date_active, gd_max_date )
                                               end_date_active                 --有効終了日
               FROM
-                fnd_application               fa,                             --アプリケーションマスタ
-                fnd_lookup_types              flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del Start */
+--                fnd_application               fa,                             --アプリケーションマスタ
+--                fnd_lookup_types              flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del End   */
                 fnd_lookup_values             flv                             --クイックコードマスタ
               WHERE
-                fa.application_id             = flt.application_id
-              AND flt.lookup_type             = flv.lookup_type
-              AND fa.application_short_name   = ct_xxcos_appl_short_name
-              AND flt.lookup_type             = ct_qct_sale_class
+/* 2009/08/11 Ver1.9 Mod Start */
+--                fa.application_id             = flt.application_id
+--              AND flt.lookup_type             = flv.lookup_type
+--              AND fa.application_short_name   = ct_xxcos_appl_short_name
+--              AND flt.lookup_type             = ct_qct_sale_class
+                  flv.lookup_type             = ct_qct_sale_class
+/* 2009/08/11 Ver1.9 Mod End   */
               AND flv.lookup_code             LIKE ct_qcc_sale_class || cv_multi
-              AND flv.language                = USERENV( 'LANG' )
+/* 2009/08/11 Ver1.9 Mod Start */
+--              AND flv.language                = USERENV( 'LANG' )
+              AND flv.language                = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
               AND flv.enabled_flag            = ct_enabled_flag_yes
             ) scm                                                             --売上区分マスタ
           WHERE
@@ -1237,14 +1375,19 @@ AS
                 SELECT
                   cv_exists_flag_yes          exists_flag
                 FROM
-                  fnd_application             fa,                             --アプリケーションマスタ
-                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del Start */
+--                  fnd_application             fa,                             --アプリケーションマスタ
+--                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del End   */
                   fnd_lookup_values           flv                             --クイックコードマスタ
                 WHERE
-                  fa.application_id           = flt.application_id
-                AND flt.lookup_type           = flv.lookup_type
-                AND fa.application_short_name = ct_xxcos_appl_short_name
-                AND flt.lookup_type           = ct_qct_order_source
+/* 2009/08/11 Ver1.9 Mod Start */
+--                  fa.application_id           = flt.application_id
+--                AND flt.lookup_type           = flv.lookup_type
+--                AND fa.application_short_name = ct_xxcos_appl_short_name
+--                AND flt.lookup_type           = ct_qct_order_source
+                    flv.lookup_type           = ct_qct_order_source
+/* 2009/08/11 Ver1.9 Mod End   */
                 AND flv.lookup_code           LIKE ct_qcc_ord_src_edi
                 AND flv.meaning               = oos.name
                 AND TRUNC( ooha.ordered_date )
@@ -1252,8 +1395,11 @@ AS
                 AND TRUNC( ooha.ordered_date )
                                               <= NVL( flv.end_date_active, gd_max_date )
                 AND flv.enabled_flag          = ct_enabled_flag_yes
-                AND flv.language              = USERENV( 'LANG' )
-                AND ROWNUM                    = 1
+/* 2009/08/11 Ver1.9 Mod Start */
+--                AND flv.language              = USERENV( 'LANG' )
+--                AND ROWNUM                    = 1
+                AND flv.language              = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
               )
           AND ooha.order_type_id              = otta.transaction_type_id
           AND otta.transaction_type_id        = ottt.transaction_type_id
@@ -1262,14 +1408,19 @@ AS
                 SELECT
                   cv_exists_flag_yes          exists_flag
                 FROM
-                  fnd_application             fa,                             --アプリケーションマスタ
-                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del Start */
+--                  fnd_application             fa,                             --アプリケーションマスタ
+--                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del End   */
                   fnd_lookup_values           flv                             --クイックコードマスタ
                 WHERE
-                  fa.application_id           = flt.application_id
-                AND flt.lookup_type           = flv.lookup_type
-                AND fa.application_short_name = ct_xxcos_appl_short_name
-                AND flt.lookup_type           = ct_qct_order_type
+/* 2009/08/11 Ver1.9 Mod Start */
+--                  fa.application_id           = flt.application_id
+--                AND flt.lookup_type           = flv.lookup_type
+--                AND fa.application_short_name = ct_xxcos_appl_short_name
+--                AND flt.lookup_type           = ct_qct_order_type
+                    flv.lookup_type           = ct_qct_order_type
+/* 2009/08/11 Ver1.9 Mod End   */
                 AND flv.lookup_code           LIKE ct_qcc_order_type
                 AND flv.meaning               = ottt.name
                 AND TRUNC( ooha.ordered_date )
@@ -1277,21 +1428,34 @@ AS
                 AND TRUNC( ooha.ordered_date )
                                               <= NVL( flv.end_date_active, gd_max_date )
                 AND flv.enabled_flag          = ct_enabled_flag_yes
-                AND flv.language              = USERENV( 'LANG' )
-                AND ROWNUM                    = 1
+/* 2009/08/11 Ver1.9 Mod Start */
+--                AND flv.language              = USERENV( 'LANG' )
+--                AND ROWNUM                    = 1
+                AND flv.language              = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
               )
-          AND ottt.language                   = USERENV( 'LANG' )
+/* 2009/08/11 Ver1.9 Mod Start */
+--          AND ottt.language                   = USERENV( 'LANG' )
+          AND ottt.language                   = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
           AND oola.line_type_id               = otta2.transaction_type_id
           AND otta2.transaction_type_id       = ottt2.transaction_type_id
           AND otta2.transaction_type_code     = ct_tran_type_code_line
-          AND ottt2.language                  = USERENV( 'LANG' )
+/* 2009/08/11 Ver1.9 Mod Start */
+--          AND ottt2.language                  = USERENV( 'LANG' )
+          AND ottt2.language                  = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
           AND scdm.line_type_name             = ottt2.name
           AND TRUNC( ooha.ordered_date )      >= scdm.start_date_active
           AND TRUNC( ooha.ordered_date )      <= scdm.end_date_active
           AND ooha.flow_status_code           IN ( ct_hdr_status_booked, ct_hdr_status_entered )
           AND oola.flow_status_code           NOT IN ( ct_ln_status_closed, ct_ln_status_cancelled )
-          AND TRUNC( oola.request_date )      >= gd_request_date_from
-          AND TRUNC( oola.request_date )      <= gd_request_date_to
+/* 2009/08/11 Ver1.9 Mod Start */
+--          AND TRUNC( oola.request_date )      >= gd_request_date_from
+--          AND TRUNC( oola.request_date )      <= gd_request_date_to
+          AND oola.request_date              >= gd_request_date_from
+          AND oola.request_date              <= gd_request_date_to
+/* 2009/08/11 Ver1.9 Mod End   */
           AND oola.subinventory               = msi.secondary_inventory_name
           AND oola.ship_from_org_id           = msi.organization_id
           AND msi.attribute1                  = ct_subinv_class
@@ -1309,14 +1473,19 @@ AS
                 SELECT
                   cv_exists_flag_yes          exists_flag
                 FROM
-                  fnd_application             fa,                             --アプリケーションマスタ
-                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del Start */
+--                  fnd_application             fa,                             --アプリケーションマスタ
+--                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del End   */
                   fnd_lookup_values           flv                             --クイックコードマスタ
                 WHERE
-                  fa.application_id           = flt.application_id
-                AND flt.lookup_type           = flv.lookup_type
-                AND fa.application_short_name = ct_xxcos_appl_short_name
-                AND flv.lookup_type           = ct_qct_cus_class_mst
+/* 2009/08/11 Ver1.9 Mod Start */
+--                  fa.application_id           = flt.application_id
+--                AND flt.lookup_type           = flv.lookup_type
+--                AND fa.application_short_name = ct_xxcos_appl_short_name
+--                AND flv.lookup_type           = ct_qct_cus_class_mst
+                    flv.lookup_type           = ct_qct_cus_class_mst
+/* 2009/08/11 Ver1.9 Mod End   */
                 AND flv.lookup_code           LIKE ct_qcc_cus_class_mst1
                 AND flv.meaning               = hca2.customer_class_code
                 AND TRUNC( ooha.ordered_date )
@@ -1324,8 +1493,11 @@ AS
                 AND TRUNC( ooha.ordered_date )
                                               <= NVL( flv.end_date_active, gd_max_date )
                 AND flv.enabled_flag          = ct_enabled_flag_yes
-                AND flv.language              = USERENV( 'LANG' )
-                AND ROWNUM                    = 1
+/* 2009/08/11 Ver1.9 Mod Start */
+--                AND flv.language              = USERENV( 'LANG' )
+--                AND ROWNUM                    = 1
+                AND flv.language              = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
               )
           AND xca1.chain_store_code           = xca3.chain_store_code
           AND hca3.cust_account_id            = xca3.customer_id
@@ -1334,14 +1506,19 @@ AS
                 SELECT
                   cv_exists_flag_yes          exists_flag
                 FROM
-                  fnd_application             fa,                             --アプリケーションマスタ
-                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del Start */
+--                  fnd_application             fa,                             --アプリケーションマスタ
+--                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del End   */
                   fnd_lookup_values           flv                             --クイックコードマスタ
                 WHERE
-                  fa.application_id           = flt.application_id
-                AND flt.lookup_type           = flv.lookup_type
-                AND fa.application_short_name = ct_xxcos_appl_short_name
-                AND flv.lookup_type           = ct_qct_cus_class_mst
+/* 2009/08/11 Ver1.9 Mod Start */
+--                  fa.application_id           = flt.application_id
+--                AND flt.lookup_type           = flv.lookup_type
+--                AND fa.application_short_name = ct_xxcos_appl_short_name
+--                AND flv.lookup_type           = ct_qct_cus_class_mst
+                    flv.lookup_type           = ct_qct_cus_class_mst
+/* 2009/08/11 Ver1.9 Mod End   */
                 AND flv.lookup_code           LIKE ct_qcc_cus_class_mst2
                 AND flv.meaning               = hca3.customer_class_code
                 AND TRUNC( ooha.ordered_date )
@@ -1349,8 +1526,11 @@ AS
                 AND TRUNC( ooha.ordered_date )
                                               <= NVL( flv.end_date_active, gd_max_date )
                 AND flv.enabled_flag          = ct_enabled_flag_yes
-                AND flv.language              = USERENV( 'LANG' )
-                AND ROWNUM                    = 1
+/* 2009/08/11 Ver1.9 Mod Start */
+--                AND flv.language              = USERENV( 'LANG' )
+--                AND ROWNUM                    = 1
+                AND flv.language              = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
               )
           AND oola.orig_sys_document_ref      = xeh.order_connection_number
           AND xeh.data_type_code              IN ( ct_data_type_code_edi, ct_data_type_code_shop )
@@ -1360,44 +1540,59 @@ AS
           AND xel.order_connection_line_number  = oola.orig_sys_line_ref
 --****************************** 2009/06/05 1.4 T.Kitajima MOD  MOD  ******************************--
           AND ooha.org_id                     = gn_org_id
-          AND msib.segment1   NOT IN ( 
-                SELECT  look_val.lookup_code    -- 非在庫品目
-                FROM    fnd_lookup_values     look_val,
-                        fnd_lookup_types_tl   types_tl,
-                        fnd_lookup_types      types,
-                        fnd_application_tl    appl,
-                        fnd_application       app
-                WHERE   appl.application_id   = types.application_id
-                AND     app.application_id    = appl.application_id
-                AND     types_tl.lookup_type  = look_val.lookup_type
-                AND     types.lookup_type     = types_tl.lookup_type
-                AND     types.security_group_id   = types_tl.security_group_id
-                AND     types.view_application_id = types_tl.view_application_id
-                AND     types_tl.language = USERENV( 'LANG' )
-                AND     look_val.language = USERENV( 'LANG' )
-                AND     appl.language     = USERENV( 'LANG' )
-                AND     app.application_short_name = ct_xxcos_appl_short_name
+/* 2009/08/11 Ver1.9 Mod Start */
+--          AND msib.segment1   NOT IN ( 
+--                SELECT  look_val.lookup_code    -- 非在庫品目
+--                FROM    fnd_lookup_values     look_val,
+--                        fnd_lookup_types_tl   types_tl,
+--                        fnd_lookup_types      types,
+--                        fnd_application_tl    appl,
+--                        fnd_application       app
+--                WHERE   appl.application_id   = types.application_id
+--                AND     app.application_id    = appl.application_id
+--                AND     types_tl.lookup_type  = look_val.lookup_type
+--                AND     types.lookup_type     = types_tl.lookup_type
+--                AND     types.security_group_id   = types_tl.security_group_id
+--                AND     types.view_application_id = types_tl.view_application_id
+--                AND     types_tl.language = USERENV( 'LANG' )
+--                AND     look_val.language = USERENV( 'LANG' )
+--                AND     appl.language     = USERENV( 'LANG' )
+--                AND     app.application_short_name = ct_xxcos_appl_short_name
+          AND (   NOT EXISTS (
+                SELECT  cv_exists_flag_yes    exists_flag
+                FROM    fnd_lookup_values     look_val
+                WHERE   look_val.lookup_code  = msib.segment1
+                AND     look_val.language     = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
                 AND     gd_process_date      >= look_val.start_date_active
                 AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
                 AND     look_val.enabled_flag = ct_enabled_flag_yes
                 AND     look_val.lookup_type = ct_xxcos1_no_inv_item_code
-                AND     look_val.lookup_code NOT IN (
-                          SELECT  look_val.lookup_code   --EDI品目エラータイプ
-                          FROM    fnd_lookup_values     look_val,
-                                  fnd_lookup_types_tl   types_tl,
-                                  fnd_lookup_types      types,
-                                  fnd_application_tl    appl,
-                                  fnd_application       app
-                          WHERE   appl.application_id   = types.application_id
-                          AND     app.application_id    = appl.application_id
-                          AND     types_tl.lookup_type  = look_val.lookup_type
-                          AND     types.lookup_type     = types_tl.lookup_type
-                          AND     types.security_group_id   = types_tl.security_group_id
-                          AND     types.view_application_id = types_tl.view_application_id
-                          AND     types_tl.language = USERENV( 'LANG' )
-                          AND     look_val.language = USERENV( 'LANG' )
-                          AND     appl.language     = USERENV( 'LANG' )
-                          AND     app.application_short_name = ct_xxcos_appl_short_name
+/* 2009/08/11 Ver1.9 Mod Start */
+--                AND     look_val.lookup_code NOT IN (
+--                          SELECT  look_val.lookup_code   --EDI品目エラータイプ
+--                          FROM    fnd_lookup_values     look_val,
+--                                  fnd_lookup_types_tl   types_tl,
+--                                  fnd_lookup_types      types,
+--                                  fnd_application_tl    appl,
+--                                  fnd_application       app
+--                          WHERE   appl.application_id   = types.application_id
+--                          AND     app.application_id    = appl.application_id
+--                          AND     types_tl.lookup_type  = look_val.lookup_type
+--                          AND     types.lookup_type     = types_tl.lookup_type
+--                          AND     types.security_group_id   = types_tl.security_group_id
+--                          AND     types.view_application_id = types_tl.view_application_id
+--                          AND     types_tl.language = USERENV( 'LANG' )
+--                          AND     look_val.language = USERENV( 'LANG' )
+--                          AND     appl.language     = USERENV( 'LANG' )
+--                          AND     app.application_short_name = ct_xxcos_appl_short_name
+                )
+               OR EXISTS (
+                          SELECT  cv_exists_flag_yes    exists_flag
+                          FROM    fnd_lookup_values     look_val
+                          WHERE   look_val.lookup_code  = msib.segment1
+                          AND     look_val.language     = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
                           AND     gd_process_date      >= look_val.start_date_active
                           AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
                           AND     look_val.enabled_flag = ct_enabled_flag_yes
@@ -1406,27 +1601,41 @@ AS
                 SELECT
                   cv_exists_flag_yes          exists_flag
                 FROM
-                  fnd_application             fa,                             --アプリケーションマスタ
-                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del Start */
+--                  fnd_application             fa,                             --アプリケーションマスタ
+--                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+/* 2009/08/11 Ver1.9 Del End   */
                   fnd_lookup_values           flv                             --クイックコードマスタ
                 WHERE
-                  fa.application_id           = flt.application_id
-                AND flt.lookup_type           = flv.lookup_type
-                AND fa.application_short_name = ct_xxcos_appl_short_name
-                AND flt.lookup_type           = ct_qct_sale_class
+/* 2009/08/11 Ver1.9 Mod Start */
+--                  fa.application_id           = flt.application_id
+--                AND flt.lookup_type           = flv.lookup_type
+--                AND fa.application_short_name = ct_xxcos_appl_short_name
+--                AND flt.lookup_type           = ct_qct_sale_class
+                    flv.lookup_type           = ct_qct_sale_class
+/* 2009/08/11 Ver1.9 Mod End   */
                 AND flv.lookup_code           LIKE gt_qcc_sale_class
                 AND flv.meaning               = NVL( oola.attribute5, scdm.sale_class_default )
                 AND TRUNC( ooha.ordered_date )
                                               >= flv.start_date_active
                 AND TRUNC( ooha.ordered_date )
                                               <= NVL( flv.end_date_active, gd_max_date )
-                AND flv.language              = USERENV( 'LANG' )
+/* 2009/08/11 Ver1.9 Mod Start */
+--                AND flv.language              = USERENV( 'LANG' )
+                AND flv.language              = ct_lang
+/* 2009/08/11 Ver1.9 Mod End   */
                 AND flv.enabled_flag          = ct_enabled_flag_yes
-                AND ROWNUM                    = 1
+/* 2009/08/11 Ver1.9 Del Start */
+--                AND ROWNUM                    = 1
+/* 2009/08/11 Ver1.9 Del End   */
               )
           AND scm.sale_class                  = NVL( oola.attribute5, scdm.sale_class_default )
           AND TRUNC( ooha.ordered_date )      >= scm.start_date_active
           AND TRUNC( ooha.ordered_date )      <= scm.end_date_active
+-- 2009/07/10 Ver1.7 Add Start *
+          AND (   ooha.global_attribute3 IS NULL
+               OR ooha.global_attribute3 IN ( cv_info_class_01, cv_info_class_02 ) )
+-- 2009/07/10 Ver1.7 Add End   *
       ) rpdpi
       WHERE
         mucc.inventory_item_id (+)            = rpdpi.inventory_item_id
@@ -2279,6 +2488,11 @@ AS
     lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode VARCHAR2(1);     -- リターン・コード
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+/* 2009/07/22 Ver1.8 Add Start */
+    lv_errbuf_svf  VARCHAR2(5000);  -- エラー・メッセージ(SVF実行結果保持用)
+    lv_retcode_svf VARCHAR2(1);     -- リターン・コード(SVF実行結果保持用)
+    lv_errmsg_svf  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ(SVF実行結果保持用)
+/* 2009/07/22 Ver1.8 Add End   */
 --
 --###########################  固定部 END   ####################################
   BEGIN
@@ -2367,11 +2581,17 @@ AS
       ov_errmsg                 => lv_errmsg                    -- ユーザー・エラー・メッセージ
     );
 --
-    IF ( lv_retcode = cv_status_normal ) THEN
-      NULL;
-    ELSE
-      RAISE global_process_expt;
-    END IF;
+/* 2009/07/22 Ver1.8 Mod Start */
+--    IF ( lv_retcode = cv_status_normal ) THEN
+--      NULL;
+--    ELSE
+--      RAISE global_process_expt;
+--    END IF;
+    --エラーでもワークテーブルを削除する為、エラー情報を保持
+    lv_errbuf_svf  := lv_errbuf;
+    lv_retcode_svf := lv_retcode;
+    lv_errmsg_svf  := lv_errmsg;
+/* 2009/07/22 Ver1.8 Mod End   */
 --
     -- ===============================
     -- A-3  帳票ワークテーブル削除
@@ -2389,6 +2609,16 @@ AS
 --
     COMMIT;
 --
+/* 2009/07/22 Ver1.8 Mod Start */
+    --SVF実行結果確認
+    IF ( lv_retcode_svf = cv_status_error ) THEN
+      lv_errbuf  := lv_errbuf_svf;
+      lv_retcode := lv_retcode_svf;
+      lv_errmsg  := lv_errmsg_svf;
+      RAISE global_process_expt;
+    END IF;
+--
+/* 2009/07/22 Ver1.8 Mod End   */
     --明細０件時の警告終了制御
     IF ( g_rpt_data_tab.COUNT = 0 ) THEN
       ov_retcode  := cv_status_warn;

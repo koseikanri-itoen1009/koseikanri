@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS003A01C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS003A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A01C(body)
  * Description      : HHT向け納品予定データ作成
  * MD.050           : HHT向け納品予定データ作成 MD050_COS_003_A01
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,9 @@ AS
  *  2009/02/24   1.1    T.Nakamura       [障害COS_130] メッセージ出力、ログ出力への出力内容の追加・修正
  *  2009/04/15   1.2    N.Maeda          [ST障害No.T1_0067対応] ファイル出力時のCHAR型VARCHAR型以外への｢"｣付加の削除
  *  2009/05/01   1.3    T.Kitajima       [T1_0678]マッピング不正対応
+ *  2009/07/08   1.4    K.Kiriu          [0000063]情報区分の課題対応
+ *                                       [0000064]受注ヘッダDFF項目漏れ対応
+ *  2009/08/06   1.4    M.Sano           [0000426]『HHT向け納品予定データ作成』PTの考慮
  *
  *****************************************************************************************/
 --
@@ -144,6 +147,10 @@ AS
   cv_default_language     CONSTANT VARCHAR2(10) := USERENV('LANG');             -- 標準言語タイプ
   cv_number_format8       CONSTANT VARCHAR2(20) := 'FM99999999.00';             -- 数値フォーマット８桁
   cv_number_format7       CONSTANT VARCHAR2(20) := 'FM9999999.00';              -- 数値フォーマット７桁
+/* 2009/07/08 Ver1.4 Add Start */
+  --情報区分
+  cv_target_order_01      CONSTANT  VARCHAR2(2) := '01';                        -- 受注作成対象01
+/* 2009/07/08 Ver1.4 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -191,15 +198,26 @@ AS
   --カーソル
   CURSOR main_cur
   IS
-    SELECT ooha.order_number               order_number               --受注ヘッダテーブル．受注番号
+/* 2009/08/06 Ver1.4 Add Start */
+--    SELECT ooha.order_number               order_number               --受注ヘッダテーブル．受注番号
+    SELECT /*+ leading(ooha)
+               use_nl(xieh)
+               index(ooha xxcos_oe_order_headers_all_n12)
+               index(xiel xxcos_edi_lines_n01) */
+           ooha.order_number               order_number               --受注ヘッダテーブル．受注番号
+/* 2009/08/06 Ver1.4 Add End   */
          , ooha.request_date               request_date               --受注ヘッダテーブル．要求日
          , xieh.edi_chain_code             edi_chain_code             --EDIヘッダ情報テーブル．EDIチェーン店コード
          , xieh.conv_customer_code         conv_customer_code         --EDIヘッダ情報テーブル．変換後顧客コード
          , xieh.shop_name_alt              shop_name_alt              --EDIヘッダ情報テーブル．店名（カナ）
          , xcac.delivery_base_code         delivery_base_code         --顧客追加情報．納品拠点コード
          , xieh.company_name_alt           company_name_alt           --EDIヘッダ情報テーブル．社名（カナ）
-         , xieh.big_classification_code    big_classification_code    --EDIヘッダ情報テーブル．大分類コード
-         , xieh.invoice_class              invoice_class              --EDIヘッダ情報テーブル．伝票区分
+/* 2009/07/08 Ver1.4 Mod Start */
+--         , xieh.big_classification_code    big_classification_code    --EDIヘッダ情報テーブル．大分類コード
+--         , xieh.invoice_class              invoice_class              --EDIヘッダ情報テーブル．伝票区分
+         , ooha.attribute20                big_classification_code    --受注ヘッダテーブル．分類区分
+         , ooha.attribute5                 invoice_class              --受注ヘッダテーブル．伝票区分
+/* 2009/07/08 Ver1.4 Mod End   */
          , xieh.invoice_number             invoice_number             --EDIヘッダ情報テーブル．伝票番号の下9桁
          , xieh.edi_header_info_id         edi_header_info_id         --EDIヘッダ情報テーブル．受注ヘッダ情報ID
          , xiel.selling_price              selling_price              --EDI明細情報テーブル．売価単価
@@ -240,6 +258,13 @@ AS
     AND   xiel.order_connection_line_number =  oola.orig_sys_line_ref
     AND   xiel.hht_delivery_schedule_flag   =  cv_non_tran
     AND   xcac.customer_id(+)               =  oola.sold_to_org_id
+/* 2009/07/08 Ver1.4 Add Start */
+    AND   (
+            ooha.global_attribute3          IS NULL
+          OR
+            ooha.global_attribute3          = cv_target_order_01
+          )
+/* 2009/07/08 Ver1.4 Add End   */
     ORDER BY
           xieh.edi_header_info_id
         , xiel.line_no

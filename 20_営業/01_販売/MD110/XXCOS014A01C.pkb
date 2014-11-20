@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009/06/19    1.12  N.Maeda          [T1_1158] チェーン店セキュリティービューの結合方法変更
  *  2009/06/29    1.12  T.Kitajima       [T1_0975] 値引品目対応
  *  2009/07/02    1.12  N.Maeda          [T1_0975] 値引品目数量修正
+ *  2009/07/13    1.13  K.Kiriu          [0000064] 受注ヘッダDFF項目漏れ対応
  *
  *****************************************************************************************/
 --
@@ -2325,12 +2326,18 @@ AS
             ,TO_CHAR( ivoh.request_date,cv_date_fmt )                           shop_delivery_date            --店舗納品日
             ,NULL                                                               data_creation_date_edi_data   --データ作成日（ＥＤＩデータ中）
             ,NULL                                                               data_creation_time_edi_data   --データ作成時刻（ＥＤＩデータ中）
-            ,xlvv.attribute8                                                    invoice_class                 --伝票区分
+/* 2009/07/13 Ver1.13 Mod Start */
+--            ,xlvv.attribute8                                                    invoice_class                 --伝票区分
+            ,ivoh.attribute5                                                    invoice_class                 --伝票区分
+/* 2009/07/13 Ver1.13 Mod End   */
             ,NULL                                                               small_classification_code     --小分類コード
             ,NULL                                                               small_classification_name     --小分類名
             ,NULL                                                               middle_classification_code    --中分類コード
             ,NULL                                                               middle_classification_name    --中分類名
-            ,NULL                                                               big_classification_code       --大分類コード
+/* 2009/07/13 Ver1.13 Mod Start */
+--            ,NULL                                                               big_classification_code       --大分類コード
+            ,ivoh.attribute20                                                   big_classification_code       --大分類コード
+/* 2009/07/13 Ver1.13 Mod End   */
             ,NULL                                                               big_classification_name       --大分類名
             ,NULL                                                               other_party_department_code   --相手先部門コード
             ,ivoh.attribute19                                                   other_party_order_number      --相手先発注番号
@@ -2890,6 +2897,10 @@ AS
                    ,ooha.flow_status_code                                       flow_status_code              --ステータス
                    ,ooha.global_attribute1                                      global_attribute1             --納品書発行フラグ
                    ,ooha.attribute19                                            attribute19                   --相手先発注番号
+/* 2009/07/13 Ver1.13 Add Start */
+                   ,ooha.attribute5                                             attribute5                    --伝票区分
+                   ,ooha.attribute20                                            attribute20                   --分類区分
+/* 2009/07/13 Ver1.13 Add End   */
                    ,hca.cust_account_id                                         cust_account_id               --顧客ID
                    ,hca.account_number                                          account_number                --顧客コード
                    ,xca.chain_store_code                                        chain_store_code              --チェーン店コード(EDI)
@@ -2941,6 +2952,10 @@ AS
                    ,ooha.flow_status_code                                       flow_status_code              --ステータス
                    ,ooha.global_attribute1                                      global_attribute1             --納品書発行フラグ
                    ,ooha.attribute19                                            attribute19                   --相手先発注番号
+/* 2009/07/13 Ver1.13 Add Start */
+                   ,ooha.attribute5                                             attribute5                    --伝票区分
+                   ,ooha.attribute20                                            attribute20                   --分類区分
+/* 2009/07/13 Ver1.13 Add End   */
                    ,hca.cust_account_id                                         cust_account_id               --顧客ID
                    ,hca.account_number                                          account_number                --顧客コード
                    ,xca.chain_store_code                                        chain_store_code              --チェーン店コード(EDI)

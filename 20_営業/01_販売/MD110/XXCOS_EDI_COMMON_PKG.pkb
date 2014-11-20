@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_edi_common_pkg(body)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.4
+ * Version                : 1.6
  *
  * Program List
  *  ----------------------------- ---- ----- -----------------------------------------
@@ -23,6 +23,8 @@ AS
  *  2009/03/24   1.2   T.Miyata         ST障害：T1_0126
  *  2009/04/24   1.3   K.Kiriu          ST障害：T1_0112
  *  2009/06/19   1.4   N.Maeda          [T1_1358]対応
+ *  2009/07/13   1.5   K.Kiriu          [0000660]対応
+ *  2009/07/14   1.6   K.Kiriu          [0000064]対応
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -52,6 +54,14 @@ AS
     -- ===============================
     cv_prg_name   CONSTANT VARCHAR2(100) := 'xxcos_edi_common_pkg.edi_manual_order_acquisition'; -- プログラム名
 --
+/* 2009/07/13 Ver1.5 Add Start */
+    --メッセージ
+    cv_msg_sales_class      CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00034';  --売上区分混在エラー
+    cv_msg_not_outbound     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13593';  --OUTBOUD可否エラー
+    --トークン
+    cv_tkn_order_no         CONSTANT VARCHAR2(20) := 'ORDER_NO';          --伝票番号
+    cv_tkn_line_no          CONSTANT VARCHAR2(20) := 'LINE_NUMBER';       --明細番号
+/* 2009/07/13 Ver1.5 Add End   */
     cv_cstm_class_base      CONSTANT VARCHAR2(2)  := '1';       -- 顧客区分:拠点
     cv_cstm_class_customer  CONSTANT VARCHAR2(2)  := '10';      -- 顧客区分:顧客
     cv_cstm_class_chain     CONSTANT VARCHAR2(2)  := '18';      -- 顧客区分:チェーン店
@@ -75,8 +85,10 @@ AS
 --************************** 2009/06/19 N.Maeda Mod  end  *********************************--
     cv_unit_case            CONSTANT VARCHAR2(2)  := 'CS';      -- 単位:ケース
     cv_unit_bowl            CONSTANT VARCHAR2(2)  := 'BL';      -- 単位:ボール
-    cv_sale_class_error     CONSTANT VARCHAR2(1)  := '1';       -- 売上区分混在エラー
-    cv_outbound_error       CONSTANT VARCHAR2(1)  := '2';       -- OUTBOUND可否エラー
+/* 2009/07/13 Ver1.5 Del Start */
+--    cv_sale_class_error     CONSTANT VARCHAR2(1)  := '1';       -- 売上区分混在エラー
+--    cv_outbound_error       CONSTANT VARCHAR2(1)  := '2';       -- OUTBOUND可否エラー
+/* 2009/07/13 Ver1.5 Del End   */
     cv_medium_class         CONSTANT VARCHAR2(2)  := '01';      -- 媒体区分
     cv_data_type_code       CONSTANT VARCHAR2(2)  := '11';      -- データ種コード
     cv_creation_class       CONSTANT VARCHAR2(2)  := '01';      -- 作成元区分
@@ -97,6 +109,10 @@ AS
         ,order_number           oe_order_headers_all.order_number%TYPE           -- 受注ヘッダ.受注番号
         ,orig_sys_document_ref  oe_order_headers_all.orig_sys_document_ref%TYPE  -- 受注ヘッダ.外部システム受注番号
         ,price_list_id          oe_order_headers_all.price_list_id%TYPE          -- 受注ヘッダ.価格表ID
+/* 2009/07/14 Ver1.6 Add Start */
+        ,invoice_class          oe_order_headers_all.attribute5%TYPE             -- 受注ヘッダ.DFF5(伝票区分)
+        ,classification_code    oe_order_headers_all.attribute20%TYPE            -- 受注ヘッダ.DFF20(分類区分)
+/* 2009/07/14 Ver1.6 Add End   */
         ,account_number         hz_cust_accounts.account_number%TYPE             -- 顧客マスタ(顧客).顧客コード
         ,customer_name          hz_parties.party_name%TYPE                       -- パーティ(顧客).名称
         ,customer_name_alt      hz_parties.organization_name_phonetic%TYPE       -- パーティ(顧客).名称(カナ)
@@ -240,6 +256,10 @@ AS
       ,ooha.order_number               -- 受注ヘッダ.受注番号
       ,ooha.orig_sys_document_ref      -- 受注ヘッダ.外部システム受注番号
       ,ooha.price_list_id              -- 受注ヘッダ.価格表ID
+/* 2009/07/14 Ver1.6 Add Start */
+      ,ooha.attribute5                 -- 受注ヘッダ.DFF5(伝票区分)
+      ,ooha.attribute20                -- 受注ヘッダ.DFF20(分類区分)
+/* 2009/07/14 Ver1.6 Add End   */
       ,hca1.account_number             -- 顧客マスタ(顧客).顧客コード
       ,hp1.party_name                  -- パーティ(顧客).名称
       ,hp1.organization_name_phonetic  -- パーティ(顧客).名称(カナ)
@@ -443,10 +463,28 @@ AS
           FOR ln_line_cnt IN 1 .. lt_line_tab.COUNT LOOP
             -- 定番売上区分が(1)と(n)で異なる場合、エラー
             IF ( lt_line_tab(1).regular_sale_class <> lt_line_tab(ln_line_cnt).regular_sale_class ) THEN
+/* 2009/07/13 Ver1.5 Add Start */
+              lv_errmsg  := xxccp_common_pkg.get_msg(
+                               iv_application     => cv_xxcos_appl_short_nm
+                              ,iv_name            => cv_msg_sales_class
+                              ,iv_token_name1     => cv_tkn_order_no
+                              ,iv_token_value1    => lt_head_tab(ln_head_cnt).cust_po_number
+                              );
+/* 2009/07/13 Ver1.5 Add End   */
               RAISE sale_class_expt;
             END IF;
             -- OUTBOUD可否が'N'の場合、エラー
             IF ( lt_line_tab(ln_line_cnt).outbound_flag = cv_flag_no ) THEN
+/* 2009/07/13 Ver1.5 Add Start */
+              lv_errmsg  := xxccp_common_pkg.get_msg(
+                               iv_application     => cv_xxcos_appl_short_nm
+                              ,iv_name            => cv_msg_not_outbound
+                              ,iv_token_name1     => cv_tkn_order_no
+                              ,iv_token_value1    => lt_head_tab(ln_head_cnt).cust_po_number
+                              ,iv_token_name2     => cv_tkn_line_no
+                              ,iv_token_value2    => TO_CHAR( lt_line_tab(ln_line_cnt).line_number )
+                              );
+/* 2009/07/13 Ver1.5 Add End   */
               RAISE outbound_expt;
             END IF;
           END LOOP line_check_loop;
@@ -1106,12 +1144,18 @@ AS
            ,lt_head_tab(ln_head_cnt).request_date                       -- 店舗納品日
            ,NULL                                                        -- データ作成日(ＥＤＩデータ中)
            ,NULL                                                        -- データ作成時刻(ＥＤＩデータ中)
-           ,NULL                                                        -- 伝票区分
+/* 2009/07/14 Ver1.6 Mod Start */
+--           ,NULL                                                        -- 伝票区分
+           ,lt_head_tab(ln_head_cnt).invoice_class                      -- 伝票区分
+/* 2009/07/14 Ver1.6 Mod End   */
            ,NULL                                                        -- 小分類コード
            ,NULL                                                        -- 小分類名
            ,NULL                                                        -- 中分類コード
            ,NULL                                                        -- 中分類名
-           ,NULL                                                        -- 大分類コード
+/* 2009/07/14 Ver1.6 Mod Start */
+--           ,NULL                                                        -- 大分類コード
+           ,lt_head_tab(ln_head_cnt).classification_code                -- 大分類コード
+/* 2009/07/14 Ver1.6 Mod End   */
            ,NULL                                                        -- 大分類名
            ,NULL                                                        -- 相手先部門コード
            ,NULL                                                        -- 相手先発注番号
@@ -1361,14 +1405,22 @@ AS
     -- *** 売上区分混在例外ハンドラ ***
     WHEN sale_class_expt THEN
       ov_retcode := xxccp_common_pkg.set_status_error;
-      ov_errbuf  := cv_prg_name;
-      ov_errmsg  := cv_sale_class_error;
+/* 2009/07/13 Ver1.5 Mod Start */
+--      ov_errbuf  := cv_prg_name;
+--      ov_errmsg  := cv_sale_class_error;
+      ov_errbuf  := SUBSTRB( cv_prg_name || gv_msg_part || lv_errmsg, 1, 5000);
+      ov_errmsg  := lv_errmsg;
+/* 2009/07/13 Ver1.5 Mod End   */
 --
     -- *** OUTBOUND可否例外ハンドラ ***
     WHEN outbound_expt THEN
       ov_retcode := xxccp_common_pkg.set_status_error;
-      ov_errbuf  := cv_prg_name;
-      ov_errmsg  := cv_outbound_error;
+/* 2009/07/13 Ver1.5 Mod Start */
+--      ov_errbuf  := cv_prg_name;
+--      ov_errmsg  := cv_outbound_error;
+      ov_errbuf  := SUBSTRB( cv_prg_name || gv_msg_part || lv_errmsg, 1, 5000);
+      ov_errmsg  := lv_errmsg;
+/* 2009/07/13 Ver1.5 Mod End   */
 --
     -- *** 挿入例外ハンドラ ***
     WHEN table_insert_expt THEN
@@ -1385,11 +1437,16 @@ AS
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
       ov_retcode := xxccp_common_pkg.set_status_error;
-      ov_errbuf  := SUBSTRB( cv_prg_name || SQLERRM, 1, 5000 );
-      ov_errmsg  := xxccp_common_pkg.get_msg(
-                       iv_application => 'XXCOS'
-                      ,iv_name        => 'APP-XXCOS-xxxxx'
-                    );
+/* 2009/07/13 Ver1.5 Mod Start */
+--      ov_errbuf  := SUBSTRB( cv_prg_name || SQLERRM, 1, 5000 );
+--      ov_errmsg  := xxccp_common_pkg.get_msg(
+--                       iv_application => 'XXCOS'
+--                      ,iv_name        => 'APP-XXCOS-xxxxx'
+--                    );
+      lv_errmsg  := SUBSTRB( SQLERRM, 1, 5000);
+      ov_errbuf  := SUBSTRB( cv_prg_name || gv_msg_part || lv_errmsg, 1, 5000);
+      ov_errmsg  := lv_errmsg;
+/* 2009/07/13 Ver1.5 Mod Start */
 --
 --#####################################  固定部 END   ##########################################
 --

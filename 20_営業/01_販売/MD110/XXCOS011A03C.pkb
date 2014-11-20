@@ -50,8 +50,9 @@ AS
  *  2009/06/19    1.10  T.Kitajima       [T1_1436]受注データ、営業単位絞込み追加
  *  2009/06/24    1.10  T.Kitajima       [T1_1359]数量換算対応
  *  2009/07/08    1.10  M.Sano           [T1_1357]レビュー指摘事項対応
+ *  2009/07/10    1.10  N.Maeda          [000063]情報区分によるデータ作成対象の制御追加
+ *                                       [000064]受注DFF項目追加に伴う、連携項目追加
  *  2009/07/13    1.10  N.Maeda          [T1_1359]レビュー指摘事項対応
- *  2009/07/23    1.10  K.Kiriu          [T1_1359]レビュー指摘事項対応
  *
  *****************************************************************************************/
 --
@@ -725,13 +726,26 @@ AS
           ,xeh.shop_delivery_date               shop_delivery_date             -- EDIヘッダ情報.店舗納品日
           ,xeh.data_creation_date_edi_data      data_creation_date_edi_data    -- EDIヘッダ情報.データ作成日(ＥＤＩデータ中)
           ,xeh.data_creation_time_edi_data      data_creation_time_edi_data    -- EDIヘッダ情報.データ作成時刻(ＥＤＩデータ中)
-          ,xeh.invoice_class                    invoice_class                  -- EDIヘッダ情報.伝票区分
+-- ***************************** 2009/07/10 1.10 N.Maeda    MOD START ******************************--
+          ,NVL(ooha.attribute5,xeh.invoice_class) invoice_class                  -- EDIヘッダ情報.伝票区分
+--          ,xeh.invoice_class                    invoice_class                  -- EDIヘッダ情報.伝票区分
+-- ****************************** 2009/07/10 1.10 N.Maeda   MOD  END  *****************************--
           ,xeh.small_classification_code        small_classification_code      -- EDIヘッダ情報.小分類コード
           ,xeh.small_classification_name        small_classification_name      -- EDIヘッダ情報.小分類名
           ,xeh.middle_classification_code       middle_classification_code     -- EDIヘッダ情報.中分類コード
           ,xeh.middle_classification_name       middle_classification_name     -- EDIヘッダ情報.中分類名
-          ,xeh.big_classification_code          big_classification_code        -- EDIヘッダ情報.大分類コード
-          ,xeh.big_classification_name          big_classification_name        -- EDIヘッダ情報.大分類名
+-- ***************************** 2009/07/10 1.10 N.Maeda    MOD START ******************************--
+          ,NVL(ooha.attribute20,xeh.big_classification_code) big_classification_code  -- EDIヘッダ情報.大分類コード
+          ,CASE
+             WHEN  ( xeh.big_classification_code = ooha.attribute20 ) THEN
+               xeh.big_classification_name
+             ELSE
+               NULL
+           END
+                                                big_classification_name        -- EDIヘッダ情報.大分類名
+--          ,xeh.big_classification_code          big_classification_code        -- EDIヘッダ情報.大分類コード
+--          ,xeh.big_classification_name          big_classification_name        -- EDIヘッダ情報.大分類名
+-- ****************************** 2009/07/10 1.10 N.Maeda    MOD  END  *****************************--
           ,xeh.other_party_department_code      other_party_department_code    -- EDIヘッダ情報.相手先部門コード
           ,xeh.other_party_order_number         other_party_order_number       -- EDIヘッダ情報.相手先発注番号
           ,xeh.check_digit_class                check_digit_class              -- EDIヘッダ情報.チェックデジット有無区分
@@ -1163,6 +1177,10 @@ AS
     OR   ( flvv1.start_date_active <= cd_process_date ))
     AND (( flvv1.end_date_active   IS NULL )
     OR   ( flvv1.end_date_active   >= cd_process_date ))                      -- 業務日付がFROM-TO内
+-- ***************************** 2009/07/10 1.10 N.Maeda    ADD START ******************************--
+    AND (( ooha.global_attribute3 IS NULL )
+    OR   ( ooha.global_attribute3 = '02' ) )
+-- ***************************** 2009/07/10 1.10 N.Maeda    ADD  END  ******************************--
     ORDER BY
 --****************************** 2009/06/12 1.10 T.Kitajima MOD START ******************************--
 --           xeh.invoice_number                 -- EDIヘッダ情報.伝票番号
@@ -3772,15 +3790,12 @@ AS
       gt_data_tab(ln_data_cnt)(cv_sum_ship_qty)             := gt_edi_order_tab(ln_loop_cnt).sum_shipping_qty;             -- 出荷数量(合計､ﾊﾞﾗ)
 --
       xxcos_common2_pkg.convert_quantity(
-/* 2009/07/23 Ver1.10 Mod Start */
---               iv_uom_code             => gt_data_tab(ln_data_cnt)(cv_uom_code)               --IN :単位コード
-               iv_uom_code             => gt_edi_order_tab(ln_loop_cnt).order_quantity_uom --IN :単位コード
-/* 2009/07/23 Ver1.10 Mod End   */
-              ,in_case_qty             => gt_data_tab(ln_data_cnt)(cv_num_of_cases)        --IN :ケース入数
+               iv_uom_code             => gt_data_tab(ln_data_cnt)(cv_uom_code)               --IN :単位コード
+              ,in_case_qty             => gt_data_tab(ln_data_cnt)(cv_num_of_cases)          --IN :ケース入数
               ,in_ball_qty             => NVL( gt_edi_order_tab(ln_loop_cnt).num_of_ball
                                               ,gt_edi_order_tab(ln_loop_cnt).bowl_inc_num
                                              )                                             --IN :ボール入数
-              ,in_sum_indv_order_qty   => gt_data_tab(ln_data_cnt)(cv_sum_order_qty)       --IN :発注数量(合計・バラ)
+              ,in_sum_indv_order_qty   => gt_data_tab(ln_data_cnt)(cv_sum_order_qty)        --IN :発注数量(合計・バラ)
               ,in_sum_shipping_qty     => gt_data_tab(ln_data_cnt)(cv_sum_ship_qty)        --IN :出荷数量(合計・バラ)
               ,on_indv_shipping_qty    => gt_data_tab(ln_data_cnt)(cv_indv_ship_qty)       --OUT:出荷数量(バラ)
               ,on_case_shipping_qty    => gt_data_tab(ln_data_cnt)(cv_case_ship_qty)       --OUT:出荷数量(ケース)

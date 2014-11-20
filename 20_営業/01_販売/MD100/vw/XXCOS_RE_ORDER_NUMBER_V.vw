@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_re_order_number_v
  * Description     : 再送受注番号取得
- * Version         : 1.2
+ * Version         : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,8 @@
  *  2009/05/22    1.0   T.Kitajima       新規作成
  *  2009/06/04    1.1   T.Miyata         T1_1314対応
  *  2009/07/07    1.2   T.Miyata         0000478対応
+ *  2009/07/14    1.3   K.Kiriu          0000063対応
+ ************************************************************************/
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_re_order_number_v (
   order_number,                         -- 受注番号
@@ -39,6 +41,13 @@ AS
         ,hr_operating_units                     hou                -- 営業単位マスタ
   WHERE ooha.header_id                          = oola.header_id                         -- ヘッダーID
   AND   ooha.booked_flag                        = 'Y'                                    -- ステータス(記帳)
+/* 2009/07/14 Ver1.3 Add Start */
+  AND   (
+          ooha.global_attribute3 IS NULL
+        OR
+          ooha.global_attribute3 = '01'
+        )                                                                                --情報区分
+/* 2009/07/14 Ver1.3 Add End   */
   AND   oola.flow_status_code                   NOT IN ('CANCELLED','CLOSED')            -- ステータス(明細)
   AND   ooha.sold_to_org_id                     = hca.cust_account_id                    -- 顧客ID
   AND   ooha.order_type_id                      = ottah.transaction_type_id              -- 取引タイプID(ヘッダー)
@@ -81,8 +90,7 @@ AS
   AND   sites.party_site_id                     = hps.party_site_id                         -- パーティサイトID
 --****************************** 2009/07/07 1.2 T.Miyata ADD  START ******************************--
   AND   sites.status                            = 'A'                                       -- 顧客所在地.ステータス
---****************************** 2009/07/07 1.2 T.Miyata ADD  END   ******************************--
-  AND   hps.location_id                         = hl.location_id                            -- 事業所ID
+--****************************** 2009/07/07 1.2 T.Miyata ADD  END   ******************************--  AND   hps.location_id                         = hl.location_id                            -- 事業所ID
   AND   hca.account_number                      IS NOT NULL                                 -- アカウント番号
   AND   hl.province                             IS NOT NULL                                 -- 配送先コード
   AND   hou.name                                = FND_PROFILE.VALUE('XXCOS1_ITOE_OU_MFG')   -- 生産営業単位
