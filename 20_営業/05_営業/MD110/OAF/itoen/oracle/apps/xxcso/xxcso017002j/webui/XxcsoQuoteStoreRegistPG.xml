@@ -26,7 +26,9 @@ Regist quote information page for sales.
 
 HISTORY
 2009/01/14  R.Oikawa        new
-2009/05/15  N.Yanagitaira   T1_0230-->
+2009/05/15  N.Yanagitaira   T1_0230
+2011/04/18  T.Yoshimoto     E_本稼動_01373
+-->
       <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteStoreRegistAM" controllerClass="itoen.oracle.apps.xxcso.xxcso017002j.webui.XxcsoQuoteStoreRegistCO" use="/itoen/oracle/apps/xxcso/xxcso017002j/attributesets/XxcsoQuoteStoreRegistAttrSets/PageLayoutRN">
          <ui:corporateBranding>
             <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
@@ -494,6 +496,13 @@ HISTORY
                            <ui:tableSelection>
                               <oa:multipleSelection id="QuoteSelection" viewAttr="SelectFlag"/>
                            </ui:tableSelection>
+                           <ui:tableActions>
+                              <oa:flowLayout id="QuoteBodyFlRN">
+                                 <ui:contents>
+                                    <oa:submitButton id="UsuallNetPriceButton" text="" comment="通常NET価格導出" use="/itoen/oracle/apps/xxcso/xxcso017002j/attributesets/XxcsoQuoteStoreRegistAttrSets/UsuallNetPriceButton"/>
+                                 </ui:contents>
+                              </oa:flowLayout>
+                           </ui:tableActions>
                         </oa:advancedTable>
                      </ui:contents>
                   </oa:header>
