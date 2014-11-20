@@ -1,0 +1,1 @@
+CREATE INDEX xxinv.xxinv_mrih_n05 ON xxinv.xxinv_mov_req_instr_headers(item_class,actual_freight_carrier_code) TABLESPACE xxidx ;
