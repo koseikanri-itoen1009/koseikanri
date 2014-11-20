@@ -45,6 +45,9 @@ AS
  *  2009/07/03          N.Maeda          [T1_1158] 店舗コードNULL対応(ログイン拠点出力)
  *  2009/07/06          N.Maeda          [0000063] 対象データ抽出条件追加
  *                                       [0000064] 伝票区分、大分類の取得先変更
+ *  2009/07/07          N.Maeda          [0000065] 帳票コード別取得条件追加
+ *  2009/07/22          N.Maeda          [0000644] 端数処理対応
+ *  2009/07/23          N.Maeda          [T1_1359] レビュー指摘対応
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -222,6 +225,10 @@ AS
 -- ************************** 2009/07/06 N.Maeda 1.11 MOD START ******************************* --
   cv_global_attribute3_target     CONSTANT oe_order_headers_all.global_attribute3%TYPE := '02';
 -- ************************** 2009/07/06 N.Maeda 1.11 MOD  END  ******************************* --
+-- ************************** 2009/07/07 N.Maeda 1.11 ADD START ******************************* --
+  cv_xxcos1_report_data_type_21   CONSTANT VARCHAR2(30)   := 'XXCOS1_REPORT_DATA_TYPE_21';
+  cv_reason_code_00               CONSTANT VARCHAR2(2)    := '00';
+-- ************************** 2009/07/07 N.Maeda 1.11 ADD  END  ******************************* --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -320,7 +327,7 @@ AS
   g_other_rec                g_other_rtype;                                      --その他情報
   g_record_layout_tab        xxcos_common2_pkg.g_record_layout_ttype;            --レイアウト定義情報
 -- ********************* 2009/07/03 1.11 N.Maeda ADD START *********************** --
-  gt_base_name_kana          hz_parties.organization_name_phonetic%TYPE;              -- 拠点名称(カナ)
+  gt_base_name_kana          hz_parties.organization_name_phonetic%TYPE;         -- 拠点名称(カナ)
 -- ********************* 2009/07/03 1.11 N.Maeda ADD  END  *********************** --
 --
   -- ===============================
@@ -972,6 +979,7 @@ AS
     AND    hca.account_number  = g_input_rec.base_code;
 --
 -- ********************* 2009/07/03 1.11 N.Maeda ADD  END  *********************** --
+--
     --==============================================================
     --グローバル変数のセット
     --==============================================================
@@ -1495,6 +1503,9 @@ AS
 -- 2009/02/19 T.Nakamura Ver.1.6 add start
     lv_errbuf_all                      VARCHAR2(32767);                           --ログ出力メッセージ格納変数
 -- 2009/02/19 T.Nakamura Ver.1.6 add end
+-- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
+    lt_order_quantity_uom              oe_order_lines_all.order_quantity_uom%TYPE;-- 単位(受注明細)
+-- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
 --
     -- *** ローカル・カーソル ***
     CURSOR cur_data_record(i_input_rec    g_input_rtype
@@ -2576,8 +2587,12 @@ AS
                     ,TO_CHAR(xel.order_unit_price)                                      order_unit_price              --原単価（発注）
                     ,TO_CHAR(oola.unit_selling_price)                                   shipping_unit_price           --原単価（出荷）
                     ,TO_CHAR(xel.order_cost_amt)                                        order_cost_amt                --原価金額（発注）
-                    ,TO_CHAR(oola.unit_selling_price
-                           * oola.ordered_quantity)                                     shipping_cost_amt             --原価金額（出荷）
+-- ******************** 2009/07/22 1.11 N.Maeda MOD START ************************* --
+                    ,TO_CHAR( TRUNC( oola.unit_selling_price
+                                       * oola.ordered_quantity) )                       shipping_cost_amt             --原価金額（出荷）
+--                    ,TO_CHAR(oola.unit_selling_price
+--                           * oola.ordered_quantity)                                     shipping_cost_amt             --原価金額（出荷）
+-- ******************** 2009/07/22 1.11 N.Maeda MOD  END  ************************* --
                     ,TO_CHAR(xel.stockout_cost_amt)                                     stockout_cost_amt             --原価金額（欠品）
                     ,TO_CHAR(xel.selling_price)                                         selling_price                 --売単価
                     ,TO_CHAR(xel.order_price_amt)                                       order_price_amt               --売価金額（発注）
@@ -2656,6 +2671,9 @@ AS
                     ,TO_CHAR(xeh.total_line_qty)                                        total_line_qty                --トータル行数
                     ,TO_CHAR(xeh.total_invoice_qty)                                     total_invoice_qty             --トータル伝票枚数
                     ,xeh.chain_peculiar_area_footer                                     chain_peculiar_area_footer    --チェーン店固有エリア（フッター）
+-- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
+                    ,oola.order_quantity_uom                                            order_quantity_uom            -- 単位(受注明細)
+-- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
               FROM   (SELECT xeh.medium_class                                            medium_class                  --媒体区分
                             ,xeh.file_no                                                 file_no                       --ファイルＮｏ
                             ,xeh.info_class                                              info_class                    --情報区分
@@ -2889,6 +2907,9 @@ AS
 -- ********************************** 2009/07/03 N.Maeda 1.11 ADD START ********************************************************** --
                             ,xeh.conv_customer_code                                      conv_customer_code
 -- ********************************** 2009/07/03 N.Maeda 1.11 ADD START ********************************************************** --
+-- ********************* 2009/07/07 1.11 N.Maeda MOD START *********************** --
+                            ,xeh.edi_delivery_schedule_flag                              edi_delivery_schedule_flag
+-- ********************* 2009/07/07 1.11 N.Maeda ADD  END  *********************** --
                       FROM   xxcos_edi_headers                                           xeh                           --EDIヘッダ情報テーブル
                             ,xxcmm_cust_accounts                                         xca                           --顧客マスタアドオン
                             ,hz_cust_accounts                                            hca                           --顧客マスタ
@@ -3196,6 +3217,9 @@ AS
 -- ********************************** 2009/07/03 N.Maeda 1.11 ADD START ********************************************************** --
                             ,xeh.conv_customer_code                                      conv_customer_code
 -- ********************************** 2009/07/03 N.Maeda 1.11 ADD START ********************************************************** --
+-- ********************* 2009/07/07 1.11 N.Maeda MOD START *********************** --
+                            ,xeh.edi_delivery_schedule_flag                              edi_delivery_schedule_flag
+-- ********************* 2009/07/07 1.11 N.Maeda ADD  END  *********************** --
                       FROM   xxcos_edi_headers                                           xeh                           --EDIヘッダ情報テーブル
                       WHERE  xeh.data_type_code         = cv_data_type_edi_order                                              --データ種コード
                       AND (
@@ -3278,6 +3302,9 @@ AS
                       AND    hps.party_site_id       = hcas.party_site_id
                       AND    hcas.org_id             = g_prf_rec.org_id
                      )                                                          cdm
+-- ********************* 2009/07/07 1.11 N.Maeda ADD START *********************** --
+                     ,xxcos_lookup_values_v                                     xlvv_t                         -- プルーフ帳票情報マスタ
+-- ********************* 2009/07/07 1.11 N.Maeda ADD  END  *********************** --
               --EDI明細情報テーブル抽出条件
               WHERE  xel.edi_header_info_id     = xeh.edi_header_info_id
               --受注ソーステーブル抽出条件
@@ -3345,10 +3372,29 @@ AS
               AND   ooha.org_id                 = i_prf_rec.org_id                                                    --MO:営業単位
               AND   oola.org_id                 = ooha.org_id                                                         --MO:営業単位
               AND   xeh.delivery_base_code     = cdm.account_number(+)
--- ************************** 2009/07/06 N.Maeda 1.11 MOD START ******************************* --
+-- ************************** 2009/07/06 N.Maeda 1.11 ADD START ******************************* --
               AND   ( ooha.global_attribute3 IS NULL
                OR     ooha.global_attribute3 = cv_global_attribute3_target )
--- ************************** 2009/07/06 N.Maeda 1.11 MOD  END  ******************************* --
+-- ************************** 2009/07/06 N.Maeda 1.11 ADD  END  ******************************* --
+-- ********************* 2009/07/07 1.11 N.Maeda ADD START *********************** --
+              AND   xlvv_t.lookup_type   = cv_xxcos1_report_data_type_21
+              AND   xlvv_t.meaning   = g_input_rec.report_code
+                -- 出力ONorOFF判定(出力対象が通常受注時のみ出力)
+              AND   i_msg_rec.header_type = xlvv_t.attribute1
+                -- 値引帳票出力条件
+              AND   ( ( ( xlvv_t.attribute2 = 'Y' AND xlvv_t.attribute3 = 'N' )
+                      AND xel.order_unit_price > oola.unit_selling_price )
+                -- 欠品帳票出力条件
+                OR  ( ( xlvv_t.attribute2 = 'N' AND xlvv_t.attribute3 = 'Y' )
+                      AND ( ore.reason_code <> cv_reason_code_00 AND xeh.edi_delivery_schedule_flag = 'N' ) )
+                -- 値引欠品帳票出力条件
+                OR  ( ( xlvv_t.attribute2 = 'Y' AND xlvv_t.attribute3 = 'Y' )
+                      AND ( xel.order_unit_price > oola.unit_selling_price
+                        AND ( ore.reason_code <> cv_reason_code_00 AND xeh.edi_delivery_schedule_flag = 'N' ) ) )
+                -- フラグ無
+                OR  ( xlvv_t.attribute2 = 'N' AND xlvv_t.attribute3 = 'N' )
+                OR  ( xlvv_t.attribute2 IS NULL AND xlvv_t.attribute3 IS NULL ) )
+-- ********************* 2009/07/07 1.11 N.Maeda ADD  END  *********************** --
 -- 2009/06/22 1.11 M.Sano MOD End
               UNION ALL
               SELECT TO_CHAR(ooha.header_id)                                            header_id                     --ヘッダID(更新キー)
@@ -3747,15 +3793,26 @@ AS
                          TO_CHAR( oola.unit_selling_price )
                      END                                                                shipping_unit_price           --原単価（出荷）
                     ,NULL                                                               order_cost_amt                --原価金額（発注）
+-- ******************** 2009/07/22 1.11 N.Maeda MOD START ************************* --
                     ,CASE
                        WHEN ottt_l.description        = i_msg_rec.line_type30 THEN --値引の場合
-                         TO_CHAR(  oola.unit_selling_price 
-                                *  oola.ordered_quantity 
-                                * -1 )
+                         TO_CHAR(  TRUNC( oola.unit_selling_price 
+                                   *  oola.ordered_quantity 
+                                   * -1 ) )
                        ELSE
-                         TO_CHAR(  oola.unit_selling_price 
-                                *  oola.ordered_quantity  )
+                         TO_CHAR(  TRUNC( oola.unit_selling_price 
+                                   *  oola.ordered_quantity  ) )
                      END                                                                shipping_cost_amt             --原価金額（出荷）
+--                    ,CASE
+--                       WHEN ottt_l.description        = i_msg_rec.line_type30 THEN --値引の場合
+--                         TO_CHAR(  oola.unit_selling_price 
+--                                *  oola.ordered_quantity 
+--                                * -1 )
+--                       ELSE
+--                         TO_CHAR(  oola.unit_selling_price 
+--                                *  oola.ordered_quantity  )
+--                     END                                                                shipping_cost_amt             --原価金額（出荷）
+-- ******************** 2009/07/22 1.11 N.Maeda MOD  END  ************************* --
                     ,NULL                                                               stockout_cost_amt             --原価金額（欠品）
                     ,NULL                                                               selling_price                 --売単価
                     ,NULL                                                               order_price_amt               --売価金額（発注）
@@ -3838,6 +3895,9 @@ AS
                     ,NULL                                                               total_line_qty                --トータル行数
                     ,NULL                                                               total_invoice_qty             --トータル伝票枚数
                     ,NULL                                                               chain_peculiar_area_footer    --チェーン店固有エリア（フッター）
+-- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
+                    ,oola.order_quantity_uom                                            order_quantity_uom            -- 単位(受注明細)
+-- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
                     --受注ヘッダ情報インラインビュー
               FROM (SELECT ooha.header_id                                               header_id
 -- 2009/02/16 T.Nakamura Ver.1.3 add start
@@ -3949,14 +4009,40 @@ AS
 -- 2009/04/27 K.Kiriu Ver.1.10 mod start
                   ,mtl_units_of_measure_tl                                              muom                          -- 単位マスタ
 -- 2009/04/27 K.Kiriu Ver.1.10 mod end
+-- ********************* 2009/07/07 1.11 N.Maeda ADD START *********************** --
+                  ,(SELECT ore.reason_id                                              reason_id
+                          ,ore.reason_code                                            reason_code
+                          ,ore.entity_id                                              entity_id
+                    FROM oe_reasons                                         ore
+                        ,(SELECT entity_id,MAX(creation_date) creation_date
+                          FROM   oe_reasons
+                          WHERE  reason_type = cv_reason_type
+                          AND    entity_code = cv_entity_code_line
+                          GROUP BY entity_id
+                         )                                                  ore_max
+                    WHERE ore.entity_id     = ore_max.entity_id
+                    AND   ore.creation_date = ore_max.creation_date
+                   )                                                                  ore                           --受注理由ビュー
+                  ,xxcos_lookup_values_v                                    xlvv_t                         -- プルーフ帳票情報マスタ
+-- ********************* 2009/07/07 1.11 N.Maeda ADD  END  *********************** --
               --受注タイプ(ヘッダ)抽出条件
               WHERE ottt_h.language                 = USERENV('LANG')
               AND   ottt_h.source_lang              = USERENV('LANG')
-              AND   ottt_h.description              = i_msg_rec.header_type
+-- ********************* 2009/07/07 1.11 N.Maeda MOD START *********************** --
+              AND   ottt_h.description              = xlvv_t.attribute1
+--              AND   ottt_h.description              = i_msg_rec.header_type
+-- ********************* 2009/07/07 1.11 N.Maeda MOD  END  *********************** --
               --受注タイプ(明細)抽出条件
               AND   ottt_l.language                 = USERENV('LANG')
               AND   ottt_l.source_lang              = USERENV('LANG')
-              AND   ottt_l.description              IN (i_msg_rec.line_type10, i_msg_rec.line_type20, i_msg_rec.line_type30)
+-- ********************* 2009/07/07 1.11 N.Maeda MOD START *********************** --
+              AND ( ( xlvv_t.attribute1 = i_msg_rec.header_type
+                    AND( ottt_l.description = i_msg_rec.line_type10
+                    OR  ottt_l.description = i_msg_rec.line_type20
+                    OR  ottt_l.description =  i_msg_rec.line_type30 ) )
+                OR ( xlvv_t.attribute1 <> i_msg_rec.header_type ) )
+--              AND   ottt_l.description              IN (i_msg_rec.line_type10, i_msg_rec.line_type20, i_msg_rec.line_type30)
+-- ********************* 2009/07/07 1.11 N.Maeda MOD  END  *********************** --
               --受注ヘッダ情報インラインビュー抽出条件
               AND   ooha.order_type_id              = ottt_h.transaction_type_id
               AND   TRUNC(ooha.request_date)                                                                          --店舗納品日
@@ -4045,6 +4131,24 @@ AS
 --******************************************* 2009/04/02 1.9 T.Kitajima ADD START *************************************
               AND ooha.delivery_base_code           = cdm.account_number(+)
 --******************************************* 2009/04/02 1.9 T.Kitajima ADD  END  *************************************
+-- ********************* 2009/07/07 1.11 N.Maeda ADD START *********************** --
+              -- 受注理由ビュー抽出条件
+              AND    ore.entity_id(+) = oola.line_id
+              AND   xlvv_t.lookup_type   = cv_xxcos1_report_data_type_21
+              AND   xlvv_t.meaning   = g_input_rec.report_code
+                -- 値引帳票出力条件(出力を行わない)
+              AND   ( ( ( xlvv_t.attribute2 = 'Y' AND xlvv_t.attribute3 = 'N' )
+                      AND 'Y' = 'N' )
+                -- 欠品帳票出力条件
+                OR  ( ( xlvv_t.attribute2 = 'N' AND xlvv_t.attribute3 = 'Y' )
+                      AND ( ore.reason_code <> cv_reason_code_00 ) )
+                -- 値引欠品帳票出力条件(出力を行わない)
+                OR  ( ( xlvv_t.attribute2 = 'Y' AND xlvv_t.attribute3 = 'Y' )
+                      AND (  'Y' = 'N' ) )
+                -- フラグ無
+                OR  ( xlvv_t.attribute2 = 'N' AND xlvv_t.attribute3 = 'N' )
+                OR  ( xlvv_t.attribute2 IS NULL AND xlvv_t.attribute3 IS NULL ) )
+-- ********************* 2009/07/07 1.11 N.Maeda ADD  END  *********************** --
 -- 2009/02/16 T.Nakamura Ver.1.3 add start
 -- 2009/04/27 K.Kiriu Ver.1.10 mod start
               --単位マスタ抽出条件
@@ -4579,6 +4683,9 @@ AS
        ,l_data_tab('TOTAL_LINE_QTY')                                                                          --トータル行数
        ,l_data_tab('TOTAL_INVOICE_QTY')                                                                       --トータル伝票枚数
        ,l_data_tab('CHAIN_PECULIAR_AREA_FOOTER')                                                              --チェーン店固有エリア（フッター）
+-- ********************************** 2009/07/23 N.Maeda 1.11 ADD START **************************************** --
+       ,lt_order_quantity_uom                                                                                 --単位(受注明細)
+-- ********************************** 2009/07/23 N.Maeda 1.11 ADD  END  **************************************** --
       ;            
 out_line(buff => '1');
       EXIT WHEN cur_data_record%NOTFOUND;
@@ -4760,7 +4867,10 @@ out_line(buff => 'i:' || i);
 --*************************** 2009/07/01 Var1.11 N.Maeda ADD START **********************************--
 --
         xxcos_common2_pkg.convert_quantity(
-                     iv_uom_code           =>  l_data_tab('UOM_CODE')                              --単位コード
+--*************************** 2009/07/23 Var1.11 N.Maeda MOD START **********************************--
+--                     iv_uom_code           =>  l_data_tab('UOM_CODE')                              --単位コード
+                     iv_uom_code           =>  lt_order_quantity_uom                               --単位コード
+--*************************** 2009/07/23 Var1.11 N.Maeda MOD  END  **********************************--
                     ,in_case_qty           =>  NVL( TO_NUMBER(l_data_tab('NUM_OF_CASES') ),0 )     --ケース入数
                     ,in_ball_qty           =>  NVL( TO_NUMBER(l_data_tab('NUM_OF_BALL') ),0 )      --ボール入数
                     ,in_sum_indv_order_qty =>  NVL( TO_NUMBER(l_data_tab('SUM_ORDER_QTY') ),0 )    --発注数量(合計・バラ)
