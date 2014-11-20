@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2008/08/06    1.6  Oracle M.Hokkanji ST不具合493対応
  *  2008/08/08    1.7  Oracle M.Hokkanji ST不具合510対応、内部変更173対応
  *  2008/09/05    1.8  Oracle A.Shiina   PT 6-1_27 指摘41-2 対応
+ *  2008/10/01    1.9  Oracle H.Itou     PT 6-1_27 指摘18 対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3831,29 +3832,31 @@ debug_log(FND_FILE.LOG,'重量容積区分件数：'||gt_weight_capa_tab.count);
 debug_log(FND_FILE.LOG,'最大積載重量件数：'||gt_max_weight_tab.count);
 debug_log(FND_FILE.LOG,'最大積載容積件数：'||gt_max_capa_tab.count);
 --
-for i in 1..gt_int_no_tab.count loop
-debug_log(FND_FILE.LOG,'---------------------------');
-debug_log(FND_FILE.LOG,'集約No  ：'||gt_int_no_tab(i));
-debug_log(FND_FILE.LOG,'処理種別：'||gt_tran_type_tab(i));
-debug_log(FND_FILE.LOG,'集約元No：'||gt_int_source_tab(i));
-debug_log(FND_FILE.LOG,'配送元：'||gt_deli_from_tab(i));
-debug_log(FND_FILE.LOG,'配送元ID：'||gt_deli_from_id_tab(i));
-debug_log(FND_FILE.LOG,'配送先：'||gt_deli_to_tab(i));
-debug_log(FND_FILE.LOG,'配送先ID：'||gt_deli_to_id_tab(i));
-debug_log(FND_FILE.LOG,'出庫予定日：'||gt_ship_date_tab(i));
-debug_log(FND_FILE.LOG,'着荷予定日：'||gt_arvl_date_tab(i));
-debug_log(FND_FILE.LOG,'出庫形態：'||gt_tran_type_nm_tab(i));
-debug_log(FND_FILE.LOG,'運送業者：'||gt_carrier_code_tab(i));
-debug_log(FND_FILE.LOG,'運送業者ID：'||gt_carrier_id_tab(i));
-debug_log(FND_FILE.LOG,'管轄拠点：'||gt_head_sales_tab(i));
-debug_log(FND_FILE.LOG,'引当順：'||gt_reserve_order_tab(i));
-debug_log(FND_FILE.LOG,'集約合計重量：'||gt_sum_weight_tab(i));
-debug_log(FND_FILE.LOG,'集約合計容積：'||gt_sum_capa_tab(i));
-debug_log(FND_FILE.LOG,'最大配送区分：'||gt_max_ship_cd_tab(i));
-debug_log(FND_FILE.LOG,'重量容積区分：'||gt_weight_capa_tab(i));
-debug_log(FND_FILE.LOG,'最大積載重量：'||gt_max_weight_tab(i));
-debug_log(FND_FILE.LOG,'最大積載容積：'||gt_max_capa_tab(i));
-end loop;
+-- 2008/10/01 H.Itou Del Start PT 6-1_27 指摘18
+--for i in 1..gt_int_no_tab.count loop
+--debug_log(FND_FILE.LOG,'---------------------------');
+--debug_log(FND_FILE.LOG,'集約No  ：'||gt_int_no_tab(i));
+--debug_log(FND_FILE.LOG,'処理種別：'||gt_tran_type_tab(i));
+--debug_log(FND_FILE.LOG,'集約元No：'||gt_int_source_tab(i));
+--debug_log(FND_FILE.LOG,'配送元：'||gt_deli_from_tab(i));
+--debug_log(FND_FILE.LOG,'配送元ID：'||gt_deli_from_id_tab(i));
+--debug_log(FND_FILE.LOG,'配送先：'||gt_deli_to_tab(i));
+--debug_log(FND_FILE.LOG,'配送先ID：'||gt_deli_to_id_tab(i));
+--debug_log(FND_FILE.LOG,'出庫予定日：'||gt_ship_date_tab(i));
+--debug_log(FND_FILE.LOG,'着荷予定日：'||gt_arvl_date_tab(i));
+--debug_log(FND_FILE.LOG,'出庫形態：'||gt_tran_type_nm_tab(i));
+--debug_log(FND_FILE.LOG,'運送業者：'||gt_carrier_code_tab(i));
+--debug_log(FND_FILE.LOG,'運送業者ID：'||gt_carrier_id_tab(i));
+--debug_log(FND_FILE.LOG,'管轄拠点：'||gt_head_sales_tab(i));
+--debug_log(FND_FILE.LOG,'引当順：'||gt_reserve_order_tab(i));
+--debug_log(FND_FILE.LOG,'集約合計重量：'||gt_sum_weight_tab(i));
+--debug_log(FND_FILE.LOG,'集約合計容積：'||gt_sum_capa_tab(i));
+--debug_log(FND_FILE.LOG,'最大配送区分：'||gt_max_ship_cd_tab(i));
+--debug_log(FND_FILE.LOG,'重量容積区分：'||gt_weight_capa_tab(i));
+--debug_log(FND_FILE.LOG,'最大積載重量：'||gt_max_weight_tab(i));
+--debug_log(FND_FILE.LOG,'最大積載容積：'||gt_max_capa_tab(i));
+--end loop;
+-- 2008/10/01 H.Itou Del End
 debug_log(FND_FILE.LOG,'★自動配車集約中間テーブル登録：集約中間テーブル出力処理(B-8)');
 debug_log(FND_FILE.LOG,'登録数：'||gt_int_no_tab.COUNT);
 debug_log(FND_FILE.LOG,'PLSQL表：gt_int_no_tab');
@@ -3909,10 +3912,12 @@ debug_log(FND_FILE.LOG,'PLSQL表：gt_int_no_tab');
 --
 debug_log(FND_FILE.LOG,'集約No  ：'||gt_int_no_lines_tab.count);
 debug_log(FND_FILE.LOG,'依頼No：'||gt_request_no_tab.count);
-for i in 1..gt_int_no_lines_tab.count loop
-debug_log(FND_FILE.LOG,'集約No  ：'||gt_int_no_lines_tab(i));
-debug_log(FND_FILE.LOG,'依頼No：'||gt_request_no_tab(i));
-end loop;
+-- 2008/10/01 H.Itou Del Start PT 6-1_27 指摘18
+--for i in 1..gt_int_no_lines_tab.count loop
+--debug_log(FND_FILE.LOG,'集約No  ：'||gt_int_no_lines_tab(i));
+--debug_log(FND_FILE.LOG,'依頼No：'||gt_request_no_tab(i));
+--end loop;
+-- 2008/10/01 H.Itou Del End
 debug_log(FND_FILE.LOG,'自動配車集約中間明細テーブル登録数：'||gt_request_no_tab.COUNT);
 debug_log(FND_FILE.LOG,'PLSQL表：gt_int_no_lines_tab');
     FORALL ln_cnt_2 IN 1..gt_int_no_lines_tab.COUNT
@@ -5197,14 +5202,16 @@ debug_log(FND_FILE.LOG,'ケース数合計:'||lt_sum_case_qty_tab(ln_loop_cnt_2));
 --
     END IF;
 --
-for ln_cnt_3 in 1.. lt_ins_int_no_tab.COUNT loop
-debug_log(FND_FILE.LOG,'集約No:'||lt_ins_int_no_tab(ln_cnt_3));           -- 集約No
-debug_log(FND_FILE.LOG,'配送No:'||lt_delivery_no_tab(ln_cnt_3));          -- 配送No
-debug_log(FND_FILE.LOG,'基準明細No:'||lt_int_source_tab(ln_cnt_3));           -- 基準明細No
-debug_log(FND_FILE.LOG,'修正配送区分:'||lt_fix_ship_method_cd(ln_cnt_3));      -- 修正配送区分
-debug_log(FND_FILE.LOG,'混載合計重量:'||lt_sum_weight_tab(ln_cnt_3));   -- 混載合計重量
-debug_log(FND_FILE.LOG,'混載合計容積:'||lt_sum_capa_tab(ln_cnt_3)); -- 混載合計容積
-end loop;
+-- 2008/10/01 H.Itou Del Start PT 6-1_27 指摘18
+--for ln_cnt_3 in 1.. lt_ins_int_no_tab.COUNT loop
+--debug_log(FND_FILE.LOG,'集約No:'||lt_ins_int_no_tab(ln_cnt_3));           -- 集約No
+--debug_log(FND_FILE.LOG,'配送No:'||lt_delivery_no_tab(ln_cnt_3));          -- 配送No
+--debug_log(FND_FILE.LOG,'基準明細No:'||lt_int_source_tab(ln_cnt_3));           -- 基準明細No
+--debug_log(FND_FILE.LOG,'修正配送区分:'||lt_fix_ship_method_cd(ln_cnt_3));      -- 修正配送区分
+--debug_log(FND_FILE.LOG,'混載合計重量:'||lt_sum_weight_tab(ln_cnt_3));   -- 混載合計重量
+--debug_log(FND_FILE.LOG,'混載合計容積:'||lt_sum_capa_tab(ln_cnt_3)); -- 混載合計容積
+--end loop;
+-- 2008/10/01 H.Itou Del End
     -- ==================================
     --  仮配送NO取得
     -- ==================================
@@ -5526,7 +5533,10 @@ debug_log(FND_FILE.LOG,'入出庫場所2:'|| iv_entering_despatching_code2);
 --
           SELECT xdlv.consolidated_flag
             INTO lt_consolid_flag
-            FROM xxcmn_delivery_lt2_v xdlv                                        -- 配送L/T情報VIEW2
+-- 2008/10/01 H.Itou Mod Start PT 6-1_27 指摘18 出荷方法LTの外部結合のないxxcmn_delivery_lt3_vに変更。
+--            FROM xxcmn_delivery_lt2_v xdlv                                        -- 配送L/T情報VIEW2
+            FROM xxcmn_delivery_lt3_v   xdlv
+-- 2008/10/01 H.Itou Mod End PT 6-1_27 指摘18
            WHERE xdlv.code_class1 = iv_code_class1                                -- コード区分１
              AND xdlv.entering_despatching_code1 = iv_entering_despatching_code1  -- 入出庫場所１
              AND xdlv.code_class2 = iv_code_class2                                -- コード区分２
@@ -6433,10 +6443,12 @@ debug_log(FND_FILE.LOG,'9-4-2-1容積積載効率：'||ln_load_efficiency_capacity);
 debug_log(FND_FILE.LOG,'9-4-2-1混載配送区分：'||lv_mixed_ship_method);
       END IF;
 --
-for j in 1..lt_intensive_no_tab.count loop
-debug_log(FND_FILE.LOG,'混載合計重量：'||lt_mix_total_weight(j));
-debug_log(FND_FILE.LOG,'混載合計容積：'||lt_mix_total_capacity(j));
-end loop;
+-- 2008/10/01 H.Itou Del Start
+--for j in 1..lt_intensive_no_tab.count loop
+--debug_log(FND_FILE.LOG,'混載合計重量：'||lt_mix_total_weight(j));
+--debug_log(FND_FILE.LOG,'混載合計容積：'||lt_mix_total_capacity(j));
+--end loop;
+-- 2008/10/01 H.Itou Del End
 --
 -- Ver1.3 M.Hokkanji Start
       -- 混載の場合、最適化した配送区分が混載データに存在するかを確認
@@ -6979,23 +6991,31 @@ debug_log(FND_FILE.LOG,'2レコード目以降');
                 lv_cdkbn_2  :=  gv_cdkbn_storage; -- 倉庫
               END IF;
 --
+-- 2008/10/01 H.Itou Add Start PT 6-1_27 指摘18 基準レコードと同じ配送先の場合は重量オーバーで混載できないので、混載不可とする。
+              IF (first_deliver_to = lt_intensive_tab(ln_loop_cnt).deliver_to) THEN
+                -- 混載可否フラグ：不可
+                lv_consolid_flag := NULL;
+--
+              -- 基準レコードと違う配送先の場合は、混載可否判定処理を呼び、混載許可フラグを取得する。
+              ELSE
+-- 2008/10/01 H.Itou Add End
 debug_log(FND_FILE.LOG,'3-3 混載可否判定①');
 --
-              -- ============================
-              -- 混載可否判定処理：ルート①
-              -- ============================
-              get_consolidated_flag(
-                    iv_code_class1                => lv_cdkbn_1         -- コード区分１
-                  , iv_entering_despatching_code1 => first_deliver_to   -- 入出庫場所１
-                  , iv_code_class2                => lv_cdkbn_2         -- コード区分２
-                  , iv_entering_despatching_code2 => lt_intensive_tab(ln_loop_cnt).deliver_to
-                                                                        -- 入出庫場所２
-                  , iv_ship_method                => NULL               -- 配送区分判定
-                  , ov_consolidate_flag           => lv_consolid_flag   -- 混載可否フラグ
-                  , ov_errbuf                     => lv_errbuf
-                  , ov_retcode                    => lv_retcode
-                  , ov_errmsg                     => lv_errmsg
-              );
+                -- ============================
+                -- 混載可否判定処理：ルート①
+                -- ============================
+                get_consolidated_flag(
+                      iv_code_class1                => lv_cdkbn_1         -- コード区分１
+                    , iv_entering_despatching_code1 => first_deliver_to   -- 入出庫場所１
+                    , iv_code_class2                => lv_cdkbn_2         -- コード区分２
+                    , iv_entering_despatching_code2 => lt_intensive_tab(ln_loop_cnt).deliver_to
+                                                                          -- 入出庫場所２
+                    , iv_ship_method                => NULL               -- 配送区分判定
+                    , ov_consolidate_flag           => lv_consolid_flag   -- 混載可否フラグ
+                    , ov_errbuf                     => lv_errbuf
+                    , ov_retcode                    => lv_retcode
+                    , ov_errmsg                     => lv_errmsg
+                );
 --
 debug_log(FND_FILE.LOG,'混載可否判定処理：ルート①');
 debug_log(FND_FILE.LOG,'コード区分1：'|| lv_cdkbn_1);
@@ -7003,32 +7023,32 @@ debug_log(FND_FILE.LOG,'入出庫場所1：'|| first_deliver_to);
 debug_log(FND_FILE.LOG,'コード区分2：'|| lv_cdkbn_2);
 debug_log(FND_FILE.LOG,'入出庫場所2：'|| lt_intensive_tab(ln_loop_cnt).deliver_to);
 --
-              IF (lv_retcode = gv_status_error) THEN
-                RAISE global_api_expt;
-              END IF;
---
-              -- 混載可否判定処理①で混載可否フラグが取得できない場合、逆ルートで検索する
-              IF (lv_consolid_flag IS NULL) THEN
-debug_log(FND_FILE.LOG,'3-4 混載可否判定②');
-                -- ============================
-                -- 混載可否判定処理：ルート②
-                -- ============================
-                get_consolidated_flag(
-                      iv_code_class1                => lv_cdkbn_2       -- コード区分２
-                    , iv_entering_despatching_code1 => lt_intensive_tab(ln_loop_cnt).deliver_to
-                                                                        -- 入出庫場所２
-                    , iv_code_class2                => lv_cdkbn_1       -- コード区分１
-                    , iv_entering_despatching_code2 => first_deliver_to -- 入出庫場所１
-                    , iv_ship_method                => NULL             -- 配送区分判定
-                    , ov_consolidate_flag           => lv_consolid_flag -- 混載可否フラグ
-                    , ov_errbuf                     => lv_errbuf
-                    , ov_retcode                    => lv_retcode
-                    , ov_errmsg                     => lv_errmsg
-                );
---
                 IF (lv_retcode = gv_status_error) THEN
                   RAISE global_api_expt;
                 END IF;
+--
+                -- 混載可否判定処理①で混載可否フラグが取得できない場合、逆ルートで検索する
+                IF (lv_consolid_flag IS NULL) THEN
+debug_log(FND_FILE.LOG,'3-4 混載可否判定②');
+                  -- ============================
+                  -- 混載可否判定処理：ルート②
+                  -- ============================
+                  get_consolidated_flag(
+                        iv_code_class1                => lv_cdkbn_2       -- コード区分２
+                      , iv_entering_despatching_code1 => lt_intensive_tab(ln_loop_cnt).deliver_to
+                                                                          -- 入出庫場所２
+                      , iv_code_class2                => lv_cdkbn_1       -- コード区分１
+                      , iv_entering_despatching_code2 => first_deliver_to -- 入出庫場所１
+                      , iv_ship_method                => NULL             -- 配送区分判定
+                      , ov_consolidate_flag           => lv_consolid_flag -- 混載可否フラグ
+                      , ov_errbuf                     => lv_errbuf
+                      , ov_retcode                    => lv_retcode
+                      , ov_errmsg                     => lv_errmsg
+                  );
+--
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_api_expt;
+                  END IF;
 --
 debug_log(FND_FILE.LOG,'混載可否判定処理：ルート②');
 debug_log(FND_FILE.LOG,'コード区分1：'|| lv_cdkbn_2);
@@ -7036,7 +7056,10 @@ debug_log(FND_FILE.LOG,'入出庫場所1：'|| lt_intensive_tab(ln_loop_cnt).deliver_t
 debug_log(FND_FILE.LOG,'コード区分2：'|| lv_cdkbn_1);
 debug_log(FND_FILE.LOG,'入出庫場所2：'|| first_deliver_to);
 --
+                END IF;
+-- 2008/10/01 H.Itou Add Start PT 6-1_27 指摘18
               END IF;
+-- 2008/10/01 H.Itou Add End
 --
 debug_log(FND_FILE.LOG,'混載許可フラグ：'|| lv_consolid_flag);
 --
@@ -7391,23 +7414,25 @@ debug_log(FND_FILE.LOG,'・終了判定カウント:'|| ln_finish_judge_cnt);
     -- ==============================
     -- B-13.混載中間テーブル出力処理
     -- ==============================
+-- 2008/10/01 H.Itou Del Start PT 6-1_27 指摘18
 -- ↓debug
-    debug_log(FND_FILE.LOG,'gt_intensive_no_tab.COUNT:'|| gt_intensive_no_tab.COUNT);
-    debug_log(FND_FILE.LOG,'混載中間テーブル登録用データ');
-  for ln_cnt in 1..gt_intensive_no_tab.COUNT LOOP
-    debug_cnt := debug_cnt + 1;
-    debug_log(FND_FILE.LOG,'----------------------------------');
-    debug_log(FND_FILE.LOG,'■集約No:'||gt_intensive_no_tab(ln_cnt));
-    debug_log(FND_FILE.LOG,'■配送No:'||gt_delivery_no_tab(ln_cnt));
-    debug_log(FND_FILE.LOG,'■基準明細No:'||gt_default_line_number_tab(ln_cnt));
-    debug_log(FND_FILE.LOG,'■修正配送区分: '||gt_fixed_ship_code_tab(ln_cnt));
-    debug_log(FND_FILE.LOG,'■混載種別:'||gt_mixed_class_tab(ln_cnt) );
-    debug_log(FND_FILE.LOG,'■混載合計重量:'||gt_mixed_total_weight_tab(ln_cnt));
-    debug_log(FND_FILE.LOG,'■混載合計容積:'||gt_mixed_total_capacity_tab(ln_cnt));
-    debug_log(FND_FILE.LOG,'■混載元No:'||gt_mixed_no_tab(ln_cnt));
-  end loop;
-
--- ↑debug
+--    debug_log(FND_FILE.LOG,'gt_intensive_no_tab.COUNT:'|| gt_intensive_no_tab.COUNT);
+--    debug_log(FND_FILE.LOG,'混載中間テーブル登録用データ');
+--  for ln_cnt in 1..gt_intensive_no_tab.COUNT LOOP
+--    debug_cnt := debug_cnt + 1;
+--    debug_log(FND_FILE.LOG,'----------------------------------');
+--    debug_log(FND_FILE.LOG,'■集約No:'||gt_intensive_no_tab(ln_cnt));
+--    debug_log(FND_FILE.LOG,'■配送No:'||gt_delivery_no_tab(ln_cnt));
+--    debug_log(FND_FILE.LOG,'■基準明細No:'||gt_default_line_number_tab(ln_cnt));
+--    debug_log(FND_FILE.LOG,'■修正配送区分: '||gt_fixed_ship_code_tab(ln_cnt));
+--    debug_log(FND_FILE.LOG,'■混載種別:'||gt_mixed_class_tab(ln_cnt) );
+--    debug_log(FND_FILE.LOG,'■混載合計重量:'||gt_mixed_total_weight_tab(ln_cnt));
+--    debug_log(FND_FILE.LOG,'■混載合計容積:'||gt_mixed_total_capacity_tab(ln_cnt));
+--    debug_log(FND_FILE.LOG,'■混載元No:'||gt_mixed_no_tab(ln_cnt));
+----
+--  end loop;
+---- ↑debug
+-- 2008/10/01 H.Itou Del End
     FORALL ln_cnt IN 1..gt_intensive_no_tab.COUNT
       INSERT INTO xxwsh_mixed_carriers_tmp(
           intensive_no                  -- 集約No
