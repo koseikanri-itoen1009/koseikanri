@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A04C(body)
  * Description      : ベンダ納品実績IF出力
  * MD.050           : ベンダ納品実績IF出力 MD050_COS_003_A04
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List     
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,9 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/07   1.0    K.Okaguchi       新規作成
  *  2009/02/24   1.1    T.Nakamura       [障害COS_130] メッセージ出力、ログ出力への出力内容の追加・修正
+ *  2009/04/15   1.2    N.Maeda          [ST障害No.T1_0067対応] ファイル出力時のCHAR型VARCHAR型以外への｢"｣付加の削除
+ *  2009/04/16   1.3    K.Kiriu          [ST障害No.T1_0075対応] 桁数超過対応
+ *                                       [ST障害No.T1_0079対応] ホット警告残数の計算ロジック修正
  *
  *****************************************************************************************/
 --
@@ -1049,8 +1052,10 @@ AS
       WHEN NO_DATA_FOUND THEN
         ln_sales_total_qty := 0;
     END;
-    gn_hot_warn_qty := gn_inventory_quantity_sum - ln_sales_total_qty;
-    
+-- 2009/04/16 K.Kiriu Ver.1.3 Mod start
+--    gn_hot_warn_qty := gn_inventory_quantity_sum - ln_sales_total_qty;
+    gn_hot_warn_qty := column_rec.inventory_quantity - ln_sales_total_qty;
+-- 2009/04/16 K.Kiriu Ver.1.3 Mod end
 --
 --
   EXCEPTION
@@ -1119,17 +1124,22 @@ AS
 --
   --編集
     SELECT                  cv_quot || main_rec.account_number             || cv_quot --顧客コード 
-           || cv_delimit || cv_quot || column_rec.column_no                || cv_quot --コラムNo          A-5で抽出したコラムNo
-           || cv_delimit || cv_quot || TO_CHAR(gn_monthly_sales)           || cv_quot --月販数（表示用）  A-9で抽出した月販数
-           || cv_delimit || cv_quot || TO_CHAR(gn_monthly_sales)           || cv_quot --月販数            A-9で抽出した月販数
-           || cv_delimit || cv_quot || TO_CHAR(gn_sales_days)              || cv_quot --販売日数          A-10で抽出した販売日数
-           || cv_delimit || cv_quot || TO_CHAR(gn_sales_days)              || cv_quot --基準日数          A-10で抽出した販売日数
-           || cv_delimit || cv_quot || TO_CHAR(NVL(gn_inventory_quantity_sum,0)) || cv_quot --基準在庫数        A-9で抽出した基準在庫数
-           || cv_delimit || cv_quot || TO_CHAR(NVL(gn_hot_warn_qty,0))     || cv_quot --ホット警告残数    A-11で抽出したホット警告残数を設定。H/CがC（コールド）の場合は0を設定
-           || cv_delimit || cv_quot || TO_CHAR(NVL(gn_sales_qty_1 ,0))     || cv_quot --前回売上数        A-6で抽出した1件目の売上数
-           || cv_delimit || cv_quot || TO_CHAR(NVL(gn_sales_qty_2 ,0))     || cv_quot --前々回売上数      A-6で抽出した2件目の売上数
-           || cv_delimit || cv_quot || TO_CHAR(NVL(gn_sales_qty_3 ,0))     || cv_quot --前々前回売上数    A-6で抽出した3件目の売上数
-           || cv_delimit || cv_quot || TO_CHAR(NVL(gn_replacement_rate,0)) || cv_quot --補充率            A-12で抽出した補充率
+           || cv_delimit || cv_quot || column_rec.column_no                || cv_quot --コラムNo        A-5で抽出したコラムNo
+           || cv_delimit || TO_CHAR(gn_monthly_sales)                                 --月販数（表示用）A-9で抽出した月販数
+           || cv_delimit || TO_CHAR(gn_monthly_sales)                                 --月販数          A-9で抽出した月販数
+           || cv_delimit || TO_CHAR(gn_sales_days)                                    --販売日数        A-10で抽出した販売日数
+           || cv_delimit || TO_CHAR(gn_sales_days)                                    --基準日数        A-10で抽出した販売日数
+-- 2009/04/16 K.Kiriu Ver.1.3 Mod start
+--           || cv_delimit || TO_CHAR(NVL(gn_inventory_quantity_sum,0))                 --基準在庫数      A-9で抽出した基準在庫数
+--           || cv_delimit || TO_CHAR(NVL(gn_hot_warn_qty,0))                           --ホット警告残数  A-11で抽出したホット警告残数を設定。
+           || cv_delimit || SUBSTRB(TO_CHAR(NVL(gn_inventory_quantity_sum,0)), 1, 3)  --基準在庫数      A-9で抽出した基準在庫数(3桁以上の場合は先頭3桁)
+           || cv_delimit || SUBSTRB(TO_CHAR(NVL(gn_hot_warn_qty,0)), 1, 2)            --ホット警告残数  A-11で抽出したホット警告残数を設定。(2桁以上の場合は先頭2桁)
+                                                                                                        --H/CがC（コールド）の場合は0を設定
+-- 2009/04/16 K.Kiriu Ver.1.3 Mod end
+           || cv_delimit || TO_CHAR(NVL(gn_sales_qty_1 ,0))                           --前回売上数      A-6で抽出した1件目の売上数
+           || cv_delimit || TO_CHAR(NVL(gn_sales_qty_2 ,0))                           --前々回売上数    A-6で抽出した2件目の売上数
+           || cv_delimit || TO_CHAR(NVL(gn_sales_qty_3 ,0))                           --前々前回売上数  A-6で抽出した3件目の売上数
+           || cv_delimit || TO_CHAR(NVL(gn_replacement_rate,0))                       --補充率          A-12で抽出した補充率
     INTO gv_deli_l_file_data
     FROM DUAL
     ;
@@ -1217,19 +1227,19 @@ AS
 --
 
   --編集
-    SELECT                  cv_quot || main_rec.account_number                  || cv_quot --顧客コード
-           || cv_delimit || cv_quot || TO_CHAR(gd_dlv_date_1,'MMDD')            || cv_quot --前回納品日（ＭＭＤＤ）
-           || cv_delimit || cv_quot || TO_CHAR(gd_dlv_date_2,'MMDD')            || cv_quot --前々回納品日     
-           || cv_delimit || cv_quot || TO_CHAR(gd_dlv_date_3,'MMDD')            || cv_quot --前々前回納品日     
-           || cv_delimit || cv_quot || gv_visit_time                            || cv_quot --前回訪問時刻     
-           || cv_delimit || cv_quot || TO_CHAR(gn_last_visit_days)              || cv_quot --前回訪問日数     
-           || cv_delimit || cv_quot || TO_CHAR(NVL(gn_sales_qty_sum_1,0))       || cv_quot --前回納品数量     
-           || cv_delimit || cv_quot || TO_CHAR(NVL(gn_sales_qty_sum_2,0))       || cv_quot --前々回納品数量     
-           || cv_delimit || cv_quot || TO_CHAR(NVL(gn_sales_qty_sum_3,0))       || cv_quot --前々前回納品数量     
-           || cv_delimit || cv_quot || TO_CHAR(NVL(gn_total_amount_1 ,0))       || cv_quot --前回納品金額     
-           || cv_delimit || cv_quot || TO_CHAR(NVL(gn_total_amount_2 ,0))       || cv_quot --前々回納品金額     
-           || cv_delimit || cv_quot || TO_CHAR(NVL(gn_total_amount_3 ,0))       || cv_quot --前々前回納品金額     
-           || cv_delimit || cv_quot || TO_CHAR(SYSDATE,'YYYY/MM/DD HH24:MI:SS') || cv_quot --更新日時     
+    SELECT                  cv_quot || main_rec.account_number || cv_quot --顧客コード
+           || cv_delimit ||  TO_CHAR(gd_dlv_date_1,'MMDD')               --前回納品日（ＭＭＤＤ）
+           || cv_delimit ||  TO_CHAR(gd_dlv_date_2,'MMDD')               --前々回納品日
+           || cv_delimit ||  TO_CHAR(gd_dlv_date_3,'MMDD')               --前々前回納品日
+           || cv_delimit ||  gv_visit_time                               --前回訪問時刻
+           || cv_delimit ||  TO_CHAR(gn_last_visit_days)                 --前回訪問日数
+           || cv_delimit ||  TO_CHAR(NVL(gn_sales_qty_sum_1,0))          --前回納品数量
+           || cv_delimit ||  TO_CHAR(NVL(gn_sales_qty_sum_2,0))          --前々回納品数量
+           || cv_delimit ||  TO_CHAR(NVL(gn_sales_qty_sum_3,0))          --前々前回納品数量
+           || cv_delimit ||  TO_CHAR(NVL(gn_total_amount_1 ,0))          --前回納品金額
+           || cv_delimit ||  TO_CHAR(NVL(gn_total_amount_2 ,0))          --前々回納品金額
+           || cv_delimit ||  TO_CHAR(NVL(gn_total_amount_3 ,0))          --前々前回納品金額
+           || cv_delimit || TO_CHAR(SYSDATE,'YYYY/MM/DD HH24:MI:SS')     --更新日時
     INTO gv_deli_h_file_data
     FROM DUAL
     ;

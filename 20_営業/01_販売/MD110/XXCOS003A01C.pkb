@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A01C(body)
  * Description      : HHT向け納品予定データ作成
  * MD.050           : HHT向け納品予定データ作成 MD050_COS_003_A01
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/26   1.0    K.Okaguchi       新規作成
  *  2009/02/24   1.1    T.Nakamura       [障害COS_130] メッセージ出力、ログ出力への出力内容の追加・修正
+ *  2009/04/15   1.2    N.Maeda          [ST障害No.T1_0067対応] ファイル出力時のCHAR型VARCHAR型以外への｢"｣付加の削除
  *
  *****************************************************************************************/
 --
@@ -776,10 +777,10 @@ AS
     BEGIN
       --データ編集
       gv_h_file_data :=        cv_quot || gv_delivery_base_code               || cv_quot--納品拠点コード
-              || cv_delimit || cv_quot || TO_CHAR(gv_order_number)            || cv_quot--受注No
+              || cv_delimit ||  TO_CHAR(gv_order_number)                                --受注No
               || cv_delimit || cv_quot || gv_conv_customer_code               || cv_quot--顧客コード
               || cv_delimit || cv_quot || gv_invoice_number                   || cv_quot--伝票番号
-              || cv_delimit || cv_quot || TO_CHAR(gd_request_date,'YYYYMMDD') || cv_quot--納品日
+              || cv_delimit ||  TO_CHAR(gd_request_date,'YYYYMMDD')                     --納品日
               || cv_delimit || cv_quot || gv_big_classification_code          || cv_quot--売上分類区分
               || cv_delimit || cv_quot || gv_invoice_class                    || cv_quot--売上伝票区分
               || cv_delimit || cv_quot || gv_company_name_alt                 || cv_quot--社名（カナ）
@@ -807,20 +808,17 @@ AS
       BEGIN
         --データ編集
         gv_l_file_data :=        cv_quot || gt_vndor_deli_lines(i).delivery_base_code    || cv_quot --納品拠点コード
-                || cv_delimit || cv_quot || gt_vndor_deli_lines(i).order_number          || cv_quot --受注No
-                || cv_delimit || cv_quot || gt_vndor_deli_lines(i).line_number           || cv_quot --行No
+                || cv_delimit ||  gt_vndor_deli_lines(i).order_number                               --受注No
+                || cv_delimit ||  gt_vndor_deli_lines(i).line_number                                --行No
                 || cv_delimit || cv_quot || gt_vndor_deli_lines(i).conv_customer_code    || cv_quot --顧客コード
                 || cv_delimit || cv_quot || gt_vndor_deli_lines(i).invoice_number        || cv_quot --伝票番号
                 || cv_delimit || cv_quot || gt_vndor_deli_lines(i).ordered_item          || cv_quot --自社品名コード
                 || cv_delimit || cv_quot || gt_vndor_deli_lines(i).customer_item_number  || cv_quot --他社品名コード
                 || cv_delimit || cv_quot || gt_vndor_deli_lines(i).customer_item_desc    || cv_quot --他社品名
                 || cv_delimit || cv_quot || gt_vndor_deli_lines(i).quantity_sign         || cv_quot --数量サイン
-                || cv_delimit || cv_quot ||
-                   TO_CHAR(gt_vndor_deli_lines(i).ordered_quantity, cv_number_format8)   || cv_quot --数量
-                || cv_delimit || cv_quot ||
-                   TO_CHAR(gt_vndor_deli_lines(i).unit_selling_price, cv_number_format7) || cv_quot --卸単価
-                || cv_delimit || cv_quot ||
-                   TO_CHAR(gt_vndor_deli_lines(i).selling_price)                         || cv_quot --売単価
+                || cv_delimit || TO_CHAR(gt_vndor_deli_lines(i).ordered_quantity, cv_number_format8)--数量
+                || cv_delimit || TO_CHAR(gt_vndor_deli_lines(i).unit_selling_price, cv_number_format7)  --卸単価
+                || cv_delimit || TO_CHAR(gt_vndor_deli_lines(i).selling_price)                      --売単価
         ;
         UTL_FILE.PUT_LINE(g_l_handle
                          ,gv_l_file_data

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A05C(body)
  * Description      : 単価マスタIF出力（ファイル作成）
  * MD.050           : 単価マスタIF出力（ファイル作成） MD050_COS_003_A05
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List     
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  2008/12/05   1.0    K.Okaguchi       新規作成
  *  2009/01/17   1.1    K.Okaguchi       [障害COS_124] ファイル出力編集のバグを修正
  *  2009/02/24   1.2    T.Nakamura       [障害COS_130] メッセージ出力、ログ出力への出力内容の追加・修正
+ *  2009/04/15   1.3    N.Maeda          [ST障害No.T1_0067対応] ファイル出力時のCHAR型VARCHAR型以外への｢"｣付加の削除
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -490,31 +491,25 @@ AS
       THEN
         NULL;
       ELSE
-        gn_target_cnt := gn_target_cnt + 1;      
-        SELECT             cv_quot || main_rec.customer_number || cv_quot --顧客コード
-          || cv_delimit || cv_quot || main_rec.item_code       || cv_quot --品名コード
-          || cv_delimit || NVL2(lv_nml_prev_unit_price,cv_quot,'')   || lv_nml_prev_unit_price   ||
-                           NVL2(lv_nml_prev_unit_price,cv_quot,'')        --通常前回単価
-          || cv_delimit || NVL2(lv_nml_prev_dlv_date,cv_quot,'')     || lv_nml_prev_dlv_date     ||
-                           NVL2(lv_nml_prev_dlv_date,cv_quot,'')          --通常前回納品年月日
-          || cv_delimit || cv_quot || lv_nml_prev_qty_sign     || cv_quot --通常前回数量サイン
-          || cv_delimit || cv_quot || lv_nml_prev_qty          || cv_quot --通常前回数量
-          || cv_delimit || NVL2(lv_nml_bef_prev_dlv_date,cv_quot,'') || lv_nml_bef_prev_dlv_date ||
-                           NVL2(lv_nml_bef_prev_dlv_date,cv_quot,'')      --通常前々回納品年月日
-          || cv_delimit || cv_quot || lv_nml_bef_prev_qty_sign || cv_quot --通常前々回数量サイン
-          || cv_delimit || cv_quot || lv_nml_bef_prev_qty      || cv_quot --通常前々回数量　
-          || cv_delimit || NVL2(lv_sls_prev_unit_price,cv_quot,'')   || lv_sls_prev_unit_price   ||
-                           NVL2(lv_sls_prev_unit_price,cv_quot,'')        --特売前回単価　
-          || cv_delimit || NVL2(lv_sls_prev_dlv_date,cv_quot,'')     || lv_sls_prev_dlv_date     ||
-                           NVL2(lv_sls_prev_dlv_date,cv_quot,'')          --特売前回納品年月日
-          || cv_delimit || cv_quot || lv_sls_prev_qty_sign     || cv_quot --特売前回数量サイン
-          || cv_delimit || cv_quot || lv_sls_prev_qty          || cv_quot --特売前回数量　
-          || cv_delimit || NVL2(lv_sls_bef_prev_dlv_date,cv_quot,'') || lv_sls_bef_prev_dlv_date ||
-                           NVL2(lv_sls_bef_prev_dlv_date,cv_quot,'')      --特売前々回納品年月日　
-          || cv_delimit || cv_quot || lv_sls_bef_prev_qty_sign || cv_quot --特売前々回数量サイン
-          || cv_delimit || cv_quot || lv_sls_bef_prev_qty      || cv_quot --特売前々回数量
-          || cv_delimit                                                   --値引単価　前回
-          || cv_delimit || cv_quot || TO_CHAR(SYSDATE , 'YYYY/MM/DD HH24:MI:SS') || cv_quot --処理日時
+        gn_target_cnt := gn_target_cnt + 1;
+        SELECT             cv_quot || main_rec.customer_number || cv_quot -- 顧客コード
+          || cv_delimit || cv_quot || main_rec.item_code       || cv_quot -- 品名コード
+          || cv_delimit || lv_nml_prev_unit_price                         -- 通常前回単価
+          || cv_delimit || lv_nml_prev_dlv_date                           -- 通常前回納品年月日
+          || cv_delimit || cv_quot || lv_nml_prev_qty_sign     || cv_quot -- 通常前回数量サイン
+          || cv_delimit || lv_nml_prev_qty                                -- 通常前回数量
+          || cv_delimit || lv_nml_bef_prev_dlv_date                       -- 通常前々回納品年月日
+          || cv_delimit || cv_quot || lv_nml_bef_prev_qty_sign || cv_quot -- 通常前々回数量サイン
+          || cv_delimit || lv_nml_bef_prev_qty                            -- 通常前々回数量
+          || cv_delimit || lv_sls_prev_unit_price                         -- 特売前回単価
+          || cv_delimit || lv_sls_prev_dlv_date                           -- 特売前回納品年月日
+          || cv_delimit || cv_quot || lv_sls_prev_qty_sign     || cv_quot -- 特売前回数量サイン
+          || cv_delimit || lv_sls_prev_qty                                -- 特売前回数量
+          || cv_delimit || lv_sls_bef_prev_dlv_date                       -- 特売前々回納品年月日
+          || cv_delimit || cv_quot || lv_sls_bef_prev_qty_sign || cv_quot -- 特売前々回数量サイン
+          || cv_delimit || lv_sls_bef_prev_qty                            -- 特売前々回数量
+          || cv_delimit                                                   -- 値引単価　前回
+          || cv_delimit || TO_CHAR(SYSDATE , 'YYYY/MM/DD HH24:MI:SS')     -- 処理日時
         INTO gv_tm_file_data
         FROM DUAL
         ;
