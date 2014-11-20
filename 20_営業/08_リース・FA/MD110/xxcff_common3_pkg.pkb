@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF_COMMON3_PKG(body)
  * Description      : リース物件関連共通関数
  * MD.050           : なし
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * --------------------      ---- ----- --------------------------------------------------
@@ -32,6 +32,8 @@ AS
  *  2009-12-02   1.4    SCS 渡辺 学      [障害E_T4_00098]
  *                                           修正：create_ob_bat
  *                                           自販機リース物件の修正履歴作成時、更新前リース物件の情報を引継ぐように修正。
+ *  2011-12-19   1.5    SCSK 中村 健一   [障害E_本稼動_08123] create_contract_assの中途解約日をパラメータでセットするように修正。
+ *                                                            不要なcreate_contract_ass、create_pay_planningをコメントアウト。
  *
  *****************************************************************************************/
 --
@@ -113,43 +115,45 @@ AS
   -- ユーザー定義グローバル変数
   -- ===============================
 --
-  /**********************************************************************************
-   * Function Name    : create_contract_ass
-   * Description      : 契約関連操作
-   ***********************************************************************************/
-  PROCEDURE create_contract_ass(
-    in_contract_line_id       IN        xxcff_contract_lines.contract_line_id%TYPE,       -- 契約明細内部ID
-    iv_contract_status        IN        xxcff_contract_lines.contract_status%TYPE,        -- 契約ステータス
-    in_created_by             IN        xxcff_contract_lines.created_by%TYPE,             -- 作成者
-    id_creation_date          IN        xxcff_contract_lines.creation_date%TYPE,          -- 作成日
-    in_last_updated_by        IN        xxcff_contract_lines.last_updated_by%TYPE,        -- 最終更新者
-    id_last_update_date       IN        xxcff_contract_lines.last_update_date%TYPE,       -- 最終更新日
-    in_last_update_login      IN        xxcff_contract_lines.last_update_login%TYPE,      -- 最終更新ﾛｸﾞｲﾝ
-    in_request_id             IN        xxcff_contract_lines.request_id%TYPE,             -- 要求ID
-    in_program_application_id IN        xxcff_contract_lines.program_application_id%TYPE, -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-    in_program_id             IN        xxcff_contract_lines.program_id%TYPE,             -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-    id_program_update_date    IN        xxcff_contract_lines.program_update_date%TYPE,    -- ﾌﾟﾛｸﾞﾗﾑ更新日
-    ov_errbuf                OUT NOCOPY VARCHAR2,           -- エラー・メッセージ
-    ov_retcode               OUT NOCOPY VARCHAR2,           -- リターン・コード
-    ov_errmsg                OUT NOCOPY VARCHAR2           -- ユーザー・エラー・メッセージ
-  );
-  --
-  /**********************************************************************************
-   * Function Name    : create_pay_planning
-   * Description      : スタブ
-   ***********************************************************************************/
-   PROCEDURE create_pay_planning(
-      in_contract_line_id  IN        xxcff_contract_lines.contract_line_id%TYPE,  -- 契約明細内部ID
-      ov_errbuf           OUT NOCOPY VARCHAR2,  -- エラー・メッセージ
-      ov_retcode          OUT NOCOPY VARCHAR2,  -- リターン・コード
-      ov_errmsg           OUT NOCOPY VARCHAR2   -- ユーザー・エラー・メッセージ
-    )
-   IS
-   BEGIN
-     ov_errbuf  := NULL;
-     ov_retcode := cv_status_normal;
-     ov_errmsg  := NULL;
-   END;
+-- == 2011-12-19 V1.5 Deleted START ====================================================================================
+--  /**********************************************************************************
+--   * Function Name    : create_contract_ass
+--   * Description      : 契約関連操作
+--   ***********************************************************************************/
+--  PROCEDURE create_contract_ass(
+--    in_contract_line_id       IN        xxcff_contract_lines.contract_line_id%TYPE,       -- 契約明細内部ID
+--    iv_contract_status        IN        xxcff_contract_lines.contract_status%TYPE,        -- 契約ステータス
+--    in_created_by             IN        xxcff_contract_lines.created_by%TYPE,             -- 作成者
+--    id_creation_date          IN        xxcff_contract_lines.creation_date%TYPE,          -- 作成日
+--    in_last_updated_by        IN        xxcff_contract_lines.last_updated_by%TYPE,        -- 最終更新者
+--    id_last_update_date       IN        xxcff_contract_lines.last_update_date%TYPE,       -- 最終更新日
+--    in_last_update_login      IN        xxcff_contract_lines.last_update_login%TYPE,      -- 最終更新ﾛｸﾞｲﾝ
+--    in_request_id             IN        xxcff_contract_lines.request_id%TYPE,             -- 要求ID
+--    in_program_application_id IN        xxcff_contract_lines.program_application_id%TYPE, -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+--    in_program_id             IN        xxcff_contract_lines.program_id%TYPE,             -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+--    id_program_update_date    IN        xxcff_contract_lines.program_update_date%TYPE,    -- ﾌﾟﾛｸﾞﾗﾑ更新日
+--    ov_errbuf                OUT NOCOPY VARCHAR2,           -- エラー・メッセージ
+--    ov_retcode               OUT NOCOPY VARCHAR2,           -- リターン・コード
+--    ov_errmsg                OUT NOCOPY VARCHAR2           -- ユーザー・エラー・メッセージ
+--  );
+--  --
+--  /**********************************************************************************
+--   * Function Name    : create_pay_planning
+--   * Description      : スタブ
+--   ***********************************************************************************/
+--   PROCEDURE create_pay_planning(
+--      in_contract_line_id  IN        xxcff_contract_lines.contract_line_id%TYPE,  -- 契約明細内部ID
+--      ov_errbuf           OUT NOCOPY VARCHAR2,  -- エラー・メッセージ
+--      ov_retcode          OUT NOCOPY VARCHAR2,  -- リターン・コード
+--      ov_errmsg           OUT NOCOPY VARCHAR2   -- ユーザー・エラー・メッセージ
+--    )
+--   IS
+--   BEGIN
+--     ov_errbuf  := NULL;
+--     ov_retcode := cv_status_normal;
+--     ov_errmsg  := NULL;
+--   END;
+-- == 2011-12-19 V1.5 Deleted END   ====================================================================================
   /**********************************************************************************
    * Function Name    : insert_ob_hed
    * Description      : リース物件登録
@@ -723,6 +727,9 @@ AS
   PROCEDURE create_contract_ass(
     in_contract_line_id       IN        xxcff_contract_lines.contract_line_id%TYPE,       -- 契約明細内部ID
     iv_contract_status        IN        xxcff_contract_lines.contract_status%TYPE,        -- 契約ステータス
+-- == 2011-12-19 V1.5 Added START ======================================================================================
+    id_cancellation_date      IN        xxcff_contract_lines.cancellation_date%TYPE,      -- 中途解約日
+-- == 2011-12-19 V1.5 Added END   ======================================================================================
     in_created_by             IN        xxcff_contract_lines.created_by%TYPE,             -- 作成者
     id_creation_date          IN        xxcff_contract_lines.creation_date%TYPE,          -- 作成日
     in_last_updated_by        IN        xxcff_contract_lines.last_updated_by%TYPE,        -- 最終更新者
@@ -766,7 +773,10 @@ AS
     -- ***************************************************
     UPDATE    xxcff_contract_lines  xcl  -- リース契約明細
     SET       xcl.contract_status        = iv_contract_status                  -- 契約ステータス
-            , xcl.cancellation_date      = xxccp_common_pkg2.get_process_date  -- 中途解約日
+-- == 2011-12-19 V1.5 Modified START ===================================================================================
+--            , xcl.cancellation_date      = xxccp_common_pkg2.get_process_date  -- 中途解約日
+            , xcl.cancellation_date      = id_cancellation_date                -- 中途解約日
+-- == 2011-12-19 V1.5 Modified END   ===================================================================================
             , xcl.last_updated_by        = in_last_updated_by                  -- 最終更新者
             , xcl.last_update_date       = id_last_update_date                 -- 最終更新日
             , xcl.last_update_login      = in_last_update_login                -- 最終更新ﾛｸﾞｲﾝ
@@ -1206,6 +1216,12 @@ AS
           io_object_data_rec.object_status := cv_ob_sts_cancel_ins;  -- 物件
           lv_contract_status               := cv_co_sts_cancel_ins;  -- 契約
         END IF;
+-- == 2011-12-19 V1.5 Added START ======================================================================================
+        -- 中途解約日の設定
+        IF ( io_object_data_rec.cancellation_date IS NULL ) THEN
+          io_object_data_rec.cancellation_date := xxccp_common_pkg2.get_process_date;  -- 中途解約日
+        END IF;
+-- == 2011-12-19 V1.5 Added END   ======================================================================================
         --
         -- リース物件更新
         update_ob_hed(
@@ -1239,6 +1255,9 @@ AS
           create_contract_ass(
              in_contract_line_id       => ln_contract_line_id                       -- 契約明細内部ID
            , iv_contract_status        => lv_contract_status                        -- 契約ステータス
+-- == 2011-12-19 V1.5 Added START ======================================================================================
+           , id_cancellation_date      => io_object_data_rec.cancellation_date      -- 中途解約日
+-- == 2011-12-19 V1.5 Added END   ======================================================================================
            , in_created_by             => io_object_data_rec.created_by             -- 作成者
            , id_creation_date          => io_object_data_rec.creation_date          -- 作成日
            , in_last_updated_by        => io_object_data_rec.last_updated_by        -- 最終更新者

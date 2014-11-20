@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF003A05C(body)
  * Description      : 支払計画作成
  * MD.050           : MD050_CFF_003_A05_支払計画作成.doc
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,8 @@ AS
  *                                      支払利息の調整を行う
  * 2009/2/5       1.1   SCS礒崎祐次     [障害CFF_010] 支払回数算出不具合対応
  * 2009/7/9       1.2   SCS萱原伸哉     [統合テスト障害00000417]中途解約日更新時の条件変更
+ * 2011/12/19     1.3   SCSK中村健一    [E_本稼動_08123] 中途解約時の更新条件変更
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -152,6 +154,9 @@ AS
   gn_gross_tax_deduction      xxcff_contract_lines.gross_tax_deduction%TYPE;       -- 総額消費税_控除額
   gn_original_cost            xxcff_contract_lines.original_cost%TYPE;             -- 取得価格
   gn_calc_interested_rate     xxcff_contract_lines.calc_interested_rate%TYPE;      -- 計算利子率
+-- == 2011/12/19 V1.3 Added START ======================================================================================
+  gd_cancellation_date        xxcff_contract_lines.cancellation_date%TYPE;         -- 中途解約日
+-- == 2011/12/19 V1.3 Added END   ======================================================================================
 --
   /**********************************************************************************
    * Procedure Name   : get_process_date
@@ -378,6 +383,9 @@ AS
            ,xcl.gross_tax_deduction       -- 総額消費税_控除額
            ,xcl.original_cost             -- 取得価格
            ,xcl.calc_interested_rate      -- 計算利子率
+-- == 2011/12/19 V1.3 Added START ======================================================================================
+           ,xcl.cancellation_date         -- 中途解約日
+-- == 2011/12/19 V1.3 Added END   ======================================================================================
     INTO    gn_payment_frequency          -- 支払回数
            ,gn_lease_class                -- リース種別
            ,gn_lease_type                 -- リース区分
@@ -399,6 +407,9 @@ AS
            ,gn_gross_tax_deduction        -- 総額消費税_控除額
            ,gn_original_cost              -- 取得価格
            ,gn_calc_interested_rate       -- 計算利子率
+-- == 2011/12/19 V1.3 Added START ======================================================================================
+           ,gd_cancellation_date          -- 中途解約日
+-- == 2011/12/19 V1.3 Added END   ======================================================================================
     FROM    xxcff_contract_headers  xch   -- リース契約
            ,xxcff_contract_lines    xcl   -- リース契約明細
     WHERE  xcl.contract_header_id  = xch.contract_header_id
@@ -521,7 +532,7 @@ AS
                      , cv_msg_cff_00007
                      , cv_tk_cff_00101_01
                      , cv_msg_cff_50088
-                      );                                              
+                      );
         lv_errbuf := lv_errmsg;
         RAISE global_api_expt;
     END;
@@ -854,7 +865,7 @@ AS
                      , cv_msg_cff_00007
                      , cv_tk_cff_00101_01
                      , cv_msg_cff_50088
-                      );                                              
+                      );
         lv_errbuf := lv_errmsg;
         RAISE global_api_expt;
     END;
@@ -966,7 +977,10 @@ AS
     FROM   xxcff_pay_planning xpp
     WHERE  xpp.contract_line_id   = in_contract_line_id
     AND    xpp.accounting_if_flag = cv_accounting_if_flag1
-    AND    xpp.period_name        >= TO_CHAR(gd_process_date,'YYYY-MM');
+-- == 2011/12/19 V1.3 Modified START ===================================================================================
+--    AND    xpp.period_name        >= TO_CHAR(gd_process_date,'YYYY-MM');
+    AND    xpp.period_name        >= TO_CHAR(gd_cancellation_date,'YYYY-MM');
+-- == 2011/12/19 V1.3 Modified END   ===================================================================================
 --    
     --支払回数が取得できない場合は０を設定する
     ln_payment_frequency  := NVL(ln_payment_frequency,0);
@@ -991,7 +1005,7 @@ AS
                      , cv_msg_cff_00007
                      , cv_tk_cff_00101_01
                      , cv_msg_cff_50088
-                      );                                              
+                      );
         lv_errbuf := lv_errmsg;
         RAISE global_api_expt;
     END;
@@ -1039,7 +1053,7 @@ AS
 --  
   /**********************************************************************************
    * Procedure Name   : del_pat_planning
-   * Description      : リース支払計画作成処理       (A-8)
+   * Description      : リース支払計画削除処理       (A-8)
    ***********************************************************************************/
   PROCEDURE del_pat_planning(
     in_contract_line_id    IN  NUMBER            -- 契約明細内部ID
@@ -1261,7 +1275,7 @@ AS
         lv_retcode,          -- リターン・コード             --# 固定 #
         lv_errmsg);          -- ユーザー・エラー・メッセージ --# 固定 #
     -- ==================================
-    -- リース支払計画作成処理       (A-8)
+    -- リース支払計画削除処理       (A-8)
     -- ==================================
     ELSIF (iv_shori_type = cv_shori_type4) THEN
       del_pat_planning(
