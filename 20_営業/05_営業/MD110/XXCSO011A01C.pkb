@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.12
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  start_approval_wf_proc    承認ワークフロー起動(エラー通知)(A-21)
  *  verifyauthority           承認者権限（製品）チェック(A-22)
  *  update_po_req_line        発注依頼明細更新処理(A-23)
+ *  check_maker_code          メーカーコードチェック処理(A-24)
  *  submain                   メイン処理プロシージャ
  *  main_for_application      メイン処理（発注依頼申請用）
  *  main_for_approval         メイン処理（発注依頼承認用）
@@ -65,6 +66,9 @@ AS
  *  2009-05-11    1.10  D.Abe            【ST障害対応965】廃棄申請時の機器状態３、廃棄フラグ更新処理のタイミング変更
  *  2009-05-15    1.11  D.Abe            【ST障害対応669】承認者権限（製品）チェックを追加
  *  2009-07-01    1.12  D.Abe            【ST障害対応529】発注明細の取引性質を更新するように変更
+ *  2009-07-08    1.13  D.Abe            【0000464】品目カテゴリと機種コードのメーカーチェックを追加
+ *  2009-07-14    1.14  K.Satomura       【0000476】機器状態２の故障中を4から9へ変更
+ *  2009-07-16    1.15  K.Hosoi          【0000375,0000419】
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -197,6 +201,9 @@ AS
 /* 20090701_abe_ST529 START*/
   cv_tkn_number_53  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00576';  -- 発注依頼明細更新エラー
 /* 20090701_abe_ST529 END*/
+/* 20090708_abe_0000464 START*/
+  cv_tkn_number_54  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00577';  -- メーカーコード存在チェックエラー
+/* 20090708_abe_0000464 END*/
 
   --
   -- トークンコード
@@ -388,6 +395,10 @@ AS
 /*20090427_yabuki_ST505_517 START*/
     , created_by                po_requisition_headers.created_by%TYPE                   -- 作成日
 /*20090427_yabuki_ST505_517 END*/
+/* 20090708_abe_0000464 START*/
+    , category_id               xxcso_requisition_lines_v.category_id%TYPE              -- カテゴリID
+    , maker_code                po_un_numbers_vl.attribute2%TYPE                        -- メーカコード
+/* 20090708_abe_0000464 END*/
   );
   --
   -- 物件情報
@@ -998,6 +1009,14 @@ AS
            /*20090427_yabuki_ST505_517 START*/
            , prh.created_by                 created_by                -- 作成者
            /*20090427_yabuki_ST505_517 END*/
+/* 20090708_abe_0000464 START*/
+           , xrlv.category_id               category_id               -- カテゴリID
+           , ( SELECT punv.attribute2
+               FROM   po_un_numbers_vl  punv
+               WHERE  punv.un_number_id = xrlv.un_number_id
+               AND    TRUNC( NVL( punv.inactive_date, id_process_date + 1 ) ) 
+                       > TRUNC( id_process_date ) )  maker_code       -- メーカーコード
+/* 20090708_abe_0000464 END*/
       INTO   o_requisition_rec.requisition_header_id     -- 発注依頼ヘッダID
            , o_requisition_rec.requisition_line_id       -- 発注依頼明細ID
            , o_requisition_rec.requisition_number        -- 発注依頼番号
@@ -1030,6 +1049,10 @@ AS
            /*20090427_yabuki_ST505_517 START*/
            , o_requisition_rec.created_by                -- 作成者
            /*20090427_yabuki_ST505_517 END*/
+/* 20090708_abe_0000464 START*/
+           , o_requisition_rec.category_id               -- カテゴリID
+           , o_requisition_rec.maker_code                -- メーカーコード
+/* 20090708_abe_0000464 END*/
       FROM   po_requisition_headers     prh
            , xxcso_requisition_lines_v  xrlv
       WHERE  prh.segment1               = iv_requisition_number
@@ -2295,9 +2318,24 @@ AS
     cv_obj_sts_canceled_insurance  CONSTANT VARCHAR2(3) := '111';  -- 中途解約（保険対応）
     cv_obj_sts_canceled_expired    CONSTANT VARCHAR2(3) := '112';  -- 中途解約（満了）
     cv_obj_sts_expired             CONSTANT VARCHAR2(3) := '107';  -- 満了
+/* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) START */
+    cv_obj_sts_uncontract          CONSTANT VARCHAR2(3) := '101';  -- 未契約
+    -- リース区分
+    cv_ls_tp_lease_cntrctd         CONSTANT VARCHAR2(1) := '1';    -- 原契約
+    cv_ls_tp_re_lease_cntrctd      CONSTANT VARCHAR2(1) := '2';    -- 再リース契約
+    -- 証書受領フラグ
+    cv_bnd_accpt_flg_accptd        CONSTANT VARCHAR2(1) := '1';    -- 受領済
+    --
+    cv_yes                         CONSTANT VARCHAR2(1) := 'Y';
+/* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) END */
     --
     -- *** ローカル変数 ***
     lv_object_status    xxcff_object_headers.object_status%TYPE;    -- 物件ステータス
+/* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) START */
+    lt_lease_type            xxcff_object_headers.lease_type%TYPE;              -- リース区分
+    lt_bond_acceptance_flag  xxcff_object_headers.bond_acceptance_flag%TYPE;    -- 証書受領フラグ
+    lv_no_data_flg           VARCHAR2(1) DEFAULT 'N';
+/* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) END */
     --
     -- *** ローカル例外 ***
     sql_expt      EXCEPTION;
@@ -2315,7 +2353,15 @@ AS
     -- ========================================
     BEGIN
       SELECT xoh.object_status  object_status
+/* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) START */
+            ,xoh.lease_type            lease_type
+            ,xoh.bond_acceptance_flag  bond_acceptance_flag
+/* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) END */
       INTO   lv_object_status
+/* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) START */
+            ,lt_lease_type
+            ,lt_bond_acceptance_flag
+/* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) END */
       FROM   xxcff_object_headers  xoh
       WHERE  xoh.object_code = iv_install_code
       ;
@@ -2323,15 +2369,23 @@ AS
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         -- 該当データが存在しない場合
-        lv_errbuf := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
-                       , iv_name         => cv_tkn_number_26          -- メッセージコード
-                       , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
-                       , iv_token_value1 => iv_install_code           -- トークン値1
-                     );
-        --
-        RAISE sql_expt;
-        --
+/* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) START */
+--        lv_errbuf := xxccp_common_pkg.get_msg(
+--                         iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+--                       , iv_name         => cv_tkn_number_26          -- メッセージコード
+--                       , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
+--                       , iv_token_value1 => iv_install_code           -- トークン値1
+--                     );
+--        --
+--        RAISE sql_expt;
+--        --
+          lv_object_status := NULL;         -- 物件ステータス
+          lt_lease_type    := NULL;         -- リース区分
+          lt_bond_acceptance_flag := NULL;  -- 証書受領フラグ
+          --
+          lv_no_data_flg   := cv_yes;
+          --
+/* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) END */
       WHEN OTHERS THEN
         -- その他の例外の場合
         lv_errbuf := xxccp_common_pkg.get_msg(
@@ -2351,9 +2405,13 @@ AS
     -- ========================================
     -- チェック対象が設置用物件の場合
     IF ( iv_chk_kbn = cv_obj_sts_chk_kbn_01 ) THEN
-      -- 物件ステータスがNULL以外でかつ、「契約済」「再リース契約済」以外の場合
+/* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) START */
+--      -- 物件ステータスがNULL以外でかつ、「契約済」「再リース契約済」以外の場合
+      -- 物件ステータスがNULL以外でかつ、「契約済」「再リース契約済」「未契約('101')」以外の場合
       IF ( lv_object_status IS NOT NULL
-           AND lv_object_status NOT IN ( cv_obj_sts_contracted, cv_obj_sts_re_lease_cntrctd ) ) THEN
+--           AND lv_object_status NOT IN ( cv_obj_sts_contracted, cv_obj_sts_re_lease_cntrctd ) ) THEN
+           AND lv_object_status NOT IN ( cv_obj_sts_contracted, cv_obj_sts_re_lease_cntrctd, cv_obj_sts_uncontract ) ) THEN
+/* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) END */
           lv_errbuf := xxccp_common_pkg.get_msg(
                            iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
                          , iv_name         => cv_tkn_number_27          -- メッセージコード
@@ -2366,11 +2424,27 @@ AS
       END IF;
       --
     ELSE
-      -- 物件ステータスがNULL以外でかつ、
-      -- 「再リース契約済」「中途解約（自己都合）」「中途解約（保険対応）」「中途解約（満了）」「満了」以外の場合
-      IF ( lv_object_status IS NOT NULL
-           AND lv_object_status NOT IN ( cv_obj_sts_re_lease_cntrctd, cv_obj_sts_canceled_cnvnnc, cv_obj_sts_canceled_insurance
-                                         , cv_obj_sts_canceled_expired, cv_obj_sts_expired ) ) THEN
+/* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) START */
+--      -- 物件ステータスがNULL以外でかつ、
+--      -- 「再リース契約済」「中途解約（自己都合）」「中途解約（保険対応）」「中途解約（満了）」「満了」以外の場合
+--      IF ( lv_object_status IS NOT NULL
+--           AND lv_object_status NOT IN ( cv_obj_sts_re_lease_cntrctd, cv_obj_sts_canceled_cnvnnc, cv_obj_sts_canceled_insurance
+--                                         , cv_obj_sts_canceled_expired, cv_obj_sts_expired ) ) THEN
+      -- 物件マスタに登録されていない場合または
+      IF ( lv_no_data_flg = cv_yes )
+        -- 物件ステータスが「満了」、「中途解約（満了）」以外かつ、
+        -- 『リース区分が「原契約」かつ物件ステータスが「中途解約(自己都合)」かつ証書受領フラグが「受領済」』以外かつ、
+        -- 『リース区分が「原契約」かつ物件ステータスが「中途解約(保険対応)」かつ証書受領フラグが「受領済」』以外かつ、
+        -- リース区分が「再リース契約」以外の場合
+        OR (         (       lv_object_status NOT IN ( cv_obj_sts_expired, cv_obj_sts_canceled_expired )  )
+             AND NOT (     ( lt_lease_type           = cv_ls_tp_lease_cntrctd     )
+                       AND ( lv_object_status        = cv_obj_sts_canceled_cnvnnc )
+                       AND ( lt_bond_acceptance_flag = cv_bnd_accpt_flg_accptd    )  )
+             AND NOT (     ( lt_lease_type           = cv_ls_tp_lease_cntrctd     )
+                       AND ( lv_object_status        = cv_obj_sts_canceled_insurance )
+                       AND ( lt_bond_acceptance_flag = cv_bnd_accpt_flg_accptd    )  )
+             AND     (       lt_lease_type <> cv_ls_tp_re_lease_cntrctd           )         ) THEN
+/* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) END */
           lv_errbuf := xxccp_common_pkg.get_msg(
                            iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
                          , iv_name         => cv_tkn_number_29          -- メッセージコード
@@ -3538,10 +3612,13 @@ AS
                AND (ln_machinery_status2 = cn_num0 OR ln_machinery_status2 = cn_num1))THEN
         ln_instance_status_id := gt_instance_status_id_2;
       -- 機器状態１が「２：滞留」
-      -- 機器状態２が「２：整備予定」または「３：保管」または「４：故障中」
+      -- 機器状態２が「２：整備予定」または「３：保管」または「９：故障中」
       ELSIF (ln_machinery_status1 = cn_num2
-               AND (ln_machinery_status2 = cn_num2 OR 
-                      ln_machinery_status2 = cn_num3 OR ln_machinery_status2 = cn_num4)) THEN
+               AND (ln_machinery_status2 = cn_num2 OR
+                      /* 2009.07.14 K.Satomura 統合テスト障害対応(0000476) START */
+                      --ln_machinery_status2 = cn_num3 OR ln_machinery_status2 = cn_num4)) THEN
+                      ln_machinery_status2 = cn_num3 OR ln_machinery_status2 = cn_num9)) THEN
+                      /* 2009.07.14 K.Satomura 統合テスト障害対応(0000476) END */
         ln_instance_status_id := gt_instance_status_id_3;
       -- 機器状態不正
       ELSE
@@ -4732,6 +4809,119 @@ AS
   END update_po_req_line;
 /*20090701_abe_ST529 END*/
   --
+/* 20090708_abe_0000464 START*/
+  /**********************************************************************************
+   * Procedure Name   : check_maker_code
+   * Description      : メーカーコードチェック処理(A-24)
+   ***********************************************************************************/
+  PROCEDURE check_maker_code(
+      id_process_date    IN  DATE                       -- 業務処理日付
+    , i_requisition_rec  IN  g_requisition_rtype        -- 発注依頼情報
+    , ov_errbuf          OUT NOCOPY VARCHAR2             -- エラー・メッセージ --# 固定 #
+    , ov_retcode         OUT NOCOPY VARCHAR2             -- リターン・コード   --# 固定 #
+  ) IS
+    --
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name    CONSTANT VARCHAR2(100) := 'check_maker_code';  -- プロシージャ名
+    --
+    --#######################  固定ローカル変数宣言部 START   ######################
+    --
+    lv_errbuf     VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode    VARCHAR2(1);     -- リターン・コード
+    --
+    --###########################  固定部 END   ####################################
+    --
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_lookup_cd_maker_code    CONSTANT VARCHAR2(30) := 'XXCSO1_PO_CATEGORY_TYPE';  -- 参照タイプ「品目カテゴリ（営業）」
+    cv_enabled_flag_enabled     CONSTANT VARCHAR2(1)  := 'Y';                   -- 参照タイプの有効フラグ「有効」
+    --
+    -- *** ローカル変数 ***
+    ln_cnt_rec    NUMBER;
+    --
+    -- *** ローカル例外 ***
+    sql_expt      EXCEPTION;
+    --
+  BEGIN
+    --
+    --##################  固定ステータス初期化部 START   ###################
+    --
+    ov_retcode := cv_status_normal;
+    --
+    --###########################  固定部 END   ############################
+    --
+    -- ========================================
+    -- 品目カテゴリ（営業）抽出
+    -- ========================================
+    BEGIN
+      SELECT COUNT( flvv.lookup_code )  cnt
+      INTO   ln_cnt_rec
+      FROM   fnd_lookup_values_vl  flvv
+            ,mtl_categories_b     mcb
+      WHERE  flvv.lookup_type  = cv_lookup_cd_maker_code
+      AND    flvv.attribute2   = i_requisition_rec.maker_code
+      AND    TRUNC( id_process_date ) BETWEEN TRUNC( NVL( flvv.start_date_active, id_process_date ) )
+                              AND     TRUNC( NVL( flvv.end_date_active, id_process_date ) )
+      AND    flvv.enabled_flag = cv_enabled_flag_enabled
+      AND    flvv.meaning      = mcb.segment1
+      AND    mcb.category_id   = i_requisition_rec.category_id
+      AND    TRUNC( id_process_date ) BETWEEN TRUNC( NVL( mcb.start_date_active, id_process_date ) )
+                              AND     TRUNC( NVL( mcb.end_date_active, id_process_date ) )
+      AND    mcb.enabled_flag  = cv_enabled_flag_enabled
+      ;
+      --
+      -- 該当データが存在しない場合
+      IF ( ln_cnt_rec = 0 ) THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name    -- アプリケーション短縮名
+                       , iv_name         => cv_tkn_number_54            -- メッセージコード
+                     );
+        --
+        RAISE sql_expt;
+        --
+      END IF;
+      --
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- その他の例外の場合
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name    -- アプリケーション短縮名
+                       , iv_name         => cv_tkn_number_54            -- メッセージコード
+                     );
+        --
+        RAISE sql_expt;
+        --
+    END;
+    --
+  EXCEPTION
+    --
+    WHEN sql_expt THEN
+      -- *** SQLデータ抽出例外＆チェックエラーハンドラ ***
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+      --
+    --#################################  固定例外処理部 START   ####################################
+    --
+    WHEN global_api_others_expt THEN
+      -- *** 共通関数OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    WHEN OTHERS THEN
+      -- *** OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    --
+    --#####################################  固定部 END   ##########################################
+    --
+  END check_maker_code;
+  --
+/* 20090708_abe_0000464 END*/
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -5013,6 +5203,23 @@ AS
           --
         END IF;
         --
+/* 20090708_abe_0000464 START*/
+        -- ========================================
+        -- A-24. メーカーコードチェック処理
+        -- ========================================
+        check_maker_code(
+            id_process_date       => ld_process_date      -- 業務処理日付
+          , i_requisition_rec     => l_requisition_rec    -- 発注依頼情報
+          , ov_errbuf             => lv_errbuf            -- エラー・メッセージ  --# 固定 #
+          , ov_retcode            => lv_retcode           -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+/* 20090708_abe_0000464 END*/
       --------------------------------------------------
       -- カテゴリ区分が「新台代替」の場合
       --------------------------------------------------
@@ -5206,6 +5413,24 @@ AS
         END IF;
         --
 /*20090427_yabuki_ST505_517 END*/
+/* 20090708_abe_0000464 START*/
+        -- ========================================
+        -- A-24. メーカーコードチェック処理
+        -- ========================================
+        check_maker_code(
+            id_process_date       => ld_process_date      -- 業務処理日付
+          , i_requisition_rec     => l_requisition_rec    -- 発注依頼情報
+          , ov_errbuf             => lv_errbuf            -- エラー・メッセージ  --# 固定 #
+          , ov_retcode            => lv_retcode           -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+/* 20090708_abe_0000464 END*/
+
         --
         -- ========================================
         -- A-15. 引揚用物件更新処理
@@ -6174,20 +6399,27 @@ AS
           --
         END IF;
         --
-        -- ========================================
-        -- A-10. リース物件ステータスチェック処理
-        -- ========================================
-        check_object_status(
-            iv_chk_kbn      => cv_obj_sts_chk_kbn_02                       -- チェック区分（チェック対象：廃棄用物件）
-          , iv_install_code => l_requisition_rec.abolishment_install_code  -- 廃棄_物件コード
-          , ov_errbuf       => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
-          , ov_retcode      => lv_retcode                                  -- リターン・コード    --# 固定 #
-        );
-        --
-        IF ( lv_retcode <> cv_status_normal ) THEN
-          RAISE global_process_expt;
+/* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) START */
+        -- リース区分が「自社リース」の場合
+        IF ( l_abolishment_instance_rec.lease_kbn = cv_own_company_lease ) THEN
+/* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) END */
+          -- ========================================
+          -- A-10. リース物件ステータスチェック処理
+          -- ========================================
+          check_object_status(
+              iv_chk_kbn      => cv_obj_sts_chk_kbn_02                       -- チェック区分（チェック対象：廃棄用物件）
+            , iv_install_code => l_requisition_rec.abolishment_install_code  -- 廃棄_物件コード
+            , ov_errbuf       => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
+            , ov_retcode      => lv_retcode                                  -- リターン・コード    --# 固定 #
+          );
           --
+          IF ( lv_retcode <> cv_status_normal ) THEN
+            RAISE global_process_expt;
+            --
+          END IF;
+/* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) START */
         END IF;
+/* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) END */
         --
         -- ========================================
         -- A-17. 廃棄決裁用物件更新処理
@@ -6462,6 +6694,46 @@ AS
           --
         END IF;
         --
+/* 20090708_abe_0000464 START*/
+      --------------------------------------------------
+      -- カテゴリ区分が「新台設置」の場合
+      --------------------------------------------------
+      ELSIF ( l_requisition_rec.category_kbn = cv_category_kbn_new_install ) THEN
+        -- ========================================
+        -- A-24. メーカーコードチェック処理
+        -- ========================================
+        check_maker_code(
+            id_process_date       => ld_process_date      -- 業務処理日付
+          , i_requisition_rec     => l_requisition_rec    -- 発注依頼情報
+          , ov_errbuf             => lv_errbuf            -- エラー・メッセージ  --# 固定 #
+          , ov_retcode            => lv_retcode           -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+      --------------------------------------------------
+      -- カテゴリ区分が「新台代替」の場合
+      --------------------------------------------------
+      ELSIF ( l_requisition_rec.category_kbn = cv_category_kbn_new_replace ) THEN
+        -- ========================================
+        -- A-24. メーカーコードチェック処理
+        -- ========================================
+        check_maker_code(
+            id_process_date       => ld_process_date      -- 業務処理日付
+          , i_requisition_rec     => l_requisition_rec    -- 発注依頼情報
+          , ov_errbuf             => lv_errbuf            -- エラー・メッセージ  --# 固定 #
+          , ov_retcode            => lv_retcode           -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+/* 20090708_abe_0000464 END*/
       END IF;
       --
 /*20090406_yabuki_ST101 START*/
