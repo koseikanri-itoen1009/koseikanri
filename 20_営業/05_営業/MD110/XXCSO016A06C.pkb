@@ -8,7 +8,7 @@ AS
  *                    
  * MD.050           : MD050_CSO_016_A06_情報系-EBSインターフェース：(OUT)什器移動明細
  *                    
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009-10-01    1.4   Daisuke.Abe      0001452対応
  *  2009-11-25    1.5   Daisuke.Abe      E_本稼動_00045対応
  *  2009-12-09    1.6   Kazuyo.Hosoi     E_本稼動_00219対応
+ *  2010-01-15    1.7   Kazuyo.Hosoi     E_本稼動_01178対応
  *
  *****************************************************************************************/
 --
@@ -1733,6 +1734,9 @@ AS
     cv_yes                  CONSTANT VARCHAR2(1)     := 'Y';
     cv_no                   CONSTANT VARCHAR2(1)     := 'N';
     /* 2009.12.09 K.Hosoi E_本稼動_00219 対応 END */
+    /* 2010.01.15 K.Hosoi E_本稼動_01178 対応 START */
+    cn_cmplt                CONSTANT NUMBER(1)       := 1;
+    /* 2010.01.15 K.Hosoi E_本稼動_01178 対応 END */
     -- *** ローカル変数 ***
     lv_sub_retcode         VARCHAR2(1);                -- サーブメイン用リターン・コード
     lv_sub_msg             VARCHAR2(5000);             -- 警告用メッセージ
@@ -1795,7 +1799,11 @@ AS
                 ( xiwd.infos_interface_flag = cv_no  AND xiwd.infos_interface_date IS NULL )
                 OR    
                 ( xiwd.infos_interface_flag = cv_yes AND xiwd.infos_interface_date BETWEEN ld_from_value AND ld_to_value )
-              );
+    /* 2010.01.15 K.Hosoi E_本稼動_01178 対応 START */
+    --          );
+              )
+        AND   xiwd.completion_kbn = cn_cmplt;
+    /* 2010.01.15 K.Hosoi E_本稼動_01178 対応 END */
     /* 2009.12.09 K.Hosoi E_本稼動_00219 対応 END */
     -- *** ローカル・レコード ***
     l_xiwd_data_rec        xiwd_data_cur%ROWTYPE;
