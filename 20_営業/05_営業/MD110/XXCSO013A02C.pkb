@@ -35,6 +35,7 @@ AS
  *  2009-02-02    1.0   Tomoko.Mori      新規作成
  *  2009-04-01    1.1   Kazuo.Satomura   T1_0148,0149対応
  *  2009-04-03    1.2   Kazuo.Satomura   T1_0269対応
+ *  2009-04-07    1.3   Daisuke.Abe      T1_0339対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -303,6 +304,9 @@ AS
      ,xiih.install_address          old_installation_address   -- 旧_設置先住所
      ,xiih.logical_delete_flag      old_active_flag            -- 旧_論理削除フラグ
      ,xiih.account_number           old_customer_code          -- 旧_顧客コード
+     /* 2009.04.07 D.Abe T1_0339対応 START */
+     ,cii.attribute5                newold_flag                -- 新古台フラグ
+     /* 2009.04.07 D.Abe T1_0339対応 END */
     FROM
       csi_item_instances cii     -- インストールベースマスタ
      ,xxcso_ib_info_h xiih       -- 物件関連情報変更履歴テーブル
@@ -2094,11 +2098,21 @@ AS
       -- ========================================
       -- A-3.発注番号抽出 
       -- ========================================
-      get_po_number(
-         ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
-        ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
-        ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
-      );
+      /* 2009.04.07 D.Abe T1_0339対応 START */
+      gn_po_number := NULL;
+      IF (g_get_xxcso_ib_info_h_rec.newold_flag = cv_no OR
+          g_get_xxcso_ib_info_h_rec.newold_flag IS NULL ) THEN
+      /* 2009.04.07 D.Abe T1_0339対応 END */
+        get_po_number(
+           ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+          ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
+          ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+        );
+      /* 2009.04.07 D.Abe T1_0339対応 START */
+      ELSE
+        lv_retcode := cv_status_normal;
+      END IF;
+      /* 2009.04.07 D.Abe T1_0339対応 END */
 --
       IF (lv_retcode = cv_status_error) THEN
         RAISE global_process_expt;
