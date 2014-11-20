@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI009A02R(body)
  * Description      : 倉替出庫明細リスト
  * MD.050           : 倉替出庫明細リスト MD050_COI_009_A02
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2009/07/30    1.10  N.Abe            [0000638]単位の取得項目修正
  *  2009/09/08    1.11  H.Sasaki         [0001266]OPM品目アドオンの版管理対応
  *  2010/10/27    1.12  H.Sasaki         [E_本稼動_05114]PT対応
+ *  2014/03/27    1.13  K.Nakamura       [E_本稼動_11556]資材取引の抽出条件修正、不要な定数・変数削除
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -95,8 +96,10 @@ AS
   -- ユーザー定義例外
   -- ===============================
   get_value_expt            EXCEPTION;    -- 値取得エラー
-  lock_expt                 EXCEPTION;    -- ロック取得エラー
-  get_no_data_expt          EXCEPTION;    -- 取得データ0件
+-- == 2014/03/27 V1.13 Deleted START ===============================================================
+--  lock_expt                 EXCEPTION;    -- ロック取得エラー
+--  get_no_data_expt          EXCEPTION;    -- 取得データ0件
+-- == 2014/03/27 V1.13 Deleted END   ===============================================================
   svf_request_err_expt      EXCEPTION;    -- SVF起動APIエラー
 --
   -- ===============================
@@ -108,7 +111,9 @@ AS
   cv_1                 CONSTANT VARCHAR2(1)   := '1';              -- 定数
   cv_2                 CONSTANT VARCHAR2(1)   := '2';              -- 定数
   cv_3                 CONSTANT VARCHAR2(1)   := '3';              -- 定数
-  cv_31                CONSTANT VARCHAR2(2)   := '31';             -- 定数
+-- == 2014/03/27 V1.13 Deleted START ===============================================================
+--  cv_31                CONSTANT VARCHAR2(2)   := '31';             -- 定数
+-- == 2014/03/27 V1.13 Deleted END   ===============================================================
   cv_dellivary_classe  CONSTANT VARCHAR2(2)   := '41';             -- 大型車
   cn_baracya_type      CONSTANT VARCHAR2(1)   := '1';              -- バラ茶区分
   cv_office_item_drink CONSTANT VARCHAR2(1)   := '2';              -- ドリンク
@@ -124,15 +129,24 @@ AS
   cv_msg_xxcoi00012  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-00012';   -- 取引タイプ取得エラー
   cv_msg_xxcoi00030  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-00030';   -- マスタ組織コード取得エラー
   cv_msg_xxcoi00031  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-00031';   -- マスタ組織ID取得エラー
-  cv_msg_xxcoi10069  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10069';   -- 日付範囲(年月)エラー
+-- == 2014/03/27 V1.13 Added START ===============================================================
+  cv_msg_xxcoi00032  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-00032';   -- プロファイル値取得エラー
+-- == 2014/03/27 V1.13 Added END   ===============================================================
+-- == 2014/03/27 V1.13 Deleted START ===============================================================
+--  cv_msg_xxcoi10069  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10069';   -- 日付範囲(年月)エラー
+-- == 2014/03/27 V1.13 Deleted END   ===============================================================
   cv_msg_xxcoi10070  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10070';   -- 日付範囲(日)エラー
   cv_msg_xxcoi10092  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10092';   -- 所属拠点取得エラー
   cv_msg_xxcoi10066  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10066';   -- パラメータ.取引タイプメッセージ
   cv_msg_xxcoi10067  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10067';   -- パラメータ.年月日メッセージ
   cv_msg_xxcoi10068  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10068';   -- パラメータ.出庫拠点メッセージ
-  cv_msg_xxcoi10011  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10011';   -- 品目マスタ情報未取得エラー
+-- == 2014/03/27 V1.13 Deleted START ===============================================================
+--  cv_msg_xxcoi10011  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10011';   -- 品目マスタ情報未取得エラー
+-- == 2014/03/27 V1.13 Deleted END   ===============================================================
   cv_msg_xxcoi10012  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10012';   -- 品目マスタ情報複数件エラー
-  cv_msg_xxcoi10013  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10013';   -- 顧客マスタ情報未取得エラー
+-- == 2014/03/27 V1.13 Deleted START ===============================================================
+--  cv_msg_xxcoi10013  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10013';   -- 顧客マスタ情報未取得エラー
+-- == 2014/03/27 V1.13 Deleted END   ===============================================================
   cv_msg_xxcoi10014  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10014';   -- 顧客マスタ情報複数件エラー
   cv_msg_xxcoi10016  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10016';   -- 設定単価未取得エラー
   cv_msg_xxcoi10017  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10017';   -- 設定単価複数件エラー
@@ -187,8 +201,10 @@ AS
   -- カウンタ
   gn_base_cnt               NUMBER;                                           -- 拠点コード件数
   gn_base_loop_cnt          NUMBER;                                           -- 拠点コードループカウンタ
-  gn_kuragae_cnt            NUMBER;                                           -- 倉替出庫情報件数
-  gn_kuragae_loop_cnt       NUMBER;                                           -- 倉替出庫情報ループカウンタ
+-- == 2014/03/27 V1.13 Deleted START ===============================================================
+--  gn_kuragae_cnt            NUMBER;                                           -- 倉替出庫情報件数
+--  gn_kuragae_loop_cnt       NUMBER;                                           -- 倉替出庫情報ループカウンタ
+-- == 2014/03/27 V1.13 Deleted END   ===============================================================
   gn_organization_id        mtl_parameters.organization_id%TYPE;              -- 在庫組織ID
   gn_mst_organization_id    mtl_parameters.organization_id%TYPE;              -- マスタ組織ID
   gv_item_div_h             VARCHAR2(20);                                     -- 本社商品区分名
@@ -694,7 +710,10 @@ AS
     WHERE  xdtd.godds_classification   = TO_CHAR( it_product_class )
     AND    xdtd.foothold_macrotaxonomy = it_base_major_division
     AND    xdtd.dellivary_classe       = cv_dellivary_classe
-    AND    it_transaction_date BETWEEN xdtd.start_date_active AND NVL( xdtd.end_date_active, SYSDATE )
+-- == 2014/03/27 V1.13 Modified START ===============================================================
+--    AND    it_transaction_date BETWEEN xdtd.start_date_active AND NVL( xdtd.end_date_active, SYSDATE )
+    AND    TRUNC(it_transaction_date)  BETWEEN xdtd.start_date_active AND xdtd.end_date_active
+-- == 2014/03/27 V1.13 Modified END   ===============================================================
     ;
 --
   EXCEPTION
@@ -782,7 +801,7 @@ AS
 --
     ov_retcode := cv_status_normal;
 --
---###########################  固定部 END   ############################    
+--###########################  固定部 END   ############################
 --
     -- 顧客マスタ情報取得
     SELECT xp.base_major_division  base_major_division   -- 拠点大分類
@@ -957,10 +976,13 @@ AS
           ,xxcmn_item_mst_b        ximb     -- OPM品目アドオンマスタ
     WHERE  msib.segment1                = iimb.item_no
     AND    iimb.item_id                 = ximb.item_id
--- == 2009/09/08 V1.11 Added START ==================================================================
-    AND    it_transaction_date  BETWEEN ximb.start_date_active
-                                AND     NVL(ximb.end_date_active, it_transaction_date)
--- == 2009/09/08 V1.11 Added END   ==================================================================
+-- == 2014/03/27 V1.13 Modified START ===============================================================
+---- == 2009/09/08 V1.11 Added START ==================================================================
+--    AND    it_transaction_date  BETWEEN ximb.start_date_active
+--                                AND     NVL(ximb.end_date_active, it_transaction_date)
+---- == 2009/09/08 V1.11 Added END   ==================================================================
+    AND    TRUNC(it_transaction_date)   BETWEEN ximb.start_date_active AND ximb.end_date_active
+-- == 2014/03/27 V1.13 Modified END   ===============================================================
     AND    msib.segment1                = xsib.item_code
     AND    msib.inventory_item_id       = mic.inventory_item_id
     AND    msib.organization_id         = mic.organization_id
@@ -1035,7 +1057,7 @@ AS
     -- ユーザー定義取引タイプ名称
     cv_tran_type                   CONSTANT VARCHAR2(30)  := 'XXCOI1_TRANSACTION_TYPE_NAME';
     -- 工場返品倉替先コード
-    cv_mfg_fctory_cd              CONSTANT VARCHAR2(30) := 'XXCOI_MFG_FCTORY_CD'; 
+    cv_mfg_fctory_cd               CONSTANT VARCHAR2(30) := 'XXCOI_MFG_FCTORY_CD'; 
 --
     -- 参照コード
     cv_tran_type_kuragae           CONSTANT VARCHAR2(2)   := '20';   -- 取引タイプコード 倉替
@@ -1066,14 +1088,16 @@ AS
     lv_baracha_div                 xxcmm_system_items_b.baracha_div%TYPE;              -- バラ茶区分
     lv_office_item_type            mtl_categories_b.segment1%TYPE;                     -- 本社商品区分
     lv_base_major_division         xxcmn_parties.base_major_division%TYPE;             -- 拠点大分類
-    ln_cs_qty                      NUMBER;   
+    ln_cs_qty                      NUMBER;
     ln_set_unit_price              xxwip_drink_trans_deli_chrgs.setting_amount%TYPE;   -- 設定単価
     ln_dlv_cost_budget_amt         NUMBER;                                             -- 運送費
     lv_discrete_cost               xxcmm_system_items_b_hst.discrete_cost%TYPE;        -- 営業原価
     ln_discrete_cost               NUMBER;                                             -- 営業原価(型変換) 
-    ln_cnt                         NUMBER       DEFAULT  0;          -- ループカウンタ
-    lv_zero_message                VARCHAR2(30) DEFAULT  NULL;       -- ゼロ件メッセージ
-    ln_sql_cnt                     NUMBER       DEFAULT  0;
+-- == 2014/03/27 V1.13 Deleted START ===============================================================
+--    ln_cnt                         NUMBER       DEFAULT  0;          -- ループカウンタ
+--    lv_zero_message                VARCHAR2(30) DEFAULT  NULL;       -- ゼロ件メッセージ
+--    ln_sql_cnt                     NUMBER       DEFAULT  0;
+-- == 2014/03/27 V1.13 Deleted END   ===============================================================
 --
     -- ===============================
     -- ローカル・カーソル
@@ -1148,10 +1172,13 @@ AS
         AND  msib.organization_id                =  gn_organization_id
         AND  msib.segment1                       =  iimb.item_no
         AND  iimb.item_id                        =  ximb.item_id
--- == 2009/09/08 V1.11 Added START ==================================================================
-        AND  mmt.transaction_date  BETWEEN ximb.start_date_active
-                                   AND     NVL(ximb.end_date_active, mmt.transaction_date)
--- == 2009/09/08 V1.11 Added END   ==================================================================
+-- == 2014/03/27 V1.13 Modified START ===============================================================
+---- == 2009/09/08 V1.11 Added START ==================================================================
+--        AND  mmt.transaction_date  BETWEEN ximb.start_date_active
+--                                   AND     NVL(ximb.end_date_active, mmt.transaction_date)
+---- == 2009/09/08 V1.11 Added END   ==================================================================
+        AND  TRUNC(mmt.transaction_date)         BETWEEN ximb.start_date_active AND ximb.end_date_active
+-- == 2014/03/27 V1.13 Modified END   ===============================================================
 -- == 2009/05/21 V1.5 Added START ==================================================================
         AND  mmt.transaction_quantity            <  0
 -- == 2009/05/21 V1.5 Added END   ==================================================================
@@ -1211,10 +1238,13 @@ AS
         AND  msib.organization_id                =  gn_organization_id
         AND  msib.segment1                       =  iimb.item_no
         AND  iimb.item_id                        =  ximb.item_id
--- == 2009/09/08 V1.11 Added START ==================================================================
-        AND  mmt.transaction_date  BETWEEN ximb.start_date_active
-                                   AND     NVL(ximb.end_date_active, mmt.transaction_date)
--- == 2009/09/08 V1.11 Added END   ==================================================================
+-- == 2014/03/27 V1.13 Modified START ===============================================================
+---- == 2009/09/08 V1.11 Added START ==================================================================
+--        AND  mmt.transaction_date  BETWEEN ximb.start_date_active
+--                                   AND     NVL(ximb.end_date_active, mmt.transaction_date)
+---- == 2009/09/08 V1.11 Added END   ==================================================================
+        AND  TRUNC(mmt.transaction_date)         BETWEEN ximb.start_date_active AND ximb.end_date_active
+-- == 2014/03/27 V1.13 Modified END   ===============================================================
 -- == 2010/10/27 V1.12 Modified START ===============================================================
 --      UNION
       UNION ALL
@@ -1286,10 +1316,13 @@ AS
         AND  msib.organization_id                =  gn_organization_id
         AND  msib.segment1                       =  iimb.item_no
         AND  iimb.item_id                        =  ximb.item_id
--- == 2009/09/08 V1.11 Added START ==================================================================
-        AND  mmt.transaction_date  BETWEEN ximb.start_date_active
-                                   AND     NVL(ximb.end_date_active, mmt.transaction_date)
--- == 2009/09/08 V1.11 Added END   ==================================================================
+-- == 2014/03/27 V1.13 Modified START ===============================================================
+---- == 2009/09/08 V1.11 Added START ==================================================================
+--        AND  mmt.transaction_date  BETWEEN ximb.start_date_active
+--                                   AND     NVL(ximb.end_date_active, mmt.transaction_date)
+---- == 2009/09/08 V1.11 Added END   ==================================================================
+        AND  TRUNC(mmt.transaction_date)         BETWEEN ximb.start_date_active AND ximb.end_date_active
+-- == 2014/03/27 V1.13 Modified END   ===============================================================
 -- == 2010/10/27 V1.12 Deleted START ===============================================================
 --        ORDER BY out_base_code
 --                ,in_base_code
@@ -1567,8 +1600,10 @@ AS
     -- ***       処理部の呼び出し          ***
     -- ***************************************
 --
-    -- 倉替出庫情報件数初期化
-    gn_kuragae_cnt := 0;
+-- == 2014/03/27 V1.13 Deleted START ===============================================================
+--    -- 倉替出庫情報件数初期化
+--    gn_kuragae_cnt := 0;
+-- == 2014/03/27 V1.13 Deleted END   ===============================================================
 --
     -- カーソルオープン
     OPEN  info_kuragae_cur(ln_tran_type_kojo_henpin
@@ -1873,8 +1908,10 @@ AS
     ;
 --
     -- *** ローカル・レコード ***
-    lr_info_base1_rec   info_base1_cur%ROWTYPE;
-    lr_info_base2_rec   info_base2_cur%ROWTYPE;
+-- == 2014/03/27 V1.13 Deleted START ===============================================================
+--    lr_info_base1_rec   info_base1_cur%ROWTYPE;
+--    lr_info_base2_rec   info_base2_cur%ROWTYPE;
+-- == 2014/03/27 V1.13 Deleted END   ===============================================================
 --
   BEGIN
 --
@@ -1984,8 +2021,10 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     -- 定数
-    cv_01                   CONSTANT VARCHAR2(2)    := '01';                            -- 妥当性チェック用(1月)
-    cv_12                   CONSTANT VARCHAR2(2)    := '12';                            -- 妥当性チェック用(12月)
+-- == 2014/03/27 V1.13 Deleted START ===============================================================
+--    cv_01                   CONSTANT VARCHAR2(2)    := '01';                            -- 妥当性チェック用(1月)
+--    cv_12                   CONSTANT VARCHAR2(2)    := '12';                            -- 妥当性チェック用(12月)
+-- == 2014/03/27 V1.13 Deleted END   ===============================================================
     cv_mstorg_code          CONSTANT VARCHAR2(30)   := 'XXCOI1_MST_ORGANIZATION_CODE';  -- プロファイル名(マスタ組織コード)
     cv_profile_name         CONSTANT VARCHAR2(24)   := 'XXCOI1_ORGANIZATION_CODE';      -- プロファイル名(在庫組織コード)
     cv_item_div_h           CONSTANT VARCHAR2(30)   := 'XXCOS1_ITEM_DIV_H';             -- XXCOS:本社商品区分
@@ -1994,7 +2033,7 @@ AS
 -- == 2009/05/29 V1.7 Added END   ===============================================================
 --
     -- *** ローカル変数 ***
-    lv_organization_code mtl_parameters.organization_code%TYPE;      -- 在庫組織コード
+    lv_organization_code     mtl_parameters.organization_code%TYPE;  -- 在庫組織コード
     lv_mst_organization_code mtl_parameters.organization_code%TYPE;  -- マスタ組織コード
     ld_date            DATE;
 --
@@ -2016,23 +2055,23 @@ AS
     -- ***************************************
 --
     -- =====================================
-    -- 業務日付取得(共通関数)   
+    -- 業務日付取得(共通関数)
     -- =====================================
     gd_process_date := xxccp_common_pkg2.get_process_date;
     --
-      -- 業務日付が取得できない場合はエラー
-      IF ( gd_process_date IS NULL ) THEN
-        -- エラーメッセージ取得
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name
-                       ,iv_name         => cv_msg_xxcoi00011
-                    );
-        lv_errbuf := lv_errmsg;
-        RAISE global_api_expt;
-      END IF;         
+    -- 業務日付が取得できない場合はエラー
+    IF ( gd_process_date IS NULL ) THEN
+      -- エラーメッセージ取得
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name
+                     ,iv_name         => cv_msg_xxcoi00011
+                  );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
 --
     -- =====================================
-    -- パラメータ妥当性チェック(日)   
+    -- パラメータ妥当性チェック(日)
     -- =====================================
     -- パラメータ.日がNULLでない場合
     IF gr_param.a_day IS NOT NULL THEN
@@ -2058,10 +2097,10 @@ AS
           gr_param.a_day := cv_0||gr_param.a_day; 
         END IF;
         -- 
-      -- パラメータ.年月とパラメータ.日を結合し日付の妥当性チェックを行う
-      ld_date := TO_DATE((gr_param.year_month||gr_param.a_day),'YYYYMMDD');
-      --
-      -- パラメータ.年月とパラメータ.日を結合し、業務日付と比較
+        -- パラメータ.年月とパラメータ.日を結合し日付の妥当性チェックを行う
+        ld_date := TO_DATE((gr_param.year_month||gr_param.a_day),'YYYYMMDD');
+        --
+        -- パラメータ.年月とパラメータ.日を結合し、業務日付と比較
         IF ( TO_CHAR( ( gd_process_date ), 'YYYYMMDD' ) < 
             ( gr_param.year_month||gr_param.a_day ) ) THEN
           -- エラーメッセージ取得
@@ -2175,8 +2214,15 @@ AS
     IF ( gv_item_div_h IS NULL ) THEN
       -- エラーメッセージ
       lv_errmsg := xxcmn_common_pkg.get_msg( 
+-- == 2014/03/27 V1.13 Modified START ==================================================================
+--                      iv_application  => cv_app_name
+--                     ,iv_name         => cv_msg_xxcoi10092);
                       iv_application  => cv_app_name
-                     ,iv_name         => cv_msg_xxcoi10092);
+                     ,iv_name         => cv_msg_xxcoi00032
+                     ,iv_token_name1  => cv_token_pro
+                     ,iv_token_value1 => cv_item_div_h
+                  );
+-- == 2014/03/27 V1.13 Modified END   ==================================================================
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;    
@@ -2448,10 +2494,10 @@ AS
          ,lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
       );
       -- 終了パラメータ判定
-         IF ( lv_retcode = cv_status_error ) THEN
-           -- エラー処理
-           RAISE global_process_expt;
-         END IF;
+      IF ( lv_retcode = cv_status_error ) THEN
+        -- エラー処理
+        RAISE global_process_expt;
+      END IF;
     END IF;
 --
     -- =====================================================

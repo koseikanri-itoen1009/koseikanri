@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI009A03R(body)
  * Description      : 工場入庫明細リスト
  * MD.050           : 工場入庫明細リスト MD050_COI_009_A03
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/09/08    1.6   H.Sasaki         [障害0001266]OPM品目アドオンの版管理対応
  *  2009/10/22    1.7   H.Sasaki         [障害E_T4_00057]資材品目の取得方法変更
  *  2010/02/02    1.8   N.Abe            [E_本稼動_01411]商品分のPT対応
+ *  2014/03/26    1.9   K.Nakamura       [E_本稼動_11556]資材取引の抽出条件修正、不要な定数・変数削除
  *
  *****************************************************************************************/
 --
@@ -88,9 +89,11 @@ AS
   -- ユーザー定義例外
   -- ===============================
   get_value_expt            EXCEPTION;    -- 値取得エラー
-  lock_expt                 EXCEPTION;    -- ロック取得エラー
-  get_no_data_expt          EXCEPTION;    -- 取得データ0件
-  get_no_data_expt          EXCEPTION;    -- 対象データ0件
+-- == 2014/03/26 V1.9 Deleted START ===============================================================
+--  lock_expt                 EXCEPTION;    -- ロック取得エラー
+--  get_no_data_expt          EXCEPTION;    -- 取得データ0件
+--  get_no_data_expt          EXCEPTION;    -- 対象データ0件
+-- == 2014/03/26 V1.9 Deleted END   ===============================================================
   svf_request_err_expt      EXCEPTION;    -- SVF起動APIエラー
 --
   -- ===============================
@@ -102,8 +105,10 @@ AS
   cv_1             CONSTANT VARCHAR2(1)   := '1';              -- 定数
   cv_2             CONSTANT VARCHAR2(1)   := '2';              -- 定数
   cv_3             CONSTANT VARCHAR2(1)   := '3';              -- 定数
-  cv_4             CONSTANT VARCHAR2(1)   := '4';              -- 定数
-  cv_log               CONSTANT VARCHAR2(3)   := 'LOG';            -- コンカレントヘッダ出力先
+-- == 2014/03/26 V1.9 Deleted START ===============================================================
+--  cv_4             CONSTANT VARCHAR2(1)   := '4';              -- 定数
+-- == 2014/03/26 V1.9 Deleted END   ===============================================================
+  cv_log           CONSTANT VARCHAR2(3)   := 'LOG';            -- コンカレントヘッダ出力先
 --
   -- メッセージ
   cv_msg_xxcoi00008  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-00008';   -- 0件メッセージ
@@ -129,10 +134,14 @@ AS
   cv_tkn_lookup_type CONSTANT VARCHAR2(20) := 'LOOKUP_TYPE';            -- 参照タイプ
   cv_tkn_lookup_code CONSTANT VARCHAR2(20) := 'LOOKUP_CODE';            -- 参照コード
   cv_tkn_tran_type   CONSTANT VARCHAR2(20) := 'TRANSACTION_TYPE_TOK';   -- 取引タイプ
-  cv_tkn_item_code   CONSTANT VARCHAR2(20) := 'ITEM_CODE';
+-- == 2014/03/26 V1.9 Deleted START ===============================================================
+--  cv_tkn_item_code   CONSTANT VARCHAR2(20) := 'ITEM_CODE';
+-- == 2014/03/26 V1.9 Deleted END   ===============================================================
 --
     -- カテゴリセット名
-  cv_category_hinmoku  CONSTANT VARCHAR2(8)   := '品目区分';
+-- == 2014/03/26 V1.9 Deleted START ===============================================================
+--  cv_category_hinmoku  CONSTANT VARCHAR2(8)   := '品目区分';
+-- == 2014/03/26 V1.9 Deleted END   ===============================================================
   cv_category_seishou  CONSTANT VARCHAR2(12)  := '商品製品区分';
 --
   -- ===============================
@@ -155,21 +164,23 @@ AS
   --  拠点情報格納用テーブル
   TYPE gt_base_num_ttype IS TABLE OF gr_base_num_rec INDEX BY BINARY_INTEGER;
 --
-  -- 工場入庫情報格納用レコード変数
-  TYPE gr_kojo_nyuko_rec IS RECORD
-    (
-      msi_attribute7                mtl_secondary_inventories.attribute7%TYPE            -- 入庫拠点コード
-     ,hca_account_number            hz_cust_accounts.account_number%TYPE                -- 入庫拠点名
-     ,mmt_inventory_item_id         mtl_material_transactions.inventory_item_id%TYPE     -- 品目ID
-     ,mmt_transaction_quantity      mtl_material_transactions.transaction_quantity%TYPE  -- 取引数量
-     ,mmt_transaction_date          mtl_material_transactions.transaction_date%TYPE      -- 取引日
-     ,msib_segment1                 mtl_system_items_b.segment1%TYPE                     -- 品目名
-     ,ximb_item_short_name          xxcmn_item_mst_b.item_short_name%TYPE                -- 品目略称
---     ,                              --品目カテゴリコード
---
-    );
-  --  工場入庫情報格納用テーブル
-  TYPE gt_kojo_nyuko_ttype IS TABLE OF gr_kojo_nyuko_rec INDEX BY BINARY_INTEGER;
+-- == 2014/03/26 V1.9 Deleted START ===============================================================
+--  -- 工場入庫情報格納用レコード変数
+--  TYPE gr_kojo_nyuko_rec IS RECORD
+--    (
+--      msi_attribute7                mtl_secondary_inventories.attribute7%TYPE            -- 入庫拠点コード
+--     ,hca_account_number            hz_cust_accounts.account_number%TYPE                -- 入庫拠点名
+--     ,mmt_inventory_item_id         mtl_material_transactions.inventory_item_id%TYPE     -- 品目ID
+--     ,mmt_transaction_quantity      mtl_material_transactions.transaction_quantity%TYPE  -- 取引数量
+--     ,mmt_transaction_date          mtl_material_transactions.transaction_date%TYPE      -- 取引日
+--     ,msib_segment1                 mtl_system_items_b.segment1%TYPE                     -- 品目名
+--     ,ximb_item_short_name          xxcmn_item_mst_b.item_short_name%TYPE                -- 品目略称
+----     ,                              --品目カテゴリコード
+----
+--    );
+--  --  工場入庫情報格納用テーブル
+--  TYPE gt_kojo_nyuko_ttype IS TABLE OF gr_kojo_nyuko_rec INDEX BY BINARY_INTEGER;
+-- == 2014/03/26 V1.9 Deleted END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -179,13 +190,17 @@ AS
   -- カウンタ
   gn_base_cnt               NUMBER;                                         -- 拠点コード件数
   gn_base_loop_cnt          NUMBER;                                         -- 拠点コードループカウンタ
-  gn_kojo_nyuko_cnt         NUMBER;                                         -- 工場入庫情報件数
-  gn_kojo_nyuko_loop_cnt    NUMBER;                                         -- 工場入庫情報ループカウンタ
+-- == 2014/03/26 V1.9 Deleted START ===============================================================
+--  gn_kojo_nyuko_cnt         NUMBER;                                         -- 工場入庫情報件数
+--  gn_kojo_nyuko_loop_cnt    NUMBER;                                         -- 工場入庫情報ループカウンタ
+-- == 2014/03/26 V1.9 Deleted END   ===============================================================
   gn_organization_id        mtl_parameters.organization_id%TYPE;            -- 在庫組織ID
   --
   gr_param                  gr_param_rec;
   gt_base_num_tab           gt_base_num_ttype;
-  gt_kojo_nyuko_tab         gt_kojo_nyuko_ttype;
+-- == 2014/03/26 V1.9 Deleted START ===============================================================
+--  gt_kojo_nyuko_tab         gt_kojo_nyuko_ttype;
+-- == 2014/03/26 V1.9 Deleted END   ===============================================================
 --
   /**********************************************************************************
    * Procedure Name   : del_work
@@ -766,8 +781,11 @@ AS
                AND    mcst.category_set_name         =  cv_category_seishou
                AND    mic.organization_id            =  gn_organization_id
                AND    msib.organization_id           =  mic.organization_id
-               AND    mmt.transaction_date           BETWEEN ximb.start_date_active
-                                                     AND     NVL(ximb.end_date_active, mmt.transaction_date)
+-- == 2014/03/26 V1.9 Modified START ===============================================================
+--               AND    mmt.transaction_date           BETWEEN ximb.start_date_active
+--                                                     AND     NVL(ximb.end_date_active, mmt.transaction_date)
+               AND    TRUNC(mmt.transaction_date)    BETWEEN ximb.start_date_active AND ximb.end_date_active
+-- == 2014/03/26 V1.9 Modified END   ===============================================================
               ) sub
       WHERE     sub.item_category = NVL(gr_param.item_ctg, sub.item_category)
       ORDER BY  sub.in_base_code
@@ -1258,8 +1276,10 @@ AS
     ;
 --
     -- *** ローカル・レコード ***
-    lr_info_base1_rec   info_base1_cur%ROWTYPE;
-    lr_info_base2_rec   info_base2_cur%ROWTYPE;
+-- == 2014/03/26 V1.9 Deleted START ===============================================================
+--    lr_info_base1_rec   info_base1_cur%ROWTYPE;
+--    lr_info_base2_rec   info_base2_cur%ROWTYPE;
+-- == 2014/03/26 V1.9 Deleted END   ===============================================================
 --
   BEGIN
 --
@@ -1398,36 +1418,36 @@ AS
     -- =====================================
     gd_process_date := xxccp_common_pkg2.get_process_date;
     --
-      -- 業務日付が取得できない場合はエラー
-      IF ( gd_process_date IS NULL ) THEN
-        -- エラーメッセージ取得
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name
-                       ,iv_name         => cv_msg_xxcoi00011
-                    );
-        lv_errbuf := lv_errmsg;
-        RAISE global_api_expt;
-      END IF;
+    -- 業務日付が取得できない場合はエラー
+    IF ( gd_process_date IS NULL ) THEN
+      -- エラーメッセージ取得
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name
+                     ,iv_name         => cv_msg_xxcoi00011
+                  );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
 --
     -- =====================================
     -- パラメータ妥当性チェック(年月)
     -- =====================================
     IF ( ( SUBSTRB(gr_param.year_month,5,6) < cv_01 ) OR ( SUBSTRB ( gr_param.year_month,5,6 ) > cv_12 ) ) THEN
-        -- エラーメッセージ取得
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name
-                       ,iv_name         => cv_msg_xxcoi10069
-                    );
-        lv_errbuf := lv_errmsg;
-        RAISE get_value_expt;
+      -- エラーメッセージ取得
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name
+                     ,iv_name         => cv_msg_xxcoi10069
+                  );
+      lv_errbuf := lv_errmsg;
+      RAISE get_value_expt;
     ELSIF ( TO_CHAR( ( gd_process_date ), 'YYYYMM' ) < gr_param.year_month ) THEN
-        -- エラーメッセージ取得
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name
-                       ,iv_name         => cv_msg_xxcoi10003
-                    );
-        lv_errbuf := lv_errmsg;
-        RAISE get_value_expt;
+      -- エラーメッセージ取得
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name
+                     ,iv_name         => cv_msg_xxcoi10003
+                  );
+      lv_errbuf := lv_errmsg;
+      RAISE get_value_expt;
     END IF;
 --
     -- =====================================

@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI002A04R(body)
  * Description      : 製品廃却伝票
  * MD.050           : 製品廃却伝票 MD050_COI_002_A04
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/09/05    1.0   K.Furuyama       新規作成
+ *  2014/03/26    1.1   K.Nakamura       [E_本稼動_11556]資材取引の抽出条件修正、不要な定数・変数削除
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -115,7 +116,9 @@ AS
   cv_token_base_code          CONSTANT VARCHAR2(30) := 'P_BASE_CODE';
   cv_token_lookup_type        CONSTANT VARCHAR2(20) := 'LOOKUP_TYPE';            -- 参照タイプ
   cv_token_lookup_code        CONSTANT VARCHAR2(20) := 'LOOKUP_CODE';            -- 参照コード
-  cv_token_item_code          CONSTANT VARCHAR2(20) := 'ITEM_CODE';              -- 品目コード
+-- == 2014/03/26 V1.1 Deleted START ===============================================================
+--  cv_token_item_code          CONSTANT VARCHAR2(20) := 'ITEM_CODE';              -- 品目コード
+-- == 2014/03/26 V1.1 Deleted END   ===============================================================
   cv_token_tran_type          CONSTANT VARCHAR2(20) := 'TRANSACTION_TYPE_TOK';   -- 取引タイプ
 --
   -- ===============================
@@ -150,7 +153,9 @@ AS
   gn_haikyaku_loop_cnt      NUMBER;                                           -- 製品廃却伝票情報ループカウンタ
   gn_organization_id        mtl_parameters.organization_id%TYPE;              -- 在庫組織ID
   gn_mst_organization_id    mtl_parameters.organization_id%TYPE;              -- マスタ組織ID
-  gv_transaction_type_name  mtl_transaction_types.transaction_type_name%TYPE; -- 取引タイプ名
+-- == 2014/03/26 V1.1 Deleted START ===============================================================
+--  gv_transaction_type_name  mtl_transaction_types.transaction_type_name%TYPE; -- 取引タイプ名
+-- == 2014/03/26 V1.1 Deleted END   ===============================================================
   -- 
   gr_param                  gr_param_rec;
   gt_base_num_tab           gt_base_num_ttype;
@@ -444,7 +449,7 @@ AS
        gr_param.year_month||gr_param.a_day          -- 対象年月日
       ,it_out_base_code                             -- 拠点
       ,it_out_base_name                             -- 拠点名
-      ,TO_CHAR(it_transaction_date,cv_ymd)      -- 取引日
+      ,TO_CHAR(it_transaction_date,cv_ymd)          -- 取引日
       ,it_item_code                                 -- 商品
       ,it_item_name                                 -- 商品名
       ,it_slip_no                                   -- 伝票No
@@ -515,7 +520,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    cv_flag                        CONSTANT VARCHAR2(1)  := 'Y';                      -- 使用可能フラグ 'Y'
+-- == 2014/03/26 V1.1 Deleted START ===============================================================
+--    cv_flag                        CONSTANT VARCHAR2(1)  := 'Y';                      -- 使用可能フラグ 'Y'
+-- == 2014/03/26 V1.1 Deleted END   ===============================================================
 --
     -- 参照タイプ
     -- ユーザー定義取引タイプ名称
@@ -530,12 +537,16 @@ AS
     ln_tran_type_haikyaku          mtl_transaction_types.transaction_type_id%TYPE;     -- 取引タイプID 廃却
     lv_tran_type_haikyaku_b        mtl_transaction_types.transaction_type_name%TYPE;   -- 取引タイプ名 廃却振戻
     ln_tran_type_haikyaku_b        mtl_transaction_types.transaction_type_id%TYPE;     -- 取引タイプID 廃却振戻
-    ln_set_unit_price              xxwip_drink_trans_deli_chrgs.setting_amount%TYPE;   -- 設定単価
+-- == 2014/03/26 V1.1 Deleted START ===============================================================
+--    ln_set_unit_price              xxwip_drink_trans_deli_chrgs.setting_amount%TYPE;   -- 設定単価
+-- == 2014/03/26 V1.1 Deleted END   ===============================================================
     lv_discrete_cost               xxcmm_system_items_b_hst.discrete_cost%TYPE;        -- 営業原価
     ln_discrete_cost               NUMBER;                                             -- 営業原価(型変換) 
-    ln_cnt                         NUMBER       DEFAULT  0;                            -- ループカウンタ
-    lv_zero_message                VARCHAR2(30) DEFAULT  NULL;                         -- ゼロ件メッセージ
-    ln_sql_cnt                     NUMBER       DEFAULT  0;
+-- == 2014/03/26 V1.1 Deleted START ===============================================================
+--    ln_cnt                         NUMBER       DEFAULT  0;                            -- ループカウンタ
+--    lv_zero_message                VARCHAR2(30) DEFAULT  NULL;                         -- ゼロ件メッセージ
+--    ln_sql_cnt                     NUMBER       DEFAULT  0;
+-- == 2014/03/26 V1.1 Deleted END   ===============================================================
 --
     -- ===============================
     -- ローカル・カーソル
@@ -547,7 +558,7 @@ AS
     IS
       --廃却
       SELECT  mmt.transaction_id                                        -- 取引ID
-             ,msi.attribute7                  out_base_code             -- 拠点 
+             ,msi.attribute7                  out_base_code             -- 拠点
              ,SUBSTRB(hca.account_name,1,8)   out_base_name             -- 拠点名
              ,mmt.transaction_date            transaction_date          -- 取引日
              ,mmt.attribute1                  slip_no                   -- 伝票No
@@ -560,7 +571,7 @@ AS
              ,mtl_secondary_inventories  msi                            -- 保管場所マスタ
              ,hz_cust_accounts           hca                            -- 顧客マスタ
              ,mtl_system_items_b         msib                           -- 品目マスタ
-             ,ic_item_mst_b              iimb                           -- OPM品目マスタ  
+             ,ic_item_mst_b              iimb                           -- OPM品目マスタ
              ,xxcmn_item_mst_b           ximb                           -- OPM品目アドオンマスタ
       WHERE  mmt.transaction_type_id             =  mtt.transaction_type_id
         AND  mmt.transaction_type_id IN (ln_tran_type_haikyaku,ln_tran_type_haikyaku_b)
@@ -575,8 +586,11 @@ AS
         AND  msib.organization_id                =  gn_organization_id
         AND  msib.segment1                       =  iimb.item_no
         AND  iimb.item_id                        =  ximb.item_id
-        AND  mmt.transaction_date  BETWEEN ximb.start_date_active
-                                   AND     NVL(ximb.end_date_active, mmt.transaction_date)
+-- == 2014/03/26 V1.1 Modified START ===============================================================
+--        AND  mmt.transaction_date  BETWEEN ximb.start_date_active
+--                                   AND     NVL(ximb.end_date_active, mmt.transaction_date)
+        AND  TRUNC(mmt.transaction_date)         BETWEEN ximb.start_date_active AND ximb.end_date_active
+-- == 2014/03/26 V1.1 Modified END   ===============================================================
       ;
 --
     -- ローカル・レコード
@@ -837,8 +851,10 @@ AS
     ;
 --
     -- *** ローカル・レコード ***
-    lr_info_base1_rec   info_base1_cur%ROWTYPE;
-    lr_info_base2_rec   info_base2_cur%ROWTYPE;
+-- == 2014/03/26 V1.1 Deleted START ===============================================================
+--    lr_info_base1_rec   info_base1_cur%ROWTYPE;
+--    lr_info_base2_rec   info_base2_cur%ROWTYPE;
+-- == 2014/03/26 V1.1 Deleted END   ===============================================================
 --
   BEGIN
 --
@@ -953,7 +969,7 @@ AS
     cv_profile_name         CONSTANT VARCHAR2(24)   := 'XXCOI1_ORGANIZATION_CODE';      -- プロファイル名(在庫組織コード)
 --
     -- *** ローカル変数 ***
-    lv_organization_code mtl_parameters.organization_code%TYPE;      -- 在庫組織コード
+    lv_organization_code     mtl_parameters.organization_code%TYPE;  -- 在庫組織コード
     lv_mst_organization_code mtl_parameters.organization_code%TYPE;  -- マスタ組織コード
     ld_date                 DATE;
 --
@@ -979,16 +995,16 @@ AS
     -- =====================================
     gd_process_date := xxccp_common_pkg2.get_process_date;
     --
-      -- 業務日付が取得できない場合はエラー
-      IF ( gd_process_date IS NULL ) THEN
-        -- エラーメッセージ取得
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name
-                       ,iv_name         => cv_msg_xxcoi00011
-                    );
-        lv_errbuf := lv_errmsg;
-        RAISE global_api_expt;
-      END IF;
+    -- 業務日付が取得できない場合はエラー
+    IF ( gd_process_date IS NULL ) THEN
+      -- エラーメッセージ取得
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name
+                     ,iv_name         => cv_msg_xxcoi00011
+                  );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
 --
     -- =====================================
     -- パラメータ妥当性チェック(日)
@@ -1014,10 +1030,10 @@ AS
           gr_param.a_day := cv_0||gr_param.a_day;
         END IF;
         -- 
-      -- パラメータ.年月とパラメータ.日を結合し日付の妥当性チェックを行う
-      ld_date := TO_DATE((gr_param.year_month||gr_param.a_day),cv_ymd);
-      --
-      -- パラメータ.年月とパラメータ.日を結合し、業務日付と比較
+        -- パラメータ.年月とパラメータ.日を結合し日付の妥当性チェックを行う
+        ld_date := TO_DATE((gr_param.year_month||gr_param.a_day),cv_ymd);
+        --
+        -- パラメータ.年月とパラメータ.日を結合し、業務日付と比較
         IF ( TO_CHAR( ( gd_process_date ), cv_ymd ) < 
             ( gr_param.year_month||gr_param.a_day ) ) THEN
           -- エラーメッセージ取得
@@ -1343,10 +1359,10 @@ AS
          ,lv_errmsg                                 -- ユーザー・エラー・メッセージ --# 固定 #
       );
       -- 終了パラメータ判定
-         IF ( lv_retcode = cv_status_error ) THEN
-           -- エラー処理
-           RAISE global_process_expt;
-         END IF;
+      IF ( lv_retcode = cv_status_error ) THEN
+        -- エラー処理
+        RAISE global_process_expt;
+      END IF;
     END IF;
 --
     -- =====================================================
