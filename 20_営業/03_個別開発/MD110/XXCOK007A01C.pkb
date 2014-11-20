@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK007A01C(body)
  * Description      : 売上実績振替情報作成(EDI)
  * MD.050           : 売上実績振替情報作成(EDI) MD050_COK_007_A01
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * -------------------------------- ---------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *                                                       顧客使用目的マスタの抽出条件に有効フラグを追加
  *  2010/02/18    1.13  S.Moriyama       [E_本稼動_00911]納品日先日付のEDI実績振替は一時表までの登録としスキップする
  *  2010/05/18    1.14  K.Yamaguchi      [E_本稼動_02683]営業原価の取得方法を修正
+ *  2011/11/11    1.15  K.Nakamura       [E_本稼動_08340]店舗納品日のAR会計期間チェック追加
  *
  *****************************************************************************************/
   -- =========================
@@ -106,6 +107,10 @@ AS
 -- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama ADD START
   cv_message_10473       CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10473';   --価格表単価0円エラーメッセージ
 -- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama ADD END
+-- 2011/11/11 Ver.1.15 [E_本稼動_08340] K.Nakamura ADD START
+  cv_message_00059       CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00059';   --会計期間情報取得エラーメッセージ
+  cv_message_10489       CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10489';   --会計期間未オープンエラーメッセージ
+-- 2011/11/11 Ver.1.15 [E_本稼動_08340] K.Nakamura ADD END
   cv_message_90000       CONSTANT VARCHAR2(500) := 'APP-XXCCP1-90000';   --対象件数メッセージ
   cv_message_90001       CONSTANT VARCHAR2(500) := 'APP-XXCCP1-90001';   --成功件数メッセージ
   cv_message_90002       CONSTANT VARCHAR2(500) := 'APP-XXCCP1-90002';   --エラー件数メッセージ
@@ -182,6 +187,9 @@ AS
 -- 2010/01/28 Ver.1.12 [E_本稼動_01297] SCS Y.Kuboshima ADD END
   cv_J                        CONSTANT VARCHAR2(1)  := 'J';                              --文字列:J
   cv_article_code             CONSTANT VARCHAR2(10) := '0000000000';                     --物件コード(固定値)
+-- 2011/11/11 Ver.1.15 [E_本稼動_08340] K.Nakamura ADD START
+  cv_account_period_ar        CONSTANT VARCHAR2(2)  := '02';
+-- 2011/11/11 Ver.1.15 [E_本稼動_08340] K.Nakamura ADD END
   --数値
   cn_0                        CONSTANT NUMBER       := 0;                                --数値:0
   cn_1                        CONSTANT NUMBER       := 1;                                --数値:1
@@ -219,6 +227,9 @@ AS
 -- Start 2009/07/29 Ver_1.6 0000514 M.Hiruta ADD
   gn_set_of_books_id      NUMBER        DEFAULT NULL;   -- 会計帳簿ID
 -- End   2009/07/29 Ver_1.6 0000514 M.Hiruta ADD
+-- 2011/11/11 Ver.1.15 [E_本稼動_08340] K.Nakamura ADD START
+  gv_start_date           VARCHAR2(10)  DEFAULT NULL;   --会計(FROM)
+-- 2011/11/11 Ver.1.15 [E_本稼動_08340] K.Nakamura ADD END
   -- =======================
   -- グローバルRECODE型
   -- =======================
@@ -1761,6 +1772,25 @@ AS
                     );
       RAISE chk_data_expt;
     END IF;
+-- 2011/11/11 Ver.1.15 [E_本稼動_08340] K.Nakamura ADD START
+    -- =============================================================================
+    -- AR会計期間のチェック
+    -- =============================================================================
+    IF ( gv_start_date > lv_store_delivery_date ) THEN
+      lv_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcok_appl_name
+                , iv_name         => cv_message_10489
+                , iv_token_name1  => cv_token_delivery_date
+                , iv_token_value1 => lv_store_delivery_date
+                );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT
+                    , iv_message  => lv_msg
+                    , in_new_line => 0
+                    );
+      RAISE chk_data_expt;
+    END IF;
+-- 2011/11/11 Ver.1.15 [E_本稼動_08340] K.Nakamura ADD END
     -- =============================================================================
     -- 2.B-2で取得した納入先センターコードを使用し、 売上振替元顧客コードの変換
     -- =============================================================================
@@ -2717,6 +2747,11 @@ AS
     lv_org_code      VARCHAR2(100)  DEFAULT NULL;   --カスタムプロファイル(在庫組織コード)
     lv_profile_code  VARCHAR2(100)  DEFAULT NULL;   --プロファイル値
     lb_retcode       BOOLEAN        DEFAULT NULL;   --メッセージ出力の戻り値
+-- 2011/11/11 Ver.1.15 [E_本稼動_08340] K.Nakamura ADD START
+    lv_status        VARCHAR2(6)    DEFAULT NULL;   --ステータス
+    ld_start_date    DATE           DEFAULT NULL;   --会計(FROM)
+    ld_end_date      DATE           DEFAULT NULL;   --会計(TO)
+-- 2011/11/11 Ver.1.15 [E_本稼動_08340] K.Nakamura ADD END
     -- =======================
     -- ローカル例外
     -- =======================
@@ -2857,6 +2892,36 @@ AS
       RAISE get_profile_expt;
     END IF;
 -- End   2009/07/29 Ver_1.6 0000514 M.Hiruta ADD
+-- 2011/11/11 Ver.1.15 [E_本稼動_08340] K.Nakamura ADD START
+    -- =============================================================================
+    -- AR会計期間の取得
+    -- =============================================================================
+    xxcos_common_pkg.get_account_period(
+      iv_account_period => cv_account_period_ar --会計区分
+    , id_base_date      => NULL                 --基準日
+    , ov_status         => lv_status            --ステータス
+    , od_start_date     => ld_start_date        --会計(FROM)
+    , od_end_date       => ld_end_date          --会計(TO)
+    , ov_errbuf         => lv_errbuf            --エラー・メッセージ
+    , ov_retcode        => lv_retcode           --リターン・コード
+    , ov_errmsg         => lv_errmsg            --ユーザー・エラー・メッセージ
+    );
+    --
+    IF ( lv_retcode = cv_status_error ) THEN
+      lv_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcok_appl_name
+                , iv_name         => cv_message_00059
+                );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT   --出力区分
+                    , iv_message  => lv_msg            --メッセージ
+                    , in_new_line => 0                 --改行
+                    );
+      RAISE init_err_expt;
+    END IF;
+    -- *** YYYY/MM/DD型に変換 ***
+    gv_start_date := TO_CHAR ( ld_start_date, cv_date_format );
+-- 2011/11/11 Ver.1.15 [E_本稼動_08340] K.Nakamura ADD END
   EXCEPTION
     -- *** init内エラー ***
     WHEN init_err_expt THEN
