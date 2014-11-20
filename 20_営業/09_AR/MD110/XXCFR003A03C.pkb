@@ -7,7 +7,7 @@ AS
  * Description      : 請求明細データ作成
  * MD.050           : MD050_CFR_003_A03_請求明細データ作成
  * MD.070           : MD050_CFR_003_A03_請求明細データ作成
- * Version          : 1.70
+ * Version          : 1.100
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,8 @@ AS
  *  2009/11/16    1.70 SCS 廣瀬 真佐人  [共通課題IE678] パフォーマンス対応
  *  2009/12/02    1.80 SCS 松尾 泰生    [障害本稼動00404] 本振顧客でのデータ取得エラー対応
  *  2010/01/04    1.90 SCS 松尾 泰生    [障害本稼動00826] EDI請求売上返品区分NULLエラー対応
+ *  2010/10/19    1.100 SCS 小山 伸男   [障害本稼動05091] 請求書の一部伝票金額が重複している件
+ *                                                        ※販売実績明細との条件追加
  *
  *****************************************************************************************/
 --
@@ -1434,6 +1436,10 @@ AS
             AND    rlli.line_type = cv_line_type_line
             AND    rlli.interface_line_attribute7 = xxeh.sales_exp_header_id  -- 販売実績ヘッダ内部ID
             AND    xxeh.sales_exp_header_id = xxel.sales_exp_header_id
+-- Add 2010.10.19 Ver1.100 Start
+            AND   ((rlli.interface_line_attribute8 IS NULL)
+               OR  (rlli.interface_line_attribute8 = xxel.goods_prod_cls))    -- 品目区分
+-- Add 2010.10.19 Ver1.100 End
             AND    xxeh.order_connection_number = xedh.order_connection_number(+)
             AND    xxel.item_code = mtib.segment1(+)
             AND    mtib.organization_id(+) = gt_mtl_organization_id  -- 品目マスタ組織ID
