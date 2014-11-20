@@ -13,7 +13,7 @@ AS
  *                    自販機販売手数料を振り込むためのFBデータを作成します。
  *
  * MD.050           : FBデータファイル作成（FBデータ作成） MD050_COK_016_A02
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *                                                          2.振込手数料負担者が伊藤園ではない、
  *                                                            且つ支払予定額 - 振込手数料 <= 0
  *  2009/05/29    1.4   K.Yamaguchi      [障害T1_1147対応]販手残高テーブル更新項目追加
+ *  2009/07/02    1.5   K.Yamaguchi      [障害0000291対応]パフォーマンス障害対応
  *
  *****************************************************************************************/
 --
@@ -204,7 +205,9 @@ AS
   AND    abaa.org_id                   = TO_NUMBER( gt_prof_org_id )
 -- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
   ORDER BY pv.segment1 ASC;
-  bac_fb_line_rec  bac_fb_line_cur%ROWTYPE;
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi DELETE START
+--  bac_fb_line_rec  bac_fb_line_cur%ROWTYPE;
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi DELETE END
   -- FB作成明細データ（本振用FBデータ作成処理）
   CURSOR fb_line_cur
   IS
@@ -277,18 +280,22 @@ AS
   ORDER BY pvsa.attribute5 ASC
 -- End   2009/04/27 Ver_1.2 T1_0817 M.Hiruta
           ,xbb.supplier_code  ASC;
-  fb_line_rec  fb_line_cur%ROWTYPE;
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi DELETE START
+--  fb_line_rec  fb_line_cur%ROWTYPE;
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi DELETE END
   --================================
   -- グローバル・TABLE型
   --================================
-  -- FB作成明細データ（振込口座事前チェック用FB作成処理）
-  TYPE bac_fb_line_ttpye IS TABLE OF bac_fb_line_cur%ROWTYPE
-  INDEX BY BINARY_INTEGER;
-  gt_bac_fb_line_tab    bac_fb_line_ttpye;
-  -- FB作成明細データ（本振用FBデータ作成処理）
-  TYPE fb_line_ttpye IS TABLE OF fb_line_cur%ROWTYPE
-  INDEX BY BINARY_INTEGER;
-  gt_fb_line_tab        fb_line_ttpye;
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi DELETE START
+--  -- FB作成明細データ（振込口座事前チェック用FB作成処理）
+--  TYPE bac_fb_line_ttpye IS TABLE OF bac_fb_line_cur%ROWTYPE
+--  INDEX BY BINARY_INTEGER;
+--  gt_bac_fb_line_tab    bac_fb_line_ttpye;
+--  -- FB作成明細データ（本振用FBデータ作成処理）
+--  TYPE fb_line_ttpye IS TABLE OF fb_line_cur%ROWTYPE
+--  INDEX BY BINARY_INTEGER;
+--  gt_fb_line_tab        fb_line_ttpye;
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi DELETE END
   --=================================
   -- 共通例外
   --=================================
@@ -554,147 +561,149 @@ AS
       ov_retcode := cv_status_error;
   END init;
 --
-  /**********************************************************************************
-   * Procedure Name   : get_bank_acct_chk_fb_line
-   * Description      : FB作成明細データの取得（振込口座事前チェック用FB作成処理）(A-2)
-   ***********************************************************************************/
-  PROCEDURE get_bank_acct_chk_fb_line(
-     ov_errbuf  OUT VARCHAR2            -- エラー・メッセージ
-    ,ov_retcode OUT VARCHAR2            -- リターン・コード
-    ,ov_errmsg  OUT VARCHAR2            -- ユーザー・エラー・メッセージ
-  )
-  IS
-    --===============================
-    -- ローカル定数
-    --===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_bank_acct_chk_fb_line'; -- FB作成明細データの取得
-    --===============================
-    -- ローカル変数
-    --===============================
-    lv_errbuf     VARCHAR2(5000) DEFAULT NULL;          -- エラー・メッセージ
-    lv_retcode    VARCHAR2(1)    DEFAULT NULL;          -- リターン・コード
-    lv_errmsg     VARCHAR2(5000) DEFAULT NULL;          -- ユーザー・エラー・メッセージ
-    lv_out_msg    VARCHAR2(2000) DEFAULT NULL;          -- メッセージ
-    lb_retcode    BOOLEAN;                              -- リターン・コード
-    --===============================
-    -- ローカル例外
-    --===============================
-    --*** データ取得例外 ***
-    no_data_expt  EXCEPTION;
---
-  BEGIN
-    -- ステータス初期化
-    ov_retcode := cv_status_normal;
---
-    OPEN bac_fb_line_cur;
-      FETCH bac_fb_line_cur BULK COLLECT INTO gt_bac_fb_line_tab;
-    CLOSE bac_fb_line_cur;
-    --==================================================
-    -- FB作成明細情報取得エラー
-    --==================================================
-    IF( gt_bac_fb_line_tab.COUNT = 0 ) THEN
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application => cv_appli_xxcok
-                      ,iv_name        => cv_msg_cok_10254
-                    );
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                      in_which    => FND_FILE.LOG       -- 出力区分
-                     ,iv_message  => lv_out_msg         -- メッセージ
-                     ,in_new_line => 1                  -- 改行
-                    );
-      RAISE no_data_expt;
-    END IF;
---
-  EXCEPTION
-    WHEN no_data_expt THEN
-    -- *** FB作成明細情報取得例外ハンドラ ****
-      ov_errmsg  := lv_errmsg;
-      ov_retcode := cv_status_normal;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
-  END get_bank_acct_chk_fb_line;
---
-  /**********************************************************************************
-   * Procedure Name   : get_fb_line
-   * Description      : FB作成明細データの取得（本振用FBデータ作成処理）(A-3)
-   ***********************************************************************************/
-  PROCEDURE get_fb_line(
-     ov_errbuf  OUT VARCHAR2       -- エラー・メッセージ
-    ,ov_retcode OUT VARCHAR2       -- リターン・コード
-    ,ov_errmsg  OUT VARCHAR2       -- ユーザー・エラー・メッセージ
-  )
-  IS
-    --===============================
-    -- ローカル定数
-    --===============================
-    cv_prg_name  CONSTANT VARCHAR2(100) := 'get_fb_line'; -- プログラム名
-    --================================
-    -- ローカル変数
-    --================================
-    lv_errbuf    VARCHAR2(5000) DEFAULT NULL;              -- エラー・メッセージ
-    lv_retcode   VARCHAR2(1)    DEFAULT NULL;              -- リターン・コード
-    lv_errmsg    VARCHAR2(5000) DEFAULT NULL;              -- ユーザー・エラー・メッセージ
-    lv_out_msg   VARCHAR2(2000) DEFAULT NULL;              -- メッセージ
-    lb_retcode   BOOLEAN;                                  -- リターン・コード
-    --===============================
-    -- ローカル例外
-    --===============================
-    --*** データ取得例外 ***
-    no_data_expt  EXCEPTION;
---
-  BEGIN
-    -- ステータス初期化
-    ov_retcode := cv_status_normal;
-    --
-    OPEN fb_line_cur;
-      FETCH fb_line_cur BULK COLLECT INTO gt_fb_line_tab;
-    CLOSE fb_line_cur;
-    --======================================================
-    -- FB作成明細情報取得エラー
-    --======================================================
-    IF( gt_fb_line_tab.COUNT = 0 ) THEN
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application => cv_appli_xxcok
-                      ,iv_name        => cv_msg_cok_10254
-                    );
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                      in_which    => FND_FILE.LOG       -- 出力区分
-                     ,iv_message  => lv_out_msg         -- メッセージ
-                     ,in_new_line => 1                  -- 改行
-                    );
-      RAISE no_data_expt;
-    END IF;
---
-  EXCEPTION
-    WHEN no_data_expt THEN
-      -- *** FB作成明細情報取得例外ハンドラ ****
-      ov_errmsg  := lv_errmsg;
-      ov_retcode := cv_status_normal;
-    -- *** 処理部共通例外ハンドラ ***
-    WHEN global_process_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
-      ov_retcode := cv_status_error;
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
-      ov_retcode := cv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
-  END get_fb_line;
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi DELETE START
+--  /**********************************************************************************
+--   * Procedure Name   : get_bank_acct_chk_fb_line
+--   * Description      : FB作成明細データの取得（振込口座事前チェック用FB作成処理）(A-2)
+--   ***********************************************************************************/
+--  PROCEDURE get_bank_acct_chk_fb_line(
+--     ov_errbuf  OUT VARCHAR2            -- エラー・メッセージ
+--    ,ov_retcode OUT VARCHAR2            -- リターン・コード
+--    ,ov_errmsg  OUT VARCHAR2            -- ユーザー・エラー・メッセージ
+--  )
+--  IS
+--    --===============================
+--    -- ローカル定数
+--    --===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_bank_acct_chk_fb_line'; -- FB作成明細データの取得
+--    --===============================
+--    -- ローカル変数
+--    --===============================
+--    lv_errbuf     VARCHAR2(5000) DEFAULT NULL;          -- エラー・メッセージ
+--    lv_retcode    VARCHAR2(1)    DEFAULT NULL;          -- リターン・コード
+--    lv_errmsg     VARCHAR2(5000) DEFAULT NULL;          -- ユーザー・エラー・メッセージ
+--    lv_out_msg    VARCHAR2(2000) DEFAULT NULL;          -- メッセージ
+--    lb_retcode    BOOLEAN;                              -- リターン・コード
+--    --===============================
+--    -- ローカル例外
+--    --===============================
+--    --*** データ取得例外 ***
+--    no_data_expt  EXCEPTION;
+----
+--  BEGIN
+--    -- ステータス初期化
+--    ov_retcode := cv_status_normal;
+----
+--    OPEN bac_fb_line_cur;
+--      FETCH bac_fb_line_cur BULK COLLECT INTO gt_bac_fb_line_tab;
+--    CLOSE bac_fb_line_cur;
+--    --==================================================
+--    -- FB作成明細情報取得エラー
+--    --==================================================
+--    IF( gt_bac_fb_line_tab.COUNT = 0 ) THEN
+--      lv_out_msg := xxccp_common_pkg.get_msg(
+--                       iv_application => cv_appli_xxcok
+--                      ,iv_name        => cv_msg_cok_10254
+--                    );
+--      lb_retcode := xxcok_common_pkg.put_message_f(
+--                      in_which    => FND_FILE.LOG       -- 出力区分
+--                     ,iv_message  => lv_out_msg         -- メッセージ
+--                     ,in_new_line => 1                  -- 改行
+--                    );
+--      RAISE no_data_expt;
+--    END IF;
+----
+--  EXCEPTION
+--    WHEN no_data_expt THEN
+--    -- *** FB作成明細情報取得例外ハンドラ ****
+--      ov_errmsg  := lv_errmsg;
+--      ov_retcode := cv_status_normal;
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+--  END get_bank_acct_chk_fb_line;
+----
+--  /**********************************************************************************
+--   * Procedure Name   : get_fb_line
+--   * Description      : FB作成明細データの取得（本振用FBデータ作成処理）(A-3)
+--   ***********************************************************************************/
+--  PROCEDURE get_fb_line(
+--     ov_errbuf  OUT VARCHAR2       -- エラー・メッセージ
+--    ,ov_retcode OUT VARCHAR2       -- リターン・コード
+--    ,ov_errmsg  OUT VARCHAR2       -- ユーザー・エラー・メッセージ
+--  )
+--  IS
+--    --===============================
+--    -- ローカル定数
+--    --===============================
+--    cv_prg_name  CONSTANT VARCHAR2(100) := 'get_fb_line'; -- プログラム名
+--    --================================
+--    -- ローカル変数
+--    --================================
+--    lv_errbuf    VARCHAR2(5000) DEFAULT NULL;              -- エラー・メッセージ
+--    lv_retcode   VARCHAR2(1)    DEFAULT NULL;              -- リターン・コード
+--    lv_errmsg    VARCHAR2(5000) DEFAULT NULL;              -- ユーザー・エラー・メッセージ
+--    lv_out_msg   VARCHAR2(2000) DEFAULT NULL;              -- メッセージ
+--    lb_retcode   BOOLEAN;                                  -- リターン・コード
+--    --===============================
+--    -- ローカル例外
+--    --===============================
+--    --*** データ取得例外 ***
+--    no_data_expt  EXCEPTION;
+----
+--  BEGIN
+--    -- ステータス初期化
+--    ov_retcode := cv_status_normal;
+--    --
+--    OPEN fb_line_cur;
+--      FETCH fb_line_cur BULK COLLECT INTO gt_fb_line_tab;
+--    CLOSE fb_line_cur;
+--    --======================================================
+--    -- FB作成明細情報取得エラー
+--    --======================================================
+--    IF( gt_fb_line_tab.COUNT = 0 ) THEN
+--      lv_out_msg := xxccp_common_pkg.get_msg(
+--                       iv_application => cv_appli_xxcok
+--                      ,iv_name        => cv_msg_cok_10254
+--                    );
+--      lb_retcode := xxcok_common_pkg.put_message_f(
+--                      in_which    => FND_FILE.LOG       -- 出力区分
+--                     ,iv_message  => lv_out_msg         -- メッセージ
+--                     ,in_new_line => 1                  -- 改行
+--                    );
+--      RAISE no_data_expt;
+--    END IF;
+----
+--  EXCEPTION
+--    WHEN no_data_expt THEN
+--      -- *** FB作成明細情報取得例外ハンドラ ****
+--      ov_errmsg  := lv_errmsg;
+--      ov_retcode := cv_status_normal;
+--    -- *** 処理部共通例外ハンドラ ***
+--    WHEN global_process_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
+--      ov_retcode := cv_status_error;
+--    -- *** 共通関数例外ハンドラ ***
+--    WHEN global_api_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
+--      ov_retcode := cv_status_error;
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+--  END get_fb_line;
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi DELETE END
 --
   /**********************************************************************************
    * Procedure Name   : get_fb_header
@@ -910,7 +919,10 @@ AS
     ,ov_retcode      OUT VARCHAR2           -- リターン・コード
     ,ov_errmsg       OUT VARCHAR2           -- ユーザー・エラー・メッセージ
     ,ov_fb_line_data OUT VARCHAR2           -- FB作成明細レコード
-    ,in_cnt          IN  NUMBER             -- 索引カウンタ
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR START
+--    ,in_cnt          IN  NUMBER             -- 索引カウンタ
+    ,i_bac_fb_line_rec IN  bac_fb_line_cur%ROWTYPE  -- FB作成明細データ
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR END
   )
   IS
     --===============================
@@ -943,19 +955,34 @@ AS
     -- ステータス初期化
     ov_retcode := cv_status_normal;
 --
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR START
+--    lv_data_type               := cv_data_type;                                                                      -- データ区分
+--    lv_bank_number             := LPAD( NVL( gt_bac_fb_line_tab( in_cnt ).bank_number, cv_zero ), 4, cv_zero );      -- 被仕向金融機関番号
+--    lv_bank_name_alt           := RPAD( NVL( gt_bac_fb_line_tab( in_cnt ).bank_name_alt, cv_space ), 15 );           -- 被仕向金融機関名
+--    lv_bank_num                := LPAD( NVL( gt_bac_fb_line_tab( in_cnt ).bank_num, cv_zero ), 3, cv_zero );         -- 被仕向支店番号
+--    lv_bank_branch_name_alt    := RPAD( NVL( gt_bac_fb_line_tab( in_cnt ).bank_branch_name_alt, cv_space ), 15 );    -- 被仕向支店名
+--    lv_clearinghouse_no        := LPAD( cv_space, 4, cv_space );                                                     -- 手形交換所番号
+--    lv_bank_account_type       := NVL( gt_bac_fb_line_tab( in_cnt ).bank_account_type, cv_zero );                    -- 預金種目
+--    lv_bank_account_num        := LPAD( NVL( gt_bac_fb_line_tab( in_cnt ).bank_account_num, cv_zero ), 7, cv_zero ); -- 口座番号
+--    lv_account_holder_name_alt := RPAD( NVL( gt_bac_fb_line_tab( in_cnt ).account_holder_name_alt, cv_space ), 30 ); -- 受取人名
+--    lv_transfer_amount         := LPAD( cv_zero, 10, cv_zero );                                                      -- 振込金額
+--    lv_base_code               := LPAD( cv_space, 4, cv_space );                                                     -- 拠点コード
+--    lv_supplier_code           := LPAD( NVL( gt_bac_fb_line_tab( in_cnt ).segment1, cv_space ), 9 );                 -- 仕入先コード
+--    lv_dummy                   := LPAD( cv_space, 17, cv_space );                                                    -- ダミー
     lv_data_type               := cv_data_type;                                                                      -- データ区分
-    lv_bank_number             := LPAD( NVL( gt_bac_fb_line_tab( in_cnt ).bank_number, cv_zero ), 4, cv_zero );      -- 被仕向金融機関番号
-    lv_bank_name_alt           := RPAD( NVL( gt_bac_fb_line_tab( in_cnt ).bank_name_alt, cv_space ), 15 );           -- 被仕向金融機関名
-    lv_bank_num                := LPAD( NVL( gt_bac_fb_line_tab( in_cnt ).bank_num, cv_zero ), 3, cv_zero );         -- 被仕向支店番号
-    lv_bank_branch_name_alt    := RPAD( NVL( gt_bac_fb_line_tab( in_cnt ).bank_branch_name_alt, cv_space ), 15 );    -- 被仕向支店名
+    lv_bank_number             := LPAD( NVL( i_bac_fb_line_rec.bank_number, cv_zero ), 4, cv_zero );      -- 被仕向金融機関番号
+    lv_bank_name_alt           := RPAD( NVL( i_bac_fb_line_rec.bank_name_alt, cv_space ), 15 );           -- 被仕向金融機関名
+    lv_bank_num                := LPAD( NVL( i_bac_fb_line_rec.bank_num, cv_zero ), 3, cv_zero );         -- 被仕向支店番号
+    lv_bank_branch_name_alt    := RPAD( NVL( i_bac_fb_line_rec.bank_branch_name_alt, cv_space ), 15 );    -- 被仕向支店名
     lv_clearinghouse_no        := LPAD( cv_space, 4, cv_space );                                                     -- 手形交換所番号
-    lv_bank_account_type       := NVL( gt_bac_fb_line_tab( in_cnt ).bank_account_type, cv_zero );                    -- 預金種目
-    lv_bank_account_num        := LPAD( NVL( gt_bac_fb_line_tab( in_cnt ).bank_account_num, cv_zero ), 7, cv_zero ); -- 口座番号
-    lv_account_holder_name_alt := RPAD( NVL( gt_bac_fb_line_tab( in_cnt ).account_holder_name_alt, cv_space ), 30 ); -- 受取人名
+    lv_bank_account_type       := NVL( i_bac_fb_line_rec.bank_account_type, cv_zero );                    -- 預金種目
+    lv_bank_account_num        := LPAD( NVL( i_bac_fb_line_rec.bank_account_num, cv_zero ), 7, cv_zero ); -- 口座番号
+    lv_account_holder_name_alt := RPAD( NVL( i_bac_fb_line_rec.account_holder_name_alt, cv_space ), 30 ); -- 受取人名
     lv_transfer_amount         := LPAD( cv_zero, 10, cv_zero );                                                      -- 振込金額
     lv_base_code               := LPAD( cv_space, 4, cv_space );                                                     -- 拠点コード
-    lv_supplier_code           := LPAD( NVL( gt_bac_fb_line_tab( in_cnt ).segment1, cv_space ), 9 );                 -- 仕入先コード
+    lv_supplier_code           := LPAD( NVL( i_bac_fb_line_rec.segment1, cv_space ), 9 );                 -- 仕入先コード
     lv_dummy                   := LPAD( cv_space, 17, cv_space );                                                    -- ダミー
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR END
 --
     ov_fb_line_data            := lv_data_type               ||          -- データ区分
                                   lv_bank_number             ||          -- 被仕向金融機関番号
@@ -1000,7 +1027,10 @@ AS
 -- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
     ,on_fee             OUT NUMBER         -- 銀行手数料（振込手数料）
 -- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
-    ,in_cnt             IN  NUMBER         -- 索引カウンタ
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR START
+--    ,in_cnt             IN  NUMBER         -- 索引カウンタ
+    ,i_fb_line_rec      IN  fb_line_cur%ROWTYPE      -- FB作成明細レコード
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR END
   )
   IS
     -- ===============================
@@ -1059,7 +1089,10 @@ AS
     END IF;
 */
     -- 支払金額を変数へ格納
-    ln_transfer_amount := NVL( gt_fb_line_tab( in_cnt ).trns_amt, cn_zero );
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR START
+--    ln_transfer_amount := NVL( gt_fb_line_tab( in_cnt ).trns_amt, cn_zero );
+    ln_transfer_amount := NVL( i_fb_line_rec.trns_amt, cn_zero );
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR END
 --
     -- 本振用FB作成明細情報.振込額が、「銀行手数料_振込額基準」未満の場合
     IF( ln_transfer_amount < TO_NUMBER( gt_prof_trans_fee_criterion )) THEN
@@ -1072,7 +1105,10 @@ AS
     END IF;
 --
     -- 本振用FB作成明細情報.銀行手数料負担者が当方の場合、振込金額に銀行手数料を加算する
-    IF( gt_fb_line_tab( in_cnt ).bank_charge_bearer = cv_i AND ln_transfer_amount > 0 ) THEN
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR START
+--    IF( gt_fb_line_tab( in_cnt ).bank_charge_bearer = cv_i AND ln_transfer_amount > 0 ) THEN
+    IF( i_fb_line_rec.bank_charge_bearer = cv_i AND ln_transfer_amount > 0 ) THEN
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR END
       on_transfer_amount := ln_transfer_amount + ln_fee;
     ELSE
       on_transfer_amount := ln_transfer_amount;
@@ -1107,7 +1143,10 @@ AS
     ,ov_errmsg                OUT VARCHAR2     -- ユーザー・エラー・メッセージ
     ,ov_fb_line_data          OUT VARCHAR2     -- FB明細
     ,in_transfer_amount       IN  NUMBER       -- 振込金額
-    ,in_cnt                   IN  NUMBER       -- 索引カウンタ
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR START
+--    ,in_cnt                   IN  NUMBER       -- 索引カウンタ
+    ,i_fb_line_rec            IN  fb_line_cur%ROWTYPE     -- FB作成明細レコード
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR END
   )
   IS
     -- ===============================
@@ -1143,19 +1182,34 @@ AS
     -- ステータス初期化
     ov_retcode := cv_status_normal;
 --
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR START
+--    lv_data_type               := cv_data_type;                                                                  -- データ区分
+--    lv_bank_number             := LPAD( NVL( gt_fb_line_tab( in_cnt ).bank_number, cv_zero ), 4, cv_zero );      -- 被仕向金融機関番号
+--    lv_bank_name_alt           := RPAD( NVL( gt_fb_line_tab( in_cnt ).bank_name_alt, cv_space ), 15 );           -- 被仕向金融機関名
+--    lv_bank_num                := LPAD( NVL( gt_fb_line_tab( in_cnt ).bank_num, cv_zero ), 3, cv_zero );         -- 被仕向支店番号
+--    lv_bank_branch_name_alt    := RPAD( NVL( gt_fb_line_tab( in_cnt ).bank_branch_name_alt, cv_space ), 15 );    -- 被仕向支店名
+--    lv_clearinghouse_no        := LPAD( cv_space, 4 );                                                           -- 手形交換所番号
+--    lv_bank_account_type       := NVL( gt_fb_line_tab( in_cnt ).bank_account_type, cv_zero );                    -- 預金種目
+--    lv_bank_account_num        := LPAD( NVL( gt_fb_line_tab( in_cnt ).bank_account_num, cv_zero ), 7, cv_zero ); -- 口座番号
+--    lv_account_holder_name_alt := RPAD( NVL( gt_fb_line_tab( in_cnt ).account_holder_name_alt, cv_space ), 30 ); -- 受取人名
+--    lv_transfer_amount         := TO_CHAR( NVL( in_transfer_amount, cn_zero ), 'FM0000000000');                  -- 振込金額
+--    lv_base_code               := LPAD( NVL( gt_fb_line_tab( in_cnt ).base_code, cv_space ), 4 );                -- 拠点コード
+--    lv_supplier_code           := LPAD( NVL( gt_fb_line_tab( in_cnt ).supplier_code, cv_space ), 9 );            -- 仕入先コード
+--    lv_dummy                   := LPAD( cv_space, 17, cv_space );                                                -- ダミー
     lv_data_type               := cv_data_type;                                                                  -- データ区分
-    lv_bank_number             := LPAD( NVL( gt_fb_line_tab( in_cnt ).bank_number, cv_zero ), 4, cv_zero );      -- 被仕向金融機関番号
-    lv_bank_name_alt           := RPAD( NVL( gt_fb_line_tab( in_cnt ).bank_name_alt, cv_space ), 15 );           -- 被仕向金融機関名
-    lv_bank_num                := LPAD( NVL( gt_fb_line_tab( in_cnt ).bank_num, cv_zero ), 3, cv_zero );         -- 被仕向支店番号
-    lv_bank_branch_name_alt    := RPAD( NVL( gt_fb_line_tab( in_cnt ).bank_branch_name_alt, cv_space ), 15 );    -- 被仕向支店名
+    lv_bank_number             := LPAD( NVL( i_fb_line_rec.bank_number, cv_zero ), 4, cv_zero );      -- 被仕向金融機関番号
+    lv_bank_name_alt           := RPAD( NVL( i_fb_line_rec.bank_name_alt, cv_space ), 15 );           -- 被仕向金融機関名
+    lv_bank_num                := LPAD( NVL( i_fb_line_rec.bank_num, cv_zero ), 3, cv_zero );         -- 被仕向支店番号
+    lv_bank_branch_name_alt    := RPAD( NVL( i_fb_line_rec.bank_branch_name_alt, cv_space ), 15 );    -- 被仕向支店名
     lv_clearinghouse_no        := LPAD( cv_space, 4 );                                                           -- 手形交換所番号
-    lv_bank_account_type       := NVL( gt_fb_line_tab( in_cnt ).bank_account_type, cv_zero );                    -- 預金種目
-    lv_bank_account_num        := LPAD( NVL( gt_fb_line_tab( in_cnt ).bank_account_num, cv_zero ), 7, cv_zero ); -- 口座番号
-    lv_account_holder_name_alt := RPAD( NVL( gt_fb_line_tab( in_cnt ).account_holder_name_alt, cv_space ), 30 ); -- 受取人名
+    lv_bank_account_type       := NVL( i_fb_line_rec.bank_account_type, cv_zero );                    -- 預金種目
+    lv_bank_account_num        := LPAD( NVL( i_fb_line_rec.bank_account_num, cv_zero ), 7, cv_zero ); -- 口座番号
+    lv_account_holder_name_alt := RPAD( NVL( i_fb_line_rec.account_holder_name_alt, cv_space ), 30 ); -- 受取人名
     lv_transfer_amount         := TO_CHAR( NVL( in_transfer_amount, cn_zero ), 'FM0000000000');                  -- 振込金額
-    lv_base_code               := LPAD( NVL( gt_fb_line_tab( in_cnt ).base_code, cv_space ), 4 );                -- 拠点コード
-    lv_supplier_code           := LPAD( NVL( gt_fb_line_tab( in_cnt ).supplier_code, cv_space ), 9 );            -- 仕入先コード
+    lv_base_code               := LPAD( NVL( i_fb_line_rec.base_code, cv_space ), 4 );                -- 拠点コード
+    lv_supplier_code           := LPAD( NVL( i_fb_line_rec.supplier_code, cv_space ), 9 );            -- 仕入先コード
     lv_dummy                   := LPAD( cv_space, 17, cv_space );                                                -- ダミー
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR END
 --
     ov_fb_line_data            := lv_data_type               ||         -- データ区分
                                   lv_bank_number             ||         -- 被仕向金融機関番号
@@ -1190,7 +1244,10 @@ AS
      ov_errbuf     OUT VARCHAR2     -- エラー・メッセージ
     ,ov_retcode    OUT VARCHAR2     -- リターン・コード
     ,ov_errmsg     OUT VARCHAR2     -- ユーザー・エラー・メッセージ
-    ,in_cnt        IN  NUMBER       -- 索引カウンタ
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR START
+--    ,in_cnt        IN  NUMBER       -- 索引カウンタ
+    ,i_fb_line_rec IN  fb_line_cur%ROWTYPE       -- FB作成明細レコード
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR END
   )
   IS
     --===============================
@@ -1217,8 +1274,12 @@ AS
     WHERE  xbb.fb_interface_status  = cv_zero
     AND    xbb.resv_flag IS NULL
     AND    xbb.expect_payment_date <= gd_pay_date
-    AND    xbb.supplier_code        = gt_fb_line_tab( in_cnt ).supplier_code
-    AND    xbb.supplier_site_code   = gt_fb_line_tab( in_cnt ).supplier_site_code
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR START
+--    AND    xbb.supplier_code        = gt_fb_line_tab( in_cnt ).supplier_code
+--    AND    xbb.supplier_site_code   = gt_fb_line_tab( in_cnt ).supplier_site_code
+    AND    xbb.supplier_code        = i_fb_line_rec.supplier_code
+    AND    xbb.supplier_site_code   = i_fb_line_rec.supplier_site_code
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR END
     FOR UPDATE NOWAIT;
     --=================================
     -- ローカル例外
@@ -1255,8 +1316,12 @@ AS
       WHERE xbb.fb_interface_status   = cv_zero
       AND   xbb.resv_flag             IS NULL
       AND   xbb.expect_payment_date  <= gd_pay_date
-      AND   xbb.supplier_code         = gt_fb_line_tab( in_cnt ).supplier_code
-      AND   xbb.supplier_site_code    = gt_fb_line_tab( in_cnt ).supplier_site_code;
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR START
+--      AND   xbb.supplier_code         = gt_fb_line_tab( in_cnt ).supplier_code
+--      AND   xbb.supplier_site_code    = gt_fb_line_tab( in_cnt ).supplier_site_code;
+      AND   xbb.supplier_code         = i_fb_line_rec.supplier_code
+      AND   xbb.supplier_site_code    = i_fb_line_rec.supplier_site_code;
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR END
 --
     EXCEPTION
       -- *** 更新例外ハンドラ ***
@@ -1485,6 +1550,417 @@ AS
       ov_retcode := cv_status_error;
   END output_data;
 --
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR START
+--  /**********************************************************************************
+--   * Procedure Name   : submain
+--   * Description      : メイン処理プロシージャ
+--   **********************************************************************************/
+--  PROCEDURE submain(
+--     ov_errbuf     OUT VARCHAR2     -- エラー・メッセージ
+--    ,ov_retcode    OUT VARCHAR2     -- リターン・コード
+--    ,ov_errmsg     OUT VARCHAR2     -- ユーザー・エラー・メッセージ
+--    ,iv_proc_type  IN  VARCHAR2     -- 処理パラメータ
+--  )
+--  IS
+--    --===============================
+--    -- ローカル定数
+--    --===============================
+--    cv_prg_name       CONSTANT VARCHAR2(100) := 'submain';  -- プログラム名
+--    --
+--    -- ===============================
+--    -- ローカル変数
+--    -- ===============================
+--    lv_errbuf                  VARCHAR2(5000) DEFAULT NULL;                        -- エラー・メッセージ
+--    lv_retcode                 VARCHAR2(1)    DEFAULT NULL;                        -- リターン・コード
+--    lv_errmsg                  VARCHAR2(5000) DEFAULT NULL;                        -- ユーザー・エラー・メッセージ
+---- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+--    lv_out_msg                 VARCHAR2(2000) DEFAULT NULL;                        -- メッセージ
+--    lb_retcode                 BOOLEAN        DEFAULT NULL;                        -- メッセージ・リターン・コード
+---- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+--    --
+--    ln_cnt                     NUMBER         DEFAULT NULL;                        -- 索引カウンタ
+--    --
+--    lt_bank_number             ap_bank_branches.bank_number%TYPE;                  -- 銀行番号
+--    lt_bank_name_alt           ap_bank_branches.bank_name_alt%TYPE;                -- 銀行名カナ
+--    lt_bank_num                ap_bank_branches.bank_num%TYPE;                     -- 銀行支店番号
+--    lt_bank_branch_name_alt    ap_bank_branches.bank_branch_name_alt%TYPE;         -- 銀行支店名カナ
+--    lt_bank_account_type       ap_bank_accounts_all.bank_account_type%TYPE;        -- 預金種別
+--    lt_bank_account_num        ap_bank_accounts_all.bank_account_num%TYPE;         -- 銀行口座番号
+--    lt_account_holder_name_alt ap_bank_accounts_all.account_holder_name_alt%TYPE;  -- 口座名義人カナ
+--    --
+--    lv_fb_header_data          VARCHAR2(2000) DEFAULT NULL;                        -- FB作成ヘッダーデータ
+--    lv_fb_line_data            VARCHAR2(5000) DEFAULT NULL;                        -- FB作成明細データ
+--    lv_fb_trailer_data         VARCHAR2(2000) DEFAULT NULL;                        -- FB作成トレーラレコード
+--    lv_fb_end_data             VARCHAR2(2000) DEFAULT NULL;                        -- FB作成エンドレコード
+--    ln_transfer_amount         NUMBER;                                             -- 振込金額
+--    ln_total_transfer_amount   NUMBER;                                             -- 振込金額計
+---- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+--    ln_fee                     NUMBER;                                             -- 銀行手数料（振込手数料）
+--    lv_bank_charge_bearer      VARCHAR2(30)   DEFAULT NULL;                        -- 銀行手数料負担者
+---- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+----
+--  BEGIN
+--    -- ステータス初期化
+--    ov_retcode := cv_status_normal;
+--    -- グローバル変数の初期化
+--    gn_target_cnt            := 0;        -- 対象件数
+--    gn_normal_cnt            := 0;        -- 正常件数
+--    gn_error_cnt             := 0;        -- エラー件数
+---- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+--    -- 未使用のためコメントアウト
+----    gn_warn_cnt              := 0;        -- 警告件数
+--    gn_skip_cnt              := 0;        -- スキップ件数
+---- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+--    gn_out_cnt               := 0;        -- 成功件数
+--    -- ローカル変数の初期化
+--    ln_total_transfer_amount := 0;        -- 振込金額計
+--    --===============================
+--    -- A-1.初期処理
+--    --===============================
+--    init(
+--       ov_errbuf    => lv_errbuf         -- エラー・メッセージ
+--      ,ov_retcode   => lv_retcode        -- リターン・コード
+--      ,ov_errmsg    => lv_errmsg         -- ユーザー・エラー・メッセージ
+--      ,iv_proc_type => iv_proc_type      -- 処理パラメータ
+--    );
+--    IF( lv_retcode = cv_status_error ) THEN
+--      RAISE global_process_expt;
+--    END IF;
+--    -- 処理区分が'1'(振込口座事前チェックFB作成処理)の場合
+--    IF( iv_proc_type = cv_1 ) THEN
+--      --===============================================================
+--      -- A-2.FB作成明細データの取得（振込口座事前チェック用FB作成処理）
+--      --===============================================================
+--      get_bank_acct_chk_fb_line(
+--         ov_errbuf  => lv_errbuf    -- エラー・メッセージ
+--        ,ov_retcode => lv_retcode   -- リターン・コード
+--        ,ov_errmsg  => lv_errmsg    -- ユーザー・エラー・メッセージ
+--      );
+--      IF( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+--      -- 対象件数
+--      gn_target_cnt := gt_bac_fb_line_tab.COUNT;
+--    -- 処理区分が'2'(本振用FBデータ作成処理)の場合
+--    ELSIF( iv_proc_type = cv_2 ) THEN
+--      --===============================================================
+--      -- A-3.FB作成明細データの取得（本振用FBデータ作成処理）
+--      --===============================================================
+--      get_fb_line(
+--         ov_errbuf  => lv_errbuf    -- エラー・メッセージ
+--        ,ov_retcode => lv_retcode   -- リターン・コード
+--        ,ov_errmsg  => lv_errmsg    -- ユーザー・エラー・メッセージ
+--      );
+--      IF( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+--      -- 対象件数
+--      gn_target_cnt := gt_fb_line_tab.COUNT;
+--    END IF;
+--    -- 振込口座事前チェック用FB作成
+--    IF( iv_proc_type = cv_1 ) THEN
+--      --=================================================
+--      -- A-4.FB作成ヘッダーデータの取得
+--      --=================================================
+--      get_fb_header(
+--         ov_errbuf                  => lv_errbuf                     -- エラー・メッセージ
+--        ,ov_retcode                 => lv_retcode                    -- リターン・コード
+--        ,ov_errmsg                  => lv_errmsg                     -- ユーザー・エラー・メッセージ
+--        ,ot_bank_number             => lt_bank_number                -- 銀行番号
+--        ,ot_bank_name_alt           => lt_bank_name_alt              -- 銀行名カナ
+--        ,ot_bank_num                => lt_bank_num                   -- 銀行支店番号
+--        ,ot_bank_branch_name_alt    => lt_bank_branch_name_alt       -- 銀行支店名カナ
+--        ,ot_bank_account_type       => lt_bank_account_type          -- 預金種別
+--        ,ot_bank_account_num        => lt_bank_account_num           -- 銀行口座番号
+--        ,ot_account_holder_name_alt => lt_account_holder_name_alt    -- 口座名義人カナ
+--      );
+--      IF( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+--      --=================================================
+--      -- A-5.FB作成ヘッダーデータの格納
+--      --=================================================
+--      storage_fb_header(
+--         ov_errbuf                  => lv_errbuf                     -- エラー・メッセージ
+--        ,ov_retcode                 => lv_retcode                    -- リターン・コード
+--        ,ov_errmsg                  => lv_errmsg                     -- ユーザー・エラー・メッセージ
+--        ,ov_fb_header_data          => lv_fb_header_data             -- FB作成ヘッダーデータ
+--        ,it_bank_number             => lt_bank_number                -- 銀行番号
+--        ,it_bank_name_alt           => lt_bank_name_alt              -- 銀行名カナ
+--        ,it_bank_num                => lt_bank_num                   -- 銀行支店番号
+--        ,it_bank_branch_name_alt    => lt_bank_branch_name_alt       -- 銀行支店名カナ
+--        ,it_bank_account_type       => lt_bank_account_type          -- 預金種別
+--        ,it_bank_account_num        => lt_bank_account_num           -- 銀行口座番号
+--        ,it_account_holder_name_alt => lt_account_holder_name_alt    -- 口座名義人カナ
+--      );
+--      IF( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+--      --=================================================
+--      -- A-6.FB作成ヘッダーデータの出力
+--      --=================================================
+--      output_data(
+--         ov_errbuf  => lv_errbuf           -- エラー・メッセージ
+--        ,ov_retcode => lv_retcode          -- リターン・コード
+--        ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ
+--        ,iv_data    => lv_fb_header_data   -- 出力するデータ
+--      );
+--      IF( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+--      <<bac_fb_line_loop>>
+--      FOR ln_cnt IN 1 .. gt_bac_fb_line_tab.COUNT LOOP
+--        --===============================================================
+--        -- A-7.FB作成明細データの格納（振込口座事前チェック用FB作成処理）
+--        --===============================================================
+--        storage_bank_acct_chk_fb_line(
+--           ov_errbuf       => lv_errbuf            -- エラー・メッセージ
+--          ,ov_retcode      => lv_retcode           -- リターン・コード
+--          ,ov_errmsg       => lv_errmsg            -- ユーザー・エラー・メッセージ
+--          ,ov_fb_line_data => lv_fb_line_data      -- FB作成明細レコード
+--          ,in_cnt          => ln_cnt               -- 索引カウンタ
+--        );
+--        IF( lv_retcode = cv_status_error ) THEN
+--          RAISE global_process_expt;
+--        END IF;
+--        --===============================
+--        -- A-10.FB作成データレコードの出力
+--        --===============================
+--        output_data(
+--          ov_errbuf  => lv_errbuf            -- エラー・メッセージ
+--         ,ov_retcode => lv_retcode           -- リターン・コード
+--         ,ov_errmsg  => lv_errmsg            -- ユーザー・エラー・メッセージ
+--         ,iv_data    => lv_fb_line_data      -- 出力するデータ
+--        );
+--        IF( lv_retcode = cv_status_error ) THEN
+--          RAISE global_process_expt;
+--        END IF;
+--        -- 成功件数
+--        gn_out_cnt := gn_out_cnt + 1;
+--      END LOOP bac_fb_line_loop;
+--    -- 本振用FBデータ作成
+--    ELSIF( iv_proc_type = cv_2 ) THEN
+--      --=================================================
+--      -- A-4.FB作成ヘッダーデータの取得
+--      --=================================================
+--      get_fb_header(
+--         ov_errbuf                  => lv_errbuf                     -- エラー・メッセージ
+--        ,ov_retcode                 => lv_retcode                    -- リターン・コード
+--        ,ov_errmsg                  => lv_errmsg                     -- ユーザー・エラー・メッセージ
+--        ,ot_bank_number             => lt_bank_number                -- 銀行番号
+--        ,ot_bank_name_alt           => lt_bank_name_alt              -- 銀行名カナ
+--        ,ot_bank_num                => lt_bank_num                   -- 銀行支店番号
+--        ,ot_bank_branch_name_alt    => lt_bank_branch_name_alt       -- 銀行支店名カナ
+--        ,ot_bank_account_type       => lt_bank_account_type          -- 預金種別
+--        ,ot_bank_account_num        => lt_bank_account_num           -- 銀行口座番号
+--        ,ot_account_holder_name_alt => lt_account_holder_name_alt    -- 口座名義人カナ
+--      );
+--      IF( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+--      --=================================================
+--      -- A-5.FB作成ヘッダーデータの格納
+--      --=================================================
+--      storage_fb_header(
+--         ov_errbuf                  => lv_errbuf                     -- エラー・メッセージ
+--        ,ov_retcode                 => lv_retcode                    -- リターン・コード
+--        ,ov_errmsg                  => lv_errmsg                     -- ユーザー・エラー・メッセージ
+--        ,ov_fb_header_data          => lv_fb_header_data             -- FB作成ヘッダーレコード
+--        ,it_bank_number             => lt_bank_number                -- 銀行番号
+--        ,it_bank_name_alt           => lt_bank_name_alt              -- 銀行名カナ
+--        ,it_bank_num                => lt_bank_num                   -- 銀行支店番号
+--        ,it_bank_branch_name_alt    => lt_bank_branch_name_alt       -- 銀行支店名カナ
+--        ,it_bank_account_type       => lt_bank_account_type          -- 預金種別
+--        ,it_bank_account_num        => lt_bank_account_num           -- 銀行口座番号
+--        ,it_account_holder_name_alt => lt_account_holder_name_alt    -- 口座名義人カナ
+--      );
+--      IF( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+--      --=================================================
+--      -- A-6.FB作成ヘッダーデータの出力
+--      --=================================================
+--      output_data(
+--         ov_errbuf  => lv_errbuf            -- エラー・メッセージ
+--        ,ov_retcode => lv_retcode           -- リターン・コード
+--        ,ov_errmsg  => lv_errmsg            -- ユーザー・エラー・メッセージ
+--        ,iv_data    => lv_fb_header_data    -- 出力するデータ
+--      );
+--      IF( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+--      <<fb_loop>>
+--      FOR ln_cnt IN 1 .. gt_fb_line_tab.COUNT LOOP
+--        --==========================================================
+--        -- A-8.FB作成明細データ付加情報の取得（本振用FBデータ作成処理）
+--        --==========================================================
+--        get_fb_line_add_info(
+--           ov_errbuf          => lv_errbuf               -- エラー・メッセージ
+--          ,ov_retcode         => lv_retcode              -- リターン・コード
+--          ,ov_errmsg          => lv_errmsg               -- ユーザー・エラー・メッセージ
+--          ,on_transfer_amount => ln_transfer_amount      -- 振込金額
+---- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+--          ,on_fee             => ln_fee                  -- 銀行手数料（振込手数料）
+---- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+--          ,in_cnt             => ln_cnt                  -- 索引カウンタ
+--        );
+--        IF( lv_retcode = cv_status_error ) THEN
+--          RAISE global_process_expt;
+--        END IF;
+---- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+--        IF(( gt_fb_line_tab( ln_cnt ).bank_charge_bearer = cv_i   AND
+--             gt_fb_line_tab( ln_cnt ).trns_amt <= 0
+--           ) OR
+--           ( gt_fb_line_tab( ln_cnt ).bank_charge_bearer <> cv_i  AND
+--             ( gt_fb_line_tab( ln_cnt ).trns_amt - ln_fee ) <= 0
+--           )
+--          )
+--        THEN
+--          -- スキップ件数のカウントアップ
+--          gn_skip_cnt := gn_skip_cnt + 1;
+----
+--          -- 出力用の銀行手数料負担者を選定
+--          IF ( gt_fb_line_tab( ln_cnt ).bank_charge_bearer = cv_i ) THEN
+--            lv_bank_charge_bearer := gt_prof_bank_trns_fee_we;
+--          ELSE
+--            lv_bank_charge_bearer := gt_prof_bank_trns_fee_ctpty;
+--          END IF;
+----
+--          -- FBデータの支払金額0円以下警告メッセージ出力
+--         lv_out_msg := xxccp_common_pkg.get_msg(
+--                          iv_application  => cv_appli_xxcok
+--                         ,iv_name         => cv_msg_cok_10453
+--                         ,iv_token_name1  => cv_token_conn_loc
+--                         ,iv_token_value1 => gt_fb_line_tab( ln_cnt ).base_code      -- 問合せ担当拠点
+--                         ,iv_token_name2  => cv_token_vendor_code
+--                         ,iv_token_value2 => gt_fb_line_tab( ln_cnt ).supplier_code  -- 支払先コード
+--                         ,iv_token_name3  => cv_token_payment_amt
+--                         ,iv_token_value3 => TO_CHAR( gt_fb_line_tab( ln_cnt ).trns_amt ) -- 振込額
+--                         ,iv_token_name4  => cv_token_bank_charge_bearer
+--                         ,iv_token_value4 => lv_bank_charge_bearer                   -- 銀行手数料
+--                       );
+--         lb_retcode := xxcok_common_pkg.put_message_f(
+--                         in_which    => FND_FILE.LOG       -- 出力区分
+--                        ,iv_message  => lv_out_msg         -- メッセージ
+--                        ,in_new_line => 0                  -- 改行
+--                       );
+----
+--        ELSE
+--          -- 振込金額計
+--          ln_total_transfer_amount := ln_total_transfer_amount + ln_transfer_amount;
+--          --=============================================================
+--          -- A-9.FB作成明細データの格納（本振用FBデータ作成処理）
+--          --=============================================================
+--          storage_fb_line(
+--            ov_errbuf                => lv_errbuf                   -- エラー・メッセージ
+--           ,ov_retcode               => lv_retcode                  -- リターン・コード
+--           ,ov_errmsg                => lv_errmsg                   -- ユーザー・エラー・メッセージ
+--           ,ov_fb_line_data          => lv_fb_line_data             -- FB明細
+--           ,in_transfer_amount       => ln_transfer_amount          -- 振込金額
+--           ,in_cnt                   => ln_cnt                      -- 索引カウンタ
+--          );
+--          IF( lv_retcode = cv_status_error ) THEN
+--            RAISE global_process_expt;
+--          END IF;
+--          --
+--          --================================
+--          -- A-10.FB作成データレコードの出力
+--          --================================
+--          output_data(
+--            ov_errbuf  => lv_errbuf           -- エラー・メッセージ
+--           ,ov_retcode => lv_retcode          -- リターン・コード
+--           ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージF
+--           ,iv_data    => lv_fb_line_data     -- 出力するデータ
+--          );
+--          IF( lv_retcode = cv_status_error ) THEN
+--            RAISE global_process_expt;
+--          END IF;
+--          --===================================
+--          -- A-11.FB作成データ出力結果の更新
+--          --===================================
+--          upd_backmargin_balance(
+--             ov_errbuf  => lv_errbuf          -- エラー・メッセージ
+--            ,ov_retcode => lv_retcode         -- リターン・コード
+--            ,ov_errmsg  => lv_errmsg          -- ユーザー・エラー・メッセージ
+--            ,in_cnt     => ln_cnt             -- 索引カウンタ
+--          );
+--          IF( lv_retcode = cv_status_error ) THEN
+--            RAISE global_process_expt;
+--          END IF;
+--          -- 成功件数
+--          gn_out_cnt := gn_out_cnt + 1;
+--        END IF;
+---- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+--      END LOOP fb_loop;
+--    END IF;
+--    --=======================================
+--    -- A-12.FB作成トレーラレコードの格納
+--    --=======================================
+--    storage_fb_trailer_data(
+--       ov_errbuf                => lv_errbuf                  -- エラー・メッセージ
+--      ,ov_retcode               => lv_retcode                 -- リターン・コード
+--      ,ov_errmsg                => lv_errmsg                  -- ユーザー・エラー・メッセージ
+--      ,ov_fb_trailer_data       => lv_fb_trailer_data         -- FB作成トレーラレコード
+--      ,iv_proc_type             => iv_proc_type               -- データ区分
+--      ,in_total_transfer_amount => ln_total_transfer_amount   -- 振込金額計
+--    );
+--    IF( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--    END IF;
+--    --=======================================
+--    -- A-13.FB作成トレーラレコードの出力
+--    --=======================================
+--    output_data(
+--       ov_errbuf  => lv_errbuf               -- エラー・メッセージ
+--      ,ov_retcode => lv_retcode              -- リターン・コード
+--      ,ov_errmsg  => lv_errmsg               -- ユーザー・エラー・メッセージ
+--      ,iv_data    => lv_fb_trailer_data      -- 出力するデータ
+--    );
+--    IF( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--    END IF;
+--    --=======================================
+--    -- A-14.FB作成エンドレコードの格納
+--    --=======================================
+--    storage_fb_end_data(
+--       ov_errbuf      => lv_errbuf            -- エラー・メッセージ
+--      ,ov_retcode     => lv_retcode           -- リターン・コード
+--      ,ov_errmsg      => lv_errmsg            -- ユーザー・エラー・メッセージ
+--      ,ov_fb_end_data => lv_fb_end_data       -- FB作成エンドレコード
+--    );
+--    IF( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--    END IF;
+--    --=======================================
+--    -- A-15.FB作成エンドレコードの出力
+--    --=======================================
+--    output_data(
+--       ov_errbuf  => lv_errbuf         -- エラー・メッセージ
+--      ,ov_retcode => lv_retcode        -- リターン・コード
+--      ,ov_errmsg  => lv_errmsg         -- ユーザー・エラー・メッセージ
+--      ,iv_data    => lv_fb_end_data    -- 出力するデータ
+--    );
+--    IF( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--    END IF;
+----
+--  EXCEPTION
+--    -- *** 処理部共通例外ハンドラ ***
+--    WHEN global_process_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      IF( lv_errbuf IS NOT NULL ) THEN
+--        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
+--      END IF;
+--      ov_retcode := cv_status_error;
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+--  END submain;
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -1507,10 +1983,8 @@ AS
     lv_errbuf                  VARCHAR2(5000) DEFAULT NULL;                        -- エラー・メッセージ
     lv_retcode                 VARCHAR2(1)    DEFAULT NULL;                        -- リターン・コード
     lv_errmsg                  VARCHAR2(5000) DEFAULT NULL;                        -- ユーザー・エラー・メッセージ
--- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
     lv_out_msg                 VARCHAR2(2000) DEFAULT NULL;                        -- メッセージ
     lb_retcode                 BOOLEAN        DEFAULT NULL;                        -- メッセージ・リターン・コード
--- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
     --
     ln_cnt                     NUMBER         DEFAULT NULL;                        -- 索引カウンタ
     --
@@ -1527,355 +2001,306 @@ AS
     lv_fb_trailer_data         VARCHAR2(2000) DEFAULT NULL;                        -- FB作成トレーラレコード
     lv_fb_end_data             VARCHAR2(2000) DEFAULT NULL;                        -- FB作成エンドレコード
     ln_transfer_amount         NUMBER;                                             -- 振込金額
-    ln_total_transfer_amount   NUMBER;                                             -- 振込金額計
--- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+    ln_total_transfer_amount   NUMBER         DEFAULT 0;                           -- 振込金額計
     ln_fee                     NUMBER;                                             -- 銀行手数料（振込手数料）
     lv_bank_charge_bearer      VARCHAR2(30)   DEFAULT NULL;                        -- 銀行手数料負担者
--- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+    --
+    --===============================
+    -- ローカル例外
+    --===============================
+    skip_expt                      EXCEPTION; -- スキップ処理
 --
   BEGIN
+    --==================================================
     -- ステータス初期化
+    --==================================================
     ov_retcode := cv_status_normal;
+    --==================================================
     -- グローバル変数の初期化
+    --==================================================
     gn_target_cnt            := 0;        -- 対象件数
     gn_normal_cnt            := 0;        -- 正常件数
     gn_error_cnt             := 0;        -- エラー件数
--- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
-    -- 未使用のためコメントアウト
---    gn_warn_cnt              := 0;        -- 警告件数
     gn_skip_cnt              := 0;        -- スキップ件数
--- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
     gn_out_cnt               := 0;        -- 成功件数
-    -- ローカル変数の初期化
-    ln_total_transfer_amount := 0;        -- 振込金額計
-    --===============================
+    --==================================================
     -- A-1.初期処理
-    --===============================
+    --==================================================
     init(
-       ov_errbuf    => lv_errbuf         -- エラー・メッセージ
-      ,ov_retcode   => lv_retcode        -- リターン・コード
-      ,ov_errmsg    => lv_errmsg         -- ユーザー・エラー・メッセージ
-      ,iv_proc_type => iv_proc_type      -- 処理パラメータ
+      ov_errbuf    => lv_errbuf         -- エラー・メッセージ
+    , ov_retcode   => lv_retcode        -- リターン・コード
+    , ov_errmsg    => lv_errmsg         -- ユーザー・エラー・メッセージ
+    , iv_proc_type => iv_proc_type      -- 処理パラメータ
     );
     IF( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
     END IF;
-    -- 処理区分が'1'(振込口座事前チェックFB作成処理)の場合
-    IF( iv_proc_type = cv_1 ) THEN
-      --===============================================================
-      -- A-2.FB作成明細データの取得（振込口座事前チェック用FB作成処理）
-      --===============================================================
-      get_bank_acct_chk_fb_line(
-         ov_errbuf  => lv_errbuf    -- エラー・メッセージ
-        ,ov_retcode => lv_retcode   -- リターン・コード
-        ,ov_errmsg  => lv_errmsg    -- ユーザー・エラー・メッセージ
-      );
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
-      END IF;
-      -- 対象件数
-      gn_target_cnt := gt_bac_fb_line_tab.COUNT;
-    -- 処理区分が'2'(本振用FBデータ作成処理)の場合
-    ELSIF( iv_proc_type = cv_2 ) THEN
-      --===============================================================
-      -- A-3.FB作成明細データの取得（本振用FBデータ作成処理）
-      --===============================================================
-      get_fb_line(
-         ov_errbuf  => lv_errbuf    -- エラー・メッセージ
-        ,ov_retcode => lv_retcode   -- リターン・コード
-        ,ov_errmsg  => lv_errmsg    -- ユーザー・エラー・メッセージ
-      );
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
-      END IF;
-      -- 対象件数
-      gn_target_cnt := gt_fb_line_tab.COUNT;
+    --==================================================
+    -- A-4.FB作成ヘッダーデータの取得
+    --==================================================
+    get_fb_header(
+      ov_errbuf                  => lv_errbuf                     -- エラー・メッセージ
+    , ov_retcode                 => lv_retcode                    -- リターン・コード
+    , ov_errmsg                  => lv_errmsg                     -- ユーザー・エラー・メッセージ
+    , ot_bank_number             => lt_bank_number                -- 銀行番号
+    , ot_bank_name_alt           => lt_bank_name_alt              -- 銀行名カナ
+    , ot_bank_num                => lt_bank_num                   -- 銀行支店番号
+    , ot_bank_branch_name_alt    => lt_bank_branch_name_alt       -- 銀行支店名カナ
+    , ot_bank_account_type       => lt_bank_account_type          -- 預金種別
+    , ot_bank_account_num        => lt_bank_account_num           -- 銀行口座番号
+    , ot_account_holder_name_alt => lt_account_holder_name_alt    -- 口座名義人カナ
+    );
+    IF( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
     END IF;
-    -- 振込口座事前チェック用FB作成
+    --==================================================
+    -- A-5.FB作成ヘッダーデータの格納
+    --==================================================
+    storage_fb_header(
+      ov_errbuf                  => lv_errbuf                     -- エラー・メッセージ
+    , ov_retcode                 => lv_retcode                    -- リターン・コード
+    , ov_errmsg                  => lv_errmsg                     -- ユーザー・エラー・メッセージ
+    , ov_fb_header_data          => lv_fb_header_data             -- FB作成ヘッダーデータ
+    , it_bank_number             => lt_bank_number                -- 銀行番号
+    , it_bank_name_alt           => lt_bank_name_alt              -- 銀行名カナ
+    , it_bank_num                => lt_bank_num                   -- 銀行支店番号
+    , it_bank_branch_name_alt    => lt_bank_branch_name_alt       -- 銀行支店名カナ
+    , it_bank_account_type       => lt_bank_account_type          -- 預金種別
+    , it_bank_account_num        => lt_bank_account_num           -- 銀行口座番号
+    , it_account_holder_name_alt => lt_account_holder_name_alt    -- 口座名義人カナ
+    );
+    IF( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+    --==================================================
+    -- A-6.FB作成ヘッダーデータの出力
+    --==================================================
+    output_data(
+      ov_errbuf  => lv_errbuf           -- エラー・メッセージ
+    , ov_retcode => lv_retcode          -- リターン・コード
+    , ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ
+    , iv_data    => lv_fb_header_data   -- 出力するデータ
+    );
+    IF( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+    --==================================================
+    -- 処理区分が'1'(振込口座事前チェックFB作成処理)の場合
+    --==================================================
     IF( iv_proc_type = cv_1 ) THEN
-      --=================================================
-      -- A-4.FB作成ヘッダーデータの取得
-      --=================================================
-      get_fb_header(
-         ov_errbuf                  => lv_errbuf                     -- エラー・メッセージ
-        ,ov_retcode                 => lv_retcode                    -- リターン・コード
-        ,ov_errmsg                  => lv_errmsg                     -- ユーザー・エラー・メッセージ
-        ,ot_bank_number             => lt_bank_number                -- 銀行番号
-        ,ot_bank_name_alt           => lt_bank_name_alt              -- 銀行名カナ
-        ,ot_bank_num                => lt_bank_num                   -- 銀行支店番号
-        ,ot_bank_branch_name_alt    => lt_bank_branch_name_alt       -- 銀行支店名カナ
-        ,ot_bank_account_type       => lt_bank_account_type          -- 預金種別
-        ,ot_bank_account_num        => lt_bank_account_num           -- 銀行口座番号
-        ,ot_account_holder_name_alt => lt_account_holder_name_alt    -- 口座名義人カナ
-      );
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
-      END IF;
-      --=================================================
-      -- A-5.FB作成ヘッダーデータの格納
-      --=================================================
-      storage_fb_header(
-         ov_errbuf                  => lv_errbuf                     -- エラー・メッセージ
-        ,ov_retcode                 => lv_retcode                    -- リターン・コード
-        ,ov_errmsg                  => lv_errmsg                     -- ユーザー・エラー・メッセージ
-        ,ov_fb_header_data          => lv_fb_header_data             -- FB作成ヘッダーデータ
-        ,it_bank_number             => lt_bank_number                -- 銀行番号
-        ,it_bank_name_alt           => lt_bank_name_alt              -- 銀行名カナ
-        ,it_bank_num                => lt_bank_num                   -- 銀行支店番号
-        ,it_bank_branch_name_alt    => lt_bank_branch_name_alt       -- 銀行支店名カナ
-        ,it_bank_account_type       => lt_bank_account_type          -- 預金種別
-        ,it_bank_account_num        => lt_bank_account_num           -- 銀行口座番号
-        ,it_account_holder_name_alt => lt_account_holder_name_alt    -- 口座名義人カナ
-      );
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
-      END IF;
-      --=================================================
-      -- A-6.FB作成ヘッダーデータの出力
-      --=================================================
-      output_data(
-         ov_errbuf  => lv_errbuf           -- エラー・メッセージ
-        ,ov_retcode => lv_retcode          -- リターン・コード
-        ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ
-        ,iv_data    => lv_fb_header_data   -- 出力するデータ
-      );
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
-      END IF;
-      <<bac_fb_line_loop>>
-      FOR ln_cnt IN 1 .. gt_bac_fb_line_tab.COUNT LOOP
-        --===============================================================
-        -- A-7.FB作成明細データの格納（振込口座事前チェック用FB作成処理）
-        --===============================================================
-        storage_bank_acct_chk_fb_line(
-           ov_errbuf       => lv_errbuf            -- エラー・メッセージ
-          ,ov_retcode      => lv_retcode           -- リターン・コード
-          ,ov_errmsg       => lv_errmsg            -- ユーザー・エラー・メッセージ
-          ,ov_fb_line_data => lv_fb_line_data      -- FB作成明細レコード
-          ,in_cnt          => ln_cnt               -- 索引カウンタ
-        );
-        IF( lv_retcode = cv_status_error ) THEN
-          RAISE global_process_expt;
-        END IF;
-        --===============================
-        -- A-10.FB作成データレコードの出力
-        --===============================
-        output_data(
-          ov_errbuf  => lv_errbuf            -- エラー・メッセージ
-         ,ov_retcode => lv_retcode           -- リターン・コード
-         ,ov_errmsg  => lv_errmsg            -- ユーザー・エラー・メッセージ
-         ,iv_data    => lv_fb_line_data      -- 出力するデータ
-        );
-        IF( lv_retcode = cv_status_error ) THEN
-          RAISE global_process_expt;
-        END IF;
-        -- 成功件数
-        gn_out_cnt := gn_out_cnt + 1;
-      END LOOP bac_fb_line_loop;
-    -- 本振用FBデータ作成
-    ELSIF( iv_proc_type = cv_2 ) THEN
-      --=================================================
-      -- A-4.FB作成ヘッダーデータの取得
-      --=================================================
-      get_fb_header(
-         ov_errbuf                  => lv_errbuf                     -- エラー・メッセージ
-        ,ov_retcode                 => lv_retcode                    -- リターン・コード
-        ,ov_errmsg                  => lv_errmsg                     -- ユーザー・エラー・メッセージ
-        ,ot_bank_number             => lt_bank_number                -- 銀行番号
-        ,ot_bank_name_alt           => lt_bank_name_alt              -- 銀行名カナ
-        ,ot_bank_num                => lt_bank_num                   -- 銀行支店番号
-        ,ot_bank_branch_name_alt    => lt_bank_branch_name_alt       -- 銀行支店名カナ
-        ,ot_bank_account_type       => lt_bank_account_type          -- 預金種別
-        ,ot_bank_account_num        => lt_bank_account_num           -- 銀行口座番号
-        ,ot_account_holder_name_alt => lt_account_holder_name_alt    -- 口座名義人カナ
-      );
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
-      END IF;
-      --=================================================
-      -- A-5.FB作成ヘッダーデータの格納
-      --=================================================
-      storage_fb_header(
-         ov_errbuf                  => lv_errbuf                     -- エラー・メッセージ
-        ,ov_retcode                 => lv_retcode                    -- リターン・コード
-        ,ov_errmsg                  => lv_errmsg                     -- ユーザー・エラー・メッセージ
-        ,ov_fb_header_data          => lv_fb_header_data             -- FB作成ヘッダーレコード
-        ,it_bank_number             => lt_bank_number                -- 銀行番号
-        ,it_bank_name_alt           => lt_bank_name_alt              -- 銀行名カナ
-        ,it_bank_num                => lt_bank_num                   -- 銀行支店番号
-        ,it_bank_branch_name_alt    => lt_bank_branch_name_alt       -- 銀行支店名カナ
-        ,it_bank_account_type       => lt_bank_account_type          -- 預金種別
-        ,it_bank_account_num        => lt_bank_account_num           -- 銀行口座番号
-        ,it_account_holder_name_alt => lt_account_holder_name_alt    -- 口座名義人カナ
-      );
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
-      END IF;
-      --=================================================
-      -- A-6.FB作成ヘッダーデータの出力
-      --=================================================
-      output_data(
-         ov_errbuf  => lv_errbuf            -- エラー・メッセージ
-        ,ov_retcode => lv_retcode           -- リターン・コード
-        ,ov_errmsg  => lv_errmsg            -- ユーザー・エラー・メッセージ
-        ,iv_data    => lv_fb_header_data    -- 出力するデータ
-      );
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
-      END IF;
-      <<fb_loop>>
-      FOR ln_cnt IN 1 .. gt_fb_line_tab.COUNT LOOP
-        --==========================================================
-        -- A-8.FB作成明細データ付加情報の取得（本振用FBデータ作成処理）
-        --==========================================================
-        get_fb_line_add_info(
-           ov_errbuf          => lv_errbuf               -- エラー・メッセージ
-          ,ov_retcode         => lv_retcode              -- リターン・コード
-          ,ov_errmsg          => lv_errmsg               -- ユーザー・エラー・メッセージ
-          ,on_transfer_amount => ln_transfer_amount      -- 振込金額
--- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
-          ,on_fee             => ln_fee                  -- 銀行手数料（振込手数料）
--- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
-          ,in_cnt             => ln_cnt                  -- 索引カウンタ
-        );
-        IF( lv_retcode = cv_status_error ) THEN
-          RAISE global_process_expt;
-        END IF;
--- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
-        IF(( gt_fb_line_tab( ln_cnt ).bank_charge_bearer = cv_i   AND
-             gt_fb_line_tab( ln_cnt ).trns_amt <= 0
-           ) OR
-           ( gt_fb_line_tab( ln_cnt ).bank_charge_bearer <> cv_i  AND
-             ( gt_fb_line_tab( ln_cnt ).trns_amt - ln_fee ) <= 0
-           )
-          )
-        THEN
-          -- スキップ件数のカウントアップ
-          gn_skip_cnt := gn_skip_cnt + 1;
---
-          -- 出力用の銀行手数料負担者を選定
-          IF ( gt_fb_line_tab( ln_cnt ).bank_charge_bearer = cv_i ) THEN
-            lv_bank_charge_bearer := gt_prof_bank_trns_fee_we;
-          ELSE
-            lv_bank_charge_bearer := gt_prof_bank_trns_fee_ctpty;
-          END IF;
---
-          -- FBデータの支払金額0円以下警告メッセージ出力
-         lv_out_msg := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_appli_xxcok
-                         ,iv_name         => cv_msg_cok_10453
-                         ,iv_token_name1  => cv_token_conn_loc
-                         ,iv_token_value1 => gt_fb_line_tab( ln_cnt ).base_code      -- 問合せ担当拠点
-                         ,iv_token_name2  => cv_token_vendor_code
-                         ,iv_token_value2 => gt_fb_line_tab( ln_cnt ).supplier_code  -- 支払先コード
-                         ,iv_token_name3  => cv_token_payment_amt
-                         ,iv_token_value3 => TO_CHAR( gt_fb_line_tab( ln_cnt ).trns_amt ) -- 振込額
-                         ,iv_token_name4  => cv_token_bank_charge_bearer
-                         ,iv_token_value4 => lv_bank_charge_bearer                   -- 銀行手数料
-                       );
-         lb_retcode := xxcok_common_pkg.put_message_f(
-                         in_which    => FND_FILE.LOG       -- 出力区分
-                        ,iv_message  => lv_out_msg         -- メッセージ
-                        ,in_new_line => 0                  -- 改行
-                       );
---
-        ELSE
-          -- 振込金額計
-          ln_total_transfer_amount := ln_total_transfer_amount + ln_transfer_amount;
-          --=============================================================
-          -- A-9.FB作成明細データの格納（本振用FBデータ作成処理）
-          --=============================================================
-          storage_fb_line(
-            ov_errbuf                => lv_errbuf                   -- エラー・メッセージ
-           ,ov_retcode               => lv_retcode                  -- リターン・コード
-           ,ov_errmsg                => lv_errmsg                   -- ユーザー・エラー・メッセージ
-           ,ov_fb_line_data          => lv_fb_line_data             -- FB明細
-           ,in_transfer_amount       => ln_transfer_amount          -- 振込金額
-           ,in_cnt                   => ln_cnt                      -- 索引カウンタ
+      << bac_fb_line_loop >>
+      FOR bac_fb_line_rec IN bac_fb_line_cur LOOP
+        gn_target_cnt := gn_target_cnt + 1;
+        --==================================================
+        -- 明細作成
+        --==================================================
+        BEGIN
+          --==================================================
+          -- A-7.FB作成明細データの格納（振込口座事前チェック用FB作成処理）
+          --==================================================
+          storage_bank_acct_chk_fb_line(
+            ov_errbuf         => lv_errbuf            -- エラー・メッセージ
+          , ov_retcode        => lv_retcode           -- リターン・コード
+          , ov_errmsg         => lv_errmsg            -- ユーザー・エラー・メッセージ
+          , ov_fb_line_data   => lv_fb_line_data      -- FB作成明細レコード
+          , i_bac_fb_line_rec => bac_fb_line_rec      -- FB作成明細レコード
           );
           IF( lv_retcode = cv_status_error ) THEN
             RAISE global_process_expt;
           END IF;
-          --
-          --================================
+          --==================================================
           -- A-10.FB作成データレコードの出力
-          --================================
+          --==================================================
           output_data(
-            ov_errbuf  => lv_errbuf           -- エラー・メッセージ
-           ,ov_retcode => lv_retcode          -- リターン・コード
-           ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージF
-           ,iv_data    => lv_fb_line_data     -- 出力するデータ
-          );
-          IF( lv_retcode = cv_status_error ) THEN
-            RAISE global_process_expt;
-          END IF;
-          --===================================
-          -- A-11.FB作成データ出力結果の更新
-          --===================================
-          upd_backmargin_balance(
-             ov_errbuf  => lv_errbuf          -- エラー・メッセージ
-            ,ov_retcode => lv_retcode         -- リターン・コード
-            ,ov_errmsg  => lv_errmsg          -- ユーザー・エラー・メッセージ
-            ,in_cnt     => ln_cnt             -- 索引カウンタ
+            ov_errbuf  => lv_errbuf            -- エラー・メッセージ
+          , ov_retcode => lv_retcode           -- リターン・コード
+          , ov_errmsg  => lv_errmsg            -- ユーザー・エラー・メッセージ
+          , iv_data    => lv_fb_line_data      -- 出力するデータ
           );
           IF( lv_retcode = cv_status_error ) THEN
             RAISE global_process_expt;
           END IF;
           -- 成功件数
           gn_out_cnt := gn_out_cnt + 1;
-        END IF;
--- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+        EXCEPTION
+          WHEN skip_expt THEN
+            gn_skip_cnt := gn_skip_cnt + 1;
+        END;
+      END LOOP bac_fb_line_loop;
+    --==================================================
+    -- 処理区分が'2'(本振用FBデータ作成処理)の場合
+    --==================================================
+    ELSIF( iv_proc_type = cv_2 ) THEN
+      << fb_loop >>
+      FOR fb_line_rec IN fb_line_cur LOOP
+        gn_target_cnt := gn_target_cnt + 1;
+        --==================================================
+        -- 明細作成
+        --==================================================
+        BEGIN
+          --==================================================
+          -- A-8.FB作成明細データ付加情報の取得（本振用FBデータ作成処理）
+          --==================================================
+          get_fb_line_add_info(
+            ov_errbuf          => lv_errbuf               -- エラー・メッセージ
+          , ov_retcode         => lv_retcode              -- リターン・コード
+          , ov_errmsg          => lv_errmsg               -- ユーザー・エラー・メッセージ
+          , on_transfer_amount => ln_transfer_amount      -- 振込金額
+          , on_fee             => ln_fee                  -- 銀行手数料（振込手数料）
+          , i_fb_line_rec      => fb_line_rec             -- FB作成明細レコード
+          );
+          IF( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+          --==================================================
+          -- 0円以下警告判定
+          --==================================================
+          IF(    (     ( fb_line_rec.bank_charge_bearer  = cv_i )
+                   AND ( fb_line_rec.trns_amt           <= 0    )
+                 )
+              OR (     ( fb_line_rec.bank_charge_bearer <> cv_i )
+                   AND ( fb_line_rec.trns_amt - ln_fee  <= 0    )
+                 )
+          ) THEN
+            RAISE skip_expt;
+          END IF;
+          -- 振込金額計
+          ln_total_transfer_amount := ln_total_transfer_amount + ln_transfer_amount;
+          --==================================================
+          -- A-9.FB作成明細データの格納（本振用FBデータ作成処理）
+          --==================================================
+          storage_fb_line(
+            ov_errbuf                => lv_errbuf                   -- エラー・メッセージ
+          , ov_retcode               => lv_retcode                  -- リターン・コード
+          , ov_errmsg                => lv_errmsg                   -- ユーザー・エラー・メッセージ
+          , ov_fb_line_data          => lv_fb_line_data             -- FB明細
+          , in_transfer_amount       => ln_transfer_amount          -- 振込金額
+          , i_fb_line_rec            => fb_line_rec                 -- FB作成明細レコード
+          );
+          IF( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+          --
+          --==================================================
+          -- A-10.FB作成データレコードの出力
+          --==================================================
+          output_data(
+            ov_errbuf  => lv_errbuf           -- エラー・メッセージ
+          , ov_retcode => lv_retcode          -- リターン・コード
+          , ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージF
+          , iv_data    => lv_fb_line_data     -- 出力するデータ
+          );
+          IF( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+          --==================================================
+          -- A-11.FB作成データ出力結果の更新
+          --==================================================
+          upd_backmargin_balance(
+            ov_errbuf      => lv_errbuf          -- エラー・メッセージ
+          , ov_retcode     => lv_retcode         -- リターン・コード
+          , ov_errmsg      => lv_errmsg          -- ユーザー・エラー・メッセージ
+          , i_fb_line_rec  => fb_line_rec        -- FB作成明細レコード
+          );
+          IF( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+          -- 成功件数
+          gn_out_cnt := gn_out_cnt + 1;
+        EXCEPTION
+          WHEN skip_expt THEN
+            -- 出力用の銀行手数料負担者を選定
+            IF ( fb_line_rec.bank_charge_bearer = cv_i ) THEN
+              lv_bank_charge_bearer := gt_prof_bank_trns_fee_we;
+            ELSE
+              lv_bank_charge_bearer := gt_prof_bank_trns_fee_ctpty;
+            END IF;
+            -- FBデータの支払金額0円以下警告メッセージ出力
+            lv_out_msg := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_appli_xxcok
+                          , iv_name         => cv_msg_cok_10453
+                          , iv_token_name1  => cv_token_conn_loc
+                          , iv_token_value1 => fb_line_rec.base_code      -- 問合せ担当拠点
+                          , iv_token_name2  => cv_token_vendor_code
+                          , iv_token_value2 => fb_line_rec.supplier_code  -- 支払先コード
+                          , iv_token_name3  => cv_token_payment_amt
+                          , iv_token_value3 => TO_CHAR( fb_line_rec.trns_amt ) -- 振込額
+                          , iv_token_name4  => cv_token_bank_charge_bearer
+                          , iv_token_value4 => lv_bank_charge_bearer                   -- 銀行手数料
+                          );
+            lb_retcode := xxcok_common_pkg.put_message_f(
+                            in_which    => FND_FILE.LOG       -- 出力区分
+                           ,iv_message  => lv_out_msg         -- メッセージ
+                           ,in_new_line => 0                  -- 改行
+                          );
+            -- スキップ件数のカウントアップ
+            gn_skip_cnt := gn_skip_cnt + 1;
+        END;
       END LOOP fb_loop;
     END IF;
-    --=======================================
+    --======================================================
+    -- FB作成明細情報取得エラー
+    --======================================================
+    IF( gn_target_cnt = 0 ) THEN
+      lv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application => cv_appli_xxcok
+                      ,iv_name        => cv_msg_cok_10254
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.LOG       -- 出力区分
+                     ,iv_message  => lv_out_msg         -- メッセージ
+                     ,in_new_line => 1                  -- 改行
+                    );
+    END IF;
+    --==================================================
     -- A-12.FB作成トレーラレコードの格納
-    --=======================================
+    --==================================================
     storage_fb_trailer_data(
-       ov_errbuf                => lv_errbuf                  -- エラー・メッセージ
-      ,ov_retcode               => lv_retcode                 -- リターン・コード
-      ,ov_errmsg                => lv_errmsg                  -- ユーザー・エラー・メッセージ
-      ,ov_fb_trailer_data       => lv_fb_trailer_data         -- FB作成トレーラレコード
-      ,iv_proc_type             => iv_proc_type               -- データ区分
-      ,in_total_transfer_amount => ln_total_transfer_amount   -- 振込金額計
+      ov_errbuf                => lv_errbuf                  -- エラー・メッセージ
+    , ov_retcode               => lv_retcode                 -- リターン・コード
+    , ov_errmsg                => lv_errmsg                  -- ユーザー・エラー・メッセージ
+    , ov_fb_trailer_data       => lv_fb_trailer_data         -- FB作成トレーラレコード
+    , iv_proc_type             => iv_proc_type               -- データ区分
+    , in_total_transfer_amount => ln_total_transfer_amount   -- 振込金額計
     );
     IF( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
+      RAISE global_process_expt;
     END IF;
-    --=======================================
+    --==================================================
     -- A-13.FB作成トレーラレコードの出力
-    --=======================================
+    --==================================================
     output_data(
-       ov_errbuf  => lv_errbuf               -- エラー・メッセージ
-      ,ov_retcode => lv_retcode              -- リターン・コード
-      ,ov_errmsg  => lv_errmsg               -- ユーザー・エラー・メッセージ
-      ,iv_data    => lv_fb_trailer_data      -- 出力するデータ
+      ov_errbuf  => lv_errbuf               -- エラー・メッセージ
+    , ov_retcode => lv_retcode              -- リターン・コード
+    , ov_errmsg  => lv_errmsg               -- ユーザー・エラー・メッセージ
+    , iv_data    => lv_fb_trailer_data      -- 出力するデータ
     );
     IF( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
+      RAISE global_process_expt;
     END IF;
-    --=======================================
+    --==================================================
     -- A-14.FB作成エンドレコードの格納
-    --=======================================
+    --==================================================
     storage_fb_end_data(
-       ov_errbuf      => lv_errbuf            -- エラー・メッセージ
-      ,ov_retcode     => lv_retcode           -- リターン・コード
-      ,ov_errmsg      => lv_errmsg            -- ユーザー・エラー・メッセージ
-      ,ov_fb_end_data => lv_fb_end_data       -- FB作成エンドレコード
+      ov_errbuf      => lv_errbuf            -- エラー・メッセージ
+    , ov_retcode     => lv_retcode           -- リターン・コード
+    , ov_errmsg      => lv_errmsg            -- ユーザー・エラー・メッセージ
+    , ov_fb_end_data => lv_fb_end_data       -- FB作成エンドレコード
     );
     IF( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
+      RAISE global_process_expt;
     END IF;
-    --=======================================
+    --==================================================
     -- A-15.FB作成エンドレコードの出力
-    --=======================================
+    --==================================================
     output_data(
-       ov_errbuf  => lv_errbuf         -- エラー・メッセージ
-      ,ov_retcode => lv_retcode        -- リターン・コード
-      ,ov_errmsg  => lv_errmsg         -- ユーザー・エラー・メッセージ
-      ,iv_data    => lv_fb_end_data    -- 出力するデータ
+      ov_errbuf  => lv_errbuf         -- エラー・メッセージ
+    , ov_retcode => lv_retcode        -- リターン・コード
+    , ov_errmsg  => lv_errmsg         -- ユーザー・エラー・メッセージ
+    , iv_data    => lv_fb_end_data    -- 出力するデータ
     );
     IF( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
+      RAISE global_process_expt;
     END IF;
 --
   EXCEPTION
@@ -1895,6 +2320,7 @@ AS
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
   END submain;
+-- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR END
 --
   /**********************************************************************************
    * Procedure Name   : main
