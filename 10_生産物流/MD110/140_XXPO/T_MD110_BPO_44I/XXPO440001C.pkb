@@ -7,7 +7,7 @@ AS
  * Description      : 有償出庫指示書
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_444)
  *                    有償支給帳票Issue1.0(T_MD070_BPO_44I)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -16,7 +16,7 @@ AS
  *  main                 コンカレント実行ファイル登録プロシージャ
  *
  *  prc_create_out_data         PROCEDURE : ＸＭＬデータ出力処理
- *  prc_set_temp_data           PROCEDURE : 中間テーブル登録データ設定
+ *  prc_create_sql              PROCEDURE : データ抽出処理
  *  prc_create_xml_data_user    PROCEDURE : タグ出力 - ユーザー情報
  *  prc_create_xml_data         PROCEDURE : ＸＭＬデータ編集
  *  convert_into_xml            FUNCTION  : ＸＭＬタグに変換する。
@@ -45,6 +45,7 @@ AS
  *  2008/06/23    1.5   Oracle山本恭久   変更要求対応No.42、91
  *                                       内部変更要求対応No.160
  *  2008/09/19    1.6   Oracle山根一浩   T_S_439対応
+ *  2008/10/22    1.7   Oracle大橋孝郎   指摘361対応
  *
  *****************************************************************************************/
 --
@@ -199,6 +200,9 @@ AS
   gn_program_application_id  NUMBER ;          -- コンカレント・プログラム・アプリケーションID
   gn_program_id              NUMBER ;          -- コンカレント・プログラムID
   gv_sql                     VARCHAR2(32000) ; -- データ取得用ＳＱＬ
+-- add start 1.7
+  gn_type_id                 oe_transaction_types_all.transaction_type_id%TYPE; -- 取引タイプID
+-- add end 1.7
 --
 --#####################  固定共通例外宣言部 START   ####################
 --
@@ -790,14 +794,17 @@ AS
       -- ----------------------------------------------------
       -- 総数の編集
       -- ----------------------------------------------------
+-- mod start 1.7
 --2008/09/19 Mod ↓
 /*
       --受注タイプが返品の場合
       IF (lr_ref.order_category_code = cv_order) THEN
 */
       --受注タイプIDが訂正の場合
-      IF (lr_ref.order_type_id = cn_type_id) THEN
+--      IF (lr_ref.order_type_id = cn_type_id) THEN
+      IF (lr_ref.order_type_id = gn_type_id) THEN
 --2008/09/19 Mod ↑
+-- mod end 1.7
         ln_quantity      := ABS(lr_ref.quantity) * -1;
       ELSE
         ln_quantity      := ABS(lr_ref.quantity);
@@ -1535,6 +1542,18 @@ AS
     gn_request_id             := FND_GLOBAL.CONC_REQUEST_ID ;   -- 要求ID
     gn_program_application_id := FND_GLOBAL.PROG_APPL_ID ;      -- ＣＰ・アプリケーションID
     gn_program_id             := FND_GLOBAL.CONC_PROGRAM_ID ;   -- コンカレント・プログラムID
+--
+-- add start 1.7
+    -- -----------------------------------------------------
+    -- 返品訂正情報設定
+    -- -----------------------------------------------------
+    SELECT xottv.transaction_type_id
+    INTO   gn_type_id
+    FROM   xxwsh_oe_transaction_types_v xottv
+    WHERE  xottv.shipping_shikyu_class = '2'
+    AND    xottv.ship_sikyu_rcv_pay_ctg = '06'
+    AND    xottv.order_category_code = 'ORDER';
+-- add end 1.7
 --
     -- -----------------------------------------------------
     -- 帳票タイトル設定
