@@ -1,0 +1,1 @@
+exp outln/outln file=XXCOP_MRCRLF_OUTLINE02.dmp tables='OL$' 'OL$HINTS' 'OL$NODES' query= \"where ol_name in \(\'XXCOP_MRCRLF_OUTLINE04\',\'XXCOP_MRCRLF_OUTLINE05\',\'XXCOP_MRCRLF_OUTLINE06\'\)\"

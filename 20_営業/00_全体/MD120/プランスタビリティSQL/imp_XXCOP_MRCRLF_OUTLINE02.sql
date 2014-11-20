@@ -1,0 +1,1 @@
+imp outln/outln file=XXCOP_MRCRLF_OUTLINE02.dmp fromuser=outln ignore=Y
