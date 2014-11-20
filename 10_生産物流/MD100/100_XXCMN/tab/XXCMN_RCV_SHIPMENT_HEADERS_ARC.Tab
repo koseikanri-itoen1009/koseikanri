@@ -1,0 +1,272 @@
+CREATE TABLE XXCMN.XXCMN_RCV_SHIPMENT_HEADERS_ARC (
+     shipment_header_id             NUMBER        NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_updated_by                NUMBER        NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,created_by                     NUMBER        NOT NULL
+    ,last_update_login              NUMBER
+    ,receipt_source_code            VARCHAR2(25)  NOT NULL
+    ,vendor_id                      NUMBER
+    ,vendor_site_id                 NUMBER
+    ,organization_id                NUMBER
+    ,shipment_num                   VARCHAR2(30)
+    ,receipt_num                    VARCHAR2(30)
+    ,ship_to_location_id            NUMBER
+    ,bill_of_lading                 VARCHAR2(25)
+    ,packing_slip                   VARCHAR2(25)
+    ,shipped_date                   DATE
+    ,freight_carrier_code           VARCHAR2(25)
+    ,expected_receipt_date          DATE
+    ,employee_id                    NUMBER
+    ,num_of_containers              NUMBER
+    ,waybill_airbill_num            VARCHAR2(20)
+    ,comments                       VARCHAR2(240)
+    ,attribute_category             VARCHAR2(30)
+    ,attribute1                     VARCHAR2(150)
+    ,attribute2                     VARCHAR2(150)
+    ,attribute3                     VARCHAR2(150)
+    ,attribute4                     VARCHAR2(150)
+    ,attribute5                     VARCHAR2(150)
+    ,attribute6                     VARCHAR2(150)
+    ,attribute7                     VARCHAR2(150)
+    ,attribute8                     VARCHAR2(150)
+    ,attribute9                     VARCHAR2(150)
+    ,attribute10                    VARCHAR2(150)
+    ,attribute11                    VARCHAR2(150)
+    ,attribute12                    VARCHAR2(150)
+    ,attribute13                    VARCHAR2(150)
+    ,attribute14                    VARCHAR2(150)
+    ,attribute15                    VARCHAR2(150)
+    ,ussgl_transaction_code         VARCHAR2(30)
+    ,government_context             VARCHAR2(30)
+    ,request_id                     NUMBER
+    ,program_application_id         NUMBER
+    ,program_id                     NUMBER
+    ,program_update_date            DATE
+    ,asn_type                       VARCHAR2(25)
+    ,edi_control_num                VARCHAR2(10)
+    ,notice_creation_date           DATE
+    ,gross_weight                   NUMBER
+    ,gross_weight_uom_code          VARCHAR2(3)
+    ,net_weight                     NUMBER
+    ,net_weight_uom_code            VARCHAR2(3)
+    ,tar_weight                     NUMBER
+    ,tar_weight_uom_code            VARCHAR2(3)
+    ,packaging_code                 VARCHAR2(5)
+    ,carrier_method                 VARCHAR2(2)
+    ,carrier_equipment              VARCHAR2(10)
+    ,carrier_equipment_num          VARCHAR2(10)
+    ,carrier_equipment_alpha        VARCHAR2(10)
+    ,special_handling_code          VARCHAR2(3)
+    ,hazard_code                    VARCHAR2(1)
+    ,hazard_class                   VARCHAR2(4)
+    ,hazard_description             VARCHAR2(80)
+    ,freight_terms                  VARCHAR2(25)
+    ,freight_bill_number            VARCHAR2(35)
+    ,invoice_num                    VARCHAR2(50)
+    ,invoice_date                   DATE
+    ,invoice_amount                 NUMBER
+    ,tax_name                       VARCHAR2(15)
+    ,tax_amount                     NUMBER
+    ,freight_amount                 NUMBER
+    ,invoice_status_code            VARCHAR2(25)
+    ,asn_status                     VARCHAR2(10)
+    ,currency_code                  VARCHAR2(15)
+    ,conversion_rate_type           VARCHAR2(30)
+    ,conversion_rate                NUMBER
+    ,conversion_date                DATE
+    ,payment_terms_id               NUMBER
+    ,mrc_conversion_rate_type       VARCHAR2(2000)
+    ,mrc_conversion_date            VARCHAR2(2000)
+    ,mrc_conversion_rate            VARCHAR2(2000)
+    ,ship_to_org_id                 NUMBER
+    ,customer_id                    NUMBER
+    ,customer_site_id               NUMBER
+    ,remit_to_site_id               NUMBER
+    ,archive_date                   DATE
+    ,archive_request_id             NUMBER(15)
+    ,purge_date                     DATE
+    ,purge_request_id               NUMBER(15)
+  ) PCTFREE 10 PCTUSED 70 INITRANS 10 MAXTRANS 255 NOCOMPRESS LOGGING
+  STORAGE(INITIAL 131072 NEXT 131072 MINEXTENTS 1 MAXEXTENTS 2147483645 
+  PCTINCREASE 0 FREELISTS 4 FREELIST GROUPS 4 BUFFER_POOL DEFAULT)
+ TABLESPACE xxdata
+/
+COMMENT ON TABLE xxcmn.xxcmn_rcv_shipment_headers_arc IS '受入ヘッダ（標準）バックアップ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.shipment_header_id        IS '受入ヘッダID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.last_update_date          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.last_updated_by           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.creation_date             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.created_by                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.last_update_login         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.receipt_source_code       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.vendor_id                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.vendor_site_id            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.organization_id           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.shipment_num              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.receipt_num               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.ship_to_location_id       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.bill_of_lading            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.packing_slip              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.shipped_date              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.freight_carrier_code      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.expected_receipt_date     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.employee_id               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.num_of_containers         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.waybill_airbill_num       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.comments                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.attribute_category        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.attribute1                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.attribute2                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.attribute3                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.attribute4                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.attribute5                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.attribute6                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.attribute7                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.attribute8                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.attribute9                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.attribute10               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.attribute11               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.attribute12               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.attribute13               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.attribute14               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.attribute15               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.ussgl_transaction_code    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.government_context        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.request_id                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.program_application_id    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.program_id                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.program_update_date       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.asn_type                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.edi_control_num           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.notice_creation_date      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.gross_weight              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.gross_weight_uom_code     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.net_weight                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.net_weight_uom_code       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.tar_weight                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.tar_weight_uom_code       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.packaging_code            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.carrier_method            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.carrier_equipment         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.carrier_equipment_num     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.carrier_equipment_alpha   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.special_handling_code     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.hazard_code               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.hazard_class              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.hazard_description        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.freight_terms             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.freight_bill_number       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.invoice_num               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.invoice_date              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.invoice_amount            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.tax_name                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.tax_amount                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.freight_amount            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.invoice_status_code       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.asn_status                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.currency_code             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.conversion_rate_type      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.conversion_rate           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.conversion_date           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.payment_terms_id          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.mrc_conversion_rate_type  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.mrc_conversion_date       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.mrc_conversion_rate       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.ship_to_org_id            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.customer_id               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.customer_site_id          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.remit_to_site_id          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.archive_date              IS 'バックアップ登録日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.archive_request_id        IS 'バックアップ要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.purge_date                IS 'パージ実行日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_headers_arc.purge_request_id          IS 'パージ要求ID'
+/

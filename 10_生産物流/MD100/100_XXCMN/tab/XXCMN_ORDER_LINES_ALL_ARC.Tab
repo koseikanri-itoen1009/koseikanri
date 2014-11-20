@@ -1,0 +1,166 @@
+CREATE TABLE XXCMN.XXCMN_ORDER_LINES_ALL_ARC (
+     order_line_id                  NUMBER        NOT NULL
+    ,order_header_id                NUMBER        NOT NULL
+    ,order_line_number              NUMBER        NOT NULL
+    ,header_id                      NUMBER
+    ,line_id                        NUMBER
+    ,request_no                     VARCHAR2(12)  NOT NULL
+    ,shipping_inventory_item_id     NUMBER
+    ,shipping_item_code             VARCHAR2(7)   NOT NULL
+    ,quantity                       NUMBER
+    ,uom_code                       VARCHAR2(3)
+    ,unit_price                     NUMBER
+    ,shipped_quantity               NUMBER
+    ,designated_production_date     DATE
+    ,based_request_quantity         NUMBER
+    ,request_item_id                NUMBER
+    ,request_item_code              VARCHAR2(7)
+    ,ship_to_quantity               NUMBER
+    ,futai_code                     VARCHAR2(2)
+    ,designated_date                DATE
+    ,move_number                    VARCHAR2(12)
+    ,po_number                      VARCHAR2(12)
+    ,cust_po_number                 VARCHAR2(5)
+    ,pallet_quantity                NUMBER
+    ,layer_quantity                 NUMBER
+    ,case_quantity                  NUMBER
+    ,weight                         NUMBER
+    ,capacity                       NUMBER
+    ,pallet_qty                     NUMBER
+    ,pallet_weight                  NUMBER
+    ,reserved_quantity              NUMBER
+    ,automanual_reserve_class       VARCHAR2(2)
+    ,delete_flag                    VARCHAR2(1)
+    ,warning_class                  VARCHAR2(2)
+    ,warning_date                   DATE
+    ,line_description               VARCHAR2(60)
+    ,rm_if_flg                      VARCHAR2(1)
+    ,shipping_request_if_flg        VARCHAR2(1)
+    ,shipping_result_if_flg         VARCHAR2(1)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+    ,archive_date                   DATE
+    ,archive_request_id             NUMBER(15)
+    ,purge_date                     DATE
+    ,purge_request_id               NUMBER(15)
+  ,CONSTRAINT xxcmn_order_lines_all_arc_pk PRIMARY KEY (order_line_id)
+   USING INDEX PCTFREE 10 INITRANS 2 MAXTRANS 255 COMPUTE STATISTICS 
+   STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+   PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
+   TABLESPACE XXIDX)
+  PCTFREE 10 PCTUSED 40 INITRANS 16 MAXTRANS 255 NOCOMPRESS LOGGING
+  STORAGE(INITIAL 1080033280 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
+  TABLESPACE XXDATA
+/
+COMMENT ON TABLE xxcmn.xxcmn_order_lines_all_arc IS '受注明細（アドオン）バックアップ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.order_line_id                  IS '受注明細アドオンID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.order_header_id                IS '受注ヘッダアドオンID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.order_line_number              IS '明細番号'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.header_id                      IS '受注ヘッダID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.line_id                        IS '受注明細ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.request_no                     IS '依頼No'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.shipping_inventory_item_id     IS '出荷品目ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.shipping_item_code             IS '出荷品目'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.quantity                       IS '数量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.uom_code                       IS '単位'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.unit_price                     IS '単価'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.shipped_quantity               IS '出荷実績数量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.designated_production_date     IS '指定製造日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.based_request_quantity         IS '拠点依頼数量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.request_item_id                IS '依頼品目ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.request_item_code              IS '依頼品目'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.ship_to_quantity               IS '入庫実績数量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.futai_code                     IS '付帯コード'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.designated_date                IS '指定日付（リーフ）'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.move_number                    IS '移動No'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.po_number                      IS '発注No'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.cust_po_number                 IS '顧客発注'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.pallet_quantity                IS 'パレット数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.layer_quantity                 IS '段数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.case_quantity                  IS 'ケース数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.weight                         IS '重量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.capacity                       IS '容積'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.pallet_qty                     IS 'パレット枚数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.pallet_weight                  IS 'パレット重量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.reserved_quantity              IS '引当数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.automanual_reserve_class       IS '自動手動引当区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.delete_flag                    IS '削除フラグ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.warning_class                  IS '警告区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.warning_date                   IS '警告日付'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.line_description               IS '摘要'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.rm_if_flg                      IS '倉替返品インタフェース済フラグ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.shipping_request_if_flg        IS '出荷依頼インタフェース済フラグ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.shipping_result_if_flg         IS '出荷実績インタフェース済フラグ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.created_by                     IS '作成者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.creation_date                  IS '作成日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.last_updated_by                IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.last_update_date               IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.last_update_login              IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.request_id                     IS '要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.program_application_id         IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.program_id                     IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.program_update_date            IS 'プログラム更新日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.archive_date                   IS 'バックアップ登録日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.archive_request_id             IS 'バックアップ要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.purge_date                     IS 'パージ実行日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_lines_all_arc.purge_request_id               IS 'パージ要求ID'
+/

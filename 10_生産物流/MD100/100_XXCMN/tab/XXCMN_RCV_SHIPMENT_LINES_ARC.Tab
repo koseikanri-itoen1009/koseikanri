@@ -1,0 +1,335 @@
+CREATE TABLE XXCMN.XXCMN_RCV_SHIPMENT_LINES_ARC (
+     shipment_line_id               NUMBER        NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_updated_by                NUMBER        NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,created_by                     NUMBER        NOT NULL
+    ,last_update_login              NUMBER
+    ,shipment_header_id             NUMBER        NOT NULL
+    ,line_num                       NUMBER        NOT NULL
+    ,category_id                    NUMBER
+    ,quantity_shipped               NUMBER
+    ,quantity_received              NUMBER
+    ,unit_of_measure                VARCHAR2(25)
+    ,item_description               VARCHAR2(240)
+    ,item_id                        NUMBER
+    ,item_revision                  VARCHAR2(3)
+    ,vendor_item_num                VARCHAR2(25)
+    ,vendor_lot_num                 VARCHAR2(30)
+    ,uom_conversion_rate            NUMBER
+    ,shipment_line_status_code      VARCHAR2(25)
+    ,source_document_code           VARCHAR2(25)
+    ,po_header_id                   NUMBER
+    ,po_release_id                  NUMBER
+    ,po_line_id                     NUMBER
+    ,po_line_location_id            NUMBER
+    ,po_distribution_id             NUMBER
+    ,requisition_line_id            NUMBER
+    ,req_distribution_id            NUMBER
+    ,routing_header_id              NUMBER
+    ,packing_slip                   VARCHAR2(25)
+    ,from_organization_id           NUMBER
+    ,deliver_to_person_id           NUMBER(9)
+    ,employee_id                    NUMBER(9)
+    ,destination_type_code          VARCHAR2(25)
+    ,to_organization_id             NUMBER
+    ,to_subinventory                VARCHAR2(10)
+    ,locator_id                     NUMBER
+    ,deliver_to_location_id         NUMBER
+    ,charge_account_id              NUMBER
+    ,transportation_account_id      NUMBER
+    ,shipment_unit_price            NUMBER
+    ,transfer_cost                  NUMBER
+    ,transportation_cost            NUMBER
+    ,comments                       VARCHAR2(240)
+    ,attribute_category             VARCHAR2(30)
+    ,attribute1                     VARCHAR2(150)
+    ,attribute2                     VARCHAR2(150)
+    ,attribute3                     VARCHAR2(150)
+    ,attribute4                     VARCHAR2(150)
+    ,attribute5                     VARCHAR2(150)
+    ,attribute6                     VARCHAR2(150)
+    ,attribute7                     VARCHAR2(150)
+    ,attribute8                     VARCHAR2(150)
+    ,attribute9                     VARCHAR2(150)
+    ,attribute10                    VARCHAR2(150)
+    ,attribute11                    VARCHAR2(150)
+    ,attribute12                    VARCHAR2(150)
+    ,attribute13                    VARCHAR2(150)
+    ,attribute14                    VARCHAR2(150)
+    ,attribute15                    VARCHAR2(150)
+    ,reason_id                      NUMBER
+    ,ussgl_transaction_code         VARCHAR2(30)
+    ,government_context             VARCHAR2(30)
+    ,request_id                     NUMBER
+    ,program_application_id         NUMBER
+    ,program_id                     NUMBER
+    ,program_update_date            DATE
+    ,destination_context            VARCHAR2(30)
+    ,primary_unit_of_measure        VARCHAR2(25)
+    ,excess_transport_reason        VARCHAR2(25)
+    ,excess_transport_responsible   VARCHAR2(25)
+    ,excess_transport_auth_num      VARCHAR2(30)
+    ,asn_line_flag                  VARCHAR2(1)
+    ,original_asn_parent_line_id    VARCHAR2(1)
+    ,original_asn_line_flag         VARCHAR2(1)
+    ,vendor_cum_shipped_quantity    NUMBER
+    ,notice_unit_price              NUMBER
+    ,tax_name                       VARCHAR2(15)
+    ,tax_amount                     NUMBER
+    ,invoice_status_code            VARCHAR2(25)
+    ,cum_comparison_flag            VARCHAR2(1)
+    ,container_num                  VARCHAR2(35)
+    ,truck_num                      VARCHAR2(35)
+    ,bar_code_label                 VARCHAR2(35)
+    ,transfer_percentage            NUMBER
+    ,mrc_shipment_unit_price        VARCHAR2(2000)
+    ,mrc_transfer_cost              VARCHAR2(2000)
+    ,mrc_transportation_cost        VARCHAR2(2000)
+    ,mrc_notice_unit_price          VARCHAR2(2000)
+    ,ship_to_location_id            NUMBER
+    ,country_of_origin_code         VARCHAR2(2)
+    ,oe_order_header_id             NUMBER
+    ,oe_order_line_id               NUMBER
+    ,customer_item_num              VARCHAR2(50)
+    ,cost_group_id                  NUMBER
+    ,secondary_quantity_shipped     NUMBER
+    ,secondary_quantity_received    NUMBER
+    ,secondary_unit_of_measure      VARCHAR2(25)
+    ,qc_grade                       VARCHAR2(25)
+    ,mmt_transaction_id             NUMBER
+    ,asn_lpn_id                     NUMBER
+    ,amount                         NUMBER
+    ,amount_received                NUMBER
+    ,job_id                         NUMBER
+    ,timecard_id                    NUMBER
+    ,timecard_ovn                   NUMBER
+    ,archive_date                   DATE
+    ,archive_request_id             NUMBER(15)
+    ,purge_date                     DATE
+    ,purge_request_id               NUMBER(15)
+  ) PCTFREE 10 PCTUSED 70 INITRANS 10 MAXTRANS 255 NOCOMPRESS LOGGING
+  STORAGE(INITIAL 131072 NEXT 131072 MINEXTENTS 1 MAXEXTENTS 2147483645 
+  PCTINCREASE 0 FREELISTS 4 FREELIST GROUPS 4 BUFFER_POOL DEFAULT)
+ TABLESPACE xxdata
+/
+COMMENT ON TABLE xxcmn.xxcmn_rcv_shipment_lines_arc IS '受入明細（標準）バックアップ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.shipment_line_id                  IS '受入明細ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.last_update_date                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.last_updated_by                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.creation_date                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.created_by                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.last_update_login                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.shipment_header_id                IS '受入ヘッダID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.line_num                          IS '明細番号'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.category_id                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.quantity_shipped                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.quantity_received                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.unit_of_measure                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.item_description                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.item_id                           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.item_revision                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.vendor_item_num                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.vendor_lot_num                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.uom_conversion_rate               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.shipment_line_status_code         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.source_document_code              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.po_header_id                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.po_release_id                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.po_line_id                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.po_line_location_id               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.po_distribution_id                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.requisition_line_id               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.req_distribution_id               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.routing_header_id                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.packing_slip                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.from_organization_id              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.deliver_to_person_id              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.employee_id                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.destination_type_code             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.to_organization_id                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.to_subinventory                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.locator_id                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.deliver_to_location_id            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.charge_account_id                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.transportation_account_id         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.shipment_unit_price               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.transfer_cost                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.transportation_cost               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.comments                          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.attribute_category                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.attribute1                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.attribute2                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.attribute3                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.attribute4                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.attribute5                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.attribute6                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.attribute7                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.attribute8                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.attribute9                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.attribute10                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.attribute11                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.attribute12                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.attribute13                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.attribute14                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.attribute15                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.reason_id                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.ussgl_transaction_code            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.government_context                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.request_id                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.program_application_id            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.program_id                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.program_update_date               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.destination_context               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.primary_unit_of_measure           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.excess_transport_reason           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.excess_transport_responsible      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.excess_transport_auth_num         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.asn_line_flag                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.original_asn_parent_line_id       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.original_asn_line_flag            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.vendor_cum_shipped_quantity       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.notice_unit_price                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.tax_name                          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.tax_amount                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.invoice_status_code               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.cum_comparison_flag               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.container_num                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.truck_num                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.bar_code_label                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.transfer_percentage               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.mrc_shipment_unit_price           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.mrc_transfer_cost                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.mrc_transportation_cost           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.mrc_notice_unit_price             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.ship_to_location_id               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.country_of_origin_code            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.oe_order_header_id                IS '受注ヘッダID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.oe_order_line_id                  IS '受注明細ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.customer_item_num                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.cost_group_id                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.secondary_quantity_shipped        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.secondary_quantity_received       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.secondary_unit_of_measure         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.qc_grade                          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.mmt_transaction_id                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.asn_lpn_id                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.amount                            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.amount_received                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.job_id                            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.timecard_id                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.timecard_ovn                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.archive_date                      IS 'バックアップ登録日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.archive_request_id                IS 'バックアップ要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.purge_date                        IS 'パージ実行日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_shipment_lines_arc.purge_request_id                  IS 'パージ要求ID'
+/

@@ -1,0 +1,319 @@
+CREATE TABLE XXCMN.XXCMN_ORDER_HEADERS_ALL_ARC (
+     order_header_id                NUMBER        NOT NULL
+    ,order_type_id                  NUMBER        NOT NULL
+    ,organization_id                NUMBER        NOT NULL
+    ,header_id                      NUMBER
+    ,latest_external_flag           VARCHAR2(1)   NOT NULL
+    ,ordered_date                   DATE          NOT NULL
+    ,customer_id                    NUMBER
+    ,customer_code                  VARCHAR2(9)
+    ,deliver_to_id                  NUMBER
+    ,deliver_to                     VARCHAR2(9)
+    ,shipping_instructions          VARCHAR2(2000)
+    ,career_id                      NUMBER
+    ,freight_carrier_code           VARCHAR2(4)
+    ,shipping_method_code           VARCHAR2(2)
+    ,cust_po_number                 VARCHAR2(20)
+    ,price_list_id                  NUMBER
+    ,request_no                     VARCHAR2(12)  NOT NULL
+    ,base_request_no                VARCHAR2(12)
+    ,req_status                     VARCHAR2(2)   NOT NULL
+    ,delivery_no                    VARCHAR2(12)
+    ,prev_delivery_no               VARCHAR2(12)
+    ,schedule_ship_date             DATE
+    ,schedule_arrival_date          DATE
+    ,mixed_no                       VARCHAR2(12)
+    ,collected_pallet_qty           NUMBER
+    ,confirm_request_class          VARCHAR2(1)
+    ,freight_charge_class           VARCHAR2(1)
+    ,shikyu_instruction_class       VARCHAR2(1)
+    ,shikyu_inst_rcv_class          VARCHAR2(1)
+    ,amount_fix_class               VARCHAR2(1)
+    ,takeback_class                 VARCHAR2(1)
+    ,deliver_from_id                NUMBER        NOT NULL
+    ,deliver_from                   VARCHAR2(4)
+    ,head_sales_branch              VARCHAR2(4)
+    ,input_sales_branch             VARCHAR2(4)
+    ,po_no                          VARCHAR2(12)
+    ,prod_class                     VARCHAR2(2)
+    ,item_class                     VARCHAR2(2)
+    ,no_cont_freight_class          VARCHAR2(1)
+    ,arrival_time_from              VARCHAR2(4)
+    ,arrival_time_to                VARCHAR2(4)
+    ,designated_item_id             NUMBER
+    ,designated_item_code           VARCHAR2(7)
+    ,designated_production_date     DATE
+    ,designated_branch_no           VARCHAR2(10)
+    ,slip_number                    VARCHAR2(20)
+    ,sum_quantity                   NUMBER
+    ,small_quantity                 NUMBER
+    ,label_quantity                 NUMBER
+    ,loading_efficiency_weight      NUMBER
+    ,loading_efficiency_capacity    NUMBER
+    ,based_weight                   NUMBER
+    ,based_capacity                 NUMBER
+    ,sum_weight                     NUMBER
+    ,sum_capacity                   NUMBER
+    ,mixed_ratio                    NUMBER
+    ,pallet_sum_quantity            NUMBER
+    ,real_pallet_quantity           NUMBER
+    ,sum_pallet_weight              NUMBER
+    ,order_source_ref               VARCHAR2(50)
+    ,result_freight_carrier_id      NUMBER
+    ,result_freight_carrier_code    VARCHAR2(4)
+    ,result_shipping_method_code    VARCHAR2(2)
+    ,result_deliver_to_id           NUMBER
+    ,result_deliver_to              VARCHAR2(9)
+    ,shipped_date                   DATE
+    ,arrival_date                   DATE
+    ,weight_capacity_class          VARCHAR2(1)
+    ,actual_confirm_class           VARCHAR2(1)
+    ,notif_status                   VARCHAR2(3)
+    ,prev_notif_status              VARCHAR2(3)
+    ,notif_date                     DATE
+    ,new_modify_flg                 VARCHAR2(1)
+    ,process_status                 VARCHAR2(3)
+    ,performance_management_dept    VARCHAR2(4)
+    ,instruction_dept               VARCHAR2(4)
+    ,transfer_location_id           NUMBER
+    ,transfer_location_code         VARCHAR2(4)
+    ,mixed_sign                     VARCHAR2(2)
+    ,screen_update_date             DATE
+    ,screen_update_by               NUMBER(15)
+    ,tightening_date                DATE
+    ,vendor_id                      NUMBER
+    ,vendor_code                    VARCHAR2(4)
+    ,vendor_site_id                 NUMBER
+    ,vendor_site_code               VARCHAR2(4)
+    ,registered_sequence            NUMBER
+    ,tightening_program_id          VARCHAR2(15)
+    ,corrected_tighten_class        VARCHAR2(1)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+    ,archive_date                   DATE
+    ,archive_request_id             NUMBER(15)
+    ,purge_date                     DATE
+    ,purge_request_id               NUMBER(15)
+  ,CONSTRAINT xxcmn_order_headers_all_arc_pk PRIMARY KEY (order_header_id)
+   USING INDEX PCTFREE 10 INITRANS 2 MAXTRANS 255 COMPUTE STATISTICS 
+   STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+   PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
+   TABLESPACE XXIDX)
+  PCTFREE 10 PCTUSED 40 INITRANS 16 MAXTRANS 255 NOCOMPRESS LOGGING
+  STORAGE(INITIAL 1080033280 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
+  TABLESPACE XXDATA
+/
+COMMENT ON TABLE xxcmn.xxcmn_order_headers_all_arc IS '受注ヘッダ（アドオン）バックアップ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.order_header_id              IS '受注ヘッダアドオンID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.order_type_id                IS '受注タイプID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.organization_id              IS '組織ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.header_id                    IS '受注ヘッダID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.latest_external_flag         IS '最新フラグ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.ordered_date                 IS '受注日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.customer_id                  IS '顧客ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.customer_code                IS '顧客'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.deliver_to_id                IS '出荷先ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.deliver_to                   IS '出荷先'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.shipping_instructions        IS '出荷指示'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.career_id                    IS '運送業者ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.freight_carrier_code         IS '運送業者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.shipping_method_code         IS '配送区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.cust_po_number               IS '顧客発注'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.price_list_id                IS '価格表'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.request_no                   IS '依頼No'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.base_request_no              IS '元依頼No'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.req_status                   IS 'ステータス'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.delivery_no                  IS '配送No'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.prev_delivery_no             IS '前回配送No'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.schedule_ship_date           IS '出荷予定日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.schedule_arrival_date        IS '着荷予定日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.mixed_no                     IS '混載元No'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.collected_pallet_qty         IS 'パレット回収枚数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.confirm_request_class        IS '物流担当確認依頼区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.freight_charge_class         IS '運賃区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.shikyu_instruction_class     IS '支給出庫指示区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.shikyu_inst_rcv_class        IS '支給指示受領区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.amount_fix_class             IS '有償金額確定区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.takeback_class               IS '引取区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.deliver_from_id              IS '出荷元ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.deliver_from                 IS '出荷元保管場所'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.head_sales_branch            IS '管轄拠点'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.input_sales_branch           IS '入力拠点'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.po_no                        IS '発注No'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.prod_class                   IS '商品区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.item_class                   IS '品目区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.no_cont_freight_class        IS '契約外運賃区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.arrival_time_from            IS '着荷時間FROM'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.arrival_time_to              IS '着荷時間TO'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.designated_item_id           IS '製造品目ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.designated_item_code         IS '製造品目'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.designated_production_date   IS '製造日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.designated_branch_no         IS '製造枝番'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.slip_number                  IS '送り状No'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.sum_quantity                 IS '合計数量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.small_quantity               IS '小口個数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.label_quantity               IS 'ラベル枚数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.loading_efficiency_weight    IS '重量積載効率'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.loading_efficiency_capacity  IS '容積積載効率'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.based_weight                 IS '基本重量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.based_capacity               IS '基本容積'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.sum_weight                   IS '積載重量合計'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.sum_capacity                 IS '積載容積合計'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.mixed_ratio                  IS '混載率'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.pallet_sum_quantity          IS 'パレット合計枚数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.real_pallet_quantity         IS 'パレット実績枚数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.sum_pallet_weight            IS '合計パレット重量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.order_source_ref             IS '受注ソース参照'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.result_freight_carrier_id    IS '運送業者_実績ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.result_freight_carrier_code  IS '運送業者_実績'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.result_shipping_method_code  IS '配送区分_実績'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.result_deliver_to_id         IS '出荷先_実績ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.result_deliver_to            IS '出荷先_実績'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.shipped_date                 IS '出荷日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.arrival_date                 IS '着荷日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.weight_capacity_class        IS '重量容積区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.actual_confirm_class         IS '実績計上済区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.notif_status                 IS '通知ステータス'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.prev_notif_status            IS '前回通知ステータス'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.notif_date                   IS '確定通知実施日時'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.new_modify_flg               IS '新規修正フラグ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.process_status               IS '処理経過ステータス'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.performance_management_dept  IS '成績管理部署'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.instruction_dept             IS '指示部署'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.transfer_location_id         IS '振替先ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.transfer_location_code       IS '振替先'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.mixed_sign                   IS '混載記号'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.screen_update_date           IS '画面更新日時'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.screen_update_by             IS '画面更新者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.tightening_date              IS '出荷依頼締め日時'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.vendor_id                    IS '取引先ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.vendor_code                  IS '取引先'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.vendor_site_id               IS '取引先サイトID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.vendor_site_code             IS '取引先サイト'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.registered_sequence          IS '登録順序'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.tightening_program_id        IS '締めコンカレントID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.corrected_tighten_class      IS '締め後修正区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.created_by                   IS '作成者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.creation_date                IS '作成日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.last_updated_by              IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.last_update_date             IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.last_update_login            IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.request_id                   IS '要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.program_application_id       IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.program_id                   IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.program_update_date          IS 'プログラム更新日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.archive_date                 IS 'バックアップ登録日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.archive_request_id           IS 'バックアップ要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.purge_date                   IS 'パージ実行日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.purge_request_id             IS 'パージ要求ID'
+/

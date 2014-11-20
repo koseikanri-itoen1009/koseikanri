@@ -1,0 +1,704 @@
+CREATE TABLE XXCMN.XXCMN_OE_ORDER_LINES_ALL_ARC (
+     line_id                        NUMBER        NOT NULL
+    ,org_id                         NUMBER
+    ,header_id                      NUMBER        NOT NULL
+    ,line_type_id                   NUMBER        NOT NULL
+    ,line_number                    NUMBER        NOT NULL
+    ,ordered_item                   VARCHAR2(2000)
+    ,request_date                   DATE
+    ,promise_date                   DATE
+    ,schedule_ship_date             DATE
+    ,order_quantity_uom             VARCHAR2(3)
+    ,pricing_quantity               NUMBER
+    ,pricing_quantity_uom           VARCHAR2(3)
+    ,cancelled_quantity             NUMBER
+    ,shipped_quantity               NUMBER
+    ,ordered_quantity               NUMBER
+    ,fulfilled_quantity             NUMBER
+    ,shipping_quantity              NUMBER
+    ,shipping_quantity_uom          VARCHAR2(3)
+    ,delivery_lead_time             NUMBER
+    ,tax_exempt_flag                VARCHAR2(1)
+    ,tax_exempt_number              VARCHAR2(80)
+    ,tax_exempt_reason_code         VARCHAR2(30)
+    ,ship_from_org_id               NUMBER
+    ,ship_to_org_id                 NUMBER
+    ,invoice_to_org_id              NUMBER
+    ,deliver_to_org_id              NUMBER
+    ,ship_to_contact_id             NUMBER
+    ,deliver_to_contact_id          NUMBER
+    ,invoice_to_contact_id          NUMBER
+    ,intmed_ship_to_org_id          NUMBER
+    ,intmed_ship_to_contact_id      NUMBER
+    ,sold_from_org_id               NUMBER
+    ,sold_to_org_id                 NUMBER
+    ,cust_po_number                 VARCHAR2(50)
+    ,ship_tolerance_above           NUMBER
+    ,ship_tolerance_below           NUMBER
+    ,demand_bucket_type_code        VARCHAR2(30)
+    ,veh_cus_item_cum_key_id        NUMBER
+    ,rla_schedule_type_code         VARCHAR2(30)
+    ,customer_dock_code             VARCHAR2(50)
+    ,customer_job                   VARCHAR2(50)
+    ,customer_production_line       VARCHAR2(50)
+    ,cust_model_serial_number       VARCHAR2(50)
+    ,project_id                     NUMBER
+    ,task_id                        NUMBER
+    ,inventory_item_id              NUMBER        NOT NULL
+    ,tax_date                       DATE
+    ,tax_code                       VARCHAR2(50)
+    ,tax_rate                       NUMBER
+    ,invoice_interface_status_code  VARCHAR2(30)
+    ,demand_class_code              VARCHAR2(30)
+    ,price_list_id                  NUMBER
+    ,pricing_date                   DATE
+    ,shipment_number                NUMBER        NOT NULL
+    ,agreement_id                   NUMBER
+    ,shipment_priority_code         VARCHAR2(30)
+    ,shipping_method_code           VARCHAR2(30)
+    ,freight_carrier_code           VARCHAR2(30)
+    ,freight_terms_code             VARCHAR2(30)
+    ,fob_point_code                 VARCHAR2(30)
+    ,tax_point_code                 VARCHAR2(30)
+    ,payment_term_id                NUMBER(15)
+    ,invoicing_rule_id              NUMBER(15)
+    ,accounting_rule_id             NUMBER(15)
+    ,source_document_type_id        NUMBER
+    ,orig_sys_document_ref          VARCHAR2(50)
+    ,source_document_id             NUMBER
+    ,orig_sys_line_ref              VARCHAR2(50)
+    ,source_document_line_id        NUMBER
+    ,reference_line_id              NUMBER
+    ,reference_type                 VARCHAR2(30)
+    ,reference_header_id            NUMBER
+    ,item_revision                  VARCHAR2(3)
+    ,unit_selling_price             NUMBER
+    ,unit_list_price                NUMBER
+    ,tax_value                      NUMBER
+    ,context                        VARCHAR2(30)
+    ,attribute1                     VARCHAR2(240)
+    ,attribute2                     VARCHAR2(240)
+    ,attribute3                     VARCHAR2(240)
+    ,attribute4                     VARCHAR2(240)
+    ,attribute5                     VARCHAR2(240)
+    ,attribute6                     VARCHAR2(240)
+    ,attribute7                     VARCHAR2(240)
+    ,attribute8                     VARCHAR2(240)
+    ,attribute9                     VARCHAR2(240)
+    ,attribute10                    VARCHAR2(240)
+    ,attribute11                    VARCHAR2(240)
+    ,attribute12                    VARCHAR2(240)
+    ,attribute13                    VARCHAR2(240)
+    ,attribute14                    VARCHAR2(240)
+    ,attribute15                    VARCHAR2(240)
+    ,global_attribute_category      VARCHAR2(30)
+    ,global_attribute1              VARCHAR2(240)
+    ,global_attribute2              VARCHAR2(240)
+    ,global_attribute3              VARCHAR2(240)
+    ,global_attribute4              VARCHAR2(240)
+    ,global_attribute5              VARCHAR2(240)
+    ,global_attribute6              VARCHAR2(240)
+    ,global_attribute7              VARCHAR2(240)
+    ,global_attribute8              VARCHAR2(240)
+    ,global_attribute9              VARCHAR2(240)
+    ,global_attribute10             VARCHAR2(240)
+    ,global_attribute11             VARCHAR2(240)
+    ,global_attribute12             VARCHAR2(240)
+    ,global_attribute13             VARCHAR2(240)
+    ,global_attribute14             VARCHAR2(240)
+    ,global_attribute15             VARCHAR2(240)
+    ,global_attribute16             VARCHAR2(240)
+    ,global_attribute17             VARCHAR2(240)
+    ,global_attribute18             VARCHAR2(240)
+    ,global_attribute19             VARCHAR2(240)
+    ,global_attribute20             VARCHAR2(240)
+    ,pricing_context                VARCHAR2(30)
+    ,pricing_attribute1             VARCHAR2(240)
+    ,pricing_attribute2             VARCHAR2(240)
+    ,pricing_attribute3             VARCHAR2(240)
+    ,pricing_attribute4             VARCHAR2(240)
+    ,pricing_attribute5             VARCHAR2(240)
+    ,pricing_attribute6             VARCHAR2(240)
+    ,pricing_attribute7             VARCHAR2(240)
+    ,pricing_attribute8             VARCHAR2(240)
+    ,pricing_attribute9             VARCHAR2(240)
+    ,pricing_attribute10            VARCHAR2(240)
+    ,industry_context               VARCHAR2(30)
+    ,industry_attribute1            VARCHAR2(240)
+    ,industry_attribute2            VARCHAR2(240)
+    ,industry_attribute3            VARCHAR2(240)
+    ,industry_attribute4            VARCHAR2(240)
+    ,industry_attribute5            VARCHAR2(240)
+    ,industry_attribute6            VARCHAR2(240)
+    ,industry_attribute7            VARCHAR2(240)
+    ,industry_attribute8            VARCHAR2(240)
+    ,industry_attribute9            VARCHAR2(240)
+    ,industry_attribute10           VARCHAR2(240)
+    ,industry_attribute11           VARCHAR2(240)
+    ,industry_attribute13           VARCHAR2(240)
+    ,industry_attribute12           VARCHAR2(240)
+    ,industry_attribute14           VARCHAR2(240)
+    ,industry_attribute15           VARCHAR2(240)
+    ,industry_attribute16           VARCHAR2(240)
+    ,industry_attribute17           VARCHAR2(240)
+    ,industry_attribute18           VARCHAR2(240)
+    ,industry_attribute19           VARCHAR2(240)
+    ,industry_attribute20           VARCHAR2(240)
+    ,industry_attribute21           VARCHAR2(240)
+    ,industry_attribute22           VARCHAR2(240)
+    ,industry_attribute23           VARCHAR2(240)
+    ,industry_attribute24           VARCHAR2(240)
+    ,industry_attribute25           VARCHAR2(240)
+    ,industry_attribute26           VARCHAR2(240)
+    ,industry_attribute27           VARCHAR2(240)
+    ,industry_attribute28           VARCHAR2(240)
+    ,industry_attribute29           VARCHAR2(240)
+    ,industry_attribute30           VARCHAR2(240)
+    ,creation_date                  DATE          NOT NULL
+    ,created_by                     NUMBER        NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_updated_by                NUMBER        NOT NULL
+    ,last_update_login              NUMBER
+    ,program_application_id         NUMBER
+    ,program_id                     NUMBER
+    ,program_update_date            DATE
+    ,request_id                     NUMBER
+    ,top_model_line_id              NUMBER
+    ,link_to_line_id                NUMBER
+    ,component_sequence_id          NUMBER
+    ,component_code                 VARCHAR2(1000)
+    ,config_display_sequence        NUMBER
+    ,sort_order                     VARCHAR2(2000)
+    ,item_type_code                 VARCHAR2(30)
+    ,option_number                  NUMBER
+    ,option_flag                    VARCHAR2(1)
+    ,dep_plan_required_flag         VARCHAR2(1)
+    ,visible_demand_flag            VARCHAR2(1)
+    ,line_category_code             VARCHAR2(30)  NOT NULL
+    ,actual_shipment_date           DATE
+    ,customer_trx_line_id           NUMBER
+    ,return_context                 VARCHAR2(30)
+    ,return_attribute1              VARCHAR2(240)
+    ,return_attribute2              VARCHAR2(240)
+    ,return_attribute3              VARCHAR2(240)
+    ,return_attribute4              VARCHAR2(240)
+    ,return_attribute5              VARCHAR2(240)
+    ,return_attribute6              VARCHAR2(240)
+    ,return_attribute7              VARCHAR2(240)
+    ,return_attribute8              VARCHAR2(240)
+    ,return_attribute9              VARCHAR2(240)
+    ,return_attribute10             VARCHAR2(240)
+    ,return_attribute11             VARCHAR2(240)
+    ,return_attribute12             VARCHAR2(240)
+    ,return_attribute13             VARCHAR2(240)
+    ,return_attribute14             VARCHAR2(240)
+    ,return_attribute15             VARCHAR2(240)
+    ,actual_arrival_date            DATE
+    ,ato_line_id                    NUMBER
+    ,auto_selected_quantity         NUMBER
+    ,component_number               NUMBER
+    ,earliest_acceptable_date       DATE
+    ,explosion_date                 DATE
+    ,latest_acceptable_date         DATE
+    ,model_group_number             NUMBER
+    ,schedule_arrival_date          DATE
+    ,ship_model_complete_flag       VARCHAR2(1)
+    ,schedule_status_code           VARCHAR2(30)
+    ,source_type_code               VARCHAR2(30)
+    ,cancelled_flag                 VARCHAR2(1)
+    ,open_flag                      VARCHAR2(1)   NOT NULL
+    ,booked_flag                    VARCHAR2(1)   NOT NULL
+    ,salesrep_id                    NUMBER(15)
+    ,return_reason_code             VARCHAR2(30)
+    ,arrival_set_id                 NUMBER
+    ,ship_set_id                    NUMBER
+    ,split_from_line_id             NUMBER
+    ,cust_production_seq_num        VARCHAR2(50)
+    ,authorized_to_ship_flag        VARCHAR2(1)
+    ,over_ship_reason_code          VARCHAR2(30)
+    ,over_ship_resolved_flag        VARCHAR2(1)
+    ,ordered_item_id                NUMBER
+    ,item_identifier_type           VARCHAR2(30)
+    ,configuration_id               NUMBER
+    ,commitment_id                  NUMBER
+    ,shipping_interfaced_flag       VARCHAR2(1)
+    ,credit_invoice_line_id         NUMBER
+    ,first_ack_code                 VARCHAR2(30)
+    ,first_ack_date                 DATE
+    ,last_ack_code                  VARCHAR2(30)
+    ,last_ack_date                  DATE
+    ,planning_priority              NUMBER
+    ,order_source_id                NUMBER
+    ,orig_sys_shipment_ref          VARCHAR2(50)
+    ,change_sequence                VARCHAR2(50)
+    ,drop_ship_flag                 VARCHAR2(1)
+    ,customer_line_number           VARCHAR2(50)
+    ,customer_shipment_number       VARCHAR2(50)
+    ,customer_item_net_price        NUMBER
+    ,customer_payment_term_id       NUMBER
+    ,fulfilled_flag                 VARCHAR2(1)
+    ,end_item_unit_number           VARCHAR2(30)
+    ,config_header_id               NUMBER
+    ,config_rev_nbr                 NUMBER
+    ,mfg_component_sequence_id      NUMBER
+    ,shipping_instructions          VARCHAR2(2000)
+    ,packing_instructions           VARCHAR2(2000)
+    ,invoiced_quantity              NUMBER
+    ,reference_customer_trx_line_id NUMBER
+    ,split_by                       VARCHAR2(30)
+    ,line_set_id                    NUMBER
+    ,service_txn_reason_code        VARCHAR2(30)
+    ,service_txn_comments           VARCHAR2(2000)
+    ,service_duration               NUMBER
+    ,service_start_date             DATE
+    ,service_end_date               DATE
+    ,service_coterminate_flag       VARCHAR2(1)
+    ,unit_list_percent              NUMBER
+    ,unit_selling_percent           NUMBER
+    ,unit_percent_base_price        NUMBER
+    ,service_number                 NUMBER
+    ,service_period                 VARCHAR2(3)
+    ,shippable_flag                 VARCHAR2(1)
+    ,model_remnant_flag             VARCHAR2(1)
+    ,re_source_flag                 VARCHAR2(1)
+    ,flow_status_code               VARCHAR2(30)
+    ,tp_context                     VARCHAR2(30)
+    ,tp_attribute1                  VARCHAR2(240)
+    ,tp_attribute2                  VARCHAR2(240)
+    ,tp_attribute3                  VARCHAR2(240)
+    ,tp_attribute4                  VARCHAR2(240)
+    ,tp_attribute5                  VARCHAR2(240)
+    ,tp_attribute6                  VARCHAR2(240)
+    ,tp_attribute7                  VARCHAR2(240)
+    ,tp_attribute8                  VARCHAR2(240)
+    ,tp_attribute9                  VARCHAR2(240)
+    ,tp_attribute10                 VARCHAR2(240)
+    ,tp_attribute11                 VARCHAR2(240)
+    ,tp_attribute12                 VARCHAR2(240)
+    ,tp_attribute13                 VARCHAR2(240)
+    ,tp_attribute14                 VARCHAR2(240)
+    ,tp_attribute15                 VARCHAR2(240)
+    ,fulfillment_method_code        VARCHAR2(30)
+    ,marketing_source_code_id       NUMBER
+    ,service_reference_type_code    VARCHAR2(30)
+    ,service_reference_line_id      NUMBER
+    ,service_reference_system_id    NUMBER
+    ,calculate_price_flag           VARCHAR2(1)
+    ,upgraded_flag                  VARCHAR2(1)
+    ,revenue_amount                 NUMBER
+    ,fulfillment_date               DATE
+    ,preferred_grade                VARCHAR2(4)
+    ,ordered_quantity2              NUMBER
+    ,ordered_quantity_uom2          VARCHAR2(3)
+    ,shipping_quantity2             NUMBER
+    ,cancelled_quantity2            NUMBER
+    ,shipped_quantity2              NUMBER
+    ,shipping_quantity_uom2         VARCHAR2(3)
+    ,fulfilled_quantity2            NUMBER
+    ,mfg_lead_time                  NUMBER
+    ,lock_control                   NUMBER
+    ,subinventory                   VARCHAR2(10)
+    ,unit_list_price_per_pqty       NUMBER
+    ,unit_selling_price_per_pqty    NUMBER
+    ,price_request_code             VARCHAR2(240)
+    ,original_inventory_item_id     NUMBER
+    ,original_ordered_item_id       NUMBER
+    ,original_ordered_item          VARCHAR2(2000)
+    ,original_item_identifier_type  VARCHAR2(30)
+    ,item_substitution_type_code    VARCHAR2(30)
+    ,override_atp_date_code         VARCHAR2(30)
+    ,late_demand_penalty_factor     NUMBER
+    ,accounting_rule_duration       NUMBER(15)
+    ,attribute16                    VARCHAR2(240)
+    ,attribute17                    VARCHAR2(240)
+    ,attribute18                    VARCHAR2(240)
+    ,attribute19                    VARCHAR2(240)
+    ,attribute20                    VARCHAR2(240)
+    ,user_item_description          VARCHAR2(1000)
+    ,unit_cost                      NUMBER
+    ,item_relationship_type         NUMBER
+    ,blanket_line_number            NUMBER
+    ,blanket_number                 NUMBER
+    ,blanket_version_number         NUMBER
+    ,sales_document_type_code       VARCHAR2(30)
+    ,firm_demand_flag               VARCHAR2(1)
+    ,earliest_ship_date             DATE
+    ,transaction_phase_code         VARCHAR2(30)
+    ,source_document_version_number NUMBER
+    ,payment_type_code              VARCHAR2(30)
+    ,minisite_id                    NUMBER
+    ,end_customer_id                NUMBER
+    ,end_customer_contact_id        NUMBER
+    ,end_customer_site_use_id       NUMBER
+    ,ib_owner                       VARCHAR2(60)
+    ,ib_current_location            VARCHAR2(60)
+    ,ib_installed_at_location       VARCHAR2(60)
+    ,retrobill_request_id           NUMBER
+    ,original_list_price            NUMBER
+    ,service_credit_eligible_code   VARCHAR2(30)
+    ,order_firmed_date              DATE
+    ,actual_fulfillment_date        DATE
+    ,charge_periodicity_code        VARCHAR2(3)
+    ,archive_date                   DATE
+    ,archive_request_id             NUMBER(15)
+    ,purge_date                     DATE
+    ,purge_request_id               NUMBER(15)
+  ) PCTFREE 10 PCTUSED 70 INITRANS 10 MAXTRANS 255 NOCOMPRESS LOGGING
+  STORAGE(INITIAL 131072 NEXT 131072 MINEXTENTS 1 MAXEXTENTS 2147483645 
+  PCTINCREASE 0 FREELISTS 4 FREELIST GROUPS 4 BUFFER_POOL DEFAULT)
+ TABLESPACE xxdata
+/
+COMMENT ON TABLE xxcmn.xxcmn_oe_order_lines_all_arc IS '受注明細（標準）バックアップ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.line_id                           IS '受注明細ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.org_id                            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.header_id                         IS '受注ヘッダID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.line_type_id                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.line_number                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.ordered_item                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.request_date                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.promise_date                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.schedule_ship_date                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.order_quantity_uom                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.pricing_quantity                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.pricing_quantity_uom              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.cancelled_quantity                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.shipped_quantity                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.ordered_quantity                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.fulfilled_quantity                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.shipping_quantity                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.shipping_quantity_uom             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.delivery_lead_time                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.tax_exempt_flag                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.tax_exempt_number                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.tax_exempt_reason_code            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.ship_from_org_id                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.ship_to_org_id                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.invoice_to_org_id                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.deliver_to_org_id                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.ship_to_contact_id                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.deliver_to_contact_id             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.invoice_to_contact_id             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.intmed_ship_to_org_id             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.intmed_ship_to_contact_id         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.sold_from_org_id                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.sold_to_org_id                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.cust_po_number                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.ship_tolerance_above              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.ship_tolerance_below              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.demand_bucket_type_code           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.veh_cus_item_cum_key_id           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.rla_schedule_type_code            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.customer_dock_code                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.customer_job                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.customer_production_line          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.cust_model_serial_number          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.project_id                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.task_id                           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.inventory_item_id                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.tax_date                          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.tax_code                          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.tax_rate                          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.invoice_interface_status_code     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.demand_class_code                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.price_list_id                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.pricing_date                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.shipment_number                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.agreement_id                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.shipment_priority_code            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.shipping_method_code              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.freight_carrier_code              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.freight_terms_code                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.fob_point_code                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.tax_point_code                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.payment_term_id                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.invoicing_rule_id                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.accounting_rule_id                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.source_document_type_id           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.orig_sys_document_ref             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.source_document_id                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.orig_sys_line_ref                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.source_document_line_id           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.reference_line_id                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.reference_type                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.reference_header_id               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.item_revision                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.unit_selling_price                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.unit_list_price                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.tax_value                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.context                           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.attribute1                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.attribute2                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.attribute3                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.attribute4                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.attribute5                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.attribute6                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.attribute7                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.attribute8                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.attribute9                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.attribute10                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.attribute11                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.attribute12                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.attribute13                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.attribute14                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.attribute15                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute_category         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute1                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute2                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute3                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute4                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute5                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute6                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute7                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute8                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute9                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute10                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute11                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute12                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute13                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute14                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute15                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute16                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute17                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute18                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute19                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.global_attribute20                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.pricing_context                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.pricing_attribute1                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.pricing_attribute2                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.pricing_attribute3                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.pricing_attribute4                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.pricing_attribute5                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.pricing_attribute6                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.pricing_attribute7                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.pricing_attribute8                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.pricing_attribute9                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.pricing_attribute10               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_context                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute1               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute2               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute3               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute4               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute5               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute6               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute7               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute8               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute9               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute10              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute11              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute13              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute12              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute14              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute15              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute16              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute17              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute18              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute19              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute20              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute21              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute22              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute23              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute24              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute25              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute26              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute27              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute28              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute29              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.industry_attribute30              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.creation_date                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.created_by                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.last_update_date                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.last_updated_by                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.last_update_login                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.program_application_id            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.program_id                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.program_update_date               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.request_id                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.top_model_line_id                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.link_to_line_id                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.component_sequence_id             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.component_code                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.config_display_sequence           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.sort_order                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.item_type_code                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.option_number                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.archive_date                      IS 'バックアップ登録日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.archive_request_id                IS 'バックアップ要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.purge_date                        IS 'パージ実行日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_oe_order_lines_all_arc.purge_request_id                  IS 'パージ要求ID'
+/

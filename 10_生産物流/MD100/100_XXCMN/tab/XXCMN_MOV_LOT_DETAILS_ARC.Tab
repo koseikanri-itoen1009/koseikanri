@@ -1,0 +1,91 @@
+CREATE TABLE XXCMN.XXCMN_MOV_LOT_DETAILS_ARC (
+     mov_lot_dtl_id                 NUMBER        NOT NULL
+    ,mov_line_id                    NUMBER        NOT NULL
+    ,document_type_code             VARCHAR2(2)   NOT NULL
+    ,record_type_code               VARCHAR2(2)   NOT NULL
+    ,item_id                        NUMBER
+    ,item_code                      VARCHAR2(7)   NOT NULL
+    ,lot_id                         NUMBER        NOT NULL
+    ,lot_no                         VARCHAR2(10)
+    ,actual_date                    DATE
+    ,actual_quantity                NUMBER
+    ,before_actual_quantity         NUMBER
+    ,actual_confirm_class           VARCHAR2(1)
+    ,automanual_reserve_class       VARCHAR2(2)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+    ,archive_date                   DATE
+    ,archive_request_id             NUMBER(15)
+    ,purge_date                     DATE
+    ,purge_request_id               NUMBER(15)
+  ,CONSTRAINT xxcmn_mov_lot_details_arc_pk PRIMARY KEY (mov_lot_dtl_id)
+  USING INDEX PCTFREE 10 INITRANS 16 MAXTRANS 255 COMPUTE STATISTICS 
+  STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
+  TABLESPACE XXIDX)
+  PCTFREE 10 PCTUSED 40 INITRANS 16 MAXTRANS 255 NOCOMPRESS LOGGING
+  STORAGE(INITIAL 1080033280 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
+  TABLESPACE XXDATA
+/
+COMMENT ON TABLE xxcmn.xxcmn_mov_lot_details_arc IS '移動ロット詳細（アドオン）バックアップ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.mov_lot_dtl_id                 IS 'ロット詳細ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.mov_line_id                    IS '明細ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.document_type_code             IS '文書タイプ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.record_type_code               IS 'レコードタイプ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.item_id                        IS 'OPM品目ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.item_code                      IS '品目'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.lot_id                         IS 'ロットID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.lot_no                         IS 'ロットNo'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.actual_date                    IS '実績日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.actual_quantity                IS '実績数量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.before_actual_quantity         IS '訂正前実績数量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.actual_confirm_class           IS '実績計上済フラグ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.automanual_reserve_class       IS '自動手動引当区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.created_by                     IS '作成者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.creation_date                  IS '作成日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.last_updated_by                IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.last_update_date               IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.last_update_login              IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.request_id                     IS '要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.program_application_id         IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.program_id                     IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.program_update_date            IS 'プログラム更新日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.archive_date                   IS 'バックアップ登録日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.archive_request_id             IS 'バックアップ要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.purge_date                     IS 'パージ実行日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_lot_details_arc.purge_request_id               IS 'パージ要求ID'
+/

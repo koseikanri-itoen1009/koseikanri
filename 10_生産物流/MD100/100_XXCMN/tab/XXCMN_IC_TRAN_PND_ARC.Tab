@@ -1,0 +1,163 @@
+CREATE TABLE xxcmn.xxcmn_ic_tran_pnd_arc (
+     trans_id                       NUMBER(10)    NOT NULL
+    ,item_id                        NUMBER(10)    NOT NULL
+    ,line_id                        NUMBER(10)    NOT NULL
+    ,co_code                        VARCHAR2(4)   NOT NULL
+    ,orgn_code                      VARCHAR2(4)   NOT NULL
+    ,whse_code                      VARCHAR2(4)   NOT NULL
+    ,lot_id                         NUMBER(10)    NOT NULL
+    ,location                       VARCHAR2(16)  NOT NULL
+    ,doc_id                         NUMBER(10)    NOT NULL
+    ,doc_type                       VARCHAR2(4)   NOT NULL
+    ,doc_line                       NUMBER(10)    NOT NULL
+    ,line_type                      NUMBER(5)     NOT NULL
+    ,reason_code                    VARCHAR2(4)
+    ,creation_date                  DATE          NOT NULL
+    ,trans_date                     DATE          NOT NULL
+    ,trans_qty                      NUMBER        NOT NULL
+    ,trans_qty2                     NUMBER
+    ,qc_grade                       VARCHAR2(4)
+    ,lot_status                     VARCHAR2(4)
+    ,trans_stat                     VARCHAR2(4)
+    ,trans_um                       VARCHAR2(4)   NOT NULL
+    ,trans_um2                      VARCHAR2(4)
+    ,op_code                        NUMBER(15)    NOT NULL
+    ,completed_ind                  NUMBER(5)     NOT NULL
+    ,staged_ind                     NUMBER(5)     NOT NULL
+    ,gl_posted_ind                  NUMBER(10)    NOT NULL
+    ,event_id                       NUMBER(10)    NOT NULL
+    ,delete_mark                    NUMBER(5)     NOT NULL
+    ,text_code                      NUMBER(10)
+    ,last_update_date               DATE          NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+    ,request_id                     NUMBER(15)
+    ,reverse_id                     NUMBER(10)
+    ,pick_slip_number               NUMBER
+    ,mvt_stat_status                VARCHAR2(30)
+    ,movement_id                    NUMBER
+    ,line_detail_id                 NUMBER
+    ,invoiced_flag                  VARCHAR2(1)
+    ,intorder_posted_ind            NUMBER(5)
+    ,lot_costed_ind                 NUMBER(5)
+    ,transfer_price                 NUMBER
+    ,archive_date                   DATE
+    ,archive_request_id             NUMBER(15)
+    ,purge_date                     DATE
+    ,purge_request_id               NUMBER(15)
+  ,CONSTRAINT xxcmn_ic_tran_pnd_arc_pk PRIMARY KEY (trans_id)
+   USING INDEX PCTFREE 10 INITRANS 11 MAXTRANS 255 COMPUTE STATISTICS 
+   STORAGE(INITIAL 131072 NEXT 131072 MINEXTENTS 1 MAXEXTENTS 2147483645
+   PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
+   TABLESPACE xxidx)
+  PCTFREE 10 PCTUSED 40 INITRANS 10 MAXTRANS 255 NOCOMPRESS LOGGING 
+  STORAGE(INITIAL 131072 NEXT 131072 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 4 FREELIST GROUPS 4 BUFFER_POOL DEFAULT)
+  TABLESPACE xxdata
+/
+COMMENT ON TABLE xxcmn.xxcmn_ic_tran_pnd_arc IS 'OPM保留在庫トランザクション（標準）バックアップ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.trans_id                           IS 'トランザクションID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.item_id                            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.line_id                            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.co_code                            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.orgn_code                          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.whse_code                          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.lot_id                             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.location                           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.doc_id                             IS '文書ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.doc_type                           IS '文書タイプ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.doc_line                           IS '取引明細番号'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.line_type                          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.reason_code                        IS '事由コード'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.creation_date                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.trans_date                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.trans_qty                          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.trans_qty2                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.qc_grade                           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.lot_status                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.trans_stat                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.trans_um                           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.trans_um2                          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.op_code                            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.completed_ind                      IS '完了フラグ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.staged_ind                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.gl_posted_ind                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.event_id                           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.delete_mark                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.text_code                          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.last_update_date                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.created_by                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.last_updated_by                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.last_update_login                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.program_application_id             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.program_id                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.program_update_date                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.request_id                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.reverse_id                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.pick_slip_number                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.mvt_stat_status                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.movement_id                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.line_detail_id                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.invoiced_flag                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.intorder_posted_ind                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.lot_costed_ind                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.transfer_price                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.archive_date                       IS 'バックアップ登録日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.archive_request_id                 IS 'バックアップ要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.purge_date                         IS 'パージ実行日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_ic_tran_pnd_arc.purge_request_id                   IS 'パージ要求ID'
+/

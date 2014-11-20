@@ -1,0 +1,82 @@
+CREATE TABLE XXCMN.XXCMN_STC_INV_MONTH_STCK_ARC (
+     invent_monthly_stock_id        NUMBER        NOT NULL
+    ,whse_code                      VARCHAR2(3)
+    ,item_id                        NUMBER
+    ,item_code                      VARCHAR2(7)
+    ,lot_id                         NUMBER
+    ,lot_no                         VARCHAR2(10)
+    ,monthly_stock                  NUMBER
+    ,cargo_stock                    NUMBER
+    ,invent_ym                      VARCHAR2(6)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+    ,cargo_stock_not_stn            NUMBER
+    ,archive_date                   DATE
+    ,archive_request_id             NUMBER(15)
+    ,purge_date                     DATE
+    ,purge_request_id               NUMBER(15)
+  ,CONSTRAINT xxinv_stc_inv_mon_stck_arc_pk PRIMARY KEY (INVENT_MONTHLY_STOCK_ID)
+  USING INDEX PCTFREE 10 INITRANS 2 MAXTRANS 255 COMPUTE STATISTICS 
+  STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
+  TABLESPACE xxidx  ENABLE
+   ) PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 NOCOMPRESS LOGGING
+  STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
+  TABLESPACE xxdata
+/
+COMMENT ON TABLE xxcmn.xxcmn_stc_inv_month_stck_arc IS '棚卸月末在庫（アドオン）バックアップ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.invent_monthly_stock_id     IS '棚卸月末在庫ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.whse_code                   IS '倉庫コード'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.item_id                     IS '品目ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.item_code                   IS '品目コード'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.lot_id                      IS 'ロットID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.lot_no                      IS 'ロットNo.'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.monthly_stock               IS '月末在庫数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.cargo_stock                 IS '積送中在庫数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.invent_ym                   IS '棚卸年月'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.created_by                  IS '作成者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.creation_date               IS '作成日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.last_updated_by             IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.last_update_date            IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.last_update_login           IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.request_id                  IS '要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.program_application_id      IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.program_id                  IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.program_update_date         IS 'プログラム更新日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.cargo_stock_not_stn         IS '積送中在庫数（標準なし）'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.archive_date                IS 'バックアップ登録日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.archive_request_id          IS 'バックアップ要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.purge_date                  IS 'パージ実行日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_stc_inv_month_stck_arc.purge_request_id            IS 'パージ要求ID'
+/

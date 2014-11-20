@@ -1,0 +1,226 @@
+CREATE TABLE XXCMN.XXCMN_MOV_REQ_INSTR_HDRS_ARC (
+     mov_hdr_id                     NUMBER        NOT NULL
+    ,mov_num                        VARCHAR2(12)  NOT NULL
+    ,mov_type                       VARCHAR2(2)   NOT NULL
+    ,entered_date                   DATE
+    ,instruction_post_code          VARCHAR2(4)
+    ,status                         VARCHAR2(2)
+    ,notif_status                   VARCHAR2(2)
+    ,shipped_locat_id               NUMBER
+    ,shipped_locat_code             VARCHAR2(4)
+    ,ship_to_locat_id               NUMBER
+    ,ship_to_locat_code             VARCHAR2(4)
+    ,schedule_ship_date             DATE
+    ,schedule_arrival_date          DATE
+    ,freight_charge_class           VARCHAR2(1)
+    ,collected_pallet_qty           NUMBER
+    ,out_pallet_qty                 NUMBER
+    ,in_pallet_qty                  NUMBER
+    ,no_cont_freight_class          VARCHAR2(1)
+    ,delivery_no                    VARCHAR2(12)
+    ,description                    VARCHAR2(60)
+    ,loading_efficiency_weight      NUMBER
+    ,loading_efficiency_capacity    NUMBER
+    ,organization_id                NUMBER
+    ,career_id                      NUMBER
+    ,freight_carrier_code           VARCHAR2(4)
+    ,shipping_method_code           VARCHAR2(2)
+    ,actual_career_id               NUMBER
+    ,actual_freight_carrier_code    VARCHAR2(4)
+    ,actual_shipping_method_code    VARCHAR2(2)
+    ,arrival_time_from              VARCHAR2(5)
+    ,arrival_time_to                VARCHAR2(5)
+    ,slip_number                    VARCHAR2(20)
+    ,sum_quantity                   NUMBER
+    ,small_quantity                 NUMBER
+    ,label_quantity                 NUMBER
+    ,based_weight                   NUMBER
+    ,based_capacity                 NUMBER
+    ,sum_weight                     NUMBER
+    ,sum_capacity                   NUMBER
+    ,sum_pallet_weight              NUMBER
+    ,pallet_sum_quantity            NUMBER
+    ,mixed_ratio                    NUMBER
+    ,weight_capacity_class          VARCHAR2(1)
+    ,actual_ship_date               DATE
+    ,actual_arrival_date            DATE
+    ,mixed_sign                     VARCHAR2(2)
+    ,batch_no                       VARCHAR2(10)
+    ,item_class                     VARCHAR2(2)
+    ,product_flg                    VARCHAR2(1)
+    ,no_instr_actual_class          VARCHAR2(2)
+    ,comp_actual_flg                VARCHAR2(1)
+    ,correct_actual_flg             VARCHAR2(1)
+    ,prev_notif_status              VARCHAR2(2)
+    ,notif_date                     DATE
+    ,prev_delivery_no               VARCHAR2(12)
+    ,new_modify_flg                 VARCHAR2(1)
+    ,screen_update_by               NUMBER(15)
+    ,screen_update_date             DATE
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+    ,archive_date                   DATE
+    ,archive_request_id             NUMBER(15)
+    ,purge_date                     DATE
+    ,purge_request_id               NUMBER(15)
+  ,CONSTRAINT xxcmn_mov_req_instr_h_arc_pk PRIMARY KEY (mov_hdr_id)
+   USING INDEX PCTFREE 10 INITRANS 2 MAXTRANS 255 COMPUTE STATISTICS 
+   STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+   PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
+   TABLESPACE xxidx)
+  PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 NOCOMPRESS LOGGING
+  STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
+  TABLESPACE xxdata
+/
+COMMENT ON TABLE xxcmn.xxcmn_mov_req_instr_hdrs_arc IS '移動依頼/指示ヘッダ（アドオン）バックアップ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.mov_hdr_id                  IS '移動ヘッダID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.mov_num                     IS '移動番号'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.mov_type                    IS '移動タイプ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.entered_date                IS '入力日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.instruction_post_code       IS '指示部署'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.status                      IS 'ステータス'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.notif_status                IS '通知ステータス'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.shipped_locat_id            IS '出庫元ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.shipped_locat_code          IS '出庫元保管場所'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.ship_to_locat_id            IS '入庫先ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.ship_to_locat_code          IS '入庫先保管場所'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.schedule_ship_date          IS '出庫予定日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.schedule_arrival_date       IS '入庫予定日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.freight_charge_class        IS '運賃区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.collected_pallet_qty        IS 'パレット回収枚数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.out_pallet_qty              IS 'パレット枚数（出）'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.in_pallet_qty               IS 'パレット枚数（入）'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.no_cont_freight_class       IS '契約外運賃区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.delivery_no                 IS '配送No'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.description                 IS '摘要'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.loading_efficiency_weight   IS '積載率（重量）'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.loading_efficiency_capacity IS '積載率（容積）'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.organization_id             IS '組織ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.career_id                   IS '運送業者_ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.freight_carrier_code        IS '運送業者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.shipping_method_code        IS '配送区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.actual_career_id            IS '運送業者_ID_実績'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.actual_freight_carrier_code IS '運送業者_実績'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.actual_shipping_method_code IS '配送区分_実績'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.arrival_time_from           IS '着荷時間FROM'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.arrival_time_to             IS '着荷時間TO'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.slip_number                 IS '送り状No'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.sum_quantity                IS '合計数量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.small_quantity              IS '小口個数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.label_quantity              IS 'ラベル枚数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.based_weight                IS '基本重量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.based_capacity              IS '基本容積'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.sum_weight                  IS '積載重量合計'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.sum_capacity                IS '積載容積合計'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.sum_pallet_weight           IS '合計パレット重量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.pallet_sum_quantity         IS 'パレット合計枚数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.mixed_ratio                 IS '混載率'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.weight_capacity_class       IS '重量容積区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.actual_ship_date            IS '出庫実績日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.actual_arrival_date         IS '入庫実績日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.mixed_sign                  IS '混載記号'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.batch_no                    IS '手配No'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.item_class                  IS '商品区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.product_flg                 IS '製品識別区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.no_instr_actual_class       IS '指示なし実績区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.comp_actual_flg             IS '実績計上済フラグ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.correct_actual_flg          IS '実績訂正フラグ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.prev_notif_status           IS '前回通知ステータス'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.notif_date                  IS '確定通知実施日時'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.prev_delivery_no            IS '前回配送No'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.new_modify_flg              IS '新規修正フラグ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.screen_update_by            IS '画面更新者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.screen_update_date          IS '画面更新日時'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.created_by                  IS '作成者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.creation_date               IS '作成日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.last_updated_by             IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.last_update_date            IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.last_update_login           IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.request_id                  IS '要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.program_application_id      IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.program_id                  IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.program_update_date         IS 'プログラム更新日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.archive_date                IS 'バックアップ登録日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.archive_request_id          IS 'バックアップ要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.purge_date                  IS 'パージ実行日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_mov_req_instr_hdrs_arc.purge_request_id            IS 'パージ要求ID'
+/

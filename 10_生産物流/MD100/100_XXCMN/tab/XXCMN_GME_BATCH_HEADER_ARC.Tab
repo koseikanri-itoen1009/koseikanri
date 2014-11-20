@@ -1,0 +1,271 @@
+CREATE TABLE XXCMN.XXCMN_GME_BATCH_HEADER_ARC (
+     batch_id                       NUMBER(10)    NOT NULL
+    ,plant_code                     VARCHAR2(4)   NOT NULL
+    ,batch_no                       VARCHAR2(32)  NOT NULL
+    ,batch_type                     NUMBER(5)     NOT NULL
+    ,prod_id                        NUMBER(10)
+    ,prod_sequence                  NUMBER(5)     NOT NULL
+    ,recipe_validity_rule_id        NUMBER(10)    NOT NULL
+    ,formula_id                     NUMBER(10)    NOT NULL
+    ,routing_id                     NUMBER(10)
+    ,plan_start_date                DATE          NOT NULL
+    ,actual_start_date              DATE
+    ,due_date                       DATE          NOT NULL
+    ,plan_cmplt_date                DATE          NOT NULL
+    ,actual_cmplt_date              DATE
+    ,batch_status                   NUMBER(5)     NOT NULL
+    ,priority_value                 NUMBER        NOT NULL
+    ,priority_code                  VARCHAR2(4)   NOT NULL
+    ,print_count                    NUMBER(5)     NOT NULL
+    ,fmcontrol_class                VARCHAR2(8)
+    ,wip_whse_code                  VARCHAR2(4)
+    ,batch_close_date               DATE
+    ,poc_ind                        VARCHAR2(1)
+    ,actual_cost_ind                VARCHAR2(1)
+    ,update_inventory_ind           VARCHAR2(1)
+    ,last_update_date               DATE          NOT NULL
+    ,last_updated_by                NUMBER        NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,delete_mark                    NUMBER(5)     NOT NULL
+    ,text_code                      NUMBER(10)
+    ,parentline_id                  NUMBER(10)
+    ,fpo_id                         NUMBER(10)
+    ,attribute1                     VARCHAR2(240)
+    ,attribute2                     VARCHAR2(240)
+    ,attribute3                     VARCHAR2(240)
+    ,attribute4                     VARCHAR2(240)
+    ,attribute5                     VARCHAR2(240)
+    ,attribute6                     VARCHAR2(240)
+    ,attribute7                     VARCHAR2(240)
+    ,attribute8                     VARCHAR2(240)
+    ,attribute9                     VARCHAR2(240)
+    ,attribute10                    VARCHAR2(240)
+    ,attribute11                    VARCHAR2(240)
+    ,attribute12                    VARCHAR2(240)
+    ,attribute13                    VARCHAR2(240)
+    ,attribute14                    VARCHAR2(240)
+    ,attribute15                    VARCHAR2(240)
+    ,attribute16                    VARCHAR2(240)
+    ,attribute17                    VARCHAR2(240)
+    ,attribute18                    VARCHAR2(240)
+    ,attribute19                    VARCHAR2(240)
+    ,attribute20                    VARCHAR2(240)
+    ,attribute21                    VARCHAR2(240)
+    ,attribute22                    VARCHAR2(240)
+    ,attribute23                    VARCHAR2(240)
+    ,attribute24                    VARCHAR2(240)
+    ,attribute25                    VARCHAR2(240)
+    ,attribute26                    VARCHAR2(240)
+    ,attribute27                    VARCHAR2(240)
+    ,attribute28                    VARCHAR2(240)
+    ,attribute29                    VARCHAR2(240)
+    ,attribute30                    VARCHAR2(240)
+    ,attribute_category             VARCHAR2(30)
+    ,automatic_step_calculation     NUMBER(5)     NOT NULL
+    ,gl_posted_ind                  NUMBER(5)     NOT NULL
+    ,firmed_ind                     NUMBER(5)
+    ,finite_scheduled_ind           NUMBER(5)
+    ,order_priority                 NUMBER(10)
+    ,attribute31                    VARCHAR2(240)
+    ,attribute32                    VARCHAR2(240)
+    ,attribute33                    VARCHAR2(240)
+    ,attribute34                    VARCHAR2(240)
+    ,attribute35                    VARCHAR2(240)
+    ,attribute36                    VARCHAR2(240)
+    ,attribute37                    VARCHAR2(240)
+    ,attribute38                    VARCHAR2(240)
+    ,attribute39                    VARCHAR2(240)
+    ,attribute40                    VARCHAR2(240)
+    ,migrated_batch_ind             VARCHAR2(1)
+    ,enforce_step_dependency        NUMBER(5)
+    ,terminated_ind                 NUMBER(1)
+    ,archive_date                   DATE
+    ,archive_request_id             NUMBER(15)
+    ,purge_date                     DATE
+    ,purge_request_id               NUMBER(15)
+    ,CONSTRAINT XXCMN_GME_BATCH_HEADER_ARC_PK PRIMARY KEY (BATCH_ID)
+     USING INDEX PCTFREE 10 INITRANS 11 MAXTRANS 255 COMPUTE STATISTICS 
+     STORAGE(INITIAL 131072 NEXT 131072 MINEXTENTS 1 MAXEXTENTS 2147483645
+     PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
+     TABLESPACE xxidx  ENABLE
+     ) PCTFREE 10 PCTUSED 40 INITRANS 10 MAXTRANS 255 NOCOMPRESS LOGGING
+     STORAGE(INITIAL 131072 NEXT 131072 MINEXTENTS 1 MAXEXTENTS 2147483645
+     PCTINCREASE 0 FREELISTS 4 FREELIST GROUPS 4 BUFFER_POOL DEFAULT)
+     TABLESPACE xxdata
+/
+COMMENT ON TABLE  xxcmn.xxcmn_gme_batch_header_arc IS '生産バッチヘッダ（標準）バックアップ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.batch_id                            IS 'バッチID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.plant_code                          IS 'プラントコード'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.batch_no                            IS 'バッチNo'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.batch_type                          IS 'バッチタイプ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.prod_id                             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.prod_sequence                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.recipe_validity_rule_id             IS '妥当性ルールID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.formula_id                          IS 'フォーミュラID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.routing_id                          IS '工順ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.plan_start_date                     IS '計画開始日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.actual_start_date                   IS '実績開始日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.due_date                            IS '必須完了日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.plan_cmplt_date                     IS '計画完了日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.actual_cmplt_date                   IS '実績完了日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.batch_status                        IS 'バッチステータス'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.priority_value                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.priority_code                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.print_count                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.fmcontrol_class                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.wip_whse_code                       IS 'WIP倉庫'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.batch_close_date                    IS 'クローズ日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.poc_ind                             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.actual_cost_ind                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.update_inventory_ind                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.last_update_date                    IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.last_updated_by                     IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.creation_date                       IS '作成日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.created_by                          IS '作成者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.last_update_login                   IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.delete_mark                         IS '削除マーク'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.text_code                           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.parentline_id                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.fpo_id                              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute1                          IS '伝票区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute2                          IS '成績管理部署'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute3                          IS '送信済フラグ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute4                          IS '業務ステータス'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute5                          IS '旧伝票番号'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute6                          IS '品目振替摘要'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute7                          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute8                          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute9                          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute10                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute11                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute12                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute13                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute14                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute15                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute16                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute17                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute18                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute19                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute20                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute21                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute22                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute23                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute24                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute25                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute26                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute27                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute28                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute29                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute30                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute_category                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.automatic_step_calculation          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.gl_posted_ind                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.firmed_ind                          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.finite_scheduled_ind                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.order_priority                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute31                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute32                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute33                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute34                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute35                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute36                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute37                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute38                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute39                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.attribute40                         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.migrated_batch_ind                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.enforce_step_dependency             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.terminated_ind                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.archive_date                        IS 'バックアップ登録日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.archive_request_id                  IS 'バックアップ要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.purge_date                          IS 'パージ実行日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_batch_header_arc.purge_request_id                    IS 'パージ要求ID'
+/

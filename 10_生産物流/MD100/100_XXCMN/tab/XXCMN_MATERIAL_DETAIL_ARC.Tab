@@ -1,0 +1,92 @@
+CREATE TABLE XXCMN.XXCMN_MATERIAL_DETAIL_ARC 
+(
+     mtl_detail_addon_id            NUMBER(10)    NOT NULL
+    ,batch_id                       NUMBER(10)    NOT NULL
+    ,material_detail_id             NUMBER(10)    NOT NULL
+    ,item_id                        NUMBER(10)    NOT NULL
+    ,lot_id                         NUMBER(10)
+    ,instructions_qty               NUMBER(12,3)
+    ,invested_qty                   NUMBER(12,3)  DEFAULT 0 NOT NULL
+    ,return_qty                     NUMBER(12,3)  DEFAULT 0 NOT NULL
+    ,mtl_prod_qty                   NUMBER(12,3)  DEFAULT 0 NOT NULL
+    ,mtl_mfg_qty                    NUMBER(12,3)  DEFAULT 0 NOT NULL
+    ,location_code                  VARCHAR2(4)
+    ,plan_type                      VARCHAR2(1)
+    ,plan_number                    VARCHAR2(12)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+    ,archive_date                   DATE
+    ,archive_request_id             NUMBER(15)
+    ,purge_date                     DATE
+    ,purge_request_id               NUMBER(15)
+    ,CONSTRAINT XXCMN_MTDTL_ARC_PK PRIMARY KEY (MTL_DETAIL_ADDON_ID)
+     USING INDEX PCTFREE 10 INITRANS 2 MAXTRANS 255 COMPUTE STATISTICS 
+     STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+     PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
+     TABLESPACE XXIDX  ENABLE
+     ) PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 NOCOMPRESS LOGGING
+     STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+     PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
+     TABLESPACE XXDATA
+/
+COMMENT ON TABLE xxcmn.xxcmn_material_detail_arc IS '生産原料詳細（アドオン）バックアップ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.mtl_detail_addon_id                  IS '生産原料詳細アドオンID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.batch_id                             IS 'バッチID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.material_detail_id                   IS '生産原料詳細ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.item_id                              IS '品目ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.lot_id                               IS 'ロットID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.instructions_qty                     IS '指示総数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.invested_qty                         IS '投入数量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.return_qty                           IS '戻入数量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.mtl_prod_qty                         IS '資材製造不良数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.mtl_mfg_qty                          IS '資材業者不良数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.location_code                        IS '手配倉庫コード'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.plan_type                            IS '予定区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.plan_number                          IS '番号'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.created_by                           IS '作成者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.creation_date                        IS '作成日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.last_updated_by                      IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.last_update_date                     IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.last_update_login                    IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.request_id                           IS '要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.program_application_id               IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.program_id                           IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.program_update_date                  IS 'プログラム更新日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.archive_date                         IS 'バックアップ登録日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.archive_request_id                   IS 'バックアップ要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.purge_date                           IS 'パージ実行日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_material_detail_arc.purge_request_id                     IS 'パージ要求ID'
+/

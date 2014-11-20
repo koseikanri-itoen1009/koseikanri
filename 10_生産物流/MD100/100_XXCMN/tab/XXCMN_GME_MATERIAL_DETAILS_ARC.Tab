@@ -1,0 +1,214 @@
+CREATE TABLE XXCMN.XXCMN_GME_MATERIAL_DETAILS_ARC (
+     material_detail_id             NUMBER(10)    NOT NULL
+    ,batch_id                       NUMBER(10)    NOT NULL
+    ,formulaline_id                 NUMBER(10)
+    ,line_no                        NUMBER(5)     NOT NULL
+    ,item_id                        NUMBER(10)    NOT NULL
+    ,line_type                      NUMBER(5)     NOT NULL
+    ,plan_qty                       NUMBER        NOT NULL
+    ,item_um                        VARCHAR2(4)   NOT NULL
+    ,item_um2                       VARCHAR2(4)
+    ,actual_qty                     NUMBER        NOT NULL
+    ,release_type                   NUMBER(5)     NOT NULL
+    ,scrap_factor                   NUMBER        NOT NULL
+    ,scale_type                     NUMBER(5)     NOT NULL
+    ,phantom_type                   NUMBER(5)     NOT NULL
+    ,cost_alloc                     NUMBER
+    ,alloc_ind                      NUMBER(5)     NOT NULL
+    ,cost                           NUMBER
+    ,text_code                      NUMBER(10)
+    ,phantom_id                     NUMBER(10)
+    ,rounding_direction             NUMBER(5)
+    ,creation_date                  DATE          NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,attribute1                     VARCHAR2(240)
+    ,attribute2                     VARCHAR2(240)
+    ,attribute3                     VARCHAR2(240)
+    ,attribute4                     VARCHAR2(240)
+    ,attribute5                     VARCHAR2(240)
+    ,attribute6                     VARCHAR2(240)
+    ,attribute7                     VARCHAR2(240)
+    ,attribute8                     VARCHAR2(240)
+    ,attribute9                     VARCHAR2(240)
+    ,attribute10                    VARCHAR2(240)
+    ,attribute11                    VARCHAR2(240)
+    ,attribute12                    VARCHAR2(240)
+    ,attribute13                    VARCHAR2(240)
+    ,attribute14                    VARCHAR2(240)
+    ,attribute15                    VARCHAR2(240)
+    ,attribute16                    VARCHAR2(240)
+    ,attribute17                    VARCHAR2(240)
+    ,attribute18                    VARCHAR2(240)
+    ,attribute19                    VARCHAR2(240)
+    ,attribute20                    VARCHAR2(240)
+    ,attribute21                    VARCHAR2(240)
+    ,attribute22                    VARCHAR2(240)
+    ,attribute23                    VARCHAR2(240)
+    ,attribute24                    VARCHAR2(240)
+    ,attribute25                    VARCHAR2(240)
+    ,attribute26                    VARCHAR2(240)
+    ,attribute27                    VARCHAR2(240)
+    ,attribute28                    VARCHAR2(240)
+    ,attribute29                    VARCHAR2(240)
+    ,attribute30                    VARCHAR2(240)
+    ,attribute_category             VARCHAR2(30)
+    ,last_update_login              NUMBER(15)
+    ,scale_rounding_variance        NUMBER
+    ,scale_multiple                 NUMBER
+    ,contribute_yield_ind           VARCHAR2(1)
+    ,contribute_step_qty_ind        VARCHAR2(1)
+    ,wip_plan_qty                   NUMBER
+    ,original_qty                   NUMBER
+    ,by_product_type                VARCHAR2(1)
+    ,archive_date                   DATE
+    ,archive_request_id             NUMBER(15)
+    ,purge_date                     DATE
+    ,purge_request_id               NUMBER(15)
+    ,CONSTRAINT  XXCMN_GMDA_PK PRIMARY KEY (material_detail_id)
+     USING INDEX PCTFREE 10 INITRANS 11 MAXTRANS 255 COMPUTE STATISTICS 
+     STORAGE(INITIAL 131072 NEXT 131072 MINEXTENTS 1 MAXEXTENTS 2147483645
+     PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
+     TABLESPACE XXIDX  ENABLE
+     ) PCTFREE 10 PCTUSED 40 INITRANS 10 MAXTRANS 255 NOCOMPRESS LOGGING
+     STORAGE(INITIAL 131072 NEXT 131072 MINEXTENTS 1 MAXEXTENTS 2147483645
+     PCTINCREASE 0 FREELISTS 4 FREELIST GROUPS 4 BUFFER_POOL DEFAULT)
+     TABLESPACE XXDATA
+/
+COMMENT ON TABLE xxcmn.xxcmn_gme_material_details_arc IS '生産原料詳細（標準）バックアップ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.material_detail_id              IS '生産原料詳ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.batch_id                        IS 'バッチID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.formulaline_id                  IS 'フォーミュラ明細ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.line_no                         IS '行No'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.item_id                         IS '品目ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.line_type                       IS 'ラインタイプ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.plan_qty                        IS '計画数量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.item_um                         IS '品目単位'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.item_um2                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.actual_qty                      IS '実績数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.release_type                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.scrap_factor                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.scale_type                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.phantom_type                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.cost_alloc                      IS '原価割当'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.alloc_ind                       IS '割当済フラグ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.cost                            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.text_code                       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.phantom_id                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.rounding_direction              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.creation_date                   IS '作成日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.created_by                      IS '作成者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.last_update_date                IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.last_updated_by                 IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute1                      IS 'タイプ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute2                      IS 'ランク1'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute3                      IS 'ランク2'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute4                      IS '摘要'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute5                      IS '打込区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute6                      IS '在庫入数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute7                      IS '依頼総額'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute8                      IS '投入口'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute9                      IS '委託加工単価'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute10                     IS '賞味期限日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute11                     IS '生産日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute12                     IS '移動場所コード'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute13                     IS '出倉庫コード'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute14                     IS '委託計算区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute15                     IS '委託加工費'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute16                     IS 'その他金額'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute17                     IS '製造日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute18                     IS '出倉庫コード2'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute19                     IS '出倉庫コード3'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute20                     IS '出倉庫コード4'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute21                     IS '出倉庫コード5'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute22                     IS '原料入庫予定日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute23                     IS '指図総数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute24                     IS '原料削除フラグ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute25                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute26                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute27                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute28                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute29                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute30                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.attribute_category              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.last_update_login               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.scale_rounding_variance         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.scale_multiple                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.contribute_yield_ind            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.contribute_step_qty_ind         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.wip_plan_qty                    IS 'WIP計画数量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.original_qty                    IS 'オリジナル数量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.by_product_type                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.archive_date                    IS 'バックアップ登録日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.archive_request_id              IS 'バックアップ要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.purge_date                      IS 'パージ実行日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_gme_material_details_arc.purge_request_id                IS 'パージ要求ID'
+/

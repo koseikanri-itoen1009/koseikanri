@@ -1,0 +1,398 @@
+CREATE TABLE XXCMN.XXCMN_RCV_TRANSACTIONS_ARC (
+     transaction_id                 NUMBER        NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_updated_by                NUMBER        NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,created_by                     NUMBER        NOT NULL
+    ,last_update_login              NUMBER
+    ,request_id                     NUMBER
+    ,program_application_id         NUMBER
+    ,program_id                     NUMBER
+    ,program_update_date            DATE
+    ,transaction_type               VARCHAR2(25)  NOT NULL
+    ,transaction_date               DATE          NOT NULL
+    ,quantity                       NUMBER
+    ,unit_of_measure                VARCHAR2(25)
+    ,shipment_header_id             NUMBER        NOT NULL
+    ,shipment_line_id               NUMBER        NOT NULL
+    ,user_entered_flag              VARCHAR2(1)   NOT NULL
+    ,interface_source_code          VARCHAR2(25)
+    ,interface_source_line_id       NUMBER
+    ,inv_transaction_id             NUMBER
+    ,source_document_code           VARCHAR2(25)
+    ,destination_type_code          VARCHAR2(25)
+    ,primary_quantity               NUMBER
+    ,primary_unit_of_measure        VARCHAR2(25)
+    ,uom_code                       VARCHAR2(3)
+    ,employee_id                    NUMBER(9)
+    ,parent_transaction_id          NUMBER
+    ,po_header_id                   NUMBER
+    ,po_release_id                  NUMBER
+    ,po_line_id                     NUMBER
+    ,po_line_location_id            NUMBER
+    ,po_distribution_id             NUMBER
+    ,po_revision_num                NUMBER
+    ,requisition_line_id            NUMBER
+    ,po_unit_price                  NUMBER
+    ,currency_code                  VARCHAR2(15)
+    ,currency_conversion_type       VARCHAR2(30)
+    ,currency_conversion_rate       NUMBER
+    ,currency_conversion_date       DATE
+    ,routing_header_id              NUMBER
+    ,routing_step_id                NUMBER
+    ,deliver_to_person_id           NUMBER(9)
+    ,deliver_to_location_id         NUMBER
+    ,vendor_id                      NUMBER
+    ,vendor_site_id                 NUMBER
+    ,organization_id                NUMBER
+    ,subinventory                   VARCHAR2(10)
+    ,locator_id                     NUMBER
+    ,wip_entity_id                  NUMBER
+    ,wip_line_id                    NUMBER
+    ,wip_repetitive_schedule_id     NUMBER
+    ,wip_operation_seq_num          NUMBER
+    ,wip_resource_seq_num           NUMBER
+    ,bom_resource_id                NUMBER
+    ,location_id                    NUMBER
+    ,substitute_unordered_code      VARCHAR2(25)
+    ,receipt_exception_flag         VARCHAR2(1)
+    ,inspection_status_code         VARCHAR2(25)
+    ,accrual_status_code            VARCHAR2(25)
+    ,inspection_quality_code        VARCHAR2(25)
+    ,vendor_lot_num                 VARCHAR2(30)
+    ,rma_reference                  VARCHAR2(30)
+    ,comments                       VARCHAR2(240)
+    ,attribute_category             VARCHAR2(30)
+    ,attribute1                     VARCHAR2(150)
+    ,attribute2                     VARCHAR2(150)
+    ,attribute3                     VARCHAR2(150)
+    ,attribute4                     VARCHAR2(150)
+    ,attribute5                     VARCHAR2(150)
+    ,attribute6                     VARCHAR2(150)
+    ,attribute7                     VARCHAR2(150)
+    ,attribute8                     VARCHAR2(150)
+    ,attribute9                     VARCHAR2(150)
+    ,attribute10                    VARCHAR2(150)
+    ,attribute11                    VARCHAR2(150)
+    ,attribute12                    VARCHAR2(150)
+    ,attribute13                    VARCHAR2(150)
+    ,attribute14                    VARCHAR2(150)
+    ,attribute15                    VARCHAR2(150)
+    ,req_distribution_id            NUMBER
+    ,department_code                VARCHAR2(10)
+    ,reason_id                      NUMBER
+    ,destination_context            VARCHAR2(30)
+    ,locator_attribute              VARCHAR2(150)
+    ,child_inspection_flag          VARCHAR2(1)
+    ,source_doc_unit_of_measure     VARCHAR2(25)
+    ,source_doc_quantity            NUMBER
+    ,interface_transaction_id       NUMBER
+    ,group_id                       NUMBER
+    ,movement_id                    NUMBER
+    ,invoice_id                     NUMBER
+    ,invoice_status_code            VARCHAR2(25)
+    ,qa_collection_id               NUMBER
+    ,mrc_currency_conversion_type   VARCHAR2(2000)
+    ,mrc_currency_conversion_date   VARCHAR2(2000)
+    ,mrc_currency_conversion_rate   VARCHAR2(2000)
+    ,country_of_origin_code         VARCHAR2(2)
+    ,mvt_stat_status                VARCHAR2(30)
+    ,quantity_billed                NUMBER
+    ,match_flag                     VARCHAR2(1)
+    ,amount_billed                  NUMBER
+    ,match_option                   VARCHAR2(25)
+    ,oe_order_header_id             NUMBER
+    ,oe_order_line_id               NUMBER
+    ,customer_id                    NUMBER
+    ,customer_site_id               NUMBER
+    ,lpn_id                         NUMBER
+    ,transfer_lpn_id                NUMBER
+    ,mobile_txn                     VARCHAR2(2)
+    ,secondary_quantity             NUMBER
+    ,secondary_unit_of_measure      VARCHAR2(25)
+    ,qc_grade                       VARCHAR2(25)
+    ,secondary_uom_code             VARCHAR2(3)
+    ,pa_addition_flag               VARCHAR2(1)
+    ,consigned_flag                 VARCHAR2(1)
+    ,source_transaction_num         VARCHAR2(25)
+    ,from_subinventory              VARCHAR2(240)
+    ,from_locator_id                NUMBER
+    ,amount                         NUMBER
+    ,dropship_type_code             NUMBER
+    ,lpn_group_id                   NUMBER
+    ,job_id                         NUMBER
+    ,timecard_id                    NUMBER
+    ,timecard_ovn                   NUMBER
+    ,project_id                     NUMBER
+    ,task_id                        NUMBER
+    ,archive_date                   DATE
+    ,archive_request_id             NUMBER(15)
+    ,purge_date                     DATE
+    ,purge_request_id               NUMBER(15)
+  ) PCTFREE 10 PCTUSED 70 INITRANS 10 MAXTRANS 255 NOCOMPRESS LOGGING
+  STORAGE(INITIAL 131072 NEXT 131072 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 4 FREELIST GROUPS 4 BUFFER_POOL DEFAULT)
+ TABLESPACE xxdata
+/
+COMMENT ON TABLE xxcmn.xxcmn_rcv_transactions_arc IS '受入取引（標準）バックアップ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.transaction_id                IS '受入取引ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.last_update_date              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.last_updated_by               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.creation_date                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.created_by                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.last_update_login             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.request_id                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.program_application_id        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.program_id                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.program_update_date           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.transaction_type              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.transaction_date              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.quantity                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.unit_of_measure               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.shipment_header_id            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.shipment_line_id              IS '受入明細ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.user_entered_flag             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.interface_source_code         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.interface_source_line_id      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.inv_transaction_id            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.source_document_code          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.destination_type_code         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.primary_quantity              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.primary_unit_of_measure       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.uom_code                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.employee_id                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.parent_transaction_id         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.po_header_id                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.po_release_id                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.po_line_id                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.po_line_location_id           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.po_distribution_id            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.po_revision_num               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.requisition_line_id           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.po_unit_price                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.currency_code                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.currency_conversion_type      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.currency_conversion_rate      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.currency_conversion_date      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.routing_header_id             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.routing_step_id               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.deliver_to_person_id          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.deliver_to_location_id        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.vendor_id                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.vendor_site_id                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.organization_id               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.subinventory                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.locator_id                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.wip_entity_id                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.wip_line_id                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.wip_repetitive_schedule_id    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.wip_operation_seq_num         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.wip_resource_seq_num          IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.bom_resource_id               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.location_id                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.substitute_unordered_code     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.receipt_exception_flag        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.inspection_status_code        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.accrual_status_code           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.inspection_quality_code       IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.vendor_lot_num                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.rma_reference                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.comments                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.attribute_category            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.attribute1                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.attribute2                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.attribute3                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.attribute4                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.attribute5                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.attribute6                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.attribute7                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.attribute8                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.attribute9                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.attribute10                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.attribute11                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.attribute12                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.attribute13                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.attribute14                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.attribute15                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.req_distribution_id           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.department_code               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.reason_id                     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.destination_context           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.locator_attribute             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.child_inspection_flag         IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.source_doc_unit_of_measure    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.source_doc_quantity           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.interface_transaction_id      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.group_id                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.movement_id                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.invoice_id                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.invoice_status_code           IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.qa_collection_id              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.mrc_currency_conversion_type  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.mrc_currency_conversion_date  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.mrc_currency_conversion_rate  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.country_of_origin_code        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.mvt_stat_status               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.quantity_billed               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.match_flag                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.amount_billed                 IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.match_option                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.oe_order_header_id            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.oe_order_line_id              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.customer_id                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.customer_site_id              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.lpn_id                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.transfer_lpn_id               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.mobile_txn                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.secondary_quantity            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.secondary_unit_of_measure     IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.qc_grade                      IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.secondary_uom_code            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.pa_addition_flag              IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.consigned_flag                IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.source_transaction_num        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.from_subinventory             IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.from_locator_id               IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.amount                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.dropship_type_code            IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.lpn_group_id                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.job_id                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.timecard_id                   IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.timecard_ovn                  IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.project_id                    IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.job_id                        IS ''
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.archive_date                  IS 'バックアップ登録日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.archive_request_id            IS 'バックアップ要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.purge_date                    IS 'パージ実行日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_transactions_arc.purge_request_id              IS 'パージ要求ID'
+/
