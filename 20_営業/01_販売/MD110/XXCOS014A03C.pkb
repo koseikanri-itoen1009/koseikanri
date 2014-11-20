@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A03C (body)
  * Description      : 納品確定情報データ作成(EDI)
  * MD.050           : 納品確定情報データ作成(EDI) MD050_COS_014_A03
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009/07/01    1.9   M.Sano           [T1_1359] 数量換算対応
  *  2009/07/15    1.9   N.Maeda          [T1_1359] レビュー指摘対応(伝票計取得方法修正)
  *  2009/07/29    1.9   M.Sano           [T1_1359] レビュー指摘対応(INパラ：単位設定方法修正)
+ *  2009/08/10    1.10  M.Sano           [0000442] 『返品確定情報データ作成』PTの考慮
  *
  *****************************************************************************************/
 --
@@ -3527,13 +3528,36 @@ AS
                     ,oola.orig_sys_line_ref                                     orig_sys_line_ref             --外部ｼｽﾃﾑ受注明細番号
               FROM   oe_order_headers_all                                       ooha                          --受注ヘッダ情報テーブル
                     ,oe_order_lines_all                                         oola                          --受注明細情報テーブル
+-- 2009/08/10 Ver1.10 M.Sano Add Start
+                    ,oe_transaction_types_tl                                    ottt_h                        --受注タイプ(ヘッダ)
+                    ,oe_transaction_types_tl                                    ottt_l                        --受注タイプ(明細)
+                    ,oe_order_sources                                           oos                           --受注ソース
+-- 2009/08/10 Ver1.10 M.Sano Add End
               WHERE  oola.header_id       = ooha.header_id                                                    --ヘッダID
               AND    ooha.org_id          = i_prf_rec.org_id                                                  --MO:営業単位
               AND    oola.org_id          = ooha.org_id                                                       --MO:営業単位
+-- 2009/08/10 Ver1.10 M.Sano Add Start
+              --受注タイプ(ヘッダ)抽出条件
+              AND    ottt_h.transaction_type_id = ooha.order_type_id
+              AND    ottt_h.language            = USERENV('LANG')
+              AND    ottt_h.source_lang         = USERENV('LANG')
+              AND    ottt_h.description         = i_msg_rec.header_type
+              --受注タイプ(明細)抽出条件
+              AND    ottt_l.transaction_type_id = oola.line_type_id
+              AND    ottt_l.language            = USERENV('LANG')
+              AND    ottt_l.source_lang         = USERENV('LANG')
+              AND    ottt_l.description         = i_msg_rec.line_type
+              --受注ソース抽出条件
+              AND    oos.order_source_id        = ooha.order_source_id
+              AND    oos.description            = i_msg_rec.order_source
+              AND    oos.enabled_flag           = cv_enabled_flag
+-- 2009/08/10 Ver1.10 M.Sano Add End
             )                                                                   oe                            --受注情報ビュー
-            ,oe_transaction_types_tl                                            ottt_h                        --受注タイプ(ヘッダ)
-            ,oe_transaction_types_tl                                            ottt_l                        --受注タイプ(明細)
-            ,oe_order_sources                                                   oos                           --受注ソース
+-- 2009/08/10 Ver1.10 M.Sano Del Start
+--            ,oe_transaction_types_tl                                            ottt_h                        --受注タイプ(ヘッダ)
+--            ,oe_transaction_types_tl                                            ottt_l                        --受注タイプ(明細)
+--            ,oe_order_sources                                                   oos                           --受注ソース
+-- 2009/08/10 Ver1.10 M.Sano Del End
             ,ic_item_mst_b                                                      iimb                          --OPM品目マスタ
             ,xxcmn_item_mst_b                                                   ximb                          --OPM品目マスタアドオン
             ,mtl_system_items_b                                                 msib                          --DISC品目マスタ
@@ -3588,28 +3612,32 @@ AS
                        ,TRUNC(xe.data_creation_date_edi_data))))
             BETWEEN TO_DATE(i_input_rec.shop_delivery_date_from, cv_date_fmt)
             AND     TO_DATE(i_input_rec.shop_delivery_date_to, cv_date_fmt)
-        --受注タイプ(ヘッダ)抽出条件
-        AND ottt_h.language(+)               = USERENV('LANG')
-        AND ottt_h.source_lang(+)            = USERENV('LANG')
-        AND ottt_h.description(+)            = i_msg_rec.header_type
-        --受注タイプ(明細)抽出条件
-        AND ottt_l.language(+)               = USERENV('LANG')
-        AND ottt_l.source_lang(+)            = USERENV('LANG')
-        AND ottt_l.description(+)            = i_msg_rec.line_type
-        --受注ソース抽出条件
-        AND oos.description(+)               = i_msg_rec.order_source
-        AND oos.enabled_flag(+)              = cv_enabled_flag
+-- 2009/08/10 Ver1.10 M.Sano Del Start
+--        --受注タイプ(ヘッダ)抽出条件
+--        AND ottt_h.language(+)               = USERENV('LANG')
+--        AND ottt_h.source_lang(+)            = USERENV('LANG')
+--        AND ottt_h.description(+)            = i_msg_rec.header_type
+--        --受注タイプ(明細)抽出条件
+--        AND ottt_l.language(+)               = USERENV('LANG')
+--        AND ottt_l.source_lang(+)            = USERENV('LANG')
+--        AND ottt_l.description(+)            = i_msg_rec.line_type
+--        --受注ソース抽出条件
+--        AND oos.description(+)               = i_msg_rec.order_source
+--        AND oos.enabled_flag(+)              = cv_enabled_flag
+-- 2009/08/10 Ver1.10 M.Sano Del End
         AND oe.orig_sys_document_ref(+)      = xe.order_connection_number                                     --外部システム受注番号 = 受注関連番号
         AND oe.orig_sys_line_ref(+)          = xe.order_connection_line_number                                --行No
-        AND (    oe.header_id               IS NOT NULL
-             AND ottt_h.transaction_type_id  = oe.order_type_id
-             AND oos.order_source_id         = oe.order_source_id
-             OR  oe.header_id IS NULL
-            )
-        AND (    oe.line_id IS NOT NULL
-             AND ottt_l.transaction_type_id  = oe.line_type_id
-             OR  oe.line_id IS NULL
-            )
+-- 2009/08/10 Ver1.10 M.Sano Del Start
+--        AND (    oe.header_id               IS NOT NULL
+--             AND ottt_h.transaction_type_id  = oe.order_type_id
+--             AND oos.order_source_id         = oe.order_source_id
+--             OR  oe.header_id IS NULL
+--            )
+--        AND (    oe.line_id IS NOT NULL
+--             AND ottt_l.transaction_type_id  = oe.line_type_id
+--             OR  oe.line_id IS NULL
+--            )
+-- 2009/08/10 Ver1.10 M.Sano Del End
         --OPM品目マスタ抽出条件
         AND iimb.item_no(+)                  = xe.item_code                                                   --品目コード
         --OPM品目マスタアドオン抽出条件
