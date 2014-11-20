@@ -7,7 +7,7 @@ AS
  * Description      : 在庫不足確認リスト
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 在庫不足確認リスト T_MD070_BPO_62B
- * Version          : 2.0
+ * Version          : 2.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009/01/14    1.8   Hisanobu Sakuma    本番障害#661
  *  2009/01/20    1.9   Hisanobu Sakuma    本番障害#800
  *  2009/01/21    2.0   Hisanobu Sakuma    本番障害#1065
+ *  2009/01/27    2.1   Hisanobu Sakuma    本番障害#1066
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1570,7 +1571,10 @@ AS
     || '     WHEN xola.warning_date IS NULL THEN xola.designated_production_date '
     || '     ELSE xola.warning_date '
     || '   END                          AS  de_prod_date '            -- 指定製造日
-    || '  ,NVL(xola.warning_date, NVL(xola.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
+-- 2009/01/27 v2.1 MOD START
+--    || '  ,NVL(xola.warning_date, NVL(xola.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
+    || '  ,NVL(xola.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD'')) '
+-- 2009/01/27 v2.1 MOD END
     || '                                AS  de_prod_date_sort '       -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_600指摘38対応
     || '  ,NULL                         AS  prod_date '               -- 製造日
     || '  ,NULL                         AS  best_before_date '        -- 賞味期限
@@ -1743,7 +1747,10 @@ AS
     || '     WHEN xola.warning_date IS NULL THEN xola.designated_production_date '
     || '     ELSE xola.warning_date '
     || '   END                          AS  de_prod_date '       -- 指定製造日
-    || '  ,NVL(xola.warning_date, NVL(xola.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
+-- 2009/01/27 v2.1 MOD START
+--    || '  ,NVL(xola.warning_date, NVL(xola.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
+    || '  ,NVL(xola.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD'')) '
+-- 2009/01/27 v2.1 MOD END
     || '                                AS  de_prod_date_sort '  -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_600指摘38対応
     || '  ,ilm.attribute1               AS  prod_date '          -- 製造日
     || '  ,ilm.attribute3               AS  best_before_date '   -- 賞味期限
@@ -1921,7 +1928,10 @@ AS
     || '    WHEN xmril.warning_date IS NULL THEN xmril.designated_production_date '
     || '    ELSE xmril.warning_date '
     || '   END                          AS  de_prod_date '       -- 指定製造日
-    || '  ,NVL(xmril.warning_date, NVL(xmril.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
+-- 2009/01/27 v2.1 MOD START
+--    || '  ,NVL(xmril.warning_date, NVL(xmril.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
+    || '  ,NVL(xmril.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD'')) '
+-- 2009/01/27 v2.1 MOD END
     || '                                AS  de_prod_date_sort '  -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_600指摘38対応
     || '  ,NULL                         AS  prod_date '          -- 製造日
     || '  ,NULL                         AS  best_before_date '   -- 賞味期限
@@ -2068,7 +2078,10 @@ AS
     || '     WHEN xmril.warning_date IS NULL THEN xmril.designated_production_date '
     || '     ELSE xmril.warning_date '
     || '   END                          AS  de_prod_date '       -- 指定製造日
-    || '  ,NVL(xmril.warning_date, NVL(xmril.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
+-- 2009/01/27 v2.1 MOD START
+--    || '  ,NVL(xmril.warning_date, NVL(xmril.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
+    || '  ,NVL(xmril.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD'')) '
+-- 2009/01/27 v2.1 MOD END
     || '                                AS  de_prod_date_sort '  -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_600指摘38対応
     || '  ,ilm.attribute1               AS  prod_date '          -- 製造日
     || '  ,ilm.attribute3               AS  best_before_date '   -- 賞味期限
@@ -2198,6 +2211,9 @@ AS
     || '  ,de_prod_date_sort  DESC '-- 06:指定製造日 2008/09/26 H.Itou Mod T_TE080_BPO_600指摘38対応
     || '  ,reserve_order  ASC '     -- 07:引当順
     || '  ,base_cd        ASC '     -- 08:管轄拠点
+-- 2009/01/27 v2.1 ADD START
+    || '  ,delivery_to_cd ASC '     -- 配送先/入庫先
+-- 2009/01/27 v2.1 ADD END
     || '  ,time_from      ASC '     -- 09:時間指定From
     || '  ,req_move_no    ASC '     -- 10:依頼No/移動No
     || '  ,lot_no         ASC '     -- 11:ロットNo
