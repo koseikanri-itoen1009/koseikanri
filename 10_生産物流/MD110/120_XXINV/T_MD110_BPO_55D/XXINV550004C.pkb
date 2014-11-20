@@ -8,7 +8,7 @@ AS
  * Description      : 棚卸スナップショット作成
  * MD.050           : 在庫(帳票)               T_MD050_BPO_550
  * MD.070           : 棚卸スナップショット作成 T_MD070_BPO_55D
- * Version          : 1.10
+ * Version          : 1.12
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2008/12/12    1.9   Y.Yamamoto       本番#674対応
  *  2009/03/30    1.10  H.Iida           本番障害#1346対応（営業単位対応）
  *  2009/09/10    1.11  M.Nomura         本番障害#1607対応
+ *  2010/05/13    1.12  M.Hokkanji       本稼動障害#2250対応
  *
  *****************************************************************************************/
 --  
@@ -839,11 +840,17 @@ AS
               FROM   ic_tran_pnd itp                                  -- OPM保留在庫トランザクション
               WHERE  itp.whse_code = curr_whse_code_tbl(i)            -- 倉庫コード
               AND    itp.item_id = curr_item_id_tbl(i)                -- 品目ID
-              AND    (0 = curr_lot_ctl_tbl(i)                         -- ロット管理品目の場合(0:なし、1:あり)
-                      OR (itp.lot_id = curr_lot_id_tbl(i))            -- OPM品目マスタ  ロットID
-                     )
+-- Ver1.12 M.Hokkanji UPD START
+--              AND    (0 = curr_lot_ctl_tbl(i)                         -- ロット管理品目の場合(0:なし、1:あり)
+--                      OR (itp.lot_id = curr_lot_id_tbl(i))            -- OPM品目マスタ  ロットID
+--                     )
+              AND    itp.lot_id  = curr_lot_id_tbl(i)
+-- Ver1.12 M.Hokkanji UPD END
               --AND itp.trans_date > ld_invent_end_ymd                  -- 取引日の年月
-              AND TRUNC(itp.trans_date) > TRUNC(ld_invent_end_ymd)      -- 取引日の年月   -- 2008/05/07 mod
+-- Ver1.12 M.Hokkanji UPD START
+--              AND TRUNC(itp.trans_date) > TRUNC(ld_invent_end_ymd)      -- 取引日の年月   -- 2008/05/07 mod
+              AND itp.trans_date >= TRUNC(ADD_MONTHS(ld_invent_begin_ymd,1))      -- 取引日の年月   -- 2008/05/07 mod
+-- Ver1.12 M.Hokkanji UPD END
               AND itp.completed_ind = 1                               -- 完了フラグ
               GROUP BY itp.whse_code, itp.item_id, itp.lot_id;
 --
@@ -859,11 +866,17 @@ AS
               FROM   ic_tran_cmp itc                                  -- OPM完了在庫トランザクション
               WHERE  itc.whse_code = curr_whse_code_tbl(i)            -- 倉庫コード
               AND    itc.item_id = curr_item_id_tbl(i)                -- 品目ID
-              AND    (0 = curr_lot_ctl_tbl(i)                         -- ロット管理品目の場合(0:なし、1:あり)
-                       OR (itc.lot_id = curr_lot_id_tbl(i))           -- OPM品目マスタ  ロットID
-                     )
+-- Ver1.12 M.Hokkanji UPD START
+--              AND    (0 = curr_lot_ctl_tbl(i)                         -- ロット管理品目の場合(0:なし、1:あり)
+--                       OR (itc.lot_id = curr_lot_id_tbl(i))           -- OPM品目マスタ  ロットID
+--                     )
+              AND    itc.lot_id = curr_lot_id_tbl(i)                  -- OPM品目マスタ  ロットID
+-- Ver1.12 M.Hokkanji UPD END
               --AND itc.trans_date > ld_invent_end_ymd                  -- 取引日の年月
-              AND TRUNC(itc.trans_date) > TRUNC(ld_invent_end_ymd)      -- 取引日の年月    -- 2008/05/07 mod
+-- Ver1.12 M.Hokkanji UPD START
+--              AND TRUNC(itc.trans_date) > TRUNC(ld_invent_end_ymd)      -- 取引日の年月    -- 2008/05/07 mod
+              AND itc.trans_date >= TRUNC(ADD_MONTHS(ld_invent_begin_ymd,1))      -- 取引日の年月    -- 2008/05/07 mod
+-- Ver1.12 M.Hokkanji UPD END
               GROUP BY itc.whse_code, itc.item_id, itc.lot_id;
 --
             EXCEPTION
