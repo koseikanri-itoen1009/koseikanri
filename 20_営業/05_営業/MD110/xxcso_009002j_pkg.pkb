@@ -64,6 +64,7 @@ AS
  *  2009/01/08    1.0   H.Ogawa          新規作成
  *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
  *  2009-06-02    1.2   M.Ohtsuki        T1_0956対応
+ *  2009-12-07    1.3   T.Maruyama       E_本稼動_00111対応
  *
  *****************************************************************************************/
 --
@@ -73,6 +74,9 @@ AS
   gv_pkg_name         CONSTANT VARCHAR2(100) := 'xxcso_009002j_pkg';   -- パッケージ名
   gv_sec_level_oco    CONSTANT VARCHAR2(1)   := '1';
   gv_sec_level_oso    CONSTANT VARCHAR2(1)   := '2';
+  /* 2009.12.07 T.Maruyama E_本稼動_00111 START */
+  gv_sec_level_oco_new CONSTANT VARCHAR2(1)  := '3'; --セキュリティ変更対応
+  /* 2009.12.07 T.Maruyama E_本稼動_00111 END */
   -- ===============================
   -- ユーザー定義例外
   -- ===============================
@@ -970,6 +974,20 @@ AS
       -- どれにも引っかからない場合は、セキュリティ違反
       -------------------------------------------------------------------------
       RAISE security_except;
+--  
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 START */    
+    ELSIF ( lv_security_level = gv_sec_level_oco_new ) THEN
+      
+      -------------------------------------------------------------------------
+      -- 顧客ステータスを確認
+      -------------------------------------------------------------------------
+      chk_customer_status(
+        iv_duns_number_c => iv_duns_number_c
+      );
+--      
+      RETURN '1';
+--    
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 END */
 --
     ELSIF ( lv_security_level = gv_sec_level_oso ) THEN
 --
@@ -1156,6 +1174,39 @@ AS
       -- どれにも引っかからない場合は、セキュリティ違反
       -------------------------------------------------------------------------
       RAISE security_except;
+--  
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 START */    
+    ELSIF ( lv_security_level = gv_sec_level_oco_new ) THEN
+      
+      -------------------------------------------------------------------------
+      -- パーティID、顧客ステータス、作成者ID、アカウントIDを取得
+      -------------------------------------------------------------------------
+      SELECT  hp.party_id
+             ,hp.duns_number_c
+             ,hp.created_by
+             ,hca.cust_account_id
+      INTO    ln_party_id
+             ,lv_duns_number_c
+             ,ln_created_by
+             ,ln_cust_account_id
+      FROM    hz_organization_profiles  hop
+             ,hz_parties                hp
+             ,hz_cust_accounts          hca
+      WHERE   hop.organization_profile_id = in_org_profile_id
+      AND     hp.party_id                 = hop.party_id
+      AND     hca.party_id(+)             = hp.party_id
+      ;
+      
+      -------------------------------------------------------------------------
+      -- 顧客ステータスを確認
+      -------------------------------------------------------------------------
+      chk_customer_status(
+        iv_duns_number_c => lv_duns_number_c
+      );
+--      
+      RETURN '1';
+ 
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 END */
 --
     END IF;
 --
@@ -1302,6 +1353,39 @@ AS
       -- どれにも引っかからない場合は、セキュリティ違反
       -------------------------------------------------------------------------
       RAISE security_except;
+--  
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 START */    
+    ELSIF ( lv_security_level = gv_sec_level_oco_new ) THEN
+      
+      -------------------------------------------------------------------------
+      -- パーティID、顧客ステータス、作成者ID、アカウントIDを取得
+      -------------------------------------------------------------------------
+      SELECT  hp.party_id
+             ,hp.duns_number_c
+             ,hp.created_by
+             ,hca.cust_account_id
+      INTO    ln_party_id
+             ,lv_duns_number_c
+             ,ln_created_by
+             ,ln_cust_account_id
+      FROM    hz_organization_profiles  hop
+             ,hz_parties                hp
+             ,hz_cust_accounts          hca
+      WHERE   hop.organization_profile_id = in_org_profile_id
+      AND     hp.party_id                 = hop.party_id
+      AND     hca.party_id(+)             = hp.party_id
+      ;
+      
+      -------------------------------------------------------------------------
+      -- 顧客ステータスを確認
+      -------------------------------------------------------------------------
+      chk_customer_status(
+        iv_duns_number_c => lv_duns_number_c
+      );
+--      
+      RETURN '1';
+--    
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 END */
 --
     END IF;
 --
@@ -1448,6 +1532,39 @@ AS
       -- どれにも引っかからない場合は、セキュリティ違反
       -------------------------------------------------------------------------
       RAISE security_except;
+--  
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 START */    
+    ELSIF ( lv_security_level = gv_sec_level_oco_new ) THEN
+      
+      -------------------------------------------------------------------------
+      -- パーティID、顧客ステータス、作成者ID、アカウントIDを取得
+      -------------------------------------------------------------------------
+      SELECT  hp.party_id
+             ,hp.duns_number_c
+             ,hp.created_by
+             ,hca.cust_account_id
+      INTO    ln_party_id
+             ,lv_duns_number_c
+             ,ln_created_by
+             ,ln_cust_account_id
+      FROM    hz_organization_profiles  hop
+             ,hz_parties                hp
+             ,hz_cust_accounts          hca
+      WHERE   hop.organization_profile_id = in_org_profile_id
+      AND     hp.party_id                 = hop.party_id
+      AND     hca.party_id(+)             = hp.party_id
+      ;
+      
+      -------------------------------------------------------------------------
+      -- 顧客ステータスを確認
+      -------------------------------------------------------------------------
+      chk_customer_status(
+        iv_duns_number_c => lv_duns_number_c
+      );
+--      
+      RETURN '1';
+--    
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 END */
 --
     END IF;
 --
@@ -1607,6 +1724,39 @@ AS
       -- どれにも引っかからない場合は、セキュリティ違反
       -------------------------------------------------------------------------
       RAISE security_except;
+--  
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 START */    
+    ELSIF ( lv_security_level = gv_sec_level_oco_new ) THEN
+      
+      -------------------------------------------------------------------------
+      -- パーティID、顧客ステータス、作成者ID、アカウントIDを取得
+      -------------------------------------------------------------------------
+      SELECT  hp.party_id
+             ,hp.duns_number_c
+             ,hp.created_by
+             ,hca.cust_account_id
+      INTO    ln_party_id
+             ,lv_duns_number_c
+             ,ln_created_by
+             ,ln_cust_account_id
+      FROM    hz_party_sites            hps
+             ,hz_parties                hp
+             ,hz_cust_accounts          hca
+      WHERE   hps.location_id             = in_location_id
+      AND     hp.party_id                 = hps.party_id
+      AND     hca.party_id(+)             = hp.party_id
+      ;
+      
+      -------------------------------------------------------------------------
+      -- 顧客ステータスを確認
+      -------------------------------------------------------------------------
+      chk_customer_status(
+        iv_duns_number_c => lv_duns_number_c
+      );
+--      
+      RETURN '1';
+--    
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 END */
 --
     ELSIF ( lv_security_level = gv_sec_level_oso ) THEN
 --
@@ -1819,6 +1969,33 @@ AS
       -- どれにも引っかからない場合は、セキュリティ違反
       -------------------------------------------------------------------------
       RAISE security_except;
+--  
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 START */    
+    ELSIF ( lv_security_level = gv_sec_level_oco_new ) THEN
+      
+      -------------------------------------------------------------------------
+      -- パーティID、顧客ステータス、作成者IDを取得
+      -------------------------------------------------------------------------
+      SELECT  hp.party_id
+             ,hp.duns_number_c
+             ,hp.created_by
+      INTO    ln_party_id
+             ,lv_duns_number_c
+             ,ln_created_by
+      FROM    hz_parties                hp
+      WHERE   hp.party_id                 = in_party_id
+      ;
+      
+      -------------------------------------------------------------------------
+      -- 顧客ステータスを確認
+      -------------------------------------------------------------------------
+      chk_customer_status(
+        iv_duns_number_c => lv_duns_number_c
+      );
+--      
+      RETURN '1';
+--    
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 END */
 --
     END IF;
 --
@@ -1972,6 +2149,33 @@ AS
       -- どれにも引っかからない場合は、セキュリティ違反
       -------------------------------------------------------------------------
       RAISE security_except;
+--  
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 START */    
+    ELSIF ( lv_security_level = gv_sec_level_oco_new ) THEN
+      
+      -------------------------------------------------------------------------
+      -- パーティID、顧客ステータス、作成者IDを取得
+      -------------------------------------------------------------------------
+      SELECT  hp.party_id
+             ,hp.duns_number_c
+             ,hp.created_by
+      INTO    ln_party_id
+             ,lv_duns_number_c
+             ,ln_created_by
+      FROM    hz_parties                hp
+      WHERE   hp.party_id                 = in_party_id
+      ;
+      
+      -------------------------------------------------------------------------
+      -- 顧客ステータスを確認
+      -------------------------------------------------------------------------
+      chk_customer_status(
+        iv_duns_number_c => lv_duns_number_c
+      );
+--      
+      RETURN '1';
+--    
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 END */
 --
     END IF;
 --
@@ -2126,6 +2330,35 @@ AS
       -- どれにも引っかからない場合は、セキュリティ違反
       -------------------------------------------------------------------------
       RAISE security_except;
+--  
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 START */    
+    ELSIF ( lv_security_level = gv_sec_level_oco_new ) THEN
+      
+      -------------------------------------------------------------------------
+      -- パーティID、顧客ステータス、作成者IDを取得
+      -------------------------------------------------------------------------
+      SELECT  hp.party_id
+             ,hp.duns_number_c
+             ,hp.created_by
+      INTO    ln_party_id
+             ,lv_duns_number_c
+             ,ln_created_by
+      FROM    hz_cust_accounts          hca
+             ,hz_parties                hp
+      WHERE   hca.cust_account_id         = in_cust_account_id
+      AND     hp.party_id                 = hca.party_id
+      ;
+      
+      -------------------------------------------------------------------------
+      -- 顧客ステータスを確認
+      -------------------------------------------------------------------------
+      chk_customer_status(
+        iv_duns_number_c => lv_duns_number_c
+      );
+--      
+      RETURN '1';
+--    
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 END */
 --
     END IF;
 --
@@ -2285,6 +2518,39 @@ AS
       -- どれにも引っかからない場合は、セキュリティ違反
       -------------------------------------------------------------------------
       RAISE security_except;
+--  
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 START */    
+    ELSIF ( lv_security_level = gv_sec_level_oco_new ) THEN
+      
+      -------------------------------------------------------------------------
+      -- パーティID、顧客ステータス、作成者IDを取得
+      -------------------------------------------------------------------------
+      SELECT  hp.party_id
+             ,hp.duns_number_c
+             ,hp.created_by
+             ,hca.cust_account_id
+      INTO    ln_party_id
+             ,lv_duns_number_c
+             ,ln_created_by
+             ,ln_cust_account_id
+      FROM    hz_cust_acct_sites        hcas
+             ,hz_cust_accounts          hca
+             ,hz_parties                hp
+      WHERE   hcas.cust_acct_site_id      = in_cust_acct_site_id
+      AND     hca.cust_account_id         = hcas.cust_account_id
+      AND     hp.party_id                 = hca.party_id
+      ;
+      
+      -------------------------------------------------------------------------
+      -- 顧客ステータスを確認
+      -------------------------------------------------------------------------
+      chk_customer_status(
+        iv_duns_number_c => lv_duns_number_c
+      );
+--      
+      RETURN '1';
+--    
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 END */
 --
     END IF;
 --
@@ -2444,6 +2710,39 @@ AS
       -- どれにも引っかからない場合は、セキュリティ違反
       -------------------------------------------------------------------------
       RAISE security_except;
+--  
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 START */    
+    ELSIF ( lv_security_level = gv_sec_level_oco_new ) THEN
+      
+      -------------------------------------------------------------------------
+      -- パーティID、顧客ステータス、作成者IDを取得
+      -------------------------------------------------------------------------
+      SELECT  hp.party_id
+             ,hp.duns_number_c
+             ,hp.created_by
+             ,hca.cust_account_id
+      INTO    ln_party_id
+             ,lv_duns_number_c
+             ,ln_created_by
+             ,ln_cust_account_id
+      FROM    hz_cust_acct_sites        hcas
+             ,hz_cust_accounts          hca
+             ,hz_parties                hp
+      WHERE   hcas.cust_acct_site_id      = in_cust_acct_site_id
+      AND     hca.cust_account_id         = hcas.cust_account_id
+      AND     hp.party_id                 = hca.party_id
+      ;
+      
+      -------------------------------------------------------------------------
+      -- 顧客ステータスを確認
+      -------------------------------------------------------------------------
+      chk_customer_status(
+        iv_duns_number_c => lv_duns_number_c
+      );
+--      
+      RETURN '1';
+--    
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 END */
 --
     END IF;
 --
@@ -2603,6 +2902,39 @@ AS
       -- どれにも引っかからない場合は、セキュリティ違反
       -------------------------------------------------------------------------
       RAISE security_except;
+--  
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 START */    
+    ELSIF ( lv_security_level = gv_sec_level_oco_new ) THEN
+      
+      -------------------------------------------------------------------------
+      -- パーティID、顧客ステータス、作成者IDを取得
+      -------------------------------------------------------------------------
+      SELECT  hp.party_id
+             ,hp.duns_number_c
+             ,hp.created_by
+             ,hca.cust_account_id
+      INTO    ln_party_id
+             ,lv_duns_number_c
+             ,ln_created_by
+             ,ln_cust_account_id
+      FROM    hz_cust_acct_sites        hcas
+             ,hz_cust_accounts          hca
+             ,hz_parties                hp
+      WHERE   hcas.cust_acct_site_id      = in_cust_acct_site_id
+      AND     hca.cust_account_id         = hcas.cust_account_id
+      AND     hp.party_id                 = hca.party_id
+      ;
+      
+      -------------------------------------------------------------------------
+      -- 顧客ステータスを確認
+      -------------------------------------------------------------------------
+      chk_customer_status(
+        iv_duns_number_c => lv_duns_number_c
+      );
+--      
+      RETURN '1';
+--    
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 END */
 --
     END IF;
 --
@@ -2710,7 +3042,11 @@ AS
     lv_return_value := '1';
     lv_security_level := fnd_profile.value('XXCSO1_TASK_SECURITY_LEVEL');
 --
-    IF ( lv_security_level = gv_sec_level_oco ) THEN
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 START */
+    --IF ( lv_security_level = gv_sec_level_oco ) THEN
+    IF ( lv_security_level = gv_sec_level_oco ) OR
+    ( lv_security_level = gv_sec_level_oco_new ) THEN
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 END */
 --
       IF ( iv_source_object_type = cv_source_object_party ) THEN
 --
@@ -2845,7 +3181,11 @@ AS
     lv_return_value := '1';
     lv_security_level := fnd_profile.value('XXCSO1_TASK_SECURITY_LEVEL');
 --
-    IF ( lv_security_level = gv_sec_level_oco ) THEN
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 START */
+    --IF ( lv_security_level = gv_sec_level_oco ) THEN
+    IF ( lv_security_level = gv_sec_level_oco ) OR
+    ( lv_security_level = gv_sec_level_oco_new ) THEN
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 END */
 --
       IF ( iv_source_object_type = cv_source_object_party ) THEN
 --
@@ -2987,7 +3327,11 @@ AS
     lv_return_value := '1';
     lv_security_level := fnd_profile.value('XXCSO1_TASK_SECURITY_LEVEL');
 --
-    IF ( lv_security_level = gv_sec_level_oco ) THEN
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 START */
+    --IF ( lv_security_level = gv_sec_level_oco ) THEN
+    IF ( lv_security_level = gv_sec_level_oco ) OR
+    ( lv_security_level = gv_sec_level_oco_new ) THEN
+    /* 2009.12.07 T.Maruyama E_本稼動_00111 END */
 --
       IF ( iv_source_object_type = cv_source_object_party ) THEN
 --
