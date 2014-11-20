@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/03/11    1.0   Y.Kanami         新規作成
  *  2008/06/26    1.1  Oracle D.Sugahara ST障害 #297対応 *
+ *  2008/07/02    1.2  Oracle M.Hokkanji ST障害 #321、#351対応 *
  *
  *****************************************************************************************/
 --
@@ -279,6 +280,9 @@ AS
     , req_no            xxwsh_intensive_carrier_ln_tmp.request_no%TYPE  -- 依頼No/移動No
     , delivery_no       xxwsh_mixed_carriers_tmp.delivery_no%TYPE       -- 配送No
     , prev_delivery_no  xxwsh_carriers_sort_tmp.prev_delivery_no%TYPE   -- 前回配送No
+-- Ver1.2 M.Hokkanji Start
+    , use_delivery_no   xxwsh_carriers_sort_tmp.delivery_no%TYPE        -- 現配送No
+-- Ver1.2 M.Hokkanji End
   );
 --
   -- 配送No振り直し用PL/SQL表型
@@ -4231,6 +4235,9 @@ debug_cnt number default 0;
             , xcst.request_no       req_no                  -- 依頼No
             , xmct.delivery_no      delivery_no             -- 配送No
             , xcst.prev_delivery_no prev_delivery_no        -- 前回配送No
+-- Ver1.2 M.Hokkanji Start
+            , xcst.delivery_no      use_delivery_no         -- 現配送No
+-- Ver1.2 M.Hokkanji End
         FROM  xxwsh_intensive_carriers_tmp   xict           -- 自動配車集約中間テーブル
             , xxwsh_intensive_carrier_ln_tmp xiclt          -- 自動配車集約中間明細テーブル
             , xxwsh_mixed_carriers_tmp       xmct           -- 自動配車混載中間テーブル
@@ -4239,7 +4246,10 @@ debug_cnt number default 0;
          AND  xict.intensive_no = xmct.intensive_no         -- 集約No
          AND  xiclt.request_no  = xcst.request_no           -- 依頼No
       ORDER BY  xmct.delivery_no ASC                        -- 配送No
-              , xcst.prev_delivery_no ASC                   -- 前回配送No
+-- Ver1.2 M.Hokkanji Start
+--              , xcst.prev_delivery_no ASC                   -- 前回配送No
+              , NVL(xcst.delivery_no,xcst.prev_delivery_no) ASC -- 前回配送No
+-- Ver1.2 M.Hokkanji End
     ;
 --
     -- *** ローカル・レコード ***
@@ -4259,8 +4269,14 @@ debug_cnt number default 0;
     IS
       -- *** ローカル定数 ***
       ln_deliv_cnt NUMBER DEFAULT 0;  --配送No使用確認用カウンタ
+-- Ver1.2 M.Hokkanji Start
+      ln_header_cnt NUMBER DEFAULT 0; -- 対象配送No使用ヘッダ確認用カウンタ
+-- Ver1.2 M.Hokkanji End
       -- *** ローカル定数 ***
       cv_sub_prg_name   CONSTANT VARCHAR2(100) := '[chk_finish_delivery_no]'; -- サブプログラム名
+-- Ver1.2 M.Hokkanji Start
+      cv_yes            CONSTANT VARCHAR2(1) := 'Y';    -- YES
+-- Ver1.2 M.Hokkanji End
 --
       -- ローカルカーソル
       CURSOR get_delivery_no(in_delivery_no xxwsh_carriers_schedule.delivery_no%TYPE) IS
@@ -4278,9 +4294,37 @@ debug_log(FND_FILE.LOG,'前回配送No使用確認');
       FETCH get_delivery_no  INTO ln_deliv_cnt;
       CLOSE get_delivery_no;
       IF (ln_deliv_cnt > 0) THEN
+-- Ver1.2 M.Hokkanji Start
+--debug_log(FND_FILE.LOG,'前回配送No:'||in_delivery_no||' 使用不可');
+debug_log(FND_FILE.LOG,'前回配送No:'||in_delivery_no||' 配車配送計画存在有');
+-- 対象の配送Noを使用している各ヘッダが、自動配車ソート用中間テーブルに全て
+-- 存在する場合は、既存の配送Noは再採番されるため使用可とする。
+-- 
+        SELECT COUNT(a.request_no)
+          INTO ln_header_cnt
+          FROM ( SELECT xoh.delivery_no delivery_no,
+                        xoh.request_no request_no
+                   FROM xxwsh_order_headers_all xoh
+                  WHERE xoh.delivery_no = in_delivery_no
+                    AND xoh.latest_external_flag = cv_yes
+                 UNION ALL
+                 SELECT xmrih.delivery_no delivery_no,
+                        xmrih.mov_num request_no
+                   FROM xxinv_mov_req_instr_headers xmrih
+                  WHERE xmrih.delivery_no = in_delivery_no
+               ) a
+        WHERE NOT EXISTS (
+                SELECT xcst.request_no
+                  FROM xxwsh_carriers_sort_tmp xcst
+                 WHERE xcst.request_no = a.request_no
+              )
+          AND ROWNUM = 1;
+        IF (ln_header_cnt > 0) THEN
 debug_log(FND_FILE.LOG,'前回配送No:'||in_delivery_no||' 使用不可');
-        ov_finish_flag := cv_impossibility; -- 使用不可
+          ov_finish_flag := cv_impossibility; -- 使用不可
+        END IF;
       END IF;
+-- Ver1.2 M.Hokkanji End
 --
 --      <<chk_delivery_no_loop>>
 --      FOR ln_cnt IN get_delivery_no(in_delivery_no) LOOP
@@ -4420,6 +4464,19 @@ debug_log(FND_FILE.LOG,'4 配送No採番');
               RAISE global_process_expt;
             END IF;
 debug_log(FND_FILE.LOG,'3-1');
+-- Ver1.2 M.Hokkanji Start
+          -- 既存の配送Noを使用する場合は配車配送計画に存在する配送を削除する。
+          ELSE
+debug_log(FND_FILE.LOG,'4a 既存配送No削除処理');
+            BEGIN
+              DELETE xxwsh_carriers_schedule xcs
+               WHERE xcs.delivery_no = lt_decision_delivery_no;
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                NULL; -- 削除データが存在しない場合は処理続行
+            END;
+debug_log(FND_FILE.LOG,'4b 既存配送No削除処理終了');
+-- Ver1.2 M.Hokkanji End
 --
           END IF;
 --
@@ -4537,10 +4594,17 @@ debug_log(FND_FILE.LOG,'---------------------------');
                                                                                 -- 同一配送グループ
 debug_log(FND_FILE.LOG,'同一配送グループ');
 --
-          -- 前回配送NoをPL/SQL表に格納
-          lt_prev_delivery_no_tab(ln_loop_cnt)
-                := lt_delivery_no_dat(ln_loop_cnt).prev_delivery_no;
-debug_log(FND_FILE.LOG,'前回配送No:'||lt_prev_delivery_no_tab(ln_loop_cnt));
+-- Ver1.2 M.Hokkanji Start
+          -- 現在配送Noが設定されている場合は現在の配送Noを使用
+          IF (lt_delivery_no_dat(ln_loop_cnt).use_delivery_no IS NOT NULL ) THEN
+            lt_prev_delivery_no_tab(ln_loop_cnt) := lt_delivery_no_dat(ln_loop_cnt).use_delivery_no;
+          ELSE
+            -- 前回配送NoをPL/SQL表に格納
+            lt_prev_delivery_no_tab(ln_loop_cnt) := lt_delivery_no_dat(ln_loop_cnt).prev_delivery_no;
+          END IF;
+debug_log(FND_FILE.LOG,'比較用配送No:'||lt_prev_delivery_no_tab(ln_loop_cnt));
+--debug_log(FND_FILE.LOG,'前回配送No:'||lt_prev_delivery_no_tab(ln_loop_cnt));
+-- Ver1.2 M.Hokkanji End
 --
           -- 集約No
           lt_intensive_no_tab(ln_loop_cnt) := lt_delivery_no_dat(ln_loop_cnt).int_no;
@@ -7807,6 +7871,10 @@ debug_log(FND_FILE.LOG,'4-2一括登録処理');
     ln_loop_cnt_ship              NUMBER DEFAULT 0;   -- ループカウント(出荷依頼用）
     ln_loop_cnt_move              NUMBER DEFAULT 0;   -- ループカウント(移動指示用）
 --
+-- Ver1.2 M.Hokkanji Start
+    lt_upd_method_code_ship_tab   ship_method_code_ttype; -- 配送No
+    lt_upd_method_code_move_tab   ship_method_code_ttype; -- 配送No
+-- Ver1.2 M.Hokkanji End
 -- 20080603 K.Yamane 不具合No4->
     ln_cnt                        NUMBER;
 -- 20080603 K.Yamane 不具合No4<-
@@ -7825,6 +7893,9 @@ debug_log(FND_FILE.LOG,'4-2一括登録処理');
       SELECT  xict.transaction_type transaction_type  -- 処理種別
             , xiclt.request_no      request_no        -- 依頼No/移動No
             , xmct.delivery_no      delivery_no       -- 配送No
+-- Ver1.2 M.Hokkanji Start
+            , xmct.fixed_shipping_method_code fixed_shipping_method_code -- 修正配送区分
+-- Ver1.2 M.Hokkanji End
         FROM  xxwsh_intensive_carriers_tmp   xict     -- 自動配車集約中間テーブル
             , xxwsh_intensive_carrier_ln_tmp xiclt    -- 自動配車集約中間明細テーブル
             , xxwsh_mixed_carriers_tmp       xmct     -- 自動配車混載中間テーブル
@@ -7875,6 +7946,9 @@ debug_log(FND_FILE.LOG,'B15_1.0 処理種別：出荷 ln_loop_cnt= '||to_char(ln_loop_c
           lt_upd_req_no_ship_tab(ln_loop_cnt_ship)       := cur_rec.request_no;    -- 依頼No
           lt_upd_delibery_no_ship_tab(ln_loop_cnt_ship)  := cur_rec.delivery_no;   -- 配送No
 --20080517 D.Sugahara 不具合No2対応<-
+-- Ver1.2 M.Hokkanji Start
+          lt_upd_method_code_ship_tab(ln_loop_cnt_ship)  := cur_rec.fixed_shipping_method_code; -- 修正配送区分
+-- Ver1.2 M.Hokkanji End
 --
         -- 処理種別：移動
         ELSE
@@ -7886,6 +7960,9 @@ debug_log(FND_FILE.LOG,'B15_1.1 処理種別：移動 ln_loop_cnt= '||to_char(ln_loop_c
           lt_upd_req_no_move_tab(ln_loop_cnt_move)       := cur_rec.request_no;    -- 移動No
           lt_upd_delibery_no_move_tab(ln_loop_cnt_move)  := cur_rec.delivery_no;   -- 配送No
 --20080517 D.Sugahara 不具合No2対応<-
+-- Ver1.2 M.Hokkanji Start
+          lt_upd_method_code_move_tab(ln_loop_cnt_move)  := cur_rec.fixed_shipping_method_code; -- 修正配送区分
+-- Ver1.2 M.Hokkanji End
 --
         END IF;
 --
@@ -7917,6 +7994,9 @@ debug_log(FND_FILE.LOG,'B15_1.2 移動更新件数：'||to_char(lt_upd_req_no_move_tab.
             , last_update_date       = SYSDATE                                 -- 最終更新日
             , last_update_login      = lt_login_id                             -- 最終更新ログイン
             , request_id             = lt_conc_request_id                      -- 要求ID
+-- Ver1.2 M.Hokkanji Start
+            , shipping_method_code   = lt_upd_method_code_ship_tab(upd_cnt_1)  -- 配送区分
+-- Ver1.2 M.Hokkanji End
 -- 20080603 K.Yamane 不具合No14->
             , program_application_id = lt_prog_appl_id                         -- ｱﾌﾟﾘｹｰｼｮﾝID
             , program_id             = lt_conc_program_id                      -- プログラムID
@@ -7934,6 +8014,9 @@ debug_log(FND_FILE.LOG,'B15_1.2 移動更新件数：'||to_char(lt_upd_req_no_move_tab.
             , last_updated_by        = lt_user_id                              -- 最終更新者
             , last_update_date       = SYSDATE                                 -- 最終更新日
             , last_update_login      = lt_login_id                             -- 最終更新ログイン
+-- Ver1.2 M.Hokkanji Start
+            , shipping_method_code   = lt_upd_method_code_move_tab(upd_cnt_2)  -- 配送区分
+-- Ver1.2 M.Hokkanji End
 -- 20080603 K.Yamane 不具合No14->
             , request_id             = lt_conc_request_id                      -- 要求ID
             , program_application_id = lt_prog_appl_id                         -- ｱﾌﾟﾘｹｰｼｮﾝID
@@ -7942,6 +8025,30 @@ debug_log(FND_FILE.LOG,'B15_1.2 移動更新件数：'||to_char(lt_upd_req_no_move_tab.
 -- 20080603 K.Yamane 不具合No14<-
        WHERE  mov_num           = lt_upd_req_no_move_tab(upd_cnt_2)       -- 移動No
       ;
+-- Ver1.2 M.Hokkanji Start
+    -- 今回対象となったヘッダに紐付く配送Noで紐付きが無くなったものを削除
+    BEGIN
+      DELETE xxwsh_carriers_schedule xch
+       WHERE xch.delivery_no IN (
+               SELECT xcst.delivery_no
+                 FROM xxwsh_carriers_sort_tmp xcst
+                WHERE xcst.delivery_no IS NOT NULL
+                AND NOT EXISTS (
+                      SELECT xoh.delivery_no delivery_no
+                        FROM xxwsh_order_headers_all xoh
+                       WHERE xoh.delivery_no = xcst.delivery_no
+                         AND xoh.latest_external_flag = 'Y')
+                AND NOT EXISTS (
+                      SELECT xmrih.delivery_no delivery_no
+                        FROM xxinv_mov_req_instr_headers xmrih
+                       WHERE xmrih.delivery_no = xcst.delivery_no
+               ));
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        NULL; -- 対象件数が0件の場合はエラーとしない。
+    END;
+debug_log(FND_FILE.LOG,'B15_1.3 配車配送計画削除件数：'||TO_CHAR(SQL%rowcount));
+-- Ver1.2 M.Hokkanji End
 --
   EXCEPTION
 --
