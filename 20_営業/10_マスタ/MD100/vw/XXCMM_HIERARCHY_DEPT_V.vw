@@ -725,7 +725,13 @@ FROM
           AND ffvl.enabled_flag         =  'Y'
           AND ffvl.summary_flag         =  'Y'
           AND ffvs.flex_value_set_name  =  'XX03_DEPARTMENT'
-          AND xxccp_common_pkg2.get_process_date BETWEEN
+-- 2009/09/02 è·äQ0001224 modify start by Yutaka.Kuboshima
+-- ã∆ñ±ì˙ït -> óÇâcã∆ì˙Ç…ïœçX
+--          AND xxccp_common_pkg2.get_process_date BETWEEN
+          AND xxccp_common_pkg2.get_working_day(xxccp_common_pkg2.get_process_date
+                                               ,1
+                                               ,'SALES_CAL') BETWEEN
+-- 2009/09/02 è·äQ0001224 modify end by Yutaka.Kuboshima
                     NVL(ffvl.start_date_active,to_date('19000101','YYYYMMDD'))
                 AND NVL(ffvl.end_date_active,to_date('99991231','YYYYMMDD'))
 -- 2009/04/20 è·äQT1_0590 add start by Yutaka.Kuboshima
@@ -781,7 +787,13 @@ FROM
           AND ffvs.flex_value_set_name  =  'XX03_DEPARTMENT'
           AND ffvh.flex_value_set_id    =  ffvl.flex_value_set_id
           AND ffvl.flex_value BETWEEN ffvh.child_flex_value_low AND ffvh.child_flex_value_high
-          AND xxccp_common_pkg2.get_process_date BETWEEN
+-- 2009/09/02 è·äQ0001224 modify start by Yutaka.Kuboshima
+-- ã∆ñ±ì˙ït -> óÇâcã∆ì˙Ç…ïœçX
+--          AND xxccp_common_pkg2.get_process_date BETWEEN
+          AND xxccp_common_pkg2.get_working_day(xxccp_common_pkg2.get_process_date
+                                               ,1
+                                               ,'SALES_CAL') BETWEEN
+-- 2009/09/02 è·äQ0001224 modify end by Yutaka.Kuboshima
                     NVL(ffvl.start_date_active,to_date('19000101','YYYYMMDD'))
                 AND NVL(ffvl.end_date_active,to_date('99991231','YYYYMMDD'))
 -- 2009/04/20 è·äQT1_0590 add start by Yutaka.Kuboshima
