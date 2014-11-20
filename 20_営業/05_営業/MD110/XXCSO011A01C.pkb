@@ -39,6 +39,7 @@ AS
  *  main_for_application      メイン処理（発注依頼申請用）
  *  main_for_approval         メイン処理（発注依頼承認用）
  *  main_for_denegation       メイン処理（発注依頼否認用）
+ *  main_for_approval_update  メイン処理（発注依頼承認更新用）
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -60,6 +61,7 @@ AS
  *  2009-04-27    1.8   N.Yabuki         【ST障害対応505】引揚物件、店内移動物件と設置先_顧客コードの紐付けチェックを追加
  *                                       【ST障害対応517】顧客マスタ存在チェック処理を修正
  *  2009-05-01    1.9   Tomoko.Mori      T1_0897対応
+ *  2009-05-11    1.10  D.Abe            【ST障害対応965】廃棄申請時の機器状態３、廃棄フラグ更新処理のタイミング変更
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -186,6 +188,10 @@ AS
   cv_tkn_number_50  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00566';  -- 設置物件・顧客関連性チェックエラー
   cv_tkn_number_51  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00567';  -- 引揚物件・顧客関連性チェックエラー
 /*20090427_yabuki_ST505_517 END*/
+/* 20090511_abe_ST965 START*/
+  cv_tkn_number_52  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00193';  -- 物件ワークテーブルの機器状態不正
+/* 20090511_abe_ST965 END*/
+
   --
   -- トークンコード
   cv_tkn_param_nm       CONSTANT VARCHAR2(20) := 'PARAM_NAME';
@@ -216,6 +222,14 @@ AS
 /*20090413_yabuki_ST170 START*/
   cv_tkn_req_date       CONSTANT VARCHAR2(20) := 'REQUEST_DATE';
 /*20090413_yabuki_ST170 END*/
+/* 20090511_abe_ST965 START*/
+  cv_tkn_hazard_state1    CONSTANT VARCHAR2(20) := 'HAZARD_STATE1';
+  cv_tkn_hazard_state2    CONSTANT VARCHAR2(20) := 'HAZARD_STATE2';
+  cv_tkn_hazard_state3    CONSTANT VARCHAR2(20) := 'HAZARD_STATE3';
+  --
+  cv_machinery_status       CONSTANT VARCHAR2(100) := '物件データワークテーブルの機器状態'; 
+/* 20090511_abe_ST965 END*/
+
   --
 /*20090416_yabuki_ST549 START*/
   -- 参照タイプのIBステータスタイプコード
@@ -281,6 +295,16 @@ AS
   cv_jotai_kbn1_hold        CONSTANT VARCHAR2(1) := '2';  -- 機器状態１（稼動状態）「滞留」
   cv_jotai_kbn3_non_schdl   CONSTANT VARCHAR2(1) := '0';  -- 機器状態３（廃棄情報）「予定無」
   cv_jotai_kbn3_ablsh_appl  CONSTANT VARCHAR2(1) := '2';  -- 機器状態３（廃棄情報）「廃棄申請中」
+/* 20090511_abe_ST965 START*/
+  cn_num0                  CONSTANT NUMBER        := 0;
+  cn_num1                  CONSTANT NUMBER        := 1;
+  cn_num2                  CONSTANT NUMBER        := 2;
+  cn_num3                  CONSTANT NUMBER        := 3;
+  cn_num4                  CONSTANT NUMBER        := 4;
+  cn_num9                  CONSTANT NUMBER        := 9;
+/* 20090511_abe_ST965 END*/
+
+
 /*20090403_yabuki_ST297 START*/
   -- 固定の数値
   cn_zero    CONSTANT NUMBER := 0;
@@ -371,6 +395,11 @@ AS
 /*20090427_yabuki_ST505_517 START*/
     , owner_account_id  xxcso_install_base_v.install_account_id%TYPE  -- 設置先アカウントID
 /*20090427_yabuki_ST505_517 END*/
+/* 20090511_abe_ST965 START*/
+    ,jotai_kbn2    xxcso_install_base_v.jotai_kbn2%TYPE             -- 機器状態２（状態詳細）
+    ,delete_flag   xxcso_install_base_v.sakujo_flg%TYPE             -- 削除フラグ
+    ,install_code  xxcso_install_base_v.install_code%TYPE           -- 物件コード
+/* 20090511_abe_ST965 END*/
   );
   --
   -- ===============================
@@ -697,6 +726,147 @@ AS
     END;
     --
 /*20090416_yabuki_ST549 END*/
+/* 20090511_abe_ST965 START*/
+    -- 初期化
+    lt_status_name   := '';
+    -- 「使用可」
+    BEGIN
+      lt_status_name := xxcso_util_common_pkg.get_lookup_meaning(
+                           cv_xxcso1_instance_status
+                          ,cv_instance_status_2
+                          ,od_process_date);
+      SELECT cis.instance_status_id                                     -- インスタンスステータスID
+      INTO   gt_instance_status_id_2
+      FROM   csi_instance_statuses cis                                  -- インスタンスステータスマスタ
+      WHERE  cis.name = lt_status_name
+        AND  od_process_date 
+             BETWEEN TRUNC(NVL(cis.start_date_active, od_process_date)) 
+               AND TRUNC(NVL(cis.end_date_active, od_process_date))
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- データが存在しない場合
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_48          -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_task_nm            -- トークンコード1
+                       ,iv_token_value1 => cv_instance_status        -- トークン値1
+                       ,iv_token_name2  => cv_tkn_item               -- トークンコード2
+                       ,iv_token_value2 => cv_tkn_val_status_nm      -- トークン値2
+                       ,iv_token_name3  => cv_tkn_value              -- トークンコード3
+                       ,iv_token_value3 => cv_status_name02          -- トークン値3
+                     );
+        RAISE input_parameter_expt;
+        -- 抽出に失敗した場合
+      WHEN OTHERS THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_49          -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_task_nm            -- トークンコード1
+                       ,iv_token_value1 => cv_instance_status        -- トークン値1
+                       ,iv_token_name2  => cv_tkn_item               -- トークンコード2
+                       ,iv_token_value2 => cv_tkn_val_status_nm      -- トークン値2
+                       ,iv_token_name3  => cv_tkn_value              -- トークンコード3
+                       ,iv_token_value3 => cv_status_name02          -- トークン値3
+                       ,iv_token_name4  => cv_tkn_err_msg            -- トークンコード4
+                       ,iv_token_value4 => SQLERRM                   -- トークン値4
+                     );
+        RAISE input_parameter_expt;
+    END;
+--
+    -- 「整備中」
+    BEGIN
+      lt_status_name := xxcso_util_common_pkg.get_lookup_meaning(
+                           cv_xxcso1_instance_status
+                          ,cv_instance_status_3
+                          ,od_process_date);
+      SELECT cis.instance_status_id                                   -- インスタンスステータスID
+      INTO   gt_instance_status_id_3
+      FROM   csi_instance_statuses cis                                -- インスタンスステータスマスタ
+      WHERE  cis.name = lt_status_name
+        AND  od_process_date 
+             BETWEEN TRUNC(NVL(cis.start_date_active, od_process_date)) 
+               AND TRUNC(NVL(cis.end_date_active, od_process_date))
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- データが存在しない場合
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_48          -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_task_nm            -- トークンコード1
+                       ,iv_token_value1 => cv_instance_status        -- トークン値1
+                       ,iv_token_name2  => cv_tkn_item               -- トークンコード2
+                       ,iv_token_value2 => cv_tkn_val_status_nm      -- トークン値2
+                       ,iv_token_name3  => cv_tkn_value              -- トークンコード3
+                       ,iv_token_value3 => cv_status_name03          -- トークン値3
+                     );
+        RAISE input_parameter_expt;
+        -- 抽出に失敗した場合
+      WHEN OTHERS THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_49          -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_task_nm            -- トークンコード1
+                       ,iv_token_value1 => cv_instance_status        -- トークン値1
+                       ,iv_token_name2  => cv_tkn_item               -- トークンコード2
+                       ,iv_token_value2 => cv_tkn_val_status_nm      -- トークン値2
+                       ,iv_token_name3  => cv_tkn_value              -- トークンコード3
+                       ,iv_token_value3 => cv_status_name03          -- トークン値3
+                       ,iv_token_name4  => cv_tkn_err_msg            -- トークンコード4
+                       ,iv_token_value4 => SQLERRM                   -- トークン値4
+                     );
+        RAISE input_parameter_expt;
+    END;
+--
+--
+    -- 初期化
+    lt_status_name   := '';
+    -- 「物件削除済」
+    BEGIN
+      lt_status_name := xxcso_util_common_pkg.get_lookup_meaning(
+                           cv_xxcso1_instance_status
+                          ,cv_instance_status_6
+                          ,od_process_date);
+      SELECT cis.instance_status_id                                   -- インスタンスステータスID
+      INTO   gt_instance_status_id_6
+      FROM   csi_instance_statuses cis                                -- インスタンスステータスマスタ
+      WHERE  cis.name = lt_status_name
+        AND  od_process_date 
+               BETWEEN TRUNC(NVL(cis.start_date_active, od_process_date)) 
+                 AND TRUNC(NVL(cis.end_date_active, od_process_date))
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- データが存在しない場合
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_48          -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_task_nm            -- トークンコード1
+                       ,iv_token_value1 => cv_instance_status        -- トークン値1
+                       ,iv_token_name2  => cv_tkn_item               -- トークンコード2
+                       ,iv_token_value2 => cv_tkn_val_status_nm      -- トークン値2
+                       ,iv_token_name3  => cv_tkn_value              -- トークンコード3
+                       ,iv_token_value3 => cv_status_name06          -- トークン値3
+                     );
+        RAISE input_parameter_expt;
+        -- 抽出に失敗した場合
+      WHEN OTHERS THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_49          -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_task_nm            -- トークンコード1
+                       ,iv_token_value1 => cv_instance_status        -- トークン値1
+                       ,iv_token_name2  => cv_tkn_item               -- トークンコード2
+                       ,iv_token_value2 => cv_tkn_val_status_nm      -- トークン値2
+                       ,iv_token_name3  => cv_tkn_value              -- トークンコード3
+                       ,iv_token_value3 => cv_status_name06          -- トークン値3
+                       ,iv_token_name4  => cv_tkn_err_msg            -- トークンコード4
+                       ,iv_token_value4 => SQLERRM                   -- トークン値4
+                     );
+        RAISE input_parameter_expt;
+    END;
+/* 20090511_abe_ST965 END*/
     --
   EXCEPTION
     --
@@ -1480,6 +1650,11 @@ AS
            /*20090427_yabuki_ST505_517 START*/
            , xibv.install_account_id           owner_account_id       -- 設置先アカウントID
            /*20090427_yabuki_ST505_517 END*/
+           /* 20090511_abe_ST965 START*/
+           , xibv.jotai_kbn2                   jotai_kbn2             -- 機器状態２（状態詳細）
+           , xibv.sakujo_flg                   sakujo_flg             -- 削除フラグ
+           , xibv.install_code                 install_code           -- 物件コード
+           /* 20090511_abe_ST965 END*/
       INTO   o_instance_rec.instance_id  -- インスタンスID
            , o_instance_rec.op_req_flag  -- 作業依頼中フラグ
            , o_instance_rec.jotai_kbn1   -- 機器状態１（稼動状態）
@@ -1491,6 +1666,11 @@ AS
            /*20090427_yabuki_ST505_517 START*/
            , o_instance_rec.owner_account_id  -- 設置先アカウントID
            /*20090427_yabuki_ST505_517 END*/
+           /* 20090511_abe_ST965 START*/
+           , o_instance_rec.jotai_kbn2   -- 機器状態２（状態詳細）
+           , o_instance_rec.delete_flag  -- 削除フラグ
+           , o_instance_rec.install_code -- 物件コード
+           /* 20090511_abe_ST965 END*/
       FROM   xxcso_install_base_v  xibv
       WHERE  xibv.install_code = iv_install_code
       ;
@@ -3175,6 +3355,10 @@ AS
     -- 属性値
     cv_jotai_kbn3_ablsh_appl  CONSTANT VARCHAR2(1) := '2';  -- 機器状態３（廃棄情報）「廃棄申請中」
     cv_ablsh_flg_ablsh_appl   CONSTANT VARCHAR2(1) := '1';  -- 廃棄フラグ「廃棄申請中」
+/* 20090511_abe_ST965 START*/
+    cv_jotai_kbn3_ablsh_appl_0 CONSTANT VARCHAR2(1) := '0'; -- 機器状態３（廃棄情報）「予定無し」
+    cv_ablsh_flg_ablsh_appl_0  CONSTANT VARCHAR2(1) := '0'; -- 廃棄フラグ「未申請」
+/* 20090511_abe_ST965 END*/
     --
     -- *** ローカルデータ型 ***
     TYPE l_iea_val_ttype IS TABLE OF csi_iea_values%ROWTYPE INDEX BY BINARY_INTEGER;
@@ -3183,6 +3367,13 @@ AS
     ln_instance_id    csi_item_instances.instance_id%TYPE;
     l_iea_val_rec     csi_iea_values%ROWTYPE;
     l_iea_val_tab     l_iea_val_ttype;
+/* 20090511_abe_ST965 START*/
+    ln_instance_status_id      NUMBER;                  -- インスタンスステータスID
+    ln_machinery_status1       NUMBER;                  -- 機器状態1（稼動状態）
+    ln_machinery_status2       NUMBER;                  -- 機器状態2（状態詳細）
+    ln_machinery_status3       NUMBER;                  -- 機器状態3（廃棄情報）
+    ln_delete_flag             NUMBER;                  -- 削除フラグ
+/* 20090511_abe_ST965 END*/
     --
     -- API入力値格納用
     ln_validation_level    NUMBER;
@@ -3208,6 +3399,10 @@ AS
     -- *** ローカル例外 ***
     sql_expt      EXCEPTION;
     api_expt      EXCEPTION;
+/* 20090511_abe_ST965 START*/
+    chk_expt      EXCEPTION;
+/* 20090511_abe_ST965 END*/
+    
     --
   BEGIN
     --
@@ -3222,78 +3417,7 @@ AS
     --------------------------------------------------
     IF ( iv_process_kbn = cv_proc_kbn_req_appl ) THEN
 /*20090416_yabuki_ST549 START*/
---      ------------------------------
---      -- 追加属性値情報取得
---      ------------------------------
---      -- 機器状態３（廃棄情報）
---      l_iea_val_tab(1)
---        := xxcso_ib_common_pkg.get_ib_ext_attrib_info2(
---               in_instance_id    => i_instance_rec.instance_id  -- インスタンスID
---             , iv_attribute_code => cv_attr_cd_jotai_kbn3       -- 属性定義
---           );
---      --
---      -- 廃棄フラグ
---      l_iea_val_tab(2)
---        := xxcso_ib_common_pkg.get_ib_ext_attrib_info2(
---               in_instance_id    => i_instance_rec.instance_id  -- インスタンスID
---             , iv_attribute_code => cv_attr_cd_ven_haiki_flg    -- 属性定義
---           );
---      --
---      ------------------------------
---      -- 追加属性値情報レコード設定
---      ------------------------------
---      -- 機器状態３（廃棄情報）
---      l_ext_attrib_values_tab(1).attribute_value_id    := l_iea_val_tab(1).attribute_value_id;
---      l_ext_attrib_values_tab(1).attribute_value       := cv_jotai_kbn3_ablsh_appl;
---      l_ext_attrib_values_tab(1).object_version_number := l_iea_val_tab(1).object_version_number;
---      --
---      -- 廃棄フラグ
---      IF ( l_iea_val_tab(2).attribute_value_id IS NULL ) THEN
---        l_ext_attrib_values_tab(2).attribute_id    := i_ib_ext_attr_id_rec.abolishment_flag;
---        l_ext_attrib_values_tab(2).instance_id     := i_instance_rec.instance_id;
---        l_ext_attrib_values_tab(2).attribute_value := cv_ablsh_flg_ablsh_appl;
---        --
---      ELSE
---        l_ext_attrib_values_tab(2).attribute_value_id    := l_iea_val_tab(2).attribute_value_id;
---        l_ext_attrib_values_tab(2).attribute_value       := cv_ablsh_flg_ablsh_appl;
---        l_ext_attrib_values_tab(2).object_version_number := l_iea_val_tab(2).object_version_number;
---        --
---      END IF;
-/*20090416_yabuki_ST549 END*/
-      --
-      ------------------------------
-      -- インスタンスレコード設定
-      ------------------------------
-      l_instance_rec.instance_id            := i_instance_rec.instance_id;
-      l_instance_rec.attribute4             := cv_op_req_flag_on;
-      l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
-      l_instance_rec.request_id             := fnd_global.conc_request_id;
-      l_instance_rec.program_application_id := fnd_global.prog_appl_id;
-      l_instance_rec.program_id             := fnd_global.conc_program_id;
-      l_instance_rec.program_update_date    := SYSDATE;
-      --
-/*20090416_yabuki_ST398 START*/
-    --------------------------------------------------
-    -- 処理区分が「発注依頼否認」の場合
-    --------------------------------------------------
-    ELSIF ( iv_process_kbn = cv_proc_kbn_req_dngtn ) THEN
-      ------------------------------
-      -- インスタンスレコード設定
-      ------------------------------
-      l_instance_rec.instance_id            := i_instance_rec.instance_id;
-      l_instance_rec.attribute4             := cv_op_req_flag_off;
-      l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
-      l_instance_rec.request_id             := fnd_global.conc_request_id;
-      l_instance_rec.program_application_id := fnd_global.prog_appl_id;
-      l_instance_rec.program_id             := fnd_global.conc_program_id;
-      l_instance_rec.program_update_date    := SYSDATE;
-/*20090416_yabuki_ST398 END*/
-      --
-    --------------------------------------------------
-    -- 処理区分が「発注依頼承認」の場合
-    --------------------------------------------------
-    ELSE
-/*20090416_yabuki_ST549 START*/
+/* 20090511_abe_ST965 START*/
       ------------------------------
       -- 追加属性値情報取得
       ------------------------------
@@ -3331,6 +3455,162 @@ AS
         l_ext_attrib_values_tab(2).object_version_number := l_iea_val_tab(2).object_version_number;
         --
       END IF;
+      l_instance_rec.instance_status_id     := gt_instance_status_id_4;    -- インスタンスステータスID（廃棄手続中）
+/* 20090511_abe_ST965 END*/
+/*20090416_yabuki_ST549 END*/
+      --
+      ------------------------------
+      -- インスタンスレコード設定
+      ------------------------------
+      l_instance_rec.instance_id            := i_instance_rec.instance_id;
+      l_instance_rec.attribute4             := cv_op_req_flag_on;
+      l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
+      l_instance_rec.request_id             := fnd_global.conc_request_id;
+      l_instance_rec.program_application_id := fnd_global.prog_appl_id;
+      l_instance_rec.program_id             := fnd_global.conc_program_id;
+      l_instance_rec.program_update_date    := SYSDATE;
+      --
+/*20090416_yabuki_ST398 START*/
+    --------------------------------------------------
+    -- 処理区分が「発注依頼否認」の場合
+    --------------------------------------------------
+    ELSIF ( iv_process_kbn = cv_proc_kbn_req_dngtn ) THEN
+/* 20090511_abe_ST965 START*/
+      ------------------------------
+      -- 追加属性値情報取得
+      ------------------------------
+      -- 機器状態３（廃棄情報）
+      l_iea_val_tab(1)
+        := xxcso_ib_common_pkg.get_ib_ext_attrib_info2(
+               in_instance_id    => i_instance_rec.instance_id  -- インスタンスID
+             , iv_attribute_code => cv_attr_cd_jotai_kbn3       -- 属性定義
+           );
+      --
+      -- 廃棄フラグ
+      l_iea_val_tab(2)
+        := xxcso_ib_common_pkg.get_ib_ext_attrib_info2(
+               in_instance_id    => i_instance_rec.instance_id  -- インスタンスID
+             , iv_attribute_code => cv_attr_cd_ven_haiki_flg    -- 属性定義
+           );
+      --
+      ------------------------------
+      -- 追加属性値情報レコード設定
+      ------------------------------
+      -- 機器状態３（廃棄情報）
+      l_ext_attrib_values_tab(1).attribute_value_id    := l_iea_val_tab(1).attribute_value_id;
+      l_ext_attrib_values_tab(1).attribute_value       := cv_jotai_kbn3_ablsh_appl_0;
+      l_ext_attrib_values_tab(1).object_version_number := l_iea_val_tab(1).object_version_number;
+      --
+      -- 廃棄フラグ
+      IF ( l_iea_val_tab(2).attribute_value_id IS NULL ) THEN
+        l_ext_attrib_values_tab(2).attribute_id    := i_ib_ext_attr_id_rec.abolishment_flag;
+        l_ext_attrib_values_tab(2).instance_id     := i_instance_rec.instance_id;
+        l_ext_attrib_values_tab(2).attribute_value := cv_ablsh_flg_ablsh_appl_0;
+        --
+      ELSE
+        l_ext_attrib_values_tab(2).attribute_value_id    := l_iea_val_tab(2).attribute_value_id;
+        l_ext_attrib_values_tab(2).attribute_value       := cv_ablsh_flg_ablsh_appl_0;
+        l_ext_attrib_values_tab(2).object_version_number := l_iea_val_tab(2).object_version_number;
+        --
+      END IF;
+
+      ln_machinery_status1  := i_instance_rec.jotai_kbn1;
+      ln_machinery_status2  := i_instance_rec.jotai_kbn2;
+      ln_machinery_status3  := i_instance_rec.jotai_kbn3;
+      ln_delete_flag        := i_instance_rec.delete_flag;
+      -- ========================
+      -- 2.機器状態整合性チェック
+      -- ========================
+      -- 削除フラグが「９：論理削除」の場合
+      IF (ln_delete_flag = cn_num9) THEN
+        ln_instance_status_id := gt_instance_status_id_6;
+      -- 機器状態１が「２：滞留」
+      -- 機器状態２が「０：情報無」または「１：整備済」
+      ELSIF (ln_machinery_status1 = cn_num2
+               AND (ln_machinery_status2 = cn_num0 OR ln_machinery_status2 = cn_num1))THEN
+        ln_instance_status_id := gt_instance_status_id_2;
+      -- 機器状態１が「２：滞留」
+      -- 機器状態２が「２：整備予定」または「３：保管」または「４：故障中」
+      ELSIF (ln_machinery_status1 = cn_num2
+               AND (ln_machinery_status2 = cn_num2 OR 
+                      ln_machinery_status2 = cn_num3 OR ln_machinery_status2 = cn_num4)) THEN
+        ln_instance_status_id := gt_instance_status_id_3;
+      -- 機器状態不正
+      ELSE
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name      -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_52              -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_task_nm                -- トークンコード1
+                       ,iv_token_value1 => cv_machinery_status           -- トークン値1
+                       ,iv_token_name2  => cv_tkn_bukken                 -- トークンコード2
+                       ,iv_token_value2 => i_instance_rec.install_code   -- トークン値2
+                       ,iv_token_name3  => cv_tkn_hazard_state1          -- トークンコード3
+                       ,iv_token_value3 => TO_CHAR(ln_machinery_status1) -- トークン値3
+                       ,iv_token_name4  => cv_tkn_hazard_state2          -- トークンコード4
+                       ,iv_token_value4 => TO_CHAR(ln_machinery_status2) -- トークン値4
+                       ,iv_token_name5  => cv_tkn_hazard_state3          -- トークンコード5
+                       ,iv_token_value5 => TO_CHAR(ln_machinery_status3) -- トークン値5
+                     );
+        RAISE chk_expt;
+      END IF; 
+      l_instance_rec.instance_status_id     := ln_instance_status_id;    -- インスタンスステータスID
+/* 20090511_abe_ST965 END*/
+      ------------------------------
+      -- インスタンスレコード設定
+      ------------------------------
+      l_instance_rec.instance_id            := i_instance_rec.instance_id;
+      l_instance_rec.attribute4             := cv_op_req_flag_off;
+      l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
+      l_instance_rec.request_id             := fnd_global.conc_request_id;
+      l_instance_rec.program_application_id := fnd_global.prog_appl_id;
+      l_instance_rec.program_id             := fnd_global.conc_program_id;
+      l_instance_rec.program_update_date    := SYSDATE;
+/*20090416_yabuki_ST398 END*/
+      --
+    --------------------------------------------------
+    -- 処理区分が「発注依頼承認」の場合
+    --------------------------------------------------
+    ELSE
+/*20090416_yabuki_ST549 START*/
+/* 20090511_abe_ST965 START*/
+--      ------------------------------
+--      -- 追加属性値情報取得
+--      ------------------------------
+--      -- 機器状態３（廃棄情報）
+--      l_iea_val_tab(1)
+--        := xxcso_ib_common_pkg.get_ib_ext_attrib_info2(
+--               in_instance_id    => i_instance_rec.instance_id  -- インスタンスID
+--             , iv_attribute_code => cv_attr_cd_jotai_kbn3       -- 属性定義
+--           );
+--      --
+--      -- 廃棄フラグ
+--      l_iea_val_tab(2)
+--        := xxcso_ib_common_pkg.get_ib_ext_attrib_info2(
+--               in_instance_id    => i_instance_rec.instance_id  -- インスタンスID
+--             , iv_attribute_code => cv_attr_cd_ven_haiki_flg    -- 属性定義
+--           );
+--      --
+--      ------------------------------
+--      -- 追加属性値情報レコード設定
+--      ------------------------------
+--      -- 機器状態３（廃棄情報）
+--      l_ext_attrib_values_tab(1).attribute_value_id    := l_iea_val_tab(1).attribute_value_id;
+--      l_ext_attrib_values_tab(1).attribute_value       := cv_jotai_kbn3_ablsh_appl;
+--      l_ext_attrib_values_tab(1).object_version_number := l_iea_val_tab(1).object_version_number;
+--      --
+--      -- 廃棄フラグ
+--      IF ( l_iea_val_tab(2).attribute_value_id IS NULL ) THEN
+--        l_ext_attrib_values_tab(2).attribute_id    := i_ib_ext_attr_id_rec.abolishment_flag;
+--        l_ext_attrib_values_tab(2).instance_id     := i_instance_rec.instance_id;
+--        l_ext_attrib_values_tab(2).attribute_value := cv_ablsh_flg_ablsh_appl;
+--        --
+--      ELSE
+--        l_ext_attrib_values_tab(2).attribute_value_id    := l_iea_val_tab(2).attribute_value_id;
+--        l_ext_attrib_values_tab(2).attribute_value       := cv_ablsh_flg_ablsh_appl;
+--        l_ext_attrib_values_tab(2).object_version_number := l_iea_val_tab(2).object_version_number;
+--        --
+--      END IF;
+/* 20090511_abe_ST965 END*/
 /*20090416_yabuki_ST549 END*/
       --
       ------------------------------
@@ -3344,7 +3624,9 @@ AS
       l_instance_rec.program_id             := fnd_global.conc_program_id;
       l_instance_rec.program_update_date    := SYSDATE;
 /*20090416_yabuki_ST549 START*/
-      l_instance_rec.instance_status_id     := gt_instance_status_id_4;    -- インスタンスステータスID（廃棄手続中）
+/* 20090511_abe_ST965 START*/
+--      l_instance_rec.instance_status_id     := gt_instance_status_id_4;    -- インスタンスステータスID（廃棄手続中）
+/* 20090511_abe_ST965 END*/
 /*20090416_yabuki_ST549 END*/
       --
     END IF;
@@ -3409,6 +3691,13 @@ AS
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
       ov_retcode := cv_status_error;
       --
+/* 20090511_abe_ST965 START*/
+    WHEN chk_expt THEN
+      -- *** チェックエラーハンドラ ***
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+      --
+/* 20090511_abe_ST965 END*/
     WHEN api_expt THEN
       -- APIでエラーが発生した場合
       ov_retcode := cv_status_error;
@@ -6339,7 +6628,6 @@ AS
         --
       END IF;
 /*20090416_yabuki_ST398 END*/
-      --
     END IF;
     --
   EXCEPTION
@@ -6588,7 +6876,6 @@ AS
       );
       --
   END main_for_approval;
-  --
   --
 /*20090416_yabuki_ST398 START*/
   /**********************************************************************************
