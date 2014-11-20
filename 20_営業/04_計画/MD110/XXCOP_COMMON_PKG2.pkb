@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP_COMMON_PKG(spec)
  * Description      : 共通関数パッケージ2(計画)
  * MD.050           : 共通関数    MD070_IPO_COP
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/20    1.0                   新規作成
  *  2009/04/08    1.1  SCS.Kikuchi      T1_0272,T1_0279,T1_0282,T1_0284対応
+ *  2009/05/08    1.2  SCS.Kikuchi      T1_0918,T1_0919対応
  *
  *****************************************************************************************/
 --
@@ -53,6 +54,16 @@ AS
   cd_program_update_date    CONSTANT DATE        := SYSDATE;                            --PROGRAM_UPDATE_DATE
   cv_msg_part               CONSTANT VARCHAR2(3) := ' : ';
   cv_msg_cont               CONSTANT VARCHAR2(3) := '.';
+--20090508_Ver1.2_T1_0918_SCS.Kikuchi_ADD_START
+  -- メッセージ・アプリケーション名（アドオン：販物・計画領域）
+  cv_msg_application        CONSTANT VARCHAR2(100) := 'XXCOP';
+  -- メッセージ名
+  cv_message_00002          CONSTANT VARCHAR2(16)  := 'APP-XXCOP1-00002';
+  -- メッセージトークン
+  cv_message_00002_token_1  CONSTANT VARCHAR2(9)   := 'PROF_NAME';
+  cv_cmn_drink_cal_cd       CONSTANT VARCHAR2(100) := 'XXCMN_DRNK_WHSE_STD_CAL';        -- ドリンク基準カレンダ
+  cv_cmn_drink_cal_cd_name  CONSTANT VARCHAR2(100) := 'XXCMN:ドリンク倉庫基準カレンダ'; -- ドリンク基準カレンダ
+--20090508_Ver1.2_T1_0918_SCS.Kikuchi_ADD_END
 --
 --################################  固定部 END   ##################################
 --
@@ -489,14 +500,22 @@ AS
     --==============================================================
     --手持在庫取得
     --==============================================================
-    SELECT NVL(SUM(ili.loct_onhand),0)
-    INTO  ln_onhand_qty
-    FROM  ic_loct_inv ili
-         ,ic_lots_mst ilm
-    WHERE ili.item_id     =  in_item_id
-    AND   ili.whse_code   =  iv_organization_code
-    AND   ili.item_id     =  ilm.item_id
-    AND   ili.lot_id      =  ilm.lot_id;
+--20090508_Ver1.2_T1_0919_SCS.Kikuchi_MOD_START
+--    SELECT NVL(SUM(ili.loct_onhand),0)
+--    INTO  ln_onhand_qty
+--    FROM  ic_loct_inv ili
+--         ,ic_lots_mst ilm
+--    WHERE ili.item_id     =  in_item_id
+--    AND   ili.whse_code   =  iv_organization_code
+--    AND   ili.item_id     =  ilm.item_id
+--    AND   ili.lot_id      =  ilm.lot_id;
+    SELECT SUM(NVL(LOCT_ONHAND,0) + NVL(STOCK_QTY,0))   -- 手持数量＋手持在庫数の集計値
+    INTO   ln_onhand_qty
+    FROM   xxcop_loct_inv_v xliv                        -- 計画_手持在庫ビュー
+    WHERE  xliv.ORGANIZATION_CODE =  iv_organization_code
+    AND    xliv.item_id           =  in_item_id
+    ;
+--20090508_Ver1.2_T1_0919_SCS.Kikuchi_MOD_END
     on_quantity :=  ln_onhand_qty;
   EXCEPTION
     WHEN NO_DATA_FOUND THEN
@@ -703,6 +722,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+--20090508_Ver1.2_T1_0918_SCS.Kikuchi_ADD_START
+    cn_active     NUMBER := 0;
+--20090508_Ver1.2_T1_0918_SCS.Kikuchi_ADD_END
 --
     -- *** ローカル変数 ***
     ld_work_date  DATE := NULL;
@@ -736,42 +758,109 @@ AS
     IF id_from_date > id_to_date THEN
       RAISE date_from_to_expt;
     END IF;
+
+--20090508_Ver1.2_T1_0918_SCS.Kikuchi_ADD_START
+    -- ===============================
+    -- カレンダーコード取得
+    -- ===============================
+    BEGIN
+      SELECT attribute10
+      INTO   lv_calendar_code
+      FROM   mtl_item_locations   -- OPM保管場所マスタ
+      WHERE  organization_id  =  in_organization_id
+      AND    attribute10      IS NOT NULL
+      GROUP
+      BY     attribute10
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND
+        OR TOO_MANY_ROWS THEN
+          lv_calendar_code := NULL;
+    END;
+    
+    -- 組織からカレンダーコードが取得出来ない場合、
+    -- プロファイルのドリンク基準カレンダを設定する。
+    IF  lv_calendar_code IS NULL THEN
+      BEGIN
+        lv_calendar_code := FND_PROFILE.VALUE( cv_cmn_drink_cal_cd );
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_calendar_code := NULL;
+      END;
+--
+      -- プロファイルが取得出来ない場合、エラーとして戻す。
+      IF ( lv_calendar_code IS NULL ) THEN
+        ov_errbuf        := NULL;
+        ov_errmsg        := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_msg_application
+                              ,iv_name         => cv_message_00002
+                              ,iv_token_name1  => cv_message_00002_token_1
+                              ,iv_token_value1 => cv_cmn_drink_cal_cd_name
+                              );
+        on_working_days  := NULL;
+        ov_retcode       := cv_status_error;
+        RETURN;
+      END IF;
+    END IF;
+
     -- ===============================
     -- 稼働日数取得
     -- ===============================
-    -- 変数初期化
-    ld_from_date := id_from_date;
-    --
-    SELECT calendar_code
-    INTO lv_calendar_code
-    FROM mtl_parameters
-    WHERE organization_id = in_organization_id;
-    <<loop_bomdays>>
-    LOOP
-      IF id_from_date = id_to_date THEN
-        on_working_days := 0;
-        EXIT;
-      END IF;
-      --稼働日の場合日付が戻り、非稼働日の場合NULLが戻る
-      ld_work_date := xxccp_common_pkg2.get_working_day(
-                       id_date            =>  ld_from_date
-                      ,in_working_day     =>  0
-                      ,iv_calendar_code   =>  lv_calendar_code
-                      );
-      --
-      IF ld_work_date IS NOT NULL THEN
-        --稼働日カウント
-        ln_cnt_days  := ln_cnt_days  + 1;
-      END IF;
-      --
-      ld_from_date  := ld_from_date + 1;
-      --
-      IF ld_from_date >= id_to_date THEN
-        on_working_days := ln_cnt_days;
-        EXIT;
-      END IF;
-      --
-    END LOOP;
+    SELECT  COUNT(*)
+    INTO    ln_cnt_days
+    FROM    mr_shcl_hdr msh    -- 製造カレンダヘッダ
+    ,       mr_shcl_dtl msd    -- 製造カレンダ明細
+    WHERE   msh.calendar_no   =  lv_calendar_code
+    AND     msh.calendar_id   =  msd.calendar_id
+    AND     msd.calendar_date BETWEEN id_from_date
+                                  AND id_to_date - 1
+    AND     msd.delete_mark   =  cn_active
+    ;
+
+    -- 戻り値の設定
+    ov_errbuf        := NULL;
+    ov_errmsg        := NULL;
+    on_working_days  := ln_cnt_days;
+--20090508_Ver1.2_T1_0918_SCS.Kikuchi_ADD_END
+--20090508_Ver1.2_T1_0918_SCS.Kikuchi_DEL_START
+--    -- ===============================
+--    -- 稼働日数取得
+--    -- ===============================
+--    -- 変数初期化
+--    ld_from_date := id_from_date;
+--
+--    --
+--    SELECT calendar_code
+--    INTO lv_calendar_code
+--    FROM mtl_parameters
+--    WHERE organization_id = in_organization_id;
+--    <<loop_bomdays>>
+--    LOOP
+--      IF id_from_date = id_to_date THEN
+--        on_working_days := 0;
+--        EXIT;
+--      END IF;
+--      --稼働日の場合日付が戻り、非稼働日の場合NULLが戻る
+--      ld_work_date := xxccp_common_pkg2.get_working_day(
+--                       id_date            =>  ld_from_date
+--                      ,in_working_day     =>  0
+--                      ,iv_calendar_code   =>  lv_calendar_code
+--                      );
+--      --
+--      IF ld_work_date IS NOT NULL THEN
+--        --稼働日カウント
+--        ln_cnt_days  := ln_cnt_days  + 1;
+--      END IF;
+--      --
+--      ld_from_date  := ld_from_date + 1;
+--      --
+--      IF ld_from_date >= id_to_date THEN
+--        on_working_days := ln_cnt_days;
+--        EXIT;
+--      END IF;
+--      --
+--    END LOOP;
+--20090508_Ver1.2_T1_0918_SCS.Kikuchi_DEL_END
 --
   EXCEPTION
 --
