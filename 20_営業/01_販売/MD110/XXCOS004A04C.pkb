@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : 消化ＶＤ納品データ作成
  * MD.050           : 消化ＶＤ納品データ作成 MD050_COS_004_A04
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,8 @@ AS
  *  2009/05/25   1.15  T.kitajima        [T1_1151]金額マイナス対応
  *                                       [T1_1122]切上対応
  *                                       [T1_1208]単価四捨五入
+ *  2009/06/09   1.16  T.kitajima        [T1_1371]行ロック
+ *  2009/06/10   1.16  T.kitajima        [T1_1412]納品伝票番号取得処理変更
  *
  *****************************************************************************************/
 --
@@ -121,6 +123,10 @@ AS
 --****************************** 2009/05/07 1.14 T.Kitajima ADD START ******************************--
   global_quick_salse_err_expt EXCEPTION;                                --売上区分取得エラー
 --****************************** 2009/05/07 1.14 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/06/09 1.16 T.Kitajima ADD START ******************************--
+  global_data_lock_expt             EXCEPTION;
+  PRAGMA EXCEPTION_INIT( global_data_lock_expt, -54 );
+--****************************** 2009/06/09 1.16 T.Kitajima ADD  END  ******************************--
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -197,6 +203,12 @@ AS
   ct_msg_delivery_base_err  CONSTANT fnd_new_messages.message_name%TYPE
                                       := 'APP-XXCOS1-11176';               --納品拠点取得エラーメッセージ
 --****************************** 2009/05/07 1.14 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/06/09 1.16 T.Kitajima ADD START ******************************--
+  ct_msg_line_lock_err      CONSTANT fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-11177';               --消化ＶＤ用消化計算テーブル取得エラーメッセージ
+  ct_msg_vd_lock_err        CONSTANT fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-11178';               --ＶＤコラム別取引ヘッダテーブルロック取得エラーメッセージ
+--****************************** 2009/06/09 1.16 T.Kitajima ADD  END  ******************************--
   --クイックコードタイプ
   ct_qct_regular_type          CONSTANT  fnd_lookup_types.lookup_type%TYPE
                                       := 'XXCOS1_REGULAR_ANY_CLASS';       --定期随時
@@ -360,6 +372,9 @@ AS
   cn_sales_oprtn_day_non        CONSTANT NUMBER       := 1;           --非稼働日
   cn_sales_oprtn_day_error      CONSTANT NUMBER       := 2;           --エラー
 --****************************** 2009/04/22 1.13 T.Kitajima ADD START ******************************--
+--****************************** 2009/06/10 1.16 T.Kitajima ADD START ******************************--
+  cv_snq_i                      CONSTANT VARCHAR2(1)  := 'I';
+--****************************** 2009/06/10 1.16 T.Kitajima ADD  END  ******************************--
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -1523,6 +1538,9 @@ AS
                       )
 --****************************** 2009/05/07 1.14 T.Kitajima ADD  END  ******************************--
      ORDER BY xsdh.vd_digestion_hdr_id,xsdl.vd_digestion_ln_id
+--****************************** 2009/06/09 1.16 T.Kitajima ADD START ******************************--
+     FOR UPDATE OF xsdh.vd_digestion_hdr_id,xsdl.vd_digestion_ln_id NOWAIT
+--****************************** 2009/06/09 1.16 T.Kitajima ADD  END  ******************************--
       ;
     -- *** ローカル・レコード ***
 --
@@ -1561,6 +1579,17 @@ AS
         CLOSE get_data_cur2;
       END IF;
     EXCEPTION
+--****************************** 2009/06/09 1.16 T.Kitajima ADD START ******************************--
+      WHEN global_data_lock_expt THEN
+        -- カーソルCLOSE：納品ヘッダワークテーブルデータ取得
+        IF ( get_data_cur1%ISOPEN ) THEN
+          CLOSE get_data_cur1;
+        END IF;
+        IF ( get_data_cur2%ISOPEN ) THEN
+          CLOSE get_data_cur2;
+        END IF;
+        RAISE global_data_lock_expt;
+--****************************** 2009/06/09 1.16 T.Kitajima ADD  END  ******************************--
       WHEN OTHERS THEN
         -- カーソルCLOSE：納品ヘッダワークテーブルデータ取得
         IF ( get_data_cur1%ISOPEN ) THEN
@@ -1601,6 +1630,18 @@ AS
       );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_error;
+--****************************** 2009/06/09 1.16 T.Kitajima ADD START ******************************--
+--
+    -- *** ロック エラー ***
+    WHEN global_data_lock_expt     THEN
+      ov_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  ct_xxcos_appl_short_name,
+        iv_name               =>  ct_msg_line_lock_err
+      );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+--
+--****************************** 2009/06/09 1.16 T.Kitajima ADD  END  ******************************--
 --#####################################  固定部 START ##########################################
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
@@ -1731,7 +1772,12 @@ AS
     INTO   ln_header_id
     FROM   DUAL;
     --納品伝票番号シーケンス取得
-    lv_deli_seq := xxcos_def_pkg.set_order_number( NULL,NULL );
+--******************************* 2009/06/10 1.12 T.Kitajima MOD START ******************************--
+--    lv_deli_seq := xxcos_def_pkg.set_order_number( NULL,NULL );
+    SELECT cv_snq_i || TO_CHAR( ( lpad( XXCOS_CUST_PO_NUMBER_S01.nextval, 11, 0) ) )
+      INTO lv_deli_seq
+      FROM dual;
+--******************************* 2009/06/10 1.12 T.Kitajima MOD  END  ******************************--
     -- ループ開始
     <<keisan_loop>>
     FOR ln_i IN 1..gn_target_cnt LOOP
@@ -2926,6 +2972,15 @@ AS
     ln_i  NUMBER;  --カウンター
 --
     -- *** ローカル・カーソル ***
+--****************************** 2009/06/09 1.16 T.Kitajima ADD START ******************************--
+    CURSOR lock_cur
+    IS
+      SELECT digestion_vd_rate_maked_date
+        FROM xxcos_vd_column_headers
+       WHERE digestion_vd_rate_maked_date IS NOT NULL
+       FOR UPDATE NOWAIT
+    ;
+--****************************** 2009/06/09 1.16 T.Kitajima ADD  END  ******************************--
 --
     -- *** ローカル・レコード ***
 --
@@ -3086,6 +3141,19 @@ AS
     -- ========================================
     -- 3.ＶＤコラム別取引ヘッダテーブル更新処理
     -- ========================================
+--****************************** 2009/06/09 1.16 T.Kitajima ADD START ******************************--
+    BEGIN
+      OPEN lock_cur;
+      CLOSE lock_cur;
+    EXCEPTION
+      WHEN global_data_lock_expt THEN
+        -- カーソルCLOSE：納品ヘッダワークテーブルデータ取得
+        IF ( lock_cur%ISOPEN ) THEN
+          CLOSE lock_cur;
+        END IF;
+        RAISE global_data_lock_expt;
+    END;
+--****************************** 2009/06/09 1.16 T.Kitajima ADD  END  ******************************--
     BEGIN
       UPDATE xxcos_vd_column_headers
          SET
@@ -3126,6 +3194,18 @@ AS
                     );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_error;
+--****************************** 2009/06/09 1.16 T.Kitajima ADD START ******************************--
+--
+    -- *** ロック エラー ***
+    WHEN global_data_lock_expt     THEN
+      ov_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  ct_xxcos_appl_short_name,
+        iv_name               =>  ct_msg_vd_lock_err
+      );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+--
+--****************************** 2009/06/09 1.16 T.Kitajima ADD  END  ******************************--
 --#####################################  固定部 START ##########################################
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A02C (body)
  * Description      : 商品別売上計算
  * MD.050           : 商品別売上計算 MD050_COS_004_A02
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,8 @@ AS
  *  2009/05/07    1.10  T.kitajima       [T1_0888]納品拠点取得方法変更
  *                                       [T1_0714]在庫品目数量0除外対応
  *  2009/05/26    1.11  T.kitajima       [T1_1217]単価四捨五入
+ *  2009/06/09    1.12  T.kitajima       [T1_1371]行ロック
+ *  2009/06/10    1.12  T.kitajima       [T1_1412]納品伝票番号取得処理変更
  *
  *****************************************************************************************/
 --
@@ -111,6 +113,10 @@ AS
 --****************************** 2009/05/07 1.10 T.Kitajima ADD START ******************************--
   global_quick_not_inv_expt   EXCEPTION; --非在庫品目取得エラー
 --****************************** 2009/05/07 1.10 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/06/09 1.12 T.Kitajima ADD START ******************************--
+  global_data_lock_expt       EXCEPTION;
+  PRAGMA EXCEPTION_INIT( global_data_lock_expt, -54 );
+--****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -167,6 +173,12 @@ AS
   ct_msg_delivery_base_err  CONSTANT fnd_new_messages.message_name%TYPE
                                       := 'APP-XXCOS1-10973';               --納品拠点取得エラーメッセージ
 --****************************** 2009/05/07 1.10 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/06/09 1.12 T.Kitajima ADD START ******************************--
+  ct_msg_shop_lock_err      CONSTANT fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-10974';               --店舗別用消化計算テーブルロック取得エラーメッセージ
+  ct_msg_inv_lock_err       CONSTANT fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-10975';               --棚卸管理テーブルロック取得エラーメッセージ
+--****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
   --クイックコードタイプ
   ct_qct_regular_type       CONSTANT  fnd_lookup_types.lookup_type%TYPE
                                       := 'XXCOS1_REGULAR_ANY_CLASS';       --定期随時
@@ -281,6 +293,10 @@ AS
 --******************************* 2009/05/07 1.10 T.Kitajima ADD START ******************************--
   cn_sales_zero             CONSTANT  NUMBER := 0;                         --在庫0
 --******************************* 2009/05/07 1.10 T.Kitajima ADD  END  ******************************--
+--******************************* 2009/06/10 1.12 T.Kitajima ADD START ******************************--
+  cv_snq_i                  CONSTANT  VARCHAR2(1) :=  'I';
+--******************************* 2009/06/10 1.12 T.Kitajima ADD  END  ******************************--
+
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -1101,6 +1117,9 @@ AS
                       )
       ORDER BY xsdh.shop_digestion_hdr_id,xsdl.shop_digestion_ln_id
 --****************************** 2009/05/07 1.10 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/06/09 1.12 T.Kitajima ADD START ******************************--
+      FOR UPDATE OF xsdh.shop_digestion_hdr_id,xsdl.invent_seq NOWAIT
+--****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
     ;
     -- *** ローカル・レコード ***
 --
@@ -1127,6 +1146,14 @@ AS
       -- カーソルCLOSE
       CLOSE get_data_cur;
     EXCEPTION
+--****************************** 2009/06/09 1.12 T.Kitajima ADD START ******************************--
+      WHEN global_data_lock_expt THEN
+        -- カーソルCLOSE：納品ヘッダワークテーブルデータ取得
+        IF ( get_data_cur%ISOPEN ) THEN
+          CLOSE get_data_cur;
+        END IF;
+        RAISE global_data_lock_expt;
+--****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
       WHEN OTHERS THEN
         -- カーソルCLOSE：納品ヘッダワークテーブルデータ取得
         IF ( get_data_cur%ISOPEN ) THEN
@@ -1165,6 +1192,18 @@ AS
       );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_error;
+--****************************** 2009/06/09 1.12 T.Kitajima ADD START ******************************--
+--
+    -- *** ロック エラー ***
+    WHEN global_data_lock_expt     THEN
+      ov_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  ct_xxcos_appl_short_name,
+        iv_name               =>  ct_msg_shop_lock_err
+      );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+--
+--****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
 --#####################################  固定部 START ##########################################
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
@@ -1267,7 +1306,12 @@ AS
     INTO   ln_header_id
     FROM   DUAL;
     --納品伝票番号シーケンス取得
-    lv_deli_seq := xxcos_def_pkg.set_order_number(NULL,NULL);
+--******************************* 2009/06/10 1.12 T.Kitajima MOD START ******************************--
+--    lv_deli_seq := xxcos_def_pkg.set_order_number(NULL,NULL);
+    SELECT cv_snq_i || TO_CHAR( ( lpad( XXCOS_CUST_PO_NUMBER_S01.nextval, 11, 0) ) )
+      INTO lv_deli_seq
+      FROM dual;
+--******************************* 2009/06/10 1.12 T.Kitajima MOD  END  ******************************--
     -- ループ開始
     FOR ln_i IN 1..gn_list_cnt LOOP
 --
@@ -1868,6 +1912,15 @@ AS
     ln_i  NUMBER;  --カウンター
 --
     -- *** ローカル・カーソル ***
+--****************************** 2009/06/09 1.12 T.Kitajima ADD START ******************************--
+    CURSOR lock_cur( it_inventory_seq xxcoi_inv_control.inventory_seq%TYPE )
+    IS
+      SELECT inventory_seq
+        FROM xxcoi_inv_control
+       WHERE inventory_seq     = it_inventory_seq
+       FOR UPDATE NOWAIT
+    ;
+--****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
 --
     -- *** ローカル・レコード ***
 --
@@ -2030,7 +2083,22 @@ AS
     -- ===============================
     -- 3.棚卸管理テーブル更新処理
     -- ===============================
+--****************************** 2009/06/09 1.12 T.Kitajima ADD START ******************************--
     BEGIN
+      FOR ln_i in 1..gt_tab_invent_seq_up.COUNT LOOP
+          OPEN lock_cur( gt_tab_invent_seq_up(ln_i) );
+          CLOSE lock_cur;
+      END LOOP;
+    EXCEPTION
+      WHEN global_data_lock_expt THEN
+        -- カーソルCLOSE：納品ヘッダワークテーブルデータ取得
+        IF ( lock_cur%ISOPEN ) THEN
+          CLOSE lock_cur;
+        END IF;
+        RAISE global_data_lock_expt;
+    END;
+--****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
+   BEGIN
       FORALL ln_i in 1..gt_tab_invent_seq_up.COUNT SAVE EXCEPTIONS
         UPDATE xxcoi_inv_control
            SET inventory_status           = gv_inv_status,
@@ -2069,6 +2137,18 @@ AS
                    );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_error;
+--****************************** 2009/06/09 1.12 T.Kitajima ADD START ******************************--
+--
+    -- *** ロック エラー ***
+    WHEN global_data_lock_expt     THEN
+      ov_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  ct_xxcos_appl_short_name,
+        iv_name               =>  ct_msg_inv_lock_err
+      );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+--
+--****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
 --#####################################  固定部 START ##########################################
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
@@ -2168,6 +2248,9 @@ AS
       ,lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
     );
     IF ( lv_retcode = cv_status_error ) THEN
+--****************************** 2009/06/09 1.12 T.Kitajima ADD START ******************************--
+      gn_error_cnt  := 1;
+--****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
       RAISE global_common_expt;
     END IF;
     -- ===============================
@@ -2179,6 +2262,9 @@ AS
       ,lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
     );
     IF ( lv_retcode = cv_status_error ) THEN
+--****************************** 2009/06/09 1.12 T.Kitajima ADD START ******************************--
+      gn_error_cnt  := 1;
+--****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
       RAISE global_common_expt;
     END IF;
     -- ===============================
@@ -2192,6 +2278,11 @@ AS
       ,lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
     );
     IF ( lv_retcode != cv_status_normal ) THEN
+      IF ( lv_retcode = cv_status_error ) THEN
+--****************************** 2009/06/09 1.12 T.Kitajima ADD START ******************************--
+        gn_error_cnt  := 1;
+--****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
+      END IF;
       RAISE global_common_expt;
     END IF;
     -- ===============================
@@ -2203,6 +2294,9 @@ AS
       ,lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
     );
     IF ( lv_retcode = cv_status_error ) THEN
+--****************************** 2009/06/09 1.12 T.Kitajima ADD START ******************************--
+      gn_error_cnt  := 1;
+--****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
       RAISE global_common_expt;
     ELSIF ( lv_retcode = cv_status_warn ) THEN
       lv_err_emp := lv_retcode;
@@ -2216,6 +2310,9 @@ AS
       ,lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
     );
     IF ( lv_retcode = cv_status_error ) THEN
+--****************************** 2009/06/09 1.12 T.Kitajima ADD START ******************************--
+      gn_error_cnt  := 1;
+--****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
       gn_normal_cnt := 0;
       RAISE global_common_expt;
     END IF;
@@ -2228,6 +2325,9 @@ AS
       ,lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
     );
     IF ( lv_retcode = cv_status_error ) THEN
+--****************************** 2009/06/09 1.12 T.Kitajima ADD START ******************************--
+      gn_error_cnt  := 1;
+--****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
       gn_normal_cnt := 0;
       RAISE global_common_expt;
     END IF;
@@ -2242,6 +2342,9 @@ AS
       ,lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
     );
     IF ( lv_retcode = cv_status_error ) THEN
+--****************************** 2009/06/09 1.12 T.Kitajima ADD START ******************************--
+      gn_error_cnt  := 1;
+--****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
       gn_normal_cnt := 0;
       RAISE global_common_expt;
     END IF;
