@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A01C(body)
  * Description      : 社員データ取込処理
  * MD.050           : MD050_CMM_002_A01_社員データ取込
- * Version          : Issue3.15
+ * Version          : Issue3.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -108,6 +108,8 @@ AS
  *                                       ・出荷ロールマスタの有効開始日を「業務日付」->「発令日」に変更
  *  2010/03/02    1.17 SCS 久保島 豊     障害E_本稼動01810 対応
  *                                       ・PT対応 ユーザー職責マスタ(fnd_user_resp_groups_all)の取得方法変更
+ *  2010/11/29    1.18 SCS 仁木 重人     障害E_本稼動_05789 対応
+ *                                       ・ユーザーマスタのパスワード失効日を初期設定
  *
  *****************************************************************************************/
 --
@@ -275,6 +277,10 @@ AS
   cv_prf_zaimu_bumon_cd        CONSTANT VARCHAR2(30)  := 'XXCMM1_002A01_ZAIMU_BUMON_CD';   -- 財務経理部_部門コード
   cv_prf_aff_dept_cd           CONSTANT VARCHAR2(30)  := 'XXCMM1_AFF_DEPT_DUMMY_CD';       -- AFFダミー部門コード
 -- 2009/08/06 Ver1.10 障害0000510,0000910,0000924 add end by Yutaka.Kuboshima
+--
+-- 2010/11/29 Ver1.18 E_本稼動_05789 add start by Shigeto.Niki
+  cv_prf_pw_lifespan_days      CONSTANT VARCHAR2(30)  := 'XXCMM1_002A01_PW_LIFESPAN_DAYS'; -- パスワード失効日数
+-- 2010/11/29 Ver1.18 E_本稼動_05789 add end by Shigeto.Niki
   --
   -- トークン
   cv_cnt_token                 CONSTANT VARCHAR2(10)  := 'COUNT';              -- 件数メッセージ用トークン名
@@ -311,6 +317,10 @@ AS
   cv_prf_zaimu_bumon_cd_nm     CONSTANT VARCHAR2(40)  := '財務経理部_部門コード';
   cv_prf_aff_dept_cd_nm        CONSTANT VARCHAR2(40)  := 'AFF部門ダミーコード';
 -- 2009/08/06 Ver1.10 障害0000510,0000910,0000924 add end by Yutaka.Kuboshima
+--
+-- 2010/11/29 Ver1.18 E_本稼動_05789 add start by Shigeto.Niki
+  cv_prf_pw_lifespan_days_nm   CONSTANT VARCHAR2(40)  := 'パスワード失効日数';
+-- 2010/11/29 Ver1.18 E_本稼動_05789 add end by Shigeto.Niki
   cv_prf_password_nm           CONSTANT VARCHAR2(20)  := '初期パスワード';       -- プロファイル;
   cv_xxcmm1_in_if_nm           CONSTANT VARCHAR2(20)  := '社員インタフェース';   -- ファイル名
   cv_per_all_people_f_nm       CONSTANT VARCHAR2(20)  := '従業員マスタ';         -- ファイル名
@@ -621,6 +631,10 @@ AS
   gv_zaimu_bumon_cd            VARCHAR2(255);         -- 財務経理部_部門コード
   gv_aff_dept_cd               VARCHAR2(255);         -- AFFダミー部門コード
 -- 2009/08/06 Ver1.10 障害0000510,0000910,0000924 add end by Yutaka.Kuboshima
+--
+-- 2010/11/29 Ver1.18 E_本稼動_05789 add start by Shigeto.Niki
+  gn_pw_lifespan_days          NUMBER;                -- パスワード失効日数
+-- 2010/11/29 Ver1.18 E_本稼動_05789 add end by Shigeto.Niki
 --
   gf_file_hand                 UTL_FILE.FILE_TYPE;   -- ファイル・ハンドルの宣言
 --
@@ -1874,6 +1888,16 @@ AS
     END IF;
     --
 -- 2009/08/06 Ver1.10 障害0000510,0000910 add end by Yutaka.Kuboshima
+--
+-- 2010/11/29 Ver1.18 E_本稼動_05789 add start by Shigeto.Niki
+    -- パスワード失効日数取得
+    gn_pw_lifespan_days := FND_PROFILE.VALUE(cv_prf_pw_lifespan_days);
+    -- プロファイルが取得できない場合はエラー
+    IF (gn_pw_lifespan_days IS NULL) THEN
+      lv_token_value1 := cv_prf_pw_lifespan_days_nm;
+      RAISE global_process_expt;
+    END IF;
+-- 2010/11/29 Ver1.18 E_本稼動_05789 add end by Shigeto.Niki
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -7034,6 +7058,9 @@ AS
                                ,X_START_DATE            => ir_masters_rec.hire_date -- 入社年月日
                                ,X_END_DATE              => ir_masters_rec.actual_termination_date -- 退職年月日
                                ,X_DESCRIPTION           => ir_masters_rec.last_name -- カナ姓
+-- 2010/11/29 Ver1.18 E_本稼動_05789 add start by Shigeto.Niki
+                               ,X_PASSWORD_LIFESPAN_DAYS => gn_pw_lifespan_days -- パスワード失効日数
+-- 2010/11/29 Ver1.18 E_本稼動_05789 add end by Shigeto.Niki
                                ,X_EMPLOYEE_ID           => ir_masters_rec.person_id --HR_EMPLOYEE_API.CREATE_EMPLOYEEの出力項目のP_PERSON_ID
                                );
     --
