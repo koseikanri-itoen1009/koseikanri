@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼確定関数(BODY)
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_EDO_BPO_40D_出荷依頼確定関数
- * Version                : 1.28
+ * Version                : 1.30
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *  2009/04/16    1.27  Y.Kazama         本番障害#1398対応
  *  2009/05/14    1.28  H.Itou           本番障害#1398対応
  *  2009/08/31    1.29  D.Sugahara       本番障害#1601対応
+ *  2009/11/12    1.30  H.Itou           本番障害#1648
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1225,14 +1226,23 @@ AS
     ||  ' AND   ximv2.end_date_active     >= NVL(''' || id_schedule_ship_date || ''',NVL(xoha.shipped_date,xoha.schedule_ship_date)) '
                                 -- OPM品目アドオンマスタ.適用終了日≧パラメータ. 出庫日かつ
 -- Ver1.24 M.Hokkanji End
-    ||  ' AND   xcav.account_status      =  ''' || gv_status_A || '''' --（有効）
+-- Ver1.30 H.Itou Del Start 本番障害#1648
+--    ||  ' AND   xcav.account_status      =  ''' || gv_status_A || '''' --（有効）
+-- Ver1.30 H.Itou Del End
     ||  ' AND   xottv.start_date_active  <= NVL(''' || id_schedule_ship_date || ''',NVL(xoha.shipped_date,xoha.schedule_ship_date)) '
     ||  ' AND  (xottv.end_date_active    IS NULL '
     ||  ' OR    xottv.end_date_active    >= NVL(''' || id_schedule_ship_date || ''',NVL(xoha.shipped_date,xoha.schedule_ship_date))) '
     ||  ' AND   xsmv.ship_method_code(+) = NVL(xoha.result_shipping_method_code,xoha.shipping_method_code) '
     ||  ' AND   xsmv.start_date_active(+)  <= NVL(''' || id_schedule_ship_date || ''',NVL(xoha.shipped_date,xoha.schedule_ship_date)) '
     ||  ' AND  (xsmv.end_date_active(+)    >= NVL(''' || id_schedule_ship_date || ''',NVL(xoha.shipped_date,xoha.schedule_ship_date))) ';
-
+-- Ver1.30 H.Itou Add Start 本番障害#1648
+    -- ステータスチェック区分が「2」の場合、顧客ステータスの制御は画面に入っているため、顧客ステータスの条件は不要
+    -- ※実績入力画面で顧客ステータスが無効ののデータを入力できる。
+    IF (iv_status_kbn = '1') THEN
+      lv_select := lv_select ||
+        ' AND   xcav.account_status      =  ''' || gv_status_A || ''''; --（有効）
+    END IF;
+-- Ver1.30 H.Itou Add End
     lv_select_other :=
     '  ORDER BY xoha.request_no, xola.shipping_item_code '  -- 依頼No,品目コード
     || '  FOR UPDATE OF xoha.req_status NOWAIT';

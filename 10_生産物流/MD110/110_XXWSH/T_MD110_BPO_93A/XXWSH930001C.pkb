@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.58
+ * Version          : 1.59
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -157,6 +157,7 @@ AS
  *                                                         配送NoがNULLの場合、配送No単位エラーは依頼Noごとのエラーとなるよう修正
  *  2009/06/08    1.57 SCS    伊藤ひとみ 本番障害対応#1369 1回の取込で実績を二重上げてしまった場合、品目重複エラーとなるよう修正
  *  2009/10/02    1.58 SCS    伊藤ひとみ 本番障害対応#1144 ロット管理外品で黒データ作成時に出荷実績IF済フラグを常にNに設定するよう修正
+ *  2009/10/07    1.59 SCS    伊藤ひとみ 本番障害対応#1648,1345 顧客ステータスを条件としないよう修正,顧客発注番号チェック廃止
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1728,7 +1729,9 @@ AS
           WHERE   xcav.party_number   = gr_interface_info_rec(in_idx).base_code  -- 管轄拠点
 -- 2009/02/03 本番障害#1101 MOD END
           AND     xcav.party_status   = gv_view_status   -- 組織ステータス = '有効'
-          AND     xcav.account_status = gv_view_status   -- 顧客ステータス = '有効'
+-- 2009/10/07 H.Itou Del Start 本番障害#1648
+--          AND     xcav.account_status = gv_view_status   -- 顧客ステータス = '有効'
+-- 2009/10/07 H.Itou Del End
           AND     xcav.start_date_active <= TRUNC(gr_interface_info_rec(in_idx).shipped_date)  -- 適用開始日 <= 出荷日
           AND     xcav.end_date_active   >= TRUNC(gr_interface_info_rec(in_idx).shipped_date)  -- 適用終了日 >= 出荷日
 -- 2009/03/30 H.Iida Add Start 本番障害#1346対応
@@ -1777,7 +1780,9 @@ AS
           AND     xcas2v.end_date_active   >= TRUNC(gr_interface_info_rec(in_idx).shipped_date) -- 適用終了日 >= IF_H.出荷日
           AND     xcas2v.party_id     = xcav.party_id    -- パーティーID=パーティーID
           AND     xcav.party_status   = gv_view_status   -- 組織ステータス = '有効'
-          AND     xcav.account_status = gv_view_status   -- 顧客ステータス = '有効'
+-- 2009/10/07 H.Itou Del Start 本番障害#1648
+--          AND     xcav.account_status = gv_view_status   -- 顧客ステータス = '有効'
+-- 2009/10/07 H.Itou Del End
           AND     xcav.start_date_active <= TRUNC(gr_interface_info_rec(in_idx).shipped_date)  -- 適用開始日 <= 出荷日
           AND     xcav.end_date_active   >= TRUNC(gr_interface_info_rec(in_idx).shipped_date)  -- 適用終了日 >= 出荷日
 -- 2009/03/30 H.Iida Add Start 本番障害#1346対応
@@ -6575,50 +6580,52 @@ AS
         IF (lt_cust_po_number IS NOT NULL) THEN
           lv_dterr_flg := gv_date_chk_0;   -- フラグ初期化
 --
-          BEGIN
-            SELECT  TO_NUMBER(REPLACE(lt_cust_po_number, '.', '*'))  -- 数字チェック
-            INTO    lt_cust_po_number
-            FROM    DUAL;
-          EXCEPTION
-            WHEN OTHERS THEN
-              lv_dterr_flg := gv_date_chk_1;   -- フラグON
-          END;
---
-          IF (LENGTHB(lt_cust_po_number) > 9) THEN    -- 桁数チェック(9桁以内ならOK)
-            lv_dterr_flg := gv_date_chk_1;     -- フラグON
-          END IF;
---
-          IF (lv_dterr_flg = gv_date_chk_1) THEN
-            lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
-                           gv_msg_kbn         -- 'XXWSH'
-                          ,gv_msg_93a_156     -- 顧客発注番号エラーメッセージ
-                          ,gv_param1_token
-                          ,gr_interface_info_rec(i).delivery_no           --IF_H.配送No
-                          ,gv_param2_token
-                          ,gr_interface_info_rec(i).order_source_ref      --IF_H.受注ソース参照
-                          ,gv_param3_token
-                          ,gr_interface_info_rec(i).cust_po_number        --IF_H.顧客発注番号
-                                                             )
-                                                             ,1
-                                                             ,5000);
---
-            --配送NO-EOSデータ種別単位にエラーflagセット
-            set_deliveryno_unit_errflg(
-              lt_delivery_no,         -- 配送No
-              gr_interface_info_rec(i).eos_data_type,  -- EOSデータ種別
-              gv_err_class,           -- エラー種別：エラー
-              lv_msg_buff,            -- エラー・メッセージ(出力用)
-              lv_errbuf,              -- エラー・メッセージ           --# 固定 #
-              lv_retcode,             -- リターン・コード             --# 固定 #
-              lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
-            );
---
-            -- エラーフラグ
-            ln_err_flg := 1;
-            -- 処理ステータス：警告
-            ov_retcode := gv_status_warn;
---
-          END IF;
+-- 2009/10/07 H.Itou Del Start 本番障害#1345
+--          BEGIN
+--            SELECT  TO_NUMBER(REPLACE(lt_cust_po_number, '.', '*'))  -- 数字チェック
+--            INTO    lt_cust_po_number
+--            FROM    DUAL;
+--          EXCEPTION
+--            WHEN OTHERS THEN
+--              lv_dterr_flg := gv_date_chk_1;   -- フラグON
+--          END;
+----
+--          IF (LENGTHB(lt_cust_po_number) > 9) THEN    -- 桁数チェック(9桁以内ならOK)
+--            lv_dterr_flg := gv_date_chk_1;     -- フラグON
+--          END IF;
+----
+--          IF (lv_dterr_flg = gv_date_chk_1) THEN
+--            lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+--                           gv_msg_kbn         -- 'XXWSH'
+--                          ,gv_msg_93a_156     -- 顧客発注番号エラーメッセージ
+--                          ,gv_param1_token
+--                          ,gr_interface_info_rec(i).delivery_no           --IF_H.配送No
+--                          ,gv_param2_token
+--                          ,gr_interface_info_rec(i).order_source_ref      --IF_H.受注ソース参照
+--                          ,gv_param3_token
+--                          ,gr_interface_info_rec(i).cust_po_number        --IF_H.顧客発注番号
+--                                                             )
+--                                                             ,1
+--                                                             ,5000);
+----
+--            --配送NO-EOSデータ種別単位にエラーflagセット
+--            set_deliveryno_unit_errflg(
+--              lt_delivery_no,         -- 配送No
+--              gr_interface_info_rec(i).eos_data_type,  -- EOSデータ種別
+--              gv_err_class,           -- エラー種別：エラー
+--              lv_msg_buff,            -- エラー・メッセージ(出力用)
+--              lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+--              lv_retcode,             -- リターン・コード             --# 固定 #
+--              lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+--            );
+----
+--            -- エラーフラグ
+--            ln_err_flg := 1;
+--            -- 処理ステータス：警告
+--            ov_retcode := gv_status_warn;
+----
+--          END IF;
+-- 2009/10/07 H.Itou Del End
 --
         END IF;
 --
@@ -16485,7 +16492,9 @@ AS
         AND     xoha.request_no           = iv_request_no           -- 依頼No       -- 2008/12/07 本番障害#470 Add
         AND     xoha.latest_external_flag = gv_yesno_y
         AND     xca.party_status          = gv_view_status
-        AND     xca.account_status        = gv_view_status
+-- 2009/10/07 H.Itou Del Start 本番障害#1648
+--        AND     xca.account_status        = gv_view_status
+-- 2009/10/07 H.Itou Del End
 -- 2009/03/30 H.Iida Add Start 本番障害#1346対応
         -- 顧客区分'1', '10'のみ抽出
         AND     xca.customer_class_code IN ('1', '10')

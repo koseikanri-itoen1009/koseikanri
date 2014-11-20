@@ -6,7 +6,10 @@ CREATE OR REPLACE VIEW xxwsh_input_branch_dept_lov_v
 AS
   SELECT xca.party_number
         ,xca.party_short_name
-  FROM   xxcmn_cust_accounts_v xca
+-- 2009/10/05 H.Itou Mod Start ñ{î‘è·äQ#1648
+--  FROM   xxcmn_cust_accounts_v xca
+  FROM   xxcmn_cust_accounts3_v xca
+-- 2009/10/05 H.Itou Mod End
   WHERE  xca.customer_class_code='1'
   UNION ALL
   SELECT  xlv.location_code
