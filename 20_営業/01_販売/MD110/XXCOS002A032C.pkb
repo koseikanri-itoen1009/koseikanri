@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A032C (body)
  * Description      : 営業成績表集計
  * MD.050           : 営業成績表集計 MD050_COS_002_A03
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  2010/04/16    1.13  D.Abe            [E_本稼動_02270]対応 拠点計顧客軒数を追加
  *  2010/05/18    1.14  D.Abe            [E_本稼動_02767]対応 PT対応（xxcos_rs_info2_vを変更）
  *  2010/12/14    1.15  K.Kiriu          [E_本稼動_05671]対応 PT対応（有効訪問ビューの関数を外だしにする）
+ *  2011/03/03    1.16  H.Sasaki         [E_本稼動_06700]対応 PT対応（未訪問客ビューのNOT EXISTSを変更）
  *****************************************************************************************/
 --
 --#######################  固定プライベート定数宣言部 START   #######################
@@ -3280,34 +3281,52 @@ AS
                                                   DECODE(it_account_idx,  cn_this_month,  hzpt.duns_number_c
                                                                                        ,  xcac.past_customer_status)
               AND     xlva.attribute6             =       cv_yes
-              AND NOT EXISTS  (
-/* 2009/04/28 Ver1.4 Mod Start */
---                              SELECT  task.ROWID
---                              FROM    jtf_tasks_b                   task
-                              SELECT  task.task_id
-/* 2010/12/14 Ver1.15 Mod Start */
---                              FROM    xxcso_visit_actual_v task
-                              FROM    xxcos_visit_actual_v task
-/* 2010/12/14 Ver1.15 Mod End   */
-/* 2009/04/28 Ver1.4 Mod End   */
-                              WHERE   task.actual_end_date          >=      it_account_info.from_date
-                              AND     task.actual_end_date          <       it_account_info.base_date + 1
-/* 2009/04/28 Ver1.4 Del Start */
---                              AND     task.source_object_type_code  =       ct_task_obj_type_party
---                              AND     task.owner_type_code          =       ct_task_own_type_employee
---                              AND     task.deleted_flag             =       cv_no
-/* 2009/04/28 Ver1.4 Del End   */
-/* 2009/04/28 Ver1.4 Mod Start */
---                              AND     task.source_object_id         =       xsal.party_id
-                              AND     task.party_id                 =       xsal.party_id
-/* 2009/04/28 Ver1.4 Mod End   */
---                              AND     task.owner_id                 =       xsal.resource_id
-/* 2010/12/14 Ver1.15 Add Start */
-                              AND     task.task_status_id           =       gt_prof_task_status_id
-                              AND     task.task_type_id             =       gt_prof_task_type_id
-/* 2010/12/14 Ver1.15 Add End   */
-                              AND     ROWNUM                        =       1
-                              )
+/* 2011/03/03 Ver1.16 Mod Start */
+--              AND NOT EXISTS  (
+----/* 2009/04/28 Ver1.4 Mod Start */
+----                              SELECT  task.ROWID
+----                              FROM    jtf_tasks_b                   task
+--                              SELECT  task.task_id
+--/* 2010/12/14 Ver1.15 Mod Start */
+----                              FROM    xxcso_visit_actual_v task
+--                              FROM    xxcos_visit_actual_v task
+--/* 2010/12/14 Ver1.15 Mod End   */
+--/* 2009/04/28 Ver1.4 Mod End   */
+--                              WHERE   task.actual_end_date          >=      it_account_info.from_date
+--                              AND     task.actual_end_date          <       it_account_info.base_date + 1
+--/* 2009/04/28 Ver1.4 Del Start */
+----                              AND     task.source_object_type_code  =       ct_task_obj_type_party
+----                              AND     task.owner_type_code          =       ct_task_own_type_employee
+----                              AND     task.deleted_flag             =       cv_no
+--/* 2009/04/28 Ver1.4 Del End   */
+--/* 2009/04/28 Ver1.4 Mod Start */
+----                              AND     task.source_object_id         =       xsal.party_id
+--                              AND     task.party_id                 =       xsal.party_id
+--/* 2009/04/28 Ver1.4 Mod End   */
+----                              AND     task.owner_id                 =       xsal.resource_id
+--/* 2010/12/14 Ver1.15 Add Start */
+--                              AND     task.task_status_id           =       gt_prof_task_status_id
+--                              AND     task.task_type_id             =       gt_prof_task_type_id
+--/* 2010/12/14 Ver1.15 Add End   */
+--                              AND     ROWNUM                        =       1
+--                              )
+              AND     0 = NVL(
+                              ( SELECT  /*+
+                                         USE_NL(task.jtb2)
+                                         INDEX_DESC(task.jtb  XXCSO_JTF_TASKS_B_N20) 
+                                         INDEX_DESC(task.jtb2 XXCSO_JTF_TASKS_B_N20) 
+                                        */
+                                        1
+                                FROM    xxcos_visit_actual_v  task
+                                WHERE   TRUNC(task.actual_end_date)   >=  it_account_info.from_date
+                                AND     TRUNC(task.actual_end_date)   <   it_account_info.base_date + 1
+                                AND     task.source_object_id         =   xsal.party_id
+                                AND     task.task_status_id           =   gt_prof_task_status_id
+                                AND     task.task_type_id             =   gt_prof_task_type_id
+                                AND     ROWNUM                        =   1
+                              ), 0
+                          )
+/* 2011/03/03 Ver1.16 Mod End   */
               GROUP BY
                       xrsi.base_code,
                       xrsi.employee_number
