@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *                                         (ＢＭ１～３の入力が無い、又は0の場合は処理を行
  *                                         わない)
  *  2009-03-24    1.1   Kazuo.Satomura   システムテスト障害(障害番号T1_0135,0136,0140)
+ *  2009-04-02    1.2   Kazuo.Satomura   システムテスト障害(障害番号T1_0227)
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -1533,7 +1534,10 @@ AS
       FROM   xxcso_destinations     xde -- 送付先テーブル
             ,xx03_vendors_interface xvi -- ベンダー中間I/Fテーブル
       WHERE  xde.contract_management_id = it_contract_management_id  -- 自動販売機設置契約書ＩＤ
-      AND    xvi.vndr_vendor_name       LIKE xde.payment_name || '%' -- 仕入先名
+      /* 2009.04.02 K.Satomura 障害番号T1_0227対応 START */
+      --AND    xvi.vndr_vendor_name       LIKE xde.payment_name || '%' -- 仕入先名
+      AND    xvi.vndr_vendor_name       = xde.payment_name           -- 仕入先名
+      /* 2009.04.02 K.Satomura 障害番号T1_0227対応 END */
       AND    xvi.status_flag            = cv_status_flag             -- ステータスフラグ
       AND    xvi.request_id             = in_request_id              -- 要求ＩＤ
       ;
@@ -1709,7 +1713,10 @@ AS
         SELECT pve.vendor_id vendor_id -- 仕入先ＩＤ
         INTO   lt_vendor_id
         FROM   po_vendors pve -- 仕入先マスタ
-        WHERE  pve.vendor_name LIKE lt_destinations_rec.payment_name || '%'
+        /* 2009.04.02 K.Satomura 障害番号T1_0227対応 START */
+        --WHERE  pve.vendor_name LIKE lt_destinations_rec.payment_name || '%'
+        WHERE  pve.vendor_name = lt_destinations_rec.payment_name
+        /* 2009.04.02 K.Satomura 障害番号T1_0227対応 END */
         ;
         --
       EXCEPTION
