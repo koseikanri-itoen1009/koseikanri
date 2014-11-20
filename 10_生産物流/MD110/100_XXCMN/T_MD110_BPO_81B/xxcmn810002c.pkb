@@ -7,12 +7,14 @@ AS
  * Description      : 品目マスタ更新(日次)
  * MD.050           : 品目マスタ T_MD050_BPO_810
  * MD.070           : 品目マスタ更新(日次)(81B) T_MD070_BPO_81B
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
+ *  proc_mtl_categories    品目カテゴリ登録処理  2008/09/24 Add
+ *  proc_item_category     品目割当登録処理      2008/09/24 Add
  *  parameter_check        パラメータ抽出処理                        (B-1)
  *  put_item_mst           OPM品目アドオンマスタ情報格納             (B-3)
  *  put_gmi_item_g         品目カテゴリマスタ情報格納(群コード)      (B-4)
@@ -34,6 +36,7 @@ AS
  *  2008/05/02    1.1   H.Marushita      内部変更要求No.81対応
  *  2008/05/20    1.2   H.Marushita      内部変更要求No.105対応
  *  2008/09/11    1.3   Oracle 山根一浩  指摘115対応
+ *  2008/09/24    1.4   Oracle 山根一浩  T_S_421対応
  *
  *****************************************************************************************/
 --
@@ -102,19 +105,44 @@ AS
   gv_tkn_name_03      CONSTANT VARCHAR2(50) := '群コード';
                                                                     -- プロファイル：工場群コード
   gv_tkn_name_04      CONSTANT VARCHAR2(50) := '工場群コード';
+--2008/09/24 Add
+  gv_tkn_name_05      CONSTANT VARCHAR2(50) := 'XXCMN_IC_DEF_CROWD_CODE';
+  gv_tkn_name_06      CONSTANT VARCHAR2(50) := 'XXCMN_IC_DEF_POLICY_CODE';
+  gv_tkn_name_07      CONSTANT VARCHAR2(50) := 'XXCMN_IC_DEF_MARKET_CODE';
+  gv_tkn_name_08      CONSTANT VARCHAR2(50) := 'XXCMN_IC_DEF_ACNT_CROWD_CODE';
+  gv_tkn_name_09      CONSTANT VARCHAR2(50) := 'XXCMN_IC_DEF_FACTORY_CODE';
+  gv_tkn_name_10      CONSTANT VARCHAR2(50) := '初期値：群コード';
+  gv_tkn_name_11      CONSTANT VARCHAR2(50) := '初期値：政策群コード';
+  gv_tkn_name_12      CONSTANT VARCHAR2(50) := '初期値：マーケ用群コード';
+  gv_tkn_name_13      CONSTANT VARCHAR2(50) := '初期値：経理部用群コード';
+  gv_tkn_name_14      CONSTANT VARCHAR2(50) := '初期値：工場群コード';
 --
   -- メッセージ
   gv_msg_xxcmn10002   CONSTANT VARCHAR2(15) := 'APP-XXCMN-10002';   -- プロファイル取得エラー
   gv_msg_xxcmn10019   CONSTANT VARCHAR2(15) := 'APP-XXCMN-10019';   -- ロック取得エラー
   gv_msg_xxcmn10083   CONSTANT VARCHAR2(15) := 'APP-XXCMN-10083';   -- パラメータ日付型チェックNG
   gv_msg_xxcmn10084   CONSTANT VARCHAR2(15) := 'APP-XXCMN-10084';   -- パラメータNULLチェックNG
+--2008/09/24 Add
+  gv_msg_xxcmn10085   CONSTANT VARCHAR2(15) := 'APP-XXCMN-10018';   --APIエラー(コンカレント)
 --
   -- トークン
   gv_tkn_table        CONSTANT VARCHAR2(10) := 'TABLE';             -- トークン：テーブル名
   gv_tkn_profile      CONSTANT VARCHAR2(10) := 'NG_PROFILE';        -- トークン：プロファイル名
+--2008/09/24 Add
+  gv_tkn_api_name     CONSTANT VARCHAR2(15) := 'API_NAME';          -- トークン：API名
 --
   gn_data_status_nomal  CONSTANT  NUMBER := 0;                      -- 正常
   gn_data_status_error  CONSTANT  NUMBER := 1;                      -- 異常
+--2008/09/24 Add
+  gn_proc_flg_01        CONSTANT  NUMBER := 1;                      -- 郡コード
+  gn_proc_flg_02        CONSTANT  NUMBER := 2;                      -- 工場群コード
+--
+  gv_crowd_code         CONSTANT VARCHAR2(50) := '群コード';
+  gv_policy_group_code  CONSTANT VARCHAR2(50) := '政策群コード';
+  gv_marke_crowd_code   CONSTANT VARCHAR2(50) := 'マーケ用群コード';
+  gv_acnt_crowd_code    CONSTANT VARCHAR2(50) := '経理部用群コード';
+  gv_factory_code       CONSTANT VARCHAR2(50) := '工場群コード';
+--2008/09/24 Add
 --
   -- xxcmn共通関数リターン・コード：1(エラー)
   gn_rel_code         CONSTANT NUMBER       := 1;
@@ -257,6 +285,473 @@ AS
   gv_program_application_id VARCHAR2(100);        -- プログラムアプリケーションID
   gv_program_id             VARCHAR2(100);        -- プログラムID
   gd_program_update_date    DATE;                 -- プログラム更新日
+--2008/09/11 Add
+  -- 郡コード初期値
+  gv_def_crowd_code         VARCHAR2(20);         -- 初期値：群コード
+  gv_def_policy_code        VARCHAR2(20);         -- 初期値：政策群コード
+  gv_def_market_code        VARCHAR2(20);         -- 初期値：マーケ用群コード
+  gv_def_acnt_crowd_code    VARCHAR2(20);         -- 初期値：経理部用群コード
+  gv_def_factory_code       VARCHAR2(20);         -- 初期値：工場群コード
+--
+-- 2008/09/24 Add ↓
+  /***********************************************************************************
+   * Procedure Name   : proc_mtl_categories
+   * Description      : 品目カテゴリの登録処理を行います。
+   ***********************************************************************************/
+  PROCEDURE proc_mtl_categories(
+    ir_item01_rec   IN     master_item01_rec,   -- OPM品目マスタレコード
+    in_proc_flg     IN     NUMBER,              -- 処理フラグ
+    ov_errbuf          OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode         OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg          OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'proc_mtl_categories'; -- プログラム名
+--
+--##############################  固定ローカル変数宣言部 START   ##################################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--#####################################  固定部 END   #############################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_lang                 CONSTANT VARCHAR2(5)    := USERENV('LANG');                    -- 日本語
+--
+    -- *** ローカル変数 ***
+    ln_category_set_id     mtl_category_sets_b.category_set_id%TYPE;
+    ln_structure_id        mtl_category_sets_b.structure_id%TYPE;
+    lv_category_set_name   mtl_category_sets_tl.category_set_name%TYPE;
+    lr_category_rec        INV_ITEM_CATEGORY_PUB.CATEGORY_REC_TYPE;
+    ln_category_id         NUMBER;
+    lv_return_status       VARCHAR2(30);
+    ln_errorcode           NUMBER;
+    ln_msg_count           NUMBER;
+    lv_msg_data            VARCHAR2(2000);
+    lv_api_name            VARCHAR2(200);
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--################################  固定ステータス初期化部 START   ################################
+--
+    ov_retcode := gv_status_normal;
+--
+--#####################################  固定部 END   #############################################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 郡コード
+    IF (in_proc_flg = gn_proc_flg_01) THEN
+      lv_category_set_name := gv_group_code;
+--
+    -- 工場郡コード
+    ELSIF (in_proc_flg = gn_proc_flg_02) THEN
+      lv_category_set_name := gv_whse_county_code;
+    END IF;
+--
+    BEGIN
+      SELECT mcsb.category_set_id,                  -- カテゴリセットID
+             mcsb.structure_id                      -- 構造ID
+      INTO   ln_category_set_id,
+             ln_structure_id
+      FROM   mtl_category_sets_b   mcsb,
+             mtl_category_sets_tl  mcst
+      WHERE  mcsb.category_set_id   = mcst.category_set_id
+      AND    mcst.language          = cv_lang
+      AND    mcst.source_lang       = cv_lang
+      AND    mcst.category_set_name = lv_category_set_name;
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        RAISE global_api_others_expt;
+      WHEN OTHERS THEN
+        RAISE global_api_others_expt;
+    END;
+--
+    lr_category_rec.structure_id := ln_structure_id;
+--
+    -- 郡コード
+    IF (in_proc_flg = 1) THEN
+      lr_category_rec.segment1     := ir_item01_rec.attribute2;
+    -- 工場郡コード
+    ELSIF (in_proc_flg = 2) THEN
+      lr_category_rec.segment1     := ir_item01_rec.whse_county_code;
+    END IF;
+--
+    lr_category_rec.summary_flag := 'N';
+    lr_category_rec.enabled_flag := 'Y';
+--
+    lr_category_rec.web_status := NULL;
+    lr_category_rec.supplier_enabled_flag := NULL;
+--
+    -- 品目カテゴリマスタ登録
+    INV_ITEM_CATEGORY_PUB.CREATE_CATEGORY(
+       P_API_VERSION      => 1.0
+      ,P_INIT_MSG_LIST    => FND_API.G_FALSE
+      ,P_COMMIT           => FND_API.G_FALSE
+      ,X_RETURN_STATUS    => lv_return_status
+      ,X_ERRORCODE        => ln_errorcode
+      ,X_MSG_COUNT        => ln_msg_count
+      ,X_MSG_DATA         => lv_msg_data
+      ,P_CATEGORY_REC     => lr_category_rec
+      ,X_CATEGORY_ID      => ln_category_id
+    );
+--
+    -- 失敗
+    IF (lv_return_status <> FND_API.G_RET_STS_SUCCESS) THEN
+      lv_api_name := 'INV_ITEM_CATEGORY_PUB.CREATE_CATEGORY';
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                            gv_msg_xxcmn10085,
+                                            gv_tkn_api_name,
+                                            lv_api_name);
+--
+      lv_msg_data := lv_errmsg;
+--
+      xxcmn_common_pkg.put_api_log(
+                  lv_errbuf,
+                  lv_retcode,
+                  lv_errmsg);
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+      lv_errmsg := lv_msg_data;
+      lv_errbuf := lv_msg_data;
+      RAISE global_api_expt;
+    END IF;
+--
+    -- 郡コード
+    IF (in_proc_flg = gn_proc_flg_01) THEN
+      gt_gm_item_id_g(gn_target_cnt)         := ir_item01_rec.item_id;
+      gt_gm_category_set_id_g(gn_target_cnt) := ln_category_set_id;
+      gt_gm_category_id_g(gn_target_cnt)     := ln_category_id;
+--
+    -- 工場郡コード
+    ELSIF (in_proc_flg = gn_proc_flg_02) THEN
+      gt_gm_item_id_k(gn_target_cnt)         := ir_item01_rec.item_id;
+      gt_gm_category_set_id_k(gn_target_cnt) := ln_category_set_id;
+      gt_gm_category_id_k(gn_target_cnt)     := ln_category_id;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   #######################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   #############################################
+--
+  END proc_mtl_categories;
+--
+  /***********************************************************************************
+   * Procedure Name   : proc_item_category
+   * Description      : 品目割当の登録処理を行います。
+   ***********************************************************************************/
+  PROCEDURE proc_item_category(
+    ir_item01_rec   IN     master_item01_rec,   -- OPM品目マスタレコード
+    ov_errbuf          OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode         OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg          OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'proc_item_category'; -- プログラム名
+--
+--##############################  固定ローカル変数宣言部 START   ##################################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--#####################################  固定部 END   #############################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_lang                 CONSTANT VARCHAR2(5)    := USERENV('LANG');             -- 日本語
+--
+    -- *** ローカル変数 ***
+    ln_cnt            NUMBER;
+    ln_category_id    mtl_categories_b.category_id%TYPE;
+    lv_segment1       mtl_categories_b.segment1%TYPE;
+    lt_category_rec   INV_ITEM_CATEGORY_PUB.CATEGORY_REC_TYPE;
+    lv_return_status  VARCHAR2(30);
+    ln_errorcode      NUMBER;
+    ln_msg_count      NUMBER;
+    lv_msg_data       VARCHAR2(2000);
+    lv_api_name       VARCHAR2(200);
+--
+    -- *** ローカル・カーソル ***
+    CURSOR category_cur
+    IS
+       SELECT mcsb.category_set_id,
+              mcst.description,
+              mcsb.structure_id
+       FROM   mtl_category_sets_tl mcst,
+              mtl_category_sets_b  mcsb
+       WHERE  mcsb.category_set_id = mcst.category_set_id
+       AND    mcst.language        = cv_lang
+       AND    mcst.source_lang     = cv_lang
+       AND    mcst.description IN (
+                                   gv_crowd_code,              -- 群コード
+                                   gv_policy_group_code,       -- 政策群コード
+                                   gv_marke_crowd_code,        -- マーケ用群コード
+                                   gv_acnt_crowd_code,         -- 経理部用群コード
+                                   gv_factory_code             -- 工場群コード
+                                  )
+       ;
+--
+    -- *** ローカル・レコード ***
+    lr_category_rec category_cur%ROWTYPE;
+--
+  BEGIN
+--
+--################################  固定ステータス初期化部 START   ################################
+--
+    ov_retcode := gv_status_normal;
+--
+--#####################################  固定部 END   #############################################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    OPEN category_cur;
+--
+    <<category_loop>>
+    LOOP
+      FETCH category_cur INTO lr_category_rec;
+      EXIT WHEN category_cur%NOTFOUND;
+--
+      BEGIN
+        SELECT COUNT(1)
+        INTO   ln_cnt
+        FROM   gmi_item_categories  gic
+        WHERE  gic.item_id         = ir_item01_rec.item_id
+        AND    gic.category_set_id = lr_category_rec.category_set_id
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          ln_cnt := 0;
+        WHEN OTHERS THEN
+          RAISE global_api_others_expt;
+      END;
+--
+      -- 存在しない
+      IF (ln_cnt = 0) THEN
+--
+        lt_category_rec.structure_id := lr_category_rec.structure_id;
+--
+        -- 群コード
+        IF (lr_category_rec.description = gv_crowd_code) THEN
+          lt_category_rec.segment1 := gv_def_crowd_code;
+--
+        -- 政策群コード
+        ELSIF (lr_category_rec.description = gv_policy_group_code) THEN
+          lt_category_rec.segment1 := gv_def_policy_code;
+--
+        -- マーケ用群コード
+        ELSIF (lr_category_rec.description = gv_marke_crowd_code) THEN
+          lt_category_rec.segment1 := gv_def_market_code;
+--
+        -- 経理部用群コード
+        ELSIF (lr_category_rec.description = gv_acnt_crowd_code) THEN
+          lt_category_rec.segment1 := gv_def_acnt_crowd_code;
+--
+        -- 工場群コード
+        ELSIF (lr_category_rec.description = gv_factory_code) THEN
+          lt_category_rec.segment1 := gv_def_factory_code;
+        END IF;
+--
+        lt_category_rec.summary_flag := 'N';
+        lt_category_rec.enabled_flag := 'Y';
+--
+        lt_category_rec.web_status := NULL;
+        lt_category_rec.supplier_enabled_flag := NULL;
+--
+        BEGIN
+          SELECT COUNT(1)
+          INTO   ln_cnt
+          FROM   mtl_categories_b mcb
+          WHERE  mcb.structure_id = lt_category_rec.structure_id
+          AND    mcb.segment1     = lt_category_rec.segment1
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            ln_cnt := 0;
+          WHEN OTHERS THEN
+            RAISE global_api_others_expt;
+        END;
+--
+        -- 存在しない
+        IF (ln_cnt = 0) THEN
+--
+          -- 品目カテゴリマスタ登録
+          INV_ITEM_CATEGORY_PUB.CREATE_CATEGORY(
+             P_API_VERSION      => 1.0
+            ,P_INIT_MSG_LIST    => FND_API.G_FALSE
+            ,P_COMMIT           => FND_API.G_FALSE
+            ,X_RETURN_STATUS    => lv_return_status
+            ,X_ERRORCODE        => ln_errorcode
+            ,X_MSG_COUNT        => ln_msg_count
+            ,X_MSG_DATA         => lv_msg_data
+            ,P_CATEGORY_REC     => lt_category_rec
+            ,X_CATEGORY_ID      => ln_category_id
+          );
+--
+          -- 失敗
+          IF (lv_return_status <> FND_API.G_RET_STS_SUCCESS) THEN
+            lv_api_name := 'INV_ITEM_CATEGORY_PUB.CREATE_CATEGORY';
+            lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                                  gv_msg_xxcmn10085,
+                                                  gv_tkn_api_name,
+                                                  lv_api_name);
+--
+            lv_msg_data := lv_errmsg;
+--
+            xxcmn_common_pkg.put_api_log(
+                        lv_errbuf,
+                        lv_retcode,
+                        lv_errmsg);
+--
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE global_api_expt;
+            END IF;
+--
+            lv_errmsg := lv_msg_data;
+            lv_errbuf := lv_msg_data;
+            RAISE global_api_expt;
+          END IF;
+--
+        -- 存在する
+        ELSE
+          BEGIN
+            SELECT mcb.category_id
+            INTO   ln_category_id
+            FROM   mtl_categories_b mcb
+            WHERE  mcb.structure_id = lt_category_rec.structure_id
+            AND    mcb.segment1     = lt_category_rec.segment1
+            ;
+          EXCEPTION
+            WHEN OTHERS THEN
+              RAISE global_api_others_expt;
+          END;
+        END IF;
+--
+        -- 存在チェック
+        BEGIN
+          SELECT COUNT(1)
+          INTO   ln_cnt
+          FROM   gmi_item_categories
+          WHERE  item_id         = ir_item01_rec.item_id
+          AND    category_set_id = lr_category_rec.category_set_id
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            ln_cnt := 0;
+          WHEN OTHERS THEN
+            RAISE global_api_others_expt;
+        END;
+--
+        -- 存在しない
+        IF (ln_cnt = 0) THEN
+          INSERT INTO gmi_item_categories
+             (item_id
+             ,category_set_id
+             ,category_id
+             ,created_by
+             ,creation_date
+             ,last_updated_by
+             ,last_update_date
+             ,last_update_login)
+          VALUES (
+              ir_item01_rec.item_id
+             ,lr_category_rec.category_set_id
+             ,ln_category_id
+             ,TO_NUMBER(gv_last_update_by)
+             ,gd_last_update_date
+             ,TO_NUMBER(gv_last_update_by)
+             ,gd_last_update_date
+             ,TO_NUMBER(gv_last_update_login)
+          );
+        END IF;
+--
+--        gt_gm_item_id_g(gn_target_cnt)         := ir_item01_rec.item_id;
+--        gt_gm_category_set_id_g(gn_target_cnt) := lr_category_rec.category_set_id;
+--        gt_gm_category_id_g(gn_target_cnt)     := ln_category_id;
+      END IF;
+--
+    END LOOP category_loop;
+--
+    CLOSE category_cur;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   #######################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      -- カーソルが開いていれば
+      IF (category_cur%ISOPEN) THEN
+        -- カーソルのクローズ
+        CLOSE category_cur;
+      END IF;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      -- カーソルが開いていれば
+      IF (category_cur%ISOPEN) THEN
+        -- カーソルのクローズ
+        CLOSE category_cur;
+      END IF;
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      -- カーソルが開いていれば
+      IF (category_cur%ISOPEN) THEN
+        -- カーソルのクローズ
+        CLOSE category_cur;
+      END IF;
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   #############################################
+--
+  END proc_item_category;
+--
+-- 2008/09/24 Add ↑
 --
   /**********************************************************************************
    * Procedure Name   : parameter_check
@@ -363,6 +858,79 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE profile_expt;
     END IF;
+--
+--2008/09/24 Add ↓
+--
+    -- プロファイル：初期値：群コードの取得
+    gv_def_crowd_code := FND_PROFILE.VALUE(gv_tkn_name_05);
+    -- 取得エラー時
+    IF (gv_def_crowd_code IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxcmn_common_pkg.get_msg(
+                            gv_app_name,        -- アプリケーション短縮名：XXCMN 共通
+                            gv_msg_xxcmn10002,  -- メッセージ：APP-XXCMN-10002 プロファイル取得エラー
+                            gv_tkn_profile,     -- トークン：NG_PROFILE
+                            gv_tkn_name_10      -- 初期値：群コード
+                          ),1,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE profile_expt;
+    END IF;
+--
+    -- プロファイル：初期値：政策群コードの取得
+    gv_def_policy_code := FND_PROFILE.VALUE(gv_tkn_name_06);
+    -- 取得エラー時
+    IF (gv_def_policy_code IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxcmn_common_pkg.get_msg(
+                            gv_app_name,        -- アプリケーション短縮名：XXCMN 共通
+                            gv_msg_xxcmn10002,  -- メッセージ：APP-XXCMN-10002 プロファイル取得エラー
+                            gv_tkn_profile,     -- トークン：NG_PROFILE
+                            gv_tkn_name_11      -- 初期値：政策群コード
+                          ),1,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE profile_expt;
+    END IF;
+--
+    -- プロファイル：初期値：マーケ用群コードの取得
+    gv_def_market_code := FND_PROFILE.VALUE(gv_tkn_name_07);
+    -- 取得エラー時
+    IF (gv_def_market_code IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxcmn_common_pkg.get_msg(
+                            gv_app_name,        -- アプリケーション短縮名：XXCMN 共通
+                            gv_msg_xxcmn10002,  -- メッセージ：APP-XXCMN-10002 プロファイル取得エラー
+                            gv_tkn_profile,     -- トークン：NG_PROFILE
+                            gv_tkn_name_12      -- 初期値：マーケ用群コード
+                          ),1,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE profile_expt;
+    END IF;
+--
+    -- プロファイル：初期値：経理部用群コードの取得
+    gv_def_acnt_crowd_code := FND_PROFILE.VALUE(gv_tkn_name_08);
+    -- 取得エラー時
+    IF (gv_def_acnt_crowd_code IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxcmn_common_pkg.get_msg(
+                            gv_app_name,        -- アプリケーション短縮名：XXCMN 共通
+                            gv_msg_xxcmn10002,  -- メッセージ：APP-XXCMN-10002 プロファイル取得エラー
+                            gv_tkn_profile,     -- トークン：NG_PROFILE
+                            gv_tkn_name_13      -- 初期値：経理部用群コード
+                          ),1,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE profile_expt;
+    END IF;
+--
+    -- プロファイル：初期値：工場群コードの取得
+    gv_def_factory_code := FND_PROFILE.VALUE(gv_tkn_name_09);
+    -- 取得エラー時
+    IF (gv_def_factory_code IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxcmn_common_pkg.get_msg(
+                            gv_app_name,        -- アプリケーション短縮名：XXCMN 共通
+                            gv_msg_xxcmn10002,  -- メッセージ：APP-XXCMN-10002 プロファイル取得エラー
+                            gv_tkn_profile,     -- トークン：NG_PROFILE
+                            gv_tkn_name_14      -- 初期値：工場群コード
+                          ),1,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE profile_expt;
+    END IF;
+--2008/09/24 Add ↑
 --
     -- WHOカラムの取得
     gd_last_update_date       :=  SYSDATE;
@@ -1407,8 +1975,23 @@ AS
         IF (lv_retcode = gv_status_error) THEN
           RAISE global_process_expt;
         ELSIF (lv_retcode = gv_status_warn) THEN
+-- 2008/09/24 Mod ↓
+          -- 品目カテゴリ作成
+          proc_mtl_categories(
+            lr_item01_rec,        -- OPM品目マスタレコード
+            gn_proc_flg_01,       -- 処理区分
+            lv_errbuf,            -- エラー・メッセージ           --# 固定 #
+            lv_retcode,           -- リターン・コード             --# 固定 #
+            lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+--
+          IF (lv_retcode = gv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+/*
           lv_ret_g   := lv_retcode;
           lv_retcode := gv_status_normal;
+*/
+-- 2008/09/24 Mod ↑
         END IF;
       END IF;
 --
@@ -1425,10 +2008,37 @@ AS
         IF (lv_retcode = gv_status_error) THEN
           RAISE global_process_expt;
         ELSIF (lv_retcode = gv_status_warn) THEN
+-- 2008/09/24 Mod ↓
+          -- 品目カテゴリ作成
+          proc_mtl_categories(
+            lr_item01_rec,        -- OPM品目マスタレコード
+            gn_proc_flg_02,       -- 処理区分
+            lv_errbuf,            -- エラー・メッセージ           --# 固定 #
+            lv_retcode,           -- リターン・コード             --# 固定 #
+            lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+--
+          IF (lv_retcode = gv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+/*
           lv_ret_k   := lv_retcode;
           lv_retcode := gv_status_normal;
+*/
+-- 2008/09/24 Mod ↑
         END IF;
       END IF;
+--2008/09/24 Add ↓
+      -- 品目割当作成
+      proc_item_category(
+        lr_item01_rec,        -- OPM品目マスタレコード
+        lv_errbuf,            -- エラー・メッセージ           --# 固定 #
+        lv_retcode,           -- リターン・コード             --# 固定 #
+        lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--2008/09/24 Add ↑
 --
     END LOOP item_mst_loop;
 --
