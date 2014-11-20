@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫差異表
  * MD.050/070       : 仕入（帳票）Issue2.0 (T_MD050_BPO_360)
  *                    仕入（帳票）Issue2.0 (T_MD070_BPO_36H)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -37,7 +37,7 @@ AS
  *  2008/06/24    1.7   T.Ikehara        特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
  *  2008/07/04    1.8   Y.Ishikawa       xxcmn_item_categories4_vを使用しないようにする
- *
+ *  2008/11/21    1.9   T.Yoshimoto      統合指摘#703
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -589,7 +589,10 @@ AS
               || ',pln.QUANTITY                   AS inv_qty'          -- 在庫入数
               || ',pln.ATTRIBUTE6                 as ship_qty'         -- 出庫数
               || ',pln.ATTRIBUTE7                 as stock_qty'        -- 入庫数
-              || ',NVL(pln.quantity, 0) - NVL(pln.attribute7, 0)  as sai_qty'   -- 差異数
+-- 2008/11/21 v1.9 T.Yoshimoto Mod Start
+--              || ',NVL(pln.quantity, 0) - NVL(pln.attribute7, 0)  as sai_qty'   -- 差異数
+              || ',NVL(pln.attribute11, 0) - NVL(pln.attribute7, 0)  as sai_qty'   -- 差異数
+-- 2008/11/21 v1.9 T.Yoshimoto Mod End
               || ',pln.attribute11                as order_qty'        -- 差異コード取得用:発注数量
               ;
 --
