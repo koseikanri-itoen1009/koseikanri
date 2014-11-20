@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A04C (body)
  * Description      : 入庫予定データの作成を行う
  * MD.050           : 入庫予定データ作成 (MD050_COS_011_A04)
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *                                                      ・入庫予定ヘッダテーブル,移動オーダーヘッダテーブルの
  *                                                        更新の条件にEDIチェーン店コードを追加
  *  2010/04/16    1.9  M.Sano           [E_本稼動_02322]・顧客品目の抽出条件を訂正
+ *  2011/10/07    1.10 K.Kiriu          [E_本稼動_07906]・流通ＢＭＳ対応
  *
  *****************************************************************************************/
 --
@@ -1402,10 +1403,13 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-/* 2009/04/28 Ver1.4 Mod Start */
---    lv_header_output  VARCHAR2(1000);  --ヘッダー出力用
-    lv_header_output  VARCHAR2(5000);  --ヘッダー出力用
-/* 2009/04/28 Ver1.4 Mod End   */
+/* 2011/10/07 Ver1.10 Mod Start */
+--/* 2009/04/28 Ver1.4 Mod Start */
+----    lv_header_output  VARCHAR2(1000);  --ヘッダー出力用
+--    lv_header_output  VARCHAR2(5000);  --ヘッダー出力用
+--/* 2009/04/28 Ver1.4 Mod End   */
+    lv_header_output  VARCHAR2(32767); --ヘッダー出力用
+/* 2011/10/07 Ver1.10 Mod End   */
     ln_dummy          NUMBER;          --ヘッダ出力のレコード件数用(使用されない)
 --
     -- *** ローカル・カーソル ***
@@ -3026,10 +3030,13 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-/* 2009/04/28 Ver1.4 Start */
---    lv_footer_output  VARCHAR2(1000);  --フッタ出力用
-    lv_footer_output  VARCHAR2(5000);  --フッタ出力用
-/* 2009/04/28 Ver1.4 End   */
+/* 2011/10/07 Ver1.10 Mod Start */
+--/* 2009/04/28 Ver1.4 Start */
+----    lv_footer_output  VARCHAR2(1000);  --フッタ出力用
+--    lv_footer_output  VARCHAR2(5000);  --フッタ出力用
+--/* 2009/04/28 Ver1.4 End   */
+    lv_footer_output  VARCHAR2(32767); --フッタ出力用
+/* 2011/10/07 Ver1.10 Mod End   */
     lv_dummy1         VARCHAR2(1);     --IF元業務系列コード(フッタでは使用しない)
     lv_dummy2         VARCHAR2(1);     --拠点コード(フッタでは使用しない)
     lv_dummy3         VARCHAR2(1);     --拠点名称(フッタでは使用しない)
@@ -3067,7 +3074,10 @@ AS
      ,iv_base_name       =>  lv_dummy3         --拠点名称
      ,iv_chain_code      =>  lv_dummy4         --チェーン店コード
      ,iv_chain_name      =>  lv_dummy5         --チェーン店名称
-     ,iv_data_kind       =>  lv_dummy6         --データ種コード
+/* 2011/10/07 Ver1.10 Mod Start */
+--     ,iv_data_kind       =>  lv_dummy6         --データ種コード
+     ,iv_data_kind       =>  gt_data_type_code --データ種コード
+/* 2011/10/07 Ver1.10 Mod End   */
      ,iv_row_number      =>  lv_dummy7         --並列処理番号
      ,in_num_of_records  =>  gn_target_cnt     --レコード件数
      ,ov_retcode         =>  lv_retcode        --リターンコード
