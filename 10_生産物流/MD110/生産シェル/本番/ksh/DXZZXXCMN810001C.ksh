@@ -8,7 +8,8 @@
 ##        作成者  ：  Oracle    鈴木 雄大    2008/05/01 1.0.1                 ##
 ##        更新履歴：  Oracle    鈴木 雄大    2008/05/01 1.0.1                 ##
 ##                        初版                                                ##
-##                                                                            ##
+##                    Oracle    椎名 昭圭    2009/03/02 1.0.2                 ##
+##                      品目マスタ更新(日次)_呼出パラメータ｢起動区分｣追加     ##
 ##    [戻り値]                                                                ##
 ##        0     正常                                                          ##
 ##        4     警告                                                          ##
@@ -122,6 +123,7 @@ L_conc_args="${L_conc_args} WAIT=Y CONCURRENT"
 L_conc_args="${L_conc_args} \"${L_conc_appl}\""
 L_conc_args="${L_conc_args} \"${L_conc_name}\""
 L_conc_args="${L_conc_args} \"${L_param_001}\""
+L_conc_args="${L_conc_args} \"0\""
 
 ### Set Language ###
 NLS_LANG=Japanese_Japan.JA16SJIS
