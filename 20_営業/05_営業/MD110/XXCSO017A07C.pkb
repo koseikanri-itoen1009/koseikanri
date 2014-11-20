@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO017A07C(body)
  * Description      : 見積書アップロード
  * MD.050           : 見積書アップロード MD050_CSO_017_A07
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/01/26    1.0   Y.Horikawa       新規作成
  *  2012/06/20    1.1   K.Kiriu          [T4障害]見積区分のチェック修正
+ *  2013/07/30    1.2   K.Kiriu          [E_本稼動_10884]消費税対応
  *
  *****************************************************************************************/
 --
@@ -138,6 +139,9 @@ AS
   cv_msg_err_qt_ul_not_allowed        CONSTANT VARCHAR2(30) := 'APP-XXCSO1-00637';  -- 見積CSVアップロード不可エラーメッセージ
   cv_msg_err_too_many_data_div        CONSTANT VARCHAR2(30) := 'APP-XXCSO1-00636';  -- データ区分複数種類指定エラーメッセージ
   cv_msg_err_profile_data_type        CONSTANT VARCHAR2(30) := 'APP-XXCSO1-00121';  -- プロファイルデータ型エラーメッセージ
+/* 2013/07/30 Ver1.2 Add Start */
+  cv_msg_err_get_tax                  CONSTANT VARCHAR2(30) := 'APP-XXCSO1-00655';  -- 税率取得エラーメッセージ
+/* 2013/07/30 Ver1.2 Add End   */
 --
   --メッセージトークン
   cv_tkn_param_name         CONSTANT VARCHAR2(30) := 'PARAM_NAME';
@@ -232,6 +236,10 @@ AS
 --
   cv_get_num_type_quote       CONSTANT VARCHAR2(1) := '1';  -- 採番タイプ：見積
 --
+/* 2013/07/30 Ver1.2 Add Start */
+  cn_get_tax_err              CONSTANT NUMBER      := -1;   -- 税率取得エラー用
+  cv_status_warn_get_tax      CONSTANT VARCHAR2(1) := '3';  -- 税率エラー判定用
+/* 2013/07/30 Ver1.2 Add End   */
   --CSVファイルの項目位置
   cn_col_pos_data_div                    CONSTANT NUMBER := 1;   -- データ区分
   cn_col_pos_cust_code_warehouse         CONSTANT NUMBER := 2;   -- 顧客（帳合問屋）コード
@@ -327,7 +335,9 @@ AS
   gn_margin_rate   NUMBER;  -- 異常マージン率
   gv_emp_number    xxcso_employees_v2.employee_number%TYPE;     -- ログイン者の従業員番号
   gv_base_code     xxcso_employees_v2.work_base_code_new%TYPE;  -- ログイン者の所属拠点コード
-  gn_tax_rate      xxcso_qt_ap_tax_rate_v.ap_tax_rate%TYPE;     -- 仮払税率
+/* 2013/07/30 Ver1.2 Del Start */
+--  gn_tax_rate      xxcso_qt_ap_tax_rate_v.ap_tax_rate%TYPE;     -- 仮払税率
+/* 2013/07/30 Ver1.2 Del End   */
   gv_file_ul_name  fnd_lookup_values.meaning%TYPE;              -- ファイルアップロード名称
 --
   /**********************************************************************************
@@ -622,28 +632,30 @@ AS
         RAISE global_process_expt;
     END;
 --
-    BEGIN
-      --仮払税率
-      SELECT xqatrv.ap_tax_rate ap_tax_rate
-      INTO gn_tax_rate
-      FROM xxcso_qt_ap_tax_rate_v xqatrv
-      ;
-    EXCEPTION
-      WHEN OTHERS THEN
-        --データ抽出エラーメッセージ
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name
-                       ,iv_name         => cv_msg_err_get_data
-                       ,iv_token_name1  => cv_tkn_table
-                       ,iv_token_value1 => cv_tbl_nm_tax_rate
-                       ,iv_token_name2  => cv_tkn_file_id
-                       ,iv_token_value2 => ln_file_id
-                       ,iv_token_name3  => cv_tkn_err_msg
-                       ,iv_token_value3 => SQLERRM
-                     );
-        lv_errbuf := lv_errmsg;
-        RAISE global_process_expt;
-    END;
+/* 2013/07/30 Ver1.2 Del Start */
+--    BEGIN
+--      --仮払税率
+--      SELECT xqatrv.ap_tax_rate ap_tax_rate
+--      INTO gn_tax_rate
+--      FROM xxcso_qt_ap_tax_rate_v xqatrv
+--      ;
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        --データ抽出エラーメッセージ
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_app_name
+--                       ,iv_name         => cv_msg_err_get_data
+--                       ,iv_token_name1  => cv_tkn_table
+--                       ,iv_token_value1 => cv_tbl_nm_tax_rate
+--                       ,iv_token_name2  => cv_tkn_file_id
+--                       ,iv_token_value2 => ln_file_id
+--                       ,iv_token_name3  => cv_tkn_err_msg
+--                       ,iv_token_value3 => SQLERRM
+--                     );
+--        lv_errbuf := lv_errmsg;
+--        RAISE global_process_expt;
+--    END;
+/* 2013/07/30 Ver1.2 Del End */
 --
     on_file_id := ln_file_id;
   EXCEPTION
@@ -1630,7 +1642,13 @@ AS
 --###########################  固定部 END   ############################
 --
     IF (in_cost IS NOT NULL) THEN
-      IF (in_price / NVL(in_inc_num, 1) <= in_cost * in_tax_rate) THEN
+/* 2013/07/30 Ver1.2 Mod Start */
+--      IF (in_price / NVL(in_inc_num, 1) <= in_cost * in_tax_rate) THEN
+      IF ( in_tax_rate = cn_get_tax_err ) THEN
+        --税率取得エラー
+        ov_retcode := cv_status_warn_get_tax;
+      ELSIF (in_price / NVL(in_inc_num, 1) <= in_cost * in_tax_rate) THEN
+/* 2013/07/30 Ver1.2 Mod End   */
         ov_retcode := cv_status_warn;
       END IF;
     END IF;
@@ -2001,15 +2019,43 @@ AS
             pre_quote_upload_work_rec.deliv_price_tax_type := get_quote_upload_work_rec.deliv_price_tax_type;
 /* 2012/06/20 Ver1.1 Add End   */
           END IF;
-          -- 仮払税率の決定
-          IF (lt_deliv_price_tax_type = cv_price_inc_tax) THEN
-            lt_tax_rate := gn_tax_rate;
-          ELSE
-            lt_tax_rate := cn_default_tax_rate;
-          END IF;
+/* 2013/07/30 Ver1.2 Del Start */
+--          -- 仮払税率の決定
+--          IF (lt_deliv_price_tax_type = cv_price_inc_tax) THEN
+--            lt_tax_rate := gn_tax_rate;
+--          ELSE
+--            lt_tax_rate := cn_default_tax_rate;
+--          END IF;
+/* 2013/07/30 Ver1.2 Del End   */
         END IF;
       END IF;
 --
+/* 2013/07/30 Ver1.2 Add Start */
+      --変数初期化
+      lt_tax_rate := NULL;
+--
+      -- 店納価格税区分が税込価格の場合、税率を取得
+      IF (lt_deliv_price_tax_type = cv_price_inc_tax) THEN
+        --期間（終了）時点の税率を取得
+        BEGIN
+          SELECT  xqatrv.ap_tax_rate
+          INTO    lt_tax_rate
+          FROM    xxcso_qt_ap_tax_rate_v xqatrv
+          WHERE   xqatrv.start_date                   <= get_quote_upload_work_rec.quote_end_date
+          AND     NVL( xqatrv.end_date, get_quote_upload_work_rec.quote_end_date )
+                                                      >= get_quote_upload_work_rec.quote_end_date
+          ;
+        EXCEPTION
+          WHEN OTHERS THEN
+            --後のチェックでエラーとする為、-1を設定
+            lt_tax_rate := cn_get_tax_err;
+        END;
+      -- 店納価格税区分が税込価格以外場合
+      ELSE
+        --1を固定で設定※税率無しで計算
+        lt_tax_rate := cn_default_tax_rate;
+      END IF;
+/* 2013/07/30 Ver1.2 Add End   */
       IF (lt_business_check_spec.unit_type) THEN
         IF (get_quote_upload_work_rec.unit_type <> pre_quote_upload_work_rec.unit_type
 /* 2012/06/20 Ver1.1 Mod Start */
@@ -2320,6 +2366,27 @@ AS
 --
             gn_warn_cnt := gn_warn_cnt + 1;
             ov_retcode := cv_status_warn;
+/* 2013/07/30 Ver1.2 Add Start */
+          ELSIF (lv_retcode = cv_status_warn_get_tax) THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_app_name
+                           ,iv_name         => cv_msg_err_get_tax
+                           ,iv_token_name1  => cv_tkn_column
+                           ,iv_token_value1 => it_quote_header_data(cn_col_pos_usually_deliv_price)
+                           ,iv_token_name2  => cv_tkn_col_val1
+                           ,iv_token_value2 => TO_CHAR( get_quote_upload_work_rec.quote_end_date, cv_date_fmt )
+                           ,iv_token_name3  => cv_tkn_index
+                           ,iv_token_value3 => get_quote_upload_work_rec.line_no
+                         );
+            -- メッセージ出力
+            fnd_file.put_line(
+               which  => FND_FILE.OUTPUT
+              ,buff   => lv_errmsg
+            );
+--
+            gn_warn_cnt := gn_warn_cnt + 1;
+            ov_retcode := cv_status_warn;
+/* 2013/07/30 Ver1.2 Add End   */
           END IF;
         END IF;
       END IF;
@@ -2428,6 +2495,27 @@ AS
 --
             gn_warn_cnt := gn_warn_cnt + 1;
             ov_retcode := cv_status_warn;
+/* 2013/07/30 Ver1.2 Add Start */
+          ELSIF (lv_retcode = cv_status_warn_get_tax) THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_app_name
+                           ,iv_name         => cv_msg_err_get_tax
+                           ,iv_token_name1  => cv_tkn_column
+                           ,iv_token_value1 => it_quote_header_data(cn_col_pos_this_time_dlv_price)
+                           ,iv_token_name2  => cv_tkn_col_val1
+                           ,iv_token_value2 => TO_CHAR( get_quote_upload_work_rec.quote_end_date, cv_date_fmt )
+                           ,iv_token_name3  => cv_tkn_index
+                           ,iv_token_value3 => get_quote_upload_work_rec.line_no
+                         );
+            -- メッセージ出力
+            fnd_file.put_line(
+               which  => FND_FILE.OUTPUT
+              ,buff   => lv_errmsg
+            );
+--
+            gn_warn_cnt := gn_warn_cnt + 1;
+            ov_retcode := cv_status_warn;
+/* 2013/07/30 Ver1.2 Add End   */
           END IF;
         END IF;
       END IF;
@@ -2476,6 +2564,27 @@ AS
 --
             gn_warn_cnt := gn_warn_cnt + 1;
             ov_retcode := cv_status_warn;
+/* 2013/07/30 Ver1.2 Add Start */
+          ELSIF (lv_retcode = cv_status_warn_get_tax) THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_app_name
+                           ,iv_name         => cv_msg_err_get_tax
+                           ,iv_token_name1  => cv_tkn_column
+                           ,iv_token_value1 => it_quote_header_data(cn_col_pos_usuall_net_price)
+                           ,iv_token_name2  => cv_tkn_col_val1
+                           ,iv_token_value2 => TO_CHAR( get_quote_upload_work_rec.quote_end_date, cv_date_fmt )
+                           ,iv_token_name3  => cv_tkn_index
+                           ,iv_token_value3 => get_quote_upload_work_rec.line_no
+                         );
+            -- メッセージ出力
+            fnd_file.put_line(
+               which  => FND_FILE.OUTPUT
+              ,buff   => lv_errmsg
+            );
+--
+            gn_warn_cnt := gn_warn_cnt + 1;
+            ov_retcode := cv_status_warn;
+/* 2013/07/30 Ver1.2 Add End   */
           END IF;
         END IF;
       END IF;
@@ -2584,6 +2693,27 @@ AS
 --
             gn_warn_cnt := gn_warn_cnt + 1;
             ov_retcode := cv_status_warn;
+/* 2013/07/30 Ver1.2 Add Start */
+          ELSIF (lv_retcode = cv_status_warn_get_tax) THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_app_name
+                           ,iv_name         => cv_msg_err_get_tax
+                           ,iv_token_name1  => cv_tkn_column
+                           ,iv_token_value1 => it_quote_header_data(cn_col_pos_this_time_net_price)
+                           ,iv_token_name2  => cv_tkn_col_val1
+                           ,iv_token_value2 => TO_CHAR( get_quote_upload_work_rec.quote_end_date, cv_date_fmt )
+                           ,iv_token_name3  => cv_tkn_index
+                           ,iv_token_value3 => get_quote_upload_work_rec.line_no
+                         );
+            -- メッセージ出力
+            fnd_file.put_line(
+               which  => FND_FILE.OUTPUT
+              ,buff   => lv_errmsg
+            );
+--
+            gn_warn_cnt := gn_warn_cnt + 1;
+            ov_retcode := cv_status_warn;
+/* 2013/07/30 Ver1.2 Add End   */
           END IF;
         END IF;
       END IF;
