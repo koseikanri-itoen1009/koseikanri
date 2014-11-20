@@ -7,7 +7,7 @@ AS
  * Description      : 運賃アドオンインタフェース取込処理
  * MD.050           : 運賃計算（トランザクション）       T_MD050_BPO_732
  * MD.070           : 運賃アドオンインタフェース取込処理 T_MD070_BPO_73E
- * Version          : 1.6
+ * Version          : 1.7
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
@@ -36,6 +36,7 @@ AS
  *  2008/07/25    1.4  Oracle 野村 正幸  ST障害 #473 対応
  *  2008/09/16    1.5  Oracle 吉田 夏樹  T_S_570 対応
  *  2008/12/01    1.6  Oracle 野村 正幸  本番#303対応
+ *  2009/03/03    1.7  野村 正幸         本番#1239対応
  *
  *****************************************************************************************/
 --
@@ -1733,7 +1734,18 @@ AS
             u_deliv_head_dfn_flg_tab(gn_upd_deliv_head_cnt) := gv_ktg_yes;
           -- 更新用PL/SQL表.画面更新有無区分 ＝ 「No」の場合
           ELSIF (u_deliv_head_frm_upd_flg_tab(gn_upd_deliv_head_cnt) = gv_ktg_no) THEN
-            u_deliv_head_dfn_flg_tab(gn_upd_deliv_head_cnt) := gv_ktg_no;
+-- *--------* 20080916 Ver.1.7 本番#1239対応 START *--------*
+--            u_deliv_head_dfn_flg_tab(gn_upd_deliv_head_cnt) := gv_ktg_no;
+--
+            -- パターン区分 = 「伊藤園産業」の場合
+            IF (ir_deliv_if_rec.pattern_flag = gv_ptn_it) THEN
+              u_deliv_head_dfn_flg_tab(gn_upd_deliv_head_cnt) := gv_ktg_yes;
+--
+            -- パターン区分 = 「外部」の場合
+            ELSE
+              u_deliv_head_dfn_flg_tab(gn_upd_deliv_head_cnt) := gv_ktg_no;
+            END IF;
+-- *--------* 20080916 Ver.1.7 本番#1239対応 END   *--------*
           END IF;
         END IF;
       END IF;
