@@ -64,6 +64,7 @@ AS
  *  2009/12/07    1.19  K.Atsushiba      [E_本番_00247]子コードが設定されている場合は子コードで重量計算するように修正
  *                                       [E_本稼動_00305]子コードが設定されている場合は子コードで出荷依頼を作成するように修正
  *  2009/12/14    1.20  N.Maeda          [E_本稼動_00462]売上対象区分チェック修正
+ *  2009/12/29    1.21  N.Maeda          [E_本稼動_00683]出荷予定日取得関数による翌稼働日算出の追加。
  *
  *****************************************************************************************/
 --
@@ -1662,6 +1663,9 @@ AS
     -- *** ローカル定数 ***
     cv_code_from            CONSTANT VARCHAR2(1) := '4';   -- コード区分From(倉庫)
     cv_code_to              CONSTANT VARCHAR2(1) := '9';   -- コード区分To(配送先)
+-- **************** 2009/12/29 1.21 N.Maeda ADD START ********************* --
+    cn_next_oprtn_day           CONSTANT NUMBER :=  1;
+-- **************** 2009/12/29 1.21 N.Maeda ADD  END  ********************* --
 --
     -- *** ローカル変数 ***
     ln_lead_time             NUMBER;            -- リードタイム
@@ -1677,6 +1681,10 @@ AS
     ln_prod_resp_id          NUMBER;  -- 切替先職責ID
     ln_prod_resp_appl_id     NUMBER;  -- 切替先職責アプリケーションID
 /* 2009/09/16 Ver.1.12 Add End */
+-- **************** 2009/12/29 1.21 N.Maeda ADD START ********************* --
+    ln_work_result              NUMBER;               -- 翌稼動日取得用API関数用戻り値
+    ld_wark_day                 DATE;                 -- 稼働日日付
+-- **************** 2009/12/29 1.21 N.Maeda ADD  END  ********************* --
 --
     -- *** ローカル変数 ***
     common_api_expt          EXCEPTION;      -- 共通APIエラー
@@ -1807,57 +1815,113 @@ AS
     on_delivery_lt := ln_delivery_lt;
     --
     IF ( it_order_rec.schedule_ship_date IS NULL ) THEN
-      -- 出荷予定日がNULLの場合
-      -- 要求日(納品予定日)とリードタイム(配送)から出荷予定日を取得する
-      -- ===============================
-      -- 出荷予定日取得
-      -- ===============================
-      lv_retcode := xxwsh_common_pkg.get_oprtn_day(
-         id_date            => it_order_rec.request_date           -- 納品予定日
-        ,iv_whse_code       => NULL                                -- 保管倉庫コード
-        ,iv_deliver_to_code => it_order_rec.province               -- 配送先コード
+-- **************** 2009/12/29 1.21 N.Maeda ADD START ********************* --
+    -- 配送LTが0の場合
+      IF ( ln_delivery_lt = cn_lead_time_non ) THEN
+        -- 稼働日日付       = 出荷予定日
+        ld_oprtn_day := it_order_rec.request_date;
+      ELSE
+        -- ===============================
+        -- 翌稼動日取得
+        -- ===============================
+        lv_retcode := xxwsh_common_pkg.get_oprtn_day(
+           id_date             => it_order_rec.request_date           -- 納品予定日
+          ,iv_whse_code        => NULL                                -- 保管倉庫コード
+          ,iv_deliver_to_code  => it_order_rec.province               -- 配送先コード
+          ,in_lead_time        => cn_lead_time_non                    -- 0
+          ,iv_prod_class       => it_order_rec.prod_class_code        -- 商品区分
+          ,od_oprtn_day        => ld_wark_day                         -- 稼働日日付
+          ,in_type             => cn_next_oprtn_day
+          );
+        -- API実行結果確認
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          -- 稼働日取得エラーの場合
+          -- メッセージ文字列取得(出荷予定日)
+          lv_msg_operate_date := xxccp_common_pkg.get_msg(
+             iv_application => cv_xxcos_short_name             -- アプリケーション短縮名
+            ,iv_name        => cv_msg_ship_schedule_date       -- メッセージID
+          );
+          -- メッセージ作成
+          lv_errmsg := xxccp_common_pkg.get_msg(
+             iv_application  => cv_xxcos_short_name
+            ,iv_name         => cv_msg_non_operation_date
+            ,iv_token_name1  => cv_tkn_operate_date                          -- 出荷予定日
+            ,iv_token_value1 => lv_msg_operate_date
+            ,iv_token_name2  => cv_tkn_order_no                              -- 受注番号
+            ,iv_token_value2 => it_order_rec.order_number
+            ,iv_token_name3  => cv_tkn_line_no                               -- 明細番号
+            ,iv_token_value3 => it_order_rec.line_number
+            ,iv_token_name4  => cv_tkn_base_date                             -- 納品予定日
+            ,iv_token_value4 => TO_CHAR(it_order_rec.request_date,cv_date_fmt_date_time)
+            ,iv_token_name5  => cv_tkn_whse_locat                            -- 出荷元保管場所
+            ,iv_token_value5 => it_order_rec.ship_to_subinv
+            ,iv_token_name6  => cv_tkn_delivery_code                         -- 配送先コード
+            ,iv_token_value6 => it_order_rec.province
+            ,iv_token_name7  => cv_tkn_lead_time                             -- リードタイム
+            ,iv_token_value7 => TO_CHAR(ln_delivery_lt)
+            ,iv_token_name8  => cv_tkn_commodity_class                       -- 商品区分
+            ,iv_token_value8 => it_order_rec.item_div_name
+          );
+          RAISE common_api_expt;
+        END IF;
+-- **************** 2009/12/29 1.21 N.Maeda ADD  END  ********************* --
+        -- 出荷予定日がNULLの場合
+        -- 要求日(納品予定日)とリードタイム(配送)から出荷予定日を取得する
+        -- ===============================
+        -- 出荷予定日取得
+        -- ===============================
+        lv_retcode := xxwsh_common_pkg.get_oprtn_day(
+-- **************** 2009/12/29 1.21 N.Maeda MOD START ********************* --
+--           id_date            => it_order_rec.request_date           -- 納品予定日
+           id_date            => ld_wark_day                         -- 納品予定日
+-- **************** 2009/12/29 1.21 N.Maeda MOD  END  ********************* --
+          ,iv_whse_code       => NULL                                -- 保管倉庫コード
+          ,iv_deliver_to_code => it_order_rec.province               -- 配送先コード
 --****************************** 2009/07/13 1.9 T.Miyata MODIFY START ******************************--
---      ,in_lead_time       => ln_lead_time                        -- リードタイム
-        ,in_lead_time       => ln_delivery_lt                      -- 配送リードタイム
+--        ,in_lead_time       => ln_lead_time                        -- リードタイム
+          ,in_lead_time       => ln_delivery_lt                      -- 配送リードタイム
 --****************************** 2009/07/13 1.9 T.Miyata MODIFY END   ******************************--
-        ,iv_prod_class      => it_order_rec.prod_class_code        -- 商品区分
-        ,od_oprtn_day       => ld_oprtn_day                        -- 稼働日日付(出荷予定日)
-      );
-      --
-      -- API実行結果確認
-      IF ( lv_retcode <> cv_status_normal ) THEN
-        -- 稼働日取得エラーの場合
-        -- メッセージ文字列取得(出荷予定日)
-        lv_msg_operate_date := xxccp_common_pkg.get_msg(
-           iv_application => cv_xxcos_short_name             -- アプリケーション短縮名
-          ,iv_name        => cv_msg_ship_schedule_date       -- メッセージID
+          ,iv_prod_class      => it_order_rec.prod_class_code        -- 商品区分
+          ,od_oprtn_day       => ld_oprtn_day                        -- 稼働日日付(出荷予定日)
         );
-        -- メッセージ作成
-        lv_errmsg := xxccp_common_pkg.get_msg(
-           iv_application  => cv_xxcos_short_name
-          ,iv_name         => cv_msg_non_operation_date
-          ,iv_token_name1  => cv_tkn_operate_date                          -- 出荷予定日
-          ,iv_token_value1 => lv_msg_operate_date
-          ,iv_token_name2  => cv_tkn_order_no                              -- 受注番号
-          ,iv_token_value2 => it_order_rec.order_number
-          ,iv_token_name3  => cv_tkn_line_no                               -- 明細番号
-          ,iv_token_value3 => it_order_rec.line_number
-          ,iv_token_name4  => cv_tkn_base_date                             -- 納品予定日
-          ,iv_token_value4 => TO_CHAR(it_order_rec.request_date,cv_date_fmt_date_time)
-          ,iv_token_name5  => cv_tkn_whse_locat                            -- 出荷元保管場所
-          ,iv_token_value5 => it_order_rec.ship_to_subinv
-          ,iv_token_name6  => cv_tkn_delivery_code                         -- 配送先コード
-          ,iv_token_value6 => it_order_rec.province
-          ,iv_token_name7  => cv_tkn_lead_time                             -- リードタイム
+        --
+        -- API実行結果確認
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          -- 稼働日取得エラーの場合
+          -- メッセージ文字列取得(出荷予定日)
+          lv_msg_operate_date := xxccp_common_pkg.get_msg(
+             iv_application => cv_xxcos_short_name             -- アプリケーション短縮名
+            ,iv_name        => cv_msg_ship_schedule_date       -- メッセージID
+          );
+          -- メッセージ作成
+          lv_errmsg := xxccp_common_pkg.get_msg(
+             iv_application  => cv_xxcos_short_name
+            ,iv_name         => cv_msg_non_operation_date
+            ,iv_token_name1  => cv_tkn_operate_date                          -- 出荷予定日
+            ,iv_token_value1 => lv_msg_operate_date
+            ,iv_token_name2  => cv_tkn_order_no                              -- 受注番号
+            ,iv_token_value2 => it_order_rec.order_number
+            ,iv_token_name3  => cv_tkn_line_no                               -- 明細番号
+            ,iv_token_value3 => it_order_rec.line_number
+            ,iv_token_name4  => cv_tkn_base_date                             -- 納品予定日
+            ,iv_token_value4 => TO_CHAR(it_order_rec.request_date,cv_date_fmt_date_time)
+            ,iv_token_name5  => cv_tkn_whse_locat                            -- 出荷元保管場所
+            ,iv_token_value5 => it_order_rec.ship_to_subinv
+            ,iv_token_name6  => cv_tkn_delivery_code                         -- 配送先コード
+            ,iv_token_value6 => it_order_rec.province
+            ,iv_token_name7  => cv_tkn_lead_time                             -- リードタイム
 --****************************** 2009/07/13 1.9 T.Miyata MODIFY START ******************************--
---        ,iv_token_value7 => TO_CHAR(ln_lead_time)
-          ,iv_token_value7 => TO_CHAR(ln_delivery_lt)
+--          ,iv_token_value7 => TO_CHAR(ln_lead_time)
+            ,iv_token_value7 => TO_CHAR(ln_delivery_lt)
 --****************************** 2009/07/13 1.9 T.Miyata MODIFY END   ******************************--
-          ,iv_token_name8  => cv_tkn_commodity_class                       -- 商品区分
-          ,iv_token_value8 => it_order_rec.item_div_name
-        );
-        RAISE common_api_expt;
+            ,iv_token_name8  => cv_tkn_commodity_class                       -- 商品区分
+            ,iv_token_value8 => it_order_rec.item_div_name
+          );
+          RAISE common_api_expt;
+        END IF;
+-- **************** 2009/12/29 1.21 N.Maeda ADD START ********************* --
       END IF;
+-- **************** 2009/12/29 1.21 N.Maeda ADD  END  ********************* --
       -- アウトパラメータ設定
       od_oprtn_day := ld_oprtn_day;
     ELSE
@@ -1952,6 +2016,9 @@ AS
     cv_tkn_item_code     CONSTANT VARCHAR2(30) := 'ITEM_CODE';
     cv_tkn_quantity_uom  CONSTANT VARCHAR2(30) := 'ORDER_QUANTITY_UOM';
 /* 2009/09/16 Ver.1.12 Add End */
+-- **************** 2009/12/29 1.21 N.Maeda ADD START ********************* --
+    cn_next_oprtn_day           CONSTANT NUMBER :=  1;
+-- **************** 2009/12/29 1.21 N.Maeda ADD  END  ********************* --
 --
     -- *** ローカル変数 ***
     lv_message                  VARCHAR2(1000);       -- 出力メッセージ設定
@@ -1977,6 +2044,10 @@ AS
     lv_base_uom           xxcos_sales_exp_lines.standard_uom_code%TYPE;     -- 基準単位
     ln_base_quantity      xxcos_sales_exp_lines.standard_qty%TYPE;          -- 基準数量
 /* 2009/09/16 Ver.1.12 Add End */
+-- **************** 2009/12/29 1.21 N.Maeda ADD START ********************* --
+    ln_work_result              NUMBER;               -- 翌稼動日取得用API関数用戻り値
+    ld_wark_day                 DATE;                 -- 稼働日日付
+-- **************** 2009/12/29 1.21 N.Maeda ADD  END  ********************* --
 --
   BEGIN
 --
@@ -2504,24 +2575,56 @@ AS
 --    END IF;
 /* 2009/10/19 Ver.1.13 Del End */
     --
-    -- ===============================
-    -- 受注日チェックが稼動日かチェック
-    -- ===============================
-    ln_result := xxwsh_common_pkg.get_oprtn_day(
-       id_date             => it_order_rec.schedule_ship_date      -- 日付
-      ,iv_whse_code        => NULL                                 -- 保管倉庫コード
-      ,iv_deliver_to_code  => it_order_rec.province                -- 配送先コード
+-- **************** 2009/12/29 1.21 N.Maeda ADD START ********************* --
+    -- 生産物流LTが0の場合
+    IF ( it_order_rec.lead_time = cn_lead_time_non ) THEN
+      -- 稼働日日付       = 出荷予定日
+      ld_ope_request_day := it_order_rec.schedule_ship_date;
+    ELSE
+      -- ===============================
+      -- 翌稼動日取得
+      -- ===============================
+      ln_work_result := xxwsh_common_pkg.get_oprtn_day(
+         id_date             => it_order_rec.schedule_ship_date      -- 日付
+        ,iv_whse_code        => NULL                                 -- 保管倉庫コード
+        ,iv_deliver_to_code  => it_order_rec.province                -- 配送先コード
+        ,in_lead_time        => cn_lead_time_non                     -- 0
+        ,iv_prod_class       => it_order_rec.prod_class_code         -- 商品区分
+        ,od_oprtn_day        => ld_wark_day                          -- 稼働日日付
+        ,in_type             => cn_next_oprtn_day
+        );
+-- **************** 2009/12/29 1.21 N.Maeda ADD  END  ********************* --
+      -- ===============================
+      -- 受注日が稼動日かチェック
+      -- ===============================
+      ln_result := xxwsh_common_pkg.get_oprtn_day(
+-- **************** 2009/12/29 1.21 N.Maeda MOD START ********************* --
+--         id_date             => it_order_rec.schedule_ship_date      -- 日付
+         id_date             => ld_wark_day
+-- **************** 2009/12/29 1.21 N.Maeda MOD  END  ********************* --
+        ,iv_whse_code        => NULL                                 -- 保管倉庫コード
+        ,iv_deliver_to_code  => it_order_rec.province                -- 配送先コード
 --****************************** 2009/07/13 1.9 T.Miyata MODIFY START ******************************--
---    ,in_lead_time        => it_order_rec.delivery_lt             -- リードタイム(生産物流)
-      ,in_lead_time        => it_order_rec.lead_time               -- リードタイム(生産物流)
+--      ,in_lead_time        => it_order_rec.delivery_lt             -- リードタイム(生産物流)
+        ,in_lead_time        => it_order_rec.lead_time               -- リードタイム(生産物流)
 --****************************** 2009/07/13 1.9 T.Miyata MODIFY END   ******************************--
-      ,iv_prod_class       => it_order_rec.prod_class_code         -- 商品区分
-      ,od_oprtn_day        => ld_ope_request_day                   -- 稼働日日付
-    );
-    --
+        ,iv_prod_class       => it_order_rec.prod_class_code         -- 商品区分
+        ,od_oprtn_day        => ld_ope_request_day                   -- 稼働日日付
+      );
+      --
+-- **************** 2009/12/29 1.21 N.Maeda ADD START ********************* --
+    END IF;
+-- **************** 2009/12/29 1.21 N.Maeda ADD  END  ********************* --
+
+--
 /* 2009/10/19 Ver.1.13 Mod Start */
-    IF (( ld_ope_request_day IS NULL )
-          OR ( ln_result = 1 )) THEN
+-- **************** 2009/12/29 1.21 N.Maeda MOD START ********************* --
+--      IF (( ld_ope_request_day IS NULL )
+--            OR ( ln_result = 1 )) THEN
+    IF ( ( it_order_rec.lead_time != cn_lead_time_non )
+    AND ( ( ld_ope_request_day IS NULL OR  ln_result = 1     )
+     OR   ( ld_wark_day        IS NULL OR  ln_work_result = 1) ) )THEN
+-- **************** 2009/12/29 1.21 N.Maeda MOD  END  ********************* --
 --    IF ( ld_ope_request_day IS NULL ) THEN
 /* 2009/10/19 Ver.1.13 Mod End */
       -- 稼働日取得エラーの場合
