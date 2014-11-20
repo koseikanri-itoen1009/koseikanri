@@ -55,33 +55,33 @@ AS
           hzl.county,
           hps.status,
           hps.attribute20,
-          hcas.cust_account_id,
-          hcas.cust_acct_site_id,
-          hcas.status,
-          hcas.attribute1,
-          hcas.attribute2,
-          hcas.attribute3,
-          hcas.attribute4,
-          hcas.attribute5,
-          hcas.attribute6,
-          hcas.attribute7,
-          hcas.attribute8,
-          hcas.attribute9,
-          hcas.attribute10,
-          hcas.attribute11,
-          hcas.attribute12,
-          hcas.attribute13,
-          hcas.attribute14,
-          hcas.attribute15,
-          hcas.attribute16,
-          hcas.attribute17,
+          hc.cust_account_id,
+          hc.cust_acct_site_id,
+          hc.hcas_status,
+          hc.attribute1,
+          hc.attribute2,
+          hc.attribute3,
+          hc.attribute4,
+          hc.attribute5,
+          hc.attribute6,
+          hc.attribute7,
+          hc.attribute8,
+          hc.attribute9,
+          hc.attribute10,
+          hc.attribute11,
+          hc.attribute12,
+          hc.attribute13,
+          hc.attribute14,
+          hc.attribute15,
+          hc.attribute16,
+          hc.attribute17,
           hzl.province,
-          hcas.attribute19,
-          hcas.attribute20,
-          hcsu.site_use_id,
-          hcsu.site_use_code,
-          hcsu.primary_flag,
-          hcsu.status,
+          hc.attribute19,
+          hc.attribute20,
+          hc.site_use_id,
+          hc.site_use_code,
+          hc.primary_flag,
+          hc.hcsu_status,
           xps.start_date_active,
           xps.end_date_active,
           xps.base_code,
@@ -95,18 +95,47 @@ AS
           xps.fax,
           xps.freshness_condition
   FROM    hz_party_sites          hps,
-          hz_cust_acct_sites_all  hcas,
-          hz_cust_site_uses_all   hcsu,
+          (
+            SELECT hcas.party_site_id,
+                   hcas.cust_account_id,
+                   hcas.cust_acct_site_id,
+                   hcas.status             hcas_status,
+                   hcas.attribute1,
+                   hcas.attribute2,
+                   hcas.attribute3,
+                   hcas.attribute4,
+                   hcas.attribute5,
+                   hcas.attribute6,
+                   hcas.attribute7,
+                   hcas.attribute8,
+                   hcas.attribute9,
+                   hcas.attribute10,
+                   hcas.attribute11,
+                   hcas.attribute12,
+                   hcas.attribute13,
+                   hcas.attribute14,
+                   hcas.attribute15,
+                   hcas.attribute16,
+                   hcas.attribute17,
+                   hcas.attribute19,
+                   hcas.attribute20,
+                   hcsu.site_use_id,
+                   hcsu.site_use_code,
+                   hcsu.primary_flag,
+                   hcsu.status            hcsu_status
+            FROM   hz_cust_acct_sites_all  hcas,
+                   hz_cust_site_uses_all   hcsu
+            WHERE  hcas.org_id             = FND_PROFILE.VALUE('ORG_ID')
+            AND    hcas.cust_acct_site_id  = hcsu.cust_acct_site_id
+            AND    hcsu.site_use_code      = 'SHIP_TO'
+          ) hc,
           xxcmn_party_sites       xps,
           hz_locations            hzl
-  WHERE   hps.party_site_id       = hcas.party_site_id (+)
-  AND     hcas.org_id             = FND_PROFILE.VALUE('ORG_ID')
-  AND     hcas.cust_acct_site_id  = hcsu.cust_acct_site_id
-  AND     hps.party_site_id       = xps.party_site_id
-  AND     hps.party_id            = xps.party_id
-  AND     hps.location_id         = xps.location_id
-  AND     hcsu.site_use_code      = 'SHIP_TO'
-  AND     hps.location_id         = hzl.location_id
+  WHERE   hps.party_site_id          = hc.party_site_id (+)
+  AND     hps.party_site_id          = xps.party_site_id
+  AND     hps.party_id               = xps.party_id
+  AND     hps.location_id            = xps.location_id
+  AND     hps.location_id            = hzl.location_id
 ;
 --
 COMMENT ON COLUMN xxcmn_party_sites2_v.party_site_id           IS 'パーティサイトID';

@@ -52,8 +52,8 @@ AS
   AND   xdl.entering_despatching_code2  = xsm.entering_despatching_code2(+)
   AND   xdl.start_date_active           <= TRUNC(SYSDATE)
   AND   xdl.end_date_active             >= TRUNC(SYSDATE)
-  AND   xsm.start_date_active           <= TRUNC(SYSDATE)
-  AND   xsm.end_date_active             >= TRUNC(SYSDATE)
+  AND   xsm.start_date_active(+)        <= TRUNC(SYSDATE)
+  AND   xsm.end_date_active(+)          >= TRUNC(SYSDATE)
 ;
 --
 COMMENT ON COLUMN xxcmn_delivery_lt_v.delivery_lt_id              IS '配送LTアドオンID';
