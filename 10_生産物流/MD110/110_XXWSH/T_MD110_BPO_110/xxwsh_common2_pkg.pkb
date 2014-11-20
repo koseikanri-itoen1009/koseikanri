@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common2_pkg(BODY)
  * Description            : 共通関数(OAF用)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.0
+ * Version                : 1.2
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -20,7 +20,7 @@ AS
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008/04/08   1.0   H.Itou          新規作成
  *  2008/12/06   1.1   T.Miyata        コピー作成時、出荷実績インタフェース済フラグをN(固定)とする。
- *
+ *  2008/12/16   1.2   D.Nihei         追加対象：実績計上済区分を追加。
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -113,6 +113,9 @@ AS
             ,xoha.cust_po_number              cust_po_number              -- 顧客発注
             ,xoha.price_list_id               price_list_id               -- 価格表
             ,xoha.request_no                  request_no                  -- 依頼No
+-- 2008/12/16 D.Nihei Add Start 本番障害#759対応
+            ,xoha.base_request_no             base_request_no             -- 実績計上済区分
+-- 2008/12/16 D.Nihei Add End
             ,xoha.req_status                  req_status                  -- ステータス
             ,xoha.delivery_no                 delivery_no                 -- 配送No
             ,xoha.prev_delivery_no            prev_delivery_no            -- 前回配送No
@@ -282,6 +285,9 @@ AS
       ,xoha.cust_po_number               -- 顧客発注
       ,xoha.price_list_id                -- 価格表
       ,xoha.request_no                   -- 依頼No
+-- 2008/12/16 D.Nihei Add Start 本番障害#759対応
+      ,xoha.base_request_no              -- 実績計上済区分
+-- 2008/12/16 D.Nihei Add End
       ,xoha.req_status                   -- ステータス
       ,xoha.delivery_no                  -- 配送No
       ,xoha.prev_delivery_no             -- 前回配送No
@@ -332,6 +338,9 @@ AS
       ,xoha.shipped_date                 -- 出荷日
       ,xoha.arrival_date                 -- 着荷日
       ,xoha.weight_capacity_class        -- 重量容積区分
+-- 2008/12/16 D.Nihei Add Start 本番障害#759対応
+      ,xoha.actual_confirm_class         -- 実績計上済区分
+-- 2008/12/16 D.Nihei Add End
       ,xoha.notif_status                 -- 通知ステータス
       ,xoha.prev_notif_status            -- 前回通知ステータス
       ,xoha.notif_date                   -- 確定通知実施日時
@@ -374,6 +383,9 @@ AS
       ,order_header_rec.cust_po_number               -- 顧客発注
       ,order_header_rec.price_list_id                -- 価格表
       ,order_header_rec.request_no                   -- 依頼No
+-- 2008/12/16 D.Nihei Add Start 本番障害#759対応
+      ,order_header_rec.base_request_no              -- 実績計上済区分
+-- 2008/12/16 D.Nihei Add End
       ,order_header_rec.req_status                   -- ステータス
       ,order_header_rec.delivery_no                  -- 配送No
       ,order_header_rec.prev_delivery_no             -- 前回配送No
@@ -424,6 +436,9 @@ AS
       ,order_header_rec.shipped_date                 -- 出荷日
       ,order_header_rec.arrival_date                 -- 着荷日
       ,order_header_rec.weight_capacity_class        -- 重量容積区分
+-- 2008/12/16 D.Nihei Add Start 本番障害#759対応
+      ,'N'                                           -- 実績計上済区分
+-- 2008/12/16 D.Nihei Add End
       ,order_header_rec.notif_status                 -- 通知ステータス
       ,order_header_rec.prev_notif_status            -- 前回通知ステータス
       ,order_header_rec.notif_date                   -- 確定通知実施日時

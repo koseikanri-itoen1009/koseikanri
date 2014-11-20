@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoSupplierResultsAMImpl
 * 概要説明   : 仕入先出荷実績入力:検索アプリケーションモジュール
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -14,6 +14,7 @@
 * 2008-10-22 1.3  吉元強樹     T_S_599対応
 * 2008-11-04 1.4  二瓶大輔     統合障害#51,103、104対応
 * 2008-12-06 1.5  伊藤ひとみ   本番障害#528対応
+* 2008-12-16 1.6  吉元強樹     本番障害#689,753対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo320001j.server;
@@ -647,6 +648,14 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
       // 発注No
       String headerNumber = (String)row.getAttribute("HeaderNumber");
 
+// 2008-12-16 v1.6 T.Yoshimoto Add Start 本番#689
+      // 発注ヘッダID
+      Number headerId     = (Number)row.getAttribute("HeaderId");
+    
+      // リターン
+      String retFlag      = XxcmnConstants.RETURN_NOT_EXE;
+// 2008-12-16 v1.6 T.Yoshimoto Add Start 本番#689
+
       // 直送区分が『支給』(3)且つ、支給No.が取得できる場合のみ実行
       if(XxpoConstants.DSHIP_PROVISION.equals(dShipCode) 
         && !XxcmnUtility.isBlankOrNull(requestNumber)) 
@@ -656,12 +665,23 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
         params.put("DropShipCode",  dShipCode);
         params.put("RequestNumber", requestNumber);
         params.put("HeaderNumber",  headerNumber);
-
-        return XxpoUtility.doDropShipResultsMake(
+// 2008-12-16 v1.6 T.Yoshimoto Mod Start 本番#689
+        //return XxpoUtility.doDropShipResultsMake(
+        retFlag = XxpoUtility.doDropShipResultsMake(
                               getOADBTransaction(), // トランザクション
                               params                // パラメータ
                               );
 
+        // コンカレント正常起動後、ステータスを金額確定へ変更
+        if (XxcmnConstants.RETURN_SUCCESS.equals(retFlag)) 
+        {
+          XxpoUtility.updateStatusCode(
+                        getOADBTransaction(),                        // トランザクション
+                        XxpoConstants.STATUS_FINISH_DECISION_AMOUNT, // ステータス(数量確定)
+                        headerId                                     // 発注ヘッダID
+                              );
+        }
+// 2008-12-16 v1.6 T.Yoshimoto Mod Start 本番#689
       }
       
     }
@@ -2351,6 +2371,14 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // 発注No
     String headerNumber = (String)row.getAttribute("HeaderNumber");
 
+// 2008-12-16 v1.XXXX T.Yoshimoto Add Start 本番#689
+    // 発注ヘッダID
+    Number headerId     = (Number)row.getAttribute("HeaderId");
+    
+    // リターン
+    String retFlag = XxcmnConstants.RETURN_NOT_EXE;
+// 2008-12-16 v1.XXXX T.Yoshimoto Add Start 本番#689
+
     // 直送区分が『支給』(3)且つ、支給No.が取得できる場合のみ実行
     if(XxpoConstants.DSHIP_PROVISION.equals(dShipCode) 
       && !XxcmnUtility.isBlankOrNull(requestNumber)) 
@@ -2361,10 +2389,25 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
       params.put("RequestNumber", requestNumber);
       params.put("HeaderNumber",  headerNumber);
 
-      return XxpoUtility.doDropShipResultsMake(
+// 2008-12-16 v1.6 T.Yoshimoto Mod Start 本番#689
+      //return XxpoUtility.doDropShipResultsMake(
+      retFlag = XxpoUtility.doDropShipResultsMake(
                             getOADBTransaction(), // トランザクション
                             params                // パラメータ
                             );
+
+      // コンカレント正常起動後、ステータスを金額確定へ変更
+      if (XxcmnConstants.RETURN_SUCCESS.equals(retFlag)) 
+      {
+        XxpoUtility.updateStatusCode(
+                      getOADBTransaction(),                        // トランザクション
+                      XxpoConstants.STATUS_FINISH_DECISION_AMOUNT, // ステータス(数量確定)
+                      headerId                                     // 発注ヘッダID
+                      );
+      }
+
+      return retFlag;
+// 2008-12-16 v1.XXXX T.Yoshimoto Mod Start 本番#689
 
     }
 
