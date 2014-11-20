@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
  * Package Name     : XXCFO019A02C(body)
  * Description      : 電子帳簿仕訳の情報系システム連携
  * MD.050           : MD050_CFO_019_A02_電子帳簿仕訳の情報系システム連携
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012-08-29    1.0   K.Onotsuka      新規作成
+ *  2012-10-03    1.1   K.Onotsuka      結合テスト障害対応[障害No16:項目桁チェック戻り値格納変数の桁数変更]
+ *                                                        [障害No19、20:管理テーブル登録条件修正]
+ *                                                        [障害No22:抽出項目「資産管理キー在庫管理キー値」の編集内容変更]
  *
  *****************************************************************************************/
 --
@@ -97,6 +100,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
   cv_upd_filename             CONSTANT VARCHAR2(100) := 'XXCFO1_ELECTRIC_BOOK_GL_JOURNAL_U_FILENAME'; -- 電子帳簿仕訳更新ファイル名
   cv_p_accounts               CONSTANT VARCHAR2(100) := 'XXCFO1_ELECTRIC_BOOK_P_ACCOUNTS';       -- 電子帳簿複数相手先複数勘定時文言
   cv_set_of_bks_id            CONSTANT VARCHAR2(100) := 'GL_SET_OF_BKS_ID';                      -- 会計帳簿ID
+--2012/10/03 Add Start
+  cv_gl_ctg_inv_cost          CONSTANT VARCHAR2(100) := 'XXCOI1_GL_CATEGORY_INV_COST';           -- 仕訳カテゴリ_在庫原価振替
+--2012/10/03 Add End
   --メッセージ
   cv_msg_cfo_10025            CONSTANT VARCHAR2(20)  := 'APP-XXCFO1-10025';   --取得対象データ無しエラーメッセージ
   cv_msg_cfo_00001            CONSTANT VARCHAR2(20)  := 'APP-XXCFO1-00001';   --プロファイル名取得エラーメッセージ
@@ -243,6 +249,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
   gv_full_name                VARCHAR2(200) DEFAULT NULL; --電子帳簿販売実績データ追加ファイル
   gv_electrinc_book_start_ymd VARCHAR2(100) DEFAULT NULL; --電子帳簿営業システム稼働開始年月日
   gv_electric_book_p_accounts VARCHAR2(100) DEFAULT NULL; --電子帳簿複数相手先複数勘定時文言
+--2012/10/03 Add Start
+  gv_gl_ctg_inv_cost          VARCHAR2(100);              --仕訳カテゴリ_在庫原価振替
+--2012/10/03 Add End
   gv_file_data                VARCHAR2(30000);
   gn_item_cnt                 NUMBER;             --チェック項目件数
   gv_0file_flg                VARCHAR2(1) DEFAULT 'N'; --0Byteファイル上書きフラグ
@@ -335,8 +344,19 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
             ,NULL                                AS sub_account_code       -- 相手勘定補助科目コード
             ,NULL                                AS sub_account_name       -- 相手勘定補助科目名称
             ,gjl.attribute8                      AS sales_exp_header_id    -- 販売実績ヘッダーID
-            ,DECODE(gjc.user_je_category_name,cv_ref1_mtl,gjl.reference_1,
-                    DECODE(gjh.je_source,cv_ref1_assets,gjl.reference_1,NULL)) 
+--2012/10/03 MOD Start
+--            ,DECODE(gjc.user_je_category_name,cv_ref1_mtl,gjl.reference_1,
+--                    DECODE(gjh.je_source,cv_ref1_assets,gjl.reference_1,NULL))
+            ,(CASE
+              WHEN gjc.user_je_category_name = cv_ref1_mtl THEN
+                gjl.reference_1
+              WHEN gjh.je_source = cv_ref1_assets THEN
+                gjl.reference_1
+              WHEN gjc.user_je_category_name = gv_gl_ctg_inv_cost THEN --在庫原価振替
+                gjl.reference_1
+              ELSE NULL
+              END)
+--2012/10/03 MOD End
                                                  AS reference_1                  -- 資産管理キー在庫管理キー値
             ,gjl.subledger_doc_sequence_value    AS subledger_doc_sequence_value -- 補助簿文書番号 
             ,gjh.currency_code                   AS currency_code                -- 通貨
@@ -442,8 +462,19 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
             ,NULL                                AS sub_account_code       -- 相手勘定補助科目コード
             ,NULL                                AS sub_account_name       -- 相手勘定補助科目名称
             ,gjl.attribute8                      AS sales_exp_header_id    -- 販売実績ヘッダーID
-            ,DECODE(gjc.user_je_category_name,cv_ref1_mtl,gjl.reference_1,
-                    DECODE(gjh.je_source,cv_ref1_assets,gjl.reference_1,NULL)) 
+--2012/10/03 MOD Start
+--            ,DECODE(gjc.user_je_category_name,cv_ref1_mtl,gjl.reference_1,
+--                    DECODE(gjh.je_source,cv_ref1_assets,gjl.reference_1,NULL))
+            ,(CASE
+              WHEN gjc.user_je_category_name = cv_ref1_mtl THEN
+                gjl.reference_1
+              WHEN gjh.je_source = cv_ref1_assets THEN
+                gjl.reference_1
+              WHEN gjc.user_je_category_name = gv_gl_ctg_inv_cost THEN --在庫原価振替
+                gjl.reference_1
+              ELSE NULL
+              END)
+--2012/10/03 MOD End
                                                  AS reference_1                  -- 資産管理キー在庫管理キー値
             ,gjl.subledger_doc_sequence_value    AS subledger_doc_sequence_value -- 補助簿文書番号 
             ,gjh.currency_code                   AS currency_code                -- 通貨
@@ -564,8 +595,19 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
             ,NULL                                AS sub_account_code       -- 相手勘定補助科目コード
             ,NULL                                AS sub_account_name       -- 相手勘定補助科目名称
             ,gjl.attribute8                      AS sales_exp_header_id    -- 販売実績ヘッダーID
-            ,DECODE(gjc.user_je_category_name,cv_ref1_mtl,gjl.reference_1,
-                    DECODE(gjh.je_source,cv_ref1_assets,gjl.reference_1,NULL))
+--2012/10/03 MOD Start
+--            ,DECODE(gjc.user_je_category_name,cv_ref1_mtl,gjl.reference_1,
+--                    DECODE(gjh.je_source,cv_ref1_assets,gjl.reference_1,NULL))
+            ,(CASE
+              WHEN gjc.user_je_category_name = cv_ref1_mtl THEN
+                gjl.reference_1
+              WHEN gjh.je_source = cv_ref1_assets THEN
+                gjl.reference_1
+              WHEN gjc.user_je_category_name = gv_gl_ctg_inv_cost THEN --在庫原価振替
+                gjl.reference_1
+              ELSE NULL
+              END)
+--2012/10/03 MOD End
                                                  AS reference_1                  -- 資産管理キー在庫管理キー値
             ,gjl.subledger_doc_sequence_value    AS subledger_doc_sequence_value -- 補助簿文書番号 
             ,gjh.currency_code                   AS currency_code                -- 通貨
@@ -683,8 +725,19 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
             ,NULL                                AS sub_account_code       -- 相手勘定補助科目コード
             ,NULL                                AS sub_account_name       -- 相手勘定補助科目名称
             ,gjl.attribute8                      AS sales_exp_header_id    -- 販売実績ヘッダーID
-            ,DECODE(gjc.user_je_category_name,cv_ref1_mtl,gjl.reference_1,
-                    DECODE(gjh.je_source,cv_ref1_assets,gjl.reference_1,NULL))
+--2012/10/03 MOD Start
+--            ,DECODE(gjc.user_je_category_name,cv_ref1_mtl,gjl.reference_1,
+--                    DECODE(gjh.je_source,cv_ref1_assets,gjl.reference_1,NULL))
+            ,(CASE
+              WHEN gjc.user_je_category_name = cv_ref1_mtl THEN
+                gjl.reference_1
+              WHEN gjh.je_source = cv_ref1_assets THEN
+                gjl.reference_1
+              WHEN gjc.user_je_category_name = gv_gl_ctg_inv_cost THEN --在庫原価振替
+                gjl.reference_1
+              ELSE NULL
+              END)
+--2012/10/03 MOD End
                                                  AS reference_1                  -- 資産管理キー在庫管理キー値
             ,gjl.subledger_doc_sequence_value    AS subledger_doc_sequence_value -- 補助簿文書番号 
             ,gjh.currency_code                   AS currency_code                -- 通貨
@@ -803,8 +856,19 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
             ,NULL                                AS sub_account_code       -- 相手勘定補助科目コード
             ,NULL                                AS sub_account_name       -- 相手勘定補助科目名称
             ,gjl.attribute8                      AS sales_exp_header_id    -- 販売実績ヘッダーID
-            ,DECODE(gjc.user_je_category_name,cv_ref1_mtl,gjl.reference_1,
-                    DECODE(gjh.je_source,cv_ref1_assets,gjl.reference_1,NULL))
+--2012/10/03 MOD Start
+--            ,DECODE(gjc.user_je_category_name,cv_ref1_mtl,gjl.reference_1,
+--                    DECODE(gjh.je_source,cv_ref1_assets,gjl.reference_1,NULL))
+            ,(CASE
+              WHEN gjc.user_je_category_name = cv_ref1_mtl THEN
+                gjl.reference_1
+              WHEN gjh.je_source = cv_ref1_assets THEN
+                gjl.reference_1
+              WHEN gjc.user_je_category_name = gv_gl_ctg_inv_cost THEN --在庫原価振替
+                gjl.reference_1
+              ELSE NULL
+              END)
+--2012/10/03 MOD End
                                                  AS reference_1                  -- 資産管理キー在庫管理キー値
             ,gjl.subledger_doc_sequence_value    AS subledger_doc_sequence_value -- 補助簿文書番号 
             ,gjh.currency_code                   AS currency_code                -- 通貨
@@ -1242,6 +1306,23 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
         RAISE global_api_expt;
       END IF;
     END IF;
+--2012/10/03 Add Start
+    --
+    --仕訳カテゴリ_在庫原価振替
+    gv_gl_ctg_inv_cost  := FND_PROFILE.VALUE( cv_gl_ctg_inv_cost );
+    --
+    IF ( gv_gl_ctg_inv_cost IS NULL ) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfo   -- 'XXCFO'
+                                                    ,cv_msg_cfo_00001 -- プロファイル名取得エラー
+                                                    ,cv_tkn_prof_name
+                                                    ,cv_gl_ctg_inv_cost
+                                                   )
+                           ,1
+                           ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--2012/10/03 Add End
 --
     --==================================
     -- ディレクトリパス取得
@@ -2333,7 +2414,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
 --
     -- *** ローカル変数 ***
     lv_errlevel               VARCHAR2(10) DEFAULT NULL;
-    lv_msgcode                VARCHAR2(50);  -- A-6の戻りメッセージコード(型桁チェック)
+    lv_msgcode                VARCHAR2(5000); -- A-6の戻りメッセージコード(型桁チェック)
     lv_tkn_name1              VARCHAR2(50);  -- トークン名１
     lv_tkn_val1               VARCHAR2(50);  -- トークン値１
     lv_tkn_name2              VARCHAR2(50);  -- トークン名２
@@ -3197,7 +3278,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
           INTO ln_hd_max_gl_je_header_id
           FROM gl_je_headers gjh
          WHERE gjh.je_header_id > ln_ctl_max_gl_je_header_id
-           AND gjh.creation_date < ( gd_process_date + gv_proc_target_time / 24 )
+           AND gjh.creation_date < ( gd_process_date + 1 + NVL(gv_proc_target_time,0) / 24 )
         ;
       END;
 --

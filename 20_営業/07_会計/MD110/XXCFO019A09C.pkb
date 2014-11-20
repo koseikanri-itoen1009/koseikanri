@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A09C(body)
  * Description      : 電子帳簿在庫管理の情報系システム連携
  * MD.050           : MD050_CFO_019_A09_電子帳簿在庫管理の情報系システム連携
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012-09-03    1.0   K.Nakamura       新規作成
+ *  2012-09-27    1.1   K.Nakamura       [結合テスト障害No18] OPM品目アドオンとの結合条件修正
  *
  *****************************************************************************************/
 --
@@ -2111,8 +2112,12 @@ AS
       AND    mmt.inventory_item_id        = msib.inventory_item_id
       AND    msib.segment1                = iimb.item_no
       AND    iimb.item_id                 = ximb.item_id
-      AND    mmt.transaction_date BETWEEN ximb.start_date_active
-                                  AND     ximb.end_date_active
+-- 2012/09/27 [結合テスト障害No18] K.Nakamura MOD
+--      AND    mmt.transaction_date BETWEEN ximb.start_date_active
+--                                  AND     ximb.end_date_active
+      AND    TRUNC(mmt.transaction_date) BETWEEN ximb.start_date_active
+                                         AND     ximb.end_date_active
+-- 2012/09/27 [結合テスト障害No18] K.Nakamura MOD
       AND    mmt.subinventory_code        = msi1.secondary_inventory_name
       AND    mmt.organization_id          = msi1.organization_id
       AND    mmt.transfer_subinventory    = msi2.secondary_inventory_name(+)
@@ -2187,8 +2192,12 @@ AS
       AND    mmt.inventory_item_id        = msib.inventory_item_id
       AND    msib.segment1                = iimb.item_no
       AND    iimb.item_id                 = ximb.item_id
-      AND    mmt.transaction_date BETWEEN ximb.start_date_active
-                                  AND     ximb.end_date_active
+-- 2012/09/27 [結合テスト障害No18] K.Nakamura MOD
+--      AND    mmt.transaction_date BETWEEN ximb.start_date_active
+--                                  AND     ximb.end_date_active
+      AND    TRUNC(mmt.transaction_date) BETWEEN ximb.start_date_active
+                                         AND     ximb.end_date_active
+-- 2012/09/27 [結合テスト障害No18] K.Nakamura MOD
       AND    mmt.subinventory_code        = msi1.secondary_inventory_name
       AND    mmt.organization_id          = msi1.organization_id
       AND    mmt.transfer_subinventory    = msi2.secondary_inventory_name(+)
@@ -2264,8 +2273,12 @@ AS
       AND    mmt.inventory_item_id        = msib.inventory_item_id
       AND    msib.segment1                = iimb.item_no
       AND    iimb.item_id                 = ximb.item_id
-      AND    mmt.transaction_date BETWEEN ximb.start_date_active
-                                  AND     ximb.end_date_active
+-- 2012/09/27 [結合テスト障害No18] K.Nakamura MOD
+--      AND    mmt.transaction_date BETWEEN ximb.start_date_active
+--                                  AND     ximb.end_date_active
+      AND    TRUNC(mmt.transaction_date) BETWEEN ximb.start_date_active
+                                         AND     ximb.end_date_active
+-- 2012/09/27 [結合テスト障害No18] K.Nakamura MOD
       AND    mmt.subinventory_code        = msi1.secondary_inventory_name
       AND    mmt.organization_id          = msi1.organization_id
       AND    mmt.transfer_subinventory    = msi2.secondary_inventory_name(+)
@@ -2334,8 +2347,12 @@ AS
       AND    mmt.inventory_item_id        = msib.inventory_item_id
       AND    msib.segment1                = iimb.item_no
       AND    iimb.item_id                 = ximb.item_id
-      AND    mmt.transaction_date BETWEEN ximb.start_date_active
-                                  AND     ximb.end_date_active
+-- 2012/09/27 [結合テスト障害No18] K.Nakamura MOD
+--      AND    mmt.transaction_date BETWEEN ximb.start_date_active
+--                                  AND     ximb.end_date_active
+      AND    TRUNC(mmt.transaction_date) BETWEEN ximb.start_date_active
+                                         AND     ximb.end_date_active
+-- 2012/09/27 [結合テスト障害No18] K.Nakamura MOD
       AND    mmt.subinventory_code        = msi1.secondary_inventory_name
       AND    mmt.organization_id          = msi1.organization_id
       AND    mmt.transfer_subinventory    = msi2.secondary_inventory_name(+)
@@ -2831,7 +2848,8 @@ AS
     ;
 --
     -- MAX値取得（資材配賦）
-    SELECT NVL(MAX(mta.gl_batch_id), lt_gl_batch_id_mic) AS gl_batch_id
+    SELECT /*+ INDEX(mta MTL_TRANSACTION_ACCOUNTS_N4) */
+           NVL(MAX(mta.gl_batch_id), lt_gl_batch_id_mic) AS gl_batch_id
     INTO   lt_gl_batch_id_mta
     FROM   mtl_transaction_accounts                      mta
     WHERE  mta.gl_batch_id > lt_gl_batch_id_mic
