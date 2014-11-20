@@ -27,6 +27,7 @@ AS
  *  2009/03/26    1.2  Yutaka.Kuboshima 顧客名称・顧客名称カナチェック
  *                                      顧客所在地全角半角チェック追加
  *  2009/05/22    1.3  Yutaka.Kuboshima 顧客必須項目チェック追加
+ *  2009/06/19    1.4  Yutaka.Kuboshima 障害T1_1500対応
  *****************************************************************************************/
  --
   --顧客ステータス更新可否チェック
@@ -49,7 +50,11 @@ AS
     RETURN VARCHAR2;
 -- 2009/05/22 Ver1.3 add start by Yutaka.Kuboshima
   --顧客必須項目チェック
-  PROCEDURE cust_required_check(iv_customer_number  IN  VARCHAR2,  -- 顧客番号
+  PROCEDURE cust_required_check(
+-- 2009/06/19 Ver1.4 modify start by Yutaka.Kuboshima
+--                                iv_customer_number  IN  VARCHAR2,  -- 顧客番号
+                                in_customer_id      IN  NUMBER,    -- 顧客ID
+-- 2009/06/19 Ver1.4 modify end by Yutaka.Kuboshima
                                 iv_cust_status      IN  VARCHAR2,  -- 顧客ステータス（変更前）
                                 iv_cust_will_status IN  VARCHAR2,  -- 顧客ステータス（変更後）
                                 ov_retcode          OUT VARCHAR2,  -- リターン・コード             --# 固定 #

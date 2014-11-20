@@ -28,6 +28,7 @@ AS
  *                                      顧客所在地全角半角チェック追加
  *  2009/04/07    1.3  Yutaka.Kuboshima 障害T1_0303の対応
  *  2009/05/22    1.4  Yutaka.Kuboshima 障害T1_1089の対応
+ *  2009/06/19    1.5  Yutaka.Kuboshima 障害T1_1500の対応
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -318,7 +319,11 @@ AS
    * Procedure  Name  : cust_required_check
    * Description      : 顧客必須項目チェック
    ***********************************************************************************/
-  PROCEDURE cust_required_check(iv_customer_number  IN  VARCHAR2,  -- 顧客番号
+  PROCEDURE cust_required_check(
+-- 2009/06/19 Ver1.5 modify start by Yutaka.Kuboshima
+--                                iv_customer_number  IN  VARCHAR2,  -- 顧客番号
+                                in_customer_id      IN  NUMBER,    -- 顧客ID
+-- 2009/06/19 Ver1.5 modify end by Yutaka.Kuboshima
                                 iv_cust_status      IN  VARCHAR2,  -- 顧客ステータス（変更前）
                                 iv_cust_will_status IN  VARCHAR2,  -- 顧客ステータス（変更後）
                                 ov_retcode          OUT VARCHAR2,  -- リターン・コード             --# 固定 #
@@ -494,7 +499,10 @@ AS
              ) cust
       WHERE  hca.party_id        = hp.party_id(+)
         AND  hca.cust_account_id = cust.cust_account_id(+)
-        AND  hca.account_number  = iv_customer_number
+-- 2009/06/19 Ver1.5 modify start by Yutaka.Kuboshima
+--        AND  hca.account_number  = iv_customer_number
+        AND  hca.cust_account_id = in_customer_id
+-- 2009/06/19 Ver1.5 modify end by Yutaka.Kuboshima
       ORDER BY cust.site_use_code;
     -- 顧客必須項目チェック用カーソル型レコード
     cust_required_check_rec cust_required_check_cur%ROWTYPE;
