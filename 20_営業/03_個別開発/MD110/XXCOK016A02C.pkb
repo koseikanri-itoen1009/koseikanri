@@ -13,7 +13,7 @@ AS
  *                    自販機販売手数料を振り込むためのFBデータを作成します。
  *
  * MD.050           : FBデータファイル作成（FBデータ作成） MD050_COK_016_A02
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *                                                          1.振込手数料負担者が伊藤園、且つ支払予定額 <= 0
  *                                                          2.振込手数料負担者が伊藤園ではない、
  *                                                            且つ支払予定額 - 振込手数料 <= 0
+ *  2009/05/29    1.4   K.Yamaguchi      [障害T1_1147対応]販手残高テーブル更新項目追加
  *
  *****************************************************************************************/
 --
@@ -1238,7 +1239,16 @@ AS
       SET  xbb.expect_payment_amt_tax = cv_zero                                        -- 支払予定額
           ,xbb.payment_amt_tax        = NVL( xbb.expect_payment_amt_tax, cn_zero )     -- 支払額
           ,xbb.fb_interface_status    = cv_1                                           -- 連携ステータス（本振用FB）
-          ,xbb.fb_interface_date      = gd_proc_date                                   -- 連携日
+          ,xbb.fb_interface_date      = gd_proc_date                                   -- 連携日（本振用FB）
+-- 2009/05/29 Ver.1.4 [障害T1_1147] SCS K.Yamaguchi ADD START
+          ,xbb.publication_date       = gd_pay_date                                    -- 案内書発効日
+          ,xbb.edi_interface_status   = cv_1                                           -- 連携ステータス（EDI支払案内書）
+          ,xbb.edi_interface_date     = gd_proc_date                                   -- 連携日（EDI支払案内書）
+          ,xbb.request_id             = cn_request_id
+          ,xbb.program_application_id = cn_program_application_id
+          ,xbb.program_id             = cn_program_id
+          ,xbb.program_update_date    = SYSDATE
+-- 2009/05/29 Ver.1.4 [障害T1_1147] SCS K.Yamaguchi ADD END
           ,xbb.last_updated_by        = cn_last_updated_by                             -- 最終更新者
           ,xbb.last_update_date       = SYSDATE                                        -- 最終更新日
           ,xbb.last_update_login      = cn_last_update_login                           -- 最終更新ログインID
