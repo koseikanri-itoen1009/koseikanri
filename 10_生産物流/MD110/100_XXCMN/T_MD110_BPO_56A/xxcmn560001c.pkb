@@ -7,7 +7,7 @@ AS
  * Description      : トレーサビリティ
  * MD.050           : トレーサビリティ T_MD050_BPO_560
  * MD.070           : トレーサビリティ(56A) T_MD070_BPO_56A
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2008/09/03    1.6   ORACLE 丸下博宣  PT不具合修正 TYPE定義をVIEWのTYPEに修正
  *  2008/09/10    1.7   ORACLE 椎名昭圭  PT 6-1_26 対応
  *  2008/09/26    1.8   ORACLE 椎名昭圭  PT 6-1_26 修正
+ *  2008/10/16    1.9   ORACLE 椎名昭圭  T_S_427,622対応
  *
  *****************************************************************************************/
 --
@@ -141,6 +142,9 @@ AS
     -- ロット基本情報
     p_item_id           ic_tran_pnd.item_id%TYPE,                         -- 親品目ID
     p_lot_id            ic_tran_pnd.lot_id%TYPE,                          -- 親ロットID
+-- 2008/10/16 v1.9 ADD START
+    p_trans_qty         ic_tran_pnd.trans_qty%TYPE,                       -- 親取引数量
+-- 2008/10/16 v1.9 ADD END
 -- 2008/09/01 v1.5 UPDATE START
 --    p_batch_id          gme_material_details.batch_id%TYPE,               -- 親バッチID
 --    p_item_no           ic_item_mst_b.item_no%TYPE,                       -- 親品目コード
@@ -153,6 +157,9 @@ AS
     p_whse_code         ic_tran_pnd.whse_code%TYPE,                       -- 倉庫コード
     c_item_id           ic_tran_pnd.item_id%TYPE,                         -- 子品目ID
     c_lot_id            ic_tran_pnd.lot_id%TYPE,                          -- 子ロットID
+-- 2008/10/16 v1.9 ADD START
+    c_trans_qty         ic_tran_pnd.trans_qty%TYPE,                       -- 子取引数量
+-- 2008/10/16 v1.9 ADD END
 -- 2008/09/01 v1.5 UPDATE START
 --    c_batch_id          gme_material_details.batch_id%TYPE,               -- 子バッチID
 --    c_item_no           ic_item_mst_b.item_no%TYPE,                       -- 子品目コード
@@ -175,6 +182,9 @@ AS
     product_type        ic_lots_mst.attribute13%TYPE,                     -- タイプ
     product_ranc_1      ic_lots_mst.attribute14%TYPE,                     -- ランク１
     product_ranc_2      ic_lots_mst.attribute15%TYPE,                     -- ランク２
+-- 2008/10/16 v1.9 ADD START
+    product_ranc_3      ic_lots_mst.attribute19%TYPE,                     -- ランク３
+-- 2008/10/16 v1.9 ADD END
     product_slip_dev    ic_lots_mst.attribute16%TYPE,                     -- 生産伝票区分
     description         ic_lots_mst.attribute18%TYPE,                     -- 摘要
     inspect_req         ic_lots_mst.attribute22%TYPE,                     -- 検査依頼No
@@ -193,6 +203,9 @@ AS
     p_item_id           ic_tran_pnd.item_id%TYPE,                         -- 親品目ID
 --    p_lot_id            ic_tran_pnd.lot_id%TYPE,                          -- 親ロットID
     p_lot_id            ic_lots_mst.lot_id%TYPE,                          -- 親ロットID
+-- 2008/10/16 v1.9 ADD START
+    p_trans_qty         ic_tran_pnd.trans_qty%TYPE,                       -- 親取引数量
+-- 2008/10/16 v1.9 ADD END
 -- 2008/09/03 v1.6 UPDATE END
 -- 2008/09/01 v1.5 UPDATE START
 --    p_item_no           ic_item_mst_b.item_no%TYPE,                       -- 親品目コード
@@ -209,9 +222,9 @@ AS
 --    supp_name           xxcmn_vendors.vendor_name%TYPE,                   -- 仕入先名
 --    supp_code           po_vendors.segment1%TYPE,                         -- 仕入先コード
 --    trader_name         xxcmn_vendors.vendor_name%TYPE,                   -- 斡旋業者
-    supp_name           xxcmn_vendors2_v.vendor_name%TYPE,                  -- 仕入先名
-    supp_code           xxcmn_vendors2_v.segment1%TYPE,                     -- 仕入先コード
-    trader_name         xxcmn_vendors2_v.vendor_name%TYPE,                  -- 斡旋業者
+    supp_name           xxcmn_vendors_v.vendor_name%TYPE,                  -- 仕入先名
+    supp_code           xxcmn_vendors_v.segment1%TYPE,                     -- 仕入先コード
+    trader_name         xxcmn_vendors_v.vendor_name%TYPE,                  -- 斡旋業者
 -- 2008/09/03 v1.6 UPDATE END
     -- OPMロット情報
     lot_date            ic_lots_mst.attribute1%TYPE,                      -- 製造年月日
@@ -226,6 +239,9 @@ AS
     product_type        ic_lots_mst.attribute13%TYPE,                     -- タイプ
     product_ranc_1      ic_lots_mst.attribute14%TYPE,                     -- ランク１
     product_ranc_2      ic_lots_mst.attribute15%TYPE,                     -- ランク２
+-- 2008/10/16 v1.9 ADD START
+    product_ranc_3      ic_lots_mst.attribute19%TYPE,                     -- ランク３
+-- 2008/10/16 v1.9 ADD END
     product_slip_dev    ic_lots_mst.attribute16%TYPE,                     -- 生産伝票区分
     description         ic_lots_mst.attribute18%TYPE,                     -- 摘要
     inspect_req         ic_lots_mst.attribute22%TYPE                      -- 検査依頼No
@@ -258,6 +274,10 @@ AS
   TYPE reg_lot_id                 IS TABLE OF  ic_lots_mst.lot_id                     %TYPE INDEX BY BINARY_INTEGER;
   -- 親ロットNo
   TYPE reg_lot_num                IS TABLE OF  ic_lots_mst.lot_no                     %TYPE INDEX BY BINARY_INTEGER;
+-- 2008/10/16 v1.9 ADD START
+  -- 親取引数量
+  TYPE reg_trans_qty              IS TABLE OF  ic_tran_pnd.trans_qty                  %TYPE INDEX BY BINARY_INTEGER;
+-- 2008/10/16 v1.9 ADD END
   -- 子品目ID
   TYPE reg_trace_item_id          IS TABLE OF  ic_item_mst_b.item_id                  %TYPE INDEX BY BINARY_INTEGER;
 -- 2008/09/03 v1.6 UPDATE START
@@ -272,6 +292,10 @@ AS
   TYPE reg_trace_lot_id           IS TABLE OF  ic_lots_mst.lot_id                     %TYPE INDEX BY BINARY_INTEGER;
   -- 子ロットNo
   TYPE reg_trace_lot_num          IS TABLE OF  ic_lots_mst.lot_no                     %TYPE INDEX BY BINARY_INTEGER;
+-- 2008/10/16 v1.9 ADD START
+  -- 子取引数量
+  TYPE reg_trace_trans_qty        IS TABLE OF  ic_tran_pnd.trans_qty                  %TYPE INDEX BY BINARY_INTEGER;
+-- 2008/10/16 v1.9 ADD END
   -- 製造バッチNo
   TYPE reg_batch_num              IS TABLE OF  gme_batch_header.batch_no              %TYPE INDEX BY BINARY_INTEGER;
   -- 製造日
@@ -293,13 +317,13 @@ AS
 -- 2008/09/03 v1.6 UPDATE START
   -- 仕入先名
 --  TYPE reg_supp_name              IS TABLE OF  xxcmn_vendors.vendor_name              %TYPE INDEX BY BINARY_INTEGER;
-  TYPE reg_supp_name              IS TABLE OF  xxcmn_vendors2_v.vendor_name           %TYPE INDEX BY BINARY_INTEGER;
+  TYPE reg_supp_name              IS TABLE OF  xxcmn_vendors_v.vendor_name           %TYPE INDEX BY BINARY_INTEGER;
   -- 仕入先コード
 --  TYPE reg_supp_code              IS TABLE OF  po_vendors.segment1                    %TYPE INDEX BY BINARY_INTEGER;
-  TYPE reg_supp_code              IS TABLE OF  xxcmn_vendors2_v.segment1              %TYPE INDEX BY BINARY_INTEGER;
+  TYPE reg_supp_code              IS TABLE OF  xxcmn_vendors_v.segment1              %TYPE INDEX BY BINARY_INTEGER;
   -- 斡旋業者
 --  TYPE reg_trader_name            IS TABLE OF  xxcmn_vendors.vendor_name              %TYPE INDEX BY BINARY_INTEGER;
-  TYPE reg_trader_name            IS TABLE OF  xxcmn_vendors2_v.vendor_name           %TYPE INDEX BY BINARY_INTEGER;
+  TYPE reg_trader_name            IS TABLE OF  xxcmn_vendors_v.vendor_name           %TYPE INDEX BY BINARY_INTEGER;
 -- 2008/09/03 v1.6 UPDATE END
   -- 製造年月日
   TYPE reg_lot_date               IS TABLE OF  ic_lots_mst.attribute1                 %TYPE INDEX BY BINARY_INTEGER;
@@ -325,6 +349,10 @@ AS
   TYPE reg_product_ranc_1         IS TABLE OF  ic_lots_mst.attribute14                %TYPE INDEX BY BINARY_INTEGER;
   -- ランク２
   TYPE reg_product_ranc_2         IS TABLE OF  ic_lots_mst.attribute15                %TYPE INDEX BY BINARY_INTEGER;
+-- 2008/10/16 v1.9 ADD START
+  -- ランク３
+  TYPE reg_product_ranc_3         IS TABLE OF  ic_lots_mst.attribute19                %TYPE INDEX BY BINARY_INTEGER;
+-- 2008/10/16 v1.9 ADD END
   -- 生産伝票区分
   TYPE reg_product_slip_dev       IS TABLE OF  ic_lots_mst.attribute16                %TYPE INDEX BY BINARY_INTEGER;
   -- 摘要
@@ -417,11 +445,17 @@ AS
   gt_item_name                reg_item_name;              -- 親品目名称
   gt_lot_id                   reg_lot_id;                 -- 親ロットID
   gt_lot_num                  reg_lot_num;                -- 親ロットNo
+-- 2008/10/16 v1.9 ADD START
+  gt_trans_qty                reg_trans_qty;              -- 親取引数量
+-- 2008/10/16 v1.9 ADD END
   gt_trace_item_id            reg_trace_item_id;          -- 子品目ID
   gt_trace_item_code          reg_trace_item_code;        -- 子品目コード
   gt_trace_item_name          reg_trace_item_name;        -- 子品目名称
   gt_trace_lot_id             reg_trace_lot_id;           -- 子ロットID
   gt_trace_lot_num            reg_trace_lot_num;          -- 子ロットNo
+-- 2008/10/16 v1.9 ADD START
+  gt_trace_trans_qty          reg_trace_trans_qty;        -- 子取引数量
+-- 2008/10/16 v1.9 ADD END
   gt_batch_num                reg_batch_num;              -- 製造バッチNo
   gt_batch_date               reg_batch_date;             -- 製造日
   gt_whse_code                reg_whse_code;              -- 倉庫コード
@@ -446,6 +480,9 @@ AS
   gt_product_type             reg_product_type;           -- タイプ
   gt_product_ranc_1           reg_product_ranc_1;         -- ランク１
   gt_product_ranc_2           reg_product_ranc_2;         -- ランク２
+-- 2008/10/16 v1.9 ADD START
+  gt_product_ranc_3           reg_product_ranc_3;         -- ランク３
+-- 2008/10/16 v1.9 ADD END
   gt_product_slip_dev         reg_product_slip_dev;       -- 生産伝票区分
   gt_description              reg_description;            -- 摘要
   gt_inspect_req              reg_inspect_req;            -- 検査依頼No
@@ -1062,6 +1099,9 @@ AS
     -- SELECT文(共通)定義
     lv_sql_select_01 := 'SELECT pp.item_id      p_item_id '
                      ||       ',pp.lot_id       p_lot_id '
+-- 2008/10/16 v1.9 ADD START
+                     ||       ',ABS(pp.trans_qty) p_trans_qty '
+-- 2008/10/16 v1.9 ADD END
                      ||       ',pp.batch_id     p_batch_id '
                      ||       ',pp.item_no      p_item_no '
                      ||       ',pp.item_name    p_item_name '
@@ -1093,6 +1133,9 @@ AS
 */
                      ||       ',itp.item_id      c_item_id '
                      ||       ',itp.lot_id       c_lot_id '
+-- 2008/10/16 v1.9 ADD START
+                     ||       ',ABS(itp.trans_qty) c_trans_qty '
+-- 2008/10/16 v1.9 ADD END
                      ||       ',gbh.batch_id     c_batch_id '
                      ||       ',ximv.item_no     c_item_no '
                      ||       ',ximv.item_name   c_item_name '
@@ -1109,6 +1152,9 @@ AS
                      ||       ',ilm2.attribute13 l_product_type '
                      ||       ',ilm2.attribute14 l_product_ranc_1 '
                      ||       ',ilm2.attribute15 l_product_ranc_2 '
+-- 2008/10/16 v1.9 ADD START
+                     ||       ',ilm2.attribute19 l_product_ranc_3 '
+-- 2008/10/16 v1.9 ADD END
                      ||       ',ilm2.attribute16 l_product_slip_dev '
                      ||       ',ilm2.attribute18 l_description '
                      ||       ',ilm2.attribute22 l_inspect_req ';
@@ -1135,7 +1181,10 @@ AS
     -- 副問合せ(親品目ロットトレース)定義
     lv_sql_01 := 'SELECT itp.item_id '
               ||       ',itp.lot_id '
-              ||       ',SUM( itp.trans_qty ) '
+-- 2008/10/16 v1.9 UPDATE START
+--              ||       ',SUM( itp.trans_qty ) '
+              ||       ',SUM( itp.trans_qty ) trans_qty'
+-- 2008/10/16 v1.9 UPDATE END
               ||       ',gbh.batch_id '
               ||       ',ximv.item_no '
               ||       ',ximv.item_name '
@@ -1279,7 +1328,10 @@ AS
     -- 副問合せ(親品目トレースバック)定義
     lv_sql_03 := 'SELECT itp.item_id '
               ||       ',itp.lot_id '
-              ||       ',SUM( itp.trans_qty ) '
+-- 2008/10/16 v1.9 UPDATE START
+--              ||       ',SUM( itp.trans_qty ) '
+              ||       ',SUM( itp.trans_qty ) trans_qty'
+-- 2008/10/16 v1.9 UPDATE END
               ||       ',gbh.batch_id '
               ||       ',ximv.item_no '
               ||       ',ximv.item_name '
@@ -1449,6 +1501,9 @@ AS
                     || 'AND    itp.item_id             IS NOT NULL '
                     || 'GROUP BY pp.item_id '
                     ||         ',pp.lot_id '
+-- 2008/10/16 v1.9 ADD START
+                    ||         ',pp.trans_qty '
+-- 2008/10/16 v1.9 ADD END
                     ||         ',pp.batch_id '
                     ||         ',pp.item_no '
                     ||         ',pp.item_name '
@@ -1456,6 +1511,9 @@ AS
                     ||         ',pp.whse_code '
                     ||         ',itp.item_id '
                     ||         ',itp.lot_id '
+-- 2008/10/16 v1.9 ADD START
+                    ||         ',itp.trans_qty '
+-- 2008/10/16 v1.9 ADD END
                     ||         ',gbh.batch_id '
                     ||         ',ximv.item_no '
                     ||         ',ximv.item_name '
@@ -1472,6 +1530,9 @@ AS
                     ||         ',ilm2.attribute13 '
                     ||         ',ilm2.attribute14 '
                     ||         ',ilm2.attribute15 '
+-- 2008/10/16 v1.9 ADD START
+                    ||         ',ilm2.attribute19 '
+-- 2008/10/16 v1.9 ADD END
                     ||         ',ilm2.attribute16 '
                     ||         ',ilm2.attribute18 '
                     ||         ',ilm2.attribute22 '
@@ -1526,6 +1587,9 @@ AS
                     || 'AND    itp.item_id             IS NOT NULL '
                     || 'GROUP BY pp.item_id '
                     ||         ',pp.lot_id '
+-- 2008/10/16 v1.9 ADD START
+                    ||         ',pp.trans_qty '
+-- 2008/10/16 v1.9 ADD END
                     ||         ',pp.batch_id '
                     ||         ',pp.item_no '
                     ||         ',pp.item_name '
@@ -1533,6 +1597,9 @@ AS
                     ||         ',pp.whse_code '
                     ||         ',itp.item_id '
                     ||         ',itp.lot_id '
+-- 2008/10/16 v1.9 ADD START
+                    ||         ',itp.trans_qty '
+-- 2008/10/16 v1.9 ADD END
                     ||         ',gbh.batch_id '
                     ||         ',ximv.item_no '
                     ||         ',ximv.item_name '
@@ -1549,6 +1616,9 @@ AS
                     ||         ',ilm2.attribute13 '
                     ||         ',ilm2.attribute14 '
                     ||         ',ilm2.attribute15 '
+-- 2008/10/16 v1.9 ADD START
+                    ||         ',ilm2.attribute19 '
+-- 2008/10/16 v1.9 ADD END
                     ||         ',ilm2.attribute16 '
                     ||         ',ilm2.attribute18 '
                     ||         ',ilm2.attribute22 '
@@ -1620,6 +1690,9 @@ AS
       -- 子品目情報の在庫情報が存在しない場合、受入情報を取得
       SELECT itp.item_id
             ,ilm.lot_id
+-- 2008/10/16 v1.9 ADD START
+            ,ABS(itp.trans_qty)
+-- 2008/10/16 v1.9 ADD END
             ,ximv.item_no
             ,ximv.item_name
             ,ilm.lot_no
@@ -1632,26 +1705,26 @@ AS
 --            ,ven1.segment1
 --            ,ven2.trader_name
             ,(
-              SELECT  xpv1.vendor_name
+              SELECT  xpv.vendor_name
               FROM    po_headers_all   pha
-                      ,xxcmn_vendors2_v xpv1
-              WHERE   pha.vendor_id    = xpv1.vendor_id(+)
+                      ,xxcmn_vendors_v xpv
+              WHERE   pha.vendor_id    = xpv.vendor_id(+)
               AND     pha.org_id              = gn_org_id
               AND     rsl.po_header_id        = pha.po_header_id
               ) AS supp_name
             ,(
-              SELECT  xpv1.segment1
+              SELECT  xpv.segment1
               FROM    po_headers_all   pha
-                      ,xxcmn_vendors2_v xpv1
-              WHERE   pha.vendor_id    = xpv1.vendor_id(+)
+                      ,xxcmn_vendors_v xpv
+              WHERE   pha.vendor_id    = xpv.vendor_id(+)
               AND     pha.org_id              = gn_org_id
               AND     rsl.po_header_id        = pha.po_header_id
               ) AS segment1
             ,(
-              SELECT  xpv2.vendor_name
+              SELECT  xpv.vendor_name
               FROM    po_headers_all   pha
-                      ,xxcmn_vendors2_v xpv2
-              WHERE   pha.attribute3   = xpv2.vendor_id(+)
+                      ,xxcmn_vendors_v xpv
+              WHERE   pha.attribute3   = xpv.vendor_id(+)
               AND     pha.org_id              = gn_org_id
               AND     rsl.po_header_id        = pha.po_header_id
               ) AS trader_name
@@ -1668,6 +1741,9 @@ AS
             ,ilm.attribute13
             ,ilm.attribute14
             ,ilm.attribute15
+-- 2008/10/16 v1.9 ADD START
+            ,ilm.attribute19
+-- 2008/10/16 v1.9 ADD END
             ,ilm.attribute16
             ,ilm.attribute18
             ,ilm.attribute22
@@ -1731,6 +1807,9 @@ AS
         -- 受入情報を取得
         SELECT itp.item_id
               ,ilm.lot_id
+-- 2008/10/16 v1.9 ADD START
+              ,ABS(itp.trans_qty)
+-- 2008/10/16 v1.9 ADD END
               ,ximv.item_no
               ,ximv.item_name
               ,ilm.lot_no
@@ -1743,26 +1822,26 @@ AS
 --              ,ven1.segment1
 --              ,ven2.trader_name
               ,(
-                SELECT  xpv1.vendor_name
+                SELECT  xpv.vendor_name
                 FROM    po_headers_all   pha
-                       ,xxcmn_vendors2_v xpv1
-                WHERE   pha.vendor_id    = xpv1.vendor_id(+)
+                       ,xxcmn_vendors_v xpv
+                WHERE   pha.vendor_id    = xpv.vendor_id(+)
                 AND     pha.org_id              = gn_org_id
                 AND     rsl.po_header_id        = pha.po_header_id
                ) AS supp_name
               ,(
-                SELECT  xpv1.segment1
+                SELECT  xpv.segment1
                 FROM    po_headers_all   pha
-                       ,xxcmn_vendors2_v xpv1
-                WHERE   pha.vendor_id    = xpv1.vendor_id(+)
+                       ,xxcmn_vendors_v xpv
+                WHERE   pha.vendor_id    = xpv.vendor_id(+)
                 AND     pha.org_id              = gn_org_id
                 AND     rsl.po_header_id        = pha.po_header_id
                ) AS segment1
               ,(
-                SELECT  xpv2.vendor_name
+                SELECT  xpv.vendor_name
                 FROM    po_headers_all   pha
-                       ,xxcmn_vendors2_v xpv2
-                WHERE   pha.attribute3   = xpv2.vendor_id(+)
+                       ,xxcmn_vendors_v xpv
+                WHERE   pha.attribute3   = xpv.vendor_id(+)
                 AND     pha.org_id              = gn_org_id
                 AND     rsl.po_header_id        = pha.po_header_id
                ) AS trader_name
@@ -1779,6 +1858,9 @@ AS
               ,ilm.attribute13
               ,ilm.attribute14
               ,ilm.attribute15
+-- 2008/10/16 v1.9 ADD START
+              ,ilm.attribute19
+-- 2008/10/16 v1.9 ADD END
               ,ilm.attribute16
               ,ilm.attribute18
               ,ilm.attribute22
@@ -2055,9 +2137,15 @@ AS
       gt_item_code(in_total_cnt)        := NVL(it_itp_tbl(in_cnt).p_item_no,'');
       gt_item_name(in_total_cnt)        := NVL(it_itp_tbl(in_cnt).p_item_name,'');
       gt_lot_num(in_total_cnt)          := NVL(it_itp_tbl(in_cnt).p_lot_no,'');
+-- 2008/10/16 v1.9 ADD START
+      gt_trans_qty(in_total_cnt)        := NVL(it_itp_tbl(in_cnt).p_trans_qty,'');
+-- 2008/10/16 v1.9 ADD END
       gt_trace_item_code(in_total_cnt)  := NVL(it_itp_tbl(in_cnt).c_item_no,'');
       gt_trace_item_name(in_total_cnt)  := NVL(it_itp_tbl(in_cnt).c_item_name,'');
       gt_trace_lot_num(in_total_cnt)    := NVL(it_itp_tbl(in_cnt).c_lot_no,'');
+-- 2008/10/16 v1.9 ADD START
+      gt_trace_trans_qty(in_total_cnt)  := NVL(it_itp_tbl(in_cnt).c_trans_qty,'');
+-- 2008/10/16 v1.9 ADD END
       gt_batch_num(in_total_cnt)        := NVL(it_itp_tbl(in_cnt).batch_num,'');
       gt_batch_date(in_total_cnt)       := NVL(it_itp_tbl(in_cnt).batch_date,'');
       gt_whse_code(in_total_cnt)        := NVL(it_itp_tbl(in_cnt).p_whse_code,'');
@@ -2082,6 +2170,9 @@ AS
       gt_product_type(in_total_cnt)     := NVL(it_itp_tbl(in_cnt).product_type,'');
       gt_product_ranc_1(in_total_cnt)   := NVL(it_itp_tbl(in_cnt).product_ranc_1,'');
       gt_product_ranc_2(in_total_cnt)   := NVL(it_itp_tbl(in_cnt).product_ranc_2,'');
+-- 2008/10/16 v1.9 ADD START
+      gt_product_ranc_3(in_total_cnt)   := NVL(it_itp_tbl(in_cnt).product_ranc_3,'');
+-- 2008/10/16 v1.9 ADD END
       gt_product_slip_dev(in_total_cnt) := NVL(it_itp_tbl(in_cnt).product_slip_dev,'');
       gt_description(in_total_cnt)      := NVL(it_itp_tbl(in_cnt).description,'');
       gt_inspect_req(in_total_cnt)      := NVL(it_itp_tbl(in_cnt).inspect_req,'');
@@ -2105,9 +2196,15 @@ AS
       gt_item_code(in_total_cnt)        := NVL(it_rcv_tbl(ln_rcv_cnt).p_item_no,'');
       gt_item_name(in_total_cnt)        := NVL(it_rcv_tbl(ln_rcv_cnt).p_item_name,'');
       gt_lot_num(in_total_cnt)          := NVL(it_rcv_tbl(ln_rcv_cnt).p_lot_no,'');
+-- 2008/10/16 v1.9 ADD START
+      gt_trans_qty(in_total_cnt)        := NVL(it_rcv_tbl(ln_rcv_cnt).p_trans_qty,'');
+-- 2008/10/16 v1.9 ADD END
       gt_trace_item_code(in_total_cnt)  := '';
       gt_trace_item_name(in_total_cnt)  := '';
       gt_trace_lot_num(in_total_cnt)    := '';
+-- 2008/10/16 v1.9 ADD START
+      gt_trace_trans_qty(in_total_cnt)  := '';
+-- 2008/10/16 v1.9 ADD END
       gt_batch_num(in_total_cnt)        := '';
       gt_batch_date(in_total_cnt)       := '';
       gt_whse_code(in_total_cnt)        := NVL(it_rcv_tbl(ln_rcv_cnt).whse_code,'');
@@ -2132,6 +2229,9 @@ AS
       gt_product_type(in_total_cnt)     := NVL(it_rcv_tbl(ln_rcv_cnt).product_type,'');
       gt_product_ranc_1(in_total_cnt)   := NVL(it_rcv_tbl(ln_rcv_cnt).product_ranc_1,'');
       gt_product_ranc_2(in_total_cnt)   := NVL(it_rcv_tbl(ln_rcv_cnt).product_ranc_2,'');
+-- 2008/10/16 v1.9 ADD START
+      gt_product_ranc_3(in_total_cnt)   := NVL(it_rcv_tbl(ln_rcv_cnt).product_ranc_3,'');
+-- 2008/10/16 v1.9 ADD END
       gt_product_slip_dev(in_total_cnt) := NVL(it_rcv_tbl(ln_rcv_cnt).product_slip_dev,'');
       gt_description(in_total_cnt)      := NVL(it_rcv_tbl(ln_rcv_cnt).description,'');
       gt_inspect_req(in_total_cnt)      := NVL(it_rcv_tbl(ln_rcv_cnt).inspect_req,'');
@@ -2222,9 +2322,15 @@ AS
            ,item_code
            ,item_name
            ,lot_num
+-- 2008/10/16 v1.9 ADD START
+           ,trans_qty
+-- 2008/10/16 v1.9 ADD END
            ,trace_item_code
            ,trace_item_name
            ,trace_lot_num
+-- 2008/10/16 v1.9 ADD START
+           ,trace_trans_qty
+-- 2008/10/16 v1.9 ADD END
            ,batch_num
            ,batch_date
            ,whse_code
@@ -2249,6 +2355,9 @@ AS
            ,product_type
            ,product_ranc_1
            ,product_ranc_2
+-- 2008/10/16 v1.9 ADD START
+           ,product_ranc_3
+-- 2008/10/16 v1.9 ADD END
            ,product_slip_dev
            ,description
            ,inspect_req
@@ -2269,9 +2378,15 @@ AS
          ,gt_item_code(itp_cnt)
          ,gt_item_name(itp_cnt)
          ,gt_lot_num(itp_cnt)
+-- 2008/10/16 v1.9 ADD START
+         ,gt_trans_qty(itp_cnt)
+-- 2008/10/16 v1.9 ADD END
          ,gt_trace_item_code(itp_cnt)
          ,gt_trace_item_name(itp_cnt)
          ,gt_trace_lot_num(itp_cnt)
+-- 2008/10/16 v1.9 ADD START
+         ,gt_trace_trans_qty(itp_cnt)
+-- 2008/10/16 v1.9 ADD END
          ,gt_batch_num(itp_cnt)
          ,FND_DATE.STRING_TO_DATE(gt_batch_date(itp_cnt),'YYYY/MM/DD')
          ,gt_whse_code(itp_cnt)
@@ -2296,6 +2411,9 @@ AS
          ,gt_product_type(itp_cnt)
          ,gt_product_ranc_1(itp_cnt)
          ,gt_product_ranc_2(itp_cnt)
+-- 2008/10/16 v1.9 ADD START
+         ,gt_product_ranc_3(itp_cnt)
+-- 2008/10/16 v1.9 ADD END
          ,gt_product_slip_dev(itp_cnt)
          ,gt_description(itp_cnt)
          ,gt_inspect_req(itp_cnt)
@@ -2393,9 +2511,15 @@ AS
       lv_dspbuf := lv_dspbuf || gt_item_code(report_cnt)                  || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_item_name(report_cnt)                  || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_lot_num(report_cnt)                    || gv_msg_pnt;
+-- 2008/10/16 v1.9 ADD START
+      lv_dspbuf := lv_dspbuf || gt_trans_qty(report_cnt)                  || gv_msg_pnt;
+-- 2008/10/16 v1.9 ADD END
       lv_dspbuf := lv_dspbuf || gt_trace_item_code(report_cnt)            || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_trace_item_name(report_cnt)            || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_trace_lot_num(report_cnt)              || gv_msg_pnt;
+-- 2008/10/16 v1.9 ADD START
+      lv_dspbuf := lv_dspbuf || gt_trace_trans_qty(report_cnt)            || gv_msg_pnt;
+-- 2008/10/16 v1.9 ADD END
 --
       -- 生産系情報
       lv_dspbuf := lv_dspbuf || gt_batch_num(report_cnt)  || gv_msg_pnt;
@@ -2426,6 +2550,9 @@ AS
       lv_dspbuf := lv_dspbuf || gt_product_type(report_cnt)     || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_product_ranc_1(report_cnt)   || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_product_ranc_2(report_cnt)   || gv_msg_pnt;
+-- 2008/10/16 v1.9 ADD START
+      lv_dspbuf := lv_dspbuf || gt_product_ranc_3(report_cnt)   || gv_msg_pnt;
+-- 2008/10/16 v1.9 ADD END
       lv_dspbuf := lv_dspbuf || gt_product_slip_dev(report_cnt) || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_description(report_cnt)      || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_inspect_req(report_cnt)      || gv_msg_pnt;

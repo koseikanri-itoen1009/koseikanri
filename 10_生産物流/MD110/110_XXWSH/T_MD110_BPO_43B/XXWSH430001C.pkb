@@ -44,6 +44,7 @@ AS
  *  2008/05/20    1.2   ORACLE椎名昭圭   内部変更要求#106対応
  *  2008/06/19    1.3   ORACLE石渡賢和   フラグのデフォルト値をセット
  *  2008/08/07    1.4   ORACLE山根一浩   課題#32,課題#67変更#174対応
+ *  2008/10/10    1.5   ORACLE平福正明   T_S_474対応
  *
  *****************************************************************************************/
 --
@@ -601,7 +602,7 @@ AS
 --
   -- 受注ヘッダアドオン 受注タイプ・登録順序 一括更新用
   gt_xoh_a12_order_header_id      xoh_order_header_id;        -- 受注ヘッダアドオンID
-  gt_xoh_a12_order_type_id        xoh_order_type_id;          -- 受注タイプID  
+  gt_xoh_a12_order_type_id        xoh_order_type_id;          -- 受注タイプID
   gt_xoh_a12_last_updated_by      xoh_last_updated_by;        -- 最終更新者
   gt_xoh_a12_last_update_date     xoh_last_update_date;       -- 最終更新日
   gt_xoh_a12_last_update_login    xoh_last_update_login;      -- 最終更新ログイン
@@ -898,7 +899,7 @@ AS
     SELECT COUNT(xri.reserve_interface_id) AS cnt  -- 件数
     INTO   gn_input_reserve_cnt                    -- 入力件数(倉替返品インターフェース)
     FROM   xxwsh_reserve_interface  xri;           -- 倉替返品インターフェース
---    
+--
     IF (gn_input_reserve_cnt < 1) THEN             -- 1件も存在しない場合はエラー
       lv_errmsg := xxcmn_common_pkg.get_msg(
         gv_xxwsh,
@@ -968,7 +969,7 @@ AS
 /* 2008/08/07 Mod ↓
                  SUM(NVL(xri.case_amount_of_content,0) * TO_NUMBER(NVL(xim.num_of_cases,'0'))
 2008/08/07 Mod ↑ */
-                 SUM(NVL(xri.case_amount_of_content,0) 
+                 SUM(NVL(xri.case_amount_of_content,0)
                    * TO_NUMBER(DECODE(NVL(xim.num_of_cases,'0'),'0','1',xim.num_of_cases))
                    + NVL(xri.quantity,0))
                               OVER (PARTITION BY xri.invoice_no, -- 伝票No
@@ -1331,6 +1332,9 @@ AS
   PROCEDURE get_order_type(
     it_invoice_class_1    IN  xxwsh_reserve_interface.invoice_class_1%TYPE,        -- 1.伝区１
     it_invoice_no         IN  xxwsh_reserve_interface.invoice_no%TYPE,             -- 2.伝票No
+    it_recorded_date      IN  xxwsh_reserve_interface.recorded_date%TYPE,          -- 3.計上日付（着日）2008/10/10 v1.5 M.Hirafuku ADD
+    it_item_no            IN  ic_item_mst_b.item_no%TYPE,                          -- 4.品目コード      2008/10/10 v1.5 M.Hirafuku ADD
+    it_quantity_total     IN  xxwsh_reserve_interface.quantity%TYPE,               -- 5.数量            2008/10/10 v1.5 M.Hirafuku ADD
     ov_errbuf             OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode            OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg             OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1354,10 +1358,32 @@ AS
     -- *** ローカル定数 ***
     cv_status_normal  CONSTANT NUMBER := 0;         -- 正常終了
     cv_inbound        CONSTANT VARCHAR2(1) := '1';  -- 変換区分：拠点からのInBound用
+    -- 2008/10/10 v1.5 M.Hirafuku ADD ST
+    cv_lot_no       CONSTANT VARCHAR2(10) := '9999999999';                 -- ロットNo
+    cv_attribute1   CONSTANT VARCHAR2(10) := '2000/01/01';                 -- 製造年月日
+    cv_attribute2   CONSTANT VARCHAR2(4)  := 'ZZZZ';                       -- 固有記号
+    cv_attribute3   CONSTANT VARCHAR2(10) := '2099/12/31';                 -- 賞味期限
+    cv_attribute23  CONSTANT VARCHAR2(2)  := '50';                         -- ロットステータス
+    cv_cons_lot_ctl CONSTANT VARCHAR2(1)  := '1';                          -- 「ロット管理品」
+    cv_errmsg       CONSTANT VARCHAR2(30) := 'ロット作成に失敗しました。'; -- APIエラーメッセージ
+    -- 2008/10/10 v1.5 M.Hirafuku ADD ED
 --
     -- *** ローカル変数 ***
     ln_rtn_cd     NUMBER;        -- 共通関数のリターンコード
     ln_dummy      NUMBER;
+--
+    -- 2008/10/10 v1.5 M.Hirafuku ADD ST
+--    lt_item_no       ic_item_mst_b.item_no%TYPE;
+    lb_return_status BOOLEAN;
+    lr_create_lot    GMIGAPI.lot_rec_typ;
+    lt_dm_cnt        NUMBER := 0;
+    lt_lot_chk       NUMBER := 0;
+    or_lot_mst       ic_lots_mst%ROWTYPE;
+    or_lot_cpg       ic_lots_cpg%ROWTYPE;
+    or_return        VARCHAR2(1);                             -- リターンステータス
+    or_msg_cnt       NUMBER;                                  -- メッセージ件数
+    or_msg_data      VARCHAR2(10000);                         -- メッセージ
+    -- 2008/10/10 v1.5 M.Hirafuku ADD ED
 --
     -- *** ローカル・カーソル ***
 --
@@ -1433,6 +1459,77 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+--
+    -- **************************************************
+    -- *** ダミーロット設定処理 2008/10/10 v1.5 M.Hirafuku ADD ST
+    -- **************************************************
+    lb_return_status :=GMIGUTL.SETUP(FND_GLOBAL.USER_NAME);
+    -- 「返品」A-2で取得した数量>=0(正)の場合
+    IF (it_quantity_total >= 0) THEN
+--
+      -- ダミーロット存在チェック
+      SELECT COUNT(*)
+      INTO   lt_dm_cnt
+      FROM   ic_lots_mst ilm        -- OPMロットマスタ
+            ,xxcmn_item_mst2_v ximv -- OPM品目情報VIEW2
+      WHERE ilm.lot_no              = cv_lot_no
+      AND   ilm.item_id             = ximv.item_id
+      AND   ximv.lot_ctl            = cv_cons_lot_ctl
+      AND   ximv.inventory_item_id  = gt_item_id
+      AND   ximv.start_date_active <= TRUNC(it_recorded_date)
+      AND   ximv.end_date_active   >= TRUNC(it_recorded_date);
+--
+      -- ダミーロット作成
+      IF (lt_dm_cnt <= 0) THEN
+--
+        -- ロット管理品チェック
+        SELECT COUNT(*)
+        INTO   lt_lot_chk
+        FROM   xxcmn_item_mst2_v ximv -- OPM品目情報VIEW2
+        WHERE ximv.lot_ctl            = cv_cons_lot_ctl
+        AND   ximv.inventory_item_id  = gt_item_id
+        AND   ximv.start_date_active <= TRUNC(it_recorded_date)
+        AND   ximv.end_date_active   >= TRUNC(it_recorded_date);
+--
+        -- ロット管理の場合
+        IF (lt_lot_chk > 0) THEN
+--
+          -- 設定値
+          lr_create_lot.item_no     := it_item_no;           -- 品目No
+          lr_create_lot.lot_no      := cv_lot_no;            -- ロットNo
+          lr_create_lot.attribute1  := cv_attribute1;        -- 製造年月日
+          lr_create_lot.attribute2  := cv_attribute2;        -- 固有記号
+          lr_create_lot.attribute3  := cv_attribute3;        -- 賞味期限
+          lr_create_lot.attribute23 := cv_attribute23;       -- ロットステータス
+          lr_create_lot.user_name   := FND_GLOBAL.USER_NAME; -- ユーザ
+          lr_create_lot.lot_created := SYSDATE;              -- 作成年月日
+--
+          --ロット作成API
+          GMIPAPI.CREATE_LOT(
+             p_api_version      => 3.0                          -- IN  NUMBER
+            ,p_init_msg_list    => FND_API.G_FALSE              -- IN  VARCHAR2 default fnd_api.g_false
+            ,p_commit           => FND_API.G_FALSE              -- IN  VARCHAR2 default fnd_api.g_false
+            ,p_validation_level => FND_API.G_VALID_LEVEL_FULL   -- IN  NUMBER   default fnd_api.g_valid_level_full
+            ,p_lot_rec          => lr_create_lot                -- IN  GMIGAPI.lot_rec_typ
+            ,x_ic_lots_mst_row  => or_lot_mst                   -- OUT ic_lots_mst%ROWTYPE
+            ,x_ic_lots_cpg_row  => or_lot_cpg                   -- OUT ic_lots_cpg%ROWTYPE
+            ,x_return_status    => or_return                    -- OUT VARCHAR2
+            ,x_msg_count        => or_msg_cnt                   -- OUT NUMBER
+            ,x_msg_data         => or_msg_data                  -- OUT VARCHAR2
+          );
+--
+          -- APIエラー
+          IF (or_return <> FND_API.G_RET_STS_SUCCESS) THEN
+            lv_errbuf  := or_msg_data;
+            lv_errmsg  := ov_errmsg || cv_errmsg;
+            RAISE global_api_expt;
+          END IF;
+--
+        END IF;
+--
+      END IF;
+    END IF;
+    -- 2008/10/10 v1.5 M.Hirafuku ADD ED
 --
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
@@ -1965,7 +2062,7 @@ AS
     gn_idx_ln := gn_idx_ln + 1;
 --
     -- 受注明細アドオンID<--シーケンス
-    gt_xol_order_line_id(gn_idx_ln)       := ln_seq; 
+    gt_xol_order_line_id(gn_idx_ln)       := ln_seq;
     -- 受注ヘッダアドオンID<--A-7で取得したシーケンス
     gt_xol_order_header_id(gn_idx_ln)     := gn_seq_hd;
     -- 明細番号
@@ -1982,7 +2079,7 @@ AS
     gt_xol_uom_code(gn_idx_ln)            := gt_order_all_tbl(in_idx).ln_uom_code;
     -- 出荷実績数量
     gt_xol_shipped_quantity(gn_idx_ln)    := gt_order_all_tbl(in_idx).ln_shipped_quantity;
-     -- 拠点依頼数量 
+     -- 拠点依頼数量
     gt_xol_based_request_quantity(gn_idx_ln) := gt_order_all_tbl(in_idx).ln_based_request_quantity;
     -- 依頼品目ID
     gt_xol_request_item_id(gn_idx_ln)   := gt_order_all_tbl(in_idx).ln_request_item_id;
@@ -2200,7 +2297,7 @@ AS
         -- A-6で取得した受注タイプ(新規/訂正).受注カテゴリ=受注の場合
 --        ELSIF (gt_new_transaction_type_name = gv_cate_order) THEN
         ELSIF (gt_new_transaction_catg_code = gv_cate_order) THEN
-          -- 受注タイプID<--A-6で取得した受注タイプ(打消).取引タイプID  
+          -- 受注タイプID<--A-6で取得した受注タイプ(打消).取引タイプID
           gt_xoh_order_type_id(gn_idx_hd) := gt_del_transaction_type_id;
         END IF;
       -- 合算数量<0(負)の場合
@@ -3885,6 +3982,9 @@ AS
       get_order_type(
         gt_reserve_interface_tbl(i).invoice_class_1,       -- 1.伝区１
         gt_reserve_interface_tbl(i).invoice_no,            -- 2.A-2伝票No
+        gt_reserve_interface_tbl(i).recorded_date,         -- 3.計上日付(着日) 2008/10/10 v1.5 M.Hirafuku ADD
+        gt_reserve_interface_tbl(i).item_no,               -- 4.品目コード     2008/10/10 v1.5 M.Hirafuku ADD
+        gt_reserve_interface_tbl(i).quantity_total,        -- 5.数量           2008/10/10 v1.5 M.Hirafuku ADD
         lv_errbuf,         -- エラー・メッセージ           --# 固定 #
         lv_retcode,        -- リターン・コード             --# 固定 #
         lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -4403,7 +4503,7 @@ AS
     FROM   fnd_lookup_values flv
     WHERE  flv.language            = userenv('LANG')
     AND    flv.view_application_id = 0
-    AND    flv.security_group_id   = fnd_global.lookup_security_group(flv.lookup_type, 
+    AND    flv.security_group_id   = fnd_global.lookup_security_group(flv.lookup_type,
                                                                       flv.view_application_id)
     AND    flv.lookup_type         = 'CP_STATUS_CODE'
     AND    flv.lookup_code         = DECODE(lv_retcode,

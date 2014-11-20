@@ -5,9 +5,11 @@ CREATE TABLE xxcmn.xxcmn_lot_trace
   item_code                   VARCHAR2(32)      NOT NULL,
   item_name                   VARCHAR2(240),
   lot_num                     VARCHAR2(32)      NOT NULL,
+  trans_qty                   NUMBER,
   trace_item_code             VARCHAR2(32),
   trace_item_name             VARCHAR2(240),
   trace_lot_num               VARCHAR2(32),
+  trace_trans_qty             NUMBER,
   batch_num                   VARCHAR2(32),
   batch_date                  DATE,
   whse_code                   VARCHAR2(240),
@@ -32,6 +34,7 @@ CREATE TABLE xxcmn.xxcmn_lot_trace
   product_type                VARCHAR2(240),
   product_ranc_1              VARCHAR2(240),
   product_ranc_2              VARCHAR2(240),
+  product_ranc_3              VARCHAR2(240),
   product_slip_dev            VARCHAR2(240),
   description                 VARCHAR2(240),
   inspect_req                 VARCHAR2(240),
@@ -51,9 +54,11 @@ COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.level_num               IS 'レベル番号';
 COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.item_code               IS '親品目コード';
 COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.item_name               IS '親品目名称';
 COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.lot_num                 IS '親ロットＮｏ';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.trans_qty               IS '親取引数量';
 COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.trace_item_code         IS '子品目コード';
 COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.trace_item_name         IS '子品目名称';
 COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.trace_lot_num           IS '子ロットＮｏ';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.trace_trans_qty         IS '子取引数量';
 COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.batch_num               IS '製造バッチ番号';
 COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.batch_date              IS '製造日';
 COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.whse_code               IS '倉庫（工場）';
@@ -78,6 +83,7 @@ COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.product_home            IS '産地';
 COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.product_type            IS 'タイプ';
 COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.product_ranc_1          IS 'ランク１';
 COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.product_ranc_2          IS 'ランク２';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.product_ranc_3          IS 'ランク３';
 COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.product_slip_dev        IS '生産伝票区分';
 COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.description             IS '摘要';
 COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.inspect_req             IS '検査依頼Ｎｏ';
