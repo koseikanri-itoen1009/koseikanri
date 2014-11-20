@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -61,6 +61,8 @@ AS
                                          スキップする（暫定対応）
                                          物件データワークテーブル削除条件修正（恒久対応）
  *  2009-12-11    1.20  K.Satomura       E_本稼動_00420 完了区分が設置中止の場合の処理変更
+ *  2009-12-14    1.21  K.Hosoi          E_本稼動_00466 顧客アドオンマスタ更新処理時の
+ *                                       分岐条件変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -262,6 +264,9 @@ AS
   -- 会計期間チェック用
   gv_chk_rslt               VARCHAR2(10);
   gv_chk_rslt_flag          VARCHAR2(1);
+  /* 2009.12.14 K.Hosoi E_本稼動_00466対応 START */
+  gd_cnvs_date              DATE;            -- 顧客獲得日
+  /* 2009.12.14 K.Hosoi E_本稼動_00466対応 END */
 --
   -- 追加属性ID格納用レコード型定義
   TYPE gr_ib_ext_attribs_id_rtype IS RECORD(
@@ -6141,6 +6146,9 @@ AS
     ct_cust_cl_cd_round        CONSTANT hz_cust_accounts.customer_class_code%TYPE := '15'; -- 顧客区分=巡回
     cv_cust_class_code         CONSTANT VARCHAR2(100)    := '顧客区分';
     /* 2009.09.14 K.Satomura 0001335対応 END */
+    /* 2009.12.14 K.Hosoi E_本稼動_00466対応 START */
+    cv_cls                     CONSTANT VARCHAR2(100)    := 'C';
+    /* 2009.12.14 K.Hosoi E_本稼動_00466対応 END */
 --
     -- *** ローカル変数 ***
     ld_cnvs_date               DATE;                    -- 顧客獲得日
@@ -6751,15 +6759,19 @@ AS
             RAISE update_error_expt;
         END;
 --
+        /* 2009.12.14 K.Hosoi E_本稼動_00466対応 START */
+        ---- 顧客獲得日が設定されてない場合
+        --IF (ld_cnvs_date IS NULL) AND
+        --   (TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ADD_MONTHS(id_process_date , -1 ),'YYYYMM') AND
+        --        gv_chk_rslt_flag = 'C') OR
+        --    ((TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ADD_MONTHS(id_process_date , -1 ),'YYYYMM') AND
+        --              gv_chk_rslt_flag = 'N') OR
+        --     (TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(id_process_date ,'YYYYMM'))
+        --    )
+        -- THEN 
         -- 顧客獲得日が設定されてない場合
-        IF (ld_cnvs_date IS NULL) AND
-           (TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ADD_MONTHS(id_process_date , -1 ),'YYYYMM') AND
-                gv_chk_rslt_flag = 'C') OR
-            ((TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ADD_MONTHS(id_process_date , -1 ),'YYYYMM') AND
-                      gv_chk_rslt_flag = 'N') OR
-             (TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(id_process_date ,'YYYYMM'))
-            )
-         THEN 
+        IF (ld_cnvs_date IS NULL) THEN
+        /* 2009.12.14 K.Hosoi E_本稼動_00466対応 END */
           -- 顧客アドオンマスタのロック処理
           BEGIN
 --
@@ -6828,9 +6840,13 @@ AS
 --
           BEGIN
 --
-            -- 実作業日の年月＝業務処理日付の前月の年月かつAR会計期間チェックフラグがクローズ
-            IF (TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ADD_MONTHS(id_process_date , -1 ),'YYYYMM') AND
-                gv_chk_rslt_flag = 'C') THEN
+            /* 2009.12.14 K.Hosoi E_本稼動_00466対応 START */
+            ---- 実作業日の年月＝業務処理日付の前月の年月かつAR会計期間チェックフラグがクローズ
+            --IF (TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ADD_MONTHS(id_process_date , -1 ),'YYYYMM') AND
+            --    gv_chk_rslt_flag = 'C') THEN
+            -- AR会計期間チェックフラグがクローズ
+            IF (gv_chk_rslt_flag = cv_cls) THEN
+            /* 2009.12.14 K.Hosoi E_本稼動_00466対応 END */
               UPDATE xxcmm_cust_accounts                                         -- 顧客アドオンマスタ
               SET    cnvs_date = id_process_date,    -- 顧客獲得日
                      last_updated_by        = cn_last_updated_by,
@@ -6842,11 +6858,17 @@ AS
                      program_update_date    = cd_program_update_date
               WHERE  customer_code = lv_account_num1
               ;
-            -- 実作業日の年月＝業務処理日付の前月の年月かつAR会計期間チェックフラグがオープンまたは実作業日の年月＝業務処理日付の年月
-            ELSIF ((TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ADD_MONTHS(id_process_date , -1 ),'YYYYMM') AND
-                    gv_chk_rslt_flag = 'N') OR
-                   (TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(id_process_date ,'YYYYMM'))
-                  ) THEN
+            /* 2009.12.14 K.Hosoi E_本稼動_00466対応 START */
+              -- 顧客獲得日を、メッセージ出力用グローバル変数に格納
+              gd_cnvs_date := id_process_date;
+            ---- 実作業日の年月＝業務処理日付の前月の年月かつAR会計期間チェックフラグがオープンまたは実作業日の年月＝業務処理日付の年月
+            --ELSIF ((TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ADD_MONTHS(id_process_date , -1 ),'YYYYMM') AND
+            --        gv_chk_rslt_flag = 'N') OR
+            --       (TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(id_process_date ,'YYYYMM'))
+            --      ) THEN
+            -- AR会計期間チェックフラグがオープン
+            ELSIF (gv_chk_rslt_flag = cv_no) THEN
+            /* 2009.12.14 K.Hosoi E_本稼動_00466対応 END */
               UPDATE xxcmm_cust_accounts                                         -- 顧客アドオンマスタ
               SET    cnvs_date = ld_actual_work_date,    -- 顧客獲得日
                      last_updated_by        = cn_last_updated_by,
@@ -6858,6 +6880,10 @@ AS
                      program_update_date    = cd_program_update_date
               WHERE  customer_code = lv_account_num1
               ;
+            /* 2009.12.14 K.Hosoi E_本稼動_00466対応 START */
+              -- 顧客獲得日を、メッセージ出力用グローバル変数に格納
+              gd_cnvs_date := ld_actual_work_date;
+            /* 2009.12.14 K.Hosoi E_本稼動_00466対応 END */
             END IF;
 
           EXCEPTION
@@ -7704,7 +7730,11 @@ AS
         lv_install_code2              := l_inst_base_data_rec.install_code2;
         lv_account_num1               := l_inst_base_data_rec.account_number1;
         lv_account_num2               := l_inst_base_data_rec.account_number2;
-        lv_cnvs_date                  := TO_CHAR(l_inst_base_data_rec.last_job_cmpltn_date);
+        /* 2009.12.14 K.Hosoi E_本稼動_00466対応 START */
+        --lv_cnvs_date                  := TO_CHAR(l_inst_base_data_rec.last_job_cmpltn_date);
+        lv_cnvs_date                  := NULL;
+        gd_cnvs_date                  := NULL;
+        /* 2009.12.14 K.Hosoi E_本稼動_00466対応 END */
 --
         -- ========================================
         -- A-3.(更新失敗用)セーブポイント設定
@@ -7946,7 +7976,11 @@ AS
         ELSIF(gb_cust_status_appr_flg = TRUE) THEN 
           IF (gb_cust_cnv_upd_flg = FALSE) THEN
             lv_cnvs_date := cv_haihun;
+          /* 2009.12.14 K.Hosoi E_本稼動_00466対応 START */
+          ELSE
+            lv_cnvs_date := TO_CHAR(gd_cnvs_date,'YYYY/MM/DD');
           END IF;
+          /* 2009.12.14 K.Hosoi E_本稼動_00466対応 START */
           lv_info := xxccp_common_pkg.get_msg(
                           iv_application   => cv_app_name                   -- アプリケーション短縮名
                          ,iv_name          => cv_tkn_number_30              -- メッセージコード
@@ -7994,7 +8028,10 @@ AS
                          ,iv_token_name9   => cv_tkn_cust_status_info       -- トークンコード9
                          ,iv_token_value9  => cv_haihun                     -- トークン値9
                          ,iv_token_name10  => cv_tkn_cnvs_date              -- トークンコード10
-                         ,iv_token_value10 => lv_cnvs_date                  -- トークン値10
+                         /* 2009.12.14 K.Hosoi E_本稼動_00466対応 START */
+                         --,iv_token_value10 => lv_cnvs_date                  -- トークン値10
+                         ,iv_token_value10 => TO_CHAR(gd_cnvs_date,'YYYY/MM/DD') -- トークン値10
+                         /* 2009.12.14 K.Hosoi E_本稼動_00466対応 END */
                     );
                  
         ELSE
