@@ -1,0 +1,49 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * View Name       : XXCOP_MST_GROUP_ITEM_CODE
+ * Description     : 品目コード集約マスタ
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2013/08/26    1.0   SCSK.Nakamura    新規作成
+ *
+ ************************************************************************/
+CREATE TABLE XXCOP.XXCOP_MST_GROUP_ITEM_CODE
+(
+  GROUP_ITEM_CODE         VARCHAR2(7)         NOT NULL,
+  GROUP_ITEM_NAME         VARCHAR2(20),
+  ITEM_CODE               VARCHAR2(7)         NOT NULL,
+  ITEM_NAME               VARCHAR2(20),
+  USE_KBN                 VARCHAR2(1)         NOT NULL,
+  CREATED_BY              NUMBER(15,0)        NOT NULL,
+  CREATION_DATE           DATE                NOT NULL,
+  LAST_UPDATED_BY         NUMBER(15,0)        NOT NULL,
+  LAST_UPDATE_DATE        DATE                NOT NULL,
+  LAST_UPDATE_LOGIN       NUMBER(15,0),
+  REQUEST_ID              NUMBER(15,0),
+  PROGRAM_APPLICATION_ID  NUMBER(15,0),
+  PROGRAM_ID              NUMBER(15,0),
+  PROGRAM_UPDATE_DATE     DATE,
+  CONSTRAINT XXCOP_MST_GROUP_ITEM_CODE_PK PRIMARY KEY (ITEM_CODE)
+  );
+-- 
+COMMENT ON COLUMN XXCOP.XXCOP_MST_GROUP_ITEM_CODE.GROUP_ITEM_CODE        IS '集約コード';
+COMMENT ON COLUMN XXCOP.XXCOP_MST_GROUP_ITEM_CODE.GROUP_ITEM_NAME        IS '集約コード品目名';
+COMMENT ON COLUMN XXCOP.XXCOP_MST_GROUP_ITEM_CODE.ITEM_CODE              IS '品目コード';
+COMMENT ON COLUMN XXCOP.XXCOP_MST_GROUP_ITEM_CODE.ITEM_NAME              IS '品目名';
+COMMENT ON COLUMN XXCOP.XXCOP_MST_GROUP_ITEM_CODE.USE_KBN                IS '使用区分';
+COMMENT ON COLUMN XXCOP.XXCOP_MST_GROUP_ITEM_CODE.CREATED_BY             IS '作成者';
+COMMENT ON COLUMN XXCOP.XXCOP_MST_GROUP_ITEM_CODE.CREATION_DATE          IS '作成日';
+COMMENT ON COLUMN XXCOP.XXCOP_MST_GROUP_ITEM_CODE.LAST_UPDATED_BY        IS '最終更新者';
+COMMENT ON COLUMN XXCOP.XXCOP_MST_GROUP_ITEM_CODE.LAST_UPDATE_DATE       IS '最終更新日';
+COMMENT ON COLUMN XXCOP.XXCOP_MST_GROUP_ITEM_CODE.LAST_UPDATE_LOGIN      IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOP.XXCOP_MST_GROUP_ITEM_CODE.REQUEST_ID             IS '要求ID';
+COMMENT ON COLUMN XXCOP.XXCOP_MST_GROUP_ITEM_CODE.PROGRAM_APPLICATION_ID IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOP.XXCOP_MST_GROUP_ITEM_CODE.PROGRAM_ID             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOP.XXCOP_MST_GROUP_ITEM_CODE.PROGRAM_UPDATE_DATE    IS 'プログラム更新日';
+--
+COMMENT ON TABLE XXCOP.XXCOP_MST_GROUP_ITEM_CODE  IS '品目コード集約マスタ';

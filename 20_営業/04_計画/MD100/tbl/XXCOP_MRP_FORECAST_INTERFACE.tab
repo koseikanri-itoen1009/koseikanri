@@ -1,0 +1,57 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * Table Name  : XXCOP_MRP_FORECAST_INTERFACE
+ * Description : 引取計画IF表
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2013/10/03    1.0   S.Niki           新規作成
+ *
+ ****************************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE XXCOP.XXCOP_MRP_FORECAST_INTERFACE
+(
+   FILE_ID                NUMBER         NOT NULL,
+   RECORD_NO              NUMBER         NOT NULL,
+   TARGET_MONTH           VARCHAR2(6)            ,
+   BASE_CODE              VARCHAR2(4)            ,
+   WHSE_CODE              VARCHAR2(4)            ,
+   ITEM_CODE              VARCHAR2(7)            ,
+   SERVICE_NO             NUMBER(2)              ,
+   CASE_COUNT             NUMBER(6)              ,
+   INVENTORY_ITEM_ID      NUMBER                 ,
+   NUM_OF_CASE            NUMBER                 ,
+   FORECAST_DATE          DATE                   ,
+   FORECAST_DESIGNATOR    VARCHAR2(10)
+)
+/
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_FORECAST_INTERFACE.FILE_ID                 IS 'ファイルID'
+/
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_FORECAST_INTERFACE.RECORD_NO               IS 'レコードNo'
+/
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_FORECAST_INTERFACE.TARGET_MONTH            IS '年月'
+/
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_FORECAST_INTERFACE.BASE_CODE               IS '拠点コード'
+/
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_FORECAST_INTERFACE.WHSE_CODE               IS '出荷元倉庫'
+/
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_FORECAST_INTERFACE.ITEM_CODE               IS '商品コード'
+/
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_FORECAST_INTERFACE.SERVICE_NO              IS '便数'
+/
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_FORECAST_INTERFACE.CASE_COUNT              IS '計画数量'
+/
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_FORECAST_INTERFACE.INVENTORY_ITEM_ID       IS '品目ID'
+/
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_FORECAST_INTERFACE.NUM_OF_CASE             IS 'ケース入数'
+/
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_FORECAST_INTERFACE.FORECAST_DATE           IS '日付'
+/
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_FORECAST_INTERFACE.FORECAST_DESIGNATOR     IS 'フォーキャスト名'
+/
+--
+COMMENT ON TABLE  XXCOP.XXCOP_MRP_FORECAST_INTERFACE                         IS '引取計画IF表'
+/

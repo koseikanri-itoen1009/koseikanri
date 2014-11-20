@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A05R(body)
  * Description      : 引取計画立案表出力ワーク登録
  * MD.050           : 引取計画立案表 MD050_COP_004_A05
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -16,8 +16,9 @@ AS
  *  get_detail_data        帳票明細情報取得(A-4)
  *  qty_editing_data_keep  数量振分け・データ保持(A-5)
  *  reference_qty_calc     当月参考数量計算(A-6)
+ *  insert_group_data      集約データ登録(A-10)
  *  insert_svf_work_tbl    引取計画立案表帳票ワークテーブルデータ登録(A-7)
- *  svf_call               SVF起動(A-8) 
+ *  svf_call               SVF起動(A-8)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -37,6 +38,7 @@ AS
  *  2009/11/27    1.9  SCS.Kikuchi       E_T4_00198	（パフォーマンス）対応
  *  2009/12/21    1.10 SCS.Kikuchi       E_本稼動_00546対応
  *                                       （出荷実績取得・抽出項目の出荷日を着荷日に変更）
+ *  2013/12/13    1.11 SCSK.Nakamura     E_本稼動_10958対応
  *
  *****************************************************************************************/
 --
@@ -106,7 +108,7 @@ AS
   cv_forecast_class            CONSTANT VARCHAR2(2)   := '01';                  -- フォーキャスト分類：引取計画
   cv_prod_class_code_leaf      CONSTANT VARCHAR2(1)   := '1';                   -- 商品区分：リーフ
   cv_data_type_forecast        CONSTANT VARCHAR2(1)   := '1';                   -- データ種別：引取計画
-  cv_data_type_result          CONSTANT VARCHAR2(1)   := '2';                   -- データ種別：出荷実績
+  cv_data_type_result          CONSTANT VARCHAR2(1)   := '2';                   -- データ種別：出荷実績←売上実績に変更
   cv_dlv_invoice_class_1       CONSTANT VARCHAR2(1)   := '1';                   -- 納品伝票区分:納品
   cv_dlv_invoice_class_3       CONSTANT VARCHAR2(1)   := '3';                   -- 納品伝票区分:納品訂正
   cv_sales_class_1             CONSTANT VARCHAR2(1)   := '1';                   -- 売上区分:通常
@@ -192,20 +194,31 @@ AS
 
   -- 引取計画立案表明細情報レコード型
   TYPE detail_data_trec IS RECORD(
-      data_type           VARCHAR2(1)                                              -- データ種別区分
-    , detail_month        VARCHAR2(6)                                              -- 明細年月
-    , prod_class_code     xxcop_rep_forecast_planning.prod_class_code  %TYPE       -- 商品区分
-    , prod_class_name     xxcop_rep_forecast_planning.prod_class_name  %TYPE       -- 商品区分名
-    , crowd_class_code    xxcop_rep_forecast_planning.crowd_class_code %TYPE       -- 群コード
-    , inventory_item_id   xxcop_item_categories1_v.inventory_item_id   %TYPE       -- INV品目ID
-    , organization_id     xxcop_item_categories1_v.organization_id     %TYPE       -- 組織ID
-    , item_id             xxcop_item_categories1_v.item_id             %TYPE       -- OPM品目ID
-    , parent_item_id      xxcop_item_categories1_v.parent_item_id      %TYPE       -- OPM親品目ID
-    , item_no             xxcop_rep_forecast_planning.item_no          %TYPE       -- 商品コード
-    , item_short_name     xxcop_rep_forecast_planning.item_short_name  %TYPE       -- 商品名
-    , quantity            NUMBER                                                   -- 数量
-    , num_of_cases        xxcop_item_categories1_v.num_of_cases        %TYPE       -- ケース入数
-    , parent_item_no      xxcop_rep_forecast_planning.item_no          %TYPE       -- 親品目コード
+-- 2013/12/13 Ver1.11 Mod START
+--      data_type           VARCHAR2(1)                                              -- データ種別区分
+--    , detail_month        VARCHAR2(6)                                              -- 明細年月
+--    , prod_class_code     xxcop_rep_forecast_planning.prod_class_code  %TYPE       -- 商品区分
+--    , prod_class_name     xxcop_rep_forecast_planning.prod_class_name  %TYPE       -- 商品区分名
+--    , crowd_class_code    xxcop_rep_forecast_planning.crowd_class_code %TYPE       -- 政策群コード
+--    , inventory_item_id   xxcop_item_categories1_v.inventory_item_id   %TYPE       -- INV品目ID
+--    , organization_id     xxcop_item_categories1_v.organization_id     %TYPE       -- 組織ID
+--    , item_id             xxcop_item_categories1_v.item_id             %TYPE       -- OPM品目ID
+--    , parent_item_id      xxcop_item_categories1_v.parent_item_id      %TYPE       -- OPM親品目ID
+--    , item_no             xxcop_rep_forecast_planning.item_no          %TYPE       -- 商品コード
+--    , item_short_name     xxcop_rep_forecast_planning.item_short_name  %TYPE       -- 商品名
+--    , quantity            NUMBER                                                   -- 数量
+--    , num_of_cases        xxcop_item_categories1_v.num_of_cases        %TYPE       -- ケース入数
+--    , parent_item_no      xxcop_rep_forecast_planning.item_no          %TYPE       -- 親品目コード
+      data_type           VARCHAR2(1)                                       -- データ種別区分
+    , detail_month        xxcop_rep_forecast_planning.target_month    %TYPE -- 明細年月
+    , inventory_item_id   xxcop_item_categories1_v.inventory_item_id  %TYPE -- INV品目ID
+    , item_id             xxcop_item_categories1_v.item_id            %TYPE -- OPM品目ID
+    , parent_item_id      xxcop_item_categories1_v.parent_item_id     %TYPE -- OPM親品目ID
+    , item_no             xxcop_item_categories1_v.item_no            %TYPE -- 商品コード
+    , quantity            NUMBER                                            -- 数量
+    , num_of_cases        NUMBER                                            -- ケース入数
+    , group_item_code     xxcop_rep_forecast_planning.group_item_code %TYPE -- 集約コード
+-- 2013/12/13 Ver1.11 Mod END
     );
 
   -- 引取計画立案表明細情報PL/SQL表
@@ -234,10 +247,10 @@ AS
   gd_prev_day                  DATE;                  -- 当月実働日数抽出終了日（システム日付の前日）
   gd_forecast_collect_st_day   DATE;                  -- 引取計画抽出開始日（計画対象年月－３ヶ月の初日）
   gd_forecast_collect_ed_day   DATE;                  -- 引取計画抽出終了日（計画対象年月の末日）
-  gd_result_collect_st_day1    DATE;                  -- 出荷実績抽出開始日（計画対象年月－１年３ヶ月の初日）
-  gd_result_collect_ed_day1    DATE;                  -- 出荷実績抽出終了日（計画対象年月－１１ヶ月末日）
-  gd_result_collect_st_day2    DATE;                  -- 出荷実績抽出開始日（計画対象年月－３ヶ月の初日）
-  gd_result_collect_ed_day2    DATE;                  -- 出荷実績抽出終了日（計画対象年月－１ヶ月の末日）
+  gd_result_collect_st_day1    DATE;                  -- 出荷実績抽出開始日（計画対象年月－１年３ヶ月の初日）←売上実績に変更
+  gd_result_collect_ed_day1    DATE;                  -- 出荷実績抽出終了日（計画対象年月－１１ヶ月末日）    ←売上実績に変更
+  gd_result_collect_st_day2    DATE;                  -- 出荷実績抽出開始日（計画対象年月－３ヶ月の初日）    ←売上実績に変更
+  gd_result_collect_ed_day2    DATE;                  -- 出荷実績抽出終了日（計画対象年月－１ヶ月の末日）    ←売上実績に変更
 --20090428_Ver1.2_T1_0645_SCS.Kikuchi_DEL_START
 --  gn_mater_org_id              mtl_parameters.organization_id%type;
 --20090428_Ver1.2_T1_0645_SCS.Kikuchi_DEL_END
@@ -274,7 +287,7 @@ AS
   )RETURN VARCHAR2
   IS
   BEGIN
-     -- 少数２桁以降は切り捨て
+     -- 小数点以下第二位に切り捨て
      RETURN TRUNC(in_value,2);
   END num_edit;
 
@@ -507,179 +520,323 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    ------------------------------------------------------------
-    --  帳票出力明細情報取得
-    ------------------------------------------------------------
-    SELECT data_type              data_type            -- データ種別区分
-    ,      detail_month           detail_month         -- 明細年月
-    ,      prod_class_code        prod_class_code      -- 商品区分
---20091016 Ver1.6 Modified START
---    ,      prod_class_name        prod_class_name      -- 商品区分名
-    ,      SUBSTRB(prod_class_name, 1, 8)
-                                  prod_class_name      -- 商品区分名
---20091016 Ver1.6 Modified END
-    ,      crowd_class_code       crowd_class_code     -- 群コード
-    ,      inventory_item_id      inventory_item_id    -- INV品目ID
-    ,      organization_id        organization_id      -- 組織ID
-    ,      item_id                item_id              -- OPM品目ID
-    ,      parent_item_id         parent_item_id       -- OPM親品目ID
-    ,      item_no                item_no              -- 商品コード
-    ,      item_short_name        item_short_name      -- 商品名
-    ,      quantity               quantity             -- 数量
-    ,      num_of_cases           num_of_cases         -- ケース入数
-    ,      parent_item_no         parent_item_no       -- 親品目コード
-    BULK COLLECT
-    INTO   g_detail_data_tbl
-    FROM
-    ( SELECT cv_data_type_forecast                          data_type                -- データ種別区分
-      ,      TO_CHAR(forecast_date,cv_target_month_format)  detail_month             -- 明細年月
-      ,      xic1v.prod_class_code                          prod_class_code          -- 商品区分
-      ,      xic1v.prod_class_name                          prod_class_name          -- 商品区分名
-      ,      SUBSTRB(xic1v.crowd_class_code,1,3)            crowd_class_code         -- 群コード
-      ,      xic1v.inventory_item_id                        inventory_item_id        -- INV品目ID
-      ,      xic1v.organization_id                          organization_id          -- 組織ID
-      ,      xic1v.item_id                                  item_id                  -- OPM品目ID
-      ,      xic1v.parent_item_id                           parent_item_id           -- OPM親品目ID
-      ,      xic1v.item_no                                  item_no                  -- 商品コード
-      ,      xic1v.item_short_name                          item_short_name          -- 商品名
-      ,      SUM(mfda.original_forecast_quantity)           quantity                 -- 数量
-      ,      xic1v.num_of_cases                             num_of_cases             -- ケース入数
-      ,      xic1v.parent_item_no                           parent_item_no           -- 親品目コード
-      FROM
-             mrp_forecast_designators mfde                           -- フォーキャスト名
-      ,      mrp_forecast_dates       mfda                           -- フォーキャスト日付
-      ,      xxcop_item_categories1_v xic1v                          -- 計画_品目カテゴリビュー1
-      ,      xxcmm_system_items_b     xsib                           -- Disc品目アドオン
-      WHERE
-             mfde.forecast_designator   =  mfda.forecast_designator
-      AND    mfde.organization_id       =  mfda.organization_id
-      AND    mfde.attribute1            =  cv_forecast_class         -- FORECAST分類：引取計画
-      AND    mfde.attribute3            =  g_header_data_tbl(in_header_index).base_code
-      AND    mfda.forecast_date         BETWEEN gd_forecast_collect_st_day
-                                        AND     gd_forecast_collect_ed_day
-      AND    xic1v.inventory_item_id    =  mfda.inventory_item_id
-      AND    xic1v.start_date_active    <= gd_system_date
-      AND    xic1v.end_date_active      >= gd_system_date
-      AND    xic1v.prod_class_code      =  gv_prod_class_code
-      AND    xic1v.item_id              =  xsib.item_id
-      AND    xsib.item_status           IN ( cv_inv_item_status_20
-                                           , cv_inv_item_status_30
-                                           , cv_inv_item_status_40 ) -- 品目ステータス
-      AND    NVL( xsib.item_status_apply_date, gd_system_date )
-                                        <= gd_system_date            -- 品目ステータス適用日
-      GROUP
-      BY     TO_CHAR(forecast_date,cv_target_month_format)           -- 明細年月
-      ,      xic1v.prod_class_code                                   -- 商品区分
-      ,      xic1v.prod_class_name                                   -- 商品区分名
-      ,      SUBSTRB(xic1v.crowd_class_code,1,3)                     -- 群コード
-      ,      xic1v.inventory_item_id                                 -- INV品目ID
-      ,      xic1v.organization_id                                   -- 組織ID
-      ,      xic1v.item_id                                           -- OPM品目ID
-      ,      xic1v.parent_item_id                                    -- OPM親品目ID
-      ,      xic1v.item_no                                           -- 商品コード
-      ,      xic1v.item_short_name                                   -- 商品名
-      ,      xic1v.num_of_cases                                      -- ケース入数
-      ,      xic1v.parent_item_no                                    -- 親品目コード
-      UNION ALL
-      SELECT cv_data_type_result                            data_type                -- データ種別区分
---20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_START
+-- 2013/12/13 Ver1.11 Mod START
+--    ------------------------------------------------------------
+--    --  帳票出力明細情報取得
+--    ------------------------------------------------------------
+--    SELECT data_type              data_type            -- データ種別区分
+--    ,      detail_month           detail_month         -- 明細年月
+--    ,      prod_class_code        prod_class_code      -- 商品区分
+----20091016 Ver1.6 Modified START
+----    ,      prod_class_name        prod_class_name      -- 商品区分名
+--    ,      SUBSTRB(prod_class_name, 1, 8)
+--                                  prod_class_name      -- 商品区分名
+----20091016 Ver1.6 Modified END
+--    ,      crowd_class_code       crowd_class_code     -- 群コード
+--    ,      inventory_item_id      inventory_item_id    -- INV品目ID
+--    ,      organization_id        organization_id      -- 組織ID
+--    ,      item_id                item_id              -- OPM品目ID
+--    ,      parent_item_id         parent_item_id       -- OPM親品目ID
+--    ,      item_no                item_no              -- 商品コード
+--    ,      item_short_name        item_short_name      -- 商品名
+--    ,      quantity               quantity             -- 数量
+--    ,      num_of_cases           num_of_cases         -- ケース入数
+--    ,      parent_item_no         parent_item_no       -- 親品目コード
+--    BULK COLLECT
+--    INTO   g_detail_data_tbl
+--    FROM
+--    ( SELECT cv_data_type_forecast                          data_type                -- データ種別区分
+--      ,      TO_CHAR(forecast_date,cv_target_month_format)  detail_month             -- 明細年月
+--      ,      xic1v.prod_class_code                          prod_class_code          -- 商品区分
+--      ,      xic1v.prod_class_name                          prod_class_name          -- 商品区分名
+--      ,      SUBSTRB(xic1v.crowd_class_code,1,3)            crowd_class_code         -- 群コード
+--      ,      xic1v.inventory_item_id                        inventory_item_id        -- INV品目ID
+--      ,      xic1v.organization_id                          organization_id          -- 組織ID
+--      ,      xic1v.item_id                                  item_id                  -- OPM品目ID
+--      ,      xic1v.parent_item_id                           parent_item_id           -- OPM親品目ID
+--      ,      xic1v.item_no                                  item_no                  -- 商品コード
+--      ,      xic1v.item_short_name                          item_short_name          -- 商品名
+--      ,      SUM(mfda.original_forecast_quantity)           quantity                 -- 数量
+--      ,      xic1v.num_of_cases                             num_of_cases             -- ケース入数
+--      ,      xic1v.parent_item_no                           parent_item_no           -- 親品目コード
+--      FROM
+--             mrp_forecast_designators mfde                           -- フォーキャスト名
+--      ,      mrp_forecast_dates       mfda                           -- フォーキャスト日付
+--      ,      xxcop_item_categories1_v xic1v                          -- 計画_品目カテゴリビュー1
+--      ,      xxcmm_system_items_b     xsib                           -- Disc品目アドオン
+--      WHERE
+--             mfde.forecast_designator   =  mfda.forecast_designator
+--      AND    mfde.organization_id       =  mfda.organization_id
+--      AND    mfde.attribute1            =  cv_forecast_class         -- FORECAST分類：引取計画
+--      AND    mfde.attribute3            =  g_header_data_tbl(in_header_index).base_code
+--      AND    mfda.forecast_date         BETWEEN gd_forecast_collect_st_day
+--                                        AND     gd_forecast_collect_ed_day
+--      AND    xic1v.inventory_item_id    =  mfda.inventory_item_id
+--      AND    xic1v.start_date_active    <= gd_system_date
+--      AND    xic1v.end_date_active      >= gd_system_date
+--      AND    xic1v.prod_class_code      =  gv_prod_class_code
+--      AND    xic1v.item_id              =  xsib.item_id
+--      AND    xsib.item_status           IN ( cv_inv_item_status_20
+--                                           , cv_inv_item_status_30
+--                                           , cv_inv_item_status_40 ) -- 品目ステータス
+--      AND    NVL( xsib.item_status_apply_date, gd_system_date )
+--                                        <= gd_system_date            -- 品目ステータス適用日
+--      GROUP
+--      BY     TO_CHAR(forecast_date,cv_target_month_format)           -- 明細年月
+--      ,      xic1v.prod_class_code                                   -- 商品区分
+--      ,      xic1v.prod_class_name                                   -- 商品区分名
+--      ,      SUBSTRB(xic1v.crowd_class_code,1,3)                     -- 群コード
+--      ,      xic1v.inventory_item_id                                 -- INV品目ID
+--      ,      xic1v.organization_id                                   -- 組織ID
+--      ,      xic1v.item_id                                           -- OPM品目ID
+--      ,      xic1v.parent_item_id                                    -- OPM親品目ID
+--      ,      xic1v.item_no                                           -- 商品コード
+--      ,      xic1v.item_short_name                                   -- 商品名
+--      ,      xic1v.num_of_cases                                      -- ケース入数
+--      ,      xic1v.parent_item_no                                    -- 親品目コード
+--      UNION ALL
+--      SELECT cv_data_type_result                            data_type                -- データ種別区分
+----20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_START
+------20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_START
+------      ,      TO_CHAR(shipment_date,cv_target_month_format)  detail_month             -- 明細年月
+----      ,      TO_CHAR(xsrst.shipment_date,cv_target_month_format)  detail_month             -- 明細年月
+------20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_END
+--      ,      TO_CHAR(xsrst.arrival_date,cv_target_month_format)  detail_month        -- 明細年月
+----20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_END
+--      ,      xic1v.prod_class_code                          prod_class_code          -- 商品区分
+--      ,      xic1v.prod_class_name                          prod_class_name          -- 商品区分名
+--      ,      SUBSTRB(xic1v.crowd_class_code,1,3)            crowd_class_code         -- 群コード
+--      ,      xic1v.inventory_item_id                        inventory_item_id        -- INV品目ID
+--      ,      xic1v.organization_id                          organization_id          -- 組織ID
+--      ,      xic1v.item_id                                  item_id                  -- OPM品目ID
+--      ,      xic1v.parent_item_id                           parent_item_id           -- OPM親品目ID
+--      ,      xic1v.item_no                                  item_no                  -- 商品コード
+--      ,      xic1v.item_short_name                          item_short_name          -- 商品名
+--      ,      SUM(xsrst.quantity)                            quantity                 -- 数量
+--      ,      xic1v.num_of_cases                             num_of_cases             -- ケース入数
+--      ,      xic1v.parent_item_no                           parent_item_no           -- 親品目コード
+--      FROM
 ----20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_START
-----      ,      TO_CHAR(shipment_date,cv_target_month_format)  detail_month             -- 明細年月
---      ,      TO_CHAR(xsrst.shipment_date,cv_target_month_format)  detail_month             -- 明細年月
+----20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_START
+----           ( SELECT xsr1.shipment_date
+--           ( SELECT xsr1.arrival_date
+----20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_END
+--             ,      xsr1.item_no
+--             ,      xsr1.quantity
+--             FROM   xxcop_shipment_results   xsr1
+----20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_START
+----             WHERE  xsr1.shipment_date  BETWEEN gd_result_collect_st_day1
+--             WHERE  xsr1.arrival_date   BETWEEN gd_result_collect_st_day1
+----20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_END
+--                                          AND     gd_result_collect_ed_day1
+--             AND    xsr1.base_code      =       g_header_data_tbl(in_header_index).base_code
+----20091013_Ver1.5_E_T3_00556_SCS.Fukada_MOD_START
+----             UNION
+--             UNION ALL
+----20091013_Ver1.5_E_T3_00556_SCS.Fukada_MOD_END
+----20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_START
+----             SELECT xsr2.shipment_date
+--             SELECT xsr2.arrival_date
+----20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_END
+--             ,      xsr2.item_no
+--             ,      xsr2.quantity
+--             FROM   xxcop_shipment_results   xsr2
+----20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_START
+----             WHERE  xsr2.shipment_date  BETWEEN gd_result_collect_st_day2
+--             WHERE  xsr2.arrival_date   BETWEEN gd_result_collect_st_day2
+----20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_END
+--                                          AND     gd_result_collect_ed_day2
+--             AND    xsr2.base_code      =       g_header_data_tbl(in_header_index).base_code
+--             )xsrst                                                  -- 親コード出荷実績表
+----             xxcop_shipment_results   xsrst                          -- 親コード出荷実績表
 ----20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_END
-      ,      TO_CHAR(xsrst.arrival_date,cv_target_month_format)  detail_month        -- 明細年月
---20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_END
-      ,      xic1v.prod_class_code                          prod_class_code          -- 商品区分
-      ,      xic1v.prod_class_name                          prod_class_name          -- 商品区分名
-      ,      SUBSTRB(xic1v.crowd_class_code,1,3)            crowd_class_code         -- 群コード
-      ,      xic1v.inventory_item_id                        inventory_item_id        -- INV品目ID
-      ,      xic1v.organization_id                          organization_id          -- 組織ID
-      ,      xic1v.item_id                                  item_id                  -- OPM品目ID
-      ,      xic1v.parent_item_id                           parent_item_id           -- OPM親品目ID
-      ,      xic1v.item_no                                  item_no                  -- 商品コード
-      ,      xic1v.item_short_name                          item_short_name          -- 商品名
-      ,      SUM(xsrst.quantity)                            quantity                 -- 数量
-      ,      xic1v.num_of_cases                             num_of_cases             -- ケース入数
-      ,      xic1v.parent_item_no                           parent_item_no           -- 親品目コード
+--      ,      xxcop_item_categories1_v xic1v                          -- 計画_品目カテゴリビュー1
+--      ,      xxcmm_system_items_b     xsib                           -- Disc品目アドオン
+--      WHERE
+----20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_START
+----             xsrst.base_code            =       g_header_data_tbl(in_header_index).base_code
+----      AND    (   xsrst.shipment_date    BETWEEN gd_result_collect_st_day1
+----                                        AND     gd_result_collect_ed_day1
+----             OR  xsrst.shipment_date    BETWEEN gd_result_collect_st_day2
+----                                        AND     gd_result_collect_ed_day2
+----             )
+----      AND    xic1v.item_no              =       xsrst.item_no
+--             xic1v.item_no              =       xsrst.item_no
+----20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_END
+--      AND    xic1v.start_date_active    <=      gd_system_date
+--      AND    xic1v.end_date_active      >=      gd_system_date
+--      AND    xic1v.prod_class_code      =       gv_prod_class_code
+--      AND    xic1v.item_id              =       xsib.item_id
+--      AND    xsib.item_status           IN ( cv_inv_item_status_20
+--                                           , cv_inv_item_status_30
+--                                           , cv_inv_item_status_40 ) -- 品目ステータス
+--      AND    NVL( xsib.item_status_apply_date, gd_system_date )
+--                                        <= gd_system_date            -- 品目ステータス適用日
+--      GROUP
+----20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_START
+----      BY     TO_CHAR(shipment_date,cv_target_month_format)           -- 明細年月
+--      BY     TO_CHAR(arrival_date,cv_target_month_format)            -- 明細年月
+----20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_END
+--      ,      xic1v.prod_class_code                                   -- 商品区分
+--      ,      xic1v.prod_class_name                                   -- 商品区分名
+--      ,      SUBSTRB(xic1v.crowd_class_code,1,3)                     -- 群コード
+--      ,      xic1v.inventory_item_id                                 -- INV品目ID
+--      ,      xic1v.organization_id                                   -- 組織ID
+--      ,      xic1v.item_id                                           -- OPM品目ID
+--      ,      xic1v.parent_item_id                                    -- OPM親品目ID
+--      ,      xic1v.item_no                                           -- 商品コード
+--      ,      xic1v.item_short_name                                   -- 商品名
+--      ,      xic1v.num_of_cases                                      -- ケース入数
+--      ,      xic1v.parent_item_no                                    -- 親品目コード
+--    )
+--    ORDER
+--    BY     item_no                 -- 商品コード
+--    ,      data_type               -- データ種別区分
+--    ,      detail_month            -- 明細年月
+--    ;
+    SELECT sub.data_type                     AS data_type          -- データ種別区分
+         , sub.detail_month                  AS detail_month       -- 明細年月
+         , sub.inventory_item_id             AS inventory_item_id  -- INV品目ID
+         , sub.item_id                       AS item_id            -- OPM品目ID
+         , sub.parent_item_id                AS parent_item_id     -- OPM親品目ID
+         , sub.item_no                       AS item_no            -- 商品コード
+         , sub.quantity                      AS quantity           -- 数量
+         , sub.num_of_cases                  AS num_of_cases       -- ケース入数
+         , sub.group_item_code               AS group_item_code    -- 集約コード
+    BULK COLLECT INTO g_detail_data_tbl
+    FROM
+    ( SELECT /*+ USE_NL(mfde mfda xic1v xsib xmgic)
+              */
+             cv_data_type_forecast                              AS data_type          -- データ種別区分
+           , TO_CHAR(mfda.forecast_date,cv_target_month_format) AS detail_month       -- 明細年月
+           , xic1v.inventory_item_id                            AS inventory_item_id  -- INV品目ID
+           , xic1v.item_id                                      AS item_id            -- OPM品目ID
+           , xic1v.parent_item_id                               AS parent_item_id     -- OPM親品目ID
+           , xic1v.item_no                                      AS item_no            -- 商品コード
+           , SUM(mfda.original_forecast_quantity)               AS quantity           -- 数量
+           , TO_NUMBER(xic1v.num_of_cases)                      AS num_of_cases       -- ケース入数
+           , NVL( xmgic.group_item_code, xic1v.item_no )        AS group_item_code    -- 集約コード
       FROM
---20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_START
---20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_START
---           ( SELECT xsr1.shipment_date
-           ( SELECT xsr1.arrival_date
---20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_END
-             ,      xsr1.item_no
-             ,      xsr1.quantity
-             FROM   xxcop_shipment_results   xsr1
---20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_START
---             WHERE  xsr1.shipment_date  BETWEEN gd_result_collect_st_day1
-             WHERE  xsr1.arrival_date   BETWEEN gd_result_collect_st_day1
---20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_END
-                                          AND     gd_result_collect_ed_day1
-             AND    xsr1.base_code      =       g_header_data_tbl(in_header_index).base_code
---20091013_Ver1.5_E_T3_00556_SCS.Fukada_MOD_START
---             UNION
-             UNION ALL
---20091013_Ver1.5_E_T3_00556_SCS.Fukada_MOD_END
---20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_START
---             SELECT xsr2.shipment_date
-             SELECT xsr2.arrival_date
---20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_END
-             ,      xsr2.item_no
-             ,      xsr2.quantity
-             FROM   xxcop_shipment_results   xsr2
---20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_START
---             WHERE  xsr2.shipment_date  BETWEEN gd_result_collect_st_day2
-             WHERE  xsr2.arrival_date   BETWEEN gd_result_collect_st_day2
---20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_END
-                                          AND     gd_result_collect_ed_day2
-             AND    xsr2.base_code      =       g_header_data_tbl(in_header_index).base_code
-             )xsrst                                                  -- 親コード出荷実績表
---             xxcop_shipment_results   xsrst                          -- 親コード出荷実績表
---20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_END
-      ,      xxcop_item_categories1_v xic1v                          -- 計画_品目カテゴリビュー1
-      ,      xxcmm_system_items_b     xsib                           -- Disc品目アドオン
+             mrp_forecast_designators  mfde  -- フォーキャスト名
+           , mrp_forecast_dates        mfda  -- フォーキャスト日付
+           , xxcop_item_categories1_v  xic1v -- 計画_品目カテゴリビュー1
+           , xxcmm_system_items_b      xsib  -- Disc品目アドオン
+           , xxcop_mst_group_item_code xmgic -- 品目コード集約マスタ
       WHERE
---20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_START
---             xsrst.base_code            =       g_header_data_tbl(in_header_index).base_code
---      AND    (   xsrst.shipment_date    BETWEEN gd_result_collect_st_day1
---                                        AND     gd_result_collect_ed_day1
---             OR  xsrst.shipment_date    BETWEEN gd_result_collect_st_day2
---                                        AND     gd_result_collect_ed_day2
---             )
---      AND    xic1v.item_no              =       xsrst.item_no
-             xic1v.item_no              =       xsrst.item_no
---20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_END
-      AND    xic1v.start_date_active    <=      gd_system_date
-      AND    xic1v.end_date_active      >=      gd_system_date
-      AND    xic1v.prod_class_code      =       gv_prod_class_code
-      AND    xic1v.item_id              =       xsib.item_id
-      AND    xsib.item_status           IN ( cv_inv_item_status_20
-                                           , cv_inv_item_status_30
-                                           , cv_inv_item_status_40 ) -- 品目ステータス
-      AND    NVL( xsib.item_status_apply_date, gd_system_date )
-                                        <= gd_system_date            -- 品目ステータス適用日
-      GROUP
---20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_START
---      BY     TO_CHAR(shipment_date,cv_target_month_format)           -- 明細年月
-      BY     TO_CHAR(arrival_date,cv_target_month_format)            -- 明細年月
---20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_END
-      ,      xic1v.prod_class_code                                   -- 商品区分
-      ,      xic1v.prod_class_name                                   -- 商品区分名
-      ,      SUBSTRB(xic1v.crowd_class_code,1,3)                     -- 群コード
-      ,      xic1v.inventory_item_id                                 -- INV品目ID
-      ,      xic1v.organization_id                                   -- 組織ID
-      ,      xic1v.item_id                                           -- OPM品目ID
-      ,      xic1v.parent_item_id                                    -- OPM親品目ID
-      ,      xic1v.item_no                                           -- 商品コード
-      ,      xic1v.item_short_name                                   -- 商品名
-      ,      xic1v.num_of_cases                                      -- ケース入数
-      ,      xic1v.parent_item_no                                    -- 親品目コード
-    )
-    ORDER
-    BY     item_no                 -- 商品コード
-    ,      data_type               -- データ種別区分
-    ,      detail_month            -- 明細年月
+             mfde.forecast_designator =  mfda.forecast_designator
+      AND    mfde.organization_id     =  mfda.organization_id
+      AND    mfde.attribute1          =  cv_forecast_class
+      AND    mfde.attribute3          =  g_header_data_tbl(in_header_index).base_code
+      AND    mfda.forecast_date       >= gd_forecast_collect_st_day
+      AND    mfda.forecast_date       <= gd_forecast_collect_ed_day
+      AND    xic1v.inventory_item_id  =  mfda.inventory_item_id
+      AND    xic1v.start_date_active  <= gd_system_date
+      AND    xic1v.end_date_active    >= gd_system_date
+      AND    xic1v.prod_class_code    =  gv_prod_class_code
+      AND    xic1v.item_id            =  xsib.item_id
+      AND    xic1v.item_no            =  xmgic.item_code(+)
+      AND    xsib.item_status         IN ( cv_inv_item_status_20
+                                         , cv_inv_item_status_30
+                                         , cv_inv_item_status_40 )
+      AND    NVL( xsib.item_status_apply_date, gd_system_date ) <= gd_system_date
+      GROUP BY
+             TO_CHAR(mfda.forecast_date,cv_target_month_format)      -- 明細年月
+           , xic1v.inventory_item_id                                 -- INV品目ID
+           , xic1v.item_id                                           -- OPM品目ID
+           , xic1v.parent_item_id                                    -- OPM親品目ID
+           , xic1v.item_no                                           -- 商品コード
+           , TO_NUMBER(xic1v.num_of_cases)                           -- ケース入数
+           , NVL( xmgic.group_item_code, xic1v.item_no )             -- 集約コード
+      UNION ALL
+      SELECT /*+ LEADING(xsem xic1v xsib)
+                 USE_NL(xsem xic1v xsib)
+              */
+             cv_data_type_result                                AS data_type          -- データ種別区分
+           , xsem.target_month                                  AS detail_month       -- 明細年月
+           , xic1v.inventory_item_id                            AS inventory_item_id  -- INV品目ID
+           , xic1v.item_id                                      AS item_id            -- OPM品目ID
+           , xic1v.parent_item_id                               AS parent_item_id     -- OPM親品目ID
+           , xic1v.item_no                                      AS item_no            -- 商品コード
+           , xsem.quantity                                      AS quantity           -- 数量
+           , TO_NUMBER(xic1v.num_of_cases)                      AS num_of_cases       -- ケース入数
+           , NVL( xsem.group_item_code, xic1v.item_no )         AS group_item_code    -- 集約コード
+      FROM
+           ( SELECT xsem2.target_month       AS target_month
+                  , xsem2.item_code          AS item_code
+                  , xsem2.delivery_base_code AS delivery_base_code
+                  , xsem2.group_item_code    AS group_item_code
+                  , xsem2.sum_standard_qty   AS quantity
+             FROM   xxcop_sales_exp_mv2      xsem2
+             UNION ALL
+             SELECT xsem3.target_month       AS target_month
+                  , xsem3.item_code          AS item_code
+                  , xsem3.delivery_base_code AS delivery_base_code
+                  , xsem3.group_item_code    AS group_item_code
+                  , xsem3.sum_standard_qty   AS quantity
+             FROM   xxcop_sales_exp_mv3      xsem3
+             UNION ALL
+             SELECT xsem4.target_month       AS target_month
+                  , xsem4.item_code          AS item_code
+                  , xsem4.delivery_base_code AS delivery_base_code
+                  , xsem4.group_item_code    AS group_item_code
+                  , xsem4.sum_standard_qty   AS quantity
+             FROM   xxcop_sales_exp_mv4      xsem4
+             UNION ALL
+             SELECT xsem5.target_month       AS target_month
+                  , xsem5.item_code          AS item_code
+                  , xsem5.delivery_base_code AS delivery_base_code
+                  , xsem5.group_item_code    AS group_item_code
+                  , xsem5.sum_standard_qty   AS quantity
+             FROM   xxcop_sales_exp_mv5      xsem5
+             UNION ALL
+             SELECT xsem6.target_month       AS target_month
+                  , xsem6.item_code          AS item_code
+                  , xsem6.delivery_base_code AS delivery_base_code
+                  , xsem6.group_item_code    AS group_item_code
+                  , xsem6.sum_standard_qty   AS quantity
+             FROM   xxcop_sales_exp_mv6      xsem6
+             UNION ALL
+             SELECT xsem7.target_month       AS target_month
+                  , xsem7.item_code          AS item_code
+                  , xsem7.delivery_base_code AS delivery_base_code
+                  , xsem7.group_item_code    AS group_item_code
+                  , xsem7.sum_standard_qty   AS quantity
+             FROM   xxcop_sales_exp_mv7      xsem7
+             UNION ALL
+             SELECT xsem8.target_month       AS target_month
+                  , xsem8.item_code          AS item_code
+                  , xsem8.delivery_base_code AS delivery_base_code
+                  , xsem8.group_item_code    AS group_item_code
+                  , xsem8.sum_standard_qty   AS quantity
+             FROM   xxcop_sales_exp_mv8      xsem8
+             UNION ALL
+             SELECT xsem9.target_month       AS target_month
+                  , xsem9.item_code          AS item_code
+                  , xsem9.delivery_base_code AS delivery_base_code
+                  , xsem9.group_item_code    AS group_item_code
+                  , xsem9.sum_standard_qty   AS quantity
+             FROM   xxcop_sales_exp_mv9      xsem9
+             )                        xsem  -- 販売実績マテリアライズドビュー
+      ,      xxcop_item_categories1_v xic1v -- 計画_品目カテゴリビュー1
+      ,      xxcmm_system_items_b     xsib  -- Disc品目アドオン
+      WHERE
+             xic1v.item_no           =  xsem.item_code
+      AND    xic1v.item_id           =  xsib.item_id
+      AND    xic1v.start_date_active <= gd_system_date
+      AND    xic1v.end_date_active   >= gd_system_date
+      AND    xic1v.prod_class_code   =  gv_prod_class_code
+      AND    xsem.delivery_base_code =  g_header_data_tbl(in_header_index).base_code
+      AND    xsib.item_status        IN ( cv_inv_item_status_20
+                                        , cv_inv_item_status_30
+                                        , cv_inv_item_status_40 )
+      AND    NVL( xsib.item_status_apply_date, gd_system_date ) <= gd_system_date
+    ) sub
+    ORDER BY
+           item_no
+         , data_type
+         , detail_month
     ;
+-- 2013/12/13 Ver1.11 Mod END
 --
   EXCEPTION
 --
@@ -812,12 +969,15 @@ AS
     END IF;
 
     -- 集計キー保持
-    g_forecast_planning_rec.prod_class_code  := g_detail_data_tbl(in_detail_index).prod_class_code;  -- 商品区分
-    g_forecast_planning_rec.prod_class_name  := g_detail_data_tbl(in_detail_index).prod_class_name;  -- 商品区分名
-    g_forecast_planning_rec.crowd_class_code := g_detail_data_tbl(in_detail_index).crowd_class_code; -- 群コード
-    g_forecast_planning_rec.item_no          := g_detail_data_tbl(in_detail_index).item_no;          -- 商品コード
-    g_forecast_planning_rec.item_short_name  := g_detail_data_tbl(in_detail_index).item_short_name;  -- 商品名
-    g_forecast_planning_rec.parent_item_no   := g_detail_data_tbl(in_detail_index).parent_item_no;   -- 親品目コード
+-- 2013/12/13 Ver1.11 Mod START
+--    g_forecast_planning_rec.prod_class_code  := g_detail_data_tbl(in_detail_index).prod_class_code;  -- 商品区分
+--    g_forecast_planning_rec.prod_class_name  := g_detail_data_tbl(in_detail_index).prod_class_name;  -- 商品区分名
+--    g_forecast_planning_rec.crowd_class_code := g_detail_data_tbl(in_detail_index).crowd_class_code; -- 群コード
+--    g_forecast_planning_rec.item_no          := g_detail_data_tbl(in_detail_index).item_no;          -- 商品コード
+--    g_forecast_planning_rec.item_short_name  := g_detail_data_tbl(in_detail_index).item_short_name;  -- 商品名
+--    g_forecast_planning_rec.parent_item_no   := g_detail_data_tbl(in_detail_index).parent_item_no;   -- 親品目コード
+    g_forecast_planning_rec.group_item_code  := g_detail_data_tbl(in_detail_index).group_item_code;  -- 集約コード
+-- 2013/12/13 Ver1.11 Mod END
 --
   EXCEPTION
 --
@@ -843,7 +1003,7 @@ AS
 --
   END qty_editing_data_keep;
   /**********************************************************************************
-   * Procedure Name   : insert_check_list
+   * Procedure Name   : reference_qty_calc
    * Description      : 当月参考数量計算(A-6)
    ***********************************************************************************/
   PROCEDURE reference_qty_calc(
@@ -1027,6 +1187,7 @@ AS
     IF ( g_header_data_tbl(in_header_index).ope_days_this_month_prevday = 0 ) THEN
       g_forecast_planning_rec.delivery_forecast_quantity  := 0;
     ELSE
+      -- ( 当月出庫数（販売実績マテリアライズドビューより取得した販売実績数） / 当月実働日数 ) * ( 当月稼動予定日数 - 当月実働日数 )
       g_forecast_planning_rec.delivery_forecast_quantity  := 
             num_edit( ( ln_standard_qty / g_header_data_tbl(in_header_index).ope_days_this_month_prevday )
                    *  ( g_header_data_tbl(in_header_index).ope_days_this_month
@@ -1044,11 +1205,25 @@ AS
     THEN
       g_forecast_planning_rec.ship_to_quantity_forecast   := 0;
     ELSE
+      -- ( 当年前々月実績 + 当年前月実績 + 当年当月予測(当月出庫数 + 今後出庫予測数量) ) / ( 前年前々月実績 + 前年前月実績 + 前年当月実績 ) * 前年翌月実績
+      -- 上記は立案対象月ではなく業務日付月からの計算
       g_forecast_planning_rec.ship_to_quantity_forecast   := 
-            num_edit( ( g_forecast_planning_rec.ship_to_quantity_12_months_ago
-              / g_forecast_planning_rec.ship_to_quantity_13_months_ago )
-              *  ( ln_standard_qty + g_forecast_planning_rec.delivery_forecast_quantity )
-              );
+-- 2013/12/13 Ver1.11 Mod START
+--            num_edit( ( g_forecast_planning_rec.ship_to_quantity_12_months_ago
+--              / g_forecast_planning_rec.ship_to_quantity_13_months_ago )
+--              *  ( ln_standard_qty + g_forecast_planning_rec.delivery_forecast_quantity )
+--              );
+            num_edit( ( ( g_forecast_planning_rec.ship_to_quantity_3_months_ago
+                        + g_forecast_planning_rec.ship_to_quantity_2_months_ago
+                        + ln_standard_qty
+                        + g_forecast_planning_rec.delivery_forecast_quantity )
+                      / ( g_forecast_planning_rec.ship_to_quantity_15_months_ago
+                        + g_forecast_planning_rec.ship_to_quantity_14_months_ago
+                        + g_forecast_planning_rec.ship_to_quantity_13_months_ago )
+                      )
+                      * g_forecast_planning_rec.ship_to_quantity_12_months_ago
+            );
+-- 2013/12/13 Ver1.11 Mod START
     END IF;
 
     -- 引取計画残数量
@@ -1091,8 +1266,139 @@ AS
 --
   END reference_qty_calc;
 --
+-- 2013/12/13 Ver1.11 Add START
   /**********************************************************************************
-   * Procedure Name   : insert_check_list
+   * Procedure Name   : insert_group_data
+   * Description      : 集約データ登録(A-10)
+   ***********************************************************************************/
+  PROCEDURE insert_group_data(
+     ov_errbuf   OUT VARCHAR2            --   エラー・メッセージ           --# 固定 #
+   , ov_retcode  OUT VARCHAR2            --   リターン・コード             --# 固定 #
+   , ov_errmsg   OUT VARCHAR2            --   ユーザー・エラー・メッセージ --# 固定 #
+  )IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'insert_group_data'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -----------------------------------------------------------------
+    -- 引取計画立案表ワークテーブルデータ登録処理
+    -----------------------------------------------------------------
+    INSERT INTO xxcop_tmp_forecast_planning(
+        target_month                                                 -- 立案対象年月
+      , base_code                                                    -- 拠点コード
+      , base_short_name                                              -- 拠点名
+      , operation_days_last_month                                    -- 前月稼動実績日数
+      , operation_days_this_month                                    -- 当月稼動実績日数
+      , operation_days_next_month                                    -- 翌月稼動予定日数
+      , group_item_code                                              -- 集約コード
+      , ship_to_quantity_15_months_ago                               -- 前年度 対象３ヶ月前実績数量
+      , ship_to_quantity_14_months_ago                               -- 前年度 対象前々月実績数量
+      , ship_to_quantity_13_months_ago                               -- 前年度 対象前月実績数量
+      , ship_to_quantity_12_months_ago                               -- 前年度 対象月実績数量
+      , ship_to_quantity_11_months_ago                               -- 前年度 対象翌月実績数量
+      , ship_to_quantity_3_months_ago                                -- 当年度 対象３ヶ月前実績数量
+      , ship_to_quantity_2_months_ago                                -- 当年度 対象前々月実績数量
+      , ship_to_quantity_1_months_ago                                -- 当年度 対象前月実績数量
+      , ship_to_quantity_forecast                                    -- 当年度 対象月予測数量
+      , forecast_quantity_3_months_ago                               -- 当年度 対象３ヶ月前計画数量
+      , forecast_quantity_2_months_ago                               -- 当年度 対象前々月計画数量
+      , forecast_quantity_1_months_ago                               -- 当年度 対象前月計画数量
+      , forecast_quantity                                            -- 当年度 対象月計画数量
+      , present_stock_quantity                                       -- 現在庫数量
+      , forecast_remainder_quantity                                  -- 引取計画残数量
+      , delivery_forecast_quantity                                   -- 今後出庫予測数量
+      , stock_forecast_quantity                                      -- 月末在庫予測数量
+    )
+    VALUES
+      ( g_forecast_planning_rec.target_month                         -- 立案対象年月
+      , g_forecast_planning_rec.base_code                            -- 拠点コード
+      , g_forecast_planning_rec.base_short_name                      -- 拠点名
+      , g_forecast_planning_rec.operation_days_last_month            -- 前月稼動実績日数
+      , g_forecast_planning_rec.operation_days_this_month            -- 当月稼動実績日数
+      , g_forecast_planning_rec.operation_days_next_month            -- 翌月稼動予定日数
+      , g_forecast_planning_rec.group_item_code                      -- 集約コード
+      , g_forecast_planning_rec.ship_to_quantity_15_months_ago       -- 前年度 対象３ヶ月前実績数量
+      , g_forecast_planning_rec.ship_to_quantity_14_months_ago       -- 前年度 対象前々月実績数量
+      , g_forecast_planning_rec.ship_to_quantity_13_months_ago       -- 前年度 対象前月実績数量
+      , g_forecast_planning_rec.ship_to_quantity_12_months_ago       -- 前年度 対象月実績数量
+      , g_forecast_planning_rec.ship_to_quantity_11_months_ago       -- 前年度 対象翌月実績数量
+      , g_forecast_planning_rec.ship_to_quantity_3_months_ago        -- 当年度 対象３ヶ月前実績数量
+      , g_forecast_planning_rec.ship_to_quantity_2_months_ago        -- 当年度 対象前々月実績数量
+      , g_forecast_planning_rec.ship_to_quantity_1_months_ago        -- 当年度 対象前月実績数量
+      , g_forecast_planning_rec.ship_to_quantity_forecast            -- 当年度 対象月予測数量
+      , g_forecast_planning_rec.forecast_quantity_3_months_ago       -- 当年度 対象３ヶ月前計画数量
+      , g_forecast_planning_rec.forecast_quantity_2_months_ago       -- 当年度 対象前々月計画数量
+      , g_forecast_planning_rec.forecast_quantity_1_months_ago       -- 当年度 対象前月計画数量
+      , g_forecast_planning_rec.forecast_quantity                    -- 当年度 対象月計画数量
+      , g_forecast_planning_rec.present_stock_quantity               -- 現在庫数量
+      , g_forecast_planning_rec.forecast_remainder_quantity          -- 引取計画残数量
+      , g_forecast_planning_rec.delivery_forecast_quantity           -- 今後出庫予測数量
+      , g_forecast_planning_rec.stock_forecast_quantity              -- 月末在庫予測数量
+    );
+--
+    -- 正常件数カウントアップ
+    gn_normal_cnt := gn_normal_cnt + 1;
+--
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+--■当処理では使用しない■■■■■■■■■■■■■■■■■■■■■■
+--■    -- *** 共通関数例外ハンドラ ***
+--■    WHEN global_api_expt THEN
+--■      ov_errmsg  := lv_errmsg;
+--■      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--■      ov_retcode := cv_status_error;
+--■    -- *** 共通関数OTHERS例外ハンドラ ***
+--■    WHEN global_api_others_expt THEN
+--■      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--■      ov_retcode := cv_status_error;
+--■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END insert_group_data;
+-- 2013/12/13 Ver1.11 Add END
+--
+  /**********************************************************************************
+   * Procedure Name   : insert_svf_work_tbl
    * Description      : 引取計画立案表帳票ワークテーブルデータ登録(A-7)
    ***********************************************************************************/
   PROCEDURE insert_svf_work_tbl(
@@ -1146,8 +1452,14 @@ AS
       , operation_days_last_month                                    -- 前月稼動実績日数
       , operation_days_this_month                                    -- 当月稼動実績日数
       , operation_days_next_month                                    -- 翌月稼動予定日数
-      , crowd_class_code                                             -- 群コード（上３桁）
-      , item_no                                                      -- 商品コード
+-- 2013/12/13 Ver1.11 Add START
+      , crowd_class_code_3                                           -- 政策群コード（上３桁）
+-- 2013/12/13 Ver1.11 Add END
+      , crowd_class_code                                             -- 政策群コード
+-- 2013/12/13 Ver1.11 Mod START
+--      , item_no                                                      -- 商品コード
+      , group_item_code                                              -- 集約コード
+-- 2013/12/13 Ver1.11 Mod END
       , item_short_name                                              -- 商品名
       , ship_to_quantity_15_months_ago                               -- 前年度 対象３ヶ月前実績数量
       , ship_to_quantity_14_months_ago                               -- 前年度 対象前々月実績数量
@@ -1166,7 +1478,9 @@ AS
       , forecast_remainder_quantity                                  -- 引取計画残数量
       , delivery_forecast_quantity                                   -- 今後出庫予測数量
       , stock_forecast_quantity                                      -- 月末在庫予測数量
-      , parent_item_no                                               -- 親品目コード
+-- 2013/12/13 Ver1.11 Del START
+--      , parent_item_no                                               -- 親品目コード
+-- 2013/12/13 Ver1.11 Del END
       , created_by                                                   -- 作成者
       , creation_date                                                -- 作成日
       , last_updated_by                                              -- 最終更新者
@@ -1177,49 +1491,110 @@ AS
       , program_id                                                   -- プログラムID
       , program_update_date                                          -- プログラム更新日
       )
-    VALUES
-      ( g_forecast_planning_rec.target_month                         -- 立案対象年月
-      , g_forecast_planning_rec.prod_class_code                      -- 商品区分
-      , g_forecast_planning_rec.prod_class_name                      -- 商品区分名
-      , g_forecast_planning_rec.base_code                            -- 拠点コード
-      , g_forecast_planning_rec.base_short_name                      -- 拠点名
-      , g_forecast_planning_rec.operation_days_last_month            -- 前月稼動実績日数
-      , g_forecast_planning_rec.operation_days_this_month            -- 当月稼動実績日数
-      , g_forecast_planning_rec.operation_days_next_month            -- 翌月稼動予定日数
-      , g_forecast_planning_rec.crowd_class_code                     -- 群コード（上３桁）
-      , g_forecast_planning_rec.item_no                              -- 商品コード
-      , g_forecast_planning_rec.item_short_name                      -- 商品名
-      , g_forecast_planning_rec.ship_to_quantity_15_months_ago       -- 前年度 対象３ヶ月前実績数量
-      , g_forecast_planning_rec.ship_to_quantity_14_months_ago       -- 前年度 対象前々月実績数量
-      , g_forecast_planning_rec.ship_to_quantity_13_months_ago       -- 前年度 対象前月実績数量
-      , g_forecast_planning_rec.ship_to_quantity_12_months_ago       -- 前年度 対象月実績数量
-      , g_forecast_planning_rec.ship_to_quantity_11_months_ago       -- 前年度 対象翌月実績数量
-      , g_forecast_planning_rec.ship_to_quantity_3_months_ago        -- 当年度 対象３ヶ月前実績数量
-      , g_forecast_planning_rec.ship_to_quantity_2_months_ago        -- 当年度 対象前々月実績数量
-      , g_forecast_planning_rec.ship_to_quantity_1_months_ago        -- 当年度 対象前月実績数量
-      , g_forecast_planning_rec.ship_to_quantity_forecast            -- 当年度 対象月予測数量
-      , g_forecast_planning_rec.forecast_quantity_3_months_ago       -- 当年度 対象３ヶ月前計画数量
-      , g_forecast_planning_rec.forecast_quantity_2_months_ago       -- 当年度 対象前々月計画数量
-      , g_forecast_planning_rec.forecast_quantity_1_months_ago       -- 当年度 対象前月計画数量
-      , g_forecast_planning_rec.forecast_quantity                    -- 当年度 対象月計画数量
-      , g_forecast_planning_rec.present_stock_quantity               -- 現在庫数量
-      , g_forecast_planning_rec.forecast_remainder_quantity          -- 引取計画残数量
-      , g_forecast_planning_rec.delivery_forecast_quantity           -- 今後出庫予測数量
-      , g_forecast_planning_rec.stock_forecast_quantity              -- 月末在庫予測数量
-      , g_forecast_planning_rec.parent_item_no                       -- 親品目コード
-      , cn_created_by                                                -- 作成者
-      , cd_creation_date                                             -- 作成日
-      , cn_last_updated_by                                           -- 最終更新者
-      , cd_last_update_date                                          -- 最終更新日
-      , cn_last_update_login                                         -- 最終更新ログイン
-      , cn_request_id                                                -- 要求ID
-      , cn_program_application_id                                    -- プログラムアプリケーションID
-      , cn_program_id                                                -- プログラムID
-      , cd_program_update_date                                       -- プログラム更新日
-      );
+-- 2013/12/13 Ver1.11 Mod START
+--    VALUES
+--      ( g_forecast_planning_rec.target_month                         -- 立案対象年月
+--      , g_forecast_planning_rec.prod_class_code                      -- 商品区分
+--      , g_forecast_planning_rec.prod_class_name                      -- 商品区分名
+--      , g_forecast_planning_rec.base_code                            -- 拠点コード
+--      , g_forecast_planning_rec.base_short_name                      -- 拠点名
+--      , g_forecast_planning_rec.operation_days_last_month            -- 前月稼動実績日数
+--      , g_forecast_planning_rec.operation_days_this_month            -- 当月稼動実績日数
+--      , g_forecast_planning_rec.operation_days_next_month            -- 翌月稼動予定日数
+--      , g_forecast_planning_rec.crowd_class_code                     -- 群コード（上３桁）
+--      , g_forecast_planning_rec.item_no                              -- 商品コード
+--      , g_forecast_planning_rec.item_short_name                      -- 商品名
+--      , g_forecast_planning_rec.ship_to_quantity_15_months_ago       -- 前年度 対象３ヶ月前実績数量
+--      , g_forecast_planning_rec.ship_to_quantity_14_months_ago       -- 前年度 対象前々月実績数量
+--      , g_forecast_planning_rec.ship_to_quantity_13_months_ago       -- 前年度 対象前月実績数量
+--      , g_forecast_planning_rec.ship_to_quantity_12_months_ago       -- 前年度 対象月実績数量
+--      , g_forecast_planning_rec.ship_to_quantity_11_months_ago       -- 前年度 対象翌月実績数量
+--      , g_forecast_planning_rec.ship_to_quantity_3_months_ago        -- 当年度 対象３ヶ月前実績数量
+--      , g_forecast_planning_rec.ship_to_quantity_2_months_ago        -- 当年度 対象前々月実績数量
+--      , g_forecast_planning_rec.ship_to_quantity_1_months_ago        -- 当年度 対象前月実績数量
+--      , g_forecast_planning_rec.ship_to_quantity_forecast            -- 当年度 対象月予測数量
+--      , g_forecast_planning_rec.forecast_quantity_3_months_ago       -- 当年度 対象３ヶ月前計画数量
+--      , g_forecast_planning_rec.forecast_quantity_2_months_ago       -- 当年度 対象前々月計画数量
+--      , g_forecast_planning_rec.forecast_quantity_1_months_ago       -- 当年度 対象前月計画数量
+--      , g_forecast_planning_rec.forecast_quantity                    -- 当年度 対象月計画数量
+--      , g_forecast_planning_rec.present_stock_quantity               -- 現在庫数量
+--      , g_forecast_planning_rec.forecast_remainder_quantity          -- 引取計画残数量
+--      , g_forecast_planning_rec.delivery_forecast_quantity           -- 今後出庫予測数量
+--      , g_forecast_planning_rec.stock_forecast_quantity              -- 月末在庫予測数量
+--      , g_forecast_planning_rec.parent_item_no                       -- 親品目コード
+--      , cn_created_by                                                -- 作成者
+--      , cd_creation_date                                             -- 作成日
+--      , cn_last_updated_by                                           -- 最終更新者
+--      , cd_last_update_date                                          -- 最終更新日
+--      , cn_last_update_login                                         -- 最終更新ログイン
+--      , cn_request_id                                                -- 要求ID
+--      , cn_program_application_id                                    -- プログラムアプリケーションID
+--      , cn_program_id                                                -- プログラムID
+--      , cd_program_update_date                                       -- プログラム更新日
+--      );
+    SELECT 
+           xtfp.target_month                                           -- 立案対象年月
+         , xic1v.prod_class_code                                       -- 商品区分
+         , xic1v.prod_class_name                                       -- 商品区分名
+         , xtfp.base_code                                              -- 拠点コード
+         , xtfp.base_short_name                                        -- 拠点名
+         , xtfp.operation_days_last_month                              -- 前月稼動実績日数
+         , xtfp.operation_days_this_month                              -- 当月稼動実績日数
+         , xtfp.operation_days_next_month                              -- 翌月稼動予定日数
+         , SUBSTRB(xic1v.crowd_class_code,1,3)                         -- 政策群コード（上３桁）
+         , xic1v.crowd_class_code                                      -- 政策群コード
+         , xtfp.group_item_code                                        -- 集約コード
+         , xic1v.item_short_name                                       -- 商品名
+         , SUM(xtfp.ship_to_quantity_15_months_ago)                    -- 前年度 対象３ヶ月前実績数量
+         , SUM(xtfp.ship_to_quantity_14_months_ago)                    -- 前年度 対象前々月実績数量
+         , SUM(xtfp.ship_to_quantity_13_months_ago)                    -- 前年度 対象前月実績数量
+         , SUM(xtfp.ship_to_quantity_12_months_ago)                    -- 前年度 対象月実績数量
+         , SUM(xtfp.ship_to_quantity_11_months_ago)                    -- 前年度 対象翌月実績数量
+         , SUM(xtfp.ship_to_quantity_3_months_ago)                     -- 当年度 対象３ヶ月前実績数量
+         , SUM(xtfp.ship_to_quantity_2_months_ago)                     -- 当年度 対象前々月実績数量
+         , SUM(xtfp.ship_to_quantity_1_months_ago)                     -- 当年度 対象前月実績数量
+         , SUM(xtfp.ship_to_quantity_forecast)                         -- 当年度 対象月予測数量
+         , SUM(xtfp.forecast_quantity_3_months_ago)                    -- 当年度 対象３ヶ月前計画数量
+         , SUM(xtfp.forecast_quantity_2_months_ago)                    -- 当年度 対象前々月計画数量
+         , SUM(xtfp.forecast_quantity_1_months_ago)                    -- 当年度 対象前月計画数量
+         , SUM(xtfp.forecast_quantity)                                 -- 当年度 対象月計画数量
+         , SUM(xtfp.present_stock_quantity)                            -- 現在庫数量
+         , SUM(xtfp.forecast_remainder_quantity)                       -- 引取計画残数量
+         , SUM(xtfp.delivery_forecast_quantity)                        -- 今後出庫予測数量
+         , SUM(xtfp.stock_forecast_quantity)                           -- 月末在庫予測数量
+         , cn_created_by                                               -- 作成者
+         , cd_creation_date                                            -- 作成日
+         , cn_last_updated_by                                          -- 最終更新者
+         , cd_last_update_date                                         -- 最終更新日
+         , cn_last_update_login                                        -- 最終更新ログイン
+         , cn_request_id                                               -- 要求ID
+         , cn_program_application_id                                   -- プログラムアプリケーションID
+         , cn_program_id                                               -- プログラムID
+         , cd_program_update_date                                      -- プログラム更新日
+    FROM   xxcop_tmp_forecast_planning xtfp  -- 引取計画立案表ワークテーブル
+         , xxcop_item_categories1_v    xic1v -- 計画_品目カテゴリビュー1
+    WHERE  xtfp.group_item_code     = xic1v.item_no
+    AND    xic1v.start_date_active <= gd_system_date
+    AND    xic1v.end_date_active   >= gd_system_date
+    GROUP BY
+           xtfp.target_month                                           -- 立案対象年月
+         , xic1v.prod_class_code                                       -- 商品区分
+         , xic1v.prod_class_name                                       -- 商品区分名
+         , xtfp.base_code                                              -- 拠点コード
+         , xtfp.base_short_name                                        -- 拠点名
+         , xtfp.operation_days_last_month                              -- 前月稼動実績日数
+         , xtfp.operation_days_this_month                              -- 当月稼動実績日数
+         , xtfp.operation_days_next_month                              -- 翌月稼動予定日数
+         , xic1v.crowd_class_code                                      -- 政策群コード
+         , xtfp.group_item_code                                        -- 集約コード
+         , xic1v.item_short_name                                       -- 商品名
+    ;
+-- 2013/12/13 Ver1.11 Mod END
 
-      -- 正常件数カウントアップ
-      gn_normal_cnt := gn_normal_cnt + 1;
+-- 2013/12/13 Ver1.11 Del START
+--      -- 正常件数カウントアップ
+--      gn_normal_cnt := gn_normal_cnt + 1;
+-- 2013/12/13 Ver1.11 Del END
 
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -1646,14 +2021,24 @@ AS
             RAISE global_process_expt;
           END IF;
 
+-- 2013/12/13 Ver1.11 Mod START
+--          -- ======================================================
+--          --  A-7 引取計画立案表帳票ワークテーブルデータ登録
+--          -- ======================================================
+--          insert_svf_work_tbl(
+--            lv_errbuf                            -- エラー・メッセージ           --# 固定 #
+--           ,lv_retcode                           -- リターン・コード             --# 固定 #
+--           ,lv_errmsg                            -- ユーザー・エラー・メッセージ --# 固定 #
+--          );
           -- ======================================================
-          --  A-7 引取計画立案表帳票ワークテーブルデータ登録
+          --  A-10 集約データ登録
           -- ======================================================
-          insert_svf_work_tbl(
+          insert_group_data(
             lv_errbuf                            -- エラー・メッセージ           --# 固定 #
            ,lv_retcode                           -- リターン・コード             --# 固定 #
            ,lv_errmsg                            -- ユーザー・エラー・メッセージ --# 固定 #
           );
+-- 2013/12/13 Ver1.11 Mod END
           IF (lv_retcode = cv_status_error) THEN
             gn_error_cnt := gn_error_cnt + 1;
             RAISE global_process_expt;
@@ -1668,12 +2053,30 @@ AS
 
     END LOOP get_header_data_loop;
 
+-- 2013/12/13 Ver1.11 Add START
+    -- 対象件数が存在する場合
+    IF ( gn_normal_cnt > 0 ) THEN
+      -- ======================================================
+      --  A-7 引取計画立案表帳票ワークテーブルデータ登録
+      -- ======================================================
+      insert_svf_work_tbl(
+        lv_errbuf                            -- エラー・メッセージ           --# 固定 #
+       ,lv_retcode                           -- リターン・コード             --# 固定 #
+       ,lv_errmsg                            -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      IF (lv_retcode = cv_status_error) THEN
+        gn_error_cnt := gn_error_cnt + 1;
+        RAISE global_process_expt;
+      END IF;
+    END IF;
+-- 2013/12/13 Ver1.11 Add END
+
     -- 出力件数カウントアップ
     gn_target_cnt := gn_normal_cnt;
 
     -- SVF起動前にコミットを行なう
     COMMIT;
-    
+
     -- ===============================
     --  A-8 SVF起動
     -- ===============================
@@ -1841,6 +2244,11 @@ AS
         );
       END IF;
 --★1.1 2009/03/04 Upd End
+-- 2013/12/13 Ver1.11 Add Start
+      -- 対象件数、成功件数のクリア
+      gn_target_cnt := 0;
+      gn_normal_cnt := 0;
+-- 2013/12/13 Ver1.11 Add END
     END IF;
     --空行挿入
     FND_FILE.PUT_LINE(
