@@ -7,7 +7,7 @@ AS
  * Description      : 出庫配送依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 出庫配送依頼表 T_MD070_BPO_62C
- * Version          : 1.5
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,9 @@ AS
  *                                         (システムテスト不具合#229)
  *                                         小口区分が取得できない場合,重量容積合計をNULLとする。
  *  2008/07/02    1.5   Satoshi Yunba    禁則文字対応
+ *  2008/07/04    1.6   Naoki Fukuda     ST不具合対応#394
+ *  2008/07/04    1.7   Naoki Fukuda     ST不具合対応#409
+ *  2008/07/07    1.8   Naoki Fukuda     ST不具合対応#337
  *
  *****************************************************************************************/
 --
@@ -227,7 +230,8 @@ AS
     ,iv_notif_date              DATE                            --  07 : 確定通知実施日
     ,iv_notif_time_from         VARCHAR2(5)                     --  08 : 確定通知実施時間From
     ,iv_notif_time_to           VARCHAR2(5)                     --  09 : 確定通知実施時間To
-    ,iv_freight_carrier_code    xoha.career_id%TYPE             --  10 : 運送業者
+    --,iv_freight_carrier_code    xoha.career_id%TYPE             --  10 : 運送業者    --2008/07/04 ST不具合対応#409
+    ,iv_freight_carrier_code    xoha.freight_carrier_code%TYPE  --  10 : 運送業者      --2008/07/04 ST不具合対応#409
     ,iv_block1                  VARCHAR2(5)                     --  11 : ブロック1
     ,iv_block2                  VARCHAR2(5)                     --  12 : ブロック2
     ,iv_block3                  VARCHAR2(5)                     --  13 : ブロック3
@@ -329,6 +333,8 @@ AS
   gv_prod_kbn           VARCHAR2(1);                                  -- 商品区分
 --
   gd_common_sysdate     DATE;                                         -- システム日付
+--
+  gv_papf_attribute3  per_all_people_f.attribute3%TYPE ; -- ユーザーが内部倉庫:"1" 外部倉庫:"2" 2008/07/04 ST不具合対応#394
 --
   /**********************************************************************************
    * Procedure Name   : prc_initialize
@@ -434,29 +440,44 @@ AS
     -- ====================================================
     -- パラメータチェック(F-2)
     -- ====================================================
-    -- パラメータ出庫/配送区分の値が、配送の場合にパラメータ運送業者を必須とします。
-    IF ( gt_param.iv_shukko_haisou_kbn = gc_shukko_haisou_kbn_d ) THEN
-      IF ( gt_param.iv_freight_carrier_code IS NULL ) THEN
-        -- メッセージセット
-        lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
-                                              ,gc_msg_id_required
-                                              ,gc_msg_tkn_nm_parmeta
-                                              ,gc_msg_tkn_val_parmeta1
-                                             ) ;
-        RAISE prm_check_expt ;
-      END IF ;
-    END IF ;
+    -- 2008/07/07 ST不具合対応#337 配送の場合でもパラメータ運送業者を必須としない
+    ---- パラメータ出庫/配送区分の値が、配送の場合にパラメータ運送業者を必須とします。
+    --IF ( gt_param.iv_shukko_haisou_kbn = gc_shukko_haisou_kbn_d ) THEN
+    --  IF ( gt_param.iv_freight_carrier_code IS NULL ) THEN
+    --    -- メッセージセット
+    --    lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
+    --                                          ,gc_msg_id_required
+    --                                          ,gc_msg_tkn_nm_parmeta
+    --                                          ,gc_msg_tkn_val_parmeta1
+    --                                         ) ;
+    --    RAISE prm_check_expt ;
+    --  END IF ;
+    --END IF ;
+    --
 --
     -- パラメータ予定/確定区分が確定の場合、確定通知実施日を必須とします。
-    IF ( gt_param.iv_plan_decide_kbn = gc_plan_decide_d ) THEN
-      IF ( gt_param.iv_notif_date IS NULL ) THEN
-        -- メッセージセット
-        lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
-                                              ,gc_msg_id_required
-                                              ,gc_msg_tkn_nm_parmeta
-                                              ,gc_msg_tkn_val_parmeta2
-                                             ) ;
-        RAISE prm_check_expt ;
+    --2008/07/04 ST不具合対応#394 但しユーザーが内部倉庫の場合だけ必須チェックする（外部倉庫の場合は行わない）
+    SELECT
+      NVL(papf.attribute3,gc_user_kbn_inside)  --NULLのユーザーは内部倉庫扱い
+    INTO
+      gv_papf_attribute3
+    FROM fnd_user fu 
+        ,per_all_people_f papf
+    WHERE fu.user_id     = FND_GLOBAL.USER_ID
+      AND fu.employee_id = papf.person_id;
+    --2008/07/04 ST不具合対応#394
+--
+    IF ( gv_papf_attribute3 = gc_user_kbn_inside ) THEN  --2008/07/04 ST不具合対応#394
+      IF ( gt_param.iv_plan_decide_kbn = gc_plan_decide_d ) THEN -- パラメータ予定/確定区分が確定の場合
+        IF ( gt_param.iv_notif_date IS NULL ) THEN
+          -- メッセージセット
+          lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
+                                                ,gc_msg_id_required
+                                                ,gc_msg_tkn_nm_parmeta
+                                                ,gc_msg_tkn_val_parmeta2
+                                               ) ;
+          RAISE prm_check_expt ;
+        END IF ;
       END IF ;
     END IF ;
 --
@@ -705,10 +726,10 @@ AS
     || ' ,phone '                   -- 配送先(電話番号)
     || ' ,arrival_time_from '       -- 時間指定From
     || ' ,arrival_time_to '         -- 時間指定To
-    || ' ,sum_loading_capacity '    -- 混載体積
-    || ' ,sum_loading_weight '      -- 混載重量
+    || ' ,TRUNC(sum_loading_capacity + 0.9) AS sum_loading_capacity ' -- 混載体積 2008/07/07 ST不具合対応#337
+    || ' ,TRUNC(sum_loading_weight + 0.9) AS sum_loading_weight ' --混載重量 2008/07/07 ST不具合対応#337
     || ' ,req_mov_no '              -- 依頼No/移動No
-    || ' ,sum_weightm_capacity '    -- 重量体積(依頼No.単位)
+    || ' ,TRUNC(sum_weightm_capacity + 0.9) AS sum_weightm_capacity' --重量体積(依頼No.単位) 2008/07/07 ST不具合対応#337
     || ' ,sum_weightm_capacity_t '  -- 単位
     || ' ,tehai_no '                -- 手配No
     || ' ,prev_delivery_no '        -- 前回配送No
@@ -914,13 +935,13 @@ AS
     lv_sql_shu_where1 :=  lv_sql_shu_where1 
     || ' AND (' 
     || ' (' 
-    || ' ( '''|| gt_param.iv_plan_decide_kbn ||''' = '''|| gc_user_kbn_inside ||''' )'
+    || ' ( '''|| gt_param.iv_plan_decide_kbn ||''' = '''|| gc_plan_decide_p ||''' )'
     || ' AND' 
     || ' ( xoha.notif_status IN ('''|| gc_fixa_notif_yet ||''', '''|| gc_fixa_notif_re ||''') )'
     || ' )' 
     || ' OR' 
     || ' (' 
-    || ' ( '''|| gt_param.iv_plan_decide_kbn ||''' = '''|| gc_user_kbn_outside ||''' )' 
+    || ' ( '''|| gt_param.iv_plan_decide_kbn ||''' = '''|| gc_plan_decide_d ||''' )' 
     || ' AND' 
     || ' ( xoha.notif_status = '''|| gc_fixa_notif_end ||''')' 
     || ' )' 
@@ -1274,13 +1295,13 @@ AS
     || ' AND xoha.instruction_dept = '''|| gt_param.iv_dept ||'''' 
     || ' AND (' 
     || ' (' 
-    || ' '''|| gt_param.iv_plan_decide_kbn ||''' = '''|| gc_user_kbn_inside ||'''' 
+    || ' '''|| gt_param.iv_plan_decide_kbn ||''' = '''|| gc_plan_decide_p ||'''' 
     || ' AND' 
     || ' xoha.notif_status IN ('''|| gc_fixa_notif_yet ||''', '''|| gc_fixa_notif_re ||''')' 
     || ' )' 
     || ' OR' 
     || ' (' 
-    || ' '''|| gt_param.iv_plan_decide_kbn ||''' = '''|| gc_user_kbn_outside ||'''' 
+    || ' '''|| gt_param.iv_plan_decide_kbn ||''' = '''|| gc_plan_decide_d ||'''' 
     || ' AND' 
     || ' xoha.notif_status = '''|| gc_fixa_notif_end ||'''' 
     || ' )' 
@@ -1645,21 +1666,25 @@ AS
     lv_sql_ido_where1 :=  lv_sql_ido_where1
     || ' AND xmrih.instruction_post_code = '''|| gt_param.iv_dept ||'''' ;
     IF ( gt_param.iv_freight_carrier_code IS NOT NULL ) THEN
+      --2008/07/04 ST不具合対応#409
+      --lv_sql_ido_where1 :=  lv_sql_ido_where1
+      --|| ' AND xmrih.career_id = '''|| gt_param.iv_freight_carrier_code ||'''' ;
       lv_sql_ido_where1 :=  lv_sql_ido_where1
-      || ' AND xmrih.career_id = '''|| gt_param.iv_freight_carrier_code ||'''' ;
+      || ' AND xmrih.freight_carrier_code = '''|| gt_param.iv_freight_carrier_code ||'''' ;
+      --2008/07/04 ST不具合対応#409
     END IF ;
     lv_sql_ido_where1 :=  lv_sql_ido_where1
     || ' AND (' 
     || ' (' 
     || ' '''|| gt_param.iv_plan_decide_kbn ||''' = '''
-    || gc_user_kbn_inside ||'''' 
+    || gc_plan_decide_p ||'''' 
     || ' AND' 
     || ' xmrih.notif_status IN ('''|| gc_fixa_notif_yet ||''', '''
       || gc_fixa_notif_re ||''')' 
     || ' )' 
     || ' OR' 
     || ' (' 
-    || ' '''|| gt_param.iv_plan_decide_kbn ||''' = '''|| gc_user_kbn_outside ||'''' 
+    || ' '''|| gt_param.iv_plan_decide_kbn ||''' = '''|| gc_plan_decide_d ||'''' 
     || ' AND' 
     || ' xmrih.notif_status = '''|| gc_fixa_notif_end ||'''' 
     || ' )' 
