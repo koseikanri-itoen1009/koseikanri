@@ -177,11 +177,12 @@ END FND_NEW_MESSAGES
 
 BEGIN FND_NEW_MESSAGES "XXWSH" "APP-XXWSH-13106"
   OWNER = "SCS_STOMITA"
-  LAST_UPDATE_DATE = "2008/05/19"
+  LAST_UPDATE_DATE = "2008/07/04"
   MESSAGE_NUMBER = "*NULL*"
   MESSAGE_TEXT =
  "出荷依頼インタフェースヘッダ（アドオン）に紐づく出荷依頼インタフェース明細（アドオン）がありません。\n\
-出荷依頼インタフェースヘッダ（アドオン）.ヘッダID： &PARAM1"
+出荷依頼インタフェースヘッダ（アドオン）.ヘッダID： &PARAM1\n\
+出荷依頼インタフェースヘッダ（アドオン）.依頼No／移動No： &PARAM2"
   DESCRIPTION = "出荷依頼インタフェース明細（アドオン）非存在エラーメッセージ"
   TYPE = "ERROR"
   MAX_LENGTH = "*NULL*"
@@ -1613,15 +1614,15 @@ BEGIN FND_NEW_MESSAGES "XXWSH" "APP-XXWSH-13125"
 END FND_NEW_MESSAGES
 
 BEGIN FND_NEW_MESSAGES "XXWSH" "APP-XXWSH-13126"
-  OWNER = "XX_SETUP_USER01"
-  LAST_UPDATE_DATE = "2008/05/09"
+  OWNER = "SCS_STOMITA"
+  LAST_UPDATE_DATE = "2008/07/04"
   MESSAGE_NUMBER = "*NULL*"
   MESSAGE_TEXT =
  "ロット逆転防止チェックでエラーとなりました。\n\
 処理種別： &PARAM1\n\
 品目コード： &PARAM2\n\
 ロットNo： &PARAM3\n\
-配送先ID/取引先ID/入庫先ID： &PARAM4\n\
+配送先/取引先/入庫先： &PARAM4\n\
 配送No： &PARAM5 \n\
 依頼No/移動No： &PARAM6"
   DESCRIPTION = "ロット逆転防止チェックエラーメッセージ"
@@ -1647,16 +1648,16 @@ BEGIN FND_NEW_MESSAGES "XXWSH" "APP-XXWSH-13127"
 END FND_NEW_MESSAGES
 
 BEGIN FND_NEW_MESSAGES "XXWSH" "APP-XXWSH-13128"
-  OWNER = "XX_SETUP_USER01"
-  LAST_UPDATE_DATE = "2008/05/09"
+  OWNER = "SCS_STOMITA"
+  LAST_UPDATE_DATE = "2008/07/04"
   MESSAGE_NUMBER = "*NULL*"
   MESSAGE_TEXT =
  "引当可能数を超えました。\n\
 配送No： &PARAM1\n\
 依頼No/移動No： &PARAM2\n\
-OPM品目ID： &PARAM3\n\
-ロットID： &PARAM4\n\
-保管場所ID： &PARAM5\n\
+OPM品目： &PARAM3\n\
+ロットNo： &PARAM4\n\
+出荷元： &PARAM5\n\
 総当可能数： &PARAM6\n\
 出荷実績数量： &PARAM7"
   DESCRIPTION = "引当可能チェックエラーメッセージ"
@@ -3105,6 +3106,34 @@ BEGIN FND_NEW_MESSAGES "XXWSH" "APP-XXWSH-13152"
 重量容積区分(in)： &PARAM8\n\
 基準日(in)： &PARAM9"
   DESCRIPTION = "最大配送区分算出関数エラー"
+  TYPE = "ERROR"
+  MAX_LENGTH = "*NULL*"
+  CATEGORY = "*NULL*"
+  SEVERITY = "*NULL*"
+  FND_LOG_SEVERITY = "5"
+END FND_NEW_MESSAGES
+
+BEGIN FND_NEW_MESSAGES "XXWSH" "APP-XXWSH-11137"
+  OWNER = "SCS_NAKADA01"
+  LAST_UPDATE_DATE = "2008/07/04"
+  MESSAGE_NUMBER = "*NULL*"
+  MESSAGE_TEXT = "明細情報が未入力です。"
+  DESCRIPTION = "明細未登録エラーメッセージ"
+  TYPE = "ERROR"
+  MAX_LENGTH = "*NULL*"
+  CATEGORY = "*NULL*"
+  SEVERITY = "*NULL*"
+  FND_LOG_SEVERITY = "5"
+END FND_NEW_MESSAGES
+
+BEGIN FND_NEW_MESSAGES "XXWSH" "APP-XXWSH-11768"
+  OWNER = "SCS_FUKADA"
+  LAST_UPDATE_DATE = "2008/07/04"
+  MESSAGE_NUMBER = "*NULL*"
+  MESSAGE_TEXT =
+ "選択した配送区分は出庫元：「 &DELIVER_FROM 」 、配送先：「 &DELIVER_TO 」で、\n\
+配送LTマスタに登録されていないため指定できません。"
+  DESCRIPTION = "配送区分チェックエラーメッセージ"
   TYPE = "ERROR"
   MAX_LENGTH = "*NULL*"
   CATEGORY = "*NULL*"

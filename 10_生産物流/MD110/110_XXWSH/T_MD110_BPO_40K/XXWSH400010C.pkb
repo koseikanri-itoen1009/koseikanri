@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼締め解除処理
  * MD.050           : 出荷依頼 T_MD050_BPO_401
  * MD.070           : 出荷依頼締め解除処理  T_MD070_BPO_40K
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -17,6 +17,7 @@ AS
  *  main                   コンカレント実行ファイル登録プロシージャ
  *  ins_xxwsh_tightening_control
  *                         解除レコード登録プロシージャ
+ *  check_tightening_status2 締めステータスチェック(締解除処理専用)
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -24,6 +25,9 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/04/04    1.0  Oracle 上原正好   初回作成
  *  2008/5/19     1.1  Oracle 上原正好   内部変更要求#80対応 パラメータ「拠点」追加
+ *  2008/07/04    1.2  Oracle 北寒寺正夫 ST#366対応 締解除時の拠点、拠点カテゴリがALLの際の
+ *                                       条件が共通関数の条件と異なるため共通関数からコピーし
+ *                                       実装
  *
  *****************************************************************************************/
 --
@@ -267,6 +271,342 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END ins_xxwsh_tightening_control;
+-- Ver1.2 M.Hokkanji Start
+-- 拠点ALL、拠点カテゴリ0(ALL)の場合の条件を共通関数と変更するため締めステータスチェック関数をコピー
+--
+  /**********************************************************************************
+   * Function Name    : check_tightening_status2
+   * Description      : 締めステータスチェック関数(締解除処理専用)
+   ***********************************************************************************/
+  FUNCTION check_tightening_status2(
+    -- 1.受注タイプID
+    in_order_type_id          IN  xxwsh_tightening_control.order_type_id%TYPE,
+    -- 2.出荷元保管場所
+    iv_deliver_from           IN  xxwsh_tightening_control.deliver_from%TYPE,
+    -- 3.拠点
+    iv_sales_branch           IN  xxwsh_tightening_control.sales_branch%TYPE,
+    -- 4.拠点カテゴリ
+    iv_sales_branch_category  IN  xxwsh_tightening_control.sales_branch_category%TYPE,
+    -- 5.生産物流LT
+    in_lead_time_day          IN  xxwsh_tightening_control.lead_time_day%TYPE,
+    -- 6.出庫日
+    id_ship_date              IN  xxwsh_tightening_control.schedule_ship_date%TYPE,
+    -- 7.商品区分
+    iv_prod_class             IN  xxwsh_tightening_control.prod_class%TYPE)
+    RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name           CONSTANT VARCHAR2(100) := 'check_tightening_status2'; -- プログラム名
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cn_all                CONSTANT NUMBER        := -999;                      -- ALL(数値項目)
+    cv_all                CONSTANT VARCHAR2(3)   := 'ALL';                     -- ALL(文字項目)
+    cv_yes                CONSTANT VARCHAR2(1)   := 'Y';                       -- YES
+    cv_no                 CONSTANT VARCHAR2(1)   := 'N';                       -- NO
+    cv_close              CONSTANT VARCHAR2(1)   := '1';                       -- 締め
+    cv_cancel             CONSTANT VARCHAR2(1)   := '2';                       -- 解除
+    cv_inside_err         CONSTANT VARCHAR2(2)   := '-1';                      -- 内部エラー
+    cv_close_proc_n_enfo  CONSTANT VARCHAR2(1)   := '1';                       -- 締め処理未実施
+    cv_first_close_fin    CONSTANT VARCHAR2(1)   := '2';                       -- 初回締め済
+    cv_close_cancel       CONSTANT VARCHAR2(1)   := '3';                       -- 締め解除
+    cv_re_close_fin       CONSTANT VARCHAR2(1)   := '4';                       -- 再締め済
+    cv_customer_class_code_1 CONSTANT VARCHAR2(1)   := '1';                    -- 顧客区分：1
+    cv_prod_class_1       CONSTANT VARCHAR2(1)   := '1';                       -- 商品区分：1
+    cv_prod_class_2       CONSTANT VARCHAR2(1)   := '2';                       -- 商品区分：2
+    cv_sales_branch_category_0 CONSTANT VARCHAR2(1)   := '0';                  -- 拠点カテゴリ：0
+--
+    -- *** ローカル変数 ***
+    ln_count                  NUMBER;            -- カウント件数
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- ===============================
+    -- ユーザー定義例外
+    -- ===============================
+--
+  BEGIN
+--
+    -- ***********************************************
+    -- ***      共通関数処理ロジックの記述         ***
+    -- ***********************************************
+    BEGIN
+      -- 締め解除状態チェック
+      -- パラメータ「拠点」が入力された場合
+      IF ((iv_sales_branch IS NOT NULL) AND (iv_sales_branch <> 'ALL')) THEN
+        -- 「拠点」および、「拠点」に紐付く「拠点カテゴリ」で解除レコードを検索      
+        SELECT  COUNT(*)
+        INTO    ln_count
+        FROM    xxwsh_tightening_control  xtc
+               ,xxcmn_cust_accounts2_v    xcav
+        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+        AND     xtc.sales_branch          IN (NVL(iv_sales_branch, cv_all), cv_all)
+        AND     DECODE(xtc.sales_branch_category,NULL,cv_all
+                                                ,xtc.sales_branch_category)
+                                          IN (DECODE(xtc.prod_class
+                                                     , cv_prod_class_2, xcav.drink_base_category
+                                                     , cv_prod_class_1, xcav.leaf_base_category)
+                                              ,cv_all)
+        AND     xtc.lead_time_day         =  in_lead_time_day
+        AND     xtc.schedule_ship_date    =  id_ship_date
+        AND     xtc.prod_class            =  iv_prod_class
+        AND     xtc.base_record_class     =  cv_no
+        AND     xtc.tighten_release_class =  cv_cancel
+        AND     xcav.party_number         =  iv_sales_branch
+        AND     xcav.start_date_active    <= id_ship_date
+        AND     xcav.end_date_active      >= id_ship_date
+        AND     xcav.customer_class_code  =  cv_customer_class_code_1;
+--
+        -- 合致するデータがあれば｢締め解除｣を返す
+        IF (ln_count > 0) THEN
+          RETURN cv_close_cancel;
+        END IF;
+--
+      -- パラメータ「拠点カテゴリ」が入力された場合
+      ELSIF ((iv_sales_branch_category IS NOT NULL) AND (iv_sales_branch_category <> 'ALL')) THEN
+        -- 「拠点カテゴリ」および、「拠点カテゴリ」に紐付く全ての「拠点」で解除レコードを検索
+        SELECT  COUNT(*)
+        INTO    ln_count
+        FROM    xxwsh_tightening_control  xtc
+               ,xxcmn_cust_accounts2_v    xcav
+        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+        AND     xtc.sales_branch_category IN (iv_sales_branch_category, cv_all)
+        AND     xtc.lead_time_day         =  in_lead_time_day
+        AND     xtc.schedule_ship_date    =  id_ship_date
+        AND     xtc.prod_class            =  iv_prod_class
+        AND     xtc.base_record_class     =  cv_no
+        AND     xtc.tighten_release_class =  cv_cancel
+        AND     xtc.sales_branch          IN (xcav.party_number, cv_all)
+        AND     iv_sales_branch_category
+                                          IN (DECODE(iv_prod_class
+                                 , cv_prod_class_2, xcav.drink_base_category
+                                 , cv_prod_class_1, xcav.leaf_base_category)
+                                 ,cv_all)
+        AND     xcav.start_date_active    <= id_ship_date
+        AND     xcav.end_date_active      >= id_ship_date
+        AND     xcav.customer_class_code  =  cv_customer_class_code_1;
+--
+        -- 合致するデータが1件でもあれば｢締め解除｣を返す
+        IF (ln_count > 0) THEN
+          RETURN cv_close_cancel;
+        END IF;
+--
+      -- パラメータ「拠点」および「拠点カテゴリ」が'ALL'の場合
+      ELSIF ((NVL(iv_sales_branch,cv_all) = cv_all) AND (NVL(iv_sales_branch_category,cv_all) = cv_all)) THEN
+        SELECT  COUNT(*)
+        INTO    ln_count
+        FROM    xxwsh_tightening_control  xtc
+        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+        AND     xtc.sales_branch          =  cv_all
+        AND     xtc.sales_branch_category =  cv_all
+        AND     xtc.lead_time_day         =  in_lead_time_day
+        AND     xtc.schedule_ship_date    =  id_ship_date
+        AND     xtc.prod_class            =  iv_prod_class
+        AND     xtc.base_record_class     =  cv_no
+        AND     xtc.tighten_release_class =  cv_cancel;
+--
+        -- 合致するデータが1件でもあれば｢締め解除｣を返す
+        IF (ln_count > 0) THEN
+          RETURN cv_close_cancel;
+        END IF;
+      END IF;
+--
+      -- 再締め状態チェック
+      -- パラメータ「拠点」が入力された場合
+      IF ((iv_sales_branch IS NOT NULL) AND (iv_sales_branch <> 'ALL')) THEN
+        -- 「拠点」および、「拠点」に紐付く「拠点カテゴリ」で解除レコードを検索
+        SELECT  COUNT(*)
+        INTO    ln_count
+        FROM    xxwsh_tightening_control  xtc
+               ,xxcmn_cust_accounts2_v    xcav
+        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+        AND     xtc.sales_branch          IN (NVL(iv_sales_branch, cv_all), cv_all)
+        AND     DECODE(xtc.sales_branch_category,NULL,cv_all
+                                                ,xtc.sales_branch_category)
+                                          IN (DECODE(xtc.prod_class
+                                                     , cv_prod_class_2, xcav.drink_base_category
+                                                     , cv_prod_class_1, xcav.leaf_base_category)
+                                              ,cv_all)
+        AND     xtc.lead_time_day         =  in_lead_time_day
+        AND     xtc.schedule_ship_date    =  id_ship_date
+        AND     xtc.prod_class            =  iv_prod_class
+        AND     xtc.base_record_class     =  cv_no
+        AND     xtc.tighten_release_class =  cv_close
+        AND     xcav.party_number         =  iv_sales_branch
+        AND     xcav.start_date_active    <= id_ship_date
+        AND     xcav.end_date_active      >= id_ship_date
+        AND     xcav.customer_class_code  =  cv_customer_class_code_1;
+--
+        -- 合致するデータがあれば｢再締め済み｣を返す
+        IF (ln_count > 0) THEN
+          RETURN cv_re_close_fin;
+        END IF;
+--
+      -- パラメータ「拠点カテゴリ」が入力された場合
+      ELSIF ((iv_sales_branch_category IS NOT NULL) AND (iv_sales_branch_category <> 'ALL')) THEN
+        -- 「拠点カテゴリ」および、「拠点カテゴリ」に紐付く全ての「拠点」で解除レコードを検索
+        SELECT  COUNT(*)
+        INTO    ln_count
+        FROM    xxwsh_tightening_control  xtc
+               ,xxcmn_cust_accounts2_v    xcav
+        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+        AND     xtc.sales_branch_category IN (iv_sales_branch_category, cv_all)
+        AND     xtc.lead_time_day         =  in_lead_time_day
+        AND     xtc.schedule_ship_date    =  id_ship_date
+        AND     xtc.prod_class            =  iv_prod_class
+        AND     xtc.base_record_class     =  cv_no
+        AND     xtc.tighten_release_class =  cv_close
+        AND     xtc.sales_branch          IN (xcav.party_number, cv_all)
+        AND     iv_sales_branch_category
+                                          IN (DECODE(iv_prod_class
+                                 , cv_prod_class_2, xcav.drink_base_category
+                                 , cv_prod_class_1, xcav.leaf_base_category)
+                                 ,cv_all)
+        AND     xcav.start_date_active    <= id_ship_date
+        AND     xcav.end_date_active      >= id_ship_date
+        AND     xcav.customer_class_code  =  cv_customer_class_code_1;
+--
+        -- 合致するデータが1件でもあれば｢再締め済み｣を返す
+        IF (ln_count > 0) THEN
+          RETURN cv_re_close_fin;
+        END IF;
+--
+      -- パラメータ「拠点」および「拠点カテゴリ」が'ALL'の場合
+      ELSIF ((NVL(iv_sales_branch,cv_all) = cv_all) AND (NVL(iv_sales_branch_category,cv_all) = cv_all)) THEN
+        SELECT  COUNT(*)
+        INTO    ln_count
+        FROM    xxwsh_tightening_control  xtc
+        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+        AND     xtc.sales_branch          =  cv_all
+        AND     xtc.sales_branch_category =  cv_all
+        AND     xtc.lead_time_day         =  in_lead_time_day
+        AND     xtc.schedule_ship_date    =  id_ship_date
+        AND     xtc.prod_class            =  iv_prod_class
+        AND     xtc.base_record_class     =  cv_no
+        AND     xtc.tighten_release_class =  cv_close;
+--
+        -- 合致するデータが1件でもあれば｢再締め済み｣を返す
+        IF (ln_count > 0) THEN
+          RETURN cv_re_close_fin;
+        END IF;
+      END IF;
+--
+      -- 初回締め状態チェック
+      -- パラメータ「拠点」が入力された場合
+      IF ((iv_sales_branch IS NOT NULL) AND (iv_sales_branch <> 'ALL')) THEN
+        -- 「拠点」および、「拠点」に紐付く「拠点カテゴリ」で解除レコードを検索
+        SELECT  COUNT(*)
+        INTO    ln_count
+        FROM    xxwsh_tightening_control  xtc
+               ,xxcmn_cust_accounts2_v    xcav
+        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+        AND     xtc.sales_branch          IN (NVL(iv_sales_branch, cv_all), cv_all)
+        AND     DECODE(xtc.sales_branch_category,NULL,cv_all
+                                                ,xtc.sales_branch_category)
+                                          IN (DECODE(xtc.prod_class
+                                                     , cv_prod_class_2, xcav.drink_base_category
+                                                     , cv_prod_class_1, xcav.leaf_base_category)
+                                              ,cv_all)
+        AND     xtc.lead_time_day         =  in_lead_time_day
+        AND     xtc.schedule_ship_date    =  id_ship_date
+        AND     xtc.prod_class            =  iv_prod_class
+        AND     xtc.base_record_class     =  cv_yes
+        AND     xtc.tighten_release_class =  cv_close
+        AND     xcav.party_number         =  iv_sales_branch
+        AND     xcav.start_date_active    <= id_ship_date
+        AND     xcav.end_date_active      >= id_ship_date
+        AND     xcav.customer_class_code  =  cv_customer_class_code_1;
+--
+        -- 合致するデータがあれば｢初回締め済｣を返す
+        IF (ln_count > 0) THEN
+          RETURN cv_first_close_fin;
+        END IF;
+--
+      -- パラメータ「拠点カテゴリ」が入力された場合
+      ELSIF ((iv_sales_branch_category IS NOT NULL) AND (iv_sales_branch_category <> 'ALL')) THEN
+        -- 「拠点カテゴリ」および、「拠点カテゴリ」に紐付く全ての「拠点」で解除レコードを検索
+        SELECT  COUNT(*)
+        INTO    ln_count
+        FROM    xxwsh_tightening_control  xtc
+               ,xxcmn_cust_accounts2_v    xcav
+        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+        AND     xtc.sales_branch_category IN (iv_sales_branch_category, cv_all)
+        AND     xtc.lead_time_day         =  in_lead_time_day
+        AND     xtc.schedule_ship_date    =  id_ship_date
+        AND     xtc.prod_class            =  iv_prod_class
+        AND     xtc.base_record_class     =  cv_yes
+        AND     xtc.tighten_release_class =  cv_close
+        AND     xtc.sales_branch          IN (xcav.party_number, cv_all)
+        AND     iv_sales_branch_category
+                                          IN (DECODE(iv_prod_class
+                                 , cv_prod_class_2, xcav.drink_base_category
+                                 , cv_prod_class_1, xcav.leaf_base_category)
+                                 ,cv_all)
+        AND     xcav.start_date_active    <= id_ship_date
+        AND     xcav.end_date_active      >= id_ship_date
+        AND     xcav.customer_class_code  =  cv_customer_class_code_1;
+--
+        -- 合致するデータが1件でもあれば｢初回締め済｣を返す
+        IF (ln_count > 0) THEN
+          RETURN cv_first_close_fin;
+        END IF;
+--
+      -- パラメータ「拠点」および「拠点カテゴリ」が'ALL'の場合
+      ELSIF ((NVL(iv_sales_branch,cv_all) = cv_all) AND (NVL(iv_sales_branch_category,cv_all) = cv_all)) THEN
+        SELECT  COUNT(*)
+        INTO    ln_count
+        FROM    xxwsh_tightening_control  xtc
+        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+        AND     xtc.sales_branch          =  cv_all
+        AND     xtc.sales_branch_category =  cv_all
+        AND     xtc.lead_time_day         =  in_lead_time_day
+        AND     xtc.schedule_ship_date    =  id_ship_date
+        AND     xtc.prod_class            =  iv_prod_class
+        AND     xtc.base_record_class     =  cv_yes
+        AND     xtc.tighten_release_class =  cv_close;
+--
+        -- 合致するデータが1件でもあれば｢初回締め済｣を返す
+        IF (ln_count > 0) THEN
+          RETURN cv_first_close_fin;
+        END IF;
+      END IF;
+--
+      -- 合致するデータがない場合は｢締め処理未実施｣を返す
+      RETURN cv_close_proc_n_enfo;
+--
+    EXCEPTION
+      -- その他の例外時には｢内部エラー｣を返す
+      WHEN OTHERS THEN
+        RETURN cv_inside_err;
+    END;
+--
+  EXCEPTION
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+--
+--###################################  固定部 END   #########################################
+--
+  END check_tightening_status2;
+-- Ver1.2 M.Hokkanji End
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -294,6 +634,9 @@ AS
     cv_prg_name   CONSTANT VARCHAR2(100) := 'submain'; -- プログラム名
     cv_prod_class        CONSTANT VARCHAR2(1) :=  '1';    -- 商品区分「リーフ」
     cv_prod_class2       CONSTANT VARCHAR2(1) :=  '2';    -- 商品区分「ドリンク」
+-- Ver1.2 M.Hokkanji Start
+    cv_sales_branch_category_0 CONSTANT VARCHAR2(1)   := '0';  -- 拠点カテゴリ：0
+-- Ver1.2 M.Hokkanji End
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -367,7 +710,14 @@ AS
     -- 「拠点カテゴリ」のみがNULLでない場合
     ELSIF  (iv_sales_branch IS NULL) AND (iv_sales_branch_category IS NOT NULL) THEN
       -- 「拠点カテゴリ」設定
-      gt_sales_branch_category := iv_sales_branch_category; -- 拠点カテゴリ
+-- Ver1.2 M.Hokkanji Start
+      -- 拠点カテゴリが0(ALL)の場合は'ALL'に変更
+      IF ( iv_sales_branch_category = cv_sales_branch_category_0) THEN
+        gt_sales_branch_category := gv_all; -- 拠点カテゴリ
+      ELSE
+        gt_sales_branch_category := iv_sales_branch_category; -- 拠点カテゴリ
+      END IF;
+-- Ver1.2 M.Hokkanji End
       -- 「拠点」に「ALL」を設定
       gt_sales_branch := gv_all; -- 拠点
     END IF;
@@ -481,7 +831,11 @@ AS
     -- ===============================
     -- 締め処理実施チェック (K-2)
     -- ===============================
-    lv_tighten_status := xxwsh_common_pkg.check_tightening_status(
+-- Ver1.2 M.Hokkanji Start
+-- 締め処理と締め解除処理でチェックを分ける必要があるため呼ぶ関数を変更
+--    lv_tighten_status := xxwsh_common_pkg.check_tightening_status(
+    lv_tighten_status := check_tightening_status2(
+-- Ver1.2 M.Hokkanji End
       gt_order_type_id,                --   受注タイプID(出庫形態)
       gt_deliver_from,                 --   出庫元保管場所
       gt_sales_branch,                 --   拠点

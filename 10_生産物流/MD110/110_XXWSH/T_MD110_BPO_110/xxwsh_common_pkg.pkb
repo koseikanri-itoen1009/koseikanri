@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.12
+ * Version                : 1.13
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -46,6 +46,11 @@ AS
  *  2008/06/27   1.11  Oracle 椎名昭圭  [引当解除関数]業務種別移動の場合、
  *                                      明細に紐付く複数ロットに対応
  *  2008/06/30   1.12  Oracle 椎名昭圭  [最大配送区分算出関数]最大配送区分抽出時の条件修正
+ *  2008/07/02   1.13  Oracle 福田直樹  [締めステータスチェック関数]拠点・拠点カテゴリ共に未入力時、
+ *                                      初回締め処理判定不正の対応(ST不具合対応#366)
+ *  2008/07/04   1.13  Oracle 北寒寺正夫[締めステータスチェック関数]拠点カテゴリ=0をALLとして
+ *                                      扱うように修正。
+ *                                      ST#320不具合対応
  *
  *****************************************************************************************/
 --
@@ -1158,7 +1163,7 @@ AS
       -- 締め解除状態チェック
       -- パラメータ「拠点」が入力された場合
       IF ((iv_sales_branch IS NOT NULL) AND (iv_sales_branch <> 'ALL')) THEN
-        -- 「拠点」および、「拠点」に紐付く「拠点カテゴリ」で解除レコードを検索
+        -- 「拠点」および、「拠点」に紐付く「拠点カテゴリ」で解除レコードを検索      
         SELECT  COUNT(*)
         INTO    ln_count
         FROM    xxwsh_tightening_control  xtc
@@ -1183,15 +1188,23 @@ AS
         AND     xcav.customer_class_code  =  cv_customer_class_code_1;
 --
         -- 合致するデータがあれば｢締め解除｣を返す
-        IF (ln_count = 1) THEN
+-- Ver1.13 Start
+--        IF (ln_count = 1) THEN
+        IF (ln_count > 0) THEN
           RETURN cv_close_cancel;
         -- 複数レコード取得された場合は｢内部エラー｣を返す
-        ELSIF (ln_count > 1) THEN
-          RETURN cv_inside_err;
+--        ELSIF (ln_count > 1) THEN
+--          RETURN cv_inside_err;
         END IF;
+-- Ver1.13 End
 --
-      -- パラメータ「拠点カテゴリ」が入力された場合
-      ELSIF ((iv_sales_branch_category IS NOT NULL) AND (iv_sales_branch_category <> 'ALL')) THEN
+      -- パ3ラメータ「拠点カテゴリ」が入力された場合
+-- Ver1.13 Start
+      ELSIF ((iv_sales_branch_category IS NOT NULL)
+        AND (iv_sales_branch_category <> 'ALL'
+          AND iv_sales_branch_category <> cv_sales_branch_category_0)) THEN
+--      ELSIF ((iv_sales_branch_category IS NOT NULL) AND (iv_sales_branch_category <> 'ALL')) THEN
+-- Ver1.13 End
 --      ELSIF (iv_sales_branch_category IS NOT NULL) THEN
         -- 「拠点カテゴリ」および、「拠点カテゴリ」に紐付く全ての「拠点」で解除レコードを検索
         SELECT  COUNT(*)
@@ -1222,11 +1235,18 @@ AS
         END IF;
 --
       -- パラメータ「拠点」および「拠点カテゴリ」が'ALL'の場合
-      ELSIF (iv_sales_branch = cv_all) AND (iv_sales_branch_category = cv_all) THEN
+-- Ver1.13 Start
+      ELSIF (NVL(iv_sales_branch,cv_all) = cv_all)
+        AND (NVL(iv_sales_branch_category,cv_all) IN (cv_all,cv_sales_branch_category_0)) THEN
+--      ELSIF (iv_sales_branch = cv_all) AND (iv_sales_branch_category = cv_all) THEN
+-- Ver1.13 End
         SELECT  COUNT(*)
         INTO    ln_count
         FROM    xxwsh_tightening_control  xtc
-               ,xxcmn_cust_accounts2_v    xcav
+-- Ver1.13 Start
+-- 使用していないテーブルのため削除
+--               ,xxcmn_cust_accounts2_v    xcav
+-- Ver1.13 End
         WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
         AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
         AND     xtc.lead_time_day         =  in_lead_time_day
@@ -1270,15 +1290,23 @@ AS
         AND     xcav.customer_class_code  =  cv_customer_class_code_1;
 --
         -- 合致するデータがあれば｢再締め済み｣を返す
-        IF (ln_count = 1) THEN
+-- Ver1.13 Start
+--        IF (ln_count = 1) THEN
+        IF (ln_count > 0) THEN
           RETURN cv_re_close_fin;
         -- 複数レコード取得された場合は｢内部エラー｣を返す
-        ELSIF (ln_count > 1) THEN
-          RETURN cv_inside_err;
+--        ELSIF (ln_count > 1) THEN
+--          RETURN cv_inside_err;
         END IF;
+-- Ver1.13 End
 --
       -- パラメータ「拠点カテゴリ」が入力された場合
-      ELSIF ((iv_sales_branch_category IS NOT NULL) AND (iv_sales_branch_category <> 'ALL')) THEN
+-- Ver1.13 Start
+      ELSIF ((iv_sales_branch_category IS NOT NULL)
+        AND (iv_sales_branch_category <> 'ALL'
+          AND iv_sales_branch_category <> cv_sales_branch_category_0)) THEN
+--      ELSIF ((iv_sales_branch_category IS NOT NULL) AND (iv_sales_branch_category <> 'ALL')) THEN
+-- Ver1.13 End
 --      ELSIF (iv_sales_branch_category IS NOT NULL) THEN
         -- 「拠点カテゴリ」および、「拠点カテゴリ」に紐付く全ての「拠点」で解除レコードを検索
         SELECT  COUNT(*)
@@ -1309,11 +1337,14 @@ AS
         END IF;
 --
       -- パラメータ「拠点」および「拠点カテゴリ」が'ALL'の場合
-      ELSIF (iv_sales_branch = cv_all) AND (iv_sales_branch_category = cv_all) THEN
+-- Ver1.13 Start
+      ELSIF (NVL(iv_sales_branch,cv_all) = cv_all)
+        AND (NVL(iv_sales_branch_category,cv_all) IN (cv_all,cv_sales_branch_category_0)) THEN
+--      ELSIF (iv_sales_branch = cv_all) AND (iv_sales_branch_category = cv_all) THEN
+-- Ver1.13 End
         SELECT  COUNT(*)
         INTO    ln_count
         FROM    xxwsh_tightening_control  xtc
-               ,xxcmn_cust_accounts2_v    xcav
         WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
         AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
         AND     xtc.lead_time_day         =  in_lead_time_day
@@ -1327,6 +1358,7 @@ AS
           RETURN cv_re_close_fin;
         END IF;
       END IF;
+--
       -- 初回締め状態チェック
       -- パラメータ「拠点」が入力された場合
       IF ((iv_sales_branch IS NOT NULL) AND (iv_sales_branch <> 'ALL')) THEN
@@ -1355,15 +1387,23 @@ AS
         AND     xcav.customer_class_code  =  cv_customer_class_code_1;
 --
         -- 合致するデータがあれば｢初回締め済｣を返す
-        IF (ln_count = 1) THEN
+-- Ver1.13 Start
+--        IF (ln_count = 1) THEN
+        IF (ln_count > 0) THEN
           RETURN cv_first_close_fin;
         -- 複数レコード取得された場合は｢内部エラー｣を返す
-        ELSIF (ln_count > 1) THEN
-          RETURN cv_inside_err;
+--        ELSIF (ln_count > 1) THEN
+--          RETURN cv_inside_err;
         END IF;
+-- Ver1.13 End
 --
       -- パラメータ「拠点カテゴリ」が入力された場合
-      ELSIF ((iv_sales_branch_category IS NOT NULL) AND (iv_sales_branch_category <> 'ALL')) THEN
+-- Ver1.13 Start
+      ELSIF ((iv_sales_branch_category IS NOT NULL)
+        AND (iv_sales_branch_category <> 'ALL'
+          AND iv_sales_branch_category <> cv_sales_branch_category_0)) THEN
+--      ELSIF ((iv_sales_branch_category IS NOT NULL) AND (iv_sales_branch_category <> 'ALL')) THEN
+-- Ver1.13 End
         -- 「拠点カテゴリ」および、「拠点カテゴリ」に紐付く全ての「拠点」で解除レコードを検索
         SELECT  COUNT(*)
         INTO    ln_count
@@ -1386,6 +1426,29 @@ AS
         AND     xcav.start_date_active    <= id_ship_date
         AND     xcav.end_date_active      >= id_ship_date
         AND     xcav.customer_class_code  =  cv_customer_class_code_1;
+--
+        -- 合致するデータが1件でもあれば｢初回締め済｣を返す
+        IF (ln_count > 0) THEN
+          RETURN cv_first_close_fin;
+        END IF;
+--
+      -- パラメータ「拠点」および「拠点カテゴリ」が'ALL'の場合
+-- Ver1.13 Start
+      ELSIF (NVL(iv_sales_branch,cv_all) = cv_all)
+        AND (NVL(iv_sales_branch_category,cv_all) IN (cv_all,cv_sales_branch_category_0)) THEN
+--V1.13 mod      ELSIF (iv_sales_branch = cv_all) AND (iv_sales_branch_category = cv_all) THEN
+--      ELSIF (NVL(iv_sales_branch, cv_all) = cv_all) AND (NVL(iv_sales_branch_category, cv_all) = cv_all) THEN
+-- Ver1.13 End
+        SELECT  COUNT(*)
+        INTO    ln_count
+        FROM    xxwsh_tightening_control  xtc
+        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+        AND     xtc.lead_time_day         =  in_lead_time_day
+        AND     xtc.schedule_ship_date    =  id_ship_date
+        AND     xtc.prod_class            =  iv_prod_class
+        AND     xtc.base_record_class     =  cv_yes
+        AND     xtc.tighten_release_class =  cv_close;
 --
         -- 合致するデータが1件でもあれば｢初回締め済｣を返す
         IF (ln_count > 0) THEN
