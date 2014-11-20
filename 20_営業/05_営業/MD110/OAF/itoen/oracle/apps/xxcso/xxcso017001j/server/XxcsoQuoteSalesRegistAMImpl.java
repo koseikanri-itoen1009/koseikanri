@@ -10,6 +10,8 @@
 * 2009-02-24 1.1  SCS及川領    [CT1-010]通常店納価格導出ボタンﾀｲﾑｱｳﾄ修正
 * 2009-03-24 1.2  SCS阿部大輔  【課題77対応】チェックの期間をプロファイル値に修正
 * 2009-03-24 1.2  SCS阿部大輔  【T1_0138】ボタン制御を修正
+* 2009-04-13 1.3  SCS阿部大輔  【T1_0299】CSV出力制御
+* 2009-04-14 1.4  SCS阿部大輔  【T1_0442】見積書印刷制御
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017001j.server;
@@ -1076,8 +1078,10 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
 
     if ( XxcsoQuoteConstants.QUOTE_INPUT.equals(headerRow.getStatus()) )
     {
-      if ( getTransaction().isDirty() )
-      {
+      /* 20090414_abe_T1_0442 START*/
+      //if ( getTransaction().isDirty() )
+      //{
+      /* 20090414_abe_T1_0442 END*/
         // 問屋帳合先用見積の存在チェックを行う
         validateReference();
     
@@ -1086,7 +1090,9 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
 
         // 保存処理を実行します。
         commit();
-      }
+      /* 20090414_abe_T1_0442 START*/
+      //}
+      /* 20090414_abe_T1_0442 END*/
     }
     else
     {
@@ -1240,8 +1246,10 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
 
     if ( XxcsoQuoteConstants.QUOTE_INPUT.equals(headerRow.getStatus()) )
     {
-      if ( getTransaction().isDirty() )
-      {
+      /* 20090414_abe_T1_0442 START*/
+      //if ( getTransaction().isDirty() )
+      //{
+      /* 20090414_abe_T1_0442 END*/
         // 問屋帳合先用見積の存在チェックを行う
         validateReference();
     
@@ -1250,7 +1258,9 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
 
         // 保存処理を実行します。
         commit();
-      }
+      /* 20090414_abe_T1_0442 START*/
+      //}
+      /* 20090414_abe_T1_0442 END*/
     }
     else
     {
@@ -1360,15 +1370,19 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
         // 項目:通常店納価格
         sbFileData
           = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        /* 20090413_abe_T1_0299 START*/
         // 項目:通常店頭売価
         sbFileData
           = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        /* 20090413_abe_T1_0299 END*/
         // 項目:今回店納価格
         sbFileData
           = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        /* 20090413_abe_T1_0299 START*/
         // 項目:今回店頭売価
         sbFileData
           = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        /* 20090413_abe_T1_0299 END*/
         // 項目:期間（開始）
         sbFileData
           = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
@@ -1382,6 +1396,12 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
         sbFileData
           = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
         // 項目:見積種別（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:参照用見積番号（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:問屋帳合先名（帳合用）
         sbFileData
           = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
         // 項目:見積番号（帳合用）
@@ -1399,6 +1419,13 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
         // 項目:顧客名（帳合用）
         sbFileData
           = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:問屋管理コード（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:問屋管理名（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+
         // 項目:従業員番号（帳合用）
         sbFileData
           = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
@@ -1453,15 +1480,19 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
         // 項目:通常店納価格（帳合用）
         sbFileData
           = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        /* 20090413_abe_T1_0299 START*/
         // 項目:通常店頭売価（帳合用）
-        sbFileData
-          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        //sbFileData
+        //  = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        /* 20090413_abe_T1_0299 END*/
         // 項目:今回店納価格（帳合用）
         sbFileData
           = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        /* 20090413_abe_T1_0299 START*/
         // 項目:今回店頭売価（帳合用）
-        sbFileData
-          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        //sbFileData
+        //  = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        /* 20090413_abe_T1_0299 END*/
         // 項目:建値（帳合用）
         sbFileData
           = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
@@ -1635,8 +1666,10 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
       // 顧客タイプチェック
       validateAccount();
 
-      if ( getTransaction().isDirty() )
-      {
+      /* 20090414_abe_T1_0442 START*/
+      //if ( getTransaction().isDirty() )
+      //{
+      /* 20090414_abe_T1_0442 END*/
         // 問屋帳合先用見積の存在チェックを行う
         validateReference();
 
@@ -1645,7 +1678,9 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
 
         // 保存処理を実行します。
         commit();
-      }
+      /* 20090414_abe_T1_0442 START*/
+      //}
+      /* 20090414_abe_T1_0442 END*/
     }
     else
     {
@@ -2700,6 +2735,14 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
    ,boolean      endFlag
   )
   {
+
+    /* 20090413_abe_T1_0299 START*/
+    if ( value == null )
+    {
+      value = "";
+    }
+    /* 20090413_abe_T1_0299 END*/
+
     buffer.append("\"");
     buffer.append(value);
     buffer.append("\"");

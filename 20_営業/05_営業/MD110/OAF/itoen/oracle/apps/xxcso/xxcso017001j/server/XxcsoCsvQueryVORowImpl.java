@@ -26,6 +26,8 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
 
 
 
+
+
   protected static final int QUOTETYPE = 0;
   protected static final int QUOTENUMBER = 1;
   protected static final int QUOTEREVISIONNUMBER = 2;
@@ -57,43 +59,52 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
   protected static final int QUOTEENDDATE = 28;
   protected static final int REMARKS = 29;
   protected static final int LINEORDER = 30;
-  protected static final int ITEMFULLNAME = 31;
-  protected static final int JANCODE = 32;
-  protected static final int CASEJANCODE = 33;
-  protected static final int ITFCODE = 34;
-  protected static final int VESSELGROUP = 35;
-  protected static final int FIXEDPRICENEW = 36;
-  protected static final int QUOTELINEID = 37;
-  protected static final int FULLNAMES = 38;
-  protected static final int BASECODES = 39;
-  protected static final int BASENAMES = 40;
-  protected static final int DELIVPLACES = 41;
-  protected static final int PAYMENTCONDITIONS = 42;
-  protected static final int QUOTEINFOSTARTDATES = 43;
-  protected static final int QUOTEINFOENDDATES = 44;
-  protected static final int QUOTESUBMITNAMES = 45;
-  protected static final int DELIVPRICETAXTYPES = 46;
-  protected static final int STOREPRICETAXTYPES = 47;
-  protected static final int UNITTYPES = 48;
-  protected static final int STATUSS = 49;
-  protected static final int SPECIALNOTES = 50;
-  protected static final int INVENTORYITEMCODES = 51;
-  protected static final int ITEMSHORTNAMES = 52;
-  protected static final int QUOTEDIVS = 53;
-  protected static final int USUALLYDELIVPRICES = 54;
-  protected static final int USUALLYSTORESALEPRICES = 55;
-  protected static final int THISTIMEDELIVPRICES = 56;
-  protected static final int THISTIMESTORESALEPRICES = 57;
-  protected static final int QUOTATIONPRICES = 58;
-  protected static final int SALESDISCOUNTPRICES = 59;
-  protected static final int USUALLNETPRICES = 60;
-  protected static final int THISTIMENETPRICES = 61;
-  protected static final int AMOUNTOFMARGINS = 62;
-  protected static final int MARGINRATES = 63;
-  protected static final int QUOTESTARTDATES = 64;
-  protected static final int QUOTEENDDATES = 65;
-  protected static final int REMARKSS = 66;
-  protected static final int LINEORDERS = 67;
+  protected static final int QUOTETYPES = 31;
+  protected static final int READQUOTENUMBERS = 32;
+  protected static final int QUOTENAMES = 33;
+  protected static final int QUOTENUMBERS = 34;
+  protected static final int QUOTEREVISIONNUMBERS = 35;
+  protected static final int PUBLISHDATES = 36;
+  protected static final int ACCOUNTNUMBERS = 37;
+  protected static final int PARTYNAMES = 38;
+  protected static final int QUOTEMANAGECODES = 39;
+  protected static final int QUOTEMANAGENAMES = 40;
+  protected static final int EMPLOYEENUMBERS = 41;
+  protected static final int FULLNAMES = 42;
+  protected static final int BASECODES = 43;
+  protected static final int BASENAMES = 44;
+  protected static final int DELIVPLACES = 45;
+  protected static final int PAYMENTCONDITIONS = 46;
+  protected static final int QUOTEINFOSTARTDATES = 47;
+  protected static final int QUOTEINFOENDDATES = 48;
+  protected static final int QUOTESUBMITNAMES = 49;
+  protected static final int STATUSS = 50;
+  protected static final int DELIVPRICETAXTYPES = 51;
+  protected static final int STOREPRICETAXTYPES = 52;
+  protected static final int UNITTYPES = 53;
+  protected static final int SPECIALNOTES = 54;
+  protected static final int INVENTORYITEMCODES = 55;
+  protected static final int ITEMSHORTNAMES = 56;
+  protected static final int QUOTEDIVS = 57;
+  protected static final int USUALLYDELIVPRICES = 58;
+  protected static final int THISTIMEDELIVPRICES = 59;
+  protected static final int QUOTATIONPRICES = 60;
+  protected static final int SALESDISCOUNTPRICES = 61;
+  protected static final int USUALLNETPRICES = 62;
+  protected static final int THISTIMENETPRICES = 63;
+  protected static final int AMOUNTOFMARGINS = 64;
+  protected static final int MARGINRATES = 65;
+  protected static final int QUOTESTARTDATES = 66;
+  protected static final int QUOTEENDDATES = 67;
+  protected static final int REMARKSS = 68;
+  protected static final int LINEORDERS = 69;
+  protected static final int ITEMFULLNAME = 70;
+  protected static final int JANCODE = 71;
+  protected static final int CASEJANCODE = 72;
+  protected static final int ITFCODE = 73;
+  protected static final int VESSELGROUP = 74;
+  protected static final int FIXEDPRICENEW = 75;
+  protected static final int QUOTELINEID = 76;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -102,23 +113,7 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
   {
   }
 
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute QuoteType
-   */
-  public String getQuoteType()
-  {
-    return (String)getAttributeInternal(QUOTETYPE);
-  }
 
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute QuoteType
-   */
-  public void setQuoteType(String value)
-  {
-    setAttributeInternal(QUOTETYPE, value);
-  }
   //  Generated method. Do not modify.
 
   protected Object getAttrInvokeAccessor(int index, AttributeDefImpl attrDef) throws Exception
@@ -187,20 +182,28 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
         return getRemarks();
       case LINEORDER:
         return getLineOrder();
-      case ITEMFULLNAME:
-        return getItemFullName();
-      case JANCODE:
-        return getJanCode();
-      case CASEJANCODE:
-        return getCaseJanCode();
-      case ITFCODE:
-        return getItfCode();
-      case VESSELGROUP:
-        return getVesselGroup();
-      case FIXEDPRICENEW:
-        return getFixedPriceNew();
-      case QUOTELINEID:
-        return getQuoteLineId();
+      case QUOTETYPES:
+        return getQuoteTypeS();
+      case READQUOTENUMBERS:
+        return getReadQuoteNumberS();
+      case QUOTENAMES:
+        return getQuoteNameS();
+      case QUOTENUMBERS:
+        return getQuoteNumberS();
+      case QUOTEREVISIONNUMBERS:
+        return getQuoteRevisionNumberS();
+      case PUBLISHDATES:
+        return getPublishDateS();
+      case ACCOUNTNUMBERS:
+        return getAccountNumberS();
+      case PARTYNAMES:
+        return getPartyNameS();
+      case QUOTEMANAGECODES:
+        return getQuoteManageCodeS();
+      case QUOTEMANAGENAMES:
+        return getQuoteManageNameS();
+      case EMPLOYEENUMBERS:
+        return getEmployeeNumberS();
       case FULLNAMES:
         return getFullNameS();
       case BASECODES:
@@ -217,14 +220,14 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
         return getQuoteInfoEndDateS();
       case QUOTESUBMITNAMES:
         return getQuoteSubmitNameS();
+      case STATUSS:
+        return getStatusS();
       case DELIVPRICETAXTYPES:
         return getDelivPriceTaxTypeS();
       case STOREPRICETAXTYPES:
         return getStorePriceTaxTypeS();
       case UNITTYPES:
         return getUnitTypeS();
-      case STATUSS:
-        return getStatusS();
       case SPECIALNOTES:
         return getSpecialNoteS();
       case INVENTORYITEMCODES:
@@ -235,12 +238,8 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
         return getQuoteDivS();
       case USUALLYDELIVPRICES:
         return getUsuallyDelivPriceS();
-      case USUALLYSTORESALEPRICES:
-        return getUsuallyStoreSalePriceS();
       case THISTIMEDELIVPRICES:
         return getThisTimeDelivPriceS();
-      case THISTIMESTORESALEPRICES:
-        return getThisTimeStoreSalePriceS();
       case QUOTATIONPRICES:
         return getQuotationPriceS();
       case SALESDISCOUNTPRICES:
@@ -261,6 +260,20 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
         return getRemarksS();
       case LINEORDERS:
         return getLineOrderS();
+      case ITEMFULLNAME:
+        return getItemFullName();
+      case JANCODE:
+        return getJanCode();
+      case CASEJANCODE:
+        return getCaseJanCode();
+      case ITFCODE:
+        return getItfCode();
+      case VESSELGROUP:
+        return getVesselGroup();
+      case FIXEDPRICENEW:
+        return getFixedPriceNew();
+      case QUOTELINEID:
+        return getQuoteLineId();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -364,26 +377,38 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
       case LINEORDER:
         setLineOrder((String)value);
         return;
-      case ITEMFULLNAME:
-        setItemFullName((String)value);
+      case QUOTETYPES:
+        setQuoteTypeS((String)value);
         return;
-      case JANCODE:
-        setJanCode((String)value);
+      case READQUOTENUMBERS:
+        setReadQuoteNumberS((String)value);
         return;
-      case CASEJANCODE:
-        setCaseJanCode((String)value);
+      case QUOTENAMES:
+        setQuoteNameS((String)value);
         return;
-      case ITFCODE:
-        setItfCode((String)value);
+      case QUOTENUMBERS:
+        setQuoteNumberS((String)value);
         return;
-      case VESSELGROUP:
-        setVesselGroup((String)value);
+      case QUOTEREVISIONNUMBERS:
+        setQuoteRevisionNumberS((String)value);
         return;
-      case FIXEDPRICENEW:
-        setFixedPriceNew((String)value);
+      case PUBLISHDATES:
+        setPublishDateS((String)value);
         return;
-      case QUOTELINEID:
-        setQuoteLineId((Number)value);
+      case ACCOUNTNUMBERS:
+        setAccountNumberS((String)value);
+        return;
+      case PARTYNAMES:
+        setPartyNameS((String)value);
+        return;
+      case QUOTEMANAGECODES:
+        setQuoteManageCodeS((String)value);
+        return;
+      case QUOTEMANAGENAMES:
+        setQuoteManageNameS((String)value);
+        return;
+      case EMPLOYEENUMBERS:
+        setEmployeeNumberS((String)value);
         return;
       case FULLNAMES:
         setFullNameS((String)value);
@@ -409,6 +434,9 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
       case QUOTESUBMITNAMES:
         setQuoteSubmitNameS((String)value);
         return;
+      case STATUSS:
+        setStatusS((String)value);
+        return;
       case DELIVPRICETAXTYPES:
         setDelivPriceTaxTypeS((String)value);
         return;
@@ -417,9 +445,6 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
         return;
       case UNITTYPES:
         setUnitTypeS((String)value);
-        return;
-      case STATUSS:
-        setStatusS((String)value);
         return;
       case SPECIALNOTES:
         setSpecialNoteS((String)value);
@@ -436,14 +461,8 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
       case USUALLYDELIVPRICES:
         setUsuallyDelivPriceS((String)value);
         return;
-      case USUALLYSTORESALEPRICES:
-        setUsuallyStoreSalePriceS((String)value);
-        return;
       case THISTIMEDELIVPRICES:
         setThisTimeDelivPriceS((String)value);
-        return;
-      case THISTIMESTORESALEPRICES:
-        setThisTimeStoreSalePriceS((String)value);
         return;
       case QUOTATIONPRICES:
         setQuotationPriceS((String)value);
@@ -475,10 +494,49 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
       case LINEORDERS:
         setLineOrderS((String)value);
         return;
+      case ITEMFULLNAME:
+        setItemFullName((String)value);
+        return;
+      case JANCODE:
+        setJanCode((String)value);
+        return;
+      case CASEJANCODE:
+        setCaseJanCode((String)value);
+        return;
+      case ITFCODE:
+        setItfCode((String)value);
+        return;
+      case VESSELGROUP:
+        setVesselGroup((String)value);
+        return;
+      case FIXEDPRICENEW:
+        setFixedPriceNew((String)value);
+        return;
+      case QUOTELINEID:
+        setQuoteLineId((Number)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
       }
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute QuoteType
+   */
+  public String getQuoteType()
+  {
+    return (String)getAttributeInternal(QUOTETYPE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute QuoteType
+   */
+  public void setQuoteType(String value)
+  {
+    setAttributeInternal(QUOTETYPE, value);
   }
 
   /**
@@ -625,7 +683,23 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
     setAttributeInternal(BASECODE, value);
   }
 
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BaseName
+   */
+  public String getBaseName()
+  {
+    return (String)getAttributeInternal(BASENAME);
+  }
 
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BaseName
+   */
+  public void setBaseName(String value)
+  {
+    setAttributeInternal(BASENAME, value);
+  }
 
   /**
    * 
@@ -1007,146 +1081,200 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
 
   /**
    * 
-   * Gets the attribute value for the calculated attribute ItemFullName
+   * Gets the attribute value for the calculated attribute QuoteTypeS
    */
-  public String getItemFullName()
+  public String getQuoteTypeS()
   {
-    return (String)getAttributeInternal(ITEMFULLNAME);
+    return (String)getAttributeInternal(QUOTETYPES);
   }
 
   /**
    * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute ItemFullName
+   * Sets <code>value</code> as the attribute value for the calculated attribute QuoteTypeS
    */
-  public void setItemFullName(String value)
+  public void setQuoteTypeS(String value)
   {
-    setAttributeInternal(ITEMFULLNAME, value);
+    setAttributeInternal(QUOTETYPES, value);
   }
 
   /**
    * 
-   * Gets the attribute value for the calculated attribute JanCode
+   * Gets the attribute value for the calculated attribute ReadQuoteNumberS
    */
-  public String getJanCode()
+  public String getReadQuoteNumberS()
   {
-    return (String)getAttributeInternal(JANCODE);
+    return (String)getAttributeInternal(READQUOTENUMBERS);
   }
 
   /**
    * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute JanCode
+   * Sets <code>value</code> as the attribute value for the calculated attribute ReadQuoteNumberS
    */
-  public void setJanCode(String value)
+  public void setReadQuoteNumberS(String value)
   {
-    setAttributeInternal(JANCODE, value);
+    setAttributeInternal(READQUOTENUMBERS, value);
   }
 
   /**
    * 
-   * Gets the attribute value for the calculated attribute CaseJanCode
+   * Gets the attribute value for the calculated attribute QuoteNameS
    */
-  public String getCaseJanCode()
+  public String getQuoteNameS()
   {
-    return (String)getAttributeInternal(CASEJANCODE);
+    return (String)getAttributeInternal(QUOTENAMES);
   }
 
   /**
    * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute CaseJanCode
+   * Sets <code>value</code> as the attribute value for the calculated attribute QuoteNameS
    */
-  public void setCaseJanCode(String value)
+  public void setQuoteNameS(String value)
   {
-    setAttributeInternal(CASEJANCODE, value);
+    setAttributeInternal(QUOTENAMES, value);
   }
 
   /**
    * 
-   * Gets the attribute value for the calculated attribute ItfCode
+   * Gets the attribute value for the calculated attribute QuoteNumberS
    */
-  public String getItfCode()
+  public String getQuoteNumberS()
   {
-    return (String)getAttributeInternal(ITFCODE);
+    return (String)getAttributeInternal(QUOTENUMBERS);
   }
 
   /**
    * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute ItfCode
+   * Sets <code>value</code> as the attribute value for the calculated attribute QuoteNumberS
    */
-  public void setItfCode(String value)
+  public void setQuoteNumberS(String value)
   {
-    setAttributeInternal(ITFCODE, value);
+    setAttributeInternal(QUOTENUMBERS, value);
   }
 
   /**
    * 
-   * Gets the attribute value for the calculated attribute VesselGroup
+   * Gets the attribute value for the calculated attribute QuoteRevisionNumberS
    */
-  public String getVesselGroup()
+  public String getQuoteRevisionNumberS()
   {
-    return (String)getAttributeInternal(VESSELGROUP);
+    return (String)getAttributeInternal(QUOTEREVISIONNUMBERS);
   }
 
   /**
    * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute VesselGroup
+   * Sets <code>value</code> as the attribute value for the calculated attribute QuoteRevisionNumberS
    */
-  public void setVesselGroup(String value)
+  public void setQuoteRevisionNumberS(String value)
   {
-    setAttributeInternal(VESSELGROUP, value);
+    setAttributeInternal(QUOTEREVISIONNUMBERS, value);
   }
 
   /**
    * 
-   * Gets the attribute value for the calculated attribute FixedPriceNew
+   * Gets the attribute value for the calculated attribute PublishDateS
    */
-  public String getFixedPriceNew()
+  public String getPublishDateS()
   {
-    return (String)getAttributeInternal(FIXEDPRICENEW);
+    return (String)getAttributeInternal(PUBLISHDATES);
   }
 
   /**
    * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute FixedPriceNew
+   * Sets <code>value</code> as the attribute value for the calculated attribute PublishDateS
    */
-  public void setFixedPriceNew(String value)
+  public void setPublishDateS(String value)
   {
-    setAttributeInternal(FIXEDPRICENEW, value);
+    setAttributeInternal(PUBLISHDATES, value);
   }
 
   /**
    * 
-   * Gets the attribute value for the calculated attribute BaseName
+   * Gets the attribute value for the calculated attribute AccountNumberS
    */
-  public String getBaseName()
+  public String getAccountNumberS()
   {
-    return (String)getAttributeInternal(BASENAME);
+    return (String)getAttributeInternal(ACCOUNTNUMBERS);
   }
 
   /**
    * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute BaseName
+   * Sets <code>value</code> as the attribute value for the calculated attribute AccountNumberS
    */
-  public void setBaseName(String value)
+  public void setAccountNumberS(String value)
   {
-    setAttributeInternal(BASENAME, value);
+    setAttributeInternal(ACCOUNTNUMBERS, value);
   }
 
   /**
    * 
-   * Gets the attribute value for the calculated attribute QuoteLineId
+   * Gets the attribute value for the calculated attribute PartyNameS
    */
-  public Number getQuoteLineId()
+  public String getPartyNameS()
   {
-    return (Number)getAttributeInternal(QUOTELINEID);
+    return (String)getAttributeInternal(PARTYNAMES);
   }
 
   /**
    * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute QuoteLineId
+   * Sets <code>value</code> as the attribute value for the calculated attribute PartyNameS
    */
-  public void setQuoteLineId(Number value)
+  public void setPartyNameS(String value)
   {
-    setAttributeInternal(QUOTELINEID, value);
+    setAttributeInternal(PARTYNAMES, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute QuoteManageCodeS
+   */
+  public String getQuoteManageCodeS()
+  {
+    return (String)getAttributeInternal(QUOTEMANAGECODES);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute QuoteManageCodeS
+   */
+  public void setQuoteManageCodeS(String value)
+  {
+    setAttributeInternal(QUOTEMANAGECODES, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute QuoteManageNameS
+   */
+  public String getQuoteManageNameS()
+  {
+    return (String)getAttributeInternal(QUOTEMANAGENAMES);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute QuoteManageNameS
+   */
+  public void setQuoteManageNameS(String value)
+  {
+    setAttributeInternal(QUOTEMANAGENAMES, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute EmployeeNumberS
+   */
+  public String getEmployeeNumberS()
+  {
+    return (String)getAttributeInternal(EMPLOYEENUMBERS);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute EmployeeNumberS
+   */
+  public void setEmployeeNumberS(String value)
+  {
+    setAttributeInternal(EMPLOYEENUMBERS, value);
   }
 
   /**
@@ -1295,6 +1423,24 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
 
   /**
    * 
+   * Gets the attribute value for the calculated attribute StatusS
+   */
+  public String getStatusS()
+  {
+    return (String)getAttributeInternal(STATUSS);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute StatusS
+   */
+  public void setStatusS(String value)
+  {
+    setAttributeInternal(STATUSS, value);
+  }
+
+  /**
+   * 
    * Gets the attribute value for the calculated attribute DelivPriceTaxTypeS
    */
   public String getDelivPriceTaxTypeS()
@@ -1345,24 +1491,6 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
   public void setUnitTypeS(String value)
   {
     setAttributeInternal(UNITTYPES, value);
-  }
-
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute StatusS
-   */
-  public String getStatusS()
-  {
-    return (String)getAttributeInternal(STATUSS);
-  }
-
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute StatusS
-   */
-  public void setStatusS(String value)
-  {
-    setAttributeInternal(STATUSS, value);
   }
 
   /**
@@ -1457,24 +1585,6 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
 
   /**
    * 
-   * Gets the attribute value for the calculated attribute UsuallyStoreSalePriceS
-   */
-  public String getUsuallyStoreSalePriceS()
-  {
-    return (String)getAttributeInternal(USUALLYSTORESALEPRICES);
-  }
-
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute UsuallyStoreSalePriceS
-   */
-  public void setUsuallyStoreSalePriceS(String value)
-  {
-    setAttributeInternal(USUALLYSTORESALEPRICES, value);
-  }
-
-  /**
-   * 
    * Gets the attribute value for the calculated attribute ThisTimeDelivPriceS
    */
   public String getThisTimeDelivPriceS()
@@ -1489,24 +1599,6 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
   public void setThisTimeDelivPriceS(String value)
   {
     setAttributeInternal(THISTIMEDELIVPRICES, value);
-  }
-
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute ThisTimeStoreSalePriceS
-   */
-  public String getThisTimeStoreSalePriceS()
-  {
-    return (String)getAttributeInternal(THISTIMESTORESALEPRICES);
-  }
-
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute ThisTimeStoreSalePriceS
-   */
-  public void setThisTimeStoreSalePriceS(String value)
-  {
-    setAttributeInternal(THISTIMESTORESALEPRICES, value);
   }
 
   /**
@@ -1688,4 +1780,267 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
   {
     setAttributeInternal(LINEORDERS, value);
   }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ItemFullName
+   */
+  public String getItemFullName()
+  {
+    return (String)getAttributeInternal(ITEMFULLNAME);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ItemFullName
+   */
+  public void setItemFullName(String value)
+  {
+    setAttributeInternal(ITEMFULLNAME, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute JanCode
+   */
+  public String getJanCode()
+  {
+    return (String)getAttributeInternal(JANCODE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute JanCode
+   */
+  public void setJanCode(String value)
+  {
+    setAttributeInternal(JANCODE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute CaseJanCode
+   */
+  public String getCaseJanCode()
+  {
+    return (String)getAttributeInternal(CASEJANCODE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute CaseJanCode
+   */
+  public void setCaseJanCode(String value)
+  {
+    setAttributeInternal(CASEJANCODE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ItfCode
+   */
+  public String getItfCode()
+  {
+    return (String)getAttributeInternal(ITFCODE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ItfCode
+   */
+  public void setItfCode(String value)
+  {
+    setAttributeInternal(ITFCODE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute VesselGroup
+   */
+  public String getVesselGroup()
+  {
+    return (String)getAttributeInternal(VESSELGROUP);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute VesselGroup
+   */
+  public void setVesselGroup(String value)
+  {
+    setAttributeInternal(VESSELGROUP, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute FixedPriceNew
+   */
+  public String getFixedPriceNew()
+  {
+    return (String)getAttributeInternal(FIXEDPRICENEW);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute FixedPriceNew
+   */
+  public void setFixedPriceNew(String value)
+  {
+    setAttributeInternal(FIXEDPRICENEW, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute QuoteLineId
+   */
+  public Number getQuoteLineId()
+  {
+    return (Number)getAttributeInternal(QUOTELINEID);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute QuoteLineId
+   */
+  public void setQuoteLineId(Number value)
+  {
+    setAttributeInternal(QUOTELINEID, value);
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
