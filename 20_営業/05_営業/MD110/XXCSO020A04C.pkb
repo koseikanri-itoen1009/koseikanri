@@ -8,7 +8,7 @@ AS
  *                    作成します。
  * MD.050           : MD050_CSO_020_A04_自販機（什器）発注依頼データ連携機能
  *
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *                                       ・搬送先事業所ＩＤ、搬送先事業所コード、搬送先要
  *                                         求者ＩＤをログインのユーザーＩＤから取得
  *  2009-04-03    1.2   Kazuo.Satomura   システムテスト障害対応(障害番号T1_0109)
+ *  2009-04-07    1.3   Kazuo.Satomura   システムテスト障害対応(障害番号T1_0355)
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -865,8 +866,12 @@ AS
       AND    pli.po_header_id                    =  phe.po_header_id
       AND    phe.type_lookup_code                =  cv_price_type
       AND    phe.quotation_class_code            =  cv_quotation_class_code
-      AND    TRUNC(NVL(phe.start_date, SYSDATE)) <= TRUNC(cd_process_date)
-      AND    TRUNC(NVL(phe.end_date, SYSDATE))   >= TRUNC(cd_process_date)
+      /* 2009.04.07 K.Satomura T1_0355対応 START */
+      --AND    TRUNC(NVL(phe.start_date, SYSDATE)) <= TRUNC(cd_process_date)
+      --AND    TRUNC(NVL(phe.end_date, SYSDATE))   >= TRUNC(cd_process_date)
+      AND    TRUNC(NVL(phe.start_date, cd_process_date)) <= TRUNC(cd_process_date)
+      AND    TRUNC(NVL(phe.end_date, cd_process_date))   >= TRUNC(cd_process_date)
+      /* 2009.04.07 K.Satomura T1_0355対応 END */
       AND    phe.status_lookup_code              =  cv_status_active
       ;
       --
