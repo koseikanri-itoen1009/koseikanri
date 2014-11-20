@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK007A01C(body)
  * Description      : 売上実績振替情報作成(EDI)
  * MD.050           : 売上実績振替情報作成(EDI) MD050_COK_007_A01
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * -------------------------------- ---------------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *                                                       担当営業員の処理日を「業務日付 -> 店舗納品日」に修正
  *                                                       顧客使用目的マスタの抽出条件に有効フラグを追加
  *  2010/02/18    1.13  S.Moriyama       [E_本稼動_00911]納品日先日付のEDI実績振替は一時表までの登録としスキップする
+ *  2010/05/18    1.14  K.Yamaguchi      [E_本稼動_02683]営業原価の取得方法を修正
  *
  *****************************************************************************************/
   -- =========================
@@ -2265,11 +2266,23 @@ AS
     -- 7.営業原価(品目単位)の取得
     -- =============================================================================
     BEGIN
-      SELECT iimb.attribute8 AS cost_item_unit_type
-      INTO   lv_cost_item_unit_type
-      FROM   ic_item_mst_b iimb     --OPM品目マスタ
-      WHERE  iimb.item_no     = lv_item_code
-      AND    iimb.attribute9 <= TO_CHAR( gd_prdate, cv_date_format );
+-- 2010/05/18 Ver.1.14 [E_本稼動_02683] SCS K.Yamaguchi REPAIR START
+--      SELECT iimb.attribute8 AS cost_item_unit_type
+--      INTO   lv_cost_item_unit_type
+--      FROM   ic_item_mst_b iimb     --OPM品目マスタ
+--      WHERE  iimb.item_no     = lv_item_code
+--      AND    iimb.attribute9 <= TO_CHAR( gd_prdate, cv_date_format );
+      SELECT CASE
+               WHEN iimb.attribute9 <= TO_CHAR( id_store_delivery_date, 'YYYY/MM/DD' ) THEN -- 営業原価適用開始日
+                 iimb.attribute8 -- 営業原価(新)
+               ELSE
+                 iimb.attribute7 -- 旧営業原価
+             END
+      INTO lv_cost_item_unit_type
+      FROM ic_item_mst_b iimb     --OPM品目マスタ
+      WHERE iimb.item_no     = lv_item_code
+      ;
+-- 2010/05/18 Ver.1.14 [E_本稼動_02683] SCS K.Yamaguchi REPAIR END
       -- =============================================================================
       -- 営業原価を算出
       -- =============================================================================
