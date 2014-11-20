@@ -7,7 +7,7 @@ AS
  * Description      : 納品予定日の到来した拠点出荷の受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 出荷確認（納品予定日）  MD050_COS_007_A01
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *  2010/08/02    1.17  S.Miyakoshi      [E_本稼動_01676] 非営業日の販売実績のINV連携対応（非営業日はEDI受注以外を販売実績作成）
  *  2010/08/20    1.18  M.Watanabe       [E_本稼動_01763] 販売実績の日中連携化対応
  *                                       [E_本稼動_02635] 夜間起動時のエラーログを各拠点にて確認可能とする
+ *  2010/10/12    1.19  K.Kiriu          [E_本稼動_01763] 販売実績の日中連携化再対応
  *
  *****************************************************************************************/
 --
@@ -2340,7 +2341,14 @@ AS
                      , xca.delivery_base_code
                      , msi.attribute7)        =  gt_dlv_code
             --入力パラメータ EDIチェーン店コード
-            AND xca.chain_store_code          =  NVL( gt_edi_chain_code , xca.chain_store_code )
+-- ************ 2010/10/12 1.19 K.Kiriu MOD START ************ --
+--            AND xca.chain_store_code          =  NVL( gt_edi_chain_code , xca.chain_store_code )
+            AND (
+                  ( gt_edi_chain_code IS NULL )
+                  OR
+                  ( xca.chain_store_code = gt_edi_chain_code )
+                )
+-- ************ 2010/10/12 1.19 K.Kiriu MOD END   ************ --
             --入力パラメータ 顧客コード
             AND xca.customer_code             =  NVL( gt_cust_code , xca.customer_code )
             --入力パラメータ 納品日FROM (必須)

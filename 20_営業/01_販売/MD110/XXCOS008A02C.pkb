@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流システムの工場直送出荷実績データから販売実績を作成し、
  *                    販売実績を作成したＯＭ受注をクローズします。
  * MD.050           : 出荷確認（生産物流出荷）  MD050_COS_008_A02
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -71,6 +71,7 @@ AS
  *  2010/03/09    1.24  N.Maeda          [E_本稼動_01725] 販売実績.売上拠点の前月売上拠点連携条件修正
  *  2010/05/26    1.25  M.Sano           [E_本稼動_02518] 検収日違い対応
  *  2010/08/23    1.26  H.Sasaki         [E_本稼動_01763][E_本稼動_02635]INV連携日中化対応
+ *  2010/10/12    1.27  K.Kiriu          [E_本稼動_01763]INV連携日中化再対応
  *
  *****************************************************************************************/
 --
@@ -2093,7 +2094,14 @@ AS
       AND oola.global_attribute5 IS NULL
       --  パラメータ条件（納品拠点、チェーン店コード、顧客）
       AND xca.delivery_base_code                =   gt_prm_dlv_base_code
-      AND xca.chain_store_code                  =   NVL(gt_prm_edi_chain_code, xca.chain_store_code)
+-- == 2010/10/12 V1.27 Modified START  ===========================================================
+--      AND xca.chain_store_code                  =   NVL(gt_prm_edi_chain_code, xca.chain_store_code)
+      AND (
+            ( gt_prm_edi_chain_code IS NULL )
+            OR
+            ( xca.chain_store_code = gt_prm_edi_chain_code )
+          )
+-- == 2010/10/12 V1.27 Modified END    ===========================================================
       AND xca.customer_code                     =   NVL(gt_prm_cust_code, xca.customer_code)
       ORDER BY
         oola.request_date                           -- 受注明細.要求日
