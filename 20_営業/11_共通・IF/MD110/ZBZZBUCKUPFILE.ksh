@@ -5,7 +5,7 @@
 ## Program Name     : ZBZZBUCKUPFILE                                            ##
 ## Description      : I/Fファイルバックアップ機能                               ##
 ## MD.070           : MD070_IPO_CCP_シェル                                      ##
-## Version          : 1.0                                                       ##
+## Version          : 1.1                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -21,6 +21,8 @@
 ##  Date          Ver.  Editor           Description                            ##
 ## ------------- ----- ---------------- ----------------------------------------##
 ##  2009/01/08    1.0   Masayuki.Sano    新規作成                               ##
+##  2009/05/07    1.1   Masayuki.Sano    障害番号T1_0917対応                    ##
+##                                       ・異常終了(7⇒8)へ修正                 ##
 ##                                                                              ##
 ##################################################################################
                                                                                   
@@ -33,7 +35,10 @@
 C_appl_name="XXCCP"                    #アプリケーション短縮名
 C_program_id="ZBZZESCAPEFILE"          #プログラムID
 C_return_norm=0                        #正常終了
-C_return_error=7                       #異常終了
+#2009/04/06 UPDATE BY Masayuki.Sano Ver.1.1 Start
+#C_return_error=7                       #異常終了
+C_return_error=8                       #異常終了
+#2009/04/06 UPDATE BY Masayuki.Sano Ver.1.1 End
 C_date_format="+%Y%m%d%H%M%S"          #日時フォーマット(YYYYMMDDH24MISS)
 
 ################################################################################
