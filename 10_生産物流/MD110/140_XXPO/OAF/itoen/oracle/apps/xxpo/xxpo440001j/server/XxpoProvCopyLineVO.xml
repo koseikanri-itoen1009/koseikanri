@@ -22,8 +22,8 @@ SELECT 'Y'                              record_type       -- ƒŒƒR[ƒhƒ^ƒCƒvuN:
       ,xola.futai_code                  futai_code        -- •t‘ÑƒR[ƒh
       ,TO_CHAR(xola.based_request_quantity, 'FM999999990.000')
                                         req_quantity      -- ˆË—Š”—Ê
-      ,TO_CHAR(xola.quantity, 'FM999,999,990.000')
-                                        inst_quantity     -- w¦”—Ê
+      ,TO_CHAR(xola.based_request_quantity, 'FM999,999,990.000')
+                                        inst_quantity     -- w¦”—Ê(ˆË—Š”‚ğƒRƒs[)
       ,ximv.item_um                     item_um           -- ’PˆÊ
       ,TO_CHAR(xola.unit_price, 'FM9,999,990.00')
                                         unit_price        -- ’P‰¿

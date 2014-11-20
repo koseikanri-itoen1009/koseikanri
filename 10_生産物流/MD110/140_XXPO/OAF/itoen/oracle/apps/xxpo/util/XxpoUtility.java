@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.8
+* バージョン : 1.9
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -16,6 +16,7 @@
 * 2008-07-11 1.6  二瓶大輔     ST不具合ログ#421対応
 * 2008-07-17 1.7  伊藤ひとみ   ST不具合ログ#83対応
 * 2008-07-29 1.8  二瓶大輔     内部変更要求#164,166,173、課題#32
+* 2008-08-07 1.9  二瓶大輔     内部変更要求#166修正
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -37,7 +38,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仕入共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.8
+ * @version 1.9
  ***************************************************************************
  */
 public class XxpoUtility 
@@ -8193,25 +8194,34 @@ public class XxpoUtility
     // PL/SQLの作成を行います
     StringBuffer sb = new StringBuffer(1000);
     sb.append("BEGIN ");
-// 2008-07-29 D.Nihei MOD START
+// 2008/08/07 D.Nihei Mod Start
+//// 2008-07-29 D.Nihei Mod Start
 //    sb.append("  SELECT ROUND(SUM(CASE "); 
-    sb.append("  SELECT CEIL(SUM(CASE "); 
-// 2008-07-29 D.Nihei MOD END
+//    sb.append("  SELECT CEIL(SUM(CASE "); 
+//// 2008-07-29 D.Nihei Mod End
+    sb.append("  SELECT SUM(CASE "); 
+// 2008/08/07 D.Nihei Mod End
     sb.append("               WHEN (ximv.num_of_deliver IS NOT NULL)      "); 
-    sb.append("                 THEN xola.quantity / ximv.num_of_deliver  "); 
+// 2008/08/07 D.Nihei Mod Start
+//    sb.append("                 THEN xola.quantity / ximv.num_of_deliver  "); 
+    sb.append("                 THEN CEIL(xola.quantity / ximv.num_of_deliver)  "); 
+// 2008/08/07 D.Nihei Mod End
     sb.append("               WHEN (ximv.conv_unit IS NOT NULL)           "); 
-    sb.append("                 THEN xola.quantity / ximv.num_of_cases    "); 
-    sb.append("                 ELSE xola.quantity  "); 
-// 2008-07-29 D.Nihei MOD START
-//    sb.append("               END))   small_quantity ");   // 小口個数
+// 2008/08/07 D.Nihei Mod Start
+//    sb.append("                 THEN xola.quantity / ximv.num_of_cases    "); 
+//    sb.append("                 ELSE xola.quantity  "); 
+    sb.append("                 THEN CEIL(xola.quantity / ximv.num_of_cases)    "); 
+    sb.append("                 ELSE CEIL(xola.quantity)  "); 
+// 2008/08/07 D.Nihei Mod End
+    sb.append("               END)    small_quantity ");   // 小口個数
+// 2008-07-29 D.Nihei Mod Start
 //    sb.append("        ,TO_CHAR(SUM(xola.quantity),   'FM999,999,990.000') sum_quantity ");   // 合計数量
 //    sb.append("        ,TO_CHAR(SUM(NVL(xola.weight  , 0)), 'FM9,999,990') sum_weight   ");   // 合計重量
 //    sb.append("        ,TO_CHAR(SUM(NVL(xola.capacity, 0)), 'FM9,999,990') sum_capacity ");   // 合計容積
-    sb.append("               END))   small_quantity ");   // 小口個数
     sb.append("        ,TO_CHAR(SUM(xola.quantity))         sum_quantity ");   // 合計数量
     sb.append("        ,TO_CHAR(SUM(NVL(xola.weight  , 0))) sum_weight   ");   // 合計重量
     sb.append("        ,TO_CHAR(SUM(NVL(xola.capacity, 0))) sum_capacity ");   // 合計容積
-// 2008-07-29 D.Nihei MOD END
+// 2008-07-29 D.Nihei Mod End
     sb.append("  INTO   :1 "); 
     sb.append("        ,:2 "); 
     sb.append("        ,:3 "); 
