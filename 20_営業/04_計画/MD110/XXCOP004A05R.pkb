@@ -4,9 +4,9 @@ AS
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
  *
  * Package Name     : XXCOP004A05R(body)
- * Description      : 引取計画立案表出力ワーク登録
+ * Description      : 引取計画立案表
  * MD.050           : 引取計画立案表 MD050_COP_004_A05
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/12/21    1.10 SCS.Kikuchi       E_本稼動_00546対応
  *                                       （出荷実績取得・抽出項目の出荷日を着荷日に変更）
  *  2013/12/13    1.11 SCSK.Nakamura     E_本稼動_10958対応
+ *  2014/03/07    1.12 SCSK.Nakamura     E_本稼動_10958対応
  *
  *****************************************************************************************/
 --
@@ -275,6 +276,9 @@ AS
 --20091127_Ver1.9_E_T4_00198_SCS.Kikuchi_ADD_START
   gd_f_last_cooperation_date   DATE;                                -- 前回最終連携日
 --20091127_Ver1.9_E_T4_00198_SCS.Kikuchi_ADD_END
+-- 2014/03/07 Ver1.12 Add START
+  gn_ope_days_this_month       NUMBER;                              -- 当月稼動予定日数
+-- 2014/03/07 Ver1.12 Add END
 --
 --
 --
@@ -1059,7 +1063,12 @@ AS
 --    g_forecast_planning_rec.operation_days_this_month := g_header_data_tbl(in_header_index).ope_days_this_month;
     g_forecast_planning_rec.operation_days_this_month := g_header_data_tbl(in_header_index).ope_days_this_month_prevday;
     g_forecast_planning_rec.operation_days_next_month := g_header_data_tbl(in_header_index).ope_days_next_month;
-
+--
+-- 2014/03/07 Ver1.12 Add START
+    -- 当月稼動予定日数の保持
+    gn_ope_days_this_month                            := g_header_data_tbl(in_header_index).ope_days_this_month;
+-- 2014/03/07 Ver1.12 Add END
+--
     -- 各数量のNULLを0に置換する
     g_forecast_planning_rec.ship_to_quantity_15_months_ago
                                      := NVL(g_forecast_planning_rec.ship_to_quantity_15_months_ago,0);
@@ -1090,7 +1099,9 @@ AS
     -- 親品目で無い場合（OPM品目IDとOPM親品目IDが異なる）、当月参考情報は設定しない。
     IF (g_detail_data_tbl(in_detail_index).item_id<>g_detail_data_tbl(in_detail_index).parent_item_id) THEN
        g_forecast_planning_rec.present_stock_quantity      := NULL;
-       g_forecast_planning_rec.delivery_forecast_quantity  := NULL;
+-- 2014/03/07 Ver1.12 Del START
+--       g_forecast_planning_rec.delivery_forecast_quantity  := NULL;
+-- 2014/03/07 Ver1.12 Del END
        g_forecast_planning_rec.ship_to_quantity_forecast   := NULL;
 --       g_forecast_planning_rec.forecast_remainder_quantity := NULL;
        -- 引取計画残数量
@@ -1098,7 +1109,9 @@ AS
              num_edit(g_forecast_planning_rec.forecast_quantity_1_months_ago
                       - g_forecast_planning_rec.ship_to_quantity_1_months_ago
              );
-       g_forecast_planning_rec.stock_forecast_quantity     := NULL;
+-- 2014/03/07 Ver1.12 Del START
+--       g_forecast_planning_rec.stock_forecast_quantity     := NULL;
+-- 2014/03/07 Ver1.12 Del END
        RETURN;
     END IF;
 
@@ -1183,48 +1196,53 @@ AS
     -- 現在庫数量
     g_forecast_planning_rec.present_stock_quantity      := num_edit(ln_book_inventory_quantity);
 
-    -- 今後出庫予測数量
-    IF ( g_header_data_tbl(in_header_index).ope_days_this_month_prevday = 0 ) THEN
-      g_forecast_planning_rec.delivery_forecast_quantity  := 0;
-    ELSE
-      -- ( 当月出庫数（販売実績マテリアライズドビューより取得した販売実績数） / 当月実働日数 ) * ( 当月稼動予定日数 - 当月実働日数 )
-      g_forecast_planning_rec.delivery_forecast_quantity  := 
-            num_edit( ( ln_standard_qty / g_header_data_tbl(in_header_index).ope_days_this_month_prevday )
-                   *  ( g_header_data_tbl(in_header_index).ope_days_this_month
---20090610_Ver1.3_T1_1411_SCS.Kikuchi_MOD_START
-                      - g_header_data_tbl(in_header_index).ope_days_this_month_prevday )
---                      - g_header_data_tbl(in_header_index).ope_days_this_month_prevday + 1 )
---20090610_Ver1.3_T1_1411_SCS.Kikuchi_MOD_END
-              );
-    END IF;
-
-    -- 当年度 対象月予測数量
-    IF (  ( g_forecast_planning_rec.ship_to_quantity_12_months_ago = 0 )
-       OR ( g_forecast_planning_rec.ship_to_quantity_13_months_ago = 0 )
-       )
-    THEN
-      g_forecast_planning_rec.ship_to_quantity_forecast   := 0;
-    ELSE
-      -- ( 当年前々月実績 + 当年前月実績 + 当年当月予測(当月出庫数 + 今後出庫予測数量) ) / ( 前年前々月実績 + 前年前月実績 + 前年当月実績 ) * 前年翌月実績
-      -- 上記は立案対象月ではなく業務日付月からの計算
-      g_forecast_planning_rec.ship_to_quantity_forecast   := 
--- 2013/12/13 Ver1.11 Mod START
---            num_edit( ( g_forecast_planning_rec.ship_to_quantity_12_months_ago
---              / g_forecast_planning_rec.ship_to_quantity_13_months_ago )
---              *  ( ln_standard_qty + g_forecast_planning_rec.delivery_forecast_quantity )
+-- 2014/03/07 Ver1.12 Mod START
+--    -- 今後出庫予測数量
+--    IF ( g_header_data_tbl(in_header_index).ope_days_this_month_prevday = 0 ) THEN
+--      g_forecast_planning_rec.delivery_forecast_quantity  := 0;
+--    ELSE
+--      -- ( 当月出庫数（販売実績マテリアライズドビューより取得した販売実績数） / 当月実働日数 ) * ( 当月稼動予定日数 - 当月実働日数 )
+--      g_forecast_planning_rec.delivery_forecast_quantity  := 
+--            num_edit( ( ln_standard_qty / g_header_data_tbl(in_header_index).ope_days_this_month_prevday )
+--                   *  ( g_header_data_tbl(in_header_index).ope_days_this_month
+----20090610_Ver1.3_T1_1411_SCS.Kikuchi_MOD_START
+--                      - g_header_data_tbl(in_header_index).ope_days_this_month_prevday )
+----                      - g_header_data_tbl(in_header_index).ope_days_this_month_prevday + 1 )
+----20090610_Ver1.3_T1_1411_SCS.Kikuchi_MOD_END
 --              );
-            num_edit( ( ( g_forecast_planning_rec.ship_to_quantity_3_months_ago
-                        + g_forecast_planning_rec.ship_to_quantity_2_months_ago
-                        + ln_standard_qty
-                        + g_forecast_planning_rec.delivery_forecast_quantity )
-                      / ( g_forecast_planning_rec.ship_to_quantity_15_months_ago
-                        + g_forecast_planning_rec.ship_to_quantity_14_months_ago
-                        + g_forecast_planning_rec.ship_to_quantity_13_months_ago )
-                      )
-                      * g_forecast_planning_rec.ship_to_quantity_12_months_ago
-            );
--- 2013/12/13 Ver1.11 Mod START
-    END IF;
+--    END IF;
+--
+--    -- 当年度 対象月予測数量
+--    IF (  ( g_forecast_planning_rec.ship_to_quantity_12_months_ago = 0 )
+--       OR ( g_forecast_planning_rec.ship_to_quantity_13_months_ago = 0 )
+--       )
+--    THEN
+--      g_forecast_planning_rec.ship_to_quantity_forecast   := 0;
+--    ELSE
+--      -- ( 当年前々月実績 + 当年前月実績 + 当年当月予測(当月出庫数 + 今後出庫予測数量) ) / ( 前年前々月実績 + 前年前月実績 + 前年当月実績 ) * 前年翌月実績
+--      -- 上記は立案対象月ではなく業務日付月からの計算
+--      g_forecast_planning_rec.ship_to_quantity_forecast   := 
+---- 2013/12/13 Ver1.11 Mod START
+----            num_edit( ( g_forecast_planning_rec.ship_to_quantity_12_months_ago
+----              / g_forecast_planning_rec.ship_to_quantity_13_months_ago )
+----              *  ( ln_standard_qty + g_forecast_planning_rec.delivery_forecast_quantity )
+----              );
+--            num_edit( ( ( g_forecast_planning_rec.ship_to_quantity_3_months_ago
+--                        + g_forecast_planning_rec.ship_to_quantity_2_months_ago
+--                        + ln_standard_qty
+--                        + g_forecast_planning_rec.delivery_forecast_quantity )
+--                      / ( g_forecast_planning_rec.ship_to_quantity_15_months_ago
+--                        + g_forecast_planning_rec.ship_to_quantity_14_months_ago
+--                        + g_forecast_planning_rec.ship_to_quantity_13_months_ago )
+--                      )
+--                      * g_forecast_planning_rec.ship_to_quantity_12_months_ago
+--            );
+---- 2013/12/13 Ver1.11 Mod START
+--    END IF;
+    -- 販売実績数量
+    g_forecast_planning_rec.ship_to_quantity_forecast := num_edit(ln_standard_qty);
+-- 2014/03/07 Ver1.12 Mod END
+
 
     -- 引取計画残数量
     g_forecast_planning_rec.forecast_remainder_quantity := 
@@ -1232,11 +1250,13 @@ AS
                    - g_forecast_planning_rec.ship_to_quantity_1_months_ago
           );
 
-    -- 月末在庫予測数量
-    g_forecast_planning_rec.stock_forecast_quantity     :=
-          num_edit( ln_book_inventory_quantity - g_forecast_planning_rec.delivery_forecast_quantity
-                    + g_forecast_planning_rec.forecast_remainder_quantity
-          );
+-- 2014/03/07 Ver1.12 Del START
+--    -- 月末在庫予測数量
+--    g_forecast_planning_rec.stock_forecast_quantity     :=
+--          num_edit( ln_book_inventory_quantity - g_forecast_planning_rec.delivery_forecast_quantity
+--                    + g_forecast_planning_rec.forecast_remainder_quantity
+--          );
+-- 2014/03/07 Ver1.12 Del END
 
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -1595,7 +1615,48 @@ AS
 --      -- 正常件数カウントアップ
 --      gn_normal_cnt := gn_normal_cnt + 1;
 -- 2013/12/13 Ver1.11 Del END
-
+-- 2014/03/07 Ver1.12 Add START
+    -- 今後出庫予測数量
+    --   当月稼動実績日数が0の場合は0
+    --   上記以外は( 当月出庫数（販売実績数 / 当月稼動実績日数 ) * ( 当月稼動予定日数 - 当月稼動実績日数 )
+    UPDATE xxcop_rep_forecast_planning xrfp
+    SET    xrfp.delivery_forecast_quantity = CASE WHEN xrfp.operation_days_this_month = 0 THEN 0
+                                                  ELSE
+                                                      TRUNC( ( xrfp.ship_to_quantity_forecast -- ここではまだ販売実績数量
+                                                             / xrfp.operation_days_this_month )
+                                                           * ( gn_ope_days_this_month
+                                                             - xrfp.operation_days_this_month )
+                                                           ,2)
+                                                  END
+    WHERE  xrfp.request_id = cn_request_id
+    ;
+    -- 当年度 対象月予測数量の更新
+    --  販売実績数量がNULL（子品目）の場合はNULL
+    --  前年度 対象月実績数量または前年度 対象前月実績数量が0の場合は0
+    --   ( 当年前々月実績 + 当年前月実績 + 当年当月予測(当月出庫数 + 今後出庫予測数量) ) / ( 前年前々月実績 + 前年前月実績 + 前年当月実績 ) * 前年翌月実績
+    --   上記は立案対象月ではなく業務日付月からの計算
+    -- 月末在庫予測数量の更新
+    --   ( 現在庫数量 - 今後出庫予測数量 + 引取計画残数量 )
+    UPDATE xxcop_rep_forecast_planning xrfp
+    SET    xrfp.ship_to_quantity_forecast = CASE WHEN xrfp.ship_to_quantity_forecast IS NULL  THEN NULL
+                                                 WHEN xrfp.ship_to_quantity_12_months_ago = 0 THEN 0
+                                                 WHEN xrfp.ship_to_quantity_13_months_ago = 0 THEN 0
+                                                 ELSE
+                                                      TRUNC( ( ( xrfp.ship_to_quantity_3_months_ago
+                                                               + xrfp.ship_to_quantity_2_months_ago
+                                                               + xrfp.ship_to_quantity_forecast
+                                                               + xrfp.delivery_forecast_quantity )
+                                                             / ( xrfp.ship_to_quantity_15_months_ago
+                                                               + xrfp.ship_to_quantity_14_months_ago
+                                                               + xrfp.ship_to_quantity_13_months_ago )
+                                                               )
+                                                             * xrfp.ship_to_quantity_12_months_ago
+                                                           ,2)
+                                                 END
+          ,xrfp.stock_forecast_quantity   = TRUNC(xrfp.present_stock_quantity - xrfp.delivery_forecast_quantity + xrfp.forecast_remainder_quantity,2)
+    WHERE  xrfp.request_id = cn_request_id
+    ;
+-- 2014/03/07 Ver1.12 Add END
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
