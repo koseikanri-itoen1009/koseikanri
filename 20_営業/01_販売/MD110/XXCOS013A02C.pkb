@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A02C (body)
  * Description      : INVへの販売実績データ連携
  * MD.050           : INVへの販売実績データ連携 MD050_COS_013_A02
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/08/24    1.9   N.Maeda          [0001141]納品日考慮対応
  *  2009/08/25    1.10  N.Maeda          [0001164]PT対応(警告データのフラグ更新処理追加[W])
  *                                                処理対象外データのフラグ更新処理追加[S]
+ *  2009/09/14    1.11  S.Miyakoshi      [0001360]BULKへの対応
  *
  *****************************************************************************************/
 --
@@ -97,11 +98,11 @@ AS
   global_data_insert_expt           EXCEPTION;
   --*** 対象データロック例外 ***
   global_data_lock_expt             EXCEPTION;
+  PRAGMA EXCEPTION_INIT( global_data_lock_expt, -54 );
   --*** データ抽出例外 ***
   global_data_select_expt           EXCEPTION;
   --*** 対象データ更新例外 ***
   global_data_update_expt           EXCEPTION;
-  PRAGMA EXCEPTION_INIT( global_data_lock_expt, -54 );
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -139,6 +140,10 @@ AS
   cv_msg_sales_exp_warn     CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12820'; -- 販売実績明細(警告終了データ)
   cv_msg_sales_exp_exclu    CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12821'; -- 販売実績明細(処理対象外データ)
 -- ************************ 2009/08/25 1.10 N.Maeda ADD  END  *************************** --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+  cv_msg_prf_bulk_cnt       CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12822'; -- XXCOS:結果セット取得件数（バルク）
+  cv_msg_sales_exp_target   CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12823'; -- 販売実績明細(処理対象データ)
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
   --トークン名
   cv_tkn_nm_table_name      CONSTANT  VARCHAR2(100) := 'TABLE_NAME';           --テーブル名称
   cv_tkn_nm_table_lock      CONSTANT  VARCHAR2(100) := 'TABLE';                --テーブル名称(ロックエラー時用)
@@ -218,6 +223,9 @@ AS
   --商品製品区分日付判定用
   cd_sysdate                CONSTANT  DATE          := SYSDATE;
 /* 2009/07/16 Ver1.7 Add Start */
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+  cv_prof_bulk_count        CONSTANT  VARCHAR2(100) := 'XXCOS1_BULK_COLLECT_COUNT';     --結果セット取得件数（バルク）
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
   --カテゴリ／ステータス
   cv_inv_flg_n              CONSTANT  VARCHAR2(100) := 'N';                    --在庫未連携
   cv_inv_flg_y              CONSTANT  VARCHAR2(100) := 'Y';                    --在庫連携済
@@ -233,6 +241,7 @@ AS
 -- ************ 2009/07/29 N.Maeda 1.8 ADD START *********************** --
   cv_goods_prod_item        CONSTANT  VARCHAR2(1)   := '1';  -- 商品
 -- ************ 2009/07/29 N.Maeda 1.8 ADD  END  *********************** --
+--
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -378,6 +387,150 @@ AS
 --************************************* 2009/04/28 N.Maeda Var1.4 ADD  END  *********************************************
   g_disposition_tab         g_disposition_ttype;                                --勘定科目別名コレクション
   g_ccid_tab                g_ccid_ttype;                                       --勘定科目ID(CCID)コレクション
+--************************************* 2009/09/14 S.Miyakoshi Var1.11 ADD START ****************************************
+  gn_bulk_size              NUMBER;                                             --最大フェッチ数
+  gv_lock_retcode           VARCHAR2(1);                                        -- ロック処理リターン・コード
+  -- 前回フェッチ最終のデータ
+  gt_last_source_code                mtl_transactions_interface.source_code%TYPE;                --ソースコード
+  gt_last_source_line_id             mtl_transactions_interface.source_line_id%TYPE;             --ソース明細ID
+  gt_last_source_header_id           mtl_transactions_interface.source_header_id%TYPE;           --ソースヘッダーID
+  gt_last_process_flag               mtl_transactions_interface.process_flag%TYPE;               --処理フラグ
+  gt_last_validation_required        mtl_transactions_interface.validation_required%TYPE;        --検証要
+  gt_last_transaction_mode           mtl_transactions_interface.transaction_mode%TYPE;           --取引モード
+  gt_last_inventory_item_id          mtl_transactions_interface.inventory_item_id%TYPE;          --取引品目ID
+  gt_last_organization_id            mtl_transactions_interface.organization_id%TYPE;            --取引元の組織ID
+  gt_last_transaction_quantity       mtl_transactions_interface.transaction_quantity%TYPE;       --取引数量
+  gt_last_transaction_uom            mtl_transactions_interface.transaction_uom%TYPE;            --取引単位
+  gt_last_transaction_date           mtl_transactions_interface.transaction_date%TYPE;           --取引発生日
+  gt_last_subinventory_code          mtl_transactions_interface.subinventory_code%TYPE;          --取引元の保管場所名
+  gt_last_transaction_source_id      mtl_transactions_interface.transaction_source_id%TYPE;      --取引ソースID
+  gt_last_tran_source_type_id        mtl_transactions_interface.transaction_source_type_id%TYPE; --取引ソースタイプID
+  gt_last_transaction_type_id        mtl_transactions_interface.transaction_type_id%TYPE;        --取引タイプID
+  gt_last_scheduled_flag             mtl_transactions_interface.scheduled_flag%TYPE;             --計画フラグ
+  gt_last_flow_schedule              mtl_transactions_interface.flow_schedule%TYPE;              --計画フロー
+  gt_last_created_by                 mtl_transactions_interface.created_by%TYPE;                 --作成者ID
+  gt_last_creation_date              mtl_transactions_interface.creation_date%TYPE;              --作成日
+  gt_last_last_updated_by            mtl_transactions_interface.last_updated_by%TYPE;            --最終更新者ID
+  gt_last_last_update_date           mtl_transactions_interface.last_update_date%TYPE;           --最終更新日
+  gt_last_last_update_login          mtl_transactions_interface.last_update_login%TYPE;          --最終ログインID
+  gt_last_request_id                 mtl_transactions_interface.request_id%TYPE;                 --要求ID
+  gt_last_program_application_id     mtl_transactions_interface.program_application_id%TYPE;     --プログラムアプリケーションID
+  gt_last_program_id                 mtl_transactions_interface.program_id%TYPE;                 --プログラムID
+  gt_last_program_update_date        mtl_transactions_interface.program_update_date%TYPE;        --プログラム更新日
+  gt_last_dept_code                  VARCHAR2(20);                                               --部門コード
+--************************************* 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ****************************************
+--
+  -- ===============================
+  -- ユーザー定義グローバルカーソル
+  -- ===============================
+-- ********** 2009/09/14 S.Miyakoshi Var1.11 ADD START *********** --
+    -- 対象データ取得
+    CURSOR get_main_cur
+    IS
+    SELECT /*+
+           INDEX(sel xxcos_sales_exp_lines_n03)
+           INDEX(seh xxcos_sales_exp_headers_pk)
+           INDEX(mcb mtl_categories_b_u1)
+           LEADING(sel seh msib mic mcb)
+           USE_NL(sel seh msib mic mcb)
+           */
+           sel.sales_exp_line_id line_id,         --販売実績明細ID
+           seh.delivery_date,                     --納品日
+           seh.dlv_invoice_class,                 --納品伝票区分
+           seh.sales_base_code,                   --売上拠点コード
+           sel.delivery_pattern_class,            --納品形態区分
+           sel.sales_class,                       --売上区分
+           sel.red_black_flag,                    --赤黒フラグ
+           sel.standard_uom_code,                 --基準単位
+           sel.standard_qty,                      --基準数量
+           sel.ship_from_subinventory_code,       --出荷元保管場所
+           msib.inventory_item_id,                --品目ID
+           CASE
+             WHEN 
+               ( NOT EXISTS ( SELECT 1
+                              FROM mtl_category_accounts mca
+                              WHERE mca.category_id     = gt_category_id
+                              AND mca.organization_id   = gt_org_id
+                              AND mca.subinventory_code = sel.ship_from_subinventory_code
+                              AND ROWNUM = 1 ) ) THEN  --専門店以外
+               cv_goods_prod_sei  --製品固定
+             ELSE
+               mcb.segment1
+           END
+    FROM   xxcos_sales_exp_headers  seh,          --販売実績ヘッダテーブル
+           xxcos_sales_exp_lines    sel,          --販売実績明細テーブル
+           mtl_system_items_b     msib,  --品目マスタ
+           mtl_item_categories    mic,   --品目カテゴリマスタ
+           mtl_categories_b       mcb    --カテゴリマスタ
+           --販売実績ヘッダ.ヘッダID=販売実績明細.ヘッダID
+    WHERE  seh.sales_exp_header_id = sel.sales_exp_header_id
+           --納品日<=業務日付
+    AND    seh.delivery_date       <= gd_proc_date
+           --納品伝票区分 IN(納品,返品,納品訂正,返品訂正)
+    AND    EXISTS(
+             SELECT  /*+ USE_NL(look_val) */
+                     'Y'                         ext_flg
+             FROM    fnd_lookup_values           look_val
+             WHERE   look_val.lookup_type        = cv_dlv_slp_cls_type
+             AND     look_val.lookup_code        LIKE cv_dlv_slp_cls_code
+             AND     look_val.meaning            = seh.dlv_invoice_class
+             AND     look_val.language           = cv_lang
+             AND     gd_proc_date                BETWEEN NVL( look_val.start_date_active, gd_min_date )
+                                                 AND     NVL( look_val.end_date_active, gd_max_date )
+             AND     look_val.enabled_flag       = ct_enabled_flg_y
+           )
+           --納品形態区分 IN(営業車,工場直送,メイン倉庫, 他倉庫,他拠点倉庫売上)
+    AND    EXISTS(
+             SELECT  /*+ USE_NL(look_val) */
+                     'Y'                         ext_flg
+             FROM    fnd_lookup_values           look_val
+             WHERE   look_val.lookup_type        = cv_dlv_ptn_cls_type
+             AND     look_val.lookup_code        LIKE cv_dlv_ptn_cls_code
+             AND     look_val.meaning            = sel.delivery_pattern_class
+             AND     look_val.language           = cv_lang
+             AND     gd_proc_date                BETWEEN NVL( look_val.start_date_active, gd_min_date )
+                                                 AND     NVL( look_val.end_date_active, gd_max_date )
+             AND     look_val.enabled_flag       = ct_enabled_flg_y
+           )
+           --非在庫品目を取除く
+    AND    NOT EXISTS(
+             SELECT  /*+ USE_NL(look_val) */
+                     'Y'                         ext_flg
+             FROM    fnd_lookup_values           look_val
+             WHERE   look_val.lookup_type        = cv_no_inv_item_type
+             AND     look_val.lookup_code        = sel.item_code
+             AND     look_val.language           = cv_lang
+             AND     gd_proc_date                BETWEEN NVL( look_val.start_date_active, gd_min_date )
+                                                 AND     NVL( look_val.end_date_active, gd_max_date )
+             AND     look_val.enabled_flag       = ct_enabled_flg_y
+           )
+           --INVインタフェース済フラグ(未連携orINV連携処理警告データ)
+    AND    ( ( sel.inv_interface_flag = cv_inv_flg_n )
+             OR ( sel.inv_interface_flag = cv_wan_data_flg ) )
+    AND    msib.organization_id     = gt_org_id             -- 在庫組織ID
+    AND    msib.segment1            = sel.item_code
+    AND    msib.enabled_flag        = ct_enabled_flg_y      -- 品目マスタ有効フラグ
+    AND    gd_proc_date
+             BETWEEN NVL(msib.start_date_active, gd_proc_date)
+             AND NVL(msib.end_date_active, gd_proc_date)
+    AND    mic.organization_id      = msib.organization_id
+    AND    mic.inventory_item_id    = msib.inventory_item_id
+    AND    mic.category_set_id      = gt_category_set_id
+    AND    mic.category_id          = mcb.category_id
+    AND    ( mcb.disable_date IS NULL
+           OR mcb.disable_date > gd_proc_date
+           )
+    AND    mcb.enabled_flag        = 'Y'      -- カテゴリ有効フラグ
+    AND    gd_proc_date
+             BETWEEN NVL(mcb.start_date_active, gd_proc_date)
+             AND NVL(mcb.end_date_active, gd_proc_date)
+    ORDER BY
+           sel.ship_from_subinventory_code,     --出荷元保管場所
+           msib.inventory_item_id,
+           seh.delivery_date,                   --納品日
+           seh.sales_base_code                  --売上拠点コード
+    ;
+-- ********** 2009/09/14 S.Miyakoshi Var1.11 ADD  END  *********** --
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -412,6 +565,9 @@ AS
     lv_date_item    VARCHAR2(100);                          -- MIN日付/MAX日付
     lv_dummy_item   VARCHAR2(100);                          -- CCID取得用ダミー項目
     lt_org_cd       mtl_parameters.organization_code%TYPE;  -- 在庫組織コード
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+    lv_msg_tkn      VARCHAR2(5000);                         -- メッセージ用トークン
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
 --
     -- *** ローカル・カーソル ***
 --
@@ -682,6 +838,27 @@ AS
         RAISE global_api_expt;
     END;
 --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+    --========================================
+    --14.結果セット取得件数（バルク）取得処理
+    --========================================
+    gn_bulk_size := TO_NUMBER( FND_PROFILE.VALUE( cv_prof_bulk_count ) );
+    IF ( gn_bulk_size IS NULL ) THEN
+      lv_msg_tkn              :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcos_short_name,
+        iv_name               =>  cv_msg_prf_bulk_cnt
+      );
+      lv_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcos_short_name,
+        iv_name               =>  cv_msg_prof_err,
+        iv_token_name1        =>  cv_tkn_nm_profile_s,
+        iv_token_value1       =>  lv_msg_tkn
+      );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
+--
 -- ************ 2009/07/29 N.Maeda 1.8 ADD  END  *********************** --
 --
 --#################################  固定例外処理部 START   ####################################
@@ -735,6 +912,9 @@ AS
     -- *** ローカル変数 ***
     lv_tkn_vl_table_name      VARCHAR2(100);      --エラー対象であるテーブル名
     lv_warnmsg                VARCHAR2(5000);     --ユーザー・警告・メッセージ
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+    lt_line_id                xxcos_sales_exp_lines.sales_exp_line_id%TYPE;   --販売実績明細ID
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
 --
     -- *** ローカル・カーソル ***
 --
@@ -748,121 +928,137 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+   --対象データロック
+   FOR i IN g_sales_exp_tab.FIRST .. g_sales_exp_tab.LAST LOOP
+     --エラー時のキー情報出力のため、変数へ格納
+     lt_line_id := g_sales_exp_tab(i).line_id;
+     --ロック処理
+     SELECT sel.sales_exp_line_id
+     INTO   lt_line_id
+     FROM   xxcos_sales_exp_lines    sel          --販売実績明細テーブル
+     WHERE  sel.sales_exp_line_id = g_sales_exp_tab(i).line_id
+     FOR UPDATE NOWAIT
+     ;
+   END LOOP;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
 --
 --
--- ************************ 2009/08/06 1.18 N.Maeda MOD START *************************** --
---
-    --対象データ取得
-    SELECT /*+
-           index(sel XXCOS_SALES_EXP_LINES_N03)
-           index(seh XXCOS_SALES_EXP_HEADERS_PK)
-           index(mcb MTL_CATEGORIES_B_U1)
-           leading(sel seh msib mic mcb)
-           use_nl(sel seh msib mic mcb)
-           */
-           sel.sales_exp_line_id line_id,         --販売実績明細ID
-           seh.delivery_date,                     --納品日
-           seh.dlv_invoice_class,                 --納品伝票区分
-           seh.sales_base_code,                   --売上拠点コード
-           sel.delivery_pattern_class,            --納品形態区分
-           sel.sales_class,                       --売上区分
-           sel.red_black_flag,                    --赤黒フラグ
-           sel.standard_uom_code,                 --基準単位
-           sel.standard_qty,                      --基準数量
-           sel.ship_from_subinventory_code,       --出荷元保管場所
-           msib.inventory_item_id,                --品目ID
-           CASE
-             WHEN 
-               ( NOT EXISTS ( SELECT 1
-                              FROM mtl_category_accounts mca
-                              WHERE mca.category_id     = gt_category_id
-                              AND mca.organization_id   = gt_org_id
-                              AND mca.subinventory_code = sel.ship_from_subinventory_code
-                              AND ROWNUM = 1 ) ) THEN  --専門店以外
-               cv_goods_prod_sei  --製品固定
-             ELSE
-               mcb.segment1
-           END
-    BULK COLLECT INTO
-           g_sales_exp_tab
-    FROM   xxcos_sales_exp_headers  seh,          --販売実績ヘッダテーブル
-           xxcos_sales_exp_lines    sel,          --販売実績明細テーブル
-           mtl_system_items_b     msib,  --品目マスタ
-           mtl_item_categories    mic,   --品目カテゴリマスタ
-           mtl_categories_b       mcb    --カテゴリマスタ
-           --販売実績ヘッダ.ヘッダID=販売実績明細.ヘッダID
-    WHERE  seh.sales_exp_header_id = sel.sales_exp_header_id
-           --納品日<=業務日付
-    AND    seh.delivery_date       <= gd_proc_date
-           --納品伝票区分 IN(納品,返品,納品訂正,返品訂正)
-    AND    EXISTS(
-             SELECT  /*+ use_nl(look_val) */
-                     'Y'                         ext_flg
-             FROM    fnd_lookup_values           look_val
-             WHERE   look_val.lookup_type        = cv_dlv_slp_cls_type
-             AND     look_val.lookup_code        LIKE cv_dlv_slp_cls_code
-             AND     look_val.meaning            = seh.dlv_invoice_class
-             AND     look_val.language           = cv_lang
-             AND     gd_proc_date                BETWEEN NVL( look_val.start_date_active, gd_min_date )
-                                                 AND     NVL( look_val.end_date_active, gd_max_date )
-             AND     look_val.enabled_flag       = ct_enabled_flg_y
-           )
-           --納品形態区分 IN(営業車,工場直送,メイン倉庫, 他倉庫,他拠点倉庫売上)
-    AND    EXISTS(
-             SELECT  /*+ use_nl(look_val) */
-                     'Y'                         ext_flg
-             FROM    fnd_lookup_values           look_val
-             WHERE   look_val.lookup_type        = cv_dlv_ptn_cls_type
-             AND     look_val.lookup_code        LIKE cv_dlv_ptn_cls_code
-             AND     look_val.meaning            = sel.delivery_pattern_class
-             AND     look_val.language           = cv_lang
-             AND     gd_proc_date                BETWEEN NVL( look_val.start_date_active, gd_min_date )
-                                                 AND     NVL( look_val.end_date_active, gd_max_date )
-             AND     look_val.enabled_flag       = ct_enabled_flg_y
-           )
-           --非在庫品目を取除く
-    AND    NOT EXISTS(
-             SELECT  /*+ use_nl(look_val) */
-                     'Y'                         ext_flg
-             FROM    fnd_lookup_values           look_val
-             WHERE   look_val.lookup_type        = cv_no_inv_item_type
-             AND     look_val.lookup_code        = sel.item_code
-             AND     look_val.language           = cv_lang
-             AND     gd_proc_date                BETWEEN NVL( look_val.start_date_active, gd_min_date )
-                                                 AND     NVL( look_val.end_date_active, gd_max_date )
-             AND     look_val.enabled_flag       = ct_enabled_flg_y
-           )
--- ********** 2009/08/25 N.Maeda Var1.10 MOD START *********** --
-           --INVインタフェース済フラグ(未連携orINV連携処理警告データ)
-    AND    ( ( sel.inv_interface_flag = cv_inv_flg_n )
-             OR ( sel.inv_interface_flag = cv_wan_data_flg ) )
---           --INVインタフェース済フラグ(未連携)
---    AND    sel.inv_interface_flag       = cv_inv_flg_n
--- ********** 2009/08/25 N.Maeda Var1.10 MOD  END  *********** --
-    AND    msib.organization_id     = gt_org_id             -- 在庫組織ID
-    AND    msib.segment1            = sel.item_code
-    AND    msib.enabled_flag        = ct_enabled_flg_y      -- 品目マスタ有効フラグ
-    AND    gd_proc_date
-             BETWEEN NVL(msib.start_date_active, gd_proc_date)
-             AND NVL(msib.end_date_active, gd_proc_date)
-    AND    mic.organization_id      = msib.organization_id
-    AND    mic.inventory_item_id    = msib.inventory_item_id
-    AND    mic.category_set_id      = gt_category_set_id
-    AND    mic.category_id          = mcb.category_id
-    AND    ( mcb.disable_date IS NULL
-           OR mcb.disable_date > gd_proc_date
-           )
-    AND    mcb.enabled_flag        = 'Y'      -- カテゴリ有効フラグ
-    AND    gd_proc_date
-             BETWEEN NVL(mcb.start_date_active, gd_proc_date)
-             AND NVL(mcb.end_date_active, gd_proc_date)
-    ORDER BY
-           sel.ship_from_subinventory_code,     --出荷元保管場所
-           msib.inventory_item_id,
-           seh.delivery_date,                   --納品日
-           seh.sales_base_code                  --売上拠点コード
-    FOR UPDATE OF sel.sales_exp_line_id NOWAIT
-    ;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL START ************************ --
+---- ************************ 2009/08/06 1.18 N.Maeda MOD START *************************** --
+----
+--    --対象データ取得
+--    SELECT /*+
+--           index(sel XXCOS_SALES_EXP_LINES_N03)
+--           index(seh XXCOS_SALES_EXP_HEADERS_PK)
+--           index(mcb MTL_CATEGORIES_B_U1)
+--           leading(sel seh msib mic mcb)
+--           use_nl(sel seh msib mic mcb)
+--           */
+--           sel.sales_exp_line_id line_id,         --販売実績明細ID
+--           seh.delivery_date,                     --納品日
+--           seh.dlv_invoice_class,                 --納品伝票区分
+--           seh.sales_base_code,                   --売上拠点コード
+--           sel.delivery_pattern_class,            --納品形態区分
+--           sel.sales_class,                       --売上区分
+--           sel.red_black_flag,                    --赤黒フラグ
+--           sel.standard_uom_code,                 --基準単位
+--           sel.standard_qty,                      --基準数量
+--           sel.ship_from_subinventory_code,       --出荷元保管場所
+--           msib.inventory_item_id,                --品目ID
+--           CASE
+--             WHEN 
+--               ( NOT EXISTS ( SELECT 1
+--                              FROM mtl_category_accounts mca
+--                              WHERE mca.category_id     = gt_category_id
+--                              AND mca.organization_id   = gt_org_id
+--                              AND mca.subinventory_code = sel.ship_from_subinventory_code
+--                              AND ROWNUM = 1 ) ) THEN  --専門店以外
+--               cv_goods_prod_sei  --製品固定
+--             ELSE
+--               mcb.segment1
+--           END
+--    BULK COLLECT INTO
+--           g_sales_exp_tab
+--    FROM   xxcos_sales_exp_headers  seh,          --販売実績ヘッダテーブル
+--           xxcos_sales_exp_lines    sel,          --販売実績明細テーブル
+--           mtl_system_items_b     msib,  --品目マスタ
+--           mtl_item_categories    mic,   --品目カテゴリマスタ
+--           mtl_categories_b       mcb    --カテゴリマスタ
+--           --販売実績ヘッダ.ヘッダID=販売実績明細.ヘッダID
+--    WHERE  seh.sales_exp_header_id = sel.sales_exp_header_id
+--           --納品日<=業務日付
+--    AND    seh.delivery_date       <= gd_proc_date
+--           --納品伝票区分 IN(納品,返品,納品訂正,返品訂正)
+--    AND    EXISTS(
+--             SELECT  /*+ use_nl(look_val) */
+--                     'Y'                         ext_flg
+--             FROM    fnd_lookup_values           look_val
+--             WHERE   look_val.lookup_type        = cv_dlv_slp_cls_type
+--             AND     look_val.lookup_code        LIKE cv_dlv_slp_cls_code
+--             AND     look_val.meaning            = seh.dlv_invoice_class
+--             AND     look_val.language           = cv_lang
+--             AND     gd_proc_date                BETWEEN NVL( look_val.start_date_active, gd_min_date )
+--                                                 AND     NVL( look_val.end_date_active, gd_max_date )
+--             AND     look_val.enabled_flag       = ct_enabled_flg_y
+--           )
+--           --納品形態区分 IN(営業車,工場直送,メイン倉庫, 他倉庫,他拠点倉庫売上)
+--    AND    EXISTS(
+--             SELECT  /*+ use_nl(look_val) */
+--                     'Y'                         ext_flg
+--             FROM    fnd_lookup_values           look_val
+--             WHERE   look_val.lookup_type        = cv_dlv_ptn_cls_type
+--             AND     look_val.lookup_code        LIKE cv_dlv_ptn_cls_code
+--             AND     look_val.meaning            = sel.delivery_pattern_class
+--             AND     look_val.language           = cv_lang
+--             AND     gd_proc_date                BETWEEN NVL( look_val.start_date_active, gd_min_date )
+--                                                 AND     NVL( look_val.end_date_active, gd_max_date )
+--             AND     look_val.enabled_flag       = ct_enabled_flg_y
+--           )
+--           --非在庫品目を取除く
+--    AND    NOT EXISTS(
+--             SELECT  /*+ use_nl(look_val) */
+--                     'Y'                         ext_flg
+--             FROM    fnd_lookup_values           look_val
+--             WHERE   look_val.lookup_type        = cv_no_inv_item_type
+--             AND     look_val.lookup_code        = sel.item_code
+--             AND     look_val.language           = cv_lang
+--             AND     gd_proc_date                BETWEEN NVL( look_val.start_date_active, gd_min_date )
+--                                                 AND     NVL( look_val.end_date_active, gd_max_date )
+--             AND     look_val.enabled_flag       = ct_enabled_flg_y
+--           )
+---- ********** 2009/08/25 N.Maeda Var1.10 MOD START *********** --
+--           --INVインタフェース済フラグ(未連携orINV連携処理警告データ)
+--    AND    ( ( sel.inv_interface_flag = cv_inv_flg_n )
+--             OR ( sel.inv_interface_flag = cv_wan_data_flg ) )
+----           --INVインタフェース済フラグ(未連携)
+----    AND    sel.inv_interface_flag       = cv_inv_flg_n
+---- ********** 2009/08/25 N.Maeda Var1.10 MOD  END  *********** --
+--    AND    msib.organization_id     = gt_org_id             -- 在庫組織ID
+--    AND    msib.segment1            = sel.item_code
+--    AND    msib.enabled_flag        = ct_enabled_flg_y      -- 品目マスタ有効フラグ
+--    AND    gd_proc_date
+--             BETWEEN NVL(msib.start_date_active, gd_proc_date)
+--             AND NVL(msib.end_date_active, gd_proc_date)
+--    AND    mic.organization_id      = msib.organization_id
+--    AND    mic.inventory_item_id    = msib.inventory_item_id
+--    AND    mic.category_set_id      = gt_category_set_id
+--    AND    mic.category_id          = mcb.category_id
+--    AND    ( mcb.disable_date IS NULL
+--           OR mcb.disable_date > gd_proc_date
+--           )
+--    AND    mcb.enabled_flag        = 'Y'      -- カテゴリ有効フラグ
+--    AND    gd_proc_date
+--             BETWEEN NVL(mcb.start_date_active, gd_proc_date)
+--             AND NVL(mcb.end_date_active, gd_proc_date)
+--    ORDER BY
+--           sel.ship_from_subinventory_code,     --出荷元保管場所
+--           msib.inventory_item_id,
+--           seh.delivery_date,                   --納品日
+--           seh.sales_base_code                  --売上拠点コード
+--    FOR UPDATE OF sel.sales_exp_line_id NOWAIT
+--    ;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL  END  ************************ --
 --
 --    --対象データ取得
 --    SELECT sel.sales_exp_line_id line_id,         --販売実績明細ID
@@ -1115,39 +1311,47 @@ AS
 --    ;
 -- ************************ 2009/08/06 1.18 N.Maeda MOD  END  *************************** --
 --
-    --処理件数カウント
-    gn_target_cnt := g_sales_exp_tab.COUNT;
---
-    --抽出データ件数0件、警告メッセージ出力
-    IF ( gn_target_cnt = 0 ) THEN
-      lv_warnmsg              :=  xxccp_common_pkg.get_msg(
-        iv_application        =>  cv_xxcos_short_name,
-        iv_name               =>  cv_msg_no_data_err
-      );
-      FND_FILE.PUT_LINE(
-        which  => FND_FILE.OUTPUT
-       ,buff   => lv_warnmsg --ユーザー・警告・メッセージ
-      );
-      --空行挿入
-      FND_FILE.PUT_LINE(
-        which  => FND_FILE.OUTPUT
-       ,buff   => ''
-      );
-    END IF;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL START ************************ --
+--    --処理件数カウント
+--    gn_target_cnt := g_sales_exp_tab.COUNT;
+----
+--    --抽出データ件数0件、警告メッセージ出力
+--    IF ( gn_target_cnt = 0 ) THEN
+--      lv_warnmsg              :=  xxccp_common_pkg.get_msg(
+--        iv_application        =>  cv_xxcos_short_name,
+--        iv_name               =>  cv_msg_no_data_err
+--      );
+--      FND_FILE.PUT_LINE(
+--        which  => FND_FILE.OUTPUT
+--       ,buff   => lv_warnmsg --ユーザー・警告・メッセージ
+--      );
+--      --空行挿入
+--      FND_FILE.PUT_LINE(
+--        which  => FND_FILE.OUTPUT
+--       ,buff   => ''
+--      );
+--    END IF;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL  END  ************************ --
 --
   EXCEPTION
     -- *** 処理対象データロック例外ハンドラ ***
     WHEN global_data_lock_expt THEN
-      lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
-        iv_application        =>  cv_xxcos_short_name,
-        iv_name               =>  cv_msg_vl_table_name1
-      );
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 MOD START ************************ --
+--      lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
       ov_errmsg               :=  xxccp_common_pkg.get_msg(
         iv_application        =>  cv_xxcos_short_name,
-        iv_name               =>  cv_msg_lock_err,
-        iv_token_name1        =>  cv_tkn_nm_table_lock,
-        iv_token_value1       =>  lv_tkn_vl_table_name
+--        iv_name               =>  cv_msg_vl_table_name1
+        iv_name               =>  cv_msg_sales_exp_target,
+        iv_token_name1        =>  cv_tkn_nm_line_id,
+        iv_token_value1       =>  TO_CHAR( lt_line_id )
       );
+--      ov_errmsg               :=  xxccp_common_pkg.get_msg(
+--        iv_application        =>  cv_xxcos_short_name,
+--        iv_name               =>  cv_msg_lock_err,
+--        iv_token_name1        =>  cv_tkn_nm_table_lock,
+--        iv_token_value1       =>  lv_tkn_vl_table_name
+--      );
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 MOD  END  ************************ --
       ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg, 1, 5000 );
       ov_retcode := cv_status_error;
 --
@@ -1426,6 +1630,9 @@ AS
     ln_smb_idx                   NUMBER DEFAULT 0;           -- 生成したインデックス
     ln_first_index               VARCHAR2(300);
 --************************************* 2009/04/28 N.Maeda Var1.4 ADD  END  *********************************************
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+    ln_warn_cnt                  NUMBER DEFAULT 1;           --警告件数
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
 --
     -- *** ローカル・カーソル ***
 --
@@ -1911,9 +2118,15 @@ AS
           which  => FND_FILE.OUTPUT
          ,buff   => ''
         );
--- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
-        gt_sales_exp_line_id( gn_warn_cnt ) := g_sales_exp_tab(i).line_id;
--- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+        gt_sales_exp_line_id( ln_warn_cnt ) := g_sales_exp_tab(i).line_id;
+        ln_warn_cnt:=ln_warn_cnt+1;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL START ************************ --
+---- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
+--        gt_sales_exp_line_id( gn_warn_cnt ) := g_sales_exp_tab(i).line_id;
+---- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL  END  ************************ --
         --該当販売実績データを処理しないので、コレクションから削除します。
         g_sales_exp_tab.DELETE( i );
       ELSE
@@ -1994,9 +2207,15 @@ AS
                  which  => FND_FILE.OUTPUT
                 ,buff   => ''
               );
--- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
-              gt_sales_exp_line_id( gn_warn_cnt ) := g_sales_exp_tab(i).line_id;
--- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+        gt_sales_exp_line_id( ln_warn_cnt ) := g_sales_exp_tab(i).line_id;
+        ln_warn_cnt:=ln_warn_cnt+1;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL START ************************ --
+---- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
+--        gt_sales_exp_line_id( gn_warn_cnt ) := g_sales_exp_tab(i).line_id;
+---- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL  END  ************************ --
               --該当販売実績データを処理しないので、コレクションから削除します。
               g_sales_exp_tab.DELETE( i );
               --当ループ中止
@@ -2059,9 +2278,15 @@ AS
                  which  => FND_FILE.OUTPUT
                 ,buff   => ''
               );
--- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
-              gt_sales_exp_line_id( gn_warn_cnt ) := g_sales_exp_tab(i).line_id;
--- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+        gt_sales_exp_line_id( ln_warn_cnt ) := g_sales_exp_tab(i).line_id;
+        ln_warn_cnt:=ln_warn_cnt+1;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL START ************************ --
+---- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
+--        gt_sales_exp_line_id( gn_warn_cnt ) := g_sales_exp_tab(i).line_id;
+---- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL  END  ************************ --
               --該当販売実績データを処理しないので、コレクションから削除します。
               g_sales_exp_tab.DELETE( i );
               --当ループ中止
@@ -2106,9 +2331,15 @@ AS
                which  => FND_FILE.OUTPUT
               ,buff   => ''
             );
--- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
-            gt_sales_exp_line_id( gn_warn_cnt ) := g_sales_exp_tab(i).line_id;
--- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+        gt_sales_exp_line_id( ln_warn_cnt ) := g_sales_exp_tab(i).line_id;
+        ln_warn_cnt:=ln_warn_cnt+1;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL START ************************ --
+---- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
+--        gt_sales_exp_line_id( gn_warn_cnt ) := g_sales_exp_tab(i).line_id;
+---- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL  END  ************************ --
             --該当販売実績データを処理しないので、コレクションから削除します。
             g_sales_exp_tab.DELETE( i );
             --当ループ中止
@@ -2152,9 +2383,15 @@ AS
               ,buff   => ''
             );
             --該当販売実績データを処理しないので、コレクションから削除します。
--- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
-            gt_sales_exp_line_id( gn_warn_cnt ) := g_sales_exp_tab(i).line_id;
--- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+        gt_sales_exp_line_id( ln_warn_cnt ) := g_sales_exp_tab(i).line_id;
+        ln_warn_cnt:=ln_warn_cnt+1;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL START ************************ --
+---- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
+--        gt_sales_exp_line_id( gn_warn_cnt ) := g_sales_exp_tab(i).line_id;
+---- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL  END  ************************ --
             g_sales_exp_tab.DELETE( i );
             --当ループ中止
             EXIT;
@@ -2193,13 +2430,16 @@ AS
     END LOOP make_data_main_loop;
 --
 --************************************* 2009/04/28 N.Maeda Var1.4 ADD START *********************************************
-    --テーブルソール
+    --テーブルソート
     <<loop_make_sort_data>>
     FOR s IN 1..g_mtl_txn_oif_tab.COUNT LOOP
       --ソートキーは保管場所、品目ID、取引日、部門コード、販売実績明細ID
       lv_idx_key := g_mtl_txn_oif_tab(s).subinventory_code
                     || g_mtl_txn_oif_tab(s).inventory_item_id
-                    || g_mtl_txn_oif_tab(s).transaction_date
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 MOD START ************************ --
+--                    || g_mtl_txn_oif_tab(s).transaction_date
+                    || TO_CHAR( g_mtl_txn_oif_tab(s).transaction_date, 'yyyymmdd' )
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 MOD  END  ************************ --
                     || g_mtl_txn_oif_tab(s).dept_code
                     || g_mtl_txn_oif_tab(s).sales_exp_line_id;
       g_mtl_txn_oif_tab_spare(lv_idx_key) := g_mtl_txn_oif_tab(s);
@@ -2294,6 +2534,9 @@ AS
 --************************************* 2009/04/28 N.Maeda Var1.4 ADD START *********************************************
     lt_dept_code                 VARCHAR2(20);                                        --部門コード
 --************************************* 2009/04/28 N.Maeda Var1.4 ADD  END  *********************************************
+--************************************* 2009/09/14 S.Miyakoshi Var1.11 ADD START ****************************************
+    ln_last_data                 NUMBER;                                              --最終集計データの索引番号
+--************************************* 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ****************************************
 --
     -- *** ローカル・カーソル ***
 --
@@ -2308,14 +2551,34 @@ AS
 --###########################  固定部 END   ############################
 --
     --ブレークキー初期化
-    lt_subinventory := g_mtl_txn_oif_tab(1).subinventory_code;
-    lt_item_id      := g_mtl_txn_oif_tab(1).inventory_item_id;
-    lt_txn_date     := g_mtl_txn_oif_tab(1).transaction_date;
---************************************* 2009/04/28 N.Maeda Var1.4 ADD START *********************************************
-    lt_dept_code    := g_mtl_txn_oif_tab(1).dept_code;
---************************************* 2009/04/28 N.Maeda Var1.4 ADD  END  *********************************************
+--************************************* 2009/09/14 S.Miyakoshi Var1.11 MOD START ****************************************
+    lt_subinventory := g_mtl_txn_oif_ins_tab(1).subinventory_code;
+    lt_item_id      := g_mtl_txn_oif_ins_tab(1).inventory_item_id;
+    lt_txn_date     := g_mtl_txn_oif_ins_tab(1).transaction_date;
+    lt_dept_code    := g_mtl_txn_oif_ins_tab(1).dept_code;
+--    lt_subinventory := g_mtl_txn_oif_tab(1).subinventory_code;
+--    lt_item_id      := g_mtl_txn_oif_tab(1).inventory_item_id;
+--    lt_txn_date     := g_mtl_txn_oif_tab(1).transaction_date;
+----************************************* 2009/04/28 N.Maeda Var1.4 ADD START *********************************************
+--    lt_dept_code    := g_mtl_txn_oif_tab(1).dept_code;
+----************************************* 2009/04/28 N.Maeda Var1.4 ADD  END  *********************************************
+--************************************* 2009/09/14 S.Miyakoshi Var1.11 MOD  END  ****************************************
     ln_break_start  := 1;
     ln_break_end    := 1;
+--
+--************************************* 2009/09/14 S.Miyakoshi Var1.11 ADD START ****************************************
+    --前回フェッチ最終データの集約
+    IF ( lt_subinventory = gt_last_subinventory_code AND
+         lt_item_id      = gt_last_inventory_item_id AND
+         lt_txn_date     = gt_last_transaction_date  AND
+         lt_dept_code    = gt_last_dept_code         AND
+         g_mtl_txn_oif_ins_tab(1).transaction_type_id = gt_last_transaction_type_id ) THEN
+      --取引数量の集約
+      g_mtl_txn_oif_ins_tab(1).transaction_quantity := g_mtl_txn_oif_ins_tab(1).transaction_quantity + gt_last_transaction_quantity;
+      --前回データの初期化
+      gt_last_dept_code := NULL;
+    END IF;
+--************************************* 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ****************************************
 --
     --資材取引OIFデータの集約処理
     <<sum_main_loop>>
@@ -2327,10 +2590,18 @@ AS
 --           lt_txn_date     = g_mtl_txn_oif_tab(i).transaction_date ) THEN
     FOR i IN g_mtl_txn_oif_ins_tab.FIRST .. g_mtl_txn_oif_ins_tab.LAST LOOP
       --取引元の保管場所、取引品目ID、取引発生日、部門コードでブレーク
-      IF ( lt_subinventory = g_mtl_txn_oif_ins_tab(i).subinventory_code AND
-           lt_item_id      = g_mtl_txn_oif_ins_tab(i).inventory_item_id AND
-           lt_txn_date     = g_mtl_txn_oif_ins_tab(i).transaction_date  AND
-           lt_dept_code    = g_mtl_txn_oif_ins_tab(i).dept_code ) THEN
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 MOD START ************************ --
+      IF ( ( lt_subinventory = g_mtl_txn_oif_ins_tab(i).subinventory_code AND
+             lt_item_id      = g_mtl_txn_oif_ins_tab(i).inventory_item_id AND
+             lt_txn_date     = g_mtl_txn_oif_ins_tab(i).transaction_date  AND
+             lt_dept_code    = g_mtl_txn_oif_ins_tab(i).dept_code )
+           OR
+           ( i = g_mtl_txn_oif_ins_tab.LAST ) ) THEN
+--      IF ( lt_subinventory = g_mtl_txn_oif_ins_tab(i).subinventory_code AND
+--           lt_item_id      = g_mtl_txn_oif_ins_tab(i).inventory_item_id AND
+--           lt_txn_date     = g_mtl_txn_oif_ins_tab(i).transaction_date  AND
+--           lt_dept_code    = g_mtl_txn_oif_ins_tab(i).dept_code ) THEN
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 MOD  END  ************************ --
 --
 --        --ブレーク終了まで、Indexを保持
 --        ln_break_end := i;
@@ -2381,23 +2652,164 @@ AS
         ln_break_end := i;
         --最後のブレーク
         IF ( i = g_mtl_txn_oif_ins_tab.LAST ) THEN
-          <<last_same_break_loop>>
-          FOR j IN ln_break_start .. ln_break_end LOOP
-            --当レコードが削除されていなければ、集計される対象となります。
-            IF ( g_mtl_txn_oif_ins_tab.EXISTS( j ) ) THEN
-              --ブレーク内で同じ取引タイプIDの取引数量を計上します。
-              <<last_sum_sub_loop>>
-              FOR k IN ( j + 1 ) .. ln_break_end LOOP
-                IF ( g_mtl_txn_oif_ins_tab.EXISTS( k ) AND 
-                     g_mtl_txn_oif_ins_tab(k).transaction_type_id = g_mtl_txn_oif_ins_tab(j).transaction_type_id ) THEN
-                  g_mtl_txn_oif_ins_tab(j).transaction_quantity := g_mtl_txn_oif_ins_tab(j).transaction_quantity +
-                                                               g_mtl_txn_oif_ins_tab(k).transaction_quantity;
-                  --計上されたため、削除します。
-                  g_mtl_txn_oif_ins_tab.DELETE( k );
-                END IF;
-              END LOOP last_sum_sub_loop;
+--************************************* 2009/09/14 S.Miyakoshi Var1.11 MOD START ****************************************
+          --前回フェッチ最終分の登録データ作成
+          IF ( gt_last_dept_code IS NOT NULL ) THEN
+            g_mtl_txn_oif_ins_tab(i+1).source_code                := gt_last_source_code;                  --ソースコード
+            g_mtl_txn_oif_ins_tab(i+1).source_line_id             := gt_last_source_line_id;               --ソース明細ID
+            g_mtl_txn_oif_ins_tab(i+1).source_header_id           := gt_last_source_header_id;             --ソースヘッダーID
+            g_mtl_txn_oif_ins_tab(i+1).process_flag               := gt_last_process_flag;                 --処理フラグ
+            g_mtl_txn_oif_ins_tab(i+1).validation_required        := gt_last_validation_required;          --検証要
+            g_mtl_txn_oif_ins_tab(i+1).transaction_mode           := gt_last_transaction_mode;             --取引モード
+            g_mtl_txn_oif_ins_tab(i+1).inventory_item_id          := gt_last_inventory_item_id;            --取引品目ID
+            g_mtl_txn_oif_ins_tab(i+1).organization_id            := gt_last_organization_id;              --取引元の組織ID
+            g_mtl_txn_oif_ins_tab(i+1).transaction_quantity       := gt_last_transaction_quantity;         --取引数量
+            g_mtl_txn_oif_ins_tab(i+1).transaction_uom            := gt_last_transaction_uom;              --取引単位
+            g_mtl_txn_oif_ins_tab(i+1).transaction_date           := gt_last_transaction_date;             --取引発生日
+            g_mtl_txn_oif_ins_tab(i+1).subinventory_code          := gt_last_subinventory_code;            --取引元の保管場所名
+            g_mtl_txn_oif_ins_tab(i+1).transaction_source_id      := gt_last_transaction_source_id;        --取引ソースID
+            g_mtl_txn_oif_ins_tab(i+1).transaction_source_type_id := gt_last_tran_source_type_id;          --取引ソースタイプID
+            g_mtl_txn_oif_ins_tab(i+1).transaction_type_id        := gt_last_transaction_type_id;          --取引タイプID
+            g_mtl_txn_oif_ins_tab(i+1).scheduled_flag             := gt_last_scheduled_flag;               --計画フラグ
+            g_mtl_txn_oif_ins_tab(i+1).flow_schedule              := gt_last_flow_schedule;                --計画フロー
+            g_mtl_txn_oif_ins_tab(i+1).created_by                 := gt_last_created_by;                   --作成者ID
+            g_mtl_txn_oif_ins_tab(i+1).creation_date              := gt_last_creation_date;                --作成日
+            g_mtl_txn_oif_ins_tab(i+1).last_updated_by            := gt_last_last_updated_by;              --最終更新者ID
+            g_mtl_txn_oif_ins_tab(i+1).last_update_date           := gt_last_last_update_date;             --最終更新日
+            g_mtl_txn_oif_ins_tab(i+1).last_update_login          := gt_last_last_update_login;            --最終ログインID
+            g_mtl_txn_oif_ins_tab(i+1).request_id                 := gt_last_request_id;                   --要求ID
+            g_mtl_txn_oif_ins_tab(i+1).program_application_id     := gt_last_program_application_id;       --プログラムアプリケーションID
+            g_mtl_txn_oif_ins_tab(i+1).program_id                 := gt_last_program_id;                   --プログラムID
+            g_mtl_txn_oif_ins_tab(i+1).program_update_date        := gt_last_program_update_date;          --プログラム更新日
+          END IF;
+--
+          IF ( lt_subinventory = g_mtl_txn_oif_ins_tab(i).subinventory_code AND
+               lt_item_id      = g_mtl_txn_oif_ins_tab(i).inventory_item_id AND
+               lt_txn_date     = g_mtl_txn_oif_ins_tab(i).transaction_date  AND
+               lt_dept_code    = g_mtl_txn_oif_ins_tab(i).dept_code         AND
+               lt_type_id      = g_mtl_txn_oif_ins_tab(i).transaction_type_id ) THEN
+            <<last_same_break_loop>>
+            FOR j IN ln_break_start .. ln_break_end LOOP
+              --当レコードが削除されていなければ、集計される対象となります。
+              IF ( g_mtl_txn_oif_ins_tab.EXISTS( j ) ) THEN
+                --ブレーク内で同じ取引タイプIDの取引数量を計上します。
+                <<last_sum_sub_loop>>
+                FOR k IN ( j + 1 ) .. ln_break_end LOOP
+                  IF ( g_mtl_txn_oif_ins_tab.EXISTS( k ) AND 
+                       g_mtl_txn_oif_ins_tab(k).transaction_type_id = g_mtl_txn_oif_ins_tab(j).transaction_type_id ) THEN
+                    g_mtl_txn_oif_ins_tab(j).transaction_quantity := g_mtl_txn_oif_ins_tab(j).transaction_quantity +
+                                                                 g_mtl_txn_oif_ins_tab(k).transaction_quantity;
+                    --計上されたため、削除します。
+                    g_mtl_txn_oif_ins_tab.DELETE( k );
+                    --最終データの索引番号の取得
+                    ln_last_data := j;
+                  END IF;
+                END LOOP last_sum_sub_loop;
+              END IF;
+            END LOOP last_same_break_loop;
+--
+            --最終集計データを変数に格納します。
+            IF ( g_mtl_txn_oif_ins_tab.EXISTS( ln_last_data ) ) THEN
+              gt_last_source_code            := g_mtl_txn_oif_ins_tab( ln_last_data ).source_code;                 --ソースコード
+              gt_last_source_line_id         := g_mtl_txn_oif_ins_tab( ln_last_data ).source_line_id;              --ソース明細ID
+              gt_last_source_header_id       := g_mtl_txn_oif_ins_tab( ln_last_data ).source_header_id;            --ソースヘッダーID
+              gt_last_process_flag           := g_mtl_txn_oif_ins_tab( ln_last_data ).process_flag;                --処理フラグ
+              gt_last_validation_required    := g_mtl_txn_oif_ins_tab( ln_last_data ).validation_required;         --検証要
+              gt_last_transaction_mode       := g_mtl_txn_oif_ins_tab( ln_last_data ).transaction_mode;            --取引モード
+              gt_last_inventory_item_id      := g_mtl_txn_oif_ins_tab( ln_last_data ).inventory_item_id;           --取引品目ID
+              gt_last_organization_id        := g_mtl_txn_oif_ins_tab( ln_last_data ).organization_id;             --取引元の組織ID
+              gt_last_transaction_quantity   := g_mtl_txn_oif_ins_tab( ln_last_data ).transaction_quantity;        --取引数量
+              gt_last_transaction_uom        := g_mtl_txn_oif_ins_tab( ln_last_data ).transaction_uom;             --取引単位
+              gt_last_transaction_date       := g_mtl_txn_oif_ins_tab( ln_last_data ).transaction_date;            --取引発生日
+              gt_last_subinventory_code      := g_mtl_txn_oif_ins_tab( ln_last_data ).subinventory_code;           --取引元の保管場所名
+              gt_last_transaction_source_id  := g_mtl_txn_oif_ins_tab( ln_last_data ).transaction_source_id;       --取引ソースID
+              gt_last_tran_source_type_id    := g_mtl_txn_oif_ins_tab( ln_last_data ).transaction_source_type_id;  --取引ソースタイプID
+              gt_last_transaction_type_id    := g_mtl_txn_oif_ins_tab( ln_last_data ).transaction_type_id;         --取引タイプID
+              gt_last_scheduled_flag         := g_mtl_txn_oif_ins_tab( ln_last_data ).scheduled_flag;              --計画フラグ
+              gt_last_flow_schedule          := g_mtl_txn_oif_ins_tab( ln_last_data ).flow_schedule;               --計画フロー
+              gt_last_created_by             := g_mtl_txn_oif_ins_tab( ln_last_data ).created_by;                  --作成者ID
+              gt_last_creation_date          := g_mtl_txn_oif_ins_tab( ln_last_data ).creation_date;               --作成日
+              gt_last_last_updated_by        := g_mtl_txn_oif_ins_tab( ln_last_data ).last_updated_by;             --最終更新者ID
+              gt_last_last_update_date       := g_mtl_txn_oif_ins_tab( ln_last_data ).last_update_date;            --最終更新日
+              gt_last_last_update_login      := g_mtl_txn_oif_ins_tab( ln_last_data ).last_update_login;           --最終ログインID
+              gt_last_request_id             := g_mtl_txn_oif_ins_tab( ln_last_data ).request_id;                  --要求ID
+              gt_last_program_application_id := g_mtl_txn_oif_ins_tab( ln_last_data ).program_application_id;      --プログラムアプリケーションID
+              gt_last_program_id             := g_mtl_txn_oif_ins_tab( ln_last_data ).program_id;                  --プログラムID
+              gt_last_program_update_date    := g_mtl_txn_oif_ins_tab( ln_last_data ).program_update_date;         --プログラム更新日
+              gt_last_dept_code              := g_mtl_txn_oif_ins_tab( ln_last_data ).dept_code;                   --部門コード
+              --変数に格納したため、削除します。
+              g_mtl_txn_oif_ins_tab.DELETE( ln_last_data );
             END IF;
-          END LOOP last_same_break_loop;
+          ELSE
+            <<last_same_break_loop>>
+            FOR j IN ln_break_start .. ( ln_break_end - 1 ) LOOP
+              --当レコードが削除されていなければ、集計される対象となります。
+              IF ( g_mtl_txn_oif_ins_tab.EXISTS( j ) ) THEN
+                --ブレーク内で同じ取引タイプIDの取引数量を計上します。
+                <<last_sum_sub_loop>>
+                FOR k IN ( j + 1 ) .. ( ln_break_end - 1 ) LOOP
+                  IF ( g_mtl_txn_oif_ins_tab.EXISTS( k ) AND 
+                       g_mtl_txn_oif_ins_tab(k).transaction_type_id = g_mtl_txn_oif_ins_tab(j).transaction_type_id ) THEN
+                    g_mtl_txn_oif_ins_tab(j).transaction_quantity := g_mtl_txn_oif_ins_tab(j).transaction_quantity +
+                                                                 g_mtl_txn_oif_ins_tab(k).transaction_quantity;
+                    --計上されたため、削除します。
+                    g_mtl_txn_oif_ins_tab.DELETE( k );
+                  END IF;
+                END LOOP last_sum_sub_loop;
+              END IF;
+            END LOOP last_same_break_loop;
+--
+            --最終データを変数に格納
+            gt_last_source_code            := g_mtl_txn_oif_ins_tab( i ).source_code;                 --ソースコード
+            gt_last_source_line_id         := g_mtl_txn_oif_ins_tab( i ).source_line_id;              --ソース明細ID
+            gt_last_source_header_id       := g_mtl_txn_oif_ins_tab( i ).source_header_id;            --ソースヘッダーID
+            gt_last_process_flag           := g_mtl_txn_oif_ins_tab( i ).process_flag;                --処理フラグ
+            gt_last_validation_required    := g_mtl_txn_oif_ins_tab( i ).validation_required;         --検証要
+            gt_last_transaction_mode       := g_mtl_txn_oif_ins_tab( i ).transaction_mode;            --取引モード
+            gt_last_inventory_item_id      := g_mtl_txn_oif_ins_tab( i ).inventory_item_id;           --取引品目ID
+            gt_last_organization_id        := g_mtl_txn_oif_ins_tab( i ).organization_id;             --取引元の組織ID
+            gt_last_transaction_quantity   := g_mtl_txn_oif_ins_tab( i ).transaction_quantity;        --取引数量
+            gt_last_transaction_uom        := g_mtl_txn_oif_ins_tab( i ).transaction_uom;             --取引単位
+            gt_last_transaction_date       := g_mtl_txn_oif_ins_tab( i ).transaction_date;            --取引発生日
+            gt_last_subinventory_code      := g_mtl_txn_oif_ins_tab( i ).subinventory_code;           --取引元の保管場所名
+            gt_last_transaction_source_id  := g_mtl_txn_oif_ins_tab( i ).transaction_source_id;       --取引ソースID
+            gt_last_tran_source_type_id    := g_mtl_txn_oif_ins_tab( i ).transaction_source_type_id;  --取引ソースタイプID
+            gt_last_transaction_type_id    := g_mtl_txn_oif_ins_tab( i ).transaction_type_id;         --取引タイプID
+            gt_last_scheduled_flag         := g_mtl_txn_oif_ins_tab( i ).scheduled_flag;              --計画フラグ
+            gt_last_flow_schedule          := g_mtl_txn_oif_ins_tab( i ).flow_schedule;               --計画フロー
+            gt_last_created_by             := g_mtl_txn_oif_ins_tab( i ).created_by;                  --作成者ID
+            gt_last_creation_date          := g_mtl_txn_oif_ins_tab( i ).creation_date;               --作成日
+            gt_last_last_updated_by        := g_mtl_txn_oif_ins_tab( i ).last_updated_by;             --最終更新者ID
+            gt_last_last_update_date       := g_mtl_txn_oif_ins_tab( i ).last_update_date;            --最終更新日
+            gt_last_last_update_login      := g_mtl_txn_oif_ins_tab( i ).last_update_login;           --最終ログインID
+            gt_last_request_id             := g_mtl_txn_oif_ins_tab( i ).request_id;                  --要求ID
+            gt_last_program_application_id := g_mtl_txn_oif_ins_tab( i ).program_application_id;      --プログラムアプリケーションID
+            gt_last_program_id             := g_mtl_txn_oif_ins_tab( i ).program_id;                  --プログラムID
+            gt_last_program_update_date    := g_mtl_txn_oif_ins_tab( i ).program_update_date;         --プログラム更新日
+            gt_last_dept_code              := g_mtl_txn_oif_ins_tab( i ).dept_code;                   --部門コード
+            --変数に格納したため、削除します。
+            g_mtl_txn_oif_ins_tab.DELETE( i );
+          END IF;
+--************************************* 2009/09/14 S.Miyakoshi Var1.11 MOD  END  ****************************************
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL START ************************ --
+--          <<last_same_break_loop>>
+--          FOR j IN ln_break_start .. ln_break_end LOOP
+--            --当レコードが削除されていなければ、集計される対象となります。
+--            IF ( g_mtl_txn_oif_ins_tab.EXISTS( j ) ) THEN
+--              --ブレーク内で同じ取引タイプIDの取引数量を計上します。
+--              <<last_sum_sub_loop>>
+--              FOR k IN ( j + 1 ) .. ln_break_end LOOP
+--                IF ( g_mtl_txn_oif_ins_tab.EXISTS( k ) AND 
+--                     g_mtl_txn_oif_ins_tab(k).transaction_type_id = g_mtl_txn_oif_ins_tab(j).transaction_type_id ) THEN
+--                  g_mtl_txn_oif_ins_tab(j).transaction_quantity := g_mtl_txn_oif_ins_tab(j).transaction_quantity +
+--                                                               g_mtl_txn_oif_ins_tab(k).transaction_quantity;
+--                  --計上されたため、削除します。
+--                  g_mtl_txn_oif_ins_tab.DELETE( k );
+--                END IF;
+--              END LOOP last_sum_sub_loop;
+--            END IF;
+--          END LOOP last_same_break_loop;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL  END  ************************ --
         END IF;
       ELSE
         --今回のブレーク内で集計
@@ -2423,6 +2835,7 @@ AS
         lt_item_id      := g_mtl_txn_oif_ins_tab(i).inventory_item_id;
         lt_txn_date     := g_mtl_txn_oif_ins_tab(i).transaction_date;
         lt_dept_code    := g_mtl_txn_oif_ins_tab(i).dept_code;
+        lt_type_id      := g_mtl_txn_oif_ins_tab(i).transaction_type_id;
 --************************************* 2009/04/28 N.Maeda Var1.4 MOD  END  *********************************************
         --次のブレーク開始Indexを設定します。
         ln_break_start := i;
@@ -2432,6 +2845,9 @@ AS
     --資材取引テーブル登録処理
     BEGIN
       <<insert_loop>>
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+      IF ( g_mtl_txn_oif_ins_tab.COUNT > 0 ) THEN
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
 --************************************* 2009/04/28 N.Maeda Var1.4 MOD START *********************************************
 --      FOR l IN g_mtl_txn_oif_tab.FIRST .. g_mtl_txn_oif_tab.LAST LOOP
 --        IF ( g_mtl_txn_oif_tab.EXISTS( l ) ) THEN
@@ -2528,11 +2944,18 @@ AS
 --************************************* 2009/04/28 N.Maeda Var1.4 MOD  END  *********************************************
           )
           ;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+          --正常件数のカウント
+          gn_normal_cnt := gn_normal_cnt + 1;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
 /* 2009/06/17 Ver1.6 Add Start */
           END IF;
 /* 2009/06/17 Ver1.6 Add End   */
         END IF;
       END LOOP insert_loop;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+      END IF;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
     EXCEPTION
       WHEN OTHERS THEN
         RAISE global_data_insert_expt;
@@ -2582,9 +3005,12 @@ AS
    * Description      : 処理済ステータス更新(A-5)
    ***********************************************************************************/
   PROCEDURE update_inv_fsh_flag(
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+    iv_update_flag IN  VARCHAR2,     --   対象データ更新フラグ
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
+    ov_errbuf      OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode     OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg      OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -2603,6 +3029,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+    lv_update        CONSTANT VARCHAR2(1) := 'Y'; -- 対象データ更新
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
 --
     -- *** ローカル変数 ***
     lv_tkn_vl_table_name      VARCHAR2(100);      --エラー対象であるテーブル名
@@ -2633,32 +3062,97 @@ AS
 --
 --###########################  固定部 END   ############################
 --
--- ************************ 2009/08/06 1.18 N.Maeda ADD START *************************** --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+    IF ( iv_update_flag = lv_update ) THEN
+      IF ( g_sales_exp_tab.COUNT > 0 ) THEN
+        ln_up_count := 0;
+        -- UPDATE用変数へコピー
+        <<up_co_loop>>
+        FOR c IN g_sales_exp_tab.FIRST..g_sales_exp_tab.LAST LOOP
+          IF ( g_sales_exp_tab.EXISTS( c ) ) THEN
+            ln_up_count := ln_up_count + 1;
+            line_id_tab(ln_up_count) := g_sales_exp_tab(c).line_id;
+          END IF;
+        END LOOP up_co_loop;
 --
--- ************************ 2009/08/25 1.10 N.Maeda ADD START *************************** --
-    IF ( g_sales_exp_tab.COUNT > 0 ) THEN
--- ************************ 2009/08/25 1.10 N.Maeda ADD  END  *************************** --
-      ln_up_count := 0;
-      -- UPDATE用変数へコピー
-      <<up_co_loop>>
-      FOR c IN g_sales_exp_tab.FIRST..g_sales_exp_tab.LAST LOOP
-        IF ( g_sales_exp_tab.EXISTS( c ) ) THEN
-          ln_up_count := ln_up_count + 1;
-          line_id_tab(ln_up_count) := g_sales_exp_tab(c).line_id;
-        END IF;
-      END LOOP up_co_loop;
+        --販売実績の処理済ステータスの更新処理
+        BEGIN
+          FORALL i IN 1..line_id_tab.COUNT
 --
--- ************************ 2009/08/06 1.18 N.Maeda ADD  END  *************************** --
+              UPDATE xxcos_sales_exp_lines sel                                   --販売実績明細テーブル
+              SET    sel.inv_interface_flag       = cv_inv_flg_y,                --INVインタフェース済フラグ
+                     sel.last_updated_by          = cn_last_updated_by,          --最終更新者
+                     sel.last_update_date         = cd_last_update_date,         --最終更新日
+                     sel.last_update_login        = cn_last_update_login,        --最終更新ﾛｸﾞｲﾝ
+                     sel.request_id               = cn_request_id,               --要求ID
+                     sel.program_application_id   = cn_program_application_id,   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+                     sel.program_id               = cn_program_id,               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+                     sel.program_update_date      = cd_program_update_date       --ﾌﾟﾛｸﾞﾗﾑ更新日
+              WHERE  sel.sales_exp_line_id        = line_id_tab(i)               --明細ID
+              ;
 --
-      --販売実績の処理済ステータスの更新処理
+        EXCEPTION
+          --対象データ更新失敗
+          WHEN OTHERS THEN
+            lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
+              iv_application        =>  cv_xxcos_short_name,
+              iv_name               =>  cv_msg_sales_exp_nomal
+            );
+            RAISE global_data_update_expt;
+        END;
+      END IF;
+--
+      IF ( gt_sales_exp_line_id.COUNT > 0 ) THEN
+        -- 警告データ更新
+        BEGIN
+          FORALL w IN 1..gt_sales_exp_line_id.COUNT
+              UPDATE xxcos_sales_exp_lines sel                                   --販売実績明細テーブル
+              SET    sel.inv_interface_flag       = cv_wan_data_flg,             --INVインタフェース警告終了フラグ
+                     sel.last_updated_by          = cn_last_updated_by,          --最終更新者
+                     sel.last_update_date         = cd_last_update_date,         --最終更新日
+                     sel.last_update_login        = cn_last_update_login,        --最終更新ﾛｸﾞｲﾝ
+                     sel.request_id               = cn_request_id,               --要求ID
+                     sel.program_application_id   = cn_program_application_id,   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+                     sel.program_id               = cn_program_id,               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+                     sel.program_update_date      = cd_program_update_date       --ﾌﾟﾛｸﾞﾗﾑ更新日
+              WHERE  sel.sales_exp_line_id        = gt_sales_exp_line_id(w)       --明細ID
+              ;
+        EXCEPTION
+          --対象データ更新失敗
+          WHEN OTHERS THEN
+            lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
+              iv_application        =>  cv_xxcos_short_name,
+              iv_name               =>  cv_msg_sales_exp_warn
+            );
+            RAISE global_data_update_expt;
+        END;
+      END IF;
+--
+--
+    ELSE
+      -- 対象外データロック、対象外データ取得
       BEGIN
--- ************************ 2009/08/06 1.8 N.Maeda MOD START *************************** --
+        SELECT xsel.ROWID row_id
+        BULK COLLECT INTO l_row_id
+        FROM   xxcos_sales_exp_headers xseh
+               ,xxcos_sales_exp_lines   xsel
+        WHERE  xseh.sales_exp_header_id = xsel.sales_exp_header_id
+        AND    xsel.inv_interface_flag = cv_inv_flg_n
+        AND    xseh.delivery_date     <= gd_proc_date
+        FOR UPDATE OF xsel.inv_interface_flag NOWAIT;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          NULL;
+      END;
 --
+      -- 処理対象外データが存在する場合
+      IF ( l_row_id.COUNT > 0 ) THEN
 --
-        FORALL i IN 1..line_id_tab.COUNT
---
+        -- 対象外データ更新
+        BEGIN
+          FORALL n IN 1..l_row_id.COUNT
             UPDATE xxcos_sales_exp_lines sel                                   --販売実績明細テーブル
-            SET    sel.inv_interface_flag       = cv_inv_flg_y,                --INVインタフェース済フラグ
+            SET    sel.inv_interface_flag       = cv_excluded_flg,             --INVインタフェース警告終了フラグ
                    sel.last_updated_by          = cn_last_updated_by,          --最終更新者
                    sel.last_update_date         = cd_last_update_date,         --最終更新日
                    sel.last_update_login        = cn_last_update_login,        --最終更新ﾛｸﾞｲﾝ
@@ -2666,111 +3160,162 @@ AS
                    sel.program_application_id   = cn_program_application_id,   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
                    sel.program_id               = cn_program_id,               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
                    sel.program_update_date      = cd_program_update_date       --ﾌﾟﾛｸﾞﾗﾑ更新日
-            WHERE  sel.sales_exp_line_id        = line_id_tab(i)               --明細ID
+            WHERE  sel.ROWID                    = l_row_id(n)                  --行ID
             ;
+        EXCEPTION
+          --対象データ更新失敗
+          WHEN OTHERS THEN
+            lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
+              iv_application        =>  cv_xxcos_short_name,
+              iv_name               =>  cv_msg_sales_exp_exclu
+            );
+          RAISE global_data_update_expt;
+        END;
+      END IF;
+    END IF;
 --
---      <<update_loop>>
---      FOR i IN g_sales_exp_tab.FIRST .. g_sales_exp_tab.LAST LOOP
---        IF ( g_sales_exp_tab.EXISTS( i ) ) THEN
---        UPDATE xxcos_sales_exp_lines sel                                   --販売実績明細テーブル
---        SET    sel.inv_interface_flag       = cv_inv_flg_y,                --INVインタフェース済フラグ
---               sel.last_updated_by          = cn_last_updated_by,          --最終更新者
---               sel.last_update_date         = cd_last_update_date,         --最終更新日
---               sel.last_update_login        = cn_last_update_login,        --最終更新ﾛｸﾞｲﾝ
---               sel.request_id               = cn_request_id,               --要求ID
---               sel.program_application_id   = cn_program_application_id,   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
---               sel.program_id               = cn_program_id,               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
---               sel.program_update_date      = cd_program_update_date       --ﾌﾟﾛｸﾞﾗﾑ更新日
---        WHERE  sel.sales_exp_line_id        = g_sales_exp_tab(i).line_id   --明細ID
---        ;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
+--
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL START ************************ --
+---- ************************ 2009/08/06 1.18 N.Maeda ADD START *************************** --
+----
+---- ************************ 2009/08/25 1.10 N.Maeda ADD START *************************** --
+--    IF ( g_sales_exp_tab.COUNT > 0 ) THEN
+---- ************************ 2009/08/25 1.10 N.Maeda ADD  END  *************************** --
+--      ln_up_count := 0;
+--      -- UPDATE用変数へコピー
+--      <<up_co_loop>>
+--      FOR c IN g_sales_exp_tab.FIRST..g_sales_exp_tab.LAST LOOP
+--        IF ( g_sales_exp_tab.EXISTS( c ) ) THEN
+--          ln_up_count := ln_up_count + 1;
+--          line_id_tab(ln_up_count) := g_sales_exp_tab(c).line_id;
 --        END IF;
---      END LOOP update_loop;
--- ************************ 2009/08/06 1.8 N.Maeda MOD  END  *************************** --
-      EXCEPTION
-        --対象データ更新失敗
-        WHEN OTHERS THEN
--- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
-          lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
-            iv_application        =>  cv_xxcos_short_name,
-            iv_name               =>  cv_msg_sales_exp_nomal
-          );
--- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
-          RAISE global_data_update_expt;
-      END;
--- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
-    END IF;
---
-    IF ( gt_sales_exp_line_id.COUNT > 0 ) THEN
-      -- 警告データ更新
-      BEGIN
-        FORALL w IN 1..gt_sales_exp_line_id.COUNT
-            UPDATE xxcos_sales_exp_lines sel                                   --販売実績明細テーブル
-            SET    sel.inv_interface_flag       = cv_wan_data_flg,             --INVインタフェース警告終了フラグ
-                   sel.last_updated_by          = cn_last_updated_by,          --最終更新者
-                   sel.last_update_date         = cd_last_update_date,         --最終更新日
-                   sel.last_update_login        = cn_last_update_login,        --最終更新ﾛｸﾞｲﾝ
-                   sel.request_id               = cn_request_id,               --要求ID
-                   sel.program_application_id   = cn_program_application_id,   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-                   sel.program_id               = cn_program_id,               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-                   sel.program_update_date      = cd_program_update_date       --ﾌﾟﾛｸﾞﾗﾑ更新日
-            WHERE  sel.sales_exp_line_id        = gt_sales_exp_line_id(w)       --明細ID
-            ;
-      EXCEPTION
-        --対象データ更新失敗
-        WHEN OTHERS THEN
-          lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
-            iv_application        =>  cv_xxcos_short_name,
-            iv_name               =>  cv_msg_sales_exp_warn
-          );
-          RAISE global_data_update_expt;
-      END;
-    END IF;
---
---
-    -- 対象外データロック、対象外データ取得
-    BEGIN
-      SELECT xsel.ROWID row_id
-      BULK COLLECT INTO l_row_id
-      FROM   xxcos_sales_exp_headers xseh
-             ,xxcos_sales_exp_lines   xsel
-      WHERE  xseh.sales_exp_header_id = xsel.sales_exp_header_id
-      AND    xsel.inv_interface_flag = cv_inv_flg_n
-      AND    xseh.delivery_date     <= gd_proc_date
-      FOR UPDATE OF xsel.inv_interface_flag NOWAIT;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        NULL;
-    END;
---
-    -- 処理対象外データが存在する場合
-    IF ( l_row_id.COUNT > 0 ) THEN
---
-      -- 対象外データ更新
-      BEGIN
-        FORALL n IN 1..l_row_id.COUNT
-          UPDATE xxcos_sales_exp_lines sel                                   --販売実績明細テーブル
-          SET    sel.inv_interface_flag       = cv_excluded_flg,             --INVインタフェース警告終了フラグ
-                 sel.last_updated_by          = cn_last_updated_by,          --最終更新者
-                 sel.last_update_date         = cd_last_update_date,         --最終更新日
-                 sel.last_update_login        = cn_last_update_login,        --最終更新ﾛｸﾞｲﾝ
-                 sel.request_id               = cn_request_id,               --要求ID
-                 sel.program_application_id   = cn_program_application_id,   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-                 sel.program_id               = cn_program_id,               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-                 sel.program_update_date      = cd_program_update_date       --ﾌﾟﾛｸﾞﾗﾑ更新日
-          WHERE  sel.ROWID                    = l_row_id(n)                  --行ID
-          ;
-      EXCEPTION
-        --対象データ更新失敗
-        WHEN OTHERS THEN
-          lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
-            iv_application        =>  cv_xxcos_short_name,
-            iv_name               =>  cv_msg_sales_exp_exclu
-          );
-        RAISE global_data_update_expt;
-      END;
-    END IF;
---
--- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
+--      END LOOP up_co_loop;
+----
+---- ************************ 2009/08/06 1.18 N.Maeda ADD  END  *************************** --
+----
+--      --販売実績の処理済ステータスの更新処理
+--      BEGIN
+---- ************************ 2009/08/06 1.8 N.Maeda MOD START *************************** --
+----
+----
+--        FORALL i IN 1..line_id_tab.COUNT
+----
+--            UPDATE xxcos_sales_exp_lines sel                                   --販売実績明細テーブル
+--            SET    sel.inv_interface_flag       = cv_inv_flg_y,                --INVインタフェース済フラグ
+--                   sel.last_updated_by          = cn_last_updated_by,          --最終更新者
+--                   sel.last_update_date         = cd_last_update_date,         --最終更新日
+--                   sel.last_update_login        = cn_last_update_login,        --最終更新ﾛｸﾞｲﾝ
+--                   sel.request_id               = cn_request_id,               --要求ID
+--                   sel.program_application_id   = cn_program_application_id,   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+--                   sel.program_id               = cn_program_id,               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+--                   sel.program_update_date      = cd_program_update_date       --ﾌﾟﾛｸﾞﾗﾑ更新日
+--            WHERE  sel.sales_exp_line_id        = line_id_tab(i)               --明細ID
+--            ;
+----
+----      <<update_loop>>
+----      FOR i IN g_sales_exp_tab.FIRST .. g_sales_exp_tab.LAST LOOP
+----        IF ( g_sales_exp_tab.EXISTS( i ) ) THEN
+----        UPDATE xxcos_sales_exp_lines sel                                   --販売実績明細テーブル
+----        SET    sel.inv_interface_flag       = cv_inv_flg_y,                --INVインタフェース済フラグ
+----               sel.last_updated_by          = cn_last_updated_by,          --最終更新者
+----               sel.last_update_date         = cd_last_update_date,         --最終更新日
+----               sel.last_update_login        = cn_last_update_login,        --最終更新ﾛｸﾞｲﾝ
+----               sel.request_id               = cn_request_id,               --要求ID
+----               sel.program_application_id   = cn_program_application_id,   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+----               sel.program_id               = cn_program_id,               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+----               sel.program_update_date      = cd_program_update_date       --ﾌﾟﾛｸﾞﾗﾑ更新日
+----        WHERE  sel.sales_exp_line_id        = g_sales_exp_tab(i).line_id   --明細ID
+----        ;
+----        END IF;
+----      END LOOP update_loop;
+---- ************************ 2009/08/06 1.8 N.Maeda MOD  END  *************************** --
+--      EXCEPTION
+--        --対象データ更新失敗
+--        WHEN OTHERS THEN
+---- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
+--          lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
+--            iv_application        =>  cv_xxcos_short_name,
+--            iv_name               =>  cv_msg_sales_exp_nomal
+--          );
+---- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
+--          RAISE global_data_update_expt;
+--      END;
+---- ********** 2009/08/25 N.Maeda Var1.10 ADD START *********** --
+--    END IF;
+----
+--    IF ( gt_sales_exp_line_id.COUNT > 0 ) THEN
+--      -- 警告データ更新
+--      BEGIN
+--        FORALL w IN 1..gt_sales_exp_line_id.COUNT
+--            UPDATE xxcos_sales_exp_lines sel                                   --販売実績明細テーブル
+--            SET    sel.inv_interface_flag       = cv_wan_data_flg,             --INVインタフェース警告終了フラグ
+--                   sel.last_updated_by          = cn_last_updated_by,          --最終更新者
+--                   sel.last_update_date         = cd_last_update_date,         --最終更新日
+--                   sel.last_update_login        = cn_last_update_login,        --最終更新ﾛｸﾞｲﾝ
+--                   sel.request_id               = cn_request_id,               --要求ID
+--                   sel.program_application_id   = cn_program_application_id,   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+--                   sel.program_id               = cn_program_id,               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+--                   sel.program_update_date      = cd_program_update_date       --ﾌﾟﾛｸﾞﾗﾑ更新日
+--            WHERE  sel.sales_exp_line_id        = gt_sales_exp_line_id(w)       --明細ID
+--            ;
+--      EXCEPTION
+--        --対象データ更新失敗
+--        WHEN OTHERS THEN
+--          lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
+--            iv_application        =>  cv_xxcos_short_name,
+--            iv_name               =>  cv_msg_sales_exp_warn
+--          );
+--          RAISE global_data_update_expt;
+--      END;
+--    END IF;
+----
+----
+--    -- 対象外データロック、対象外データ取得
+--    BEGIN
+--      SELECT xsel.ROWID row_id
+--      BULK COLLECT INTO l_row_id
+--      FROM   xxcos_sales_exp_headers xseh
+--             ,xxcos_sales_exp_lines   xsel
+--      WHERE  xseh.sales_exp_header_id = xsel.sales_exp_header_id
+--      AND    xsel.inv_interface_flag = cv_inv_flg_n
+--      AND    xseh.delivery_date     <= gd_proc_date
+--      FOR UPDATE OF xsel.inv_interface_flag NOWAIT;
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        NULL;
+--    END;
+----
+--    -- 処理対象外データが存在する場合
+--    IF ( l_row_id.COUNT > 0 ) THEN
+----
+--      -- 対象外データ更新
+--      BEGIN
+--        FORALL n IN 1..l_row_id.COUNT
+--          UPDATE xxcos_sales_exp_lines sel                                   --販売実績明細テーブル
+--          SET    sel.inv_interface_flag       = cv_excluded_flg,             --INVインタフェース警告終了フラグ
+--                 sel.last_updated_by          = cn_last_updated_by,          --最終更新者
+--                 sel.last_update_date         = cd_last_update_date,         --最終更新日
+--                 sel.last_update_login        = cn_last_update_login,        --最終更新ﾛｸﾞｲﾝ
+--                 sel.request_id               = cn_request_id,               --要求ID
+--                 sel.program_application_id   = cn_program_application_id,   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+--                 sel.program_id               = cn_program_id,               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+--                 sel.program_update_date      = cd_program_update_date       --ﾌﾟﾛｸﾞﾗﾑ更新日
+--          WHERE  sel.ROWID                    = l_row_id(n)                  --行ID
+--          ;
+--      EXCEPTION
+--        --対象データ更新失敗
+--        WHEN OTHERS THEN
+--          lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
+--            iv_application        =>  cv_xxcos_short_name,
+--            iv_name               =>  cv_msg_sales_exp_exclu
+--          );
+--        RAISE global_data_update_expt;
+--      END;
+--    END IF;
+----
+---- ********** 2009/08/25 N.Maeda Var1.10 ADD  END  *********** --
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL  END  ************************ --
 --
   EXCEPTION
     --*** 対象データ更新例外ハンドラ ***
@@ -2857,8 +3402,16 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- ********** 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************** --
+    lv_update_flag      CONSTANT VARCHAR2(1) := 'Y';   -- 対象データ更新
+    lv_no_update_flag   CONSTANT VARCHAR2(1) := 'N';   -- 対象外データ更新
+-- ********** 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************** --
 --
     -- *** ローカル変数 ***
+-- ********** 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************** --
+    ln_fetch_cnt              NUMBER;               -- フェッチ取得件数
+    lv_warnmsg                VARCHAR2(5000);       --ユーザー・警告・メッセージ
+-- ********** 2009/09/14 S.Miyakoshi Var1.11 ADD END **************************** --
 --
   BEGIN
 --
@@ -2891,36 +3444,35 @@ AS
     -- ===============================
     -- A-2  対象データ取得
     -- ===============================
-    get_data(
-      lv_errbuf,          -- エラー・メッセージ           --# 固定 #
-      lv_retcode,         -- リターン・コード             --# 固定 #
-      lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #
-    IF ( lv_retcode = cv_status_normal ) THEN
-      NULL;
-    ELSE
-      RAISE global_process_expt;
-    END IF;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+    -- カーソルOPEN
+    OPEN  get_main_cur;
+    LOOP
+      -- バルクフェッチ
+      FETCH get_main_cur BULK COLLECT INTO g_sales_exp_tab LIMIT gn_bulk_size;
+      EXIT WHEN g_sales_exp_tab.COUNT = 0;
 --
-    -- ===============================
-    -- A-3  資材取引データ生成
-    -- ===============================
-    IF ( gn_target_cnt > 0 ) THEN
-     make_mtl_tran_data(
-       lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-       lv_retcode,        -- リターン・コード             --# 固定 #
-       lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-     IF ( lv_retcode = cv_status_normal ) THEN
-       NULL;
-     ELSE
-       RAISE global_process_expt;
-     END IF;
-    END IF;
+      -- 対象データロック
+      get_data(
+        lv_errbuf,          -- エラー・メッセージ           --# 固定 #
+        gv_lock_retcode,    -- ロック処理リターン・コード
+        lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #
+      IF ( gv_lock_retcode = cv_status_normal ) THEN
+        NULL;
+      ELSE
+        ov_errmsg  := lv_errmsg;
+        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+        ov_retcode := cv_status_error;
+        EXIT WHEN gv_lock_retcode <> cv_status_normal;
+      END IF;
 --
-    -- ===============================
-    -- A-4  資材取引OIF出力
-    -- ===============================
-    IF ( g_mtl_txn_oif_tab.COUNT > 0 ) THEN
-      insert_mtl_tran_oif(
+      -- 対象件数カウント
+      gn_target_cnt := gn_target_cnt + g_sales_exp_tab.COUNT;
+--
+      -- ===============================
+      -- A-3  資材取引データ生成
+      -- ===============================
+      make_mtl_tran_data(
         lv_errbuf,         -- エラー・メッセージ           --# 固定 #
         lv_retcode,        -- リターン・コード             --# 固定 #
         lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2929,15 +3481,27 @@ AS
       ELSE
         RAISE global_process_expt;
       END IF;
-    END IF;
 --
-    -- ===============================
-    -- A-5  処理済ステータス更新
-    -- ===============================
--- ************************ 2009/08/25 1.10 N.Maeda DEL START *************************** --
---    IF ( g_sales_exp_tab.COUNT > 0 ) THEN
--- ************************ 2009/08/25 1.10 N.Maeda DEL  END  *************************** --
+      -- ===============================
+      -- A-4  資材取引OIF出力
+      -- ===============================
+      IF ( g_mtl_txn_oif_tab.COUNT > 0 ) THEN
+        insert_mtl_tran_oif(
+          lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+          lv_retcode,        -- リターン・コード             --# 固定 #
+          lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+        IF ( lv_retcode = cv_status_normal ) THEN
+          NULL;
+        ELSE
+          RAISE global_process_expt;
+        END IF;
+      END IF;
+--
+      -- ===============================
+      -- A-5  処理済ステータス更新(対象、警告データの更新)
+      -- ===============================
       update_inv_fsh_flag(
+        lv_update_flag,    -- 対象データ更新フラグ＝'Y'
         lv_errbuf,         -- エラー・メッセージ           --# 固定 #
         lv_retcode,        -- リターン・コード             --# 固定 #
         lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2946,27 +3510,204 @@ AS
       ELSE
         RAISE global_process_expt;
       END IF;
--- ************************ 2009/08/25 1.10 N.Maeda DEL START *************************** --
+--
+      -- 変数の初期化
+      g_sales_exp_tab.DELETE;
+      gt_sales_exp_line_id.DELETE;
+      g_mtl_txn_oif_tab.DELETE;
+      g_mtl_txn_oif_tab_spare.DELETE;
+      g_mtl_txn_oif_ins_tab.DELETE;
+--
+      -- コミット発行
+      COMMIT;
+--
+    END LOOP;
+    -- 最終データの登録
+    IF ( gt_last_source_code IS NOT NULL ) THEN
+      INSERT INTO 
+        mtl_transactions_interface(
+          source_code,                    --ソースコード
+          source_line_id,                 --ソース明細ID
+          source_header_id,               --ソースヘッダーID
+          process_flag,                   --処理フラグ
+          validation_required,            --検証要
+          transaction_mode,               --取引モード
+          inventory_item_id,              --取引品目ID
+          organization_id,                --取引元の組織ID
+          transaction_quantity,           --取引数量
+          transaction_uom,                --取引単位
+          transaction_date,               --取引発生日
+          subinventory_code,              --取引元の保管場所名
+          transaction_source_id,          --取引ソースID
+          transaction_source_type_id,     --取引ソースタイプID
+          transaction_type_id,            --取引タイプID
+          scheduled_flag,                 --計画フラグ
+          flow_schedule,                  --計画フロー
+          created_by,                     --作成者ID
+          creation_date,                  --作成日
+          last_updated_by,                --最終更新者ID
+          last_update_date,               --最終更新日
+          last_update_login,              --最終ログインID
+          request_id,                     --要求ID
+          program_application_id,         --プログラムアプリケーションID
+          program_id,                     --プログラムID
+          program_update_date             --プログラム更新日
+        )
+      VALUES(
+        gt_last_source_code,              --ソースコード
+        gt_last_source_line_id,           --ソース明細ID
+        gt_last_source_header_id,         --ソースヘッダーID
+        gt_last_process_flag,             --処理フラグ
+        gt_last_validation_required,      --検証要
+        gt_last_transaction_mode,         --取引モード
+        gt_last_inventory_item_id,        --取引品目ID
+        gt_last_organization_id,          --取引元の組織ID
+        gt_last_transaction_quantity,     --取引数量
+        gt_last_transaction_uom,          --取引単位
+        gt_last_transaction_date,         --取引発生日
+        gt_last_subinventory_code,        --取引元の保管場所名
+        gt_last_transaction_source_id,    --取引ソースID
+        gt_last_tran_source_type_id,      --取引ソースタイプID
+        gt_last_transaction_type_id,      --取引タイプID
+        gt_last_scheduled_flag,           --計画フラグ
+        gt_last_flow_schedule,            --計画フロー
+        gt_last_created_by,               --作成者ID
+        gt_last_creation_date,            --作成日
+        gt_last_last_updated_by,          --最終更新者ID
+        gt_last_last_update_date,         --最終更新日
+        gt_last_last_update_login,        --最終ログインID
+        gt_last_request_id,               --要求ID
+        gt_last_program_application_id,   --プログラムアプリケーションID
+        gt_last_program_id,               --プログラムID
+        gt_last_program_update_date       --プログラム更新日
+      )
+      ;
+      --正常件数のカウント
+      gn_normal_cnt := gn_normal_cnt + 1;
+--
+      -- コミット発行
+      COMMIT;
+--
+    END IF;
+    -- カーソルCLOSE
+    CLOSE get_main_cur;
+--
+    IF ( gv_lock_retcode <> cv_status_error ) THEN
+      -- ===============================
+      -- A-5  処理済ステータス更新(対象外データの更新)
+      -- ===============================
+      update_inv_fsh_flag(
+        lv_no_update_flag, -- 対象データ更新フラグ
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF ( lv_retcode = cv_status_normal ) THEN
+        NULL;
+      ELSE
+        RAISE global_process_expt;
+      END IF;
+    END IF;
+--
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
+--
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL START ************************ --
+----    get_data(
+----      lv_errbuf,          -- エラー・メッセージ           --# 固定 #
+----      lv_retcode,         -- リターン・コード             --# 固定 #
+----      lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #
+----    IF ( lv_retcode = cv_status_normal ) THEN
+----      NULL;
+----    ELSE
+----      RAISE global_process_expt;
+----    END IF;
+----
+--    -- ===============================
+--    -- A-3  資材取引データ生成
+--    -- ===============================
+--    IF ( gn_target_cnt > 0 ) THEN
+--     make_mtl_tran_data(
+--       lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--       lv_retcode,        -- リターン・コード             --# 固定 #
+--       lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--     IF ( lv_retcode = cv_status_normal ) THEN
+--       NULL;
+--     ELSE
+--       RAISE global_process_expt;
+--     END IF;
 --    END IF;
--- ************************ 2009/08/25 1.10 N.Maeda DEL  END  *************************** --
---
---
---************************************* 2009/04/28 N.Maeda Var1.4 MOD START *********************************************
-    --正常件数取得
---    gn_normal_cnt := g_mtl_txn_oif_tab.COUNT;
-    --正常件数取得
-    gn_normal_cnt := g_mtl_txn_oif_ins_tab.COUNT;
---************************************* 2009/04/28 N.Maeda Var1.4 MOD  END  *********************************************
---
+----
+--    -- ===============================
+--    -- A-4  資材取引OIF出力
+--    -- ===============================
+--    IF ( g_mtl_txn_oif_tab.COUNT > 0 ) THEN
+--      insert_mtl_tran_oif(
+--        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--        lv_retcode,        -- リターン・コード             --# 固定 #
+--        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--      IF ( lv_retcode = cv_status_normal ) THEN
+--        NULL;
+--      ELSE
+--        RAISE global_process_expt;
+--      END IF;
+--    END IF;
+----
+--    -- ===============================
+--    -- A-5  処理済ステータス更新
+--    -- ===============================
+---- ************************ 2009/08/25 1.10 N.Maeda DEL START *************************** --
+----    IF ( g_sales_exp_tab.COUNT > 0 ) THEN
+---- ************************ 2009/08/25 1.10 N.Maeda DEL  END  *************************** --
+--      update_inv_fsh_flag(
+--        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--        lv_retcode,        -- リターン・コード             --# 固定 #
+--        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--      IF ( lv_retcode = cv_status_normal ) THEN
+--        NULL;
+--      ELSE
+--        RAISE global_process_expt;
+--      END IF;
+---- ************************ 2009/08/25 1.10 N.Maeda DEL START *************************** --
+----    END IF;
+---- ************************ 2009/08/25 1.10 N.Maeda DEL  END  *************************** --
+----
+----************************************* 2009/04/28 N.Maeda Var1.4 MOD START *********************************************
+--    --正常件数取得
+----    gn_normal_cnt := g_mtl_txn_oif_tab.COUNT;
+--    --正常件数取得
+--    gn_normal_cnt := g_mtl_txn_oif_ins_tab.COUNT;
+----************************************* 2009/04/28 N.Maeda Var1.4 MOD  END  *********************************************
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 DEL  END  ************************ --
 --
     --ステータス制御処理
     IF ( gn_target_cnt = 0 OR gn_warn_cnt > 0 ) THEN
-      ov_retcode := cv_status_warn;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 MOD START ************************ --
+--      ov_retcode := cv_status_warn;
+      IF ( gv_lock_retcode = cv_status_error ) THEN
+        NULL;
+      ELSE
+        ov_retcode := cv_status_warn;
+        --抽出データ件数0件、警告メッセージ出力
+        IF ( gn_target_cnt = 0 ) THEN
+        lv_warnmsg              :=  xxccp_common_pkg.get_msg(
+          iv_application        =>  cv_xxcos_short_name,
+          iv_name               =>  cv_msg_no_data_err
+        );
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_warnmsg --ユーザー・警告・メッセージ
+        );
+        --空行挿入
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => ''
+        );
+        END IF;
+      END IF;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 MOD  END  ************************ --
     END IF;
 --
   EXCEPTION
-      -- *** 任意で例外処理を記述する ****
-      -- カーソルのクローズをここに記述する
+    -- *** 任意で例外処理を記述する ****
 --
 --#################################  固定例外処理部 START   ###################################
 --
@@ -2983,6 +3724,12 @@ AS
     WHEN OTHERS THEN
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+      -- カーソルのクローズ
+      IF ( get_main_cur%ISOPEN ) THEN
+        CLOSE get_main_cur;
+      END IF;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
 --
 --####################################  固定部 END   ##########################################
 --
@@ -3016,6 +3763,9 @@ AS
     cv_normal_msg      CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90004'; -- 正常終了メッセージ
     cv_warn_msg        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90005'; -- 警告終了メッセージ
     cv_error_msg       CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90006'; -- エラー終了全ロールバック
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+    cv_error_part_msg  CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90007'; -- エラー終了一部処理メッセージ
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
     cv_log_header_out  CONSTANT VARCHAR2(6)   := 'OUTPUT';           -- コンカレントヘッダメッセージ出力先：出力
     cv_log_header_log  CONSTANT VARCHAR2(6)   := 'LOG';              -- コンカレントヘッダメッセージ出力先：ログ
     -- ===============================
@@ -3096,12 +3846,25 @@ AS
     );
     --
     --エラー件数出力
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+    IF ( gv_lock_retcode = cv_status_error ) THEN
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_xxccp_short_name
+                      ,iv_name         => cv_error_rec_msg
+                      ,iv_token_name1  => cv_cnt_token
+                      ,iv_token_value1 => '1'
+                     );
+    ELSE
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_xxccp_short_name
                     ,iv_name         => cv_error_rec_msg
                     ,iv_token_name1  => cv_cnt_token
                     ,iv_token_value1 => TO_CHAR( gn_error_cnt )
                    );
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
+    END IF;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
     FND_FILE.PUT_LINE(
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
@@ -3130,8 +3893,23 @@ AS
       lv_message_code := cv_normal_msg;
     ELSIF( lv_retcode = cv_status_warn ) THEN
       lv_message_code := cv_warn_msg;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 MOD START ************************ --
+      IF ( gv_lock_retcode = cv_status_error ) THEN
+        lv_message_code := cv_warn_msg;
+      ELSE
+        lv_message_code := cv_warn_msg;
+      END IF;
+--      lv_message_code := cv_warn_msg;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 MOD  END  ************************ --
     ELSIF( lv_retcode = cv_status_error ) THEN
-      lv_message_code := cv_error_msg;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 MOD START ************************ --
+      IF ( gv_lock_retcode = cv_status_error ) THEN
+        lv_message_code := cv_error_part_msg;
+      ELSE
+        lv_message_code := cv_error_msg;
+      END IF;
+--      lv_message_code := cv_error_msg;
+-- ************************ 2009/09/14 S.Miyakoshi Var1.11 MOD  END  ************************ --
     END IF;
     --
     gv_out_msg := xxccp_common_pkg.get_msg(
