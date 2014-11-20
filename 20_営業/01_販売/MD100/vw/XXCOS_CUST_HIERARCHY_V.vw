@@ -3,7 +3,7 @@
  *
  * View Name       : XXCOS_CUST_HIERARCHY_V
  * Description     : 顧客階層ビュー
- * Version         : 1.1
+ * Version         : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -14,65 +14,54 @@
  *                                       ・ヒント句追加
  *  2009/07/30    1.2   K.Kakishita      [0000433] パフォーマンス障害
  *                                       ・④のWHERE句を変更
- *
+ *  2009/08/03    1.3   K.Kakishita      [0000433] パフォーマンス障害
+ *                                       ・ヒント句削除
+ *                                       ・インラインビューの別名追加
+ *                                       ・④表別名変更
  ************************************************************************/
   CREATE OR REPLACE FORCE VIEW "APPS"."XXCOS_CUST_HIERARCHY_V" ("CASH_ACCOUNT_ID", "CASH_ACCOUNT_NUMBER", "CASH_ACCOUNT_NAME", "BILL_ACCOUNT_ID", "BILL_ACCOUNT_NUMBER", "BILL_ACCOUNT_NAME", "SHIP_ACCOUNT_ID", "SHIP_ACCOUNT_NUMBER", "SHIP_ACCOUNT_NAME", "CASH_RECEIV_BASE_CODE", "BILL_PARTY_ID", "BILL_BILL_BASE_CODE", "BILL_POSTAL_CODE", "BILL_STATE", "BILL_CITY", "BILL_ADDRESS1", "BILL_ADDRESS2", "BILL_TEL_NUM", "BILL_CONS_INV_FLAG", "BILL_TORIHIKISAKI_CODE", "BILL_STORE_CODE", "BILL_CUST_STORE_NAME", "BILL_TAX_DIV", "BILL_CRED_REC_CODE1", "BILL_CRED_REC_CODE2", "BILL_CRED_REC_CODE3", "BILL_INVOICE_TYPE", "BILL_PAYMENT_TERM_ID", "BILL_PAYMENT_TERM2", "BILL_PAYMENT_TERM3", "BILL_TAX_ROUND_RULE", "SHIP_SALE_BASE_CODE") AS
   SELECT
-         cash_account_id                                  --入金先顧客ID
-        ,cash_account_number                              --入金先顧客コード
+         cust_hier.cash_account_id                        --入金先顧客ID
+        ,cust_hier.cash_account_number                    --入金先顧客コード
         ,xxcfr_common_pkg.get_cust_account_name(
-                            cash_account_number,
+                            cust_hier.cash_account_number,
                             0)                            --入金先顧客名称
-        ,bill_account_id                                  --請求先顧客ID
-        ,bill_account_number                              --請求先顧客コード
+        ,cust_hier.bill_account_id                        --請求先顧客ID
+        ,cust_hier.bill_account_number                    --請求先顧客コード
         ,xxcfr_common_pkg.get_cust_account_name(
-                            bill_account_number,
+                            cust_hier.bill_account_number,
                             0)                            --請求先顧客名称
-        ,ship_account_id                                  --出荷先顧客ID
-        ,ship_account_number                              --出荷先顧客コード
+        ,cust_hier.ship_account_id                        --出荷先顧客ID
+        ,cust_hier.ship_account_number                    --出荷先顧客コード
         ,xxcfr_common_pkg.get_cust_account_name(
-                            ship_account_number,
+                            cust_hier.ship_account_number,
                             0)                            --出荷先顧客名称
-        ,cash_receiv_base_code                            --入金拠点コード
-        ,bill_party_id                                    --パーティID
-        ,bill_bill_base_code                              --請求拠点コード
-        ,bill_postal_code                                 --郵便番号
-        ,bill_state                                       --都道府県
-        ,bill_city                                        --市・区
-        ,bill_address1                                    --住所1
-        ,bill_address2                                    --住所2
-        ,bill_tel_num                                     --電話番号
-        ,bill_cons_inv_flag                               --一括請求書発行フラグ
-        ,bill_torihikisaki_code                           --取引先コード
-        ,bill_store_code                                  --店舗コード
-        ,bill_cust_store_name                             --顧客店舗名称
-        ,bill_tax_div                                     --消費税区分
-        ,bill_cred_rec_code1                              --売掛コード1(請求書)
-        ,bill_cred_rec_code2                              --売掛コード2(事業所)
-        ,bill_cred_rec_code3                              --売掛コード3(その他)
-        ,bill_invoice_type                                --請求書出力形式
-        ,bill_payment_term_id                             --支払条件
-        ,TO_NUMBER(bill_payment_term2)                    --第2支払条件
-        ,TO_NUMBER(bill_payment_term3)                    --第3支払条件
-        ,bill_tax_round_rule                              --税金－端数処理
-        ,ship_sale_base_code                              --売上拠点コード
+        ,cust_hier.cash_receiv_base_code                  --入金拠点コード
+        ,cust_hier.bill_party_id                          --パーティID
+        ,cust_hier.bill_bill_base_code                    --請求拠点コード
+        ,cust_hier.bill_postal_code                       --郵便番号
+        ,cust_hier.bill_state                             --都道府県
+        ,cust_hier.bill_city                              --市・区
+        ,cust_hier.bill_address1                          --住所1
+        ,cust_hier.bill_address2                          --住所2
+        ,cust_hier.bill_tel_num                           --電話番号
+        ,cust_hier.bill_cons_inv_flag                     --一括請求書発行フラグ
+        ,cust_hier.bill_torihikisaki_code                 --取引先コード
+        ,cust_hier.bill_store_code                        --店舗コード
+        ,cust_hier.bill_cust_store_name                   --顧客店舗名称
+        ,cust_hier.bill_tax_div                           --消費税区分
+        ,cust_hier.bill_cred_rec_code1                    --売掛コード1(請求書)
+        ,cust_hier.bill_cred_rec_code2                    --売掛コード2(事業所)
+        ,cust_hier.bill_cred_rec_code3                    --売掛コード3(その他)
+        ,cust_hier.bill_invoice_type                      --請求書出力形式
+        ,cust_hier.bill_payment_term_id                   --支払条件
+        ,TO_NUMBER(cust_hier.bill_payment_term2)          --第2支払条件
+        ,TO_NUMBER(cust_hier.bill_payment_term3)          --第3支払条件
+        ,cust_hier.bill_tax_round_rule                    --税金－端数処理
+        ,cust_hier.ship_sale_base_code                    --売上拠点コード
   FROM   (
   --①入金先顧客＆請求先顧客－出荷先顧客
     SELECT
-          /*+
-            INDEX ( bill_hzca_1 )
-            INDEX ( bill_hasa_1 )
-            INDEX ( bill_hsua_1 )
-            INDEX ( bill_hzad_1 XXCMM_CUST_ACCOUNTS_PK )
-            INDEX ( bill_hzps_1 HZ_PARTY_SITES_U1 )
-            INDEX ( bill_hzlo_1 HZ_LOCATIONS_U1 )
-            INDEX ( bill_hzcp_1 HZ_CUSTOMER_PROFILES_N3  )
-            INDEX ( ship_hzca_1 )
-            INDEX ( ship_hasa_1 )
-            INDEX ( ship_hsua_1 )
-            INDEX ( ship_hzad_1 XXCMM_CUST_ACCOUNTS_PK )
-            INDEX ( bill_hcar_1 )
-          */
            bill_hzca_1.cust_account_id         AS cash_account_id         --入金先顧客ID
           ,bill_hzca_1.account_number          AS cash_account_number     --入金先顧客コード
           ,bill_hzca_1.cust_account_id         AS bill_account_id         --請求先顧客ID
@@ -131,7 +120,7 @@
     AND    bill_hzps_1.location_id = bill_hzlo_1.location_id                 --請求先パーティサイト.事業所ID = 請求先顧客事業所.事業所ID
     AND    bill_hsua_1.site_use_id = bill_hzcp_1.site_use_id(+)              --請求先顧客使用目的.使用目的ID = 請求先顧客プロファイル.使用目的ID
     AND NOT EXISTS (
-                SELECT /*+ INDEX ( cash_hcar_1 ) */
+                SELECT /*+ INDEX( cash_hcar_1 HZ_CUST_ACCT_RELATE_N2 ) */
                        'X'
                 FROM   hz_cust_acct_relate       cash_hcar_1   --顧客関連マスタ(入金関連)
                 WHERE  cash_hcar_1.status = 'A'                                          --顧客関連マスタ(入金関連).ステータス = ‘A’
@@ -141,24 +130,6 @@
     UNION ALL
     --②入金先顧客－請求先顧客－出荷先顧客
     SELECT
-          /*+
-            INDEX ( cash_hzca_2 ) 
-            INDEX ( cash_hasa_2 )
-            INDEX ( cash_hzad_2 XXCMM_CUST_ACCOUNTS_PK )
-            INDEX ( bill_hzca_2 )
-            INDEX ( bill_hasa_2 )
-            INDEX ( bill_hsua_2 )
-            INDEX ( bill_hzad_2 XXCMM_CUST_ACCOUNTS_PK )
-            INDEX ( bill_hzps_2 HZ_PARTY_SITES_U1 )
-            INDEX ( bill_hzlo_2 HZ_LOCATIONS_U1 )
-            INDEX ( bill_hzcp_2 HZ_CUSTOMER_PROFILES_N3 )
-            INDEX ( ship_hzca_2 )
-            INDEX ( ship_hasa_2 )
-            INDEX ( ship_hsua_2 )
-            INDEX ( ship_hzad_2 XXCMM_CUST_ACCOUNTS_PK )
-            INDEX ( cash_hcar_2 )
-            INDEX ( bill_hcar_2 )
-          */
            cash_hzca_2.cust_account_id           AS cash_account_id         --入金先顧客ID
           ,cash_hzca_2.account_number            AS cash_account_number     --入金先顧客コード
           ,bill_hzca_2.cust_account_id           AS bill_account_id         --請求先顧客ID
@@ -230,20 +201,6 @@
     UNION ALL
     --③入金先顧客－請求先顧客＆出荷先顧客
     SELECT
-          /*+
-            INDEX( cash_hzca_3 )
-            INDEX( cash_hasa_3 )
-            INDEX( cash_hzad_3 XCMM_CUST_ACCOUNTS_PK )
-            INDEX( ship_hzca_3 )
-            INDEX( bill_hasa_3 )
-            INDEX( bill_hsua_3 )
-            INDEX( ship_hsua_3 )
-            INDEX( bill_hzad_3 XCMM_CUST_ACCOUNTS_PK )
-            INDEX( bill_hzps_3 HZ_PARTY_SITES_U1 )
-            INDEX( bill_hzlo_3 HZ_LOCATIONS_U1 )
-            INDEX( bill_hzcp_3 HZ_CUSTOMER_PROFILES_N3 )
-            INDEX( cash_hcar_3 )
-          */
            cash_hzca_3.cust_account_id             AS cash_account_id         --入金先顧客ID
           ,cash_hzca_3.account_number              AS cash_account_number     --入金先顧客コード
           ,ship_hzca_3.cust_account_id             AS bill_account_id         --請求先顧客ID
@@ -293,7 +250,7 @@
     AND    cash_hcar_3.status = 'A'                                          --顧客関連マスタ(入金関連).ステータス = ‘A’
     AND    cash_hcar_3.attribute1 = '2'                                      --顧客関連マスタ(入金関連).関連分類 = ‘2’ (入金)
     AND    NOT EXISTS (
-               SELECT /*+ INDEX ( ex_hcar_3 ) */
+               SELECT /*+ INDEX( ex_hcar_3 HZ_CUST_ACCT_RELATE_N1 ) */
                       ROWNUM
                FROM   hz_cust_acct_relate     ex_hcar_3       --顧客関連マスタ(請求関連)
                WHERE  ex_hcar_3.cust_account_id = ship_hzca_3.cust_account_id         --顧客関連マスタ(請求関連).顧客ID = 出荷先顧客マスタ.顧客ID
@@ -312,16 +269,6 @@
     UNION ALL
     --④入金先顧客＆請求先顧客＆出荷先顧客
     SELECT
-           /*+
-             INDEX ( ship_hzca_4 )
-             INDEX ( bill_hasa_4 )
-             INDEX ( bill_hsua_4 )
-             INDEX ( ship_hsua_4 )
-             INDEX ( bill_hzad_4 XXCOS_CUST_ACCOUNTS_PK )
-             INDEX ( bill_hzps_4 HZ_PARTY_SITES_U1 )
-             INDEX ( bill_hzlo_4 HZ_LOCATIONS_U1 )
-             INDEX ( bill_hzcp_4 HZ_CUSTOMER_PROFILES_N3 )
-           */
            ship_hzca_4.cust_account_id               AS cash_account_id         --入金先顧客ID
           ,ship_hzca_4.account_number                AS cash_account_number     --入金先顧客コード
           ,ship_hzca_4.cust_account_id               AS bill_account_id         --請求先顧客ID
@@ -361,20 +308,20 @@
           ,hz_customer_profiles      bill_hzcp_4              --請求先顧客プロファイル
     WHERE  ship_hzca_4.customer_class_code IN ('10','12')             --請求先顧客.顧客区分 = '10'(顧客)
     AND    NOT EXISTS (
-               SELECT /*+ INDEX ( ex_hcar_4 ) */
+               SELECT /*+ INDEX( ex_hcar_41 HZ_CUST_ACCT_RELATE_N1 ) */
                       ROWNUM
-               FROM   hz_cust_acct_relate     ex_hcar_4       --顧客関連マスタ
+               FROM   hz_cust_acct_relate     ex_hcar_41      --顧客関連マスタ
                WHERE
-                      ex_hcar_4.cust_account_id = ship_hzca_4.cust_account_id           --顧客関連マスタ(請求関連).顧客ID = 出荷先顧客マスタ.顧客ID
-               AND    ex_hcar_4.status = 'A'                                            --顧客関連マスタ(請求関連).ステータス = ‘A’
+                      ex_hcar_41.cust_account_id = ship_hzca_4.cust_account_id          --顧客関連マスタ(請求関連).顧客ID = 出荷先顧客マスタ.顧客ID
+               AND    ex_hcar_41.status = 'A'                                           --顧客関連マスタ(請求関連).ステータス = ‘A’
                     )
     AND    NOT EXISTS (
-               SELECT /*+ INDEX ( ex_hcar_4 ) */
+               SELECT /*+ INDEX( ex_hcar_42 HZ_CUST_ACCT_RELATE_N2 ) */
                       ROWNUM
-               FROM   hz_cust_acct_relate     ex_hcar_4       --顧客関連マスタ
+               FROM   hz_cust_acct_relate     ex_hcar_42      --顧客関連マスタ
                WHERE
-                      ex_hcar_4.related_cust_account_id = ship_hzca_4.cust_account_id   --顧客関連マスタ(請求関連).関連先顧客ID = 出荷先顧客マスタ.顧客ID
-               AND    ex_hcar_4.status = 'A'                                            --顧客関連マスタ(請求関連).ステータス = ‘A’
+                      ex_hcar_42.related_cust_account_id = ship_hzca_4.cust_account_id   --顧客関連マスタ(請求関連).関連先顧客ID = 出荷先顧客マスタ.顧客ID
+               AND    ex_hcar_42.status = 'A'                                            --顧客関連マスタ(請求関連).ステータス = ‘A’
                     )
     AND    ship_hzca_4.cust_account_id = bill_hzad_4.customer_id             --請求先顧客マスタ.顧客ID = 顧客追加情報.顧客ID
     AND    ship_hzca_4.cust_account_id = bill_hasa_4.cust_account_id         --請求先顧客マスタ.顧客ID = 請求先顧客所在地.顧客ID
@@ -385,7 +332,7 @@
     AND    bill_hasa_4.party_site_id = bill_hzps_4.party_site_id             --請求先顧客所在地.パーティサイトID = 請求先パーティサイト.パーティサイトID
     AND    bill_hzps_4.location_id = bill_hzlo_4.location_id                 --請求先パーティサイト.事業所ID = 請求先顧客事業所.事業所ID
     AND    bill_hsua_4.site_use_id = bill_hzcp_4.site_use_id(+)              --請求先顧客使用目的.使用目的ID = 請求先顧客プロファイル.使用目的ID
-);
+) cust_hier;
 COMMENT ON  COLUMN  xxcos_cust_hierarchy_v.cash_account_id         IS  '入金先顧客ID';
 COMMENT ON  COLUMN  xxcos_cust_hierarchy_v.cash_account_number     IS  '入金先顧客コード';
 COMMENT ON  COLUMN  xxcos_cust_hierarchy_v.cash_account_name       IS  '入金先顧客名称';
