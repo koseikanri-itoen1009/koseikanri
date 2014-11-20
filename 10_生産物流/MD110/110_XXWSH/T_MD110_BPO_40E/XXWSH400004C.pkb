@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼締め関数
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_BPO_40E_出荷依頼締め関数
- * Version                : 1.3
+ * Version                : 1.4
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *                                     呼出元フラグ'2'(画面)の場合の取得SQLを変更
  *                                     （依頼Noのみをキー項目に更新対象のデータを取得する)
  *  2008/6/06    1.3   Oracle 石渡賢和 リードタイムチェック時の判定を変更
+ *  2008/6/27    1.4   Oracle 上原正好 内部課題56対応 呼出元が画面の場合にも締め管理アドオン登録
  *
  *****************************************************************************************/
 --
@@ -170,6 +171,7 @@ AS
   gn_user_id         NUMBER;                    -- ログインしているユーザー
   gn_login_id        NUMBER;                    -- 最終更新ログイン
   gv_sales_base_category VARCHAR2(3);           -- 拠点カテゴリ
+  gv_base_record_class VARCHAR2(2);             -- 基準レコード区分
   gn_conc_request_id NUMBER;                    -- 要求ID
   gn_prog_appl_id    NUMBER;                    -- コンカレント・プログラム・アプリケーションID
   gn_conc_program_id NUMBER;                    -- コンカレント・プログラムID
@@ -196,6 +198,7 @@ AS
     -- ===============================
     cv_prg_name             CONSTANT VARCHAR2(30) := 'insert_tightening_control'; -- プログラム名
     cv_tighten_release_class_1       VARCHAR2(1)  := '1'; -- 締め/解除区分 締め
+    cv_base_record_class_Z           VARCHAR2(1)    := 'Z'; -- 基準レコード区分Z
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -229,6 +232,11 @@ AS
     INTO   ln_transaction_id
     FROM   dual;
 --
+    -- 基準レコード区分が'Z'の場合、コンカレントIDに'-(マイナス)トランザクションID'をセットする。
+    IF (iv_base_record_class = cv_base_record_class_Z) THEN
+      gn_conc_request_id := - ln_transaction_id;
+--      gn_conc_program_id := - ln_transaction_id;
+    END IF;
     -- =====================================
     -- 出荷依頼締め管理（アドオン）登録
     -- =====================================
@@ -259,11 +267,11 @@ AS
       , gn_conc_request_id            -- コンカレントID
       , NVL(in_order_type_id,gn_m999) -- 受注タイプID
       , NVL(iv_deliver_from,gv_ALL)   -- 出荷元保管場所
-      , iv_prod_class                 -- 商品区分
+      , NVL(iv_prod_class,gv_ALL)     -- 商品区分
       , NVL(iv_sales_base,gv_ALL)     -- 拠点
       , NVL(gv_sales_base_category,gv_ALL) -- 拠点カテゴリ
       , NVL(in_lead_time_day,gn_m999) -- 生産物流LT
-      , id_schedule_ship_date         -- 出荷予定日
+      , NVL(id_schedule_ship_date,SYSDATE) -- 出荷予定日
       , cv_tighten_release_class_1    -- 締め/解除区分 1：締め
       , SYSDATE                       -- 締め実施日時
       , iv_base_record_class          -- 基準レコード区分
@@ -799,6 +807,7 @@ AS
     cv_tightening_status_chk_cla_0   VARCHAR2(1)    := '0'; -- 締めステータスチェック区分0
     cv_base_record_class_Y           VARCHAR2(1)    := 'Y'; -- 基準レコード区分Y
     cv_base_record_class_N           VARCHAR2(1)    := 'N'; -- 基準レコード区分N
+    cv_base_record_class_Z           VARCHAR2(1)    := 'Z'; -- 基準レコード区分Z
     cv_callfrom_flg_1                VARCHAR2(1)    := '1'; -- 呼出元フラグ1
     cv_callfrom_flg_2                VARCHAR2(1)    := '2'; -- 呼出元フラグ2
     cv_status_2                      VARCHAR2(1)    := '2'; -- 締めステータス2
@@ -1243,17 +1252,25 @@ AS
                                gv_msg_null_06) || gv_line_feed;
     END IF;
 --
+    -- 呼出元フラグが画面の場合、基準レコード区分：'Z'を登録する。
+    IF (iv_callfrom_flg = cv_callfrom_flg_2) THEN
+      gv_base_record_class := cv_base_record_class_Z;
+    END IF;
     -- 「基準レコード区分」が登録されている場合
     IF (iv_base_record_class IS NOT NULL) THEN
       -- 「基準レコード区分」チェック
       IF ((iv_base_record_class <> cv_base_record_class_Y)
-      AND (iv_base_record_class <> cv_base_record_class_N)) THEN
+      AND (iv_base_record_class <> cv_base_record_class_N)
+      AND (iv_base_record_class <> cv_base_record_class_Z)) THEN
         -- 基準レコード区分のNULLチェックを行います
         lv_err_message := lv_err_message ||
         xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
                                  gv_cnst_msg_prop,
                                  gv_cnst_tkn_para,
                                  gv_msg_null_01) || gv_line_feed;
+      ELSE
+        --グローバル変数に基準レコード区分をセット
+        gv_base_record_class := iv_base_record_class;
       END IF;
     END IF;
 --
@@ -1869,30 +1886,34 @@ AS
     ELSE
       -- 出荷依頼情報対象データあり
 --
-      IF (iv_callfrom_flg = cv_callfrom_flg_1) THEN
+      -- Del start 2008/06/27 uehara 呼出元が画面でも締め済みレコードを登録する。
+--      IF (iv_callfrom_flg = cv_callfrom_flg_1) THEN
         -- 呼出元フラグ 1:コンカレント
+      -- Del end 2008/06/27 uehara
 --
-        -- **************************************************
-        -- *** 締め済みレコード登録(E-5)
-        -- **************************************************
+      -- **************************************************
+      -- *** 締め済みレコード登録(E-5)
+      -- **************************************************
 --
-        insert_tightening_control(in_order_type_id,       -- 出庫形態ID
-                                  iv_deliver_from,        -- 出荷元
-                                  iv_sales_base,          -- 拠点
-                                  gv_sales_base_category, -- 拠点カテゴリ
-                                  in_lead_time_day,       -- 生産物流LT
-                                  id_schedule_ship_date,  -- 出庫日
-                                  iv_prod_class,          -- 商品区分
-                                  iv_base_record_class,   -- 基準レコード区分
-                                  lv_retcode,             -- リターンコード
-                                  lv_errbuf,              -- エラーメッセージコード
-                                  lv_errmsg);             -- エラーメッセージ
+      insert_tightening_control(in_order_type_id,       -- 出庫形態ID
+                                iv_deliver_from,        -- 出荷元
+                                iv_sales_base,          -- 拠点
+                                gv_sales_base_category, -- 拠点カテゴリ
+                                in_lead_time_day,       -- 生産物流LT
+                                id_schedule_ship_date,  -- 出庫日
+                                iv_prod_class,          -- 商品区分
+                                gv_base_record_class,   -- 基準レコード区分
+                                lv_retcode,             -- リターンコード
+                                lv_errbuf,              -- エラーメッセージコード
+                                lv_errmsg);             -- エラーメッセージ
 --
-        -- 締め済みレコード登録処理がエラーの場合
-        IF (lv_retcode = gv_status_error) THEN
-          RAISE global_api_expt;
-        END IF;
+      -- 締め済みレコード登録処理がエラーの場合
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
       END IF;
+      -- Del start 2008/06/27 uehara
+--      END IF;
+      -- Del end 2008/06/27 uehara
 --
       -- **************************************************
       -- *** ステータス一括更新(E-7)
