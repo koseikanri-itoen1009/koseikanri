@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2008/12/03    1.0   SCS M.Yoshioka   V‹Kì¬
  *  2008/12/26    1.1   SCS H.Nakajima   Disc•i–ÚƒAƒhƒIƒ“‚ÌŒ‹‡ğŒ‚ğ•ÏX
+ *  2009/08/20    1.2   SCS T.Murakami   İŒÉ‘gD‚ğuS01v¨uZ99v‚É•ÏX
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCOI_TXN_ENABLE_ITEM_INFO_V
@@ -61,7 +62,7 @@ FROM   mtl_system_items_b   msib                                      -- Disc•i–
       ,xxcmn_item_mst_b     ximb                                      -- OPM•i–ÚƒAƒhƒIƒ“
       ,xxcmm_system_items_b xsib                                      -- Disc•i–ÚƒAƒhƒIƒ“
 WHERE msib.segment1 = iimb.item_no
-  AND msib.organization_id = xxcoi_common_pkg.get_organization_id('S01')
+  AND msib.organization_id = xxcoi_common_pkg.get_organization_id('Z99')
   AND msib.inventory_item_status_code <> 'Inactive'
   AND msib.customer_order_enabled_flag = 'Y'
   AND msib.mtl_transactions_enabled_flag = 'Y'

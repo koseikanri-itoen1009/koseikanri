@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/18    1.0   SCS H.Wada       新規作成
  *  2008/12/04    1.1   SCS H.Wada       修正（VDコラムマスタ名修正）
+ *  2009/08/20    1.2   SCS T.Murakami   在庫組織を「S01」→「Z99」に変更
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCOI_VD_COL_M_MTC_V
@@ -72,7 +73,7 @@ FROM     xxcoi_mst_vd_column                 xmvc                             --
                 ,xxcmn_item_mst_b     ximb
                 ,xxcmm_system_items_b xsib
           WHERE  msib.segment1 = iimb.item_no
-          AND    msib.organization_id = xxcoi_common_pkg.get_organization_id('S01')
+          AND    msib.organization_id = xxcoi_common_pkg.get_organization_id('Z99')
           AND    iimb.item_id = ximb.item_id
           AND    iimb.item_id = xsib.item_id 
           AND    iimb.attribute26 = '1')     sub_query1                       -- 2.品目情報サブクエリー1
@@ -85,7 +86,7 @@ FROM     xxcoi_mst_vd_column                 xmvc                             --
                 ,xxcmn_item_mst_b     ximb
                 ,xxcmm_system_items_b xsib
           WHERE  msib.segment1 = iimb.item_no
-          AND    msib.organization_id = xxcoi_common_pkg.get_organization_id('S01')
+          AND    msib.organization_id = xxcoi_common_pkg.get_organization_id('Z99')
           AND    iimb.item_id = ximb.item_id
           AND    iimb.item_id = xsib.item_id 
           AND    iimb.attribute26 = '1')     sub_query2                       -- 3.品目情報サブクエリー2

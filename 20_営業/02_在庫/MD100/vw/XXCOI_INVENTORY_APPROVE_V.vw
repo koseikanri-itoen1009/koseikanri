@@ -14,6 +14,7 @@
  *  2009/05/22    1.2   T.Nakamura       [T1_1150]‹’“_ƒR[ƒh‚É‚æ‚éiğŒ‚ğíœ
  *  2009/07/24    1.3   H.Sasaki         [0000830]’I‰µŠÇ—‚Ì’ŠoğŒ‚ğC³
  *  2009/07/29    1.4   N.Abe            [0000878]’ŠoğŒAo—Í‡˜C³
+ *  2009/08/20    1.5   SCS T.Murakami   İŒÉ‘gD‚ğuS01v¨uZ99v‚É•ÏX
  *
  ************************************************************************/
 CREATE OR REPLACE FORCE VIEW XXCOI_INVENTORY_APPROVE_V(
@@ -138,7 +139,7 @@ FROM     mtl_secondary_inventories        msi                       -- •ÛŠÇêŠƒ
 -- == 2009/07/29 V1.4 Added START =============================================================
                                        ,(SELECT MIN(TO_CHAR(oap.period_start_date, 'YYYYMM')) period_date
                                          FROM   org_acct_periods  oap
-                                         WHERE  oap.organization_id  = xxcoi_common_pkg.get_organization_id('S01')
+                                         WHERE  oap.organization_id  = xxcoi_common_pkg.get_organization_id('Z99')
                                          AND    oap.open_flag        = 'Y'
                                         ) oap_sub
 -- == 2009/07/29 V1.4 Added END   =============================================================
@@ -156,7 +157,7 @@ FROM     mtl_secondary_inventories        msi                       -- •ÛŠÇêŠƒ
                    AND       xic_main.inventory_kbn     =   '2'
                   )                                   xic                 -- ’I‰µŠÇ—ƒe[ƒuƒ‹
                  ,mtl_secondary_inventories           sub_msi             -- •ÛŠÇêŠƒ}ƒXƒ^
-          WHERE   sub_msi.organization_id             =   xxcoi_common_pkg.get_organization_id('S01')
+          WHERE   sub_msi.organization_id             =   xxcoi_common_pkg.get_organization_id('Z99')
           AND     sub_msi.secondary_inventory_name    =   xic.subinventory_code(+)
          )                                ici                       -- ’I‰µŠÇ—î•ñ
 WHERE   msi.organization_id             = ici.organization_id
