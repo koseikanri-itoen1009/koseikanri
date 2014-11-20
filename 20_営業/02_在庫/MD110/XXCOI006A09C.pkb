@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A09C(body)
  * Description      : 資材取引情報を元に月次在庫受払表（日次）を作成します
  * MD.050           : 日次在庫受払表作成<MD050_COI_006_A09>
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *                                                       前回コピー時に帳簿0のデータは作成しない
  *  2010/05/02    1.13  H.Sasaki         [E_本稼動_02548]前回コピー時に帳簿0のデータは作成しない（累計作成）
  *  2011/01/17    1.14  H.Sasaki         [E_本稼動_05549]日次在庫一時表の追加（PT対応)
+ *  2011/02/03    1.15  H.Sasaki         [E_本稼動_02937]日次受払（累計）の原価設定修正
  *
  *****************************************************************************************/
 --
@@ -883,8 +884,10 @@ AS
     it_practice_date            IN xxcoi_inv_reception_daily.practice_date%TYPE,              -- 04.年月日
     it_inventory_item_id        IN xxcoi_inv_reception_daily.inventory_item_id%TYPE,          -- 05.品目ID
     it_subinventory_type        IN xxcoi_inv_reception_daily.subinventory_type%TYPE,          -- 06.保管場所区分
-    it_operation_cost           IN xxcoi_inv_reception_daily.operation_cost%TYPE,             -- 07.営業原価
-    it_standard_cost            IN xxcoi_inv_reception_daily.standard_cost%TYPE,              -- 08.標準原価
+-- == 2011/02/03 V1.15 Deleted START ===============================================================
+--    it_operation_cost           IN xxcoi_inv_reception_daily.operation_cost%TYPE,             -- 07.営業原価
+--    it_standard_cost            IN xxcoi_inv_reception_daily.standard_cost%TYPE,              -- 08.標準原価
+-- == 2011/02/03 V1.15 Deleted END   ===============================================================
     it_sales_shipped            IN xxcoi_inv_reception_daily.sales_shipped%TYPE,              -- 10.売上出庫
     it_sales_shipped_b          IN xxcoi_inv_reception_daily.sales_shipped_b%TYPE,            -- 11.売上出庫振戻
     it_return_goods             IN xxcoi_inv_reception_daily.return_goods%TYPE,               -- 12.返品
@@ -949,6 +952,10 @@ AS
 --
     -- *** ローカル変数 ***
     ln_dummy                    NUMBER;         -- ダミー変数
+-- == 2011/02/03 V1.15 Added START ===============================================================
+    lt_standard_cost      xxcoi_inv_reception_sum.standard_cost%TYPE;
+    lt_operation_cost     xxcoi_inv_reception_sum.operation_cost%TYPE;
+-- == 2011/02/03 V1.15 Added END   ===============================================================
 --
     -- ===============================
     -- ローカル・カーソル
@@ -1070,6 +1077,52 @@ AS
           RAISE global_process_expt;
           --
         WHEN NO_DATA_FOUND THEN
+-- == 2011/02/03 V1.15 Added START ===============================================================
+        -- ===================================
+        --  2.標準原価取得
+        -- ===================================
+        xxcoi_common_pkg.get_cmpnt_cost(
+            in_item_id        =>  it_inventory_item_id                        -- 品目ID
+          , in_org_id         =>  gn_f_organization_id                        -- 組織ID
+          , id_period_date    =>  it_practice_date                            -- 対象日
+          , ov_cmpnt_cost     =>  lt_standard_cost                            -- 標準原価
+          , ov_errbuf         =>  lv_errbuf                                   -- エラーメッセージ
+          , ov_retcode        =>  lv_retcode                                  -- リターン・コード
+          , ov_errmsg         =>  lv_errmsg                                   -- ユーザー・エラーメッセージ
+        );
+        -- 終了パラメータ判定
+        IF (lv_retcode = cv_status_error) THEN
+          lv_errmsg   := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_short_name
+                          ,iv_name         => cv_msg_xxcoi1_10285
+                         );
+          lv_errbuf   := lv_errmsg;
+          RAISE global_api_expt;
+        END IF;
+        --
+        -- ===================================
+        --  2.営業原価取得
+        -- ===================================
+        xxcoi_common_pkg.get_discrete_cost(
+            in_item_id        =>  it_inventory_item_id                        -- 品目ID
+          , in_org_id         =>  gn_f_organization_id                        -- 組織ID
+          , id_target_date    =>  it_practice_date                            -- 対象日
+          , ov_discrete_cost  =>  lt_operation_cost                           -- 営業原価
+          , ov_errbuf         =>  lv_errbuf                                   -- エラーメッセージ
+          , ov_retcode        =>  lv_retcode                                  -- リターン・コード
+          , ov_errmsg         =>  lv_errmsg                                   -- ユーザー・エラーメッセージ
+        );
+        -- 終了パラメータ判定
+        IF (lv_retcode = cv_status_error) THEN
+          lv_errmsg   := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_short_name
+                          ,iv_name         => cv_msg_xxcoi1_10293
+                         );
+          lv_errbuf   := lv_errmsg;
+          RAISE global_api_expt;
+        END IF;
+        --
+-- == 2011/02/03 V1.15 Added END   ===============================================================
           -- ===================================
           --  3.累計テーブル作成
           -- ===================================
@@ -1139,8 +1192,12 @@ AS
            ,SUBSTRB(TO_CHAR(it_practice_date, cv_date), 1, 6)
                                               -- 05
            ,it_inventory_item_id              -- 06
-           ,it_operation_cost                 -- 07
-           ,it_standard_cost                  -- 08
+-- == 2011/02/03 V1.15 Modified START ===============================================================
+--           ,it_operation_cost                 -- 07
+--           ,it_standard_cost                  -- 08
+          , lt_operation_cost                 -- 07
+          , lt_standard_cost                  -- 08
+-- == 2011/02/03 V1.15 Modified END   ===============================================================
            ,it_sales_shipped                  -- 09
            ,it_sales_shipped_b                -- 10
            ,it_return_goods                   -- 11
@@ -1250,6 +1307,52 @@ AS
           RAISE global_process_expt;
           --
         WHEN NO_DATA_FOUND THEN
+-- == 2011/02/03 V1.15 Added START ===============================================================
+          -- ===================================
+          --  2.標準原価取得
+          -- ===================================
+          xxcoi_common_pkg.get_cmpnt_cost(
+              in_item_id        =>  it_inventory_item_id                        -- 品目ID
+            , in_org_id         =>  gn_f_organization_id                        -- 組織ID
+            , id_period_date    =>  gd_f_business_date                          -- 対象日
+            , ov_cmpnt_cost     =>  lt_standard_cost                            -- 標準原価
+            , ov_errbuf         =>  lv_errbuf                                   -- エラーメッセージ
+            , ov_retcode        =>  lv_retcode                                  -- リターン・コード
+            , ov_errmsg         =>  lv_errmsg                                   -- ユーザー・エラーメッセージ
+          );
+          -- 終了パラメータ判定
+          IF (lv_retcode = cv_status_error) THEN
+            lv_errmsg   := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_short_name
+                            ,iv_name         => cv_msg_xxcoi1_10285
+                           );
+            lv_errbuf   := lv_errmsg;
+            RAISE global_api_expt;
+          END IF;
+          --
+          -- ===================================
+          --  2.営業原価取得
+          -- ===================================
+          xxcoi_common_pkg.get_discrete_cost(
+              in_item_id        =>  it_inventory_item_id                        -- 品目ID
+            , in_org_id         =>  gn_f_organization_id                        -- 組織ID
+            , id_target_date    =>  gd_f_business_date                          -- 対象日
+            , ov_discrete_cost  =>  lt_operation_cost                           -- 営業原価
+            , ov_errbuf         =>  lv_errbuf                                   -- エラーメッセージ
+            , ov_retcode        =>  lv_retcode                                  -- リターン・コード
+            , ov_errmsg         =>  lv_errmsg                                   -- ユーザー・エラーメッセージ
+          );
+          -- 終了パラメータ判定
+          IF (lv_retcode = cv_status_error) THEN
+            lv_errmsg   := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_short_name
+                            ,iv_name         => cv_msg_xxcoi1_10293
+                           );
+            lv_errbuf   := lv_errmsg;
+            RAISE global_api_expt;
+          END IF;
+          --
+-- == 2011/02/03 V1.15 Added END   ===============================================================
           -- =======================================
           --  6.累計テーブル作成(前月分を当月に反映)
           -- =======================================
@@ -1319,8 +1422,12 @@ AS
            ,SUBSTRB(TO_CHAR(gd_f_business_date, cv_date), 1, 6)
                                               -- 05
            ,it_inventory_item_id              -- 06
-           ,it_operation_cost                 -- 07
-           ,it_standard_cost                  -- 08
+-- == 2011/02/03 V1.15 Modified START ===============================================================
+--           ,it_operation_cost                 -- 07
+--           ,it_standard_cost                  -- 08
+          , lt_operation_cost                 -- 07
+          , lt_standard_cost                  -- 08
+-- == 2011/02/03 V1.15 Modified END   ===============================================================
            ,0                                 -- 09
            ,0                                 -- 10
            ,0                                 -- 11
@@ -3860,49 +3967,51 @@ AS
          )
       THEN
         --
-        -- ===================================
-        --  2.標準原価取得
-        -- ===================================
-        xxcoi_common_pkg.get_cmpnt_cost(
-          in_item_id      =>  lt_inventory_item_id                            -- 品目ID
-         ,in_org_id       =>  gn_f_organization_id                            -- 組織ID
-         ,id_period_date  =>  lt_transaction_date                             -- 対象日
-         ,ov_cmpnt_cost   =>  lt_standard_cost                                -- 標準原価
-         ,ov_errbuf       =>  lv_errbuf                                       -- エラーメッセージ
-         ,ov_retcode      =>  lv_retcode                                      -- リターン・コード
-         ,ov_errmsg       =>  lv_errmsg                                       -- ユーザー・エラーメッセージ
-        );
-        -- 終了パラメータ判定
-        IF (lv_retcode = cv_status_error) THEN
-          lv_errmsg   := xxccp_common_pkg.get_msg(
-                           iv_application  => cv_short_name
-                          ,iv_name         => cv_msg_xxcoi1_10285
-                         );
-          lv_errbuf   := lv_errmsg;
-          RAISE global_api_expt;
-        END IF;
-        --
-        -- ===================================
-        --  2.営業原価取得
-        -- ===================================
-        xxcoi_common_pkg.get_discrete_cost(
-          in_item_id        =>  lt_inventory_item_id                            -- 品目ID
-         ,in_org_id         =>  gn_f_organization_id                            -- 組織ID
-         ,id_target_date    =>  lt_transaction_date                             -- 対象日
-         ,ov_discrete_cost  =>  lt_operation_cost                               -- 営業原価
-         ,ov_errbuf         =>  lv_errbuf                                       -- エラーメッセージ
-         ,ov_retcode        =>  lv_retcode                                      -- リターン・コード
-         ,ov_errmsg         =>  lv_errmsg                                       -- ユーザー・エラーメッセージ
-        );
-        -- 終了パラメータ判定
-        IF (lv_retcode = cv_status_error) THEN
-          lv_errmsg   := xxccp_common_pkg.get_msg(
-                           iv_application  => cv_short_name
-                          ,iv_name         => cv_msg_xxcoi1_10293
-                         );
-          lv_errbuf   := lv_errmsg;
-          RAISE global_api_expt;
-        END IF;
+-- == 2011/02/03 V1.15 Deleted START ===============================================================
+--        -- ===================================
+--        --  2.標準原価取得
+--        -- ===================================
+--        xxcoi_common_pkg.get_cmpnt_cost(
+--          in_item_id      =>  lt_inventory_item_id                            -- 品目ID
+--         ,in_org_id       =>  gn_f_organization_id                            -- 組織ID
+--         ,id_period_date  =>  lt_transaction_date                             -- 対象日
+--         ,ov_cmpnt_cost   =>  lt_standard_cost                                -- 標準原価
+--         ,ov_errbuf       =>  lv_errbuf                                       -- エラーメッセージ
+--         ,ov_retcode      =>  lv_retcode                                      -- リターン・コード
+--         ,ov_errmsg       =>  lv_errmsg                                       -- ユーザー・エラーメッセージ
+--        );
+--        -- 終了パラメータ判定
+--        IF (lv_retcode = cv_status_error) THEN
+--          lv_errmsg   := xxccp_common_pkg.get_msg(
+--                           iv_application  => cv_short_name
+--                          ,iv_name         => cv_msg_xxcoi1_10285
+--                         );
+--          lv_errbuf   := lv_errmsg;
+--          RAISE global_api_expt;
+--        END IF;
+--        --
+--        -- ===================================
+--        --  2.営業原価取得
+--        -- ===================================
+--        xxcoi_common_pkg.get_discrete_cost(
+--          in_item_id        =>  lt_inventory_item_id                            -- 品目ID
+--         ,in_org_id         =>  gn_f_organization_id                            -- 組織ID
+--         ,id_target_date    =>  lt_transaction_date                             -- 対象日
+--         ,ov_discrete_cost  =>  lt_operation_cost                               -- 営業原価
+--         ,ov_errbuf         =>  lv_errbuf                                       -- エラーメッセージ
+--         ,ov_retcode        =>  lv_retcode                                      -- リターン・コード
+--         ,ov_errmsg         =>  lv_errmsg                                       -- ユーザー・エラーメッセージ
+--        );
+--        -- 終了パラメータ判定
+--        IF (lv_retcode = cv_status_error) THEN
+--          lv_errmsg   := xxccp_common_pkg.get_msg(
+--                           iv_application  => cv_short_name
+--                          ,iv_name         => cv_msg_xxcoi1_10293
+--                         );
+--          lv_errbuf   := lv_errmsg;
+--          RAISE global_api_expt;
+--        END IF;
+-- == 2011/02/03 V1.15 Deleted END   ===============================================================
         --
         -- ==========================
         --  更新用データ設定
@@ -4026,8 +4135,10 @@ AS
            ,it_practice_date            =>  lt_practice_date                      -- 04.年月日
            ,it_inventory_item_id        =>  lt_inventory_item_id                  -- 05.品目ID
            ,it_subinventory_type        =>  lt_subinventory_type                  -- 06.保管場所区分
-           ,it_operation_cost           =>  lt_operation_cost                     -- 07.営業原価
-           ,it_standard_cost            =>  lt_standard_cost                      -- 08.標準原価
+-- == 2011/02/03 V1.15 Deleted START ===============================================================
+--           ,it_operation_cost           =>  lt_operation_cost                     -- 07.営業原価
+--           ,it_standard_cost            =>  lt_standard_cost                      -- 08.標準原価
+-- == 2011/02/03 V1.15 Deleted END   ===============================================================
            ,it_sales_shipped            =>  lt_sales_shipped                      -- 10.売上出庫
            ,it_sales_shipped_b          =>  lt_sales_shipped_b                    -- 11.売上出庫振戻
            ,it_return_goods             =>  lt_return_goods                       -- 12.返品
@@ -5090,7 +5201,7 @@ AS
 --                      iv_application  =>  cv_short_name
 --                     ,iv_name         =>  cv_msg_xxcoi1_00023
 --                    );
-    -- 起動フラグ：&PROCESS_FLAG
+    -- 起動フラグ：PROCESS_FLAG
     gv_out_msg  :=  xxccp_common_pkg.get_msg(
                       iv_application  => cv_short_name
                      ,iv_name         => cv_msg_xxcoi1_10365
@@ -5103,7 +5214,7 @@ AS
     );
 -- == 2009/08/26 V1.8 Added START ===============================================================
     IF (iv_process_date IS NOT NULL) THEN
-      -- 対象日付：&DATE
+      -- 対象日付：DATE
       gv_out_msg  :=  xxccp_common_pkg.get_msg(
                         iv_application  => cv_short_name
                        ,iv_name         => cv_msg_xxcoi1_10401
@@ -5157,7 +5268,7 @@ AS
     gv_f_organization_code  :=  fnd_profile.value(cv_prf_name_orgcd);
     --
     IF (gv_f_organization_code IS NULL) THEN
-      -- プロファイル:在庫組織コード( &PRO_TOK )の取得に失敗しました。
+      -- プロファイル:在庫組織コード( PRO_TOK )の取得に失敗しました。
       lv_errbuf   :=  xxccp_common_pkg.get_msg(
                         iv_application  => cv_short_name
                        ,iv_name         => cv_msg_xxcoi1_00005
@@ -5174,7 +5285,7 @@ AS
     gn_f_organization_id  :=  xxcoi_common_pkg.get_organization_id(gv_f_organization_code);
     --
     IF (gn_f_organization_id IS NULL) THEN
-      -- 在庫組織コード( &ORG_CODE_TOK )に対する在庫組織IDの取得に失敗しました。
+      -- 在庫組織コード( ORG_CODE_TOK )に対する在庫組織IDの取得に失敗しました。
       lv_errbuf   :=  xxccp_common_pkg.get_msg(
                         iv_application  => cv_short_name
                        ,iv_name         => cv_msg_xxcoi1_00006
