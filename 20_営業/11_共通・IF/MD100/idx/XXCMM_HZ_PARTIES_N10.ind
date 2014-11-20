@@ -12,4 +12,3 @@
  *  2009/06/30    1.0  H.Oshida     ‰‰ñì¬
  ************************************************************************/
 CREATE INDEX ar.xxcmm_hz_parties_n10 ON ar.hz_parties (UPPER(city), party_type, status) TABLESPACE apps_ts_tx_idx;
-/

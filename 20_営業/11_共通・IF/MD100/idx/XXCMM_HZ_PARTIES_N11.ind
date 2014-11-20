@@ -12,4 +12,3 @@
  *  2009/06/30    1.0  H.Oshida     ‰‰ñì¬
  ************************************************************************/
 CREATE INDEX ar.xxcmm_hz_parties_n11 ON ar.hz_parties (postal_code, party_type, status) TABLESPACE apps_ts_tx_idx;
-/

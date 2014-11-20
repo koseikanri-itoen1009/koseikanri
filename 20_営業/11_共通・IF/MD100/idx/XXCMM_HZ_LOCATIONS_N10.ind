@@ -12,4 +12,3 @@
  *  2009/06/30    1.0  H.Oshida     èââÒçÏê¨
  ************************************************************************/
 CREATE INDEX ar.xxcmm_hz_locations_n10 ON ar.hz_locations (UPPER(city)) TABLESPACE apps_ts_tx_idx;
-/
