@@ -9,7 +9,7 @@ AS
  *                            適用開始日到来時に反映する。
  *                      （２）月末日に、前月売上拠点コードを更新する。
  * MD.050           : 有効拠点データ反映 MD050_CMM_003_A13
- * Version          : Draft3A
+ * Version          : Issue3.3
  *
  * Program List
  * -------------------- -----------------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/01/13    1.0   SCS Okuyama      新規作成
  *  2009/05/21    1.1   Yutaka.Kuboshima 障害T1_1134の対応
+ *  2009/12/22    1.2   Yutaka.Kuboshima 障害E_本稼動_00598の対応
  *
  *****************************************************************************************/
 --
@@ -169,8 +170,13 @@ AS
       hz_cust_accounts          hzca,   -- 顧客マスタテーブル
       hz_parties                hzpt,   -- パーティテーブル
       hz_party_sites            hzps,   -- パーティサイトテーブル
-      hz_cust_acct_sites_all    hzsa,   -- 顧客所在地テーブル
-      hz_cust_site_uses_all     hzsu,   -- 顧客使用目的テーブル
+-- 2009/12/22 Ver1.2 E_本稼動_00598 modify start by Yutaka.Kuboshima
+-- 営業OUのみを対象とする
+--      hz_cust_acct_sites_all    hzsa,   -- 顧客所在地テーブル
+--      hz_cust_site_uses_all     hzsu,   -- 顧客使用目的テーブル
+      hz_cust_acct_sites        hzsa,   -- 顧客所在地テーブル
+      hz_cust_site_uses         hzsu,   -- 顧客使用目的テーブル
+-- 2009/12/22 Ver1.2 E_本稼動_00598 modify end by Yutaka.Kuboshima
       ra_terms_tl               ratt    -- 支払条件テーブル
     WHERE
           xcac.customer_id              =   hzca.cust_account_id
@@ -181,7 +187,10 @@ AS
       AND hzsu.cust_acct_site_id(+)     =   hzsa.cust_acct_site_id
       AND ratt.term_id(+)               =   hzsu.payment_term_id
       AND hzps.status                   =   cv_rec_status_active
-      AND hzps.identifying_address_flag =   cv_flag_yes
+-- 2009/12/22 Ver1.2 E_本稼動_00598 delete start by Yutaka.Kuboshima
+-- 識別所在地フラグの条件は削除
+--      AND hzps.identifying_address_flag =   cv_flag_yes
+-- 2009/12/22 Ver1.2 E_本稼動_00598 delete end by Yutaka.Kuboshima
       AND hzsu.status(+)                =   cv_rec_status_active
       AND hzsu.site_use_code(+)         =   cv_site_use_cd_bt
       AND ratt.language(+)              =   cv_lang_ja
