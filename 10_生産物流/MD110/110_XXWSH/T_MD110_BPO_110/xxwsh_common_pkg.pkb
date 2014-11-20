@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.32
+ * Version                : 1.33
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -84,6 +84,7 @@ AS
  *  2008/11/25   1.30  Oracle 北寒寺正夫[配車解除関数] 本番障害#84対応
  *  2008/11/27   1.31  Oracle 椎名昭圭  [依頼Noコンバート関数] 本番障害#179対応
  *  2008/12/02   1.32  Oracle 野村正幸  本番#318対応
+ *  2008/12/13   1.33  Oracle 二瓶大輔  本番#568対応(配車解除関数ログ出力追加)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5281,6 +5282,9 @@ AS
     lv_where_search_key             VARCHAR2(32767); -- 検索キーWHERE句
     lv_search_key_no                VARCHAR2(32767); -- 検索キー
 -- 2008/09/03 H.Itou Add End
+-- 2008/12/13 D.Nihei Add Start
+    lv_log                          VARCHAR2(32767); -- ログ出力用変数
+-- 2008/12/13 D.Nihei Add End
 --
     -- *** ローカル・カーソル ***
 -- 2008/09/03 H.Itou Add Start PT 1-2_8対応
@@ -5315,15 +5319,28 @@ AS
     ln_conc_program_id   := FND_GLOBAL.CONC_PROGRAM_ID;   -- プログラムID
     ld_sysdate           := SYSDATE;                      -- システム現在日付
 --
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := '【業務種別】'        || iv_biz_type 
+         || '【依頼No/移動番号】' || iv_request_no 
+         || '【配車解除フラグ】'  || iv_calcel_flag
+         || '【ユーザID】'        || ln_user_id
+         || '【要求ID】'          || ln_conc_request_id
+         || '【プログラムID】'    || ln_conc_program_id;
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
     -- **************************************************
     -- *** 0.パラメータチェック処理
     -- **************************************************
-    IF ((iv_biz_type  IS NULL) OR
-       (iv_biz_type NOT IN (cv_ship, cv_supply, cv_move)) OR
+    IF ( ( iv_biz_type    IS NULL ) 
+     OR  ( iv_biz_type    NOT IN ( cv_ship, cv_supply, cv_move ) ) 
 -- 2008/10/23 v1.28 D.Nihei Mod Start TE080_BPO_600 No22
---       (iv_request_no IS NULL)) THEN
-       (iv_request_no  IS NULL) OR
-       (iv_calcel_flag IS NULL)) 
+--     OR  (iv_request_no IS NULL)) THEN
+     OR  ( iv_request_no  IS NULL ) 
+     OR  ( iv_calcel_flag IS NULL ) ) 
     THEN
 -- 2008/10/23 v1.28 D.Nihei Mod End
          -- パラメータ指定不正
@@ -5336,7 +5353,7 @@ AS
     -- **************************************************
     -- 出荷依頼のチェック
     -- 検索処理を行い、ロックを取得します。
-    IF (iv_biz_type = cv_ship) THEN
+    IF ( iv_biz_type = cv_ship ) THEN
       SELECT xoha.req_status,                               -- ステータス
 -- Ver1.20 M.Hokkanji Start
 --             xoha.delivery_no                             -- 配送No
@@ -5345,42 +5362,62 @@ AS
       INTO   lv_status,
              lv_delivery_no
       FROM   xxwsh_order_headers_all            xoha,       -- 受注ヘッダアドオン
-             xxwsh_oe_transaction_types2_v       xott        -- 受注タイプ情報VIEW
+             xxwsh_oe_transaction_types2_v      xott        -- 受注タイプ情報VIEW
       WHERE  xoha.request_no                            =  iv_request_no
       AND    xoha.order_type_id                         =  xott.transaction_type_id
       AND    xott.shipping_shikyu_class                 =  cv_ship_req
       AND    xott.order_category_code                   =  cv_cate_order
-      AND    xott.start_date_active                     <=  trunc( xoha.schedule_ship_date )
+      AND    xott.start_date_active                    <=  trunc( xoha.schedule_ship_date )
       AND    NVL(xott.end_date_active,to_date('99991231','YYYYMMDD')) 
-                                                        >= trunc( xoha.schedule_ship_date )
+                                                       >= trunc( xoha.schedule_ship_date )
       AND    NVL(xoha.latest_external_flag, cv_flag_no) =  cv_flag_yes
 -- Ver1.30 M.Hokkanji Start
-        FOR UPDATE OF xoha.order_header_id NOWAIT;
+      FOR UPDATE OF xoha.order_header_id NOWAIT;
 --      FOR UPDATE NOWAIT;
 -- Ver1.30 M.Hokkanji End
 --
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log || CHR(10)
+         || '【出荷：ステータス】' || lv_status 
+         || '【配送No/混載元No】'  || lv_delivery_no;
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
     -- 支給依頼のチェック
     -- 検索処理を行い、ロックを取得します。
-    ELSIF (iv_biz_type = cv_supply) THEN
+    ELSIF ( iv_biz_type = cv_supply ) THEN
       SELECT xoha.req_status,                               -- ステータス
              xoha.delivery_no                               -- 配送No
       INTO   lv_status,
              lv_delivery_no
       FROM   xxwsh_order_headers_all            xoha,       -- 受注ヘッダアドオン
-             xxwsh_oe_transaction_types2_v       xott        -- 受注タイプ情報VIEW
+             xxwsh_oe_transaction_types2_v      xott        -- 受注タイプ情報VIEW
       WHERE  xoha.request_no                            =  iv_request_no
       AND    xoha.order_type_id                         =  xott.transaction_type_id
       AND    xott.shipping_shikyu_class                 =  cv_supply_req
       AND    xott.order_category_code                   =  cv_cate_order
-      AND    xott.start_date_active                     <= trunc( xoha.schedule_ship_date )
+      AND    xott.start_date_active                    <= trunc( xoha.schedule_ship_date )
       AND    NVL(xott.end_date_active,to_date('99991231','YYYYMMDD')) 
-                                                        >= trunc( xoha.schedule_ship_date )
+                                                       >= trunc( xoha.schedule_ship_date )
       AND    NVL(xoha.latest_external_flag, cv_flag_no) =  cv_flag_yes
 -- Ver1.30 M.Hokkanji Start
-        FOR UPDATE OF xoha.order_header_id NOWAIT;
+      FOR UPDATE OF xoha.order_header_id NOWAIT;
 --      FOR UPDATE NOWAIT;
 -- Ver1.30 M.Hokkanji End
 --
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log || CHR(10)
+         || '【支給：ステータス】' || lv_status 
+         || '【配送No】'           || lv_delivery_no;
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
     -- 移動指示のチェック
     -- 検索処理を行い、ロックを取得します。
     ELSIF (iv_biz_type = cv_move) THEN
@@ -5391,10 +5428,20 @@ AS
       FROM   xxinv_mov_req_instr_headers        mrih        -- 移動依頼/指示ヘッダ(アドオン)
       WHERE  mrih.mov_num                       =  iv_request_no
 -- Ver1.30 M.Hokkanji Start
-        FOR UPDATE OF mrih.mov_hdr_id NOWAIT;
+      FOR UPDATE OF mrih.mov_hdr_id NOWAIT;
 --      FOR UPDATE NOWAIT;
 -- Ver1.30 M.Hokkanji End
 --
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log || CHR(10)
+         || '【移動：ステータス】' || lv_status 
+         || '【配送No】'           || lv_delivery_no;
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
     END IF;
 --
     -- **************************************************
@@ -5402,15 +5449,15 @@ AS
     -- **************************************************
 -- 2008/09/03 H.Itou Add Start PT 1-2_8対応 動的SQLに変更。
     -- 業務種別が「1：出荷」以外で、DBの配送No・混載元Noに値がない場合、検索を行わない。
-    IF ((iv_biz_type <> cv_ship)
-    AND (lv_delivery_no IS NULL)) THEN
+    IF ( ( iv_biz_type    <> cv_ship )
+     AND ( lv_delivery_no IS NULL    ) ) THEN
       NULL;
 --
     -- 上記以外の場合、検索実行
     ELSE
       -- INパラメータ.業務種別が「1：出荷」かつ、DBの配送No・混載元NoがNULLの場合、依頼Noで検索
-      IF ((iv_biz_type = cv_ship) 
-      AND (lv_delivery_no IS NULL)) THEN
+      IF ( ( iv_biz_type = cv_ship ) 
+       AND ( lv_delivery_no IS NULL ) ) THEN
         -- SQL生成
         lv_sql := cv_ship_select
                || cv_ship_from
@@ -5419,6 +5466,15 @@ AS
                || cv_ship_order_by
                ;
 --
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log || CHR(10)
+         || '【出荷：検索キー(依頼No)】' || iv_request_no; 
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
         -- カーソルオープン
         OPEN cur_ship_data FOR lv_sql
         USING iv_request_no   -- 検索キー(依頼No)
@@ -5439,6 +5495,15 @@ AS
                || cv_ship_order_by
                ;
 --
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log || CHR(10)
+         || '【出荷：検索キー(配送No/混載元No)】' || lv_delivery_no; 
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
         -- カーソルオープン
         OPEN cur_ship_data FOR lv_sql
         USING lv_delivery_no   -- 検索キー(配送No/混載元No)
@@ -5500,16 +5565,36 @@ AS
 --    AND    NVL(xoha.latest_external_flag, cv_flag_no) =  cv_flag_yes
 --    ORDER BY xoha.order_header_id;
 -- 2008/09/03 H.Itou Mod End
-    IF (gt_chk_ship_tbl.COUNT > 0) THEN
+    IF  ( gt_chk_ship_tbl.COUNT > 0 ) THEN
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log || CHR(10)
+         || '【出荷：配車解除ロジック：件数】' || gt_chk_ship_tbl.COUNT;
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
       -- データが存在する場合はカウント
       ln_data_count := ln_data_count + 1;
       -- 取得したレコードの分だけループ
       <<gt_chk_ship_tbl_loop>>
       FOR i IN gt_chk_ship_tbl.FIRST .. gt_chk_ship_tbl.LAST LOOP
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log || CHR(10)
+         || '　【依頼No】'      || gt_chk_ship_tbl(i).request_no 
+         || '【ステータス】'  || gt_chk_ship_tbl(i).req_status 
+         || '【出荷実績数量】'|| gt_chk_ship_tbl(i).shipped_quantity;
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
 --
         -- ステータスが｢入力中｣｢拠点確定｣｢締め済み｣で出荷実績数量がNULLでないデータは配車解除不可
-        IF ((gt_chk_ship_tbl(i).req_status <= cv_tightening) AND
-             (gt_chk_ship_tbl(i).shipped_quantity IS NOT NULL)) THEN
+        IF ( ( gt_chk_ship_tbl(i).req_status       <= cv_tightening) AND
+             ( gt_chk_ship_tbl(i).shipped_quantity IS NOT NULL     ) ) THEN
           ln_no_count := ln_no_count + 1;
 -- Ver1.20 M.Hokkanji START
           IF (lv_msg_ship_err IS NULL) THEN
@@ -5581,8 +5666,12 @@ AS
                 gt_chk_ship_tbl(i).based_weight       := lt_drink_deadweight;
                 gt_chk_ship_tbl(i).based_capacity     := lt_drink_loading_capacity;
               ELSE
-                gt_chk_ship_tbl(i).based_weight       := lt_drink_deadweight;
-                gt_chk_ship_tbl(i).based_capacity     := lt_drink_loading_capacity;
+-- 2008/12/13 D.Nihei Mod Start ================================================
+--                gt_chk_ship_tbl(i).based_weight       := lt_drink_deadweight;
+--                gt_chk_ship_tbl(i).based_capacity     := lt_drink_loading_capacity;
+                gt_chk_ship_tbl(i).based_weight       := lt_leaf_deadweight;
+                gt_chk_ship_tbl(i).based_capacity     := lt_leaf_loading_capacity;
+-- 2008/12/13 D.Nihei Mod End   ================================================
               END IF;
               gt_chk_ship_tbl(i).shipping_method_code := lt_max_ship_methods;
             END IF;
@@ -5709,6 +5798,16 @@ AS
     -- **************************************************
     -- *** 3.配車解除可否チェック(移動)
     -- **************************************************
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log || CHR(10)
+         || '【移動：検索キー(移動番号)】' || iv_request_no
+         || '【(配送No)】'   || lv_delivery_no; 
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
     SELECT mrih.mov_hdr_id,                               -- 移動ヘッダID
            mrih.status,                                   -- ステータス
            mrih.mov_num,
@@ -5810,20 +5909,41 @@ AS
     ORDER BY mrih.mov_hdr_id;
 --
     IF (gt_chk_move_tbl.COUNT > 0) THEN
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log || CHR(10)
+         || '【移動：配車解除ロジック：件数】' || gt_chk_move_tbl.COUNT;
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
       -- データが存在する場合はカウント
       ln_data_count := ln_data_count + 1;
       -- 取得したレコードの分だけループ
       <<gt_chk_move_tbl_loop>>
       FOR i IN gt_chk_move_tbl.FIRST .. gt_chk_move_tbl.LAST LOOP
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log || CHR(10)
+         || '　【移動番号】'    || gt_chk_move_tbl(i).mov_num 
+         || '【ステータス】'  || gt_chk_move_tbl(i).status 
+         || '【出庫実績数量】'|| gt_chk_move_tbl(i).shipped_quantity
+         || '【入庫実績数量】'|| gt_chk_move_tbl(i).ship_to_quantity;
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
 --
         -- ステータスが｢依頼中｣｢依頼済｣｢調整中｣で、
         -- 出庫実績数量または入庫実績数量がNULLでないデータは配車解除不可
-        IF ((gt_chk_move_tbl(i).status <= cv_adjustment) AND
-             ((gt_chk_move_tbl(i).shipped_quantity IS NOT NULL) OR
-             (gt_chk_move_tbl(i).ship_to_quantity IS NOT NULL))) THEN
+        IF ( ( gt_chk_move_tbl(i).status <= cv_adjustment ) 
+         AND (   ( gt_chk_move_tbl(i).shipped_quantity IS NOT NULL) 
+              OR ( gt_chk_move_tbl(i).ship_to_quantity IS NOT NULL) ) ) THEN
           ln_no_count := ln_no_count + 1;
 -- Ver1.20 M.Hokkanji START
-          IF (lv_msg_move_err IS NULL) THEN
+          IF ( lv_msg_move_err IS NULL ) THEN
             lv_msg_move_err := gt_chk_move_tbl(i).mov_num;
           ELSE
             lv_msg_move_err := lv_msg_move_err
@@ -5833,7 +5953,7 @@ AS
 -- Ver1.20 M.Hokkanji END
 --
         -- ステータスが｢出荷実績計上済｣｢取消｣のデータは配車解除不可
-        ELSIF (gt_chk_move_tbl(i).status > cv_adjustment) THEN
+        ELSIF ( gt_chk_move_tbl(i).status > cv_adjustment ) THEN
           IF (lv_msg_move_err IS NULL) THEN
 -- Ver1.20 M.Hokkanji START
             lv_msg_move_err := gt_chk_move_tbl(i).mov_num;
@@ -5875,8 +5995,8 @@ AS
                              on_drink_loading_capacity     => lt_drink_loading_capacity,
                              on_leaf_loading_capacity      => lt_leaf_loading_capacity,
                              on_palette_max_qty            => lt_palette_max_qty);
-            IF (ln_ret_code <> gn_status_normal) THEN
-              IF (lv_msg_move_max_err IS NULL) THEN
+            IF ( ln_ret_code <> gn_status_normal ) THEN
+              IF ( lv_msg_move_max_err IS NULL ) THEN
                 lv_msg_move_max_err := gt_chk_move_tbl(i).mov_num;
               ELSE
                 lv_msg_move_max_err := lv_msg_move_max_err
@@ -5887,18 +6007,22 @@ AS
               lv_err_chek     := '1';
             ELSE
               -- 商品区分がドリンクの場合
-              IF (gt_chk_move_tbl(i).item_class = cv_prod_class_2) THEN
+              IF ( gt_chk_move_tbl(i).item_class = cv_prod_class_2 ) THEN
                 gt_chk_move_tbl(i).based_weight       := lt_drink_deadweight;
                 gt_chk_move_tbl(i).based_capacity     := lt_drink_loading_capacity;
               ELSE
-                gt_chk_move_tbl(i).based_weight       := lt_drink_deadweight;
-                gt_chk_move_tbl(i).based_capacity     := lt_drink_loading_capacity;
+-- 2008/12/13 D.Nihei Mod Start ================================================
+--                gt_chk_move_tbl(i).based_weight       := lt_drink_deadweight;
+--                gt_chk_move_tbl(i).based_capacity     := lt_drink_loading_capacity;
+                gt_chk_move_tbl(i).based_weight       := lt_leaf_deadweight;
+                gt_chk_move_tbl(i).based_capacity     := lt_leaf_loading_capacity;
+-- 2008/12/13 D.Nihei Mod End   ================================================
               END IF;
               gt_chk_move_tbl(i).shipping_method_code := lt_max_ship_methods;
             END IF;
 --
             -- 最大配送区分の取得に成功している場合
-            IF (lv_err_chek = '0') THEN
+            IF ( lv_err_chek = '0' ) THEN
               BEGIN
 --
                 -- 取得した配送区分をもとにクイックコード｢XXCMN_SHIP_METHOD｣から小口区分を取得
@@ -5912,7 +6036,7 @@ AS
 --
               EXCEPTION
                 WHEN OTHERS THEN
-                  IF (lv_msg_move_small_err IS NULL) THEN
+                  IF ( lv_msg_move_small_err IS NULL ) THEN
                     lv_msg_move_small_err := gt_chk_move_tbl(i).mov_num;
                   ELSE
                     lv_msg_move_small_err := lv_msg_move_small_err
@@ -5925,8 +6049,8 @@ AS
             END IF;
 --
             -- 最大配送区分、小口区分の取得に成功している場合
-            IF (lv_err_chek = '0') THEN
-              IF (lv_small_sum_class = cv_include) THEN
+            IF ( lv_err_chek = '0' ) THEN
+              IF ( lv_small_sum_class = cv_include ) THEN
 -- Ver1.22 M.Hokkanji START
 --                ln_sum_weight := gt_chk_ship_tbl(i).sum_weight;
                 ln_sum_weight := gt_chk_move_tbl(i).sum_weight;
@@ -5959,8 +6083,8 @@ AS
                 ov_mixed_ship_method          =>  lv_mixed_ship_method);                    -- 18.混載配送区分
 --
               -- リターンコードが'1'(異常)の場合はエラーをセット
-              IF (lv_retcode = gn_status_error) THEN
-                IF (lv_msg_move_wei_err IS NULL) THEN
+              IF ( lv_retcode = gn_status_error ) THEN
+                IF ( lv_msg_move_wei_err IS NULL ) THEN
                   lv_msg_move_wei_err := gt_chk_move_tbl(i).mov_num;
                 ELSE
                   lv_msg_move_wei_err := lv_msg_move_wei_err
@@ -5996,8 +6120,8 @@ AS
                 ov_mixed_ship_method          =>  lv_mixed_ship_method);                    -- 18.混載配送区分
 --
               -- リターンコードが'1'(異常)の場合はエラーをセット
-              IF (lv_retcode = gn_status_error) THEN
-                IF (lv_msg_move_cap_err IS NULL) THEN
+              IF ( lv_retcode = gn_status_error ) THEN
+                IF ( lv_msg_move_cap_err IS NULL ) THEN
                   lv_msg_move_cap_err := gt_chk_move_tbl(i).mov_num;
                 ELSE
                   lv_msg_move_cap_err := lv_msg_move_cap_err
@@ -6027,15 +6151,15 @@ AS
     -- **************************************************
 -- 2008/09/03 H.Itou Mod Start PT 1-2_8対応
     -- 業務種別が「2：支給」以外で、DBの配送No・混載元Noに値がない場合、検索を行わない。
-    IF ((iv_biz_type <> cv_supply) 
-    AND (lv_delivery_no IS NULL)) THEN
+    IF ( ( iv_biz_type    <> cv_supply ) 
+     AND ( lv_delivery_no IS NULL      ) ) THEN
       NULL;
 --
     -- 上記以外の場合、検索実行
     ELSE
       -- INパラメータ.業務種別が「2：支給」かつ、DBの配送NoがNULLの場合、依頼Noで検索
-      IF ((iv_biz_type = cv_supply) 
-      AND (lv_delivery_no IS NULL)) THEN
+      IF ( ( iv_biz_type     = cv_supply ) 
+       AND ( lv_delivery_no IS NULL      ) ) THEN
         lv_where_search_key := cv_supply_where_request_no;
         lv_search_key_no    := iv_request_no;
 --
@@ -6054,6 +6178,15 @@ AS
              || cv_supply_order_by
              ;
 --
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log || CHR(10)
+         || '【支給：検索キー】' || lv_search_key_no; 
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
       -- カーソルオープン
       OPEN cur_supply_data FOR lv_sql
       USING lv_search_key_no;  -- 検索キー（依頼Noか配送No/混載元No)
@@ -6108,21 +6241,42 @@ AS
 --    ORDER BY xoha.order_header_id;
 -- 2008/09/03 H.Itou Mod End
 --
-    IF (gt_chk_supply_tbl.COUNT > 0) THEN
+    IF ( gt_chk_supply_tbl.COUNT > 0 ) THEN
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log || CHR(10)
+         || '【支給：配車解除ロジック：件数】' || gt_chk_supply_tbl.COUNT;
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
       -- データが存在する場合はカウント
       ln_data_count := ln_data_count + 1;
       -- 取得したレコードの分だけループ
       <<gt_chk_supply_tbl_loop>>
       FOR i IN gt_chk_supply_tbl.FIRST .. gt_chk_supply_tbl.LAST LOOP
 --
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log || CHR(10)
+         || '　【依頼No】'      || gt_chk_supply_tbl(i).request_no 
+         || '【ステータス】'  || gt_chk_supply_tbl(i).req_status 
+         || '【出荷実績数量】'|| gt_chk_supply_tbl(i).shipped_quantity
+         || '【入庫実績数量】'|| gt_chk_supply_tbl(i).ship_to_quantity;
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
         -- ステータスが｢入力中｣｢入力済｣｢受領済｣で、
         -- 出荷実績数量または入庫実績数量がNULLでないデータは配車解除不可
-        IF ((gt_chk_supply_tbl(i).req_status <= cv_received) AND
-             ((gt_chk_supply_tbl(i).shipped_quantity IS NOT NULL) OR
-             (gt_chk_supply_tbl(i).ship_to_quantity IS NOT NULL))) THEN
+        IF ( ( gt_chk_supply_tbl(i).req_status <= cv_received) 
+         AND (   ( gt_chk_supply_tbl(i).shipped_quantity IS NOT NULL ) 
+              OR ( gt_chk_supply_tbl(i).ship_to_quantity IS NOT NULL ) ) ) THEN
           ln_no_count := ln_no_count + 1;
 -- Ver1.20 M.Hokkanji START
-          IF (lv_msg_supply_err IS NULL) THEN
+          IF ( lv_msg_supply_err IS NULL ) THEN
             lv_msg_supply_err := gt_chk_supply_tbl(i).request_no;
           ELSE
             lv_msg_supply_err := lv_msg_supply_err
@@ -6132,8 +6286,8 @@ AS
 -- Ver1.20 M.Hokkanji END
 --
         -- ステータスが｢出荷実績計上済｣｢取消｣のデータは配車解除不可
-        ELSIF (gt_chk_supply_tbl(i).req_status > cv_received) THEN
-          IF (lv_msg_supply_err IS NULL) THEN
+        ELSIF ( gt_chk_supply_tbl(i).req_status > cv_received ) THEN
+          IF ( lv_msg_supply_err IS NULL ) THEN
 -- Ver1.20 M.Hokkanji START
 --            lv_msg_supply_err := iv_request_no;
             lv_msg_supply_err := gt_chk_supply_tbl(i).request_no;
@@ -6175,8 +6329,8 @@ AS
                              on_drink_loading_capacity     => lt_drink_loading_capacity,
                              on_leaf_loading_capacity      => lt_leaf_loading_capacity,
                              on_palette_max_qty            => lt_palette_max_qty);
-            IF (ln_ret_code <> gn_status_normal) THEN
-              IF (lv_msg_supply_max_err IS NULL) THEN
+            IF ( ln_ret_code <> gn_status_normal ) THEN
+              IF ( lv_msg_supply_max_err IS NULL ) THEN
                 lv_msg_supply_max_err := gt_chk_supply_tbl(i).request_no;
               ELSE
                 lv_msg_supply_max_err := lv_msg_supply_max_err
@@ -6187,18 +6341,22 @@ AS
               lv_err_chek     := '1';
             ELSE
               -- 商品区分がドリンクの場合
-              IF (gt_chk_supply_tbl(i).prod_class = cv_prod_class_2) THEN
+              IF ( gt_chk_supply_tbl(i).prod_class = cv_prod_class_2 ) THEN
                 gt_chk_supply_tbl(i).based_weight       := lt_drink_deadweight;
                 gt_chk_supply_tbl(i).based_capacity     := lt_drink_loading_capacity;
               ELSE
-                gt_chk_supply_tbl(i).based_weight       := lt_drink_deadweight;
-                gt_chk_supply_tbl(i).based_capacity     := lt_drink_loading_capacity;
+-- 2008/12/13 D.Nihei Mod Start ================================================
+--                gt_chk_supply_tbl(i).based_weight       := lt_drink_deadweight;
+--                gt_chk_supply_tbl(i).based_capacity     := lt_drink_loading_capacity;
+                gt_chk_supply_tbl(i).based_weight       := lt_leaf_deadweight;
+                gt_chk_supply_tbl(i).based_capacity     := lt_leaf_loading_capacity;
+-- 2008/12/13 D.Nihei Mod End   ================================================
               END IF;
               gt_chk_supply_tbl(i).shipping_method_code := lt_max_ship_methods;
             END IF;
 --
             -- 最大配送区分の取得に成功している場合
-            IF (lv_err_chek = '0') THEN
+            IF ( lv_err_chek = '0' ) THEN
               --積載効率(重量)を取得
               xxwsh_common910_pkg.calc_load_efficiency(
                 in_sum_weight                 =>  gt_chk_supply_tbl(i).sum_weight,          -- 1.合計重量
@@ -6221,8 +6379,8 @@ AS
                 ov_mixed_ship_method          =>  lv_mixed_ship_method);                    -- 18.混載配送区分
 --
               -- リターンコードが'1'(異常)の場合はエラーをセット
-              IF (lv_retcode = gn_status_error) THEN
-                IF (lv_msg_supply_wei_err IS NULL) THEN
+              IF ( lv_retcode = gn_status_error ) THEN
+                IF ( lv_msg_supply_wei_err IS NULL ) THEN
                   lv_msg_supply_wei_err := gt_chk_supply_tbl(i).request_no;
                 ELSE
                   lv_msg_supply_wei_err := lv_msg_supply_wei_err
@@ -6258,8 +6416,8 @@ AS
                 ov_mixed_ship_method          =>  lv_mixed_ship_method);                    -- 18.混載配送区分
 --
               -- リターンコードが'1'(異常)の場合はエラーをセット
-              IF (lv_retcode = gn_status_error) THEN
-                IF (lv_msg_supply_cap_err IS NULL) THEN
+              IF ( lv_retcode = gn_status_error ) THEN
+                IF ( lv_msg_supply_cap_err IS NULL ) THEN
                   lv_msg_supply_cap_err := gt_chk_supply_tbl(i).request_no;
                 ELSE
                   lv_msg_supply_cap_err := lv_msg_supply_cap_err
@@ -6289,14 +6447,14 @@ AS
     -- **************************************************
 -- 2008/10/23 v1.28 D.Nihei Mod Start TE080_BPO_600 No22
 --    IF (lv_delivery_no IS NOT NULL) THEN
-    IF (    ( lv_delivery_no IS NOT NULL        )
-        AND ( iv_calcel_flag = cv_cancel_flag_on) ) THEN
+    IF ( ( lv_delivery_no IS NOT NULL         )
+     AND ( iv_calcel_flag = cv_cancel_flag_on ) ) THEN
 -- 2008/10/23 v1.28 D.Nihei Mod End
 --
       -- 配車解除不可のデータが存在する場合はエラー
-      IF (ln_no_count > 0) THEN
+      IF ( ln_no_count > 0 ) THEN
         -- 2.配車解除可否チェック(出荷)でエラーメッセージが出力された場合
-        IF (lv_msg_ship_err IS NOT NULL) THEN
+        IF ( lv_msg_ship_err IS NOT NULL ) THEN
           ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
                                                 cv_msg_ship_err,
                                                 cv_tkn_request_no,
@@ -6304,13 +6462,13 @@ AS
         END IF;
 --
         -- 2.配車解除可否チェック(移動)でエラーメッセージが出力された場合
-        IF ((lv_msg_move_err IS NOT NULL) AND (ov_errmsg IS NULL)) THEN
+        IF ( ( lv_msg_move_err IS NOT NULL ) AND ( ov_errmsg IS NULL ) ) THEN
           ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
                                                    cv_msg_move_err,
                                                    cv_tkn_request_no,
                                                    lv_msg_move_err);
 --
-        ELSIF ((lv_msg_move_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+        ELSIF ( ( lv_msg_move_err IS NOT NULL ) AND ( ov_errmsg IS NOT NULL ) ) THEN
           ov_errmsg := ov_errmsg
                        || CHR(10)
                        || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
@@ -6320,13 +6478,13 @@ AS
         END IF;
 --
         -- 2.配車解除可否チェック(支給)でエラーメッセージが出力された場合
-        IF ((lv_msg_supply_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+        IF ( ( lv_msg_supply_err IS NOT NULL ) AND ( ov_errmsg IS NULL ) ) THEN
           ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
                                                    cv_msg_supply_err,
                                                    cv_tkn_request_no,
                                                    lv_msg_supply_err);
 --
-        ELSIF ((lv_msg_supply_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+        ELSIF ( ( lv_msg_supply_err IS NOT NULL ) AND ( ov_errmsg IS NOT NULL ) ) THEN
           ov_errmsg := ov_errmsg
                        || CHR(10)
                        || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
@@ -6336,7 +6494,7 @@ AS
         END IF;
 -- Ver1.20 M.Hokkanji START
         -- 出荷最大配送区分エラー
-        IF ((lv_msg_ship_max_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+        IF ( ( lv_msg_ship_max_err IS NOT NULL ) AND ( ov_errmsg IS NULL ) ) THEN
           ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
                                                    cv_msg_ship_max_err,
                                                    cv_tkn_program,
@@ -6344,7 +6502,7 @@ AS
                                                    cv_tkn_request_no,
                                                    lv_msg_ship_max_err);
 --
-        ELSIF ((lv_msg_ship_max_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+        ELSIF ( ( lv_msg_ship_max_err IS NOT NULL ) AND ( ov_errmsg IS NOT NULL ) ) THEN
           ov_errmsg := ov_errmsg
                        || CHR(10)
                        || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
@@ -6355,7 +6513,7 @@ AS
                                                    lv_msg_ship_max_err);
         END IF;
         -- 出荷小口区分エラー
-        IF ((lv_msg_ship_small_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+        IF ( ( lv_msg_ship_small_err IS NOT NULL ) AND ( ov_errmsg IS NULL ) ) THEN
           ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
                                                    cv_msg_ship_max_err,
                                                    cv_tkn_program,
@@ -6363,7 +6521,7 @@ AS
                                                    cv_tkn_request_no,
                                                    lv_msg_ship_small_err);
 --
-        ELSIF ((lv_msg_ship_small_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+        ELSIF ( ( lv_msg_ship_small_err IS NOT NULL ) AND ( ov_errmsg IS NOT NULL ) ) THEN
           ov_errmsg := ov_errmsg
                        || CHR(10)
                        || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
@@ -6374,7 +6532,7 @@ AS
                                                    lv_msg_ship_small_err);
         END IF;
         -- 出荷積載効率(重量)エラー
-        IF ((lv_msg_ship_wei_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+        IF ( ( lv_msg_ship_wei_err IS NOT NULL ) AND ( ov_errmsg IS NULL ) ) THEN
           ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
                                                    cv_msg_ship_max_err,
                                                    cv_tkn_program,
@@ -6382,7 +6540,7 @@ AS
                                                    cv_tkn_request_no,
                                                    lv_msg_ship_wei_err);
 --
-        ELSIF ((lv_msg_ship_wei_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+        ELSIF ( ( lv_msg_ship_wei_err IS NOT NULL ) AND ( ov_errmsg IS NOT NULL ) ) THEN
           ov_errmsg := ov_errmsg
                        || CHR(10)
                        || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
@@ -6393,7 +6551,7 @@ AS
                                                    lv_msg_ship_wei_err);
         END IF;
         -- 出荷積載効率(容積)エラー
-        IF ((lv_msg_ship_cap_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+        IF ( ( lv_msg_ship_cap_err IS NOT NULL ) AND ( ov_errmsg IS NULL ) ) THEN
           ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
                                                    cv_msg_ship_max_err,
                                                    cv_tkn_program,
@@ -6401,7 +6559,7 @@ AS
                                                    cv_tkn_request_no,
                                                    lv_msg_ship_cap_err);
 --
-        ELSIF ((lv_msg_ship_cap_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+        ELSIF ( ( lv_msg_ship_cap_err IS NOT NULL ) AND ( ov_errmsg IS NOT NULL ) ) THEN
           ov_errmsg := ov_errmsg
                        || CHR(10)
                        || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
@@ -6412,7 +6570,7 @@ AS
                                                    lv_msg_ship_cap_err);
         END IF;
         -- 支給最大配送区分エラー
-        IF ((lv_msg_supply_max_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+        IF ( ( lv_msg_supply_max_err IS NOT NULL ) AND ( ov_errmsg IS NULL ) ) THEN
           ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
                                                    cv_msg_supply_max_err,
                                                    cv_tkn_program,
@@ -6420,7 +6578,7 @@ AS
                                                    cv_tkn_request_no,
                                                    lv_msg_supply_max_err);
 --
-        ELSIF ((lv_msg_supply_max_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+        ELSIF ( ( lv_msg_supply_max_err IS NOT NULL ) AND ( ov_errmsg IS NOT NULL ) ) THEN
           ov_errmsg := ov_errmsg
                        || CHR(10)
                        || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
@@ -6431,7 +6589,7 @@ AS
                                                    lv_msg_supply_max_err);
         END IF;
         -- 支給積載効率(重量)エラー
-        IF ((lv_msg_supply_wei_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+        IF ( ( lv_msg_supply_wei_err IS NOT NULL ) AND ( ov_errmsg IS NULL ) ) THEN
           ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
                                                    cv_msg_supply_max_err,
                                                    cv_tkn_program,
@@ -6439,7 +6597,7 @@ AS
                                                    cv_tkn_request_no,
                                                    lv_msg_supply_wei_err);
 --
-        ELSIF ((lv_msg_supply_wei_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+        ELSIF ( ( lv_msg_supply_wei_err IS NOT NULL ) AND (ov_errmsg IS NOT NULL ) ) THEN
           ov_errmsg := ov_errmsg
                        || CHR(10)
                        || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
@@ -6450,7 +6608,7 @@ AS
                                                    lv_msg_supply_wei_err);
         END IF;
         -- 支給積載効率(容積)エラー
-        IF ((lv_msg_supply_cap_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+        IF ( ( lv_msg_supply_cap_err IS NOT NULL ) AND ( ov_errmsg IS NULL ) ) THEN
           ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
                                                    cv_msg_supply_max_err,
                                                    cv_tkn_program,
@@ -6458,7 +6616,7 @@ AS
                                                    cv_tkn_request_no,
                                                    lv_msg_supply_cap_err);
 --
-        ELSIF ((lv_msg_supply_cap_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+        ELSIF ( ( lv_msg_supply_cap_err IS NOT NULL ) AND ( ov_errmsg IS NOT NULL ) ) THEN
           ov_errmsg := ov_errmsg
                        || CHR(10)
                        || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
@@ -6469,7 +6627,7 @@ AS
                                                    lv_msg_supply_cap_err);
         END IF;
         -- 移動最大配送区分エラー
-        IF ((lv_msg_move_max_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+        IF ( ( lv_msg_move_max_err IS NOT NULL ) AND ( ov_errmsg IS NULL ) )THEN
           ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
                                                    cv_msg_move_max_err,
                                                    cv_tkn_program,
@@ -6477,7 +6635,7 @@ AS
                                                    cv_tkn_request_no,
                                                    lv_msg_move_max_err);
 --
-        ELSIF ((lv_msg_move_max_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+        ELSIF ( ( lv_msg_move_max_err IS NOT NULL ) AND ( ov_errmsg IS NOT NULL ) ) THEN
           ov_errmsg := ov_errmsg
                        || CHR(10)
                        || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
@@ -6488,7 +6646,7 @@ AS
                                                    lv_msg_move_max_err);
         END IF;
         -- 移動小口区分エラー
-        IF ((lv_msg_move_small_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+        IF ( ( lv_msg_move_small_err IS NOT NULL ) AND ( ov_errmsg IS NULL ) ) THEN
           ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
                                                    cv_msg_move_max_err,
                                                    cv_tkn_program,
@@ -6496,7 +6654,7 @@ AS
                                                    cv_tkn_request_no,
                                                    lv_msg_move_small_err);
 --
-        ELSIF ((lv_msg_move_small_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+        ELSIF ( ( lv_msg_move_small_err IS NOT NULL ) AND ( ov_errmsg IS NOT NULL )  )THEN
           ov_errmsg := ov_errmsg
                        || CHR(10)
                        || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
@@ -6507,7 +6665,7 @@ AS
                                                    lv_msg_move_small_err);
         END IF;
         -- 移動積載効率(重量)エラー
-        IF ((lv_msg_move_wei_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+        IF ( ( lv_msg_move_wei_err IS NOT NULL ) AND ( ov_errmsg IS NULL ) ) THEN
           ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
                                                    cv_msg_move_max_err,
                                                    cv_tkn_program,
@@ -6515,7 +6673,7 @@ AS
                                                    cv_tkn_request_no,
                                                    lv_msg_move_wei_err);
 --
-        ELSIF ((lv_msg_move_wei_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+        ELSIF ( ( lv_msg_move_wei_err IS NOT NULL ) AND ( ov_errmsg IS NOT NULL ) ) THEN
           ov_errmsg := ov_errmsg
                        || CHR(10)
                        || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
@@ -6526,7 +6684,7 @@ AS
                                                    lv_msg_move_wei_err);
         END IF;
         -- 移動積載効率(容積)エラー
-        IF ((lv_msg_move_cap_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+        IF ( ( lv_msg_move_cap_err IS NOT NULL ) AND ( ov_errmsg IS NULL ) ) THEN
           ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
                                                    cv_msg_move_max_err,
                                                    cv_tkn_program,
@@ -6534,7 +6692,7 @@ AS
                                                    cv_tkn_request_no,
                                                    lv_msg_move_cap_err);
 --
-        ELSIF ((lv_msg_move_cap_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+        ELSIF ( ( lv_msg_move_cap_err IS NOT NULL ) AND ( ov_errmsg IS NOT NULL ) ) THEN
           ov_errmsg := ov_errmsg
                        || CHR(10)
                        || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
@@ -6549,21 +6707,38 @@ AS
         RETURN cv_career_cancel_err;
 --
       -- 対象のデータが存在しない場合はエラー
-      ELSIF (ln_data_count <= 0) THEN
+      ELSIF ( ln_data_count <= 0 ) THEN
         ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh, cv_msg_del_req_instr);
         RETURN cv_career_cancel_err;
 --
       END IF;
 --
-      IF (gt_chk_ship_tbl.COUNT > 0) THEN
+      IF ( gt_chk_ship_tbl.COUNT > 0 ) THEN
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log || CHR(10)
+         || '【出荷：配送No更新：受注ヘッダID】';
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
         -- 取得したレコードの分だけループ
         <<gt_chk_ship_tbl_loop>>
         FOR i IN gt_chk_ship_tbl.FIRST .. gt_chk_ship_tbl.LAST LOOP
 --
           -- 受注ヘッダアドオンIDが前のレコードと同じでない場合
-          IF ((i = gt_chk_ship_tbl.FIRST) OR
-             (gt_chk_ship_tbl(i).order_header_id
-               <> gt_chk_ship_tbl(i - 1).order_header_id)) THEN
+          IF ( ( i = gt_chk_ship_tbl.FIRST ) 
+            OR ( gt_chk_ship_tbl(i).order_header_id <> gt_chk_ship_tbl(i - 1).order_header_id ) ) THEN
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log
+         || ' '      || gt_chk_ship_tbl(i).order_header_id;
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
             -- 受注ヘッダアドオン更新処理
             UPDATE xxwsh_order_headers_all            xoha          -- 受注ヘッダアドオン
             SET    xoha.prev_delivery_no              =                     -- 前回配送No
@@ -6599,34 +6774,51 @@ AS
 -- Ver1.20 M.Hokkanji START
 --      ELSIF (gt_chk_supply_tbl.COUNT > 0) THEN
       END IF;
-      IF (gt_chk_supply_tbl.COUNT > 0) THEN
+      IF ( gt_chk_supply_tbl.COUNT > 0 ) THEN
 -- Ver1.20 M.Hokkanji END
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log || CHR(10)
+         || '【支給：配送No更新：受注ヘッダID】';
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
         -- 取得したレコードの分だけループ
         <<gt_chk_supply_tbl_loop>>
         FOR i IN gt_chk_supply_tbl.FIRST .. gt_chk_supply_tbl.LAST LOOP
 --
           -- 受注ヘッダアドオンIDが前のレコードと同じでない場合
-          IF ((i = gt_chk_supply_tbl.FIRST) OR
-             (gt_chk_supply_tbl(i).order_header_id
-               <> gt_chk_supply_tbl(i - 1).order_header_id)) THEN
+          IF ( ( i = gt_chk_supply_tbl.FIRST ) 
+            OR ( gt_chk_supply_tbl(i).order_header_id <> gt_chk_supply_tbl(i - 1).order_header_id ) ) THEN
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log
+         || ' '      || gt_chk_supply_tbl(i).order_header_id;
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
             -- 受注ヘッダアドオン更新処理
             UPDATE xxwsh_order_headers_all            xoha          -- 受注ヘッダアドオン
-            SET    xoha.prev_delivery_no              =                     -- 前回配送No
+            SET    xoha.prev_delivery_no              =             -- 前回配送No
                    (CASE
-                     WHEN (xoha.notif_status = cv_deci_noti) THEN
+                     WHEN ( xoha.notif_status = cv_deci_noti ) THEN
                        xoha.delivery_no
                      ELSE
                        xoha.prev_delivery_no
-                   END),
+                    END ) ,
                    xoha.delivery_no                   =  NULL,              -- 配送No
                    xoha.mixed_ratio                   =  NULL,              -- 混載率
 -- Ver1.20 M.Hokkanji START
-                   xoha.shipping_method_code          =  gt_chk_supply_tbl(i).shipping_method_code, -- 配送区分
-                   xoha.based_weight                  =  gt_chk_supply_tbl(i).based_weight, -- 基本重量
-                   xoha.based_capacity                =  gt_chk_supply_tbl(i).based_capacity, -- 基本容積
-                   xoha.loading_efficiency_weight     =  gt_chk_supply_tbl(i).loading_efficiency_weight, -- 積載効率(重量)
+                   xoha.shipping_method_code          =  gt_chk_supply_tbl(i).shipping_method_code,        -- 配送区分
+                   xoha.based_weight                  =  gt_chk_supply_tbl(i).based_weight,                -- 基本重量
+                   xoha.based_capacity                =  gt_chk_supply_tbl(i).based_capacity,              -- 基本容積
+                   xoha.loading_efficiency_weight     =  gt_chk_supply_tbl(i).loading_efficiency_weight,   -- 積載効率(重量)
                    xoha.loading_efficiency_capacity   =  gt_chk_supply_tbl(i).loading_efficiency_capacity, -- 積載効率(容積)
---                   xoha.mixed_no                      =  NULL,              -- 混載元No
+--                   xoha.mixed_no                      =  NULL,                                             -- 混載元No
 -- Ver1.20 M.Hokkanji END
                    xoha.last_updated_by               =  ln_user_id,
                    xoha.last_update_date              =  ld_sysdate,
@@ -6643,35 +6835,52 @@ AS
 --
 -- Ver1.20 M.Hokkanji START
         END IF;
-        IF (gt_chk_move_tbl.COUNT > 0) THEN
+        IF ( gt_chk_move_tbl.COUNT > 0 ) THEN
 --      ELSIF (gt_chk_move_tbl.COUNT > 0) THEN
 -- Ver1.20 M.Hokkanji END
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log || CHR(10)
+         || '【移動：配送No更新：移動依頼ヘッダID】';
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
         -- 取得したレコードの分だけループ
         <<gt_chk_move_tbl_loop>>
         FOR i IN gt_chk_move_tbl.FIRST .. gt_chk_move_tbl.LAST LOOP
 --
           -- 移動ヘッダIDが前のレコードと同じでない場合
-          IF ((i = gt_chk_move_tbl.FIRST) OR
-             (gt_chk_move_tbl(i).mov_hdr_id
-               <> gt_chk_move_tbl(i - 1).mov_hdr_id)) THEN
+          IF ( ( i = gt_chk_move_tbl.FIRST ) 
+           OR  ( gt_chk_move_tbl(i).mov_hdr_id <> gt_chk_move_tbl(i - 1).mov_hdr_id ) ) THEN
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log
+         || ' '      || gt_chk_move_tbl(i).mov_hdr_id;
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
             -- 移動依頼/指示ヘッダ(アドオン)更新処理
             UPDATE xxinv_mov_req_instr_headers        mrih     -- 移動依頼/指示ヘッダ(アドオン)
             SET    mrih.prev_delivery_no              =                     -- 前回配送No
                    (CASE
-                     WHEN (mrih.notif_status = cv_deci_noti) THEN
+                     WHEN ( mrih.notif_status = cv_deci_noti ) THEN
                        mrih.delivery_no
                      ELSE
                        mrih.prev_delivery_no
-                   END),
+                    END ) ,
                    mrih.delivery_no                   =  NULL,              -- 配送No
                    mrih.mixed_ratio                   =  NULL,              -- 混載率
 -- Ver1.20 M.Hokkanji START
-                   mrih.shipping_method_code          =  gt_chk_move_tbl(i).shipping_method_code, -- 配送区分
-                   mrih.based_weight                  =  gt_chk_move_tbl(i).based_weight, -- 基本重量
-                   mrih.based_capacity                =  gt_chk_move_tbl(i).based_capacity, -- 基本容積
-                   mrih.loading_efficiency_weight     =  gt_chk_move_tbl(i).loading_efficiency_weight, -- 積載効率(重量)
+                   mrih.shipping_method_code          =  gt_chk_move_tbl(i).shipping_method_code,        -- 配送区分
+                   mrih.based_weight                  =  gt_chk_move_tbl(i).based_weight,                -- 基本重量
+                   mrih.based_capacity                =  gt_chk_move_tbl(i).based_capacity,              -- 基本容積
+                   mrih.loading_efficiency_weight     =  gt_chk_move_tbl(i).loading_efficiency_weight,   -- 積載効率(重量)
                    mrih.loading_efficiency_capacity   =  gt_chk_move_tbl(i).loading_efficiency_capacity, -- 積載効率(容積)
---                   xoha.mixed_no                      =  NULL,              -- 混載元No
+--                   xoha.mixed_no                      =  NULL,                                         -- 混載元No
 -- Ver1.20 M.Hokkanji END
                    mrih.last_updated_by               =  ln_user_id,
                    mrih.last_update_date              =  ld_sysdate,
@@ -6726,27 +6935,35 @@ AS
     -- *** 6.関連項目更新処理
     -- **************************************************
     -- 対象のデータが存在しない場合はエラー
-    IF (ln_data_count <= 0) THEN
+    IF ( ln_data_count <= 0 ) THEN
       ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh, cv_msg_up_req_instr);
       RETURN cv_career_cancel_err;
     END IF;
 --
-    IF (gt_chk_ship_tbl.COUNT > 0) THEN
+    IF ( gt_chk_ship_tbl.COUNT > 0 ) THEN
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log || CHR(10)
+         || '【出荷：通知ステータス更新：受注ヘッダID】';
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
       -- 取得したレコードの分だけループ
       <<gt_chk_ship_tbl_loop>>
       FOR i IN gt_chk_ship_tbl.FIRST .. gt_chk_ship_tbl.LAST LOOP
 --
         -- 受注ヘッダアドオンIDが前のレコードと同じでない場合
-        IF ((i = gt_chk_ship_tbl.FIRST) OR
-             (gt_chk_ship_tbl(i).order_header_id
-               <> gt_chk_ship_tbl(i - 1).order_header_id)) THEN
+        IF ( ( i = gt_chk_ship_tbl.FIRST)
+          OR ( gt_chk_ship_tbl(i).order_header_id <> gt_chk_ship_tbl(i - 1).order_header_id ) ) THEN
 --
           -- 新規修正フラグ
           IF ( gt_chk_ship_tbl(i).notif_status = cv_deci_noti ) THEN
             --通知ステータス＝確定通知済 の場合：修正
             lv_new_modify_flg := cv_amend;
-          ELSIF (( gt_chk_ship_tbl(i).prev_notif_status = cv_deci_noti ) 
-            AND  ( gt_chk_ship_tbl(i).notif_status      = cv_re_noti )) THEN
+          ELSIF ( ( gt_chk_ship_tbl(i).prev_notif_status = cv_deci_noti ) 
+            AND   ( gt_chk_ship_tbl(i).notif_status      = cv_re_noti   ) ) THEN
             --前回通知ステータス＝確定通知済 かつ
             --  通知ステータス＝再通知要の場合：修正
             lv_new_modify_flg := cv_amend;
@@ -6763,6 +6980,15 @@ AS
           END IF;
 --
 --
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log
+         || ' '      || gt_chk_ship_tbl(i).order_header_id;
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
           -- 受注ヘッダアドオン更新処理
           UPDATE xxwsh_order_headers_all            xoha          -- 受注ヘッダアドオン
           SET    xoha.prev_notif_status             =             -- 前回通知ステータス
@@ -6771,7 +6997,7 @@ AS
                      xoha.notif_status                                    -- 追加
                    ELSE                                                   -- 追加
                      xoha.prev_notif_status                               -- 追加
-                 END),                                                    -- 追加
+                  END),                                                   -- 追加
                  xoha.notif_status                  =                     -- 通知ステータス
                  (CASE
                    WHEN (xoha.notif_status = cv_deci_noti) THEN
@@ -6808,24 +7034,32 @@ AS
 --
 -- Ver1.20 M.Hokkanji START
       END IF;
-      IF (gt_chk_supply_tbl.COUNT > 0) THEN
+      IF ( gt_chk_supply_tbl.COUNT > 0 ) THEN
 --    ELSIF (gt_chk_supply_tbl.COUNT > 0) THEN
 -- Ver1.20 M.Hokkanji END
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log || CHR(10)
+         || '【支給：通知ステータス更新：受注ヘッダID】';
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
       -- 取得したレコードの分だけループ
       <<gt_chk_supply_tbl_loop>>
       FOR i IN gt_chk_supply_tbl.FIRST .. gt_chk_supply_tbl.LAST LOOP
 --
         -- 受注ヘッダアドオンIDが前のレコードと同じでない場合
-        IF ((i = gt_chk_supply_tbl.FIRST) OR
-             (gt_chk_supply_tbl(i).order_header_id
-               <> gt_chk_supply_tbl(i - 1).order_header_id)) THEN
+        IF ( ( i = gt_chk_supply_tbl.FIRST ) 
+         OR  ( gt_chk_supply_tbl(i).order_header_id <> gt_chk_supply_tbl(i - 1).order_header_id ) ) THEN
 --
           -- 新規修正フラグ
           IF ( gt_chk_supply_tbl(i).notif_status = cv_deci_noti ) THEN
             --通知ステータス＝確定通知済 の場合：修正
             lv_new_modify_flg := cv_amend;
-          ELSIF (( gt_chk_supply_tbl(i).prev_notif_status = cv_deci_noti ) 
-            AND  ( gt_chk_supply_tbl(i).notif_status      = cv_re_noti )) THEN
+          ELSIF ( ( gt_chk_supply_tbl(i).prev_notif_status = cv_deci_noti ) 
+            AND   ( gt_chk_supply_tbl(i).notif_status      = cv_re_noti   ) ) THEN
             --前回通知ステータス＝確定通知済 かつ
             --  通知ステータス＝再通知要の場合：修正
             lv_new_modify_flg := cv_amend;
@@ -6842,6 +7076,15 @@ AS
           END IF;
 --
 --
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log
+         || ' '      || gt_chk_supply_tbl(i).order_header_id;
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
           -- 受注ヘッダアドオン更新処理
           UPDATE xxwsh_order_headers_all            xoha          -- 受注ヘッダアドオン
           SET    xoha.prev_notif_status             =             -- 前回通知ステータス
@@ -6887,24 +7130,32 @@ AS
 --
 -- Ver1.20 M.Hokkanji START
       END IF;
-      IF (gt_chk_move_tbl.COUNT > 0) THEN
+      IF ( gt_chk_move_tbl.COUNT > 0 ) THEN
 --    ELSIF (gt_chk_move_tbl.COUNT > 0) THEN
 -- Ver1.20 M.Hokkanji END
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log || CHR(10)
+         || '【移動：通知ステータス更新：移動依頼ヘッダID】';
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
       -- 取得したレコードの分だけループ
       <<gt_chk_move_tbl_loop>>
       FOR i IN gt_chk_move_tbl.FIRST .. gt_chk_move_tbl.LAST LOOP
 --
         -- 移動ヘッダIDが前のレコードと同じでない場合
-        IF ((i = gt_chk_move_tbl.FIRST) OR
-             (gt_chk_move_tbl(i).mov_hdr_id
-               <> gt_chk_move_tbl(i - 1).mov_hdr_id)) THEN
+        IF ( ( i = gt_chk_move_tbl.FIRST ) 
+          OR ( gt_chk_move_tbl(i).mov_hdr_id <> gt_chk_move_tbl(i - 1).mov_hdr_id ) ) THEN
 --
           -- 新規修正フラグ
           IF ( gt_chk_move_tbl(i).notif_status = cv_deci_noti ) THEN
             --通知ステータス＝確定通知済 の場合：修正
             lv_new_modify_flg := cv_amend;
-          ELSIF (( gt_chk_move_tbl(i).prev_notif_status = cv_deci_noti ) 
-            AND  ( gt_chk_move_tbl(i).notif_status      = cv_re_noti )) THEN
+          ELSIF ( ( gt_chk_move_tbl(i).prev_notif_status = cv_deci_noti ) 
+            AND   ( gt_chk_move_tbl(i).notif_status      = cv_re_noti   ) ) THEN
             --前回通知ステータス＝確定通知済 かつ
             --  通知ステータス＝再通知要の場合：修正
             lv_new_modify_flg := cv_amend;
@@ -6920,6 +7171,15 @@ AS
             RETURN cv_career_cancel_err;                          -- 新規修正フラグエラー
           END IF;
 --
+-- 2008/12/13 D.Nihei Add Start ================================================
+BEGIN
+  lv_log := lv_log
+         || ' '      || gt_chk_move_tbl(i).mov_hdr_id;
+EXCEPTION
+  WHEN  OTHERS THEN
+    NULL;
+END;
+-- 2008/12/13 D.Nihei Add End   ================================================
           -- 移動依頼/指示ヘッダ(アドオン)更新処理
           UPDATE xxinv_mov_req_instr_headers        mrih       -- 移動依頼/指示ヘッダ(アドオン)
           --SET    mrih.prev_notif_status             =  mrih.notif_status, -- 前回通知ステータス
@@ -6971,6 +7231,9 @@ AS
 --
     END IF;
 --
+-- 2008/12/13 D.Nihei Add Start ================================================
+          FND_LOG.STRING('6', gv_pkg_name || gv_msg_cont || cv_prg_name, SUBSTRB(lv_log, 1, 4000));
+-- 2008/12/13 D.Nihei Add End   ================================================
     -- 正常終了
     RETURN cv_compl;
 --
