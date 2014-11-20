@@ -6,7 +6,9 @@
 ##                                                                            ##
 ##    [作成／更新履歴]                                                        ##
 ##        作成者  ：  Oracle    鈴木 雄大    2008/05/01 1.0.1                 ##
-##        更新履歴：  Oracle    鈴木 雄大    2008/07/07 1.0.2                 ##
+##        更新履歴：  Oracle    鈴木 雄大    2008/05/01 1.0.1                 ##
+##                    Oracle    鈴木 雄大    2008/07/07 1.0.2                 ##
+##                    Oracle    鈴木 雄大    2008/07/14 1.0.3                 ##
 ##                        初版                                                ##
 ##                                                                            ##
 ##    [戻り値]                                                                ##
@@ -179,8 +181,22 @@ L_conc_name="XXWSH400007C"
 #L_param_008="1"
 #L_param_009=${5}
 #L_param_010=${6}
-L_param_001=${1}
-L_param_002=${2}
+#2008/07/14 y.suzuki change
+#L_param_001=${1}
+if [ ${1} == \"\" ]
+then
+  L_param_001=""
+else
+  L_param_001=${1}
+fi
+#2008/07/14 y.suzuki change
+#L_param_002=${2}
+if [ ${2} == \"\" ]
+then
+  L_param_002=""
+else
+  L_param_002=${2}
+fi
 L_param_003=""
 L_param_004=${3}
 L_param_005=${4}
