@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタ更新(日次)
  * MD.050           : 品目マスタ T_MD050_BPO_810
  * MD.070           : 品目マスタ更新(日次)(81B) T_MD070_BPO_81B
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2008/11/24    1.6   Oracle 大橋孝郎  本番環境問合せ_障害管理表220対応
  *  2009/01/28    1.7   Oracle 椎名昭圭  本番#1022対応
  *  2009/02/27    1.8   Oracle 椎名昭圭  本番#1212対応
+ *  2009/11/25    1.9   SCS 伊藤ひとみ   本番障害#83対応
  *
  *****************************************************************************************/
 --
@@ -1752,14 +1753,17 @@ AS
 */
     -- 品目マスタ更新(予約フラグOFF)
     UPDATE mtl_system_items_b msib
-    SET msib.reservable_type        = cv_reservable_type_off,
-        msib.last_updated_by        = TO_NUMBER(gv_last_update_by),
-        msib.last_update_date       = gd_last_update_date,
-        msib.last_update_login      = TO_NUMBER(gv_last_update_login),
-        msib.request_id             = TO_NUMBER(gv_request_id),
-        msib.program_application_id = TO_NUMBER(gv_program_application_id),
-        msib.program_id             = TO_NUMBER(gv_program_id),
-        msib.program_update_date    = gd_program_update_date
+-- 2009/11/25 H.Itou Mod Start 本番障害#83
+    SET msib.reservable_type        = cv_reservable_type_off
+--    SET msib.reservable_type        = cv_reservable_type_off,
+--        msib.last_updated_by        = TO_NUMBER(gv_last_update_by),
+--        msib.last_update_date       = gd_last_update_date,
+--        msib.last_update_login      = TO_NUMBER(gv_last_update_login),
+--        msib.request_id             = TO_NUMBER(gv_request_id),
+--        msib.program_application_id = TO_NUMBER(gv_program_application_id),
+--        msib.program_id             = TO_NUMBER(gv_program_id),
+--        msib.program_update_date    = gd_program_update_date
+-- 2009/11/25 H.Itou Mod End
     WHERE msib.reservable_type = 1;
 --    WHERE msib.reservable_type = cv_reservable_type_on;   -- 2008/09/11 Del
 -- 2008/09/11 Mod ↑
