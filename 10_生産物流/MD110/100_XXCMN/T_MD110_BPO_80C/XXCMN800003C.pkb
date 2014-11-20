@@ -7,7 +7,7 @@ AS
  * Description      : 従業員マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 従業員インタフェース T_MD070_BPO_80C
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *  2007/10/29    1.0   Oracle 丸下 博宣 初回作成
  *  2008/05/19    1.1   Oracle 山根 一浩 変更要求No54対応
  *  2008/05/27    1.2   Oracle 丸下 博宣 内部変更要求No122対応
+ *  2008/07/07    1.3   Oracle 山根 一浩 I_S_192対応,内部変更要求No43対応
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -166,6 +167,7 @@ AS
   gv_msg_80c_020       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10025';  --削除分の削除チェックエラー
   gv_msg_80c_021       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10030';  --コンカレント定型エラー
   gv_msg_80c_022       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10118';  --起動時間
+  gv_msg_80c_023       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10036';  --データ取得エラー１
 --
   --トークン
   gv_tkn_status        CONSTANT VARCHAR2(15) := 'STATUS';
@@ -184,10 +186,12 @@ AS
   gv_prf_min_date      CONSTANT VARCHAR2(15) := 'XXCMN_MIN_DATE';         -- 最小日付
   gv_prf_role_id       CONSTANT VARCHAR2(15) := 'XXCMN_ROLE_ID';          -- 役割ID
   gv_prf_password      CONSTANT VARCHAR2(15) := 'XXCMN_PASS_WORD';        -- 初期パスワード
+  gv_prf_app_short     CONSTANT VARCHAR2(25) := 'XXCMN_APP_SHORT_NAME';   -- アプリケーションID
   gv_prf_max_date_name CONSTANT VARCHAR2(50) := 'MAX日付';
   gv_prf_min_date_name CONSTANT VARCHAR2(50) := 'MIN日付';
   gv_prf_role_id_name  CONSTANT VARCHAR2(50) := '役割ID';
   gv_prf_password_name CONSTANT VARCHAR2(50) := 'ユーザー初期パスワード';
+  gv_prf_short_name    CONSTANT VARCHAR2(50) := 'アプリケーションID';
 --
   -- 使用DB名
   gv_xxcmn_emp_if_name          CONSTANT VARCHAR2(100) := '社員インタフェース';
@@ -293,6 +297,8 @@ AS
   gv_password        fnd_user.encrypted_foundation_password%TYPE;   -- 初期パスワード
 --
   gv_employee_number per_all_people_f.employee_number%TYPE;         -- 従業員番号
+--
+  gv_short_name      VARCHAR2(20);                                  -- アプリケーションID
 --
   -- 定数
   gn_created_by               NUMBER;                     -- 作成者
@@ -505,6 +511,19 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+--
+    -- 2008/07/07 Add ↓
+    -- アプリケーションID取得
+    gv_short_name := FND_PROFILE.VALUE(gv_prf_app_short);
+--
+    -- プロファイルが取得できない場合はエラー
+    IF (gv_short_name IS NULL) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn,        gv_msg_80c_012,
+                                            gv_tkn_ng_profile, gv_prf_short_name);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    -- 2008/07/07 Add ↑
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -1714,10 +1733,13 @@ AS
     ob_retcd := TRUE;
 --
     -- 職責マスタ
-    SELECT COUNT(fur.application_id)
+    SELECT COUNT(fres.application_id)
     INTO   ln_cnt
-    FROM   fnd_responsibility fur                        -- 職責マスタ
-    WHERE  fur.responsibility_id = TO_NUMBER(in_resp)
+    FROM   fnd_responsibility fres                    -- 職責マスタ
+          ,fnd_application    fapp
+    WHERE  fres.application_id         = fapp.application_id
+    AND    fres.responsibility_id      = TO_NUMBER(in_resp)
+    AND    fapp.application_short_name = gv_short_name
     AND    ROWNUM = 1;
 --
     IF (ln_cnt < 1) THEN
@@ -2083,9 +2105,10 @@ AS
       INTO   ov_resp_key
             ,ov_app_name
       FROM   fnd_responsibility fres                    -- 職責マスタ
-            ,fnd_application fapp
-      WHERE  fres.responsibility_id = iv_resp_id
-      AND    fres.application_id    = fapp.application_id
+            ,fnd_application    fapp
+      WHERE  fres.application_id         = fapp.application_id
+      AND    fres.responsibility_id      = iv_resp_id
+      AND    fapp.application_short_name = gv_short_name
       AND    ROWNUM = 1;
 --
     EXCEPTION
@@ -6832,6 +6855,16 @@ AS
     IF (lv_retcode = gv_status_error) THEN
       RAISE check_sub_main_expt;
     END IF;
+--
+    -- 2008/07/07 Add ↓
+    IF (gn_target_cnt = 0) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn,
+                                            gv_msg_80c_023);
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+      gn_warn_cnt := gn_warn_cnt + 1;
+      ov_retcode := gv_status_warn;
+    END IF;
+    -- 2008/07/07 Add ↑
 --
     -- エラー、ワーニングデータ有りの場合はワーニング終了する。
     IF ((gn_error_cnt + gn_warn_cnt) > 0) THEN

@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目インタフェース T_MD070_BPO_80B
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -71,6 +71,7 @@ AS
  *  2008/05/27    1.3   Oracle 丸下 博宣 内部変更要求No122対応
  *  2008/06/23    1.4   Oracle 山根 一浩 ST事前検証不具合対応
  *  2008/06/25    1.5   Oracle 山根 一浩 不具合No275対応
+ *  2008/07/07    1.6   Oracle 山根 一浩 I_S_192対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -191,6 +192,7 @@ AS
   gv_msg_80b_019       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10118';  --起動時間
   gv_msg_80b_020       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10148';  --品目原価未入力エラー
   gv_msg_80b_021       CONSTANT VARCHAR2(15) := 'APP-XXCMN-00024';  --成功データ・警告あり(見出し)
+  gv_msg_80b_022       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10036';  --データ取得エラー１
 --エラー・ワーニング
   gv_msg_80b_100       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10099';  --品目原価更新の原価チェック
   gv_msg_80b_101       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10100';  --品目原価登録の原価チェック
@@ -6826,6 +6828,16 @@ AS
     END IF;
 --
     gn_normal_cnt := gn_normal_cnt + gn_warok_cnt;
+--
+    -- 2008/07/07 Add ↓
+    IF (gn_target_cnt = 0) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn,
+                                            gv_msg_80b_022);
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+      gn_warn_cnt := gn_warn_cnt + 1;
+      ov_retcode := gv_status_warn;
+    END IF;
+    -- 2008/07/07 Add ↑
 --
         -- エラー、ワーニングデータ有りの場合はワーニング終了する。
     IF ((gn_error_cnt + gn_warn_cnt + gn_warok_cnt) > 0) THEN

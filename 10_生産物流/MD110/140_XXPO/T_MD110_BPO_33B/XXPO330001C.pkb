@@ -7,7 +7,7 @@ AS
  * Description      : 仕入・有償支給（仕入先返品）
  * MD.050/070       : 仕入・有償支給（仕入先返品）Issue2.0  (T_MD050_BPO_330)
  *                    返品指示書                            (T_MD070_BPO_33B)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/05/02    1.3   Yasuhisa Yamamoto TE080不具合対応(330_10)
  *  2008/05/02    1.4   Yasuhisa Yamamoto TE080不具合対応(330_11)
  *  2008/06/30    1.5   Yohei  Takayama   ST不具合#92対応
+ *  2008/07/07    1.6   Satoshi Yunba     禁則文字対応
  *
  *****************************************************************************************/
 --
@@ -275,7 +276,7 @@ AS
 --
     --データの場合
     IF (ic_type = gc_tag_type_d) THEN
-      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>';
+      lv_convert_data := '<'||iv_name||'><![CDATA['||iv_value||']]></'||iv_name||'>';
     ELSE
       lv_convert_data := '<'||iv_name||'>';
     END IF;

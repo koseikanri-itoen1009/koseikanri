@@ -7,7 +7,7 @@ AS
  * Description      : 顧客インタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 顧客インタフェース   T_MD070_BPO_80A
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -79,6 +79,7 @@ AS
  *  2008/05/15    1.2   Oracle 山根 一浩 変更要求No66 対応
  *  2008/05/27    1.3   Oracle 丸下 博宣 内部変更要求No122対応
  *  2008/06/23    1.4   Oracle 山根 一浩 不具合No259対応
+ *  2008/07/07    1.5   Oracle 山根 一浩 I_S_192対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -186,6 +187,7 @@ AS
   gv_msg_80a_019       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10021';  --範囲外データ
   gv_msg_80a_020       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10030';  --コンカレント定型エラー
   gv_msg_80a_021       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10118';  --起動時間
+  gv_msg_80a_022       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10036';  --データ取得エラー１
 --拠点チェック用
   gv_msg_80a_030       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10070';  --更新の存在チェックエラー
   gv_msg_80a_031       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10071';  --削除の存在チェックワーニング
@@ -10062,6 +10064,17 @@ AS
 --
     gn_warn_cnt   := gn_p_warn_cnt+gn_s_warn_cnt;
     gn_warn_cnt   := gn_warn_cnt+gn_c_warn_cnt;
+--
+    -- 2008/07/07 Add ↓
+    IF (gn_target_cnt = 0) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn,
+                                             gv_msg_80a_022);
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--
+      ov_retcode := gv_status_warn;
+      gn_warn_cnt := gn_warn_cnt + 1;
+    END IF;
+    -- 2008/07/07 Add ↑
 --
     -- エラー、ワーニングデータ有りの場合はワーニング終了する。
     IF ((gn_error_cnt + gn_warn_cnt) > 0) THEN
