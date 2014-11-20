@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -14,6 +14,7 @@ AS
  * ---------------------- ----------------------------------------------------------
  *  del_worktable_data     ワークテーブルデータ削除(A-9)
  *  start_svf              SVF起動(A-8)
+ *  upd_resv_payment       支払ステータス「自動繰越」更新処理(A-10)
  *  ins_worktable_data     ワークテーブルデータ登録(A-7)
  *  break_judge            ブレイク判定処理(A-6)
  *  get_bm_contract_err    販手エラー情報抽出処理(A-5)
@@ -51,6 +52,7 @@ AS
  *  2011/04/28    1.14  SCS S.Niki       [障害E_本稼動_02100] 現金支払の場合、銀行情報に固定文字を出力する対応
  *  2012/07/23    1.15  SCSK K.Onotsuka  [障害E_本稼動_08365,08367] VDBM残高一覧の支払ステータスに「消込済」「自動繰越」
  *                                                              残高取消後も「前月まで未払」金額を出力
+ *  2013/01/29    1.16  SCSK K.Taniguchi [障害E_本稼動_10381] 支払ステータス「自動繰越」出力条件変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -137,6 +139,12 @@ AS
   cv_prof_pay_rec_name       CONSTANT VARCHAR2(34)  := 'XXCOK1_BL_LIST_PROMPT_PAY_REC_NAME';      --残高一覧_消込済見出し
   cv_prof_pay_auto_res_name  CONSTANT VARCHAR2(39)  := 'XXCOK1_BL_LIST_PROMPT_PAY_AUTO_RES_NAME'; --残高一覧_自動繰越見出し
 -- 2012/07/04 Ver.1.15 [障害E_本稼動_08365] SCSK K.Onotsuka ADD END
+-- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi ADD START
+  cv_prof_trans_criterion    CONSTANT VARCHAR2(35)  := 'XXCOK1_BANK_FEE_TRANS_CRITERION';    --銀行手数料_振込額基準
+  cv_prof_less_fee_criterion CONSTANT VARCHAR2(35)  := 'XXCOK1_BANK_FEE_LESS_CRITERION';     --銀行手数料_基準額未満
+  cv_prof_more_fee_criterion CONSTANT VARCHAR2(35)  := 'XXCOK1_BANK_FEE_MORE_CRITERION';     --銀行手数料_基準額以上
+  cv_prof_bm_tax             CONSTANT VARCHAR2(35)  := 'XXCOK1_BM_TAX';                      --販売手数料_消費税率
+-- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi ADD END
 -- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
 --  cv_prof_org_code_sales     CONSTANT VARCHAR2(25)  := 'XXCOK1_ORG_CODE_SALES';              --在庫組織コード_営業組織
 -- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
@@ -185,6 +193,10 @@ AS
   cv_proc_type1_upd          CONSTANT VARCHAR2(1)  := '1';  -- (UPDATE用)処理区分：消込済
   cv_proc_type2_upd          CONSTANT VARCHAR2(1)  := '2';  -- (UPDATE用)処理区分：保留
 -- 2012/07/04 Ver.1.15 [障害E_本稼動_08365] SCSK K.Onotsuka ADD END
+-- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi ADD START
+  cv_bm_payment_type1        CONSTANT VARCHAR2(1)  := '1'; -- BM支払区分(1：本振（案内書あり）)
+  cv_bm_payment_type2        CONSTANT VARCHAR2(1)  := '2'; -- BM支払区分(2：本振（案内書なし）)
+-- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi ADD END
   -- ===============================================
   -- グローバル変数
   -- ===============================================
@@ -201,6 +213,12 @@ AS
   gv_bk_trns_fee_we          VARCHAR2(10)  DEFAULT NULL; -- 振込手数料_当方
   gv_bk_trns_fee_ctpty       VARCHAR2(8)   DEFAULT NULL; -- 振込手数料_相手方
   gv_pay_res_name            VARCHAR2(4)   DEFAULT NULL; -- 保留見出し
+-- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi ADD START
+  gn_trans_fee               NUMBER        DEFAULT 0;    -- 銀行手数料(振込額基準)
+  gn_less_fee                NUMBER        DEFAULT 0;    -- 銀行手数料(基準未満)
+  gn_more_fee                NUMBER        DEFAULT 0;    -- 銀行手数料(基準以上)
+  gn_bm_tax                  NUMBER        DEFAULT 0;    -- 消費税率
+-- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi ADD END
 -- 2012/07/04 Ver.1.15 [障害E_本稼動_08365] SCSK K.Onotsuka ADD START
   gv_pay_rec_name            VARCHAR2(6)   DEFAULT NULL; -- 消込済見出し
   gv_pay_auto_res_name       VARCHAR2(8)   DEFAULT NULL; -- 自動繰越見出し
@@ -783,6 +801,110 @@ AS
       ov_retcode := cv_status_error;
   END start_svf;
 --
+-- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi ADD START
+  /**********************************************************************************
+   * Procedure Name   : upd_resv_payment
+   * Description      : 支払ステータス「自動繰越」更新処理(A-10)
+   ***********************************************************************************/
+  PROCEDURE upd_resv_payment(
+    ov_errbuf                OUT VARCHAR2           -- エラー・メッセージ
+  , ov_retcode               OUT VARCHAR2           -- リターン・コード
+  , ov_errmsg                OUT VARCHAR2           -- ユーザー・エラー・メッセージ
+  )
+  IS
+    -- ===============================================
+    -- ローカル定数
+    -- ===============================================
+    cv_prg_name      CONSTANT VARCHAR2(18) := 'upd_resv_payment';    -- プログラム名
+    -- ===============================================
+    -- ローカル変数
+    -- ===============================================
+    lv_errbuf                VARCHAR2(5000) DEFAULT NULL;              -- エラー・メッセージ
+    lv_retcode               VARCHAR2(1)    DEFAULT cv_status_normal;  -- リターン・コード
+    lv_errmsg                VARCHAR2(5000) DEFAULT NULL;              -- ユーザー・エラー・メッセージ
+    ln_transfer_fee          NUMBER DEFAULT 0;                         -- 振込手数料
+    ln_transfer_amount       NUMBER DEFAULT 0;                         -- 振込金額
+    -- ===============================================
+    -- ローカルカーソル
+    -- ===============================================
+    -- 支払先ごとの販手残高一覧データ
+    -- (本振、未払分が対象)
+    CURSOR l_payment_cur
+    IS
+      SELECT
+            xrbb.payment_code                 AS  payment_code        -- 支払先コード
+           ,xrbb.bm_payment_code              AS  bm_payment_code     -- BM支払区分
+           ,xrbb.bank_trns_fee                AS  bank_trns_fee       -- 振込手数料負担者
+           ,NVL(SUM(xrbb.unpaid_balance), 0)  AS  unpaid_balance      -- 未払残高
+      FROM
+            xxcok_rep_bm_balance    xrbb  -- 販手残高一覧帳票ワークテーブル
+      WHERE
+            xrbb.request_id           =  cn_request_id                              -- 要求ID(今回実行分)
+      AND   xrbb.bm_payment_code     IN  (cv_bm_payment_type1, cv_bm_payment_type2) -- BM支払区分(本振)
+      GROUP BY
+            -- 支払先ごと
+            xrbb.payment_code                       -- 支払先コード
+           ,xrbb.bm_payment_code                    -- BM支払区分
+           ,xrbb.bank_trns_fee                      -- 振込手数料(負担先)
+      HAVING
+            NVL(SUM(xrbb.unpaid_balance), 0)  >  0  -- 未払分が対象
+      ORDER BY
+            xrbb.payment_code                       -- 支払先コード
+    ;
+--
+  BEGIN
+    -- ===============================================
+    -- ステータス初期化
+    -- ===============================================
+    ov_retcode := cv_status_normal;
+--
+    -- ===============================================
+    -- 支払ステータス「自動繰越」更新処理
+    -- ===============================================
+    -- 支払先ごとの販手残高一覧データをループ
+    FOR l_payment_rec IN l_payment_cur LOOP
+      --
+      -- 振込手数料の算出
+      ln_transfer_fee := CASE WHEN ( l_payment_rec.unpaid_balance >= gn_trans_fee )
+                           -- 未払残高が基準額以上の場合
+                           THEN gn_more_fee * ( 1 + gn_bm_tax / 100 ) -- 銀行手数料(基準以上)の税込額
+                           -- 未払残高が基準額未満の場合
+                           ELSE gn_less_fee * ( 1 + gn_bm_tax / 100 ) -- 銀行手数料(基準未満)の税込額
+                         END;
+      --
+      -- 振込金額の算出
+      ln_transfer_amount := CASE WHEN ( l_payment_rec.bank_trns_fee = gv_bk_trns_fee_we )
+                              -- 振込手数料負担者＝当方の場合
+                              THEN l_payment_rec.unpaid_balance                    -- 未払残高
+                              -- 振込手数料負担者＝相手先の場合
+                              ELSE l_payment_rec.unpaid_balance - ln_transfer_fee  -- 未払残高－振込手数料
+                            END;
+      --
+      -- 振込金額が0円以下になる場合
+      IF ( ln_transfer_amount <= 0 ) THEN
+        --
+        -- 対象の支払先の支払ステータスを「自動繰越」に更新する
+        UPDATE  xxcok_rep_bm_balance                        -- 販手残高一覧帳票ワークテーブル
+        SET     resv_payment  =  gv_pay_auto_res_name       -- 支払ステータス("自動繰越")
+        WHERE   request_id    =  cn_request_id              -- 要求ID(今回実行分)
+        AND     payment_code  =  l_payment_rec.payment_code -- 対象の支払先コード
+        ;
+      END IF;
+      --
+    END LOOP;
+--
+  EXCEPTION
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END upd_resv_payment;
+--
+-- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi ADD END
   /**********************************************************************************
    * Procedure Name   : ins_worktable_data
    * Description      : ワークテーブルデータ登録(A-7)
@@ -1175,8 +1297,12 @@ AS
 -- 2012/07/11 Ver.1.15 [障害E_本稼動_08367] SCSK K.Onotsuka UPD START
 --      gt_resv_payment_bk := gv_pay_res_name;
       IF ( i_target_rec.proc_type = cv_proc_type0_upd ) THEN
-      --保留フラグ='Y'且つ、処理区分が'0'の場合は「自動繰越」
-        gt_resv_payment_bk := gv_pay_auto_res_name; -- 自動繰越
+-- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi UPD START
+--      --保留フラグ='Y'且つ、処理区分が'0'の場合は「自動繰越」
+--        gt_resv_payment_bk := gv_pay_auto_res_name; -- 自動繰越
+        -- [障害E_本稼動_10381] 自動繰越の条件変更（upd_resv_paymentで実施）
+        NULL;
+-- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi UPD END
       ELSIF ( i_target_rec.proc_type = cv_proc_type2_upd ) THEN
       --保留フラグ='Y'且つ、処理区分が'2'の場合は「保留」
         gt_resv_payment_bk := gv_pay_res_name; -- 保留
@@ -2346,6 +2472,19 @@ AS
           RAISE global_process_expt;
         END IF;
       END LOOP ins_loop;
+-- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi ADD START
+      -- ===============================================
+      -- 支払ステータス「自動繰越」更新処理(A-10)
+      -- ===============================================
+      upd_resv_payment(
+        ov_errbuf                =>  lv_errbuf                -- エラーバッファ
+      , ov_retcode               =>  lv_retcode               -- リターンコード
+      , ov_errmsg                =>  lv_errmsg                -- エラーメッセージ
+      );
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+      END IF;
+-- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi ADD END
     END IF;
   EXCEPTION
     -- *** 処理部共通例外 ***
@@ -2594,6 +2733,40 @@ AS
       lv_profile_nm := cv_prof_pay_auto_res_name;
       RAISE no_profile_expt;
     END IF;
+-- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi ADD START
+    -- ===============================================
+    -- プロファイル取得(銀行手数料(振込基準額))
+    -- ===============================================
+    gn_trans_fee := TO_NUMBER( FND_PROFILE.VALUE( cv_prof_trans_criterion ) );
+    IF ( gn_trans_fee IS NULL ) THEN
+      lv_profile_nm := cv_prof_trans_criterion;
+      RAISE no_profile_expt;
+    END IF;
+    -- ===============================================
+    -- プロファイル取得(銀行手数料額(基準未満))
+    -- ===============================================
+    gn_less_fee := TO_NUMBER( FND_PROFILE.VALUE( cv_prof_less_fee_criterion ) );
+    IF ( gn_less_fee IS NULL ) THEN
+      lv_profile_nm := cv_prof_less_fee_criterion;
+      RAISE no_profile_expt;
+    END IF;
+    -- ===============================================
+    -- プロファイル取得(銀行手数料額(基準以上))
+    -- ===============================================
+    gn_more_fee := TO_NUMBER( FND_PROFILE.VALUE( cv_prof_more_fee_criterion ) );
+    IF ( gn_more_fee IS NULL ) THEN
+      lv_profile_nm := cv_prof_more_fee_criterion;
+      RAISE no_profile_expt;
+    END IF;
+    -- ===============================================
+    -- プロファイル取得(消費税率)
+    -- ===============================================
+    gn_bm_tax := TO_NUMBER( FND_PROFILE.VALUE( cv_prof_bm_tax ) );
+    IF ( gn_bm_tax IS NULL ) THEN
+      lv_profile_nm := cv_prof_bm_tax;
+      RAISE no_profile_expt;
+    END IF;
+-- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi ADD END
 -- 2012/07/04 Ver.1.15 [障害E_本稼動_08365] SCSK K.Onotsuka ADD END
     -- ===============================================
     -- プロファイル取得(在庫組織コード_営業組織)
