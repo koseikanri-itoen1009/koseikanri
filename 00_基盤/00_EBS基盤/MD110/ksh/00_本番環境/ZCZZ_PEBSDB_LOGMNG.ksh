@@ -11,6 +11,9 @@
 ##                       初版                                                 ##
 ##                     SCS    北河           2010/01/08 1.0.2                 ##
 ##                       /tmp配下をユーザの条件付で削除対象に追加             ##
+##                     SCSK   戸谷田         2012/04/23 1.0.3                 ##
+##                       /ebsdblog/PEBSITO/bdump配下の一時ディレクトリを      ##
+##                       削除対象に追加                                       ##
 ##                                                                            ##
 ##   [戻り値]                                                                 ##
 ##      0 : 正常                                                              ##
@@ -43,7 +46,11 @@ L_tmptyped="d"                           #ファイルの種類：ディレクトリ
 L_tmpuser="pebsito"                      #ユーザ名
 L_tmphozonkikan="30"                     #/tmpディレクトリ配下の保存期間
 ##2010/01/08 T.Kitagawa Add End
-
+##2012/04/23 D.Toyata Add Start
+L_cdmpdir="/ebsdblog/PEBSITO/bdump"
+L_cdmpdirmei="cdmp_"
+L_cdmphozonkikan="14"
+##2012/04/23 D.Toyata Add End
 
 ################################################################################
 ##                                 関数定義                                   ##
@@ -202,6 +209,24 @@ else
    echo ${TE_ZCZZ01000} >> ${L_rogumei}
 fi
 ##2010/01/08 T.Kitagawa Add End
+
+##2012/04/23 D.Toyata Add Start
+#ディレクトリの削除（/ebsdblog/PEBSITO/bdump/配下のcdmp～ディレクトリ）
+#L_hyoujunshuturyoku 削除ディレクトリ一覧
+echo "### ${L_cdmpdir} ログディレクトリ ###" >> ${L_rogumei}
+/usr/bin/find ${L_cdmpdir} -type ${L_tmptyped} -name "${L_cdmpdirmei}*" -mtime +${L_cdmphozonkikan} -print | sort -r > ${TE_ZCZZHYOUJUNSHUTURYOKU}
+L_kensu=`/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} | /usr/bin/wc -l`
+if [ ${L_kensu} -ne 0 ]
+then
+   /usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} >> ${L_rogumei}
+   while read L_hyoujunshuturyoku
+   do
+      rm -Rf ${L_hyoujunshuturyoku}
+   done < ${TE_ZCZZHYOUJUNSHUTURYOKU}
+else
+   echo ${TE_ZCZZ01000} >> ${L_rogumei}
+fi
+##2012/04/23 D.Toyata Add End
 
 L_rogushuturyoku "削除対象ログファイル存在確認および削除 終了"
 
