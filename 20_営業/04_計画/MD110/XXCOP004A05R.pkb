@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A05R(body)
  * Description      : 引取計画立案表出力ワーク登録
  * MD.050           : 引取計画立案表 MD050_COP_004_A05
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/29    1.0  SCS.Kikuchi       新規作成
  *  2009/03/04    1.1  SCS.Kikuchi       SVF結合対応
+ *  2009/04/28    1.2  SCS.Kikuchi       T1_0645,T1_0838対応
  *
  *****************************************************************************************/
 --
@@ -102,10 +103,16 @@ AS
   cv_sales_class_1             CONSTANT VARCHAR2(1)   := '1';                   -- 売上区分:通常
   cv_sales_class_5             CONSTANT VARCHAR2(1)   := '5';                   -- 売上区分:協賛
   cv_sales_class_6             CONSTANT VARCHAR2(1)   := '6';                   -- 売上区分:見本
-  cv_cmn_organization_id       CONSTANT VARCHAR2(19)  := 'XXCMN_MASTER_ORG_ID'; -- マスタ品目組織
+--20090428_Ver1.2_T1_0645_SCS.Kikuchi_DEL_START
+--  cv_cmn_organization_id       CONSTANT VARCHAR2(19)  := 'XXCMN_MASTER_ORG_ID'; -- マスタ品目組織
+--20090428_Ver1.2_T1_0645_SCS.Kikuchi_DEL_END
   cv_inv_item_status_20        CONSTANT VARCHAR2(2)   := '20';                  -- 品目ステータス：仮登録
   cv_inv_item_status_30        CONSTANT VARCHAR2(2)   := '30';                  -- 品目ステータス：本登録
   cv_inv_item_status_40        CONSTANT VARCHAR2(2)   := '40';                  -- 品目ステータス：廃
+
+--20090428_Ver1.2_T1_0645_SCS.Kikuchi_ADD_START
+  cv_sales_org_code            CONSTANT VARCHAR2(30)  := 'XXCOP1_SALES_ORG_CODE'; -- 営業組織
+--20090428_Ver1.2_T1_0645_SCS.Kikuchi_ADD_END
 
   -- 入力パラメータログ出力用
   cv_pm_prod_class_code_tl     CONSTANT VARCHAR2(100) := '商品区分';
@@ -116,7 +123,11 @@ AS
   cv_msg_application           CONSTANT VARCHAR2(100) := 'XXCOP';
   cv_profile_chk_msg           CONSTANT VARCHAR2(19)  := 'APP-XXCOP1-00002';    -- プロファイル取得エラー：品目組織
   cv_profile_chk_msg_tkn_lbl1  CONSTANT VARCHAR2(100) := 'PROF_NAME';
-  cv_profile_chk_msg_tkn_val1  CONSTANT VARCHAR2(100) := 'XXCMN:マスタ組織';
+--20090428_Ver1.2_T1_0645_SCS.Kikuchi_MOD_START
+--  cv_profile_chk_msg_tkn_val1  CONSTANT VARCHAR2(100) := 'XXCMN:マスタ組織';
+  cv_profile_chk_msg_tkn_val1  CONSTANT VARCHAR2(100) := 'XXCOP:営業組織';
+--20090428_Ver1.2_T1_0645_SCS.Kikuchi_MOD_END
+
 --★1.1 2009/03/04 Add Start
   cv_others_err_msg           CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00041'; -- CSVｱｳﾄﾌﾟｯﾄ機能システムエラーメッセージ
   cv_others_err_msg_tkn_lbl1  CONSTANT VARCHAR2(100) := 'ERRMSG';
@@ -202,7 +213,12 @@ AS
   gd_result_collect_ed_day1    DATE;                  -- 出荷実績抽出終了日（計画対象年月－１１ヶ月末日）
   gd_result_collect_st_day2    DATE;                  -- 出荷実績抽出開始日（計画対象年月－３ヶ月の初日）
   gd_result_collect_ed_day2    DATE;                  -- 出荷実績抽出終了日（計画対象年月－１ヶ月の末日）
-  gn_mater_org_id              mtl_parameters.organization_id%type;
+--20090428_Ver1.2_T1_0645_SCS.Kikuchi_DEL_START
+--  gn_mater_org_id              mtl_parameters.organization_id%type;
+--20090428_Ver1.2_T1_0645_SCS.Kikuchi_DEL_END
+--20090428_Ver1.2_T1_0645_SCS.Kikuchi_ADD_START
+  gv_sales_org_code            mtl_parameters.organization_code%type;
+--20090428_Ver1.2_T1_0645_SCS.Kikuchi_ADD_END
 
   -- 出力対象データ格納用
   g_header_data_tbl            header_data_ttype;                   -- 引取計画チェックリスト出力対象拠点
@@ -336,7 +352,10 @@ AS
     AND    xp.party_id         (+) =  hca.party_id
     AND    xp.start_date_active(+) <= gd_system_date
     AND    xp.end_date_active  (+) >= gd_system_date
-    AND    mp.organization_id      =  gn_mater_org_id
+--20090428_Ver1.2_T1_0645_SCS.Kikuchi_MOD_START
+--    AND    mp.organization_id      =  gn_mater_org_id
+    AND    mp.organization_code    =  gv_sales_org_code
+--20090428_Ver1.2_T1_0645_SCS.Kikuchi_MOD_END
     ;
 --
   EXCEPTION
@@ -806,8 +825,11 @@ AS
                FROM   xxcoi_inv_reception_daily          -- 月次在庫受払表（日次）
                WHERE  base_code         = g_header_data_tbl(in_header_index).base_code
                AND    inventory_item_id = g_detail_data_tbl(in_detail_index).inventory_item_id
-               AND    practice_date     BETWEEN gd_this_month_start_day
-                                        AND     gd_prev_day
+--20090428_Ver1.2_T1_0838_SCS.Kikuchi_MOD_START
+--               AND    practice_date     BETWEEN gd_this_month_start_day
+--                                        AND     gd_prev_day
+               AND    practice_date     <= gd_prev_day
+--20090428_Ver1.2_T1_0838_SCS.Kikuchi_MOD_END
                GROUP
                BY     base_code
                     , organization_id
@@ -1316,17 +1338,40 @@ AS
     -- ヘッダー情報ワーククリア
     g_header_data_tbl := g_header_data_tbl_init;
 
+--20090428_Ver1.2_T1_0645_SCS.Kikuchi_DEL_START
+--    ---------------------------------------------------
+--    --  マスタ品目組織の取得
+--    ---------------------------------------------------
+--    BEGIN
+--      gn_mater_org_id  :=  TO_NUMBER(fnd_profile.value(cv_cmn_organization_id));
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        gn_mater_org_id  :=  NULL;
+--    END;
+--    -- プロファイル：マスタ品目組織が取得出来ない＆エラーとなる場合
+--    IF ( gn_mater_org_id IS NULL ) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_msg_application
+--                    ,iv_name         => cv_profile_chk_msg
+--                    ,iv_token_name1  => cv_profile_chk_msg_tkn_lbl1
+--                    ,iv_token_value1 => cv_profile_chk_msg_tkn_val1
+--                   );
+--      gn_error_cnt := gn_error_cnt + 1;
+--      RAISE global_process_expt;
+--    END IF;
+--20090428_Ver1.2_T1_0645_SCS.Kikuchi_DEL_END
+--20090428_Ver1.2_T1_0645_SCS.Kikuchi_ADD_START
     ---------------------------------------------------
-    --  マスタ品目組織の取得
+    --  営業組織コードの取得
     ---------------------------------------------------
     BEGIN
-      gn_mater_org_id  :=  TO_NUMBER(fnd_profile.value(cv_cmn_organization_id));
+      gv_sales_org_code := fnd_profile.value(cv_sales_org_code);
     EXCEPTION
       WHEN OTHERS THEN
-        gn_mater_org_id  :=  NULL;
+        gv_sales_org_code := NULL;
     END;
-    -- プロファイル：マスタ品目組織が取得出来ない＆エラーとなる場合
-    IF ( gn_mater_org_id IS NULL ) THEN
+    -- プロファイル：営業組織が取得出来ない場合
+    IF ( gv_sales_org_code IS NULL ) THEN
       lv_errmsg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_msg_application
                     ,iv_name         => cv_profile_chk_msg
@@ -1334,8 +1379,9 @@ AS
                     ,iv_token_value1 => cv_profile_chk_msg_tkn_val1
                    );
       gn_error_cnt := gn_error_cnt + 1;
-      RAISE global_process_expt;
+      RAISE internal_process_expt;
     END IF;
+--20090428_Ver1.2_T1_0645_SCS.Kikuchi_ADD_END
 
     -- ================================================
     --  A-2,A-3 対象拠点・帳票ヘッダ情報取得
@@ -1463,10 +1509,19 @@ AS
     WHERE   request_id = cn_request_id
     ;
 
-
   EXCEPTION
       -- *** 任意で例外処理を記述する ****
       -- カーソルのクローズをここに記述する
+--20090428_Ver1.2_T1_0645_SCS.Kikuchi_ADD_START
+    WHEN internal_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      IF (lv_errbuf IS NULL) THEN
+        ov_errbuf := NULL;
+      ELSE
+        ov_errbuf := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      END IF;
+      ov_retcode := cv_status_error;
+--20090428_Ver1.2_T1_0645_SCS.Kikuchi_ADD_END
 --
 --#################################  固定例外処理部 START   ###################################
 --
