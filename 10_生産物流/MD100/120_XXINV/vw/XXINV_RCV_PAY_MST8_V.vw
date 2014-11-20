@@ -32,8 +32,12 @@ AS
         ,xxwsh_order_headers_all   xoha
 -- 08/07/08 Y.Yamamoto ADD v1.02 End
         ,xxwsh_order_lines_all     xola
-        ,xxcmn_item_categories4_v  xicv4_a
-        ,xxcmn_item_categories4_v  xicv4_o
+-- 2008/08/27 K.Yamane Mod Å´
+--        ,xxcmn_item_categories4_v  xicv4_a
+--        ,xxcmn_item_categories4_v  xicv4_o
+        ,xxcmn_item_categories5_v  xicv4_a
+        ,xxcmn_item_categories5_v  xicv4_o
+-- 2008/08/27 K.Yamane Mod Å™
   WHERE  xrpm.doc_type                    = 'PORC'
   AND    xrpm.source_document_code        = 'RMA'
   AND    ooha.header_id                   = rsl.oe_order_header_id
