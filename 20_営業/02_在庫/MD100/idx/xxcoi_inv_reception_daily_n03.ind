@@ -1,0 +1,24 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Index Name  : XXCOI_INV_RECEPTION_DAILY_N03
+ * Description : 月次在庫受払表（日次）インデックスN03
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/10/16    1.0   H.Sasaki         新規作成
+ *
+ ************************************************************************/
+CREATE INDEX XXCOI.XXCOI_INV_RECEPTION_DAILY_N03
+ON XXCOI.XXCOI_INV_RECEPTION_DAILY
+(
+  base_code
+ ,inventory_item_id
+ ,practice_date
+ ,subinventory_code
+ ,organization_id
+)
+TABLESPACE XXIDX2;
