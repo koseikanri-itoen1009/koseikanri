@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK015A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : EDIシステムにてイセトー社へ送信する支払案内書(圧着はがき)用データファイル作成
- * Version          : 2.2
+ * Version          : 2.3
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/09/19    2.0   S.Moriyama       [障害0001309] 変更管理番号I_E_540対応（台別内訳明細出力）
  *  2009/10/14    2.1   S.Moriyama       [変更依頼I_E_573] 宛名、住所の取得元を変更
  *  2009/11/16    2.2   S.Moriyama       [変更依頼I_E_665] 郵便番号を7桁ハイフンなしからハイフンありへ変更
+ *  2009/12/15    2.3   K.Nakamura       [障害E_本稼動_00427] 銀行振込手数料の算出を変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -1230,7 +1231,10 @@ AS
     -- ===============================================
     IF ( it_bm_data_rec.payee_bank_charge_bearer = cv_bank_charge_bearer ) THEN
       gn_bank_fee := cn_number_0;
-    ELSIF ( it_bm_data_rec.total_payment_amt_tax < gv_bank_fee_trans ) THEN
+-- 2009/12/15 Ver.2.3 [障害E_本稼動_00427] SCS K.Nakamura UPD START
+--    ELSIF ( it_bm_data_rec.total_payment_amt_tax < gv_bank_fee_trans ) THEN
+    ELSIF ( ( it_bm_data_rec.total_payment_amt_tax - it_bm_data_rec.reserve_amt_tax ) < gv_bank_fee_trans ) THEN
+-- 2009/12/15 Ver.2.3 [障害E_本稼動_00427] SCS K.Nakamura UPD END
       gn_bank_fee := gn_tax_include_less;
     ELSE
       gn_bank_fee := gn_tax_include_more;
