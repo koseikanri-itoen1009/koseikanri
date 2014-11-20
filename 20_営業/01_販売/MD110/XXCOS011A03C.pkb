@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *  2010/03/11    1.17  S.Karikomi       [E_本稼働_01848]納品日変更対応
  *  2010/03/18    1.18  S.Karikomi       [E_本稼働_01903]売単価、売価金額取得先修正
  *                                                       対象件数0件時のステータス変更対応
+ *  2010/03/19    1.19  S.Karikomi       [E_本稼動_01867]納品担当者取得変更対応
  *
  *****************************************************************************************/
 --
@@ -85,6 +86,9 @@ AS
   cn_program_application_id CONSTANT NUMBER      := fnd_global.prog_appl_id;    --PROGRAM_APPLICATION_ID
   cn_program_id             CONSTANT NUMBER      := fnd_global.conc_program_id; --PROGRAM_ID
   cd_program_update_date    CONSTANT DATE        := SYSDATE;                    --PROGRAM_UPDATE_DATE
+/* 2010/03/19 Ver1.19 Add Start */
+  cn_per_business_group_id  CONSTANT NUMBER      := fnd_global.per_business_group_id; --PER_BUSINESS_GROUP_ID
+/* 2010/03/19 Ver1.19 Add  End  */
 --
   cv_msg_part      CONSTANT VARCHAR2(3) := ' : ';
   cv_msg_cont      CONSTANT VARCHAR2(3) := '.';
@@ -147,6 +151,9 @@ AS
   cv_prf_ball_uom_code  CONSTANT VARCHAR2(50)  := 'XXCOS1_BALL_UOM_CODE';        -- XXCOS:ボール単位コード
   cv_prf_organization   CONSTANT VARCHAR2(50)  := 'XXCOI1_ORGANIZATION_CODE';    -- XXCOI:在庫組織コード
   cv_prf_max_date       CONSTANT VARCHAR2(50)  := 'XXCOS1_MAX_DATE';             -- XXCOS:MAX日付
+/* 2010/03/19 Ver1.19 Add Start */
+  cv_prf_min_date       CONSTANT VARCHAR2(50)  := 'XXCOS1_MIN_DATE';             -- XXCOS:MIN日付
+/* 2010/03/19 Ver1.19 Add  End  */
   cv_prf_bks_id         CONSTANT VARCHAR2(50)  := 'GL_SET_OF_BKS_ID';            -- GL会計帳簿ID
   cv_prf_org_id         CONSTANT VARCHAR2(50)  := 'ORG_ID';                      -- MO:営業単位
 -- ************ 2009/09/03 N.Maeda 1.12 ADD START ***************** --
@@ -197,6 +204,9 @@ AS
   cv_msg_tkn_prf9       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00059';  -- XXCOS:ボール単位コード
   cv_msg_tkn_prf10      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00048';  -- XXCOI:在庫組織コード
   cv_msg_tkn_prf11      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00056';  -- XXCOS:MAX日付
+/* 2010/03/19 Ver1.19 Add Start */
+  cv_msg_tkn_prf15      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00120';  -- XXCOS:MIN日付
+/* 2010/03/19 Ver1.19 Add  End  */
   cv_msg_tkn_prf12      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00060';  -- GL会計帳簿ID
   cv_msg_tkn_prf13      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00047';  -- 営業単位
 -- 2009/05/22 Ver1.9 Add Start
@@ -305,6 +315,9 @@ AS
   cv_date_format        CONSTANT VARCHAR2(8)   := 'YYYYMMDD';          -- 日付フォーマット(日)
   cv_time_format        CONSTANT VARCHAR2(8)   := 'HH24MISS';          -- 日付フォーマット(時間)
   cv_max_date_format    CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';        -- MAX日付フォーマット
+/* 2010/03/19 Ver1.19 Add Start */
+  cv_min_date_format    CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';        -- MIN日付フォーマット
+/* 2010/03/19 Ver1.19 Add  End  */
   cv_0                  CONSTANT VARCHAR2(1)   := '0';                 -- 固定値:0(VARCHAR2)
   cn_0                  CONSTANT NUMBER        := 0;                   -- 固定値:0(NUMBER)
   cv_1                  CONSTANT VARCHAR2(1)   := '1';                 -- 固定値:1(VARCHAR2)
@@ -671,6 +684,10 @@ AS
 -- ******* 2009/10/05 1.14 N.Maeda ADD START ******* --
   cv_online                   CONSTANT VARCHAR2(50)  := 'Online';                        -- 受注ソース(ONLINE)
 -- ******* 2009/10/05 1.14 N.Maeda ADD  END  ******* --
+/* 2010/03/19 Ver1.19 Add Start */
+  cv_emp                      CONSTANT VARCHAR2(100) := 'EMP';                           -- 従業員
+  ct_enabled_flg_y            CONSTANT fnd_lookup_values.enabled_flag%TYPE := 'Y';       -- 使用可能
+/* 2010/03/19 Ver1.19 Add  End  */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -702,6 +719,9 @@ AS
   gt_shop_date_to       xxcos_edi_headers.shop_delivery_date%TYPE;     -- 店舗納品日To
   gt_sale_class         xxcos_edi_headers.ar_sale_class%TYPE;          -- 定番特売区分
   gt_area_code          xxcmm_cust_accounts.edi_district_code%TYPE;    -- 地区コード
+/* 2010/03/19 Ver1.19 Add Start */
+  gt_delivery_charge    xxcos_edi_headers.vendor_charge%TYPE;          -- 納品担当者
+/* 2010/03/19 Ver1.19 Add  End  */
   -- プロファイル値
   gv_if_header          VARCHAR2(2);                                   -- ヘッダレコード区分
   gv_if_data            VARCHAR2(2);                                   -- データレコード区分
@@ -714,6 +734,9 @@ AS
   gv_ball_uom_code      VARCHAR2(3);                                   -- ボール単位コード
   gv_organization       VARCHAR2(3);                                   -- 在庫組織コード
   gd_max_date           DATE;                                          -- MAX日付
+/* 2010/03/19 Ver1.19 Add Start */
+  gd_min_date           DATE;                                          -- MIN日付
+/* 2010/03/19 Ver1.19 Add  End  */
   gn_bks_id             NUMBER;                                        -- 会計帳簿ID
   gn_org_id             NUMBER;                                        -- 営業単位
 -- 2009/05/22 Ver1.9 Add Start
@@ -815,8 +838,44 @@ AS
           ,xca3.torihikisaki_code               torihikisaki_code              -- 顧客マスタ.取引先コード
           ,xeh.vendor_name1_alt                 vendor_name1_alt               -- EDIヘッダ情報.取引先名１(カナ)
           ,xeh.vendor_name2_alt                 vendor_name2_alt               -- EDIヘッダ情報.取引先名２(カナ)
-          ,papf.last_name                       last_name                      -- 従業員マスタ.カナ姓
-          ,papf.first_name                      first_name                     -- 従業員マスタ.カナ名
+/* 2010/03/19 Ver1.19 Mod Start */
+--          ,papf.last_name                       last_name                      -- 従業員マスタ.カナ姓
+--          ,papf.first_name                      first_name                     -- 従業員マスタ.カナ名
+          ,CASE
+             WHEN ( gt_delivery_charge IS NOT NULL ) THEN
+               gt_delivery_charge
+             ELSE
+               NVL( ( SELECT SUBSTRB( papf.last_name || papf.first_name ,1 ,12 ) full_name          -- 従業員マスタ．カナ姓名
+                       FROM   per_all_people_f         papf                                         -- 従業員マスタ
+                             ,per_all_assignments_f    paaf                                         -- 従業員割当マスタ
+                       WHERE  paaf.effective_start_date <= cd_process_date                          -- 従業員割当ﾏｽﾀ.適用開始日<=業務日付
+                       AND    paaf.effective_end_date   >= cd_process_date                          -- 従業員割当ﾏｽﾀ.適用終了日>=業務日付
+                       AND    papf.person_id             = paaf.person_id                           -- 従業員ﾏｽﾀ.従業員ID=従業員割当ﾏｽﾀ.従業員ID
+                       AND    papf.attribute11           = cv_position                              -- 従業員ﾏｽﾀ.職位(新)='002'(支店長)
+                       AND    papf.effective_start_date <= cd_process_date                          -- 従業員ﾏｽﾀ.適用開始日<=業務日付
+                       AND    papf.effective_end_date   >= cd_process_date                          -- 従業員ﾏｽﾀ.適用終了日>=業務日付
+                       AND    paaf.ass_attribute5        = xca3.delivery_base_code                  -- 従業員割当ﾏｽﾀ.所属ｺｰﾄﾞ=顧客追加情報.納品拠点ｺｰﾄﾞ
+                       AND    ROWNUM                     = 1
+                     ) ,
+                     ( SELECT SUBSTRB( papf.last_name || papf.first_name ,1 ,12 ) full_name         -- 従業員マスタ．カナ姓名
+                       FROM   jtf_rs_salesreps         jrs                                          -- jtf_rs_salesreps
+                             ,jtf_rs_resource_extns    jrre                                         -- リソースマスタ
+                             ,per_person_types         ppt                                          -- 従業員タイプマスタ
+                             ,per_all_people_f         papf                                         -- 従業員マスタ
+                       WHERE  jrs.resource_id            = jrre.resource_id
+                       AND    jrre.source_id             = papf.person_id
+                       AND    TRUNC(ooha.request_date)   BETWEEN NVL( papf.effective_start_date, gd_min_date )
+                                                         AND     NVL( papf.effective_end_date, gd_max_date )
+                       AND    papf.person_type_id        = ppt.person_type_id
+                       AND    ppt.business_group_id      = cn_per_business_group_id
+                       AND    ppt.system_person_type     = cv_emp
+                       AND    ppt.active_flag            = ct_enabled_flg_y
+                       AND    jrs.salesrep_id            = ooha.salesrep_id
+                       AND    jrs.org_id                 = ooha.org_id
+                     )
+                  )
+           END                                  full_name                      -- 従業員マスタ．カナ姓名
+/* 2010/03/19 Ver1.19 Mod  End  */
           ,hl1.state                            state                          -- 拠点マスタ.都道府県
           ,hl1.city                             city                           -- 拠点マスタ.市・区
           ,hl1.address1                         address1                       -- 拠点マスタ.住所１
@@ -1136,8 +1195,10 @@ AS
           ,hz_parties                           hp3    -- 顧客パーティ
           ,xxcos_tax_rate_v                     xtrv   -- 消費税率ビュー
           ,xxcos_login_base_info_v              xlbiv  -- 拠点(管理元)ビュー
-          ,per_all_people_f                     papf   -- 従業員マスタ
-          ,per_all_assignments_f                paaf   -- 従業員割当マスタ
+/* 2010/03/19 Ver1.19 Del Start */
+--          ,per_all_people_f                     papf   -- 従業員マスタ
+--          ,per_all_assignments_f                paaf   -- 従業員割当マスタ
+/* 2010/03/19 Ver1.19 Del  End  */
           ,ic_item_mst_b                        iimb   -- ＯＰＭ品目マスタ
           ,xxcmn_item_mst_b                     ximb   -- ＯＰＭ品目アドオン
           ,mtl_system_items_b                   msib   -- Disc品目マスタ
@@ -1234,13 +1295,15 @@ AS
     AND    hp2.duns_number_c             <> cv_cust_status_90                 -- ﾁｪｰﾝ店ﾊﾟｰﾃｨ.顧客ｽﾃｰﾀｽ<>'90'(中止決裁済)
     AND    hca3.party_id                  = hp3.party_id                      -- 顧客ﾏｽﾀ.ﾊﾟｰﾃｨID=顧客ﾊﾟｰﾃｨ.ﾊﾟｰﾃｨID
     AND    xca3.delivery_base_code        = xlbiv.base_code                   -- 顧客追加情報.納品拠点ｺｰﾄﾞ=拠点(管理元)ﾋﾞｭｰ.拠点ｺｰﾄﾞ
-    AND    xca3.delivery_base_code        = paaf.ass_attribute5               -- 顧客追加情報.納品拠点ｺｰﾄﾞ=従業員割当ﾏｽﾀ.所属ｺｰﾄﾞ
-    AND    paaf.effective_start_date     <= cd_process_date                   -- 従業員割当ﾏｽﾀ.適用開始日<=業務日付
-    AND    paaf.effective_end_date       >= cd_process_date                   -- 従業員割当ﾏｽﾀ.適用終了日>=業務日付
-    AND    papf.person_id                 = paaf.person_id                    -- 従業員ﾏｽﾀ.従業員ID=従業員割当ﾏｽﾀ.従業員ID
-    AND    papf.attribute11               = cv_position                       -- 従業員ﾏｽﾀ.職位(新)='002'(支店長)
-    AND    papf.effective_start_date     <= cd_process_date                   -- 従業員ﾏｽﾀ.適用開始日<=業務日付
-    AND    papf.effective_end_date       >= cd_process_date                   -- 従業員ﾏｽﾀ.適用終了日>=業務日付
+/* 2010/03/19 Ver1.19 Del Start */
+--    AND    xca3.delivery_base_code        = paaf.ass_attribute5               -- 顧客追加情報.納品拠点ｺｰﾄﾞ=従業員割当ﾏｽﾀ.所属ｺｰﾄﾞ
+--    AND    paaf.effective_start_date     <= cd_process_date                   -- 従業員割当ﾏｽﾀ.適用開始日<=業務日付
+--    AND    paaf.effective_end_date       >= cd_process_date                   -- 従業員割当ﾏｽﾀ.適用終了日>=業務日付
+--    AND    papf.person_id                 = paaf.person_id                    -- 従業員ﾏｽﾀ.従業員ID=従業員割当ﾏｽﾀ.従業員ID
+--    AND    papf.attribute11               = cv_position                       -- 従業員ﾏｽﾀ.職位(新)='002'(支店長)
+--    AND    papf.effective_start_date     <= cd_process_date                   -- 従業員ﾏｽﾀ.適用開始日<=業務日付
+--    AND    papf.effective_end_date       >= cd_process_date                   -- 従業員ﾏｽﾀ.適用終了日>=業務日付
+/* 2010/03/19 Ver1.19 Del  End  */
 --****************************** 2009/06/19 1.10 T.Kitajima MOD START ******************************--
     AND    ooha.org_id                    = gn_org_id                         -- 受注ﾍｯﾀﾞ.組織ID=[A-2].営業単位
 --****************************** 2009/06/19 1.10 T.Kitajima MOD  END  ******************************--
@@ -2340,6 +2403,31 @@ AS
       ln_err_chk := cn_1;  -- エラー有り
     END IF;
 --
+/* 2010/03/19 Ver1.19 Add Start */
+    -- MIN日付
+    gd_min_date := TO_DATE( FND_PROFILE.VALUE( cv_prf_min_date ), cv_min_date_format );
+    IF ( gd_min_date IS NULL ) THEN
+      -- トークン取得
+      lv_tkn_value1 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_application    -- アプリケーション
+                         ,iv_name         => cv_msg_tkn_prf15  -- XXCOS:MIN日付
+                       );
+      -- メッセージ取得
+      lv_err_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application  -- アプリケーション
+                      ,iv_name         => cv_msg_prf_err  -- プロファイル取得エラー
+                      ,iv_token_name1  => cv_tkn_profile  -- トークンコード１
+                      ,iv_token_value1 => lv_tkn_value1   -- プロファイル名
+                    );
+      -- メッセージに出力
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => lv_err_msg
+      );
+      ln_err_chk := cn_1;  -- エラー有り
+    END IF;
+/* 2010/03/19 Ver1.19 Add  End  */
+--
     -- 会計帳簿ID
     gn_bks_id := TO_NUMBER( FND_PROFILE.VALUE( cv_prf_bks_id ) );
     IF ( gn_bks_id IS NULL ) THEN
@@ -3019,6 +3107,9 @@ AS
     iv_shop_date_to     IN  VARCHAR2,     --   7.店舗納品日To
     iv_sale_class       IN  VARCHAR2,     --   8.定番特売区分
     iv_area_code        IN  VARCHAR2,     --   9.地区コード
+/* 2010/03/19 Ver1.19 Add Start */
+    iv_delivery_charge  IN  VARCHAR2,     --  12.納品担当者
+/* 2010/03/19 Ver1.19 Add  End  */
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -3073,6 +3164,9 @@ AS
     gt_shop_date_to   := TO_DATE(iv_shop_date_to, cv_date_format);    -- 店舗納品日To
     gt_sale_class     := iv_sale_class;                               -- 定番特売区分
     gt_area_code      := iv_area_code;                                -- 地区コード
+/* 2010/03/19 Ver1.19 Add Start */
+    gt_delivery_charge := iv_delivery_charge;                         -- 納品担当者
+/* 2010/03/19 Ver1.19 Add  End  */
 --
     --==============================================================
     -- EDI受注データ抽出
@@ -3670,9 +3764,12 @@ AS
       gt_data_tab(ln_data_cnt)(cv_vendor_name2_alt)         := SUBSTRB(NVL(gt_edi_order_tab(ln_loop_cnt).vendor_name2_alt,
                                                                    gt_edi_order_tab(ln_loop_cnt).base_name_phonetic), 1, 100);  -- 取引先名2(ｶﾅ)
       gt_data_tab(ln_data_cnt)(cv_vendor_tel)               := gt_edi_order_tab(ln_loop_cnt).address_lines_phonetic;            -- 取引先TEL
-      gt_data_tab(ln_data_cnt)(cv_vendor_charge)            := NVL(iv_delivery_charge,
-                                                                   gt_edi_order_tab(ln_loop_cnt).last_name ||
-                                                                   gt_edi_order_tab(ln_loop_cnt).first_name);                   -- 取引先担当者
+/* 2010/03/19 Ver1.19 Mod Start */
+--      gt_data_tab(ln_data_cnt)(cv_vendor_charge)            := NVL(iv_delivery_charge,
+--                                                                   gt_edi_order_tab(ln_loop_cnt).last_name ||
+--                                                                   gt_edi_order_tab(ln_loop_cnt).first_name);                   -- 取引先担当者
+      gt_data_tab(ln_data_cnt)(cv_vendor_charge)            := gt_edi_order_tab(ln_loop_cnt).full_name;                         -- 取引先担当者
+/* 2010/03/19 Ver1.19 Mod  End  */
 --    gt_data_tab(ln_data_cnt)(cv_vendor_address)           := gt_edi_order_tab(ln_loop_cnt).state    ||
 --                                                             gt_edi_order_tab(ln_loop_cnt).city     ||
 --                                                             gt_edi_order_tab(ln_loop_cnt).address1 ||
@@ -4921,6 +5018,9 @@ AS
       ,iv_shop_date_to     --  7.店舗納品日To
       ,iv_sale_class       --  8.定番特売区分
       ,iv_area_code        --  9.地区コード
+/* 2010/03/19 Ver1.19 Add Start */
+      ,iv_delivery_charge  --  12.納品担当者
+/* 2010/03/19 Ver1.19 Add  End  */
       ,lv_errbuf           -- エラー・メッセージ           --# 固定 #
       ,lv_retcode          -- リターン・コード             --# 固定 #
       ,lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
