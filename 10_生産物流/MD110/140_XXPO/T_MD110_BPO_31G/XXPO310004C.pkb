@@ -7,7 +7,7 @@ AS
  * Description      : HHT受入実績計上
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : HHT受入実績計上     T_MD070_BPO_31G
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2009/02/10    1.13  Oracle 椎名 昭圭 本番#1127対応
  *  2009/03/30    1.14  Oracle 飯田 甫   本番#1346対応
  *  2009/04/03    1.15  Oracle 吉元 強樹 本番#1368対応
+ *  2010/04/21    1.16  SCS 伊藤 ひとみ  E_本稼動_02210対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -149,11 +150,13 @@ AS
   gv_tkn_number_31g_14    CONSTANT VARCHAR2(15) := 'APP-XXCMN-00008';    -- 処理件数
   gv_tkn_number_31g_15    CONSTANT VARCHAR2(15) := 'APP-XXCMN-00009';    -- 成功件数
   gv_tkn_number_31g_16    CONSTANT VARCHAR2(15) := 'APP-XXCMN-00010';    -- エラー件数
+  gv_tkn_number_31g_17    CONSTANT VARCHAR2(15) := 'APP-XXPO-10293'; -- 2010/04/21 v1.16 H.Itou Add E_本稼動_02210
 --
   gv_tkn_name_vendor_code   CONSTANT VARCHAR2(50) := '取引先コード';
   gv_tkn_name_location_code CONSTANT VARCHAR2(50) := '納入先コード';
   gv_tkn_name_item_code     CONSTANT VARCHAR2(50) := '品目コード';
   gv_tkn_name_lot_number    CONSTANT VARCHAR2(50) := 'ロットNo';
+  gv_tkn_name_rcv_date      CONSTANT VARCHAR2(50) := '受入日';       -- 2010/04/21 v1.16 H.Itou Add E_本稼動_02210
 --
   gv_tbl_name_po_head       CONSTANT VARCHAR2(50) := '発注ヘッダ';
   gv_tbl_name_po_line       CONSTANT VARCHAR2(50) := '発注明細';
@@ -1291,6 +1294,9 @@ AS
 -- 2009/04/03 v1.15 T.Yoshimoto Add Start 本番#1368
             ,xxpo.line_location_id         -- 納入明細ID
 -- 2009/04/03 v1.15 T.Yoshimoto Add End 本番#1368
+-- 2010/04/21 v1.16 H.Itou Add Start E_本稼動_02210
+            ,TO_DATE(xxpo.h_attribute4,'YYYY/MM/DD')    schedule_delivery_date   -- 納入日
+-- 2010/04/21 v1.16 H.Itou Add End
       FROM   xxpo_rcv_txns_interface xrti                 -- 受入実績IF(アドオン)
             ,xxcmn_vendors_v xvv                          -- 仕入先情報VIEW
             ,xxcmn_vendor_sites_v xsv                     -- 仕入先サイト情報VIEW
@@ -1585,6 +1591,45 @@ AS
         gn_proper_error := 1;
 --
 -- 2009/01/27 v1.11 ADD END
+-- 2010/04/21 v1.16 H.Itou Add Start E_本稼動_02210
+      -- IF.受入日の年月が、発注ヘッダ.納入日の年月と同一か。
+      ELSIF (TO_CHAR(mst_rec.rcv_date, 'YYYYMM') <> TO_CHAR(lr_mst_data_rec.schedule_delivery_date, 'YYYYMM')) THEN
+--
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                              gv_tkn_number_31g_06,
+                                              gv_tkn_h_no,
+                                              mst_rec.src_doc_num,
+                                              gv_tkn_m_no,
+                                              mst_rec.src_doc_line_num,
+                                              gv_tkn_name,
+                                              gv_tkn_name_rcv_date,
+                                              gv_tkn_value,
+                                              TO_CHAR(mst_rec.rcv_date,'YYYY/MM/DD'));
+--
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--
+        gn_warn_cnt     := gn_warn_cnt + 1;
+        gn_proper_error := 1;
+--
+      -- IF.受入日が、未来の場合、エラー
+      ELSIF (mst_rec.rcv_date > TRUNC(SYSDATE)) THEN
+--
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                              gv_tkn_number_31g_17,
+                                              gv_tkn_h_no,
+                                              mst_rec.src_doc_num,
+                                              gv_tkn_m_no,
+                                              mst_rec.src_doc_line_num,
+                                              gv_tkn_name,
+                                              gv_tkn_name_rcv_date,
+                                              gv_tkn_value,
+                                              TO_CHAR(mst_rec.rcv_date,'YYYY/MM/DD'));
+--
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--
+        gn_warn_cnt     := gn_warn_cnt + 1;
+        gn_proper_error := 1;
+-- 2010/04/21 v1.16 H.Itou Add End
       ELSE
 --2008/09/25 Add ↑
 --
