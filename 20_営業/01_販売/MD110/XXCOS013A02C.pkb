@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A02C (body)
  * Description      : INVへの販売実績データ連携
  * MD.050           : INVへの販売実績データ連携 MD050_COS_013_A02
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,8 @@ AS
  *  2009/05/13    1.5   K.Kiriu          [T1_0984]製品、商品判定の追加
  *  2009/06/17    1.6   K.Kiriu          [T1_1472]取引数量0のデータ対応
  *  2009/07/16    1.7   K.Kiriu          [0000701]PT対応
+ *  2009/07/29    1.8   N.Maeda          [0000863]PT対応
+ *  2009/08/06    1.8   N.Maeda          [0000942]PT対応
  *
  *****************************************************************************************/
 --
@@ -126,6 +128,9 @@ AS
 /* 2009/07/16 Ver1.6 Add Start */
   cv_msg_category_err       CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12817';     --カテゴリセットID取得エラーメッセージ
 /* 2009/07/16 Ver1.6 Add End   */
+-- ************ 2009/07/29 N.Maeda 1.8 ADD START *********************** --
+  cv_msg_category_id        CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12818';     --カテゴリID取得エラーメッセージ
+-- ************ 2009/07/29 N.Maeda 1.8 ADD  END  *********************** --
   --トークン名
   cv_tkn_nm_table_name      CONSTANT  VARCHAR2(100) := 'TABLE_NAME';           --テーブル名称
   cv_tkn_nm_table_lock      CONSTANT  VARCHAR2(100) := 'TABLE';                --テーブル名称(ロックエラー時用)
@@ -213,6 +218,9 @@ AS
   cv_goods_prod_sei         CONSTANT  VARCHAR2(1)   := '2';  -- 品目区分：製品= 2
 /* 2009/05/13 Ver1.5 Add End   */
 --
+-- ************ 2009/07/29 N.Maeda 1.8 ADD START *********************** --
+  cv_goods_prod_item        CONSTANT  VARCHAR2(1)   := '1';  -- 商品
+-- ************ 2009/07/29 N.Maeda 1.8 ADD  END  *********************** --
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -343,6 +351,9 @@ AS
 /* 2009/07/16 Ver1.7 Add Start */
   gt_category_set_id        mtl_category_sets_tl.category_set_id%TYPE;          --カテゴリセットID
 /* 2009/07/16 Ver1.7 Add End   */
+-- ************ 2009/07/29 N.Maeda 1.8 ADD START *********************** --
+  gt_category_id            mtl_categories_b.category_id%TYPE;  -- カテゴリID
+-- ************ 2009/07/29 N.Maeda 1.8 ADD  END  *********************** --
   g_mtl_txn_oif_tab         g_mtl_txn_oif_ttype;                                --資材取引OIFコレクション
 --************************************* 2009/04/28 N.Maeda Var1.4 ADD START *********************************************
   g_mtl_txn_oif_tab_spare   g_mtl_txn_oif_ttype_var;
@@ -350,7 +361,6 @@ AS
 --************************************* 2009/04/28 N.Maeda Var1.4 ADD  END  *********************************************
   g_disposition_tab         g_disposition_ttype;                                --勘定科目別名コレクション
   g_ccid_tab                g_ccid_ttype;                                       --勘定科目ID(CCID)コレクション
- 
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -624,6 +634,38 @@ AS
         RAISE global_api_expt;
     END;
 /* 2009/07/16 Ver1.7 Add End   */
+-- ************ 2009/07/29 N.Maeda 1.8 ADD START *********************** --
+--
+    -- =======================================
+    -- 13.カテゴリID取得
+    -- =======================================
+    BEGIN
+      SELECT  mcb.category_id       category_id  -- カテゴリID
+      INTO    gt_category_id
+      FROM    mtl_category_sets_b   mcsb  -- カテゴリセットマスタ
+              ,mtl_categories_b     mcb   -- カテゴリマスタ
+      WHERE   mcsb.category_set_id = gt_category_set_id
+      AND     mcsb.structure_id    = mcb.structure_id
+      AND     mcb.segment1         = cv_goods_prod_item
+      AND    (
+              mcb.disable_date IS NULL
+             OR
+              mcb.disable_date > cd_sysdate
+             )
+      AND    mcb.enabled_flag        = ct_enabled_flg_y
+      AND    cd_sysdate              BETWEEN NVL( mcb.start_date_active, cd_sysdate ) 
+                                     AND     NVL( mcb.end_date_active, cd_sysdate );
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_errmsg      :=  xxccp_common_pkg.get_msg(
+                                   iv_application   =>  cv_xxcos_short_name,
+                                   iv_name          =>  cv_msg_category_id
+                                   );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+--
+-- ************ 2009/07/29 N.Maeda 1.8 ADD  END  *********************** --
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -689,8 +731,19 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+--
+--
+-- ************************ 2009/08/06 1.18 N.Maeda MOD START *************************** --
+--
     --対象データ取得
-    SELECT sel.sales_exp_line_id line_id,         --販売実績明細ID
+    SELECT /*+
+           index(sel XXCOS_SALES_EXP_LINES_N03)
+           index(seh XXCOS_SALES_EXP_HEADERS_PK)
+           index(mcb MTL_CATEGORIES_B_U1)
+           leading(sel seh msib mic mcb)
+           use_nl(sel seh msib mic mcb)
+           */
+           sel.sales_exp_line_id line_id,         --販売実績明細ID
            seh.delivery_date,                     --納品日
            seh.dlv_invoice_class,                 --納品伝票区分
            seh.sales_base_code,                   --売上拠点コード
@@ -700,142 +753,34 @@ AS
            sel.standard_uom_code,                 --基準単位
            sel.standard_qty,                      --基準数量
            sel.ship_from_subinventory_code,       --出荷元保管場所
-           gpcv.inventory_item_id,                --品目ID
-/* 2009/05/13 Ver1.5 Mod Start */
---           gpcv.goods_prod_class_code             --商品製品区分
+           msib.inventory_item_id,                --品目ID
            CASE
-             WHEN mcavd.subinventory_code IS NULL THEN  --専門店以外
+             WHEN 
+               ( NOT EXISTS ( SELECT 1
+                              FROM mtl_category_accounts mca
+                              WHERE mca.category_id     = gt_category_id
+                              AND mca.organization_id   = gt_org_id
+                              AND mca.subinventory_code = sel.ship_from_subinventory_code
+                              AND ROWNUM = 1 ) ) THEN  --専門店以外
                cv_goods_prod_sei  --製品固定
              ELSE
-               gpcv.goods_prod_class_code
+               mcb.segment1
            END
-/* 2009/05/13 Ver1.5 Mod End   */
     BULK COLLECT INTO
            g_sales_exp_tab
     FROM   xxcos_sales_exp_headers  seh,          --販売実績ヘッダテーブル
            xxcos_sales_exp_lines    sel,          --販売実績明細テーブル
-/* 2009/05/13 Ver1.5 Mod Start */
---           xxcos_good_prod_class_v  gpcv          --商品製品区分ビュー
-/* 2009/07/16 Ver1.7 Add Start */
---           xxcos_good_prod_class_v  gpcv,         --商品製品区分ビュー
-           ( SELECT msib.inventory_item_id inventory_item_id,
-                    msib.segment1          segment1,
-                    mcb.segment1           goods_prod_class_code
-             FROM   mtl_system_items_b     msib,  --品目マスタ
-                    mtl_item_categories    mic,   --品目カテゴリマスタ
-                    mtl_categories_b       mcb    --カテゴリマスタ
-             WHERE  msib.organization_id    = gt_org_id
-             AND    msib.enabled_flag       = ct_enabled_flg_y
-             AND    cd_sysdate              BETWEEN NVL( msib.start_date_active, cd_sysdate )
-                                            AND     NVL( msib.end_date_active, cd_sysdate)
-             AND    msib.organization_id    = mic.organization_id
-             AND    msib.inventory_item_id  = mic.inventory_item_id
-             AND    mic.category_set_id     = gt_category_set_id
-             AND    mic.category_id         = mcb.category_id
-             AND    (
-                      mcb.disable_date IS NULL
-                    OR
-                      mcb.disable_date > cd_sysdate
-                    )
-             AND    mcb.enabled_flag        = ct_enabled_flg_y
-             AND    cd_sysdate              BETWEEN NVL( mcb.start_date_active, cd_sysdate ) 
-                                            AND     NVL( mcb.end_date_active, cd_sysdate )
-           ) gpcv,                                --商品製品区分
-/* 2009/07/16 Ver1.7 Add End   */
-/* 2009/05/13 Ver1.5 Mod End   */
-/* 2009/05/13 Ver1.5 Add Start */
-           ( SELECT DISTINCT
-/* 2009/07/16 Ver1.7 Add Start */
-                    mcav.organization_id     organization_id,
-/* 2009/07/16 Ver1.7 Add End   */
-                    mcav.subinventory_code   subinventory_code
-             FROM   mtl_category_accounts_v  mcav  -- 専門店View
-           )                        mcavd
-/* 2009/05/13 Ver1.5 Add End   */
+           mtl_system_items_b     msib,  --品目マスタ
+           mtl_item_categories    mic,   --品目カテゴリマスタ
+           mtl_categories_b       mcb    --カテゴリマスタ
            --販売実績ヘッダ.ヘッダID=販売実績明細.ヘッダID
     WHERE  seh.sales_exp_header_id = sel.sales_exp_header_id
            --納品日<=業務日付
     AND    seh.delivery_date       <= gd_proc_date
-/* 2009/07/16 Ver1.7 Mod Start */
---           --納品伝票区分 IN(納品,返品,納品訂正,返品訂正)
---    AND    EXISTS(
---             SELECT  'Y'                         ext_flg
---             FROM    fnd_lookup_values           look_val,
---                     fnd_lookup_types_tl         types_tl,
---                     fnd_lookup_types            types,
---                     fnd_application_tl          appl,
---                     fnd_application             app
---             WHERE   appl.application_id         = types.application_id
---             AND     app.application_id          = appl.application_id
---             AND     types_tl.lookup_type        = look_val.lookup_type
---             AND     types.lookup_type           = types_tl.lookup_type
---             AND     types.security_group_id     = types_tl.security_group_id
---             AND     types.view_application_id   = types_tl.view_application_id
---             AND     types_tl.language           = cv_lang
---             AND     look_val.language           = cv_lang
---             AND     appl.language               = cv_lang
---             AND     app.application_short_name  = cv_xxcos_short_name
---             AND     look_val.lookup_type        = cv_dlv_slp_cls_type
---             AND     look_val.lookup_code        LIKE cv_dlv_slp_cls_code
---             AND     look_val.meaning            = seh.dlv_invoice_class
---             AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
---             AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
---             AND     look_val.enabled_flag       = ct_enabled_flg_y
---           )
---           --納品形態区分 IN(営業車,工場直送,メイン倉庫, 他倉庫,他拠点倉庫売上)
---    AND    EXISTS(
---             SELECT  'Y'                         ext_flg
---             FROM    fnd_lookup_values           look_val,
---                     fnd_lookup_types_tl         types_tl,
---                     fnd_lookup_types            types,
---                     fnd_application_tl          appl,
---                     fnd_application             app
---             WHERE   appl.application_id         = types.application_id
---             AND     app.application_id          = appl.application_id
---             AND     types_tl.lookup_type        = look_val.lookup_type
---             AND     types.lookup_type           = types_tl.lookup_type
---             AND     types.security_group_id     = types_tl.security_group_id
---             AND     types.view_application_id   = types_tl.view_application_id
---             AND     types_tl.language           = cv_lang
---             AND     look_val.language           = cv_lang
---             AND     appl.language               = cv_lang
---             AND     app.application_short_name  = cv_xxcos_short_name
---             AND     look_val.lookup_type        = cv_dlv_ptn_cls_type
---             AND     look_val.lookup_code        LIKE cv_dlv_ptn_cls_code
---             AND     look_val.meaning            = sel.delivery_pattern_class
---             AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
---             AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
---             AND     look_val.enabled_flag       = ct_enabled_flg_y
---           )
---           --商品製品区分
---    AND    sel.item_code       = gpcv.segment1
---           --非在庫品目を取除く
---    AND    NOT EXISTS(
---             SELECT  'Y'                         ext_flg
---             FROM    fnd_lookup_values           look_val,
---                     fnd_lookup_types_tl         types_tl,
---                     fnd_lookup_types            types,
---                     fnd_application_tl          appl,
---                     fnd_application             app
---             WHERE   appl.application_id         = types.application_id
---             AND     app.application_id          = appl.application_id
---             AND     types_tl.lookup_type        = look_val.lookup_type
---             AND     types.lookup_type           = types_tl.lookup_type
---            AND     types.security_group_id     = types_tl.security_group_id
---             AND     types.view_application_id   = types_tl.view_application_id
---             AND     types_tl.language           = cv_lang
---             AND     look_val.language           = cv_lang
---             AND     appl.language               = cv_lang
---             AND     app.application_short_name  = cv_xxcos_short_name
---             AND     look_val.lookup_type        = cv_no_inv_item_type
---             AND     look_val.lookup_code        = sel.item_code
---             AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
---             AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
---             AND     look_val.enabled_flag       = ct_enabled_flg_y
---           )
            --納品伝票区分 IN(納品,返品,納品訂正,返品訂正)
     AND    EXISTS(
-             SELECT  'Y'                         ext_flg
+             SELECT  /*+ use_nl(look_val) */
+                     'Y'                         ext_flg
              FROM    fnd_lookup_values           look_val
              WHERE   look_val.lookup_type        = cv_dlv_slp_cls_type
              AND     look_val.lookup_code        LIKE cv_dlv_slp_cls_code
@@ -847,7 +792,8 @@ AS
            )
            --納品形態区分 IN(営業車,工場直送,メイン倉庫, 他倉庫,他拠点倉庫売上)
     AND    EXISTS(
-             SELECT  'Y'                         ext_flg
+             SELECT  /*+ use_nl(look_val) */
+                     'Y'                         ext_flg
              FROM    fnd_lookup_values           look_val
              WHERE   look_val.lookup_type        = cv_dlv_ptn_cls_type
              AND     look_val.lookup_code        LIKE cv_dlv_ptn_cls_code
@@ -857,11 +803,10 @@ AS
                                                  AND     NVL( look_val.end_date_active, gd_max_date )
              AND     look_val.enabled_flag       = ct_enabled_flg_y
            )
-           --商品製品区分
-    AND    sel.item_code       = gpcv.segment1
            --非在庫品目を取除く
     AND    NOT EXISTS(
-             SELECT  'Y'                         ext_flg
+             SELECT  /*+ use_nl(look_val) */
+                     'Y'                         ext_flg
              FROM    fnd_lookup_values           look_val
              WHERE   look_val.lookup_type        = cv_no_inv_item_type
              AND     look_val.lookup_code        = sel.item_code
@@ -870,24 +815,283 @@ AS
                                                  AND     NVL( look_val.end_date_active, gd_max_date )
              AND     look_val.enabled_flag       = ct_enabled_flg_y
            )
-/* 2009/07/16 Ver1.7 Mod End   */
            --INVインタフェース済フラグ(未連携)
     AND    sel.inv_interface_flag       = cv_inv_flg_n
-/* 2009/05/13 Ver1.5 Add Start */
-    AND    sel.ship_from_subinventory_code = mcavd.subinventory_code(+)
-/* 2009/05/13 Ver1.5 Add End   */
-/* 2009/07/16 Ver1.7 Add Start */
-    AND    gt_org_id                       = mcavd.organization_id(+)
-/* 2009/07/16 Ver1.7 Add End   */
+    AND    msib.organization_id     = gt_org_id             -- 在庫組織ID
+    AND    msib.segment1            = sel.item_code
+    AND    msib.enabled_flag        = ct_enabled_flg_y      -- 品目マスタ有効フラグ
+    AND    gd_proc_date
+             BETWEEN NVL(msib.start_date_active, gd_proc_date)
+             AND NVL(msib.end_date_active, gd_proc_date)
+    AND    mic.organization_id      = msib.organization_id
+    AND    mic.inventory_item_id    = msib.inventory_item_id
+    AND    mic.category_set_id      = gt_category_set_id
+    AND    mic.category_id          = mcb.category_id
+    AND    ( mcb.disable_date IS NULL
+           OR mcb.disable_date > gd_proc_date
+           )
+    AND    mcb.enabled_flag        = 'Y'      -- カテゴリ有効フラグ
+    AND    gd_proc_date
+             BETWEEN NVL(mcb.start_date_active, gd_proc_date)
+             AND NVL(mcb.end_date_active, gd_proc_date)
     ORDER BY
            sel.ship_from_subinventory_code,     --出荷元保管場所
-           gpcv.inventory_item_id,              --品目ID
+           msib.inventory_item_id,
            seh.delivery_date,                   --納品日
---************************************* 2009/04/28 N.Maeda Var1.4 ADD START *********************************************
            seh.sales_base_code                  --売上拠点コード
---************************************* 2009/04/28 N.Maeda Var1.4 ADD  END  *********************************************
     FOR UPDATE OF sel.sales_exp_line_id NOWAIT
     ;
+--
+--    --対象データ取得
+--    SELECT sel.sales_exp_line_id line_id,         --販売実績明細ID
+--           seh.delivery_date,                     --納品日
+--           seh.dlv_invoice_class,                 --納品伝票区分
+--           seh.sales_base_code,                   --売上拠点コード
+--           sel.delivery_pattern_class,            --納品形態区分
+--           sel.sales_class,                       --売上区分
+--           sel.red_black_flag,                    --赤黒フラグ
+--           sel.standard_uom_code,                 --基準単位
+--           sel.standard_qty,                      --基準数量
+--           sel.ship_from_subinventory_code,       --出荷元保管場所
+---- ************ 2009/07/29 N.Maeda 1.8 MOD START *********************** --
+--           msib.inventory_item_id,                --品目ID
+--           CASE
+--             WHEN 
+--               ( ( SELECT COUNT('X') 
+--                   FROM mtl_category_accounts mca
+--                   WHERE mca.category_id     = gt_category_id
+--                   AND mca.organization_id   = gt_org_id
+--                   AND mca.subinventory_code = sel.ship_from_subinventory_code
+--                   AND ROWNUM = 1
+--                  ) = 0 ) THEN  --専門店以外
+--               cv_goods_prod_sei  --製品固定
+--             ELSE
+--               mcb.segment1
+--           END
+----           gpcv.inventory_item_id,                --品目ID
+----/* 2009/05/13 Ver1.5 Mod Start */
+------           gpcv.goods_prod_class_code             --商品製品区分
+----           CASE
+----             WHEN mcavd.subinventory_code IS NULL THEN  --専門店以外
+----               cv_goods_prod_sei  --製品固定
+----             ELSE
+----               gpcv.goods_prod_class_code
+----           END
+--/* 2009/05/13 Ver1.5 Mod End   */
+--    BULK COLLECT INTO
+--           g_sales_exp_tab
+--    FROM   xxcos_sales_exp_headers  seh,          --販売実績ヘッダテーブル
+--           xxcos_sales_exp_lines    sel,          --販売実績明細テーブル
+--/* 2009/05/13 Ver1.5 Mod Start */
+----           xxcos_good_prod_class_v  gpcv          --商品製品区分ビュー
+--/* 2009/07/16 Ver1.7 Add Start */
+----           xxcos_good_prod_class_v  gpcv,         --商品製品区分ビュー
+---- ************ 2009/07/29 N.Maeda 1.8 MOD START *********************** --
+--           mtl_system_items_b     msib,  --品目マスタ
+--           mtl_item_categories    mic,   --品目カテゴリマスタ
+--           mtl_categories_b       mcb    --カテゴリマスタ
+----
+----           ( SELECT msib.inventory_item_id inventory_item_id,
+----                    msib.segment1          segment1,
+----                    mcb.segment1           goods_prod_class_code
+----             FROM   mtl_system_items_b     msib,  --品目マスタ
+----                    mtl_item_categories    mic,   --品目カテゴリマスタ
+----                    mtl_categories_b       mcb    --カテゴリマスタ
+----             WHERE  msib.organization_id    = gt_org_id
+----             AND    msib.enabled_flag       = ct_enabled_flg_y
+----             AND    cd_sysdate              BETWEEN NVL( msib.start_date_active, cd_sysdate )
+----                                            AND     NVL( msib.end_date_active, cd_sysdate)
+----             AND    msib.organization_id    = mic.organization_id
+----             AND    msib.inventory_item_id  = mic.inventory_item_id
+----             AND    mic.category_set_id     = gt_category_set_id
+----             AND    mic.category_id         = mcb.category_id
+----             AND    (
+----                      mcb.disable_date IS NULL
+----                    OR
+----                      mcb.disable_date > cd_sysdate
+----                    )
+----             AND    mcb.enabled_flag        = ct_enabled_flg_y
+----             AND    cd_sysdate              BETWEEN NVL( mcb.start_date_active, cd_sysdate ) 
+----                                            AND     NVL( mcb.end_date_active, cd_sysdate )
+----           ) gpcv,                                --商品製品区分
+---- ************ 2009/07/29 N.Maeda 1.8 MOD  END  *********************** --
+--/* 2009/07/16 Ver1.7 Add End   */
+--/* 2009/05/13 Ver1.5 Mod End   */
+--/* 2009/05/13 Ver1.5 Add Start */
+---- ************ 2009/07/29 N.Maeda 1.8 DEL START *********************** --
+----           ( SELECT DISTINCT
+----/* 2009/07/16 Ver1.7 Add Start */
+----                    mcav.organization_id     organization_id,
+----/* 2009/07/16 Ver1.7 Add End   */
+----                    mcav.subinventory_code   subinventory_code
+----             FROM   mtl_category_accounts_v  mcav  -- 専門店View
+----           )                        mcavd
+----/* 2009/05/13 Ver1.5 Add End   */
+---- ************ 2009/07/29 N.Maeda 1.8 DEL  END  *********************** --
+--           --販売実績ヘッダ.ヘッダID=販売実績明細.ヘッダID
+--    WHERE  seh.sales_exp_header_id = sel.sales_exp_header_id
+--           --納品日<=業務日付
+--    AND    seh.delivery_date       <= gd_proc_date
+--/* 2009/07/16 Ver1.7 Mod Start */
+----           --納品伝票区分 IN(納品,返品,納品訂正,返品訂正)
+----    AND    EXISTS(
+----             SELECT  'Y'                         ext_flg
+----             FROM    fnd_lookup_values           look_val,
+----                     fnd_lookup_types_tl         types_tl,
+----                     fnd_lookup_types            types,
+----                     fnd_application_tl          appl,
+----                     fnd_application             app
+----             WHERE   appl.application_id         = types.application_id
+----             AND     app.application_id          = appl.application_id
+----             AND     types_tl.lookup_type        = look_val.lookup_type
+----             AND     types.lookup_type           = types_tl.lookup_type
+----             AND     types.security_group_id     = types_tl.security_group_id
+----             AND     types.view_application_id   = types_tl.view_application_id
+----             AND     types_tl.language           = cv_lang
+----             AND     look_val.language           = cv_lang
+----             AND     appl.language               = cv_lang
+----             AND     app.application_short_name  = cv_xxcos_short_name
+----             AND     look_val.lookup_type        = cv_dlv_slp_cls_type
+----             AND     look_val.lookup_code        LIKE cv_dlv_slp_cls_code
+----             AND     look_val.meaning            = seh.dlv_invoice_class
+----             AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+----             AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+----             AND     look_val.enabled_flag       = ct_enabled_flg_y
+----           )
+----           --納品形態区分 IN(営業車,工場直送,メイン倉庫, 他倉庫,他拠点倉庫売上)
+----    AND    EXISTS(
+----             SELECT  'Y'                         ext_flg
+----             FROM    fnd_lookup_values           look_val,
+----                     fnd_lookup_types_tl         types_tl,
+----                     fnd_lookup_types            types,
+----                     fnd_application_tl          appl,
+----                     fnd_application             app
+----             WHERE   appl.application_id         = types.application_id
+----             AND     app.application_id          = appl.application_id
+----             AND     types_tl.lookup_type        = look_val.lookup_type
+----             AND     types.lookup_type           = types_tl.lookup_type
+----             AND     types.security_group_id     = types_tl.security_group_id
+----             AND     types.view_application_id   = types_tl.view_application_id
+----             AND     types_tl.language           = cv_lang
+----             AND     look_val.language           = cv_lang
+----             AND     appl.language               = cv_lang
+----             AND     app.application_short_name  = cv_xxcos_short_name
+----             AND     look_val.lookup_type        = cv_dlv_ptn_cls_type
+----             AND     look_val.lookup_code        LIKE cv_dlv_ptn_cls_code
+----             AND     look_val.meaning            = sel.delivery_pattern_class
+----             AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+----             AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+----             AND     look_val.enabled_flag       = ct_enabled_flg_y
+----           )
+----           --商品製品区分
+----    AND    sel.item_code       = gpcv.segment1
+----           --非在庫品目を取除く
+----    AND    NOT EXISTS(
+----             SELECT  'Y'                         ext_flg
+----             FROM    fnd_lookup_values           look_val,
+----                     fnd_lookup_types_tl         types_tl,
+----                     fnd_lookup_types            types,
+----                     fnd_application_tl          appl,
+----                     fnd_application             app
+----             WHERE   appl.application_id         = types.application_id
+----             AND     app.application_id          = appl.application_id
+----             AND     types_tl.lookup_type        = look_val.lookup_type
+----             AND     types.lookup_type           = types_tl.lookup_type
+----            AND     types.security_group_id     = types_tl.security_group_id
+----             AND     types.view_application_id   = types_tl.view_application_id
+----             AND     types_tl.language           = cv_lang
+----             AND     look_val.language           = cv_lang
+----             AND     appl.language               = cv_lang
+----             AND     app.application_short_name  = cv_xxcos_short_name
+----             AND     look_val.lookup_type        = cv_no_inv_item_type
+----             AND     look_val.lookup_code        = sel.item_code
+----             AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+----             AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+----             AND     look_val.enabled_flag       = ct_enabled_flg_y
+----           )
+--           --納品伝票区分 IN(納品,返品,納品訂正,返品訂正)
+--    AND    EXISTS(
+--             SELECT  'Y'                         ext_flg
+--             FROM    fnd_lookup_values           look_val
+--             WHERE   look_val.lookup_type        = cv_dlv_slp_cls_type
+--             AND     look_val.lookup_code        LIKE cv_dlv_slp_cls_code
+--             AND     look_val.meaning            = seh.dlv_invoice_class
+--             AND     look_val.language           = cv_lang
+--             AND     gd_proc_date                BETWEEN NVL( look_val.start_date_active, gd_min_date )
+--                                                 AND     NVL( look_val.end_date_active, gd_max_date )
+--             AND     look_val.enabled_flag       = ct_enabled_flg_y
+--           )
+--           --納品形態区分 IN(営業車,工場直送,メイン倉庫, 他倉庫,他拠点倉庫売上)
+--    AND    EXISTS(
+--             SELECT  'Y'                         ext_flg
+--             FROM    fnd_lookup_values           look_val
+--             WHERE   look_val.lookup_type        = cv_dlv_ptn_cls_type
+--             AND     look_val.lookup_code        LIKE cv_dlv_ptn_cls_code
+--             AND     look_val.meaning            = sel.delivery_pattern_class
+--             AND     look_val.language           = cv_lang
+--             AND     gd_proc_date                BETWEEN NVL( look_val.start_date_active, gd_min_date )
+--                                                 AND     NVL( look_val.end_date_active, gd_max_date )
+--             AND     look_val.enabled_flag       = ct_enabled_flg_y
+--           )
+---- ************ 2009/07/29 N.Maeda 1.8 DEL START *********************** --
+----           --商品製品区分
+----    AND    sel.item_code       = gpcv.segment1
+---- ************ 2009/07/29 N.Maeda 1.8 DEL  END  *********************** --
+--           --非在庫品目を取除く
+--    AND    NOT EXISTS(
+--             SELECT  'Y'                         ext_flg
+--             FROM    fnd_lookup_values           look_val
+--             WHERE   look_val.lookup_type        = cv_no_inv_item_type
+--             AND     look_val.lookup_code        = sel.item_code
+--             AND     look_val.language           = cv_lang
+--             AND     gd_proc_date                BETWEEN NVL( look_val.start_date_active, gd_min_date )
+--                                                 AND     NVL( look_val.end_date_active, gd_max_date )
+--             AND     look_val.enabled_flag       = ct_enabled_flg_y
+--           )
+--/* 2009/07/16 Ver1.7 Mod End   */
+--           --INVインタフェース済フラグ(未連携)
+--    AND    sel.inv_interface_flag       = cv_inv_flg_n
+---- ************ 2009/07/29 N.Maeda 1.8 DEL START *********************** --
+----/* 2009/05/13 Ver1.5 Add Start */
+----    AND    sel.ship_from_subinventory_code = mcavd.subinventory_code(+)
+----/* 2009/05/13 Ver1.5 Add End   */
+----/* 2009/07/16 Ver1.7 Add Start */
+----    AND    gt_org_id                       = mcavd.organization_id(+)
+----/* 2009/07/16 Ver1.7 Add End   */
+---- ************ 2009/07/29 N.Maeda 1.8 DEL  END  *********************** --
+---- ************ 2009/07/29 N.Maeda 1.8 ADD START *********************** --
+--    AND    msib.organization_id     = gt_org_id             -- 在庫組織ID
+--    AND    msib.segment1            = sel.item_code
+--    AND    msib.enabled_flag        = ct_enabled_flg_y      -- 品目マスタ有効フラグ
+--    AND    gd_proc_date
+--             BETWEEN NVL(msib.start_date_active, gd_proc_date)
+--             AND NVL(msib.end_date_active, gd_proc_date)
+--    AND    mic.organization_id      = msib.organization_id
+--    AND    mic.inventory_item_id    = msib.inventory_item_id
+--    AND    mic.category_set_id      = gt_category_set_id
+--    AND    mic.category_id          = mcb.category_id
+--    AND    ( mcb.disable_date IS NULL
+--           OR mcb.disable_date > gd_proc_date
+--           )
+--    AND    mcb.enabled_flag        = 'Y'      -- カテゴリ有効フラグ
+--    AND    gd_proc_date
+--             BETWEEN NVL(mcb.start_date_active, gd_proc_date)
+--             AND NVL(mcb.end_date_active, gd_proc_date)
+----
+---- ************ 2009/07/29 N.Maeda 1.8 ADD  END  *********************** --
+--    ORDER BY
+--           sel.ship_from_subinventory_code,     --出荷元保管場所
+---- ************ 2009/07/29 N.Maeda 1.8 MOD START *********************** --
+--           msib.inventory_item_id,
+----           gpcv.inventory_item_id,              --品目ID
+---- ************ 2009/07/29 N.Maeda 1.8 MOD  END  *********************** --
+--           seh.delivery_date,                   --納品日
+----************************************* 2009/04/28 N.Maeda Var1.4 ADD START *********************************************
+--           seh.sales_base_code                  --売上拠点コード
+----************************************* 2009/04/28 N.Maeda Var1.4 ADD  END  *********************************************
+--    FOR UPDATE OF sel.sales_exp_line_id NOWAIT
+--    ;
+-- ************************ 2009/08/06 1.18 N.Maeda MOD  END  *************************** --
 --
     --処理件数カウント
     gn_target_cnt := g_sales_exp_tab.COUNT;
@@ -2355,10 +2559,17 @@ AS
 --
     -- *** ローカル変数 ***
     lv_tkn_vl_table_name      VARCHAR2(100);      --エラー対象であるテーブル名
+-- ************************ 2009/08/06 1.18 N.Maeda ADD START *************************** --
+   ln_up_count                NUMBER;
+-- ************************ 2009/08/06 1.18 N.Maeda ADD  END  *************************** --
 --
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
+-- ************************ 2009/08/06 1.18 N.Maeda ADD START *************************** --
+    TYPE line_id_tab_type IS TABLE OF xxcos_sales_exp_lines.sales_exp_line_id%TYPE INDEX BY BINARY_INTEGER;
+    line_id_tab  line_id_tab_type;
+-- ************************ 2009/08/06 1.18 N.Maeda ADD  END  *************************** --
 --
   BEGIN
 --
@@ -2368,24 +2579,56 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- ************************ 2009/08/06 1.18 N.Maeda ADD START *************************** --
+--
+      ln_up_count := 0;
+      -- UPDATE用変数へコピー
+      <<up_co_loop>>
+      FOR c IN g_sales_exp_tab.FIRST..g_sales_exp_tab.LAST LOOP
+        IF ( g_sales_exp_tab.EXISTS( c ) ) THEN
+          ln_up_count := ln_up_count + 1;
+          line_id_tab(ln_up_count) := g_sales_exp_tab(c).line_id;
+        END IF;
+      END LOOP up_co_loop;
+--
+-- ************************ 2009/08/06 1.18 N.Maeda ADD  END  *************************** --
+--
     --販売実績の処理済ステータスの更新処理
     BEGIN
-      <<update_loop>>
-      FOR i IN g_sales_exp_tab.FIRST .. g_sales_exp_tab.LAST LOOP
-        IF ( g_sales_exp_tab.EXISTS( i ) ) THEN
-        UPDATE xxcos_sales_exp_lines sel                                   --販売実績明細テーブル
-        SET    sel.inv_interface_flag       = cv_inv_flg_y,                --INVインタフェース済フラグ
-               sel.last_updated_by          = cn_last_updated_by,          --最終更新者
-               sel.last_update_date         = cd_last_update_date,         --最終更新日
-               sel.last_update_login        = cn_last_update_login,        --最終更新ﾛｸﾞｲﾝ
-               sel.request_id               = cn_request_id,               --要求ID
-               sel.program_application_id   = cn_program_application_id,   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-               sel.program_id               = cn_program_id,               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-               sel.program_update_date      = cd_program_update_date       --ﾌﾟﾛｸﾞﾗﾑ更新日
-        WHERE  sel.sales_exp_line_id        = g_sales_exp_tab(i).line_id   --明細ID
-        ;
-        END IF;
-      END LOOP update_loop;
+-- ************************ 2009/08/06 1.18 N.Maeda MOD START *************************** --
+--
+--
+      FORALL i IN 1..line_id_tab.COUNT
+--
+          UPDATE xxcos_sales_exp_lines sel                                   --販売実績明細テーブル
+          SET    sel.inv_interface_flag       = cv_inv_flg_y,                --INVインタフェース済フラグ
+                 sel.last_updated_by          = cn_last_updated_by,          --最終更新者
+                 sel.last_update_date         = cd_last_update_date,         --最終更新日
+                 sel.last_update_login        = cn_last_update_login,        --最終更新ﾛｸﾞｲﾝ
+                 sel.request_id               = cn_request_id,               --要求ID
+                 sel.program_application_id   = cn_program_application_id,   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+                 sel.program_id               = cn_program_id,               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+                 sel.program_update_date      = cd_program_update_date       --ﾌﾟﾛｸﾞﾗﾑ更新日
+          WHERE  sel.sales_exp_line_id        = line_id_tab(i)       --明細ID
+          ;
+--
+--      <<update_loop>>
+--      FOR i IN g_sales_exp_tab.FIRST .. g_sales_exp_tab.LAST LOOP
+--        IF ( g_sales_exp_tab.EXISTS( i ) ) THEN
+--        UPDATE xxcos_sales_exp_lines sel                                   --販売実績明細テーブル
+--        SET    sel.inv_interface_flag       = cv_inv_flg_y,                --INVインタフェース済フラグ
+--               sel.last_updated_by          = cn_last_updated_by,          --最終更新者
+--               sel.last_update_date         = cd_last_update_date,         --最終更新日
+--               sel.last_update_login        = cn_last_update_login,        --最終更新ﾛｸﾞｲﾝ
+--               sel.request_id               = cn_request_id,               --要求ID
+--               sel.program_application_id   = cn_program_application_id,   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+--               sel.program_id               = cn_program_id,               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+--               sel.program_update_date      = cd_program_update_date       --ﾌﾟﾛｸﾞﾗﾑ更新日
+--        WHERE  sel.sales_exp_line_id        = g_sales_exp_tab(i).line_id   --明細ID
+--        ;
+--        END IF;
+--      END LOOP update_loop;
+-- ************************ 2009/08/06 1.18 N.Maeda MOD  END  *************************** --
     EXCEPTION
       --対象データ更新失敗
       WHEN OTHERS THEN
