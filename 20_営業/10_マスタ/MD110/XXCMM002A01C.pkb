@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A01C(body)
  * Description      : 社員データ取込処理
  * MD.050           : MD050_CMM_002_A01_社員データ取込
- * Version          : 3.8
+ * Version          : Issue3.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *                                       (アサイメント管理者の抽出方法・場所を変更)
  *  2009/06/25    1.7   SCS 吉川 博章    障害No.0000161 対応
  *  2009/07/06    1.8   SCS 伊藤 和之    障害No.0000412 対応(PT対応)
+ *  2009/07/10    1.9   SCS 吉川 博章    障害No.0000492 対応
  *
  *****************************************************************************************/
 --
@@ -2970,13 +2971,16 @@ AS
     -- 職責自動割当カーソル
     CURSOR resp_cur
     IS
-      SELECT flv.description        responsibility_id,  -- 職責ID
+-- Ver1.9 Mod  2009/07/10  LOOKUPの設定を職責ID⇒職責KEYに変更  障害No.0000492
+--      SELECT flv.description        responsibility_id,  -- 職責ID
+      SELECT flv.description        responsibility_key,  -- 職責NEY
+-- End1.9
              flv.attribute1         location_level,     -- 階層レベル
              flv.attribute2         location            -- 拠点コード
       FROM   fnd_lookup_values_vl flv   -- 参照コードマスタ
       WHERE  flv.lookup_type = cv_flv_responsibility  -- 職責自動割当テーブル
       AND    flv.enabled_flag = gv_const_y
--- Ver1.7 Mod  2009/06/2  基準日を業務日付+1に変更  障害No.0000161
+-- Ver1.7 Mod  2009/06/25  基準日を業務日付+1に変更  障害No.0000161
 --      AND    NVL(flv.start_date_active,ld_st_date) <= ld_st_date
 --      AND    NVL(flv.end_date_active,ld_st_date) >= ld_st_date
       AND    NVL( flv.start_date_active, cd_process_date + 1 ) <= cd_process_date + 1
@@ -2992,6 +2996,22 @@ AS
              (NVL(flv.attribute6,cv_all) = ir_masters_rec.job_type))     -- 職種コード
       ORDER BY flv.attribute1,flv.attribute2;
     --
+-- Ver1.9 Add  2009/07/10  職責取得カーソルを追加  障害No.0000492
+    CURSOR effective_resp_cur(
+      pv_responsibility_key  VARCHAR2 )
+    IS
+      SELECT fres.responsibility_id,
+             fres.responsibility_key,
+             fres.application_id,
+             fapp.application_short_name
+      FROM   fnd_application    fapp,
+             fnd_responsibility fres       -- 職責マスタ
+      WHERE  fres.responsibility_key = pv_responsibility_key
+      AND    fres.start_date  <= cd_process_date + 1
+      AND    NVL( fres.end_date, cd_process_date + 1 ) >= cd_process_date + 1
+      AND    fapp.application_id = fres.application_id;
+-- End1.9
+      --
 -- Ver1.6 Del  2009/06/23  T1_1389対応  管理者取得場所を更新の直前に変更のため削除
 --    -- 管理者割当カーソル
 --    CURSOR person_cur
@@ -3089,36 +3109,73 @@ AS
         OR (resp_rec.location_level = cv_level5 AND resp_rec.location = lv_location_cd5)
         OR (resp_rec.location_level = cv_level6 AND resp_rec.location = lv_location_cd6) THEN
         --
-        BEGIN
-          -- 職責マスタ存在チェック
-          SELECT fres.application_id,
-                 fres.responsibility_key,
-                 fapp.application_short_name
-          INTO   ln_application_id,
-                 lv_responsibility_key,
-                 lv_application_short_name
-          FROM   fnd_application    fapp,
-                 fnd_responsibility fres       -- 職責マスタ
-          WHERE  fres.responsibility_id  = TO_NUMBER(resp_rec.responsibility_id)
--- Ver1.7 Mod  2009/06/2  基準日を業務日付+1に変更  障害No.0000161
---          AND    NVL(fres.start_date,ld_st_date)  <= ld_st_date
---          AND    NVL(fres.end_date,ld_st_date)  >= ld_st_date
-          AND    fres.start_date  <= cd_process_date + 1
-          AND    NVL( fres.end_date, cd_process_date + 1 ) >= cd_process_date + 1
--- End1.7
-          AND    fapp.application_id = fres.application_id
-          AND    ROWNUM = 1;
+-- Ver1.9 Mod  2009/07/10  LOOKUPの設定を職責ID⇒職責KEYに変更  障害No.0000492
+--        BEGIN
+--          -- 職責マスタ存在チェック
+--          SELECT fres.application_id,
+--                 fres.responsibility_key,
+--                 fapp.application_short_name
+--          INTO   ln_application_id,
+--                 lv_responsibility_key,
+--                 lv_application_short_name
+--          FROM   fnd_application    fapp,
+--                 fnd_responsibility fres       -- 職責マスタ
+--        WHERE  fres.responsibility_id  = TO_NUMBER(resp_rec.responsibility_id)
+---- Ver1.7 Mod  2009/06/25  基準日を業務日付+1に変更  障害No.0000161
+----          AND    NVL(fres.start_date,ld_st_date)  <= ld_st_date
+----          AND    NVL(fres.end_date,ld_st_date)  >= ld_st_date
+--          AND    fres.start_date  <= cd_process_date + 1
+--          AND    NVL( fres.end_date, cd_process_date + 1 ) >= cd_process_date + 1
+---- End1.7
+--          AND    fapp.application_id = fres.application_id
+--          AND    ROWNUM = 1;
+--        --
+--        EXCEPTION
+--          WHEN NO_DATA_FOUND THEN
+--            ln_application_id := NULL;
+--            lv_responsibility_key := NULL;
+--            lv_application_short_name := NULL;
+--          WHEN OTHERS THEN
+--            RAISE global_api_others_expt;
+--        END;
+--        --
+--        IF ln_application_id IS NOT NULL THEN
+--          BEGIN
+--            -- 職責自動割当ワークへ待避
+--            INSERT INTO xxcmm_wk_people_resp(
+--                employee_number,
+--                responsibility_id,
+--                user_id,
+--                employee_kbn,
+--                responsibility_key,
+--                application_id,
+--                application_short_name,
+--                start_date,
+--                end_date
+--            )VALUES(
+--                ir_masters_rec.employee_number,
+--                TO_NUMBER(resp_rec.responsibility_id),
+--                ir_masters_rec.user_id,
+--                ir_masters_rec.emp_kbn,
+--                lv_responsibility_key,
+--                ln_application_id,
+--                lv_application_short_name,
+--                ld_st_date,
+--                ir_masters_rec.actual_termination_date
+--            );
+--        ln_resp_cnt := ln_resp_cnt + 1;
+--          EXCEPTION
+--            WHEN DUP_VAL_ON_INDEX THEN  -- 同じ社員番号に同じ職責が存在した場合は、skipする
+--              ln_application_id := NULL;
+--              lv_responsibility_key := NULL;
+--              lv_application_short_name := NULL;
+--            WHEN OTHERS THEN
+--              RAISE global_api_others_expt;
+--          END;
+--        END IF;
         --
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            ln_application_id := NULL;
-            lv_responsibility_key := NULL;
-            lv_application_short_name := NULL;
-          WHEN OTHERS THEN
-            RAISE global_api_others_expt;
-        END;
-        --
-        IF ln_application_id IS NOT NULL THEN
+        <<effective_resp_loop>>
+        FOR l_effective_resp_rec IN effective_resp_cur( resp_rec.responsibility_key ) LOOP
           BEGIN
             -- 職責自動割当ワークへ待避
             INSERT INTO xxcmm_wk_people_resp(
@@ -3133,25 +3190,26 @@ AS
                 end_date
             )VALUES(
                 ir_masters_rec.employee_number,
-                TO_NUMBER(resp_rec.responsibility_id),
+                l_effective_resp_rec.responsibility_id,
                 ir_masters_rec.user_id,
                 ir_masters_rec.emp_kbn,
-                lv_responsibility_key,
-                ln_application_id,
-                lv_application_short_name,
+                l_effective_resp_rec.responsibility_key,
+                l_effective_resp_rec.application_id,
+                l_effective_resp_rec.application_short_name,
                 ld_st_date,
                 ir_masters_rec.actual_termination_date
             );
-        ln_resp_cnt := ln_resp_cnt + 1;
+            ln_resp_cnt := ln_resp_cnt + 1;
           EXCEPTION
-            WHEN DUP_VAL_ON_INDEX THEN  -- 同じ社員番号に同じ職責が存在した場合は、skipする
-              ln_application_id := NULL;
-              lv_responsibility_key := NULL;
-              lv_application_short_name := NULL;
+            -- 同じ社員番号に同じ職責が存在した場合は、skipする
+            WHEN DUP_VAL_ON_INDEX THEN
+              NULL;
             WHEN OTHERS THEN
               RAISE global_api_others_expt;
           END;
-        END IF;
+        END LOOP effective_resp_loop;
+        --
+--End1.9
       END IF;
     END LOOP resp_loop;
     --
