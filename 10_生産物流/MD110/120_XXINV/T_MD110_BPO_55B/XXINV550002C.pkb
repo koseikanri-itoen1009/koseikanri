@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.37
+ * Version          : 1.38
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -65,6 +65,8 @@ AS
  *  2009/02/05    1.35 Yasuhisa Yamamoto 本番障害#1120対応(追加対応)
  *  2009/02/13    1.36 Yasuhisa Yamamoto 本番障害#1189対応
  *  2009/03/30    1.37  Akiyoshi Shiina  本番障害#1346対応
+ *  2009/10/14    1.38 Masayuki Nomura   本番障害#1659対応
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1739,18 +1741,24 @@ AS
            ,mil.attribute6                                distribution_block     --ブロック
            ,xoha.head_sales_branch                        head_sales_branch
            ,xoha.deliver_to_id                            deliver_to_id
-           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
-                                  ,gv_recsts_shipped2,xoha.vendor_site_code
-            ) deliver_to
+-- ***** 2009/10/14 1.38 #1659 S *****
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+--                                  ,gv_recsts_shipped2,xoha.vendor_site_code
+--            ) deliver_to
+           ,xoha.result_deliver_to                        deliver_to
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,xoha.arrival_date                             arrival_date
            ,xoha.shipped_date                             shipped_date
            ,xoha.request_no                               request_no
+-- ***** 2009/10/14 1.38 #1659 S *****
 -- 2008/12/30 v1.32 N.Yoshida mod start
 --           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
-           ,DECODE(xoha.req_status,gv_recsts_shipped,xps.party_site_name
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,xps.party_site_name
 -- 2008/12/30 v1.32 N.Yoshida mod end
-                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
-            ) party_site_full_name
+--                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
+--            ) party_site_full_name
+           ,xps.party_site_name                           party_site_full_name
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,otta.order_category_code                      order_category_code
           FROM
            xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
@@ -1758,7 +1766,9 @@ AS
 --           ,hz_party_sites                                hps
            ,xxcmn_party_sites                             xps
 -- 2008/12/30 v1.32 N.Yoshida mod end
-           ,xxcmn_vendor_sites_all                        xvsa
+-- ***** 2009/10/14 1.38 #1659 S *****
+--           ,xxcmn_vendor_sites_all                        xvsa
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
            ,xxinv_mov_lot_details                         xmld                --移動ロット詳細(アドオン)
            ,oe_transaction_types_all                      otta                --受注タイプ
@@ -1777,11 +1787,17 @@ AS
            ,mtl_item_locations                            mil
           WHERE
               xola.order_header_id    = xoha.order_header_id
-          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)       --ステータス
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)       --ステータス
+          AND xoha.req_status = gv_recsts_shipped                               --ステータス
+-- ***** 2009/10/14 1.38 #1659 E *****
 --          AND xoha.actual_confirm_class = gv_cmp_actl_yes                     --実績計上区分
           AND xoha.latest_external_flag = gv_latest_yes                       --最新フラグ
           and xmld.mov_line_id = xola.order_line_id
-          and xmld.document_type_code in (gv_dctype_shipped,gv_dctype_shikyu)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          and xmld.document_type_code in (gv_dctype_shipped,gv_dctype_shikyu)
+          and xmld.document_type_code = gv_dctype_shipped
+-- ***** 2009/10/14 1.38 #1659 E *****
           and xmld.record_type_code = gv_rectype_out
           AND xoha.order_type_id = otta.transaction_type_id                   --受注タイプID
           AND xola.shipping_item_code = iimb.item_no                          --品目コード
@@ -1808,13 +1824,18 @@ AS
             AND ximb2.end_date_active
 -- 2008/12/30 v1.32 N.Yoshida mod start
 --          AND xoha.result_deliver_to_id = hps.party_site_id(+)
-          AND xoha.result_deliver_to_id = xps.party_site_id(+)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xoha.result_deliver_to_id = xps.party_site_id(+)
+          AND xoha.result_deliver_to_id = xps.party_site_id
+-- ***** 2009/10/14 1.38 #1659 E *****
           AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
           AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
 -- 2008/12/30 v1.32 N.Yoshida mod end
-          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
-          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+--          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- ***** 2009/10/14 1.38 #1659 E *****
           AND xrpm.doc_type = 'OMSO'
           AND xrpm.shipment_provision_div = gv_spdiv_ship
           and otta.attribute1 = xrpm.shipment_provision_div                   --出荷支給区分
@@ -1853,7 +1874,9 @@ AS
 --           ,hps.party_site_name
            ,xps.party_site_name
 -- 2008/12/30 v1.32 N.Yoshida mod end
-           ,xvsa.vendor_site_name
+-- ***** 2009/10/14 1.38 #1659 S *****
+--           ,xvsa.vendor_site_name
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,otta.order_category_code
           UNION ALL
           SELECT
@@ -1874,24 +1897,32 @@ AS
            ,mil.attribute6                                distribution_block      --ブロック
            ,xoha.head_sales_branch                        head_sales_branch
            ,xoha.deliver_to_id                            deliver_to_id
-           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
-                                  ,gv_recsts_shipped2,xoha.vendor_site_code
-            ) deliver_to
+-- ***** 2009/10/14 1.38 #1659 S *****
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+--                                  ,gv_recsts_shipped2,xoha.vendor_site_code
+--            ) deliver_to
+           ,xoha.vendor_site_code                         deliver_to
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,xoha.arrival_date                             arrival_date
            ,xoha.shipped_date                             shipped_date
            ,xoha.request_no                               request_no
+-- ***** 2009/10/14 1.38 #1659 S *****
 -- 2008/12/30 v1.32 N.Yoshida mod start
 --           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
-           ,DECODE(xoha.req_status,gv_recsts_shipped,xps.party_site_name
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,xps.party_site_name
 -- 2008/12/30 v1.32 N.Yoshida mod end
-                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
-            ) party_site_full_name
+--                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
+--            ) party_site_full_name
+           ,xvsa.vendor_site_name                         party_site_full_name
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,otta.order_category_code                      order_category_code
           FROM
            xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
 -- 2008/12/30 v1.32 N.Yoshida mod start
 --           ,hz_party_sites                                hps
-           ,xxcmn_party_sites                             xps
+-- ***** 2009/10/14 1.38 #1659 S *****
+--           ,xxcmn_party_sites                             xps
+-- ***** 2009/10/14 1.38 #1659 E *****
 -- 2008/12/30 v1.32 N.Yoshida mod end
            ,xxcmn_vendor_sites_all                        xvsa
            ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
@@ -1912,11 +1943,17 @@ AS
            ,mtl_item_locations                            mil
           WHERE
               xola.order_header_id    = xoha.order_header_id
-          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)       --ステータス
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)       --ステータス
+          AND xoha.req_status = gv_recsts_shipped2       --ステータス
+-- ***** 2009/10/14 1.38 #1659 E *****
 --          AND xoha.actual_confirm_class = gv_cmp_actl_yes                     --実績計上区分
           AND xoha.latest_external_flag = gv_latest_yes                       --最新フラグ
           AND xmld.mov_line_id = xola.order_line_id
-          AND xmld.document_type_code in (gv_dctype_shipped,gv_dctype_shikyu)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xmld.document_type_code in (gv_dctype_shipped,gv_dctype_shikyu)
+          AND xmld.document_type_code = gv_dctype_shikyu
+-- ***** 2009/10/14 1.38 #1659 E *****
           AND xmld.record_type_code = gv_rectype_out
           AND xoha.order_type_id = otta.transaction_type_id                   --受注タイプID
           AND xola.shipping_item_code = iimb.item_no                          --品目コード
@@ -1943,11 +1980,16 @@ AS
             AND ximb2.end_date_active
 -- 2008/12/30 v1.32 N.Yoshida mod start
 --          AND xoha.result_deliver_to_id = hps.party_site_id(+)
-          AND xoha.result_deliver_to_id = xps.party_site_id(+)
-          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xoha.result_deliver_to_id = xps.party_site_id(+)
+--          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- ***** 2009/10/14 1.38 #1659 E *****
 -- 2008/12/30 v1.32 N.Yoshida mod end
-          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+          AND xoha.vendor_site_id = xvsa.vendor_site_id
+-- ***** 2009/10/14 1.38 #1659 E *****
           AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
           AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
           AND xrpm.doc_type = 'OMSO'
@@ -1997,7 +2039,9 @@ AS
            ,xoha.req_status
 -- 2008/12/30 v1.32 N.Yoshida mod start
 --           ,hps.party_site_name
-           ,xps.party_site_name
+-- ***** 2009/10/14 1.38 #1659 S *****
+--           ,xps.party_site_name
+-- ***** 2009/10/14 1.38 #1659 E *****
 -- 2008/12/30 v1.32 N.Yoshida mod end
            ,xvsa.vendor_site_name
            ,otta.order_category_code
@@ -2020,18 +2064,24 @@ AS
            ,mil.attribute6                                distribution_block     --ブロック
            ,xoha.head_sales_branch                        head_sales_branch
            ,xoha.deliver_to_id                            deliver_to_id
-           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
-                                  ,gv_recsts_shipped2,xoha.vendor_site_code
-            ) deliver_to
+-- ***** 2009/10/14 1.38 #1659 S *****
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+--                                  ,gv_recsts_shipped2,xoha.vendor_site_code
+--            ) deliver_to
+           ,xoha.result_deliver_to                        deliver_to
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,xoha.arrival_date                             arrival_date
            ,xoha.shipped_date                             shipped_date
            ,xoha.request_no                               request_no
+-- ***** 2009/10/14 1.38 #1659 S *****
 -- 2008/12/30 v1.32 N.Yoshida mod start
 --           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
-           ,DECODE(xoha.req_status,gv_recsts_shipped,xps.party_site_name
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,xps.party_site_name
 -- 2008/12/30 v1.32 N.Yoshida mod start
-                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
-            ) party_site_full_name
+--                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
+--            ) party_site_full_name
+           ,xps.party_site_name                           party_site_full_name
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,otta.order_category_code                      order_category_code
           FROM
            xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
@@ -2039,7 +2089,9 @@ AS
 --           ,hz_party_sites                                hps
            ,xxcmn_party_sites                             xps
 -- 2008/12/30 v1.32 N.Yoshida mod end
-           ,xxcmn_vendor_sites_all                        xvsa
+-- ***** 2009/10/14 1.38 #1659 S *****
+--           ,xxcmn_vendor_sites_all                        xvsa
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
              ,xxinv_mov_lot_details                       xmld                --移動ロット詳細(アドオン)
            ,oe_transaction_types_all                      otta                --受注タイプ
@@ -2058,11 +2110,17 @@ AS
            ,mtl_item_locations                            mil
           WHERE
               xola.order_header_id    = xoha.order_header_id
-          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)       --ステータス
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)       --ステータス
+          AND xoha.req_status = gv_recsts_shipped                             --ステータス
+-- ***** 2009/10/14 1.38 #1659 E *****
           AND xoha.actual_confirm_class = gv_cmp_actl_yes                     --実績計上区分
           AND xoha.latest_external_flag = gv_latest_yes                       --最新フラグ
           AND xmld.mov_line_id = xola.order_line_id
-          AND xmld.document_type_code in (gv_dctype_shipped,gv_dctype_shikyu)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xmld.document_type_code in (gv_dctype_shipped,gv_dctype_shikyu)
+          AND xmld.document_type_code = gv_dctype_shipped
+-- ***** 2009/10/14 1.38 #1659 E *****
           AND xmld.record_type_code = gv_rectype_out
           AND xoha.order_type_id = otta.transaction_type_id                   --受注タイプID
           AND xola.shipping_item_code = iimb.item_no                          --品目コード
@@ -2089,13 +2147,18 @@ AS
             AND ximb2.end_date_active
 -- 2008/12/30 v1.32 N.Yoshida mod start
 --          AND xoha.result_deliver_to_id = hps.party_site_id(+)
-          AND xoha.result_deliver_to_id = xps.party_site_id(+)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xoha.result_deliver_to_id = xps.party_site_id(+)
+          AND xoha.result_deliver_to_id = xps.party_site_id
+-- ***** 2009/10/14 1.38 #1659 E *****
           AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
           AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
 -- 2008/12/30 v1.32 N.Yoshida mod end
-          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
-          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+--          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- ***** 2009/10/14 1.38 #1659 E *****
           AND xrpm.doc_type = 'OMSO'
           AND xrpm.shipment_provision_div IS NULL                             --出荷支給区分
           AND xrpm.stock_adjustment_div = gv_stock_adjm                       --在庫調整区分
@@ -2132,7 +2195,9 @@ AS
 --           ,hps.party_site_name
            ,xps.party_site_name
 -- 2008/12/30 v1.32 N.Yoshida mod end
-           ,xvsa.vendor_site_name
+-- ***** 2009/10/14 1.38 #1659 S *****
+--           ,xvsa.vendor_site_name
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,otta.order_category_code
         )                                                     sh_info             --出荷関連情報
          ,xxcmn_parties                                       xp
@@ -2345,7 +2410,10 @@ AS
          , ''                                                  jrsd_code           -- 管轄拠点コード
          , ''                                                  jrsd_name           -- 管轄拠点名
          , grb.routing_no                                      other_code          -- 相手先コード
-         , grct.routing_class_desc                             other_name          -- 相手先名称
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         , grct.routing_class_desc                             other_name          -- 相手先名称
+         , '品目振替'                                          other_name          -- 相手先名称
+-- ***** 2009/10/14 1.38 #1659 E *****
          , SUM( CASE gmd.line_type --ラインタイプ
                   WHEN -1 THEN 0
                   ELSE NVL(itp.trans_qty,0)
@@ -2366,7 +2434,9 @@ AS
          , gme_material_details                              gmd                 -- 生産原料詳細
          , gme_material_details                              gmd_d               -- 生産原料詳細(完成品)
          , gmd_routings_b                                    grb                 -- 工順マスタ
-         , gmd_routing_class_tl                              grct                -- 工順区分マスタ日本語
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         , gmd_routing_class_tl                              grct                -- 工順区分マスタ日本語
+-- ***** 2009/10/14 1.38 #1659 E *****
          , ic_whse_mst                                       iwm
          , mtl_item_locations                                mil
          --生産原料詳細(振替元先品目)
@@ -2399,6 +2469,10 @@ AS
            AND   gmd.item_id            = gic.item_id
            AND   gic.category_id        = mcb.category_id
            AND   gic.category_set_id    = cn_item_class_id
+-- ***** 2009/10/14 1.38 #1659 S *****
+           AND   gbh.plan_start_date >= TO_DATE(civ_ymd_from, 'YYYY/MM/DD')
+           AND   gbh.plan_start_date <= TO_DATE(civ_ymd_to, 'YYYY/MM/DD')
+-- ***** 2009/10/14 1.38 #1659 E *****
            GROUP BY gbh.batch_id
                    ,gmd.line_no
           )                                                    gmd_t                 --
@@ -2419,11 +2493,13 @@ AS
         AND   gmd.line_no       = gmd_t.line_no(+)                                    -- ラインNO
         --工順マスタ抽出条件
         AND   gbh.routing_id    = grb.routing_id                                      -- 工順ID
-        --工順マスタ日本語抽出条件
-        --工順区分マスタ日本語抽出条件
-        AND   grb.routing_class = grct.routing_class                                  -- 工順コード
-        AND   grct.language     = gv_lang                                                -- 言語
-        AND   grct.source_lang  = gv_source_lang                                                -- 言語
+-- ***** 2009/10/14 1.38 #1659 S *****
+--        --工順マスタ日本語抽出条件
+--        --工順区分マスタ日本語抽出条件
+--        AND   grb.routing_class = grct.routing_class                                  -- 工順コード
+--        AND   grct.language     = gv_lang                                                -- 言語
+--        AND   grct.source_lang  = gv_source_lang                                                -- 言語
+-- ***** 2009/10/14 1.38 #1659 E *****
         AND   iwm.mtl_organization_id = mil.organization_id                       -- OPM保留在庫トランザクション抽出条件
         AND   itp.line_id             = gmd.material_detail_id                    -- ラインID
         AND   itp.item_id             = gmd.item_id                               -- 品目ID
@@ -2438,7 +2514,10 @@ AS
         AND   xrpm.use_div_invent     = gv_inventory                                                  -- 在庫使用区分
         AND   NVL(xrpm.hit_in_div   , gv_dummy) = NVL(gmd.attribute5   , gv_dummy)  -- 打込区分
         AND   xrpm.routing_class      = grb.routing_class(+)                       -- 工順区分
-        AND   grct.routing_class_desc = gv_item_transfer
+-- ***** 2009/10/14 1.38 #1659 S *****
+--        AND   grct.routing_class_desc = gv_item_transfer
+        AND   grb.routing_class       = '70'
+-- ***** 2009/10/14 1.38 #1659 E *****
         AND   xrpm.item_div_ahead     = gmd_t.item_class_ahead                       -- 振替先品目区分
         AND   xrpm.item_div_origin    = gmd_t.item_class_origin                      -- 振替元品目区分
         --生産日
@@ -2466,7 +2545,10 @@ AS
          , xrpm.new_div_invent                                                     -- 新区分
          , gbh.batch_no                                                            -- 伝票No
          , grb.routing_no                                                          -- 相手先コード
-         , grct.routing_class_desc
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         , grct.routing_class_desc
+         , '品目振替'
+-- ***** 2009/10/14 1.38 #1659 E *****
          , itp.whse_code                                                           -- 倉庫コード
          , iwm.whse_name                                                           -- 倉庫名
          , itp.location                                                            -- 保管倉庫コード
@@ -2488,7 +2570,12 @@ AS
          , ''                                                  jrsd_code           -- 管轄拠点コード
          , ''                                                  jrsd_name           -- 管轄拠点名
          , grb.routing_no                                      other_code          -- 相手先コード
-         , grct.routing_class_desc                             other_name          -- 相手先名称
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         , grct.routing_class_desc                             other_name          -- 相手先名称
+         , CASE WHEN (grb.routing_class = '61') THEN '返品原料'
+                WHEN (grb.routing_class = '62') THEN '解体半製品'
+           END                                                 other_name          -- 相手先名称
+-- ***** 2009/10/14 1.38 #1659 E *****
          , SUM( CASE gmd.line_type --ラインタイプ
                   WHEN -1 THEN 0
                   ELSE NVL(itp.trans_qty,0)
@@ -2509,42 +2596,46 @@ AS
          , gme_material_details                              gmd                 -- 生産原料詳細
          , gme_material_details                              gmd_d               -- 生産原料詳細(完成品)
          , gmd_routings_b                                    grb                 -- 工順マスタ
-         , gmd_routing_class_tl                              grct                -- 工順区分マスタ日本語
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         , gmd_routing_class_tl                              grct                -- 工順区分マスタ日本語
+-- ***** 2009/10/14 1.38 #1659 E *****
          , ic_whse_mst                                       iwm
          , mtl_item_locations                                mil
-         --生産原料詳細(振替元先品目)
-         ,(
-           SELECT 
-              gbh.batch_id                                     batch_id            -- バッチID
-            , gmd.line_no                                      line_no             -- ラインNO
-            , MAX(DECODE(gmd.line_type --ラインタイプ
-                        , gn_linetype_mtrl, mcb.segment1
-                        , NULL
-                 )
-              )                                                item_class_origin   -- 振替元品目区分
-            , MAX(DECODE(gmd.line_type --ラインタイプ
-                        , gn_linetype_prod, mcb.segment1
-                        , NULL
-                 )
-              )                                                item_class_ahead    -- 振替先品目区分
-           FROM
-              gme_batch_header                                 gbh                 -- 生産バッチ
-            , gme_material_details                             gmd                 -- 生産原料詳細
-            , gmd_routings_b                                   grb                 -- 工順マスタ
-            , gmi_item_categories                              gic
-            , mtl_categories_b                                 mcb
-           --生産原料詳細抽出条件
-           WHERE gbh.batch_id           = gmd.batch_id                            -- バッチID
-           --工順マスタ抽出条件
-           AND   gbh.routing_id         = grb.routing_id                          -- 工順ID
-           AND   grb.routing_class      = '70'
-           --カテゴリ割当抽出条件
-           AND   gmd.item_id            = gic.item_id
-           AND   gic.category_id        = mcb.category_id
-           AND   gic.category_set_id    = cn_item_class_id
-           GROUP BY gbh.batch_id
-                   ,gmd.line_no
-          )                                                    gmd_t                 --
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         --生産原料詳細(振替元先品目)
+--         ,(
+--           SELECT 
+--              gbh.batch_id                                     batch_id            -- バッチID
+--            , gmd.line_no                                      line_no             -- ラインNO
+--            , MAX(DECODE(gmd.line_type --ラインタイプ
+--                        , gn_linetype_mtrl, mcb.segment1
+--                        , NULL
+--                 )
+--              )                                                item_class_origin   -- 振替元品目区分
+--            , MAX(DECODE(gmd.line_type --ラインタイプ
+--                        , gn_linetype_prod, mcb.segment1
+--                        , NULL
+--                 )
+--              )                                                item_class_ahead    -- 振替先品目区分
+--           FROM
+--              gme_batch_header                                 gbh                 -- 生産バッチ
+--            , gme_material_details                             gmd                 -- 生産原料詳細
+--            , gmd_routings_b                                   grb                 -- 工順マスタ
+--            , gmi_item_categories                              gic
+--            , mtl_categories_b                                 mcb
+--           --生産原料詳細抽出条件
+--           WHERE gbh.batch_id           = gmd.batch_id                            -- バッチID
+--           --工順マスタ抽出条件
+--           AND   gbh.routing_id         = grb.routing_id                          -- 工順ID
+--           AND   grb.routing_class      = '70'
+--           --カテゴリ割当抽出条件
+--           AND   gmd.item_id            = gic.item_id
+--           AND   gic.category_id        = mcb.category_id
+--           AND   gic.category_set_id    = cn_item_class_id
+--           GROUP BY gbh.batch_id
+--                   ,gmd.line_no
+--          )                                                    gmd_t                 --
+-- ***** 2009/10/14 1.38 #1659 E *****
          , xxcmn_rcv_pay_mst                                   xrpm                  -- 受払区分アドオンマスタ
          , ic_tran_pnd                                         itp                   -- OPM保留在庫トランザクション
          , mtl_categories_b                                    mcb1
@@ -2557,16 +2648,20 @@ AS
         --生産原料詳細(完成品)
         AND   gbh.batch_id      = gmd_d.batch_id                                      -- バッチID
         AND   gmd_d.line_type   = 1                                                   -- ラインタイプ(完成品)
-        --生産原料詳細(振替)
-        AND   gmd.batch_id      = gmd_t.batch_id(+)                                   -- バッチID
-        AND   gmd.line_no       = gmd_t.line_no(+)                                    -- ラインNO
+-- ***** 2009/10/14 1.38 #1659 S *****
+--        --生産原料詳細(振替)
+--        AND   gmd.batch_id      = gmd_t.batch_id(+)                                   -- バッチID
+--        AND   gmd.line_no       = gmd_t.line_no(+)                                    -- ラインNO
+-- ***** 2009/10/14 1.38 #1659 E *****
         --工順マスタ抽出条件
         AND   gbh.routing_id    = grb.routing_id                                      -- 工順ID
-        --工順マスタ日本語抽出条件
-        --工順区分マスタ日本語抽出条件
-        AND   grb.routing_class = grct.routing_class                                  -- 工順コード
-        AND   grct.language     = gv_lang                                             -- 言語
-        AND   grct.source_lang  = gv_source_lang                                      -- 言語
+-- ***** 2009/10/14 1.38 #1659 S *****
+--        --工順マスタ日本語抽出条件
+--        --工順区分マスタ日本語抽出条件
+--        AND   grb.routing_class = grct.routing_class                                  -- 工順コード
+--        AND   grct.language     = gv_lang                                             -- 言語
+--        AND   grct.source_lang  = gv_source_lang                                      -- 言語
+-- ***** 2009/10/14 1.38 #1659 E *****
         AND   iwm.mtl_organization_id = mil.organization_id                       -- OPM保留在庫トランザクション抽出条件
         AND   itp.line_id             = gmd.material_detail_id                    -- ラインID
         AND   itp.item_id             = gmd.item_id                               -- 品目ID
@@ -2581,10 +2676,17 @@ AS
         AND   xrpm.use_div_invent     = gv_inventory                                                  -- 在庫使用区分
         AND   NVL(xrpm.hit_in_div   , gv_dummy) = NVL(gmd.attribute5   , gv_dummy) -- 打込区分
         AND   xrpm.routing_class      = grb.routing_class(+)                       -- 工順区分
-        AND   grct.routing_class_desc IN (gv_item_return, gv_item_dissolve)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--        AND   grct.routing_class_desc IN (gv_item_return, gv_item_dissolve)
+        AND   grb.routing_class IN ('61', '62')
+-- ***** 2009/10/14 1.38 #1659 E *****
         --生産日
-        AND   itp.trans_date >= TO_DATE(civ_ymd_from, gv_fmt_ymd)
-        AND   itp.trans_date <= TO_DATE(civ_ymd_to, gv_fmt_ymd)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--        AND   itp.trans_date >= TO_DATE(civ_ymd_from, gv_fmt_ymd)
+--        AND   itp.trans_date <= TO_DATE(civ_ymd_to, gv_fmt_ymd)
+        AND   TRUNC(itp.trans_date) >= TO_DATE(civ_ymd_from, gv_fmt_ymd)
+        AND   TRUNC(itp.trans_date) <= TO_DATE(civ_ymd_to, gv_fmt_ymd)
+-- ***** 2009/10/14 1.38 #1659 E *****
         --パラメータによる絞込み(商品区分)
         AND mcb1.segment1 = civ_prod_div
         --パラメータによる絞込み(品目区分)
@@ -2607,7 +2709,12 @@ AS
          , xrpm.new_div_invent                                                     -- 新区分
          , gbh.batch_no                                                            -- 伝票No
          , grb.routing_no                                                          -- 相手先コード
-         , grct.routing_class_desc
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         , grct.routing_class_desc
+         , CASE WHEN (grb.routing_class = '61') THEN '返品原料'
+                WHEN (grb.routing_class = '62') THEN '解体半製品'
+           END
+-- ***** 2009/10/14 1.38 #1659 E *****
          , itp.whse_code                                                           -- 倉庫コード
          , iwm.whse_name                                                           -- 倉庫名
          , itp.location                                                            -- 保管倉庫コード
@@ -2615,8 +2722,11 @@ AS
          , mil.attribute6                                                          -- ブロック
          , xrpm.rcv_pay_div                                                        -- 受払区分
         UNION ALL
+-- ***** 2009/10/14 1.38 #1659 S *****
         -- その他
-        SELECT /*+ leading(gmd_d gbh gmd itp gmd_t gic1 mcb1 gic2 mcb2 xrpm grb grct mil iwm) use_nl(gmd_d gbh gmd itp gmd_t gic1 mcb1 gic2 mcb2 xrpm grb grct mil iwm) */
+--        SELECT /*+ leading(gmd_d gbh gmd itp gmd_t gic1 mcb1 gic2 mcb2 xrpm grb grct mil iwm) use_nl(gmd_d gbh gmd itp gmd_t gic1 mcb1 gic2 mcb2 xrpm grb grct mil iwm) */
+        SELECT
+-- ***** 2009/10/14 1.38 #1659 E *****
            gv_trtry_mf                                         territory           -- 領域(生産)
          ,1                                                   txns_id
          , gmd.item_id                                         item_id             -- 品目ID
@@ -2629,7 +2739,19 @@ AS
          , ''                                                  jrsd_code           -- 管轄拠点コード
          , ''                                                  jrsd_name           -- 管轄拠点名
          , grb.routing_no                                      other_code          -- 相手先コード
-         , grct.routing_class_desc                             other_name          -- 相手先名称
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         , grct.routing_class_desc                             other_name          -- 相手先名称
+         , CASE WHEN (grb.routing_class = '10') THEN '再製'
+                WHEN (grb.routing_class = '20') THEN '缶煎'
+                WHEN (grb.routing_class = '31') THEN '再製合組'
+                WHEN (grb.routing_class = '32') THEN '合組'
+                WHEN (grb.routing_class = '40') THEN '包装'
+                WHEN (grb.routing_class = '50') THEN 'セット'
+                WHEN (grb.routing_class = '60') THEN '＊＊未使用＊＊'
+                WHEN (grb.routing_class = '80') THEN '沖縄'
+                ELSE NULL
+           END                                                 other_name          -- 相手先名称
+-- ***** 2009/10/14 1.38 #1659 E *****
          , SUM( CASE gmd.line_type --ラインタイプ
                   WHEN -1 THEN 0
                   ELSE NVL(itp.trans_qty,0)
@@ -2650,42 +2772,46 @@ AS
          , gme_material_details                              gmd                 -- 生産原料詳細
          , gme_material_details                              gmd_d               -- 生産原料詳細(完成品)
          , gmd_routings_b                                    grb                 -- 工順マスタ
-         , gmd_routing_class_tl                              grct                -- 工順区分マスタ日本語
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         , gmd_routing_class_tl                              grct                -- 工順区分マスタ日本語
+-- ***** 2009/10/14 1.38 #1659 E *****  
          , ic_whse_mst                                       iwm
          , mtl_item_locations                                mil
-         --生産原料詳細(振替元先品目)
-         ,(
-           SELECT /*+ leading(gbh grb gmd gic mcb) use_nl(gbh grb gmd gic mcb) */
-              gbh.batch_id                                     batch_id            -- バッチID
-            , gmd.line_no                                      line_no             -- ラインNO
-            , MAX(DECODE(gmd.line_type --ラインタイプ
-                        , gn_linetype_mtrl, mcb.segment1
-                        , NULL
-                 )
-              )                                                item_class_origin   -- 振替元品目区分
-            , MAX(DECODE(gmd.line_type --ラインタイプ
-                        , gn_linetype_prod, mcb.segment1
-                        , NULL
-                 )
-              )                                                item_class_ahead    -- 振替先品目区分
-           FROM
-              gme_batch_header                                 gbh                 -- 生産バッチ
-            , gme_material_details                             gmd                 -- 生産原料詳細
-            , gmd_routings_b                                   grb                 -- 工順マスタ
-            , gmi_item_categories                              gic
-            , mtl_categories_b                                 mcb
-           --生産原料詳細抽出条件
-           WHERE gbh.batch_id           = gmd.batch_id                            -- バッチID
-           --工順マスタ抽出条件
-           AND   gbh.routing_id         = grb.routing_id                          -- 工順ID
-           AND   grb.routing_class      = '70'
-           --カテゴリ割当抽出条件
-           AND   gmd.item_id            = gic.item_id
-           AND   gic.category_id        = mcb.category_id
-           AND   gic.category_set_id    = cn_item_class_id
-           GROUP BY gbh.batch_id
-                   ,gmd.line_no
-          )                                                    gmd_t                 --
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         --生産原料詳細(振替元先品目)
+--         ,(
+--           SELECT /*+ leading(gbh grb gmd gic mcb) use_nl(gbh grb gmd gic mcb) */
+--              gbh.batch_id                                     batch_id            -- バッチID
+--            , gmd.line_no                                      line_no             -- ラインNO
+--            , MAX(DECODE(gmd.line_type --ラインタイプ
+--                        , gn_linetype_mtrl, mcb.segment1
+--                        , NULL
+--                 )
+--              )                                                item_class_origin   -- 振替元品目区分
+--            , MAX(DECODE(gmd.line_type --ラインタイプ
+--                        , gn_linetype_prod, mcb.segment1
+--                        , NULL
+--                 )
+--              )                                                item_class_ahead    -- 振替先品目区分
+--           FROM
+--              gme_batch_header                                 gbh                 -- 生産バッチ
+--            , gme_material_details                             gmd                 -- 生産原料詳細
+--            , gmd_routings_b                                   grb                 -- 工順マスタ
+--            , gmi_item_categories                              gic
+--            , mtl_categories_b                                 mcb
+--           --生産原料詳細抽出条件
+--           WHERE gbh.batch_id           = gmd.batch_id                            -- バッチID
+--           --工順マスタ抽出条件
+--           AND   gbh.routing_id         = grb.routing_id                          -- 工順ID
+--           AND   grb.routing_class      = '70'
+--           --カテゴリ割当抽出条件
+--           AND   gmd.item_id            = gic.item_id
+--           AND   gic.category_id        = mcb.category_id
+--           AND   gic.category_set_id    = cn_item_class_id
+--           GROUP BY gbh.batch_id
+--                   ,gmd.line_no
+--          )                                                    gmd_t                 --
+-- ***** 2009/10/14 1.38 #1659 E *****
          , xxcmn_rcv_pay_mst                                   xrpm                  -- 受払区分アドオンマスタ
          , ic_tran_pnd                                         itp                   -- OPM保留在庫トランザクション
          , mtl_categories_b                                    mcb1
@@ -2698,16 +2824,20 @@ AS
         --生産原料詳細(完成品)
         AND   gbh.batch_id      = gmd_d.batch_id                                      -- バッチID
         AND   gmd_d.line_type   = 1                                                   -- ラインタイプ(完成品)
-        --生産原料詳細(振替)
-        AND   gmd.batch_id      = gmd_t.batch_id(+)                                   -- バッチID
-        AND   gmd.line_no       = gmd_t.line_no(+)                                    -- ラインNO
+-- ***** 2009/10/14 1.38 #1659 S *****
+--        --生産原料詳細(振替)
+--        AND   gmd.batch_id      = gmd_t.batch_id(+)                                   -- バッチID
+--        AND   gmd.line_no       = gmd_t.line_no(+)                                    -- ラインNO
+-- ***** 2009/10/14 1.38 #1659 E *****
         --工順マスタ抽出条件
         AND   gbh.routing_id    = grb.routing_id                                      -- 工順ID
-        --工順マスタ日本語抽出条件
-        --工順区分マスタ日本語抽出条件
-        AND   grb.routing_class = grct.routing_class                                  -- 工順コード
-        AND   grct.language     = gv_lang                                             -- 言語
-        AND   grct.source_lang  = gv_source_lang                                      -- 言語
+-- ***** 2009/10/14 1.38 #1659 S *****
+--        --工順マスタ日本語抽出条件
+--        --工順区分マスタ日本語抽出条件
+--        AND   grb.routing_class = grct.routing_class                                  -- 工順コード
+--        AND   grct.language     = gv_lang                                             -- 言語
+--        AND   grct.source_lang  = gv_source_lang                                      -- 言語
+-- ***** 2009/10/14 1.38 #1659 E *****
         --OPM保管場所マスタ抽出条件
 -- 2009/02/13 Y.Yamamoto #1189 delete start
 --        AND   mil.segment1 = grb.attribute9
@@ -2726,7 +2856,10 @@ AS
         AND   xrpm.use_div_invent     = gv_inventory                                                  -- 在庫使用区分
         AND   NVL(xrpm.hit_in_div   , gv_dummy) = NVL(gmd.attribute5   , gv_dummy)  -- 打込区分
         AND   xrpm.routing_class      = grb.routing_class(+)                        -- 工順区分
-        AND   grct.routing_class_desc NOT IN (gv_item_transfer, gv_item_return, gv_item_dissolve)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--        AND   grct.routing_class_desc NOT IN (gv_item_transfer, gv_item_return, gv_item_dissolve)
+        AND   grb.routing_class NOT IN ('70', '61', '62')
+-- ***** 2009/10/14 1.38 #1659 E *****
         --生産日
         AND   gmd_d.attribute11 >= civ_ymd_from
         AND   gmd_d.attribute11 <= civ_ymd_to
@@ -2752,7 +2885,19 @@ AS
          , xrpm.new_div_invent                                                     -- 新区分
          , gbh.batch_no                                                            -- 伝票No
          , grb.routing_no                                                          -- 相手先コード
-         , grct.routing_class_desc
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         , grct.routing_class_desc
+         , CASE WHEN (grb.routing_class = '10') THEN '再製'
+                WHEN (grb.routing_class = '20') THEN '缶煎'
+                WHEN (grb.routing_class = '31') THEN '再製合組'
+                WHEN (grb.routing_class = '32') THEN '合組'
+                WHEN (grb.routing_class = '40') THEN '包装'
+                WHEN (grb.routing_class = '50') THEN 'セット'
+                WHEN (grb.routing_class = '60') THEN '＊＊未使用＊＊'
+                WHEN (grb.routing_class = '80') THEN '沖縄'
+                ELSE NULL
+           END
+-- ***** 2009/10/14 1.38 #1659 E *****
          , itp.whse_code                                                           -- 倉庫コード
          , iwm.whse_name                                                           -- 倉庫名
          , itp.location                                                            -- 保管倉庫コード
@@ -3595,18 +3740,24 @@ AS
            ,mil.attribute6                                distribution_block     --ブロック
            ,xoha.head_sales_branch                        head_sales_branch
            ,xoha.deliver_to_id                            deliver_to_id
-           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
-                                  ,gv_recsts_shipped2,xoha.vendor_site_code
-            ) deliver_to
+-- ***** 2009/10/14 1.38 #1659 S *****
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+--                                  ,gv_recsts_shipped2,xoha.vendor_site_code
+--            ) deliver_to
+           ,xoha.result_deliver_to                        deliver_to
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,xoha.arrival_date                             arrival_date
            ,xoha.shipped_date                             shipped_date
            ,xoha.request_no                               request_no
+-- ***** 2009/10/14 1.38 #1659 S *****
 -- 2008/12/30 v1.32 N.Yoshida mod start
 --           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
-           ,DECODE(xoha.req_status,gv_recsts_shipped,xps.party_site_name
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,xps.party_site_name
 -- 2008/12/30 v1.32 N.Yoshida mod end
-                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
-            ) party_site_full_name
+--                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
+--            ) party_site_full_name
+           ,xps.party_site_name                           party_site_full_name
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,otta.order_category_code                      order_category_code
           FROM
            xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
@@ -3614,7 +3765,9 @@ AS
 --           ,hz_party_sites                                hps
            ,xxcmn_party_sites                             xps
 -- 2008/12/30 v1.32 N.Yoshida mod end
-           ,xxcmn_vendor_sites_all                        xvsa
+-- ***** 2009/10/14 1.38 #1659 S *****
+--           ,xxcmn_vendor_sites_all                        xvsa
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
            ,xxinv_mov_lot_details                         xmld                --移動ロット詳細(アドオン)
            ,oe_transaction_types_all                      otta                --受注タイプ
@@ -3633,11 +3786,17 @@ AS
            ,mtl_item_locations                            mil
           WHERE
               xola.order_header_id    = xoha.order_header_id
-          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)       --ステータス
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)       --ステータス
+          AND xoha.req_status = gv_recsts_shipped                             --ステータス
+-- ***** 2009/10/14 1.38 #1659 E *****
           --AND xoha.actual_confirm_class = gv_cmp_actl_yes                     --実績計上区分
           AND xoha.latest_external_flag = gv_latest_yes                       --最新フラグ
           and xmld.mov_line_id = xola.order_line_id
-          and xmld.document_type_code in (gv_dctype_shipped,gv_dctype_shikyu)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          and xmld.document_type_code in (gv_dctype_shipped,gv_dctype_shikyu)
+          and xmld.document_type_code = gv_dctype_shipped
+-- ***** 2009/10/14 1.38 #1659 E *****
           and xmld.record_type_code = gv_rectype_out
           AND xoha.order_type_id = otta.transaction_type_id                   --受注タイプID
           AND xola.shipping_item_code = iimb.item_no                          --品目コード
@@ -3664,13 +3823,18 @@ AS
             AND ximb2.end_date_active
 -- 2008/12/30 v1.32 N.Yoshida mod start
 --          AND xoha.result_deliver_to_id = hps.party_site_id(+)
-          AND xoha.result_deliver_to_id = xps.party_site_id(+)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xoha.result_deliver_to_id = xps.party_site_id(+)
+          AND xoha.result_deliver_to_id = xps.party_site_id
+-- ***** 2009/10/14 1.38 #1659 E *****
           AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
           AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
 -- 2008/12/30 v1.32 N.Yoshida mod end
-          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
-          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+--          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- ***** 2009/10/14 1.38 #1659 E *****
           AND xrpm.doc_type = 'OMSO'
           AND xrpm.shipment_provision_div = gv_spdiv_ship
           and otta.attribute1 = xrpm.shipment_provision_div                   --出荷支給区分
@@ -3709,7 +3873,9 @@ AS
 --           ,hps.party_site_name
            ,xps.party_site_name
 -- 2008/12/30 v1.32 N.Yoshida mod end
-           ,xvsa.vendor_site_name
+-- ***** 2009/10/14 1.38 #1659 S *****
+--           ,xvsa.vendor_site_name
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,otta.order_category_code
           UNION ALL
           SELECT
@@ -3730,24 +3896,32 @@ AS
            ,mil.attribute6                                distribution_block      --ブロック
            ,xoha.head_sales_branch                        head_sales_branch
            ,xoha.deliver_to_id                            deliver_to_id
-           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
-                                  ,gv_recsts_shipped2,xoha.vendor_site_code
-            ) deliver_to
+-- ***** 2009/10/14 1.38 #1659 S *****
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+--                                  ,gv_recsts_shipped2,xoha.vendor_site_code
+--            ) deliver_to
+           ,xoha.vendor_site_code                         deliver_to
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,xoha.arrival_date                             arrival_date
            ,xoha.shipped_date                             shipped_date
            ,xoha.request_no                               request_no
+-- ***** 2009/10/14 1.38 #1659 S *****
 -- 2008/12/30 v1.32 N.Yoshida mod start
 --           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
-           ,DECODE(xoha.req_status,gv_recsts_shipped,xps.party_site_name
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,xps.party_site_name
 -- 2008/12/30 v1.32 N.Yoshida mod end
-                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
-            ) party_site_full_name
+--                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
+--            ) party_site_full_name
+           ,xvsa.vendor_site_name                         party_site_full_name
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,otta.order_category_code                      order_category_code
           FROM
            xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
 -- 2008/12/30 v1.32 N.Yoshida mod start
 --           ,hz_party_sites                                hps
-           ,xxcmn_party_sites                             xps
+-- ***** 2009/10/14 1.38 #1659 S *****
+--           ,xxcmn_party_sites                             xps
+-- ***** 2009/10/14 1.38 #1659 E *****
 -- 2008/12/30 v1.32 N.Yoshida mod end
            ,xxcmn_vendor_sites_all                        xvsa
            ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
@@ -3768,11 +3942,17 @@ AS
            ,mtl_item_locations                            mil
           WHERE
               xola.order_header_id    = xoha.order_header_id
-          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)       --ステータス
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)       --ステータス
+          AND xoha.req_status = gv_recsts_shipped2                            --ステータス
+-- ***** 2009/10/14 1.38 #1659 E *****
           --AND xoha.actual_confirm_class = gv_cmp_actl_yes                     --実績計上区分
           AND xoha.latest_external_flag = gv_latest_yes                       --最新フラグ
           AND xmld.mov_line_id = xola.order_line_id
-          AND xmld.document_type_code in (gv_dctype_shipped,gv_dctype_shikyu)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xmld.document_type_code in (gv_dctype_shipped,gv_dctype_shikyu)
+          AND xmld.document_type_code = gv_dctype_shikyu
+-- ***** 2009/10/14 1.38 #1659 E *****
           AND xmld.record_type_code = gv_rectype_out
           AND xoha.order_type_id = otta.transaction_type_id                   --受注タイプID
           AND xola.shipping_item_code = iimb.item_no                          --品目コード
@@ -3799,11 +3979,16 @@ AS
             AND ximb2.end_date_active
 -- 2008/12/30 v1.32 N.Yoshida mod start
 --          AND xoha.result_deliver_to_id = hps.party_site_id(+)
-          AND xoha.result_deliver_to_id = xps.party_site_id(+)
-          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xoha.result_deliver_to_id = xps.party_site_id(+)
+--          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- ***** 2009/10/14 1.38 #1659 E *****
 -- 2008/12/30 v1.32 N.Yoshida mod end
-          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+          AND xoha.vendor_site_id = xvsa.vendor_site_id
+-- ***** 2009/10/14 1.38 #1659 E *****
           AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
           AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
           AND xrpm.doc_type = 'OMSO'
@@ -3853,7 +4038,9 @@ AS
            ,xoha.req_status
 -- 2008/12/30 v1.32 N.Yoshida mod start
 --           ,hps.party_site_name
-           ,xps.party_site_name
+-- ***** 2009/10/14 1.38 #1659 S *****
+--           ,xps.party_site_name
+-- ***** 2009/10/14 1.38 #1659 E *****
 -- 2008/12/30 v1.32 N.Yoshida mod end
            ,xvsa.vendor_site_name
            ,otta.order_category_code
@@ -3876,18 +4063,24 @@ AS
            ,mil.attribute6                                distribution_block     --ブロック
            ,xoha.head_sales_branch                        head_sales_branch
            ,xoha.deliver_to_id                            deliver_to_id
-           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
-                                  ,gv_recsts_shipped2,xoha.vendor_site_code
-            ) deliver_to
+-- ***** 2009/10/14 1.38 #1659 S *****
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+--                                  ,gv_recsts_shipped2,xoha.vendor_site_code
+--            ) deliver_to
+           ,xoha.result_deliver_to                        deliver_to
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,xoha.arrival_date                             arrival_date
            ,xoha.shipped_date                             shipped_date
            ,xoha.request_no                               request_no
+-- ***** 2009/10/14 1.38 #1659 S *****
 -- 2008/12/30 v1.32 N.Yoshida mod start
 --           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
-           ,DECODE(xoha.req_status,gv_recsts_shipped,xps.party_site_name
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,xps.party_site_name
 -- 2008/12/30 v1.32 N.Yoshida mod end
-                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
-            ) party_site_full_name
+--                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
+--            ) party_site_full_name
+           ,xps.party_site_name                           party_site_full_name
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,otta.order_category_code                      order_category_code
           FROM
            xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
@@ -3895,7 +4088,9 @@ AS
 --           ,hz_party_sites                                hps
            ,xxcmn_party_sites                             xps
 -- 2008/12/30 v1.32 N.Yoshida mod end
-           ,xxcmn_vendor_sites_all                        xvsa
+-- ***** 2009/10/14 1.38 #1659 S *****
+--           ,xxcmn_vendor_sites_all                        xvsa
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
              ,xxinv_mov_lot_details                       xmld                --移動ロット詳細(アドオン)
            ,oe_transaction_types_all                      otta                --受注タイプ
@@ -3914,11 +4109,17 @@ AS
            ,mtl_item_locations                            mil
           WHERE
               xola.order_header_id    = xoha.order_header_id
-          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)       --ステータス
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)       --ステータス
+          AND xoha.req_status = gv_recsts_shipped                             --ステータス
+-- ***** 2009/10/14 1.38 #1659 E *****
           AND xoha.actual_confirm_class = gv_cmp_actl_yes                     --実績計上区分
           AND xoha.latest_external_flag = gv_latest_yes                       --最新フラグ
           AND xmld.mov_line_id = xola.order_line_id
-          AND xmld.document_type_code in (gv_dctype_shipped,gv_dctype_shikyu)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xmld.document_type_code in (gv_dctype_shipped,gv_dctype_shikyu)
+          AND xmld.document_type_code = gv_dctype_shipped
+-- ***** 2009/10/14 1.38 #1659 E *****
           AND xmld.record_type_code = gv_rectype_out
           AND xoha.order_type_id = otta.transaction_type_id                   --受注タイプID
           AND xola.shipping_item_code = iimb.item_no                          --品目コード
@@ -3945,13 +4146,18 @@ AS
             AND ximb2.end_date_active
 -- 2008/12/30 v1.32 N.Yoshida mod start
 --          AND xoha.result_deliver_to_id = hps.party_site_id(+)
-          AND xoha.result_deliver_to_id = xps.party_site_id(+)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xoha.result_deliver_to_id = xps.party_site_id(+)
+          AND xoha.result_deliver_to_id = xps.party_site_id
+-- ***** 2009/10/14 1.38 #1659 E *****
           AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
           AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
 -- 2008/12/30 v1.32 N.Yoshida mod end
-          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
-          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+--          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- ***** 2009/10/14 1.38 #1659 E *****
           AND xrpm.doc_type = 'OMSO'
           AND xrpm.shipment_provision_div IS NULL                             --出荷支給区分
           AND xrpm.stock_adjustment_div = gv_stock_adjm                       --在庫調整区分
@@ -3988,7 +4194,9 @@ AS
 --           ,hps.party_site_name
            ,xps.party_site_name
 -- 2008/12/30 v1.32 N.Yoshida mod end
-           ,xvsa.vendor_site_name
+-- ***** 2009/10/14 1.38 #1659 S *****
+--           ,xvsa.vendor_site_name
+-- ***** 2009/10/14 1.38 #1659 E *****
            ,otta.order_category_code
         )                                                     sh_info             --出荷関連情報
          ,xxcmn_parties                                       xp
@@ -4197,7 +4405,10 @@ AS
          , ''                                                  jrsd_code           -- 管轄拠点コード
          , ''                                                  jrsd_name           -- 管轄拠点名
          , grb.routing_no                                      other_code          -- 相手先コード
-         , grct.routing_class_desc                             other_name          -- 相手先名称
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         , grct.routing_class_desc                             other_name          -- 相手先名称
+         , '品目振替'                                          other_name          -- 相手先名称
+-- ***** 2009/10/14 1.38 #1659 E *****
          , SUM( CASE gmd.line_type --ラインタイプ
                   WHEN -1 THEN 0
                   ELSE NVL(itp.trans_qty,0)
@@ -4218,7 +4429,9 @@ AS
          , gme_material_details                              gmd                 -- 生産原料詳細
          , gme_material_details                              gmd_d               -- 生産原料詳細(完成品)
          , gmd_routings_b                                    grb                 -- 工順マスタ
-         , gmd_routing_class_tl                              grct                -- 工順区分マスタ日本語
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         , gmd_routing_class_tl                              grct                -- 工順区分マスタ日本語
+-- ***** 2009/10/14 1.38 #1659 E *****
          , ic_whse_mst                                       iwm
          , mtl_item_locations                                mil
          --生産原料詳細(振替元先品目)
@@ -4251,6 +4464,10 @@ AS
            AND   gmd.item_id            = gic.item_id
            AND   gic.category_id        = mcb.category_id
            AND   gic.category_set_id    = cn_item_class_id
+-- ***** 2009/10/14 1.38 #1659 S *****
+           AND   gbh.plan_start_date >= TO_DATE(civ_ymd_from, 'YYYY/MM/DD')
+           AND   gbh.plan_start_date <= TO_DATE(civ_ymd_to, 'YYYY/MM/DD')
+-- ***** 2009/10/14 1.38 #1659 E *****
            GROUP BY gbh.batch_id
                    ,gmd.line_no
           )                                                    gmd_t                 --
@@ -4271,11 +4488,13 @@ AS
         AND   gmd.line_no       = gmd_t.line_no(+)                                    -- ラインNO
         --工順マスタ抽出条件
         AND   gbh.routing_id    = grb.routing_id                                      -- 工順ID
-        --工順マスタ日本語抽出条件
-        --工順区分マスタ日本語抽出条件
-        AND   grb.routing_class = grct.routing_class                                  -- 工順コード
-        AND   grct.language     = gv_lang                                                -- 言語
-        AND   grct.source_lang  = gv_source_lang                                                -- 言語
+-- ***** 2009/10/14 1.38 #1659 S *****
+--        --工順マスタ日本語抽出条件
+--        --工順区分マスタ日本語抽出条件
+--        AND   grb.routing_class = grct.routing_class                                  -- 工順コード
+--        AND   grct.language     = gv_lang                                                -- 言語
+--        AND   grct.source_lang  = gv_source_lang                                                -- 言語
+-- ***** 2009/10/14 1.38 #1659 E *****
         AND   iwm.mtl_organization_id = mil.organization_id                       -- OPM保留在庫トランザクション抽出条件
         AND   itp.line_id             = gmd.material_detail_id                    -- ラインID
         AND   itp.item_id             = gmd.item_id                               -- 品目ID
@@ -4290,7 +4509,10 @@ AS
         AND   xrpm.use_div_invent     = gv_inventory                                                  -- 在庫使用区分
         AND   NVL(xrpm.hit_in_div   , gv_dummy) = NVL(gmd.attribute5   , gv_dummy)  -- 打込区分
         AND   xrpm.routing_class      = grb.routing_class(+)                       -- 工順区分
-        AND   grct.routing_class_desc = gv_item_transfer
+-- ***** 2009/10/14 1.38 #1659 S *****
+--        AND   grct.routing_class_desc = gv_item_transfer
+        AND   grb.routing_class       = '70'
+-- ***** 2009/10/14 1.38 #1659 E *****
         AND   xrpm.item_div_ahead     = gmd_t.item_class_ahead                       -- 振替先品目区分
         AND   xrpm.item_div_origin    = gmd_t.item_class_origin                      -- 振替元品目区分
         --生産日
@@ -4318,7 +4540,10 @@ AS
          , xrpm.new_div_invent                                                     -- 新区分
          , gbh.batch_no                                                            -- 伝票No
          , grb.routing_no                                                          -- 相手先コード
-         , grct.routing_class_desc
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         , grct.routing_class_desc
+         , '品目振替'
+-- ***** 2009/10/14 1.38 #1659 E *****
          , itp.whse_code                                                           -- 倉庫コード
          , iwm.whse_name                                                           -- 倉庫名
          , itp.location                                                            -- 保管倉庫コード
@@ -4340,7 +4565,12 @@ AS
          , ''                                                  jrsd_code           -- 管轄拠点コード
          , ''                                                  jrsd_name           -- 管轄拠点名
          , grb.routing_no                                      other_code          -- 相手先コード
-         , grct.routing_class_desc                             other_name          -- 相手先名称
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         , grct.routing_class_desc                             other_name          -- 相手先名称
+         , CASE WHEN (grb.routing_class = '61') THEN '返品原料'
+                WHEN (grb.routing_class = '62') THEN '解体半製品'
+           END                                                 other_name          -- 相手先名称
+-- ***** 2009/10/14 1.38 #1659 E *****
          , SUM( CASE gmd.line_type --ラインタイプ
                   WHEN -1 THEN 0
                   ELSE NVL(itp.trans_qty,0)
@@ -4361,42 +4591,46 @@ AS
          , gme_material_details                              gmd                 -- 生産原料詳細
          , gme_material_details                              gmd_d               -- 生産原料詳細(完成品)
          , gmd_routings_b                                    grb                 -- 工順マスタ
-         , gmd_routing_class_tl                              grct                -- 工順区分マスタ日本語
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         , gmd_routing_class_tl                              grct                -- 工順区分マスタ日本語
+-- ***** 2009/10/14 1.38 #1659 E *****
          , ic_whse_mst                                       iwm
          , mtl_item_locations                                mil
-         --生産原料詳細(振替元先品目)
-         ,(
-           SELECT 
-              gbh.batch_id                                     batch_id            -- バッチID
-            , gmd.line_no                                      line_no             -- ラインNO
-            , MAX(DECODE(gmd.line_type --ラインタイプ
-                        , gn_linetype_mtrl, mcb.segment1
-                        , NULL
-                 )
-              )                                                item_class_origin   -- 振替元品目区分
-            , MAX(DECODE(gmd.line_type --ラインタイプ
-                        , gn_linetype_prod, mcb.segment1
-                        , NULL
-                 )
-              )                                                item_class_ahead    -- 振替先品目区分
-           FROM
-              gme_batch_header                                 gbh                 -- 生産バッチ
-            , gme_material_details                             gmd                 -- 生産原料詳細
-            , gmd_routings_b                                   grb                 -- 工順マスタ
-            , gmi_item_categories                              gic
-            , mtl_categories_b                                 mcb
-           --生産原料詳細抽出条件
-           WHERE gbh.batch_id           = gmd.batch_id                            -- バッチID
-           --工順マスタ抽出条件
-           AND   gbh.routing_id         = grb.routing_id                          -- 工順ID
-           AND   grb.routing_class      = '70'
-           --カテゴリ割当抽出条件
-           AND   gmd.item_id            = gic.item_id
-           AND   gic.category_id        = mcb.category_id
-           AND   gic.category_set_id    = cn_item_class_id
-           GROUP BY gbh.batch_id
-                   ,gmd.line_no
-          )                                                    gmd_t                 --
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         --生産原料詳細(振替元先品目)
+--         ,(
+--           SELECT 
+--              gbh.batch_id                                     batch_id            -- バッチID
+--            , gmd.line_no                                      line_no             -- ラインNO
+--            , MAX(DECODE(gmd.line_type --ラインタイプ
+--                        , gn_linetype_mtrl, mcb.segment1
+--                        , NULL
+--                 )
+--              )                                                item_class_origin   -- 振替元品目区分
+--            , MAX(DECODE(gmd.line_type --ラインタイプ
+--                        , gn_linetype_prod, mcb.segment1
+--                        , NULL
+--                 )
+--              )                                                item_class_ahead    -- 振替先品目区分
+--           FROM
+--              gme_batch_header                                 gbh                 -- 生産バッチ
+--            , gme_material_details                             gmd                 -- 生産原料詳細
+--            , gmd_routings_b                                   grb                 -- 工順マスタ
+--            , gmi_item_categories                              gic
+--            , mtl_categories_b                                 mcb
+--           --生産原料詳細抽出条件
+--           WHERE gbh.batch_id           = gmd.batch_id                            -- バッチID
+--           --工順マスタ抽出条件
+--           AND   gbh.routing_id         = grb.routing_id                          -- 工順ID
+--           AND   grb.routing_class      = '70'
+--           --カテゴリ割当抽出条件
+--           AND   gmd.item_id            = gic.item_id
+--           AND   gic.category_id        = mcb.category_id
+--           AND   gic.category_set_id    = cn_item_class_id
+--           GROUP BY gbh.batch_id
+--                   ,gmd.line_no
+--          )                                                    gmd_t                 --
+-- ***** 2009/10/14 1.38 #1659 E *****
          , xxcmn_rcv_pay_mst                                   xrpm                  -- 受払区分アドオンマスタ
          , ic_tran_pnd                                         itp                   -- OPM保留在庫トランザクション
          , mtl_categories_b                                    mcb1
@@ -4409,16 +4643,20 @@ AS
         --生産原料詳細(完成品)
         AND   gbh.batch_id      = gmd_d.batch_id                                      -- バッチID
         AND   gmd_d.line_type   = 1                                                   -- ラインタイプ(完成品)
-        --生産原料詳細(振替)
-        AND   gmd.batch_id      = gmd_t.batch_id(+)                                   -- バッチID
-        AND   gmd.line_no       = gmd_t.line_no(+)                                    -- ラインNO
+-- ***** 2009/10/14 1.38 #1659 S *****
+--        --生産原料詳細(振替)
+--        AND   gmd.batch_id      = gmd_t.batch_id(+)                                   -- バッチID
+--        AND   gmd.line_no       = gmd_t.line_no(+)                                    -- ラインNO
+-- ***** 2009/10/14 1.38 #1659 E *****
         --工順マスタ抽出条件
         AND   gbh.routing_id    = grb.routing_id                                      -- 工順ID
-        --工順マスタ日本語抽出条件
-        --工順区分マスタ日本語抽出条件
-        AND   grb.routing_class = grct.routing_class                                  -- 工順コード
-        AND   grct.language     = gv_lang                                             -- 言語
-        AND   grct.source_lang  = gv_source_lang                                      -- 言語
+-- ***** 2009/10/14 1.38 #1659 S *****
+--        --工順マスタ日本語抽出条件
+--        --工順区分マスタ日本語抽出条件
+--        AND   grb.routing_class = grct.routing_class                                  -- 工順コード
+--        AND   grct.language     = gv_lang                                             -- 言語
+--        AND   grct.source_lang  = gv_source_lang                                      -- 言語
+-- ***** 2009/10/14 1.38 #1659 E *****
         AND   iwm.mtl_organization_id = mil.organization_id                       -- OPM保留在庫トランザクション抽出条件
         AND   itp.line_id             = gmd.material_detail_id                    -- ラインID
         AND   itp.item_id             = gmd.item_id                               -- 品目ID
@@ -4433,10 +4671,17 @@ AS
         AND   xrpm.use_div_invent     = gv_inventory                                                  -- 在庫使用区分
         AND   NVL(xrpm.hit_in_div   , gv_dummy) = NVL(gmd.attribute5   , gv_dummy) -- 打込区分
         AND   xrpm.routing_class      = grb.routing_class(+)                       -- 工順区分
-        AND   grct.routing_class_desc IN (gv_item_return, gv_item_dissolve)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--        AND   grct.routing_class_desc IN (gv_item_return, gv_item_dissolve)
+        AND   grb.routing_class IN ('61', '62')
+-- ***** 2009/10/14 1.38 #1659 E *****
         --生産日
-        AND   itp.trans_date >= TO_DATE(civ_ymd_from, gv_fmt_ymd)
-        AND   itp.trans_date <= TO_DATE(civ_ymd_to, gv_fmt_ymd)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--        AND   itp.trans_date >= TO_DATE(civ_ymd_from, gv_fmt_ymd)
+--        AND   itp.trans_date <= TO_DATE(civ_ymd_to, gv_fmt_ymd)
+        AND   TRUNC(itp.trans_date) >= TO_DATE(civ_ymd_from, gv_fmt_ymd)
+        AND   TRUNC(itp.trans_date) <= TO_DATE(civ_ymd_to, gv_fmt_ymd)
+-- ***** 2009/10/14 1.38 #1659 E *****
         --パラメータによる絞込み(商品区分)
         AND mcb1.segment1 = civ_prod_div
         --パラメータによる絞込み(品目区分)
@@ -4459,7 +4704,12 @@ AS
          , xrpm.new_div_invent                                                     -- 新区分
          , gbh.batch_no                                                            -- 伝票No
          , grb.routing_no                                                          -- 相手先コード
-         , grct.routing_class_desc
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         , grct.routing_class_desc
+         , CASE WHEN (grb.routing_class = '61') THEN '返品原料'
+                WHEN (grb.routing_class = '62') THEN '解体半製品'
+           END
+-- ***** 2009/10/14 1.38 #1659 E *****
          , itp.whse_code                                                           -- 倉庫コード
          , iwm.whse_name                                                           -- 倉庫名
          , itp.location                                                            -- 保管倉庫コード
@@ -4467,8 +4717,11 @@ AS
          , mil.attribute6                                                          -- ブロック
          , xrpm.rcv_pay_div                                                        -- 受払区分
         UNION ALL
+-- ***** 2009/10/14 1.38 #1659 S *****
         -- その他
-        SELECT /*+ leading(gmd_d gbh gmd itp gmd_t gic1 mcb1 gic2 mcb2 xrpm grb grct mil iwm) use_nl(gmd_d gbh gmd itp gmd_t gic1 mcb1 gic2 mcb2 xrpm grb grct mil iwm) */
+--        SELECT /*+ leading(gmd_d gbh gmd itp gmd_t gic1 mcb1 gic2 mcb2 xrpm grb grct mil iwm) use_nl(gmd_d gbh gmd itp gmd_t gic1 mcb1 gic2 mcb2 xrpm grb grct mil iwm) */
+        SELECT
+-- ***** 2009/10/14 1.38 #1659 E *****
            gv_trtry_mf                                         territory           -- 領域(生産)
          ,1                                                   txns_id
          , gmd.item_id                                         item_id             -- 品目ID
@@ -4481,7 +4734,19 @@ AS
          , ''                                                  jrsd_code           -- 管轄拠点コード
          , ''                                                  jrsd_name           -- 管轄拠点名
          , grb.routing_no                                      other_code          -- 相手先コード
-         , grct.routing_class_desc                             other_name          -- 相手先名称
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         , grct.routing_class_desc                             other_name          -- 相手先名称
+         , CASE WHEN (grb.routing_class = '10') THEN '再製'
+                WHEN (grb.routing_class = '20') THEN '缶煎'
+                WHEN (grb.routing_class = '31') THEN '再製合組'
+                WHEN (grb.routing_class = '32') THEN '合組'
+                WHEN (grb.routing_class = '40') THEN '包装'
+                WHEN (grb.routing_class = '50') THEN 'セット'
+                WHEN (grb.routing_class = '60') THEN '＊＊未使用＊＊'
+                WHEN (grb.routing_class = '80') THEN '沖縄'
+                ELSE NULL
+           END                                                 other_name          -- 相手先名称
+-- ***** 2009/10/14 1.38 #1659 E *****
          , SUM( CASE gmd.line_type --ラインタイプ
                   WHEN -1 THEN 0
                   ELSE NVL(itp.trans_qty,0)
@@ -4502,42 +4767,46 @@ AS
          , gme_material_details                              gmd                 -- 生産原料詳細
          , gme_material_details                              gmd_d               -- 生産原料詳細(完成品)
          , gmd_routings_b                                    grb                 -- 工順マスタ
-         , gmd_routing_class_tl                              grct                -- 工順区分マスタ日本語
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         , gmd_routing_class_tl                              grct                -- 工順区分マスタ日本語
+-- ***** 2009/10/14 1.38 #1659 E *****
          , ic_whse_mst                                       iwm
          , mtl_item_locations                                mil
-         --生産原料詳細(振替元先品目)
-         ,(
-           SELECT /*+ leading(gbh grb gmd gic mcb) use_nl(gbh grb gmd gic mcb) */
-              gbh.batch_id                                     batch_id            -- バッチID
-            , gmd.line_no                                      line_no             -- ラインNO
-            , MAX(DECODE(gmd.line_type --ラインタイプ
-                        , gn_linetype_mtrl, mcb.segment1
-                        , NULL
-                 )
-              )                                                item_class_origin   -- 振替元品目区分
-            , MAX(DECODE(gmd.line_type --ラインタイプ
-                        , gn_linetype_prod, mcb.segment1
-                        , NULL
-                 )
-              )                                                item_class_ahead    -- 振替先品目区分
-           FROM
-              gme_batch_header                                 gbh                 -- 生産バッチ
-            , gme_material_details                             gmd                 -- 生産原料詳細
-            , gmd_routings_b                                   grb                 -- 工順マスタ
-            , gmi_item_categories                              gic
-            , mtl_categories_b                                 mcb
-           --生産原料詳細抽出条件
-           WHERE gbh.batch_id           = gmd.batch_id                            -- バッチID
-           --工順マスタ抽出条件
-           AND   gbh.routing_id         = grb.routing_id                          -- 工順ID
-           AND   grb.routing_class      = '70'
-           --カテゴリ割当抽出条件
-           AND   gmd.item_id            = gic.item_id
-           AND   gic.category_id        = mcb.category_id
-           AND   gic.category_set_id    = cn_item_class_id
-           GROUP BY gbh.batch_id
-                   ,gmd.line_no
-          )                                                    gmd_t                 --
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         --生産原料詳細(振替元先品目)
+--         ,(
+--           SELECT /*+ leading(gbh grb gmd gic mcb) use_nl(gbh grb gmd gic mcb) */
+--              gbh.batch_id                                     batch_id            -- バッチID
+--            , gmd.line_no                                      line_no             -- ラインNO
+--            , MAX(DECODE(gmd.line_type --ラインタイプ
+--                        , gn_linetype_mtrl, mcb.segment1
+--                        , NULL
+--                 )
+--              )                                                item_class_origin   -- 振替元品目区分
+--            , MAX(DECODE(gmd.line_type --ラインタイプ
+--                        , gn_linetype_prod, mcb.segment1
+--                        , NULL
+--                 )
+--              )                                                item_class_ahead    -- 振替先品目区分
+--           FROM
+--              gme_batch_header                                 gbh                 -- 生産バッチ
+--            , gme_material_details                             gmd                 -- 生産原料詳細
+--            , gmd_routings_b                                   grb                 -- 工順マスタ
+--            , gmi_item_categories                              gic
+--            , mtl_categories_b                                 mcb
+--           --生産原料詳細抽出条件
+--           WHERE gbh.batch_id           = gmd.batch_id                            -- バッチID
+--           --工順マスタ抽出条件
+--           AND   gbh.routing_id         = grb.routing_id                          -- 工順ID
+--           AND   grb.routing_class      = '70'
+--           --カテゴリ割当抽出条件
+--           AND   gmd.item_id            = gic.item_id
+--           AND   gic.category_id        = mcb.category_id
+--           AND   gic.category_set_id    = cn_item_class_id
+--           GROUP BY gbh.batch_id
+--                   ,gmd.line_no
+--          )                                                    gmd_t                 --
+-- ***** 2009/10/14 1.38 #1659 E *****
          , xxcmn_rcv_pay_mst                                   xrpm                  -- 受払区分アドオンマスタ
          , ic_tran_pnd                                         itp                   -- OPM保留在庫トランザクション
          , mtl_categories_b                                    mcb1
@@ -4550,16 +4819,20 @@ AS
         --生産原料詳細(完成品)
         AND   gbh.batch_id      = gmd_d.batch_id                                      -- バッチID
         AND   gmd_d.line_type   = 1                                                   -- ラインタイプ(完成品)
-        --生産原料詳細(振替)
-        AND   gmd.batch_id      = gmd_t.batch_id(+)                                   -- バッチID
-        AND   gmd.line_no       = gmd_t.line_no(+)                                    -- ラインNO
+-- ***** 2009/10/14 1.38 #1659 S *****
+--        --生産原料詳細(振替)
+--        AND   gmd.batch_id      = gmd_t.batch_id(+)                                   -- バッチID
+--        AND   gmd.line_no       = gmd_t.line_no(+)                                    -- ラインNO
+-- ***** 2009/10/14 1.38 #1659 E *****
         --工順マスタ抽出条件
         AND   gbh.routing_id    = grb.routing_id                                      -- 工順ID
-        --工順マスタ日本語抽出条件
-        --工順区分マスタ日本語抽出条件
-        AND   grb.routing_class = grct.routing_class                                  -- 工順コード
-        AND   grct.language     = gv_lang                                             -- 言語
-        AND   grct.source_lang  = gv_source_lang                                      -- 言語
+-- ***** 2009/10/14 1.38 #1659 S *****
+--        --工順マスタ日本語抽出条件
+--        --工順区分マスタ日本語抽出条件
+--        AND   grb.routing_class = grct.routing_class                                  -- 工順コード
+--        AND   grct.language     = gv_lang                                             -- 言語
+--        AND   grct.source_lang  = gv_source_lang                                      -- 言語
+-- ***** 2009/10/14 1.38 #1659 E *****
         --OPM保管場所マスタ抽出条件
 -- 2009/02/13 Y.Yamamoto #1189 delete start
 --        AND   mil.segment1 = grb.attribute9
@@ -4578,7 +4851,10 @@ AS
         AND   xrpm.use_div_invent     = gv_inventory                                                  -- 在庫使用区分
         AND   NVL(xrpm.hit_in_div   , gv_dummy) = NVL(gmd.attribute5   , gv_dummy)  -- 打込区分
         AND   xrpm.routing_class      = grb.routing_class(+)                        -- 工順区分
-        AND   grct.routing_class_desc NOT IN (gv_item_transfer, gv_item_return, gv_item_dissolve)
+-- ***** 2009/10/14 1.38 #1659 S *****
+--        AND   grct.routing_class_desc NOT IN (gv_item_transfer, gv_item_return, gv_item_dissolve)
+        AND   grb.routing_class NOT IN ('70', '61', '62')
+-- ***** 2009/10/14 1.38 #1659 E *****
         --生産日
         AND   gmd_d.attribute11 >= civ_ymd_from
         AND   gmd_d.attribute11 <= civ_ymd_to
@@ -4604,7 +4880,19 @@ AS
          , xrpm.new_div_invent                                                     -- 新区分
          , gbh.batch_no                                                            -- 伝票No
          , grb.routing_no                                                          -- 相手先コード
-         , grct.routing_class_desc
+-- ***** 2009/10/14 1.38 #1659 S *****
+--         , grct.routing_class_desc
+         , CASE WHEN (grb.routing_class = '10') THEN '再製'
+                WHEN (grb.routing_class = '20') THEN '缶煎'
+                WHEN (grb.routing_class = '31') THEN '再製合組'
+                WHEN (grb.routing_class = '32') THEN '合組'
+                WHEN (grb.routing_class = '40') THEN '包装'
+                WHEN (grb.routing_class = '50') THEN 'セット'
+                WHEN (grb.routing_class = '60') THEN '＊＊未使用＊＊'
+                WHEN (grb.routing_class = '80') THEN '沖縄'
+                ELSE NULL
+           END
+-- ***** 2009/10/14 1.38 #1659 E *****
          , itp.whse_code                                                           -- 倉庫コード
          , iwm.whse_name                                                           -- 倉庫名
          , itp.location                                                            -- 保管倉庫コード
