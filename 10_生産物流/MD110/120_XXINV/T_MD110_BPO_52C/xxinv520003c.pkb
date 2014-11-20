@@ -7,7 +7,7 @@ AS
  * Description      : 品目振替
  * MD.050           : 品目振替 T_MD050_BPO_520
  * MD.070           : 品目振替 T_MD070_BPO_52C
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *  2009/03/03    1.3  SCS    椎名 昭圭    本番障害#1241,#1251対応
  *  2009/03/19    1.4  SCS    椎名 昭圭    本番障害#1308対応
  *  2009/06/02    1.5  SCS    伊藤 ひとみ  本番障害#1517対応
+ *  2014/04/21    1.6  SCSK   池田 木綿子  E_EBSパッチ_00031 品目振替のESパッチ対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -194,6 +195,9 @@ AS
   gv_tkn_item_aim       CONSTANT VARCHAR2(20)   := '品目振替目的';
   gv_tkn_ins_formula    CONSTANT VARCHAR2(20)   := 'フォーミュラ登録';
   gv_tkn_ins_recipe     CONSTANT VARCHAR2(20)   := 'レシピ登録';
+----Add 2014/04/21 1.6 Start
+  gv_tkn_chk_formula    CONSTANT VARCHAR2(30)   := 'フォーミュラ有無チェック';
+----Add 2014/04/21 1.6 End
 -- 2009/06/02 H.Itou Add Start 本番障害#1517
   gv_tkn_ins_validity_rules CONSTANT VARCHAR2(20)   := '妥当性ルール登録';
 -- 2009/06/02 H.Itou Add End
@@ -221,12 +225,18 @@ AS
   gv_tkn_lot_no         CONSTANT VARCHAR2(20)   := 'ロットNo';
   gv_tkn_qty            CONSTANT VARCHAR2(20)   := '数量';
   gv_tkn_start_date     CONSTANT VARCHAR2(50)   := 'XXINV:妥当性ルール開始日';
+-- 2014/04/21 Y.Ikeda Add Start E_EBSパッチ_00031 品目振替のESパッチ対応
+  gv_tkn_cost_alloc     CONSTANT VARCHAR2(50)   := 'XXINV:品目振替原価割当';
+-- 2014/04/21 Y.Ikeda Add End
 --
   -- ルックアップ
   gv_lt_item_tran_cls   CONSTANT VARCHAR2(30)   := 'XXINV_ITEM_TRANS_CLASS';
 --
   -- プロファイル
   gv_pro_start_date     CONSTANT VARCHAR2(100)  := 'XXINV_VALID_RULE_DEFAULT_START_DATE'; -- XXINV:妥当性ルール開始日
+-- 2014/04/21 Y.Ikeda Add Start E_EBSパッチ_00031 品目振替のESパッチ対応
+  gv_item_trans_cost_alloc  CONSTANT VARCHAR2(100)  := 'XXINV_ITEM_TRANS_COST_ALLOC'; -- XXINV:品目振替原価割当
+-- 2014/04/21 Y.Ikeda Add End
 --
   -- 品目区分
   gv_material           CONSTANT VARCHAR2(1)    := '1';    -- 原料
@@ -288,6 +298,9 @@ AS
 -- 2009/06/02 H.Itou Del Start 本番障害#1517
 --  gd_start_date                  DATE;                     -- 妥当性ルール開始日
 -- 2009/06/02 H.Itou Del End
+-- 2014/04/21 Y.Ikeda Add Start E_EBSパッチ_00031 品目振替のESパッチ対応
+  gt_item_trans_cost_alloc      fm_matl_dtl.cost_alloc%TYPE;    -- 品目振替原価割当
+-- 2014/04/21 Y.Ikeda Add End
 --
   -- 各マスタへの反映処理に必要なデータを格納するレコード
   TYPE masters_rec IS RECORD(
@@ -460,7 +473,24 @@ AS
     -- トランザクション数量初期化
     -- ====================================
     ir_masters_rec.trans_qty := 0;
-
+--
+-- 2014/04/21 Y.Ikeda Add Start E_EBSパッチ_00031 品目振替のESパッチ対応
+    -- ====================================
+    -- プロファイルオプション取得
+    -- ====================================
+    -- XXINV:品目振替原価割当
+    gt_item_trans_cost_alloc := FND_PROFILE.VALUE(gv_item_trans_cost_alloc);
+--
+    -- XXINV:品目振替原価割当がNULLの場合、エラー
+    IF (gt_item_trans_cost_alloc IS NULL) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn
+                                           ,gv_msg_52a_02
+                                           ,gv_tkn_ng_profile
+                                           ,gv_tkn_cost_alloc);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- 2014/04/21 Y.Ikeda Add End
 --
   EXCEPTION
 --
@@ -1791,6 +1821,14 @@ AS
     lv_msg_date         VARCHAR2(2000);
     lv_msg_list         VARCHAR2(2000);
     l_data              VARCHAR2(2000);
+--Add 2014/04/21 1.6 Start
+    lt_cost_alloc       fm_matl_dtl.cost_alloc%TYPE;      -- 品目振替原価割当 
+    lt_formula_no       fm_form_mst_b.formula_no%TYPE;    -- フォーミュラNo
+    lt_formula_vers     fm_form_mst_b.formula_vers%TYPE;  -- フォーミュラバージョン
+    lt_formulaline_id   fm_matl_dtl.formulaline_id%TYPE;  -- フォーミュラ詳細ID
+    -- フォーミュラ詳細テーブル型変数
+    lt_formula_upd_dtl_tbl gmd_formula_detail_pub.formula_update_dtl_tbl_type;
+--Add 2014/04/21 1.6 End
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -1809,8 +1847,20 @@ AS
     -- フォーミュラIDの取得
     SELECT ffmb.formula_id            formula_id     -- フォーミュラID
          , ffmb.formula_status        formula_status -- フォーミュラステータス
+----Add 2014/04/21 1.6 Start
+         , ffmb.formula_no            formula_no      -- フォーミュラNo
+         , ffmb.formula_vers          formula_vers    -- フォーミュラVersion
+         , fmd2.formulaline_id        formulaline_id  -- フォーミュラ詳細ID
+         , fmd2.cost_alloc            cost_alloc_prod -- 原価割当（製品）
+----Add 2014/04/21 1.6 End
     INTO   ir_masters_rec.formula_id                 -- フォーミュラID
          , lv_formula_status                         -- フォーミュラステータス
+----Add 2014/04/21 1.6 Start
+         , lt_formula_no                             -- フォーミュラNo
+         , lt_formula_vers                           -- フォーミュラVersion
+         , lt_formulaline_id                         -- フォーミュラ詳細ID
+         , lt_cost_alloc                             -- 原価割当（製品）
+----Add 2014/04/21 1.6 End
     FROM   fm_form_mst_b              ffmb           -- フォーミュラマスタ
          , fm_matl_dtl                fmd1           -- フォーミュラマスタ明細(振替元)
          , fm_matl_dtl                fmd2           -- フォーミュラマスタ明細(振替先)
@@ -1884,6 +1934,58 @@ AS
                                           , ir_masters_rec.formula_no);
       RAISE global_api_expt;
     END IF;
+----Add 2014/04/21 1.6 Start
+--フォーミュラ詳細(製品).原価割当が0だったら、Profile値で更新する。
+    IF NVL( lt_cost_alloc, 0 ) = 0 THEN
+      --Update用変数設定
+      --必須項目
+      lt_formula_upd_dtl_tbl(1).formula_no     := lt_formula_no;      -- フォーミュラNo
+      lt_formula_upd_dtl_tbl(1).formula_vers   := lt_formula_vers;    -- フォーミュラVersion
+      lt_formula_upd_dtl_tbl(1).formulaline_id := lt_formulaline_id;  -- フォーミュラ詳細ID
+      lt_formula_upd_dtl_tbl(1).user_id        := FND_GLOBAL.USER_ID; -- UserId
+      --原価割当
+      lt_formula_upd_dtl_tbl(1).cost_alloc  := gt_item_trans_cost_alloc; --Profileから取得した原価割当
+  --
+      --フォーミュラ詳細更新API呼出
+      GMD_FORMULA_DETAIL_PUB.UPDATE_FORMULADETAIL(
+         p_api_version        => 2.0                    --  p_api_version   IN NUMBER (現行,ESパッチ後とも2.0)
+        ,p_init_msg_list      => FND_API.G_TRUE         -- ,p_init_msg_list      IN  VARCHAR2
+        ,p_commit             => FND_API.G_FALSE        -- ,p_commit             IN  VARCHAR2 
+        ,p_called_from_forms  => 'NO'                   -- ,p_called_from_forms  IN  VARCHAR2 := 'NO'
+        ,x_return_status      => lv_return_status       -- ,x_return_status      OUT NOCOPY    VARCHAR2
+        ,x_msg_count          => ln_message_count       -- ,x_msg_count          OUT NOCOPY    NUMBER
+        ,x_msg_data           => lv_msg_list            -- ,x_msg_data           OUT NOCOPY    VARCHAR2
+        ,p_formula_detail_tbl => lt_formula_upd_dtl_tbl -- ,p_formula_detail_tbl IN formula_update_dtl_tbl_type
+      );
+  --
+      -- フォーミュラ詳細更新処理が成功でない場合
+      IF ( lv_return_status <> gv_ret_sts_success ) THEN
+        -- エラーメッセージログ出力
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'lv_return_status ='||lv_return_status);
+  --
+        xxcmn_common_pkg.put_api_log(
+          ov_errbuf     => lv_errbuf     --   OUT：エラー・メッセージ
+         ,ov_retcode    => lv_retcode    --   OUT：リターン・コード
+         ,ov_errmsg     => lv_errmsg     --   OUT：ユーザー・エラー・メッセージ
+        );
+  --
+        -- エラーメッセージを取得
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv
+                                            , gv_msg_52a_00
+                                            , gv_tkn_api_name
+                                            , gv_tkn_chk_formula);
+  --
+        -- 共通関数例外ハンドラ
+        RAISE global_api_expt;
+  --
+      -- フォーミュラ詳細更新処理が成功の場合
+      ELSIF ( lv_return_status = gv_ret_sts_success ) THEN
+        -- 確定処理
+        COMMIT;
+      END IF;
+    END IF;
+--
+----Add 2014/04/21 1.6 End
 --
   EXCEPTION
     WHEN NO_DATA_FOUND THEN   -- 処理対象レコードが1件もなかった場合
@@ -1987,6 +2089,9 @@ AS
     lt_formula_header_tbl(1).item_um        := ir_masters_rec.to_item_um; -- 単位
     lt_formula_header_tbl(1).user_name      := FND_GLOBAL.USER_NAME;      -- ユーザー
     lt_formula_header_tbl(1).release_type   := 1;                         -- 収率タイプ(1:手動)
+-- 2014/04/21 Y.Ikeda Add Start E_EBSパッチ_00031 品目振替のESパッチ対応
+    lt_formula_header_tbl(1).cost_alloc     := gt_item_trans_cost_alloc;  -- 品目振替原価割当
+-- 2014/04/21 Y.Ikeda Add End
 --
     -- 登録情報をセット(構成品目:原料)
     lt_formula_header_tbl(2).formula_no     := ir_masters_rec.formula_no;   -- 番号
