@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -100,6 +100,8 @@ AS
  *  2008/09/24    1.17 Oracle 福田 直樹  TE080_930指摘#39(移動のステータス設定処理で'依頼済'が考慮されていない)
  *  2008/09/29    1.17 Oracle 福田 直樹  出荷の実績計上・訂正時に複写元からの引継項目が不足している
  *  2008/10/01    1.18 Oracle 福田 直樹  TE080_930指摘#40(出荷の実績訂正時に指示(レコードタイプ:10)の移動ロット詳細が複写されない)
+ *  2008/10/06    1.19 Oracle 北寒寺正夫 統合テスト障害#305対応(未来日チェックで使用するフラグをチェック処理実行前に毎回初期化するように修正)
+ *  2008/10/07    1.19 Oracle 福田 直樹  チェックエラーで処理対象外なのに移動ロット詳細のレコードが倍増する
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5003,6 +5005,10 @@ AS
 --
 --
 --
+-- Ver1.19 M.Hokkanji START
+-- 未来日チェックを行う前にフラグを初期化するよう修正
+      lv_dterr_flg := gv_date_chk_0;
+-- Ver1.19 M.Hokkanji END
       --出荷日／着荷日の未来日付チェック
       IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
 --
@@ -14763,19 +14769,30 @@ debug_log(FND_FILE.LOG,'　　　出荷依頼実績数量の設定 プロシージャ：mov_results_q
 --
     IF ((lb_break_flg = TRUE) AND (lv_retcode = gv_status_normal)) THEN
 --
-      -- 2008/08/18 TE080_930指摘#32対応 Add Start -------------------------------
-      -- 受注ソース参照がブレイクしたら、指示にあって実績にない品目を実績0で更新する
-      mov_zero_updt(
-        in_idx,                   -- データindex
-        lv_errbuf,                -- エラー・メッセージ           --# 固定 #
-        lv_retcode,               -- リターン・コード             --# 固定 #
-        lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
-      );
+      IF ((gr_interface_info_rec(in_idx).err_flg = gv_flg_off) AND  --エラーflag：0(正常) -- 2008/10/07 Add チェックエラーで処理対象外なのに移動ロット詳細のレコードが倍増する
+          (gr_interface_info_rec(in_idx).reserve_flg = gv_flg_off)) --保留flag  ：0(正常) -- 2008/10/07 Add チェックエラーで処理対象外なのに移動ロット詳細のレコードが倍増する
+      THEN
 --
-      IF (lv_retcode = gv_status_error) THEN
-        RAISE global_api_expt;
-      END IF;
-      -- 2008/08/18 TE080_930指摘#32対応 Add End ---------------------------------
+        -- 2008/08/18 TE080_930指摘#32対応 Add Start -------------------------------
+        -- 受注ソース参照がブレイクしたら、指示にあって実績にない品目を実績0で更新する
+        mov_zero_updt(
+          in_idx,                   -- データindex
+          lv_errbuf,                -- エラー・メッセージ           --# 固定 #
+          lv_retcode,               -- リターン・コード             --# 固定 #
+          lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+--
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目実績0更新:mov_zero_updt');
+--********** debug_log ********** END   ***
+--
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE global_api_expt;
+        END IF;
+        -- 2008/08/18 TE080_930指摘#32対応 Add End ---------------------------------
+--
+      END IF;  -- 2008/10/07 Add チェックエラーで処理対象外なのに移動ロット詳細のレコードが倍増する
+
 --
       IF ((gr_interface_info_rec(in_idx).err_flg = gv_flg_off) AND         --エラーflag：0(正常)
           (gr_interface_info_rec(in_idx).reserve_flg = gv_flg_off))        --保留flag  ：0(正常)
@@ -15486,19 +15503,29 @@ debug_log(FND_FILE.LOG,'　　　受注実績数量の設定 プロシージャ：ord_results_quant
 --
     IF ((lb_break_flg = TRUE) AND (lv_retcode = gv_status_normal)) THEN
 --
-      -- 2008/08/18 TE080_930指摘#32対応 Add Start -------------------------------
-      -- 受注ソース参照がブレイクしたら、指示にあって実績にない品目を実績0で更新する
-      order_zero_updt(
-        in_idx,                   -- データindex
-        lv_errbuf,                -- エラー・メッセージ           --# 固定 #
-        lv_retcode,               -- リターン・コード             --# 固定 #
-        lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
-      );
+      IF ((gr_interface_info_rec(in_idx).err_flg = gv_flg_off) AND  --エラーflag：0(正常) -- 2008/10/07 Add チェックエラーで処理対象外なのに移動ロット詳細のレコードが倍増する
+          (gr_interface_info_rec(in_idx).reserve_flg = gv_flg_off)) --保留flag  ：0(正常) -- 2008/10/07 Add チェックエラーで処理対象外なのに移動ロット詳細のレコードが倍増する
+      THEN
 --
-      IF (lv_retcode = gv_status_error) THEN
-        RAISE global_api_expt;
-      END IF;
-      -- 2008/08/18 TE080_930指摘#32対応 Add End ---------------------------------
+        -- 2008/08/18 TE080_930指摘#32対応 Add Start -------------------------------
+        -- 受注ソース参照がブレイクしたら、指示にあって実績にない品目を実績0で更新する
+        order_zero_updt(
+          in_idx,                   -- データindex
+          lv_errbuf,                -- エラー・メッセージ           --# 固定 #
+          lv_retcode,               -- リターン・コード             --# 固定 #
+          lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+--
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目を実績0更新:order_zero_updt');
+--********** debug_log ********** END   ***
+--
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE global_api_expt;
+        END IF;
+        -- 2008/08/18 TE080_930指摘#32対応 Add End ---------------------------------
+--
+      END IF;  -- 2008/10/07 Add チェックエラーで処理対象外なのに移動ロット詳細のレコードが倍増する
 --
       IF ((gr_interface_info_rec(in_idx).err_flg = gv_flg_off) AND         --エラーflag：0(正常)
           (gr_interface_info_rec(in_idx).reserve_flg = gv_flg_off))        --保留flag  ：0(正常)
