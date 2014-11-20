@@ -3,11 +3,11 @@ AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
  *
- * Package Name     : XXCMM004A04C(spec)
+ * Package Name     : XXCMM004A04C(body)
  * Description      : Disc品目変更履歴アドオンマスタにて変更予約管理されている項目を
  *                  : 適用日が到来したタイミングで各品目情報に反映します。
  * MD.050           : 変更予約適用    MD050_CMM_004_A04
- * Version          : Issue3.11
+ * Version          : Issue3.12
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -74,6 +74,7 @@ AS
  *                                                              重量/体積、配数、段数の必須チェックを子品目時も実施するよう修正
  *  2010/02/17    1.16  Y.Kuboshima      障害対応(本稼動_01485) 子品目継承時に重量容積区分を継承しないよう修正
  *  2010/04/07    1.17  Y.Kuboshima      障害対応(本稼動_02018) 標準原価 > 営業原価の場合、警告としないよう修正
+ *  2012/04/17    1.18  K.Nakamura       障害対応(本稼動_07669) 品目ステータスDへ変更する場合のチェック追加
  *
  *****************************************************************************************/
 --
@@ -183,7 +184,7 @@ AS
   cv_msg_xxcmm_00436           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00436';   -- 子品目ステータスチェックエラー
   cv_msg_xxcmm_00437           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00437';   -- 親品目ステータスチェックエラー
 -- End
-  cv_msg_xxcmm_00440           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00440';   -- プロファイル取得エラー
+  cv_msg_xxcmm_00440           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00440';   -- パラメータNULLエラー
   cv_msg_xxcmm_00441           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00441';   -- データ取得エラー(データ特定トークンなし)
   cv_msg_xxcmm_00442           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00442';   -- データ取得エラー(変更予約情報)
   cv_msg_xxcmm_00443           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00443';   -- ロック取得エラー(変更予約情報)
@@ -214,6 +215,11 @@ AS
 -- 2010/04/07 Ver1.17 E_本稼動_02018 add start by Y.Kuboshima
   cv_msg_xxcmm_00495           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00495';   -- 営業原価エラー
 -- 2010/04/07 Ver1.17 E_本稼動_02018 add end by Y.Kuboshima
+--
+-- 2012/04/17 Ver1.18 本稼動_07669 add start by K.Nakamura
+  cv_msg_xxcmm_00496           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00496';   -- 品目ステータス取引作成済エラー
+  cv_msg_xxcmm_00497           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00497';   -- 品目ステータス拠点在庫存在エラー
+-- 2012/04/17 Ver1.18 本稼動_07669 add end by K.Nakamura
   --
   -- トークン
   cv_tkn_param_name            CONSTANT VARCHAR2(100) := 'PARAM_NAME';
@@ -303,6 +309,7 @@ AS
   cv_leaf_material             CONSTANT VARCHAR2(1)   := '5';                  -- 資材品目(リーフ)
   cv_drink_material            CONSTANT VARCHAR2(1)   := '6';                  -- 資材品目(ドリンク)
 -- 2009/08/10 Ver1.11 障害0000862 add end by Y.Kuboshima
+  --
 -- 2009/08/10 Ver1.11 障害0000894 move start by Y.Kuboshima
 -- この位置ではgd_process_dateはまだ定義されていないため、カーソルを下へ移動します。
 --
@@ -437,6 +444,10 @@ AS
 -- 2009/09/11 Ver1.12 障害0001130 add start by Y.Kuboshima
   gv_bus_org_code              VARCHAR2(3);                                    -- 在庫組織コード
 -- 2009/09/11 Ver1.12 障害0001130 add end by Y.Kuboshima
+  --
+-- 2012/04/17 Ver1.18 本稼動_07669 add start by K.Nakamura
+  gd_period_start              DATE;                                           -- 在庫会計期間開始日
+-- 2012/04/17 Ver1.18 本稼動_07669 add end by K.Nakamura
   --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -2805,6 +2816,11 @@ AS
     parent_st_regist_chk_expt  EXCEPTION;    -- 親品目本登録ステータスチェックエラー
 -- 2009/10/16 Ver1.13 障害0001423 add start by Y.Kuboshima
     --
+-- 2012/04/17 Ver1.18 本稼動_07669 add start by K.Nakamura
+    tran_status_chk_expt       EXCEPTION;    -- 品目ステータス取引作成済エラー
+    inv_status_chk_expt        EXCEPTION;    -- 品目ステータス拠点在庫存在エラー
+-- 2012/04/17 Ver1.18 本稼動_07669 add end by K.Nakamura
+    --
   BEGIN
     --
 --##################  固定ステータス初期化部 START   ###################
@@ -3350,6 +3366,42 @@ AS
     END IF;
 -- End1.9
     --
+-- 2012/04/17 Ver1.18 本稼動_07669 add start by K.Nakamura
+    -- 変更後ステータスがＤの場合
+    IF ( i_update_item_rec.item_status = cn_itm_status_no_use ) THEN
+      -- 取引存在チェック
+      lv_step := 'STEP-07570';
+      SELECT COUNT(1)                AS cnt
+      INTO   ln_exists_cnt
+      FROM   mtl_material_transactions mmt                                                            -- 資材取引
+      WHERE  mmt.inventory_item_id   = i_update_item_rec.inventory_item_id                            -- 品目ID
+      AND    mmt.organization_id     = gn_bus_org_id                                                  -- 組織ID
+      AND    mmt.transaction_date   >= gd_period_start                                                -- 年月
+      AND    mmt.transaction_date   <= i_update_item_rec.apply_date                                   -- 適用日
+      AND    ROWNUM = 1;
+      -- 取引が存在する場合
+      IF ( ln_exists_cnt <> 0 ) THEN
+        -- 品目ステータス取引作成済エラー
+        RAISE tran_status_chk_expt;
+      END IF;
+      --
+      -- 拠点在庫存在チェック
+      lv_step := 'STEP-07580';
+      SELECT COUNT(1)                 AS cnt
+      INTO   ln_exists_cnt
+      FROM   mtl_onhand_quantities    moq                                   -- 取引数量
+      WHERE  moq.organization_id      = gn_bus_org_id                       -- 組織ID
+      AND    moq.inventory_item_id    = i_update_item_rec.inventory_item_id -- 品目ID
+      AND    moq.transaction_quantity <> 0                                  -- 取引数量
+      AND    ROWNUM = 1;
+      -- 拠点在庫が存在する場合
+      IF ( ln_exists_cnt <> 0 ) THEN
+        -- 品目ステータス拠点在庫存在エラー
+        RAISE inv_status_chk_expt;
+      END IF;
+    END IF;
+    --
+-- 2012/04/17 Ver1.18 本稼動_07669 add end by K.Nakamura
   EXCEPTION
 --
 -- Ver1.9  2009/07/06  Add  障害対応(0000364)
@@ -3453,6 +3505,32 @@ AS
       ov_retcode := cv_status_error;
       --
 -- 2009/08/10 Ver1.11 障害0000862 add end by Y.Kuboshima
+--
+-- 2012/04/17 Ver1.18 本稼動_07669 add start by K.Nakamura
+    -- *** 品目ステータス取引作成済例外ハンドラ ***
+    WHEN tran_status_chk_expt THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
+                     ,iv_name         => cv_msg_xxcmm_00496                    -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_item_code                      -- トークンコード1
+                     ,iv_token_value1 => i_update_item_rec.item_no             -- トークン値1
+                    );
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+      --
+    -- *** 品目ステータス拠点在庫存在例外ハンドラ ***
+    WHEN inv_status_chk_expt THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
+                     ,iv_name         => cv_msg_xxcmm_00497                    -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_item_code                      -- トークンコード1
+                     ,iv_token_value1 => i_update_item_rec.item_no             -- トークン値1
+                    );
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+-- 2012/04/17 Ver1.18 本稼動_07669 add end by K.Nakamura
 --
     -- *** データチェック例外ハンドラ ***
     WHEN data_validate_expt THEN
@@ -4973,6 +5051,9 @@ AS
     cv_bom_calendar_name         CONSTANT VARCHAR2(30) := 'システム稼働日カレンダ';
 --    cv_bom_calendar_name         CONSTANT VARCHAR2(30) := '伊藤園稼働日カレンダ';  -- こっちが正しい？
                                                                                  -- 稼働日カレンダ名称
+-- 2012/04/17 Ver1.18 本稼動_07669 add start by K.Nakamura
+    cv_period_start_date         CONSTANT VARCHAR2(20) := '在庫会計期間情報';    -- 在庫会計期間情報取得失敗時
+-- 2012/04/17 Ver1.18 本稼動_07669 add end by K.Nakamura
     --
     -- ===============================
     -- ローカル変数
@@ -5126,6 +5207,26 @@ AS
         lv_msg_token := cv_organization_info;
         RAISE get_info_err_expt;  -- 取得エラー
     END;
+    --
+-- 2012/04/17 Ver1.18 本稼動_07669 add start by K.Nakamura
+    --
+    --==============================================================
+    --A-2.5 在庫会計期間開始日の取得
+    --==============================================================
+    lv_step := 'STEP-01110';
+    -- 在庫会計期間開始日の取得
+    SELECT MIN( oap.period_start_date ) AS period_start_date -- 在庫会計期間開始日
+    INTO   gd_period_start
+    FROM   org_acct_periods    oap
+    WHERE  oap.organization_id = gn_bus_org_id
+    AND    oap.open_flag       = cv_yes;
+    --
+    IF ( gd_period_start IS NULL ) THEN
+      lv_msg_token := cv_period_start_date;
+      RAISE get_info_err_expt;  -- 取得エラー
+    END IF;
+    --
+-- 2012/04/17 Ver1.18 本稼動_07669 add end by K.Nakamura
     --
   EXCEPTION
 --
