@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcok_common_pkg(body)
  * Description      : 個別開発領域・共通関数
  * MD.070           : MD070_IPO_COK_共通関数
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * --------------------------   ------------------------------------------------------------
@@ -48,6 +48,8 @@ AS
  *  2009/02/24    1.5   K.IWABUCHI       [障害COK_053] 締め・支払日取得 日付チェック追加
  *  2009/02/26    1.6   K.IWABUCHI       [障害COK_057] SYSDATEを業務日付に修正
  *  2009/03/13    1.7   M.HIRUTA         [障害T1_0020] 基準単位換算数取得 区分内換算対応
+ *  2009/03/23    1.8   K.YAMAGUCHI      [障害T1_0074] 見積書の顧客コードから問屋管理コードを導出し、
+ *                                                     問屋販売条件請求書の問屋管理コードで検索を行う
  *
  *****************************************************************************************/
   -- ==============================
@@ -865,6 +867,10 @@ AS
                , mtl_system_items_b                            msi_b
                  -- 組織パラメータ
                , mtl_parameters                                mp
+-- 2009/03/23 Ver.1.8 SCS K.Yamaguchi ADD START
+                 -- 顧客追加情報
+               , xxcmm_cust_accounts                           xca
+-- 2009/03/23 Ver.1.8 SCS K.Yamaguchi ADD END
         WHERE    -- 条件抽出条件
                  -- 販売先用見積ヘッダー．見積ヘッダーID     = 販売先用見積明細．見積ヘッダーID
                  csoqh_sale.quote_header_id                  = csoql_sale.quote_header_id
@@ -894,8 +900,14 @@ AS
         AND      csoql_sale.quote_start_date                 <= TO_DATE( iv_selling_month , 'YYYY/MM' )
                  -- 販売先用見積明細．期間（終了）           >= 入力パラメータ．売上対象年月
         AND      csoql_sale.quote_end_date                   >= TO_DATE( iv_selling_month , 'YYYY/MM' )
-                 -- 帳合問屋用見積ヘッダー．顧客コード       = 入力パラメータ．帳合問屋コード
-        AND      csoqh_wholesale.account_number              = iv_wholesale_code
+-- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR START
+--                 -- 帳合問屋用見積ヘッダー．顧客コード       = 入力パラメータ．帳合問屋コード
+--        AND      csoqh_wholesale.account_number              = iv_wholesale_code
+                 -- 帳合問屋用見積ヘッダー．顧客コード       = 顧客追加情報．顧客コード
+        AND      csoqh_wholesale.account_number              = xca.customer_code
+                 -- 顧客追加情報．問屋管理コード             = 入力パラメータ．問屋管理コード
+        AND      xca.wholesale_ctrl_code                     = iv_wholesale_code
+-- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR END
                  -- 帳合問屋用見積ヘッダー．単価区分         = 入力パラメータ．請求単位
         AND      csoqh_wholesale.unit_type                   = iv_demand_unit_type
                  -- 帳合問屋用見積明細．期間（開始）         <= 入力パラメータ．売上対象年月
@@ -904,12 +916,23 @@ AS
         AND      csoql_wholesale.quote_end_date              >= TO_DATE( iv_selling_month , 'YYYY/MM' )
                  -- 組織パラメータ．組織コード               = FND_PROFILE．VALUE('XXCOK1_ORG_CODE_SALES')
         AND      mp.organization_code                        = FND_PROFILE.VALUE( cv_organization_cd )
+-- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR START
+--        ORDER BY -- 販売先用見積明細.見積区分                昇順
+--                 csoql_sale.quote_div                        ASC
+--                 -- 販売先用見積明細.今回店納価格            降順
+--               , csoql_sale.this_time_deliv_price            DESC NULLS LAST
+--                 -- 帳合問屋用見積明細.今回NET価格           降順
+--               , csoql_wholesale.this_time_net_price         DESC NULLS LAST;
         ORDER BY -- 販売先用見積明細.見積区分                昇順
                  csoql_sale.quote_div                        ASC
                  -- 販売先用見積明細.今回店納価格            降順
                , csoql_sale.this_time_deliv_price            DESC NULLS LAST
                  -- 帳合問屋用見積明細.今回NET価格           降順
-               , csoql_wholesale.this_time_net_price         DESC NULLS LAST;
+               , csoql_wholesale.this_time_net_price         DESC NULLS LAST
+                 -- 帳合問屋用見積ヘッダ．発行日             降順
+               , csoqh_wholesale.publish_date                DESC NULLS LAST
+        ;
+-- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR END
       END;
       -- =======================================================
       -- 問屋請求見積照合1
@@ -1148,6 +1171,10 @@ AS
                , ic_item_mst_b         iim_b
                  -- 組織パラメータ      :組織パラメータ
                , mtl_parameters        mp
+-- 2009/03/23 Ver.1.8 SCS K.Yamaguchi ADD START
+                 -- 顧客追加情報
+               , xxcmm_cust_accounts                           xca
+-- 2009/03/23 Ver.1.8 SCS K.Yamaguchi ADD END
         WHERE    -- ＜抽出条件＞
                  -- 販売先用見積ヘッダー．見積ヘッダーID   = 販売先用見積明細．見積ヘッダーID
                  csoqh_sale.quote_header_id                = csoql_sale.quote_header_id
@@ -1179,8 +1206,14 @@ AS
         AND      csoql_sale.quote_start_date              <= TO_DATE (iv_selling_month , 'YYYY/MM' )
                  -- 販売先用見積明細．期間（終了）        >= 入力パラメータ．売上対象年月
         AND      csoql_sale.quote_end_date                >= TO_DATE (iv_selling_month , 'YYYY/MM' )
-                 -- 帳合問屋用見積ヘッダー．顧客コード     = 入力パラメータ．帳合問屋コード
-        AND      csoqh_wholesale.account_number            = iv_wholesale_code
+-- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR START
+--                 -- 帳合問屋用見積ヘッダー．顧客コード     = 入力パラメータ．帳合問屋コード
+--        AND      csoqh_wholesale.account_number            = iv_wholesale_code
+                 -- 帳合問屋用見積ヘッダー．顧客コード       = 顧客追加情報．顧客コード
+        AND      csoqh_wholesale.account_number              = xca.customer_code
+                 -- 顧客追加情報．問屋管理コード             = 入力パラメータ．問屋管理コード
+        AND      xca.wholesale_ctrl_code                     = iv_wholesale_code
+-- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR END
                  -- 帳合問屋用見積ヘッダー．単価区分      <> 入力パラメータ．請求単位
         AND      csoqh_wholesale.unit_type                <> iv_demand_unit_type
                  -- 帳合問屋用見積明細．期間（開始）      <= 入力パラメータ．売上対象年月
@@ -1189,13 +1222,25 @@ AS
         AND      csoql_wholesale.quote_end_date           >= TO_DATE (iv_selling_month , 'YYYY/MM' )
                  -- 組織パラメータ．組織コード             = FND_PROFILE．VALUE('XXCOK1_ORG_CODE_SALES')
         AND      mp.organization_code                      = FND_PROFILE.VALUE( cv_organization_cd )
+-- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR START
+--        ORDER BY -- ＜ソート条件＞
+--                 -- 販売先用見積明細.見積区分              昇順
+--                 csoql_sale.quote_div                      ASC
+--                 -- 販売先用見積明細.今回店納価格          降順
+--               , csoql_sale.this_time_deliv_price          DESC NULLS LAST
+--                 --帳合問屋用見積明細.今回NET価格          降順
+--               , csoql_wholesale.this_time_net_price       DESC NULLS LAST;
         ORDER BY -- ＜ソート条件＞
                  -- 販売先用見積明細.見積区分              昇順
                  csoql_sale.quote_div                      ASC
                  -- 販売先用見積明細.今回店納価格          降順
                , csoql_sale.this_time_deliv_price          DESC NULLS LAST
                  --帳合問屋用見積明細.今回NET価格          降順
-               , csoql_wholesale.this_time_net_price       DESC NULLS LAST;
+               , csoql_wholesale.this_time_net_price       DESC NULLS LAST
+                 -- 帳合問屋用見積明細．発行日             降順
+               , csoqh_wholesale.publish_date              DESC NULLS LAST
+        ;
+-- 2009/03/23 Ver.1.8 SCS K.Yamaguchi REPAIR END
         -- =======================================================
         -- 問屋請求見積照合2
         -- =======================================================

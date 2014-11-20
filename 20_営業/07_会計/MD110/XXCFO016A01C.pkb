@@ -7,7 +7,7 @@ AS
  * Description     : 標準発注書出力処理
  * MD.050          : MD050_CFO_016_A01_標準発注書出力処理
  * MD.070          : MD050_CFO_016_A01_標準発注書出力処理
- * Version         : 1.4
+ * Version         : 1.5
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009-02-09    1.2  SCS 嵐田勇人  [障害CFO_002]出力桁数対応
  *  2009-03-06    1.3  SCS 嵐田勇人  SVF起動処理変更対応
  *  2009-03-16    1.4  SCS 嵐田勇人  [障害T1_0050]エラーログ対応
+ *  2009-03-23    1.5  SCS 開原拓也  [障害T1_0059]機種コードの変更対応
  ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -229,7 +230,10 @@ AS
           ,pvsa.attribute1                        vendor_name                -- 仕入先名
           ,pr.requisition_num                     requisition_num            -- 購買依頼番号
           ,pr.requisition_line_id                 requisition_line_id        -- 購買依頼明細ID
-          ,pr.un_number_id                        un_number_id               -- 機種ID
+--MOD_Ver.1.5_2009/03/23_START------------------------------------------------------------------------------
+--          ,pr.un_number_id                        un_number_id               -- 機種ID
+          ,pla.un_number_id                       un_number_id               -- 機種ID
+--MOD_Ver.1.5_2009/03/23_END--------------------------------------------------------------------------------
           ,pr.location_short_name                 apply_location_short_name  -- 申請拠点
           ,pr.division_code                       apply_division_code        -- 申請拠点本部コード
           ,pha.org_id                             org_id                     -- 組織ID
@@ -250,7 +254,9 @@ AS
                   ,prha.org_id                  org_id                              -- 組織ID
                   ,prla.requisition_line_id     requisition_line_id                 -- 購買依頼明細ID
                   ,prla.line_location_id        line_location_id                    -- 納入明細ID
-                  ,prla.un_number_id            un_number_id                        -- 機種ID
+--DEL_Ver.1.5_2009/03/23_START------------------------------------------------------------------------------
+--                  ,prla.un_number_id            un_number_id                        -- 機種ID
+--DEL_Ver.1.5_2009/03/23_END--------------------------------------------------------------------------------
                   ,prda.distribution_id         distribution_id                     -- 購買依頼搬送明細ID
                   ,xla.location_short_name      location_short_name                 -- 申請拠点
                   ,xla.division_code            division_code                       -- 申請拠点本部コード

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK023A01C(body)
  * Description      : 運送費予算算出
  * MD.050           : 運送費予算算出 MD050_COK_023_A01
- * Version          : 1.0
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2008/12/11    1.1   A.Yano           例外処理部修正
  *  2008/12/19    1.2   A.Yano           例外処理部修正
  *  2008/12/22    1.3   A.Yano           メッセージ出力、ログ出力修正
+ *  2009/03/25    1.4   A.Yano           [障害T1_0064] オープン年度を取得する条件追加
  *
  *****************************************************************************************/
 --
@@ -74,6 +75,9 @@ AS
   cv_set_amt_many_msg       CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10121';          -- 設定単価複数件エラー
   cv_case_qty_err_msg       CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10209';          -- ケース入数取得エラーメ
   cv_lock_err_msg           CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10122';          -- 運送費予算ロックエラー
+--【2009/03/25 A.Yano Ver.1.4 追加START】------------------------------------------------------
+  cv_process_date_err_msg   CONSTANT VARCHAR2(20) := 'APP-XXCOK1-00028';          -- 業務処理日付取得エラー
+--【2009/03/25 A.Yano Ver.1.4 追加END  】------------------------------------------------------
   -- トークン
   cv_profile_token          CONSTANT VARCHAR2(10) := 'PROFILE';                   -- プロファイル名
   cv_budget_year_token      CONSTANT VARCHAR2(20) := 'YOSAN_YEAR';                -- 対象予算年度
@@ -114,6 +118,9 @@ AS
   gn_organization_id      NUMBER;                                 -- 在庫組織ID
   gv_item_div_h           VARCHAR2(20);                           -- 本社商品区分名
   gt_budget_year          fnd_flex_values.flex_value%TYPE;        -- 対象予算年度
+--【2009/03/25 A.Yano Ver.1.4 追加START】------------------------------------------------------
+  gd_process_date         DATE;                                   -- 業務処理日付
+--【2009/03/25 A.Yano Ver.1.4 追加END  】------------------------------------------------------
   -- ===============================
   -- グローバルRECORD型
   -- ===============================
@@ -202,6 +209,9 @@ AS
     lv_nodata_profile           VARCHAR2(30);      -- 未取得のプロファイル名
     -- *** ローカル例外 ***
     local_nodata_profile_expt   EXCEPTION;         -- プロファイル値取得例外
+--【2009/03/25 A.Yano Ver.1.4 追加START】------------------------------------------------------
+    process_date_expt           EXCEPTION;         -- 業務処理日付取得例外
+--【2009/03/25 A.Yano Ver.1.4 追加END  】------------------------------------------------------
 --
   BEGIN
 --
@@ -256,6 +266,15 @@ AS
     IF( gn_organization_id IS NULL ) THEN
       RAISE global_no_data_expt;
     END IF;
+--【2009/03/25 A.Yano Ver.1.4 追加START】------------------------------------------------------
+    -- ===============================
+    -- 6. 業務処理日付取得
+    -- ===============================
+    gd_process_date := xxccp_common_pkg2.get_process_date;
+    IF( gd_process_date IS NULL ) THEN
+      RAISE process_date_expt;
+    END IF;
+--【2009/03/25 A.Yano Ver.1.4 追加END  】------------------------------------------------------
 --
   EXCEPTION
     --*** プロファイル取得例外ハンドラ ***
@@ -290,6 +309,22 @@ AS
       ov_errmsg  := NULL;
       ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000 );
       ov_retcode := cv_status_error;
+--【2009/03/25 A.Yano Ver.1.4 追加START】------------------------------------------------------
+    -- *** 業務処理日付取得例外ハンドラ ***
+    WHEN process_date_expt THEN
+      lv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_short_name_cok
+                      ,iv_name         => cv_process_date_err_msg
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                       in_which    =>   FND_FILE.OUTPUT
+                      ,iv_message  =>   lv_out_msg
+                      ,in_new_line =>   0
+                    );
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000 );
+      ov_retcode := cv_status_error;
+--【2009/03/25 A.Yano Ver.1.4 追加END  】------------------------------------------------------
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
@@ -334,9 +369,13 @@ AS
     INTO   gt_budget_year
     FROM   fnd_flex_values     ffv
           ,fnd_flex_value_sets ffvs
-    WHERE ffvs.flex_value_set_name  = iv_yearplan_calender
-    AND   ffv.flex_value_set_id     = ffvs.flex_value_set_id
-    AND   ffv.enabled_flag          = cv_enabled_flag_y
+    WHERE ffvs.flex_value_set_name  =  iv_yearplan_calender
+    AND   ffv.flex_value_set_id     =  ffvs.flex_value_set_id
+    AND   ffv.enabled_flag          =  cv_enabled_flag_y
+--【2009/03/25 A.Yano Ver.1.4 追加START】------------------------------------------------------
+    AND   NVL( ffv.start_date_active, gd_process_date ) <= gd_process_date
+    AND   NVL( ffv.end_date_active  , gd_process_date ) >= gd_process_date
+--【2009/03/25 A.Yano Ver.1.4 追加END  】------------------------------------------------------
     ;
 --
   EXCEPTION
@@ -1196,7 +1235,7 @@ AS
     gn_warn_cnt   := 0;
     gn_data_cnt   := 0;
     -- ====================================
-    -- A-1.予算年度抽出処理
+    -- A-1.初期処理
     -- ====================================
     init(
        ov_errbuf              =>   lv_errbuf               -- エラー・メッセージ
@@ -1208,7 +1247,7 @@ AS
       RAISE global_process_expt;
     END IF;
     -- ====================================
-    -- A-2.品目マスタ情報抽出処理
+    -- A-2.予算年度抽出処理
     -- ====================================
     get_budget_year(
        ov_errbuf              =>   lv_errbuf               -- エラー・メッセージ

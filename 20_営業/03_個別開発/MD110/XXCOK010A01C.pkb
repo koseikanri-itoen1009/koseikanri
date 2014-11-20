@@ -7,7 +7,7 @@ AS
  * Description      : 売上実績振替情報テーブルのデータから、
                       情報系システムへI/Fする「実績振替」を作成します。
  * MD.050           : 売上実績振替情報のI/Fファイル作成 (MD050_COK_010_A01)
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -26,6 +26,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/16    1.0   K.Motohashi      新規作成
  *  2009/02/06    1.1   M.Hiruta         [障害COK_013]ディレクトリパスの出力方法を変更
+ *  2009/03/04    1.2   M.Hiruta         [障害COK_072]出力ファイル(CSV)末尾のカンマ削除
+ *  2009/03/19    1.3   M.Hiruta         [障害T1_0087]行Noのダブルクォーテーションを削除
  *
  *****************************************************************************************/
 --
@@ -370,7 +372,10 @@ AS
       || cv_msg_c
       || cv_msg_wq || g_xsti_tab( in_idx ).xsti_slip_no                              || cv_msg_wq  -- 伝票番号
       || cv_msg_c
-      || cv_msg_wq || g_xsti_tab( in_idx ).xsti_detail_no                            || cv_msg_wq  -- 行No.
+-- Start 2009/03/19 Ver.1.3 M.Hiruta
+--      || cv_msg_wq || g_xsti_tab( in_idx ).xsti_detail_no                            || cv_msg_wq  -- 行No.
+                   || g_xsti_tab( in_idx ).xsti_detail_no                                          -- 行No.
+-- End   2009/03/19 Ver.1.3 M.Hiruta
       || cv_msg_c
       || cv_msg_wq || g_xsti_tab( in_idx ).xsti_cust_code                            || cv_msg_wq  -- 顧客コード
       || cv_msg_c
@@ -411,7 +416,6 @@ AS
       || cv_msg_wq || g_xsti_tab( in_idx ).xsti_demand_to_cust_code                  || cv_msg_wq  -- 請求顧客コード
       || cv_msg_c
                    || TO_CHAR( gd_sysdate, 'YYYYMMDDHH24MISS' )                                    -- システム日付
-      || cv_msg_c
     );
 --
     -- ============
@@ -1017,7 +1021,6 @@ AS
       retcode := cv_status_error;
       ROLLBACK;
   END main;
---
 --
 END XXCOK010A01C;
 /
