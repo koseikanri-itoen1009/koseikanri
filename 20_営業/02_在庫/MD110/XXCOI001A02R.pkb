@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A02R(body)
  * Description      : 指定された条件に紐づく入庫確認情報のリストを出力します。
  * MD.050           : 入庫未確認リスト MD050_COI_001_A02
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/03/05    1.1   H.Wada           障害番号 #034 成功件数修正
  *  2009/04/15    1.2   H.Sasaki         [T1_0397]拠点情報取得Viewの変更
  *  2009/04/23    1.3   H.Sasaki         [T1_0385]出庫拠点名の整形（8byte切捨て）
+ *  2009/07/02    1.4   H.Sasaki         [0000273]パフォーマンス改善
  *
  *****************************************************************************************/
 --
@@ -209,13 +210,18 @@ AS
         ,CASE WHEN xsi.summary_data_flag = cv_yes
               THEN xsi.ship_base_code ELSE NULL END                   -- 出庫拠点コード
                                                   AS ship_base_code
-        ,CASE WHEN xsi.summary_data_flag = cv_yes
--- == 2009/04/23 V1.3 Modified START ===============================================================
---                THEN ship_base.ship_base_name
-                THEN SUBSTRB(ship_base.ship_base_name, 1, 8)
--- == 2009/04/23 V1.3 Modified END   ===============================================================
-                ELSE NULL
-              END                                 AS ship_base_name   -- 出庫拠点名
+-- == 2009/07/02 V1.4 Deleted START ===============================================================
+--        ,CASE WHEN xsi.summary_data_flag = cv_yes
+---- == 2009/04/23 V1.3 Modified START ===============================================================
+----                THEN ship_base.ship_base_name
+--                THEN SUBSTRB(ship_base.ship_base_name, 1, 8)
+---- == 2009/04/23 V1.3 Modified END   ===============================================================
+--                ELSE NULL
+--              END                                 AS ship_base_name   -- 出庫拠点名
+-- == 2009/07/02 V1.4 Deleted END   ===============================================================
+-- == 2009/07/02 V1.4 Added START ===============================================================
+        ,xsi.slip_type                            AS slip_type_code   -- 伝票区分コード
+-- == 2009/07/02 V1.4 Added EDN   ===============================================================
         ,CASE WHEN xsi.summary_data_flag = cv_yes
               THEN cv_summary_kbn ELSE cv_detail_kbn END AS data_type -- データ種別
   FROM   xxcoi_storage_information xsi
@@ -223,28 +229,30 @@ AS
         ,ic_item_mst_b     iimb                                       -- OPM品目マスタ（子）
         ,xxcmn_item_mst_b  ximb                                       -- OPM品目アドオンマスタ
         ,fnd_lookup_values flv                                        -- クイックコードマスタ
-        ,(SELECT   xsi.transaction_id
-                 , ship_base.ship_base_name
-          FROM     (SELECT   xsi.transaction_id
-                           , hca.account_name ship_base_name
-                    FROM     xxcoi_storage_information xsi
-                           , hz_cust_accounts hca
-                    WHERE    xsi.ship_base_code = hca.account_number
-                    AND      xsi.slip_type = cv_slip_type_2
-                    UNION
-                    SELECT   xsi.transaction_id
--- == 2009/04/23 V1.3 Modified START ===============================================================
---                           , mil.description ship_base_name
-                           , mil.attribute12    ship_base_name
--- == 2009/04/23 V1.3 Modified END   ===============================================================
-                    FROM     xxcoi_storage_information  xsi
-                           , mtl_item_locations         mil
-                    WHERE    xsi.ship_base_code = mil.segment1
-                    AND      xsi.slip_type      = cv_slip_type_1
-                   ) ship_base
-                   , xxcoi_storage_information xsi
-          WHERE  xsi.transaction_id = ship_base.transaction_id
-        )ship_base
+-- == 2009/07/02 V1.4 Deleted START ===============================================================
+--        ,(SELECT   xsi.transaction_id
+--                 , ship_base.ship_base_name
+--          FROM     (SELECT   xsi.transaction_id
+--                           , hca.account_name ship_base_name
+--                    FROM     xxcoi_storage_information xsi
+--                           , hz_cust_accounts hca
+--                    WHERE    xsi.ship_base_code = hca.account_number
+--                    AND      xsi.slip_type = cv_slip_type_2
+--                    UNION
+--                    SELECT   xsi.transaction_id
+---- == 2009/04/23 V1.3 Modified START ===============================================================
+----                           , mil.description ship_base_name
+--                           , mil.attribute12    ship_base_name
+---- == 2009/04/23 V1.3 Modified END   ===============================================================
+--                    FROM     xxcoi_storage_information  xsi
+--                           , mtl_item_locations         mil
+--                    WHERE    xsi.ship_base_code = mil.segment1
+--                    AND      xsi.slip_type      = cv_slip_type_1
+--                   ) ship_base
+--                   , xxcoi_storage_information xsi
+--          WHERE  xsi.transaction_id = ship_base.transaction_id
+--        )ship_base
+-- == 2009/07/02 V1.4 Deleted END   ===============================================================
         ,(SELECT xsi.slip_num
           FROM   xxcoi_storage_information xsi
           WHERE  xsi.base_code = iv_base_code
@@ -278,7 +286,9 @@ AS
   AND    flv.language = userenv('LANG')
   AND    flv.lookup_type = cv_list_type
   AND    TRUNC(SYSDATE) BETWEEN TRUNC(flv.start_date_active) AND NVL(flv.end_date_active,TRUNC(SYSDATE))
-  AND    xsi.transaction_id = ship_base.transaction_id
+-- == 2009/07/02 V1.4 Deleted START ===============================================================
+--  AND    xsi.transaction_id = ship_base.transaction_id
+-- == 2009/07/02 V1.4 Deleted END   ===============================================================
   ORDER BY  xsi.slip_num
            ,xsi.slip_date
            ,xsi.base_code
@@ -608,6 +618,9 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- == 2009/07/02 V1.4 Added START ===============================================================
+    lv_ship_base_name   xxcoi_rep_storage_info.ship_base_name%TYPE;
+-- == 2009/07/02 V1.4 Added END   ===============================================================
 --
   BEGIN
 --
@@ -622,6 +635,30 @@ AS
     -- ***       処理部の呼び出し          ***
     -- ***************************************
 --
+-- == 2009/07/02 V1.4 Added START ===============================================================
+    BEGIN
+      IF (storage_info_rec.slip_type_code IS NULL) THEN
+        lv_ship_base_name :=  NULL;
+      ELSIF (storage_info_rec.slip_type_code = cv_slip_type_1) THEN
+        SELECT  SUBSTRB(mil.attribute12, 1, 8)
+        INTO    lv_ship_base_name
+        FROM    mtl_item_locations    mil
+        WHERE   mil.segment1    =   storage_info_rec.ship_base_code;
+        --
+      ELSIF (storage_info_rec.slip_type_code = cv_slip_type_2) THEN
+        SELECT  SUBSTRB(hca.account_name, 1, 8)
+        INTO    lv_ship_base_name
+        FROM    hz_cust_accounts    hca
+        WHERE   hca.account_number  =   storage_info_rec.ship_base_code;
+        --
+      ELSE
+        lv_ship_base_name :=  NULL;
+      END IF;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_ship_base_name :=  NULL;
+    END;
+-- == 2009/07/02 V1.4 Added END   ===============================================================
     --==============================================================
     --入庫未確認リスト帳票ワークテーブルへのデータ登録
     --==============================================================
@@ -689,7 +726,10 @@ AS
       , storage_info_rec.difference_summary_qty     -- 23
       , storage_info_rec.slip_type                  -- 24
       , storage_info_rec.ship_base_code             -- 25
-      , storage_info_rec.ship_base_name             -- 26
+-- == 2009/07/02 V1.4 Modified START ===============================================================
+--      , storage_info_rec.ship_base_name
+      , lv_ship_base_name                             -- 26
+-- == 2009/07/02 V1.4 Modified END   ===============================================================
       , storage_info_rec.data_type                  -- 27
       , iv_zero_message                             -- 28
       , cd_last_update_date                         -- 29

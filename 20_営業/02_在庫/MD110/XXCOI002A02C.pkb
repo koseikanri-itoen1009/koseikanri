@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI002A02C(body)
  * Description      : 倉替／返品情報の抽出
  * MD.050           : 倉替／返品情報の抽出 MD050_COI_002_A02
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2008/10/30    1.0   K.Nakamura       新規作成
  *  2009/05/13    1.1   H.Sasaki         [T1_0774]伝票番号の桁数を修正
  *  2009/05/26    1.2   T.Nakamura       [T1_1215]計上日付（着日）に登録する取引日の時分秒を切捨
+ *  2009/07/02    1.3   H.Sasaki         [0000272]パフォーマンス改善
  *
  *****************************************************************************************/
 --
@@ -618,6 +619,10 @@ AS
       AND    mmt.subinventory_code   = msi.secondary_inventory_name                     -- 保管場所コード
       AND    mmt.inventory_item_id   = msib.inventory_item_id                           -- 品目ID
       AND    msib.organization_id    = gt_org_id                                        -- 在庫組織ID
+-- == 2009/07/02 V1.3 Added START ===============================================================
+      AND    mmt.organization_id     = msi.organization_id                              -- 在庫組織ID
+      AND    mmt.organization_id     = msib.organization_id                             -- 在庫組織ID
+-- == 2009/07/02 V1.3 Added END   ===============================================================
       AND    iim.item_no             = msib.segment1                                    -- 品名コード
     ;
 --
