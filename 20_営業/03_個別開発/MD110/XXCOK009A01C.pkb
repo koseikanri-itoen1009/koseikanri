@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK009A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：売上・売上原価振替仕訳の作成 販売物流 MD050_COK_009_A01
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -31,6 +31,8 @@ AS
  * 2008/12/17     1.0   SCS K.SUENAGA    新規作成
  * 2009/02/10     1.1   SCS T.OSADA      [障害COK_027]売上計上日抽出条件対応
  *                                       [障害COK_028]売上原価 NULL 対応
+ * 2009/05/20     1.2   SCS M.HIRUTA     [障害T1_1099]売上実績振替情報テーブルより原価情報を取得する際のカラム変更
+ *                                                    売上原価金額 ⇒ 営業原価
  *
  *****************************************************************************************/
   --===============================
@@ -152,7 +154,10 @@ AS
            , xsti.base_code               AS base_code                   -- 売上振替先拠点コード
            , xsti.delivery_base_code      AS delivery_base_code          -- 売上振替元拠点コード
            , SUM(xsti.selling_amt_no_tax) AS selling_amt                 -- 売上金額
-           , SUM(xsti.selling_cost_amt)   AS selling_cost_amt            -- 売上原価金額
+-- Start 2009/05/20 Ver_1.2 T1_1099 M.Hiruta
+--           , SUM(xsti.selling_cost_amt)   AS selling_cost_amt            -- 売上原価金額
+           , SUM(xsti.trading_cost)       AS trading_cost                -- 営業原価
+-- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
     FROM     xxcok_selling_trns_info         xsti                        -- 売上実績振替情報テーブル
     WHERE    substr(to_char(xsti.selling_date,'YYYY/MM/DD'),1,7) 
                                           =  substr(to_char(gd_selling_date,'YYYY/MM/DD'),1,7) -- A-2で取得した売上計上日
@@ -723,10 +728,17 @@ AS
       END IF;
 --
     END IF;
+-- Start 2009/05/20 Ver_1.2 T1_1099 M.Hiruta
+--    --==================================================================
+--    --＜仕訳パターン3＞集計後の売上原価金額>0(貸借)
+--    --==================================================================
+--    IF( i_get_rec.selling_cost_amt > 0 ) THEN
+--
     --==================================================================
-    --＜仕訳パターン3＞集計後の売上原価金額>0(貸借)
+    --＜仕訳パターン3＞集計後の営業原価>0(貸借)
     --==================================================================
-    IF( i_get_rec.selling_cost_amt > 0 ) THEN
+    IF( i_get_rec.trading_cost > 0 ) THEN
+-- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
       --================================================================
       --ins_gl_interface_p呼び出し(一般会計OIF登録(A-6))
       --================================================================
@@ -738,7 +750,10 @@ AS
       , iv_account_class   => gv_acct_prod_sale_cost       -- 勘定科目(勘定科目コード(製品売上原価))
       , iv_adminicle_class => gv_assi_prod_sale_cost       -- 補助科目(製品売上原価_受払表(製品原価))
       , in_debit_amt       => 0                            -- 借方金額(0)
-      , in_credit_amt      => i_get_rec.selling_cost_amt   -- 貸方金額(売上原価金額)
+-- Start 2009/05/20 Ver_1.2 T1_1099 M.Hiruta
+--      , in_credit_amt      => i_get_rec.selling_cost_amt   -- 貸方金額(売上原価金額)
+      , in_credit_amt      => i_get_rec.trading_cost       -- 貸方金額(営業原価)
+-- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
       , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
       );
 --
@@ -753,7 +768,10 @@ AS
       , iv_division        => i_get_rec.base_code          -- 部門(売上振替先拠点コード)
       , iv_account_class   => gv_acct_prod_sale_cost       -- 勘定科目(勘定科目コード(製品売上原価))
       , iv_adminicle_class => gv_assi_prod_sale_cost       -- 補助科目(製品売上原価_受払表(製品原価))
-      , in_debit_amt       => i_get_rec.selling_cost_amt   -- 借方金額(売上原価金額)
+-- Start 2009/05/20 Ver_1.2 T1_1099 M.Hiruta
+--      , in_debit_amt       => i_get_rec.selling_cost_amt   -- 借方金額(売上原価金額)
+      , in_debit_amt       => i_get_rec.trading_cost       -- 借方金額(営業原価)
+-- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
       , in_credit_amt      => 0                            -- 貸方金額(0)
       , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
       );
@@ -763,10 +781,17 @@ AS
       END IF;
 --
     END IF;
+-- Start 2009/05/20 Ver_1.2 T1_1099 M.Hiruta
+--    --==================================================================
+--    --＜仕訳パターン4＞集計後の売上原価金額<0(借方)
+--    --==================================================================
+--    IF( i_get_rec.selling_cost_amt < 0 ) THEN
+--
     --==================================================================
-    --＜仕訳パターン4＞集計後の売上原価金額<0(借方)
+    --＜仕訳パターン4＞集計後の営業原価<0(借方)
     --==================================================================
-    IF( i_get_rec.selling_cost_amt < 0 ) THEN
+    IF( i_get_rec.trading_cost < 0 ) THEN
+-- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
       --================================================================
       --ins_gl_interface_p呼び出し(一般会計OIF登録(A-6))
       --================================================================
@@ -777,7 +802,10 @@ AS
       , iv_division        => i_get_rec.delivery_base_code -- 部門(売上振替元拠点コード)
       , iv_account_class   => gv_acct_prod_sale_cost       -- 勘定科目(勘定科目コード(製品売上原価))
       , iv_adminicle_class => gv_assi_prod_sale_cost       -- 補助科目(製品売上原価_受払表(製品原価))
-      , in_debit_amt       => i_get_rec.selling_cost_amt   -- 貸方金額(売上原価金額)
+-- Start 2009/05/20 Ver_1.2 T1_1099 M.Hiruta
+--      , in_debit_amt       => i_get_rec.selling_cost_amt   -- 借方金額(売上原価金額)
+      , in_debit_amt       => i_get_rec.trading_cost       -- 借方金額(営業原価)
+-- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
       , in_credit_amt      => 0                            -- 借方金額(0)
       , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
       );
@@ -794,7 +822,10 @@ AS
       , iv_account_class   => gv_acct_prod_sale_cost       -- 勘定科目(勘定科目コード(製品売上原価))
       , iv_adminicle_class => gv_assi_prod_sale_cost       -- 補助科目(製品売上原価_受払表(製品原価))
       , in_debit_amt       => 0                            -- 借方金額(0)
-      , in_credit_amt      => i_get_rec.selling_cost_amt   -- 貸方金額(売上原価金額)
+-- Start 2009/05/20 Ver_1.2 T1_1099 M.Hiruta
+--      , in_credit_amt      => i_get_rec.selling_cost_amt   -- 貸方金額(売上原価金額)
+      , in_credit_amt      => i_get_rec.trading_cost       -- 貸方金額(営業原価)
+-- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
       , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
       );
 --
@@ -925,11 +956,19 @@ AS
       --伝票番号初期化
       --================================================================
       gv_slip_number := NULL;
+-- Start 2009/05/20 Ver_1.2 T1_1099 M.Hiruta
+--      --================================================================
+--      --売上金額(税抜き)、売上原価金額が共に0以外の場合
+--      --================================================================
+--      IF NOT( (     g_get_journal_rec.selling_amt         = 0 )
+--        AND   ( NVL(g_get_journal_rec.selling_cost_amt,0) = 0 ) ) THEN
+--
       --================================================================
-      --売上金額(税抜き)、売上原価金額が共に0以外の場合
+      --売上金額(税抜き)、営業原価が共に0以外の場合
       --================================================================
-      IF NOT( (     g_get_journal_rec.selling_amt         = 0 )
-        AND   ( NVL(g_get_journal_rec.selling_cost_amt,0) = 0 ) ) THEN
+      IF NOT( (     g_get_journal_rec.selling_amt     = 0 )
+        AND   ( NVL(g_get_journal_rec.trading_cost,0) = 0 ) ) THEN
+-- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
           --================================================================
           --get_entry_accession_info_p呼び出し(登録付加情報取得(A-4))
           --================================================================
