@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A06C (body)
  * Description      : 消化ＶＤ掛率作成
  * MD.050           : 消化ＶＤ掛率作成 MD050_COS_004_A06
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,8 @@ AS
  *  2009/04/13    1.7   N.Maeda          [T1_0496]VDコラム別取引情報明細の数量使用部
  *                                                  ⇒VDコラム別取引情報明細の補充数へ変更
  *  2009/05/01    1.8   N.Maeda          [T1_0496]リカバリ用パラメータ追加
+ *  2009/07/16    1.9   M.Sano           [0000319]DISC品目変更履歴アドオンの定価を取得しない
+ *                                       [0000432]PTの考慮
  *
  *****************************************************************************************/
 --
@@ -253,10 +255,16 @@ AS
   ct_qct_cus_class_mst          CONSTANT fnd_lookup_types.lookup_type%TYPE
                                          := 'XXCOS1_CUS_CLASS_MST_004_A06';       --顧客区分特定マスタ_004_A06
   --クイックコード
-  ct_qcc_customer_trx_type1     CONSTANT fnd_lookup_types.lookup_type%TYPE
-                                         := 'XXCOS_004_A06_1%';                   --ＡＲ取引タイプ特定マスタ(通常)
-  ct_qcc_customer_trx_type2     CONSTANT fnd_lookup_types.lookup_type%TYPE
-                                         := 'XXCOS_004_A06_2%';                   --ＡＲ取引タイプ特定マスタ(クレメモ)
+-- 2009/07/16 Ver.1.9 M.Sano Del Start
+--  ct_qcc_customer_trx_type1     CONSTANT fnd_lookup_types.lookup_type%TYPE
+--                                         := 'XXCOS_004_A06_1%';                   --ＡＲ取引タイプ特定マスタ(通常)
+--  ct_qcc_customer_trx_type2     CONSTANT fnd_lookup_types.lookup_type%TYPE
+--                                         := 'XXCOS_004_A06_2%';                   --ＡＲ取引タイプ特定マスタ(クレメモ)
+-- 2009/07/16 Ver.1.9 M.Sano Del End
+-- 2009/07/16 Ver.1.9 M.Sano Add Start
+  ct_qcc_customer_trx_type      CONSTANT fnd_lookup_types.lookup_type%TYPE
+                                         := 'XXCOS_004_A06%';                     --ＡＲ取引タイプ特定マスタ
+-- 2009/07/16 Ver.1.9 M.Sano Add End
   ct_qcc_hokan_type_mst         CONSTANT fnd_lookup_types.lookup_type%TYPE
                                          := 'XXCOS_004_A06_%';                    --保管場所分類特定マスタ
   ct_qcc_gyotai_sho_mst         CONSTANT fnd_lookup_types.lookup_type%TYPE
@@ -325,6 +333,11 @@ AS
   --適用フラグ
   ct_apply_flag_yes             CONSTANT xxcmm_system_items_b_hst.apply_flag%TYPE
                                                       := 'Y';         --適用済み
+-- 2009/07/16 Ver.1.9 M.Sano Add Start
+  --言語コード
+  ct_lang                       CONSTANT fnd_lookup_values.language%TYPE
+                                                      := USERENV('LANG');
+-- 2009/07/16 Ver.1.9 M.Sano Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -419,7 +432,9 @@ AS
   gd_calc_digestion_due_date            DATE;
   --チェック用内部テーブル
   g_chk_subinv_tab                      g_subinv_ttype;
-  g_chk_fixed_price_tab                 g_fixed_price_ttype;
+-- 2009/07/16 Ver.1.9 M.Sano Del Start
+--  g_chk_fixed_price_tab                 g_fixed_price_ttype;
+-- 2009/07/16 Ver.1.9 M.Sano End Start
   g_get_pre_diges_due_dt_tab            g_pre_diges_due_dt_ttype;
 --
   /**********************************************************************************
@@ -762,18 +777,26 @@ AS
       INTO
         lt_regular_any_class_name
       FROM
-        fnd_application                 fa,
-        fnd_lookup_types                flt,
+-- 2009/07/16 Ver.1.9 M.Sano Del Start
+--        fnd_application                 fa,
+--        fnd_lookup_types                flt,
+-- 2009/07/16 Ver.1.9 M.Sano Del End
         fnd_lookup_values               flv
       WHERE
-        fa.application_id               = flt.application_id
-      AND flt.lookup_type               = flv.lookup_type
-      AND fa.application_short_name     = ct_xxcos_appl_short_name
-      AND flt.lookup_type               = ct_qct_regular_any_class
+-- 2009/07/16 Ver.1.9 M.Sano Del Start
+--        fa.application_id               = flt.application_id
+--      AND flt.lookup_type               = flv.lookup_type
+--      AND fa.application_short_name     = ct_xxcos_appl_short_name
+--      AND flt.lookup_type               = ct_qct_regular_any_class
+        flv.lookup_type               = ct_qct_regular_any_class
+-- 2009/07/16 Ver.1.9 M.Sano Del End
       AND flv.lookup_code               = gt_regular_any_class
       AND gd_process_date               >= flv.start_date_active
       AND gd_process_date               <= NVL( flv.end_date_active, gd_max_date )
-      AND flv.language                  = USERENV( 'LANG' )
+-- 2009/07/16 Ver.1.9 M.Sano Mod Start
+--      AND flv.language                  = USERENV( 'LANG' )
+      AND flv.language                  = ct_lang
+-- 2009/07/16 Ver.1.9 M.Sano Mod End
       AND flv.enabled_flag              = ct_enabled_flag_yes
       ;
     EXCEPTION
@@ -1251,132 +1274,169 @@ AS
             SELECT
               cv_exists_flag_yes            exists_flag
             FROM
-              fnd_application               fa,
-              fnd_lookup_types              flt,
+-- 2009/07/16 Ver.1.9 M.Sano Del Start
+--              fnd_application               fa,
+--              fnd_lookup_types              flt,
+-- 2009/07/16 Ver.1.9 M.Sano Del End
               fnd_lookup_values             flv
             WHERE
-              fa.application_id             = flt.application_id
-            AND flt.lookup_type             = flv.lookup_type
-            AND fa.application_short_name   = ct_xxcos_appl_short_name
-            AND flv.lookup_type             = ct_qct_customer_trx_type
-            AND flv.lookup_code             LIKE ct_qcc_customer_trx_type1
+-- 2009/07/16 Ver.1.9 M.Sano Del Start
+--              fa.application_id             = flt.application_id
+--            AND flt.lookup_type             = flv.lookup_type
+--            AND fa.application_short_name   = ct_xxcos_appl_short_name
+--            AND flv.lookup_type             = ct_qct_customer_trx_type
+-- 2009/07/16 Ver.1.9 M.Sano Del End
+              flv.lookup_type             = ct_qct_customer_trx_type
+-- 2009/07/16 Ver.1.9 M.Sano Mod Start
+--            AND flv.lookup_code             LIKE ct_qcc_customer_trx_type1
+            AND flv.lookup_code             LIKE ct_qcc_customer_trx_type
+-- 2009/07/16 Ver.1.9 M.Sano Mod End
             AND flv.meaning                 = rctta.name
             AND rctlgda.gl_date             >= flv.start_date_active
             AND rctlgda.gl_date             <= NVL( flv.end_date_active, gd_max_date )
             AND flv.enabled_flag            = ct_enabled_flag_yes
-            AND flv.language                = USERENV( 'LANG' )
+-- 2009/07/16 Ver.1.9 M.Sano Mod Start
+--            AND flv.language                = USERENV( 'LANG' )
+            AND flv.language                = ct_lang
+-- 2009/07/16 Ver.1.9 M.Sano Mod End
             AND ROWNUM                      = 1
           )
-      UNION ALL
-      SELECT
-        rctlgda.gl_date                     gl_date,                        --売上計上日
-        rctla.extended_amount               extended_amount,                --本体金額
-        rctla.customer_trx_line_id          customer_trx_line_id            --取引明細ID
-      FROM
-        ra_customer_trx_all                 rcta,                           --請求取引情報テーブル
-        ra_customer_trx_lines_all           rctla,                          --請求取引明細テーブル
-        ra_cust_trx_line_gl_dist_all        rctlgda,                        --請求取引明細会計配分テーブル
-        ra_cust_trx_types_all               rctta                           --請求取引タイプマスタ
-      WHERE
-        rcta.ship_to_customer_id            = it_cust_account_id
-      AND rcta.customer_trx_id              = rctla.customer_trx_id
-      AND rctla.customer_trx_id             = rctlgda.customer_trx_id
-      AND rctla.customer_trx_line_id        = rctlgda.customer_trx_line_id
-      AND rcta.cust_trx_type_id             = rctta.cust_trx_type_id
-      AND rctla.line_type                   = ct_line_type_line
-      AND rcta.complete_flag                = ct_complete_flag_yes
-      AND rctlgda.gl_date                   >= id_start_gl_date
-      AND rctlgda.gl_date                   <= id_end_gl_date
-      AND rcta.org_id                       = gn_org_id
-      AND rcta.org_id                       = rctta.org_id
-      AND EXISTS(
-            SELECT
-              cv_exists_flag_yes            exists_flag
-            FROM
-              fnd_application               fa,
-              fnd_lookup_types              flt,
-              fnd_lookup_values             flv
-            WHERE
-              fa.application_id             = flt.application_id
-            AND flt.lookup_type             = flv.lookup_type
-            AND fa.application_short_name   = ct_xxcos_appl_short_name
-            AND flv.lookup_type             = ct_qct_customer_trx_type
-            AND flv.lookup_code             LIKE ct_qcc_customer_trx_type2
-            AND flv.meaning                 = rctta.name
-            AND rctlgda.gl_date             >= flv.start_date_active
-            AND rctlgda.gl_date             <= NVL( flv.end_date_active, gd_max_date )
-            AND flv.enabled_flag            = ct_enabled_flag_yes
-            AND flv.language                = USERENV( 'LANG' )
-            AND ROWNUM                      = 1
-          )
-      AND rcta.previous_customer_trx_id     IS NULL
-      UNION ALL
-      SELECT
-        rctlgda.gl_date                     gl_date,                        --売上計上日
-        rctla.extended_amount               extended_amount,                --本体金額
-        rctla.customer_trx_line_id          customer_trx_line_id            --取引明細ID
-      FROM
-        ra_customer_trx_all                 rcta,                           --請求取引情報テーブル
-        ra_customer_trx_lines_all           rctla,                          --請求取引明細テーブル
-        ra_cust_trx_line_gl_dist_all        rctlgda,                        --請求取引明細会計配分テーブル
-        ra_cust_trx_types_all               rctta,                          --請求取引タイプマスタ
-        ra_customer_trx_all                 rcta2,                          --請求取引情報テーブル(元)
-        ra_cust_trx_types_all               rctta2                          --請求取引タイプマスタ(元)
-      WHERE
-        rcta.ship_to_customer_id            = it_cust_account_id
-      AND rcta.customer_trx_id              = rctla.customer_trx_id
-      AND rctla.customer_trx_id             = rctlgda.customer_trx_id
-      AND rctla.customer_trx_line_id        = rctlgda.customer_trx_line_id
-      AND rcta.cust_trx_type_id             = rctta.cust_trx_type_id
-      AND rctla.line_type                   = ct_line_type_line
-      AND rcta.complete_flag                = ct_complete_flag_yes
-      AND rctlgda.gl_date                   >= id_start_gl_date
-      AND rctlgda.gl_date                   <= id_end_gl_date
-      AND rcta.org_id                       = gn_org_id
-      AND rcta.org_id                       = rctta.org_id
-      AND EXISTS(
-            SELECT
-              cv_exists_flag_yes            exists_flag
-            FROM
-              fnd_application               fa,
-              fnd_lookup_types              flt,
-              fnd_lookup_values             flv
-            WHERE
-              fa.application_id             = flt.application_id
-            AND flt.lookup_type             = flv.lookup_type
-            AND fa.application_short_name   = ct_xxcos_appl_short_name
-            AND flv.lookup_type             = ct_qct_customer_trx_type
-            AND flv.lookup_code             LIKE ct_qcc_customer_trx_type2
-            AND flv.meaning                 = rctta.name
-            AND rctlgda.gl_date             >= flv.start_date_active
-            AND rctlgda.gl_date             <= NVL( flv.end_date_active, gd_max_date )
-            AND flv.enabled_flag            = ct_enabled_flag_yes
-            AND flv.language                = USERENV( 'LANG' )
-            AND ROWNUM                      = 1
-          )
-      AND rcta.previous_customer_trx_id     = rcta2.customer_trx_id
-      AND rcta2.cust_trx_type_id            = rctta2.cust_trx_type_id
-      AND rcta2.org_id                      = rctta2.org_id
-      AND EXISTS(
-            SELECT
-              cv_exists_flag_yes            exists_flag
-            FROM
-              fnd_application               fa,
-              fnd_lookup_types              flt,
-              fnd_lookup_values             flv
-            WHERE
-              fa.application_id             = flt.application_id
-            AND flt.lookup_type             = flv.lookup_type
-            AND fa.application_short_name   = ct_xxcos_appl_short_name
-            AND flv.lookup_type             = ct_qct_customer_trx_type
-            AND flv.lookup_code             LIKE ct_qcc_customer_trx_type1
-            AND flv.meaning                 = rctta2.name
-            AND rctlgda.gl_date             >= flv.start_date_active
-            AND rctlgda.gl_date             <= NVL( flv.end_date_active, gd_max_date )
-            AND flv.enabled_flag            = ct_enabled_flag_yes
-            AND flv.language                = USERENV( 'LANG' )
-            AND ROWNUM                      = 1
-          )
+-- 2009/07/16 Ver.1.9 M.Sano Del Start
+--      UNION ALL
+--      SELECT
+--        rctlgda.gl_date                     gl_date,                        --売上計上日
+--        rctla.extended_amount               extended_amount,                --本体金額
+--        rctla.customer_trx_line_id          customer_trx_line_id            --取引明細ID
+--      FROM
+--        ra_customer_trx_all                 rcta,                           --請求取引情報テーブル
+--        ra_customer_trx_lines_all           rctla,                          --請求取引明細テーブル
+--        ra_cust_trx_line_gl_dist_all        rctlgda,                        --請求取引明細会計配分テーブル
+--        ra_cust_trx_types_all               rctta                           --請求取引タイプマスタ
+--      WHERE
+--        rcta.ship_to_customer_id            = it_cust_account_id
+--      AND rcta.customer_trx_id              = rctla.customer_trx_id
+--      AND rctla.customer_trx_id             = rctlgda.customer_trx_id
+--      AND rctla.customer_trx_line_id        = rctlgda.customer_trx_line_id
+--      AND rcta.cust_trx_type_id             = rctta.cust_trx_type_id
+--      AND rctla.line_type                   = ct_line_type_line
+--      AND rcta.complete_flag                = ct_complete_flag_yes
+--      AND rctlgda.gl_date                   >= id_start_gl_date
+--      AND rctlgda.gl_date                   <= id_end_gl_date
+--      AND rcta.org_id                       = gn_org_id
+--      AND rcta.org_id                       = rctta.org_id
+--      AND EXISTS(
+--            SELECT
+--              cv_exists_flag_yes            exists_flag
+--            FROM
+---- 2009/07/16 Ver.1.9 M.Sano Del Start
+----              fnd_application               fa,
+----              fnd_lookup_types              flt,
+---- 2009/07/16 Ver.1.9 M.Sano Del End
+--              fnd_lookup_values             flv
+--            WHERE
+---- 2009/07/16 Ver.1.9 M.Sano Del Start
+----              fa.application_id             = flt.application_id
+----            AND flt.lookup_type             = flv.lookup_type
+----            AND fa.application_short_name   = ct_xxcos_appl_short_name
+----            AND flv.lookup_type             = ct_qct_customer_trx_type
+--              flv.lookup_type             = ct_qct_customer_trx_type
+---- 2009/07/16 Ver.1.9 M.Sano Del End
+--            AND flv.lookup_code             LIKE ct_qcc_customer_trx_type2
+--            AND flv.meaning                 = rctta.name
+--            AND rctlgda.gl_date             >= flv.start_date_active
+--            AND rctlgda.gl_date             <= NVL( flv.end_date_active, gd_max_date )
+--            AND flv.enabled_flag            = ct_enabled_flag_yes
+---- 2009/07/16 Ver.1.9 M.Sano Mod Start
+----            AND flv.language                = USERENV( 'LANG' )
+--            AND flv.language                = ct_lang
+---- 2009/07/16 Ver.1.9 M.Sano Mod End
+--            AND ROWNUM                      = 1
+--          )
+--      AND rcta.previous_customer_trx_id     IS NULL
+--      UNION ALL
+--      SELECT
+--        rctlgda.gl_date                     gl_date,                        --売上計上日
+--        rctla.extended_amount               extended_amount,                --本体金額
+--        rctla.customer_trx_line_id          customer_trx_line_id            --取引明細ID
+--      FROM
+--        ra_customer_trx_all                 rcta,                           --請求取引情報テーブル
+--        ra_customer_trx_lines_all           rctla,                          --請求取引明細テーブル
+--        ra_cust_trx_line_gl_dist_all        rctlgda,                        --請求取引明細会計配分テーブル
+--        ra_cust_trx_types_all               rctta,                          --請求取引タイプマスタ
+--        ra_customer_trx_all                 rcta2,                          --請求取引情報テーブル(元)
+--        ra_cust_trx_types_all               rctta2                          --請求取引タイプマスタ(元)
+--      WHERE
+--        rcta.ship_to_customer_id            = it_cust_account_id
+--      AND rcta.customer_trx_id              = rctla.customer_trx_id
+--      AND rctla.customer_trx_id             = rctlgda.customer_trx_id
+--      AND rctla.customer_trx_line_id        = rctlgda.customer_trx_line_id
+--      AND rcta.cust_trx_type_id             = rctta.cust_trx_type_id
+--      AND rctla.line_type                   = ct_line_type_line
+--      AND rcta.complete_flag                = ct_complete_flag_yes
+--      AND rctlgda.gl_date                   >= id_start_gl_date
+--      AND rctlgda.gl_date                   <= id_end_gl_date
+--      AND rcta.org_id                       = gn_org_id
+--      AND rcta.org_id                       = rctta.org_id
+--      AND EXISTS(
+--            SELECT
+--              cv_exists_flag_yes            exists_flag
+--            FROM
+---- 2009/07/16 Ver.1.9 M.Sano Del Start
+----              fnd_application               fa,
+----              fnd_lookup_types              flt,
+---- 2009/07/16 Ver.1.9 M.Sano Del End
+--              fnd_lookup_values             flv
+--            WHERE
+---- 2009/07/16 Ver.1.9 M.Sano Del Start
+----              fa.application_id             = flt.application_id
+----            AND flt.lookup_type             = flv.lookup_type
+----            AND fa.application_short_name   = ct_xxcos_appl_short_name
+----            AND flv.lookup_type             = ct_qct_customer_trx_type
+--              flv.lookup_type             = ct_qct_customer_trx_type
+---- 2009/07/16 Ver.1.9 M.Sano Del End
+--            AND flv.lookup_code             LIKE ct_qcc_customer_trx_type2
+--            AND flv.meaning                 = rctta.name
+--            AND rctlgda.gl_date             >= flv.start_date_active
+--            AND rctlgda.gl_date             <= NVL( flv.end_date_active, gd_max_date )
+--            AND flv.enabled_flag            = ct_enabled_flag_yes
+---- 2009/07/16 Ver.1.9 M.Sano Mod Start
+----            AND flv.language                = USERENV( 'LANG' )
+--            AND flv.language                = ct_lang
+---- 2009/07/16 Ver.1.9 M.Sano Mod End
+--            AND ROWNUM                      = 1
+--          )
+--      AND rcta.previous_customer_trx_id     = rcta2.customer_trx_id
+--      AND rcta2.cust_trx_type_id            = rctta2.cust_trx_type_id
+--      AND rcta2.org_id                      = rctta2.org_id
+--      AND EXISTS(
+--            SELECT
+--              cv_exists_flag_yes            exists_flag
+--            FROM
+---- 2009/07/16 Ver.1.9 M.Sano Del Start
+----              fnd_application               fa,
+----              fnd_lookup_types              flt,
+---- 2009/07/16 Ver.1.9 M.Sano Del End
+--              fnd_lookup_values             flv
+--            WHERE
+---- 2009/07/16 Ver.1.9 M.Sano Mod Start
+----              fa.application_id             = flt.application_id
+----            AND flt.lookup_type             = flv.lookup_type
+----            AND fa.application_short_name   = ct_xxcos_appl_short_name
+----            AND flv.lookup_type             = ct_qct_customer_trx_type
+--              flv.lookup_type             = ct_qct_customer_trx_type
+---- 2009/07/16 Ver.1.9 M.Sano Mod End
+--            AND flv.lookup_code             LIKE ct_qcc_customer_trx_type1
+--            AND flv.meaning                 = rctta2.name
+--            AND rctlgda.gl_date             >= flv.start_date_active
+--            AND rctlgda.gl_date             <= NVL( flv.end_date_active, gd_max_date )
+--            AND flv.enabled_flag            = ct_enabled_flag_yes
+---- 2009/07/16 Ver.1.9 M.Sano Mod Start
+----            AND flv.language                = USERENV( 'LANG' )
+--            AND flv.language                = ct_lang
+---- 2009/07/16 Ver.1.9 M.Sano Mod End
+--            AND ROWNUM                      = 1
+--          )
+-- 2009/07/16 Ver.1.9 M.Sano Del End
       ;
     -- AR取引情報 レコード型
     l_ar_rec ar_cur%ROWTYPE;
@@ -1653,20 +1713,28 @@ AS
               SELECT
                 cv_exists_flag_yes            exists_flag
               FROM
-                fnd_application               fa,
-                fnd_lookup_types              flt,
+-- 2009/07/16 Ver.1.9 M.Sano Del Start
+--                fnd_application               fa,
+--                fnd_lookup_types              flt,
+-- 2009/07/16 Ver.1.9 M.Sano Del End
                 fnd_lookup_values             flv
               WHERE
-                fa.application_id             = flt.application_id
-              AND flt.lookup_type             = flv.lookup_type
-              AND fa.application_short_name   = ct_xxcos_appl_short_name
-              AND flv.lookup_type             = ct_qct_hokan_type_mst
+-- 2009/07/16 Ver.1.9 M.Sano Mod End
+--                fa.application_id             = flt.application_id
+--              AND flt.lookup_type             = flv.lookup_type
+--              AND fa.application_short_name   = ct_xxcos_appl_short_name
+--              AND flv.lookup_type             = ct_qct_hokan_type_mst
+                flv.lookup_type             = ct_qct_hokan_type_mst
+-- 2009/07/16 Ver.1.9 M.Sano Mod End
               AND flv.lookup_code             LIKE ct_qcc_hokan_type_mst
               AND flv.meaning                 = msi.attribute13
               AND it_digestion_due_date       >= flv.start_date_active
               AND it_digestion_due_date       <= NVL( flv.end_date_active, gd_max_date )
               AND flv.enabled_flag            = ct_enabled_flag_yes
-              AND flv.language                = USERENV( 'LANG' )
+-- 2009/07/16 Ver.1.9 M.Sano Mod Start
+--              AND flv.language                = USERENV( 'LANG' )
+              AND flv.language                = ct_lang
+-- 2009/07/16 Ver.1.9 M.Sano Mod End
               AND ROWNUM                      = 1
             )
 --******************************** 2009/03/19 1.6 T.Kitajima MOD START **************************************************
@@ -1743,69 +1811,71 @@ AS
       -- A-8  消化VD用消化計算情報取得処理
       -- ===================================================
       --2.品目マスタ情報
-      IF ( ( g_chk_fixed_price_tab.COUNT = 0 )
-        OR ( g_chk_fixed_price_tab.EXISTS( l_vdc_rec.item_code_self ) = FALSE ) )
-      THEN
-        BEGIN
-          SELECT
-            xsibh.fixed_price                     fixed_price                      --定価
-          INTO
-            g_chk_fixed_price_tab(l_vdc_rec.item_code_self)
-          FROM
-            (
-              SELECT
-                xsibh.fixed_price                 fixed_price                      --定価
-              FROM
-                xxcmm_system_items_b_hst          xsibh                            --品目営業履歴アドオンマスタ
-              WHERE
-                xsibh.item_code                   = l_vdc_rec.item_code_self
-              AND xsibh.apply_date                <= it_digestion_due_date
-              AND xsibh.apply_flag                = ct_apply_flag_yes
-              AND xsibh.fixed_price               IS NOT NULL
-              ORDER BY
-                xsibh.apply_date                  desc
-            ) xsibh
-          WHERE
-            ROWNUM                                = 1
-          ;
-        EXCEPTION
-          WHEN OTHERS THEN
-            --品目マスタ文字列取得
-            lv_str_table_name           := xxccp_common_pkg.get_msg(
-                                             iv_application       => ct_xxcos_appl_short_name,
-                                             iv_name              => ct_msg_item_mst
-                                           );
-            --キー情報文字列取得
-            lv_str_key_data             := xxccp_common_pkg.get_msg(
-                                             iv_application       => ct_xxcos_appl_short_name,
-                                             iv_name              => ct_msg_key_info3,
-                                             iv_token_name1       => cv_tkn_item_code,
-                                             iv_token_value1      => l_vdc_rec.item_code_self,
-                                             iv_token_name2       => cv_tkn_apply_date,
-                                             iv_token_value2      => TO_CHAR( it_digestion_due_date , cv_fmt_date )
-                                           );
-            RAISE global_select_data_expt;
-        END;
-        --
-      ELSE
-        IF ( g_chk_fixed_price_tab(l_vdc_rec.item_code_self) IS NULL ) THEN
-          --品目マスタ文字列取得
-          lv_str_table_name             := xxccp_common_pkg.get_msg(
-                                             iv_application       => ct_xxcos_appl_short_name,
-                                             iv_name              => ct_msg_item_mst
-                                           );
-          --キー情報文字列取得
-          lv_str_key_data               := xxccp_common_pkg.get_msg(
-                                             iv_application       => ct_xxcos_appl_short_name,
-                                             iv_name              => ct_msg_key_info2,
-                                             iv_token_name1       => cv_tkn_item_code,
-                                             iv_token_value1      => l_vdc_rec.item_code_self,
-                                             iv_token_name2       => cv_tkn_apply_date,
-                                             iv_token_value2      => TO_CHAR( it_digestion_due_date , cv_fmt_date )
-                                           );
-          RAISE global_select_data_expt;
-        END IF;
-      END IF;
+-- 2009/07/16 Ver.1.9 M.Sano Del Start
+--      IF ( ( g_chk_fixed_price_tab.COUNT = 0 )
+--        OR ( g_chk_fixed_price_tab.EXISTS( l_vdc_rec.item_code_self ) = FALSE ) )
+--      THEN
+--        BEGIN
+--          SELECT
+--            xsibh.fixed_price                     fixed_price                      --定価
+--          INTO
+--            g_chk_fixed_price_tab(l_vdc_rec.item_code_self)
+--          FROM
+--            (
+--              SELECT
+--                xsibh.fixed_price                 fixed_price                      --定価
+--              FROM
+--                xxcmm_system_items_b_hst          xsibh                            --品目営業履歴アドオンマスタ
+--              WHERE
+--                xsibh.item_code                   = l_vdc_rec.item_code_self
+--              AND xsibh.apply_date                <= it_digestion_due_date
+--              AND xsibh.apply_flag                = ct_apply_flag_yes
+--              AND xsibh.fixed_price               IS NOT NULL
+--              ORDER BY
+--                xsibh.apply_date                  desc
+--            ) xsibh
+--          WHERE
+--            ROWNUM                                = 1
+--          ;
+--        EXCEPTION
+--          WHEN OTHERS THEN
+--            --品目マスタ文字列取得
+--            lv_str_table_name           := xxccp_common_pkg.get_msg(
+--                                             iv_application       => ct_xxcos_appl_short_name,
+--                                             iv_name              => ct_msg_item_mst
+--                                           );
+--            --キー情報文字列取得
+--            lv_str_key_data             := xxccp_common_pkg.get_msg(
+--                                             iv_application       => ct_xxcos_appl_short_name,
+--                                             iv_name              => ct_msg_key_info3,
+--                                             iv_token_name1       => cv_tkn_item_code,
+--                                             iv_token_value1      => l_vdc_rec.item_code_self,
+--                                             iv_token_name2       => cv_tkn_apply_date,
+--                                             iv_token_value2      => TO_CHAR( it_digestion_due_date , cv_fmt_date )
+--                                           );
+--            RAISE global_select_data_expt;
+--        END;
+--        --
+--      ELSE
+--        IF ( g_chk_fixed_price_tab(l_vdc_rec.item_code_self) IS NULL ) THEN
+--          --品目マスタ文字列取得
+--          lv_str_table_name             := xxccp_common_pkg.get_msg(
+--                                             iv_application       => ct_xxcos_appl_short_name,
+--                                             iv_name              => ct_msg_item_mst
+--                                           );
+--          --キー情報文字列取得
+--          lv_str_key_data               := xxccp_common_pkg.get_msg(
+--                                             iv_application       => ct_xxcos_appl_short_name,
+--                                             iv_name              => ct_msg_key_info2,
+--                                             iv_token_name1       => cv_tkn_item_code,
+--                                             iv_token_value1      => l_vdc_rec.item_code_self,
+--                                             iv_token_name2       => cv_tkn_apply_date,
+--                                             iv_token_value2      => TO_CHAR( it_digestion_due_date , cv_fmt_date )
+--                                           );
+--          RAISE global_select_data_expt;
+--        END IF;
+--      END IF;
+-- 2009/07/16 Ver.1.9 M.Sano Del End
       -- ===================================================
       -- 消化VD用消化計算明細登録用セット処理
       -- ===================================================
@@ -1832,7 +1902,10 @@ AS
       g_xvdl_tab(gn_xvdl_idx).digestion_ln_number     := ln_idx1;
       g_xvdl_tab(gn_xvdl_idx).item_code               := l_vdc_rec.item_code_self;
       g_xvdl_tab(gn_xvdl_idx).inventory_item_id       := l_vdc_rec.inventory_item_id;
-      g_xvdl_tab(gn_xvdl_idx).item_price              := g_chk_fixed_price_tab(l_vdc_rec.item_code_self);
+-- 2009/07/16 Ver.1.9 M.Sano Mod Start
+--      g_xvdl_tab(gn_xvdl_idx).item_price              := g_chk_fixed_price_tab(l_vdc_rec.item_code_self);
+      g_xvdl_tab(gn_xvdl_idx).item_price              := NULL;
+-- 2009/07/16 Ver.1.9 M.Sano Mod End
       g_xvdl_tab(gn_xvdl_idx).unit_price              := l_vdc_rec.wholesale_unit_ploce;
 --******************************** 2009/04/13 1.7 N.Maeda MOD START **************************************************
 --      g_xvdl_tab(gn_xvdl_idx).item_sales_amount       := l_vdc_rec.wholesale_unit_ploce
@@ -3248,20 +3321,28 @@ AS
                 SELECT
                   cv_exists_flag_yes              exists_flag
                 FROM
-                  fnd_application                 fa,
-                  fnd_lookup_types                flt,
+-- 2009/07/16 Ver.1.9 M.Sano Del Start
+--                  fnd_application                 fa,
+--                  fnd_lookup_types                flt,
+-- 2009/07/16 Ver.1.9 M.Sano Del End
                   fnd_lookup_values               flv
                 WHERE
-                  fa.application_id               = flt.application_id
-                AND flt.lookup_type               = flv.lookup_type
-                AND fa.application_short_name     = ct_xxcos_appl_short_name
-                AND flv.lookup_type               = ct_qct_cus_class_mst
+-- 2009/07/16 Ver.1.9 M.Sano Mod Start
+--                  fa.application_id               = flt.application_id
+--                AND flt.lookup_type               = flv.lookup_type
+--                AND fa.application_short_name     = ct_xxcos_appl_short_name
+--                AND flv.lookup_type               = ct_qct_cus_class_mst
+                  flv.lookup_type               = ct_qct_cus_class_mst
+-- 2009/07/16 Ver.1.9 M.Sano Mod Start
                 AND flv.lookup_code               LIKE ct_qcc_cus_class_mst1
                 AND flv.meaning                   = hca2.customer_class_code
                 AND xvdh.digestion_due_date       >= flv.start_date_active
                 AND xvdh.digestion_due_date       <= NVL( flv.end_date_active, gd_max_date )
                 AND flv.enabled_flag              = ct_enabled_flag_yes
-                AND flv.language                  = USERENV( 'LANG' )
+-- 2009/07/16 Ver.1.9 M.Sano Mod Start
+--                AND flv.language                  = USERENV( 'LANG' )
+                AND flv.language                  = ct_lang
+-- 2009/07/16 Ver.1.9 M.Sano Mod End
                 AND ROWNUM                        = 1
               )
           AND xca2.management_base_code           = NVL( gt_base_code, xca2.management_base_code )
@@ -3338,20 +3419,28 @@ AS
                 SELECT
                   cv_exists_flag_yes              exists_flag
                 FROM
-                  fnd_application                 fa,
-                  fnd_lookup_types                flt,
+-- 2009/07/16 Ver.1.9 M.Sano Del Start
+--                  fnd_application                 fa,
+--                  fnd_lookup_types                flt,
+-- 2009/07/16 Ver.1.9 M.Sano Del End
                   fnd_lookup_values               flv
                 WHERE
-                  fa.application_id               = flt.application_id
-                AND flt.lookup_type               = flv.lookup_type
-                AND fa.application_short_name     = ct_xxcos_appl_short_name
-                AND flv.lookup_type               = ct_qct_cus_class_mst
+-- 2009/07/16 Ver.1.9 M.Sano Mod Start
+--                  fa.application_id               = flt.application_id
+--                AND flt.lookup_type               = flv.lookup_type
+--                AND fa.application_short_name     = ct_xxcos_appl_short_name
+--                AND flv.lookup_type               = ct_qct_cus_class_mst
+                  flv.lookup_type               = ct_qct_cus_class_mst
+-- 2009/07/16 Ver.1.9 M.Sano Mod End
                 AND flv.lookup_code               LIKE ct_qcc_cus_class_mst2
                 AND flv.meaning                   = hca.customer_class_code
                 AND id_digestion_due_date         >= flv.start_date_active
                 AND id_digestion_due_date         <= NVL( flv.end_date_active, gd_max_date )
                 AND flv.enabled_flag              = ct_enabled_flag_yes
-                AND flv.language                  = USERENV( 'LANG' )
+-- 2009/07/16 Ver.1.9 M.Sano Mod Start
+--                AND flv.language                  = USERENV( 'LANG' )
+                AND flv.language                  = ct_lang
+-- 2009/07/16 Ver.1.9 M.Sano Mod End
                 AND ROWNUM                        = 1
               )
           AND NVL( xca.past_sale_base_code, xca.sale_base_code )
@@ -3365,20 +3454,28 @@ AS
                 SELECT
                   cv_exists_flag_yes              exists_flag
                 FROM
-                  fnd_application                 fa,
-                  fnd_lookup_types                flt,
+-- 2009/07/16 Ver.1.9 M.Sano Del Start
+--                  fnd_application                 fa,
+--                  fnd_lookup_types                flt,
+-- 2009/07/16 Ver.1.9 M.Sano Del Start
                   fnd_lookup_values               flv
                 WHERE
-                  fa.application_id               = flt.application_id
-                AND flt.lookup_type               = flv.lookup_type
-                AND fa.application_short_name     = ct_xxcos_appl_short_name
-                AND flv.lookup_type               = ct_qct_gyotai_sho_mst
+-- 2009/07/16 Ver.1.9 M.Sano Mod Start
+--                  fa.application_id               = flt.application_id
+--                AND flt.lookup_type               = flv.lookup_type
+--                AND fa.application_short_name     = ct_xxcos_appl_short_name
+--                AND flv.lookup_type               = ct_qct_gyotai_sho_mst
+                  flv.lookup_type               = ct_qct_gyotai_sho_mst
+-- 2009/07/16 Ver.1.9 M.Sano Mod End
                 AND flv.lookup_code               LIKE ct_qcc_gyotai_sho_mst
                 AND flv.meaning                   = xca.business_low_type
                 AND id_digestion_due_date         >= flv.start_date_active
                 AND id_digestion_due_date         <= NVL( flv.end_date_active, gd_max_date )
                 AND flv.enabled_flag              = ct_enabled_flag_yes
-                AND flv.language                  = USERENV( 'LANG' )
+-- 2009/07/16 Ver.1.9 M.Sano Mod Start
+--                AND flv.language                  = USERENV( 'LANG' )
+                AND flv.language                  = ct_lang
+-- 2009/07/16 Ver.1.9 M.Sano Mod End
                 AND ROWNUM                        = 1
               )
           AND iv_due_day                          IN (
@@ -3438,20 +3535,28 @@ AS
                 SELECT
                   cv_exists_flag_yes              exists_flag
                 FROM
-                  fnd_application                 fa,
-                  fnd_lookup_types                flt,
+-- 2009/07/16 Ver.1.9 M.Sano Del Start
+--                  fnd_application                 fa,
+--                  fnd_lookup_types                flt,
+-- 2009/07/16 Ver.1.9 M.Sano Del End
                   fnd_lookup_values               flv
                 WHERE
-                  fa.application_id               = flt.application_id
-                AND flt.lookup_type               = flv.lookup_type
-                AND fa.application_short_name     = ct_xxcos_appl_short_name
-                AND flv.lookup_type               = ct_qct_cus_class_mst
+-- 2009/07/16 Ver.1.9 M.Sano Mod Start
+--                  fa.application_id               = flt.application_id
+--                AND flt.lookup_type               = flv.lookup_type
+--                AND fa.application_short_name     = ct_xxcos_appl_short_name
+--                AND flv.lookup_type               = ct_qct_cus_class_mst
+                  flv.lookup_type               = ct_qct_cus_class_mst
+-- 2009/07/16 Ver.1.9 M.Sano Mod End
                 AND flv.lookup_code               LIKE ct_qcc_cus_class_mst1
                 AND flv.meaning                   = hca.customer_class_code
                 AND id_digestion_due_date         >= flv.start_date_active
                 AND id_digestion_due_date         <= NVL( flv.end_date_active, gd_max_date )
                 AND flv.enabled_flag              = ct_enabled_flag_yes
-                AND flv.language                  = USERENV( 'LANG' )
+-- 2009/07/16 Ver.1.9 M.Sano Mod Start
+--                AND flv.language                  = USERENV( 'LANG' )
+                AND flv.language                  = ct_lang
+-- 2009/07/16 Ver.1.9 M.Sano Mod End
                 AND ROWNUM                        = 1
               )
           AND xca.management_base_code            = NVL( gt_base_code, hca.customer_class_code )
@@ -3460,20 +3565,28 @@ AS
                 SELECT
                   cv_exists_flag_yes              exists_flag
                 FROM
-                  fnd_application                 fa,
-                  fnd_lookup_types                flt,
+-- 2009/07/16 Ver.1.9 M.Sano Del Start
+--                  fnd_application                 fa,
+--                  fnd_lookup_types                flt,
+-- 2009/07/16 Ver.1.9 M.Sano Del Start
                   fnd_lookup_values               flv
                 WHERE
-                  fa.application_id               = flt.application_id
-                AND flt.lookup_type               = flv.lookup_type
-                AND fa.application_short_name     = ct_xxcos_appl_short_name
-                AND flv.lookup_type               = ct_qct_cus_class_mst
+-- 2009/07/16 Ver.1.9 M.Sano Mod Start
+--                  fa.application_id               = flt.application_id
+--                AND flt.lookup_type               = flv.lookup_type
+--                AND fa.application_short_name     = ct_xxcos_appl_short_name
+--                AND flv.lookup_type               = ct_qct_cus_class_mst
+                  flv.lookup_type               = ct_qct_cus_class_mst
+-- 2009/07/16 Ver.1.9 M.Sano Mod End
                 AND flv.lookup_code               LIKE ct_qcc_cus_class_mst2
                 AND flv.meaning                   = hca2.customer_class_code
                 AND id_digestion_due_date         >= flv.start_date_active
                 AND id_digestion_due_date         <= NVL( flv.end_date_active, gd_max_date )
                 AND flv.enabled_flag              = ct_enabled_flag_yes
-                AND flv.language                  = USERENV( 'LANG' )
+-- 2009/07/16 Ver.1.9 M.Sano Mod Start
+--                AND flv.language                  = USERENV( 'LANG' )
+                AND flv.language                  = ct_lang
+-- 2009/07/16 Ver.1.9 M.Sano Mod End
                 AND ROWNUM                        = 1
               )
           AND NVL( xca2.past_sale_base_code, xca2.sale_base_code )
@@ -3483,20 +3596,28 @@ AS
                 SELECT
                   cv_exists_flag_yes              exists_flag
                 FROM
-                  fnd_application                 fa,
-                  fnd_lookup_types                flt,
+-- 2009/07/16 Ver.1.9 M.Sano Del Start
+--                  fnd_application                 fa,
+--                  fnd_lookup_types                flt,
+-- 2009/07/16 Ver.1.9 M.Sano Del Start
                   fnd_lookup_values               flv
                 WHERE
-                  fa.application_id               = flt.application_id
-                AND flt.lookup_type               = flv.lookup_type
-                AND fa.application_short_name     = ct_xxcos_appl_short_name
-                AND flv.lookup_type               = ct_qct_gyotai_sho_mst
+-- 2009/07/16 Ver.1.9 M.Sano Mod Start
+--                  fa.application_id               = flt.application_id
+--                AND flt.lookup_type               = flv.lookup_type
+--                AND fa.application_short_name     = ct_xxcos_appl_short_name
+--                AND flv.lookup_type               = ct_qct_gyotai_sho_mst
+                  flv.lookup_type               = ct_qct_gyotai_sho_mst
+-- 2009/07/16 Ver.1.9 M.Sano Mod End
                 AND flv.lookup_code               LIKE ct_qcc_gyotai_sho_mst
                 AND flv.meaning                   = xca2.business_low_type
                 AND id_digestion_due_date         >= flv.start_date_active
                 AND id_digestion_due_date         <= NVL( flv.end_date_active, gd_max_date )
                 AND flv.enabled_flag              = ct_enabled_flag_yes
-                AND flv.language                  = USERENV( 'LANG' )
+-- 2009/07/16 Ver.1.9 M.Sano Mod Start
+--                AND flv.language                  = USERENV( 'LANG' )
+                AND flv.language                  = ct_lang
+-- 2009/07/16 Ver.1.9 M.Sano Mod End
                 AND ROWNUM                        = 1
               )
           AND iv_due_day                          IN (
