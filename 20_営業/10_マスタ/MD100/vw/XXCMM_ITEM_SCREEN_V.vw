@@ -130,7 +130,17 @@ SELECT   iimb.item_no                      AS item_no                       -- •
 -- 2009/05/12 áŠQT1_0906 add start by Yutaka.Kuboshima
         ,xsib.case_conv_inc_num            AS case_conv_inc_num             -- ƒP[ƒXŠ·Z“ü”
 -- 2009/05/12 áŠQT1_0906 add end by Yutaka.Kuboshima
-
+-- 2009/06/15 áŠQT1_1366 add start by Yutaka.Kuboshima
+        ,ma.mark_group_code                AS mark_group_code               -- ƒ}[ƒP—pŒQƒR[ƒh
+        ,ma.mark_group_category_id         AS mark_group_category_id        -- ƒ}[ƒP—pŒQƒR[ƒhƒJƒeƒSƒŠID
+        ,ma.mark_group_category_set_id     AS mark_group_category_set_id    -- ƒ}[ƒP—pŒQƒR[ƒhƒJƒeƒSƒŠƒZƒbƒgI
+        ,gu.group_code                     AS group_code                    -- ŒQƒR[ƒh
+        ,gu.group_category_id              AS group_category_id             -- ŒQƒR[ƒhƒJƒeƒSƒŠID
+        ,gu.group_category_set_id          AS group_category_set_id         -- ŒQƒR[ƒhƒJƒeƒSƒŠƒZƒbƒgID
+        ,ba.baracha_div                    AS baracha_div_category          -- ƒoƒ‰’ƒ‹æ•ªƒJƒeƒSƒŠ
+        ,baracha_div_category_id           AS baracha_div_category_id       -- ƒoƒ‰’ƒ‹æ•ªƒJƒeƒSƒŠID
+        ,baracha_div_category_set_id       AS baracha_div_category_set_id   -- ƒoƒ‰’ƒ‹æ•ªƒJƒeƒSƒŠƒZƒbƒgID
+-- 2009/06/15 áŠQT1_1366 add end by Yutaka.Kuboshima
 FROM     ic_item_mst_b      iimb        -- OPM•i–Úƒ}ƒXƒ^
         ,xxcmn_item_mst_b   ximb        -- OPM•i–ÚƒAƒhƒIƒ“ƒ}ƒXƒ^
         ,xxcmm_system_items_b xsib      -- Disc•i–ÚƒAƒhƒIƒ“ƒ}ƒXƒ^
@@ -209,6 +219,47 @@ FROM     ic_item_mst_b      iimb        -- OPM•i–Úƒ}ƒXƒ^
           AND         gic_se.category_id        = mcv_se.category_id
           AND         gic_se.category_id        = mcv_se.category_id
         ) se                            -- ­ôŒQ—p
+-- 2009/06/15 áŠQT1_1366 add start by Yutaka.Kuboshima
+        ,(SELECT      gic_se.item_id          AS item_id
+                     ,mcv_se.segment1         AS mark_group_code
+                     ,mcv_se.description      AS mark_group_code_name
+                     ,mcv_se.category_id      AS mark_group_category_id
+                     ,mcsv_se.category_set_id AS mark_group_category_set_id
+          FROM        gmi_item_categories  gic_se
+                     ,mtl_category_sets_vl mcsv_se
+                     ,mtl_categories_vl    mcv_se
+          WHERE       gic_se.category_set_id    = mcsv_se.category_set_id
+          AND         mcsv_se.category_set_name = 'ƒ}[ƒP—pŒQƒR[ƒh'
+          AND         gic_se.category_id        = mcv_se.category_id
+          AND         gic_se.category_id        = mcv_se.category_id
+        ) ma                            -- ƒ}[ƒP—pŒQƒR[ƒh—p
+        ,(SELECT      gic_se.item_id          AS item_id
+                     ,mcv_se.segment1         AS group_code
+                     ,mcv_se.description      AS group_code_name
+                     ,mcv_se.category_id      AS group_category_id
+                     ,mcsv_se.category_set_id AS group_category_set_id
+          FROM        gmi_item_categories  gic_se
+                     ,mtl_category_sets_vl mcsv_se
+                     ,mtl_categories_vl    mcv_se
+          WHERE       gic_se.category_set_id    = mcsv_se.category_set_id
+          AND         mcsv_se.category_set_name = 'ŒQƒR[ƒh'
+          AND         gic_se.category_id        = mcv_se.category_id
+          AND         gic_se.category_id        = mcv_se.category_id
+        ) gu                            -- ŒQƒR[ƒh—p
+        ,(SELECT      gic_se.item_id          AS item_id
+                     ,mcv_se.segment1         AS baracha_div
+                     ,mcv_se.description      AS baracha_div_name
+                     ,mcv_se.category_id      AS baracha_div_category_id
+                     ,mcsv_se.category_set_id AS baracha_div_category_set_id
+          FROM        gmi_item_categories  gic_se
+                     ,mtl_category_sets_vl mcsv_se
+                     ,mtl_categories_vl    mcv_se
+          WHERE       gic_se.category_set_id    = mcsv_se.category_set_id
+          AND         mcsv_se.category_set_name = 'ƒoƒ‰’ƒ‹æ•ª'
+          AND         gic_se.category_id        = mcv_se.category_id
+          AND         gic_se.category_id        = mcv_se.category_id
+        ) ba                            -- ƒoƒ‰’ƒ‹æ•ª—p
+-- 2009/06/15 áŠQT1_1366 add end by Yutaka.Kuboshima
         ,(SELECT      flv_uri.lookup_code  AS sales_target
                      ,flv_uri.meaning      AS sales_target_name
           FROM        fnd_lookup_values_vl flv_uri
@@ -269,6 +320,11 @@ AND     ximbr.end_date_active(+)    >= TRUNC(SYSDATE)
 AND     iimb.item_id                 = ipc.item_id
 AND     iimb.item_id                 = ho.item_id(+)
 AND     iimb.item_id                 = se.item_id(+)
+-- 2009/06/15 áŠQT1_1366 add start by Yutaka.Kuboshima
+AND     iimb.item_id                 = ma.item_id(+)
+AND     iimb.item_id                 = gu.item_id(+)
+AND     iimb.item_id                 = ba.item_id(+)
+-- 2009/06/15 áŠQT1_1366 add end by Yutaka.Kuboshima
 -- LookupŒn
 AND     iimb.attribute26             = uri.sales_target(+)
 AND     TO_CHAR(xsib.item_status)    = his.item_status(+)
@@ -501,4 +557,23 @@ COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.SP_SUPPLIER_CODE_NAME IS 'ê–å“Xd“ü
 /
 -- 2009/05/12 áŠQT1_0906 add start by Yutaka.Kuboshima
 COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.CASE_CONV_INC_NUM IS 'ƒP[ƒXŠ·Z“ü”'
+/
+-- 2009/06/15 áŠQT1_1366 add start by Yutaka.Kuboshima
+COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.MARK_GROUP_CODE IS 'ƒ}[ƒP—pŒQƒR[ƒh'
+/
+COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.MARK_GROUP_CATEGORY_ID IS 'ƒ}[ƒP—pŒQƒR[ƒhƒJƒeƒSƒŠID'
+/
+COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.mark_group_category_set_id IS 'ƒ}[ƒP—pŒQƒR[ƒhƒJƒeƒSƒŠƒZƒbƒgID'
+/
+COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.GROUP_CODE IS 'ŒQƒR[ƒh'
+/
+COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.GROUP_CATEGORY_ID IS 'ŒQƒR[ƒhƒJƒeƒSƒŠID'
+/
+COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.GROUP_CATEGORY_SET_ID IS 'ŒQƒR[ƒhƒJƒeƒSƒŠƒZƒbƒgID'
+/
+COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.BARACHA_DIV_CATEGORY IS 'ƒoƒ‰’ƒ‹æ•ªƒJƒeƒSƒŠ'
+/
+COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.BARACHA_DIV_CATEGORY_ID IS 'ƒoƒ‰’ƒ‹æ•ªƒJƒeƒSƒŠID'
+/
+COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.BARACHA_DIV_CATEGORY_SET_ID IS 'ƒoƒ‰’ƒ‹æ•ªƒJƒeƒSƒŠƒZƒbƒgID'
 /

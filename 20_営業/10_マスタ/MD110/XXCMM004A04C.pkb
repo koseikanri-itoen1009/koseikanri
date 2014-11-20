@@ -49,10 +49,11 @@ AS
  *  2009/01/30    1.4   H.Yoshikawa      原価組織変更による修正
  *  2009/02/19    1.5   H.Yoshikawa      品目ステータスチェックを追加
  *  2009/02/20                           検索対象更新日に業務日付を設定するよう修正
- *  2009/03/23    1.6   H.Yoshikawa      障害No37対応 重量/容積・重量容積区分の設定を追加
- *                                       障害No39対応 マスタ受信日時(OPM品目.ATTRIBUTE30)の設定を追加
+ *  2009/03/23    1.6   H.Yoshikawa      障害NoT1_0037対応 重量/容積・重量容積区分の設定を追加
+ *                                       障害NoT1_0039対応 マスタ受信日時(OPM品目.ATTRIBUTE30)の設定を追加
  *  2009/04/03    1.7   K.Ito            障害対応(T1_0295) 品目OIF作成時にロット管理(LOT_CONTROL_CODE)に「1」(管理なし)を追加
  *  2009/05/27    1.7   H.Yoshikawa      障害対応(T1_0906) 親品目継承項目の追加【case_conv_inc_num(ケース換算入数)】
+ *  2009/06/11    1.8   H.Yoshikawa      障害対応(T1_1366) 政策群変更時、群コードも変更するよう修正
  *
  *****************************************************************************************/
 --
@@ -114,6 +115,7 @@ AS
   cv_date_fmt_std              CONSTANT VARCHAR2(10)  := xxcmm_004common_pkg.cv_date_fmt_std;
                                                                                -- 日付書式：YYYY/MM/DD
   --
+  cv_msg_space                 CONSTANT VARCHAR2(1)   := ' ';
   cv_boot_flag_online          CONSTANT VARCHAR2(1)   := '1';
   cv_boot_flag_batch           CONSTANT VARCHAR2(1)   := '2';
   cv_yes                       CONSTANT VARCHAR2(1)   := 'Y';
@@ -180,6 +182,9 @@ AS
   cv_tkn_data_cnt              CONSTANT VARCHAR2(20)  := 'DATA_CNT';           -- データ件数
   --
   cv_tkn_val_categ_policy_cd   CONSTANT VARCHAR2(30)  := '政策群カテゴリ情報';
+-- Ver1.8  2009/06/11  Add  政策群コードが変更された場合、群コードにも反映
+  cv_tkn_val_categ_gun_cd      CONSTANT VARCHAR2(30)  := '群コードカテゴリ情報';
+-- End1.8
   cv_tkn_val_categ_prd_class   CONSTANT VARCHAR2(30)  := '本社商品区分カテゴリ情報';
   cv_tkn_val_item_status       CONSTANT VARCHAR2(30)  := '品目ステータス情報';
   cv_tkn_val_item              CONSTANT VARCHAR2(30)  := '品目';
@@ -202,12 +207,20 @@ AS
   cv_tkn_val_opm_item_categ    CONSTANT VARCHAR2(30)  := 'ＯＰＭ品目カテゴリ割当';
   --
   -- 品目カテゴリセット名
-  cv_categ_set_seisakugun      CONSTANT VARCHAR2(20) := xxcmm_004common_pkg.cv_categ_set_seisakugun;
-                                                                               -- 政策群
-  cv_categ_set_hon_prod        CONSTANT VARCHAR2(20) := xxcmm_004common_pkg.cv_categ_set_hon_prod;
+  cv_categ_set_seisakugun      CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_seisakugun;
+                                                                               -- 政策群コード
+  cv_categ_set_hon_prod        CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_hon_prod;
                                                                                -- 本社商品区分
-  cv_categ_set_item_prod       CONSTANT VARCHAR2(20) := xxcmm_004common_pkg.cv_categ_set_item_prod;
+  cv_categ_set_item_prod       CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_item_prod;
                                                                                -- 商品製品区分
+-- Ver1.8  2009/06/11  Add  政策群コードが変更された場合、群コードにも反映
+  cv_categ_set_baracha_div     CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_baracha_div;
+                                                                               -- バラ茶区分
+  cv_categ_set_mark_pg         CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_mark_pg;
+                                                                               -- マーケ用群コード
+  cv_categ_set_gun_code        CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_gun_code;
+                                                                               -- 群コード
+-- End1.8
   --
   -- ルックアップ
   cv_lookup_item_status        CONSTANT VARCHAR2(20)  := 'XXCMM_ITM_STATUS';   -- 品目ステータス
@@ -908,8 +921,8 @@ AS
     END;
     --
     --==============================================================
-    --A-7.2 カテゴリセットIDの取得（政策群）
-    --A-7.3 カテゴリIDの取得（政策群）
+    --A-7.2 カテゴリセットIDの取得（政策群コード）
+    --A-7.3 カテゴリIDの取得（政策群コード）
     --==============================================================
     IF ( iv_policy_group IS NOT NULL ) THEN
       --
@@ -943,7 +956,7 @@ AS
       l_discitem_category_rec.category_id       := ln_category_id;
       --
       --==============================================================
-      --A-7.4 品目カテゴリ割当の更新（政策群）
+      --A-7.4 品目カテゴリ割当の更新（政策群コード）
       --==============================================================
       -- OPM品目カテゴリ反映
       lv_step := 'STEP-10030';
@@ -953,7 +966,6 @@ AS
        ,ov_retcode           =>  lv_retcode                -- リターン・コード             --# 固定 #
        ,ov_errmsg            =>  lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
       );
-      --
       --
       IF ( lv_retcode = cv_status_error ) THEN
         lv_msg_errm  := lv_errmsg;
@@ -970,17 +982,85 @@ AS
        ,ov_errmsg            =>  lv_errmsg                  -- ユーザー・エラー・メッセージ --# 固定 #
       );
       --
-      --
       IF ( lv_retcode = cv_status_error ) THEN
         lv_msg_errm  := lv_errmsg;
         lv_msg_token := cv_tkn_val_mtl_item_categ;
         RAISE data_update_err_expt;
       END IF;
       --
+-- Ver1.8  2009/06/11  Add  政策群コードが変更された場合、群コードにも反映
+      --==============================================================
+      --A-7.2 カテゴリセットIDの取得（群コード）
+      --A-7.3 カテゴリIDの取得（群コード）
+      --==============================================================
+      lv_step := 'STEP-10050';
+      BEGIN
+        -- 群コード カテゴリセットID,カテゴリID取得
+        SELECT      mcs.category_set_id    -- カテゴリセットID
+                   ,mc.category_id         -- カテゴリID
+        INTO        ln_category_set_id
+                   ,ln_category_id
+        FROM        mtl_categories       mc
+                   ,mtl_category_sets    mcs
+        WHERE       mcs.description = cv_categ_set_gun_code
+        AND         mc.structure_id = mcs.structure_id
+        AND         mc.segment1     = iv_policy_group;
+        --
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_msg_errm  := SQLERRM;
+          lv_msg_token := cv_tkn_val_categ_gun_cd;
+          RAISE data_select_err_expt;  -- 抽出エラー
+      END;
+      --
+      -- OPM品目カテゴリ更新用パラメータ設定
+      l_opmitem_category_rec.item_id            := in_item_id;
+      l_opmitem_category_rec.category_set_id    := ln_category_set_id;
+      l_opmitem_category_rec.category_id        := ln_category_id;
+      -- Disc品目カテゴリ更新用パラメータ設定
+      l_discitem_category_rec.inventory_item_id := in_inventory_item_id;
+      l_discitem_category_rec.category_set_id   := ln_category_set_id;
+      l_discitem_category_rec.category_id       := ln_category_id;
+      --
+      --==============================================================
+      --A-7.4 品目カテゴリ割当の更新（群コード）
+      --==============================================================
+      -- OPM品目カテゴリ反映
+      lv_step := 'STEP-10060';
+      xxcmm_004common_pkg.proc_opmitem_categ_ref(
+        i_item_category_rec  =>  l_opmitem_category_rec    -- 品目カテゴリ割当レコードタイプ
+       ,ov_errbuf            =>  lv_errbuf                 -- エラー・メッセージ           --# 固定 #
+       ,ov_retcode           =>  lv_retcode                -- リターン・コード             --# 固定 #
+       ,ov_errmsg            =>  lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      --
+      IF ( lv_retcode = cv_status_error ) THEN
+        lv_msg_errm  := lv_errmsg;
+        lv_msg_token := cv_tkn_val_opm_item_categ;
+        RAISE data_update_err_expt;
+      END IF;
+      --
+      -- Disc品目カテゴリ反映
+      lv_step := 'STEP-10070';
+      xxcmm_004common_pkg.proc_discitem_categ_ref(
+        i_item_category_rec  =>  l_discitem_category_rec    -- 品目カテゴリ割当レコードタイプ
+       ,ov_errbuf            =>  lv_errbuf                  -- エラー・メッセージ           --# 固定 #
+       ,ov_retcode           =>  lv_retcode                 -- リターン・コード             --# 固定 #
+       ,ov_errmsg            =>  lv_errmsg                  -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      --
+      IF ( lv_retcode = cv_status_error ) THEN
+        lv_msg_errm  := lv_errmsg;
+        lv_msg_token := cv_tkn_val_categ_gun_cd;
+        RAISE data_update_err_expt;
+      END IF;
+      --
+-- End1.8
+      --
       --==============================================================
       --A-7.6-0 OPM品目更新用政策群の設定
       --==============================================================
-      lv_step := 'STEP-10050';
+      lv_step := 'STEP-10080';
       -- 旧・群コード ← 新・群コード
       l_opm_item_rec.attribute1 := l_opm_item_rec.attribute2;
       -- 新・群コード
@@ -994,7 +1074,7 @@ AS
       --==============================================================
       --A-7.6-0 OPM品目更新用定価の設定
       --==============================================================
-      lv_step := 'STEP-10060';
+      lv_step := 'STEP-10110';
       -- 旧・定価 ← 新・定価
       l_opm_item_rec.attribute4 := l_opm_item_rec.attribute5;
       -- 新・定価
@@ -1010,7 +1090,7 @@ AS
     --==============================================================
     IF ( in_discrete_cost IS NOT NULL ) THEN
       --
-      lv_step := 'STEP-10070';
+      lv_step := 'STEP-10210';
       SELECT      COUNT( cif.ROWID )
       INTO        ln_exsits_count
       FROM        cst_item_cst_dtls_interface    cif
@@ -1024,7 +1104,7 @@ AS
       --
       IF ( ln_exsits_count = 0 ) THEN
         -- データ未登録の場合は新規登録
-        lv_step := 'STEP-10080';
+        lv_step := 'STEP-10220';
         BEGIN
           -- 原価OIFへ登録
           INSERT INTO cst_item_cst_dtls_interface(
@@ -1052,7 +1132,7 @@ AS
         END;
       ELSE
         -- データ登録済みの場合は更新
-        lv_step := 'STEP-10090';
+        lv_step := 'STEP-10230';
         BEGIN
           UPDATE      cst_item_cst_dtls_interface                     -- 原価OIF
           SET         usage_rate_or_amount = in_discrete_cost         -- 原価金額
@@ -1074,7 +1154,7 @@ AS
       --==============================================================
       --A-7.6-0 OPM品目更新用営業原価の設定
       --==============================================================
-      lv_step := 'STEP-10100';
+      lv_step := 'STEP-10240';
       -- 旧・営業原価 ← 新・営業原価
       l_opm_item_rec.attribute7 := l_opm_item_rec.attribute8;
       -- 新・営業原価
@@ -1083,7 +1163,7 @@ AS
       l_opm_item_rec.attribute9 := iv_apply_date;
     END IF;
     --
-    lv_step := 'STEP-10110';
+    lv_step := 'STEP-10310';
     xxcmm_004common_pkg.upd_opm_item(
       i_opm_item_rec  =>  l_opm_item_rec         -- OPM品目レコードタイプ
      ,ov_errbuf       =>  lv_errbuf              -- エラー・メッセージ           --# 固定 #
@@ -1156,7 +1236,7 @@ AS
       END IF;
       --
       ov_errmsg  := lv_errmsg;
-      lv_errbuf  := lv_errmsg || CHR(10) || lv_msg_errm;
+      lv_errbuf  := lv_errmsg || cv_msg_space|| lv_msg_errm;
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errbuf, 1, 5000 );
       ov_retcode := cv_status_error;
       --
@@ -2158,7 +2238,7 @@ AS
                     );
       --
       ov_errmsg  := lv_errmsg;
-      lv_errbuf  := lv_errmsg || CHR(10) || lv_msg_errm;
+      lv_errbuf  := lv_errmsg || cv_msg_space|| lv_msg_errm;
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errbuf, 1, 5000 );
       ov_retcode := cv_status_error;
       --
@@ -3021,7 +3101,7 @@ AS
                      ,iv_token_value2 => i_update_item_rec.item_no     -- トークン値2
                     );
       ov_errmsg  := lv_errmsg;
-      lv_errbuf  := lv_errmsg || CHR(10) || SQLERRM;
+      lv_errbuf  := lv_errmsg || cv_msg_space|| SQLERRM;
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errbuf, 1, 5000 );
       ov_retcode := cv_status_error;
       --
@@ -3236,6 +3316,7 @@ AS
     -- ローカル・カーソル
     -- ===============================
     -- 品目カテゴリ割当抽出カーソル(本社製品区分、製品商品区分、政策群)
+    --                              群コード、バラ茶区分、マーケ用群コード 2009/06/11追加
     CURSOR opm_item_categ_cur(
       pn_item_id    NUMBER )
     IS
@@ -3245,12 +3326,21 @@ AS
       FROM        gmi_item_categories  gic     -- OPM品目カテゴリ割当
                  ,mtl_category_sets    mcs     -- カテゴリセット
       WHERE       gic.item_id  = pn_item_id    -- 品目ID
+-- Ver1.8  2009/06/11  Add  群コード、バラ茶区分、マーケ用群コードを追加
+--      AND         mcs.category_set_name IN ( cv_categ_set_seisakugun       -- 政策群コード
+--                                            ,cv_categ_set_item_prod        -- 製品商品区分
+--                                            ,cv_categ_set_hon_prod )       -- 本社商品区分
       AND         mcs.category_set_name IN ( cv_categ_set_seisakugun       -- 政策群コード
+                                            ,cv_categ_set_gun_code         -- 群コード
                                             ,cv_categ_set_item_prod        -- 製品商品区分
-                                            ,cv_categ_set_hon_prod )       -- 本社商品区分
+                                            ,cv_categ_set_hon_prod         -- 本社商品区分
+                                            ,cv_categ_set_baracha_div      -- バラ茶区分
+                                            ,cv_categ_set_mark_pg )        -- マーケ用群コード
+-- End1.8
       AND         gic.category_set_id = mcs.category_set_id;
     --
     -- 品目カテゴリ割当抽出カーソル(本社製品区分、製品商品区分)
+    --                              バラ茶区分、マーケ用群コード 2009/06/11追加
     CURSOR opm_item_categ_cur2(
       pn_item_id    NUMBER )
     IS
@@ -3260,8 +3350,14 @@ AS
       FROM        gmi_item_categories  gic     -- OPM品目カテゴリ割当
                  ,mtl_category_sets    mcs     -- カテゴリセット
       WHERE       gic.item_id  = pn_item_id    -- 品目ID
+-- Ver1.8  2009/06/11  Add  バラ茶区分、マーケ用群コードを追加
+--      AND         mcs.category_set_name IN ( cv_categ_set_item_prod        -- 製品商品区分
+--                                            ,cv_categ_set_hon_prod )       -- 本社商品区分
       AND         mcs.category_set_name IN ( cv_categ_set_item_prod        -- 製品商品区分
-                                            ,cv_categ_set_hon_prod )       -- 本社商品区分
+                                            ,cv_categ_set_hon_prod         -- 本社商品区分
+                                            ,cv_categ_set_baracha_div      -- バラ茶区分
+                                            ,cv_categ_set_mark_pg )        -- マーケ用群コード
+-- End1.8
       AND         gic.category_set_id = mcs.category_set_id;
     --
     -- レコード型

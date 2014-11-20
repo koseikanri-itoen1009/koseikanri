@@ -29,6 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/07    1.0   H.Yoshikawa      新規作成
  *  2009/04/10    1.2   H.Yoshikawa      障害T1_0215 対応(chk_single_byte を削除)
+ *  2009/06/11    1.3   N.Nishimura      障害T1_1366 対応(品目カテゴリセット名を追加)
  *
  *****************************************************************************************/
 --
@@ -73,6 +74,11 @@ AS
   cv_categ_set_seisakugun      CONSTANT VARCHAR2(20) := '政策群コード';             -- 政策群
   cv_categ_set_hon_prod        CONSTANT VARCHAR2(20) := '本社商品区分';             -- 本社商品区分
   cv_categ_set_item_prod       CONSTANT VARCHAR2(20) := '商品製品区分';             -- 商品製品区分
+--Ver1.3  2009/06/11 Add start
+  cv_categ_set_baracha_div     CONSTANT VARCHAR2(20) := 'バラ茶区分';               -- バラ茶区分
+  cv_categ_set_mark_pg         CONSTANT VARCHAR2(20) := 'マーケ用群コード';         -- マーケ用群コード
+  cv_categ_set_gun_code        CONSTANT VARCHAR2(20) := '群コード';                 -- 群コード
+--Ver1.3  2009/06/11 End
   --
   -- 日付書式
   cv_date_fmt_ymd              CONSTANT VARCHAR2(10) := 'YYYYMMDD';                 -- YYYYMMDD

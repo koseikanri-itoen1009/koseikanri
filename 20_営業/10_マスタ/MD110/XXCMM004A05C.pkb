@@ -56,6 +56,7 @@ AS
  *  2009/06/04    1.10  N.Nishimura      障害T1_1319 重量または容積がNULLの場合、'0'をセットするように修正
  *                                                   品名コードの半角数値チェックを追加
  *                                       障害T1_1323 品名コードの１桁目が５、６の場合、「ロット」を０に設定する(プロファイルから)
+ *  2009/06/11    1.11  N.Nishimura      障害T1_1366 品目カテゴリ割当(バラ茶区分、マーケ用群コード、群コード)追加
  *
  *****************************************************************************************/
 --
@@ -214,6 +215,12 @@ AS
   cv_prof_lot_ctl        CONSTANT VARCHAR2(30)  := 'XXCMM1_004A01F_INI_LOT_VALUE';                  -- XXCMM:品目登録画面_ロットデフォルト値
   cv_lot_ctl_defname     CONSTANT VARCHAR2(60)  := 'XXCMM:品目登録画面_ロットデフォルト値';         -- 「XXCMM:品目登録画面_ロットデフォルト値」名
 --Ver1.10 End
+--Ver1.11 2009/06/11 Add start
+  cv_prof_baracha_div    CONSTANT VARCHAR2(30)  := 'XXCMM1_004_INI_BARACHA_DIV';                    -- XXCMM:バラ茶区分初期値
+  cv_prof_mark_pg        CONSTANT VARCHAR2(30)  := 'XXCMM1_004_INI_MARK_GUN_CODE';                  -- XXCMM:マーケ用群コード初期値
+  cv_baracha_div_def     CONSTANT VARCHAR2(60)  := 'XXCMM:バラ茶区分初期値';                        -- XXCMM:バラ茶区分初期値
+  cv_mark_pg_def         CONSTANT VARCHAR2(60)  := 'XXCMM:マーケ用群コード初期値';                  -- XXCMM:マーケ用群コード初期値
+--Ver1.11 End
 -- Ver.1.5 20090224 Add START
   cv_process_date        CONSTANT VARCHAR2(30)  := '業務日付';                                      -- 業務日付
 -- Ver.1.5 20090224 Add END
@@ -244,6 +251,11 @@ AS
   cv_table_gic_ssk       CONSTANT VARCHAR2(60)  := 'OPM品目カテゴリ割当(商品製品区分)';             -- GMI_ITEM_CATEGORIES
   cv_table_gic_hsk       CONSTANT VARCHAR2(60)  := 'OPM品目カテゴリ割当(本社商品区分)';             -- GMI_ITEM_CATEGORIES
   cv_table_gic_sg        CONSTANT VARCHAR2(60)  := 'OPM品目カテゴリ割当(政策群)';                   -- GMI_ITEM_CATEGORIES
+--Ver1.11  2009/06/11 Add Start
+  cv_table_gic_bd        CONSTANT VARCHAR2(60)  := 'OPM品目カテゴリ割当(バラ茶区分)';               -- GMI_ITEM_CATEGORIES
+  cv_table_gic_mgc       CONSTANT VARCHAR2(60)  := 'OPM品目カテゴリ割当(マーケ用群コード)';         -- GMI_ITEM_CATEGORIES
+  cv_table_gic_pg        CONSTANT VARCHAR2(60)  := 'OPM品目カテゴリ割当(群コード)';                 -- GMI_ITEM_CATEGORIES
+--Ver1.11  2009/06/11 End
 --
   cv_table_ccd           CONSTANT VARCHAR2(30)  := 'OPM標準原価';                                   -- CM_CMPT_DTL
   cv_table_xsib          CONSTANT VARCHAR2(30)  := 'Disc品目アドオン';                              -- XXCMM_SYSTEM_ITEMS_B
@@ -320,6 +332,12 @@ AS
   cv_categ_set_hon_prod  CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_hon_prod;       -- 本社商品区分
   cv_categ_set_seisakugun
                          CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_seisakugun;     -- 政策群
+--Ver1.11  2009/06/11 Add start
+  cv_categ_set_baracha_div
+                         CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_baracha_div;    -- バラ茶区分
+  cv_categ_set_mark_pg   CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_mark_pg;        -- マーケ用群コード
+  cv_categ_set_gun_code  CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_gun_code;       -- 群コード
+--Ver1.11  2009/06/11 End
 --
   cv_prog_opmitem_trigger
                          CONSTANT VARCHAR2(20)  := 'XXCMN810003C';                                  -- 「OPM品目トリガー起動コンカレント」
@@ -423,6 +441,14 @@ AS
       ,hsk_category_set_id      mtl_category_sets_b.category_set_id%TYPE                            -- カテゴリセットID(本社商品区分)
       ,sg_category_id           mtl_categories_b.category_id%TYPE                                   -- カテゴリID(政策群)
       ,sg_category_set_id       mtl_category_sets_b.category_set_id%TYPE                            -- カテゴリセットID(政策群)
+--Ver1.11  2009/06/11 Add start
+      ,bd_category_id           mtl_categories_b.category_id%TYPE                                   -- カテゴリID(バラ茶区分)
+      ,bd_category_set_id       mtl_category_sets_b.category_set_id%TYPE                            -- カテゴリセットID(バラ茶区分)
+      ,mgc_category_id          mtl_categories_b.category_id%TYPE                                   -- カテゴリID(マーケ用群コード)
+      ,mgc_category_set_id      mtl_category_sets_b.category_set_id%TYPE                            -- カテゴリセットID(マーケ用群コード)
+      ,pg_category_id           mtl_categories_b.category_id%TYPE                                   -- カテゴリID(群コード)
+      ,pg_category_set_id       mtl_category_sets_b.category_set_id%TYPE                            -- カテゴリセットID(群コード)
+--Ver1.11 End
       );
   -- LOOKUP情報(親品目時に使用)
   TYPE g_lookup_rtype    IS RECORD                                                                  -- レコード型を宣言
@@ -453,6 +479,10 @@ AS
 --Ver1.10 2009/06/04 Add start
   gn_lot_ctl                NUMBER;                                                                 -- XXCMM:品目登録画面_ロットデフォルト値格納用
 --Ver1.10 End
+--Ver1.11 2009/06/11 Add start
+  gn_baracha_div            NUMBER;                                                                 -- XXCMM:バラ茶区分初期値
+  gv_mark_pg                VARCHAR2(4);                                                            -- XXCMM:マーケ用群コード
+--Ver1.11 End
   --
   -- ===============================
   -- ユーザー定義例外
@@ -556,6 +586,26 @@ AS
         EXECUTE IMMEDIATE lv_sql INTO io_item_ctg_rec.sg_category_id
                                      ,io_item_ctg_rec.sg_category_set_id
                                      ;
+--Ver1.11  2009/06/11 Add start
+      --
+      -- バラ茶区分の場合
+      ELSIF ( io_item_ctg_rec.category_set_name = cv_categ_set_baracha_div ) THEN
+        EXECUTE IMMEDIATE lv_sql INTO io_item_ctg_rec.bd_category_id
+                                     ,io_item_ctg_rec.bd_category_set_id
+                                     ;
+      --
+      -- マーケ用群コードの場合
+      ELSIF ( io_item_ctg_rec.category_set_name = cv_categ_set_mark_pg ) THEN
+        EXECUTE IMMEDIATE lv_sql INTO io_item_ctg_rec.mgc_category_id
+                                     ,io_item_ctg_rec.mgc_category_set_id
+                                     ;
+      --
+      -- 群コードの場合
+      ELSIF ( io_item_ctg_rec.category_set_name = cv_categ_set_gun_code ) THEN
+        EXECUTE IMMEDIATE lv_sql INTO io_item_ctg_rec.pg_category_id
+                                     ,io_item_ctg_rec.pg_category_set_id
+                                     ;
+--Ver1.11  2009/06/11 End
       END IF;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -1596,7 +1646,7 @@ AS
     --
     --==============================================================
     -- A-5.4 OPM品目カテゴリ割当(商品製品区分)登録処理
-     --==============================================================
+    --==============================================================
     lv_step := 'A-5.4';
     l_ctg_product_prod_rec.item_id         := ln_item_id;
     l_ctg_product_prod_rec.category_set_id := l_set_parent_item_rec.ssk_category_set_id;  -- (子品目の場合、親値継承項目)
@@ -1615,7 +1665,7 @@ AS
     --
     --==============================================================
     -- A-5.5 OPM品目カテゴリ割当(本社商品区分)登録処理
-     --==============================================================
+    --==============================================================
     lv_step := 'A-5.5';
     l_ctg_hon_prod_rec.item_id         := ln_item_id;
     l_ctg_hon_prod_rec.category_set_id := l_set_parent_item_rec.hsk_category_set_id;      -- (子品目の場合、親値継承項目)
@@ -1636,7 +1686,7 @@ AS
     --==============================================================
     -- A-5.6 OPM品目カテゴリ割当(政策群)登録処理
     -- 子品目の場合のみ作成します。
-     --==============================================================
+    --==============================================================
     lv_step := 'A-5.6';
     IF ( i_wk_item_rec.item_code <> i_wk_item_rec.parent_item_code ) THEN
       l_ctg_hon_prod_rec.item_id         := ln_item_id;
@@ -1655,6 +1705,71 @@ AS
       END IF;
     END IF;
     --
+--Ver1.11  2009/06/11 Add start
+    --==============================================================
+    -- A-5.6-1 OPM品目カテゴリ割当(バラ茶区分)登録処理
+    --==============================================================
+    lv_step := 'A-5.6-1';
+    l_ctg_hon_prod_rec.item_id         := ln_item_id;
+    l_ctg_hon_prod_rec.category_set_id := i_item_ctg_rec.bd_category_set_id;     -- (子品目の場合、親値継承項目)
+    l_ctg_hon_prod_rec.category_id     := i_item_ctg_rec.bd_category_id;         -- (子品目の場合、親値継承項目)
+    --
+    xxcmm_004common_pkg.proc_opmitem_categ_ref(
+      i_item_category_rec => l_ctg_hon_prod_rec
+     ,ov_errbuf           => lv_errbuf
+     ,ov_retcode          => lv_retcode
+     ,ov_errmsg           => lv_errmsg
+    );
+    -- 処理結果チェック
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      lv_tkn_table := cv_table_gic_bd;
+      RAISE ins_err_expt;   -- データ登録例外
+    END IF;
+    --
+    --==============================================================
+    -- A-5.6-2 OPM品目カテゴリ割当(マーケ用群コード)登録処理
+    --==============================================================
+    lv_step := 'A-5.6-2';
+    l_ctg_hon_prod_rec.item_id         := ln_item_id;
+    l_ctg_hon_prod_rec.category_set_id := i_item_ctg_rec.mgc_category_set_id;     -- (子品目の場合、親値継承項目)
+    l_ctg_hon_prod_rec.category_id     := i_item_ctg_rec.mgc_category_id;         -- (子品目の場合、親値継承項目)
+    --
+    xxcmm_004common_pkg.proc_opmitem_categ_ref(
+      i_item_category_rec => l_ctg_hon_prod_rec
+     ,ov_errbuf           => lv_errbuf
+     ,ov_retcode          => lv_retcode
+     ,ov_errmsg           => lv_errmsg
+    );
+    -- 処理結果チェック
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      lv_tkn_table := cv_table_gic_mgc;
+      RAISE ins_err_expt;   -- データ登録例外
+    END IF;
+    --
+    --==============================================================
+    -- A-5.6-3 OPM品目カテゴリ割当(群コード)登録処理
+    -- 親品目の場合、政策群コードが適用された時に設定される
+    --==============================================================
+    lv_step := 'A-5.6-3';
+    IF ( i_wk_item_rec.item_code <> i_wk_item_rec.parent_item_code ) THEN
+      l_ctg_hon_prod_rec.item_id         := ln_item_id;
+      l_ctg_hon_prod_rec.category_set_id := i_item_ctg_rec.pg_category_set_id;     -- (子品目の場合、親値継承項目)
+      l_ctg_hon_prod_rec.category_id     := i_item_ctg_rec.pg_category_id;         -- (子品目の場合、親値継承項目)
+      --
+      xxcmm_004common_pkg.proc_opmitem_categ_ref(
+        i_item_category_rec => l_ctg_hon_prod_rec
+       ,ov_errbuf           => lv_errbuf
+       ,ov_retcode          => lv_retcode
+       ,ov_errmsg           => lv_errmsg
+      );
+      -- 処理結果チェック
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        lv_tkn_table := cv_table_gic_pg;
+        RAISE ins_err_expt;   -- データ登録例外
+      END IF;
+    END IF;
+--Ver1.11  2009/06/11 End
+--
     --==============================================================
     -- A-5.7 OPM標準原価登録処理
     -- 子品目は変更予約適用で行います。
@@ -1984,12 +2099,38 @@ AS
 -- Ver1.8  2009/05/18 Add  T1_0322 子品目で商品製品区分導出時に親品目の商品製品区分と比較処理を追加
     lv_p_item_prod_class      VARCHAR2(240);                          -- 親品目 商品製品区分
 -- End
+-- Ver1.11  2009/06/11  Add Start
+    ln_baracha_category_id     mtl_categories_b.category_id%TYPE;         -- カテゴリID（バラ茶区分）
+    ln_baracha_category_set_id mtl_category_sets_b.category_set_id%TYPE;  -- カテゴリセットID（バラ茶区分）
+    ln_markpg_category_id      mtl_categories_b.category_id%TYPE;         -- カテゴリID（マーケ用群コード）
+    ln_markpg_category_set_id  mtl_category_sets_b.category_set_id%TYPE;  -- カテゴリセットID（マーケ用群コード）
+    ln_pg_category_id          mtl_categories_b.category_id%TYPE;         -- カテゴリID（群コード）
+    ln_pg_category_set_id      mtl_category_sets_b.category_set_id%TYPE;  -- カテゴリセットID（群コード）
+-- Ver1.11  2009/06/11  End
     --
     ln_check_cnt              NUMBER;
     lv_required_item          VARCHAR2(2000);
     lv_sqlerrm                VARCHAR2(5000);                         -- SQLERRM変数退避用
 --
     -- *** ローカル・カーソル ***
+-- Ver1.11  2009/06/11  Add Start
+    -- カテゴリセットID・カテゴリID取得カーソル
+    CURSOR get_categ_cur(
+      pv_item_code    VARCHAR2
+     ,pv_categ_name   VARCHAR2 )
+    IS
+      SELECT    mcv.category_id
+               ,mcsv.category_set_id
+      FROM      ic_item_mst_b         iimb
+               ,gmi_item_categories  gic
+               ,mtl_category_sets_vl mcsv
+               ,mtl_categories_vl    mcv
+      WHERE     iimb.item_no           = pv_item_code
+      AND       mcsv.category_set_name = pv_categ_name
+      AND       gic.item_id            = iimb.item_id
+      AND       gic.category_set_id    = mcsv.category_set_id
+      AND       gic.category_id        = mcv.category_id;
+-- Ver1.11  2009/06/11  End
 --
     -- *** ローカル・レコード ***
 --
@@ -3057,6 +3198,7 @@ AS
            ,ov_retcode      => lv_retcode
            ,ov_errmsg       => lv_errmsg
           );
+          --
           -- 処理結果チェック
           IF ( lv_retcode <> cv_status_normal ) THEN
             lv_check_flag := cv_status_error;
@@ -3354,6 +3496,97 @@ AS
         --
       END IF;
     END IF;
+    --
+--Ver1.11  2009/06/11 Add start
+    --==============================================================
+    -- 子品目時の継承チェック(親値があればそのまま設定する)
+    --==============================================================
+    IF ( i_wk_item_rec.item_code <> i_wk_item_rec.parent_item_code ) THEN
+      --
+      --==============================================================
+      -- A-4.30.1 バラ茶区分(親値取得)
+      --==============================================================
+      lv_step := 'A-4.30.1';
+      OPEN get_categ_cur( i_wk_item_rec.parent_item_code, cv_categ_set_baracha_div );
+      --
+      FETCH get_categ_cur INTO l_item_ctg_rec.bd_category_id, l_item_ctg_rec.bd_category_set_id;
+      --
+      CLOSE get_categ_cur;
+      --
+      --==============================================================
+      -- A-4.30.2 マーケ用群コード(親値取得)
+      --==============================================================
+      lv_step := 'A-4.30.2';
+      OPEN get_categ_cur( i_wk_item_rec.parent_item_code, cv_categ_set_mark_pg );
+      --
+      FETCH get_categ_cur INTO l_item_ctg_rec.mgc_category_id, l_item_ctg_rec.mgc_category_set_id;
+      --
+      CLOSE get_categ_cur;
+      --
+      --==============================================================
+      -- A-4.30.3 群コード(親値取得)
+      --==============================================================
+      lv_step := 'A-4.30.3';
+      OPEN get_categ_cur( i_wk_item_rec.parent_item_code, cv_categ_set_gun_code );
+      --
+      FETCH get_categ_cur INTO l_item_ctg_rec.pg_category_id, l_item_ctg_rec.pg_category_set_id;
+      --
+      CLOSE get_categ_cur;
+      --
+      IF ( l_item_ctg_rec.pg_category_set_id IS NULL ) THEN
+        -- 群コード情報を変数にセット
+        l_item_ctg_rec.category_set_name := cv_categ_set_gun_code;
+        -- 親の政策群の現在値を抽出
+        SELECT    iimb.attribute2
+        INTO      l_item_ctg_rec.category_val
+        FROM      ic_item_mst_b        iimb
+        WHERE     iimb.item_no = i_wk_item_rec.parent_item_code;
+        --
+        -- カテゴリ存在チェック
+        chk_exists_category(
+          io_item_ctg_rec => l_item_ctg_rec
+         ,ov_errbuf       => lv_errbuf
+         ,ov_retcode      => lv_retcode
+         ,ov_errmsg       => lv_errmsg
+        );
+        -- 処理結果チェック
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          lv_check_flag := cv_status_error;
+        END IF;
+      END IF;
+    END IF;
+    --
+    --==============================================================
+    -- 親品目時、または、子品目時親品目に設定されていなければ設定する
+    --==============================================================
+    -- バラ茶区分
+    IF ( l_item_ctg_rec.bd_category_set_id IS NULL ) THEN
+      l_item_ctg_rec.category_set_name := cv_categ_set_baracha_div;
+      l_item_ctg_rec.category_val      := gn_baracha_div;
+      --
+      -- カテゴリ存在チェック
+      chk_exists_category(
+        io_item_ctg_rec => l_item_ctg_rec
+       ,ov_errbuf       => lv_errbuf
+       ,ov_retcode      => lv_retcode
+       ,ov_errmsg       => lv_errmsg
+      );
+    END IF;
+    --
+    -- マーケ用群コード
+    IF ( l_item_ctg_rec.mgc_category_set_id IS NULL ) THEN
+      l_item_ctg_rec.category_set_name := cv_categ_set_mark_pg;
+      l_item_ctg_rec.category_val      := gv_mark_pg;
+      --
+      -- カテゴリ存在チェック
+      chk_exists_category(
+        io_item_ctg_rec => l_item_ctg_rec
+       ,ov_errbuf       => lv_errbuf
+       ,ov_retcode      => lv_retcode
+       ,ov_errmsg       => lv_errmsg
+      );
+    END IF;
+--Ver1.11  2009/06/11 End
     --
     --==============================================================
     -- A-4.31 処理件数加算
@@ -4161,6 +4394,7 @@ AS
       RAISE get_profile_expt;
     END IF;
     --
+--Ver1.10  2009/06/04 Add start
     -- XXCMM:品目登録画面_ロットデフォルト値
     gn_lot_ctl := TO_NUMBER(FND_PROFILE.VALUE(cv_prof_lot_ctl));
     -- 取得エラー時
@@ -4168,6 +4402,25 @@ AS
       lv_tkn_value := cv_lot_ctl_defname;
       RAISE get_profile_expt;
     END IF;
+--Ver1.10  2009/06/04 End
+    --
+--Ver1.11  2009/06/11 Add start
+    -- XXCMM:バラ茶区分初期値
+    gn_baracha_div := TO_NUMBER(FND_PROFILE.VALUE(cv_prof_baracha_div));
+    -- 取得エラー時
+    IF ( gn_baracha_div IS NULL ) THEN
+      lv_tkn_value := cv_baracha_div_def;
+      RAISE get_profile_expt;
+    END IF;
+    --
+    -- XXCMM:マーケ用群コード初期値
+    gv_mark_pg := FND_PROFILE.VALUE(cv_prof_mark_pg);
+    -- 取得エラー時
+    IF ( gv_mark_pg IS NULL ) THEN
+      lv_tkn_value := cv_mark_pg_def;
+      RAISE get_profile_expt;
+    END IF;
+--Ver1.11  2009/06/11 End
     --
     --==============================================================
     -- A-1.4 ファイルアップロード名称取得
