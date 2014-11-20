@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A07C (body)
  * Description      : 受注一覧ファイル出力
  * MD.050           : 受注一覧ファイル出力 MD050_COS_009_A07
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2010/06/23    1.0   S.Miyakoshi      新規作成
  *  2010/08/03    1.1   K.Kiriu          [E_本稼動_04125]出力項目の変更
  *  2011/02/04    1.2   OuKou            [E_本稼動_04871]出力項目の追加
+ *  2012/09/28    1.3   M.Takasaki       [E_本稼動_10114]パフォーマンス改善
  *
  *****************************************************************************************/
 --
@@ -215,10 +216,16 @@ AS
   IS
     SELECT
       /*+
-         LEADING(xca)
+-- MOD DATE:2012/09/28 AUTHOR:M.Takasaki VER：1.3 CONTENT:E_本稼動_10114 START
+--         LEADING(xca)
+--         INDEX(xca XXCMM_CUST_ACCOUNTS_N21)
+--         INDEX(ooha OE_ORDER_HEADERS_N2)
+--         USE_NL(ecl)
+         LEADING(xca xeh ooha)
          INDEX(xca XXCMM_CUST_ACCOUNTS_N21)
-         INDEX(ooha OE_ORDER_HEADERS_N2)
-         USE_NL(ecl)
+         INDEX(xeh XXCOS_EDI_HEADERS_N09)
+         INDEX(ooha OE_ORDER_HEADERS_N7)
+-- MOD DATE:2012/09/28 AUTHOR:M.Takasaki VER：1.3 CONTENT:E_本稼動_10114 END
       */
        xeh.medium_class                      AS medium_class                 -- 媒体区分
       ,xeh.data_type_code                    AS data_type_code               -- データ種コード
@@ -457,6 +464,10 @@ AS
     AND ooha.sold_to_org_id        = xca.customer_id
     -- 顧客マスタアドオン.納品拠点コード=パラメータ.拠点コード
     AND xca.delivery_base_code     = icp_delivery_base_code
+-- ADD DATE:2012/09/28 AUTHOR:M.Takasaki VER：1.3 CONTENT:E_本稼動_10114 START
+    -- EDIヘッダ.変換後顧客コード = 顧客アドオン.顧客コード
+    AND xeh.conv_customer_code     = xca.customer_code
+-- ADD DATE:2012/09/28 AUTHOR:M.Takasaki VER：1.3 CONTENT:E_本稼動_10114 END
     -- 受注ヘッダ.受注ヘッダID＝受注明細.受注ヘッダID
     AND ooha.header_id             = oola.header_id
     -- 受注明細.ステータス≠取消
