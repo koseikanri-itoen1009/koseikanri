@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A01C(body)
  * Description      : 問屋販売条件請求書Excelアップロード
  * MD.050           : 問屋販売条件請求書Excelアップロード MD050_COK_021_A01
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *                                                                    請求金額の必須チェックを行うよう修正
  *                                                                    勘定科目支払時に支払数量が1以外の場合エラーとする
  *  2009/12/18    1.6   K.Yamaguchi      [E_本稼動_00539] 妥当性チェック追加
+ *  2009/12/24    1.7   K.Nakamura       [E_本稼動_00554] 問屋請求書明細テーブル削除処理に条件追加
  *
  *****************************************************************************************/
 --
@@ -592,12 +593,19 @@ AS
       SELECT 'X'
         FROM xxcok_wholesale_bill_line     xwbl
        WHERE xwbl.status IS NULL
-         AND EXISTS ( SELECT /*+ LEADING(xtwb) INDEX(xwbh, xxcok_wholesale_bill_head_n01) */
+-- 2009/12/24 Ver.1.7 [E_本稼動_00554] SCS K.Nakamura MOD START
+--         AND EXISTS ( SELECT /*+ LEADING(xtwb) INDEX(xwbh, xxcok_wholesale_bill_head_n01) */
+         AND EXISTS ( SELECT /*+ LEADING(xtwb) INDEX(xwbh, xxcok_wholesale_bill_head_n02) */
+-- 2009/12/24 Ver.1.7 [E_本稼動_00554] SCS K.Nakamura MOD END
                              'X'
                         FROM xxcok_wholesale_bill_head     xwbh
                            , xxcok_tmp_wholesale_bill      xtwb
                        WHERE xwbh.cust_code                = xtwb.cust_code
                          AND xwbh.expect_payment_date      = TO_DATE( xtwb.expect_payment_date, cv_date_format1 )
+-- 2009/12/24 Ver.1.7 [E_本稼動_00554] SCS K.Nakamura ADD START
+                         AND xwbh.supplier_code            = xtwb.supplier_code
+                         AND xwbh.base_code                = xtwb.base_code
+-- 2009/12/24 Ver.1.7 [E_本稼動_00554] SCS K.Nakamura ADD END
                          AND xwbh.wholesale_bill_header_id = xwbl.wholesale_bill_header_id
                          AND xtwb.bill_no                  = xwbl.bill_no
                          AND ROWNUM = 1
@@ -634,12 +642,19 @@ AS
 --      ;
       DELETE FROM xxcok_wholesale_bill_line     xwbl
        WHERE xwbl.status IS NULL
-         AND EXISTS ( SELECT /*+ LEADING(xtwb) INDEX(xwbh, xxcok_wholesale_bill_head_n01) */
+-- 2009/12/24 Ver.1.7 [E_本稼動_00554] SCS K.Nakamura ADD START
+--         AND EXISTS ( SELECT /*+ LEADING(xtwb) INDEX(xwbh, xxcok_wholesale_bill_head_n01) */
+         AND EXISTS ( SELECT /*+ LEADING(xtwb) INDEX(xwbh, xxcok_wholesale_bill_head_n02) */
+-- 2009/12/24 Ver.1.7 [E_本稼動_00554] SCS K.Nakamura ADD END
                              'X'
                         FROM xxcok_wholesale_bill_head     xwbh
                            , xxcok_tmp_wholesale_bill      xtwb
                        WHERE xwbh.cust_code                = xtwb.cust_code
                          AND xwbh.expect_payment_date      = TO_DATE( xtwb.expect_payment_date, cv_date_format1 )
+-- 2009/12/24 Ver.1.7 [E_本稼動_00554] SCS K.Nakamura ADD START
+                         AND xwbh.supplier_code            = xtwb.supplier_code
+                         AND xwbh.base_code                = xtwb.base_code
+-- 2009/12/24 Ver.1.7 [E_本稼動_00554] SCS K.Nakamura ADD END
                          AND xwbh.wholesale_bill_header_id = xwbl.wholesale_bill_header_id
                          AND xtwb.bill_no                  = xwbl.bill_no
                          AND ROWNUM = 1
@@ -1713,6 +1728,10 @@ AS
 --    AND    xwbh.expect_payment_date      = TO_DATE( iv_expect_payment_date, cv_date_format1 )
     AND    xwbh.expect_payment_date      = ld_expect_payment_date
 -- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR END
+-- 2009/12/24 Ver.1.7 [E_本稼動_00554] SCS K.Nakamura ADD START
+    AND    xwbh.supplier_code            = iv_supplier_code
+    AND    xwbh.base_code                = iv_base_code
+-- 2009/12/24 Ver.1.7 [E_本稼動_00554] SCS K.Nakamura ADD END
     AND    xwbl.bill_no                  = iv_bill_no
     AND    xwbl.status IN( cv_status_a,  cv_status_i,  cv_status_p )
     AND    xwbh.wholesale_bill_header_id = xwbl.wholesale_bill_header_id
