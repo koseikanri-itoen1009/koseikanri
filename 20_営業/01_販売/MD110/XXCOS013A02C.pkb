@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A02C (body)
  * Description      : INVへの販売実績データ連携
  * MD.050           : INVへの販売実績データ連携 MD050_COS_013_A02
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *                                                処理対象外データのフラグ更新処理追加[S]
  *  2009/09/14    1.11  S.Miyakoshi      [0001360]BULKへの対応
  *  2009/10/08    1.12  M.Sano           [0001520]PT対応
+ *  2010/11/01    1.13  K.Kiriu          [E_本稼動_05350]日中化対応に伴う対象外データ更新判定追加
  *
  *****************************************************************************************/
 --
@@ -538,6 +539,9 @@ AS
    * Description      : 初期処理(A-1)
    ***********************************************************************************/
   PROCEDURE init(
+/* 2010/11/01 Ver1.13 Add Start */
+    iv_night_mode       IN  VARCHAR2,     --   夜間起動モード（N:日中 or Y:夜間）
+/* 2010/11/01 Ver1.13 Add End   */
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -546,7 +550,11 @@ AS
     -- 固定ローカル定数
     -- ===============================
     cv_prg_name     CONSTANT VARCHAR2(100) := 'init';                 -- プログラム名
-    cv_msg_no_para  CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90008';     -- パラメータ無しメッセージ名
+/* 2010/11/01 Ver1.13 Mod Start */
+--    cv_msg_no_para  CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90008';     -- パラメータ無しメッセージ名
+    cv_msg_param    CONSTANT VARCHAR2(100) := 'APP-XXCOS1-12824';     -- パラメータ出力メッセージ
+    cv_tkn_param1   CONSTANT VARCHAR2(6)   := 'PARAM1';               -- パラメータトークン1
+/* 2010/11/01 Ver1.13 Mod End   */
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -587,8 +595,14 @@ AS
     -- 1.パラメータ無しメッセージ出力処理
     --========================================
     lv_no_para_msg            :=  xxccp_common_pkg.get_msg(
-        iv_application        =>  cv_xxccp_short_name,
-        iv_name               =>  cv_msg_no_para
+/* 2010/11/01 Ver1.13 Mod Start */
+--        iv_application        =>  cv_xxccp_short_name,
+--        iv_name               =>  cv_msg_no_para
+        iv_application        =>  cv_xxcos_short_name,
+        iv_name               =>  cv_msg_param,
+        iv_token_name1        =>  cv_tkn_param1,
+        iv_token_value1       =>  iv_night_mode
+/* 2010/11/01 Ver1.13 Mod End   */
       );
     --メッセージ出力
     FND_FILE.PUT_LINE(
@@ -3009,6 +3023,9 @@ AS
 -- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
     iv_update_flag IN  VARCHAR2,     --   対象データ更新フラグ
 -- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
+/* 2010/11/01 Ver1.13 Add Start */
+    iv_night_mode  IN  VARCHAR2,     --   起動モード（N:日中 or Y:夜間）
+/* 2010/11/01 Ver1.13 Add End   */
     ov_errbuf      OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode     OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg      OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -3033,6 +3050,9 @@ AS
 -- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD START ************************ --
     lv_update        CONSTANT VARCHAR2(1) := 'Y'; -- 対象データ更新
 -- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
+/* 2010/11/01 Ver1.13 Add Start */
+    cv_night_mode    CONSTANT VARCHAR2(1) := 'Y'; -- 夜間起動モード
+/* 2010/11/01 Ver1.13 Add End   */
 --
     -- *** ローカル変数 ***
     lv_tkn_vl_table_name      VARCHAR2(100);      --エラー対象であるテーブル名
@@ -3131,8 +3151,12 @@ AS
 --
 --
     ELSE
-      -- 対象外データロック、対象外データ取得
-      BEGIN
+/* 2010/11/01 Ver1.13 Add Start */
+      --夜間起動のみ対象外データ更新をする
+      IF ( iv_night_mode = cv_night_mode ) THEN
+/* 2010/11/01 Ver1.13 Add End   */
+        -- 対象外データロック、対象外データ取得
+        BEGIN
 -- ************************ 2009/10/09 M.Sano Var1.12 ADD START ************************ --
 --        SELECT xsel.ROWID row_id
 --        BULK COLLECT INTO l_row_id
@@ -3141,57 +3165,60 @@ AS
 --        WHERE  xseh.sales_exp_header_id = xsel.sales_exp_header_id
 --        AND    xsel.inv_interface_flag = cv_inv_flg_n
 --        AND    xseh.delivery_date     <= gd_proc_date
-        SELECT /*+
-                  LEADING(xsel)
-                  INDEX(xsel xxcos_sales_exp_lines_n03)
-                */
-               xsel.ROWID row_id
-        BULK COLLECT INTO l_row_id
-        FROM   xxcos_sales_exp_lines   xsel
-        WHERE  xsel.inv_interface_flag = cv_inv_flg_n
-        AND    EXISTS (
-                 SELECT /*+
-                           USE_NL(xseh)
-                        */
-                        'Y'    ext_flg
-                 FROM   xxcos_sales_exp_headers xseh
-                 WHERE  xseh.sales_exp_header_id = xsel.sales_exp_header_id
-                 AND    xseh.delivery_date     <= gd_proc_date
-               )
+          SELECT /*+
+                    LEADING(xsel)
+                    INDEX(xsel xxcos_sales_exp_lines_n03)
+                  */
+                 xsel.ROWID row_id
+          BULK COLLECT INTO l_row_id
+          FROM   xxcos_sales_exp_lines   xsel
+          WHERE  xsel.inv_interface_flag = cv_inv_flg_n
+          AND    EXISTS (
+                   SELECT /*+
+                             USE_NL(xseh)
+                          */
+                          'Y'    ext_flg
+                   FROM   xxcos_sales_exp_headers xseh
+                   WHERE  xseh.sales_exp_header_id = xsel.sales_exp_header_id
+                   AND    xseh.delivery_date     <= gd_proc_date
+                 )
 -- ************************ 2009/10/09 M.Sano Var1.12 ADD  END  ************************ --
-        FOR UPDATE OF xsel.inv_interface_flag NOWAIT;
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          NULL;
-      END;
---
-      -- 処理対象外データが存在する場合
-      IF ( l_row_id.COUNT > 0 ) THEN
---
-        -- 対象外データ更新
-        BEGIN
-          FORALL n IN 1..l_row_id.COUNT
-            UPDATE xxcos_sales_exp_lines sel                                   --販売実績明細テーブル
-            SET    sel.inv_interface_flag       = cv_excluded_flg,             --INVインタフェース警告終了フラグ
-                   sel.last_updated_by          = cn_last_updated_by,          --最終更新者
-                   sel.last_update_date         = cd_last_update_date,         --最終更新日
-                   sel.last_update_login        = cn_last_update_login,        --最終更新ﾛｸﾞｲﾝ
-                   sel.request_id               = cn_request_id,               --要求ID
-                   sel.program_application_id   = cn_program_application_id,   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-                   sel.program_id               = cn_program_id,               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-                   sel.program_update_date      = cd_program_update_date       --ﾌﾟﾛｸﾞﾗﾑ更新日
-            WHERE  sel.ROWID                    = l_row_id(n)                  --行ID
-            ;
+          FOR UPDATE OF xsel.inv_interface_flag NOWAIT;
         EXCEPTION
-          --対象データ更新失敗
-          WHEN OTHERS THEN
-            lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
-              iv_application        =>  cv_xxcos_short_name,
-              iv_name               =>  cv_msg_sales_exp_exclu
-            );
-          RAISE global_data_update_expt;
+          WHEN NO_DATA_FOUND THEN
+            NULL;
         END;
+--
+        -- 処理対象外データが存在する場合
+        IF ( l_row_id.COUNT > 0 ) THEN
+--
+          -- 対象外データ更新
+          BEGIN
+            FORALL n IN 1..l_row_id.COUNT
+              UPDATE xxcos_sales_exp_lines sel                                   --販売実績明細テーブル
+              SET    sel.inv_interface_flag       = cv_excluded_flg,             --INVインタフェース警告終了フラグ
+                     sel.last_updated_by          = cn_last_updated_by,          --最終更新者
+                     sel.last_update_date         = cd_last_update_date,         --最終更新日
+                     sel.last_update_login        = cn_last_update_login,        --最終更新ﾛｸﾞｲﾝ
+                     sel.request_id               = cn_request_id,               --要求ID
+                     sel.program_application_id   = cn_program_application_id,   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+                     sel.program_id               = cn_program_id,               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+                     sel.program_update_date      = cd_program_update_date       --ﾌﾟﾛｸﾞﾗﾑ更新日
+              WHERE  sel.ROWID                    = l_row_id(n)                  --行ID
+              ;
+          EXCEPTION
+            --対象データ更新失敗
+            WHEN OTHERS THEN
+              lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
+                iv_application        =>  cv_xxcos_short_name,
+                iv_name               =>  cv_msg_sales_exp_exclu
+              );
+            RAISE global_data_update_expt;
+          END;
+        END IF;
+/* 2010/11/01 Ver1.13 Add Start */
       END IF;
+/* 2010/11/01 Ver1.13 Add End   */
     END IF;
 --
 -- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
@@ -3398,6 +3425,9 @@ AS
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
+/* 2010/11/01 Ver1.13 Add Start */
+    iv_night_mode       IN  VARCHAR2,     --   起動モード（N:日中 or Y:夜間）
+/* 2010/11/01 Ver1.13 Add End   */
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -3452,6 +3482,9 @@ AS
     -- A-1  初期処理
     -- ===============================
     init(
+/* 2010/11/01 Ver1.13 Add Start */
+      iv_night_mode,      -- 起動モード（N:日中 or Y:夜間）
+/* 2010/11/01 Ver1.13 Add End   */
       lv_errbuf,          -- エラー・メッセージ           --# 固定 #
       lv_retcode,         -- リターン・コード             --# 固定 #
       lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3522,6 +3555,9 @@ AS
       -- ===============================
       update_inv_fsh_flag(
         lv_update_flag,    -- 対象データ更新フラグ＝'Y'
+/* 2010/11/01 Ver1.13 Add Start */
+        iv_night_mode,     -- 起動モード（N:日中 or Y:夜間）
+/* 2010/11/01 Ver1.13 Add End   */
         lv_errbuf,         -- エラー・メッセージ           --# 固定 #
         lv_retcode,        -- リターン・コード             --# 固定 #
         lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3618,6 +3654,9 @@ AS
       -- ===============================
       update_inv_fsh_flag(
         lv_no_update_flag, -- 対象データ更新フラグ
+/* 2010/11/01 Ver1.13 Add Start */
+        iv_night_mode,     -- 起動モード（N:日中 or Y:夜間）
+/* 2010/11/01 Ver1.13 Add End   */
         lv_errbuf,         -- エラー・メッセージ           --# 固定 #
         lv_retcode,        -- リターン・コード             --# 固定 #
         lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3762,7 +3801,11 @@ AS
 --
   PROCEDURE main(
     errbuf              OUT VARCHAR2,      --   エラー・メッセージ  --# 固定 #
-    retcode             OUT VARCHAR2       --   リターン・コード    --# 固定 #
+/* 2010/11/01 Ver1.13 Mod Start */
+--    retcode             OUT VARCHAR2       --   リターン・コード    --# 固定 #
+    retcode             OUT VARCHAR2,      --   リターン・コード    --# 固定 #
+    iv_night_mode       IN  VARCHAR2       --   起動モード（N:日中 or Y:夜間）
+/* 2010/11/01 Ver1.13 Mod End   */
   )
 --
 --
@@ -3820,7 +3863,11 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
-       lv_errbuf   -- エラー・メッセージ           --# 固定 #
+/* 2010/11/01 Ver1.13 Mod Start */
+--       lv_errbuf   -- エラー・メッセージ           --# 固定 #
+       iv_night_mode -- 起動モード（N:日中 or Y:夜間）
+      ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
+/* 2010/11/01 Ver1.13 Mod end   */
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
     );

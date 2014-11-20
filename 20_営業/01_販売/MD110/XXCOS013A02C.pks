@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A02C (spec)
  * Description      : INVへの販売実績データ連携
  * MD.050           : INVへの販売実績データ連携 MD050_COS_013_A02
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -33,13 +33,18 @@ AS
  *                                                処理対象外データのフラグ更新処理追加[S]
  *  2009/09/14    1.11  S.Miyakoshi      [0001360]BULKへの対応
  *  2009/10/08    1.12  M.Sano           [0001520]PT対応
+ *  2010/11/01    1.13  K.Kiriu          [E_本稼動_05350]日中化対応に伴う対象外データ更新判定追加
  *
  *****************************************************************************************/
 --
   --コンカレント実行ファイル登録プロシージャ
   PROCEDURE main(
     errbuf            OUT    VARCHAR2,         --   エラーメッセージ #固定#
-    retcode           OUT    VARCHAR2          --   エラーコード     #固定#
+/* 2010/11/01 Ver1.13 Mod Start */
+--    retcode           OUT    VARCHAR2          --   エラーコード     #固定#
+    retcode           OUT    VARCHAR2,         --   エラーコード     #固定#
+    iv_night_mode     IN     VARCHAR2          --   起動モード（N:日中 or Y:夜間）
+/* 2010/11/01 Ver1.13 Mod End   */
   );
 END XXCOS013A02C;
 /
