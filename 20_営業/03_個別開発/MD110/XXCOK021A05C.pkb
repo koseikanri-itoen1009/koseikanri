@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A05C(body)
  * Description      : APインターフェイス
  * MD.050           : APインターフェース MD050_COK_021_A05
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -31,6 +31,10 @@ AS
  *  2009/02/12    1.2   K.Iwabuchi       [障害COK_030]結合テスト時修正対応
  *  2009/10/06    1.3   S.Moriyama       [障害E_T3_00632]仕訳伝票入力者を処理実行ユーザーの従業員番号へ変更
  *  2009/10/22    1.4   K.Yamaguchi      [障害E_T4_00070]支払グループを設定しないように変更
+ *  2009/11/25    1.5   K.Yamaguchi      [E_本稼動_00021]金額不一致対応
+ *                                                       明細レコード取得時にインターフェースステータスを
+ *                                                       考慮するように変更
+ *                                                       AP_IFヘッダに登録している請求書番号を問屋支払テーブルへ更新
  *
  *****************************************************************************************/
   -- ===============================================
@@ -229,14 +233,44 @@ AS
          , xwp.sales_outlets_code                                             AS sales_outlets_code  -- 問屋帳合先コード
          , xwp.acct_code                                                      AS acct_code           -- 勘定科目コード
          , xwp.sub_acct_code                                                  AS sub_acct_code       -- 補助科目コード
-         , SUM( NVL( xwp.misc_acct_amt, 0 ) )                                 AS misc_acct_amt       -- その他金額(集計)
-         , SUM( NVL( xwp.backmargin, 0 ) * NVL( xwp.payment_qty, 0 ) )        AS backmargin          -- 販売手数料(集計)
-         , SUM( NVL( xwp.sales_support_amt, 0 ) * NVL( xwp.payment_qty, 0 ) ) AS sales_support_amt   -- 販売協賛金(集計)
+-- 2009/11/25 Ver.1.5 [E_本稼動_00021] SCS K.Yamaguchi REPAIR START
+--         , SUM( NVL( xwp.misc_acct_amt, 0 ) )                                 AS misc_acct_amt       -- その他金額(集計)
+--         , SUM( NVL( xwp.backmargin, 0 ) * NVL( xwp.payment_qty, 0 ) )        AS backmargin          -- 販売手数料(集計)
+--         , SUM( NVL( xwp.sales_support_amt, 0 ) * NVL( xwp.payment_qty, 0 ) ) AS sales_support_amt   -- 販売協賛金(集計)
+         , SUM( NVL( TRUNC( xwp.misc_acct_amt ), 0 ) )                        AS misc_acct_amt       -- その他金額(集計)
+         , SUM(
+             CASE
+               WHEN NVL( TRUNC( xwp.misc_acct_amt ), 0 ) <> 0 THEN
+                 0
+               WHEN NVL( xwp.sales_support_amt, 0 ) = 0 THEN
+                 NVL( xwp.payment_amt, 0 )
+               WHEN NVL( xwp.backmargin, 0 ) = 0 THEN
+                 0
+               ELSE
+                 xwp.payment_amt - TRUNC( xwp.sales_support_amt * NVL( xwp.payment_qty, 0 ) )
+             END
+           )                                                                  AS backmargin          -- 販売手数料(集計)
+         , SUM(
+             CASE
+               WHEN NVL( TRUNC( xwp.misc_acct_amt ), 0 ) <> 0 THEN
+                 0
+               WHEN NVL( xwp.sales_support_amt, 0 ) = 0 THEN
+                 0
+               WHEN NVL( xwp.backmargin, 0 ) = 0 THEN
+                 NVL( xwp.payment_amt, 0 )
+               ELSE
+                 TRUNC( xwp.sales_support_amt * NVL( xwp.payment_qty, 0 ) )
+             END
+           )                                                                  AS sales_support_amt   -- 販売協賛金(集計)
+-- 2009/11/25 Ver.1.5 [E_本稼動_00021] SCS K.Yamaguchi REPAIR END
     FROM   xxcok_wholesale_payment         xwp       -- 問屋支払テーブル
     WHERE  xwp.expect_payment_date = id_payment_date
     AND    xwp.selling_month       = iv_selling_month
     AND    xwp.supplier_code       = iv_supplier_code
     AND    xwp.base_code           = iv_base_code
+-- 2009/11/25 Ver.1.5 [E_本稼動_00021] SCS K.Yamaguchi ADD START
+    AND    xwp.ap_interface_status = cv_payment_uncooperate    -- APインターフェース連携状況：'0'未連携
+-- 2009/11/25 Ver.1.5 [E_本稼動_00021] SCS K.Yamaguchi ADD END
     GROUP BY 
            xwp.cust_code                               -- 顧客コード
          , xwp.sales_outlets_code                      -- 問屋帳合先コード
@@ -464,6 +498,9 @@ AS
   , ov_retcode        OUT VARCHAR2                   -- リターン・コード
   , ov_errmsg         OUT VARCHAR2                   -- ユーザー・エラー・メッセージ
   , ir_head_data_rec  IN  g_sell_haeder_cur%ROWTYPE  -- AP請求書OIFヘッダー情報
+-- 2009/11/25 Ver.1.5 [E_本稼動_00021] SCS K.Yamaguchi ADD START
+  , iv_invoice_num    IN  VARCHAR2                   -- 請求書番号
+-- 2009/11/25 Ver.1.5 [E_本稼動_00021] SCS K.Yamaguchi ADD END
   )
   IS
     -- ===============================================
@@ -609,6 +646,9 @@ AS
       BEGIN
         UPDATE xxcok_wholesale_payment                                     -- 問屋支払テーブル
         SET    ap_interface_status    = cv_payment_cooperate               -- AP連携ステータス：更新済
+-- 2009/11/25 Ver.1.5 [E_本稼動_00021] SCS K.Yamaguchi ADD START
+             , invoice_num            = iv_invoice_num                     -- 請求書番号
+-- 2009/11/25 Ver.1.5 [E_本稼動_00021] SCS K.Yamaguchi ADD END
              , last_updated_by        = cn_last_updated_by                 -- 最終更新者
              , last_update_date       = SYSDATE                            -- 最終更新日
              , last_update_login      = cn_last_update_login               -- 最終ログインID
@@ -1381,6 +1421,9 @@ AS
     , ov_retcode       => lv_retcode              -- リターン・コード
     , ov_errmsg        => lv_errmsg               -- ユーザー・エラー・メッセージ
     , ir_head_data_rec => ir_sell_head_data_rec   -- AP請求書OIFヘッダー情報
+-- 2009/11/25 Ver.1.5 [E_本稼動_00021] SCS K.Yamaguchi ADD START
+    , iv_invoice_num   => lv_invoice_num          -- 請求書番号
+-- 2009/11/25 Ver.1.5 [E_本稼動_00021] SCS K.Yamaguchi ADD END
     );
     IF ( lv_retcode != cv_status_normal ) THEN
       RAISE global_api_expt;

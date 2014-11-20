@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_WHOLESALE_PAYMENT
  * Description : ñ‚âÆéxï•ÉeÅ[ÉuÉã
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   T.Osada          êVãKçÏê¨
  *  2009/07/09    1.1   K.Yamaguchi      [è·äQ0000515]STORAGEãÂí«â¡
+ *  2009/11/26    1.2   K.Yamaguchi      [è·äQE_ñ{â“ìÆ_00021]çÄñ⁄í«â¡ÅFêøãÅèëî‘çÜ
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_WHOLESALE_PAYMENT
@@ -54,6 +55,9 @@ CREATE TABLE XXCOK.XXCOK_WHOLESALE_PAYMENT
    SALES_SUPPORT_AMT        NUMBER,
    INFO_INTERFACE_STATUS    VARCHAR2(1),
    AP_INTERFACE_STATUS      VARCHAR2(1),
+-- 2009/11/26 Ver.1.2 [E_ñ{â“ìÆ_00021] SCS K.Yamaguchi ADD START
+   INVOICE_NUM              VARCHAR2(50),
+-- 2009/11/26 Ver.1.2 [E_ñ{â“ìÆ_00021] SCS K.Yamaguchi ADD END
    CREATED_BY               NUMBER(15,0),
    CREATION_DATE            DATE,
    LAST_UPDATED_BY          NUMBER(15,0),
@@ -150,6 +154,10 @@ COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_PAYMENT.INFO_INTERFACE_STATUS    IS 'èÓï
 /
 COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_PAYMENT.AP_INTERFACE_STATUS      IS 'APòAågÉXÉeÅ[É^ÉX'
 /
+-- 2009/11/26 Ver.1.2 [E_ñ{â“ìÆ_00021] SCS K.Yamaguchi ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_PAYMENT.INVOICE_NUM              IS 'êøãÅèëî‘çÜ'
+/
+-- 2009/11/26 Ver.1.2 [E_ñ{â“ìÆ_00021] SCS K.Yamaguchi ADD END
 COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_PAYMENT.CREATED_BY               IS 'çÏê¨é“'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_PAYMENT.CREATION_DATE            IS 'çÏê¨ì˙'
