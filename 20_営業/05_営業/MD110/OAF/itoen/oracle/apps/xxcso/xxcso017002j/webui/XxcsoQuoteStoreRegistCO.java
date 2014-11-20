@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteStoreRegistCO
 * 概要説明   : 帳合問屋用見積入力画面コントローラクラス
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-01-07 1.0  SCS及川領    新規作成
 * 2009-07-23 1.1  SCS阿部大輔 【0000806】マージン額／マージン率の計算対象変更
+* 2009-09-10 1.2  SCS阿部大輔  【0001331】マージン額の計算時にページ遷移を指定
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017002j.webui;
@@ -460,20 +461,23 @@ public class XxcsoQuoteStoreRegistCO extends OAControllerImpl
 
       am.invokeMethod("handleMarginCalculation" ,params);
     }
+    /* 20090910_abe_0001331 START*/
+    else
+    {
+      // 建値の算出を行う
+      am.invokeMethod("handleValidateReference");
 
-    // 建値の算出を行う
-    am.invokeMethod("handleValidateReference");
+      // 販売用見積情報設定
+      am.invokeMethod("setAttributeProperty");
+      /* 20090723_abe_0000806 START*/
+      // 問屋明細行表示属性プロパティ設定
+      am.invokeMethod("setLineProperty");
+      /* 20090723_abe_0000806 END*/
 
-    String event = pageContext.getParameter(OAWebBeanConstants.EVENT_PARAM);
-    XxcsoUtils.debug(pageContext, "event = " + event);
-
-    // 販売用見積情報設定
-    am.invokeMethod("setAttributeProperty");
-/* 20090723_abe_0000806 START*/
-    // 問屋明細行表示属性プロパティ設定
-    am.invokeMethod("setLineProperty");
-/* 20090723_abe_0000806 END*/
-
+    }
+    /* 20090910_abe_0001331 END*/
+      String event = pageContext.getParameter(OAWebBeanConstants.EVENT_PARAM);
+      XxcsoUtils.debug(pageContext, "event = " + event);
     XxcsoUtils.debug(pageContext, "[END]");
   }
   /*****************************************************************************

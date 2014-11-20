@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteStoreRegistAMImpl
 * 概要説明   : 帳合問屋用見積入力画面アプリケーション・モジュールクラス
-* バージョン : 1.7
+* バージョン : 1.8
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -17,6 +17,7 @@
 * 2009-05-18 1.5  SCS阿部大輔  【T1_1023】見積明細の原価割れチェックを修正
 * 2009-06-16 1.6  SCS阿部大輔  【T1_1257】マージン額の変更修正
 * 2009-07-23 1.7  SCS阿部大輔  【0000806】マージン額／マージン率の計算対象変更
+* 2009-09-10 1.8  SCS阿部大輔  【0001331】マージン額の計算時にページ遷移を指定
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017002j.server;
@@ -988,6 +989,10 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
 
       lineRow = (XxcsoQuoteLinesStoreFullVORowImpl)lineVo.next();
     }
+
+/* 20090910_abe_0001331 START*/
+    lineVo.first();
+/* 20090910_abe_0001331 END*/
 
     if ( errorList.size() > 0 )
     {
@@ -2282,6 +2287,21 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
 /* 20090616_abe_T1_1257 START*/
     //lineVo.first();
 /* 20090616_abe_T1_1257 END*/
+/* 20090910_abe_0001331 START*/
+    try{
+      BigDecimal line_row = new BigDecimal(lineVo.getCurrentRowIndex()+1);
+      BigDecimal line_size =new BigDecimal(
+                    txn.getProfile("XXCSO1_VIEW_SIZE_017_A02_01".toString()));
+
+      line_row = line_row.divide(line_size,0,BigDecimal.ROUND_UP);
+      lineVo.scrollToRangePage((line_row.intValue()));
+    }
+    catch ( NumberFormatException e )
+    {
+      lineVo.first();
+    }
+/* 20090910_abe_0001331 END*/
+
 
     XxcsoUtils.debug(txn, "[END]");
   }
@@ -2631,6 +2651,9 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
       }
       lineRow = (XxcsoQuoteLinesStoreFullVORowImpl)lineVo.next();
     }
+/* 20090910_abe_0001331 START*/
+    lineVo.first();
+/* 20090910_abe_0001331 END*/
 
     if ( index == 0 )
     {
