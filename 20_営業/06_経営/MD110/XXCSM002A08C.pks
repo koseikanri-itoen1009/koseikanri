@@ -3,31 +3,31 @@ CREATE OR REPLACE PACKAGE XXCSM002A08C AS
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
  *
  * Package Name     : XXCSM002A08C(spec)
- * Description      : ·îÊÌ¾¦ÉÊ·×²è(±Ä¶È¸¶²Á)¥Á¥§¥Ã¥¯¥ê¥¹¥È½ÐÎÏ
- * MD.050           : ·îÊÌ¾¦ÉÊ·×²è(±Ä¶È¸¶²Á)¥Á¥§¥Ã¥¯¥ê¥¹¥È½ÐÎÏ MD050_CSM_002_A08
+ * Description      : ŒŽ•Ê¤•iŒv‰æ(‰c‹ÆŒ´‰¿)ƒ`ƒFƒbƒNƒŠƒXƒgo—Í
+ * MD.050           : ŒŽ•Ê¤•iŒv‰æ(‰c‹ÆŒ´‰¿)ƒ`ƒFƒbƒNƒŠƒXƒgo—Í MD050_CSM_002_A08
  * Version          : 1.0
  *
  * Program List
  * -------------------- ------------------------------------------------------------
  *  Name                 Description
  *
- *  main                ¡Ú¥³¥ó¥«¥ì¥ó¥È¼Â¹Ô¥Õ¥¡¥¤¥ëÅÐÏ¿¥×¥í¥·¡¼¥¸¥ã¡Û
+ *  main                yƒRƒ“ƒJƒŒƒ“ƒgŽÀsƒtƒ@ƒCƒ‹“o˜^ƒvƒƒV[ƒWƒƒz
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2008/12/15    1.0   S.son        ¿·µ¬ºîÀ®
+ *  2008/12/15    1.0   S.son        V‹Kì¬
  *
  *****************************************************************************************/
 --
-  --¥³¥ó¥«¥ì¥ó¥È¼Â¹Ô¥Õ¥¡¥¤¥ëÅÐÏ¿¥×¥í¥·¡¼¥¸¥ã
+  --ƒRƒ“ƒJƒŒƒ“ƒgŽÀsƒtƒ@ƒCƒ‹“o˜^ƒvƒƒV[ƒWƒƒ
   PROCEDURE main(
-    errbuf                 OUT    NOCOPY VARCHAR2,         --   ¥¨¥é¡¼¥á¥Ã¥»¡¼¥¸
-    retcode                OUT    NOCOPY VARCHAR2,         --   ¥¨¥é¡¼¥³¡¼¥É
-    iv_subject_year        IN     VARCHAR2,                --   ÂÐ¾ÝÇ¯ÅÙ
-    iv_location_cd         IN     VARCHAR2,                --   µòÅÀ¥³¡¼¥É
-    iv_hierarchy_level     IN     VARCHAR2                 --   ³¬ÁØ
+    errbuf                 OUT    NOCOPY VARCHAR2,         --   ƒGƒ‰[ƒƒbƒZ[ƒW
+    retcode                OUT    NOCOPY VARCHAR2,         --   ƒGƒ‰[ƒR[ƒh
+    iv_subject_year        IN     VARCHAR2,                --   ‘ÎÛ”N“x
+    iv_location_cd         IN     VARCHAR2,                --   ‹’“_ƒR[ƒh
+    iv_hierarchy_level     IN     VARCHAR2                 --   ŠK‘w
   );
 END XXCSM002A08C;
 /

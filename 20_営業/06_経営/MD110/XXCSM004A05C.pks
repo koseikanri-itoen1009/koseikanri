@@ -3,28 +3,28 @@ CREATE OR REPLACE PACKAGE XXCSM004A05C AS
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
  *
  * Package Name     : XXCSM004A05C(spec)
- * Description      : ╗ё│╩е▌едеєе╚бж┐╖╡м│═╞└е▌едеєе╚╛Ё╩є╖╧е╖е╣е╞ерI/F
- * MD.050           : ╗ё│╩е▌едеєе╚бж┐╖╡м│═╞└е▌едеєе╚╛Ё╩є╖╧е╖е╣е╞ерI/F MD050_CSM_004_A05
+ * Description      : ОСКiГ|ГCГУГgБEРVЛKКlУ╛Г|ГCГУГgПюХёМnГVГXГeГАI/F
+ * MD.050           : ОСКiГ|ГCГУГgБEРVЛKКlУ╛Г|ГCГУГgПюХёМnГVГXГeГАI/F MD050_CSM_004_A05
  * Version          : 1.0
  *
  * Program List
  * -------------------- ------------------------------------------------------------
  *  Name                 Description
  *
- *  main                б┌е│еєелеьеєе╚╝┬╣╘е╒ебедеы┼╨╧┐е╫еэе╖б╝е╕еуб█
+ *  main                БyГRГУГJГМГУГgО└НsГtГ@ГCГЛУoШ^ГvГНГVБ[ГWГГБz
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2009/01/05    1.0   S.son        ┐╖╡м║ю└о
+ *  2009/01/05    1.0   S.son        РVЛKНьРм
  *
  *****************************************************************************************/
 --
-  --е│еєелеьеєе╚╝┬╣╘е╒ебедеы┼╨╧┐е╫еэе╖б╝е╕еу
+  --ГRГУГJГМГУГgО└НsГtГ@ГCГЛУoШ^ГvГНГVБ[ГWГГ
   PROCEDURE main(
-    errbuf                 OUT    NOCOPY VARCHAR2,         --   еиещб╝есе├е╗б╝е╕
-    retcode                OUT    NOCOPY VARCHAR2          --   еиещб╝е│б╝е╔
+    errbuf                 OUT    NOCOPY VARCHAR2,         --   ГGГЙБ[ГБГbГZБ[ГW
+    retcode                OUT    NOCOPY VARCHAR2          --   ГGГЙБ[ГRБ[Гh
   );
 END XXCSM004A05C;
 /
