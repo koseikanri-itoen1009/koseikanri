@@ -7,7 +7,7 @@ AS
  * Description      : HHT受入実績計上
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : HHT受入実績計上     T_MD070_BPO_31G
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2009/01/28    1.12  Oracle 椎名 昭圭 本番#1047対応(再)
  *  2009/02/10    1.13  Oracle 椎名 昭圭 本番#1127対応
  *  2009/03/30    1.14  Oracle 飯田 甫   本番#1346対応
+ *  2009/04/03    1.15  Oracle 吉元 強樹 本番#1368対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -274,7 +275,10 @@ AS
 --
     check_result       VARCHAR(1),                               -- 妥当性チェック結果
 --
-    exec_flg           NUMBER                                    -- 処理フラグ
+    exec_flg           NUMBER,                                    -- 処理フラグ
+-- 2009/04/03 v1.15 T.Yoshimoto Add Start 本番#1368
+    line_location_id   po_line_locations_all.line_location_id%TYPE            -- 納入明細ID
+-- 2009/04/03 v1.15 T.Yoshimoto Add End 本番#1368
   );
 --
   -- 各マスタへ反映するデータを格納する結合配列
@@ -344,9 +348,9 @@ AS
   -- TRANSACTION_INTERFACE_ID
   TYPE reg_tran_if_id        IS TABLE OF mtl_transaction_lots_interface.transaction_interface_id    %TYPE INDEX BY BINARY_INTEGER;
   -- TRANSACTION_QUANTITY
-  TYPE reg_trans_qty         IS TABLE OF mtl_transaction_lots_interface.transaction_quantity                  %TYPE INDEX BY BINARY_INTEGER;
+  TYPE reg_trans_qty         IS TABLE OF mtl_transaction_lots_interface.transaction_quantity        %TYPE INDEX BY BINARY_INTEGER;
   -- PRODUCT_TRANSACTION_ID
-  TYPE reg_trans_id          IS TABLE OF mtl_transaction_lots_interface.product_transaction_id                  %TYPE INDEX BY BINARY_INTEGER;
+  TYPE reg_trans_id          IS TABLE OF mtl_transaction_lots_interface.product_transaction_id      %TYPE INDEX BY BINARY_INTEGER;
   -- TO_ORGANIZATION_ID
   TYPE reg_organization_id   IS TABLE OF rcv_transactions_interface.to_organization_id              %TYPE INDEX BY BINARY_INTEGER;
   -- SUBINVENTORY
@@ -360,6 +364,10 @@ AS
   -- 受入返品明細番号
   TYPE reg_rtn_line_num      IS TABLE OF xxpo_rcv_and_rtn_txns.rcv_rtn_line_number                  %TYPE INDEX BY BINARY_INTEGER;
 -- 2008/06/26 v1.4 Add
+-- 2009/04/03 v1.15 T.Yoshimoto Add Start 本番#1368
+  -- 納入明細ID
+  TYPE reg_line_location_id  IS TABLE OF po_line_locations_all.line_location_id                     %TYPE INDEX BY BINARY_INTEGER;
+-- 2009/04/03 v1.15 T.Yoshimoto Add End 本番#1368
 --
   -- ***************************************
   -- ***      項目格納テーブル型定義     ***
@@ -444,6 +452,9 @@ AS
 -- 2008/06/26 v1.4 Add
   gt_rtn_line_num      reg_rtn_line_num;       -- 受入返品明細番号
 -- 2008/06/26 v1.4 Add
+-- 2009/04/03 v1.15 T.Yoshimoto Add Start 本番#1368
+  gt_line_location_id reg_line_location_id;    -- 納入明細ID
+-- 2009/04/03 v1.15 T.Yoshimoto Add End 本番#1368
 --
   /**********************************************************************************
    * Procedure Name   : keep_po_head_id
@@ -1277,6 +1288,9 @@ AS
 --2008/09/25 Add ↓
             ,xxpo.l_cancel_flag            -- 取消フラグ
 --2008/09/25 Add ↑
+-- 2009/04/03 v1.15 T.Yoshimoto Add Start 本番#1368
+            ,xxpo.line_location_id         -- 納入明細ID
+-- 2009/04/03 v1.15 T.Yoshimoto Add End 本番#1368
       FROM   xxpo_rcv_txns_interface xrti                 -- 受入実績IF(アドオン)
             ,xxcmn_vendors_v xvv                          -- 仕入先情報VIEW
             ,xxcmn_vendor_sites_v xsv                     -- 仕入先サイト情報VIEW
@@ -1305,10 +1319,19 @@ AS
 --2008/09/25 Add ↓
                     ,pla.cancel_flag as l_cancel_flag  -- 取消フラグ
 --2008/09/25 Add ↑
+-- 2009/04/03 v1.15 T.Yoshimoto Add Start 本番#1368
+                    ,plla.line_location_id             -- 納入明細ID
+-- 2009/04/03 v1.15 T.Yoshimoto Add End 本番#1368
              FROM    po_headers_all pha                   -- 発注ヘッダ
                     ,po_lines_all pla                     -- 発注明細
+-- 2009/04/03 v1.15 T.Yoshimoto Add Start 本番#1368
+                    ,po_line_locations_all plla           -- 発注納入明細
+-- 2009/04/03 v1.15 T.Yoshimoto Add End 本番#1368
              WHERE   pha.po_header_id = pla.po_header_id
 --2008/09/25 Mod ↓
+-- 2009/04/03 v1.15 T.Yoshimoto Add Start 本番#1368
+             AND     plla.po_line_id = pla.po_line_id
+-- 2009/04/03 v1.15 T.Yoshimoto Add End 本番#1368
 /*
              AND     pha.attribute1 >= gv_add_status_zmi             -- 発注作成済:20
              AND     pha.attribute1 < gv_add_status_qty_zmi) xxpo    -- 金額確定済:35
@@ -1430,6 +1453,9 @@ AS
 --
       mst_rec.def4_date          := FND_DATE.STRING_TO_DATE(mst_rec.attribute4,'YYYY/MM/DD');
       mst_rec.def5_date          := FND_DATE.STRING_TO_DATE(mst_rec.attribute5,'YYYY/MM/DD');
+-- 2009/04/03 v1.15 T.Yoshimoto Add Start 本番#1368
+      mst_rec.line_location_id   := lr_mst_data_rec.line_location_id;
+-- 2009/04/03 v1.15 T.Yoshimoto Add End 本番#1368
 --
 --2008/09/25 Add ↓
       -- 取消フラグが取り消し:'Y'
@@ -1595,6 +1621,9 @@ AS
 -- 2008/05/21 v1.2 Add
         gt_opm_item_id(ln_cnt)       := mst_rec.item_idv;
 -- 2008/05/21 v1.2 Add
+-- 2009/04/03 v1.5 T.Yoshimoto Add Start 本番#1368
+        gt_line_location_id(ln_cnt)  := mst_rec.line_location_id;
+-- 2009/04/03 v1.5 T.Yoshimoto Add End 本番#1368
 --
         -- 発注ヘッダ保持
         keep_po_head_id(
@@ -2160,7 +2189,10 @@ AS
        ,'PO'                                        -- source_document_code
        ,gt_po_header_id(itp_cnt)                    -- po_header_id
        ,gt_po_line_id(itp_cnt)                      -- po_line_id
-       ,gt_po_line_id(itp_cnt)                      -- po_line_location_id
+-- 2009/04/03 v1.15 T.Yoshimoto Mod Start 本番#1368
+--       ,gt_po_line_id(itp_cnt)                      -- po_line_location_id
+       ,gt_line_location_id(itp_cnt)                -- po_line_location_id
+-- 2009/04/03 v1.15 T.Yoshimoto Mod End 本番#1368
        ,'INVENTORY'                                 -- destination_type_code
        ,gt_subinventory(itp_cnt)                    -- subinventory
        ,gt_locator_id(itp_cnt)                      -- locator_id
