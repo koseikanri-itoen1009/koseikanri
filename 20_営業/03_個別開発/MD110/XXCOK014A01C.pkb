@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.10
+ * Version          : 3.11
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -72,6 +72,7 @@ AS
  *                                       [E_本稼動_01870] 売上拠点・担当営業員を締め日単位で固定化
  *  2010/04/06    3.10  K.Yamaguchi      [E_本稼動_01896] [E_本稼動_01870] 差し戻し対応
  *                                                        クイックコード取得時の有効日参照方法不正
+ *  2010/05/26    3.11  K.Yamaguchi      [E_本稼動_02855] パフォーマンス対応 販売実績の更新方法を変更
  *
  *****************************************************************************************/
   --==================================================
@@ -2900,27 +2901,68 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_
     -- ステータス初期化
     --==================================================
     lv_end_retcode := cv_status_normal;
+-- 2010/05/26 Ver.3.11 [E_本稼動_02855] SCS K.Yamaguchi REPAIR START
+--    --==================================================
+--    -- 販売実績連携結果更新ループ
+--    --==================================================
+--    << xsel_update_lock_loop >>
+--    FOR xsel_update_lock_rec IN xsel_update_lock_cur LOOP
+--      lt_sales_exp_line_id := xsel_update_lock_rec.sales_exp_line_id;
+--      --==================================================
+--      -- 販売実績連携結果データ更新
+--      --==================================================
+--      UPDATE xxcos_sales_exp_lines      xsel
+--      SET xsel.to_calculate_fees_flag = cv_xsel_if_flag_yes   -- 手数料計算インターフェース済フラグ
+--        , xsel.last_updated_by        = cn_last_updated_by
+--        , xsel.last_update_date       = SYSDATE
+--        , xsel.last_update_login      = cn_last_update_login
+--        , xsel.request_id             = cn_request_id
+--        , xsel.program_application_id = cn_program_application_id
+--        , xsel.program_id             = cn_program_id
+--        , xsel.program_update_date    = SYSDATE
+--      WHERE xsel.sales_exp_line_id = xsel_update_lock_rec.sales_exp_line_id
+--      ;
+--    END LOOP xsel_update_lock_loop;
     --==================================================
-    -- 販売実績連携結果更新ループ
+    -- 販売実績ロック取得
     --==================================================
-    << xsel_update_lock_loop >>
-    FOR xsel_update_lock_rec IN xsel_update_lock_cur LOOP
-      lt_sales_exp_line_id := xsel_update_lock_rec.sales_exp_line_id;
-      --==================================================
-      -- 販売実績連携結果データ更新
-      --==================================================
-      UPDATE xxcos_sales_exp_lines      xsel
-      SET xsel.to_calculate_fees_flag = cv_xsel_if_flag_yes   -- 手数料計算インターフェース済フラグ
-        , xsel.last_updated_by        = cn_last_updated_by
-        , xsel.last_update_date       = SYSDATE
-        , xsel.last_update_login      = cn_last_update_login
-        , xsel.request_id             = cn_request_id
-        , xsel.program_application_id = cn_program_application_id
-        , xsel.program_id             = cn_program_id
-        , xsel.program_update_date    = SYSDATE
-      WHERE xsel.sales_exp_line_id = xsel_update_lock_rec.sales_exp_line_id
-      ;
-    END LOOP xsel_update_lock_loop;
+    OPEN  xsel_update_lock_cur;
+    CLOSE xsel_update_lock_cur;
+    --==================================================
+    -- 販売実績連携結果データ更新
+    --==================================================
+    UPDATE xxcos_sales_exp_lines      xsel
+    SET xsel.to_calculate_fees_flag = cv_xsel_if_flag_yes   -- 手数料計算インターフェース済フラグ
+      , xsel.last_updated_by        = cn_last_updated_by
+      , xsel.last_update_date       = SYSDATE
+      , xsel.last_update_login      = cn_last_update_login
+      , xsel.request_id             = cn_request_id
+      , xsel.program_application_id = cn_program_application_id
+      , xsel.program_id             = cn_program_id
+      , xsel.program_update_date    = SYSDATE
+    WHERE EXISTS ( SELECT 'X'
+                   FROM xxcok_tmp_014a01c_custdata xt0c            -- 条件別販手販協計算顧客情報一時表
+                      , xxcos_sales_exp_headers    xseh            -- 販売実績ヘッダーテーブル
+                      , xxcos_sales_exp_lines      xsel2           -- 販売実績明細テーブル
+                      , xxcok_cust_bm_info         xcbi
+                   WHERE xseh.ship_to_customer_code   = xt0c.ship_cust_code
+                     AND xseh.delivery_date          <= xt0c.closing_date
+                     AND xt0c.amount_fix_date         = gd_process_date
+                     AND xt0c.ship_cust_code          = xcbi.cust_code(+)
+                     AND xseh.delivery_date          >= NVL( xcbi.last_fix_delivery_date, xseh.delivery_date )
+                     AND xseh.sales_exp_header_id     = xsel2.sales_exp_header_id
+                     AND xsel2.to_calculate_fees_flag = cv_xsel_if_flag_no
+                     AND NOT EXISTS ( SELECT 'X'
+                                      FROM xxcok_bm_contract_err xbce
+                                      WHERE xbce.cust_code           = xseh.ship_to_customer_code
+                                        AND xbce.item_code           = xsel2.item_code
+                                        AND xbce.selling_price       = xsel2.dlv_unit_price
+                                        AND ROWNUM = 1
+                         )
+                     AND xsel2.sales_exp_line_id = xsel.sales_exp_line_id
+          )
+    ;
+-- 2010/05/26 Ver.3.11 [E_本稼動_02855] SCS K.Yamaguchi REPAIR END
     --==================================================
     -- 出力パラメータ設定
     --==================================================
@@ -5073,26 +5115,28 @@ END insert_xt0c;
         END IF;
       END IF;
     END IF;
-fnd_file.put_line(
-  FND_FILE.LOG
-,           '"' || i_get_cust_data_rec.ship_cust_code || '"'
-  || ',' || '"' || i_get_cust_data_rec.term_name1     || '"'
-  || ',' || '"' || ld_pay_date1                       || '"'
-  || ',' || '"' || ld_close_date1                     || '"'
-  || ',' || '"' || ld_bm_support_period_from_1        || '"'
-  || ',' || '"' || ld_bm_support_period_to_1          || '"'
-  || ',' || '"' || i_get_cust_data_rec.term_name2     || '"'
-  || ',' || '"' || ld_pay_date2                       || '"'
-  || ',' || '"' || ld_close_date2                     || '"'
-  || ',' || '"' || ld_bm_support_period_from_2        || '"'
-  || ',' || '"' || ld_bm_support_period_to_2          || '"'
-  || ',' || '"' || i_get_cust_data_rec.term_name3     || '"'
-  || ',' || '"' || ld_pay_date3                       || '"'
-  || ',' || '"' || ld_close_date3                     || '"'
-  || ',' || '"' || ld_bm_support_period_from_3        || '"'
-  || ',' || '"' || ld_bm_support_period_to_3          || '"'
-  || ',' || '"' || ld_amount_fix_date                 || '"'
-); -- For Debug
+-- 2010/05/26 Ver.3.11 [E_本稼動_02855] SCS K.Yamaguchi DELETE START
+--fnd_file.put_line(
+--  FND_FILE.LOG
+--,           '"' || i_get_cust_data_rec.ship_cust_code || '"'
+--  || ',' || '"' || i_get_cust_data_rec.term_name1     || '"'
+--  || ',' || '"' || ld_pay_date1                       || '"'
+--  || ',' || '"' || ld_close_date1                     || '"'
+--  || ',' || '"' || ld_bm_support_period_from_1        || '"'
+--  || ',' || '"' || ld_bm_support_period_to_1          || '"'
+--  || ',' || '"' || i_get_cust_data_rec.term_name2     || '"'
+--  || ',' || '"' || ld_pay_date2                       || '"'
+--  || ',' || '"' || ld_close_date2                     || '"'
+--  || ',' || '"' || ld_bm_support_period_from_2        || '"'
+--  || ',' || '"' || ld_bm_support_period_to_2          || '"'
+--  || ',' || '"' || i_get_cust_data_rec.term_name3     || '"'
+--  || ',' || '"' || ld_pay_date3                       || '"'
+--  || ',' || '"' || ld_close_date3                     || '"'
+--  || ',' || '"' || ld_bm_support_period_from_3        || '"'
+--  || ',' || '"' || ld_bm_support_period_to_3          || '"'
+--  || ',' || '"' || ld_amount_fix_date                 || '"'
+--); -- For Debug
+-- 2010/05/26 Ver.3.11 [E_本稼動_02855] SCS K.Yamaguchi DELETE END
     --==================================================
     -- 会計期間取得
     --==================================================
