@@ -3,7 +3,7 @@
  *
  * View Name       : XXCOI_STORAGE_INFORMATION_V
  * Description     : 入庫確認／訂正入力画面ビュー
- * Version         : 1.1
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2008/12/05    1.0   S.Moriyama       新規作成
  *  2009/03/30    1.1   S.Moriyama       バラ茶区分を追加
+ *  2009/09/08    1.2   H.Sasaki         [0001266]OPM品目アドオン版管理対応
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcoi_storage_information_v
@@ -34,6 +35,10 @@ CREATE OR REPLACE VIEW xxcoi_storage_information_v
    , auto_store_check_flag                                            -- 自動入庫確認フラグ
    , check_warehouse_code                                             -- 確認倉庫コード
    , baracha_div                                                      -- バラ茶区分
+-- == 2009/09/08 V1.2 Added START ===============================================================
+   , start_date_active                                                -- 適用開始日
+   , end_date_active                                                  -- 適用終了日
+-- == 2009/09/08 V1.2 Added END   ===============================================================
    , created_by                                                       -- 作成者
    , creation_date                                                    -- 作成日
    , last_updated_by                                                  -- 最終更新者
@@ -61,6 +66,10 @@ AS
          , xsi.auto_store_check_flag                                  -- 自動入庫確認フラグ
          , xsi.check_warehouse_code                                   -- 確認倉庫コード
          , xsib.baracha_div                                           -- バラ茶区分
+-- == 2009/09/08 V1.2 Added START ===============================================================
+         , ximb.start_date_active                                     -- 適用開始日
+         , ximb.end_date_active                                       -- 適用終了日
+-- == 2009/09/08 V1.2 Added END   ===============================================================
          , xsi.created_by                                             -- 作成者
          , xsi.creation_date                                          -- 作成日
          , xsi.last_updated_by                                        -- 最終更新者
@@ -122,6 +131,10 @@ COMMENT ON COLUMN xxcoi_storage_information_v.auto_store_check_flag IS '自動入庫
 COMMENT ON COLUMN xxcoi_storage_information_v.check_warehouse_code IS '確認倉庫コード';
 /
 COMMENT ON COLUMN xxcoi_storage_information_v.baracha_div IS 'バラ茶区分';
+/
+COMMENT ON COLUMN xxcoi_storage_information_v.start_date_active IS '適用開始日';
+/
+COMMENT ON COLUMN xxcoi_storage_information_v.end_date_active IS '適用終了日';
 /
 COMMENT ON COLUMN xxcoi_storage_information_v.created_by IS '作成者';
 /

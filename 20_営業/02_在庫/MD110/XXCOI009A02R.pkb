@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI009A02R(body)
  * Description      : 倉替出庫明細リスト
  * MD.050           : 倉替出庫明細リスト MD050_COI_009_A02
- * Version          : 2.0
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,7 +42,8 @@ AS
  *  2009/05/29    1.7   H.Sasaki         [T1_1113]伝票番号の桁数を修正
  *  2009/06/03    1.8   H.Sasaki         [T1_1202]保管場所マスタの結合条件に在庫組織IDを追加
  *  2009/07/09    1.9   H.Sasaki         [0000338]SVF起動関数のパラメータ修正
- *  2009/07/30    2.0   N.Abe            [0000638]単位の取得項目修正
+ *  2009/07/30    1.10  N.Abe            [0000638]単位の取得項目修正
+ *  2009/09/08    1.11  H.Sasaki         [0001266]OPM品目アドオンの版管理対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -652,7 +653,7 @@ AS
     -- ===============================
     -- 固定ローカル定数
     -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_cust_mst_info'; -- プログラム名
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_drink_data'; -- プログラム名
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -884,6 +885,9 @@ AS
    ***********************************************************************************/
   PROCEDURE get_item_data(
      it_item_no                IN  mtl_system_items_b.segment1%TYPE        -- 商品コード
+-- == 2009/09/08 V1.11 Added START ==================================================================
+    ,it_transaction_date       IN  mtl_material_transactions.transaction_date%TYPE     -- 取引日
+-- == 2009/09/08 V1.11 Added END   ==================================================================
     ,ot_product_class          OUT xxcmn_item_mst_b.product_class%TYPE     -- 商品分類
     ,ot_godds_classification   OUT ic_item_mst_b.attribute11%TYPE          -- ケース入数
     ,ot_baracha_div            OUT xxcmm_system_items_b.baracha_div%TYPE   -- バラ茶区分
@@ -948,6 +952,10 @@ AS
           ,xxcmn_item_mst_b        ximb     -- OPM品目アドオンマスタ
     WHERE  msib.segment1                = iimb.item_no
     AND    iimb.item_id                 = ximb.item_id
+-- == 2009/09/08 V1.11 Added START ==================================================================
+    AND    it_transaction_date  BETWEEN ximb.start_date_active
+                                AND     NVL(ximb.end_date_active, it_transaction_date)
+-- == 2009/09/08 V1.11 Added END   ==================================================================
     AND    msib.segment1                = xsib.item_code
     AND    msib.inventory_item_id       = mic.inventory_item_id
     AND    msib.organization_id         = mic.organization_id
@@ -1048,7 +1056,7 @@ AS
     ln_tran_type_haikyaku          mtl_transaction_types.transaction_type_id%TYPE;     -- 取引タイプID 廃却
     lv_tran_type_haikyaku_b        mtl_transaction_types.transaction_type_name%TYPE;   -- 取引タイプ名 廃却振戻
     ln_tran_type_haikyaku_b        mtl_transaction_types.transaction_type_id%TYPE;     -- 取引タイプID 廃却振戻
-    lv_product_class               xxcmn_item_mst_b.product_class%TYPE;                -- 商品分類                      
+    lv_product_class               xxcmn_item_mst_b.product_class%TYPE;                -- 商品分類
     lv_godds_classification        ic_item_mst_b.attribute11%TYPE;                     -- ケース入数
     lv_baracha_div                 xxcmm_system_items_b.baracha_div%TYPE;              -- バラ茶区分
     lv_office_item_type            mtl_categories_b.segment1%TYPE;                     -- 本社商品区分
@@ -1056,7 +1064,7 @@ AS
     ln_cs_qty                      NUMBER;   
     ln_set_unit_price              xxwip_drink_trans_deli_chrgs.setting_amount%TYPE;   -- 設定単価
     ln_dlv_cost_budget_amt         NUMBER;                                             -- 運送費
-    lv_discrete_cost               xxcmm_system_items_b_hst.discrete_cost%TYPE;        -- 営業原価                     
+    lv_discrete_cost               xxcmm_system_items_b_hst.discrete_cost%TYPE;        -- 営業原価
     ln_discrete_cost               NUMBER;                                             -- 営業原価(型変換) 
     ln_cnt                         NUMBER       DEFAULT  0;          -- ループカウンタ
     lv_zero_message                VARCHAR2(30) DEFAULT  NULL;       -- ゼロ件メッセージ
@@ -1131,6 +1139,10 @@ AS
         AND  msib.organization_id                =  gn_organization_id
         AND  msib.segment1                       =  iimb.item_no
         AND  iimb.item_id                        =  ximb.item_id
+-- == 2009/09/08 V1.11 Added START ==================================================================
+        AND  mmt.transaction_date  BETWEEN ximb.start_date_active
+                                   AND     NVL(ximb.end_date_active, mmt.transaction_date)
+-- == 2009/09/08 V1.11 Added END   ==================================================================
 -- == 2009/05/21 V1.5 Added START ==================================================================
         AND  mmt.transaction_quantity            <  0
 -- == 2009/05/21 V1.5 Added END   ==================================================================
@@ -1183,6 +1195,10 @@ AS
         AND  msib.organization_id                =  gn_organization_id
         AND  msib.segment1                       =  iimb.item_no
         AND  iimb.item_id                        =  ximb.item_id
+-- == 2009/09/08 V1.11 Added START ==================================================================
+        AND  mmt.transaction_date  BETWEEN ximb.start_date_active
+                                   AND     NVL(ximb.end_date_active, mmt.transaction_date)
+-- == 2009/09/08 V1.11 Added END   ==================================================================
       UNION
       --工場倉替,工場返品
       SELECT  mmt.transaction_id
@@ -1242,18 +1258,22 @@ AS
         AND  flv.lookup_type                     =  cv_mfg_fctory_cd
         AND  flv.lookup_code                     =  mmt.attribute2
         AND  flv.enabled_flag                    =  cv_flag
-        AND  flv.language                        =  USERENV( 'LANG' )   
+        AND  flv.language                        =  USERENV( 'LANG' )
         AND  msib.inventory_item_id              =  mmt.inventory_item_id
         AND  msib.organization_id                =  gn_organization_id
         AND  msib.segment1                       =  iimb.item_no
         AND  iimb.item_id                        =  ximb.item_id
+-- == 2009/09/08 V1.11 Added START ==================================================================
+        AND  mmt.transaction_date  BETWEEN ximb.start_date_active
+                                   AND     NVL(ximb.end_date_active, mmt.transaction_date)
+-- == 2009/09/08 V1.11 Added END   ==================================================================
         ORDER BY out_base_code
                 ,in_base_code
                 ,transaction_date
                 ,slip_no
                 ,inventory_item_id
                 ,transaction_type_id
-      ;    
+      ;
 --
     -- ローカル・レコード
     lr_info_kuragae_rec info_kuragae_cur%ROWTYPE;
@@ -1581,6 +1601,9 @@ AS
       -- =====================================================
       get_item_data(
          it_item_no                 =>  lr_info_kuragae_rec.item_no -- 商品コード
+-- == 2009/09/08 V1.11 Added START ==================================================================
+        ,it_transaction_date        =>  lr_info_kuragae_rec.transaction_date    -- 取引日
+-- == 2009/09/08 V1.11 Added END   ==================================================================
         ,ot_product_class           =>  lv_product_class            -- 商品分類
         ,ot_godds_classification    =>  lv_godds_classification     -- ケース入数
         ,ot_baracha_div             =>  lv_baracha_div              -- バラ茶区分
@@ -1989,7 +2012,13 @@ AS
     -- パラメータ.日がNULLでない場合
     IF gr_param.a_day IS NOT NULL THEN
       --
-      IF ( ( gr_param.a_day < cv_01 ) OR ( gr_param.a_day  > cv_31 ) ) THEN
+-- == 2009/09/08 V1.11 Added END   ==================================================================
+--      IF ( ( gr_param.a_day < cv_01 ) OR ( gr_param.a_day  > cv_31 ) ) THEN
+      IF (   (TO_NUMBER(gr_param.a_day) < 1)
+          OR (TO_NUMBER(gr_param.a_day) > 31)
+         )
+      THEN
+-- == 2009/09/08 V1.11 Added END   ==================================================================
           
         -- エラーメッセージ取得
         lv_errmsg := xxccp_common_pkg.get_msg(
@@ -2005,7 +2034,7 @@ AS
         END IF;
         -- 
       -- パラメータ.年月とパラメータ.日を結合し日付の妥当性チェックを行う
-      ld_date := TO_DATE((gr_param.year_month||gr_param.a_day),'YYYYMMDD');      
+      ld_date := TO_DATE((gr_param.year_month||gr_param.a_day),'YYYYMMDD');
       --
       -- パラメータ.年月とパラメータ.日を結合し、業務日付と比較
         IF ( TO_CHAR( ( gd_process_date ), 'YYYYMMDD' ) < 

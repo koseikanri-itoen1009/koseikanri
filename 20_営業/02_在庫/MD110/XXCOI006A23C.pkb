@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A23C(body)
  * Description      : VD受払情報を元に、CSVデータを作成します。
  * MD.050           : VD受払CSV作成<MD050_COI_006_A23>
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/02/10    1.0   H.Sasaki         初版作成
  *  2009/07/14    1.1   N.Abe            [0000462]群コード取得方法修正
+ *  2009/09/08    1.2   H.Sasaki         [0001266]OPM品目アドオンの版管理対応
  *
  *****************************************************************************************/
 --
@@ -238,6 +239,10 @@ AS
     AND     xvri.organization_id      =   msib.organization_id
     AND     msib.segment1             =   iimb.item_no
     AND     iimb.item_id              =   ximb.item_id
+-- == 2009/09/08 V1.2 Added START ===============================================================
+    AND     gd_target_date  BETWEEN ximb.start_date_active
+                            AND     NVL(ximb.end_date_active, gd_target_date)
+-- == 2009/09/08 V1.2 Added END   ===============================================================
     ORDER BY  xvri.base_code
              ,iimb.attribute2
              ,msib.segment1;
@@ -319,6 +324,10 @@ AS
     AND     xvri.organization_id      =   msib.organization_id
     AND     msib.segment1             =   iimb.item_no
     AND     iimb.item_id              =   ximb.item_id
+-- == 2009/09/08 V1.2 Added START ===============================================================
+    AND     gd_target_date  BETWEEN ximb.start_date_active
+                            AND     NVL(ximb.end_date_active, gd_target_date)
+-- == 2009/09/08 V1.2 Added END   ===============================================================
     ORDER BY  iimb.attribute2
              ,msib.segment1;
     --

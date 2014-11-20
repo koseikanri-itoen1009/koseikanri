@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI009A04R(body)
  * Description      : 入出庫ジャーナルチェックリスト
  * MD.050           : 入出庫ジャーナルチェックリスト MD050_COI_009_A04
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/06/19    1.4   H.Sasaki         [I_E_453][T1_1090]HHT入出庫取得データを変更
  *  2009/07/02    1.5   H.Sasaki         [0000275]パフォーマンス改善
  *  2009/07/10    1.6   H.Sasaki         [0000459]入出庫逆転データの出力条件を変更
+ *  2009/09/08    1.7   H.Sasaki         [0001266]OPM品目アドオンの版管理対応
  *
  *****************************************************************************************/
 --
@@ -1119,6 +1120,16 @@ AS
       AND     msib.organization_id                      =   gn_organization_id
       AND     msib.segment1                             =   iimb.item_no
       AND     iimb.item_id                              =   ximb.item_id(+)
+-- == 2009/09/08 V1.7 Added START ===============================================================
+      AND     ((   (ximb.item_id IS NOT NULL)
+               AND (TO_DATE(SUBSTR(gr_param.target_date, 1, 10), 'YYYY/MM/DD') BETWEEN ximb.start_date_active
+                                                                               AND     NVL(ximb.end_date_active, TO_DATE(SUBSTR(gr_param.target_date, 1, 10), 'YYYY/MM/DD'))
+                   )
+               )
+               OR
+               (ximb.item_id IS NULL)
+              )
+-- == 2009/09/08 V1.7 Added END   ===============================================================
       AND     xhit.record_type                          =   flv.attribute1
       AND     xhit.invoice_type                         =   flv.attribute2
       AND     NVL(xhit.department_flag, cv_99)          =   flv.attribute3

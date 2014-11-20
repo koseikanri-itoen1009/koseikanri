@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2009/05/14    1.5   H.Sasaki         [T1_0387]入庫情報一時表の存在チェック条件を修正
  *  2009/06/03    1.6   H.Sasaki         [T1_1186]サマリ、明細カーソルのPT
  *  2009/07/13    1.7   H.Sasaki         [0000495]入庫情報サマリ抽出カーソルのPT対応
+ *  2009/09/08    1.8   H.Sasaki         [0001266]OPM品目アドオンの版管理対応
  *
  *****************************************************************************************/
 --
@@ -781,6 +782,20 @@ AS
       AND    imbc.item_no           =   msib.segment1
       AND    imbc.item_id           =   ximb.item_id
       AND    imbp.item_id           =   ximb.parent_item_id
+-- == 2009/09/08 V1.8 Added START ===============================================================
+      AND    ((xoha.req_status = gt_ship_status_result
+               AND
+               xoha.arrival_date BETWEEN ximb.start_date_active
+                                 AND     NVL(ximb.end_date_active, xoha.arrival_date)
+              )
+              OR
+              (xoha.req_status <> gt_ship_status_result
+               AND
+               xoha.schedule_arrival_date BETWEEN ximb.start_date_active
+                                          AND     NVL(ximb.end_date_active, xoha.schedule_arrival_date)
+              )
+             )
+-- == 2009/09/08 V1.8 Added END   ===============================================================
       AND    msib.organization_id   =   gt_org_id
       AND ( ( -- 締め済み、確定通知済出荷依頼（出荷依頼は削除明細を除外）
               xoha.req_status                          = gt_ship_status_close
@@ -1191,6 +1206,20 @@ AS
       AND     imbc.item_no          =   msib.segment1
       AND     imbc.item_id          =   ximb.item_id
       AND     imbp.item_id          =   ximb.parent_item_id
+-- == 2009/09/08 V1.8 Added START ===============================================================
+      AND    ((xoha.req_status = gt_ship_status_result
+               AND
+               xoha.arrival_date BETWEEN ximb.start_date_active
+                                 AND     NVL(ximb.end_date_active, xoha.arrival_date)
+              )
+              OR
+              (xoha.req_status <> gt_ship_status_result
+               AND
+               xoha.schedule_arrival_date BETWEEN ximb.start_date_active
+                                          AND     NVL(ximb.end_date_active, xoha.schedule_arrival_date)
+              )
+             )
+-- == 2009/09/08 V1.8 Added END   ===============================================================
       AND     msib.organization_id  =   gt_org_id
       AND ( ( -- 締め済み、確定通知済出荷依頼（出荷依頼は削除明細を除外）
               xoha.req_status                          = gt_ship_status_close
@@ -3041,6 +3070,10 @@ AS
           AND      msib.segment1                      = g_summary_tab ( in_slip_cnt ) .item_no
           AND      iimbc.item_id                      = ximb.item_id
           AND      iimbp.item_id                      = ximb.parent_item_id
+-- == 2009/09/08 V1.8 Added START ===============================================================
+          AND      g_summary_tab( in_slip_cnt ).slip_date BETWEEN ximb.start_date_active
+                                                          AND     NVL(ximb.end_date_active, g_summary_tab( in_slip_cnt ).slip_date)
+-- == 2009/09/08 V1.8 Added END   ===============================================================
           AND      ( ximb.parent_item_id = iimbc.item_id
                    AND iimbc.attribute26 != cv_1
                    AND NOT EXISTS ( SELECT '1'

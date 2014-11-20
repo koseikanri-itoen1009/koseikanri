@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A14R(body)
  * Description      : 受払残高表（営業員）
  * MD.050           : 受払残高表（営業員） <MD050_COI_A14>
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/07/22    1.2   H.Sasaki         [0000685]パラメータ日付項目のPT対応
  *  2009/08/04    1.3   H.Sasaki         [0000895]PT対応
  *  2009/08/18    1.4   N.Abe            [0001090]出力桁数の修正
+ *  2009/09/08    1.5   H.Sasaki         [0001266]OPM品目アドオンの版管理対応
  *
  *****************************************************************************************/
 --
@@ -214,6 +215,10 @@ AS
     AND       xird.inventory_item_id      = msib.inventory_item_id
     AND       msib.segment1               = iimb.item_no
     AND       iimb.item_id                = ximb.item_id
+-- == 2009/09/08 V1.5 Added START ===============================================================
+    AND       xird.practice_date  BETWEEN ximb.start_date_active
+                                  AND     NVL(ximb.end_date_active, xird.practice_date)
+-- == 2009/09/08 V1.5 Added END   ===============================================================
 -- == 2009/08/04 V1.3 Deleted START ===============================================================
 --    ORDER BY  papf.employee_number
 --             ,SUBSTR(iimb.attribute2, 1, 3)
@@ -313,6 +318,10 @@ AS
     AND       xirm.inventory_item_id      = msib.inventory_item_id
     AND       msib.segment1               = iimb.item_no
     AND       iimb.item_id                = ximb.item_id
+-- == 2009/09/08 V1.5 Added START ===============================================================
+    AND       xirm.practice_date  BETWEEN ximb.start_date_active
+                                  AND     NVL(ximb.end_date_active, xirm.practice_date)
+-- == 2009/09/08 V1.5 Added END   ===============================================================
 -- == 2009/08/04 V1.3 Deleted START ===============================================================
 --    ORDER BY  papf.employee_number
 --             ,SUBSTR(iimb.attribute2, 1, 3)

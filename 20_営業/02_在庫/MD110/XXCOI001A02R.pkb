@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A02R(body)
  * Description      : 指定された条件に紐づく入庫確認情報のリストを出力します。
  * MD.050           : 入庫未確認リスト MD050_COI_001_A02
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/04/23    1.3   H.Sasaki         [T1_0385]出庫拠点名の整形（8byte切捨て）
  *  2009/07/02    1.4   H.Sasaki         [0000273]パフォーマンス改善
  *  2009/08/07    1.5   N.Abe            [0000945]パフォーマンス改善
+ *  2009/09/08    1.6   H.Sasaki         [0001266]OPM品目アドオン版管理対応
  *
  *****************************************************************************************/
 --
@@ -278,21 +279,25 @@ AS
           SELECT xsi1.slip_num
           FROM   xxcoi_storage_information xsi1
                 ,xxcoi_storage_information xsi2
-          WHERE  xsi1.base_code = iv_base_code
+          WHERE  xsi1.base_code         = iv_base_code
           AND    TRUNC(xsi1.slip_date) BETWEEN TO_DATE(iv_date_from,'YYYY/MM/DD') AND TO_DATE(iv_date_to,'YYYY/MM/DD')
           AND    xsi1.summary_data_flag = cv_yes
-          AND    xsi1.slip_num = xsi2.slip_num
+          AND    xsi1.slip_num          = xsi2.slip_num
           AND    TRUNC(xsi1.slip_date) <> TRUNC(xsi2.slip_date)
-          AND    iv_output_type = cv_output_div_20
+          AND    iv_output_type         = cv_output_div_20
         )xsii
-  WHERE  xsi.base_code = hca_b.account_number
-  AND    xsi.slip_type = flv.lookup_code
-  AND    iimb.item_id = ximb.item_id
-  AND    xsi.item_code = iimb.item_no
-  AND    xsi.slip_num = xsii.slip_num
+  WHERE  xsi.base_code    = hca_b.account_number
+  AND    xsi.slip_type    = flv.lookup_code
+  AND    iimb.item_id     = ximb.item_id
+-- == 2009/09/08 V1.6 Added START ===============================================================
+  AND    xsi.slip_date    BETWEEN ximb.start_date_active
+                          AND     NVL(ximb.end_date_active, xsi.slip_date)
+-- == 2009/09/08 V1.6 Added END   ===============================================================
+  AND    xsi.item_code    = iimb.item_no
+  AND    xsi.slip_num     = xsii.slip_num
   AND    flv.enabled_flag = cv_yes
-  AND    flv.language = userenv('LANG')
-  AND    flv.lookup_type = cv_list_type
+  AND    flv.language     = userenv('LANG')
+  AND    flv.lookup_type  = cv_list_type
   AND    TRUNC(SYSDATE) BETWEEN TRUNC(flv.start_date_active) AND NVL(flv.end_date_active,TRUNC(SYSDATE))
 -- == 2009/07/02 V1.4 Deleted START ===============================================================
 --  AND    xsi.transaction_id = ship_base.transaction_id

@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI009A03R(body)
  * Description      : 工場入庫明細リスト
  * MD.050           : 工場入庫明細リスト MD050_COI_009_A03
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/05/21    1.3   T.Nakamura       [障害T1_1111]取引タイプの絞込条件から梱包材料原価振替、梱包材料原価振替振戻を除外
  *  2009/07/22    1.4   N.Abe            [障害0000785]リーフ資材品を商品、製品抽出時の除外条件に追加
  *  2009/08/05    1.5   H.Sasaki         [障害0000926]品目カテゴリの印字制御のための修正
+ *  2009/09/08    1.6   H.Sasaki         [障害0001266]OPM品目アドオンの版管理対応
  *
  *****************************************************************************************/
 --
@@ -689,6 +690,10 @@ AS
         AND  cat.item_category              =  NVL ( gr_param.item_ctg,cat.item_category )
         AND  msib.segment1                       =  iimb.item_no
         AND  iimb.item_id                        =  ximb.item_id
+-- == 2009/09/08 V1.6 Added START ===============================================================
+        AND  mmt.transaction_date BETWEEN ximb.start_date_active
+                                  AND     NVL(ximb.end_date_active, mmt.transaction_date)
+-- == 2009/09/08 V1.6 Added END   ===============================================================
       ORDER BY msi.attribute7
               ,cat.item_category
               ,msib.segment1
