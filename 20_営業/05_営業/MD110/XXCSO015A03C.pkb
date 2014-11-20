@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.15
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,6 +54,8 @@ AS
  *  2009-06-15    1.13  K.Satomura       【T1_1239対応】
  *  2009-07-10    1.14  K.Satomura       統合テスト障害対応(0000476)
  *  2009-08-28    1.15  K.Satomura       統合テスト障害対応(0001205)
+ *  2009-08-28    1.16  M.Maruyama       統合テスト障害対応(0001192)
+ *  2009-09-14    1.17  K.Satomura       統合テスト障害対応(0001335)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3033,6 +3035,9 @@ AS
 --
     -- *** ローカル変数 ***
     ld_date                    DATE;                    -- 業務処理日付格納用('yyyymmdd'形式)
+    /*2009.09.03 M.Maruyama 0001192対応 START*/
+    ld_actual_work_date        DATE;                    -- 実作業日('yyyymmdd'形式)
+    /*2009.09.03 M.Maruyama 0001192対応 END*/
     ld_install_date            DATE;                    -- 導入日
     ln_cnt                     NUMBER;                  -- カウント数
     ln_seq_no                  NUMBER;                  -- シーケンス番号
@@ -3128,6 +3133,9 @@ AS
     ln_machinery_kbn      := io_inst_base_data_rec.machinery_kbn;
     lv_un_number          := io_inst_base_data_rec.un_number;
     lv_install_number     := io_inst_base_data_rec.install_number;
+    /*2009.09.03 M.Maruyama 0001192対応 START*/
+    ld_actual_work_date   := TO_DATE(io_inst_base_data_rec.actual_work_date,'YYYY/MM/DD');
+    /*2009.09.03 M.Maruyama 0001192対応 END*/
  --
     -- =================
     -- 1.リース区分抽出
@@ -3683,20 +3691,43 @@ AS
     l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.lease_kbn;
     l_ext_attrib_values_tab(ln_cnt).attribute_value := lv_lease_type;
 --
-    -- 先月末年月
-    ln_cnt := ln_cnt + 1;
-    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.last_year_month;
-    l_ext_attrib_values_tab(ln_cnt).attribute_value := '';
+    /*2009.09.03 M.Maruyama 0001192対応 START*/
+    IF (TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ADD_MONTHS(ld_date , -1 ),'YYYYMM')) THEN
 --
-    -- 先月末設置先顧客コード
-    ln_cnt := ln_cnt + 1;
-    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.last_inst_cust_code;
-    l_ext_attrib_values_tab(ln_cnt).attribute_value := '';
+      -- 先月末年月
+      ln_cnt := ln_cnt + 1;
+      l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.last_year_month;
+      l_ext_attrib_values_tab(ln_cnt).attribute_value := TO_CHAR(ADD_MONTHS(ld_date , -1 ),'YYYYMM');
 --
-    -- 先月末機器状態
-    ln_cnt := ln_cnt + 1;
-    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.last_jotai_kbn;
-    l_ext_attrib_values_tab(ln_cnt).attribute_value := '';
+      -- 先月末設置先顧客コード
+      ln_cnt := ln_cnt + 1;
+      l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.last_inst_cust_code;
+      l_ext_attrib_values_tab(ln_cnt).attribute_value := lv_account_num1;
+--
+      -- 先月末機器状態
+      ln_cnt := ln_cnt + 1;
+      l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.last_jotai_kbn;
+      l_ext_attrib_values_tab(ln_cnt).attribute_value := ln_machinery_status1;
+--    
+    ELSE
+    /*2009.09.03 M.Maruyama 0001192対応 END*/
+      -- 先月末年月
+      ln_cnt := ln_cnt + 1;
+      l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.last_year_month;
+      l_ext_attrib_values_tab(ln_cnt).attribute_value := '';
+--
+      -- 先月末設置先顧客コード
+      ln_cnt := ln_cnt + 1;
+      l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.last_inst_cust_code;
+      l_ext_attrib_values_tab(ln_cnt).attribute_value := '';
+--
+      -- 先月末機器状態
+      ln_cnt := ln_cnt + 1;
+      l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.last_jotai_kbn;
+      l_ext_attrib_values_tab(ln_cnt).attribute_value := '';
+    /*2009.09.03 M.Maruyama 0001192対応 START*/
+    END IF;
+    /*2009.09.03 M.Maruyama 0001192対応 END*/
 --
     -- ====================
     -- 7.パーティデータ作成
@@ -3819,7 +3850,14 @@ AS
       END IF;
 --
       BEGIN
-        SELECT casv.sale_base_code                                        -- 売上拠点コード
+        /*2009.09.03 M.Maruyama 0001192対応 START*/
+        --SELECT casv.sale_base_code                                        -- 売上拠点コード
+        SELECT (CASE
+                WHEN TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ld_date,'YYYYMM')
+                THEN casv.sale_base_code
+                ELSE casv.past_sale_base_code
+                END) sale_base_code                                  -- 売上拠点コード
+        /*2009.09.03 M.Maruyama 0001192対応 END*/
               ,casv.established_site_name                                 -- 設置先名
               ,casv.state || casv.city || casv.address1 || casv.address2  -- 設置先住所
         INTO   lv_base_code
@@ -4349,8 +4387,13 @@ AS
     ln_last_jotai_kbn          NUMBER;                  -- 先月末機器状態
     lv_last_year_month         VARCHAR2(10);            -- 先月末年月
     /*20090325_yabuki_ST150 START*/
-    lt_sale_base_code          xxcso_cust_acct_sites_v.sale_base_code%TYPE;    -- 売上拠点コード
+    lt_sale_base_code          xxcso_cust_acct_sites_v.sale_base_code%TYPE;       -- 売上拠点コード
     /*20090325_yabuki_ST150 END*/
+    /*2009.09.03 M.Maruyama 0001192対応 START*/
+    lt_past_sale_base_code     xxcso_cust_acct_sites_v.past_sale_base_code%TYPE;  -- 前月売上拠点コード
+    lt_sl_bs_cd_fr_bfr_mnth_dt xxcso_cust_acct_sites_v.past_sale_base_code%TYPE;  -- 前月売上拠点コード(先月末顧客コード用)
+    ld_ib_install_date         DATE;                                              -- 設置日
+    /*2009.09.03 M.Maruyama 0001192対応 END*/
     /* 2009.04.13 K.Satomura T1_0418対応 START */
     lv_hazard_class            po_hazard_classes_tl.hazard_class%type; -- 機器区分（危険度区分）
     /* 2009.04.13 K.Satomura T1_0418対応 END */
@@ -4733,6 +4776,7 @@ AS
     -- 3.顧客情報抽出
     -- ============================
 --
+    -- 作業データ.実作業日の年月 = 業務処理日付の前月の年月
     BEGIN
       SELECT casv.account_number                                      -- 顧客コード
             ,casv.cust_account_id                                     -- アカウントID
@@ -4742,6 +4786,10 @@ AS
             /*20090325_yabuki_ST150 START*/
             ,casv.sale_base_code                                      -- 売上拠点コード
             /*s_yabuki_ST150 END*/
+            /*2009.09.03 M.Maruyama 0001192対応 START*/
+            ,casv.past_sale_base_code                                 -- 前月売上拠点コード
+            ,ciis.install_date                                        -- 設置日
+            /*2009.09.03 M.Maruyama 0001192対応 END*/
       INTO   lv_account_num
             ,ln_account_id
             ,ln_party_site_id
@@ -4750,6 +4798,10 @@ AS
             /*20090325_yabuki_ST150 START*/
             ,lt_sale_base_code
             /*20090325_yabuki_ST150 END*/
+            /*2009.09.03 M.Maruyama 0001192対応 START*/
+            ,lt_past_sale_base_code
+            ,ld_ib_install_date
+            /*2009.09.03 M.Maruyama 0001192対応 END*/
       FROM   xxcso_cust_acct_sites_v casv                               -- 顧客マスタサイトビュー
             ,csi_item_instances      ciis                               -- インストールベースマスタ
       WHERE  ciis.external_reference     = lv_install_code
@@ -4825,73 +4877,373 @@ AS
     IF (io_inst_base_data_rec.job_kbn  NOT IN 
          (cn_job_kbn_6,cn_job_kbn_8,cn_job_kbn_9,cn_job_kbn_10,cn_job_kbn_15,cn_job_kbn_16,cn_job_kbn_17)) THEN
     /*20090528_Ohtsuki_T1_1203 END*/
+    
       -- 先月末年月≠業務処理日付の前月の年月
       IF (lv_last_year_month <> TO_NUMBER(TO_CHAR(ADD_MONTHS(ld_date , -1 ),'YYYYMM')) OR
           lv_last_year_month IS NULL) THEN
+          
         -- 実作業日の年月＝業務処理日付の前月の年月
         IF (TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ADD_MONTHS(ld_date , -1 ),'YYYYMM')) THEN
-          -- 先月末年月の取得
-          l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_year_month);
-          IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
-            ln_cnt := ln_cnt + 1;
-            l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
-            l_ext_attrib_values_tab(ln_cnt).attribute_value       := TO_CHAR(ADD_MONTHS(ld_date , -1 ),'YYYYMM');
-            l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
-            l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
-          END IF;
 --
-          -- 先月末設置先顧客コード
-          l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_inst_cust_code);
-          IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
-            ln_cnt := ln_cnt + 1;
-            l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
-            l_ext_attrib_values_tab(ln_cnt).attribute_value       := lv_account_num1;
-            l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
-            l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
-          END IF;
+          /*2009.09.03 M.Maruyama 0001192対応 START*/
+          -- 作業データ．作業区分が「新台設置」「新台代替」「旧台設置」「旧台代替」のいずれか、
+          --   且つ物件ファイル．物件コード＝作業データ．物件コード１
+          IF ((io_inst_base_data_rec.job_kbn IN (cn_jon_kbn_1,cn_jon_kbn_2,cn_jon_kbn_3,cn_jon_kbn_4)) 
+            AND (lv_install_code = lv_install_code1)) THEN
 --
-          -- 先月末機器状態
-          l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_jotai_kbn);
-          IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
-            ln_cnt := ln_cnt + 1;
-            l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
-            l_ext_attrib_values_tab(ln_cnt).attribute_value       := io_inst_base_data_rec.machinery_status1;
-            l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
-            l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+            -- 先月末年月の取得
+            l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_year_month);
+            IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+              ln_cnt := ln_cnt + 1;
+              l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+              l_ext_attrib_values_tab(ln_cnt).attribute_value       := TO_CHAR(ADD_MONTHS(ld_date , -1 ),'YYYYMM');
+              l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+              l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+            END IF;
+--
+            -- 先月末設置先顧客コード(作業データ.顧客データ1)
+            l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_inst_cust_code);
+            IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+              ln_cnt := ln_cnt + 1;
+              l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+              l_ext_attrib_values_tab(ln_cnt).attribute_value       := lv_account_num1;
+              l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+              l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+            END IF;
+--
+            -- 先月末機器状態(物件ファイル.機器状態1 [稼働中])
+            l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_jotai_kbn);
+            IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+              ln_cnt := ln_cnt + 1;
+              l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+              l_ext_attrib_values_tab(ln_cnt).attribute_value       := io_inst_base_data_rec.machinery_status1;
+              l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+              l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+            END IF;
+--
+          -- 作業データ．作業区分が「新台代替」「旧台代替」「引揚」のいずれか、
+          --   且つ 物件ファイル．物件コード＝作業データ．物件コード２
+          ELSIF ((io_inst_base_data_rec.job_kbn IN (cn_jon_kbn_3,cn_jon_kbn_4,cn_jon_kbn_5))
+               AND (lv_install_code = lv_install_code2)) THEN
+--
+            -- 機器区分取得
+            BEGIN
+              SELECT SUBSTRB(phcv.hazard_class,1,1) -- 機器区分（危険度区分）
+              INTO   lv_hazard_class
+              FROM   po_un_numbers_vl     punv               -- 国連番号マスタビュー
+                    ,po_hazard_classes_vl phcv               -- 危険度区分マスタビュー
+              WHERE  punv.un_number        = lv_un_number
+                AND  punv.hazard_class_id  = phcv.hazard_class_id
+              ;
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                -- データが存在しない場合
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_app_name                   -- アプリケーション短縮名
+                               ,iv_name         => cv_tkn_number_23              -- メッセージコード
+                               ,iv_token_name1  => cv_tkn_task_nm                -- トークンコード1
+                               ,iv_token_value1 => cv_po_un_numbers_info         -- トークン値1
+                               ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
+                               ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
+                               ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
+                               ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
+                               ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
+                               ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
+                               ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
+                               ,iv_token_value5 => TO_CHAR(ln_line_num)          -- トークン値5
+                               ,iv_token_name6  => cv_tkn_bukken1                -- トークンコード6
+                               ,iv_token_value6 => lv_install_code1              -- トークン値6
+                               ,iv_token_name7  => cv_tkn_bukken2                -- トークンコード7
+                               ,iv_token_value7 => lv_install_code2              -- トークン値7
+                               ,iv_token_name8  => cv_tkn_account_num1           -- トークンコード8
+                               ,iv_token_value8 => lv_account_num1               -- トークン値8
+                               ,iv_token_name9  => cv_tkn_account_num2           -- トークンコード9
+                               ,iv_token_value9 => lv_account_num2               -- トークン値9
+                             );
+                lv_errbuf := lv_errmsg;
+                RAISE skip_process_expt;
+                -- 抽出に失敗した場合
+              WHEN OTHERS THEN
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_app_name                   -- アプリケーション短縮名
+                               ,iv_name         => cv_tkn_number_24              -- メッセージコード
+                               ,iv_token_name1  => cv_tkn_task_nm                -- トークンコード1
+                               ,iv_token_value1 => cv_po_un_numbers_info         -- トークン値1
+                               ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
+                               ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
+                               ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
+                               ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
+                               ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
+                               ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
+                               ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
+                               ,iv_token_value5 => TO_CHAR(ln_line_num)          -- トークン値5
+                               ,iv_token_name6  => cv_tkn_bukken1                -- トークンコード6
+                               ,iv_token_value6 => lv_install_code1              -- トークン値6
+                               ,iv_token_name7  => cv_tkn_bukken2                -- トークンコード7
+                               ,iv_token_value7 => lv_install_code2              -- トークン値7
+                               ,iv_token_name8  => cv_tkn_account_num1           -- トークンコード8
+                               ,iv_token_value8 => lv_account_num1               -- トークン値8
+                               ,iv_token_name9  => cv_tkn_account_num2           -- トークンコード9
+                               ,iv_token_value9 => lv_account_num2               -- トークン値9
+                               ,iv_token_name10 => cv_tkn_errmsg                 -- トークンコード10
+                               ,iv_token_value10=> SQLERRM                       -- トークン値10
+                             );
+                lv_errbuf := lv_errmsg;
+                RAISE skip_process_expt;
+            END;
+--
+            -- 前月売上拠点コード取得
+            BEGIN
+              SELECT past_sale_base_code                                      -- 前月売上拠点コード
+              INTO   lt_sl_bs_cd_fr_bfr_mnth_dt
+              FROM   xxcso_cust_acct_sites_v casv                               -- 顧客マスタサイトビュー
+                    ,csi_item_instances      ciis                               -- インストールベースマスタ
+              WHERE  ciis.external_reference     = lv_install_code2
+                AND  ciis.owner_party_account_id = casv.cust_account_id
+                AND  casv.account_status         = cv_active
+                AND  casv.acct_site_status       = cv_active
+                AND  casv.party_status           = cv_active
+                AND  casv.party_site_status      = cv_active
+              ;
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                -- データが存在しない場合
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_app_name                   -- アプリケーション短縮名
+                               ,iv_name         => cv_tkn_number_23              -- メッセージコード
+                               ,iv_token_name1  => cv_tkn_task_nm                -- トークンコード1
+                               ,iv_token_value1 => cv_cust_mst_info              -- トークン値1
+                               ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
+                               ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
+                               ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
+                               ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
+                               ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
+                               ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
+                               ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
+                               ,iv_token_value5 => TO_CHAR(ln_line_num)          -- トークン値5
+                               ,iv_token_name6  => cv_tkn_bukken1                -- トークンコード6
+                               ,iv_token_value6 => lv_install_code1              -- トークン値6
+                               ,iv_token_name7  => cv_tkn_bukken2                -- トークンコード7
+                               ,iv_token_value7 => lv_install_code2              -- トークン値7
+                               ,iv_token_name8  => cv_tkn_account_num1           -- トークンコード8
+                               ,iv_token_value8 => lv_account_num1               -- トークン値8
+                               ,iv_token_name9  => cv_tkn_account_num2           -- トークンコード9
+                               ,iv_token_value9 => lv_account_num2               -- トークン値9
+                             );
+                lv_errbuf := lv_errmsg;
+                RAISE skip_process_expt;
+                -- 抽出に失敗した場合
+              WHEN OTHERS THEN
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_app_name                   -- アプリケーション短縮名
+                               ,iv_name         => cv_tkn_number_24              -- メッセージコード
+                               ,iv_token_name1  => cv_tkn_task_nm                -- トークンコード1
+                               ,iv_token_value1 => cv_cust_mst_info              -- トークン値1
+                               ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
+                               ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
+                               ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
+                               ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
+                               ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
+                               ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
+                               ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
+                               ,iv_token_value5 => TO_CHAR(ln_line_num)          -- トークン値5
+                               ,iv_token_name6  => cv_tkn_bukken1                -- トークンコード6
+                               ,iv_token_value6 => lv_install_code1              -- トークン値6
+                               ,iv_token_name7  => cv_tkn_bukken2                -- トークンコード7
+                               ,iv_token_value7 => lv_install_code2              -- トークン値7
+                               ,iv_token_name8  => cv_tkn_account_num1           -- トークンコード8
+                               ,iv_token_value8 => lv_account_num1               -- トークン値8
+                               ,iv_token_name9  => cv_tkn_account_num2           -- トークンコード9
+                               ,iv_token_value9 => lv_account_num2               -- トークン値9
+                               ,iv_token_name10 => cv_tkn_errmsg                 -- トークンコード10
+                               ,iv_token_value10=> SQLERRM                       -- トークン値10
+                             );
+                lv_errbuf := lv_errmsg;
+                RAISE skip_process_expt;
+            END;
+--
+            -- 物件ファイル．機種をもとに機種マスタより導出した機器区分＝'1'（自販機）、
+            -- 且つプロファイル「XXCSO:引揚拠点コード」のサイト値がNULL以外
+            IF ((lv_hazard_class = cv_kbn1) AND (gv_withdraw_base_code IS NOT NULL)) THEN
+--
+              -- 先月末年月の取得
+              l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_year_month);
+              IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+                ln_cnt := ln_cnt + 1;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value       := TO_CHAR(ADD_MONTHS(ld_date , -1 ),'YYYYMM');
+                l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+                l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+              END IF;
+--
+              -- 先月末設置先顧客コード(プロファイル「XXCSO:引揚拠点コード」のサイト値)
+              l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_inst_cust_code);
+              IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+                ln_cnt := ln_cnt + 1;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value       := gv_withdraw_base_code;
+                l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+                l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+              END IF;
+--
+              -- 先月末機器状態(物件ファイル.機器状態1 [稼働中])
+              l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_jotai_kbn);
+              IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+                ln_cnt := ln_cnt + 1;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value       := io_inst_base_data_rec.machinery_status1;
+                l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+                l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+              END IF;
+--
+            -- 物件ファイル．機種をもとに機種マスタより導出した機器区分≠'1'（什器）、
+            --   且つプロファイル「XXCSO:什器引揚拠点コード」のサイト値がNULL以外
+            ELSIF ((lv_hazard_class <> cv_kbn1) AND (gv_jyki_withdraw_base_code IS NOT NULL)) THEN
+--
+              -- 先月末年月の取得
+              l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_year_month);
+              IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+                ln_cnt := ln_cnt + 1;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value       := TO_CHAR(ADD_MONTHS(ld_date , -1 ),'YYYYMM');
+                l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+                l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+              END IF;
+--
+              -- 先月末設置先顧客コード(プロファイル「XXCSO:什器引揚拠点コード」のサイト値)
+              l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_inst_cust_code);
+              IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+                ln_cnt := ln_cnt + 1;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value       := gv_jyki_withdraw_base_code;
+                l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+                l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+              END IF;
+--
+              -- 先月末機器状態(物件ファイル.機器状態1 [稼働中])
+              l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_jotai_kbn);
+              IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+                ln_cnt := ln_cnt + 1;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value       := io_inst_base_data_rec.machinery_status1;
+                l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+                l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+              END IF;
+--
+            -- 上記以外
+            ELSE
+--
+              -- 先月末年月の取得
+              l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_year_month);
+              IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+                ln_cnt := ln_cnt + 1;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value       := TO_CHAR(ADD_MONTHS(ld_date , -1 ),'YYYYMM');
+                l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+                l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+              END IF;
+--
+              -- 先月末設置先顧客コード(作業データ．顧客コード２を検索条件に取得した顧客マスタの前月売上拠点コード)
+              l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_inst_cust_code);
+              IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+                ln_cnt := ln_cnt + 1;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value       := lt_sl_bs_cd_fr_bfr_mnth_dt;
+                l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+                l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+              END IF;
+--
+              -- 先月末機器状態(物件ファイル.機器状態1 [稼働中])
+              l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_jotai_kbn);
+              IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+                ln_cnt := ln_cnt + 1;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value       := io_inst_base_data_rec.machinery_status1;
+                l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+                l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+              END IF;
+--
+            END IF;
           END IF;
         -- 実作業日の年月＝業務処理日付の年月
-        ELSIF (TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ld_date,'YYYYMM') AND
-              lv_last_year_month IS NOT NULL) THEN
-
-          -- 先月末年月の取得
-          l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_year_month);
-          IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
-            ln_cnt := ln_cnt + 1;
-            l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
-            l_ext_attrib_values_tab(ln_cnt).attribute_value       := TO_CHAR(ADD_MONTHS(ld_date , -1 ),'YYYYMM');
-            l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
-            l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
-          END IF;
+        -- ELSIF (TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ld_date,'YYYYMM') AND
+        --       lv_last_year_month IS NOT NULL) THEN
+        ELSIF (TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ld_date,'YYYYMM')) THEN
 --
-          -- 先月末設置先顧客コード
-          l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_inst_cust_code);
-          IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
-            ln_cnt := ln_cnt + 1;
-            l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
-            l_ext_attrib_values_tab(ln_cnt).attribute_value       := lv_account_num;
-            l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
-            l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
-          END IF;
+          -- 物件マスタ．先月末年月が未設定
+          IF (lv_last_year_month IS NULL) THEN
+            -- 作業データ．実作業日の年月＝物件マスタ．導入日（設置日）の年月
+            IF (TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ld_ib_install_date,'YYYYMM')) THEN
+              NULL;
+            ELSE
+          /*2009.09.03 M.Maruyama 0001192対応 END*/
 --
-          -- 先月末機器状態
-          l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_jotai_kbn);
-          IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
-            ln_cnt := ln_cnt + 1;
-            l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
-            l_ext_attrib_values_tab(ln_cnt).attribute_value       := ln_machinery_status1_wk;
-            l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
-            l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+              -- 先月末年月の取得
+              l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_year_month);
+              IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+                ln_cnt := ln_cnt + 1;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value       := TO_CHAR(ADD_MONTHS(ld_date , -1 ),'YYYYMM');
+                l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+                l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+              END IF;
+--
+              -- 先月末設置先顧客コード(物件マスタに紐付く顧客コード[更新前の状態])
+              l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_inst_cust_code);
+              IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+                ln_cnt := ln_cnt + 1;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value       := lv_account_num;
+                l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+                l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+              END IF;
+--
+              -- 先月末機器状態(物件マスタ.機器状態1 [稼働中])
+              l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_jotai_kbn);
+              IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+                ln_cnt := ln_cnt + 1;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+                l_ext_attrib_values_tab(ln_cnt).attribute_value       := ln_machinery_status1_wk;
+                l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+                l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+              END IF;
+--
+            END IF;
+          /*2009.09.03 M.Maruyama 0001192対応 START*/
+          ELSE
+--
+            -- 先月末年月の取得
+            l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_year_month);
+            IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+              ln_cnt := ln_cnt + 1;
+              l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+              l_ext_attrib_values_tab(ln_cnt).attribute_value       := TO_CHAR(ADD_MONTHS(ld_date , -1 ),'YYYYMM');
+              l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+              l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+            END IF;
+--
+            -- 先月末設置先顧客コード(物件マスタに紐付く顧客コード[更新前の状態])
+            l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_inst_cust_code);
+            IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+              ln_cnt := ln_cnt + 1;
+              l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+              l_ext_attrib_values_tab(ln_cnt).attribute_value       := lv_account_num;
+              l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+              l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+            END IF;
+--
+            -- 先月末機器状態(物件ファイル.機器状態1 [稼働中])
+            l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_jotai_kbn);
+            IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+              ln_cnt := ln_cnt + 1;
+              l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+              l_ext_attrib_values_tab(ln_cnt).attribute_value       := ln_machinery_status1_wk;
+              l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+              l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+            END IF;
+--
           END IF;
+          /*2009.09.03 M.Maruyama 0001192対応 END*/
         END IF;
 --
       END IF;
@@ -5045,7 +5397,14 @@ AS
                 ,ln_party_id
                 ,lv_area_code
           FROM   xxcso_cust_acct_sites_v casv                             -- 顧客マスタサイトビュー
-          WHERE  casv.account_number    = lt_sale_base_code
+          /*2009.09.03 M.Maruyama 0001192対応 START*/
+          --WHERE  casv.account_number    = lt_sale_base_code
+          WHERE  casv.account_number    = (CASE
+                                             WHEN TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ld_date,'YYYYMM')
+                                             THEN lt_sale_base_code
+                                             ELSE lt_past_sale_base_code
+                                           END)
+          /*2009.09.03 M.Maruyama 0001192対応 END*/
             AND  casv.account_status    = cv_active
             AND  casv.acct_site_status  = cv_active
             AND  casv.party_status      = cv_active
@@ -5522,9 +5881,13 @@ AS
     cv_xca_business_low_type   CONSTANT  VARCHAR2(100)   := '顧客アドオンマスタの業態小分類';
     cv_xca_cnvs_date           CONSTANT  VARCHAR2(100)   := '顧客アドオンマスタの顧客獲得日';
     cv_up_cnvs_process         CONSTANT  VARCHAR2(100)   := '更新（顧客獲得日）';
-  /*20090507_mori_T1_0439 START*/
+    /*20090507_mori_T1_0439 START*/
     cv_instance_type_code      CONSTANT  VARCHAR2(100)   := 'インスタンスタイプコード';
-  /*20090507_mori_T1_0439 END*/
+    /*20090507_mori_T1_0439 END*/
+    /* 2009.09.14 K.Satomura 0001335対応 START */
+    ct_cust_cl_cd_round        CONSTANT hz_cust_accounts.customer_class_code%TYPE := '15'; -- 顧客区分=巡回
+    cv_cust_class_code         CONSTANT VARCHAR2(100)    := '顧客区分';
+    /* 2009.09.14 K.Satomura 0001335対応 END */
 --
     -- *** ローカル変数 ***
     ld_cnvs_date               DATE;                    -- 顧客獲得日
@@ -5547,9 +5910,9 @@ AS
     lv_last_job_cmpltn_date    VARCHAR2(20);            -- 最終作業完了日
     lb_goto_flg                BOOLEAN;                 -- 処理続けフラグ
     ld_actual_work_date        DATE;                    -- 実作業日
-  /*20090507_mori_T1_0439 START*/
+    /*20090507_mori_T1_0439 START*/
     lv_instance_type_code     csi_item_instances.instance_type_code%TYPE;       -- インスタンスタイプコード
-  /*20090507_mori_T1_0439 END*/
+    /*20090507_mori_T1_0439 END*/
     
 --
     -- 戻り値格納用
@@ -5568,10 +5931,13 @@ AS
     -- *** ローカル例外 ***
     skip_process_expt          EXCEPTION;
     update_error_expt          EXCEPTION;
-  /*20090507_mori_T1_0439 START*/
+    /*20090507_mori_T1_0439 START*/
     instance_type_expt         EXCEPTION;  -- 対象物件が自販機以外である場合
-  /*20090507_mori_T1_0439 END*/
---    
+    /*20090507_mori_T1_0439 END*/
+    /* 2009.09.14 K.Satomura 0001335対応 START */
+    lt_customer_class_code     hz_cust_accounts.customer_class_code%TYPE;
+    /* 2009.09.14 K.Satomura 0001335対応 END */
+--
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -5607,6 +5973,41 @@ AS
       IF (lv_instance_type_code <> cv_instance_type_vd) THEN
         RAISE instance_type_expt;
       END IF;
+      /* 2009.09.14 K.Satomura 0001335対応 START */
+      BEGIN
+        SELECT hca.customer_class_code customer_class_code -- 顧客区分
+        INTO   lt_customer_class_code
+        FROM   csi_item_instances cii -- 物件マスタ
+              ,hz_cust_accounts   hca -- 顧客マスタ
+        WHERE  cii.external_reference     = lv_install_code
+        AND    cii.owner_party_account_id = hca.cust_account_id
+        ;
+        --
+        -- 顧客区分が15(巡回)の場合、以降の処理を行わない
+        IF (lt_customer_class_code = ct_cust_cl_cd_round) THEN
+          RAISE instance_type_expt;
+          --
+        END IF;
+        --
+      EXCEPTION
+        WHEN instance_type_expt THEN
+          RAISE instance_type_expt;
+        WHEN OTHERS THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name        -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_19   -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_task_nm     -- トークンコード1
+                         ,iv_token_value1 => cv_cust_class_code -- トークン値1
+                         ,iv_token_name2  => cv_tkn_bukken      -- トークンコード2
+                         ,iv_token_value2 => lv_install_code    -- トークン値2
+                         ,iv_token_name3  => cv_tkn_errmsg      -- トークンコード3
+                         ,iv_token_value3 => SQLERRM            -- トークン値3
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE skip_process_expt;
+          --
+      END;
+      /* 2009.09.14 K.Satomura 0001335対応 END */
     EXCEPTION
       WHEN instance_type_expt THEN
         RAISE instance_type_expt;

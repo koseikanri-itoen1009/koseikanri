@@ -8,7 +8,7 @@ AS
  *                    自動販売機設置契約書を帳票に出力します。
  * MD.050           : MD050_CSO_010_A04_自動販売機設置契約書PDFファイル作成
  *                    
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009-03-13    1.1   Mio.Maruyama    【障害052,055,056】抽出条件変更・テーブルサイズ変更
  *  2009-04-27    1.2   Kazuo.Satomura   システムテスト障害対応(T1_0705,T1_0778)
  *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
+ *  2009-09-14    1.4   Mio.Maruyama     0001355対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -503,11 +504,15 @@ AS
                   ELSE cv_stamp_show_0
                 END) install_location                              -- 設置ロケーション
               ,xcm.contract_number   contract_number               -- 契約書番号
-              ,((SELECT xcc.contract_name 
+              /* 2009.09.14 M.Maruyama 0001355対応 START */
+              --,((SELECT xcc.contract_name 
+              ,SUBSTRB(((SELECT SUBSTRB(xcc.contract_name, 1, 100)
                  FROM   xxcso_contract_customers xcc   -- 契約先テーブル
                  WHERE  xcc.contract_customer_id = xcm.contract_customer_id
                    AND  ROWNUM = 1
-                ) || flvv_con.attr) contract_name               -- 契約書名
+               --) || flvv_con.attr) contract_name               -- 契約書名
+               ) || flvv_con.attr), 1, 660) contract_name         -- 契約書名
+              /* 2009.09.14 M.Maruyama 0001355対応 END */
               ,xsdh.contract_year_date contract_period             -- 契約期間
               ,xcm.cancellation_offer_code cancellation_offer_code -- 契約解除申し出
               ,xsdh.other_content other_content                    -- 特約事項
@@ -657,11 +662,15 @@ AS
                   ELSE cv_stamp_show_0
                 END) install_location                                  -- 設置ロケーション
               ,xcm.contract_number   contract_number                   -- 契約書番号
-              ,((SELECT xcc.contract_name 
+              /* 2009.09.14 M.Maruyama 0001355対応 START */
+              --,((SELECT xcc.contract_name 
+              ,SUBSTRB(((SELECT SUBSTRB(xcc.contract_name, 1, 100)
                  FROM   xxcso_contract_customers xcc  -- 契約先テーブル
                  WHERE  xcc.contract_customer_id = xcm.contract_customer_id
                    AND  ROWNUM = 1
-                ) || flvv_con.attr) contract_name                      -- 契約書名
+               --) || flvv_con.attr) contract_name                     -- 契約書名
+               ) || flvv_con.attr), 1, 660) contract_name              -- 契約書名
+              /* 2009.09.14 M.Maruyama 0001355対応 END */
               ,xsdh.contract_year_date contract_period                 -- 契約期間
               ,xcm.cancellation_offer_code cancellation_offer_code     -- 契約解除申し出
               ,xsdh.other_content other_content                        -- 特約事項

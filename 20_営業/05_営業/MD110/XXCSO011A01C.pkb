@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -70,6 +70,7 @@ AS
  *  2009-07-14    1.14  K.Satomura       【0000476】機器状態２の故障中を4から9へ変更
  *  2009-07-16    1.15  K.Hosoi          【0000375,0000419】
  *  2009-08-10    1.16  K.Satomura       【0000662】顧客担当営業員存在チェックをコメントアウト
+ *  2009-09-10    1.17  K.Satomura       【0001335】顧客チェックを顧客区分によって変更するよう修正
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -205,6 +206,9 @@ AS
 /* 20090708_abe_0000464 START*/
   cv_tkn_number_54  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00577';  -- メーカーコード存在チェックエラー
 /* 20090708_abe_0000464 END*/
+  /* 2009.09.10 K.Satomura 0001335対応 START */
+  cv_tkn_number_55  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00579';  -- 顧客ステータスチェックエラーメッセージ
+  /* 2009.09.10 K.Satomura 0001335対応 END */
 
   --
   -- トークンコード
@@ -2639,6 +2643,9 @@ AS
     cv_cust_sts_approved   CONSTANT VARCHAR2(2) := '30';  -- 顧客ステータス「承認済」
     cv_cust_sts_customer   CONSTANT VARCHAR2(2) := '40';  -- 顧客ステータス「顧客」
     cv_cust_sts_abeyance   CONSTANT VARCHAR2(2) := '50';  -- 顧客ステータス「休止」
+    /* 2009.09.10 K.Satomura 0001335対応 START */
+    cv_cust_sts_check_off  CONSTANT VARCHAR2(2) := '99';  -- 顧客ステータス「対象外」
+    /* 2009.09.10 K.Satomura 0001335対応 END */
     /*20090402_yabuki_ST177 START*/
     cv_cust_sts_sp_aprvd   CONSTANT VARCHAR2(2) := '25';  -- 顧客ステータス「SP承認済」
     /*20090402_yabuki_ST177 END*/
@@ -2646,6 +2653,10 @@ AS
     cv_cust_resources_v    CONSTANT VARCHAR2(30) := '顧客担当営業員情報';
     cv_tkn_val_cust_cd     CONSTANT VARCHAR2(30) := '顧客コード';
     /*20090427_yabuki_ST0505_0517 END*/
+    /* 2009.09.10 K.Satomura 0001335対応 START */
+    ct_cust_cl_cd_cust     CONSTANT xxcso_cust_acct_sites_v.customer_class_code%TYPE := '10'; -- 顧客区分=顧客
+    ct_cust_cl_cd_round    CONSTANT xxcso_cust_acct_sites_v.customer_class_code%TYPE := '15'; -- 顧客区分=巡回
+    /* 2009.09.10 K.Satomura 0001335対応 END */
     --
     -- *** ローカル変数 ***
     lv_customer_status    xxcso_cust_accounts_v.customer_status%TYPE;  -- 顧客ステータス
@@ -2653,6 +2664,9 @@ AS
     lt_cust_acct_id       xxcso_cust_accounts_v.cust_account_id%TYPE;  -- アカウントID
     ln_cnt_rec            NUMBER;                                      -- レコード件数
     /*20090427_yabuki_ST0505_0517 END*/
+    /* 2009.09.10 K.Satomura 0001335対応 START */
+    lt_customer_class_code xxcso_cust_acct_sites_v.customer_class_code%TYPE;
+    /* 2009.09.10 K.Satomura 0001335対応 END */
     --
     -- *** ローカル例外 ***
     sql_expt      EXCEPTION;
@@ -2678,9 +2692,15 @@ AS
 --      AND    xcav.party_status   = cv_account_sts_active
 --      ;
       SELECT casv.customer_status  customer_status    -- 顧客ステータス
-           , casv.cust_account_id  cust_account_id    -- アカウントID
+            ,casv.cust_account_id  cust_account_id    -- アカウントID
+            /* 2009.09.10 K.Satomura 0001335対応 START */
+            ,casv.customer_class_code customer_class_code
+            /* 2009.09.10 K.Satomura 0001335対応 END */
       INTO   lv_customer_status
-           , lt_cust_acct_id
+            ,lt_cust_acct_id
+            /* 2009.09.10 K.Satomura 0001335対応 START */
+            ,lt_customer_class_code
+            /* 2009.09.10 K.Satomura 0001335対応 END */
       FROM   xxcso_cust_acct_sites_v  casv    -- 顧客マスタサイトビュー
       WHERE casv.account_number    = iv_account_number
       AND   casv.account_status    = cv_account_sts_active
@@ -2717,24 +2737,47 @@ AS
         --
     END;
     --
-    /*20090402_yabuki_ST177 START*/
-    -- 取得した顧客ステータスが「承認済」「顧客」「休止」「SP承認済」以外の場合
-    IF ( lv_customer_status NOT IN ( cv_cust_sts_approved, cv_cust_sts_customer, cv_cust_sts_abeyance, cv_cust_sts_sp_aprvd ) ) THEN
---    -- 取得した顧客ステータスが「承認済」「顧客」「休止」以外の場合
---    IF ( lv_customer_status NOT IN ( cv_cust_sts_approved, cv_cust_sts_customer, cv_cust_sts_abeyance ) ) THEN
-    /*20090402_yabuki_ST177 END*/
-      lv_errbuf := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_sales_appl_short_name    -- アプリケーション短縮名
-                     , iv_name         => cv_tkn_number_34            -- メッセージコード
-                     , iv_token_name1  => cv_tkn_kokyaku              -- トークンコード1
-                     , iv_token_value1 => iv_account_number           -- トークン値1
-                     , iv_token_name2  => cv_tkn_cust_status          -- トークンコード2
-                     , iv_token_value2 => lv_customer_status          -- トークン値2
-                   );
+    /* 2009.09.10 K.Satomura 0001335対応 START */
+    IF (lt_customer_class_code = ct_cust_cl_cd_cust) THEN
+    /* 2009.09.10 K.Satomura 0001335対応 END */
+      /*20090402_yabuki_ST177 START*/
+      -- 取得した顧客ステータスが「承認済」「顧客」「休止」「SP承認済」以外の場合
+      IF ( lv_customer_status NOT IN ( cv_cust_sts_approved, cv_cust_sts_customer, cv_cust_sts_abeyance, cv_cust_sts_sp_aprvd ) ) THEN
+      ---- 取得した顧客ステータスが「承認済」「顧客」「休止」以外の場合
+      --IF ( lv_customer_status NOT IN ( cv_cust_sts_approved, cv_cust_sts_customer, cv_cust_sts_abeyance ) ) THEN
+      /*20090402_yabuki_ST177 END*/
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name    -- アプリケーション短縮名
+                       , iv_name         => cv_tkn_number_34            -- メッセージコード
+                       , iv_token_name1  => cv_tkn_kokyaku              -- トークンコード1
+                       , iv_token_value1 => iv_account_number           -- トークン値1
+                       , iv_token_name2  => cv_tkn_cust_status          -- トークンコード2
+                       , iv_token_value2 => lv_customer_status          -- トークン値2
+                     );
+        --
+        RAISE sql_expt;
+        --
+      END IF;
       --
-      RAISE sql_expt;
+    /* 2009.09.10 K.Satomura 0001335対応 START */
+    ELSIF (lt_customer_class_code = ct_cust_cl_cd_round) THEN
+      -- 顧客区分が15：巡回の場合、顧客ステータスは99以外はエラー
+      IF (lv_customer_status <> cv_cust_sts_check_off) THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name    -- アプリケーション短縮名
+                       , iv_name         => cv_tkn_number_55            -- メッセージコード
+                       , iv_token_name1  => cv_tkn_kokyaku              -- トークンコード1
+                       , iv_token_value1 => iv_account_number           -- トークン値1
+                       , iv_token_name2  => cv_tkn_cust_status          -- トークンコード2
+                       , iv_token_value2 => lv_customer_status          -- トークン値2
+                     );
+        --
+        RAISE sql_expt;
+        --
+      END IF;
       --
     END IF;
+    /* 2009.09.10 K.Satomura 0001335対応 END */
     --
 /*20090427_yabuki_ST505_517 START*/
     BEGIN
@@ -3057,7 +3100,7 @@ AS
     --###########################  固定部 END   ############################
     --
     -- ========================================
-    -- A-10. 物件ロック処理
+    -- A-13. 物件ロック処理
     -- ========================================
     lock_ib_info(
         in_instance_id        => i_instance_rec.instance_id
@@ -3272,7 +3315,7 @@ AS
     --###########################  固定部 END   ############################
     --
     -- ========================================
-    -- A-10. 物件ロック処理
+    -- A-13. 物件ロック処理
     -- ========================================
     lock_ib_info(
         in_instance_id        => i_instance_rec.instance_id
@@ -3739,7 +3782,7 @@ AS
     l_txn_rec.TRANSACTION_TYPE_ID     := in_transaction_type_id;
     --
     -- ========================================
-    -- A-10. 物件ロック処理
+    -- A-13. 物件ロック処理
     -- ========================================
     lock_ib_info(
         in_instance_id        => i_instance_rec.instance_id
@@ -4045,7 +4088,7 @@ AS
     l_txn_rec.TRANSACTION_TYPE_ID     := in_transaction_type_id;
     --
     -- ========================================
-    -- A-10. 物件ロック処理
+    -- A-13. 物件ロック処理
     -- ========================================
     lock_ib_info(
         in_instance_id        => i_instance_rec.instance_id

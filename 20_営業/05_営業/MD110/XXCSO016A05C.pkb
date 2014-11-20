@@ -8,7 +8,7 @@ AS
  *
  * MD.050           : MD050_CSO_016_A05_情報系-EBSインターフェース：(OUT)什器マスタ
  *
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2009-07-09    1.9   K.Hosoi          SCS障害管理番号(0000518) 対応
  *  2009-07-21    1.10  K.Hosoi          SCS障害管理番号(0000475) 対応
  *  2009-08-06    1.11  K.Satomura       SCS障害管理番号(0000935) 対応
+ *  2009-09-03    1.12  M.Maruyama       SCS障害管理番号(0001192) 対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1476,12 +1477,27 @@ AS
     -- =========================================
     -- 先月末拠点コード・先月末顧客コードを抽出
     -- =========================================
+    /* 2009.09.03 M.Maruyama 0001192対応 START */
+    -- 先月末年月が未設定の場合
+    IF (l_get_rec.last_year_month IS NULL) THEN
+      -- 設置日=業務月の場合
+      IF (TO_CHAR(l_get_rec.install_date,cv_yr_mnth_frmt) = TO_CHAR(ld_bsnss_mnth,cv_yr_mnth_frmt)) THEN
+        lv_last_month_base_cd   := NULL;  -- 先月末拠点コードにNULLをセット
+        lv_lst_accnt_num        := NULL;  -- 先月末顧客コードにNULLをセット
+      -- 初回設置日<>業務月の場合
+      ELSE
+        lv_last_month_base_cd   := lv_sale_base_code;  -- 先月末拠点コードに現在の拠点コードをセット
+        lv_lst_accnt_num        := lv_account_number;  -- 先月末顧客コードに現在の顧客コードをセット
+      END IF;
+--
     -- 先月末年月<>業務月-１の場合
-    IF ((l_get_rec.last_year_month <> TO_CHAR(ADD_MONTHS(ld_bsnss_mnth,cn_mnth_shft),cv_yr_mnth_frmt))
-      OR (l_get_rec.last_year_month IS NULL))
+    --IF ((l_get_rec.last_year_month <> TO_CHAR(ADD_MONTHS(ld_bsnss_mnth,cn_mnth_shft),cv_yr_mnth_frmt))
+    --  OR (l_get_rec.last_year_month IS NULL))
+    ELSIF (l_get_rec.last_year_month <> TO_CHAR(ADD_MONTHS(ld_bsnss_mnth,cn_mnth_shft),cv_yr_mnth_frmt))
+    /* 2009.09.03 M.Maruyama 0001192対応 END */
     THEN
-     lv_last_month_base_cd   := lv_sale_base_code;  -- 先月末拠点コードに現在の拠点コードをセット
-     lv_lst_accnt_num        := lv_account_number;  -- 先月末顧客コードに現在の顧客コードをセット
+      lv_last_month_base_cd   := lv_sale_base_code;  -- 先月末拠点コードに現在の拠点コードをセット
+      lv_lst_accnt_num        := lv_account_number;  -- 先月末顧客コードに現在の顧客コードをセット
 --
     -- 先月末年月=業務月-１の場合
     ELSIF (l_get_rec.last_year_month = TO_CHAR(ADD_MONTHS(ld_bsnss_mnth,cn_mnth_shft),cv_yr_mnth_frmt)) THEN
