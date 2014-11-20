@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A07C(body)
  * Description      : 親コード出荷実績作成
  * MD.050           : 親コード出荷実績作成 MD050_COP_004_A07
- * Version          : 1.7
+ * Version          : 1.9
  *
  * Program List
  * ----------------------   ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/06/29    1.6   SCS.Fukada       統合テスト障害:0000169対応
  *  2009/07/07    1.7   SCS.Sasaki       統合テスト障害:0000482対応
  *  2009/07/21    1.8   SCS.Fukada       統合テスト障害:0000800対応
+ *  2009/11/09    1.9   SCS.Hokkanji     I_E_637対応
  *
  *****************************************************************************************/
 --
@@ -162,7 +163,10 @@ AS
     order_header_id       xxwsh_order_headers_all.order_header_id%TYPE      -- 受注ヘッダアドオン.受注ヘッダID
    ,order_line_id         xxwsh_order_lines_all.order_line_id%TYPE          -- 受注明細アドオン.受注明細ID
    ,shipping_item_code    xxwsh_order_lines_all.shipping_item_code%TYPE     -- 受注明細アドオン.出荷品目
-   ,parent_item_no_ship   xxcop_item_categories1_v.parent_item_no%TYPE      -- 計画_品目カテゴリビュー1(出荷日基準).親品目No
+--20091109 Ver1.9 I_E_637対応 SCS.Hokkanji ADD START
+--   ,parent_item_no_ship   xxcop_item_categories1_v.parent_item_no%TYPE      -- 計画_品目カテゴリビュー1(出荷日基準).親品目No
+   ,parent_item_no_ship   xxcop_item_categories2_v.parent_item_no%TYPE      -- 計画_品目カテゴリビュー2(出荷日基準).親品目No
+--20091109 Ver1.9 I_E_637対応 SCS.Hokkanji ADD END
    ,result_deliver_to     xxwsh_order_headers_all.result_deliver_to%TYPE    -- 受注ヘッダアドオン.出荷先_実績
    ,deliver_from          xxwsh_order_headers_all.deliver_from%TYPE         -- 受注ヘッダアドオン.出荷元保管場所
    ,head_sales_branch     xxwsh_order_headers_all.head_sales_branch%TYPE    -- 受注ヘッダアドオン.管轄拠点
@@ -1126,7 +1130,10 @@ AS
 --20090615_Ver1.5_T1_1194_SCS.Goto_DEL_START
 --            ,xxcop_item_categories1_v   xicv_n    -- 品目カテゴリビュー(システム日付基準)
 --20090615_Ver1.5_T1_1194_SCS.Goto_DEL_END
-            ,xxcop_item_categories1_v   xicv_s    -- 品目カテゴリビュー(出荷日基準)
+--20091109 Ver1.9 I_E_637対応 SCS.Hokkanji ADD START
+            ,xxcop_item_categories2_v   xicv_s    -- 品目カテゴリビュー(出荷日基準)
+--            ,xxcop_item_categories1_v   xicv_s    -- 品目カテゴリビュー(出荷日基準)
+--20091109 Ver1.9 I_E_637対応 SCS.Hokkanji ADD END
 --20090413_Ver1.3_T1_0507_SCS.Kikuchi_MOD_END
       WHERE  xoha.order_header_id = xola.order_header_id
 --
