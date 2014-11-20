@@ -13,200 +13,223 @@
 WITH
   xrrv_view AS
   (
-    SELECT xrrv.employee_number              AS  employee_number     --営業員コード
-          ,xrrv.full_name                    AS  employee_name       --営業員名
-          ,xxcso_util_common_pkg.get_emp_parameter(
-            xrrv.group_number_new,
-            xrrv.group_number_old,
-            xrrv.issue_date,
-            xxcso_util_common_pkg.get_online_sysdate)
-                                             AS  group_number        --グループ番号
-          ,xxcso_util_common_pkg.get_emp_parameter(
-            xrrv.group_grade_new,
-            xrrv.group_grade_old,
-            xrrv.issue_date,
-            xxcso_util_common_pkg.get_online_sysdate)
-                                             AS  group_grade         --グループ内順序
-          ,xxcso_util_common_pkg.get_emp_parameter(
-            xrrv.group_leader_flag_new,
-            xrrv.group_leader_flag_old,
-            xrrv.issue_date,
-            xxcso_util_common_pkg.get_online_sysdate)
-                                             AS  group_leader_flag   --グループ長区分
-          ,xxcso_util_common_pkg.get_emp_parameter(
-            xrrv.work_base_code_new,
-            xrrv.work_base_code_old,
-            xrrv.issue_date,
-            xxcso_util_common_pkg.get_online_sysdate)
-                                             AS  base_code           -- 拠点コード
-          ,( CASE WHEN xxcso_util_common_pkg.get_emp_parameter(
-                         xrrv.group_leader_flag_new,
-                         xrrv.group_leader_flag_old,
-                         xrrv.issue_date,
-                         xxcso_util_common_pkg.get_online_sysdate) = 'Y' THEN
-                    xrrv.full_name 
-                  ELSE
-                    NULL
-             END
-           )                                 AS  group_leader_name  --グループ長名
-          ,xxcso_util_common_pkg.get_emp_parameter(
-             xrrv.position_name_new,
-             xrrv.position_name_old,
-             xrrv.issue_date,
-             xxcso_util_common_pkg.get_online_sysdate)
-                                             AS  job_lank           --職位名
-          ,'1'                                   slsprsn_xsts_f     -- 営業員有効フラグ
-      FROM xxcso_resource_relations_v2 xrrv    -- リソース関連マスタ（最新）VIEW
-     WHERE (xrrv.issue_date <= TO_CHAR(xxcso_util_common_pkg.get_online_sysdate, 'YYYYMMDD')
-            AND  xrrv.work_base_code_new  = :1)  -- base_code売上計画検索情報リージョン.拠点コード
-        OR (xrrv.issue_date > TO_CHAR(xxcso_util_common_pkg.get_online_sysdate, 'YYYYMMDD')
-            AND  xrrv.work_base_code_old  = :2)  -- base_code売上計画検索情報リージョン.拠点コード
+    SELECT   xrrv.employee_number              AS  employee_number     --営業員コード
+            ,xrrv.full_name                    AS  employee_name       --営業員名
+            ,xxcso_util_common_pkg.get_emp_parameter(
+               xrrv.group_number_new
+              ,xrrv.group_number_old
+              ,xrrv.issue_date
+              ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+             )                                 AS  group_number        --グループ番号
+            ,xxcso_util_common_pkg.get_emp_parameter(
+               xrrv.group_grade_new
+              ,xrrv.group_grade_old
+              ,xrrv.issue_date
+              ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+             )                                 AS  group_grade         --グループ内順序
+            ,xxcso_util_common_pkg.get_emp_parameter(
+               xrrv.group_leader_flag_new
+              ,xrrv.group_leader_flag_old
+              ,xrrv.issue_date
+              ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+              )                                AS  group_leader_flag   --グループ長区分
+            ,xxcso_util_common_pkg.get_emp_parameter(
+               xrrv.work_base_code_new
+              ,xrrv.work_base_code_old
+              ,xrrv.issue_date
+              ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+             )                                 AS  base_code           -- 拠点コード
+            ,(
+               CASE WHEN xxcso_util_common_pkg.get_emp_parameter(
+                           xrrv.group_leader_flag_new,
+                           xrrv.group_leader_flag_old,
+                           xrrv.issue_date,
+                           TRUNC(xxcso_util_common_pkg.get_online_sysdate)) = 'Y' THEN
+                      xrrv.full_name 
+                    ELSE
+                      NULL
+               END
+             )                                 AS  group_leader_name  --グループ長名
+            ,xxcso_util_common_pkg.get_emp_parameter(
+               xrrv.position_name_new
+              ,xrrv.position_name_old
+              ,xrrv.issue_date
+              ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+              )                                AS  job_lank           --職位名
+            ,'1'                               AS  slsprsn_xsts_f     -- 営業員有効フラグ
+      FROM   xxcso_resource_relations_v2 xrrv    -- リソース関連マスタ（最新）VIEW
+     WHERE   (
+               (
+                 (TO_DATE(xrrv.issue_date, 'YYYYMMDD') <= TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+                 AND
+                 (xrrv.work_base_code_new  = :1)
+               )
+               OR
+               (
+                 (TO_DATE(xrrv.issue_date, 'YYYYMMDD') > TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+                 AND
+                 (xrrv.work_base_code_old  = :2)
+               )
+             )
    ),
   xspmp_view AS
   (
-    SELECT xspmp.employee_number             AS  employee_number    -- 営業員コード
-          ,xev.full_name                     AS  employee_name      -- 営業員名
-          ,xspmp.group_number                AS  group_number       -- グループ番号
-          ,xspmp.group_grade                 AS  group_grade        -- グループ内順序
-          ,xspmp.group_leader_flag           AS  group_leader_flag  -- グループ長区分
-          ,xspmp.base_code                   AS  base_code          -- 拠点コード
-          ,( CASE WHEN xspmp.group_leader_flag = 'Y' THEN
-                    xev.full_name
-                  ELSE
-                    NULL
-             END
-           )                                 AS  group_leader_name  --グループ長名
-          ,xspmp.office_rank_name            AS  job_lank           --職位名
-          ,'0'                                   slsprsn_xsts_f     -- 営業員有効フラグ
-      FROM xxcso_sls_prsn_mnthly_plns xspmp    -- 営業員別月別計画
-          ,xxcso_employees_v2 xev              -- 従業員マスタ（最新）VIEW
-     WHERE xspmp.fiscal_year     = :3    -- 売上計画検索情報リージョン.年度一致
-       AND xspmp.base_code       = :4    -- 売上計画検索情報リージョン.拠点
-       AND xev.employee_number  = xspmp.employee_number
-       AND NOT EXISTS (
-               --リソース関連マスタ（最新）VIEWにいない
-               SELECT 'X'
-                 FROM xrrv_view    -- リソース関連マスタ（最新）VIEW
-                WHERE xrrv_view.base_code       =  xspmp.base_code
-                  AND xrrv_view.employee_number =  xspmp.employee_number
-           )
-       AND xspmp.year_month  = 
-           (      --最大月
-             SELECT MAX(xspmp2.year_month)
-               FROM xxcso_sls_prsn_mnthly_plns xspmp2
-              WHERE xspmp2.fiscal_year     = xspmp.fiscal_year
-                AND xspmp2.base_code       = xspmp.base_code
-                AND xspmp2.employee_number = xspmp.employee_number
-              GROUP BY xspmp2.base_code, xspmp2.fiscal_year, xspmp2.employee_number
-           )
+    SELECT   xspmp.employee_number             AS  employee_number    -- 営業員コード
+            ,xev.full_name                     AS  employee_name      -- 営業員名
+            ,xspmp.group_number                AS  group_number       -- グループ番号
+            ,xspmp.group_grade                 AS  group_grade        -- グループ内順序
+            ,xspmp.group_leader_flag           AS  group_leader_flag  -- グループ長区分
+            ,xspmp.base_code                   AS  base_code          -- 拠点コード
+            ,(
+               CASE WHEN xspmp.group_leader_flag = 'Y' THEN
+                      xev.full_name
+                    ELSE
+                      NULL
+               END
+             )                                 AS  group_leader_name  -- グループ長名
+            ,xspmp.office_rank_name            AS  job_lank           -- 職位名
+            ,'0'                               AS  slsprsn_xsts_f     -- 営業員有効フラグ
+      FROM   xxcso_sls_prsn_mnthly_plns xspmp    -- 営業員別月別計画
+            ,xxcso_employees_v          xev      -- 従業員マスタVIEW
+     WHERE   xspmp.fiscal_year         = :3    -- 売上計画検索情報リージョン.年度一致
+       AND   xspmp.base_code           = :4    -- 売上計画検索情報リージョン.拠点
+       AND   xspmp.year_month          =
+             (      --最大月
+               SELECT MAX(xspmp2.year_month)
+                 FROM xxcso_sls_prsn_mnthly_plns xspmp2
+                WHERE xspmp2.fiscal_year     = xspmp.fiscal_year
+                  AND xspmp2.base_code       = xspmp.base_code
+                  AND xspmp2.employee_number = xspmp.employee_number
+                GROUP BY xspmp2.base_code, xspmp2.fiscal_year, xspmp2.employee_number
+             )
+       AND   NOT EXISTS (
+                 --リソース関連マスタ（最新）VIEWにいない
+                 SELECT 'X'
+                   FROM xrrv_view    -- リソース関連マスタ（最新）VIEW
+                  WHERE xrrv_view.base_code       =  xspmp.base_code
+                    AND xrrv_view.employee_number =  xspmp.employee_number
+             )
+       AND   xev.employee_number      = xspmp.employee_number
+       AND   xev.employee_start_date  =
+             (
+               SELECT  MAX(ppf.effective_start_date)
+               FROM    per_people_f ppf
+               WHERE   ppf.effective_start_date <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+                 AND   ppf.employee_number       = xspmp.employee_number
+               GROUP BY ppf.person_id, ppf.employee_number
+             )
   ),
   get_ym_view AS
   (
-    SELECT TO_CHAR(glp.period_year )          AS  period_year -- 年度
-          ,TO_CHAR(glp.start_date,'YYYYMM')   AS  year_month  -- 年月
-      FROM gl_sets_of_books  glb                -- 会計帳簿マスタ
-          ,gl_periods        glp                -- 会計カレンダテーブル
-     WHERE glb.set_of_books_id        = FND_PROFILE.VALUE('GL_SET_OF_BKS_ID')  -- '1002'
-       AND glp.period_set_name        = glb.period_set_name
-       AND glp.period_year            = :5      -- 売上計画検索情報リージョン.年度
-       AND glp.adjustment_period_flag = 'N'
+    SELECT   TO_CHAR(glp.period_year)           AS  period_year -- 年度
+            ,TO_CHAR(glp.start_date,'YYYYMM')   AS  year_month  -- 年月
+      FROM   gl_sets_of_books  glb                -- 会計帳簿マスタ
+            ,gl_periods        glp                -- 会計カレンダテーブル
+     WHERE   glb.set_of_books_id        = FND_PROFILE.VALUE('GL_SET_OF_BKS_ID')
+       AND   glp.period_set_name        = glb.period_set_name
+       AND   glp.period_year            = :5      -- 売上計画検索情報リージョン.年度
+       AND   glp.adjustment_period_flag = 'N'
   ),
   prsn_base_view AS
   (
-    SELECT  gyv.period_year       -- 年度
-           ,gyv.year_month         -- 年月
-           ,rrsp.employee_number    -- 営業員コード
-           ,rrsp.employee_name      -- 営業員名
-           ,rrsp.group_number       -- グループ番号
-           ,rrsp.group_leader_flag  -- グループ長区分
-           ,rrsp.base_code          -- 拠点コード
-           ,rrsp.group_grade        -- グループ内順序
-           ,rrsp.group_leader_name  -- グループ長名
-           ,rrsp.job_lank           -- 職位
-           ,rrsp.slsprsn_xsts_f     -- 営業員有効フラグ
-      FROM get_ym_view gyv,
-           (SELECT employee_number    -- 営業員コード
-                  ,employee_name      -- 営業員名
-                  ,group_number       -- グループ番号
-                  ,group_leader_flag  -- グループ長区分
-                  ,base_code          -- 拠点コード
-                  ,group_grade        -- グループ内順序
-                  ,group_leader_name  -- グループ長名
-                  ,job_lank           -- 職位
-                  ,slsprsn_xsts_f     -- 営業員有効フラグ
-              FROM xrrv_view
-            UNION ALL
-            SELECT employee_number
-                  ,employee_name
-                  ,group_number
-                  ,group_leader_flag
-                  ,base_code
-                  ,group_grade
-                  ,group_leader_name
-                  ,job_lank
-                  ,slsprsn_xsts_f
-              FROM xspmp_view
-           ) rrsp
-     WHERE rrsp.group_number IS NOT NULL
+    SELECT   gyv.period_year         -- 年度
+            ,gyv.year_month          -- 年月
+            ,rrsp.employee_number    -- 営業員コード
+            ,rrsp.employee_name      -- 営業員名
+            ,rrsp.group_number       -- グループ番号
+            ,rrsp.group_leader_flag  -- グループ長区分
+            ,rrsp.base_code          -- 拠点コード
+            ,rrsp.group_grade        -- グループ内順序
+            ,rrsp.group_leader_name  -- グループ長名
+            ,rrsp.job_lank           -- 職位
+            ,rrsp.slsprsn_xsts_f     -- 営業員有効フラグ
+      FROM   get_ym_view gyv
+            ,(
+               SELECT employee_number    -- 営業員コード
+                     ,employee_name      -- 営業員名
+                     ,group_number       -- グループ番号
+                     ,group_leader_flag  -- グループ長区分
+                     ,base_code          -- 拠点コード
+                     ,group_grade        -- グループ内順序
+                     ,group_leader_name  -- グループ長名
+                     ,job_lank           -- 職位
+                     ,slsprsn_xsts_f     -- 営業員有効フラグ
+               FROM   xrrv_view
+               UNION ALL
+               SELECT employee_number
+                     ,employee_name
+                     ,group_number
+                     ,group_leader_flag
+                     ,base_code
+                     ,group_grade
+                     ,group_leader_name
+                     ,job_lank
+                     ,slsprsn_xsts_f
+               FROM   xspmp_view
+            ) rrsp
+     WHERE  rrsp.group_number IS NOT NULL
   )
-SELECT '2'                                 AS  data_kind_flag                 -- データ種別（1：拠点用 2：営業員用）
-      ,prsn_base.period_year               AS  business_year                  -- 年度
-      ,prsn_base.year_month                AS  year_month                     -- 年月
-      ,prsn_base.slsprsn_xsts_f            AS  slsprsn_xsts_f                 -- 営業員有効フラグ
-      ,spmp.base_code                      AS  base_code                      -- 拠点コード
-      ,NULL                                AS  base_name                      -- 拠点名称
-      ,NULL                                AS  bsc_sls_new_amt                -- 基本新規貢献
-      ,NULL                                AS  bsc_sls_next_amt               -- 基本翌年貢献
-      ,NULL                                AS  bsc_sls_exist_amt              -- 基本既存売上
-      ,NULL                                AS  bsc_discount                   -- 基本値引
-      ,NULL                                AS  bsc_total_sls_amt              -- 基本合計売上(基本ノルマ)
-      ,NULL                                AS  def_cnt_total                  -- 訪問
-      ,NULL                                AS  target_discount_amt            -- 目標値引
-      ,prsn_base.group_number              AS  group_number                   -- グループ番号
-      ,prsn_base.group_leader_flag         AS  group_leader_flag              -- グループ長区分
-      ,prsn_base.group_leader_name         AS  group_leader_name              -- グループ長名
-      ,prsn_base.group_grade               AS  group_grade                    -- グループ内順序
-      ,prsn_base.employee_number           AS  employee_number                -- 営業員コード
-      ,prsn_base.employee_name             AS  employee_name                  -- 営業員名
-      ,prsn_base.job_lank                  AS  job_lank                       -- 職位
-      ,spmp.pri_rslt_vd_new_serv_amt       AS  pri_rslt_vd_new_serv_amt       -- 前年実績（VD：新規貢献）
-      ,spmp.pri_rslt_vd_next_serv_amt      AS  pri_rslt_vd_next_serv_amt      -- 前年実績（VD：翌年貢献）
-      ,spmp.pri_rslt_vd_exist_serv_amt     AS  pri_rslt_vd_exist_serv_amt     -- 前年実績（VD：既存売上）
-      ,spmp.pri_rslt_new_serv_amt          AS  pri_rslt_new_serv_amt          -- 前年実績（VD以外：新規貢献）
-      ,spmp.pri_rslt_next_serv_amt         AS  pri_rslt_next_serv_amt         -- 前年実績（VD以外：翌年貢献）
-      ,spmp.pri_rslt_exist_serv_amt        AS  pri_rslt_exist_serv_amt        -- 前年実績（VD以外：既存売上）
-      ,spmp.bsc_sls_vd_new_serv_amt        AS  bsc_sls_vd_new_serv_amt        -- 基本売上（VD：新規貢献）
-      ,spmp.bsc_sls_vd_next_serv_amt       AS  bsc_sls_vd_next_serv_amt       -- 基本売上（VD：翌年貢献）
-      ,spmp.bsc_sls_vd_exist_serv_amt      AS  bsc_sls_vd_exist_serv_amt      -- 基本売上（VD：既存売上）
-      ,spmp.bsc_sls_new_serv_amt           AS  bsc_sls_new_serv_amt           -- 基本売上（VD以外：新規貢献）
-      ,spmp.bsc_sls_next_serv_amt          AS  bsc_sls_next_serv_amt          -- 基本売上（VD以外：翌年貢献）
-      ,spmp.bsc_sls_prsn_total_amt         AS  bsc_sls_prsn_total_amt         -- 基本売上（営業員計：計）
-      ,spmp.tgt_sales_vd_new_serv_amt      AS  tgt_sales_vd_new_serv_amt      -- 目標売上（VD：新規貢献）
-      ,spmp.tgt_sales_vd_next_serv_amt     AS  tgt_sales_vd_next_serv_amt     -- 目標売上（VD：翌年貢献）
-      ,spmp.tgt_sales_vd_exist_serv_amt    AS  tgt_sales_vd_exist_serv_amt    -- 目標売上（VD：既存売上）
-      ,spmp.tgt_sales_new_serv_amt         AS  tgt_sales_new_serv_amt         -- 目標売上（VD以外：新規貢献）
-      ,spmp.tgt_sales_next_serv_amt        AS  tgt_sales_next_serv_amt        -- 目標売上（VD以外：翌年貢献）
-      ,spmp.tgt_sales_prsn_total_amt       AS  tgt_sales_prsn_total_amt       -- 目標売上（営業員計：計）
-      ,spmp.rslt_vd_new_serv_amt           AS  rslt_vd_new_serv_amt           -- 実績（VD：新規貢献）
-      ,spmp.rslt_vd_exist_serv_amt         AS  rslt_vd_exist_serv_amt         -- 実績（VD：既存売上）
-      ,spmp.rslt_vd_total_amt              AS  rslt_vd_total_amt              -- 実績（VD：計）
-      ,spmp.rslt_new_serv_amt              AS  rslt_new_serv_amt              -- 実績（VD以外：新規貢献）
-      ,spmp.rslt_exist_serv_amt            AS  rslt_exist_serv_amt            -- 実績（VD以外：既存売上）
-      ,spmp.rslt_prsn_total_amt            AS  rslt_prsn_total_amt            -- 実績（営業員計：計）
-      ,spmp.vis_vd_total_amt               AS  vis_vd_total_amt               -- 訪問（VD：計）
-      ,spmp.vis_prsn_total_amt             AS  vis_prsn_total_amt             -- 訪問（営業員計：計）
-      ,(CASE WHEN spmp.year_month IS NOT NULL THEN
+SELECT   '2'                               AS  data_kind_flag                 -- データ種別（1：拠点用 2：営業員用）
+        ,prsn_base.period_year             AS  business_year                  -- 年度
+        ,prsn_base.year_month              AS  year_month                     -- 年月
+        ,prsn_base.slsprsn_xsts_f          AS  slsprsn_xsts_f                 -- 営業員有効フラグ
+        ,spmp.base_code                    AS  base_code                      -- 拠点コード
+        ,NULL                              AS  base_name                      -- 拠点名称
+        ,NULL                              AS  bsc_sls_new_amt                -- 基本新規貢献
+        ,NULL                              AS  bsc_sls_next_amt               -- 基本翌年貢献
+        ,NULL                              AS  bsc_sls_exist_amt              -- 基本既存売上
+        ,NULL                              AS  bsc_discount                   -- 基本値引
+        ,NULL                              AS  bsc_total_sls_amt              -- 基本合計売上(基本ノルマ)
+        ,NULL                              AS  def_cnt_total                  -- 訪問
+        ,NULL                              AS  target_discount_amt            -- 目標値引
+        ,prsn_base.group_number            AS  group_number                   -- グループ番号
+        ,prsn_base.group_leader_flag       AS  group_leader_flag              -- グループ長区分
+        ,prsn_base.group_leader_name       AS  group_leader_name              -- グループ長名
+        ,prsn_base.group_grade             AS  group_grade                    -- グループ内順序
+        ,prsn_base.employee_number         AS  employee_number                -- 営業員コード
+        ,prsn_base.employee_name           AS  employee_name                  -- 営業員名
+        ,prsn_base.job_lank                AS  job_lank                       -- 職位
+        ,spmp.pri_rslt_vd_new_serv_amt     AS  pri_rslt_vd_new_serv_amt       -- 前年実績（VD：新規貢献）
+        ,spmp.pri_rslt_vd_next_serv_amt    AS  pri_rslt_vd_next_serv_amt      -- 前年実績（VD：翌年貢献）
+        ,spmp.pri_rslt_vd_exist_serv_amt   AS  pri_rslt_vd_exist_serv_amt     -- 前年実績（VD：既存売上）
+        ,spmp.pri_rslt_new_serv_amt        AS  pri_rslt_new_serv_amt          -- 前年実績（VD以外：新規貢献）
+        ,spmp.pri_rslt_next_serv_amt       AS  pri_rslt_next_serv_amt         -- 前年実績（VD以外：翌年貢献）
+        ,spmp.pri_rslt_exist_serv_amt      AS  pri_rslt_exist_serv_amt        -- 前年実績（VD以外：既存売上）
+        ,spmp.bsc_sls_vd_new_serv_amt      AS  bsc_sls_vd_new_serv_amt        -- 基本売上（VD：新規貢献）
+        ,spmp.bsc_sls_vd_next_serv_amt     AS  bsc_sls_vd_next_serv_amt       -- 基本売上（VD：翌年貢献）
+        ,spmp.bsc_sls_vd_exist_serv_amt    AS  bsc_sls_vd_exist_serv_amt      -- 基本売上（VD：既存売上）
+        ,spmp.bsc_sls_new_serv_amt         AS  bsc_sls_new_serv_amt           -- 基本売上（VD以外：新規貢献）
+        ,spmp.bsc_sls_next_serv_amt        AS  bsc_sls_next_serv_amt          -- 基本売上（VD以外：翌年貢献）
+        ,spmp.bsc_sls_prsn_total_amt       AS  bsc_sls_prsn_total_amt         -- 基本売上（営業員計：計）
+        ,spmp.tgt_sales_vd_new_serv_amt    AS  tgt_sales_vd_new_serv_amt      -- 目標売上（VD：新規貢献）
+        ,spmp.tgt_sales_vd_next_serv_amt   AS  tgt_sales_vd_next_serv_amt     -- 目標売上（VD：翌年貢献）
+        ,spmp.tgt_sales_vd_exist_serv_amt  AS  tgt_sales_vd_exist_serv_amt    -- 目標売上（VD：既存売上）
+        ,spmp.tgt_sales_new_serv_amt       AS  tgt_sales_new_serv_amt         -- 目標売上（VD以外：新規貢献）
+        ,spmp.tgt_sales_next_serv_amt      AS  tgt_sales_next_serv_amt        -- 目標売上（VD以外：翌年貢献）
+        ,spmp.tgt_sales_prsn_total_amt     AS  tgt_sales_prsn_total_amt       -- 目標売上（営業員計：計）
+        ,spmp.rslt_vd_new_serv_amt         AS  rslt_vd_new_serv_amt           -- 実績（VD：新規貢献）
+        ,spmp.rslt_vd_exist_serv_amt       AS  rslt_vd_exist_serv_amt         -- 実績（VD：既存売上）
+        ,spmp.rslt_vd_total_amt            AS  rslt_vd_total_amt              -- 実績（VD：計）
+        ,spmp.rslt_new_serv_amt            AS  rslt_new_serv_amt              -- 実績（VD以外：新規貢献）
+        ,spmp.rslt_exist_serv_amt          AS  rslt_exist_serv_amt            -- 実績（VD以外：既存売上）
+        ,spmp.rslt_prsn_total_amt          AS  rslt_prsn_total_amt            -- 実績（営業員計：計）
+        ,spmp.vis_vd_total_amt             AS  vis_vd_total_amt               -- 訪問（VD：計）
+        ,spmp.vis_prsn_total_amt           AS  vis_prsn_total_amt             -- 訪問（営業員計：計）
+        ,(
+           CASE
+             WHEN spmp.year_month IS NOT NULL THEN
                '1'
              ELSE
                '0'
-        END)                               AS  sls_pln_effective_flag         -- 計画データ有効フラグ
-  FROM xxcso_sls_prsn_mnthly_plns  spmp    -- 営業員別月別計画テーブル
-      ,prsn_base_view prsn_base
- WHERE spmp.base_code(+)       = :6  --base_code 売上計画検索情報リージョン.拠点コード
-   AND spmp.employee_number(+) = prsn_base.employee_number
-   AND spmp.year_month(+)      = prsn_base.year_month  
+           END
+         )                                 AS  sls_pln_effective_flag         -- 計画データ有効フラグ
+  FROM   xxcso_sls_prsn_mnthly_plns  spmp    -- 営業員別月別計画テーブル
+        ,prsn_base_view prsn_base
+ WHERE   spmp.base_code(+)       = :6  --base_code 売上計画検索情報リージョン.拠点コード
+   AND   spmp.employee_number(+) = prsn_base.employee_number
+   AND   spmp.year_month(+)      = prsn_base.year_month  
 ORDER BY TO_NUMBER(prsn_base.group_number) ASC,
-         prsn_base.slsprsn_xsts_f ASC,
+         TO_NUMBER(prsn_base.slsprsn_xsts_f) DESC,
          TO_NUMBER(prsn_base.group_grade) ASC,
          prsn_base.employee_name ASC,
          prsn_base.year_month ASC
