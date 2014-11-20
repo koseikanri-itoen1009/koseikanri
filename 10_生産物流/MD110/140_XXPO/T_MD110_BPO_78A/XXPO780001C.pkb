@@ -7,7 +7,7 @@ AS
  * Description      : 月次〆切処理（有償支給相殺）
  * MD.050/070       : 月次〆切処理（有償支給相殺）Issue1.0  (T_MD050_BPO_780)
  *                    計算書                                (T_MD070_BPO_78A)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/03/10    1.2   Masayuki Ikeda   ・変更要求No.81対応
  *  2008/06/20    1.3  Yasuhisa Yamamoto ST不具合対応#135
  *  2008/07/29    1.4   Satoshi Yunba    禁則文字対応
+ *  2008/12/05    1.5  Tsuyoki Yoshimoto 本番障害#446
  *
  *****************************************************************************************/
 --
@@ -566,7 +567,10 @@ AS
             ,xola.unit_price                AS unit_price   -- 単価
             ,TO_NUMBER( flv.lookup_code )   AS tax_rate     -- 消費税率
             ,CASE
-              WHEN ( otta.order_category_code = 'ORDER'  ) THEN xola.quantity
+-- 2008/12/05 v1.5 T.Yoshimoto Mod Start 本番#446
+              --WHEN ( otta.order_category_code = 'ORDER'  ) THEN xola.quantity
+              WHEN ( otta.order_category_code = 'ORDER'  ) THEN xola.shipped_quantity
+-- 2008/12/05 v1.5 T.Yoshimoto Mod End 本番#446
               WHEN ( otta.order_category_code = 'RETURN' ) THEN xola.quantity * -1
              END quantity                           -- 出荷実績数量
       FROM xxwsh_order_headers_all    xoha    -- 受注ヘッダアドオン
