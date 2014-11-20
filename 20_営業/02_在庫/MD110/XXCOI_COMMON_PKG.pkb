@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(body)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -48,6 +48,8 @@ AS
  *  2009/04/09    1.3   H.Sasaki         [T1_0380]入庫側顧客コードの戻り値設定
  *  2009/04/24    1.4   T.Nakamura       [T1_0630]倉庫保管場所変換で、専門店直営の保管場所コード体系に対応
  *  2009/04/30    1.5   T.Nakamura       最終行にバックスラッシュを追加
+ *  2009/04/30    1.5   T.Nakamura       最終行にバックスラッシュを追加
+ *  2009/05/18    1.6   T.Nakamura       [T1_1044]HHT倉庫保管場所コードの取得条件変更
  *
  *****************************************************************************************/
 --
@@ -1249,29 +1251,46 @@ AS
   --
   --###########################  固定部 END   ############################
 --
+-- == 2009/05/18 V1.6 Modified START ===============================================================
+--    SELECT 
+--             msi.secondary_inventory_name   AS secondary_inventory_name -- 1.保管場所コード
+--            ,msi.attribute7                 AS base_code                -- 2.拠点コード
+---- == 2009/04/24 Ver1.4 Deleted START =========================================
+----            ,msi.disable_date               AS disable_date             -- 3.失効日
+---- == 2009/04/24 Ver1.4 Deleted END =========================================
+--            ,msi.attribute5                 AS subinv_div               -- 4.棚卸対象
+--    INTO
+--             ov_subinv_code                                             -- 1.保管場所コード
+--            ,ov_base_code                                               -- 2.拠点コード
+---- == 2009/04/24 Ver1.4 Deleted START =========================================
+----            ,lt_disable_date                                            -- 3.失効日
+---- == 2009/04/24 Ver1.4 Deleted END =========================================
+--            ,ov_subinv_div                                              -- 4.棚卸対象
+--    FROM    mtl_secondary_inventories msi 
+---- == 2009/04/24 Ver1.4 Modified START =========================================
+----    WHERE   msi.secondary_inventory_name    = cv_warehouse_div||iv_base_code||iv_warehouse_code
+--    WHERE   msi.attribute7                             =  iv_base_code
+--    AND     SUBSTRB(msi.secondary_inventory_name, -2)  =  iv_warehouse_code
+--    AND     msi.attribute1                             IN ( cv_whse_code_whse, cv_whse_code_store )
+--    AND     TRUNC( NVL(msi.disable_date, SYSDATE+1 ) ) >  TRUNC( SYSDATE )
+---- == 2009/04/24 Ver1.4 Modified END =========================================
+--    AND     msi.organization_id             = in_organization_id;
+--
     SELECT 
              msi.secondary_inventory_name   AS secondary_inventory_name -- 1.保管場所コード
             ,msi.attribute7                 AS base_code                -- 2.拠点コード
--- == 2009/04/24 Ver1.4 Deleted START =========================================
---            ,msi.disable_date               AS disable_date             -- 3.失効日
--- == 2009/04/24 Ver1.4 Deleted END =========================================
             ,msi.attribute5                 AS subinv_div               -- 4.棚卸対象
     INTO
              ov_subinv_code                                             -- 1.保管場所コード
             ,ov_base_code                                               -- 2.拠点コード
--- == 2009/04/24 Ver1.4 Deleted START =========================================
---            ,lt_disable_date                                            -- 3.失効日
--- == 2009/04/24 Ver1.4 Deleted END =========================================
             ,ov_subinv_div                                              -- 4.棚卸対象
-    FROM    mtl_secondary_inventories msi 
--- == 2009/04/24 Ver1.4 Modified START =========================================
---    WHERE   msi.secondary_inventory_name    = cv_warehouse_div||iv_base_code||iv_warehouse_code
-    WHERE   msi.attribute7                             =  iv_base_code
-    AND     SUBSTRB(msi.secondary_inventory_name, -2)  =  iv_warehouse_code
-    AND     msi.attribute1                             IN ( cv_whse_code_whse, cv_whse_code_store )
-    AND     TRUNC( NVL(msi.disable_date, SYSDATE+1 ) ) >  TRUNC( SYSDATE )
--- == 2009/04/24 Ver1.4 Modified END =========================================
-    AND     msi.organization_id             = in_organization_id;
+    FROM    mtl_secondary_inventories msi
+    WHERE   SUBSTRB(msi.secondary_inventory_name, 2, 4) =  iv_base_code
+    AND     SUBSTRB(msi.secondary_inventory_name, -2)   =  iv_warehouse_code
+    AND     msi.attribute1                              IN ( cv_whse_code_whse, cv_whse_code_store )
+    AND     TRUNC( NVL(msi.disable_date, SYSDATE+1 ) )  >  TRUNC( SYSDATE )
+    AND     msi.organization_id                         =  in_organization_id;
+-- == 2009/05/18 V1.6 Modified END   ===============================================================
     --
 -- == 2009/04/24 Ver1.4 Deleted START =========================================
 --    IF lt_disable_date IS NOT NULL 
