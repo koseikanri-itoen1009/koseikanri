@@ -1,0 +1,54 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * Table Name  : XXCFO_AP_INVOICE_CONTROL
+ * Description : AP仕入請求管理テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2012/09/05    1.0   SCSK T.Osawa     新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcfo.xxcfo_ap_invoice_control (
+     business_date                  DATE          NOT NULL
+    ,invoice_distribution_id        NUMBER        NOT NULL
+    ,process_flag                   VARCHAR2(1)   NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE)
+/
+COMMENT ON TABLE xxcfo.xxcfo_ap_invoice_control IS 'AP仕入請求管理テーブル'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_invoice_control.business_date                         IS '業務日付'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_invoice_control.invoice_distribution_id               IS '請求書配分ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_invoice_control.process_flag                          IS '処理済フラグ'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_invoice_control.created_by                            IS '作成者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_invoice_control.creation_date                         IS '作成日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_invoice_control.last_updated_by                       IS '最終更新者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_invoice_control.last_update_date                      IS '最終更新日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_invoice_control.last_update_login                     IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_invoice_control.request_id                            IS '要求ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_invoice_control.program_application_id                IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_invoice_control.program_id                            IS 'コンカレント・プログラムID'
+/						
+COMMENT ON COLUMN xxcfo.xxcfo_ap_invoice_control.program_update_date                   IS 'プログラム更新日'
+/						

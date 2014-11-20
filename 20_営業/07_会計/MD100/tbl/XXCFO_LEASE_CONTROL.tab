@@ -1,0 +1,54 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * Table Name  : xxcfo.xxcfo_lease_control
+ * Description : リース取引管理テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2012/09/05    1.0   SCSK T.Osawa     新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcfo.xxcfo_lease_control (
+     set_of_books_id                NUMBER        NOT NULL
+    ,period_name                    VARCHAR2(7)   NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcfo_lease_control_pk PRIMARY KEY (set_of_books_id)
+  USING INDEX TABLESPACE xxidx2)
+ TABLESPACE xxdata2 PCTFREE 20 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 64K)
+/
+COMMENT ON TABLE xxcfo.xxcfo_lease_control IS 'リース取引管理テーブル'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_lease_control.set_of_books_id                     IS '会計帳簿ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_lease_control.period_name                         IS '会計期間'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_lease_control.created_by                          IS '作成者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_lease_control.creation_date                       IS '作成日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_lease_control.last_updated_by                     IS '最終更新者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_lease_control.last_update_date                    IS '最終更新日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_lease_control.last_update_login                   IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_lease_control.request_id                          IS '要求ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_lease_control.program_application_id              IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_lease_control.program_id                          IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_lease_control.program_update_date                 IS 'プログラム更新日'
+/

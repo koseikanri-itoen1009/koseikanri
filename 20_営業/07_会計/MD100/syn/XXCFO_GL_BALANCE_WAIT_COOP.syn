@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcfo_gl_balance_wait_coop FOR xxcfo.xxcfo_gl_balance_wait_coop;
