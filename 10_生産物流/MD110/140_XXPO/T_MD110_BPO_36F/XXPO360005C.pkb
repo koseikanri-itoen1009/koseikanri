@@ -7,7 +7,7 @@ AS
  * Description      : 仕入（帳票）
  * MD.050/070       : 仕入（帳票）Issue1.0  (T_MD050_BPO_360)
  *                    代行請求書            (T_MD070_BPO_36F)
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2009/08/10    1.18  T.Yoshimoto      本番障害#1596
  *  2009/09/24    1.19  T.Yoshimoto      本番障害#1523
  *  2012/08/16    1.20  T.Makuta         E_本稼動_09898
+ *  2013/07/05    1.21  R.Watanabe       E_本稼動_10839
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -175,6 +176,9 @@ AS
      ,kousen               po_line_locations_all.attribute4%TYPE  -- 口銭
      ,fukakin_k            po_line_locations_all.attribute6%TYPE  -- 賦課金区分
      ,fukakin              po_line_locations_all.attribute7%TYPE  -- 賦課金
+-- 2013/07/05 v1.21 R.Watanabe Add Start E_本稼動_10839
+     ,tax_date             po_headers_all.attribute4%TYPE         -- 消費税基準日
+-- 2013/07/05 v1.21 R.Watanabe Add End E_本稼動_10839
     ) ;
   TYPE tab_data_type_dtl2 IS TABLE OF rec_data_type_dtl2 INDEX BY BINARY_INTEGER ;
 -- 2009/05/26 v1.15 T.Yoshimoto Add End
@@ -206,6 +210,7 @@ AS
   -- ユーザー定義グローバル変数
   -- ===============================
   gn_user_id                fnd_user.user_id%TYPE DEFAULT FND_GLOBAL.USER_ID; -- ユーザーＩＤ
+--  
   ------------------------------
   -- ＳＱＬ条件用
   ------------------------------
@@ -452,7 +457,9 @@ AS
 --
     -- *** ローカル・例外処理 ***
     get_value_expt    EXCEPTION ;     -- 値取得エラー
-    lv_tax            fnd_lookup_values.lookup_code%TYPE; -- 消費税
+-- 2013/07/05 v1.21 R.Watanabe Del Start E_本稼動_10839
+--    lv_tax            fnd_lookup_values.lookup_code%TYPE; -- 消費税
+-- 2013/07/05 v1.21 R.Watanabe Del End E_本稼動_10839
     ld_deliver_from   DATE; -- 納入日FROMの年月の1日
 --
   BEGIN
@@ -473,6 +480,8 @@ AS
       RAISE get_value_expt ;
     END IF ;
 --
+-- 2013/07/05 v1.21 R.Watanabe Del Start E_本稼動_10839
+/*
     -- ====================================================
     -- 消費税取得
     -- ====================================================
@@ -502,6 +511,8 @@ AS
         lv_retcode  := gv_status_error ;
         RAISE get_value_expt ;
     END;
+*/
+-- 2013/07/05 v1.21 R.Watanabe Del End E_本稼動_10839
 --
     -- ====================================================
     -- 担当部署名取得
@@ -668,6 +679,9 @@ AS
       || '  ,comm.fukakin_k            AS fukakin_k           ' -- 賦課金区分
       || '  ,comm.fukakin              AS fukakin             ' -- 賦課金
 -- 2009/05/26 v1.15 T.Yoshimoto Add End
+-- 2013/07/05 v1.21 R.Watanabe Add Start E_本稼動_10839
+      || '  ,comm.tax_date              AS tax_date             ' -- 消費税基準日
+-- 2013/07/05 v1.21 R.Watanabe Add End E_本稼動_10839
       || ' FROM'
       || '   ('
       || '    SELECT'
@@ -692,8 +706,12 @@ AS
       || '      ,com.sum_quantity AS quantity '
       || '      ,ROUND(NVL(com.sum_quantity,0) * com.unit_price) AS purchase_amount '
       || '      ,com.attribute5 AS attribute5 '
-      || '      ,ROUND(ROUND(NVL(com.sum_quantity,0) * com.unit_price ) * .05) AS purchase_amount_tax '
-      || '      ,ROUND(com.attribute5 * .05) AS attribute5_tax '
+-- 2013/07/05 v1.21 R.Watanabe Mod Start E_本稼動_10839
+--      || '      ,ROUND(ROUND(NVL(com.sum_quantity,0) * com.unit_price ) * .05) AS purchase_amount_tax '
+--      || '      ,ROUND(com.attribute5 * .05) AS attribute5_tax '
+       || '      ,ROUND(NVL(com.sum_quantity,0) * com.unit_price ) AS purchase_amount_tax '
+       || '      ,ROUND(com.attribute5) AS attribute5_tax '
+-- 2013/07/05 v1.21 R.Watanabe Mod End E_本稼動_10839
       || '      ,com.attribute8              AS attribute8 '
       || '      ,com.kobiki_mae              AS kobiki_mae '     -- 単価(粉引前単価)  -- Add T.Yoshimoto
       || '      ,com.unit_price              AS unit_price '     -- 粉引後単価        -- Add T.Yoshimoto
@@ -703,6 +721,9 @@ AS
       || '      ,com.fukakin_k               AS fukakin_k '      -- 賦課金区分        -- Add T.Yoshimoto
       || '      ,com.fukakin                 AS fukakin '        -- 賦課金            -- Add T.Yoshimoto
 -- 2009/05/26 v1.15 T.Yoshimoto Mod End
+-- 2013/07/05 v1.21 R.Watanabe Add Start E_本稼動_10839
+      || '      ,com.tax_date              AS tax_date '          -- 消費税基準日
+-- 2013/07/05 v1.21 R.Watanabe Add End E_本稼動_10839
       || '   FROM'
       || '     ('
                 --受入実績
@@ -745,6 +766,9 @@ AS
       || '       ,NVL(plla.ATTRIBUTE6,3)            AS fukakin_k '    -- 賦課金区分
       || '       ,NVL(plla.ATTRIBUTE7,0)            AS fukakin '      -- 賦課金
       || '       ,xrart2.quantity                   AS sum_quantity ' -- 受入返品
+-- 2013/07/05 v1.21 R.Watanabe Add Start E_本稼動_10839
+      || '       ,poh.attribute4                    AS tax_date '     -- 納入日
+-- 2013/07/05 v1.21 R.Watanabe Add End E_本稼動_10839
       ;
 -- 2009/05/26 v1.15 T.Yoshimoto Mod End
 --
@@ -880,7 +904,12 @@ AS
       || '       ,NULL               AS fukakin_k '    -- 賦課金区分
       || '       ,NULL               AS fukakin '      -- 賦課金
 -- 2009/05/26 v1.15 T.Yoshimoto Add End
-      || '       ,xrart.sum_quantity AS sum_quantity'; -- 受入返品
+-- 2013/07/05 v1.21 R.Watanabe Add Start E_本稼動_10839
+     -- || '       ,xrart.sum_quantity AS sum_quantity'; -- 受入返品
+      || '       ,xrart.sum_quantity AS sum_quantity'  -- 受入返品
+      || '       ,poh.attribute4     AS tax_date '     -- 返品元発注納入日
+      ;
+-- 2013/07/05 v1.21 R.Watanabe Add End E_本稼動_10839
 --
     -- ----------------------------------------------------
     -- ＦＲＯＭ句生成
@@ -1018,7 +1047,12 @@ AS
       || '       ,NULL                               AS fukakin_k '    -- 賦課金区分
       || '       ,NULL                               AS fukakin '      -- 賦課金
 -- 2009/05/26 v1.15 T.Yoshimoto Add End
-      || '       ,xrart.quantity * -1                AS sum_quantity'; -- 数量
+-- 2013/07/05 v1.21 R.Watanabe Add Start E_本稼動_10839
+     -- || '       ,xrart.quantity * -1                AS sum_quantity'; -- 数量
+      || '       ,xrart.quantity * -1                AS sum_quantity'  -- 数量
+      || '       ,TO_CHAR(xrart.txns_date,''YYYY/MM/DD'')     AS tax_date '    -- 取引日
+      ;
+-- 2013/07/05 v1.21 R.Watanabe Add End E_本稼動_10839
 --
     -- ----------------------------------------------------
     -- ＦＲＯＭ句生成
@@ -1280,7 +1314,13 @@ AS
     ln_sum_jun_kosen        NUMBER DEFAULT 0;         -- 純口銭金額
     ln_sum_jun_sasihiki     NUMBER DEFAULT 0;         -- 純差引金額
 --
+-- 2013/07/05 v1.21 R.Watanabe Add Start E_本稼動_10839
+    -- 消費税取得用
+    lv_tax            fnd_lookup_values.lookup_code%TYPE; -- 消費税
+    ld_tax_date                                     DATE; -- 消費税基準日
     -- *** ローカル・例外処理 ***
+    get_value_expt    EXCEPTION ;     -- 値取得エラー
+-- 2013/07/05 v1.21 R.Watanabe Add End E_本稼動_10839
 --
   BEGIN
 --
@@ -1296,6 +1336,46 @@ AS
 --
     <<main_data_loop>>
     FOR ln_loop_index IN 1..it_data_rec.COUNT LOOP
+--
+-- 2013/07/05 v1.21 R.Watanabe Add Start E_本稼動_10839
+      -- ====================================================
+      -- 消費税取得
+      -- ====================================================
+      -- 基準日を取得
+        ld_tax_date := FND_DATE.STRING_TO_DATE (it_data_rec(ln_loop_index).tax_date ,gc_char_d_format);
+--
+      -- 基準日より消費税を取得
+      BEGIN
+        SELECT
+          flv.lookup_code
+        INTO
+          lv_tax
+        FROM
+          xxcmn_lookup_values2_v flv
+        WHERE
+          flv.lookup_type = gv_xxcmn_consumption_tax_rate
+        AND ((flv.start_date_active <= ld_tax_date )
+          OR (flv.start_date_active IS NULL))
+        AND ((flv.end_date_active   >= ld_tax_date )
+          OR (flv.end_date_active   IS NULL));
+--
+        EXCEPTION
+              -- データなし
+          WHEN NO_DATA_FOUND THEN
+          -- メッセージセット
+            lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_po
+                                                  ,'APP-XXPO-10127'
+                                                  ,'ENTRY'
+                                                  ,'消費税率'
+                                                  ,'TABLE'
+                                                  ,'xxcmn_lookup_values2_v' ||  '、' || it_data_rec(ln_loop_index).tax_date ) ;
+            lv_retcode  := gv_status_error ;
+          RAISE get_value_expt ;
+      END;
+--
+      -- 消費税係数
+      gn_tax := TO_NUMBER(lv_tax) / 100;
+-- 2013/07/05 v1.21 R.Watanabe Add End E_本稼動_10839
 --
       -- ==========================
       --  レコードをブレイク
@@ -1508,7 +1588,14 @@ AS
 --
     END IF;
 --
+-- 2013/07/05 v1.21 R.Watanabe Add Start E_本稼動_10839
   EXCEPTION
+    --*** 値取得エラー例外 ***
+    WHEN get_value_expt THEN
+      ov_errmsg  := lv_errmsg ;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := lv_retcode ;
+-- 2013/07/05 v1.21 R.Watanabe Add End E_本稼動_10839
 --
 --#################################  固定例外処理部 START   ####################################
 --
