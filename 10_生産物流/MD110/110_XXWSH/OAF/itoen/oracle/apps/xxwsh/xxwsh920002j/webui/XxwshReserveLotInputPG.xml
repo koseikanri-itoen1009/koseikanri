@@ -87,7 +87,7 @@
                      </ui:contents>
                   </oa:tableLayout>
                   <oa:tableLayout id="ReqFieldDescRN" extends="/oracle/apps/fnd/framework/webui/OAReqFieldDescRG"/>
-                  <oa:advancedTable id="LotAdvTblRN" viewName="XxwshStockCanEncQtyVO1" tableBanding="rowBanding" blockSize="200" width="100%">
+                  <oa:advancedTable id="LotAdvTblRN" viewName="XxwshStockCanEncQtyVO1" tableBanding="rowBanding" blockSize="500" width="100%">
                      <ui:contents>
                         <oa:columnGroup id="LotColumnGroup1">
                            <ui:columnHeader>

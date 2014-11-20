@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2008/10/23    1.19  Takao Ohashi     指摘442(品目振替情報の取得条件修正)
  *  2008/11/07    1.20  Hitomi Itou      統合テスト指摘548対応
  *  2008/11/17    1.21  Takao Ohashi     指摘356対応
+ *  2008/11/20    1.22  Naoki Fukuda     統合テスト障害696対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -176,6 +177,9 @@ AS
   gv_delete_no         CONSTANT VARCHAR2(1) := 'N'; --未取消
 --
   --文書タイプ
+--add start 1.22
+  gv_dctype_shipped    CONSTANT VARCHAR2(2) := '10'; --出荷
+--add end 1.22
   gv_dctype_move       CONSTANT VARCHAR2(2) := '20'; --移動
 --
   --受払区分
@@ -2190,6 +2194,9 @@ AS
            ,xxcmn_item_categories5_v                          xicv_s              --OPM品目カテゴリ割当情報VIEW5(出荷品目用)
            ,xxcmn_item_categories5_v                          xicv_r              --OPM品目カテゴリ割当情報VIEW5(依頼品目用)
            ,xxcmn_item_locations2_v                           xilv                --OPM保管場所情報VIEW2
+--add start 1.22
+           ,xxinv_mov_lot_details                             xmld                 -- 移動ロット詳細アドオン
+--add end 1.22
           --受注ヘッダ(アドオン)抽出条件
           WHERE oe_info.header_id = xoha.header_id                                --受注ヘッダID
 --add start 1.6
@@ -2206,6 +2213,12 @@ AS
 --add start 1.20
           AND oe_info.item_id         = ximv_s.item_id                            --品目ID
 --add end 1.20
+--add start 1.22
+          AND xmld.lot_id             = oe_info.lot_id
+          AND xmld.mov_line_id        = xola.order_line_id
+          AND xmld.document_type_code = gv_dctype_shipped                         -- 出荷
+          AND xmld.record_type_code   = gv_rectype_out                            -- 出庫実績
+--add end 1.22
           AND oe_info.trans_date
             BETWEEN ximv_s.start_date_active
             AND NVL(ximv_s.end_date_active,oe_info.trans_date)                    --適用開始日・終了日
