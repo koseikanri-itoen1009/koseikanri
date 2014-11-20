@@ -7,7 +7,7 @@ AS
  * Description      : 自販機管理システムから連携されたリース物件に関連する作業の情報を、
  *                    リースアドオンに反映します。
  * MD.050           :  MD050_CSO_013_A02_CSI→FAインタフェース：（OUT）リース資産情報
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009-05-01    1.7   Tomoko.Mori      T1_0897対応
  *  2009-05-14    1.8   Kazuo.Satomura   T1_0413対応,SQLをコーディング規約通りに修正
  *  2009-05-20    1.9   Kazuo.Satomura   T1_1095対応
+ *  2009-05-26    1.10  Daisuke.Abe      T1_1042対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -329,16 +330,29 @@ AS
           ,csi_instance_statuses cis -- インスタンスステータスマスタ
     WHERE
       (
-        /* 2009.05.14 K.Satomura T1_0413対応 START */
-          (
-               gv_prm_process_date IS NULL
+/* 2009.05.26 D.Abe T1_1042対応 START */
+          ( (
+                    gv_prm_process_date IS NULL
+               AND  xiih.interface_flag  = cv_no         -- 連携済フラグ
+            )
             OR (
                      gv_prm_process_date IS NOT NULL
                  AND TRUNC(xiih.history_creation_date) = TRUNC(TO_DATE(gv_prm_process_date, 'YYYY/MM/DD'))
+                 AND  xiih.interface_flag  = cv_yes      -- 連携済フラグ
                )
           )
         AND
-        /* 2009.05.14 K.Satomura T1_0413対応 END */
+        --/* 2009.05.14 K.Satomura T1_0413対応 START */
+        --  (
+        --       gv_prm_process_date IS NULL
+        --    OR (
+        --             gv_prm_process_date IS NOT NULL
+        --         AND TRUNC(xiih.history_creation_date) = TRUNC(TO_DATE(gv_prm_process_date, 'YYYY/MM/DD'))
+        --       )
+        --  )
+        --AND
+        --/* 2009.05.14 K.Satomura T1_0413対応 END */
+/* 2009.05.26 D.Abe T1_1042対応 END */
             gv_prm_process_div = cv_prm_normal          -- パラメータ：処理区分
         AND xiih.install_code  = cii.external_reference -- 物件コード
         AND xxcso_ib_common_pkg.get_ib_ext_attribs(
@@ -347,10 +361,12 @@ AS
             ) = cv_jisya_lease -- 自社リース
         AND cii.instance_status_id = cis.instance_status_id -- インスタンスステータスID
         AND cis.attribute2         = cv_no                  -- 廃棄済フラグ
-        AND (
-                 xiih.history_creation_date < gd_process_date  -- 履歴作成日
-              OR xiih.interface_flag        = cv_no            -- 連携済フラグ
-            )
+/* 2009.05.26 D.Abe T1_1042対応 START */
+        --AND (
+        --         xiih.history_creation_date < gd_process_date  -- 履歴作成日
+        --      OR xiih.interface_flag        = cv_no            -- 連携済フラグ
+        --    )
+/* 2009.05.26 D.Abe T1_1042対応 END */
       )
     OR
       (
@@ -2268,30 +2284,44 @@ AS
             );
           ELSE
 --
-            -- ========================================
-            -- A-6.物件関連情報変更チェック処理 
-            -- ========================================
-            /* 2009.04.01 K.Satomura T1_0148対応 START */
-            /* 2009.04.07 K.Satomura T1_0378対応 START */
-            --IF (g_get_xxcso_ib_info_h_rec.interface_flag <> cv_yes) THEN
-            IF (g_get_xxcso_ib_info_h_rec.interface_flag = cv_yes) THEN
-            /* 2009.04.07 K.Satomura T1_0378対応 END */
-              -- 連携済フラグがYの場合
-            /* 2009.04.01 K.Satomura T1_0148対応 END */
-              ib_info_change_chk(
-                 ov_change_flg => lv_change_flg    -- 変更チェックフラグ
-                ,ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
-                ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
-                ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
-              );
-            /* 2009.04.01 K.Satomura T1_0148対応 START */
+            /* 2009.05.26 D.Abe T1_1042対応 START */
+            -- 処理区分が２のみ対象とする
+            IF (gv_prm_process_div = cv_prm_div) THEN
+            /* 2009.05.26 D.Abe T1_1042対応 END */
+              -- ========================================
+              -- A-6.物件関連情報変更チェック処理 
+              -- ========================================
+              /* 2009.04.01 K.Satomura T1_0148対応 START */
+              /* 2009.04.07 K.Satomura T1_0378対応 START */
+              --IF (g_get_xxcso_ib_info_h_rec.interface_flag <> cv_yes) THEN
+              IF (g_get_xxcso_ib_info_h_rec.interface_flag = cv_yes) THEN
+              /* 2009.04.07 K.Satomura T1_0378対応 END */
+                -- 連携済フラグがYの場合
+              /* 2009.04.01 K.Satomura T1_0148対応 END */
+                ib_info_change_chk(
+                   ov_change_flg => lv_change_flg    -- 変更チェックフラグ
+                  ,ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+                  ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
+                  ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+                );
+              /* 2009.04.01 K.Satomura T1_0148対応 START */
+              END IF;
+              /* 2009.04.01 K.Satomura T1_0148対応 END */
+              --
+              IF (lv_retcode = cv_status_error) THEN
+                RAISE global_process_expt;
+              END IF;
+              --
+/* 2009.05.26 D.Abe T1_1042対応 START */
+            ELSIF ((gv_prm_process_div = cv_prm_normal)
+                 AND (g_get_xxcso_ib_info_h_rec.interface_flag = cv_yes)) THEN
+              -- 処理区分が１で連携済み
+              lv_change_flg := cv_yes;
+            ELSE
+              -- 処理区分が１で未連携
+              NULL;
             END IF;
-            /* 2009.04.01 K.Satomura T1_0148対応 END */
---
-            IF (lv_retcode = cv_status_error) THEN
-              RAISE global_process_expt;
-            END IF;
-            --
+/* 2009.05.26 D.Abe T1_1042対応 END */
             /* 2009.04.07 K.Satomura T1_0378対応 START */
             IF (lv_change_flg IS NOT NULL) THEN
             /* 2009.04.07 K.Satomura T1_0378対応 END */
@@ -2342,25 +2372,37 @@ AS
               AND (lv_retcode = cv_status_normal))
             THEN
             /* 2009.04.01 K.Satomura T1_0148対応 END */
-              -- ========================================
-              -- A-8.物件関連変更履歴テーブルロック 
-              -- ========================================
-              xxcso_ib_info_h_lock(
-                 ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
-                ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
-                ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
-              );
---
-              IF (lv_retcode = cv_status_error) THEN
-                RAISE global_process_expt;
+/* 2009.05.26 D.Abe T1_1042対応 START */
+              -- 処理区分が１でかつ未連携、または処理区分が２の場合
+              IF (((gv_prm_process_div = cv_prm_normal)
+                   AND (g_get_xxcso_ib_info_h_rec.interface_flag = cv_no))
+                  OR
+                  (gv_prm_process_div = cv_prm_div)
+                 )
+              THEN
+/* 2009.05.26 D.Abe T1_1042対応 END */
+                -- ========================================
+                -- A-8.物件関連変更履歴テーブルロック 
+                -- ========================================
+                xxcso_ib_info_h_lock(
+                   ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+                  ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
+                  ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+                );
+  --
+                IF (lv_retcode = cv_status_error) THEN
+                  RAISE global_process_expt;
+                END IF;
+  --
+/* 2009.05.26 D.Abe T1_1042対応 START */
               END IF;
---
+/* 2009.05.26 D.Abe T1_1042対応 END */
               -- ========================================
               -- A-9.セーブポイント発行処理 
               -- ========================================
               --
               SAVEPOINT ib_info;
---
+  --
               -- ========================================
               -- A-10.自販機SH物件インタフェース登録処理 
               -- ========================================
@@ -2400,50 +2442,65 @@ AS
                 );
               ELSE
 --
-                -- ========================================
-                -- A-11.物件関連情報変更履歴テーブル更新処理 
-                -- ========================================
-                update_xxcso_ib_info_h(
-                   ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
-                  ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
-                  ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
-                );
---
-                IF (lv_retcode = cv_status_error) THEN
-                  RAISE global_process_expt;
-                ELSIF (lv_retcode = cv_status_warn) THEN
-                  -- スキップ件数
-                  gn_warn_cnt   := gn_warn_cnt + 1;
-                  -- 固定ステータス設定（警告）
-                  ov_retcode := cv_status_warn;
-                  --警告出力
-                  fnd_file.put_line(
-                     which  => FND_FILE.OUTPUT
-                    ,buff   => lv_errmsg                  --ユーザー・警告メッセージ
+/* 2009.05.26 D.Abe T1_1042対応 START */
+                -- 処理区分が１でかつ未連携、または処理区分が２
+                IF (((gv_prm_process_div = cv_prm_normal)
+                     AND (g_get_xxcso_ib_info_h_rec.interface_flag = cv_no))
+                    OR
+                    (gv_prm_process_div = cv_prm_div)
+                   )
+                THEN
+/* 2009.05.26 D.Abe T1_1042対応 END */
+                  -- ========================================
+                  -- A-11.物件関連情報変更履歴テーブル更新処理 
+                  -- ========================================
+                  update_xxcso_ib_info_h(
+                     ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+                    ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
+                    ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
                   );
-                  fnd_file.put_line(
-                     which  => FND_FILE.LOG
-                    ,buff   => lv_errmsg                  --警告メッセージ
-                  );
-                  ROLLBACK TO SAVEPOINT ib_info;
-                  --
-                  -- *** DEBUG_LOG ***
-                  -- ロールバック処理をログ出力
-                  fnd_file.put_line(
-                     which  => FND_FILE.LOG
-                    ,buff   => cv_debug_msg_rollback  || CHR(10) ||
-                               cv_tkn_msg_ib_info_h || cv_tkn_msg_update ||
-                                CHR(10) ||
-                               ''
-                  );
-                  --
+   --
+                  IF (lv_retcode = cv_status_error) THEN
+                    RAISE global_process_expt;
+                  ELSIF (lv_retcode = cv_status_warn) THEN
+                    -- スキップ件数
+                    gn_warn_cnt   := gn_warn_cnt + 1;
+                    -- 固定ステータス設定（警告）
+                    ov_retcode := cv_status_warn;
+                    --警告出力
+                    fnd_file.put_line(
+                       which  => FND_FILE.OUTPUT
+                      ,buff   => lv_errmsg                  --ユーザー・警告メッセージ
+                    );
+                    fnd_file.put_line(
+                       which  => FND_FILE.LOG
+                      ,buff   => lv_errmsg                  --警告メッセージ
+                    );
+                    ROLLBACK TO SAVEPOINT ib_info;
+                    --
+                    -- *** DEBUG_LOG ***
+                    -- ロールバック処理をログ出力
+                    fnd_file.put_line(
+                       which  => FND_FILE.LOG
+                      ,buff   => cv_debug_msg_rollback  || CHR(10) ||
+                                 cv_tkn_msg_ib_info_h || cv_tkn_msg_update ||
+                                  CHR(10) ||
+                                 ''
+                    );
+                    --
+                  ELSE
+                    -- 正常件数取得
+                    gn_normal_cnt := gn_normal_cnt + 1;  
+                  END IF;
+                  /* 2009.04.01 K.Satomura T1_0148対応 START */
+                  --END IF;
+                  /* 2009.04.01 K.Satomura T1_0148対応 END */
+/* 2009.05.26 D.Abe T1_1042対応 START */
                 ELSE
                   -- 正常件数取得
                   gn_normal_cnt := gn_normal_cnt + 1;  
                 END IF;
-                /* 2009.04.01 K.Satomura T1_0148対応 START */
-                --END IF;
-                /* 2009.04.01 K.Satomura T1_0148対応 END */
+/* 2009.05.26 D.Abe T1_1042対応 END */
               END IF;
             END IF;
           END IF;
