@@ -6,12 +6,15 @@ AS
  * Package Name     : XXCMM002A01C(body)
  * Description      : 社員データ取込処理
  * MD.050           : MD050_CMM_002_A01_社員データ取込
- * Version          : 3.4
+ * Version          : 3.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
+ *  get_supervisor         管理者取得プロシージャ
+ *  ins_user_sec           セキュリティ属性登録プロシージャ
+ *  get_ccid               CCID取得プロシージャ
  *  init_get_profile       プロファイル取得プロシージャ
  *  init_file_lock         ファイルロック処理プロシージャ
  *  init                   初期処理を行うプロシージャ(A-2)
@@ -56,6 +59,9 @@ AS
  *  2009/06/02    1.5   SCS 西村 昇      障害No.T1_1277 対応(APIエラーメッセージ)
  *                                       障害No.T1_1278 対応(SQLパフォーマンス)
  *                                       旧コード類のチェック追加
+ *  2009/06/23    1.6   SCS 吉川 博章    障害No.T1_1389 対応
+ *                                       (アサイメント管理者の抽出方法・場所を変更)
+ *  2009/06/25    1.7   SCS 吉川 博章    障害No.0000161 対応
  *
  *****************************************************************************************/
 --
@@ -639,6 +645,115 @@ AS
                  ,fu.user_id
                  ,fug.user_id NOWAIT;
 -- End Ver 1.5
+--
+-- Ver1.6 Add  2009/06/22  管理者取得プロシージャを追加  T1_1389
+  /***********************************************************************************
+   * Procedure Name   : get_supervisor
+   * Description      : 管理者を取得します。
+   ***********************************************************************************/
+  PROCEDURE get_supervisor(
+    in_person_id               IN  NUMBER         --  従業員ID
+   ,iv_office_location_code    IN  VARCHAR2       --  勤務地拠点コード(新)
+   ,iv_job_post_order          IN  VARCHAR2       --  職位並順コード（新)
+   ,id_hire_date               IN  DATE           --  入社日
+   ,on_supervisor_id           OUT NUMBER         --  管理者ID
+   ,ov_errbuf                  OUT VARCHAR2       --  エラー・メッセージ           --# 固定 #
+   ,ov_retcode                 OUT VARCHAR2       --  リターン・コード             --# 固定 #
+   ,ov_errmsg                  OUT VARCHAR2 )     --  ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_supervisor';   -- プログラム名
+--
+--##############################  固定ローカル変数宣言部 START   ##################################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--#####################################  固定部 END   #############################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル変数 ***
+    ln_supervisor_id       per_all_people_f.person_id%TYPE;    -- 管理者(従業員)ID
+    --
+    -- 管理者割当カーソル
+    CURSOR get_supervisor_cur
+    IS
+      SELECT    paa.person_id             person_id      -- 従業員ID
+      FROM      per_periods_of_service    ppos           -- 従業員サービス期間マスタ
+               ,per_all_assignments_f     paa            -- アサインメントマスタ
+      WHERE     paa.person_id                            != in_person_id                    -- 自身以外
+      AND       paa.ass_attribute3                        = iv_office_location_code         -- 勤務地拠点コード(新)
+      AND       TO_NUMBER(NVL(paa.ass_attribute11,'99')) >  0                               -- 職位並順コード（新)
+      AND       TO_NUMBER(NVL(paa.ass_attribute11,'99')) <= TO_NUMBER( iv_job_post_order )
+      AND       paa.period_of_service_id                  = ppos.period_of_service_id       -- サービスID
+      AND       ppos.date_start                          <= id_hire_date                    -- 入社日
+      AND       NVL( ppos.actual_termination_date, id_hire_date )
+                                                         >= id_hire_date                    -- 退職日
+      ORDER BY  paa.ass_attribute11                      -- 職位並順コード（新)
+               ,ppos.actual_termination_date  DESC       -- 退職日の降順
+    ;
+    --
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+    --
+    -- カーソルオープン
+    OPEN  get_supervisor_cur;
+    -- フェッチ
+    FETCH get_supervisor_cur INTO ln_supervisor_id;
+    --
+    IF ( get_supervisor_cur%NOTFOUND ) THEN
+      -- 管理者が取得できない場合
+      IF ( id_hire_date >= gn_person_start) THEN
+        --プロファイルの設定された社員のperson_idを設定
+        on_supervisor_id := gn_person_id;
+      ELSE
+        on_supervisor_id := NULL;
+      END IF;
+    ELSE
+      -- 管理者が取得できた場合
+      on_supervisor_id := ln_supervisor_id;
+    END IF;
+    --
+    -- クローズ
+    CLOSE get_supervisor_cur;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   #######################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   #############################################
+--
+  END get_supervisor;
+-- End Ver1.6
 --
 -- Ver1.4 Add  2009/05/21  セキュリティ属性登録プロシージャを追加  T1_0966
   /***********************************************************************************
@@ -1790,7 +1905,9 @@ AS
       -- アサインメントマスタ
       ir_masters_rec.assignment_id        := lr_check_rec.assignment_id;             -- アサインメントID
       ir_masters_rec.assignment_number    := lr_check_rec.assignment_number;         -- アサインメント番号
-      ir_masters_rec.supervisor_id        := lr_check_rec.supervisor_id;             -- 管理者
+-- Ver1.6 Del  2009/06/23  T1_1389対応  管理者取得場所を更新の直前に変更のため削除
+--      ir_masters_rec.supervisor_id        := lr_check_rec.supervisor_id;             -- 管理者
+-- End1.6
       ir_masters_rec.effective_start_date := lr_check_rec.paa_effective_start_date;  -- 登録年月日
       ir_masters_rec.effective_end_date   := lr_check_rec.paa_effective_end_date;    -- 登録期限年月日
       ir_masters_rec.paa_version          := lr_check_rec.paa_version;               -- バージョン番号
@@ -2558,9 +2675,12 @@ AS
         ,lv_retcode  -- リターン・コード             --# 固定 #
         ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
-      IF (lv_retcode = cv_status_normal) THEN
-        ir_masters_rec.resp_kbn := gv_sts_yes;  -- 職責・管理者変更あり
-      ELSIF (lv_retcode = cv_status_warn) THEN
+-- Ver1.6  2009/06/23  旧は関係ないため修正
+--      IF (lv_retcode = cv_status_normal) THEN
+--        ir_masters_rec.resp_kbn := gv_sts_yes;  -- 職責・管理者変更あり
+--      ELSIF (lv_retcode = cv_status_warn) THEN
+-- End1.6
+      IF (lv_retcode = cv_status_warn) THEN
         RAISE global_process_expt;
       ELSIF (lv_retcode = cv_status_error) THEN
         RAISE global_api_expt;
@@ -2580,9 +2700,12 @@ AS
         ,lv_retcode  -- リターン・コード             --# 固定 #
         ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
-      IF (lv_retcode = cv_status_normal) THEN
-        ir_masters_rec.resp_kbn := gv_sts_yes;  -- 職責・管理者変更あり
-      ELSIF (lv_retcode = cv_status_warn) THEN
+-- Ver1.6  2009/06/23  旧は関係ないため修正
+--      IF (lv_retcode = cv_status_normal) THEN
+--        ir_masters_rec.resp_kbn := gv_sts_yes;  -- 職責・管理者変更あり
+--      ELSIF (lv_retcode = cv_status_warn) THEN
+-- End1.6
+      IF (lv_retcode = cv_status_warn) THEN
         RAISE global_process_expt;
       ELSIF (lv_retcode = cv_status_error) THEN
         RAISE global_api_expt;
@@ -2602,9 +2725,12 @@ AS
         ,lv_retcode  -- リターン・コード             --# 固定 #
         ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
-      IF (lv_retcode = cv_status_normal) THEN
-        ir_masters_rec.resp_kbn := gv_sts_yes;  -- 職責・管理者変更あり
-      ELSIF (lv_retcode = cv_status_warn) THEN
+-- Ver1.6  2009/06/23  旧は関係ないため修正
+--      IF (lv_retcode = cv_status_normal) THEN
+--        ir_masters_rec.resp_kbn := gv_sts_yes;  -- 職責・管理者変更あり
+--      ELSIF (lv_retcode = cv_status_warn) THEN
+-- End1.6
+      IF (lv_retcode = cv_status_warn) THEN
         RAISE global_process_expt;
       ELSIF (lv_retcode = cv_status_error) THEN
         RAISE global_api_expt;
@@ -2624,9 +2750,12 @@ AS
         ,lv_retcode  -- リターン・コード             --# 固定 #
         ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
-      IF (lv_retcode = cv_status_normal) THEN
-        ir_masters_rec.resp_kbn := gv_sts_yes;  -- 職責・管理者変更あり
-      ELSIF (lv_retcode = cv_status_warn) THEN
+-- Ver1.6  2009/06/23  旧は関係ないため修正
+--      IF (lv_retcode = cv_status_normal) THEN
+--        ir_masters_rec.resp_kbn := gv_sts_yes;  -- 職責・管理者変更あり
+--      ELSIF (lv_retcode = cv_status_warn) THEN
+-- End1.6
+      IF (lv_retcode = cv_status_warn) THEN
         RAISE global_process_expt;
       ELSIF (lv_retcode = cv_status_error) THEN
         RAISE global_api_expt;
@@ -2649,10 +2778,14 @@ AS
                    );
         RAISE global_process_expt;
       END IF;
-      IF ( TO_NUMBER( lv_job_post_order ) >= 0 )
-        AND ( TO_NUMBER( lv_job_post_order ) <= 99 ) THEN
+-- Ver1.6  2009/06/23  旧は関係ないため修正
+--      IF ( TO_NUMBER( lv_job_post_order ) >= 0 )
+--        AND ( TO_NUMBER( lv_job_post_order ) <= 99 ) THEN
+--        ir_masters_rec.resp_kbn := gv_sts_yes;  -- 職責・管理者変更あり
+--      ELSE
+-- End1.6
+      IF ( TO_NUMBER( lv_job_post_order ) < 0 ) THEN
         ir_masters_rec.resp_kbn := gv_sts_yes;  -- 職責・管理者変更あり
-      ELSE
         lv_errmsg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name
                     ,iv_name         => cv_data_check_err
@@ -2826,8 +2959,12 @@ AS
       FROM   fnd_lookup_values_vl flv   -- 参照コードマスタ
       WHERE  flv.lookup_type = cv_flv_responsibility  -- 職責自動割当テーブル
       AND    flv.enabled_flag = gv_const_y
-      AND    NVL(flv.start_date_active,ld_st_date) <= ld_st_date
-      AND    NVL(flv.end_date_active,ld_st_date) >= ld_st_date
+-- Ver1.7 Mod  2009/06/2  基準日を業務日付+1に変更  障害No.0000161
+--      AND    NVL(flv.start_date_active,ld_st_date) <= ld_st_date
+--      AND    NVL(flv.end_date_active,ld_st_date) >= ld_st_date
+      AND    NVL( flv.start_date_active, cd_process_date + 1 ) <= cd_process_date + 1
+      AND    NVL( flv.end_date_active,   cd_process_date + 1 ) >= cd_process_date + 1
+-- End1.7
       AND   ((NVL(flv.attribute3,cv_all) = cv_all) OR
              (NVL(flv.attribute3,cv_all) = ir_masters_rec.license_code)) -- 資格コード
       AND   ((NVL(flv.attribute4,cv_all) = cv_all) OR
@@ -2838,20 +2975,22 @@ AS
              (NVL(flv.attribute6,cv_all) = ir_masters_rec.job_type))     -- 職種コード
       ORDER BY flv.attribute1,flv.attribute2;
     --
-    -- 管理者割当カーソル
-    CURSOR person_cur
-    IS
-      SELECT paa.person_id                  person_id,
-             TO_NUMBER(paa.ass_attribute11) post_order
-      FROM   per_periods_of_service ppos,               -- 従業員サービス期間マスタ
-             per_all_assignments_f paa                  -- アサインメントマスタ
-      WHERE  paa.ass_attribute3 = ir_masters_rec.office_location_code   -- 勤務地拠点コード(新)
-      AND    TO_NUMBER(NVL(paa.ass_attribute11,'99')) > 0               -- 職位並順コード（新)
-      AND    TO_NUMBER(NVL(paa.ass_attribute11,'99')) <= TO_NUMBER(ir_masters_rec.job_post_order)
-      AND    paa.period_of_service_id = ppos.period_of_service_id       -- サービスID
-      AND    ppos.date_start <= ir_masters_rec.hire_date -- 入社日
-      AND    NVL(ppos.actual_termination_date ,ir_masters_rec.hire_date) >= ir_masters_rec.hire_date -- 退職日
-      ORDER BY post_order;
+-- Ver1.6 Del  2009/06/23  T1_1389対応  管理者取得場所を更新の直前に変更のため削除
+--    -- 管理者割当カーソル
+--    CURSOR person_cur
+--    IS
+--      SELECT paa.person_id                  person_id,
+--             TO_NUMBER(paa.ass_attribute11) post_order
+--      FROM   per_periods_of_service ppos,               -- 従業員サービス期間マスタ
+--             per_all_assignments_f paa                  -- アサインメントマスタ
+--      WHERE  paa.ass_attribute3 = ir_masters_rec.office_location_code   -- 勤務地拠点コード(新)
+--      AND    TO_NUMBER(NVL(paa.ass_attribute11,'99')) > 0               -- 職位並順コード（新)
+--      AND    TO_NUMBER(NVL(paa.ass_attribute11,'99')) <= TO_NUMBER(ir_masters_rec.job_post_order)
+--      AND    paa.period_of_service_id = ppos.period_of_service_id       -- サービスID
+--      AND    ppos.date_start <= ir_masters_rec.hire_date -- 入社日
+--      AND    NVL(ppos.actual_termination_date ,ir_masters_rec.hire_date) >= ir_masters_rec.hire_date -- 退職日
+--      ORDER BY post_order;
+-- End1.6
     --
     -- *** ローカル・レコード ***
 --
@@ -2906,7 +3045,7 @@ AS
     --
     <<resp_loop>>
     FOR resp_rec IN resp_cur LOOP
-      IF (resp_rec.location_level = cv_level1 AND resp_rec.location = lv_location_cd1)
+      IF   (resp_rec.location_level = cv_level1 AND resp_rec.location = lv_location_cd1)
         OR (resp_rec.location_level = cv_level2 AND resp_rec.location = lv_location_cd2)
         OR (resp_rec.location_level = cv_level3 AND resp_rec.location = lv_location_cd3)
         OR (resp_rec.location_level = cv_level4 AND resp_rec.location = lv_location_cd4)
@@ -2916,16 +3055,20 @@ AS
         BEGIN
           -- 職責マスタ存在チェック
           SELECT fres.application_id,
-                  fres.responsibility_key,
-                  fapp.application_short_name
+                 fres.responsibility_key,
+                 fapp.application_short_name
           INTO   ln_application_id,
-                  lv_responsibility_key,
-                  lv_application_short_name
+                 lv_responsibility_key,
+                 lv_application_short_name
           FROM   fnd_application    fapp,
-                  fnd_responsibility fres                    -- 職責マスタ
+                 fnd_responsibility fres       -- 職責マスタ
           WHERE  fres.responsibility_id  = TO_NUMBER(resp_rec.responsibility_id)
-          AND    NVL(fres.start_date,ld_st_date)  <= ld_st_date
-          AND    NVL(fres.end_date,ld_st_date)  >= ld_st_date
+-- Ver1.7 Mod  2009/06/2  基準日を業務日付+1に変更  障害No.0000161
+--          AND    NVL(fres.start_date,ld_st_date)  <= ld_st_date
+--          AND    NVL(fres.end_date,ld_st_date)  >= ld_st_date
+          AND    fres.start_date  <= cd_process_date + 1
+          AND    NVL( fres.end_date, cd_process_date + 1 ) >= cd_process_date + 1
+-- End1.7
           AND    fapp.application_id = fres.application_id
           AND    ROWNUM = 1;
         --
@@ -2992,37 +3135,40 @@ AS
       ir_masters_rec.resp_kbn := gv_sts_no;  -- 職責自動連携不可
     END IF;
     --
-    -- 管理者情報の取得
-    IF (ir_masters_rec.hire_date >= gn_person_start) THEN
-      ir_masters_rec.supervisor_id := gn_person_id; --プロファイルの設定された社員のperson_idを初期設定
-    END IF;
-    <<person_loop>>
-    FOR person_rec IN person_cur  LOOP
-      ln_person_cnt := ln_person_cnt + 1;
-      -- 管理者に並順が1番の社員を設定
-      IF (ln_person_cnt = 1) THEN
-        -- 並順1番のperson_idが本人以外の場合、person_idを設定
-        IF (person_rec.person_id <> ir_masters_rec.person_id)
-          OR (ir_masters_rec.person_id IS NULL ) THEN         -- 新規社員
-          ir_masters_rec.supervisor_id := person_rec.person_id;
-          EXIT person_loop;
-        END IF;
-      ELSE  --2件目でEXITする
-        -- 並順1番が複数いる場合、本人以外を設定
-        IF (person_rec.post_order = ln_post_order)
-          AND (person_rec.person_id <> ir_masters_rec.person_id) THEN
-            ir_masters_rec.supervisor_id := person_rec.person_id;
-        END IF;
-        EXIT person_loop;
-      END IF;
-      ln_post_order := person_rec.post_order;
-      --
-    END LOOP person_loop;
+-- Ver1.6 Del  2009/06/23  T1_1389対応  管理者取得場所を更新の直前に変更のため削除
+--    -- 管理者情報の取得
+--    IF (ir_masters_rec.hire_date >= gn_person_start) THEN
+--      ir_masters_rec.supervisor_id := gn_person_id; --プロファイルの設定された社員のperson_idを初期設定
+--    END IF;
+--    <<person_loop>>
+--    FOR person_rec IN person_cur  LOOP
+--      ln_person_cnt := ln_person_cnt + 1;
+--      -- 管理者に並順が1番の社員を設定
+--      IF (ln_person_cnt = 1) THEN
+--        -- 並順1番のperson_idが本人以外の場合、person_idを設定
+--        IF (person_rec.person_id <> ir_masters_rec.person_id)
+--          OR (ir_masters_rec.person_id IS NULL ) THEN         -- 新規社員
+--          ir_masters_rec.supervisor_id := person_rec.person_id;
+--          EXIT person_loop;
+--        END IF;
+--      ELSE  --2件目でEXITする
+--        -- 並順1番が複数いる場合、本人以外を設定
+--        IF (person_rec.post_order = ln_post_order)
+--          AND (person_rec.person_id <> ir_masters_rec.person_id) THEN
+--            ir_masters_rec.supervisor_id := person_rec.person_id;
+--        END IF;
+--        EXIT person_loop;
+--      END IF;
+--      ln_post_order := person_rec.post_order;
+--      --
+--    END LOOP person_loop;
+--    --
+--    -- 管理者が本人だった場合はNULLを設定
+--    IF (ir_masters_rec.supervisor_id = ir_masters_rec.person_id) THEN
+--      ir_masters_rec.supervisor_id := NULL;
+--    END IF;
+-- End1.6
     --
-    -- 管理者が本人だった場合はNULLを設定
-    IF (ir_masters_rec.supervisor_id = ir_masters_rec.person_id) THEN
-      ir_masters_rec.supervisor_id := NULL;
-    END IF;
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -4526,6 +4672,20 @@ AS
         RAISE global_process_expt;
     END;
     --
+-- Ver1.6  Add  2009/06/22  管理者取得処理を追加  T1_1389
+    -- 管理者取得
+    get_supervisor(
+      ir_masters_rec.person_id               -- IN ：従業員ID
+     ,ir_masters_rec.office_location_code    -- IN ：勤務地拠点コード(新)
+     ,ir_masters_rec.job_post_order          -- IN ：職位並順コード(新)
+     ,ir_masters_rec.hire_date               -- IN ：入社日
+     ,ir_masters_rec.supervisor_id           -- OUT：管理者ID
+     ,lv_errbuf                              -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode                             -- リターン・コード             --# 固定 #
+     ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+-- End1.6
+    --
     -- アサインメントマスタ(API)
     BEGIN
       HR_ASSIGNMENT_API.UPDATE_EMP_ASG(
@@ -5166,6 +5326,20 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
     --
+-- Ver1.6  Add  2009/06/22  管理者取得処理を追加  T1_1389
+    -- 管理者取得
+    get_supervisor(
+      ir_masters_rec.person_id               -- IN ：従業員ID
+     ,ir_masters_rec.office_location_code    -- IN ：勤務地拠点コード(新)
+     ,ir_masters_rec.job_post_order          -- IN ：職位並順コード(新)
+     ,ir_masters_rec.hire_date               -- IN ：入社日
+     ,ir_masters_rec.supervisor_id           -- OUT：管理者ID
+     ,lv_errbuf                              -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode                             -- リターン・コード             --# 固定 #
+     ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+-- End1.6
+    --
     -- アサインメントマスタ(API)
     BEGIN
       HR_ASSIGNMENT_API.UPDATE_EMP_ASG(
@@ -5458,6 +5632,20 @@ AS
 --End Ver1.5
         RAISE global_process_expt;
     END;
+    --
+-- Ver1.6  Add  2009/06/22  管理者取得処理を追加  T1_1389
+    -- 管理者取得
+    get_supervisor(
+      ir_masters_rec.person_id               -- IN ：従業員ID
+     ,ir_masters_rec.office_location_code    -- IN ：勤務地拠点コード(新)
+     ,ir_masters_rec.job_post_order          -- IN ：職位並順コード(新)
+     ,ir_masters_rec.hire_date               -- IN ：入社日
+     ,ir_masters_rec.supervisor_id           -- OUT：管理者ID
+     ,lv_errbuf                              -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode                             -- リターン・コード             --# 固定 #
+     ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+-- End1.6
     --
     -- アサインメントマスタ(API)
     BEGIN
@@ -6414,53 +6602,53 @@ AS
     CURSOR in_if_cur
     IS
 -- Ver1.3 Mod 2009/04/16  重複チェックのため抽出項目にROWIDを追加
---      SELECT xip.employee_number        employee_number,
-      SELECT xip.ROWID                  xip_rowid,
-             xip.employee_number        employee_number,
+--      SELECT xip.employee_number             employee_number,
+      SELECT xip.ROWID                       xip_rowid,
+             xip.employee_number             employee_number,
 -- End Ver1.3
-             xip.hire_date              hire_date,
-             xip.actual_termination_date  actual_termination_date,
-             xip.last_name_kanji        last_name_kanji,
-             xip.first_name_kanji       first_name_kanji,
-             xip.last_name              last_name,
-             xip.first_name             first_name,
-             UPPER(xip.sex)             sex,
+             xip.hire_date                   hire_date,
+             xip.actual_termination_date     actual_termination_date,
+             xip.last_name_kanji             last_name_kanji,
+             xip.first_name_kanji            first_name_kanji,
+             xip.last_name                   last_name,
+             xip.first_name                  first_name,
+             UPPER( xip.sex )                sex,
              NVL(xip.employee_division,'1')  employee_division,
-             xip.location_code          location_code,
-             xip.change_code            change_code,
-             xip.announce_date          announce_date,
-             xip.office_location_code   office_location_code,
-             xip.license_code           license_code,
-             xip.license_name           license_name,
-             xip.job_post               job_post,
-             xip.job_post_name          job_post_name,
-             xip.job_duty               job_duty,
-             xip.job_duty_name          job_duty_name,
-             xip.job_type               job_type,
-             xip.job_type_name          job_type_name,
-             xip.job_system             job_system,
-             xip.job_system_name        job_system_name,
-             xip.job_post_order         job_post_order,
-             xip.consent_division       consent_division,
-             xip.agent_division         agent_division,
-             xip.office_location_code_old  office_location_code_old,
-             xip.location_code_old      location_code_old,
-             xip.license_code_old       license_code_old,
-             xip.license_code_name_old  license_code_name_old,
-             xip.job_post_old           job_post_old,
-             xip.job_post_name_old      job_post_name_old,
-             xip.job_duty_old           job_duty_old,
-             xip.job_duty_name_old      job_duty_name_old,
-             xip.job_type_old           job_type_old,
-             xip.job_type_name_old      job_type_name_old,
-             xip.job_system_old         job_system_old,
-             xip.job_system_name_old    job_system_name_old,
-             xip.job_post_order_old     job_post_order_old,
-             xip.consent_division_old   consent_division_old,
-             xip.agent_division_old     agent_division_old
+             xip.location_code               location_code,
+             xip.change_code                 change_code,
+             xip.announce_date               announce_date,
+             xip.office_location_code        office_location_code,
+             xip.license_code                license_code,
+             xip.license_name                license_name,
+             xip.job_post                    job_post,
+             xip.job_post_name               job_post_name,
+             xip.job_duty                    job_duty,
+             xip.job_duty_name               job_duty_name,
+             xip.job_type                    job_type,
+             xip.job_type_name               job_type_name,
+             xip.job_system                  job_system,
+             xip.job_system_name             job_system_name,
+             xip.job_post_order              job_post_order,
+             xip.consent_division            consent_division,
+             xip.agent_division              agent_division,
+             xip.office_location_code_old    office_location_code_old,
+             xip.location_code_old           location_code_old,
+             xip.license_code_old            license_code_old,
+             xip.license_code_name_old       license_code_name_old,
+             xip.job_post_old                job_post_old,
+             xip.job_post_name_old           job_post_name_old,
+             xip.job_duty_old                job_duty_old,
+             xip.job_duty_name_old           job_duty_name_old,
+             xip.job_type_old                job_type_old,
+             xip.job_type_name_old           job_type_name_old,
+             xip.job_system_old              job_system_old,
+             xip.job_system_name_old         job_system_name_old,
+             xip.job_post_order_old          job_post_order_old,
+             xip.consent_division_old        consent_division_old,
+             xip.agent_division_old          agent_division_old
       FROM   xxcmm_in_people_if xip
       ORDER BY xip.employee_number;
-      --
+    --
     -- 職責自動割当ワーク
     CURSOR wk_pr2_cur(lv_emp_kbn IN VARCHAR2)
     IS
