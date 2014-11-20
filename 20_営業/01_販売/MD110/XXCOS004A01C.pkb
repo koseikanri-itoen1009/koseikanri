@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A01C (body)
  * Description      : 店舗別掛率作成
  * MD.050           : 店舗別掛率作成 MD050_COS_004_A01
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,8 @@ AS
  *  2009/08/03    1.7   N.Maeda          [0000429] レビュー指摘対応
  *  2009/12/16    1.8   N.Maeda          [E_本稼動_00486] 今回データ削除条件修正
  *  2010/02/09    1.9   M.Uehara         [E_本稼動_01394][E_本稼動_01397]定期モード追加,異常掛率チェック
+ *  2010/03/11    1.10  M.Sano           [E_本稼動_01542]営業担当情報取得失敗時スキップ
+ *                                       [E_本稼動_01619]品目履歴情報取得失敗時スキップ
  *
  *****************************************************************************************/
 --
@@ -115,6 +117,9 @@ AS
   global_no_data_expt         EXCEPTION;                              --対象データなし
   global_get_item_err_expt    EXCEPTION;                              --品目マスタ取得エラー
   global_insert_expt          EXCEPTION;                              --データ登録エラー
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+  global_cust_skip_expt       EXCEPTION;                              --処理対象外スキップ例外
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
 --
   PRAGMA EXCEPTION_INIT( global_data_lock_expt, -54 );                --ロックエラー
 --
@@ -150,8 +155,12 @@ AS
                                           := 'APP-XXCOS1-10903';      --警告件数メッセージ
   cv_msg_select_cust_err        CONSTANT  fnd_new_messages.message_name%TYPE
                                           := 'APP-XXCOS1-10909';      --顧客情報抽出エラー
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+--  cv_msg_select_salesreps_err   CONSTANT  fnd_new_messages.message_name%TYPE
+--                                          := 'APP-XXCOS1-10911';      --営業担当員コード取得エラー
   cv_msg_select_salesreps_err   CONSTANT  fnd_new_messages.message_name%TYPE
-                                          := 'APP-XXCOS1-10911';      --営業担当員コード取得エラー
+                                          := 'APP-XXCOS1-10921';      --営業担当員コード取得エラー
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
   cv_msg_select_ar_err          CONSTANT  fnd_new_messages.message_name%TYPE
                                           := 'APP-XXCOS1-10912';      --AR取引情報取得エラー
   cv_msg_select_inv_err         CONSTANT  fnd_new_messages.message_name%TYPE
@@ -247,6 +256,9 @@ AS
 -- ************* 2009/12/16 1.8 N.Maeda ADD START ************* --
   cv_tkn_cnt_data4              CONSTANT  VARCHAR2(10)  := 'COUNT4';  --カウント4
 -- ************* 2009/12/16 1.8 N.Maeda ADD  END  ************* --
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+  cv_tkn_cnt_data5              CONSTANT  VARCHAR2(10)  := 'COUNT5';  --カウント5
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
   cv_tkn_profile                CONSTANT  VARCHAR2(100) := 'PROFILE'; --プロファイル
   cv_tkn_table                  CONSTANT  VARCHAR2(100) := 'TABLE';   --テーブル
   cv_tkn_table_name             CONSTANT  VARCHAR2(100) := 'TABLE_NAME';
@@ -320,6 +332,11 @@ AS
   cv_calc_rate_flag_yes         CONSTANT  VARCHAR2(1) := 'Y';         --掛率閾値超過
   cv_calc_rate_flag_no          CONSTANT  VARCHAR2(1) := 'N';         --掛率閾値内
 --******************************* 2010/02/09 1.9 M.Uehara ADD END   ***************************************
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+  --スキップフラグ
+  cv_get_item_err_flag_yes      CONSTANT  VARCHAR2(1) := 'Y';         --スキップ有
+  cv_get_item_err_flag_no       CONSTANT  VARCHAR2(1) := 'N';         --スキップ無
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -389,6 +406,9 @@ AS
 --******************************* 2010/02/09 1.9 M.Uehara ADD START ***************************************
   gn_uncalc_cnt4                NUMBER;                               -- 未計算区分４件数
 --******************************* 2010/02/09 1.9 M.Uehara ADD END   ***************************************
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+  gn_etc_cnt                    NUMBER;                               -- その他警告件数
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
   gn_line_count                 NUMBER;                               -- 明細カウント
   gn_header_count               NUMBER;                               -- ヘッダカウント
 -- ************* 2009/12/16 1.8 N.Maeda ADD START ************* --
@@ -1990,6 +2010,10 @@ AS
     it_party_id                    IN  hz_cust_accounts.party_id%TYPE,--  パーティID
     it_customer_number             IN  xxcos_shop_digestion_hdrs.customer_number%TYPE,
                                                                       --  顧客コード
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+    it_past_sale_base_code         IN  xxcmm_cust_accounts.past_sale_base_code%TYPE,
+                                                                      --  前月売上拠点コード
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
     ot_shop_digestion_hdr_id       OUT xxcos_shop_digestion_hdrs.shop_digestion_hdr_id%TYPE,
                                                                       --  店舗別用消化計算ヘッダID
     ov_ar_uncalculate_type         OUT VARCHAR2,                      --  AR未計算区分
@@ -2069,16 +2093,39 @@ AS
     END;
 --
   EXCEPTION
-    -- *** SQL SELECT エラー ***
+    -- *** SQL SELECT エラー(営業担当員コード取得エラー) ***
     WHEN global_select_err_expt    THEN
-      ov_errmsg               := xxccp_common_pkg.get_msg(
-                                   iv_application        => ct_xxcos_appl_short_name,
-                                   iv_name               => cv_msg_select_salesreps_err,
-                                   iv_token_name1        => cv_tkn_parm_data1,
-                                   iv_token_value1       => it_customer_number
-                                 );
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
-      ov_retcode := cv_status_error;
+--******************************* 2010/03/11 1.10 M.Sano MOD START ***************************************
+--      ov_errmsg               := xxccp_common_pkg.get_msg(
+--                                   iv_application        => ct_xxcos_appl_short_name,
+--                                   iv_name               => cv_msg_select_salesreps_err,
+--                                   iv_token_name1        => cv_tkn_parm_data1,
+--                                   iv_token_value1       => it_customer_number
+--                                 );
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+--      ov_retcode := cv_status_error;
+      -- エラーメッセージの取得
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application        => ct_xxcos_appl_short_name,
+                      iv_name               => cv_msg_select_salesreps_err,
+                      iv_token_name1        => cv_tkn_parm_data1,
+                      iv_token_value1       => it_past_sale_base_code,
+                      iv_token_name2        => cv_tkn_parm_data2,
+                      iv_token_value2       => it_customer_number
+                    );
+      lv_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+      -- コンカレント出力・コンカレンログにメッセージを出力
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => lv_errmsg
+      );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => lv_errbuf
+      );
+      -- 終了コードには警告をセット
+      ov_retcode := cv_status_warn;
+--******************************* 2010/03/11 1.10 M.Sano MOD END   ***************************************
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -2391,6 +2438,10 @@ AS
     lv_branch_num                       NUMBER;                       --枝番
     ln_check_amount                     NUMBER;                       --チェック用店舗別売上金額
     lt_inventory_item_id                xxcoi_inv_reception_monthly.inventory_item_id%TYPE;
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+    lt_item_code                        mtl_system_items_b.segment1%TYPE;   --品目コード
+    lv_get_item_err_flag                VARCHAR2(1);                  --品目取得エラーフラグ
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
 --
     -- *** ローカル・カーソル ***
     -- INV取引情報取得処理
@@ -2399,12 +2450,18 @@ AS
       SELECT sirm.inv_seq                inv_seq,                     --棚卸SEQ
              sirm.inventory_item_id      inventory_item_id,           --品目ID
              sirm.organization_id        organization_id,             --在庫組織ID
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+             mib.segment1                segment1,                    --品目コード
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
              sirm.operation_cost         operation_cost,              --営業原価
              sirm.standard_cost          standard_cost,               --標準原価
              sirm.inv_wear               inv_wear,                    --販売数(棚卸減耗)
 --             sirm.inv_wear * -1          inv_wear,                    --販売数(棚卸減耗)
              sirm.subinventory_code      subinventory_code            --保管場所
         FROM xxcoi_inv_reception_monthly sirm,
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+             mtl_system_items_b          mib,
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
              mtl_secondary_inventories   msi
        --INV月次在庫受払表.保管場所      = 保管場所マスタ.保管場所
        WHERE sirm.subinventory_code = msi.secondary_inventory_name
@@ -2429,6 +2486,12 @@ AS
          AND sirm.practice_month    = gv_month_date
          --INV月次在庫受払表.棚卸区分      = '2'「月末」
          AND sirm.inventory_kbn     = ct_inventory_class_2
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+         --INV月次在庫受払表.品目ID     = 品目マスタ.品目ID
+         AND sirm.inventory_item_id = mib.inventory_item_id
+         --INV月次在庫受払表.在庫組織ID = 品目マスタ.在庫組織ID
+         AND sirm.organization_id   = mib.organization_id
+--******************************* 2010/03/11 1.10 M.Sano ADD End   ***************************************
       ;
     -- INV取引情報 レコード型
     l_inv_rec inv_cur%ROWTYPE;
@@ -2448,6 +2511,9 @@ AS
     lv_exists_flag            := cv_exists_flag_no;
     lv_branch_num             := 1;
     ln_check_amount           := 0;
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+    lv_get_item_err_flag      := cv_get_item_err_flag_no;
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
     --
     --INVデータループ
     BEGIN
@@ -2457,6 +2523,9 @@ AS
         l_inv_rec            := inv_rec;
         lv_exists_flag       := cv_exists_flag_yes;
         lt_inventory_item_id := l_inv_rec.inventory_item_id;
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+        lt_item_code         := l_inv_rec.segment1;
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
 --
         -- ===============================
         -- A-9.品目マスタデータ取得処理
@@ -2494,9 +2563,54 @@ AS
             ;
           EXCEPTION
             WHEN OTHERS THEN
-              RAISE global_get_item_err_expt;
+--******************************* 2010/03/11 1.10 M.Sano MOD START ***************************************
+--              RAISE global_get_item_err_expt;
+--          END;
+--        END IF;
+----
+              -- 品目マスタ取得エラーのメッセージを取得
+              lv_errmsg  := xxccp_common_pkg.get_msg(
+                              iv_application        => ct_xxcos_appl_short_name,
+                              iv_name               => cv_msg_select_item_err,
+                              iv_token_name1        => cv_tkn_parm_data1,
+                              iv_token_value1       => it_tab_cust_data.past_sale_base_code,
+                              iv_token_name2        => cv_tkn_parm_data2,
+                              iv_token_value2       => it_tab_cust_data.account_number,
+                              iv_token_name3        => cv_tkn_parm_data3,
+                              iv_token_value3       => lt_item_code
+                            );
+              lv_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+              -- コンカレント出力・コンカレンログにメッセージを出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.OUTPUT
+                ,buff   => lv_errmsg
+              );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_errbuf
+              );
+              -- メッセージ変数の初期化
+              lv_errmsg            := NULL;
+              lv_errbuf            := NULL;
+              -- 品目履歴情報取得エラーフラグを有効に変更
+              lv_get_item_err_flag := cv_get_item_err_flag_yes;
           END;
         END IF;
+--
+      END LOOP inv_loop;
+--
+      -- 品目情報取得エラーの場合、後続の処理をスキップ
+      IF ( lv_get_item_err_flag = cv_get_item_err_flag_yes ) THEN
+        RAISE global_get_item_err_expt;
+      END IF;
+--
+      <<inv_loop>>
+      FOR inv_rec IN inv_cur LOOP
+        --セット
+        l_inv_rec            := inv_rec;
+        lv_exists_flag       := cv_exists_flag_yes;
+        lt_inventory_item_id := l_inv_rec.inventory_item_id;
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
 --
         -- ===============================
         -- A-10.店舗別用消化計算明細登録処理
@@ -2613,14 +2727,17 @@ AS
   EXCEPTION
     -- *** 品目マスタ取得 エラー ***
     WHEN global_get_item_err_expt THEN
-      ov_errmsg               := xxccp_common_pkg.get_msg(
-                                   iv_application        => ct_xxcos_appl_short_name,
-                                   iv_name               => cv_msg_select_item_err,
-                                   iv_token_name1        => cv_tkn_parm_data1,
-                                   iv_token_value1       => lt_inventory_item_id
-                                 );
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
-      ov_retcode := cv_status_error;
+--******************************* 2010/03/11 1.10 M.Sano MOD START ***************************************
+--      ov_errmsg               := xxccp_common_pkg.get_msg(
+--                                   iv_application        => ct_xxcos_appl_short_name,
+--                                   iv_name               => cv_msg_select_item_err,
+--                                   iv_token_name1        => cv_tkn_parm_data1,
+--                                   iv_token_value1       => lt_inventory_item_id
+--                                 );
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+--      ov_retcode := cv_status_error;
+      ov_retcode := cv_status_warn;
+--******************************* 2010/03/11 1.10 M.Sano MOD END   ***************************************
     -- *** SQL SELECT エラー ***
     WHEN global_select_err_expt    THEN
       ov_errmsg               := xxccp_common_pkg.get_msg(
@@ -3129,6 +3246,9 @@ AS
 -- ************* 2009/12/16 1.8 N.Maeda ADD START ************* --
     gn_creation_count := 0;
 -- ************* 2009/12/16 1.8 N.Maeda ADD  END  ************* --
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+    gn_etc_cnt      := 0;
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
 --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -3214,90 +3334,120 @@ AS
         IF ( gt_tab_cust_data(i).sales_result_creation_flag != ct_make_flag_yes )
         OR ( gt_tab_cust_data(i).sales_result_creation_flag IS NULL ) THEN
 -- ************* 2009/12/16 1.8 N.Maeda ADD  END  ************* --
-          -- ===============================
-          -- A-5.ヘッダ単位初期化処理
-          -- ===============================
-          init_header(
-             gt_tab_cust_data(i).party_id          -- 顧客パーティID
-            ,gt_tab_cust_data(i).account_number    -- 顧客コード
-            ,lt_shop_digestion_hdr_id              -- 店舗別用消化計算ヘッダID
-            ,lv_ar_uncalculate_type                -- AR未計算区分
-            ,lv_inv_uncalculate_type               -- INV未計算区分
-            ,ln_sales_amount                       -- 店舗別売上金額
-            ,ln_check_amount                       -- チェック用店舗別売上金額
-            ,lt_performance_by_code                -- 営業担当員コード
-            ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
-            ,lv_retcode                            -- リターン・コード             --# 固定 #
-            ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
-          );
-          IF ( lv_retcode != cv_status_normal ) THEN
-            RAISE global_common_expt;
-          END IF;
---
-          -- ===============================
-          -- A-6.AR取引情報取得処理
-          -- ===============================
-          get_ar_data(
-             gt_tab_cust_data(i).cust_account_id   -- 顧客ID
-            ,gt_tab_cust_data(i).account_number    -- 顧客コード
-            ,lv_ar_uncalculate_type                -- AR未計算区分
-            ,ln_sales_amount                       -- 店舗別売上金額
-            ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
-            ,lv_retcode                            -- リターン・コード             --# 固定 #
-            ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
-          );
-          IF ( lv_retcode != cv_status_normal ) THEN
-            RAISE global_common_expt;
-          ELSE
-            IF ( lv_ar_uncalculate_type != cv_uncalculate_type_nof ) THEN
-              gn_ar_cnt := gn_ar_cnt +1;
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+          BEGIN
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
+            -- ===============================
+            -- A-5.ヘッダ単位初期化処理
+            -- ===============================
+            init_header(
+               gt_tab_cust_data(i).party_id          -- 顧客パーティID
+              ,gt_tab_cust_data(i).account_number    -- 顧客コード
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+              ,gt_tab_cust_data(i).past_sale_base_code
+                                                     -- 前月売上拠点コード or 売上拠点コード
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
+              ,lt_shop_digestion_hdr_id              -- 店舗別用消化計算ヘッダID
+              ,lv_ar_uncalculate_type                -- AR未計算区分
+              ,lv_inv_uncalculate_type               -- INV未計算区分
+              ,ln_sales_amount                       -- 店舗別売上金額
+              ,ln_check_amount                       -- チェック用店舗別売上金額
+              ,lt_performance_by_code                -- 営業担当員コード
+              ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
+              ,lv_retcode                            -- リターン・コード             --# 固定 #
+              ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+            -- 警告終了時、後続の処理をスキップする。
+            IF ( lv_retcode  = cv_status_warn ) THEN
+              RAISE global_cust_skip_expt;
             END IF;
-          END IF;
---
-          -- ===============================
-          -- A-7.INV月次在庫受払表情報取得処理
-          -- ===============================
-          get_inv_data(
-             gt_tab_cust_data(i)                   -- 顧客情報
-            ,lt_shop_digestion_hdr_id              -- 店舗別用消化計算ヘッダID
-            ,lv_inv_uncalculate_type               -- INV未計算区分
-            ,ln_check_amount                       -- チェック用店舗別売上金額
-            ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
-            ,lv_retcode                            -- リターン・コード             --# 固定 #
-            ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
-          );
-          IF ( lv_retcode != cv_status_normal ) THEN
-            RAISE global_common_expt;
-          ELSE
-            IF ( lv_inv_uncalculate_type != cv_uncalculate_type_nof ) THEN
-              gn_inv_cnt := gn_inv_cnt + 1;
+            -- 異常終了時、本コンカレントを終了する。
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
+            IF ( lv_retcode != cv_status_normal ) THEN
+              RAISE global_common_expt;
             END IF;
-          END IF;
 --
-          -- ===============================
-          -- A-8.店舗別用消化計算ヘッダ登録処理
-          -- ===============================
-          set_header(
-             gt_tab_cust_data(i)                   -- 顧客情報
-            ,lt_shop_digestion_hdr_id              -- 店舗別用消化計算ヘッダID
-            ,lv_ar_uncalculate_type                -- AR未計算区分
-            ,lv_inv_uncalculate_type               -- INV未計算区分
-            ,ln_sales_amount                       -- 店舗別売上金額
-            ,ln_check_amount                       -- チェック用店舗別売上金額
-            ,lt_performance_by_code                -- 営業担当員コード
-            ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
-            ,lv_retcode                            -- リターン・コード             --# 固定 #
-            ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
-          );
-          IF ( lv_retcode != cv_status_normal ) THEN
-            RAISE global_common_expt;
-          END IF;
+            -- ===============================
+            -- A-6.AR取引情報取得処理
+            -- ===============================
+            get_ar_data(
+               gt_tab_cust_data(i).cust_account_id   -- 顧客ID
+              ,gt_tab_cust_data(i).account_number    -- 顧客コード
+              ,lv_ar_uncalculate_type                -- AR未計算区分
+              ,ln_sales_amount                       -- 店舗別売上金額
+              ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
+              ,lv_retcode                            -- リターン・コード             --# 固定 #
+              ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+            IF ( lv_retcode != cv_status_normal ) THEN
+              RAISE global_common_expt;
+            ELSE
+              IF ( lv_ar_uncalculate_type != cv_uncalculate_type_nof ) THEN
+                gn_ar_cnt := gn_ar_cnt +1;
+              END IF;
+            END IF;
 --
-          --削除用ヘッダID保管
-          gt_tab_shop_del_hdrs(ln_index).shop_digestion_hdr_id := gt_tab_cust_data(i).shop_digestion_hdr_id;
-          gt_tab_shop_del_hdrs(ln_index).customer_number       := gt_tab_cust_data(i).account_number;
-          --
-          ln_index                                             := ln_index + 1;
+            -- ===============================
+            -- A-7.INV月次在庫受払表情報取得処理
+            -- ===============================
+            get_inv_data(
+               gt_tab_cust_data(i)                   -- 顧客情報
+              ,lt_shop_digestion_hdr_id              -- 店舗別用消化計算ヘッダID
+              ,lv_inv_uncalculate_type               -- INV未計算区分
+              ,ln_check_amount                       -- チェック用店舗別売上金額
+              ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
+              ,lv_retcode                            -- リターン・コード             --# 固定 #
+              ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+            -- 警告終了時、後続の処理をスキップする。
+            IF ( lv_retcode  = cv_status_warn ) THEN
+              RAISE global_cust_skip_expt;
+            END IF;
+            -- 異常終了時、本コンカレントを終了する。
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
+            IF ( lv_retcode != cv_status_normal ) THEN
+              RAISE global_common_expt;
+            ELSE
+              IF ( lv_inv_uncalculate_type != cv_uncalculate_type_nof ) THEN
+                gn_inv_cnt := gn_inv_cnt + 1;
+              END IF;
+            END IF;
+--
+            -- ===============================
+            -- A-8.店舗別用消化計算ヘッダ登録処理
+            -- ===============================
+            set_header(
+               gt_tab_cust_data(i)                   -- 顧客情報
+              ,lt_shop_digestion_hdr_id              -- 店舗別用消化計算ヘッダID
+              ,lv_ar_uncalculate_type                -- AR未計算区分
+              ,lv_inv_uncalculate_type               -- INV未計算区分
+              ,ln_sales_amount                       -- 店舗別売上金額
+              ,ln_check_amount                       -- チェック用店舗別売上金額
+              ,lt_performance_by_code                -- 営業担当員コード
+              ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
+              ,lv_retcode                            -- リターン・コード             --# 固定 #
+              ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+            IF ( lv_retcode != cv_status_normal ) THEN
+              RAISE global_common_expt;
+            END IF;
+--
+            --削除用ヘッダID保管
+            gt_tab_shop_del_hdrs(ln_index).shop_digestion_hdr_id := gt_tab_cust_data(i).shop_digestion_hdr_id;
+            gt_tab_shop_del_hdrs(ln_index).customer_number       := gt_tab_cust_data(i).account_number;
+            --
+            ln_index                                             := ln_index + 1;
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+          EXCEPTION
+            WHEN global_cust_skip_expt THEN
+              -- 終了ステータスを更新
+              ov_retcode := lv_retcode;
+              -- その他警告件数を加算
+              gn_etc_cnt := gn_etc_cnt + 1;
+          END;
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
 -- ************* 2009/12/16 1.8 N.Maeda ADD START ************* --
         ELSIF ( gt_tab_cust_data(i).sales_result_creation_flag = ct_make_flag_yes ) THEN
           gn_creation_count := gn_creation_count + 1;
@@ -3410,90 +3560,120 @@ AS
           -- 販売実績未連携時のみ処理実行
           IF ( gt_tab_cust_data(i).sales_result_creation_flag != ct_make_flag_yes )
           OR ( gt_tab_cust_data(i).sales_result_creation_flag IS NULL ) THEN
-            -- ===============================
-            -- A-5.ヘッダ単位初期化処理
-            -- ===============================
-            init_header(
-               gt_tab_cust_data(i).party_id          -- 顧客パーティID
-              ,gt_tab_cust_data(i).account_number    -- 顧客コード
-              ,lt_shop_digestion_hdr_id              -- 店舗別用消化計算ヘッダID
-              ,lv_ar_uncalculate_type                -- AR未計算区分
-              ,lv_inv_uncalculate_type               -- INV未計算区分
-              ,ln_sales_amount                       -- 店舗別売上金額
-              ,ln_check_amount                       -- チェック用店舗別売上金額
-              ,lt_performance_by_code                -- 営業担当員コード
-              ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
-              ,lv_retcode                            -- リターン・コード             --# 固定 #
-              ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
-            );
-            IF ( lv_retcode != cv_status_normal ) THEN
-              RAISE global_common_expt;
-            END IF;
---
-            -- ===============================
-            -- A-6.AR取引情報取得処理
-            -- ===============================
-            get_ar_data(
-               gt_tab_cust_data(i).cust_account_id   -- 顧客ID
-              ,gt_tab_cust_data(i).account_number    -- 顧客コード
-              ,lv_ar_uncalculate_type                -- AR未計算区分
-              ,ln_sales_amount                       -- 店舗別売上金額
-              ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
-              ,lv_retcode                            -- リターン・コード             --# 固定 #
-              ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
-            );
-            IF ( lv_retcode != cv_status_normal ) THEN
-              RAISE global_common_expt;
-            ELSE
-              IF ( lv_ar_uncalculate_type != cv_uncalculate_type_nof ) THEN
-                gn_ar_cnt := gn_ar_cnt +1;
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+            BEGIN
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
+              -- ===============================
+              -- A-5.ヘッダ単位初期化処理
+              -- ===============================
+              init_header(
+                 gt_tab_cust_data(i).party_id          -- 顧客パーティID
+                ,gt_tab_cust_data(i).account_number    -- 顧客コード
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+                ,gt_tab_cust_data(i).past_sale_base_code
+                                                       -- 前月売上拠点コード or 売上拠点コード
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
+                ,lt_shop_digestion_hdr_id              -- 店舗別用消化計算ヘッダID
+                ,lv_ar_uncalculate_type                -- AR未計算区分
+                ,lv_inv_uncalculate_type               -- INV未計算区分
+                ,ln_sales_amount                       -- 店舗別売上金額
+                ,ln_check_amount                       -- チェック用店舗別売上金額
+                ,lt_performance_by_code                -- 営業担当員コード
+                ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
+                ,lv_retcode                            -- リターン・コード             --# 固定 #
+                ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+              );
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+              -- 警告終了時、後続の処理をスキップする。
+              IF ( lv_retcode  = cv_status_warn ) THEN
+                RAISE global_cust_skip_expt;
               END IF;
-            END IF;
---
-            -- ===============================
-            -- A-7.INV月次在庫受払表情報取得処理
-            -- ===============================
-            get_inv_data(
-               gt_tab_cust_data(i)                   -- 顧客情報
-              ,lt_shop_digestion_hdr_id              -- 店舗別用消化計算ヘッダID
-              ,lv_inv_uncalculate_type               -- INV未計算区分
-              ,ln_check_amount                       -- チェック用店舗別売上金額
-              ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
-              ,lv_retcode                            -- リターン・コード             --# 固定 #
-              ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
-            );
-            IF ( lv_retcode != cv_status_normal ) THEN
-              RAISE global_common_expt;
-            ELSE
-              IF ( lv_inv_uncalculate_type != cv_uncalculate_type_nof ) THEN
-                gn_inv_cnt := gn_inv_cnt + 1;
+              -- 異常終了時、本コンカレントを終了する。
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
+              IF ( lv_retcode != cv_status_normal ) THEN
+                RAISE global_common_expt;
               END IF;
-            END IF;
 --
-            -- ===============================
-            -- A-8.店舗別用消化計算ヘッダ登録処理
-            -- ===============================
-            set_header(
-               gt_tab_cust_data(i)                   -- 顧客情報
-              ,lt_shop_digestion_hdr_id              -- 店舗別用消化計算ヘッダID
-              ,lv_ar_uncalculate_type                -- AR未計算区分
-              ,lv_inv_uncalculate_type               -- INV未計算区分
-              ,ln_sales_amount                       -- 店舗別売上金額
-              ,ln_check_amount                       -- チェック用店舗別売上金額
-              ,lt_performance_by_code                -- 営業担当員コード
-              ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
-              ,lv_retcode                            -- リターン・コード             --# 固定 #
-              ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
-            );
-            IF ( lv_retcode != cv_status_normal ) THEN
-              RAISE global_common_expt;
-            END IF;
+              -- ===============================
+              -- A-6.AR取引情報取得処理
+              -- ===============================
+              get_ar_data(
+                 gt_tab_cust_data(i).cust_account_id   -- 顧客ID
+                ,gt_tab_cust_data(i).account_number    -- 顧客コード
+                ,lv_ar_uncalculate_type                -- AR未計算区分
+                ,ln_sales_amount                       -- 店舗別売上金額
+                ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
+                ,lv_retcode                            -- リターン・コード             --# 固定 #
+                ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+              );
+              IF ( lv_retcode != cv_status_normal ) THEN
+                RAISE global_common_expt;
+              ELSE
+                IF ( lv_ar_uncalculate_type != cv_uncalculate_type_nof ) THEN
+                  gn_ar_cnt := gn_ar_cnt +1;
+                END IF;
+              END IF;
 --
-            --削除用ヘッダID保管
-            gt_tab_shop_del_hdrs(ln_index).shop_digestion_hdr_id := gt_tab_cust_data(i).shop_digestion_hdr_id;
-            gt_tab_shop_del_hdrs(ln_index).customer_number       := gt_tab_cust_data(i).account_number;
-            --
-            ln_index                                             := ln_index + 1;
+              -- ===============================
+              -- A-7.INV月次在庫受払表情報取得処理
+              -- ===============================
+              get_inv_data(
+                 gt_tab_cust_data(i)                   -- 顧客情報
+                ,lt_shop_digestion_hdr_id              -- 店舗別用消化計算ヘッダID
+                ,lv_inv_uncalculate_type               -- INV未計算区分
+                ,ln_check_amount                       -- チェック用店舗別売上金額
+                ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
+                ,lv_retcode                            -- リターン・コード             --# 固定 #
+                ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+              );
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+              -- 警告終了時、後続の処理をスキップする。
+              IF ( lv_retcode  = cv_status_warn ) THEN
+                RAISE global_cust_skip_expt;
+              END IF;
+              -- 異常終了時、本コンカレントを終了する。
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
+              IF ( lv_retcode != cv_status_normal ) THEN
+                RAISE global_common_expt;
+              ELSE
+                IF ( lv_inv_uncalculate_type != cv_uncalculate_type_nof ) THEN
+                  gn_inv_cnt := gn_inv_cnt + 1;
+                END IF;
+              END IF;
+--
+              -- ===============================
+              -- A-8.店舗別用消化計算ヘッダ登録処理
+              -- ===============================
+              set_header(
+                 gt_tab_cust_data(i)                   -- 顧客情報
+                ,lt_shop_digestion_hdr_id              -- 店舗別用消化計算ヘッダID
+                ,lv_ar_uncalculate_type                -- AR未計算区分
+                ,lv_inv_uncalculate_type               -- INV未計算区分
+                ,ln_sales_amount                       -- 店舗別売上金額
+                ,ln_check_amount                       -- チェック用店舗別売上金額
+                ,lt_performance_by_code                -- 営業担当員コード
+                ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
+                ,lv_retcode                            -- リターン・コード             --# 固定 #
+                ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+              );
+              IF ( lv_retcode != cv_status_normal ) THEN
+                RAISE global_common_expt;
+              END IF;
+--
+              --削除用ヘッダID保管
+              gt_tab_shop_del_hdrs(ln_index).shop_digestion_hdr_id := gt_tab_cust_data(i).shop_digestion_hdr_id;
+              gt_tab_shop_del_hdrs(ln_index).customer_number       := gt_tab_cust_data(i).account_number;
+              --
+              ln_index                                             := ln_index + 1;
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+            EXCEPTION
+              WHEN global_cust_skip_expt THEN
+                -- 終了ステータスを更新
+                ov_retcode := lv_retcode;
+                -- その他警告件数を加算
+                gn_etc_cnt := gn_etc_cnt + 1;
+            END;
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
           ELSIF ( gt_tab_cust_data(i).sales_result_creation_flag = ct_make_flag_yes ) THEN
             gn_creation_count := gn_creation_count + 1;
           END IF;
@@ -3687,11 +3867,15 @@ AS
          which  => FND_FILE.LOG
         ,buff   => lv_errbuf --エラーメッセージ
       );
---******************************* 2010/02/09 1.9 M.Uehara ADD START ***************************************
-      --「顧客ロックフラグ」が'Y'以外または「掛率閾値フラグ」が'Y'の場合、各件数を初期化せずに出力
-      IF (gv_calc_rate_flag != cv_calc_rate_flag_yes
-        AND gv_cust_lock_flag != cv_cust_lock_flag_yes ) THEN
---******************************* 2010/02/09 1.9 M.Uehara ADD END   ***************************************
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+----******************************* 2010/02/09 1.9 M.Uehara ADD START ***************************************
+--      --「顧客ロックフラグ」が'Y'以外または「掛率閾値フラグ」が'Y'以外または「スキップフラグ」が'Y'以外の場合、
+--      -- 各件数を初期化せずに出力
+--      IF (gv_calc_rate_flag != cv_calc_rate_flag_yes
+--        AND gv_cust_lock_flag != cv_cust_lock_flag_yes ) THEN
+----******************************* 2010/02/09 1.9 M.Uehara ADD END   ***************************************
+      IF ( lv_retcode = cv_status_error ) THEN
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
         --初期化
         gn_uncalc_cnt1 := 0;
         gn_uncalc_cnt2 := 0;
@@ -3707,6 +3891,9 @@ AS
 -- ************* 2009/12/16 1.8 N.Maeda ADD START ************* --
         gn_creation_count := 0;
 -- ************* 2009/12/16 1.8 N.Maeda ADD  END  ************* --
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+        gn_etc_cnt     := 0;
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
 --******************************* 2010/02/09 1.9 M.Uehara ADD START ***************************************
       END IF;
 --******************************* 2010/02/09 1.9 M.Uehara ADD END   ***************************************
@@ -3728,7 +3915,7 @@ AS
                     ,iv_token_value3 => TO_CHAR(gn_inv_cnt)
 -- ************* 2009/12/16 1.8 N.Maeda ADD START ************* --
                     ,iv_token_name4  => cv_tkn_cnt_data4
-                    ,iv_token_value4  => TO_CHAR(gn_creation_count)
+                    ,iv_token_value4 => TO_CHAR(gn_creation_count)
 -- ************* 2009/12/16 1.8 N.Maeda ADD  END  ************* --
                    );
     FND_FILE.PUT_LINE(
@@ -3762,6 +3949,10 @@ AS
                     ,iv_token_name4  => cv_tkn_cnt_data4
                     ,iv_token_value4 => TO_CHAR(gn_uncalc_cnt4)
 --******************************* 2010/02/09 1.9 M.Uehara ADD END   ***************************************
+--******************************* 2010/03/11 1.10 M.Sano ADD START ***************************************
+                    ,iv_token_name5  => cv_tkn_cnt_data5
+                    ,iv_token_value5 => TO_CHAR(gn_etc_cnt)
+--******************************* 2010/03/11 1.10 M.Sano ADD END   ***************************************
                    );
     FND_FILE.PUT_LINE(
        which  => FND_FILE.OUTPUT
