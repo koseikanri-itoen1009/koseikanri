@@ -7,7 +7,7 @@ AS
  * Description      : 支払通知データダウンロード
  * MD.050           : MD050_CFR_004_A02_支払通知データダウンロード
  * MD.070           : MD050_CFR_004_A02_支払通知データダウンロード
- * Version          : 1.00
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/19    1.00 SCS 中村 博      初回作成
+ *  2011/09/28    1.1  SCS S.NIKI       [E_本稼動_07906]流通BMS対応
  *
  *****************************************************************************************/
 --
@@ -615,6 +616,10 @@ AS
         ,col58
         ,col59
         ,col60
+-- Add 2011/09/28 Ver1.1 Start
+        ,col61
+        ,col62
+-- Add 2011/09/28 Ver1.1 End
       )
       SELECT
         cn_request_id                         request_id,               -- 要求ID
@@ -678,7 +683,12 @@ AS
         xpay.chain_orig_desc                  chain_orig_desc,          -- チェーン固有エリア
         xpay.sum_amount                       sum_amount,               -- 合計金額
         xpay.discount_sum_amount              discount_sum_amount,      -- 値引合計金額
-        xpay.return_sum_amount                return_sum_amount         -- 返品合計金額
+-- Modify 2011/09/28 Ver1.1 Start
+--        xpay.return_sum_amount                return_sum_amount         -- 返品合計金額
+        xpay.return_sum_amount                return_sum_amount,        -- 返品合計金額
+        xpay.bms_header_data                  bms_header_data,          -- 流通ＢＭＳヘッダデータ
+        xpay.bms_line_data                    bms_line_data             -- 流通ＢＭＳ明細データ
+-- Modify 2011/09/28 Ver1.1 End
       FROM
         (
         SELECT
@@ -741,7 +751,12 @@ AS
           RTRIM( xpn.chain_orig_desc )        chain_orig_desc,          -- チェーン固有エリア
           TO_CHAR( xpn.sum_amount )           sum_amount,               -- 合計金額
           TO_CHAR( xpn.discount_sum_amount )  discount_sum_amount,      -- 値引合計金額
-          TO_CHAR( xpn.return_sum_amount )    return_sum_amount         -- 返品合計金額
+-- Modify 2011/09/28 Ver1.1 Start
+--          TO_CHAR( xpn.return_sum_amount )    return_sum_amount         -- 返品合計金額
+          TO_CHAR( xpn.return_sum_amount )    return_sum_amount,        -- 返品合計金額
+          xpn.bms_header_data                 bms_header_data,          -- 流通ＢＭＳヘッダデータ
+          xpn.bms_line_data                   bms_line_data             -- 流通ＢＭＳ明細データ
+-- Modify 2011/09/28 Ver1.1 End
         FROM xxcfr_payment_notes        xpn,             -- 支払通知情報テーブル
              xxcfr_cust_hierarchy_v     xchv             -- 顧客階層ビュー
         WHERE ( lv_due_date_from          IS NULL

@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcfr_common_pkg(body)
  * Description      : 
  * MD.050           : なし
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * --------------------      ---- ----- --------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *                                       新規function「get_receive_updatable」を追加
  *  2010-07-09   1.3    SCS 廣瀬 真佐人  障害「E_本稼動_01990」対応
  *                                       新規Prucedure「awi_ship_code」を追加
+ *  2011-10-20   1.4    SCSK 仁木 重人   [E_本稼動_07906]流通BMS対応
  *
  *****************************************************************************************/
 --
@@ -966,11 +967,17 @@ AS
         --
           IF (tt_flv(i).attribute1 = 'Y') THEN  -- 括りあり
           --
-            lv_sql := lv_sql||'''"''||col'||i||'||''"''' ;
+-- Modify 2011/10/20 Ver1.4 Start
+--            lv_sql := lv_sql||'''"''||col'||i||'||''"''' ;
+            lv_sql := lv_sql||'''"''||TO_CLOB( col'||i||'||''"'''||')' ;
+-- Modify 2011/10/20 Ver1.4 End
             --
           ELSE                                   -- 括りなし
           --
-            lv_sql   := lv_sql||'col'||i ;
+-- Modify 2011/10/20 Ver1.4 Start
+--            lv_sql   := lv_sql||'col'||i ;
+            lv_sql   := lv_sql||'TO_CLOB( col'||i||')' ;
+-- Modify 2011/10/20 Ver1.4 End
             --
           END IF ;
           --

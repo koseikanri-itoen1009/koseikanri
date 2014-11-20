@@ -5,7 +5,7 @@ CREATE TABLE xxcfr.xxcfr_payment_notes
  * Description     : 支払通知情報テーブル
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.3
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -16,6 +16,7 @@ CREATE TABLE xxcfr.xxcfr_payment_notes
  *  2009/01/23    1.0  SCS 中村 博    EBS取込日を論理データモデルに合わせNOT NULLに
  *  2009/04/22    1.1  SCS 萱原 伸哉  障害番号T1_0128対応 桁数修正
  *  2009/07/21    1.2  SCS 廣瀬 真佐人[0000792]障害対応
+ *  2011/09/28    1.3  SCS 仁木 重人  [E_本稼動_07906]流通BMS対応
  ************************************************************************/
 ( 
   payment_note_id             NUMBER      NOT NULL  ,     -- 支払通知情報ID
@@ -83,6 +84,10 @@ CREATE TABLE xxcfr.xxcfr_payment_notes
   discount_sum_amount         NUMBER                ,     -- 値引合計金額
   return_sum_amount           NUMBER                ,     -- 返品合計金額
   org_id                      NUMBER                ,     -- 組織ID
+/* 2011/09/28 Ver1.3 Add Start */
+  bms_header_data             VARCHAR2(2000)        ,     -- 流通ＢＭＳヘッダデータ
+  bms_line_data               VARCHAR2(1500)        ,     -- 流通ＢＭＳ明細データ
+/* 2011/09/28 Ver1.3 Add End   */
   created_by                  NUMBER(15)  NOT NULL  ,     -- 作成者
   creation_date               DATE        NOT NULL  ,     -- 作成日
   last_updated_by             NUMBER(15)  NOT NULL  ,     -- 最終更新者
@@ -178,6 +183,10 @@ COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.sum_amount                IS '合計金
 COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.discount_sum_amount       IS '値引合計金額';
 COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.return_sum_amount         IS '返品合計金額';
 COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.org_id                    IS '組織ID';
+/* 2011/09/28 Ver1.3 Add Start */
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.bms_header_data           IS '流通ＢＭＳヘッダデータ';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.bms_line_data             IS '流通ＢＭＳ明細データ';
+/* 2011/09/28 Ver1.3 Add End   */
 COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.created_by                IS '作成者';
 COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.creation_date             IS '作成日';
 COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.last_updated_by           IS '最終更新者';

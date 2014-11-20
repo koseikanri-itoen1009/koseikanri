@@ -7,7 +7,7 @@ AS
  * Description      : 支払通知データ抽出
  * MD.050           : MD050_CFR_004_A01_支払通知データ抽出
  * MD.070           : MD050_CFR_004_A01_支払通知データ抽出
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/04/24    1.3  SCS S.KAYAHARA   T1_0128対応
  *  2009/05/14    1.4  SCS S.KAYAHARA   T1_0955対応
  *  2009/06/10    1.5  SCS S.KAYAHARA   T1_1355対応
+ *  2011/09/28    1.6  SCS S.NIKI       [E_本稼動_07906]流通BMS対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -211,6 +212,12 @@ AS
   TYPE g_sum_amount_ttype                IS TABLE OF xxcfr_payment_notes.sum_amount%type INDEX BY PLS_INTEGER;
   TYPE g_discount_sum_amount_ttype       IS TABLE OF xxcfr_payment_notes.discount_sum_amount%type INDEX BY PLS_INTEGER;
   TYPE g_return_sum_amount_ttype         IS TABLE OF xxcfr_payment_notes.return_sum_amount%type INDEX BY PLS_INTEGER;
+-- Add 2011/09/28 Ver1.6 Start
+  -- 流通ＢＭＳヘッダデータ
+  TYPE g_bms_header_data_ttype           IS TABLE OF xxcfr_payment_notes.bms_header_data%type INDEX BY PLS_INTEGER;
+  -- 流通ＢＭＳ明細データ
+  TYPE g_bms_line_data_ttype             IS TABLE OF xxcfr_payment_notes.bms_line_data%type INDEX BY PLS_INTEGER;
+-- Add 2011/09/28 Ver1.6 End
   gt_pn_ebs_cust_account_number         g_cust_account_number_ttype;
   gt_pn_record_type                     g_record_type_ttype;
   gt_pn_record_number                   g_record_number_ttype;
@@ -273,6 +280,10 @@ AS
   gt_pn_sum_amount                      g_sum_amount_ttype;
   gt_pn_discount_sum_amount             g_discount_sum_amount_ttype;
   gt_pn_return_sum_amount               g_return_sum_amount_ttype;
+-- Add 2011/09/28 Ver1.6 Start
+  gt_pn_bms_header_data                 g_bms_header_data_ttype;         -- 流通ＢＭＳヘッダデータ
+  gt_pn_bms_line_data                   g_bms_line_data_ttype;           -- 流通ＢＭＳ明細データ
+-- Add 2011/09/28 Ver1.6 End
 --
   TYPE c_payment_note_len_ttype IS TABLE OF NUMBER;
   gt_payment_note_len_data  c_payment_note_len_ttype := c_payment_note_len_ttype ( 
@@ -357,7 +368,13 @@ AS
     300,  -- チェーン固有エリア
     15,   -- 請求合計金額/支払合計金額
     15,   -- 値引合計金額
-    15    -- 返品合計金額
+-- Modify 2011/09/28 Ver1.6 Start
+--    15    -- 返品合計金額
+    15,   -- 返品合計金額
+    49,   -- 予備エリア
+    2000, -- 流通ＢＭＳヘッダデータ
+    1500  -- 流通ＢＭＳ明細データ
+-- Modify 2011/09/28 Ver1.6 End
   )
   ;
 
@@ -834,8 +851,14 @@ AS
     ln_target_cnt   NUMBER := 0;    -- 対象件数
     ln_loop_cnt     NUMBER;         -- ループカウンタ
     ln_text_pos     NUMBER;         -- ファイル走査位置
-    lv_col_value    VARCHAR2(1000) ;-- 項目値 
+-- Modify 2011/09/28 Ver1.6 Start
+--    lv_col_value    VARCHAR2(1000) ;-- 項目値 
+    lv_col_value    VARCHAR2(2000) ;-- 項目値
+-- Modify 2011/09/28 Ver1.6 End
     ln_col_num      NUMBER;         -- カラムＮＯ
+-- Add 2011/09/28 Ver1.6 Start
+    ln_utl_max_size NUMBER := 32767;-- 最大レコード数
+-- Add 2011/09/28 Ver1.6 End
 --
     -- *** ローカル・カーソル ***
 --
@@ -882,6 +905,9 @@ AS
                         gv_payment_note_filepath
                        ,iv_filename
                        ,cv_open_mode_r
+-- Add 2011/09/28 Ver1.6 Start
+                       ,ln_utl_max_size
+-- Add 2011/09/28 Ver1.6 End
                       ) ;
 --
     -- ====================================================
@@ -1232,6 +1258,12 @@ AS
           WHEN 60 THEN
 -- Modify 2009.04.22 Ver1.3 End
             gt_pn_return_sum_amount(ln_target_cnt)       := TO_NUMBER(lv_col_value);
+-- Add 2011/09/28 Ver1.6 Start
+          WHEN 62 THEN
+            gt_pn_bms_header_data(ln_target_cnt)         := RTRIM(lv_col_value);
+          WHEN 63 THEN
+            gt_pn_bms_line_data(ln_target_cnt)           := RTRIM(lv_col_value);
+-- Add 2011/09/28 Ver1.6 End
           ELSE NULL;
           END CASE;
 --
@@ -1553,6 +1585,10 @@ AS
           ,discount_sum_amount
           ,return_sum_amount
           ,org_id
+-- Add 2011/09/28 Ver1.6 Start
+          ,bms_header_data                           -- 流通ＢＭＳヘッダデータ
+          ,bms_line_data                             -- 流通ＢＭＳ明細データ
+-- Add 2011/09/28 Ver1.6 End
           ,created_by
           ,creation_date
           ,last_updated_by
@@ -1635,6 +1671,10 @@ AS
           ,gt_pn_discount_sum_amount(ln_loop_cnt)
           ,gt_pn_return_sum_amount(ln_loop_cnt)
           ,gn_org_id
+-- Add 2011/09/28 Ver1.6 Start
+          ,gt_pn_bms_header_data(ln_loop_cnt)        -- 流通ＢＭＳヘッダデータ
+          ,gt_pn_bms_line_data(ln_loop_cnt)          -- 流通ＢＭＳ明細データ
+-- Add 2011/09/28 Ver1.6 End
           ,cn_created_by
           ,cd_creation_date
           ,cn_last_updated_by
