@@ -1,0 +1,147 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2014. All rights reserved.
+ *
+ * Table Name      : xxcoi_rep_by_employee_rcpt
+ * Description     : 受払残高表（営業員別計）帳票ワークテーブル
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014-03-31    1.0   SCSK T.Nakano    新規作成
+ *
+ ************************************************************************/
+ CREATE TABLE xxcoi.xxcoi_rep_by_employee_rcpt (
+     slit_id                        NUMBER        NOT NULL
+    ,inventory_kbn                  VARCHAR2(4)
+    ,in_out_year                    VARCHAR2(2)
+    ,in_out_month                   VARCHAR2(2)
+    ,in_out_date                    VARCHAR2(2)
+    ,base_code                      VARCHAR2(4)
+    ,base_name                      VARCHAR2(10)
+    ,inv_cl_char                    VARCHAR2(4)
+    ,employee_code                  VARCHAR2(9)
+    ,employee_name                  VARCHAR2(50)
+    ,first_inv_qty_amt              NUMBER
+    ,first_inv_qty_pr               NUMBER
+    ,warehouse_stock_amt            NUMBER
+    ,warehouse_stock_pr             NUMBER
+    ,sales_qty_amt                  NUMBER
+    ,sales_qty_pr                   NUMBER
+    ,customer_return_amt            NUMBER
+    ,customer_return_pr             NUMBER
+    ,support_qty_amt                NUMBER
+    ,support_qty_pr                 NUMBER
+    ,vd_ship_qty_amt                NUMBER
+    ,vd_ship_qty_pr                 NUMBER
+    ,vd_in_qty_amt                  NUMBER
+    ,vd_in_qty_pr                   NUMBER
+    ,warehouse_ship_amt             NUMBER
+    ,warehouse_ship_pr              NUMBER
+    ,tyb_stock_qty_amt              NUMBER
+    ,tyb_stock_qty_pr               NUMBER
+    ,inventory_qty_amt              NUMBER
+    ,inventory_qty_pr               NUMBER
+    ,genmou_qty_amt                 NUMBER
+    ,genmou_qty_pr                  NUMBER
+    ,message                        VARCHAR2(200)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)    NOT NULL
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcoi_rep_by_employee_rcpt_pk PRIMARY KEY (slit_id, request_id)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE xxcoi.xxcoi_rep_by_employee_rcpt IS '受払残高表（営業員別計）一時表';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.slit_id                          IS '受払残高情報ID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.inventory_kbn                    IS '棚卸区分';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.in_out_year                      IS '年';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.in_out_month                     IS '月';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.in_out_date                      IS '日';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.base_code                        IS '拠点コード';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.base_name                        IS '拠点名称';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.inv_cl_char                      IS '在庫確定印字文字';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.employee_code                    IS '営業員コード';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.employee_name                    IS '営業員名称';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.first_inv_qty_amt                IS '月首棚卸高数量'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.first_inv_qty_pr                 IS '月首棚卸高金額'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.warehouse_stock_amt              IS '倉庫より入庫数量'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.warehouse_stock_pr               IS '倉庫より入庫金額'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.sales_qty_amt                    IS '売上出庫数量'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.sales_qty_pr                     IS '売上出庫金額'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.customer_return_amt              IS '顧客返品数量'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.customer_return_pr               IS '顧客返品金額'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.support_qty_amt                  IS '協賛見本数量'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.support_qty_pr                   IS '協賛見本金額'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.vd_ship_qty_amt                  IS 'VD出庫数量'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.vd_ship_qty_pr                   IS 'VD出庫金額'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.vd_in_qty_amt                    IS 'VD入庫数量'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.vd_in_qty_pr                     IS 'VD入庫金額'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.warehouse_ship_amt               IS '倉庫へ返庫数量'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.warehouse_ship_pr                IS '倉庫へ返庫金額'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.tyb_stock_qty_amt                IS '帳簿在庫数量'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.tyb_stock_qty_pr                 IS '帳簿在庫金額'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.inventory_qty_amt                IS '棚卸高数量'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.inventory_qty_pr                 IS '棚卸高金額'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.genmou_qty_amt                   IS '棚卸減耗数量'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.genmou_qty_pr                    IS '棚卸減耗金額'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.message                          IS 'メッセージ';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.created_by                       IS '作成者';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.creation_date                    IS '作成日';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.last_updated_by                  IS '最終更新者';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.last_update_date                 IS '最終更新日';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.last_update_login                IS '最終更新ログイン';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.request_id                       IS '要求ID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.program_application_id           IS 'コンカレント・プログラム・アプリケーションID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.program_id                       IS 'コンカレント・プログラムID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_by_employee_rcpt.program_update_date              IS 'プログラム更新日';
+/

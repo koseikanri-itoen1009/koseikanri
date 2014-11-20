@@ -1,0 +1,60 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2014. All rights reserved.
+ *
+ * Table Name      : xxcoi_tmp_rep_by_employee_rcpt
+ * Description     : 受払残高表（営業員別計）一時表
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014-03-28    1.0   SCSK T.Nakano    新規作成
+ *
+ ************************************************************************/
+ CREATE GLOBAL TEMPORARY TABLE xxcoi.xxcoi_tmp_rep_by_employee_rcpt (
+     employee_code                  VARCHAR2(9)
+    ,employee_name                  VARCHAR2(50)
+    ,operation_cost                 NUMBER
+    ,first_inventory_qty            NUMBER
+    ,warehouse_stock                NUMBER
+    ,sales_qty                      NUMBER
+    ,customer_return                NUMBER
+    ,support_qty                    NUMBER
+    ,vd_ship_qty                    NUMBER
+    ,vd_in_qty                      NUMBER
+    ,warehouse_ship                 NUMBER
+    ,tyoubo_stock_qty               NUMBER
+    ,inventory_qty                  NUMBER
+    ,genmou_qty                     NUMBER
+     )
+ ON COMMIT DELETE ROWS
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_rep_by_employee_rcpt.employee_code                    IS '営業員コード';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_rep_by_employee_rcpt.employee_name                    IS '営業員名称';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_rep_by_employee_rcpt.operation_cost                   IS '営業原価';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_rep_by_employee_rcpt.first_inventory_qty              IS '月首棚卸高';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_rep_by_employee_rcpt.warehouse_stock                  IS '倉庫より入庫';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_rep_by_employee_rcpt.sales_qty                        IS '売上出庫';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_rep_by_employee_rcpt.customer_return                  IS '顧客返品';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_rep_by_employee_rcpt.support_qty                      IS '協賛見本';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_rep_by_employee_rcpt.vd_ship_qty                      IS 'VD出庫';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_rep_by_employee_rcpt.vd_in_qty                        IS 'VD入庫';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_rep_by_employee_rcpt.warehouse_ship                   IS '倉庫へ返庫';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_rep_by_employee_rcpt.tyoubo_stock_qty                 IS '帳簿在庫';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_rep_by_employee_rcpt.inventory_qty                    IS '棚卸高';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_rep_by_employee_rcpt.genmou_qty                       IS '棚卸減耗';
+/
