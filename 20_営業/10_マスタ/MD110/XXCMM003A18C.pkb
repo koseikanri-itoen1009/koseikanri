@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A18C(body)
  * Description      : 情報系連携IFデータ作成
  * MD.050           : MD050_CMM_003_A18_情報系連携IFデータ作成
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,7 +33,8 @@ AS
  *  2009/11/28    1.8   Hiroshi.Oshida   障害E_本稼動_00151の対応
  *  2009/11/23    1.9   Yutaka.Kuboshima 障害E_本番_00341の対応
  *  2009/12/02    1.10  Yutaka.Kuboshima 障害E_本稼動_00262の対応
- *  2009/12/25    1.11  Yutaka.Kuboshima 障害E_本稼動_xxxxxの対応
+ *  2009/12/25    1.11  Yutaka.Kuboshima 障害E_本稼動_00778の対応
+ *  2010/01/08    1.12  Yutaka.Kuboshima 障害E_本稼動_00934の対応
  *
  *****************************************************************************************/
 --
@@ -398,12 +399,12 @@ AS
     cv_single_byte_err2   CONSTANT VARCHAR2(30)    := '99-9999-9999';           --半角エラー時のダミー値2
 -- 2009/06/09 Ver1.6 add end by Yutaka.Kuboshima
 --
--- 2009/12/25 Ver1.11 E_本稼動_xxxxx add start by Yutaka.Kuboshima
+-- 2009/12/25 Ver1.11 E_本稼動_00778 add start by Yutaka.Kuboshima
     cv_kokyaku_kbn        CONSTANT VARCHAR2(2)     := '10';                     --顧客区分・顧客
     cv_mc_kouho_sts       CONSTANT VARCHAR2(2)     := '10';                     --顧客ステータス・MC候補
     cv_mc_sts             CONSTANT VARCHAR2(2)     := '20';                     --顧客ステータス・MC
     cv_sp_kessai_sts      CONSTANT VARCHAR2(2)     := '25';                     --顧客ステータス・SP決裁済
--- 2009/12/25 Ver1.11 E_本稼動_xxxxx add end by Yutaka.Kuboshima
+-- 2009/12/25 Ver1.11 E_本稼動_00778 add end by Yutaka.Kuboshima
 --
     -- *** ローカル変数 ***
     lv_header_str                  VARCHAR2(2000)  := NULL;                     --ヘッダメッセージ格納用変数
@@ -454,9 +455,9 @@ AS
               xca.intro_business_person                      intro_business_person,       --紹介営業員コード
               xca.intro_base_code                            intro_base_code,             --紹介拠点コード
               hopero.route_no                                route_no,                    --ルートＮＯ
-              xca.business_low_type                          business_low_type,           --業態大分類
+              xca.business_low_type                          business_low_type,           --業態小分類
               flvgc.lookup_code                              lookup_code_c,               --業態中分類
-              flvgd.lookup_code                              lookup_code_s,               --業態小分類
+              flvgd.lookup_code                              lookup_code_s,               --業態大分類
               xca.delivery_form                              delivery_form,               --配送形態
               xca.establishment_location                     establishment_location,      --設置ロケーション
               xca.open_close_div                             open_close_div,              --オープン・クローズ
@@ -593,6 +594,13 @@ AS
 -- 2009/12/02 Ver1.10 障害E_本稼動_00262 add start by Yutaka.Kuboshima
              ,hcas.cust_acct_site_id                         cust_acct_site_id            --顧客所在地ID
 -- 2009/12/02 Ver1.10 障害E_本稼動_00262 add end by Yutaka.Kuboshima
+--
+-- 2010/01/08 Ver1.12 E_本稼動_00934 add start by Yutaka.Kuboshima
+             ,flvgd2.lookup_code                             business_high_type_kari      --業態大分類(仮)
+             ,flvgc2.lookup_code                             business_mid_type_kari       --業態中分類(仮)
+             ,hp.attribute8                                  business_low_type_kari       --業態小分類(仮)
+-- 2010/01/08 Ver1.12 E_本稼動_00934 add end by Yutaka.Kuboshima
+--
       FROM    hz_cust_accounts              hca,                      --顧客マスタ
               hz_locations                  hl,                       --顧客事業所マスタ
               hz_cust_site_uses             hcsu,                     --顧客使用目的マスタ
@@ -625,6 +633,26 @@ AS
               WHERE   language     = cv_language_ja
               AND     lookup_type  = cv_gyotai_dai
               AND     enabled_flag = cv_y_flag)    flvgd,            --クイックコード_参照コード(業態(大分類))
+--
+-- 2010/01/08 Ver1.12 E_本稼動_00934 add start by Yutaka.Kuboshima
+              (SELECT flvs.lookup_code           lookup_code,
+                      flvs.attribute1            attribute1
+              FROM    fnd_lookup_values flvs
+              WHERE   flvs.language     = cv_language_ja
+              AND     flvs.lookup_type  = cv_gyotai_syo
+              AND     flvs.enabled_flag = cv_y_flag)    flvgs2,      --クイックコード_参照コード(業態(小分類))_業態小分類(仮)用
+              (SELECT flvs.lookup_code           lookup_code,
+                      flvs.attribute1            attribute1
+              FROM    fnd_lookup_values flvs
+              WHERE   flvs.language     = cv_language_ja
+              AND     flvs.lookup_type  = cv_gyotai_chu
+              AND     flvs.enabled_flag = cv_y_flag)    flvgc2,      --クイックコード_参照コード(業態(中分類))_業態小分類(仮)用
+              (SELECT flvs.lookup_code           lookup_code
+              FROM    fnd_lookup_values flvs
+              WHERE   flvs.language     = cv_language_ja
+              AND     flvs.lookup_type  = cv_gyotai_dai
+              AND     flvs.enabled_flag = cv_y_flag)    flvgd2,      --クイックコード_参照コード(業態(大分類))_業態小分類(仮)用
+-- 2010/01/08 Ver1.12 E_本稼動_00934 add end by Yutaka.Kuboshima
 --
 -- 2009/05/12 Ver1.3 障害T1_0176 add start by Yutaka.Kuboshima
               (SELECT lookup_code           lookup_code,
@@ -752,13 +780,20 @@ AS
                                             AND    hcasiv.party_site_id   = hpsiv.party_site_id
                                             AND    hpsiv.status             = cv_a_flag)      --ロケーションIDの最小値
 -- 2009/05/12 Ver1.3 障害T1_0176 add start by Yutaka.Kuboshima
-      AND     hcsu.site_use_id              = hcp.site_use_id(+)
-      AND     hcp.autocash_hierarchy_id     = aah.autocash_hierarchy_id(+)
-      AND     hcsu.site_use_code            = flvsuc.lookup_code(+)
+      AND     hcsu.site_use_id            = hcp.site_use_id(+)
+      AND     hcp.autocash_hierarchy_id   = aah.autocash_hierarchy_id(+)
+      AND     hcsu.site_use_code          = flvsuc.lookup_code(+)
 -- 2009/05/12 Ver1.3 障害T1_0176 add end by Yutaka.Kuboshima
 -- 2009/05/21 Ver1.4 障害T1_1131 add start by Yutaka.Kuboshima
-      AND     hcsu.status                   = cv_a_flag
+      AND     hcsu.status                 = cv_a_flag
 -- 2009/05/21 Ver1.4 障害T1_1131 add end by Yutaka.Kuboshima
+--
+-- 2010/01/08 Ver1.12 E_本稼動_00934 add start by Yutaka.Kuboshima
+      AND     flvgs2.attribute1           = flvgc2.lookup_code (+)         --クイックS2 = クイックC2
+      AND     flvgc2.attribute1           = flvgd2.lookup_code (+)         --クイックC2 = クイックD2
+      AND     hp.attribute8               = flvgs2.lookup_code (+)         --パーティ：業態小分類(仮) = クイックS2
+-- 2010/01/08 Ver1.12 E_本稼動_00934 add end by Yutaka.Kuboshima
+--
       ORDER BY hca.account_number;
 --
     -- 顧客一括更新情報カーソルレコード型
@@ -834,7 +869,7 @@ AS
     price_list_rec price_list_cur%ROWTYPE;
 -- 2009/12/02 Ver1.10 障害E_本稼動_00262 add end by Yutaka.Kuboshima
 --
--- 2009/12/25 Ver1.11 E_本稼動_xxxxx add start by Yutaka.Kuboshima
+-- 2009/12/25 Ver1.11 E_本稼動_00778 add start by Yutaka.Kuboshima
     -- 担当営業員所属拠点取得カーソル
     CURSOR resource_location_code_cur(p_employee_number IN VARCHAR2)
     IS
@@ -849,7 +884,7 @@ AS
         AND  papf.employee_number = p_employee_number;
     -- 担当営業員所属拠点取得カーソルレコード型
     resource_location_code_rec resource_location_code_cur%ROWTYPE;
--- 2009/12/25 Ver1.11 E_本稼動_xxxxx add end by Yutaka.Kuboshima
+-- 2009/12/25 Ver1.11 E_本稼動_00778 add end by Yutaka.Kuboshima
 --
   BEGIN
 --
@@ -1062,7 +1097,7 @@ AS
       lv_mc_business_talk_details := xxcso_util_common_pkg.conv_multi_byte(cust_data_rec.mc_business_talk_details);
 -- 2009/06/09 Ver1.6 add end by Yutaka.Kuboshima
 --
--- 2009/12/25 Ver1.11 E_本稼動_xxxxx add start by Yutaka.Kuboshima
+-- 2009/12/25 Ver1.11 E_本稼動_00778 add start by Yutaka.Kuboshima
       -- 顧客区分設定
       -- 顧客区分がNULLの場合
       IF (cust_data_rec.customer_class_code IS NULL) THEN
@@ -1093,8 +1128,20 @@ AS
           -- 獲得営業員に担当営業員をセット
           cust_data_rec.cnvs_business_person := cust_data_rec.resource_no;
         END IF;
+-- 2010/01/08 Ver1.12 E_本稼動_00934 add start by  Yutaka.Kuboshima
+        -- 業態設定
+        -- 業態小分類がNULLの場合
+        IF (cust_data_rec.business_low_type IS NULL) THEN
+          -- 業態小分類に業態小分類(仮)をセット
+          cust_data_rec.business_low_type := cust_data_rec.business_low_type_kari;
+          -- 業態中分類に業態中分類(仮)をセット
+          cust_data_rec.lookup_code_c     := cust_data_rec.business_mid_type_kari;
+          -- 業態大分類に業態大分類(仮)をセット
+          cust_data_rec.lookup_code_s     := cust_data_rec.business_high_type_kari;
+        END IF;
+-- 2010/01/08 Ver1.12 E_本稼動_00934 add end by  Yutaka.Kuboshima
       END IF;
--- 2009/12/25 Ver1.11 E_本稼動_xxxxx add end by Yutaka.Kuboshima
+-- 2009/12/25 Ver1.11 E_本稼動_00778 add end by Yutaka.Kuboshima
       --出力文字列作成
       lv_output_str := cv_dqu        || cv_comp_code || cv_dqu;                                                                    --会社コード
       lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.account_number, 1, 9);                                   --顧客コード
