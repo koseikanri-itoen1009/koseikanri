@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A08C (body)
  * Description      : CSVファイルの受注取込
  * MD.050           : CSVファイルの受注取込 MD050_COS_005_A08
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  2009/07/15    1.9   T.Miyata         [0000066]起動するコンカレントを変更：受注インポート⇒受注インポートエラー検知
  *  2009/07/17    1.10  K.Kiriu          [0000469]オーダーNoデータ型不正対応
  *  2009/07/21    1.11  T.Miyata         [0000478指摘対応]TOO_MANY_ROWS例外取得
+ *  2009/08/21    1.12  M.Sano           [0000302]JANコードからの品目取得を顧客品目経由に変更
  *
  *****************************************************************************************/
 --
@@ -372,6 +373,11 @@ AS
   cv_line_feed                      CONSTANT  VARCHAR2(1)   := CHR(10);                              --改行コード
   cn_customer_div_cust              CONSTANT  VARCHAR2(4)   := '10';                                 --顧客
   cn_customer_div_user              CONSTANT  VARCHAR2(4)   := '12';                                 --上様
+--****************************** 2009/08/21 1.12 M.Sano ADD  START ******************************--
+  cv_customer_div_chain             CONSTANT  VARCHAR2(4)   := '18';                                 --チェーン店
+  cv_cust_item_def_level            CONSTANT  VARCHAR2(1)   := '1';                                  --顧客マスタ：定義レベル
+  cv_inactive_flag_no               CONSTANT  VARCHAR2(1)   := 'N';                                  --顧客品目：有効
+--****************************** 2009/08/21 1.12 M.Sano ADD  END    ******************************--
   cv_item_status_code_y             CONSTANT  VARCHAR2(2)   := 'Y';                                  --品目ステータス(顧客受注可能フラグ ('Y')(固定値))
 --****************************** 2009/07/14 1.8 T.Miyata ADD  START ******************************--
   cv_cust_status_active             CONSTANT  VARCHAR2(1)   := 'A';                                  --顧客マスタ系の有効フラグ：有効
@@ -2407,67 +2413,233 @@ AS
     --初期化
     ln_item_chk := 0;
     IF ( iv_get_format = cv_tonya_format )THEN
-      ------------------------------------
-      -- 2-1.品目アドオンマスタのチェック
-      --  (ケースJANコードのチェック)
-      ------------------------------------
-      BEGIN
---****************************** 2009/05/19 1.6 T.Kitajima MOD START ******************************--
---        SELECT xim.item_code,                   --品目コード
---               mib.primary_unit_of_measure,     --基準単位
---               mib.customer_order_enabled_flag, --品目ステータス
---               iim.attribute26,                 --売上対象区分
---               xi5.prod_class_code              --商品区分コード
+--****************************** 2009/08/21 1.12 M.Sano Mod Start    ******************************--
+--      ------------------------------------
+--      -- 2-1.品目アドオンマスタのチェック
+--      --  (ケースJANコードのチェック)
+--      ------------------------------------
+--      BEGIN
+----****************************** 2009/05/19 1.6 T.Kitajima MOD START ******************************--
+----        SELECT xim.item_code,                   --品目コード
+----               mib.primary_unit_of_measure,     --基準単位
+----               mib.customer_order_enabled_flag, --品目ステータス
+----               iim.attribute26,                 --売上対象区分
+----               xi5.prod_class_code              --商品区分コード
+----        INTO   ov_item_no,                      --品目コード
+----               on_primary_unit_of_measure,      --基準単位
+----               gt_inventory_item_status_code,   --品目ステータス
+----               gt_prod_class_code,              --売上対象区分
+----               ov_prod_class_code               --商品区分コード
+----        FROM   mtl_system_items_b         mib,  -- 品目マスタ
+----               xxcmm_system_items_b       xim,  -- Disc品目アドオンマスタ
+----               ic_item_mst_b              iim,  -- OPM品目マスタ
+----               xxcmn_item_categories5_v   xi5   -- 商品区分View
+----        WHERE  mib.segment1          = xim.item_code
+----        AND    mib.segment1          = iim.item_no
+----        AND    iim.item_no           = xi5.item_no
+----        AND    mib.organization_id   = iv_organization_id  --組織ID
+----        AND    xim.case_jan_code     = iv_case_jan_code;   --ケースJANコード
+----
+--        SELECT ims.item_code,
+--               ims.primary_unit_of_measure,
+--               ims.customer_order_enabled_flag,
+--               ims.attribute26,
+--               ims.prod_class_code
 --        INTO   ov_item_no,                      --品目コード
 --               on_primary_unit_of_measure,      --基準単位
 --               gt_inventory_item_status_code,   --品目ステータス
 --               gt_prod_class_code,              --売上対象区分
 --               ov_prod_class_code               --商品区分コード
---        FROM   mtl_system_items_b         mib,  -- 品目マスタ
---               xxcmm_system_items_b       xim,  -- Disc品目アドオンマスタ
---               ic_item_mst_b              iim,  -- OPM品目マスタ
---               xxcmn_item_categories5_v   xi5   -- 商品区分View
---        WHERE  mib.segment1          = xim.item_code
---        AND    mib.segment1          = iim.item_no
---        AND    iim.item_no           = xi5.item_no
---        AND    mib.organization_id   = iv_organization_id  --組織ID
---        AND    xim.case_jan_code     = iv_case_jan_code;   --ケースJANコード
---
-        SELECT ims.item_code,
-               ims.primary_unit_of_measure,
-               ims.customer_order_enabled_flag,
-               ims.attribute26,
-               ims.prod_class_code
+--        FROM   (
+----              SELECT xsi.item_code                   item_code,                   --品目コード
+--                       mib.primary_unit_of_measure     primary_unit_of_measure,     --基準単位
+--                       mib.customer_order_enabled_flag customer_order_enabled_flag, --品目ステータス
+--                       iim.attribute26                 attribute26,                 --売上対象区分
+--                       xi5.prod_class_code             prod_class_code              --商品区分コード
+--                FROM   mtl_system_items_b         mib,                              --Disc品目マスタ
+--                       xxcmm_system_items_b       xsi,                              --Disc品目アドオンマスタ
+--                       ic_item_mst_b              iim,                              --OPM品目マスタ
+--                       xxcmn_item_mst_b           xim,                              --OPM品目アドオンマスタ
+--                       xxcmn_item_categories5_v   xi5                               --商品区分View
+--                WHERE  mib.segment1                                  = xsi.item_code
+--                AND    mib.segment1                                  = iim.item_no
+--                AND    iim.item_no                                   = xi5.item_no
+--                AND    TO_DATE(iim.attribute13,cv_yyyymmdds_format) <= id_order_date
+--                AND    iim.item_id                                   = xim.item_id
+--                AND    xim.item_id                                   = xim.parent_item_id
+--                AND    mib.organization_id                           = TO_NUMBER( iv_organization_id ) --組織ID
+--                AND    xsi.case_jan_code                             = iv_case_jan_code                --ケースJANコード
+--                ORDER BY iim.attribute13 DESC
+--               ) ims
+--        WHERE  ROWNUM  = 1
+--        ;
+--****************************** 2009/08/21 1.12 M.Sano DEL Start    ******************************--
+----****************************** 2009/05/19 1.6 T.Kitajima MOD START ******************************--
+--        -- 品目マスタ情報が取得できない場合
+--        IF ( ( ov_item_no IS NULL ) OR
+--             ( on_primary_unit_of_measure IS NULL ) OR
+--             ( gt_inventory_item_status_code IS NULL ) OR
+--             ( gt_prod_class_code IS NULL ) OR
+--             ( ov_prod_class_code IS NULL )
+--           )
+--        THEN
+--          ln_item_chk := 1;
+--        END IF;
+--        --売上対象区分が0
+--        IF ( gt_prod_class_code = 0 ) THEN
+--          ln_item_chk := 1;
+--        END IF;
+--        --顧客受注可能フラグ
+--        IF ( gt_inventory_item_status_code != cv_item_status_code_y ) THEN
+--          ln_item_chk := 1;
+--        END IF;
+----
+--      EXCEPTION
+--        WHEN NO_DATA_FOUND THEN
+--          ln_item_chk := 1;
+--        WHEN OTHERS THEN
+--          lv_table_info := xxccp_common_pkg.get_msg(
+--                           iv_application  => ct_xxcos_appl_short_name,
+--                           iv_name         => ct_msg_get_item_mstr
+--                         );
+--          lv_lien_no_name := xxccp_common_pkg.get_msg(
+--                           iv_application  => ct_xxcos_appl_short_name,
+--                           iv_name         => ct_msg_get_lien_no
+--                         );
+--          lv_jan_cd_name := xxccp_common_pkg.get_msg(
+--                           iv_application  => ct_xxcos_appl_short_name,
+--                           iv_name         => ct_msg_get_jan_code
+--                         );
+--          lv_stock_name := xxccp_common_pkg.get_msg(
+--                           iv_application  => ct_xxcos_appl_short_name,
+--                           iv_name         => ct_msg_get_inv_org_id
+--                         );
+--          xxcos_common_pkg.makeup_key_info(
+--                                         ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
+--                                        ,ov_retcode     =>  lv_retcode     --リターンコード
+--                                        ,ov_errmsg      =>  lv_errmsg      --ユーザ・エラー・メッセージ
+--                                        ,ov_key_info    =>  lv_key_info    --編集されたキー情報
+--                                        ,iv_item_name1  =>  lv_jan_cd_name
+--                                        ,iv_item_name2  =>  lv_Stock_name
+--                                        ,iv_item_name3  =>  lv_lien_no_name
+--                                        ,iv_data_value1 =>  iv_case_jan_code
+--                                        ,iv_data_value2 =>  iv_organization_id
+--                                        ,iv_data_value3 =>  in_line_no
+--                                       );
+--          IF (lv_retcode = cv_status_normal) THEN
+--            RAISE global_select_err_expt;
+--          ELSE
+--            RAISE global_api_expt;
+--          END IF;
+--      END;
+----
+--      ------------------------------------
+--      -- 2-2.品目アドオンマスタのチェック
+--      --  (JANコードのチェック)
+--      ------------------------------------
+--      IF ( ln_item_chk = 1 ) THEN
+--        BEGIN
+----****************************** 2009/05/19 1.6 T.Kitajima MOD START ******************************--
+----          SELECT iim.item_no,                         --品目コード
+----                 mib.primary_unit_of_measure,         --基準単位
+----                 mib.customer_order_enabled_flag,     --顧客受注可能フラグ
+----                 iim.attribute26,                     --売上対象区分
+----                 xi5.prod_class_code                  --商品区分コード
+----          INTO   ov_item_no,                          --品目コード
+----                 on_primary_unit_of_measure,          --基準単位
+----                 gt_inventory_item_status_code,       --顧客受注可能フラグ
+----                 gt_prod_class_code,                  --売上対象区分
+----                 ov_prod_class_code                   --商品区分コード
+----          FROM   mtl_system_items_b         mib,      --品目マスタ
+----                 ic_item_mst_b              iim,      --OPM品目マスタ
+----                 xxcmn_item_categories5_v   xi5       --商品区分View
+----          WHERE mib.segment1          = iim.item_no
+----          AND   iim.item_id           = xi5.item_id
+----          AND   mib.organization_id   = iv_organization_id   --組織ID
+----          AND   iim.attribute21       = iv_case_jan_code;    --JANコード
+----
+--          SELECT item_no,
+--                 primary_unit_of_measure,
+--                 customer_order_enabled_flag,
+--                 attribute26,
+--                 prod_class_code
+--          INTO   ov_item_no,                          --品目コード
+--                 on_primary_unit_of_measure,          --基準単位
+--                 gt_inventory_item_status_code,       --顧客受注可能フラグ
+--                 gt_prod_class_code,                  --売上対象区分
+--                 ov_prod_class_code                   --商品区分コード
+--          FROM   (
+--                  SELECT iim.item_no                     item_no,                         --品目コード
+--                         mib.primary_unit_of_measure     primary_unit_of_measure,         --基準単位
+--                         mib.customer_order_enabled_flag customer_order_enabled_flag,     --顧客受注可能フラグ
+--                         iim.attribute26                 attribute26,                     --売上対象区分
+--                         xi5.prod_class_code             prod_class_code                  --商品区分コード
+--                  FROM   mtl_system_items_b         mib,      --Disc品目マスタ
+--                         ic_item_mst_b              iim,      --OPM品目マスタ
+--                         xxcmn_item_mst_b           xim,      --OPM品目アドオンマスタ
+--                         xxcmn_item_categories5_v   xi5       --商品区分View
+--                  WHERE mib.segment1                                  = iim.item_no
+--                  AND   iim.item_id                                   = xi5.item_id
+--                  AND   mib.organization_id                           = TO_NUMBER( iv_organization_id )   --組織ID
+--                  AND   iim.attribute21                               = iv_case_jan_code                  --JANコード
+--                  AND   TO_DATE(iim.attribute13,cv_yyyymmdds_format) <= id_order_date
+--                  AND   iim.item_id                                   = xim.item_id
+--                  AND   xim.item_id                                   = xim.parent_item_id
+--                  ORDER BY iim.attribute13 DESC
+--                 ) ims
+--          WHERE  ROWNUM  = 1
+--          ;
+----****************************** 2009/05/19 1.6 T.Kitajima MOD START ******************************--
+      ------------------------------------
+      -- 2-1.品目アドオンマスタのチェック
+      --  (顧客品目のチェック)
+      ------------------------------------
+      BEGIN
+        SELECT ims.item_code                    item_code
+              ,ims.primary_unit_of_measure      primary_unit_of_measure
+              ,ims.customer_order_enabled_flag  customer_order_enabled_flag
+              ,ims.attribute26                  attribute26
+              ,ims.prod_class_code              prod_class_code
         INTO   ov_item_no,                      --品目コード
                on_primary_unit_of_measure,      --基準単位
                gt_inventory_item_status_code,   --品目ステータス
                gt_prod_class_code,              --売上対象区分
                ov_prod_class_code               --商品区分コード
-        FROM   (
-                SELECT xsi.item_code                   item_code,                   --品目コード
-                       mib.primary_unit_of_measure     primary_unit_of_measure,     --基準単位
-                       mib.customer_order_enabled_flag customer_order_enabled_flag, --品目ステータス
-                       iim.attribute26                 attribute26,                 --売上対象区分
-                       xi5.prod_class_code             prod_class_code              --商品区分コード
-                FROM   mtl_system_items_b         mib,                              --Disc品目マスタ
-                       xxcmm_system_items_b       xsi,                              --Disc品目アドオンマスタ
-                       ic_item_mst_b              iim,                              --OPM品目マスタ
-                       xxcmn_item_mst_b           xim,                              --OPM品目アドオンマスタ
-                       xxcmn_item_categories5_v   xi5                               --商品区分View
-                WHERE  mib.segment1                                  = xsi.item_code
-                AND    mib.segment1                                  = iim.item_no
-                AND    iim.item_no                                   = xi5.item_no
-                AND    TO_DATE(iim.attribute13,cv_yyyymmdds_format) <= id_order_date
-                AND    iim.item_id                                   = xim.item_id
-                AND    xim.item_id                                   = xim.parent_item_id
-                AND    mib.organization_id                           = TO_NUMBER( iv_organization_id ) --組織ID
-                AND    xsi.case_jan_code                             = iv_case_jan_code                --ケースJANコード
-                ORDER BY iim.attribute13 DESC
-               ) ims
-        WHERE  ROWNUM  = 1
+        FROM  (
+               SELECT iim.item_no                     item_code,                   --品目コード
+                      mib.primary_unit_of_measure     primary_unit_of_measure,     --基準単位
+                      mib.customer_order_enabled_flag customer_order_enabled_flag, --品目ステータス
+                      iim.attribute26                 attribute26,                 --売上対象区分
+                      xi5.prod_class_code             prod_class_code              --商品区分コード
+               FROM   hz_cust_accounts           hca,                              --顧客マスタ
+                      xxcmm_cust_accounts        xca,                              --顧客アドオン
+                      mtl_customer_items         mci,                              --顧客品目
+                      mtl_customer_item_xrefs    mcx,                              --顧客品目相互参照
+                      mtl_parameters             mpa,                              --パラメータ
+                      mtl_system_items_b         mib,                              --Disc品目マスタ
+                      ic_item_mst_b              iim,                              --OPM品目マスタ
+                      xxcmn_item_categories5_v   xi5                               --商品区分View
+               WHERE  xca.edi_chain_code                            = iv_chain_store_code             -- 条件:EDIチェーン店コード
+               AND    hca.cust_account_id                           = xca.customer_id                 -- 顧客マスタ
+               AND    hca.customer_class_code                       = cv_customer_div_chain           -- 条件:顧客区分=18
+               AND    mci.customer_id                               = hca.cust_account_id             -- 顧客品目
+               AND    mci.customer_item_number                      = iv_case_jan_code                -- 条件:顧客品目=JANコード
+               AND    mci.item_definition_level                     = cv_cust_item_def_level          -- 条件:定義レベル=顧客
+               AND    mci.inactive_flag                             = cv_inactive_flag_no             -- 条件:有効
+               AND    mcx.customer_item_id                          = mci.customer_item_id            -- 顧客品目相互参照
+               AND    mcx.inactive_flag                             = cv_inactive_flag_no             -- 条件:有効
+               AND    mcx.master_organization_id                    = mpa.master_organization_id      -- パラメータ
+               AND    mpa.organization_id                           = TO_NUMBER( iv_organization_id ) -- 条件:組織ID
+               AND    mib.inventory_item_id                         = mcx.inventory_item_id           -- Disc品目マスタ
+               AND    mib.organization_id                           = TO_NUMBER( iv_organization_id ) -- 条件:組織ID
+               AND    mib.segment1                                  = iim.item_no                     -- OPM品目マスタ
+               AND    TO_DATE(iim.attribute13,cv_yyyymmdds_format) <= id_order_date                   -- 条件:販売(製造)開始日>受注日
+               AND    xi5.item_no                                   = iim.item_no                     -- 商品区分View
+               ORDER BY mcx.preference_number ) ims
+        WHERE  ROWNUM = 1
         ;
---****************************** 2009/05/19 1.6 T.Kitajima MOD START ******************************--
-        -- 品目マスタ情報が取得できない場合
+--****************************** 2009/08/21 1.12 M.Sano Mod End      ******************************--
+          -- 品目マスタ情報が取得できない場合のエラー編集
         IF ( ( ov_item_no IS NULL ) OR
              ( on_primary_unit_of_measure IS NULL ) OR
              ( gt_inventory_item_status_code IS NULL ) OR
@@ -2475,20 +2647,33 @@ AS
              ( ov_prod_class_code IS NULL )
            )
         THEN
-          ln_item_chk := 1;
+          lv_key_info := in_line_no;
+          RAISE global_cus_data_check_expt;
         END IF;
         --売上対象区分が0
         IF ( gt_prod_class_code = 0 ) THEN
-          ln_item_chk := 1;
+          lv_key_info := in_line_no;
+          RAISE global_item_status_expt;
         END IF;
         --顧客受注可能フラグ
         IF ( gt_inventory_item_status_code != cv_item_status_code_y ) THEN
-          ln_item_chk := 1;
+          lv_key_info := in_line_no;
+          RAISE global_item_status_code_expt;
         END IF;
 --
       EXCEPTION
+        --売上対象区分が0
+        WHEN global_item_status_expt THEN
+          RAISE global_item_status_expt;
+        --顧客受注可能フラグ
+        WHEN global_item_status_code_expt THEN
+          RAISE global_item_status_code_expt;
+        --品目マスタ情報が取得エラー
+        WHEN global_cus_data_check_expt THEN
+          RAISE global_cus_data_check_expt;
         WHEN NO_DATA_FOUND THEN
-          ln_item_chk := 1;
+          lv_key_info := in_line_no;
+          RAISE global_cus_data_check_expt;
         WHEN OTHERS THEN
           lv_table_info := xxccp_common_pkg.get_msg(
                            iv_application  => ct_xxcos_appl_short_name,
@@ -2524,135 +2709,9 @@ AS
             RAISE global_api_expt;
           END IF;
       END;
---
-      ------------------------------------
-      -- 2-2.品目アドオンマスタのチェック
-      --  (JANコードのチェック)
-      ------------------------------------
-      IF ( ln_item_chk = 1 ) THEN
-        BEGIN
---****************************** 2009/05/19 1.6 T.Kitajima MOD START ******************************--
---          SELECT iim.item_no,                         --品目コード
---                 mib.primary_unit_of_measure,         --基準単位
---                 mib.customer_order_enabled_flag,     --顧客受注可能フラグ
---                 iim.attribute26,                     --売上対象区分
---                 xi5.prod_class_code                  --商品区分コード
---          INTO   ov_item_no,                          --品目コード
---                 on_primary_unit_of_measure,          --基準単位
---                 gt_inventory_item_status_code,       --顧客受注可能フラグ
---                 gt_prod_class_code,                  --売上対象区分
---                 ov_prod_class_code                   --商品区分コード
---          FROM   mtl_system_items_b         mib,      --品目マスタ
---                 ic_item_mst_b              iim,      --OPM品目マスタ
---                 xxcmn_item_categories5_v   xi5       --商品区分View
---          WHERE mib.segment1          = iim.item_no
---          AND   iim.item_id           = xi5.item_id
---          AND   mib.organization_id   = iv_organization_id   --組織ID
---          AND   iim.attribute21       = iv_case_jan_code;    --JANコード
---
-          SELECT item_no,
-                 primary_unit_of_measure,
-                 customer_order_enabled_flag,
-                 attribute26,
-                 prod_class_code
-          INTO   ov_item_no,                          --品目コード
-                 on_primary_unit_of_measure,          --基準単位
-                 gt_inventory_item_status_code,       --顧客受注可能フラグ
-                 gt_prod_class_code,                  --売上対象区分
-                 ov_prod_class_code                   --商品区分コード
-          FROM   (
-                  SELECT iim.item_no                     item_no,                         --品目コード
-                         mib.primary_unit_of_measure     primary_unit_of_measure,         --基準単位
-                         mib.customer_order_enabled_flag customer_order_enabled_flag,     --顧客受注可能フラグ
-                         iim.attribute26                 attribute26,                     --売上対象区分
-                         xi5.prod_class_code             prod_class_code                  --商品区分コード
-                  FROM   mtl_system_items_b         mib,      --Disc品目マスタ
-                         ic_item_mst_b              iim,      --OPM品目マスタ
-                         xxcmn_item_mst_b           xim,      --OPM品目アドオンマスタ
-                         xxcmn_item_categories5_v   xi5       --商品区分View
-                  WHERE mib.segment1                                  = iim.item_no
-                  AND   iim.item_id                                   = xi5.item_id
-                  AND   mib.organization_id                           = TO_NUMBER( iv_organization_id )   --組織ID
-                  AND   iim.attribute21                               = iv_case_jan_code                  --JANコード
-                  AND   TO_DATE(iim.attribute13,cv_yyyymmdds_format) <= id_order_date
-                  AND   iim.item_id                                   = xim.item_id
-                  AND   xim.item_id                                   = xim.parent_item_id
-                  ORDER BY iim.attribute13 DESC
-                 ) ims
-          WHERE  ROWNUM  = 1
-          ;
---****************************** 2009/05/19 1.6 T.Kitajima MOD START ******************************--
-            -- 品目マスタ情報が取得できない場合のエラー編集
-        IF ( ( ov_item_no IS NULL ) OR
-             ( on_primary_unit_of_measure IS NULL ) OR
-             ( gt_inventory_item_status_code IS NULL ) OR
-             ( gt_prod_class_code IS NULL ) OR
-             ( ov_prod_class_code IS NULL )
-           )
-        THEN
-          lv_key_info := in_line_no;
-          RAISE global_cus_data_check_expt;
-        END IF;
-        --売上対象区分が0
-        IF ( gt_prod_class_code = 0 ) THEN
-          lv_key_info := in_line_no;
-          RAISE global_item_status_expt;
-        END IF;
-        --顧客受注可能フラグ
-        IF ( gt_inventory_item_status_code != cv_item_status_code_y ) THEN
-          lv_key_info := in_line_no;
-          RAISE global_item_status_code_expt;
-        END IF;
---
-        EXCEPTION
-          --売上対象区分が0
-          WHEN global_item_status_expt THEN
-            RAISE global_item_status_expt;
-          --顧客受注可能フラグ
-          WHEN global_item_status_code_expt THEN
-            RAISE global_item_status_code_expt;
-          --品目マスタ情報が取得エラー
-          WHEN global_cus_data_check_expt THEN
-            RAISE global_cus_data_check_expt;
-          WHEN NO_DATA_FOUND THEN
-            lv_key_info := in_line_no;
-            RAISE global_cus_data_check_expt;
-          WHEN OTHERS THEN
-            lv_table_info := xxccp_common_pkg.get_msg(
-                             iv_application  => ct_xxcos_appl_short_name,
-                             iv_name         => ct_msg_get_item_mstr
-                           );
-            lv_lien_no_name := xxccp_common_pkg.get_msg(
-                             iv_application  => ct_xxcos_appl_short_name,
-                             iv_name         => ct_msg_get_lien_no
-                           );
-            lv_jan_cd_name := xxccp_common_pkg.get_msg(
-                             iv_application  => ct_xxcos_appl_short_name,
-                             iv_name         => ct_msg_get_jan_code
-                           );
-            lv_stock_name := xxccp_common_pkg.get_msg(
-                             iv_application  => ct_xxcos_appl_short_name,
-                             iv_name         => ct_msg_get_inv_org_id
-                           );
-            xxcos_common_pkg.makeup_key_info(
-                                           ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
-                                          ,ov_retcode     =>  lv_retcode     --リターンコード
-                                          ,ov_errmsg      =>  lv_errmsg      --ユーザ・エラー・メッセージ
-                                          ,ov_key_info    =>  lv_key_info    --編集されたキー情報
-                                          ,iv_item_name1  =>  lv_jan_cd_name
-                                          ,iv_item_name2  =>  lv_Stock_name
-                                          ,iv_item_name3  =>  lv_lien_no_name
-                                          ,iv_data_value1 =>  iv_case_jan_code
-                                          ,iv_data_value2 =>  iv_organization_id
-                                          ,iv_data_value3 =>  in_line_no
-                                         );
-            IF (lv_retcode = cv_status_normal) THEN
-              RAISE global_select_err_expt;
-            ELSE
-              RAISE global_api_expt;
-            END IF;
-        END;
-      END IF;
+--****************************** 2009/08/21 1.12 M.Sano DEL Start      ******************************--
+--      END IF;
+--****************************** 2009/08/21 1.12 M.Sano DEL End        ******************************--
     --国際の時、SEJ商品コード検索
     ELSIF ( iv_get_format = cv_kokusai_format ) THEN
       BEGIN
