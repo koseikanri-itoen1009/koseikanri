@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.40
+ * Version          : 1.41
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -137,6 +137,7 @@ AS
  *  2008/12/26    1.38 Oracle 福田 直樹  本番障害対応#688(引当なし指示品目に対する実績がなかった場合、実績0ロットが作成されない)
  *  2009/01/06    1.39 Oracle 北寒寺正夫 本番障害対応#840 移動ロット詳細にロット実績数量をインサート、更新する際にNULLの場合0を設定するように修正
  *  2009/01/29    1.40 Oracle 佐久間尚豊 本番障害対応#917,1045
+ *  2009/02/03    1.41 Oracle 佐久間尚豊 本番障害対応#1101 顧客情報の検索キーを出荷先→管轄拠点に変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1524,53 +1525,13 @@ AS
         (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_220))
     THEN
 --
-      ----顧客サイト情報VIEW・顧客情報VIEW
+-- 2009/02/03 本番障害#1101 MOD START
+--      ----顧客サイト情報VIEW・顧客情報VIEW
+      ----パーティサイト情報VIEW(IF_H.出荷先より取得) + 顧客サイト情報VIEW・顧客情報VIEW
+-- 2009/02/03 本番障害#1101 MOD END
       IF (TRIM(gr_interface_info_rec(in_idx).party_site_code) IS NOT NULL) THEN
---
-        BEGIN
---
-          SELECT  xcav.party_id
-                 ,xcav.party_number
-                 ,xcav.customer_class_code
-                 ,xcav.location_rel_code                 -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
-          INTO    lt_customer_id
-                 ,lt_customer_code
-                 ,lt_customer_class_code
-                 ,lt_location_rel_code                   -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
-          FROM    xxcmn_cust_acct_sites2_v   xcas2v      -- 顧客サイト情報VIEW
-                 ,xxcmn_cust_accounts2_v     xcav        -- 顧客情報VIEW
-          WHERE   xcas2v.party_site_number     = gr_interface_info_rec(in_idx).party_site_code
-          AND     xcas2v.party_site_status     = gv_view_status     -- サイトステータス = '有効'
-          AND     xcas2v.cust_acct_site_status = gv_view_status     -- 顧客サイトステータス = '有効'
-          AND     xcas2v.cust_site_uses_status = gv_view_status     -- 使用目的ステータス   = '有効'
-          AND     xcas2v.start_date_active <= TRUNC(gr_interface_info_rec(in_idx).shipped_date) -- 適用開始日 <= IF_H.出荷日
-          AND     xcas2v.end_date_active   >= TRUNC(gr_interface_info_rec(in_idx).shipped_date) -- 適用終了日 >= IF_H.出荷日
-          AND     xcas2v.party_id     = xcav.party_id    -- パーティーID=パーティーID
-          AND     xcav.party_status   = gv_view_status   -- 組織ステータス = '有効'
-          AND     xcav.account_status = gv_view_status   -- 顧客ステータス = '有効'
-          AND     xcav.start_date_active <= TRUNC(gr_interface_info_rec(in_idx).shipped_date)  -- 適用開始日 <= 出荷日
-          AND     xcav.end_date_active   >= TRUNC(gr_interface_info_rec(in_idx).shipped_date)  -- 適用終了日 >= 出荷日
-          AND     ROWNUM          = 1;
---
-          gr_interface_info_rec(in_idx).customer_id     := lt_customer_id;
-          gr_interface_info_rec(in_idx).customer_code   := lt_customer_code;
-          gr_interface_info_rec(in_idx).customer_class_code := lt_customer_class_code;
-          gr_interface_info_rec(in_idx).location_rel_code := lt_location_rel_code;     -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
---
-        EXCEPTION
---
-          WHEN NO_DATA_FOUND THEN
-          gr_interface_info_rec(in_idx).customer_id     := NULL;
-          gr_interface_info_rec(in_idx).customer_code   := NULL;
-          gr_interface_info_rec(in_idx).customer_class_code := NULL;
-          gr_interface_info_rec(in_idx).location_rel_code := NULL;      -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
---
-        END ;
---
-      END IF;
---
-      --パーティサイト情報VIEW(IF_H.出荷先より取得)
-      IF (TRIM(gr_interface_info_rec(in_idx).party_site_code) IS NOT NULL) THEN
+
+-- 2009/02/03 本番障害#1101 ADD START
 --
         BEGIN
 --
@@ -1600,8 +1561,92 @@ AS
 --
         END ;
 --
-      END IF;
+-- 2009/02/03 本番障害#1101 ADD END
+
 --
+        BEGIN
+--
+          SELECT  xcav.party_id
+                 ,xcav.party_number
+                 ,xcav.customer_class_code
+                 ,xcav.location_rel_code                 -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
+          INTO    lt_customer_id
+                 ,lt_customer_code
+                 ,lt_customer_class_code
+                 ,lt_location_rel_code                   -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
+-- 2009/02/03 本番障害#1101 MOD START
+--          FROM    xxcmn_cust_acct_sites2_v   xcas2v      -- 顧客サイト情報VIEW
+--                 ,xxcmn_cust_accounts2_v     xcav        -- 顧客情報VIEW
+--          WHERE   xcas2v.party_site_number     = gr_interface_info_rec(in_idx).party_site_code
+--          AND     xcas2v.party_site_status     = gv_view_status     -- サイトステータス = '有効'
+--          AND     xcas2v.cust_acct_site_status = gv_view_status     -- 顧客サイトステータス = '有効'
+--          AND     xcas2v.cust_site_uses_status = gv_view_status     -- 使用目的ステータス   = '有効'
+--          AND     xcas2v.start_date_active <= TRUNC(gr_interface_info_rec(in_idx).shipped_date) -- 適用開始日 <= IF_H.出荷日
+--          AND     xcas2v.end_date_active   >= TRUNC(gr_interface_info_rec(in_idx).shipped_date) -- 適用終了日 >= IF_H.出荷日
+--          AND     xcas2v.party_id     = xcav.party_id    -- パーティーID=パーティーID
+          FROM    xxcmn_cust_accounts2_v     xcav        -- 顧客情報VIEW
+          WHERE   xcav.party_number   = gr_interface_info_rec(in_idx).base_code  -- 管轄拠点
+-- 2009/02/03 本番障害#1101 MOD END
+          AND     xcav.party_status   = gv_view_status   -- 組織ステータス = '有効'
+          AND     xcav.account_status = gv_view_status   -- 顧客ステータス = '有効'
+          AND     xcav.start_date_active <= TRUNC(gr_interface_info_rec(in_idx).shipped_date)  -- 適用開始日 <= 出荷日
+          AND     xcav.end_date_active   >= TRUNC(gr_interface_info_rec(in_idx).shipped_date)  -- 適用終了日 >= 出荷日
+          AND     ROWNUM          = 1;
+--
+          gr_interface_info_rec(in_idx).customer_id     := lt_customer_id;
+          gr_interface_info_rec(in_idx).customer_code   := lt_customer_code;
+          gr_interface_info_rec(in_idx).customer_class_code := lt_customer_class_code;
+          gr_interface_info_rec(in_idx).location_rel_code := lt_location_rel_code;     -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
+--
+        EXCEPTION
+--
+          WHEN NO_DATA_FOUND THEN
+          gr_interface_info_rec(in_idx).customer_id     := NULL;
+          gr_interface_info_rec(in_idx).customer_code   := NULL;
+          gr_interface_info_rec(in_idx).customer_class_code := NULL;
+          gr_interface_info_rec(in_idx).location_rel_code := NULL;      -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
+--
+        END ;
+--
+      END IF;
+
+-- 2009/02/03 本番障害#1101 DEL START
+----
+--      --パーティサイト情報VIEW(IF_H.出荷先より取得)
+--      IF (TRIM(gr_interface_info_rec(in_idx).party_site_code) IS NOT NULL) THEN
+----
+--        BEGIN
+----
+--          SELECT  xps2v.party_site_id
+--                 ,xps2v.base_code
+--          INTO    lt_party_site_id
+--                 ,lt_base_code
+--          FROM    xxcmn_party_sites2_v       xps2v
+--          WHERE   xps2v.party_site_number     = gr_interface_info_rec(in_idx).party_site_code
+--          AND     xps2v.party_site_status     = gv_view_status     -- サイトステータス = '有効'
+--          AND     xps2v.cust_site_uses_status = gv_view_status     -- 使用目的ステータス = '有効'
+--          AND     xps2v.cust_acct_site_status = gv_view_status     -- 顧客サイトステータス= '有効'
+--          AND     xps2v.start_date_active <= TRUNC(gr_interface_info_rec(in_idx).shipped_date) -- 適用開始日 <= 出荷日
+--          AND     xps2v.end_date_active   >= TRUNC(gr_interface_info_rec(in_idx).shipped_date) -- 適用終了日 >= 出荷日
+--          AND     ROWNUM          = 1;
+----
+--          gr_interface_info_rec(in_idx).deliver_to_id         := lt_party_site_id;
+--          gr_interface_info_rec(in_idx).result_deliver_to_id  := lt_party_site_id;
+--          gr_interface_info_rec(in_idx).base_code             := lt_base_code;
+----
+--        EXCEPTION
+----
+--          WHEN NO_DATA_FOUND THEN
+--          gr_interface_info_rec(in_idx).deliver_to_id         := NULL;
+--          gr_interface_info_rec(in_idx).result_deliver_to_id  := NULL;
+--          gr_interface_info_rec(in_idx).base_code             := NULL;
+----
+--        END ;
+----
+--      END IF;
+----
+-- 2009/02/03 本番障害#1101 DEL END
+
       --運送業者情報VIEW
       IF (TRIM(gr_interface_info_rec(in_idx).freight_carrier_code) IS NOT NULL) THEN
 --
@@ -1854,52 +1899,55 @@ AS
     -- 適用開始日・終了日を着荷日にて判定
     IF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_230)
     THEN
---
-      ----顧客サイト情報VIEW・顧客情報VIEW
-      IF (TRIM(gr_interface_info_rec(in_idx).party_site_code) IS NOT NULL) THEN
---
-        BEGIN
---
-          SELECT  xcav.party_id
-                 ,xcav.party_number
-                 ,xcav.customer_class_code
-                 ,xcav.location_rel_code                 -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
-          INTO    lt_customer_id
-                 ,lt_customer_code
-                 ,lt_customer_class_code
-                 ,lt_location_rel_code                   -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
-          FROM    xxcmn_cust_acct_sites2_v   xcas2v      -- 顧客サイト情報VIEW
-                 ,xxcmn_cust_accounts2_v     xcav        -- 顧客情報VIEW
-          WHERE   xcas2v.party_site_number     = gr_interface_info_rec(in_idx).party_site_code
-          AND     xcas2v.party_site_status     = gv_view_status     -- サイトステータス = '有効'
-          AND     xcas2v.cust_acct_site_status = gv_view_status     -- 顧客サイトステータス = '有効'
-          AND     xcas2v.cust_site_uses_status = gv_view_status     -- 使用目的ステータス   = '有効'
-          AND     xcas2v.start_date_active <= TRUNC(gr_interface_info_rec(in_idx).arrival_date) -- 適用開始日 <= IF_H.着荷日
-          AND     xcas2v.end_date_active   >= TRUNC(gr_interface_info_rec(in_idx).arrival_date) -- 適用終了日 >= IF_H.着荷日
-          AND     xcas2v.party_id     = xcav.party_id    -- パーティーID=パーティーID
-          AND     xcav.party_status   = gv_view_status   -- 組織ステータス = '有効'
-          AND     xcav.account_status = gv_view_status   -- 顧客ステータス = '有効'
-          AND     xcav.start_date_active <= TRUNC(gr_interface_info_rec(in_idx).arrival_date)  -- 適用開始日 <= IF_H.着荷日
-          AND     xcav.end_date_active   >= TRUNC(gr_interface_info_rec(in_idx).arrival_date)  -- 適用終了日 >= IF_H.着荷日
-          AND     ROWNUM          = 1;
---
-          gr_interface_info_rec(in_idx).customer_id     := lt_customer_id;
-          gr_interface_info_rec(in_idx).customer_code   := lt_customer_code;
-          gr_interface_info_rec(in_idx).customer_class_code := lt_customer_class_code;
-          gr_interface_info_rec(in_idx).location_rel_code := lt_location_rel_code;     -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
---
-        EXCEPTION
---
-          WHEN NO_DATA_FOUND THEN
-          gr_interface_info_rec(in_idx).customer_id     := NULL;
-          gr_interface_info_rec(in_idx).customer_code   := NULL;
-          gr_interface_info_rec(in_idx).customer_class_code := NULL;
-          gr_interface_info_rec(in_idx).location_rel_code := NULL;      -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
---
-        END ;
---
-      END IF;
---
+-- 2009/02/03 本番障害#1101 DEL START 移動入庫では顧客サイト情報は不要なため削除
+----
+--      ----顧客サイト情報VIEW・顧客情報VIEW
+--      IF (TRIM(gr_interface_info_rec(in_idx).party_site_code) IS NOT NULL) THEN
+----
+--        BEGIN
+----
+--          SELECT  xcav.party_id
+--                 ,xcav.party_number
+--                 ,xcav.customer_class_code
+--                 ,xcav.location_rel_code                 -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
+--          INTO    lt_customer_id
+--                 ,lt_customer_code
+--                 ,lt_customer_class_code
+--                 ,lt_location_rel_code                   -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
+--          FROM    xxcmn_cust_acct_sites2_v   xcas2v      -- 顧客サイト情報VIEW
+--                 ,xxcmn_cust_accounts2_v     xcav        -- 顧客情報VIEW
+--          WHERE   xcas2v.party_site_number     = gr_interface_info_rec(in_idx).party_site_code
+--          AND     xcas2v.party_site_status     = gv_view_status     -- サイトステータス = '有効'
+--          AND     xcas2v.cust_acct_site_status = gv_view_status     -- 顧客サイトステータス = '有効'
+--          AND     xcas2v.cust_site_uses_status = gv_view_status     -- 使用目的ステータス   = '有効'
+--          AND     xcas2v.start_date_active <= TRUNC(gr_interface_info_rec(in_idx).arrival_date) -- 適用開始日 <= IF_H.着荷日
+--          AND     xcas2v.end_date_active   >= TRUNC(gr_interface_info_rec(in_idx).arrival_date) -- 適用終了日 >= IF_H.着荷日
+--          AND     xcas2v.party_id     = xcav.party_id    -- パーティーID=パーティーID
+--          AND     xcav.party_status   = gv_view_status   -- 組織ステータス = '有効'
+--          AND     xcav.account_status = gv_view_status   -- 顧客ステータス = '有効'
+--          AND     xcav.start_date_active <= TRUNC(gr_interface_info_rec(in_idx).arrival_date)  -- 適用開始日 <= IF_H.着荷日
+--          AND     xcav.end_date_active   >= TRUNC(gr_interface_info_rec(in_idx).arrival_date)  -- 適用終了日 >= IF_H.着荷日
+--          AND     ROWNUM          = 1;
+----
+--          gr_interface_info_rec(in_idx).customer_id     := lt_customer_id;
+--          gr_interface_info_rec(in_idx).customer_code   := lt_customer_code;
+--          gr_interface_info_rec(in_idx).customer_class_code := lt_customer_class_code;
+--          gr_interface_info_rec(in_idx).location_rel_code := lt_location_rel_code;     -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
+----
+--        EXCEPTION
+----
+--          WHEN NO_DATA_FOUND THEN
+--          gr_interface_info_rec(in_idx).customer_id     := NULL;
+--          gr_interface_info_rec(in_idx).customer_code   := NULL;
+--          gr_interface_info_rec(in_idx).customer_class_code := NULL;
+--          gr_interface_info_rec(in_idx).location_rel_code := NULL;      -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
+----
+--        END ;
+----
+--      END IF;
+----
+-- 2009/02/03 本番障害#1101 DEL END  移動入庫では顧客サイト情報は不要なため削除
+
       IF (TRIM(gr_interface_info_rec(in_idx).party_site_code) IS NOT NULL) THEN
 --
         --パーティサイト情報VIEW(IF_H.出荷先より取得)

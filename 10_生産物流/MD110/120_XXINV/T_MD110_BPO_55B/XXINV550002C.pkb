@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.33
+ * Version          : 1.34
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2008/12/29    1.31  Natsuki Yoshida  本番障害#809,#899対応
  *  2008/12/30    1.32  Natsuki Yoshida  本番障害#705対応
  *  2009/01/05    1.33  Akiyoshi Shiina  本番障害#916対応
+ *  2009/02/04    1.34 Yasuhisa Yamamoto 本番障害#1120対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1619,8 +1620,11 @@ AS
          ,ic_whse_mst               iwm1
          ,mtl_item_locations        mil2
          ,xxcmn_rcv_pay_mst         xrpm                --受入区分アドオンマスタ
-        WHERE xm.comp_actual_flg = gv_cmp_actl_yes                                --実績計上フラグ
-        AND xm.delete_flg = gv_delete_no                                          --削除フラグ
+-- 2009/02/04 Y.Yamamoto #1120 update start
+--        WHERE xm.comp_actual_flg = gv_cmp_actl_yes                                --実績計上フラグ
+--        AND xm.delete_flg = gv_delete_no                                          --削除フラグ
+        WHERE xm.delete_flg = gv_delete_no                                          --削除フラグ
+-- 2009/02/04 Y.Yamamoto #1120 update end
         AND xm.item_id = iimb.item_id                                             --品目ID
         AND ximb.item_id = iimb.item_id
         AND xm.arvl_ship_date 
@@ -1628,7 +1632,11 @@ AS
         AND xm.locat_id = mil1.inventory_location_id                              --保管倉庫ID
         AND xm.other_id = mil2.inventory_location_id                             --保管倉庫ID(相手先)
         AND xrpm.doc_type =xm.doc_type                                            --文書タイプ
-        AND TO_CHAR(SIGN(xm.trans_qty)) = xrpm.rcv_pay_div                        --受払区分
+-- 2009/02/04 Y.Yamamoto #1120 update start
+--        AND TO_CHAR(SIGN(xm.trans_qty)) = xrpm.rcv_pay_div                        --受払区分
+        AND (TO_CHAR(SIGN(xm.trans_qty)) = xrpm.rcv_pay_div                        --受払区分
+          OR xm.trans_qty = 0)
+-- 2009/02/04 Y.Yamamoto #1120 update end
         AND xrpm.use_div_invent = gv_inventory                                    --在庫使用区分
         AND xrpm.new_div_invent IN (gv_newdiv_pay,gv_newdiv_rcv)
           AND iwm1.mtl_organization_id = mil1.organization_id
@@ -3460,8 +3468,11 @@ AS
          ,ic_whse_mst               iwm1
          ,mtl_item_locations        mil2
          ,xxcmn_rcv_pay_mst         xrpm                --受入区分アドオンマスタ
-        WHERE xm.comp_actual_flg = gv_cmp_actl_yes                                --実績計上フラグ
-        AND xm.delete_flg = gv_delete_no                                          --削除フラグ
+-- 2009/02/04 Y.Yamamoto #1120 update start
+--        WHERE xm.comp_actual_flg = gv_cmp_actl_yes                                --実績計上フラグ
+--        AND xm.delete_flg = gv_delete_no                                          --削除フラグ
+        WHERE xm.delete_flg = gv_delete_no                                          --削除フラグ
+-- 2009/02/04 Y.Yamamoto #1120 update end
         AND xm.item_id = iimb.item_id                                             --品目ID
         AND ximb.item_id = iimb.item_id
         AND xm.arvl_ship_date 
@@ -3469,7 +3480,11 @@ AS
         AND xm.locat_id = mil1.inventory_location_id                              --保管倉庫ID
         AND xm.other_id = mil2.inventory_location_id                             --保管倉庫ID(相手先)
         AND xrpm.doc_type =xm.doc_type                                            --文書タイプ
-        AND TO_CHAR(SIGN(xm.trans_qty)) = xrpm.rcv_pay_div                        --受払区分
+-- 2009/02/04 Y.Yamamoto #1120 update start
+--        AND TO_CHAR(SIGN(xm.trans_qty)) = xrpm.rcv_pay_div                        --受払区分
+        AND (TO_CHAR(SIGN(xm.trans_qty)) = xrpm.rcv_pay_div                        --受払区分
+          OR xm.trans_qty = 0)
+-- 2009/02/04 Y.Yamamoto #1120 update end
         AND xrpm.use_div_invent = gv_inventory                                    --在庫使用区分
         AND xrpm.new_div_invent IN (gv_newdiv_pay,gv_newdiv_rcv)
           AND iwm1.mtl_organization_id = mil1.organization_id
