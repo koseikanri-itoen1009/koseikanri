@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A05R(body)
  * Description      : 引取計画立案表
  * MD.050           : 引取計画立案表 MD050_COP_004_A05
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *                                       （出荷実績取得・抽出項目の出荷日を着荷日に変更）
  *  2013/12/13    1.11 SCSK.Nakamura     E_本稼動_10958対応
  *  2014/03/07    1.12 SCSK.Nakamura     E_本稼動_10958対応
+ *  2014/04/18    1.13 SCSK.Nakamura     E_本稼動_11816対応
  *
  *****************************************************************************************/
 --
@@ -1632,7 +1633,8 @@ AS
     ;
     -- 当年度 対象月予測数量の更新
     --  販売実績数量がNULL（子品目）の場合はNULL
-    --  前年度 対象月実績数量または前年度 対象前月実績数量が0の場合は0
+    --  前年翌月実績数量が0の場合は0
+    --  ( 前年前々月実績 + 前年前月実績 + 前年当月実績 )の結果が0の場合は0（ゼロ除算を発生させないため）
     --   ( 当年前々月実績 + 当年前月実績 + 当年当月予測(当月出庫数 + 今後出庫予測数量) ) / ( 前年前々月実績 + 前年前月実績 + 前年当月実績 ) * 前年翌月実績
     --   上記は立案対象月ではなく業務日付月からの計算
     -- 月末在庫予測数量の更新
@@ -1640,7 +1642,12 @@ AS
     UPDATE xxcop_rep_forecast_planning xrfp
     SET    xrfp.ship_to_quantity_forecast = CASE WHEN xrfp.ship_to_quantity_forecast IS NULL  THEN NULL
                                                  WHEN xrfp.ship_to_quantity_12_months_ago = 0 THEN 0
-                                                 WHEN xrfp.ship_to_quantity_13_months_ago = 0 THEN 0
+-- 2014/04/18 Ver1.13 Mod START
+--                                                 WHEN xrfp.ship_to_quantity_13_months_ago = 0 THEN 0
+                                                 WHEN ( xrfp.ship_to_quantity_15_months_ago
+                                                      + xrfp.ship_to_quantity_14_months_ago
+                                                      + xrfp.ship_to_quantity_13_months_ago )= 0 THEN 0
+-- 2014/04/18 Ver1.13 Mod END
                                                  ELSE
                                                       TRUNC( ( ( xrfp.ship_to_quantity_3_months_ago
                                                                + xrfp.ship_to_quantity_2_months_ago
