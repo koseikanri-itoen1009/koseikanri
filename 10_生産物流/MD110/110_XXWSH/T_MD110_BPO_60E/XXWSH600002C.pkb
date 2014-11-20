@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫配送計画情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60E_入出庫配送計画情報抽出処理
- * Version          : 1.23
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *  2008/10/07    1.22  M.Nomura         TE080_600指摘#27対応
  *  2008/10/14    1.23  M.Nomura         PT2-2_17指摘71対応
  *  2008/10/20    1.24  M.Nomura         統合#417対応
+ *  2008/10/23    1.25  M.Nomura         T_S_440対応
  *
  *****************************************************************************************/
 --
@@ -613,6 +614,13 @@ AS
   TYPE t_worm_msg IS TABLE OF VARCHAR2(5000) INDEX BY BINARY_INTEGER ;
   gt_worm_msg     t_worm_msg ;
   gn_wrm_idx      NUMBER := 0 ;
+--
+-- ##### 20081023 Ver.1.25 T_S_440対応 START #####
+  -- 通知先情報（結果レポート出力用）
+  TYPE t_notif_msg IS TABLE OF VARCHAR2(5000) INDEX BY BINARY_INTEGER ;
+  gt_notif_msg     t_notif_msg ;
+  gn_notif_idx      NUMBER := 0 ;
+-- ##### 20081023 Ver.1.25 T_S_440対応 END   #####
 --
   /***********************************************************************************************
    * Procedure Name   : prc_chk_param
@@ -2611,6 +2619,9 @@ AS
              ||                 gc_doc_type_ship  || ',' 
              ||                 gc_doc_type_move  || ',' 
              ||                 gc_doc_type_prov  || ')'
+-- ##### 20081023 Ver.1.25 レコードタイプ指示のみ対応 START #####
+             || '   AND    record_type_code = ' || gc_rec_type_inst
+-- ##### 20081023 Ver.1.25 レコードタイプ指示のみ対応 END   #####
              || ' ) imld '
               ;
 -- ##### 20080627 Ver.1.12 ST障害No390 END   #####
@@ -4948,6 +4959,49 @@ AS
       END IF ;
 -- ##### 20080611 Ver.1.6 WF対応 END   #####
 --
+-- ##### 20081023 Ver.1.25 T_S_440対応 START #####
+      -- ====================================================
+      -- 通知先情報作成
+      -- ====================================================
+      -- 件数インクリメント
+      gn_notif_idx := gn_notif_idx + 1;
+--
+      -- EOS宛先設定(EOSの後ろに幅調整のため全角SPASE設定)
+      gt_notif_msg(gn_notif_idx) := gr_wf_whs_rec.wf_notification || '　　　　';
+--
+      -- 通知先設定
+      IF (gr_wf_whs_rec.user_cd01 IS NOT NULL ) THEN
+        gt_notif_msg(gn_notif_idx) := gt_notif_msg(gn_notif_idx) || gr_wf_whs_rec.user_cd01;
+      END IF;
+      IF (gr_wf_whs_rec.user_cd02 IS NOT NULL ) THEN
+        gt_notif_msg(gn_notif_idx) := gt_notif_msg(gn_notif_idx) || ',' || gr_wf_whs_rec.user_cd02;
+      END IF;
+      IF (gr_wf_whs_rec.user_cd03 IS NOT NULL ) THEN
+        gt_notif_msg(gn_notif_idx) := gt_notif_msg(gn_notif_idx) || ',' || gr_wf_whs_rec.user_cd03;
+      END IF;
+      IF (gr_wf_whs_rec.user_cd04 IS NOT NULL ) THEN
+        gt_notif_msg(gn_notif_idx) := gt_notif_msg(gn_notif_idx) || ',' || gr_wf_whs_rec.user_cd04;
+      END IF;
+      IF (gr_wf_whs_rec.user_cd05 IS NOT NULL ) THEN
+        gt_notif_msg(gn_notif_idx) := gt_notif_msg(gn_notif_idx) || ',' || gr_wf_whs_rec.user_cd05;
+      END IF;
+      IF (gr_wf_whs_rec.user_cd06 IS NOT NULL ) THEN
+        gt_notif_msg(gn_notif_idx) := gt_notif_msg(gn_notif_idx) || ',' || gr_wf_whs_rec.user_cd06;
+      END IF;
+      IF (gr_wf_whs_rec.user_cd07 IS NOT NULL ) THEN
+        gt_notif_msg(gn_notif_idx) := gt_notif_msg(gn_notif_idx) || ',' || gr_wf_whs_rec.user_cd07;
+      END IF;
+      IF (gr_wf_whs_rec.user_cd08 IS NOT NULL ) THEN
+        gt_notif_msg(gn_notif_idx) := gt_notif_msg(gn_notif_idx) || ',' || gr_wf_whs_rec.user_cd08;
+      END IF;
+      IF (gr_wf_whs_rec.user_cd09 IS NOT NULL ) THEN
+        gt_notif_msg(gn_notif_idx) := gt_notif_msg(gn_notif_idx) || ',' || gr_wf_whs_rec.user_cd09;
+      END IF;
+      IF (gr_wf_whs_rec.user_cd10 IS NOT NULL ) THEN
+        gt_notif_msg(gn_notif_idx) := gt_notif_msg(gn_notif_idx) || ',' || gr_wf_whs_rec.user_cd10;
+      END IF;
+-- ##### 20081023 Ver.1.25 T_S_440対応 END   #####
+--
     END LOOP eos_loop ;
 --
   EXCEPTION
@@ -5924,6 +5978,25 @@ AS
 -- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
 --
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, gv_sep_msg ) ;   --区切り文字列出力
+--
+-- ##### 20081023 Ver.1.25 T_S_440対応 START #####
+    -- 通知先のメッセージ出力
+    IF ( gn_notif_idx <> 0 ) THEN
+--
+      -- タイトル表示
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '' ) ;          -- 空行
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, 'ＥＯＳ宛先　通知ユーザー') ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '------------------------') ;
+--
+      FOR i IN 1..gn_notif_idx LOOP
+        FND_FILE.PUT_LINE( FND_FILE.OUTPUT, gt_notif_msg(i) ) ;
+      END LOOP ;
+--
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '' ) ;          -- 空行
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, gv_sep_msg ) ;  -- 区切り文字列出力
+--
+    END IF;
+-- ##### 20081023 Ver.1.25 T_S_440対応 END   #####
 --
     -------------------------------------------------------
     -- 警告メッセージ
