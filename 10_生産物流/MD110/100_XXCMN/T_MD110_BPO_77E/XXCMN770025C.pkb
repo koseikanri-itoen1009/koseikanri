@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績表作成
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77E)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2008/07/22    1.5   T.Endou          改ページ時、ヘッダが出ないパターン対応
  *  2008/10/14    1.6   A.Shiina         T_S_524対応
  *  2008/10/28    1.7   H.Itou           T_S_524対応(再対応)
+ *  2008/11/13    1.8   A.Shiina         移行データ検証不具合対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -836,6 +837,9 @@ AS
     cv_porc              CONSTANT VARCHAR2( 4) := 'PORC';
     cv_adji              CONSTANT VARCHAR2( 4) := 'ADJI';
     cv_x201              CONSTANT VARCHAR2( 4) := 'X201'; -- 仕入先返品
+-- 2008/11/13 v1.8 ADD START
+    cv_rma               CONSTANT VARCHAR2( 3) := 'RMA';
+-- 2008/11/13 v1.8 ADD END
     cv_cat_set_name_mtof CONSTANT VARCHAR2(30) := 'XXCMN_MONTH_TRANS_OUTPUT_FLAG';
 --
     cn_prod_class_id     CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS'));
@@ -1408,7 +1412,8 @@ AS
       || '      ,SUM(mst.stnd_unit_price) / DECODE(SUM(mst.trans_qty),0,1,SUM(mst.trans_qty)) AS stnd_unit_price '
 -- 2008/10/28 H.Itou Mod End
       || '      ,SUM(mst.stnd_unit_price * mst.trans_qty) AS j_amt '
-      || '      ,SUM(mst.purchases_price * mst.trans_qty) AS s_amt '
+--      || '      ,SUM(mst.purchases_price * mst.trans_qty) AS s_amt '
+      || '      ,SUM(mst.purchases_price) AS s_amt '
       || '      ,:para_lkup_code              AS c_tax ';
 --
     -- ----------------------------------------------------
@@ -1416,7 +1421,10 @@ AS
     -- ----------------------------------------------------
     lv_porc_po := 'FROM '
       || '      ( '
-      || '       SELECT /*+ leading(itp gic1 mcb1 rsl rt pha pla plla) use_nl(itp gic1 mcb1)*/ '
+-- 2008/11/13 v1.8 UPDATE START
+--      || '       SELECT /*+ leading(itp gic1 mcb1 rsl rt pha pla plla) use_nl(itp gic1 mcb1)*/ '
+      || '       SELECT /*+ leading(itp xrpm gic1 mcb1 rsl rt pha pla plla) use_nl(itp xrpm gic1 mcb1)*/ '
+-- 2008/11/13 v1.8 UPDATE END
       || '              pha.attribute10         AS result_post '
       || '             ,mcb2.segment1           AS item_div '
       || '             ,mct2.description        AS item_div_name '
@@ -1429,8 +1437,13 @@ AS
       || '             ,pha.vendor_id           AS vendor_id '
       || '             ,mcb3.segment1           AS crowd_code '
       || '             ,mcb4.segment1           AS acnt_crowd_code '
-      || '             ,itp.trans_qty           AS trans_qty '
-      || '             ,NVL(pla.unit_price, 0) * NVL(itp.trans_qty, 0) AS purchases_price '
+-- 2008/11/13 v1.8 UPDATE START
+--      || '             ,itp.trans_qty           AS trans_qty '
+--      || '             ,NVL(pla.unit_price, 0) * NVL(itp.trans_qty, 0) AS purchases_price '
+      || '             ,NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div) AS trans_qty '
+      || '            ,ROUND(NVL(pla.unit_price, 0) '
+      || '             * (NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS purchases_price '
+-- 2008/11/13 v1.8 UPDATE END
       || '             ,NVL(plla.attribute2, :para_zero) AS powder_price '
       || '             ,NVL(plla.attribute4, :para_zero) AS commission_price '
       || '             ,NVL(plla.attribute7, :para_zero) AS assessment '
@@ -1469,6 +1482,9 @@ AS
 -- 2008/10/28 H.Itou Add Start T_S_524対応(再対応)
       || '             ,xxcmn_stnd_unit_price_v  xsupv '
 -- 2008/10/28 H.Itou Add End
+-- 2008/11/13 v1.8 ADD START
+      || '             ,xxcmn_rcv_pay_mst        xrpm '
+-- 2008/11/13 v1.8 ADD END
       || '       WHERE  itp.doc_type                = :para_porc '
       || '       AND    itp.completed_ind           = :para_one '
       || '       AND    itp.trans_date '
@@ -1522,12 +1538,34 @@ AS
 --      || '           ) '
       || '       AND hl.location_code(+) = pha.attribute10 '
       || '       AND hl.location_id      = xl.location_id(+) '
-      || '       AND NVL(xl.start_date_active, FND_DATE.STRING_TO_DATE(''' || gv_min_date || ''', ''' || gc_char_dt_format || ''')) < (TRUNC(itp.trans_date) + 1) '
-      || '       AND NVL(xl.end_date_active,   FND_DATE.STRING_TO_DATE(''' || gv_max_date || ''', ''' || gc_char_dt_format || ''')) >= TRUNC(itp.trans_date) '
+-- 2008/11/13 v1.8 UPDATE START
+--      || '       AND NVL(xl.start_date_active, FND_DATE.STRING_TO_DATE(''' || gv_min_date || ''', ''' || gc_char_dt_format || ''')) < (TRUNC(itp.trans_date) + 1) '
+--      || '       AND NVL(xl.end_date_active,   FND_DATE.STRING_TO_DATE(''' || gv_max_date || ''', ''' || gc_char_dt_format || ''')) >= TRUNC(itp.trans_date) '
+      || '       AND NVL(xl.start_date_active, FND_DATE.STRING_TO_DATE( '
+      || '         :para_min_date, :para_char_dt_format)) < (TRUNC(itp.trans_date) + 1) '
+      || '       AND NVL(xl.end_date_active,   FND_DATE.STRING_TO_DATE( '
+      || '         :para_max_date, :para_char_dt_format)) >= TRUNC(itp.trans_date) '
+-- 2008/11/13 v1.8 UPDATE END
       || '       AND xsupv.item_id(+)    = itp.item_id '
-      || '       AND NVL(xsupv.start_date_active, FND_DATE.STRING_TO_DATE(''' || gv_min_date || ''', ''' || gc_char_dt_format || ''')) < (TRUNC(itp.trans_date) + 1) '
-      || '       AND NVL(xsupv.end_date_active,   FND_DATE.STRING_TO_DATE(''' || gv_max_date || ''', ''' || gc_char_dt_format || ''')) >= TRUNC(itp.trans_date) '
+-- 2008/11/13 v1.8 UPDATE START
+--      || '       AND NVL(xsupv.start_date_active, FND_DATE.STRING_TO_DATE(''' || gv_min_date || ''', ''' || gc_char_dt_format || ''')) < (TRUNC(itp.trans_date) + 1) '
+--      || '       AND NVL(xsupv.end_date_active,   FND_DATE.STRING_TO_DATE(''' || gv_max_date || ''', ''' || gc_char_dt_format || ''')) >= TRUNC(itp.trans_date) '
+      || '       AND NVL(xsupv.start_date_active, FND_DATE.STRING_TO_DATE( '
+      || '         :para_min_date, :para_char_dt_format)) < (TRUNC(itp.trans_date) + 1) '
+      || '       AND NVL(xsupv.end_date_active,   FND_DATE.STRING_TO_DATE( '
+      || '         :para_max_date, :para_char_dt_format)) >= TRUNC(itp.trans_date) '
+-- 2008/11/13 v1.8 UPDATE END
 -- 2008/10/28 H.Itou Mod End
+-- 2008/11/13 v1.8 ADD START
+      || '       AND    xrpm.doc_type             = :para_porc '
+      || '       AND    xrpm.source_document_code <> :para_rma '
+      || '       AND    rsl.source_document_code  = xrpm.source_document_code '
+      || '       AND    rt.transaction_type       = xrpm.transaction_type '
+      || '       AND    xrpm.source_document_code = :para_po '
+      || '       AND    xrpm.transaction_type IN (:para_deliver, :para_return_to_vendor) '
+      || '       AND    itp.doc_type              = xrpm.doc_type '
+      || '       AND    xrpm.break_col_05         IS NOT NULL '
+-- 2008/11/13 v1.8 ADD END
       ;
 --
     -- 品目区分
@@ -1567,7 +1605,10 @@ AS
     -- 在庫調整(仕入先返品)生成
     -- ----------------------------------------------------
     lv_adji := 'UNION ALL '
-      || '       SELECT /*+ leading(itc gic1 mcb1 iaj ijm xrrt ) use_nl(itc gic1 mcb1) */ '
+-- 2008/11/13 v1.8 UPDATE START
+--      || '       SELECT /*+ leading(itc gic1 mcb1 iaj ijm xrrt ) use_nl(itc gic1 mcb1) */ '
+      || '       SELECT /*+ leading(itc xrpm gic1 mcb1 iaj ijm xrrt ) use_nl(itc xrpm gic1 mcb1) */ '
+-- 2008/11/13 v1.8 UPDATE END
       || '              xrrt.department_code    AS result_post '
       || '             ,mcb2.segment1           AS item_div '
       || '             ,mct2.description        AS item_div_name '
@@ -1580,9 +1621,14 @@ AS
       || '             ,xrrt.vendor_id          AS vendor_id '
       || '             ,mcb3.segment1           AS crowd_code '
       || '             ,mcb4.segment1           AS acnt_crowd_code '
-      || '             ,itc.trans_qty           AS trans_qty '
-      || '             ,NVL(xrrt.unit_price, 0) '
-      || '                * NVL(itc.trans_qty, 0) AS purchases_price '
+-- 2008/11/13 v1.8 UPDATE START
+--      || '             ,itc.trans_qty           AS trans_qty '
+--      || '             ,NVL(xrrt.unit_price, 0) '
+--      || '                * NVL(itc.trans_qty, 0) AS purchases_price '
+      || '             ,NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)) AS trans_qty '
+      || '      ,ROUND(NVL(xrrt.unit_price, 0) '
+      || '        * (NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS purchases_price '
+-- 2008/11/13 v1.8 UPDATE START
       || '             ,TO_CHAR(NVL(xrrt.kobki_converted_unit_price, :para_zero)) AS powder_price '
       || '           ,TO_CHAR(NVL(xrrt.kousen_rate_or_unit_price, :para_zero)) AS commission_price '
       || '             ,TO_CHAR(NVL(xrrt.fukakin_price, :para_zero)) AS assessment '
@@ -1619,6 +1665,9 @@ AS
 -- 2008/10/28 H.Itou Add Start T_S_524対応(再対応)
       || '             ,xxcmn_stnd_unit_price_v  xsupv '
 -- 2008/10/28 H.Itou Add End
+-- 2008/11/13 v1.8 ADD START
+      || '             ,xxcmn_rcv_pay_mst        xrpm '
+-- 2008/11/13 v1.8 ADD END
       || '       WHERE  itc.doc_type        = :para_adji '
       || '       AND    itc.reason_code     = :para_x201 '
       || '       AND    itc.trans_date '
@@ -1667,12 +1716,30 @@ AS
 --      || '           ) '
       || '       AND hl.location_code(+) = xrrt.department_code '
       || '       AND hl.location_id      = xl.location_id(+) '
-      || '       AND NVL(xl.start_date_active, FND_DATE.STRING_TO_DATE(''' || gv_min_date || ''', ''' || gc_char_dt_format || ''')) < (TRUNC(itc.trans_date) + 1) '
-      || '       AND NVL(xl.end_date_active,   FND_DATE.STRING_TO_DATE(''' || gv_max_date || ''', ''' || gc_char_dt_format || ''')) >= TRUNC(itc.trans_date) '
+-- 2008/11/13 v1.8 UPDATE START
+--      || '       AND NVL(xl.start_date_active, FND_DATE.STRING_TO_DATE(''' || gv_min_date || ''', ''' || gc_char_dt_format || ''')) < (TRUNC(itc.trans_date) + 1) '
+--      || '       AND NVL(xl.end_date_active,   FND_DATE.STRING_TO_DATE(''' || gv_max_date || ''', ''' || gc_char_dt_format || ''')) >= TRUNC(itc.trans_date) '
+      || '       AND NVL(xl.start_date_active, FND_DATE.STRING_TO_DATE( '
+      || '         :para_min_date, :para_char_dt_format)) < (TRUNC(itc.trans_date) + 1) '
+      || '       AND NVL(xl.end_date_active,   FND_DATE.STRING_TO_DATE( '
+      || '         :para_max_date, :para_char_dt_format)) >= TRUNC(itc.trans_date) '
+-- 2008/11/13 v1.8 UPDATE END
       || '       AND xsupv.item_id(+)    = itc.item_id '
-      || '       AND NVL(xsupv.start_date_active, FND_DATE.STRING_TO_DATE(''' || gv_min_date || ''', ''' || gc_char_dt_format || ''')) < (TRUNC(itc.trans_date) + 1) '
-      || '       AND NVL(xsupv.end_date_active,   FND_DATE.STRING_TO_DATE(''' || gv_max_date || ''', ''' || gc_char_dt_format || ''')) >= TRUNC(itc.trans_date) '
+-- 2008/11/13 v1.8 UPDATE START
+--      || '       AND NVL(xsupv.start_date_active, FND_DATE.STRING_TO_DATE(''' || gv_min_date || ''', ''' || gc_char_dt_format || ''')) < (TRUNC(itc.trans_date) + 1) '
+--      || '       AND NVL(xsupv.end_date_active,   FND_DATE.STRING_TO_DATE(''' || gv_max_date || ''', ''' || gc_char_dt_format || ''')) >= TRUNC(itc.trans_date) '
+      || '       AND NVL(xsupv.start_date_active, FND_DATE.STRING_TO_DATE( '
+      || '         :para_min_date, :para_char_dt_format)) < (TRUNC(itc.trans_date) + 1) '
+      || '       AND NVL(xsupv.end_date_active,   FND_DATE.STRING_TO_DATE( '
+      || '         :para_max_date, :para_char_dt_format)) >= TRUNC(itc.trans_date) '
+-- 2008/11/13 v1.8 UPDATE END
 -- 2008/10/28 H.Itou Mod End
+-- 2008/11/13 v1.8 ADD START
+      || '       AND    xrpm.doc_type             = :para_adji '
+      || '       AND    itc.doc_type              = xrpm.doc_type '
+      || '       AND    itc.reason_code           = xrpm.reason_code '
+      || '       AND    xrpm.break_col_05         IS NOT NULL '
+-- 2008/11/13 v1.8 ADD END
       ;
 --
     -- 品目区分
@@ -1771,8 +1838,6 @@ AS
     lv_order := lv_order
       || '        ,mst.item_code ';
 --
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_sql);
-
 -- 2008/10/14 v1.6 ADD END
 --yutsuzuk add
     SELECT flv.lookup_code
@@ -1825,6 +1890,21 @@ FND_FILE.PUT_LINE( FND_FILE.LOG, lv_sql);
                                       ,cv_po
                                       ,cv_deliver
                                       ,cv_return_to_vendor
+-- 2008/11/13 v1.8 ADD START
+                                      ,gv_min_date
+                                      ,gc_char_dt_format
+                                      ,gv_max_date
+                                      ,gc_char_dt_format
+                                      ,gv_min_date
+                                      ,gc_char_dt_format
+                                      ,gv_max_date
+                                      ,gc_char_dt_format
+                                      ,cv_porc
+                                      ,cv_rma
+                                      ,cv_po
+                                      ,cv_deliver
+                                      ,cv_return_to_vendor
+-- 2008/11/13 v1.8 ADD END
                                       ,cv_zero
                                       ,cv_zero
                                       ,cv_zero
@@ -1839,7 +1919,20 @@ FND_FILE.PUT_LINE( FND_FILE.LOG, lv_sql);
                                       ,cn_item_class_id
                                       ,gv_ja
                                       ,cn_crowd_code_id
-                                      ,cn_acnt_crowd_id;
+-- 2008/11/13 v1.8 UPDATE START
+--                                      ,cn_acnt_crowd_id;
+                                      ,cn_acnt_crowd_id
+                                      ,gv_min_date
+                                      ,gc_char_dt_format
+                                      ,gv_max_date
+                                      ,gc_char_dt_format
+                                      ,gv_min_date
+                                      ,gc_char_dt_format
+                                      ,gv_max_date
+                                      ,gc_char_dt_format
+                                      ,cv_adji
+                                      ;
+-- 2008/11/13 v1.8 UPDATE END
 --
     FETCH lc_ref BULK COLLECT INTO ot_data_rec;
     CLOSE lc_ref;

@@ -7,7 +7,7 @@ AS
  * Description      : 返品原料原価差異表
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77H)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *                                       されない現象への対応
  *  2008/08/26    1.7   A.Shiina         T_TE080_BPO_770 指摘17対応
  *  2008/10/15    1.8   N.Yoshida        T_S_524対応(PT対応)
+ *  2008/11/11    1.9   N.Yoshida        移行データ検証時不具合対応
  *
  *****************************************************************************************/
 --
@@ -106,7 +107,10 @@ AS
      ,product_item_code  xxcmn_lot_each_item_v.item_code%TYPE              -- 製品品目コード
      ,product_item_name  xxcmn_lot_each_item_v.item_short_name%TYPE        -- 製品品目名称
      ,quantity           ic_tran_pnd.trans_qty%TYPE                        -- 受入数量(原料)
-     ,standard_cost      xxcmn_stnd_unit_price_v.stnd_unit_price_gen%TYPE  -- 標準原価(原料)
+-- 2008/11/11 v1.9 UPDATE START
+     --,standard_cost      xxcmn_stnd_unit_price_v.stnd_unit_price_gen%TYPE  -- 標準原価(原料)
+     ,standard_cost      xxcmn_stnd_unit_price_v.stnd_unit_price%TYPE  -- 標準原価(原料)
+-- 2008/11/11 v1.9 UPDATE END
      ,turn_qty           ic_tran_pnd.trans_qty%TYPE                        -- 基準数量(製品)
      ,turn_price         NUMBER                                            -- 基準単価(製品)
     ) ;
@@ -416,8 +420,11 @@ AS
     || '            ,iimb2.item_no                           product_item_code'   -- 製品品目コード
     || '            ,ximb2.item_short_name                   product_item_name'   -- 製品品目名称
     || '            ,itp1.trans_qty * TO_NUMBER(xrpm1.rcv_pay_div) quantity'      -- 受入数量
-    || '            ,xsupv1.stnd_unit_price_gen               standard_cost'      -- 標準原価
-    || '            ,itp2.trans_qty                           turn_qty'           -- 基準数量
+-- 2008/11/11 v1.9 UPDATE START
+--    || '            ,xsupv1.stnd_unit_price_gen               standard_cost'      -- 標準原価
+    || '            ,xsupv1.stnd_unit_price                  standard_cost'      -- 標準原価
+-- 2008/11/11 v1.9 UPDATE END
+    || '            ,itp2.trans_qty * TO_NUMBER(xrpm1.rcv_pay_div) turn_qty'           -- 基準数量
     || '            ,TO_NUMBER(NVL('
     || '               (SELECT fmd2.attribute5'
     || '                FROM   fm_matl_dtl               fmd2'     -- フォーミュラディテール
@@ -1071,14 +1078,20 @@ AS
       prc_set_xml(gc_z, 'standard_cost', gt_body_data(i).standard_cost);
 --
       -- 標準金額(原料) ：受入数量(原料)×標準原価(原料)
-      ln_standard_amount  := gt_body_data(i).quantity * gt_body_data(i).standard_cost;
+-- 2008/11/11 v1.9 UPDATE START
+      --ln_standard_amount  := gt_body_data(i).quantity * gt_body_data(i).standard_cost;
+      ln_standard_amount  := ROUND(gt_body_data(i).quantity * gt_body_data(i).standard_cost);
+-- 2008/11/11 v1.9 UPDATE END
       prc_set_xml(gc_z, 'standard_amount', ln_standard_amount);
 --
       -- 基準単価(製品)
       prc_set_xml(gc_z, 'turn_price', gt_body_data(i).turn_price);
 --
       -- 基準金額(原料)
-      ln_turn_amount  := gt_body_data(i).turn_price * gt_body_data(i).turn_qty;
+-- 2008/11/11 v1.9 UPDATE START
+      --ln_turn_amount  := gt_body_data(i).turn_price * gt_body_data(i).turn_qty;
+      ln_turn_amount  := ROUND(gt_body_data(i).turn_price * gt_body_data(i).turn_qty);
+-- 2008/11/11 v1.9 UPDATE END
       prc_set_xml(gc_z, 'turn_amount', ln_turn_amount);
 --
       -- 単価差異
