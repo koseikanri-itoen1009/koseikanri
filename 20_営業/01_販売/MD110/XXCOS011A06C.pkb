@@ -7,7 +7,7 @@ AS
  * Description      : 販売実績ヘッダデータ、販売実績明細データを取得して、販売実績データファイルを
  *                    作成する。
  * MD.050           : 販売実績データ作成（MD050_COS_011_A06）
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,8 @@ AS
  *  2009/07/13    1.5   N.Maeda         [T1_1359]レビュー指摘対応
  *  2009/07/29    1.5   K.Kiriu         [T1_1359]レビュー指摘対応
  *  2009/09/03    1.6   N.Maeda         [0001199]販売実績明細の排他制御削除
+ *  2009/11/05    1.7   M.Sano          [E_T4_00088]伝票区分の算出方法変更
+ *                                      [E_T4_00142]顧客使用目的（請求先）のセット項目修正
  *
  *****************************************************************************************/
 --
@@ -185,6 +187,9 @@ AS
   cv_cust_code_chain    CONSTANT VARCHAR2(2)   := '18';                -- 顧客区分(チェーン店)
   cv_status_a           CONSTANT VARCHAR2(1)   := 'A';                 -- ステータス
   cv_cust_site_use_code CONSTANT VARCHAR2(10)  := 'SHIP_TO';           -- 顧客使用目的：出荷先
+/* 2009/11/05 Ver1.7 Add Start */
+  cv_bill_to            CONSTANT VARCHAR2(10)  := 'BILL_TO';           -- 顧客使用目的：請求先
+/* 2009/11/05 Ver1.7 Add End   */
   -- クイックコードタイプ
   cv_lkt_edi_s_exe_type CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_SALES_EXP_EXE_TYPE'; --EDI販売実績作成実行区分
   cv_lkt_sales_edi_cust CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_SALES_EXP_CUST';     --請求先顧客コード
@@ -1965,7 +1970,17 @@ AS
              ,rtv.due_cutoff_day                      sales_exp_day                --請求開始日
              ,xseh.orig_inspect_date                  orig_inspect_date            --オリジナル検収日
              ,xseh.dlv_invoice_class                  dlv_invoice_class            --納品伝票区分
-             ,xcchv.bill_cred_rec_code2               bill_cred_rec_code2          --売掛コード２（事業所）
+/* 2009/11/05 Ver1.7 Add Start */
+--             ,xcchv.bill_cred_rec_code2               bill_cred_rec_code2          --売掛コード２（事業所）
+             ,( SELECT ship_hsua.attribute5  attribute5
+                FROM   hz_cust_acct_sites    ship_hasa                             --顧客所在地(出荷先)
+                     , hz_cust_site_uses     ship_hsua                             --顧客使用目的
+                WHERE  ship_hasa.cust_account_id   = xcchv.ship_account_id
+                AND    ship_hsua.cust_acct_site_id = ship_hasa.cust_acct_site_id
+                AND    ship_hsua.site_use_code     = cv_bill_to --'SHIP_TO'
+                AND    ship_hsua.primary_flag      = cv_y       --'Y'
+              )                                       bill_cred_rec_code2          --売掛コード２（事業所）
+/* 2009/11/05 Ver1.7 Add End   */
              ,xsel.dlv_invoice_line_number            dlv_invoice_line_number      --納品明細番号
              ,xsel.item_code                          item_code                    --品目コード
              ,iimb.attribute21                        jan_code                     --JANコード
@@ -2331,6 +2346,9 @@ AS
 /* 2009/07/29 Ver1.5 Add Start */
     lv_sum_qty_seq          VARCHAR2(21);                                      --伝票計用変数の添字(顧客【納品先】+納品伝票番号)
 /* 2009/07/29 Ver1.5 Add End   */
+/* 2009/11/05 Ver1.7 Add Start */
+    lv_invoice_class        xxcos_sales_exp_headers.invoice_class%TYPE;        --伝票区分
+/* 2009/11/05 Ver1.7 Add End   */
 --
     -- *** ローカル・カーソル ***
 --
@@ -2607,6 +2625,16 @@ AS
       ELSE
         ln_line_no := ln_line_no + 1;
       END IF;
+/* 2009/11/05 Ver1.7 Add Start */
+      --------------------------
+      --伝票番号の編集
+      --------------------------
+      IF ( LENGTHB(gt_edi_sales_data(i).invoice_class) >= 2 ) THEN
+        lv_invoice_class := SUBSTRB(gt_edi_sales_data(i).invoice_class, -2);
+      ELSE
+        lv_invoice_class := gt_edi_sales_data(i).invoice_class;
+      END IF;
+/* 2009/11/05 Ver1.7 Add End   */
 --************************************* 2009/05/28 T.Tominaga Var1.4 ADD END   ******************************************
       --==============================================================
       --共通関数用の変数に値を設定
@@ -2653,7 +2681,10 @@ AS
       l_data_tab(cv_shop_delv_date)           := TO_CHAR(gt_edi_sales_data(i).orig_delivery_date, cv_date_format);  --店舗納品日
       l_data_tab(cv_dc_date_edi_data)         := TO_CHAR(NULL);
       l_data_tab(cv_dc_time_edi_data)         := TO_CHAR(NULL);
-      l_data_tab(cv_invc_class)               := gt_edi_sales_data(i).invoice_class;  -- 伝票区分
+/* 2009/11/05 Ver1.7 Add Start */
+--      l_data_tab(cv_invc_class)               := gt_edi_sales_data(i).invoice_class;  -- 伝票区分
+      l_data_tab(cv_invc_class)               := lv_invoice_class; -- 伝票区分
+/* 2009/11/05 Ver1.7 Mod End   */
       l_data_tab(cv_small_classif_code)       := TO_CHAR(NULL);
       l_data_tab(cv_small_classif_name)       := TO_CHAR(NULL);
       l_data_tab(cv_middle_classif_code)      := TO_CHAR(NULL);
