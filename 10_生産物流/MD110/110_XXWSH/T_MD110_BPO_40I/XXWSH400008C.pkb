@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（出荷）
  * MD.050           : 出荷依頼 T_MD050_BPO_401
  * MD.070           : 出荷調整表 T_MD070_BPO_40I
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -46,7 +46,7 @@ AS
  *  2008/07/02    1.4   Satoshi Yunba         禁則文字対応
  *  2008/07/23    1.5   Naoki Fukuda          ST不具合対応(#475)
  *  2008/08/20    1.6   Takao Ohashi          変更#183,T_S_612対応
- *
+ *  2008/09/01    1.7   Hitomi Itou           PT 2-1_10対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -90,7 +90,7 @@ AS
   gv_forecast_kbn_hkeikaku      CONSTANT VARCHAR2(10) := '01';
   -- 抽出対象ステータス（拠点パターン）
   --gv_select_status_kyoten       CONSTANT VARCHAR2(10) := '1';   --2008/07/02 ST不具合対応(#373)
-  gv_select_status_kyoten       CONSTANT VARCHAR2(10) := '2';     --2008/07/02 ST不具合対応(#373)
+    gv_select_status_kyoten       CONSTANT VARCHAR2(10) := '2';     --2008/07/02 ST不具合対応(#373)
 --
   -- エラーメッセージ関連
   gc_application_cmn            CONSTANT VARCHAR2(10) := 'XXCMN' ;
@@ -1009,7 +1009,6 @@ AS
                    := TRUNC(it_chosei_data(l_cnt).monthly_confirm_quantity
                                            / it_chosei_data(l_cnt).monthly_plan_quantity * 100, 2);
         END IF;
-
 --
         -- 【データ】計画数（全社）
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
@@ -1419,6 +1418,85 @@ AS
 --
 --###########################  固定部 END   ####################################
 --
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cv_select CONSTANT VARCHAR2(32000) := 
+         '  SELECT xoha.head_sales_branch                    AS head_sales_branch                        ' -- 管轄拠点
+      || '        ,xola.request_item_code                    AS item_code                                ' -- 出荷品目
+      || '        ,MAX(ximv.item_short_name)                 AS item_name                                ' -- 略称
+      || '        ,xoha.schedule_arrival_date                AS arrival_date                             ' -- 着荷予定日
+      || '        ,SUM(CASE                                                                              '
+                         -- 受注ヘッダアドオン.ステータス=「出荷実績計上済」の場合
+      || '               WHEN  (xoha.req_status = ''' || gv_req_status || ''') THEN                      '
+      || '                 CASE WHEN (ximv.conv_unit IS NULL) THEN                                       '
+      || '                   xola.shipped_quantity                                                       '
+      || '                 ELSE                                                                          '
+      || '                   TRUNC(xola.shipped_quantity / CASE                                          '
+      || '                                                   WHEN ximv.num_of_cases IS NULL THEN ''1''   '
+      || '                                                   WHEN ximv.num_of_cases = ''0''   THEN ''1'' '
+      || '                                                   ELSE ximv.num_of_cases                      '
+      || '                                                 END, 3)                                       '
+      || '                 END                                                                           '
+                         -- 受注ヘッダアドオン.ステータス=「出荷実績計上済」以外の場合
+      || '               ELSE                                                                            '
+      || '                 CASE WHEN (ximv.conv_unit IS NULL) THEN                                       '
+      || '                   xola.quantity                                                               '
+      || '                 ELSE                                                                          '
+      || '                   TRUNC(xola.quantity / CASE                                                  '
+      || '                                           WHEN ximv.num_of_cases IS NULL THEN ''1''           '
+      || '                                           WHEN ximv.num_of_cases = ''0''   THEN ''1''         '
+      || '                                           ELSE ximv.num_of_cases                              '
+      || '                                         END, 3)                                               '
+      || '                 END                                                                           '
+      || '               END)                                 AS confirm_quantity                        ' -- 予実数
+      ;
+--
+    cv_from CONSTANT VARCHAR2(32000) := 
+         '  FROM   xxcmn_sourcing_rules      xsr    '           -- 物流構成アドオンマスタ
+      || '        ,xxwsh_order_headers_all   xoha   '           -- 受注ヘッダアドオン
+      || '        ,xxwsh_order_lines_all     xola   '           -- 受注明細アドオン
+      || '        ,xxcmn_item_mst2_v         ximv   '           -- OPM品目情報VIEW2
+      || '        ,xxcmn_item_categories5_v  xicv   '           -- OPM品目カテゴリ割当情報VIEW5
+      || '        ,xxcmn_lookup_values2_v    xlvv1  '           -- クイックコード1
+      || '        ,xxcmn_lookup_values2_v    xlvv2  '           -- クイックコード2
+      ;
+--
+    cv_where CONSTANT VARCHAR2(32000) := 
+          ' WHERE                                                                  '
+            -- *** 結合条件 *** --
+      || '         xoha.order_header_id        = xola.order_header_id              '  -- 結合条件 受注ヘッダアドオン AND 受注明細アドオン
+      || '  AND    xsr.base_code               = xoha.head_sales_branch            '  -- 結合条件 物流構成アドオンマスタ AND 受注ヘッダアドオン
+      || '  AND    xsr.delivery_whse_code      = xoha.deliver_from                 '  -- 結合条件 物流構成アドオンマスタ AND 受注ヘッダアドオン
+      || '  AND    xoha.req_status             = xlvv2.lookup_code                 '  -- 結合条件 受注ヘッダアドオン AND クイックコード2
+      || '  AND    xlvv2.lookup_type           = xlvv1.meaning                     '  -- 結合条件 クイックコード2 AND クイックコード1
+      || '  AND    xsr.item_code               = xola.request_item_code            '  -- 結合条件 物流構成アドオンマスタ AND 受注明細アドオン
+      || '  AND    xola.request_item_code      = ximv.item_no                      '  -- 結合条件 受注明細アドオン AND OPM品目情報VIEW2
+      || '  AND    ximv.item_id                = xicv.item_id                      '  -- 結合条件 OPM品目情報VIEW2 AND OPM品目カテゴリ割当情報VIEW5
+            -- *** 抽出条件 *** --
+      || '  AND    xsr.plan_item_flag          = ''' || gv_plan_syohin_flg || '''  '  -- 抽出条件 物流構成アドオンマスタ.計画商品フラグ：「1：計画商品対象」
+      || '  AND    xlvv1.lookup_type           = ''' || gv_lookup_type1 || '''     '  -- 抽出条件 クイックコード1.タイプ：「出荷調整抽出対象ステータス種別」
+      || '  AND    xlvv1.lookup_code           = :iv_select_status                 '  -- 抽出条件 クイックコード1.コード：プロファイルの抽出対象ステータス
+      || '  AND    xsr.start_date_active      <= :id_arrival_date                  '  -- 抽出条件 物流構成アドオンマスタ.適用開始日「IN着日」
+      || '  AND    xsr.end_date_active        >= :id_arrival_date                  '  -- 抽出条件 物流構成アドオンマスタ.適用終了日「IN着日」
+      || '  AND    xoha.latest_external_flag   = ''Y''                             '  -- 抽出条件 受注ヘッダアドオン.最新フラグ「Y」
+      || '  AND    xoha.schedule_arrival_date >= :id_bucket_date_from              '  -- 抽出条件 受注ヘッダアドオン.着荷予定日：「INバケット日付(FROM)」
+      || '  AND    xoha.schedule_arrival_date <= :id_bucket_date_to                '  -- 抽出条件 受注ヘッダアドオン.着荷予定日：「INバケット日付(TO)」
+      || '  AND    ximv.start_date_active     <= :id_arrival_date                  '  -- 抽出条件 OPM品目情報VIEW2.適用開始日：「IN着日」
+      || '  AND    ximv.end_date_active       >= :id_arrival_date                  '  -- 抽出条件 OPM品目情報VIEW2.適用終了日：「IN着日」
+      || '  AND    xicv.prod_class_code        = ''' || gv_syori_kbn_drink || '''  '  -- 抽出条件 OPM品目カテゴリ割当情報VIEW5.商品区分：「2：ドリンク」
+      ;
+    cv_where_kyoten_cd    CONSTANT VARCHAR2(32000) := 
+         '  AND    xsr.base_code               = ''' || iv_kyoten_cd || '''        '; -- 抽出条件 物流構成アドオンマスタ.拠点：「IN拠点」
+    cv_where_deliver_from CONSTANT VARCHAR2(32000) := 
+         '  AND    xsr.delivery_whse_code      = ''' || iv_shipped_locat || '''    '; -- 抽出条件 物流構成アドオンマスタ.出荷先：「IN出庫先」
+    cv_group_by CONSTANT VARCHAR2(32000) := 
+         '  GROUP BY xoha.head_sales_branch     '                   -- 受注ヘッダアドオン.管轄拠点
+      || '          ,xola.request_item_code     '                   -- 受注ヘッダ明細.出荷品目
+      || '          ,xoha.schedule_arrival_date '                   -- 受注ヘッダアドオン.着荷予定日
+      ;
+-- 2008/09/01 H.Itou Add End
     -- =====================================================
     -- ユーザー宣言部
     -- =====================================================
@@ -1426,6 +1504,18 @@ AS
     lt_drink_confirm_data                  type_drink_confirm_data_tbl;
     -- 取得データ数
     ln_cnt                                 NUMBER DEFAULT 0;
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    lv_sql                       VARCHAR2(32767); -- 動的SQL用
+    lv_where_kyoten_cd           VARCHAR2(32767); -- 抽出条件 拠点
+    lv_where_deliver_from        VARCHAR2(32767); -- 抽出条件 出庫先
+-- 2008/09/01 H.Itou Add End
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    -- =====================================================
+    -- カーソル宣言
+    -- =====================================================
+    TYPE ref_cursor        IS REF CURSOR ;
+    cur_drink_confirm_data    ref_cursor ;  -- ドリンク予実数データ
+-- 2008/09/01 H.Itou Add End
 --
   BEGIN
 --
@@ -1435,94 +1525,138 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    -- =====================================================
+    -- SQL生成
+    -- =====================================================
+    -- INパラメータ.拠点に入力ありの場合、拠点を条件に追加
+    IF (iv_kyoten_cd IS NOT NULL) THEN
+      lv_where_kyoten_cd := cv_where_kyoten_cd;
+    ELSE
+      lv_where_kyoten_cd := ' ';
+    END IF;
+--
+    -- INパラメータ.出庫元に入力ありの場合、出庫元を条件に追加
+    IF (iv_shipped_locat IS NOT NULL) THEN
+      lv_where_deliver_from := cv_where_deliver_from;
+    ELSE
+      lv_where_deliver_from := ' ';
+    END IF;
+--
+    lv_sql := cv_select
+           || cv_from
+           || cv_where
+           || lv_where_kyoten_cd
+           || lv_where_deliver_from
+           || cv_group_by;
+--
+-- 2008/09/01 H.Itou Add End
     -- ====================================================
     -- データ抽出
     -- ====================================================
-    SELECT xoha.head_sales_branch                    AS head_sales_branch      -- 管轄拠点
-          ,xola.request_item_code                    AS item_code              -- 出荷品目
-          ,MAX(ximv.item_short_name)                 AS item_name              -- 略称
-          ,xoha.schedule_arrival_date                AS arrival_date           -- 着荷予定日
-          ,SUM(CASE
-                 -- 受注ヘッダアドオン.ステータス=「出荷実績計上済」の場合
-                 WHEN  (xoha.req_status = gv_req_status) THEN
-                   CASE WHEN (ximv.conv_unit IS NULL) THEN
-                     xola.shipped_quantity
-                   ELSE
-                     TRUNC(xola.shipped_quantity / CASE
-                                                     WHEN ximv.num_of_cases IS NULL THEN '1'
-                                                     WHEN ximv.num_of_cases = '0'   THEN '1'
-                                                     ELSE ximv.num_of_cases
-                                                   END, 3)
-                   END
---
-                 ELSE
---
-                   -- 受注ヘッダアドオン.ステータス=「出荷実績計上済」以外の場合
-                   CASE WHEN (ximv.conv_unit IS NULL) THEN
-                     xola.quantity
-                   ELSE
-                     TRUNC(xola.quantity / CASE
-                                             WHEN ximv.num_of_cases IS NULL THEN '1'
-                                             WHEN ximv.num_of_cases = '0'   THEN '1'
-                                             ELSE ximv.num_of_cases
-                                           END, 3)
-                   END
-                 END)                                 AS confirm_quantity     -- 予実数
---
-    BULK COLLECT INTO lt_drink_confirm_data
---
-    FROM  xxcmn_sourcing_rules      xsr               -- 物流構成アドオンマスタ
-         ,xxwsh_order_headers_all   xoha              -- 受注ヘッダアドオン
-         ,xxwsh_order_lines_all     xola              -- 受注明細アドオン
-         ,xxcmn_item_mst2_v         ximv              -- OPM品目情報VIEW
--- mod start ver1.6
---         ,xxcmn_item_categories4_v  xicv              -- OPM品目カテゴリ割当情報VIEW4
-         ,xxcmn_item_categories5_v  xicv              -- OPM品目カテゴリ割当情報VIEW5
--- mod end ver1.6
-         ,xxcmn_lookup_values2_v    xlvv1             -- クイックコード1
-         ,xxcmn_lookup_values2_v    xlvv2             -- クイックコード2
---
-    WHERE
-    ------------------------------------------------------------------------
-    -- クイックコード１
-        xlvv1.lookup_type                      = gv_lookup_type1
-    AND xlvv1.lookup_code                      = iv_select_status
-    ------------------------------------------------------------------------
-    -- クイックコード２
-    AND xlvv2.lookup_type                      = xlvv1.meaning
-    ------------------------------------------------------------------------
-    -- 物流構成アドオンマスタ
-    AND xsr.plan_item_flag                     = gv_plan_syohin_flg
-    AND xsr.base_code                          = NVL(iv_kyoten_cd, xsr.base_code)
-    AND xsr.delivery_whse_code                 = NVL(iv_shipped_locat, xsr.delivery_whse_code)
-    AND xsr.item_code                          = xola.request_item_code
-    AND xsr.base_code                          = xoha.head_sales_branch
-    AND xsr.delivery_whse_code                 = xoha.deliver_from
-    AND xsr.start_date_active                 <= id_arrival_date
-    AND xsr.end_date_active                   >= id_arrival_date
-    ------------------------------------------------------------------------
-    -- 受注ヘッダアドオン
-    AND xoha.latest_external_flag              = 'Y'
-    AND xoha.schedule_arrival_date            >= id_bucket_date_from
-    AND xoha.schedule_arrival_date            <= id_bucket_date_to
-    AND xoha.req_status                        = xlvv2.lookup_code
-    ------------------------------------------------------------------------
-    -- 受注明細アドオン条件
-    AND xoha.order_header_id                   = xola.order_header_id
-    ------------------------------------------------------------------------
-    -- OPM品目情報view
-    AND xola.request_item_code                 = ximv.item_no
-    AND ximv.start_date_active                <= id_arrival_date
-    AND ximv.end_date_active                  >= id_arrival_date
-    ------------------------------------------------------------------------
-    -- OPM品目カテゴリ割当情報VIEW4条件
-    AND ximv.item_id                           = xicv.item_id
-    AND xicv.prod_class_code                   = gv_syori_kbn_drink
-    ------------------------------------------------------------------------
-    GROUP BY xoha.head_sales_branch                        -- 受注ヘッダアドオン.管轄拠点
-            ,xola.request_item_code                        -- 受注ヘッダ明細.出荷品目
-            ,xoha.schedule_arrival_date                    -- 受注ヘッダアドオン.着荷予定日
+-- 2008/09/01 H.Itou Mod Start PT 2-1_10対応
+    -- カーソルオープン
+    OPEN cur_drink_confirm_data FOR lv_sql
+    USING
+      iv_select_status      -- INパラメータ.抽出対象ステータス
+     ,id_arrival_date       -- INパラメータ.着日
+     ,id_arrival_date       -- INパラメータ.着日
+     ,id_bucket_date_from   -- INパラメータ.バケット日付(FROM)
+     ,id_bucket_date_to     -- INパラメータ.バケット日付(TO)
+     ,id_arrival_date       -- INパラメータ.着日
+     ,id_arrival_date       -- INパラメータ.着日
     ;
+    -- バルクフェッチ
+    FETCH cur_drink_confirm_data BULK COLLECT INTO lt_drink_confirm_data;
+    -- カーソルクローズ
+    CLOSE cur_drink_confirm_data;
+--
+--    SELECT xoha.head_sales_branch                    AS head_sales_branch      -- 管轄拠点
+--          ,xola.request_item_code                    AS item_code              -- 出荷品目
+--          ,MAX(ximv.item_short_name)                 AS item_name              -- 略称
+--          ,xoha.schedule_arrival_date                AS arrival_date           -- 着荷予定日
+--          ,SUM(CASE
+--                 -- 受注ヘッダアドオン.ステータス=「出荷実績計上済」の場合
+--                 WHEN  (xoha.req_status = gv_req_status) THEN
+--                   CASE WHEN (ximv.conv_unit IS NULL) THEN
+--                     xola.shipped_quantity
+--                   ELSE
+--                     TRUNC(xola.shipped_quantity / CASE
+--                                                     WHEN ximv.num_of_cases IS NULL THEN '1'
+--                                                     WHEN ximv.num_of_cases = '0'   THEN '1'
+--                                                     ELSE ximv.num_of_cases
+--                                                   END, 3)
+--                   END
+----
+--                 ELSE
+----
+--                   -- 受注ヘッダアドオン.ステータス=「出荷実績計上済」以外の場合
+--                   CASE WHEN (ximv.conv_unit IS NULL) THEN
+--                     xola.quantity
+--                   ELSE
+--                     TRUNC(xola.quantity / CASE
+--                                             WHEN ximv.num_of_cases IS NULL THEN '1'
+--                                             WHEN ximv.num_of_cases = '0'   THEN '1'
+--                                             ELSE ximv.num_of_cases
+--                                           END, 3)
+--                   END
+--                 END)                                 AS confirm_quantity     -- 予実数
+----
+--    BULK COLLECT INTO lt_drink_confirm_data
+----
+--    FROM  xxcmn_sourcing_rules      xsr               -- 物流構成アドオンマスタ
+--         ,xxwsh_order_headers_all   xoha              -- 受注ヘッダアドオン
+--         ,xxwsh_order_lines_all     xola              -- 受注明細アドオン
+--         ,xxcmn_item_mst2_v         ximv              -- OPM品目情報VIEW
+---- mod start ver1.6
+----         ,xxcmn_item_categories4_v  xicv              -- OPM品目カテゴリ割当情報VIEW4
+--         ,xxcmn_item_categories5_v  xicv              -- OPM品目カテゴリ割当情報VIEW5
+---- mod end ver1.6
+--         ,xxcmn_lookup_values2_v    xlvv1             -- クイックコード1
+--         ,xxcmn_lookup_values2_v    xlvv2             -- クイックコード2
+----
+--    WHERE
+--    ------------------------------------------------------------------------
+--    -- クイックコード１
+--        xlvv1.lookup_type                      = gv_lookup_type1
+--    AND xlvv1.lookup_code                      = iv_select_status
+--    ------------------------------------------------------------------------
+--    -- クイックコード２
+--    AND xlvv2.lookup_type                      = xlvv1.meaning
+--    ------------------------------------------------------------------------
+--    -- 物流構成アドオンマスタ
+--    AND xsr.plan_item_flag                     = gv_plan_syohin_flg
+--    AND xsr.base_code                          = NVL(iv_kyoten_cd, xsr.base_code)
+--    AND xsr.delivery_whse_code                 = NVL(iv_shipped_locat, xsr.delivery_whse_code)
+--    AND xsr.item_code                          = xola.request_item_code
+--    AND xsr.base_code                          = xoha.head_sales_branch
+--    AND xsr.delivery_whse_code                 = xoha.deliver_from
+--    AND xsr.start_date_active                 <= id_arrival_date
+--    AND xsr.end_date_active                   >= id_arrival_date
+--    ------------------------------------------------------------------------
+--    -- 受注ヘッダアドオン
+--    AND xoha.latest_external_flag              = 'Y'
+--    AND xoha.schedule_arrival_date            >= id_bucket_date_from
+--    AND xoha.schedule_arrival_date            <= id_bucket_date_to
+--    AND xoha.req_status                        = xlvv2.lookup_code
+--    ------------------------------------------------------------------------
+--    -- 受注明細アドオン条件
+--    AND xoha.order_header_id                   = xola.order_header_id
+--    ------------------------------------------------------------------------
+--    -- OPM品目情報view
+--    AND xola.request_item_code                 = ximv.item_no
+--    AND ximv.start_date_active                <= id_arrival_date
+--    AND ximv.end_date_active                  >= id_arrival_date
+--    ------------------------------------------------------------------------
+--    -- OPM品目カテゴリ割当情報VIEW4条件
+--    AND ximv.item_id                           = xicv.item_id
+--    AND xicv.prod_class_code                   = gv_syori_kbn_drink
+--    ------------------------------------------------------------------------
+--    GROUP BY xoha.head_sales_branch                        -- 受注ヘッダアドオン.管轄拠点
+--            ,xola.request_item_code                        -- 受注ヘッダ明細.出荷品目
+--            ,xoha.schedule_arrival_date                    -- 受注ヘッダアドオン.着荷予定日
+--    ;
+-- 2008/09/01 H.Itou Mod End
 --
     -- ====================================================
     -- データ登録
@@ -1613,6 +1747,96 @@ AS
 --
 --###########################  固定部 END   ####################################
 --
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cv_main_select CONSTANT VARCHAR2(32000) := 
+         '  SELECT xsr.base_code             AS base_code       ' -- 拠点
+      || '        ,xsr.item_code             AS item_code       ' -- 品目コード
+      || '        ,ximv.item_short_name      AS item_short_name ' -- 品目名
+      || '        ,xsabt.bucket_date         AS bucket_date     ' -- 日付
+      || '        ,NVL(sub.plan_quantity, 0) AS plan_quantity   ' -- 予定数
+      ;
+--
+    cv_main_from CONSTANT VARCHAR2(32000) := 
+         '  FROM   xxcmn_sourcing_rules             xsr   '                   -- 物流構成アドオンマスタ
+      || '        ,xxwsh_shippng_adj_bucket_tmp     xsabt '                   -- 出荷調整表バケット中間テーブル
+      || '        ,xxcmn_item_mst2_v                ximv  '                   -- OPM品目情報VIEW2
+      || '        ,xxcmn_item_categories5_v         xicv  '                   -- OPM品目カテゴリ割当情報VIEW5
+      || '        ,(                                      '                   -- フォーキャスト副問合せ
+      ;
+--
+    cv_sub_select CONSTANT VARCHAR2(32000) := 
+         '         SELECT mfde.attribute3          AS head_sales_branch                  '   -- フォーキャスト名.拠点
+      || '               ,MAX(ximv.item_no)        AS item_code                          '   -- OPM品目情報VIEW.品目コード
+      || '               ,SUM(CASE                                                       '
+                                 -- OPM品目マスタ.入出庫換算単位が未設定の場合
+      || '                       WHEN (ximv.conv_unit IS NULL) THEN                      '
+      || '                         mfda.original_forecast_quantity                       '
+      || '                       ELSE                                                    '
+      || '                         TRUNC(mfda.original_forecast_quantity                 '
+      || '                               / CASE                                          '
+      || '                                   WHEN ximv.num_of_cases IS NULL THEN ''1''   '
+      || '                                   WHEN ximv.num_of_cases = ''0''   THEN ''1'' '
+      || '                                   ELSE ximv.num_of_cases                      '
+      || '                                 END, 3)                                       '
+      || '                       END)               AS plan_quantity                     '   -- 予定数
+      ;
+--
+    cv_sub_from CONSTANT VARCHAR2(32000) := 
+         '         FROM   mrp_forecast_designators  mfde '                                    -- フォーキャスト名
+      || '               ,mrp_forecast_dates        mfda '                                    -- フォーキャスト日付
+      || '               ,xxcmn_item_mst2_v         ximv '                                    -- OPM品目情報VIEW2
+      || '               ,xxcmn_item_categories5_v  xicv '                                    -- OPM品目カテゴリ割当情報VIEW5
+      ;
+--
+    cv_sub_where CONSTANT VARCHAR2(32000) := 
+         '         WHERE                                                                    '
+                   -- *** 結合条件 *** --
+      || '                mfde.forecast_designator = mfda.forecast_designator               ' -- 結合条件 フォーキャスト名 AND フォーキャスト日付
+      || '         AND    mfde.organization_id     = mfda.organization_id                   ' -- 結合条件 フォーキャスト名 AND フォーキャスト日付
+      || '         AND    mfda.inventory_item_id   = ximv.inventory_item_id                 ' -- 結合条件 フォーキャスト日付 AND OPM品目情報VIEW2
+      || '         AND    ximv.item_id             =  xicv.item_id                          ' -- 結合条件 OPM品目情報VIEW2 AND OPM品目カテゴリ情報VIEW5
+                   -- *** 抽出条件 *** --
+      || '         AND    mfde.attribute1          = ''' || gv_forecast_kbn_ksyohin || '''  ' -- 抽出条件 フォーキャスト名.フォーキャスト分類：「09：画商品引取計画」
+      || '         AND    mfda.forecast_date      >= :id_bucket_from                        ' -- 抽出条件 フォーキャスト日付.開始日：INバケット日付(FROM)
+      || '         AND    mfda.forecast_date      <= :id_bucket_to                          ' -- 抽出条件 フォーキャスト日付.開始日：INバケット日付(TO)
+      || '         AND    ximv.start_date_active  <= :id_arrival_date                       ' -- 抽出条件 OPM品目情報VIEW2.適用開始日：IN着日
+      || '         AND    ximv.end_date_active    >= :id_arrival_date                       ' -- 抽出条件 OPM品目情報VIEW2.適用終了日：IN着日
+      || '         AND    xicv.prod_class_code     = ''' || gv_syori_kbn_drink || '''       ' -- 抽出条件 OPM品目カテゴリ情報VIEW5.商品区分：「2：ドリンク」
+      ;
+    cv_sub_where_kyoten_cd    CONSTANT VARCHAR2(32000) := 
+         '         AND    mfde.attribute3          = ''' || iv_kyoten_cd || '''             '; -- 抽出条件 フォーキャスト名.拠点：IN拠点
+    cv_sub_where_deliver_from CONSTANT VARCHAR2(32000) := 
+         '         AND    mfde.attribute2          = ''' || iv_shipped_locat || '''         '; -- 抽出条件 フォーキャスト名.IN出荷元
+    cv_sub_group_by CONSTANT VARCHAR2(32000) := 
+         '         GROUP BY mfde.attribute3         ' -- フォーキャスト名.拠点
+      || '                 ,mfda.inventory_item_id  ' -- フォーキャスト日付.品目ID
+      ;
+    cv_sub_sql_name CONSTANT VARCHAR2(32000) := 
+                 ') sub';
+--
+    cv_main_where CONSTANT VARCHAR2(32000) := 
+         '  WHERE                                                              '
+            -- *** 結合条件 *** --
+      || '         xsr.item_code           = ximv.item_no                      ' -- 結合条件 物流構成アドオンマスタ AND OPM品目情報VIEW2
+      || '  AND    ximv.item_id            =  xicv.item_id                     ' -- 結合条件 OPM品目情報VIEW2 AND OPM品目カテゴリ割当情報VIEW5
+      || '  AND    xsr.base_code           = sub.head_sales_branch(+)          ' -- 結合条件 物流構成アドオンマスタ AND フォーキャスト副問合せ
+      || '  AND    xsr.item_code           = sub.item_code(+)                  ' -- 結合条件 物流構成アドオンマスタ AND フォーキャスト副問合せ
+            -- *** 抽出条件 *** --
+      || '  AND    xsr.plan_item_flag      = ''' || gv_plan_syohin_flg || '''  ' -- 抽出条件 物流構成アドオンマスタ.計画商品フラグ：「1：計画商品対象」
+      || '  AND    xsr.start_date_active  <= :id_arrival_date                  ' -- 抽出条件 物流構成アドオンマスタ.適用開始日：IN着日
+      || '  AND    xsr.end_date_active    >= :id_arrival_date                  ' -- 抽出条件 物流構成アドオンマスタ.適用終了日：IN着日
+      || '  AND    ximv.start_date_active <= :id_arrival_date                  ' -- 抽出条件 OPM品目情報VIEW2.適用開始日：IN着日
+      || '  AND    ximv.end_date_active   >= :id_arrival_date                  ' -- 抽出条件 OPM品目情報VIEW2.適用終了日：IN着日
+      || '  AND    xicv.prod_class_code    = ''' || gv_syori_kbn_drink || '''  ' -- 抽出条件 OPM品目カテゴリ割当情報VIEW5.商品区分：「2：ドリンク」
+      ;
+    cv_main_where_kyoten_cd    CONSTANT VARCHAR2(32000) := 
+         '  AND    xsr.base_code           = ''' || iv_kyoten_cd || '''       '; -- 抽出条件 物流構成アドオンマスタ.拠点：「IN拠点」
+    cv_main_where_deliver_from CONSTANT VARCHAR2(32000) := 
+         '  AND    xsr.delivery_whse_code  = ''' || iv_shipped_locat || '''   '; -- 抽出条件 物流構成アドオンマスタ.拠点：「IN出庫先」
+-- 2008/09/01 H.Itou Add End
     -- =====================================================
     -- ユーザー宣言部
     -- =====================================================
@@ -1621,6 +1845,20 @@ AS
     -- ドリンク計画数データ
     lt_drink_plan_data            type_drink_plan_data_tbl;
 --
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    lv_sql                        VARCHAR2(32767); -- 動的SQL用
+    lv_sub_where_kyoten_cd        VARCHAR2(32767); -- WHERE句 フォーキャスト副問合せの拠点
+    lv_sub_where_deliver_from     VARCHAR2(32767); -- WHERE句 フォーキャスト副問合せの出庫先
+    lv_main_where_kyoten_cd       VARCHAR2(32767); -- WHERE句 メインSQLの拠点
+    lv_main_where_deliver_from    VARCHAR2(32767); -- WHERE句 メインSQLの出庫先
+-- 2008/09/01 H.Itou Add End
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    -- =====================================================
+    -- カーソル宣言
+    -- =====================================================
+    TYPE ref_cursor        IS REF CURSOR ;
+    cur_drink_plan_data    ref_cursor ;  -- ドリンク計画数データ
+-- 2008/09/01 H.Itou Add End
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -1629,95 +1867,150 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    -- =====================================================
+    -- SQL生成
+    -- =====================================================
+    -- INパラメータ.拠点に入力ありの場合、拠点を条件に追加
+    IF (iv_kyoten_cd IS NOT NULL) THEN
+      lv_sub_where_kyoten_cd  := cv_sub_where_kyoten_cd;  -- SUBSQLの拠点条件
+      lv_main_where_kyoten_cd := cv_main_where_kyoten_cd; -- MAINSQLの拠点条件
+    ELSE
+      lv_sub_where_kyoten_cd  := ' ';
+      lv_main_where_kyoten_cd := ' ';
+    END IF;
+--
+    -- INパラメータ.出庫元に入力ありの場合、出庫元を条件に追加
+    IF (iv_shipped_locat IS NOT NULL) THEN
+      lv_sub_where_deliver_from  := cv_sub_where_deliver_from;  -- SUBSQLの出庫元条件
+      lv_main_where_deliver_from := cv_main_where_deliver_from; -- MAINSQLの出庫元条件
+    ELSE
+      lv_sub_where_deliver_from  := ' ';
+      lv_main_where_deliver_from := ' ';
+    END IF;
+--
+    lv_sql := cv_main_select
+           || cv_main_from
+           || cv_sub_select
+           || cv_sub_from
+           || cv_sub_where
+           || lv_sub_where_kyoten_cd
+           || lv_sub_where_deliver_from
+           || cv_sub_group_by
+           || cv_sub_sql_name
+           || cv_main_where
+           || lv_main_where_kyoten_cd
+           || lv_main_where_deliver_from;
+--
+-- 2008/09/01 H.Itou Add End
     -- ====================================================
     -- データ抽出
     -- ====================================================
-    SELECT  xsr.base_code
-           ,xsr.item_code
-           ,ximv.item_short_name
-           ,xsabt.bucket_date
-           ,NVL(sub.plan_quantity, 0)
---
-    BULK COLLECT INTO lt_drink_plan_data
---
-    FROM xxcmn_sourcing_rules             xsr                      -- 物流構成アドオンマスタ
-        ,xxwsh_shippng_adj_bucket_tmp     xsabt                    -- 出荷調整表バケット中間テーブル
-        ,xxcmn_item_mst2_v                ximv                     -- OPM品目情報VIEW
--- mod start ver1.6
---        ,xxcmn_item_categories4_v         xicv                     -- OPM品目カテゴリ割当情報VIEW4
-        ,xxcmn_item_categories5_v         xicv                     -- OPM品目カテゴリ割当情報VIEW5
--- mod end ver1.6
-        ,(SELECT mfde.attribute3          AS head_sales_branch     -- フォーキャスト名.拠点
-                ,MAX(ximv.item_no)        AS item_code             -- OPM品目情報VIEW.品目コード
-                ,SUM(CASE
-                       -- OPM品目マスタ.入出庫換算単位が未設定の場合
-                       WHEN (ximv.conv_unit IS NULL) THEN
-                         mfda.original_forecast_quantity
-                       ELSE
-                         TRUNC(mfda.original_forecast_quantity / 
-                                                           CASE
-                                                             WHEN ximv.num_of_cases IS NULL THEN '1'
-                                                             WHEN ximv.num_of_cases = '0'   THEN '1'
-                                                             ELSE ximv.num_of_cases
-                                                           END, 3)
-                       END)               AS plan_quantity
---
-          FROM  mrp_forecast_designators  mfde                     -- フォーキャスト名
-               ,mrp_forecast_dates        mfda                     -- フォーキャスト日付
-               ,xxcmn_item_mst2_v         ximv                     -- OPM品目情報VIEW
--- mod start ver1.6
---               ,xxcmn_item_categories4_v  xicv                     -- OPM品目カテゴリ割当情報VIEW4
-               ,xxcmn_item_categories5_v  xicv                     -- OPM品目カテゴリ割当情報VIEW5
--- mod end ver1.6
---
-          WHERE
-          ------------------------------------------------------------------------
-          -- フォーキャスト名
-              mfde.attribute1          = gv_forecast_kbn_ksyohin
-          AND mfde.attribute3          = NVL(iv_kyoten_cd, mfde.attribute3)
-          AND mfde.attribute2          = NVL(iv_shipped_locat, mfde.attribute2)
-          ------------------------------------------------------------------------
-          -- フォーキャスト日付
-          AND mfde.forecast_designator = mfda.forecast_designator
-          AND mfde.organization_id     = mfda.organization_id
-          AND mfda.forecast_date       >= id_bucket_from
-          AND mfda.forecast_date       <= id_bucket_to
-          ------------------------------------------------------------------------
-          -- OPM品目情報VIEW条件
-          AND mfda.inventory_item_id   = ximv.inventory_item_id
-          AND ximv.start_date_active   <= id_arrival_date
-          AND ximv.end_date_active     >= id_arrival_date
-          ------------------------------------------------------------------------
-          -- OPM品目カテゴリ割当情報VIEW4
-          AND ximv.item_id             =  xicv.item_id
-          AND xicv.prod_class_code     = gv_syori_kbn_drink
-          ------------------------------------------------------------------------
-          GROUP BY mfde.attribute3                                  -- フォーキャスト名.拠点
-                  ,mfda.inventory_item_id                           -- フォーキャスト日付.品目ID
-          ) sub
---
-    WHERE
-    ------------------------------------------------------------------------
-    -- 物流構成アドオンマスタ
-        xsr.plan_item_flag        = gv_plan_syohin_flg
-    AND xsr.base_code             = NVL(iv_kyoten_cd, xsr.base_code)
-    AND xsr.delivery_whse_code    = NVL(iv_shipped_locat, xsr.delivery_whse_code)
-    AND xsr.start_date_active     <= id_arrival_date
-    AND xsr.end_date_active       >= id_arrival_date
-    ------------------------------------------------------------------------
-    -- OPM品目情報VIEW条件
-    AND xsr.item_code             = ximv.item_no
-    AND ximv.start_date_active   <= id_arrival_date
-    AND ximv.end_date_active     >= id_arrival_date
-    ------------------------------------------------------------------------
-    -- OPM品目カテゴリ割当情報VIEW4
-    AND ximv.item_id             =  xicv.item_id
-    AND xicv.prod_class_code     = gv_syori_kbn_drink
-    ------------------------------------------------------------------------
-    -- 結果セット②
-    AND xsr.base_code             = sub.head_sales_branch(+)
-    AND xsr.item_code             = sub.item_code(+)
+-- 2008/09/01 H.Itou Mod Start PT 2-1_10対応
+    -- カーソルオープン
+    OPEN cur_drink_plan_data FOR lv_sql
+    USING
+      id_bucket_from        -- INパラメータ.バケット日付(FROM)
+     ,id_bucket_to          -- INパラメータ.バケット日付(TO)
+     ,id_arrival_date       -- INパラメータ.着日
+     ,id_arrival_date       -- INパラメータ.着日
+     ,id_arrival_date       -- INパラメータ.着日
+     ,id_arrival_date       -- INパラメータ.着日
+     ,id_arrival_date       -- INパラメータ.着日
+     ,id_arrival_date       -- INパラメータ.着日
     ;
+    -- バルクフェッチ
+    FETCH cur_drink_plan_data BULK COLLECT INTO lt_drink_plan_data;
+    -- カーソルクローズ
+    CLOSE cur_drink_plan_data;
+--
+--    SELECT  xsr.base_code
+--           ,xsr.item_code
+--           ,ximv.item_short_name
+--           ,xsabt.bucket_date
+--           ,NVL(sub.plan_quantity, 0)
+----
+--    BULK COLLECT INTO lt_drink_plan_data
+----
+--    FROM xxcmn_sourcing_rules             xsr                      -- 物流構成アドオンマスタ
+--        ,xxwsh_shippng_adj_bucket_tmp     xsabt                    -- 出荷調整表バケット中間テーブル
+--        ,xxcmn_item_mst2_v                ximv                     -- OPM品目情報VIEW
+---- mod start ver1.6
+----        ,xxcmn_item_categories4_v         xicv                     -- OPM品目カテゴリ割当情報VIEW4
+--        ,xxcmn_item_categories5_v         xicv                     -- OPM品目カテゴリ割当情報VIEW5
+---- mod end ver1.6
+--        ,(SELECT mfde.attribute3          AS head_sales_branch     -- フォーキャスト名.拠点
+--                ,MAX(ximv.item_no)        AS item_code             -- OPM品目情報VIEW.品目コード
+--                ,SUM(CASE
+--                       -- OPM品目マスタ.入出庫換算単位が未設定の場合
+--                       WHEN (ximv.conv_unit IS NULL) THEN
+--                         mfda.original_forecast_quantity
+--                       ELSE
+--                         TRUNC(mfda.original_forecast_quantity / 
+--                                                           CASE
+--                                                             WHEN ximv.num_of_cases IS NULL THEN '1'
+--                                                             WHEN ximv.num_of_cases = '0'   THEN '1'
+--                                                             ELSE ximv.num_of_cases
+--                                                           END, 3)
+--                       END)               AS plan_quantity
+----
+--          FROM  mrp_forecast_designators  mfde                     -- フォーキャスト名
+--               ,mrp_forecast_dates        mfda                     -- フォーキャスト日付
+--               ,xxcmn_item_mst2_v         ximv                     -- OPM品目情報VIEW
+---- mod start ver1.6
+----               ,xxcmn_item_categories4_v  xicv                     -- OPM品目カテゴリ割当情報VIEW4
+--               ,xxcmn_item_categories5_v  xicv                     -- OPM品目カテゴリ割当情報VIEW5
+---- mod end ver1.6
+----
+--          WHERE
+--          ------------------------------------------------------------------------
+--          -- フォーキャスト名
+--              mfde.attribute1          = gv_forecast_kbn_ksyohin
+--          AND mfde.attribute3          = NVL(iv_kyoten_cd, mfde.attribute3)
+--          AND mfde.attribute2          = NVL(iv_shipped_locat, mfde.attribute2)
+--          ------------------------------------------------------------------------
+--          -- フォーキャスト日付
+--          AND mfde.forecast_designator = mfda.forecast_designator
+--          AND mfde.organization_id     = mfda.organization_id
+--          AND mfda.forecast_date       >= id_bucket_from
+--          AND mfda.forecast_date       <= id_bucket_to
+--          ------------------------------------------------------------------------
+--          -- OPM品目情報VIEW条件
+--          AND mfda.inventory_item_id   = ximv.inventory_item_id
+--          AND ximv.start_date_active   <= id_arrival_date
+--          AND ximv.end_date_active     >= id_arrival_date
+--          ------------------------------------------------------------------------
+--          -- OPM品目カテゴリ割当情報VIEW4
+--          AND ximv.item_id             =  xicv.item_id
+--          AND xicv.prod_class_code     = gv_syori_kbn_drink
+--          ------------------------------------------------------------------------
+--          GROUP BY mfde.attribute3                                  -- フォーキャスト名.拠点
+--                  ,mfda.inventory_item_id                           -- フォーキャスト日付.品目ID
+--          ) sub
+----
+--    WHERE
+--    ------------------------------------------------------------------------
+--    -- 物流構成アドオンマスタ
+--        xsr.plan_item_flag        = gv_plan_syohin_flg
+--    AND xsr.base_code             = NVL(iv_kyoten_cd, xsr.base_code)
+--    AND xsr.delivery_whse_code    = NVL(iv_shipped_locat, xsr.delivery_whse_code)
+--    AND xsr.start_date_active     <= id_arrival_date
+--    AND xsr.end_date_active       >= id_arrival_date
+--    ------------------------------------------------------------------------
+--    -- OPM品目情報VIEW条件
+--    AND xsr.item_code             = ximv.item_no
+--    AND ximv.start_date_active   <= id_arrival_date
+--    AND ximv.end_date_active     >= id_arrival_date
+--    ------------------------------------------------------------------------
+--    -- OPM品目カテゴリ割当情報VIEW4
+--    AND ximv.item_id             =  xicv.item_id
+--    AND xicv.prod_class_code     = gv_syori_kbn_drink
+--    ------------------------------------------------------------------------
+--    -- 結果セット②
+--    AND xsr.base_code             = sub.head_sales_branch(+)
+--    AND xsr.item_code             = sub.item_code(+)
+--    ;
+-- 2008/09/01 H.Itou Add End
 --
     -- ====================================================
     -- データ抽出
@@ -1811,6 +2104,35 @@ AS
 --
 --###########################  固定部 END   ####################################
 --
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cv_select CONSTANT VARCHAR2(32000) := 
+         '  SELECT MIN(mfda.forecast_date)    AS start_date    ' -- フォーキャスト日付.開始日
+      || '        ,MAX(mfda.rate_end_date)    AS end_date      ' -- フォーキャスト日付.終了日
+      ;
+--
+    cv_from CONSTANT VARCHAR2(32000) := 
+         '  FROM   mrp_forecast_designators    mfde  '           -- フォーキャスト名
+      || '        ,mrp_forecast_dates          mfda  '           -- フォーキャスト日付
+      ;
+--
+    cv_where CONSTANT VARCHAR2(32000) := 
+         '  WHERE                                                                  '
+            -- *** 結合条件 *** --
+      || '         mfde.forecast_designator = mfda.forecast_designator              ' -- 結合条件 フォーキャスト名 AND フォーキャスト日付
+      || '  AND    mfde.organization_id     = mfda.organization_id                  ' -- 結合条件 フォーキャスト名 AND フォーキャスト日付
+            -- *** 抽出条件 *** --
+      || '  AND    mfde.attribute1          = ''' || gv_forecast_kbn_ksyohin || ''' ' -- 抽出条件 フォーキャスト名.フォーキャスト分類：「09：計画商品引取計画」
+      || '  AND    mfda.forecast_date      <= :id_arrival_date                      ' -- 抽出条件 フォーキャスト日付.開始日：IN着日
+      || '  AND    mfda.rate_end_date      >= :id_arrival_date                      ' -- 抽出条件 フォーキャスト日付.終了日：IN着日
+      ;
+    cv_where_kyoten_cd    CONSTANT VARCHAR2(32000) := 
+         '  AND    mfde.attribute3          = ''' || iv_kyoten_cd || '''           '; -- 抽出条件 フォーキャスト名.拠点：「IN拠点」
+    cv_where_deliver_from CONSTANT VARCHAR2(32000) := 
+         '  AND    mfde.attribute2          = ''' || iv_shipped_locat || '''       '; -- 抽出条件 フォーキャスト名.出荷先：「IN出庫先」
+-- 2008/09/01 H.Itou Add End
     -- =====================================================
     -- ユーザー宣言部
     -- =====================================================
@@ -1820,6 +2142,21 @@ AS
     ld_from                 DATE DEFAULT NULL;
     -- ワークバケット日付(TO)
     ld_to                   DATE DEFAULT NULL;
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    lv_sql                  VARCHAR2(32767); -- 動的SQL用
+    lv_where_kyoten_cd      VARCHAR2(32767); -- 抽出条件 拠点
+    lv_where_deliver_from   VARCHAR2(32767); -- 抽出条件 出庫先
+-- 2008/09/01 H.Itou Add End
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    -- =====================================================
+    -- カーソル宣言
+    -- =====================================================
+    TYPE ref_cursor        IS REF CURSOR ;
+    cur_bucket_data        ref_cursor ;  -- バケット日付カーソル
+-- 2008/09/01 H.Itou Add End
+    -- =====================================================
+    -- 例外宣言
+    -- =====================================================
     -- ローカル・例外
     no_data_expt            EXCEPTION;
 --
@@ -1831,31 +2168,69 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    -- =====================================================
+    -- SQL生成
+    -- =====================================================
+    -- INパラメータ.拠点に入力ありの場合、拠点を条件に追加
+    IF (iv_kyoten_cd IS NOT NULL) THEN
+      lv_where_kyoten_cd := cv_where_kyoten_cd;
+    ELSE
+      lv_where_kyoten_cd := ' ';
+    END IF;
+--
+    -- INパラメータ.出庫元に入力ありの場合、出庫元を条件に追加
+    IF (iv_shipped_locat IS NOT NULL) THEN
+      lv_where_deliver_from := cv_where_deliver_from;
+    ELSE
+      lv_where_deliver_from := ' ';
+    END IF;
+--
+    lv_sql := cv_select
+           || cv_from
+           || cv_where
+           || lv_where_kyoten_cd
+           || lv_where_deliver_from;
+--
+-- 2008/09/01 H.Itou Add End
     -- ====================================================
     -- データ抽出
     -- ====================================================
-    SELECT MIN(mfda.forecast_date)    AS start_date      -- フォーキャスト日付.開始日
-          ,MAX(mfda.rate_end_date)    AS end_date        -- フォーキャスト日付.終了日
---
-    INTO ld_from, ld_to
---
-    FROM  mrp_forecast_designators    mfde                      -- フォーキャスト名
-         ,mrp_forecast_dates          mfda                      -- フォーキャスト日付
---
-    WHERE
-    ------------------------------------------------------------------------
-    -- フォーキャスト名
-        mfde.attribute1               = gv_forecast_kbn_ksyohin
-    AND mfde.attribute3               = NVL(iv_kyoten_cd, mfde.attribute3)
-    AND mfde.attribute2               = NVL(iv_shipped_locat, mfde.attribute2)
-    ------------------------------------------------------------------------
-    -- フォーキャスト日付
-    AND mfde.forecast_designator      = mfda.forecast_designator
-    AND mfde.organization_id          = mfda.organization_id
-    AND mfda.forecast_date            <= id_arrival_date
-    AND mfda.rate_end_date            >= id_arrival_date
+-- 2008/09/01 H.Itou Mod Start PT 2-1_10対応
+    -- カーソルオープン
+    OPEN cur_bucket_data FOR lv_sql
+    USING
+      id_arrival_date       -- INパラメータ.着日
+     ,id_arrival_date       -- INパラメータ.着日
     ;
+    -- フェッチ
+    FETCH cur_bucket_data INTO ld_from, ld_to;
+    -- カーソルクローズ
+    CLOSE cur_bucket_data;
 --
+--    SELECT MIN(mfda.forecast_date)    AS start_date      -- フォーキャスト日付.開始日
+--          ,MAX(mfda.rate_end_date)    AS end_date        -- フォーキャスト日付.終了日
+----
+--    INTO ld_from, ld_to
+----
+--    FROM  mrp_forecast_designators    mfde                      -- フォーキャスト名
+--         ,mrp_forecast_dates          mfda                      -- フォーキャスト日付
+----
+--    WHERE
+--    ------------------------------------------------------------------------
+--    -- フォーキャスト名
+--        mfde.attribute1               = gv_forecast_kbn_ksyohin
+--    AND mfde.attribute3               = NVL(iv_kyoten_cd, mfde.attribute3)
+--    AND mfde.attribute2               = NVL(iv_shipped_locat, mfde.attribute2)
+--    ------------------------------------------------------------------------
+--    -- フォーキャスト日付
+--    AND mfde.forecast_designator      = mfda.forecast_designator
+--    AND mfde.organization_id          = mfda.organization_id
+--    AND mfda.forecast_date            <= id_arrival_date
+--    AND mfda.rate_end_date            >= id_arrival_date
+--    ;
+--
+-- 2008/09/01 H.Itou Mod End
     IF (ld_from IS NULL OR ld_to IS NULL) THEN
       RAISE no_data_expt ;
     END IF;
@@ -2554,6 +2929,81 @@ AS
 --
 --###########################  固定部 END   ####################################
 --
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cv_select CONSTANT VARCHAR2(32767) := 
+         '  SELECT xoha.head_sales_branch                  AS head_sales_branch      ' -- 管轄拠点
+      || '        ,xola.request_item_code                  AS item_code              ' -- 出荷品目
+      || '        ,MAX(ximv.item_short_name)               AS item_name              ' -- 品目名称
+      || '        ,xoha.schedule_arrival_date              AS arrival_date           ' -- 着荷予定日
+      || '        ,SUM(CASE                                                          '
+                      -- 受注ヘッダアドオン.ステータス=「出荷実績計上済」の場合
+      || '            WHEN  (xoha.req_status = ''' || gv_req_status || ''' ) THEN    '
+      || '              CASE WHEN (ximv.conv_unit IS NULL) THEN                      '
+      || '                     xola.shipped_quantity                                 '
+      || '                   ELSE                                                    '
+      || '                     TRUNC(xola.shipped_quantity                           '
+      || '                           / CASE                                          '
+      || '                               WHEN ximv.num_of_cases IS NULL   THEN ''1'' '
+      || '                               WHEN ximv.num_of_cases = ''0''   THEN ''1'' '
+      || '                               ELSE ximv.num_of_cases                      '
+      || '                             END, 3)                                       '
+      || '                   END                                                     '
+                      -- 受注ヘッダアドオン.ステータス=「出荷実績計上済」の場合
+      || '            ELSE                                                           '
+      || '              CASE WHEN (ximv.conv_unit IS NULL) THEN                      '
+      || '                     xola.quantity                                         '
+      || '                   ELSE                                                    '
+      || '                     TRUNC(xola.quantity                                   '
+      || '                           / CASE                                          '
+      || '                               WHEN ximv.num_of_cases IS NULL   THEN ''1'' '
+      || '                               WHEN ximv.num_of_cases = ''0''   THEN ''1'' '
+      || '                               ELSE ximv.num_of_cases                      '
+      || '                             END, 3)                                       '
+      || '                   END                                                     '
+      || '            END)                                  AS confirm_quantity      '  -- 予実数
+      ;
+--
+    cv_from CONSTANT VARCHAR2(32767) := 
+         '  FROM   xxwsh_order_headers_all    xoha  '                                   -- 受注ヘッダアドオン
+      || '        ,xxwsh_order_lines_all      xola  '                                   -- 受注明細アドオン
+      || '        ,xxcmn_item_mst2_v          ximv  '                                   -- OPM品目情報VIEW2
+      || '        ,xxcmn_item_categories5_v   xicv  '                                   -- OPM品目カテゴリ割当情報VIEW5
+      || '        ,xxcmn_lookup_values2_v     xlvv1 '                                   -- クイックコード1
+      || '        ,xxcmn_lookup_values2_v     xlvv2 '                                   -- クイックコード2 
+      ;
+--
+    cv_where CONSTANT VARCHAR2(32767) := 
+         '  WHERE                                                                   '
+            -- *** 結合条件 *** --
+      || '         xoha.order_header_id        = xola.order_header_id               '  -- 結合条件 受注ヘッダアドオン AND 受注明細アドオン
+      || '  AND    xoha.req_status             = xlvv2.lookup_code                  '  -- 結合条件 受注ヘッダアドオン AND クイックコード２
+      || '  AND    xlvv2.lookup_type           = xlvv1.meaning                      '  -- 結合条件 クイックコード１ AND クイックコード２
+      || '  AND    xola.request_item_code      = ximv.item_no                       '  -- 結合条件 受注明細アドオン AND OPM品目情報VIEW2
+      || '  AND    ximv.item_id                = xicv.item_id                       '  -- 結合条件 OPM品目情報VIEW2 AND OPM品目カテゴリ割当情報VIEW5条件
+            -- *** 抽出条件 *** --
+      || '  AND    xlvv1.lookup_type           = ''' || gv_lookup_type1 || '''      '  -- 抽出条件 クイックコード１.タイプ：出荷調整抽出対象ステータス種別
+      || '  AND    xlvv1.lookup_code           = :iv_select_status                  '  -- 抽出条件 クイックコード１.コード：IN抽出対象ステータス
+      || '  AND    xoha.latest_external_flag   = ''Y''                              '  -- 抽出条件 受注ヘッダアドドン.最新フラグ：「Y」
+      || '  AND    xoha.schedule_arrival_date >= TRUNC(:id_arrival_date, ''MONTH'') '  -- 抽出条件 受注ヘッダアドドン.着荷予定日：IN着日
+      || '  AND    xoha.schedule_arrival_date <= LAST_DAY(:id_arrival_date)         '  -- 抽出条件 受注ヘッダアドドン.着荷予定日：IN着日
+      || '  AND    ximv.start_date_active     <= :id_arrival_date                   '  -- 抽出条件 OPM品目情報VIEW2.適用開始日：IN着日
+      || '  AND    ximv.end_date_active       >= :id_arrival_date                   '  -- 抽出条件 OPM品目情報VIEW2.適用開始日：IN着日
+      || '  AND    xicv.prod_class_code        = ''' || gv_syori_kbn_leaf || '''    '  -- 抽出条件 OPM品目カテゴリ割当情報VIEW5.商品区分：「1：リーフ」
+      ;
+    cv_where_kyoten_cd    CONSTANT VARCHAR2(32767) := 
+         '  AND    xoha.head_sales_branch      = ''' || iv_kyoten_cd || '''         '; -- 抽出条件 受注ヘッダアドドン.管轄拠点：IN拠点
+    cv_where_deliver_from CONSTANT VARCHAR2(32767) := 
+         '  AND    xoha.deliver_from           = ''' || iv_shipped_locat || '''     '; -- 抽出条件 受注ヘッダアドドン.管轄拠点：IN出庫元
+--
+    cv_group_by CONSTANT VARCHAR2(32767) := 
+         '  GROUP BY xoha.head_sales_branch      ' -- 受注ヘッダアドオン.管轄拠点
+      || '          ,xola.request_item_code      ' -- 受注ヘッダ明細.出荷品目
+      || '          ,xoha.schedule_arrival_date  ' -- 受注ヘッダアドオン.着荷予定日
+      ;
+-- 2008/09/01 H.Itou Add End
     -- =====================================================
     -- ユーザー宣言部
     -- =====================================================
@@ -2561,6 +3011,18 @@ AS
     lt_leaf_confirm_data_tbl          type_leaf_confirm_data_tbl;
     -- 取得データ数
     ln_cnt                            NUMBER DEFAULT 0;
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    lv_sql                            VARCHAR2(32767); -- 動的SQL用
+    lv_where_kyoten_cd                VARCHAR2(32767); -- WHERE句拠点
+    lv_where_deliver_from             VARCHAR2(32767); -- WHERE句出庫元
+-- 2008/09/01 H.Itou Add End
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    -- =====================================================
+    -- カーソル宣言
+    -- =====================================================
+    TYPE ref_cursor        IS REF CURSOR ;
+    cur_leaf_confirm_data  ref_cursor ;  -- リーフ予実数データ
+-- 2008/09/01 H.Itou Add End
 --
   BEGIN
 --
@@ -2570,83 +3032,124 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    -- =====================================================
+    -- SQL生成
+    -- =====================================================
+    -- INパラメータ.拠点に入力ありの場合、管轄拠点を条件に追加
+    IF (iv_kyoten_cd IS NOT NULL) THEN
+      lv_where_kyoten_cd := cv_where_kyoten_cd;
+    ELSE
+      lv_where_kyoten_cd := ' ';
+    END IF;
+--
+    -- INパラメータ.出庫元に入力ありの場合、出庫元を条件に追加
+    IF (iv_shipped_locat IS NOT NULL) THEN
+      lv_where_deliver_from := cv_where_deliver_from;
+    ELSE
+      lv_where_deliver_from := ' ';
+    END IF;
+--
+    lv_sql := cv_select
+           || cv_from
+           || cv_where
+           || lv_where_kyoten_cd
+           || lv_where_deliver_from
+           || cv_group_by;
+-- 2008/09/01 H.Itou Add End
     -- ====================================================
     -- データ抽出
     -- ====================================================
-    SELECT xoha.head_sales_branch                  AS head_sales_branch     -- 管轄拠点
-          ,xola.request_item_code                  AS item_code             -- 出荷品目
-          ,MAX(ximv.item_short_name)               AS item_name             -- 品目名称
-          ,xoha.schedule_arrival_date              AS arrival_date          -- 着荷予定日
-          ,SUM(CASE
-              -- 受注ヘッダアドオン.ステータス=「出荷実績計上済」の場合
-              WHEN  (xoha.req_status = gv_req_status) THEN
-                CASE WHEN (ximv.conv_unit IS NULL) THEN
-                       xola.shipped_quantity
-                     ELSE
-                       TRUNC(xola.shipped_quantity / CASE
-                                                       WHEN ximv.num_of_cases IS NULL THEN '1'
-                                                       WHEN ximv.num_of_cases = '0'   THEN '1'
-                                                       ELSE ximv.num_of_cases
-                                                     END, 3)
-                     END
-              -- 受注ヘッダアドオン.ステータス=「出荷実績計上済」の場合
-              ELSE
-                CASE WHEN (ximv.conv_unit IS NULL) THEN
-                       xola.quantity
-                     ELSE
-                       TRUNC(xola.quantity
-                             / CASE
-                                 WHEN ximv.num_of_cases IS NULL THEN '1'
-                                 WHEN ximv.num_of_cases = '0'   THEN '1'
-                                 ELSE ximv.num_of_cases
-                               END, 3)
-                     END
-              END)                                  AS confirm_quantity     -- 予実数
---
-    BULK COLLECT INTO lt_leaf_confirm_data_tbl
---
-    FROM   xxwsh_order_headers_all    xoha        -- 受注ヘッダアドオン
-          ,xxwsh_order_lines_all      xola        -- 受注明細アドオン
-          ,xxcmn_item_mst2_v          ximv        -- OPM品目情報VIEW
--- mod start ver1.6
---          ,xxcmn_item_categories4_v   xicv        -- OPM品目カテゴリ割当情報VIEW4
-          ,xxcmn_item_categories5_v   xicv        -- OPM品目カテゴリ割当情報VIEW5
--- mod end ver1.6
-          ,xxcmn_lookup_values2_v     xlvv1       -- クイックコード1
-          ,xxcmn_lookup_values2_v     xlvv2       -- クイックコード2
-    WHERE
-    ------------------------------------------------------------------------
-    -- クイックコード１
-        xlvv1.lookup_type                      = gv_lookup_type1
-    AND xlvv1.lookup_code                      = iv_select_status
-    ------------------------------------------------------------------------
-    -- クイックコード２
-    AND xlvv2.lookup_type                      = xlvv1.meaning
-    ------------------------------------------------------------------------
-    -- 受注ヘッダアドオン条件
-    AND   xoha.req_status                     = xlvv2.lookup_code
-    AND   xoha.latest_external_flag           = 'Y'
-    AND   xoha.head_sales_branch              = NVL(iv_kyoten_cd, xoha.head_sales_branch)
-    AND   xoha.deliver_from                   = NVL(iv_shipped_locat, xoha.deliver_from)
-    AND   xoha.schedule_arrival_date          >= TRUNC(id_arrival_date, 'MONTH')
-    AND   xoha.schedule_arrival_date          <= LAST_DAY(id_arrival_date)
-    ------------------------------------------------------------------------
-    -- 受注明細アドオン条件
-    AND   xoha.order_header_id                = xola.order_header_id
-    ------------------------------------------------------------------------
-    -- OPM品目情報view
-    AND   xola.request_item_code             = ximv.item_no
-    AND   ximv.start_date_active              <= id_arrival_date
-    AND   ximv.end_date_active                >= id_arrival_date
-    ------------------------------------------------------------------------
-    -- OPM品目カテゴリ割当情報VIEW4条件
-    AND   ximv.item_id = xicv.item_id
-    AND   xicv.prod_class_code                = gv_syori_kbn_leaf
-    ------------------------------------------------------------------------
-    GROUP BY xoha.head_sales_branch                        -- 受注ヘッダアドオン.管轄拠点
-            ,xola.request_item_code                       -- 受注ヘッダ明細.出荷品目
-            ,xoha.schedule_arrival_date                    -- 受注ヘッダアドオン.着荷予定日
+-- 2008/09/01 H.Itou Mod Start PT 2-1_10対応
+    -- カーソルオープン
+    OPEN cur_leaf_confirm_data FOR lv_sql
+    USING
+      iv_select_status      -- INパラメータ.抽出対象ステータス
+     ,id_arrival_date       -- INパラメータ.着日
+     ,id_arrival_date       -- INパラメータ.着日
+     ,id_arrival_date       -- INパラメータ.着日
+     ,id_arrival_date       -- INパラメータ.着日
     ;
+    -- バルクフェッチ
+    FETCH cur_leaf_confirm_data BULK COLLECT INTO lt_leaf_confirm_data_tbl;
+    -- カーソルクローズ
+    CLOSE cur_leaf_confirm_data;
+--
+--    SELECT xoha.head_sales_branch                  AS head_sales_branch     -- 管轄拠点
+--          ,xola.request_item_code                  AS item_code             -- 出荷品目
+--          ,MAX(ximv.item_short_name)               AS item_name             -- 品目名称
+--          ,xoha.schedule_arrival_date              AS arrival_date          -- 着荷予定日
+--          ,SUM(CASE
+--              -- 受注ヘッダアドオン.ステータス=「出荷実績計上済」の場合
+--              WHEN  (xoha.req_status = gv_req_status) THEN
+--                CASE WHEN (ximv.conv_unit IS NULL) THEN
+--                       xola.shipped_quantity
+--                     ELSE
+--                       TRUNC(xola.shipped_quantity / CASE
+--                                                       WHEN ximv.num_of_cases IS NULL THEN '1'
+--                                                       WHEN ximv.num_of_cases = '0'   THEN '1'
+--                                                       ELSE ximv.num_of_cases
+--                                                     END, 3)
+--                     END
+--              -- 受注ヘッダアドオン.ステータス=「出荷実績計上済」の場合
+--              ELSE
+--                CASE WHEN (ximv.conv_unit IS NULL) THEN
+--                       xola.quantity
+--                     ELSE
+--                       TRUNC(xola.quantity
+--                             / CASE
+--                                 WHEN ximv.num_of_cases IS NULL THEN '1'
+--                                 WHEN ximv.num_of_cases = '0'   THEN '1'
+--                                 ELSE ximv.num_of_cases
+--                               END, 3)
+--                     END
+--              END)                                  AS confirm_quantity     -- 予実数
+----
+--    BULK COLLECT INTO lt_leaf_confirm_data_tbl
+----
+--    FROM   xxwsh_order_headers_all    xoha        -- 受注ヘッダアドオン
+--          ,xxwsh_order_lines_all      xola        -- 受注明細アドオン
+--          ,xxcmn_item_mst2_v          ximv        -- OPM品目情報VIEW
+---- mod start ver1.6
+----          ,xxcmn_item_categories4_v   xicv        -- OPM品目カテゴリ割当情報VIEW4
+--          ,xxcmn_item_categories5_v   xicv        -- OPM品目カテゴリ割当情報VIEW5
+---- mod end ver1.6
+--          ,xxcmn_lookup_values2_v     xlvv1       -- クイックコード1
+--          ,xxcmn_lookup_values2_v     xlvv2       -- クイックコード2
+--    WHERE
+--    ------------------------------------------------------------------------
+--    -- クイックコード１
+--        xlvv1.lookup_type                      = gv_lookup_type1
+--    AND xlvv1.lookup_code                      = iv_select_status
+--    ------------------------------------------------------------------------
+--    -- クイックコード２
+--    AND xlvv2.lookup_type                      = xlvv1.meaning
+--    ------------------------------------------------------------------------
+--    -- 受注ヘッダアドオン条件
+--    AND   xoha.req_status                     = xlvv2.lookup_code
+--    AND   xoha.latest_external_flag           = 'Y'
+--    AND   xoha.head_sales_branch              = NVL(iv_kyoten_cd, xoha.head_sales_branch)
+--    AND   xoha.deliver_from                   = NVL(iv_shipped_locat, xoha.deliver_from)
+--    AND   xoha.schedule_arrival_date          >= TRUNC(id_arrival_date, 'MONTH')
+--    AND   xoha.schedule_arrival_date          <= LAST_DAY(id_arrival_date)
+--    ------------------------------------------------------------------------
+--    -- 受注明細アドオン条件
+--    AND   xoha.order_header_id                = xola.order_header_id
+--    ------------------------------------------------------------------------
+--    -- OPM品目情報view
+--    AND   xola.request_item_code             = ximv.item_no
+--    AND   ximv.start_date_active              <= id_arrival_date
+--    AND   ximv.end_date_active                >= id_arrival_date
+--    ------------------------------------------------------------------------
+--    -- OPM品目カテゴリ割当情報VIEW4条件
+--    AND   ximv.item_id = xicv.item_id
+--    AND   xicv.prod_class_code                = gv_syori_kbn_leaf
+--    ------------------------------------------------------------------------
+--    GROUP BY xoha.head_sales_branch                        -- 受注ヘッダアドオン.管轄拠点
+--            ,xola.request_item_code                       -- 受注ヘッダ明細.出荷品目
+--            ,xoha.schedule_arrival_date                    -- 受注ヘッダアドオン.着荷予定日
+--    ;
+-- 2008/09/01 H.Itou Mod End
 --
     -- ====================================================
     -- データ登録
@@ -2735,6 +3238,62 @@ AS
 --
 --###########################  固定部 END   ####################################
 --
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cv_select CONSTANT VARCHAR2(32000) := 
+         '  SELECT mfde.attribute3                AS head_sales_branch           '    -- フォーキャスト名.拠点
+      || '        ,MAX(ximv.item_no)              AS item_code                   '    -- OPM品目情報VIEW2.品目コード
+      || '        ,MAX(ximv.item_short_name)      AS item_name                   '    -- OPM品目情報VIEW2.品目名称
+      || '        ,mfda.forecast_date             AS arrival_date                '    -- フォーキャスト日付.開始日
+      || '        ,SUM(CASE                                                      '
+                         -- OPM品目マスタ.入出庫換算単位が未設定の場合
+      || '               WHEN (ximv.conv_unit IS NULL) THEN                      '
+      || '                     mfda.original_forecast_quantity                   '
+      || '               ELSE                                                    '
+      || '                 TRUNC(mfda.original_forecast_quantity                 '
+      || '                       / CASE                                          '
+      || '                           WHEN ximv.num_of_cases IS NULL   THEN ''1'' '
+      || '                           WHEN ximv.num_of_cases = ''0''   THEN ''1'' '
+      || '                           ELSE ximv.num_of_cases                      '
+      || '                         END, 3)                                       '
+      || '               END                                                     '
+      || '            )                           AS plan_quantity               '     -- フォーキャスト日付.数量
+      ;
+--
+    cv_from CONSTANT VARCHAR2(32000) := 
+         '  FROM   mrp_forecast_designators  mfde '                                    -- フォーキャスト名
+      || '        ,mrp_forecast_dates        mfda '                                    -- フォーキャスト日付
+      || '        ,xxcmn_item_mst2_v         ximv '                                    -- OPM品目情報VIEW2
+      || '        ,xxcmn_item_categories5_v  xicv '                                    -- OPM品目カテゴリ割当情報VIEW5
+      ;
+--
+    cv_where CONSTANT VARCHAR2(32000) := 
+         '  WHERE                                                                        '
+            -- *** 結合条件 *** --
+      || '         mfde.forecast_designator = mfda.forecast_designator               ' -- 結合条件 フォーキャスト名 AND フォーキャスト日付
+      || '  AND    mfde.organization_id     = mfda.organization_id                   ' -- 結合条件 フォーキャスト名 AND フォーキャスト日付
+      || '  AND    mfda.inventory_item_id   = ximv.inventory_item_id                 ' -- 結合条件 フォーキャスト日付 AND OPM品目情報VIEW2
+      || '  AND    ximv.item_id             = xicv.item_id                           ' -- 結合条件 OPM品目情報VIEW2 AND OPM品目カテゴリ割当情報VIEW5
+            -- *** 抽出条件 *** --
+      || '  AND    mfde.attribute1          = ''' || gv_forecast_kbn_hkeikaku || ''' ' -- 抽出条件 フォーキャスト名.フォーキャスト分類：「01：引取計画」
+      || '  AND    mfda.forecast_date      >= TRUNC(:id_arrival_date, ''MONTH'')     ' -- 抽出条件 フォーキャスト日付.開始日：IN着荷日
+      || '  AND    mfda.forecast_date      <= LAST_DAY(:id_arrival_date)             ' -- 抽出条件 フォーキャスト日付.開始日：IN着荷日
+      || '  AND    ximv.start_date_active  <= :id_arrival_date                       ' -- 抽出条件 OPM品目情報VIEW2.開始日：IN着荷日
+      || '  AND    ximv.end_date_active    >= :id_arrival_date                       ' -- 抽出条件 OPM品目情報VIEW2.終了日：IN着荷日
+      || '  AND    xicv.prod_class_code     = ''' || gv_syori_kbn_leaf || '''        ' -- 抽出条件 OPM品目カテゴリ割当情報VIEW5.商品区分：「1：リーフ」
+      ;
+    cv_where_kyoten_cd    CONSTANT VARCHAR2(32000) := 
+         '  AND    mfde.attribute3          = ''' || iv_kyoten_cd || '''            '; -- 抽出条件 フォーキャスト名.拠点：IN拠点
+    cv_where_deliver_from CONSTANT VARCHAR2(32000) := 
+         '  AND    mfde.attribute2          = ''' || iv_shipped_locat || '''        '; -- 抽出条件 フォーキャスト名.IN出荷元
+    cv_group_by CONSTANT VARCHAR2(32000) := 
+         '  GROUP BY mfde.attribute3         ' -- フォーキャスト名.拠点
+      || '          ,mfda.inventory_item_id  ' -- フォーキャスト日付.品目ID
+      || '          ,mfda.forecast_date      ' -- フォーキャスト日付.開始日
+      ;
+-- 2008/09/01 H.Itou Add End
     -- =====================================================
     -- ユーザー宣言部
     -- =====================================================
@@ -2742,6 +3301,18 @@ AS
     lt_leaf_plan_data              type_leaf_plan_data_tbl;
     -- 取得データ数
     ln_cnt                         NUMBER DEFAULT 0;
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    lv_sql                         VARCHAR2(32767); -- 動的SQL用
+    lv_where_kyoten_cd             VARCHAR2(32767); -- WHERE句拠点
+    lv_where_deliver_from          VARCHAR2(32767); -- WHERE句出庫元
+-- 2008/09/01 H.Itou Add End
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    -- =====================================================
+    -- カーソル宣言
+    -- =====================================================
+    TYPE ref_cursor        IS REF CURSOR ;
+    cur_leaf_plan_data  ref_cursor ;  -- リーフ計画数データ
+-- 2008/09/01 H.Itou Add End
 --
   BEGIN
 --
@@ -2751,62 +3322,106 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- 2008/09/01 H.Itou Add Start PT 2-1_10対応
+    -- =====================================================
+    -- SQL生成
+    -- =====================================================
+    -- INパラメータ.拠点に入力ありの場合、管轄拠点を条件に追加
+    IF (iv_kyoten_cd IS NOT NULL) THEN
+      lv_where_kyoten_cd := cv_where_kyoten_cd;
+--
+    -- INパラメータ.拠点に入力なしの場合、管轄拠点を条件としない
+    ELSE
+      lv_where_kyoten_cd := ' ';
+    END IF;
+--
+    -- INパラメータ.出庫元に入力ありの場合、出庫元を条件に追加
+    IF (iv_shipped_locat IS NOT NULL) THEN
+      lv_where_deliver_from := cv_where_deliver_from;
+--
+    -- INパラメータ.出庫元に入力なしの場合、出庫元を条件としない
+    ELSE
+      lv_where_deliver_from := ' ';
+    END IF;
+--
+    lv_sql := cv_select
+           || cv_from
+           || cv_where
+           || lv_where_kyoten_cd
+           || lv_where_deliver_from
+           || cv_group_by;
+-- 2008/09/01 H.Itou Add End
     -- ====================================================
     -- データ抽出
     -- ====================================================
-    SELECT mfde.attribute3                AS head_sales_branch    -- フォーキャスト名.拠点
-          ,MAX(ximv.item_no)              AS item_code            -- OPM品目情報VIEW.品目コード
-          ,MAX(ximv.item_short_name)      AS item_name            -- OPM品目情報VIEW.品目名称
-          ,mfda.forecast_date             AS arrival_date         -- フォーキャスト日付.開始日
-          ,SUM(CASE
-                 -- OPM品目マスタ.入出庫換算単位が未設定の場合
-                 WHEN (ximv.conv_unit IS NULL) THEN
-                   mfda.original_forecast_quantity
-                 ELSE
-                   TRUNC(mfda.original_forecast_quantity / CASE
-                                                             WHEN ximv.num_of_cases IS NULL THEN '1'
-                                                             WHEN ximv.num_of_cases = '0'   THEN '1'
-                                                             ELSE ximv.num_of_cases
-                                                           END, 3)
-                 END
-              )                           AS plan_quantity        -- フォーキャスト日付.数量
---
-    BULK COLLECT INTO lt_leaf_plan_data
---
-    FROM  mrp_forecast_designators  mfde                          -- フォーキャスト名
-         ,mrp_forecast_dates        mfda                          -- フォーキャスト日付
-         ,xxcmn_item_mst2_v         ximv                          -- OPM品目情報VIEW
--- mod start ver1.6
---         ,xxcmn_item_categories4_v  xicv                          -- OPM品目カテゴリ割当情報VIEW4
-         ,xxcmn_item_categories5_v  xicv                          -- OPM品目カテゴリ割当情報VIEW5
--- mod end ver1.6
---
-    WHERE
-    ------------------------------------------------------------------------
-    -- フォーキャスト名
-        mfde.attribute1               = gv_forecast_kbn_hkeikaku
-    AND mfde.attribute3               = NVL(iv_kyoten_cd, mfde.attribute3)
-    AND mfde.attribute2               = NVL(iv_shipped_locat, mfde.attribute2)
-    ------------------------------------------------------------------------
-    -- フォーキャスト日付
-    AND mfde.forecast_designator      = mfda.forecast_designator
-    AND mfde.organization_id          = mfda.organization_id
-    AND mfda.forecast_date            >= TRUNC(id_arrival_date, 'MONTH')
-    AND mfda.forecast_date            <= LAST_DAY(id_arrival_date)
-    ------------------------------------------------------------------------
-    -- OPM品目情報VIEW条件
-    AND mfda.inventory_item_id        = ximv.inventory_item_id
-    AND ximv.start_date_active        <= id_arrival_date
-    AND ximv.end_date_active          >= id_arrival_date
-    ------------------------------------------------------------------------
-    -- OPM品目カテゴリ割当情報VIEW4
-    AND ximv.item_id                  = xicv.item_id
-    AND xicv.prod_class_code          = gv_syori_kbn_leaf
-    ------------------------------------------------------------------------
-    GROUP BY mfde.attribute3                                      -- フォーキャスト名.拠点
-            ,mfda.inventory_item_id                               -- フォーキャスト日付.品目ID
-            ,mfda.forecast_date                                   -- フォーキャスト日付.開始日
+-- 2008/09/01 H.Itou Mod Start PT 2-1_10対応
+    -- カーソルオープン
+    OPEN cur_leaf_plan_data FOR lv_sql
+    USING
+      id_arrival_date       -- INパラメータ.着日
+     ,id_arrival_date       -- INパラメータ.着日
+     ,id_arrival_date       -- INパラメータ.着日
+     ,id_arrival_date       -- INパラメータ.着日
     ;
+    -- バルクフェッチ
+    FETCH cur_leaf_plan_data BULK COLLECT INTO lt_leaf_plan_data;
+    -- カーソルクローズ
+    CLOSE cur_leaf_plan_data;
+--
+--    SELECT mfde.attribute3                AS head_sales_branch    -- フォーキャスト名.拠点
+--          ,MAX(ximv.item_no)              AS item_code            -- OPM品目情報VIEW.品目コード
+--          ,MAX(ximv.item_short_name)      AS item_name            -- OPM品目情報VIEW.品目名称
+--          ,mfda.forecast_date             AS arrival_date         -- フォーキャスト日付.開始日
+--          ,SUM(CASE
+--                 -- OPM品目マスタ.入出庫換算単位が未設定の場合
+--                 WHEN (ximv.conv_unit IS NULL) THEN
+--                   mfda.original_forecast_quantity
+--                 ELSE
+--                   TRUNC(mfda.original_forecast_quantity / CASE
+--                                                             WHEN ximv.num_of_cases IS NULL THEN '1'
+--                                                             WHEN ximv.num_of_cases = '0'   THEN '1'
+--                                                             ELSE ximv.num_of_cases
+--                                                           END, 3)
+--                 END
+--              )                           AS plan_quantity        -- フォーキャスト日付.数量
+----
+--    BULK COLLECT INTO lt_leaf_plan_data
+----
+--    FROM  mrp_forecast_designators  mfde                          -- フォーキャスト名
+--         ,mrp_forecast_dates        mfda                          -- フォーキャスト日付
+--         ,xxcmn_item_mst2_v         ximv                          -- OPM品目情報VIEW
+---- mod start ver1.6
+----         ,xxcmn_item_categories4_v  xicv                          -- OPM品目カテゴリ割当情報VIEW4
+--         ,xxcmn_item_categories5_v  xicv                          -- OPM品目カテゴリ割当情報VIEW5
+---- mod end ver1.6
+----
+--    WHERE
+--    ------------------------------------------------------------------------
+--    -- フォーキャスト名
+--        mfde.attribute1               = gv_forecast_kbn_hkeikaku
+--    AND mfde.attribute3               = NVL(iv_kyoten_cd, mfde.attribute3)
+--    AND mfde.attribute2               = NVL(iv_shipped_locat, mfde.attribute2)
+--    ------------------------------------------------------------------------
+--    -- フォーキャスト日付
+--    AND mfde.forecast_designator      = mfda.forecast_designator
+--    AND mfde.organization_id          = mfda.organization_id
+--    AND mfda.forecast_date            >= TRUNC(id_arrival_date, 'MONTH')
+--    AND mfda.forecast_date            <= LAST_DAY(id_arrival_date)
+--    ------------------------------------------------------------------------
+--    -- OPM品目情報VIEW条件
+--    AND mfda.inventory_item_id        = ximv.inventory_item_id
+--    AND ximv.start_date_active        <= id_arrival_date
+--    AND ximv.end_date_active          >= id_arrival_date
+--    ------------------------------------------------------------------------
+--    -- OPM品目カテゴリ割当情報VIEW4
+--    AND ximv.item_id                  = xicv.item_id
+--    AND xicv.prod_class_code          = gv_syori_kbn_leaf
+--    ------------------------------------------------------------------------
+--    GROUP BY mfde.attribute3                                      -- フォーキャスト名.拠点
+--            ,mfda.inventory_item_id                               -- フォーキャスト日付.品目ID
+--            ,mfda.forecast_date                                   -- フォーキャスト日付.開始日
+--    ;
+-- 2008/09/01 H.Itou Add End
 --
     -- ====================================================
     -- データ抽出
