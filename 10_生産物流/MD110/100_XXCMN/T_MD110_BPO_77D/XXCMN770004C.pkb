@@ -7,7 +7,7 @@ AS
  * Description      : Žó•¥‚»‚Ì‘¼ŽÀÑƒŠƒXƒg
  * MD.050/070       : ŒŽŽŸYØˆ—’ •[Issue1.0 (T_MD050_BPO_770)
  *                    ŒŽŽŸYØˆ—’ •[Issue1.0 (T_MD070_BPO_77D)
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2008/12/03    1.14  H.Itou           –{”Ô#384‘Î‰ž
  *  2008/12/04    1.15  T.Miyata         –{”Ô#454‘Î‰ž
  *  2008/12/08    1.16  T.Ohashi         –{”ÔáŠQ”’l‚ ‚í‚¹‘Î‰ž
+ *  2008/12/11    1.17  N.Yoshida        –{”ÔáŠQ580‘Î‰ž
  *****************************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -4632,10 +4633,13 @@ AS
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
             ,xlc.unit_ploce             actual_unit_price
+-- 2008/12/11 v1.17 UPDATE START
 -- 2008/11/11 v1.11 UPDATE START
 --            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
-            ,ABS(trn.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
+--            ,ABS(trn.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
+            ,NVL(trn.trans_qty,0)       trans_qty
 -- 2008/11/11 v1.11 UPDATE END
+-- 2008/12/11 v1.17 UPDATE END
 -- 2008/10/28 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
             ,DECODE(xrpm.use_div_invent_dis
@@ -4699,8 +4703,12 @@ AS
 --                                         WHEN trn.trans_qty >= 0 THEN cv_div_pay
 --                                         WHEN trn.trans_qty < 0 THEN cv_div_rcv
 --                                         ELSE xrpm.rcv_pay_div
-                                         WHEN trn.trans_qty >= 0 THEN cv_div_rcv
-                                         ELSE cv_div_pay
+-- 2008/12/11 v1.17 UPDATE START
+--                                         WHEN trn.trans_qty >= 0 THEN cv_div_rcv
+--                                         ELSE cv_div_pay
+                                         WHEN trn.trans_qty >= 0 THEN cv_div_pay
+                                         ELSE cv_div_rcv
+-- 2008/12/11 v1.17 UPDATE END
 -- 2008/11/11 v1.16 UPDATE END
                                        END
       AND    xrpm.doc_type           = trn.doc_type
@@ -9746,10 +9754,13 @@ AS
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
             ,xlc.unit_ploce             actual_unit_price
+-- 2008/12/11 v1.17 UPDATE START
 -- 2008/11/11 v1.11 UPDATE START
 --            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
-            ,ABS(trn.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
+--            ,ABS(trn.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
+            ,NVL(trn.trans_qty,0)       trans_qty
 -- 2008/11/11 v1.11 UPDATE END
+-- 2008/12/11 v1.17 UPDATE END
 -- 2008/10/28 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
             ,DECODE(xrpm.use_div_invent_dis
@@ -9813,8 +9824,12 @@ AS
 --                                         WHEN trn.trans_qty >= 0 THEN cv_div_pay
 --                                         WHEN trn.trans_qty < 0 THEN cv_div_rcv
 --                                         ELSE xrpm.rcv_pay_div
-                                         WHEN trn.trans_qty >= 0 THEN cv_div_rcv
-                                         ELSE cv_div_pay
+-- 2008/12/11 v1.17 UPDATE START
+--                                         WHEN trn.trans_qty >= 0 THEN cv_div_rcv
+--                                         ELSE cv_div_pay
+                                         WHEN trn.trans_qty >= 0 THEN cv_div_pay
+                                         ELSE cv_div_rcv
+-- 2008/12/11 v1.17 UPDATE END
 -- 2008/11/11 v1.16 UPDATE END
                                        END
       AND    xrpm.doc_type           = trn.doc_type

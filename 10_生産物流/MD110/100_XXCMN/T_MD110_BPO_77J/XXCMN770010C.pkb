@@ -7,7 +7,7 @@ AS
  * Description      : •W€Œ´‰¿“à–ó•\
  * MD.050/070       : ŒŽŽŸYØˆ—’ •[Issue1.0 (T_MD050_BPO_770)
  *                    ŒŽŽŸYØˆ—’ •[Issue1.0 (T_MD070_BPO_77J)
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2008/12/06    1.15  T.Miyata         –{”Ô#495‘Î‰ž
  *  2008/12/06    1.16  T.Miyata         –{”Ô#498‘Î‰ž
  *  2008/12/07    1.17  N.Yoshida        –{”Ô#496‘Î‰ž
+ *  2008/12/11    1.18  A.Shiina         –{”Ô#580‘Î‰ž
  *
  *****************************************************************************************/
 --
@@ -2971,7 +2972,10 @@ AS
     || '        ,SUBSTR(mcb3.segment1, 1, 3)    crowd_low'      --¬ŒQ
     || '        ,SUBSTR(mcb3.segment1, 1, 2)    crowd_mid'      --’†ŒQ
     || '        ,SUBSTR(mcb3.segment1, 1, 1)    crowd_high'     --‘åŒQ
-    || '        ,ABS(itc.trans_qty) * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- ”—Ê
+-- 2008/12/11 v1.18 UPDATE START
+--    || '        ,ABS(itc.trans_qty) * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- ”—Ê
+    || '        ,NVL(itc.trans_qty, 0)          trans_qty'  -- ”—Ê
+-- 2008/12/11 v1.18 UPDATE END
     || '  FROM   ic_tran_cmp               itc'
     || '        ,ic_adjs_jnl               iaj'
     || '        ,ic_jrnl_mst               ijm'
@@ -3022,6 +3026,8 @@ AS
     || '  AND    xrpm.reason_code        = ''' || cv_reason_code_idouteisei || ''''
     || '  AND    xrpm.new_div_account    = ''' || ir_param.rcv_pay_div || ''''
     || '  AND    xrpm.break_col_10       IS NOT NULL'
+-- 2008/12/11 v1.18 UPDATE START
+/*
     || '  AND    xrpm.rcv_pay_div       = CASE'
     || '                                    WHEN itc.trans_qty >= 0 THEN'
     || '                                      ''' || cv_rcv_pay_div_plus || ''''
@@ -3029,6 +3035,16 @@ AS
     || '                                      ''' || cv_rcv_pay_div_minus || ''''
     || '                                    ELSE xrpm.rcv_pay_div'
     || '                                  END'
+*/
+    || '  AND    xrpm.rcv_pay_div       = CASE'
+    || '                                    WHEN itc.trans_qty >= 0 THEN'
+    || '                                      ''' || cv_rcv_pay_div_minus || ''''
+    || '                                    WHEN itc.trans_qty <  0 THEN'
+    || '                                      ''' || cv_rcv_pay_div_plus || ''''
+    || '                                    ELSE xrpm.rcv_pay_div'
+    || '                                  END'
+
+-- 2008/12/11 v1.18 UPDATE END
     ;
 --
     lv_select4xx_2 :=
