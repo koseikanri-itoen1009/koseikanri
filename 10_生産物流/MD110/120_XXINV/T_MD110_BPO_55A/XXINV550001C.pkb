@@ -7,7 +7,7 @@ AS
  * Description      : İŒÉi’ •[j
  * MD.050/070       : İŒÉi’ •[jIssue1.0  (T_MD050_BPO_550)
  *                    ó•¥c‚ƒŠƒXƒg        (T_MD070_BPO_55A)
- * Version          : 1.31
+ * Version          : 1.32
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *  2008/12/07    1.29  Yasuhisa Yamamoto  “‡w“E #466‘Î‰
  *  2008/12/09    1.30  Yasuhisa Yamamoto  “‡w“E #472‘Î‰
  *  2008/12/09    1.31  Yasuhisa Yamamoto  “‡w“E #472‘Î‰
+ *  2008/12/10    1.32  Yasuhisa Yamamoto  “‡w“E #627‘Î‰
  *****************************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -3764,8 +3765,13 @@ AS
         -- ˜_—İŒÉ‹àŠz
         ln_logic_stock_amount  := ROUND( ln_logic_month_stock  * ln_stock_unit_price );
 --
+-- 08/12/10 Y.Yamamoto update v1.32 start
         -- À’IİŒÉ‹àŠz
-        ln_invent_stock_amount := ROUND( ln_invent_month_stock * ln_stock_unit_price );
+--        ln_invent_stock_amount := ROUND( ln_invent_month_stock * ln_stock_unit_price );
+        ln_invent_stock_amount := ROUND( ln_invent_month_stock * ln_stock_unit_price ) +
+        -- À’IÏ‘—İŒÉ‹àŠz
+                                  ROUND( ln_invent_cargo_stock * ln_stock_unit_price );
+-- 08/12/10 Y.Yamamoto update v1.32 end
 --
         -- ·ˆÙ‹àŠz
         ln_month_stock_amount  := ln_logic_stock_amount - ln_invent_stock_amount;
