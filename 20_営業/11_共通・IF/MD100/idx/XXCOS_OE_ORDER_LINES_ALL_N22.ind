@@ -1,0 +1,2 @@
+CREATE INDEX ont.xxcos_oe_order_lines_all_n22 ON ont.oe_order_lines_all ( sold_to_org_id, request_date desc ) TABLESPACE apps_ts_tx_idx
+/

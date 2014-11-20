@@ -1,0 +1,2 @@
+CREATE INDEX ont.xxcos_oe_order_headers_all_n12 ON ont.oe_order_headers_all ( order_source_id, org_id, flow_status_code ) TABLESPACE apps_ts_tx_idx
+/

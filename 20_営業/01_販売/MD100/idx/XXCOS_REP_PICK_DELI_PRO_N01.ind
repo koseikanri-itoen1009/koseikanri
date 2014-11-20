@@ -1,0 +1,2 @@
+CREATE INDEX xxcos.xxcos_rep_pick_deli_pro_n01 ON xxcos.xxcos_rep_pick_deli_pro ( request_id ) TABLESPACE xxidx2
+/
