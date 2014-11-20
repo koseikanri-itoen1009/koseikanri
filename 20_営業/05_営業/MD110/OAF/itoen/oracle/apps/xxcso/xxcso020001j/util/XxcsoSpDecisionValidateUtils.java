@@ -6,13 +6,14 @@
 * C³—š—ğ
 * “ú•t       Ver. ’S“–Ò       C³“à—e
 * ---------- ---- ------------ ----------------------------------------------
-* 2008-12-27 1.0  SCS¬ì_     V‹Kì¬
-* 2009-03-04 1.1  SCS¬ì_     ‰Û‘èˆê——No.73‘Î‰
-* 2009-03-23 1.2  SCS–ö•½’¼l   [STáŠQT1_0163]‰Û‘èNo.115æ‚è‚İ
-* 2009-04-13 1.3  SCS–ö•½’¼l   [STáŠQT1_0225]Œ_–ñævalidateC³
-* 2009-04-27 1.4  SCS–ö•½’¼l   [STáŠQT1_0708]“ü—Í€–Úƒ`ƒFƒbƒNˆ—“ˆêC³
-* 2009-05-19 1.5  SCS–ö•½’¼l   [STáŠQT1_1058]Œ_–ñævalidateˆ—“ˆê‘Î‰
+* 2008-12-27 1.0  SCS¬ì_    V‹Kì¬
+* 2009-03-04 1.1  SCS¬ì_    ‰Û‘èˆê——No.73‘Î‰
+* 2009-03-23 1.2  SCS–ö•½’¼l  [STáŠQT1_0163]‰Û‘èNo.115æ‚è‚İ
+* 2009-04-13 1.3  SCS–ö•½’¼l  [STáŠQT1_0225]Œ_–ñævalidateC³
+* 2009-04-27 1.4  SCS–ö•½’¼l  [STáŠQT1_0708]“ü—Í€–Úƒ`ƒFƒbƒNˆ—“ˆêC³
+* 2009-05-19 1.5  SCS–ö•½’¼l  [STáŠQT1_1058]Œ_–ñævalidateˆ—“ˆê‘Î‰
                                                ‰Â‹«‚Ì‚½‚ßT1_0225‘Î‰•¨—íœ
+* 2009-06-08 1.6  SCS–ö•½’¼l  [STáŠQT1_1307]”¼ŠpƒJƒiƒ`ƒFƒbƒNƒƒbƒZ[ƒWC³
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -175,7 +176,10 @@ public class XxcsoSpDecisionValidateUtils
     {
       OAException error
         = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00533
+// 2009-06-08 [STáŠQT1_1307] Mod Start
+//            XxcsoConstants.APP_XXCSO1_00533
+            XxcsoConstants.APP_XXCSO1_00573
+// 2009-06-08 [STáŠQT1_1307] Mod End
            ,XxcsoConstants.TOKEN_REGION
            ,XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_REGION
            ,XxcsoConstants.TOKEN_COLUMN
@@ -686,7 +690,10 @@ public class XxcsoSpDecisionValidateUtils
       {
         OAException error
           = XxcsoMessage.createErrorMessage(
-              XxcsoConstants.APP_XXCSO1_00533
+// 2009-06-08 [STáŠQT1_1307] Mod Start
+//            XxcsoConstants.APP_XXCSO1_00533
+            XxcsoConstants.APP_XXCSO1_00573
+// 2009-06-08 [STáŠQT1_1307] Mod End
              ,XxcsoConstants.TOKEN_REGION
              ,XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_REGION
              ,XxcsoConstants.TOKEN_COLUMN
@@ -1407,7 +1414,10 @@ public class XxcsoSpDecisionValidateUtils
     {
       OAException error
         = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00533
+// 2009-06-08 [STáŠQT1_1307] Mod Start
+//            XxcsoConstants.APP_XXCSO1_00533
+            XxcsoConstants.APP_XXCSO1_00573
+// 2009-06-08 [STáŠQT1_1307] Mod End
            ,XxcsoConstants.TOKEN_REGION
            ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM1_REGION
            ,XxcsoConstants.TOKEN_COLUMN
@@ -1785,7 +1795,10 @@ public class XxcsoSpDecisionValidateUtils
     {
       OAException error
         = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00533
+// 2009-06-08 [STáŠQT1_1307] Mod Start
+//            XxcsoConstants.APP_XXCSO1_00533
+            XxcsoConstants.APP_XXCSO1_00573
+// 2009-06-08 [STáŠQT1_1307] Mod End
            ,XxcsoConstants.TOKEN_REGION
            ,regionName
            ,XxcsoConstants.TOKEN_COLUMN
@@ -2149,7 +2162,10 @@ public class XxcsoSpDecisionValidateUtils
     {
       OAException error
         = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00533
+// 2009-06-08 [STáŠQT1_1307] Mod Start
+//            XxcsoConstants.APP_XXCSO1_00533
+            XxcsoConstants.APP_XXCSO1_00573
+// 2009-06-08 [STáŠQT1_1307] Mod End
            ,XxcsoConstants.TOKEN_REGION
            ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM3_REGION
            ,XxcsoConstants.TOKEN_COLUMN
