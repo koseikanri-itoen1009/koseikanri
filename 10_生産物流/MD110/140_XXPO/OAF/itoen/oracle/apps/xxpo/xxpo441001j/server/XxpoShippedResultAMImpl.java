@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoShippedResultAMImpl
 * 概要説明   : 出庫実績要約アプリケーションモジュール
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2008-07-31 1.2  伊藤ひとみ   内部変更要求対応#164,#174,#176対応
 * 2008-08-19 1.3  二瓶大輔     ST不具合#249対応
 * 2008-10-20 1.4  伊藤ひとみ   統合テスト指摘345,T_S_437対応
+* 2008-12-17 1.5  二瓶大輔     本番#648対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo441001j.server;
@@ -43,7 +44,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出庫実績要約画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 山本恭久
- * @version 1.4
+ * @version 1.5
  ***************************************************************************
  */
 public class XxpoShippedResultAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -1292,6 +1293,9 @@ public class XxpoShippedResultAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("   ,cust_po_number                   "); // 顧客発注
     sb.append("   ,price_list_id                    "); // 価格表
     sb.append("   ,request_no                       "); // 依頼No
+// 2008-12-17 D.Nihei Add Start
+    sb.append("   ,base_request_no                  "); // 元依頼No
+// 2008-12-17 D.Nihei Add End
     sb.append("   ,req_status                       "); // ステータス
     sb.append("   ,delivery_no                      "); // 配送No
     sb.append("   ,prev_delivery_no                 "); // 前回配送No
@@ -1385,6 +1389,9 @@ public class XxpoShippedResultAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("   ,xoha.cust_po_number              "); // 顧客発注
     sb.append("   ,xoha.price_list_id               "); // 価格表
     sb.append("   ,xoha.request_no                  "); // 依頼No
+// 2008-12-17 D.Nihei Add Start
+    sb.append("   ,xoha.base_request_no             "); // 元依頼No
+// 2008-12-17 D.Nihei Add End
     sb.append("   ,xoha.req_status                  "); // ステータス
     sb.append("   ,xoha.delivery_no                 "); // 配送No
     sb.append("   ,xoha.prev_delivery_no            "); // 前回配送No
@@ -1939,6 +1946,9 @@ public class XxpoShippedResultAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("             ,lot_no                                           "); // ロットNo
     sb.append("             ,actual_date                                      "); // 実績日
     sb.append("             ,actual_quantity                                  "); // 実績数量
+// 2008-12-17 D.Nihei Add Start
+    sb.append("             ,before_actual_quantity                           "); // 前回実績数量
+// 2008-12-17 D.Nihei Add End
     sb.append("             ,automanual_reserve_class                         "); // 自動手動引当区分
     sb.append("             ,created_by                                       "); // 作成者
     sb.append("             ,creation_date                                    "); // 作成日
@@ -1960,6 +1970,10 @@ public class XxpoShippedResultAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("                    xmld.actual_date                           ");
     sb.append("              END                                              ");
     sb.append("             ,xmld.actual_quantity                             "); // 実績数量
+// 2008-12-17 D.Nihei Add Start
+    // 実績数量をコピーする。
+    sb.append("             ,xmld.actual_quantity                             "); // 前回実績数量
+// 2008-12-17 D.Nihei Add End
     sb.append("             ,xmld.automanual_reserve_class                    "); // 自動手動引当区分
     sb.append("             ,FND_GLOBAL.USER_ID                               "); // 作成者
     sb.append("             ,SYSDATE                                          "); // 作成日
@@ -1967,7 +1981,11 @@ public class XxpoShippedResultAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("             ,SYSDATE                                          "); // 最終更新日
     sb.append("             ,FND_GLOBAL.LOGIN_ID                              "); // 最終更新ログイン
     sb.append("      FROM    xxinv_mov_lot_details xmld                       "); // 移動ロット詳細
-    sb.append("      WHERE   xmld.mov_line_id    = :3 ;                       "); // 受注明細アドオンID(既存)
+// 2008-12-17 D.Nihei Mod Start
+//    sb.append("      WHERE   xmld.mov_line_id    = :3 ;                       "); // 受注明細アドオンID(既存)
+    sb.append("      WHERE   xmld.document_type_code = '30'                   "); // 文書タイプ：30「支給」
+    sb.append("      AND     xmld.mov_line_id        = :3 ;                   "); // 受注明細アドオンID(既存)
+// 2008-12-17 D.Nihei Mod End
     sb.append("END; ");
 
     // PL/SQLの設定を行います
