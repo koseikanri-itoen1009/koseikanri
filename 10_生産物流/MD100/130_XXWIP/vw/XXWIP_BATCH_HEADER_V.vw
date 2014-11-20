@@ -152,6 +152,9 @@ AS
     AND itp.delete_mark         (+) = 0
     AND itp.lot_id              (+) > 0
     AND itp.line_id             (+) = gmd.material_detail_id
+-- 2008/09/08 D.Nihei Add Start •¡”Œ•\¦‘Î‰
+    AND itp.doc_type            (+) = 'PROD'
+-- 2008/09/08 D.Nihei Add End
     AND gmd.line_type               = 1
     AND gmd.batch_id                = gbh.batch_id
 /
