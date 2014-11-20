@@ -6,7 +6,8 @@
 * C³—š—ğ
 * “ú•t       Ver. ’S“–Ò       C³“à—e
 * ---------- ---- ------------ ----------------------------------------------
-* 2009-01-16 1.0  SCS•x”ö˜aŠî    V‹Kì¬
+* 2009-01-16 1.0  SCS•x”ö˜aŠî  V‹Kì¬
+* 2009-06-24 1.1  SCS–ö•½’¼l  [áŠQ0000032]ŒŸõ«”\‰ü‘P‘Î‰
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso019009j.server;
@@ -50,8 +51,12 @@ public class XxcsoRtnRsrcFullVOImpl extends OAViewObjectImpl
     setWhereClauseParam(index++, routeNo);
     setWhereClauseParam(index++, routeNo);
     setWhereClauseParam(index++, routeNo);
-    setWhereClauseParam(index++, resourceNo);
+// 2009-06-24 [áŠQ0000032] Mod Start
+//    setWhereClauseParam(index++, resourceNo);
+//    setWhereClauseParam(index++, baseCode);
     setWhereClauseParam(index++, baseCode);
+    setWhereClauseParam(index++, resourceNo);
+// 2009-06-24 [áŠQ0000032] Mod End
     setWhereClauseParam(index++, routeNo);
     setWhereClauseParam(index++, routeNo);
     setWhereClauseParam(index++, routeNo);
