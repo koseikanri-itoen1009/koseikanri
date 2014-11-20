@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A03R (body)
  * Description      : 直送受注例外データリスト
  * MD.050           : 直送受注例外データリスト MD050_COS_008_A03
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2010/04/09    1.14  M.Sano           [E_本稼動_02019] PT対応(追加)
  *  2011/03/08    1.15  K.Kiriu          [E_本稼動_04367] 対象月含む以前のデータのみ出力の対応
  *                                                        クローズデータの日付参照不具合対応
+ *  2011/04/18    1.16  Y.Kanami         [E_本稼動_06646] ALL指定時の条件に顧客追加対応
  *
  *****************************************************************************************/
 --
@@ -3376,6 +3377,9 @@ AS
              AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
              AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
              AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID       = 顧客追加情報ﾏｽﾀ.顧客ID
+-- 2011/04/18 Ver1.16 Mod Start Y.Kanami
+             AND  xca.delivery_base_code    =   hca2.account_number       -- 顧客追加情報マスタ.納品拠点 = 顧客マスタ2.顧客コード
+-- 2011/04/18 Ver1.16 Mod End Y.Kanami
 -- 2010/04/09 Ver.1.14 Del M.Sano Start
 --               AND  ( ( iv_base_code = cv_base_all )
 --                      OR
@@ -3510,6 +3514,9 @@ AS
                              )
              AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
              AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+-- 2011/04/18 Ver1.16 Mod Start Y.Kanami
+             AND  xca.delivery_base_code    =   hca2.account_number        -- 顧客追加情報マスタ.納品拠点 = 顧客マスタ2.顧客コード
+-- 2011/04/18 Ver1.16 Mod End Y.Kanami
                                                                            -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
 -- 2010/04/09 Ver.1.14 Del M.Sano Start
 --               AND  ( ( iv_base_code = cv_base_all )
