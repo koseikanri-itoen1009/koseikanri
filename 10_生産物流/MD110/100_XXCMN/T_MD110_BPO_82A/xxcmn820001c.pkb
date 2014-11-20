@@ -7,7 +7,7 @@ AS
  * Description      : 標準原価取込
  * MD.050           : 標準原価マスタ T_MD050_BPO_820
  * MD.070           : 標準原価取込   T_MD070_BPO_82A
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2008/01/11    1.0   ORACLE 青木祐介  main新規作成
  *  2008/06/23    1.1   ORACLE 椎名昭圭  適用終了日更新不具合修正
  *  2008/07/09    1.2   Oracle 山根一浩  I_S_192対応
+ *  2008/09/10    1.3   Oracle 山根一浩  PT 2-2_18 指摘62対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1646,6 +1647,8 @@ AS
     -- ===============================
 --
     -- 標準原価インタフェース要求ID取得カーソル
+-- 2008/09/10 Mod ↓
+/*
     CURSOR get_request_id_cur IS
     SELECT fcr.request_id
     FROM fnd_concurrent_requests fcr
@@ -1656,6 +1659,16 @@ AS
             AND ROWNUM = 1
         )
     ORDER BY fcr.request_id; -- 要求IDを昇順
+*/
+    CURSOR get_request_id_cur IS
+    SELECT fcr.request_id
+    FROM fnd_concurrent_requests fcr
+    WHERE fcr.request_id IN (
+          SELECT xsci.request_id
+          FROM xxcmn_standard_cost_if xsci
+        )
+    ORDER BY fcr.request_id; -- 要求IDを昇順
+-- 2008/09/10 Mod ↑
 --
     -- 標準原価インタフェース取得カーソル
     CURSOR get_standard_if_cur(in_request_id NUMBER) IS

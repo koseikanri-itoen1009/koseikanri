@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼締め関数
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_BPO_40E_出荷依頼締め関数
- * Version                : 1.6
+ * Version                : 1.7
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2008/6/27    1.4   Oracle 上原正好 内部課題56対応 呼出元が画面の場合にも締め管理アドオン登録
  *  2008/6/30    1.5   Oracle 北寒寺正夫 ST不具合対応#326
  *  2008/7/01    1.6   Oracle 北寒寺正夫 ST不具合対応#338
+ *  2008/08/05   1.7   Oracle 山根一浩 出荷追加_5対応
  *
  *****************************************************************************************/
 --
@@ -1656,10 +1657,15 @@ AS
         FETCH reupd_status_cur INTO lr_u_rec;
         EXIT WHEN reupd_status_cur%NOTFOUND;
       END IF;
+--2008/08/05 Mod ↓
+      ln_target_cnt := ln_target_cnt + 1;
+--2008/08/05 Mod ↑
 --
       -- 処理件数をカウント
       IF (ln_bfr_order_header_id <> lr_u_rec.order_header_id) THEN
-        ln_target_cnt := ln_target_cnt + 1;
+--2008/08/05 Mod ↓
+--        ln_target_cnt := ln_target_cnt + 1;
+--2008/08/05 Mod ↓
         ln_bfr_order_header_id := lr_u_rec.order_header_id;
       END IF;
 --
@@ -1865,7 +1871,10 @@ AS
 --
       gt_header_id_upd_tab(ln_data_cnt) := lr_u_rec.order_header_id; -- 受注ヘッダアドオンID
 --
-      ln_normal_cnt := ln_target_cnt;
+-- 2008/08/05 Mod ↓
+--      ln_normal_cnt := ln_target_cnt;
+      ln_normal_cnt := ln_normal_cnt + 1;
+-- 2008/08/05 Mod ↑
 --
     END LOOP data_loop;
 --
@@ -1996,26 +2005,68 @@ AS
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
       IF ( upd_status_cur%ISOPEN ) THEN
+--2008/08/05 Mod ↓
+        <<count_loop_upd>>
+        LOOP
+          FETCH upd_status_cur INTO lr_u_rec;
+          EXIT WHEN upd_status_cur%NOTFOUND;
+          ln_target_cnt := ln_target_cnt + 1;
+        END LOOP count_loop_upd;
+--2008/08/05 Mod ↑
+--
         CLOSE upd_status_cur;
       END IF;
       IF ( reupd_status_cur%ISOPEN ) THEN
+--2008/08/05 Mod ↓
+        <<count_loop_reupd>>
+        LOOP
+          FETCH reupd_status_cur INTO lr_u_rec;
+          EXIT WHEN reupd_status_cur%NOTFOUND;
+          ln_target_cnt := ln_target_cnt + 1;
+        END LOOP count_loop_reupd;
+--2008/08/05 Mod ↑
+--
         CLOSE reupd_status_cur;
       END IF;
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_error;
-      out_log(ln_data_cnt,ln_normal_cnt,1,ln_warn_cnt);
+--2008/08/05 Mod ↓
+--      out_log(ln_data_cnt,ln_normal_cnt,1,ln_warn_cnt);
+      out_log(ln_target_cnt,ln_normal_cnt,1,ln_warn_cnt);
+--2008/08/05 Mod ↑
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       IF ( upd_status_cur%ISOPEN ) THEN
+--2008/08/05 Mod ↓
+        <<count_loop_upd>>
+        LOOP
+          FETCH upd_status_cur INTO lr_u_rec;
+          EXIT WHEN upd_status_cur%NOTFOUND;
+          ln_target_cnt := ln_target_cnt + 1;
+        END LOOP count_loop_upd;
+--2008/08/05 Mod ↑
+--
         CLOSE upd_status_cur;
       END IF;
       IF ( reupd_status_cur%ISOPEN ) THEN
+--2008/08/05 Mod ↓
+        <<count_loop_reupd>>
+        LOOP
+          FETCH reupd_status_cur INTO lr_u_rec;
+          EXIT WHEN reupd_status_cur%NOTFOUND;
+          ln_target_cnt := ln_target_cnt + 1;
+        END LOOP count_loop_reupd;
+--2008/08/05 Mod ↑
+--
         CLOSE reupd_status_cur;
       END IF;
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
-      out_log(ln_data_cnt,ln_normal_cnt,1,ln_warn_cnt);
+--2008/08/05 Mod ↓
+--      out_log(ln_data_cnt,ln_normal_cnt,1,ln_warn_cnt);
+      out_log(ln_target_cnt,ln_normal_cnt,1,ln_warn_cnt);
+--2008/08/05 Mod ↑
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
       IF ( upd_status_cur%ISOPEN ) THEN
@@ -2026,7 +2077,10 @@ AS
       END IF;
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
-      out_log(ln_data_cnt,ln_normal_cnt,1,ln_warn_cnt);
+--2008/08/05 Mod ↓
+--      out_log(ln_data_cnt,ln_normal_cnt,1,ln_warn_cnt);
+      out_log(ln_target_cnt,ln_normal_cnt,1,ln_warn_cnt);
+--2008/08/05 Mod ↑
 --
 --#####################################  固定部 END   ##########################################
 --
