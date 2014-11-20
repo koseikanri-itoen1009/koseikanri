@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -70,6 +70,7 @@ AS
  *                                       [E_本稼動_00522]売上値引きが表示されない対応
  *                                       [E_本稼動_00532]納品実績データの重複表示対応
  *  2010/01/07    1.20  N.Maeda          [E_本稼動_00849] 値引のみデータ対応
+ *  2011/03/07    1.21  S.Ochiai         [E_本稼動_06590]オーダー№追加連携対応
  *
  *****************************************************************************************/
 --
@@ -1072,6 +1073,9 @@ AS
         ,infh.hht_dlv_input_date                   AS hht_dlv_input_date              -- HHT納品入力日時
         ,infd.dlv_invoice_line_number              AS dlv_invoice_line_number         -- 納品明細番号
 -- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
+-- 2011/03/07 Ver.1.21 S.Ochiai ADD Start
+        ,infh.order_invoice_number                 AS order_number                    -- オーダーNo
+-- 2011/03/07 Ver.1.21 S.Ochiai ADD End
       FROM
          hz_cust_accounts         base          -- 顧客マスタ_拠点
         ,hz_cust_accounts         cust          -- 顧客マスタ_顧客
@@ -1165,6 +1169,9 @@ AS
         ,(
            SELECT
               seh.delivery_date               AS delivery_date                -- 対象日付
+-- 2011/03/07 Ver.1.21 S.Ochiai ADD Start
+             ,seh.order_invoice_number        AS order_invoice_number         -- 注文伝票番号
+-- 2011/03/07 Ver.1.21 S.Ochiai ADD End
              ,seh.sales_base_code             AS sales_base_code              -- 拠点コード
              ,seh.dlv_by_code                 AS dlv_by_code                  -- 納品者コード
              ,seh.dlv_invoice_number          AS dlv_invoice_number           -- 伝票番号
@@ -1197,6 +1204,9 @@ AS
 -- 2009/09/01 Ver.1.15 M.Sano Mod End
            GROUP BY
               seh.delivery_date                      -- 納品日
+-- 2011/03/07 Ver.1.21 S.Ochiai ADD Start
+             ,seh.order_invoice_number               -- 注文伝票番号
+-- 2011/03/07 Ver.1.21 S.Ochiai ADD End
              ,seh.sales_base_code                    -- 拠点コード
              ,seh.dlv_by_code                        -- 納品者コード
              ,seh.dlv_invoice_number                 -- 伝票番号
@@ -1947,6 +1957,9 @@ AS
         -- 明細番号
         gt_dlv_chk_list(ln_num).dlv_invoice_line_number   := lt_get_sale_data(in_no).dlv_invoice_line_number;
 -- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
+-- 2011/03/07 Ver.1.21 S.Ochiai ADD Start
+        gt_dlv_chk_list(ln_num).order_number              := lt_get_sale_data(in_no).order_number;
+-- 2011/03/07 Ver.1.21 S.Ochiai ADD End
 /*        IF ( lt_get_sale_data(in_no).payment_amount IS NOT NULL
           AND
              lt_invoice_num.EXISTS( lt_get_sale_data(in_no).invoice_no ) = FALSE ) THEN
