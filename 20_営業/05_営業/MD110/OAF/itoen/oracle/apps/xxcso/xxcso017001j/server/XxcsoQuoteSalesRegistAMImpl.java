@@ -14,6 +14,7 @@
 * 2009-04-14 1.4  SCS阿部大輔  【T1_0442】見積書印刷制御
 * 2009-04-16 1.5  SCS阿部大輔  【T1_0462】コピー時の顧客名を追加
 * 2009-05-07 1.6  SCS柳平直人  【T1_0803】コピー時の商品名を追加
+* 2009-05-18 1.7  SCS阿部大輔  【T1_1023】見積明細の原価割れチェックを修正
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017001j.server;
@@ -2049,6 +2050,11 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
 
     errorList = validateHeader(errorList);
 
+    /* 20090518_abe_T1_1023 START*/
+    XxcsoQuoteHeadersFullVORowImpl headerRow
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo.first();
+    /* 20090518_abe_T1_1023 END*/
+
     XxcsoQuoteLinesSalesFullVORowImpl lineRow
       = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.first();
 
@@ -2076,6 +2082,9 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
 
       validateFixedLine(
         errorList
+       /* 20090518_abe_T1_1023 START*/
+       ,headerRow
+       /* 20090518_abe_T1_1023 END*/
        ,lineRow
        ,index
        /* 20090324_abe_課題77 START*/
@@ -2388,6 +2397,7 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
   /*****************************************************************************
    * 見積明細項目のチェック処理（確定チェック）
    * @param errorList     エラーリスト
+   * @param headerRow     見積ヘッダ行インスタンス
    * @param lineRow       見積明細行インスタンス
    * @param index         対象行
    * @param period_Daye   プロファイル値←20090324_abe_課題77 ADD
@@ -2395,6 +2405,9 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
    */
   private List validateFixedLine(
     List                              errorList
+   /* 20090518_abe_T1_1023 START*/
+   ,XxcsoQuoteHeadersFullVORowImpl  headerRow
+   /* 20090518_abe_T1_1023 END*/
    ,XxcsoQuoteLinesSalesFullVORowImpl lineRow
    ,int                               index
    /* 20090324_abe_課題77 START*/
@@ -2537,6 +2550,11 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
       String thisTimeDelivPriceRep 
         = lineRow.getThisTimeDelivPrice().replaceAll(",", "");
 
+      /* 20090518_abe_T1_1023 START*/
+      String unittype        = headerRow.getUnitType();
+      double caseincnum      = lineRow.getCaseIncNum().doubleValue();
+      double bowlincnum      = lineRow.getBowlIncNum().doubleValue();
+      /* 20090518_abe_T1_1023 END*/
       double businessPrice      = lineRow.getBusinessPrice().doubleValue();
 
       try
@@ -2544,7 +2562,15 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
         double usuallyDelivPrice  = Double.parseDouble(usuallyDelivPriceRep);
 
         // 通常店納価格
-        if ( usuallyDelivPrice <= businessPrice )
+        /* 20090518_abe_T1_1023 START*/
+        if ( (usuallyDelivPrice <= businessPrice && unittype.equals("1") ) ||
+             ((usuallyDelivPrice / caseincnum <= businessPrice ||
+              caseincnum == 0) && unittype.equals("2") ) || 
+             ((usuallyDelivPrice / bowlincnum <= businessPrice ||
+              bowlincnum == 0) && unittype.equals("3"))
+           )
+        //if ( usuallyDelivPrice <= businessPrice )
+        /* 20090518_abe_T1_1023 END*/
         {
           OAException error
             = XxcsoMessage.createErrorMessage(
@@ -2567,7 +2593,15 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
         double thisTimeDelivPrice = Double.parseDouble(thisTimeDelivPriceRep);
 
         // 今回店納価格
-        if ( thisTimeDelivPrice <= businessPrice )
+        /* 20090518_abe_T1_1023 START*/
+        if ( (thisTimeDelivPrice <= businessPrice && unittype.equals("1") ) ||
+             ((thisTimeDelivPrice / caseincnum <= businessPrice ||
+              caseincnum == 0) && unittype.equals("2") ) || 
+             ((thisTimeDelivPrice / bowlincnum <= businessPrice ||
+              bowlincnum == 0) && unittype.equals("3"))
+           )
+        //if ( thisTimeDelivPrice <= businessPrice )
+        /* 20090518_abe_T1_1023 END*/
         {
           OAException error
             = XxcsoMessage.createErrorMessage(

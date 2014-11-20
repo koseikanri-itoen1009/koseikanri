@@ -43,6 +43,8 @@ SELECT XxcsoQuoteLinesSalesVEO.QUOTE_LINE_ID,
       ,NULL select_flag
       ,xiiv.inventory_item_code inventory_item_code
       ,xiiv.item_short_name item_short_name
+      ,NVL(xiiv.case_inc_num,0) case_inc_num
+      ,NVL(xiiv.bowl_inc_num,0) bowl_inc_num
 FROM XXCSO_QUOTE_LINES_SALES_V XxcsoQuoteLinesSalesVEO,
      xxcso_inventory_items_v2 xiiv
 WHERE xiiv.inventory_item_id = XxcsoQuoteLinesSalesVEO.INVENTORY_ITEM_ID
@@ -316,5 +318,24 @@ WHERE xiiv.inventory_item_id = XxcsoQuoteLinesSalesVEO.INVENTORY_ITEM_ID
       <DesignTime>
          <Attr Name="_DisplaySize" Value="20" />
       </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CaseIncNum"
+      IsPersistent="false"
+      Precision="240"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="CASE_INC_NUM"
+      Expression="CASE_INC_NUM"
+      SQLType="NUMERIC" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BowlIncNum"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="BOWL_INC_NUM"
+      Expression="BOWL_INC_NUM"
+      SQLType="NUMERIC" >
    </ViewAttribute>
 </ViewObject>

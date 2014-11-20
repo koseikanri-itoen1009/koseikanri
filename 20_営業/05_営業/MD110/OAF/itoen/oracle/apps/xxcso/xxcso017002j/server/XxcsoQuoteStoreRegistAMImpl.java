@@ -14,6 +14,7 @@
 * 2009-03-24 1.2  SCS阿部大輔  【T1_0138】ボタン制御を修正
 * 2009-04-13 1.3  SCS阿部大輔  【T1_0299】CSV出力制御
 * 2009-04-14 1.4  SCS阿部大輔  【T1_0461】見積書印刷制御
+* 2009-05-18 1.5  SCS阿部大輔  【T1_1023】見積明細の原価割れチェックを修正
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017002j.server;
@@ -2336,6 +2337,11 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
 
     errorList = validateHeader(errorList);
 
+    /* 20090518_abe_T1_1023 START*/
+    XxcsoQuoteHeadersFullVORowImpl headerRow
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo.first();
+    /* 20090518_abe_T1_1023 END*/
+
     XxcsoQuoteLinesStoreFullVORowImpl lineRow
       = (XxcsoQuoteLinesStoreFullVORowImpl)lineVo.first();
 
@@ -2365,6 +2371,9 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
 
         validateFixedLine(
           errorList
+         /* 20090518_abe_T1_1023 START*/
+         ,headerRow
+         /* 20090518_abe_T1_1023 END*/
          ,lineRow
          ,index
          /* 20090324_abe_課題77 START*/
@@ -2618,6 +2627,7 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
   /*****************************************************************************
    * 見積明細項目のチェック処理（確定チェック）
    * @param errorList     エラーリスト
+   * @param headerRow     見積ヘッダ行インスタンス
    * @param lineRow       見積明細行インスタンス
    * @param index         対象行
    * @param period_Daye   プロファイル値←20090324_abe_課題77 ADD
@@ -2625,6 +2635,9 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
    */
   private List validateFixedLine(
     List                              errorList
+   /* 20090518_abe_T1_1023 START*/
+   ,XxcsoQuoteHeadersFullVORowImpl  headerRow
+   /* 20090518_abe_T1_1023 END*/
    ,XxcsoQuoteLinesStoreFullVORowImpl lineRow
    ,int                               index
    /* 20090324_abe_課題77 START*/
@@ -2711,6 +2724,11 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
       String thisTimeNetPriceRep 
         = lineRow.getThisTimeNetPrice().replaceAll(",", "");
 
+      /* 20090518_abe_T1_1023 START*/
+      String unittype        = headerRow.getUnitType();
+      double caseincnum      = lineRow.getCaseIncNum().doubleValue();
+      double bowlincnum      = lineRow.getBowlIncNum().doubleValue();
+      /* 20090518_abe_T1_1023 END*/
       double businessPrice      = lineRow.getBusinessPrice().doubleValue();
 
       try
@@ -2718,7 +2736,15 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
         double usuallNetPrice  = Double.parseDouble(usuallNetPriceRep);
 
         // 通常NET価格
-        if ( usuallNetPrice <= businessPrice )
+        /* 20090518_abe_T1_1023 START*/
+        if ( (usuallNetPrice <= businessPrice && unittype.equals("1") ) ||
+             ((usuallNetPrice / caseincnum <= businessPrice ||
+              caseincnum == 0) && unittype.equals("2") ) || 
+             ((usuallNetPrice / bowlincnum <= businessPrice ||
+              bowlincnum == 0) && unittype.equals("3"))
+           )
+        //if ( usuallNetPrice <= businessPrice )
+        /* 20090518_abe_T1_1023 END*/
         {
           OAException error
             = XxcsoMessage.createErrorMessage(
@@ -2741,7 +2767,15 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
         double thisTimeNetPrice = Double.parseDouble(thisTimeNetPriceRep);
 
         // 今回NET価格
-        if ( thisTimeNetPrice <= businessPrice )
+        /* 20090518_abe_T1_1023 START*/
+        if ( (thisTimeNetPrice <= businessPrice && unittype.equals("1") ) ||
+             ((thisTimeNetPrice / caseincnum <= businessPrice ||
+              caseincnum == 0) && unittype.equals("2") ) || 
+             ((thisTimeNetPrice / bowlincnum <= businessPrice ||
+              bowlincnum == 0) && unittype.equals("3"))
+           )
+        //if ( thisTimeNetPrice <= businessPrice )
+        /* 20090518_abe_T1_1023 END*/
         {
           OAException error
             = XxcsoMessage.createErrorMessage(

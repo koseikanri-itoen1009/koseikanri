@@ -53,6 +53,8 @@ public class XxcsoQuoteLinesStoreFullVORowImpl extends OAViewRowImpl
   protected static final int SELECTFLAG = 26;
   protected static final int INVENTORYITEMCODE = 27;
   protected static final int ITEMSHORTNAME = 28;
+  protected static final int CASEINCNUM = 29;
+  protected static final int BOWLINCNUM = 30;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -619,6 +621,10 @@ public class XxcsoQuoteLinesStoreFullVORowImpl extends OAViewRowImpl
         return getInventoryItemCode();
       case ITEMSHORTNAME:
         return getItemShortName();
+      case CASEINCNUM:
+        return getCaseIncNum();
+      case BOWLINCNUM:
+        return getBowlIncNum();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -716,6 +722,12 @@ public class XxcsoQuoteLinesStoreFullVORowImpl extends OAViewRowImpl
       case ITEMSHORTNAME:
         setItemShortName((String)value);
         return;
+      case CASEINCNUM:
+        setCaseIncNum((Number)value);
+        return;
+      case BOWLINCNUM:
+        setBowlIncNum((Number)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
@@ -756,5 +768,41 @@ public class XxcsoQuoteLinesStoreFullVORowImpl extends OAViewRowImpl
   public void setItemShortName(String value)
   {
     setAttributeInternal(ITEMSHORTNAME, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute CaseIncNum
+   */
+  public Number getCaseIncNum()
+  {
+    return (Number)getAttributeInternal(CASEINCNUM);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute CaseIncNum
+   */
+  public void setCaseIncNum(Number value)
+  {
+    setAttributeInternal(CASEINCNUM, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BowlIncNum
+   */
+  public Number getBowlIncNum()
+  {
+    return (Number)getAttributeInternal(BOWLINCNUM);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BowlIncNum
+   */
+  public void setBowlIncNum(Number value)
+  {
+    setAttributeInternal(BOWLINCNUM, value);
   }
 }
