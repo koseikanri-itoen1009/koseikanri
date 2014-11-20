@@ -7,7 +7,7 @@ AS
  * Description      : OPM品目トリガー起動コンカレント
  * MD.050           : OPM品目トリガー起動コンカレント
  * MD.070           : OPM品目トリガー起動コンカレント
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -21,6 +21,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/09/16    1.0   Y.Suzuki         新規作成
+ *  2008/10/29    1.1   Y.Suzuki         統合#489対応
  *
  *****************************************************************************************/
 --
@@ -125,15 +126,20 @@ AS
 --###########################  固定部 END   ############################
 --
     --トリガー起動のためにマスタ更新
+--2008/10/28 changed
+--    UPDATE ic_item_mst_b
+--    SET    last_updated_by        = FND_GLOBAL.USER_ID
+--          ,last_update_date       = SYSDATE
+--          ,last_update_login      = FND_GLOBAL.LOGIN_ID
+--          ,request_id             = FND_GLOBAL.CONC_REQUEST_ID
+--          ,program_application_id = FND_GLOBAL.PROG_APPL_ID
+--          ,program_id             = FND_GLOBAL.CONC_PROGRAM_ID
+--          ,program_update_date    = SYSDATE
+--    WHERE  item_no = iv_item_no;
     UPDATE ic_item_mst_b
-    SET    last_updated_by        = FND_GLOBAL.USER_ID
-          ,last_update_date       = SYSDATE
-          ,last_update_login      = FND_GLOBAL.LOGIN_ID
-          ,request_id             = FND_GLOBAL.CONC_REQUEST_ID
-          ,program_application_id = FND_GLOBAL.PROG_APPL_ID
-          ,program_id             = FND_GLOBAL.CONC_PROGRAM_ID
-          ,program_update_date    = SYSDATE
+    SET    program_update_date    = SYSDATE
     WHERE  item_no = iv_item_no;
+--2008/10/28 changed
 --
   EXCEPTION
 --
