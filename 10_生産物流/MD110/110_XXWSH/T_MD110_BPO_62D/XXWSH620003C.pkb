@@ -7,7 +7,7 @@ AS
  * Description      : 入庫依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 入庫依頼表 T_MD070_BPO_62D
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/07/02    1.3   Satoshi Yunba    禁則文字対応
  *  2008/07/10    1.4   Akiyoshi Shiina  変更要求対応#92
  *  2008/07/11    1.5   Masayoshi Uehara ST不具合#441対応
+ *  2008/07/15    1.6   Akiyoshi Shiina  変更要求対応#92修正
  *
  *****************************************************************************************/
 --
@@ -227,10 +228,12 @@ AS
     ,num_qty                NUMBER                            -- 入数
     ,quantity               NUMBER                            -- 数量
     ,conv_unit              VARCHAR2(3)                       -- 入出庫換算単位
--- 2008/07/10 A.Shiina v1.4 ADD Start
+-- 2008/07/15 A.Shiina v1.6 UPDATE Start
+/*-- 2008/07/10 A.Shiina v1.4 ADD Start
     ,freight_charge_code    xmrih.freight_charge_class%TYPE   -- 運賃区分(コード)
     ,complusion_output_kbn  xcv.complusion_output_code%TYPE   -- 強制出力区分
--- 2008/07/10 A.Shiina v1.4 ADD End
+*/-- 2008/07/10 A.Shiina v1.4 ADD End
+-- 2008/07/15 A.Shiina v1.6 UPDATE End
   );
   type_report_data      rec_report_data;
   TYPE list_report_data IS TABLE OF rec_report_data INDEX BY BINARY_INTEGER ;
@@ -530,10 +533,12 @@ AS
               ) THEN ximv.conv_unit
               ELSE ximv.item_um
              END                           AS  conv_unit                 --入出庫換算単位
--- 2008/07/10 A.Shiina v1.4 ADD Start
-            ,xmrih.freight_charge_class    AS freight_charge_code        -- 運賃区分
-            ,xcv.complusion_output_code    AS complusion_output_kbn      -- 強制出力区分
--- 2008/07/10 A.Shiina v1.4 ADD End
+-- 2008/07/15 A.Shiina v1.6 UPDATE Start
+---- 2008/07/10 A.Shiina v1.4 ADD Start
+--            ,xmrih.freight_charge_class    AS freight_charge_code        -- 運賃区分
+--            ,xcv.complusion_output_code    AS complusion_output_kbn      -- 強制出力区分
+---- 2008/07/10 A.Shiina v1.4 ADD End
+-- 2008/07/15 A.Shiina v1.6 UPDATE End
       FROM
              xxwsh_carriers_schedule        xcs       -- 配車配送計画(アドオン)
             ,xxinv_mov_req_instr_headers    xmrih     -- 移動依頼/指示ヘッダ（アドオン）
@@ -681,6 +686,15 @@ AS
                       -- 運送業者の場合
                   OR  (((papf.attribute4 IS NULL) AND (papf.attribute5 IS NOT NULL))
                         AND  xmrih.freight_carrier_code = papf.attribute5
+-- 2008/07/15 A.Shiina v1.6 ADD Start
+                        AND  (
+                               -- 運賃区分が対象の場合
+                               (xmrih.freight_charge_class = '1')
+                               OR
+                               -- 強制出力区分が対象の場合
+                               (xcv.complusion_output_code = '1')
+                             )
+-- 2008/07/15 A.Shiina v1.6 ADD End
                       )
                 )
           )
@@ -918,7 +932,8 @@ AS
         prcsub_set_xml_data('delivery_no'      , gt_report_data(i).delivery_no) ;
         prcsub_set_xml_data('delivery_kbn'     , gt_report_data(i).shipping_method_code) ;
         prcsub_set_xml_data('delivery_nm'      , gt_report_data(i).shipping_method_name) ;
--- 2008/07/10 A.Shiina v1.4 ADD Start
+-- 2008/07/15 A.Shiina v1.6 UPDATE Start
+/*-- 2008/07/10 A.Shiina v1.4 ADD Start
        -- 以下の条件の場合、運送業者情報を表示する。
        -- ・従業員区分が'内部'の場合
        -- ・従業員区分が'外部'で、仕入先コードが設定されている場合（倉庫業者の場合）
@@ -939,15 +954,18 @@ AS
                     )
             )
           ) THEN
--- 2008/07/10 A.Shiina v1.4 ADD End
+*/-- 2008/07/10 A.Shiina v1.4 ADD End
+-- 2008/07/15 A.Shiina v1.6 UPDATE End
 -- 2008/07/10 A.Shiina v1.4 UPDATA Start
 --        prcsub_set_xml_data('carrier_cd'       , gt_report_data(i).career_id) ;
         prcsub_set_xml_data('carrier_cd'       , gt_report_data(i).freight_carrier_code) ;
 -- 2008/07/10 A.Shiina v1.4 UPDATA End
         prcsub_set_xml_data('carrier_nm'       , gt_report_data(i).career_name) ;
--- 2008/07/10 A.Shiina v1.4 ADD Start
-       END IF;
--- 2008/07/10 A.Shiina v1.4 ADD End
+-- 2008/07/15 A.Shiina v1.6 UPDATE Start
+---- 2008/07/10 A.Shiina v1.4 ADD Start
+--       END IF;
+---- 2008/07/10 A.Shiina v1.4 ADD End
+-- 2008/07/15 A.Shiina v1.6 UPDATE End
         prcsub_set_xml_data('lg_move_info') ;
       END IF ;
 --

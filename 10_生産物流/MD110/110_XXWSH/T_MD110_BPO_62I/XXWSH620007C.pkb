@@ -7,7 +7,7 @@ AS
  * Description      : 倉庫払出指示書（配送先明細）
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 倉庫払出指示書（配送先明細） T_MD070_BPO_62I
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/06/24    1.1   Masayoshi Uehara   支給の場合、パラメータ配送先/入庫先のリレーションを
  *                                         vendor_site_codeに変更。
  *  2008/07/04    1.2   Satoshi Yunba      禁則文字対応
+ *  2008/07/10    1.3   Naoki Fukuda       ロットNo.がNULLだと品目が違っても一括りで出力される
  *
  *****************************************************************************************/
 --
@@ -996,6 +997,7 @@ AS
     lv_tmp_item_class      type_report_data.item_class_code%TYPE DEFAULT NULL ; -- 品目区分
     lv_tmp_ship_date       type_report_data.shipped_date%TYPE DEFAULT NULL ;    -- 出庫日
     lv_tmp_lot_no          type_report_data.lot_no%TYPE DEFAULT NULL ;          -- ロットNo
+    lv_tmp_item_code       type_report_data.item_code%TYPE DEFAULT NULL ;       -- 品目コード 2008/07/10 Fukuda Add
 --
     -- タグ出力判定フラグ
     lb_dispflg_trans_type  BOOLEAN DEFAULT TRUE ;       -- 出庫形態
@@ -1122,14 +1124,19 @@ AS
       lv_tmp_item_class   :=  gt_report_data(i).item_class_code ;   -- 品目区分
       lv_tmp_ship_date    :=  gt_report_data(i).shipped_date ;      -- 出庫日
       lv_tmp_lot_no       :=  gt_report_data(i).lot_no ;            -- ロットNo
+      lv_tmp_item_code    :=  gt_report_data(i).item_code ;         -- 品目コード 2008/07/10 Fukuda Add
 --
       -- ====================================================
       -- 出力判定
       -- ====================================================
       IF (i < gt_report_data.COUNT) THEN
         -- ロットNo
-        IF ( (lv_tmp_lot_no = gt_report_data(i + 1).lot_no)
-          OR ((lv_tmp_lot_no IS NULL) AND (gt_report_data(i + 1).lot_no IS NULL)) ) THEN
+        -- 2008/07/10 Fukuda Start 品目が違ってもロットNo.がNULLだと一括りで出力されてしまう
+        --IF ( (lv_tmp_lot_no = gt_report_data(i + 1).lot_no)
+        --  OR ((lv_tmp_lot_no IS NULL) AND (gt_report_data(i + 1).lot_no IS NULL)) ) THEN
+        IF (lv_tmp_lot_no = gt_report_data(i + 1).lot_no)
+          AND (lv_tmp_item_code = gt_report_data(i + 1).item_code) THEN
+        -- 2008/07/10 Fukuda End
           lb_dispflg_lot_no := FALSE ;
         ELSE
           lb_dispflg_lot_no := TRUE ;
