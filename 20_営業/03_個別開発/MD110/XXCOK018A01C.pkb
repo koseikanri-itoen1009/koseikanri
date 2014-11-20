@@ -35,6 +35,8 @@ AS
  *                                       [áŠQT1_0503]¿‹ŽæˆøOIF‚Ö“o˜^‚·‚é¿‹æID‚Æo‰×æID‚ð³Šm‚È’l‚É•ÏX
  *  2009/4/15     1.4   M.Hiruta         [áŠQT1_0554]o‰×æŒÚ‹qƒTƒCƒgIDE¿‹æŒÚ‹qî•ñE¿‹æŒÚ‹qƒTƒCƒgID‚ð
  *                                                    Žæ“¾‚·‚éÛ‚Ì’ŠoðŒ‚ð•ÏX
+ *  2009/4/20     1.5   M.Hiruta         [áŠQT1_0512]¿‹”z•ªOIF‚Ö“o˜^‚·‚éƒf[ƒ^‚ÌŠ¨’è‰È–Ú‚ª–¢Žû“ü‹àE”„Š|‹à‚Ìê‡A
+ *                                                    –¾×“`•[”Ô†‚É'1'‚ðÝ’è‚·‚éB
  *
  *****************************************************************************************/
 --
@@ -137,6 +139,9 @@ AS
 -- 2009/3/24     ver1.2   T.Taniguchi  ADD STR
   cv_tax_flag_y              CONSTANT VARCHAR2(1)  := 'Y';       --“àÅƒtƒ‰ƒO
 -- 2009/3/24     ver1.2   T.Taniguchi  ADD END
+-- Start 2009/04/20 Ver_1.5 T1_0512 M.Hiruta
+  cv_line_slip_rec           CONSTANT VARCHAR2(1)  := '1';       --–¾×s“`•[”Ô†
+-- End   2009/04/20 Ver_1.5 T1_0512 M.Hiruta
   -- ===============================
   -- ƒOƒ[ƒoƒ‹•Ï”
   -- ===============================
@@ -911,7 +916,10 @@ AS
         , ov_retcode          => lv_retcode
         , ov_errmsg           => lv_errmsg
         , i_discnt_amount_rec => i_discnt_amount_rec     -- ƒŒƒR[ƒhˆø”(“ü‹à’lˆø‚)
-        , it_count            => ln_cnt                  -- –¾×s“`•[”Ô†
+-- Start 2009/04/20 Ver_1.5 T1_0512 M.Hiruta
+--        , it_count            => ln_cnt                  -- –¾×s“`•[”Ô†
+        , it_count            => cv_line_slip_rec        -- –¾×s“`•[”Ô†
+-- End   2009/04/20 Ver_1.5 T1_0512 M.Hiruta
         , it_account_class    => lt_account_class        -- ”z•ªƒ^ƒCƒv
         , it_amount           => lt_distributions_amount -- –¾×‹àŠz
         , it_ccid             => lt_ccid                 -- Š¨’è‰È–ÚID
@@ -956,7 +964,10 @@ AS
         , ov_retcode          => lv_retcode
         , ov_errmsg           => lv_errmsg
         , i_discnt_amount_rec => i_discnt_amount_rec     -- ƒŒƒR[ƒhˆø”(“ü‹à’lˆø‚)
-        , it_count            => ln_cnt                  -- –¾×s“`•[”Ô†
+-- Start 2009/04/20 Ver_1.5 T1_0512 M.Hiruta
+--        , it_count            => ln_cnt                  -- –¾×s“`•[”Ô†
+        , it_count            => cv_line_slip_rec        -- –¾×s“`•[”Ô†
+-- End   2009/04/20 Ver_1.5 T1_0512 M.Hiruta
         , it_account_class    => lt_account_class        -- ”z•ªƒ^ƒCƒv
         , it_amount           => lt_distributions_amount -- –¾×‹àŠz
         , it_ccid             => lt_ccid                 -- Š¨’è‰È–ÚID
