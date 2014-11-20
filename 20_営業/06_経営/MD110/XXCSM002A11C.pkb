@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
  * Package Name     : XXCSM002A11C(spec)
  * Description      : 商品計画リスト(時系列CS単位)出力
  * MD.050           : 商品計画リスト(時系列CS単位)出力 MD050_CSM_002_A11
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -52,6 +52,7 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
  *  2009/02/23    1.4   SCS N.Izumi     [障害CT_056] 入金値引年計の不具合対応
  *  2009/02/26    1.5   SCS S.Son       [障害CT_062] 商品群計出力順不具合対応
  *  2009/05/07    1.6   SCS M.Ohtsuki   [障害T1_0858] 共通関数修正に伴うパラメータの追加
+ *  2010/03/24    1.7   SCS N.Abe       [E_本稼動_01906] PT対応(ヒント句追加)
  *
  *****************************************************************************************/
 --
@@ -1875,7 +1876,10 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
                           iv_kyoten_cd      IN VARCHAR2                         -- 拠点コード
                           )
     IS
-      SELECT   
+-- == 2010/03/24 V1.7 Modified START ===============================================================
+--      SELECT   
+      SELECT /*+ LEADING(xiph xipl) */
+-- == 2010/03/24 V1.7 Modified END   ===============================================================
              xipl.month_no                          AS  month                    -- 月
             ,SUM(NVL(xipl.amount,0))                AS  amount                   -- 数量
             ,SUM(NVL(xipl.sales_budget,0))          AS  sales                    -- 売上金額

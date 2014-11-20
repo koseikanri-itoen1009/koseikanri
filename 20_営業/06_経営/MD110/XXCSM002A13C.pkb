@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
  * Package Name     : XXCSM002A13C(body)
  * Description      : 商品計画リスト(時系列_本数単位)出力
  * MD.050           : 商品計画リスト(時系列_本数単位)出力 MD050_CSM_002_A13
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -54,6 +54,7 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
  *  2009/02/25    1.6   T.Tsukino       [障害CT_062] CSVファイル商品群出力不具合対応
  *  2009/05/07    1.7   M.Ohtsuki       [障害T1_0858] 共通関数修正に伴うパラメータの追加
  *  2009/05/27    1.8   M.Ohtsuki       [障害T1_1199] 商品データの年間計の不具合の対応
+ *  2010/03/24    1.9   N.Abe           [E_本稼動_01906] PT対応(ヒント句追加)
  *
  *****************************************************************************************/
 --
@@ -1560,7 +1561,10 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
                           iv_kyoten_cd      IN VARCHAR2                         -- 拠点コード
                           )
     IS
-      SELECT   
+-- == 2010/03/24 V1.9 Modified START ===============================================================
+--      SELECT   
+      SELECT /*+ LEADING(xiph xipl) */
+-- == 2010/03/24 V1.9 Modified END   ===============================================================
              xipl.month_no                          AS  month                    -- 月
             ,SUM(NVL(xipl.amount,0))                AS  amount                   -- 数量
             ,SUM(NVL(xipl.sales_budget,0))          AS  sales                    -- 売上金額
