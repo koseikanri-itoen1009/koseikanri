@@ -13,7 +13,7 @@ AS
  *                    自販機販売手数料を振り込むためのFBデータを作成します。
  *
  * MD.050           : FBデータファイル作成（FBデータ作成） MD050_COK_016_A02
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -43,7 +43,12 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/06    1.0   T.Abe            新規作成
  *  2009/03/25    1.1   S.Kayahara       最終行にスラッシュ追加
- *  2009/04/27    1.2   M.Hiruta         本振用FBデータ作成処理時の拠点コード抽出元テーブルを変更
+ *  2009/04/27    1.2   M.Hiruta         [障害T1_0817対応]本振用FBデータ作成処理時の拠点コード抽出元テーブルを変更
+ *  2009/05/12    1.3   M.Hiruta         [障害T1_0832対応]本振用FBデータ作成処理時、
+ *                                                        以下の条件のレコードを出力しないように変更
+ *                                                          1.振込手数料負担者が伊藤園、且つ支払予定額 <= 0
+ *                                                          2.振込手数料負担者が伊藤園ではない、
+ *                                                            且つ支払予定額 - 振込手数料 <= 0
  *
  *****************************************************************************************/
 --
@@ -75,6 +80,11 @@ AS
   cv_prof_more_fee_criterion  CONSTANT VARCHAR2(35)  := 'XXCOK1_BANK_FEE_MORE_CRITERION';   -- 銀行手数料額(基準以上)
   cv_prof_fb_term_name        CONSTANT VARCHAR2(35)  := 'XXCOK1_FB_TERM_NAME';              -- FB支払条件
   cv_prof_bm_tax              CONSTANT VARCHAR2(35)  := 'XXCOK1_BM_TAX';                    -- 消費税率
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+  cv_prof_org_id              CONSTANT VARCHAR2(35)  := 'ORG_ID';                           -- 営業単位
+  cv_prof_bank_trns_fee_we    CONSTANT VARCHAR2(35)  := 'XXCOK1_BANK_TRNS_FEE_WE';          -- 振込手数料_当方
+  cv_prof_bank_trns_fee_ctpty CONSTANT VARCHAR2(35)  := 'XXCOK1_BANK_TRNS_FEE_CTPTY';       -- 振込手数料_相手方
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
   -- アプリケーション名
   cv_appli_xxccp              CONSTANT VARCHAR2(5)   := 'XXCCP';               -- 'XXCCP'
   cv_appli_xxcok              CONSTANT VARCHAR2(5)   := 'XXCOK';               -- 'XXCOK'
@@ -94,11 +104,21 @@ AS
   cv_msg_ccp_90001            CONSTANT VARCHAR2(16)  := 'APP-XXCCP1-90001';    -- ファイル出力件数メッセージ
   cv_msg_ccp_90004            CONSTANT VARCHAR2(16)  := 'APP-XXCCP1-90004';    -- 正常終了メッセージ
   cv_msg_ccp_90006            CONSTANT VARCHAR2(16)  := 'APP-XXCCP1-90006';    -- エラー終了全ロールバックメッセージ
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+  cv_msg_cok_10453            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10453';    -- FBデータの支払金額0円以下警告
+  cv_msg_ccp_90003            CONSTANT VARCHAR2(16)  := 'APP-XXCCP1-90003';    -- スキップ件数メッセージ
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
   -- メッセージ・トークン
   cv_token_proc_type          CONSTANT VARCHAR2(15)  := 'PROC_TYPE';           -- 処理パラメータ
   cv_token_profile            CONSTANT VARCHAR2(15)  := 'PROFILE';             -- カスタムプロファイルの物理名
   cv_token_flex_value_set     CONSTANT VARCHAR2(15)  := 'FLEX_VALUE_SET';      -- 値セットの物理名
   cv_token_count              CONSTANT VARCHAR2(15)  := 'COUNT';               -- 件数
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+  cv_token_conn_loc           CONSTANT VARCHAR2(15)  := 'CONN_LOC';            -- 問合せ担当拠点
+  cv_token_vendor_code        CONSTANT VARCHAR2(15)  := 'VENDOR_CODE';         -- 支払先コード
+  cv_token_payment_amt        CONSTANT VARCHAR2(15)  := 'PAYMENT_AMT';         -- 支払金額
+  cv_token_bank_charge_bearer CONSTANT VARCHAR2(20)  := 'BANK_CHARGE_BEARER';  -- 銀行手数料負担者
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
   -- 値セット
   cv_value_cok_fb_proc_type   CONSTANT VARCHAR2(30)  := 'XXCOK1_FB_PROC_TYPE'; -- 値セット名
   -- 定数
@@ -109,6 +129,9 @@ AS
   cv_zero                     CONSTANT VARCHAR2(1)   := '0';                   -- 文字型数字：'0'
   cv_1                        CONSTANT VARCHAR2(1)   := '1';                   -- 文字型数字：'1'
   cv_2                        CONSTANT VARCHAR2(1)   := '2';                   -- 文字型数字：'2'
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+  cv_i                        CONSTANT VARCHAR2(1)   := 'I';                   -- 銀行手数料負担者：'I'（当方）
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
   --
   --===============================
   -- グローバル変数
@@ -119,7 +142,10 @@ AS
   gn_target_cnt               NUMBER         DEFAULT NULL;                            -- 対象件数
   gn_normal_cnt               NUMBER         DEFAULT NULL;                            -- 正常件数
   gn_error_cnt                NUMBER         DEFAULT NULL;                            -- エラー件数
-  gn_warn_cnt                 NUMBER         DEFAULT NULL;                            -- スキップ件数
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+--  gn_warn_cnt                 NUMBER         DEFAULT NULL;                            -- スキップ件数
+  gn_skip_cnt                 NUMBER         DEFAULT NULL;                            -- スキップ件数
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
   gn_out_cnt                  NUMBER         DEFAULT NULL;                            -- 成功件数
   -- プロファイル
   gt_prof_bm_acc_number       fnd_profile_option_values.profile_option_value%TYPE;    -- 銀行口座番号
@@ -130,6 +156,11 @@ AS
   gt_prof_more_fee_criterion  fnd_profile_option_values.profile_option_value%TYPE;    -- 銀行手数料額(基準以上)
   gt_prof_fb_term_name        fnd_profile_option_values.profile_option_value%TYPE;    -- FB支払条件
   gt_prof_bm_tax              fnd_profile_option_values.profile_option_value%TYPE;    -- 消費税率
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+  gt_prof_org_id              fnd_profile_option_values.profile_option_value%TYPE;    -- 営業単位
+  gt_prof_bank_trns_fee_we    fnd_profile_option_values.profile_option_value%TYPE;    -- 振込手数料_当方
+  gt_prof_bank_trns_fee_ctpty fnd_profile_option_values.profile_option_value%TYPE;    -- 振込手数料_相手方
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
   -- 種別コード
   gt_values_type_code         fnd_flex_values.attribute1%TYPE;                        -- 種別コード
   -- 日付
@@ -166,6 +197,11 @@ AS
   AND   abaua.primary_flag             = cv_yes
   AND   ( gd_pay_date                 >= abaua.start_date  OR abaua.start_date IS NULL )
   AND   ( gd_pay_date                 <= abaua.end_date    OR abaua.end_date   IS NULL )
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+  AND    pvsa.org_id                   = TO_NUMBER( gt_prof_org_id )
+  AND    abaua.org_id                  = TO_NUMBER( gt_prof_org_id )
+  AND    abaa.org_id                   = TO_NUMBER( gt_prof_org_id )
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
   ORDER BY pv.segment1 ASC;
   bac_fb_line_rec  bac_fb_line_cur%ROWTYPE;
   -- FB作成明細データ（本振用FBデータ作成処理）
@@ -177,12 +213,15 @@ AS
 -- End   2009/04/27 Ver_1.2 T1_0817 M.Hiruta
         ,xbb.supplier_code                               AS supplier_code            -- 仕入先コード
         ,xbb.supplier_site_code                          AS supplier_site_code       -- 仕入先サイトコード
-        ,SUM( xbb.backmargin )                           AS backmargin               -- 販売手数料
-        ,SUM( xbb.backmargin_tax )                       AS backmargin_tax           -- 販売手数料消費税額
-        ,SUM( xbb.electric_amt )                         AS electric_amt             -- 電気料
-        ,SUM( xbb.electric_amt_tax )                     AS electric_amt_tax         -- 電気料消費税額
-        ,SUM( xbb.backmargin + xbb.backmargin_tax +
-              xbb.electric_amt + xbb.electric_amt_tax )  AS trns_amt                 -- 振込額
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+--        ,SUM( xbb.backmargin )                           AS backmargin               -- 販売手数料
+--        ,SUM( xbb.backmargin_tax )                       AS backmargin_tax           -- 販売手数料消費税額
+--        ,SUM( xbb.electric_amt )                         AS electric_amt             -- 電気料
+--        ,SUM( xbb.electric_amt_tax )                     AS electric_amt_tax         -- 電気料消費税額
+--        ,SUM( xbb.backmargin + xbb.backmargin_tax +
+--              xbb.electric_amt + xbb.electric_amt_tax )  AS trns_amt                 -- 振込額
+        ,SUM( xbb.expect_payment_amt_tax )               AS trns_amt                 -- 振込額
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
         ,pvsa.bank_charge_bearer                         AS bank_charge_bearer       -- 銀行手数料負担者
         ,abb.bank_number                                 AS bank_number              -- 銀行番号
         ,abb.bank_name_alt                               AS bank_name_alt            -- 銀行名カナ
@@ -213,6 +252,11 @@ AS
   AND    abaua.primary_flag             = cv_yes
   AND    ( gd_pay_date                 >= abaua.start_date  OR abaua.start_date IS NULL )
   AND    ( gd_pay_date                 <= abaua.end_date    OR abaua.end_date   IS NULL )
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+  AND    pvsa.org_id                    = TO_NUMBER( gt_prof_org_id )
+  AND    abaua.org_id                   = TO_NUMBER( gt_prof_org_id )
+  AND    abaa.org_id                    = TO_NUMBER( gt_prof_org_id )
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
 -- Start 2009/04/27 Ver_1.2 T1_0817 M.Hiruta
 --  GROUP BY pv.attribute5
   GROUP BY pvsa.attribute5
@@ -346,6 +390,11 @@ AS
     gt_prof_more_fee_criterion  := FND_PROFILE.VALUE( cv_prof_more_fee_criterion );   -- 銀行手数料額(基準以上)
     gt_prof_fb_term_name        := FND_PROFILE.VALUE( cv_prof_fb_term_name );         -- FB支払条件
     gt_prof_bm_tax              := FND_PROFILE.VALUE( cv_prof_bm_tax );               -- 消費税率
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+    gt_prof_org_id              := FND_PROFILE.VALUE( cv_prof_org_id );               -- 営業単位
+    gt_prof_bank_trns_fee_we    := FND_PROFILE.VALUE( cv_prof_bank_trns_fee_we );     -- 振込手数料_当方
+    gt_prof_bank_trns_fee_ctpty := FND_PROFILE.VALUE( cv_prof_bank_trns_fee_ctpty );  -- 振込手数料_相手方
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
     -- プロファイル値取得エラー
     IF( gt_prof_bm_acc_number IS NULL ) THEN
       lv_profile := cv_prof_bm_acc_number;
@@ -386,6 +435,23 @@ AS
       lv_profile := cv_prof_bm_tax;
       RAISE no_profile_expt;
     END IF;
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+    -- プロファイル値取得エラー
+    IF( gt_prof_org_id IS NULL ) THEN
+      lv_profile := cv_prof_org_id;
+      RAISE no_profile_expt;
+    END IF;
+    -- プロファイル値取得エラー
+    IF( gt_prof_bank_trns_fee_we IS NULL ) THEN
+      lv_profile := cv_prof_bank_trns_fee_we;
+      RAISE no_profile_expt;
+    END IF;
+    -- プロファイル値取得エラー
+    IF( gt_prof_bank_trns_fee_ctpty IS NULL ) THEN
+      lv_profile := cv_prof_bank_trns_fee_ctpty;
+      RAISE no_profile_expt;
+    END IF;
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
     --=========================================================
     --当月の支払日を取得する
     --=========================================================
@@ -690,6 +756,9 @@ AS
            ,ap_bank_branches              abb                         -- 銀行支店マスタ
     WHERE  abaa.bank_account_num = gt_prof_bm_acc_number
     AND    abaa.bank_branch_id   = abb.bank_branch_id
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+    AND    abaa.org_id           = TO_NUMBER( gt_prof_org_id )
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
     AND    abb.bank_num          = gt_prof_bm_bra_number;
 --
     ot_bank_number             := lt_bank_number;                    -- 銀行番号
@@ -927,6 +996,9 @@ AS
     ,ov_retcode         OUT VARCHAR2       -- リターン・コード
     ,ov_errmsg          OUT VARCHAR2       -- ユーザー・エラー・メッセージ
     ,on_transfer_amount OUT NUMBER         -- 振込金額
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+    ,on_fee             OUT NUMBER         -- 銀行手数料（振込手数料）
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
     ,in_cnt             IN  NUMBER         -- 索引カウンタ
   )
   IS
@@ -934,7 +1006,10 @@ AS
     -- ローカル定数
     -- ===============================
     cv_prg_name        CONSTANT VARCHAR2(100) := 'get_fb_line_add_info';  -- プログラム名
-    cv_i               CONSTANT VARCHAR2(1)   := 'I';                     -- 当方
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+    -- グローバル定数化
+--    cv_i               CONSTANT VARCHAR2(1)   := 'I';                     -- 当方
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
     cn_zero            CONSTANT NUMBER        := 0;                       -- 数値：0
     --================================
     -- ローカル変数
@@ -958,6 +1033,9 @@ AS
     ln_fee_no_tax      := 0;
 --
     ln_bm_tax := TO_NUMBER( gt_prof_bm_tax );                       -- 消費税率
+--
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+/*
     -- 本振用FB作成明細情報.銀行手数料負担者が当方の場合
     IF( gt_fb_line_tab( in_cnt ).bank_charge_bearer = cv_i ) THEN
       -- 本振用FB作成明細情報.振込額が、「銀行手数料_振込額基準」未満の場合
@@ -978,7 +1056,30 @@ AS
       ln_transfer_amount := NVL( gt_fb_line_tab( in_cnt ).trns_amt, cn_zero );
       on_transfer_amount := ln_transfer_amount;
     END IF;
+*/
+    -- 支払金額を変数へ格納
+    ln_transfer_amount := NVL( gt_fb_line_tab( in_cnt ).trns_amt, cn_zero );
 --
+    -- 本振用FB作成明細情報.振込額が、「銀行手数料_振込額基準」未満の場合
+    IF( ln_transfer_amount < TO_NUMBER( gt_prof_trans_fee_criterion )) THEN
+      ln_fee_no_tax := TO_NUMBER( gt_prof_less_fee_criterion );
+      ln_fee        := ln_fee_no_tax * ( ln_bm_tax / 100 + 1 );
+    -- 本振用FB作成明細情報.振込額が、「銀行手数料_振込額基準」以上の場合
+    ELSE
+      ln_fee_no_tax := TO_NUMBER( gt_prof_more_fee_criterion );
+      ln_fee        := ln_fee_no_tax * ( ln_bm_tax / 100 + 1 );
+    END IF;
+--
+    -- 本振用FB作成明細情報.銀行手数料負担者が当方の場合、振込金額に銀行手数料を加算する
+    IF( gt_fb_line_tab( in_cnt ).bank_charge_bearer = cv_i AND ln_transfer_amount > 0 ) THEN
+      on_transfer_amount := ln_transfer_amount + ln_fee;
+    ELSE
+      on_transfer_amount := ln_transfer_amount;
+    END IF;
+--
+    -- 銀行手数料（振込手数料）をアウトパラメータに格納
+    on_fee := ln_fee;
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
   EXCEPTION
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -1396,6 +1497,10 @@ AS
     lv_errbuf                  VARCHAR2(5000) DEFAULT NULL;                        -- エラー・メッセージ
     lv_retcode                 VARCHAR2(1)    DEFAULT NULL;                        -- リターン・コード
     lv_errmsg                  VARCHAR2(5000) DEFAULT NULL;                        -- ユーザー・エラー・メッセージ
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+    lv_out_msg                 VARCHAR2(2000) DEFAULT NULL;                        -- メッセージ
+    lb_retcode                 BOOLEAN        DEFAULT NULL;                        -- メッセージ・リターン・コード
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
     --
     ln_cnt                     NUMBER         DEFAULT NULL;                        -- 索引カウンタ
     --
@@ -1413,6 +1518,10 @@ AS
     lv_fb_end_data             VARCHAR2(2000) DEFAULT NULL;                        -- FB作成エンドレコード
     ln_transfer_amount         NUMBER;                                             -- 振込金額
     ln_total_transfer_amount   NUMBER;                                             -- 振込金額計
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+    ln_fee                     NUMBER;                                             -- 銀行手数料（振込手数料）
+    lv_bank_charge_bearer      VARCHAR2(30)   DEFAULT NULL;                        -- 銀行手数料負担者
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
 --
   BEGIN
     -- ステータス初期化
@@ -1421,7 +1530,11 @@ AS
     gn_target_cnt            := 0;        -- 対象件数
     gn_normal_cnt            := 0;        -- 正常件数
     gn_error_cnt             := 0;        -- エラー件数
-    gn_warn_cnt              := 0;        -- 警告件数
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+    -- 未使用のためコメントアウト
+--    gn_warn_cnt              := 0;        -- 警告件数
+    gn_skip_cnt              := 0;        -- スキップ件数
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
     gn_out_cnt               := 0;        -- 成功件数
     -- ローカル変数の初期化
     ln_total_transfer_amount := 0;        -- 振込金額計
@@ -1610,54 +1723,98 @@ AS
           ,ov_retcode         => lv_retcode              -- リターン・コード
           ,ov_errmsg          => lv_errmsg               -- ユーザー・エラー・メッセージ
           ,on_transfer_amount => ln_transfer_amount      -- 振込金額
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+          ,on_fee             => ln_fee                  -- 銀行手数料（振込手数料）
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
           ,in_cnt             => ln_cnt                  -- 索引カウンタ
         );
         IF( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
         END IF;
-        -- 振込金額計
-        ln_total_transfer_amount := ln_total_transfer_amount + ln_transfer_amount;
-        --=============================================================
-        -- A-9.FB作成明細データの格納（本振用FBデータ作成処理）
-        --=============================================================
-        storage_fb_line(
-          ov_errbuf                => lv_errbuf                   -- エラー・メッセージ
-         ,ov_retcode               => lv_retcode                  -- リターン・コード
-         ,ov_errmsg                => lv_errmsg                   -- ユーザー・エラー・メッセージ
-         ,ov_fb_line_data          => lv_fb_line_data             -- FB明細
-         ,in_transfer_amount       => ln_transfer_amount          -- 振込金額
-         ,in_cnt                   => ln_cnt                      -- 索引カウンタ
-        );
-        IF( lv_retcode = cv_status_error ) THEN
-          RAISE global_process_expt;
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+        IF(( gt_fb_line_tab( ln_cnt ).bank_charge_bearer = cv_i   AND
+             gt_fb_line_tab( ln_cnt ).trns_amt <= 0
+           ) OR
+           ( gt_fb_line_tab( ln_cnt ).bank_charge_bearer <> cv_i  AND
+             ( gt_fb_line_tab( ln_cnt ).trns_amt - ln_fee ) <= 0
+           )
+          )
+        THEN
+          -- スキップ件数のカウントアップ
+          gn_skip_cnt := gn_skip_cnt + 1;
+--
+          -- 出力用の銀行手数料負担者を選定
+          IF ( gt_fb_line_tab( ln_cnt ).bank_charge_bearer = cv_i ) THEN
+            lv_bank_charge_bearer := gt_prof_bank_trns_fee_we;
+          ELSE
+            lv_bank_charge_bearer := gt_prof_bank_trns_fee_ctpty;
+          END IF;
+--
+          -- FBデータの支払金額0円以下警告メッセージ出力
+         lv_out_msg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_appli_xxcok
+                         ,iv_name         => cv_msg_cok_10453
+                         ,iv_token_name1  => cv_token_conn_loc
+                         ,iv_token_value1 => gt_fb_line_tab( ln_cnt ).base_code      -- 問合せ担当拠点
+                         ,iv_token_name2  => cv_token_vendor_code
+                         ,iv_token_value2 => gt_fb_line_tab( ln_cnt ).supplier_code  -- 支払先コード
+                         ,iv_token_name3  => cv_token_payment_amt
+                         ,iv_token_value3 => TO_CHAR( gt_fb_line_tab( ln_cnt ).trns_amt ) -- 振込額
+                         ,iv_token_name4  => cv_token_bank_charge_bearer
+                         ,iv_token_value4 => lv_bank_charge_bearer                   -- 銀行手数料
+                       );
+         lb_retcode := xxcok_common_pkg.put_message_f(
+                         in_which    => FND_FILE.LOG       -- 出力区分
+                        ,iv_message  => lv_out_msg         -- メッセージ
+                        ,in_new_line => 0                  -- 改行
+                       );
+--
+        ELSE
+          -- 振込金額計
+          ln_total_transfer_amount := ln_total_transfer_amount + ln_transfer_amount;
+          --=============================================================
+          -- A-9.FB作成明細データの格納（本振用FBデータ作成処理）
+          --=============================================================
+          storage_fb_line(
+            ov_errbuf                => lv_errbuf                   -- エラー・メッセージ
+           ,ov_retcode               => lv_retcode                  -- リターン・コード
+           ,ov_errmsg                => lv_errmsg                   -- ユーザー・エラー・メッセージ
+           ,ov_fb_line_data          => lv_fb_line_data             -- FB明細
+           ,in_transfer_amount       => ln_transfer_amount          -- 振込金額
+           ,in_cnt                   => ln_cnt                      -- 索引カウンタ
+          );
+          IF( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+          --
+          --================================
+          -- A-10.FB作成データレコードの出力
+          --================================
+          output_data(
+            ov_errbuf  => lv_errbuf           -- エラー・メッセージ
+           ,ov_retcode => lv_retcode          -- リターン・コード
+           ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージF
+           ,iv_data    => lv_fb_line_data     -- 出力するデータ
+          );
+          IF( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+          --===================================
+          -- A-11.FB作成データ出力結果の更新
+          --===================================
+          upd_backmargin_balance(
+             ov_errbuf  => lv_errbuf          -- エラー・メッセージ
+            ,ov_retcode => lv_retcode         -- リターン・コード
+            ,ov_errmsg  => lv_errmsg          -- ユーザー・エラー・メッセージ
+            ,in_cnt     => ln_cnt             -- 索引カウンタ
+          );
+          IF( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+          -- 成功件数
+          gn_out_cnt := gn_out_cnt + 1;
         END IF;
-        --
-        --================================
-        -- A-10.FB作成データレコードの出力
-        --================================
-        output_data(
-          ov_errbuf  => lv_errbuf           -- エラー・メッセージ
-         ,ov_retcode => lv_retcode          -- リターン・コード
-         ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージF
-         ,iv_data    => lv_fb_line_data     -- 出力するデータ
-        );
-        IF( lv_retcode = cv_status_error ) THEN
-          RAISE global_process_expt;
-        END IF;
-        --===================================
-        -- A-11.FB作成データ出力結果の更新
-        --===================================
-        upd_backmargin_balance(
-           ov_errbuf  => lv_errbuf          -- エラー・メッセージ
-          ,ov_retcode => lv_retcode         -- リターン・コード
-          ,ov_errmsg  => lv_errmsg          -- ユーザー・エラー・メッセージ
-          ,in_cnt     => ln_cnt             -- 索引カウンタ
-        );
-        IF( lv_retcode = cv_status_error ) THEN
-          RAISE global_process_expt;
-        END IF;
-        -- 成功件数
-        gn_out_cnt := gn_out_cnt + 1;
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
       END LOOP fb_loop;
     END IF;
     --=======================================
@@ -1775,6 +1932,9 @@ AS
     IF( lv_retcode = cv_status_error ) THEN
       -- 成功件数
       gn_out_cnt := 0;
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+      gn_skip_cnt := 0;
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
       -- エラー件数
       gn_error_cnt := 1;
     END IF;
@@ -1794,7 +1954,10 @@ AS
     -- A-16.終了処理
     --================================================
     -- 空行
-    IF( lv_retcode = cv_status_error ) THEN
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+--    IF( lv_retcode = cv_status_error ) THEN
+    IF( lv_retcode = cv_status_error OR gn_skip_cnt > 0 ) THEN
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
       lb_retcode := xxcok_common_pkg.put_message_f(
                       FND_FILE.LOG
                      ,NULL
@@ -1825,6 +1988,20 @@ AS
                    ,iv_message  => lv_out_msg         -- メッセージ
                    ,in_new_line => 0                  -- 改行
                   );
+-- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+    --スキップ件数
+    lv_out_msg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_appli_xxccp
+                   ,iv_name         => cv_msg_ccp_90003
+                   ,iv_token_name1  => cv_token_count
+                   ,iv_token_value1 => TO_CHAR( gn_skip_cnt )
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f(
+                    in_which    => FND_FILE.LOG       -- 出力区分
+                   ,iv_message  => lv_out_msg         -- メッセージ
+                   ,in_new_line => 0                  -- 改行
+                  );
+-- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
     --エラー件数
     lv_out_msg := xxccp_common_pkg.get_msg(
                     iv_application  => cv_appli_xxccp
