@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A01C(body)
  * Description      : 社員データ取込処理
  * MD.050           : MD050_CMM_002_A01_社員データ取込
- * Version          : Issue3.13
+ * Version          : Issue3.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -103,6 +103,9 @@ AS
  *                                         (勤務地拠点コード(新) -> 所属コード(新))
  *  2009/12/11    1.14 SCS 久保島 豊     障害E_本番_00148 対応 
  *  2010/01/29    1.15 SCS 仁木 重人     障害E_本稼動_01216 対応 
+ *  2010/02/25    1.16 SCS 仁木 重人     障害E_本稼動_01581 対応
+ *                                       ・購買担当マスタの有効開始日に「発令日」を設定
+ *                                       ・出荷ロールマスタの有効開始日を「業務日付」->「発令日」に変更
  *
  *****************************************************************************************/
 --
@@ -1167,7 +1170,10 @@ AS
        ir_masters_rec.user_id,                    --USER_ID
        gn_role_id,                                --ROLE_ID
        NULL,                                      --ORGANIZATION_ID
-       cd_process_date,                           --START_DATE(生産システムではSYSDATE,営業システムでは業務日付)
+-- 2010/02/25 Ver1.16 障害E_本稼動_01581 modify start by Shigeto.Niki
+--       cd_process_date,                           --START_DATE(生産システムではSYSDATE,営業システムでは業務日付)
+       TO_DATE(ir_masters_rec.announce_date,'YYYY/MM/DD'),  --発令日
+-- 2010/02/25 Ver1.16 障害E_本稼動_01581 modify end by Shigeto.Niki
        NULL,                                      --END_DATE
        gn_created_by,
        gd_creation_date,
@@ -1290,7 +1296,10 @@ AS
          ,X_LOCATION_ID         => NULL
          ,X_CATEGORY_ID         => NULL
          ,X_AUTHORIZATION_LIMIT => NULL
-         ,X_START_DATE_ACTIVE   => NULL
+-- 2010/02/25 Ver1.16 障害E_本稼動_01581 modify start by Shigeto.Niki
+--         ,X_START_DATE_ACTIVE   => NULL
+         ,X_START_DATE_ACTIVE   => TO_DATE(ir_masters_rec.announce_date,'YYYY/MM/DD')  -- 発令日
+-- 2010/02/25 Ver1.16 障害E_本稼動_01581 modify end by Shigeto.Niki
          ,X_END_DATE_ACTIVE     => NULL
          ,X_ATTRIBUTE_CATEGORY  => NULL
          ,X_ATTRIBUTE1          => NULL
