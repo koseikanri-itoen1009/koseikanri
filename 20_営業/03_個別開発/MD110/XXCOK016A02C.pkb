@@ -13,7 +13,7 @@ AS
  *                    自販機販売手数料を振り込むためのFBデータを作成します。
  *
  * MD.050           : FBデータファイル作成（FBデータ作成） MD050_COK_016_A02
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *                                                            且つ支払予定額 - 振込手数料 <= 0
  *  2009/05/29    1.4   K.Yamaguchi      [障害T1_1147対応]販手残高テーブル更新項目追加
  *  2009/07/02    1.5   K.Yamaguchi      [障害0000291対応]パフォーマンス障害対応
+ *  2009/08/03    1.6   M.Hiruta         [障害0000843対応]振込元口座情報の取得条件の取得条件を修正
  *
  *****************************************************************************************/
 --
@@ -74,8 +75,10 @@ AS
   --
   cv_pkg_name                 CONSTANT VARCHAR2(100) := 'XXCOK016A02C';                     -- パッケージ名
   -- プロファイル
-  cv_prof_bm_acc_number       CONSTANT VARCHAR2(35)  := 'XXCOK1_BM_OUR_BANK_ACC_NUMBER';    -- 当社銀行口座番号
-  cv_prof_bm_bra_number       CONSTANT VARCHAR2(35)  := 'XXCOK1_BM_OUR_BANK_BRA_NUMBER';    -- 当社銀行支店番号
+-- Start 2009/08/03 Ver.1.6 0000843 M.Hiruta DELETE
+--  cv_prof_bm_acc_number       CONSTANT VARCHAR2(35)  := 'XXCOK1_BM_OUR_BANK_ACC_NUMBER';    -- 当社銀行口座番号
+--  cv_prof_bm_bra_number       CONSTANT VARCHAR2(35)  := 'XXCOK1_BM_OUR_BANK_BRA_NUMBER';    -- 当社銀行支店番号
+-- End   2009/08/03 Ver.1.6 0000843 M.Hiruta DELETE
   cv_prof_bm_request_code     CONSTANT VARCHAR2(35)  := 'XXCOK1_BM_OUR_REQUEST_CODE';       -- 当社依頼人コード
   cv_prof_trans_criterion     CONSTANT VARCHAR2(35)  := 'XXCOK1_BANK_FEE_TRANS_CRITERION';  -- 銀行手数料(振込基準額)
   cv_prof_less_fee_criterion  CONSTANT VARCHAR2(35)  := 'XXCOK1_BANK_FEE_LESS_CRITERION';   -- 銀行手数料額(基準未満)
@@ -87,6 +90,9 @@ AS
   cv_prof_bank_trns_fee_we    CONSTANT VARCHAR2(35)  := 'XXCOK1_BANK_TRNS_FEE_WE';          -- 振込手数料_当方
   cv_prof_bank_trns_fee_ctpty CONSTANT VARCHAR2(35)  := 'XXCOK1_BANK_TRNS_FEE_CTPTY';       -- 振込手数料_相手方
 -- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+-- Start 2009/08/03 Ver.1.6 0000843 M.Hiruta ADD
+  cv_prof_acc_type_internal   CONSTANT VARCHAR2(35)  := 'XXCOK1_BM_ACC_TYPE_INTERNAL';      -- 振込手数料_当社_口座使用
+-- End   2009/08/03 Ver.1.6 0000843 M.Hiruta ADD
   -- アプリケーション名
   cv_appli_xxccp              CONSTANT VARCHAR2(5)   := 'XXCCP';               -- 'XXCCP'
   cv_appli_xxcok              CONSTANT VARCHAR2(5)   := 'XXCOK';               -- 'XXCOK'
@@ -134,6 +140,10 @@ AS
 -- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
   cv_i                        CONSTANT VARCHAR2(1)   := 'I';                   -- 銀行手数料負担者：'I'（当方）
 -- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+-- Start 2009/08/03 Ver.1.6 0000843 M.Hiruta ADD
+  cv_lookup_type_bank         CONSTANT VARCHAR2(50)  := 'XXCOK1_BM_BANK_ACCOUNT'; -- 参照タイプ：当社銀行口座情報
+  cv_lookup_code_bank         CONSTANT VARCHAR2(10)  := 'VDBM_FB';                -- 参照コード：VDBM振込元口座
+-- End   2009/08/03 Ver.1.6 0000843 M.Hiruta ADD
   --
   --===============================
   -- グローバル変数
@@ -150,8 +160,10 @@ AS
 -- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
   gn_out_cnt                  NUMBER         DEFAULT NULL;                            -- 成功件数
   -- プロファイル
-  gt_prof_bm_acc_number       fnd_profile_option_values.profile_option_value%TYPE;    -- 銀行口座番号
-  gt_prof_bm_bra_number       fnd_profile_option_values.profile_option_value%TYPE;    -- 銀行支店番号
+-- Start 2009/08/03 Ver.1.6 0000843 M.Hiruta DELETE
+--  gt_prof_bm_acc_number       fnd_profile_option_values.profile_option_value%TYPE;    -- 銀行口座番号
+--  gt_prof_bm_bra_number       fnd_profile_option_values.profile_option_value%TYPE;    -- 銀行支店番号
+-- End   2009/08/03 Ver.1.6 0000843 M.Hiruta DELETE
   gt_prof_bm_request_code     fnd_profile_option_values.profile_option_value%TYPE;    -- 依頼人コード
   gt_prof_trans_fee_criterion fnd_profile_option_values.profile_option_value%TYPE;    -- 振込額の基準金額
   gt_prof_less_fee_criterion  fnd_profile_option_values.profile_option_value%TYPE;    -- 銀行手数料額(基準未満)
@@ -163,6 +175,9 @@ AS
   gt_prof_bank_trns_fee_we    fnd_profile_option_values.profile_option_value%TYPE;    -- 振込手数料_当方
   gt_prof_bank_trns_fee_ctpty fnd_profile_option_values.profile_option_value%TYPE;    -- 振込手数料_相手方
 -- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+-- Start 2009/08/03 Ver.1.6 0000843 M.Hiruta ADD
+  gt_prof_acc_type_internal   fnd_profile_option_values.profile_option_value%TYPE;    -- 振込手数料_当社_口座使用
+-- End   2009/08/03 Ver.1.6 0000843 M.Hiruta ADD
   -- 種別コード
   gt_values_type_code         fnd_flex_values.attribute1%TYPE;                        -- 種別コード
   -- 日付
@@ -390,8 +405,10 @@ AS
     --==========================================================
     --カスタム・プロファイルの取得
     --==========================================================
-    gt_prof_bm_acc_number       := FND_PROFILE.VALUE( cv_prof_bm_acc_number );        -- 銀行口座番号
-    gt_prof_bm_bra_number       := FND_PROFILE.VALUE( cv_prof_bm_bra_number );        -- 銀行支店番号
+-- Start 2009/08/03 Ver.1.6 0000843 M.Hiruta DELETE
+--    gt_prof_bm_acc_number       := FND_PROFILE.VALUE( cv_prof_bm_acc_number );        -- 銀行口座番号
+--    gt_prof_bm_bra_number       := FND_PROFILE.VALUE( cv_prof_bm_bra_number );        -- 銀行支店番号
+-- End   2009/08/03 Ver.1.6 0000843 M.Hiruta DELETE
     gt_prof_bm_request_code     := FND_PROFILE.VALUE( cv_prof_bm_request_code );      -- 依頼人コード
     gt_prof_trans_fee_criterion := FND_PROFILE.VALUE( cv_prof_trans_criterion );      -- 振込額の基準金額
     gt_prof_less_fee_criterion  := FND_PROFILE.VALUE( cv_prof_less_fee_criterion );   -- 銀行手数料額(基準未満)
@@ -403,16 +420,21 @@ AS
     gt_prof_bank_trns_fee_we    := FND_PROFILE.VALUE( cv_prof_bank_trns_fee_we );     -- 振込手数料_当方
     gt_prof_bank_trns_fee_ctpty := FND_PROFILE.VALUE( cv_prof_bank_trns_fee_ctpty );  -- 振込手数料_相手方
 -- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
-    -- プロファイル値取得エラー
-    IF( gt_prof_bm_acc_number IS NULL ) THEN
-      lv_profile := cv_prof_bm_acc_number;
-      RAISE no_profile_expt;
-    END IF;
-    -- プロファイル値取得エラー
-    IF( gt_prof_bm_bra_number IS NULL ) THEN
-      lv_profile := cv_prof_bm_bra_number;
-      RAISE no_profile_expt;
-    END IF;
+-- Start 2009/08/03 Ver.1.6 0000843 M.Hiruta ADD
+    gt_prof_acc_type_internal   := FND_PROFILE.VALUE( cv_prof_acc_type_internal );    -- 振込手数料_当社_口座使用
+-- End   2009/08/03 Ver.1.6 0000843 M.Hiruta ADD
+-- Start 2009/08/03 Ver.1.6 0000843 M.Hiruta DELETE
+--    -- プロファイル値取得エラー
+--    IF( gt_prof_bm_acc_number IS NULL ) THEN
+--      lv_profile := cv_prof_bm_acc_number;
+--      RAISE no_profile_expt;
+--    END IF;
+--    -- プロファイル値取得エラー
+--    IF( gt_prof_bm_bra_number IS NULL ) THEN
+--      lv_profile := cv_prof_bm_bra_number;
+--      RAISE no_profile_expt;
+--    END IF;
+-- End   2009/08/03 Ver.1.6 0000843 M.Hiruta DELETE
     -- プロファイル値取得エラー
     IF( gt_prof_bm_request_code IS NULL ) THEN
       lv_profile := cv_prof_bm_request_code;
@@ -460,6 +482,13 @@ AS
       RAISE no_profile_expt;
     END IF;
 -- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+-- Start 2009/08/03 Ver.1.6 0000843 M.Hiruta ADD
+    -- プロファイル値取得エラー
+    IF( gt_prof_acc_type_internal IS NULL ) THEN
+      lv_profile := cv_prof_acc_type_internal;
+      RAISE no_profile_expt;
+    END IF;
+-- End   2009/08/03 Ver.1.6 0000843 M.Hiruta ADD
     --=========================================================
     --当月の支払日を取得する
     --=========================================================
@@ -748,6 +777,29 @@ AS
     --=========================================
     -- FB作成ヘッダーデータの取得(A-4)
     --=========================================
+-- Start 2009/08/03 Ver.1.6 0000843 M.Hiruta REPAIR
+--    SELECT  abb.bank_number               AS  bank_number             -- 銀行番号
+--           ,abb.bank_name_alt             AS  bank_name_alt           -- 銀行名カナ
+--           ,abb.bank_num                  AS  bank_num                -- 銀行支店番号
+--           ,abb.bank_branch_name_alt      AS  bank_branch_name_alt    -- 銀行支店名カナ
+--           ,abaa.bank_account_type        AS  bank_account_type       -- 預金種別
+--           ,abaa.bank_account_num         AS  bank_account_num        -- 銀行口座番号
+--           ,abaa.account_holder_name_alt  AS  account_holder_name_alt -- 口座名義人カナ
+--    INTO    lt_bank_number                                            -- 銀行番号
+--           ,lt_bank_name_alt                                          -- 銀行名カナ
+--           ,lt_bank_num                                               -- 銀行支店番号
+--           ,lt_bank_branch_name_alt                                   -- 銀行支店名カナ
+--           ,lt_bank_account_type                                      -- 預金種別
+--           ,lt_bank_account_num                                       -- 銀行口座番号
+--           ,lt_account_holder_name_alt                                -- 口座名義人カナ
+--    FROM    ap_bank_accounts_all          abaa                        -- 銀行口座マスタ
+--           ,ap_bank_branches              abb                         -- 銀行支店マスタ
+--    WHERE  abaa.bank_account_num = gt_prof_bm_acc_number
+--    AND    abaa.bank_branch_id   = abb.bank_branch_id
+---- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+--    AND    abaa.org_id           = TO_NUMBER( gt_prof_org_id )
+---- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+--    AND    abb.bank_num          = gt_prof_bm_bra_number;
     SELECT  abb.bank_number               AS  bank_number             -- 銀行番号
            ,abb.bank_name_alt             AS  bank_name_alt           -- 銀行名カナ
            ,abb.bank_num                  AS  bank_num                -- 銀行支店番号
@@ -764,12 +816,21 @@ AS
            ,lt_account_holder_name_alt                                -- 口座名義人カナ
     FROM    ap_bank_accounts_all          abaa                        -- 銀行口座マスタ
            ,ap_bank_branches              abb                         -- 銀行支店マスタ
-    WHERE  abaa.bank_account_num = gt_prof_bm_acc_number
-    AND    abaa.bank_branch_id   = abb.bank_branch_id
--- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
-    AND    abaa.org_id           = TO_NUMBER( gt_prof_org_id )
--- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
-    AND    abb.bank_num          = gt_prof_bm_bra_number;
+           ,fnd_lookup_values             flv                         -- 参照コード
+    WHERE  abaa.bank_branch_id    = abb.bank_branch_id
+    AND    abb.bank_number        = flv.attribute1            -- 銀行番号
+    AND    abb.bank_num           = flv.attribute2            -- 銀行支店番号
+    AND    abaa.account_type      = gt_prof_acc_type_internal -- 口座使用
+    AND    abaa.bank_account_type = flv.attribute3            -- 口座種別
+    AND    abaa.bank_account_num  = flv.attribute4            -- 銀行口座番号
+    AND    abaa.org_id            = TO_NUMBER( gt_prof_org_id )
+    AND    flv.lookup_type        = cv_lookup_type_bank
+    AND    flv.lookup_code        = cv_lookup_code_bank
+    AND    flv.enabled_flag       = cv_yes
+    AND    gd_proc_date           BETWEEN flv.start_date_active
+                                  AND     NVL( flv.end_date_active, gd_proc_date )
+    AND    flv.language           = USERENV('LANG');
+-- End   2009/08/03 Ver.1.6 0000843 M.Hiruta REPAIR
 --
     ot_bank_number             := lt_bank_number;                    -- 銀行番号
     ot_bank_name_alt           := lt_bank_name_alt;                  -- 銀行名カナ
