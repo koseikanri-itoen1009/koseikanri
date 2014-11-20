@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS009A03R
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS009A03R
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A03R (body)
  * Description      : 原価割れチェックリスト
  * MD.050           : 原価割れチェックリスト MD050_COS_009_A03
- * Version          : 1.1
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,8 @@ AS
  *  2008/12/10    1.0   H.Ri             新規作成
  *  2009/02/17    1.1   H.Ri             get_msgのパッケージ名修正
  *  2009/04/21    1.2   K.Kiriu          [T1_0444]成績計上者コードの結合不正対応
+ *  2009/06/17    1.3   N.Nishimura      [T1_1439]対象件数0件時、正常終了とする
+ *  2009/06/25    1.4   N.Nishimura      [T1_1437]データパージ不具合対応
  *
  *****************************************************************************************/
 --
@@ -1746,6 +1748,13 @@ AS
     ld_dlv_date_from    DATE;         --   納品日(FROM)
     ld_dlv_date_to      DATE;         --   納品日(TO)
 --
+--2009/06/25  Ver1.4 T1_1437  Add start
+    lv_errbuf_svf  VARCHAR2(5000);  -- エラー・メッセージ(SVF実行結果保持用)
+    lv_retcode_svf VARCHAR2(1);     -- リターン・コード(SVF実行結果保持用)
+    lv_errmsg_svf  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ(SVF実行結果保持用)
+--2009/06/25  Ver1.4 T1_1437  Add end
+--
+--
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -1849,11 +1858,19 @@ AS
       lv_errbuf,         -- エラー・メッセージ           --# 固定 #
       lv_retcode,        -- リターン・コード             --# 固定 #
       lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-    IF ( lv_retcode = cv_status_normal ) THEN
-      NULL;
-    ELSE
-      RAISE global_process_expt;
-    END IF;
+--
+-- 2009/06/25  Ver1.4  T1_1437  Mod Start
+--    IF ( lv_retcode = cv_status_normal ) THEN
+--      NULL;
+--    ELSE
+--      RAISE global_process_expt;
+--    END IF;
+    --
+    --エラーでもワークテーブルを削除する為、エラー情報を保持
+    lv_errbuf_svf  := lv_errbuf;
+    lv_retcode_svf := lv_retcode;
+    lv_errmsg_svf  := lv_errmsg;
+-- 2009/06/25  Ver1.4 T1_1437  Mod End
 --
     -- ===============================
     -- A-7  帳票ワークテーブル削除
@@ -1868,8 +1885,24 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- 2009/06/25  Ver1.4 T1_1437  Add start
+    --エラーの場合、ロールバックするのでここでコミット
+    COMMIT;
+--
+    --SVF実行結果確認
+    IF ( lv_retcode_svf = cv_status_error ) THEN
+      lv_errbuf  := lv_errbuf_svf;
+      lv_retcode := lv_retcode_svf;
+      lv_errmsg  := lv_errmsg_svf;
+      RAISE global_process_expt;
+    END IF;
+-- 2009/06/25  Ver1.4 T1_1437  Add End
+--
     --明細0件時／営業原価チェックエラー時ステータス制御処理
-    IF ( gn_target_cnt = 0 OR gn_warn_cnt > 0 ) THEN
+--****************************** 2009/06/17 1.3 N.Nishimura MOD START ******************************--
+--    IF ( gn_target_cnt = 0 OR gn_warn_cnt > 0 ) THEN
+    IF ( gn_target_cnt <> 0 ) THEN
+--****************************** 2009/06/17 1.3 N.Nishimura MOD  END  ******************************--
       ov_retcode := cv_status_warn;
     END IF;
 --
