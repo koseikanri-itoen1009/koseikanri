@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A21C(body)
  * Description      : 棚卸結果作成
  * MD.050           : HHT棚卸結果データ取込 <MD050_COI_A21>
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2010/03/23    1.10  Y.Goto           [E_本稼動_01943]拠点の有効チェックを追加
  *  2010/05/12    1.11  N.Abe            [E_本稼動_02076]棚卸しデータ取込順の採番方法修正
  *  2011/04/27    1.12  N.Horigome       [E_本稼動_06884]一時表取込エラー時のメッセージ出力追加
+ *  2011/10/18    1.13  K.Nakamura       [E_T4_00223]ケース数の半角チェックを共通関数を使用しないよう修正
  *
  *****************************************************************************************/
 --
@@ -1707,6 +1708,11 @@ AS
 --
     cv_ymd              CONSTANT VARCHAR2(8)  := 'YYYYMMDD';
     cv_ymdhms           CONSTANT VARCHAR2(21) := 'YYYY/MM/DD HH24:MI:SS';
+-- == 2011/10/18 V1.13 Added START ============================================================== ==
+    cv_period           CONSTANT VARCHAR2(1)  := '.';
+    cv_space            CONSTANT VARCHAR2(1)  := ' ';
+    cv_plus             CONSTANT VARCHAR2(1)  := '+';
+-- == 2011/10/18 V1.13 Added END   ============================================================== ==
     -- *** ローカル変数 ***
     lt_column           fnd_lookup_values.meaning%TYPE;   --項目名
     lv_value            VARCHAR2(50);                     --項目値
@@ -1825,7 +1831,31 @@ AS
     --半角数字チェック
     --================
     --ケース数
-    IF (xxccp_common_pkg.chk_number(it_case_qty) = FALSE) THEN
+-- == 2011/10/18 V1.13 Modified START ==============================================================
+--    IF (xxccp_common_pkg.chk_number(it_case_qty) = FALSE) THEN
+    --マイナスの場合、共通関数ではエラーとなるため、共通関数を使用しない
+    BEGIN
+      ln_num := TO_NUMBER(it_case_qty);
+    EXCEPTION
+      WHEN OTHERS THEN
+        lt_column := xxcoi_common_pkg.get_meaning(
+                     cv_lk_reslt_col
+                    ,cv_case_qty
+                  );
+        --名称が取得できなかった場合エラー
+        IF (lt_column IS NULL) THEN
+          RAISE get_result_col_expt;
+        END IF;
+--
+        lv_value := TO_CHAR(it_case_qty);
+        --半角数字チェックエラー
+        RAISE harf_number_expt;
+    END;
+    -- ピリオド、前後の空白、プラスチェック
+    IF  ((INSTRB(it_case_qty,cv_period) > 0)
+      OR (INSTRB(it_case_qty,cv_space) > 0)
+      OR (INSTRB(it_case_qty,cv_plus) > 0)) THEN
+-- == 2011/10/18 V1.13 Modified END   ==============================================================
       lt_column := xxcoi_common_pkg.get_meaning(
                    cv_lk_reslt_col
                   ,cv_case_qty
