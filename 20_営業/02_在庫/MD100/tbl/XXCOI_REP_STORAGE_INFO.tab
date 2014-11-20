@@ -3,7 +3,7 @@
  *
  * Table Name      : XXCOI_REP_STORAGE_INFO
  * Description     : 入庫未確認リスト帳票ワークテーブル
- * Version         : 1.1
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2008-12-08    1.0   SCS S.Moriyama   新規作成
  *  2009/04/30    1.1   T.Nakamura       バックスラッシュを追加
+ *  2009/06/02    1.2   H.Sasaki         [T1_1310]工場固有記号桁数変更（3→6）
  *
  ************************************************************************/
 CREATE TABLE XXCOI.XXCOI_REP_STORAGE_INFO
@@ -29,7 +30,10 @@ CREATE TABLE XXCOI.XXCOI_REP_STORAGE_INFO
   ITEM_CODE                             VARCHAR2(7),                  -- 商品コード
   ITEM_NAME                             VARCHAR2(20),                 -- 商品名
   TASTE_TERM                            VARCHAR2(10),                 -- 賞味期限
-  FACTORY_UNIQUE_MARK                   VARCHAR2(3),                  -- 工場固有記号
+-- == 2009/06/02 V1.2 Modified START ===============================================================
+--  FACTORY_UNIQUE_MARK                   VARCHAR2(3),                  -- 工場固有記号
+  FACTORY_UNIQUE_MARK                   VARCHAR2(6),                  -- 工場固有記号
+-- == 2009/06/02 V1.2 Modified END   ===============================================================
   CASE_IN_QTY                           NUMBER,                       -- 入数
   SHIP_CASE_QTY                         NUMBER,                       -- 出庫数量ケース数
   SHIP_SINGLY_QTY                       NUMBER,                       -- 出庫数量バラ数

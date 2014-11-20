@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流システムの工場直送出荷実績データから販売実績を作成し、
  *                    販売実績を作成したＯＭ受注をクローズします。
  * MD.050           : 出荷確認（生産物流出荷）  MD050_COS_008_A02
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *                                       [T1_1122] 端数処理区分が切上時の計算の修正
  *                                       [T1_1171] 受注数量の返品の考慮漏れの修正
  *                                       [T1_1206] ヘッダ単位で一番大きい本体金額の条件を絶対値に修正
+ *  2009/06/01    1.8   N.Maeda          [T1_1269] 消費税区分3(内税(単価込み)):税抜基準単価算出方法修正
  *
  *****************************************************************************************/
 --
@@ -1555,28 +1556,34 @@ AS
     -- 消費税区分 ＝ 内税(単価込み)
     IF ( io_order_rec.consumption_tax_class = g_tax_class_rec.tax_included ) THEN    
 --
-      -- 消費税 ＝ 基準単価 － 基準単価 ÷ ( 1 ＋ 消費税率 ÷ 100 )
-      ln_tax := io_order_rec.base_unit_price
-              - io_order_rec.base_unit_price / ( 1 + io_order_rec.tax_rate / 100 );
+/* 2009/06/01 Ver1.8 Mod Start */
+--      -- 消費税 ＝ 基準単価 － 基準単価 ÷ ( 1 ＋ 消費税率 ÷ 100 )
+--      ln_tax := io_order_rec.base_unit_price
+--              - io_order_rec.base_unit_price / ( 1 + io_order_rec.tax_rate / 100 );
+----
+--      -- 切上
+--      IF ( io_order_rec.bill_tax_round_rule = cv_amount_up ) THEN
+--/* 2009/05/20 Ver1.7 Mod Start */
+--        --小数点が存在する場合
+--        IF ( ln_tax - TRUNC( ln_tax ) <> 0 ) THEN
+--          ln_tax := TRUNC( ln_tax ) + 1;
+--        END IF;
+--/* 2009/05/20 Ver1.7 Mod End   */
+--      -- 切捨て
+--      ELSIF ( io_order_rec.bill_tax_round_rule = cv_amount_down ) THEN
+--        ln_tax := TRUNC( ln_tax );
+--      -- 四捨五入
+--      ELSIF ( io_order_rec.bill_tax_round_rule = cv_amount_nearest ) THEN
+--        ln_tax := ROUND( ln_tax );
+--      END IF;
+----      
+--      -- 税抜基準単価 ＝ 基準単価 － 消費税
+--      io_order_rec.standard_unit_price := io_order_rec.base_unit_price - ln_tax;
 --
-      -- 切上
-      IF ( io_order_rec.bill_tax_round_rule = cv_amount_up ) THEN
-/* 2009/05/20 Ver1.7 Mod Start */
-        --小数点が存在する場合
-        IF ( ln_tax - TRUNC( ln_tax ) <> 0 ) THEN
-          ln_tax := TRUNC( ln_tax ) + 1;
-        END IF;
-/* 2009/05/20 Ver1.7 Mod End   */
-      -- 切捨て
-      ELSIF ( io_order_rec.bill_tax_round_rule = cv_amount_down ) THEN
-        ln_tax := TRUNC( ln_tax );
-      -- 四捨五入
-      ELSIF ( io_order_rec.bill_tax_round_rule = cv_amount_nearest ) THEN
-        ln_tax := ROUND( ln_tax );
-      END IF;
---      
-      -- 税抜基準単価 ＝ 基準単価 － 消費税
-      io_order_rec.standard_unit_price := io_order_rec.base_unit_price - ln_tax;
+        -- 税抜基準単価 = ( 基準単価 / ( 100 +  消費税率 ) ) × 100
+        io_order_rec.standard_unit_price := ROUND( ( (io_order_rec.base_unit_price
+                                                      /( 100 + io_order_rec.tax_rate ) ) * 100 ) , 2 );
+/* 2009/06/01 Ver1.8 Mod End   */
 --
     ELSE
 --
