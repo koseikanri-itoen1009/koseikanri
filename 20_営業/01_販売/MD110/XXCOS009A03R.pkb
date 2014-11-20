@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A03R (body)
  * Description      : 原価割れチェックリスト
  * MD.050           : 原価割れチェックリスト MD050_COS_009_A03
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/06/25    1.4   N.Nishimura      [T1_1437]データパージ不具合対応
  *  2009/08/11    1.5   N.Maeda          [0000865]PT対応
  *  2009/08/13    1.5   N.Maeda          [0000865]レビュー指摘対応
+ *  2009/09/02    1.6   M.Sano           [0001227]PT対応
  *
  *****************************************************************************************/
 --
@@ -712,6 +713,22 @@ AS
     IS
       --作成元が受注系機能のSQL
       SELECT  
+-- 2009/09/02 Ver.1.6 Add Start
+        /*+
+          LEADING ( lbiv.obc.fu )
+          INDEX   ( lbiv.obc.fu fnd_user_u1)
+          USE_NL  ( lbiv.obc.papf )
+          INDEX   ( lbiv.obc.papf per_people_f_pk)
+          USE_NL  ( lbiv.obc.ppt )
+          INDEX   ( lbiv.obc.ppt per_person_types_pk)
+          USE_NL  ( lbiv.obc.paaf )
+          INDEX   ( lbiv.obc.paaf per_assignments_f_n12)
+          USE_NL  ( lbiv.xca )
+          INDEX   ( lbiv.xca xxcmm_cust_accounts_pk )
+          USE_NL  ( seh )
+          INDEX   ( seh xxcos_sales_exp_headers_n01 )
+        */
+-- 2009/09/02 Ver.1.6 Add End
         seh.sales_base_code               base_code,        --売上拠点コード
         lbiv.base_name                    base_name,        --売上拠点名
         seh.results_employee_code         emp_code,         --営業担当者コード
@@ -894,9 +911,12 @@ AS
                       )
       --売上拠点コードを絞込み
 -- ******** 2009/08/13 1.5 N.Maeda MOD START *********** --
-      AND   ( ( iv_sale_base_code IS NULL AND EXISTS( SELECT 'Y'
-                                                      FROM   xxcos_login_base_info_v lbiv1
-                                                      WHERE  seh.sales_base_code = lbiv1.base_code ) )
+-- 2009/09/02 Ver.1.6 Mod Start
+      AND   ( ( iv_sale_base_code IS NULL )
+--      AND   ( ( iv_sale_base_code IS NULL AND EXISTS( SELECT 'Y'
+--                                                      FROM   xxcos_login_base_info_v lbiv1
+--                                                      WHERE  seh.sales_base_code = lbiv1.base_code ) )
+-- 2009/09/02 Ver.1.6 Mod End
         OR ( iv_sale_base_code IS NOT NULL AND iv_sale_base_code = seh.sales_base_code ) )
 --      AND   1 = (
 --                 CASE
@@ -1034,6 +1054,22 @@ AS
       UNION ALL
       --作成元が消化計算の商品別売上計算（百貨店・インショップ／専門店・直営）機能のSQL
       SELECT  
+-- 2009/09/02 Ver.1.6 Add Start
+        /*+
+          LEADING ( lbiv.obc.fu )
+          INDEX   ( lbiv.obc.fu fnd_user_u1)
+          USE_NL  ( lbiv.obc.papf )
+          INDEX   ( lbiv.obc.papf per_people_f_pk)
+          USE_NL  ( lbiv.obc.ppt )
+          INDEX   ( lbiv.obc.ppt per_person_types_pk)
+          USE_NL  ( lbiv.obc.paaf )
+          INDEX   ( lbiv.obc.paaf per_assignments_f_n12)
+          USE_NL  ( lbiv.xca )
+          INDEX   ( lbiv.xca xxcmm_cust_accounts_pk )
+          USE_NL  ( seh )
+          INDEX   ( seh xxcos_sales_exp_headers_n01 )
+        */
+-- 2009/09/02 Ver.1.6 Add End
         seh.sales_base_code               base_code,        --売上拠点コード
         lbiv.base_name                    base_name,        --売上拠点名
         seh.results_employee_code         emp_code,         --営業担当者コード
@@ -1177,9 +1213,12 @@ AS
                       )
       --売上拠点コードを絞込み
 -- ******** 2009/08/13 1.5 N.Maeda MOD START *********** --
-      AND  ( ( iv_sale_base_code IS NULL AND EXISTS( SELECT 'Y' 
-                                                     FROM   xxcos_login_base_info_v lbiv1 
-                                                     WHERE  seh.sales_base_code = lbiv1.base_code ) )
+-- 2009/09/02 Ver.1.6 Mod Start
+      AND  ( ( iv_sale_base_code IS NULL )
+--      AND  ( ( iv_sale_base_code IS NULL AND EXISTS( SELECT 'Y' 
+--                                                     FROM   xxcos_login_base_info_v lbiv1 
+--                                                     WHERE  seh.sales_base_code = lbiv1.base_code ) )
+-- 2009/09/02 Ver.1.6 Mod End
              OR ( iv_sale_base_code IS NOT NULL AND iv_sale_base_code = seh.sales_base_code ) )
 --      AND   1 = (
 --                 CASE
