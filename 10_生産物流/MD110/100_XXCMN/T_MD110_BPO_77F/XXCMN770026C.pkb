@@ -7,7 +7,7 @@ AS
  * Description      : 出庫実績表
  * MD.050/070       : 月次〆処理(経理)Issue1.0 (T_MD050_BPO_770)
  *                    月次〆処理(経理)Issue1.0 (T_MD070_BPO_77F)
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *  2008/12/18    1.21  A.Shiina         本番#799対応
  *  2009/01/09    1.22  A.Shiina         本番#987対応
  *  2009/01/10    1.23  A.Shiina         本番#987対応(再対応)
+ *  2009/01/21    1.24  N.Yoshida        本番#1016対応(v1.23の取り止めを含む)
  *
  *****************************************************************************************/
 --
@@ -809,39 +810,45 @@ AS
     || ' ,(' 
     || ' ROUND((CASE iimb2.attribute15'
 -- 2009/01/16 v1.23 UPDATE START
---    || '          WHEN ''1'' THEN xsupv.stnd_unit_price' 
-    || ' WHEN ''1'' THEN ' 
-    || ' NVL((SELECT xsupv.stnd_unit_price '
-    || ' FROM xxcmn_stnd_unit_price_v xsupv '
-    || ' WHERE xsupv.item_id = itp.item_id '
-    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date) '
-    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date) '
-    || ' ), 0) '
+-- 2009/01/22 v1.24 UPDATE START
+    || '          WHEN ''1'' THEN NVL(xsupv.stnd_unit_price, 0) ' 
+--    || ' WHEN ''1'' THEN ' 
+--    || ' NVL((SELECT xsupv.stnd_unit_price '
+--    || ' FROM xxcmn_stnd_unit_price_v xsupv '
+--    || ' WHERE xsupv.item_id = itp.item_id '
+--    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date) '
+--    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date) '
+--    || ' ), 0) '
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/16 v1.23 UPDATE END
     || '          ELSE DECODE(iimb2.lot_ctl' 
     || '                     ,1,NVL(xlc.unit_ploce, 0)' 
 -- 2009/01/16 v1.23 UPDATE START
---    || '                     ,xsupv.stnd_unit_price)' 
-    || ' ,NVL((SELECT xsupv.stnd_unit_price '
-    || ' FROM xxcmn_stnd_unit_price_v xsupv '
-    || ' WHERE xsupv.item_id = itp.item_id '
-    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date) '
-    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date) '
-    || ' ), 0)) '
+-- 2009/01/22 v1.24 UPDATE START
+    || '                     ,NVL(xsupv.stnd_unit_price, 0))' 
+--    || ' ,NVL((SELECT xsupv.stnd_unit_price '
+--    || ' FROM xxcmn_stnd_unit_price_v xsupv '
+--    || ' WHERE xsupv.item_id = itp.item_id '
+--    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date) '
+--    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date) '
+--    || ' ), 0)) '
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/16 v1.23 UPDATE END
     || '        END) * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))' 
     || ' ) AS actual_price' -- 実際金額
 -- 2008/12/02 v1.14 UPDATE END
 -- 2009/01/16 v1.23 UPDATE START
---    || ' ,ROUND(xsupv.stnd_unit_price * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
-    || ' ,ROUND( '
-    || ' (NVL((SELECT xsupv.stnd_unit_price '
-    || ' FROM xxcmn_stnd_unit_price_v xsupv '
-    || ' WHERE xsupv.item_id = itp.item_id '
-    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date) '
-    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date) '
-    || ' ), 0) '
-    || ' ) * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+-- 2009/01/22 v1.24 UPDATE START
+    || ' ,ROUND(NVL(xsupv.stnd_unit_price, 0) * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+--    || ' ,ROUND( '
+--    || ' (NVL((SELECT xsupv.stnd_unit_price '
+--    || ' FROM xxcmn_stnd_unit_price_v xsupv '
+--    || ' WHERE xsupv.item_id = itp.item_id '
+--    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date) '
+--    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date) '
+--    || ' ), 0) '
+--    || ' ) * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/16 v1.23 UPDATE END
     || ' ) AS stnd_price' -- 標準金額
 -- 2008/12/02 v1.14 UPDATE START
@@ -878,7 +885,10 @@ AS
     || ' ,NULL                    AS group1_name' -- 成績部署名称
 --    || ' ,mct.description         AS group2_name' -- 品目区分名称
     || ' ,NULL                    AS group2_name' -- 品目区分名称
-    || ' ,NULL                    AS group3_name' -- 倉庫名称
+-- 2009/01/21 v1.24 UPDATE START
+--    || ' ,NULL                    AS group3_name' -- 倉庫名称
+    || ' ,iwm.whse_name           AS group3_name' -- 倉庫名称
+-- 2009/01/21 v1.24 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
 --    || ' ,xpv.party_short_name    AS group4_name' -- 出荷先名称
     || ' ,xp.party_short_name    AS group4_name' -- 出荷先名称
@@ -898,7 +908,10 @@ AS
     || ' ,NULL                    AS group1_name' -- 成績部署名称
 --    || ' ,mct.description         AS group2_name' -- 品目区分名称
     || ' ,NULL                    AS group2_name' -- 品目区分名称
-    || ' ,NULL                    AS group3_name' -- 倉庫名称
+-- 2009/01/21 v1.24 UPDATE START
+--    || ' ,NULL                    AS group3_name' -- 倉庫名称
+    || ' ,iwm.whse_name           AS group3_name' -- 倉庫名称
+-- 2009/01/21 v1.24 UPDATE END
     || ' ,pv.vendor_name          AS group4_name' -- 支給先名称
     ;
 --
@@ -915,7 +928,10 @@ AS
     || ' ,NULL                    AS group1_name' -- 成績部署名称
 --    || ' ,mct.description         AS group2_name' -- 品目区分名称
     || ' ,NULL                    AS group2_name' -- 品目区分名称
-    || ' ,NULL                    AS group3_name' -- 倉庫名称
+-- 2009/01/21 v1.24 UPDATE START
+--    || ' ,NULL                    AS group3_name' -- 倉庫名称
+    || ' ,iwm.whse_name           AS group3_name' -- 倉庫名称
+-- 2009/01/21 v1.24 UPDATE END
     || ' ,NULL                    AS group4_name' -- NULL
 -- 2008/12/13 v1.16 ADD END
     ;
@@ -986,7 +1002,10 @@ AS
 -- 2008/12/13 v1.16 ADD START
 --    || ' ,mct.description         AS group1_name' -- 品目区分名称
     || ' ,NULL                    AS group1_name' -- 品目区分名称
-    || ' ,NULL                    AS group2_name' -- 倉庫名称
+-- 2009/01/21 v1.24 UPDATE START
+--    || ' ,NULL                    AS group2_name' -- 倉庫名称
+    || ' ,iwm.whse_name           AS group2_name' -- 倉庫名称
+-- 2009/01/21 v1.24 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
 --    || ' ,xpv.party_short_name    AS group3_name' -- 出荷先名称
     || ' ,xp.party_short_name    AS group3_name' -- 出荷先名称
@@ -1005,7 +1024,10 @@ AS
     || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
 --    || ' ,mct.description         AS group1_name' -- 品目区分名称
     || ' ,NULL                    AS group1_name' -- 品目区分名称
-    || ' ,NULL                    AS group2_name' -- 倉庫名称
+-- 2009/01/21 v1.24 UPDATE START
+--    || ' ,NULL                    AS group2_name' -- 倉庫名称
+    || ' ,iwm.whse_name           AS group2_name' -- 倉庫名称
+-- 2009/01/21 v1.24 UPDATE END
     || ' ,pv.vendor_name          AS group3_name' -- 支給先名称
     || ' ,NULL                    AS group4_name' -- NULL
     ;
@@ -1021,7 +1043,10 @@ AS
 -- 2008/12/13 v1.16 ADD START
 --    || ' ,mct.description         AS group1_name' -- 品目区分名称
     || ' ,NULL                    AS group1_name' -- 品目区分名称
-    || ' ,NULL                    AS group2_name' -- 倉庫名称
+-- 2009/01/21 v1.24 UPDATE START
+--    || ' ,NULL                    AS group2_name' -- 倉庫名称
+    || ' ,iwm.whse_name           AS group2_name' -- 倉庫名称
+-- 2009/01/21 v1.24 UPDATE END
     || ' ,NULL                    AS group3_name' -- NULL
     || ' ,NULL                    AS group4_name' -- NULL
 -- 2008/12/13 v1.16 ADD END
@@ -1133,7 +1158,9 @@ AS
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
 -- 2009/01/16 v1.23 DELETE START
---    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/16 v1.23 DELETE END
 -- 2008/12/17 v1.20 UPDATE START
 /*
@@ -1150,6 +1177,9 @@ AS
 -- 2008/12/13 v1.17 N.Yoshida mod start
     || ' ,xxcmn_rcv_pay_mst xrpm'
 -- 2008/12/13 v1.16 ADD START
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' ,ic_whse_mst iwm'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 --    || ' ,hr_locations_all  hla '
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
@@ -1206,9 +1236,11 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/16 v1.23 DELETE START
---    || ' AND xsupv.item_id(+) = itp.item_id' 
---    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
---    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' AND xsupv.item_id(+) = itp.item_id' 
+    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE START
 -- 2009/01/16 v1.23 DELETE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
@@ -1232,6 +1264,9 @@ AS
     || ' AND xrpm.dealings_div = ''102''' 
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' AND itp.whse_code = iwm.whse_code'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 -- 2008/12/13 v1.16 ADD START
 --    || ' AND hla.location_code  = ooha.attribute11'
 --    || ' AND hla.location_id    = xla.location_id'
@@ -1274,7 +1309,9 @@ AS
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
 -- 2009/01/16 v1.23 DELETE START
---    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/16 v1.23 DELETE END
 -- 2008/12/17 v1.20 UPDATE START
 /*
@@ -1291,6 +1328,9 @@ AS
 -- 2008/12/13 v1.17 N.Yoshida mod start
     || ' ,xxcmn_rcv_pay_mst xrpm'
 -- 2008/12/13 v1.16 ADD START
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' ,ic_whse_mst iwm'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 --    || ' ,hr_locations_all  hla '
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
@@ -1345,9 +1385,11 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/16 v1.23 DELETE START
---    || ' AND xsupv.item_id(+) = itp.item_id' 
---    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
---    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' AND xsupv.item_id(+) = itp.item_id' 
+    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/16 v1.23 DELETE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
@@ -1371,6 +1413,9 @@ AS
     || ' AND xrpm.dealings_div = ''101''' 
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' AND itp.whse_code = iwm.whse_code'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 -- 2008/12/13 v1.16 ADD START
 --    || ' AND hla.location_code  = ooha.attribute11'
 --    || ' AND hla.location_id    = xla.location_id'
@@ -1413,7 +1458,9 @@ AS
     || ' ,xxcmn_item_mst_b ximb2'
 --    || ' ,ic_item_mst_b iimb3'
 -- 2009/01/16 v1.12 DELETE START
---    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/16 v1.12 DELETE END
 -- 2008/12/17 v1.20 UPDATE START
 /*
@@ -1430,6 +1477,9 @@ AS
 -- 2008/12/13 v1.17 N.Yoshida mod start
     || ' ,xxcmn_rcv_pay_mst xrpm'
 -- 2008/12/13 v1.16 ADD START
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' ,ic_whse_mst iwm'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 --    || ' ,hr_locations_all  hla '
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
@@ -1489,9 +1539,11 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/16 v1.12 DELETE START
---    || ' AND xsupv.item_id(+) = iimb2.item_id' 
---    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
---    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' AND xsupv.item_id(+) = iimb2.item_id' 
+    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/16 v1.12 DELETE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
@@ -1515,6 +1567,9 @@ AS
     || ' AND xrpm.dealings_div = ''112''' 
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' AND itp.whse_code = iwm.whse_code'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 -- 2008/12/13 v1.16 ADD START
 --    || ' AND hla.location_code  = ooha.attribute11'
 --    || ' AND hla.location_id    = xla.location_id'
@@ -1554,7 +1609,9 @@ AS
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
 -- 2009/01/16 v1.23 DELETE START
---    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/16 v1.23 DELETE END
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
@@ -1563,6 +1620,9 @@ AS
 -- 2008/12/13 v1.17 DELETE END
     || ' ,xxcmn_rcv_pay_mst xrpm'
 -- 2008/12/13 v1.16 ADD START
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' ,ic_whse_mst iwm'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 --    || ' ,hr_locations_all  hla '
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
@@ -1617,9 +1677,11 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/16 v1.23 DELETE START
---    || ' AND xsupv.item_id(+) = itp.item_id' 
---    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
---    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' AND xsupv.item_id(+) = itp.item_id' 
+    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/16 v1.23 DELETE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
@@ -1642,6 +1704,9 @@ AS
     || ' OR xrpm.item_div_origin IS NULL)' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
     || ' AND xrpm.item_div_origin = mcb2.segment1' 
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' AND itp.whse_code = iwm.whse_code'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 -- 2008/12/13 v1.16 ADD START
 --    || ' AND hla.location_code  = ooha.attribute11'
 --    || ' AND hla.location_id    = xla.location_id'
@@ -1678,7 +1743,9 @@ AS
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
 -- 2009/01/16 v1.23 DELETE START
---    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/16 v1.23 DELETE END
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
@@ -1687,6 +1754,9 @@ AS
 -- 2008/12/13 v1.17 DELETE END
     || ' ,xxcmn_rcv_pay_mst xrpm'
 -- 2008/12/13 v1.16 ADD START
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' ,ic_whse_mst iwm'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 --    || ' ,hr_locations_all  hla '
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
@@ -1741,9 +1811,11 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/16 v1.23 DELETE START
---    || ' AND xsupv.item_id(+) = itp.item_id' 
---    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
---    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' AND xsupv.item_id(+) = itp.item_id' 
+    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/16 v1.23 DELETE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
@@ -1766,6 +1838,9 @@ AS
     || ' OR xrpm.item_div_origin IS NULL)' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
     || ' AND xrpm.item_div_origin IS NULL' 
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' AND itp.whse_code = iwm.whse_code'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 -- 2008/12/13 v1.16 ADD START
 --    || ' AND hla.location_code  = ooha.attribute11'
 --    || ' AND hla.location_id    = xla.location_id'
@@ -1805,7 +1880,9 @@ AS
     || ' ,xxcmn_item_mst_b ximb2'
 --    || ' ,ic_item_mst_b iimb3'
 -- 2009/01/09 v1.22 UPDATE START
---    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
@@ -1814,6 +1891,9 @@ AS
 -- 2008/12/13 v1.17 DELETE END
     || ' ,xxcmn_rcv_pay_mst xrpm'
 -- 2008/12/13 v1.16 ADD START
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' ,ic_whse_mst iwm'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 --    || ' ,hr_locations_all  hla '
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
@@ -1873,9 +1953,11 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/09 v1.22 UPDATE START
---    || ' AND xsupv.item_id(+) = iimb2.item_id' 
---    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
---    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' AND xsupv.item_id(+) = iimb2.item_id' 
+    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
@@ -1895,6 +1977,9 @@ AS
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' AND itp.whse_code = iwm.whse_code'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 -- 2008/12/13 v1.16 ADD START
 --    || ' AND hla.location_code  = ooha.attribute11'
 --    || ' AND hla.location_id    = xla.location_id'
@@ -1936,7 +2021,9 @@ AS
     || ' ,xxcmn_item_mst_b ximb2'
 --    || ' ,ic_item_mst_b iimb3'
 -- 2009/01/09 v1.22 UPDATE START
---    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
@@ -1945,6 +2032,9 @@ AS
 -- 2008/12/13 v1.17 DELETE END
     || ' ,xxcmn_rcv_pay_mst xrpm'
 -- 2008/12/13 v1.16 ADD START
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' ,ic_whse_mst iwm'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 --    || ' ,hr_locations_all  hla '
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
@@ -2008,10 +2098,11 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/09 v1.22 UPDATE START
---    || ' AND xsupv.item_id(+) = iimb2.item_id' 
---    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
---    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
--- 2009/01/09 v1.22 UPDATE END
+-- 2009/01/22 v1.24 UPDATE START
+    || ' AND xsupv.item_id(+) = iimb2.item_id' 
+    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
     || ' AND pv.vendor_id = pvsa.vendor_id' 
@@ -2030,6 +2121,9 @@ AS
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' AND itp.whse_code = iwm.whse_code'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 -- 2008/12/13 v1.16 ADD START
 --    || ' AND hla.location_code  = ooha.attribute11'
 --    || ' AND hla.location_id    = xla.location_id'
@@ -2066,7 +2160,9 @@ AS
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
 -- 2009/01/09 v1.22 UPDATE START
---    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
 /*
@@ -2083,6 +2179,9 @@ AS
 -- 2008/12/13 v1.17 N.Yoshida mod start
     || ' ,xxcmn_rcv_pay_mst xrpm'
 -- 2008/12/13 v1.16 ADD START
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' ,ic_whse_mst iwm'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 --    || ' ,hr_locations_all  hla '
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
@@ -2139,9 +2238,11 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/09 v1.22 UPDATE START
---    || ' AND xsupv.item_id(+) = itp.item_id' 
---    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
---    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' AND xsupv.item_id(+) = itp.item_id' 
+    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
@@ -2163,6 +2264,9 @@ AS
     || ' AND xrpm.dealings_div = ''102''' 
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' AND itp.whse_code = iwm.whse_code'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 -- 2008/12/13 v1.16 ADD START
 --    || ' AND hla.location_code  = ooha.attribute11'
 --    || ' AND hla.location_id    = xla.location_id'
@@ -2202,7 +2306,9 @@ AS
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
 -- 2009/01/09 v1.22 UPDATE START
---    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
 /*
@@ -2220,6 +2326,9 @@ AS
 -- 2008/12/13 v1.17 N.Yoshida mod start
     || ' ,xxcmn_rcv_pay_mst xrpm'
 -- 2008/12/13 v1.16 ADD START
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' ,ic_whse_mst iwm'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 --    || ' ,hr_locations_all  hla '
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
@@ -2274,9 +2383,11 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/09 v1.22 UPDATE START
---    || ' AND xsupv.item_id(+) = itp.item_id' 
---    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
---    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' AND xsupv.item_id(+) = itp.item_id' 
+    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
@@ -2299,6 +2410,9 @@ AS
     || ' AND xrpm.dealings_div = ''101''' 
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' AND itp.whse_code = iwm.whse_code'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 -- 2008/12/13 v1.16 ADD START
 --    || ' AND hla.location_code  = ooha.attribute11'
 --    || ' AND hla.location_id    = xla.location_id'
@@ -2341,7 +2455,9 @@ AS
     || ' ,xxcmn_item_mst_b ximb2'
 --    || ' ,ic_item_mst_b iimb3'
 -- 2009/01/09 v1.22 UPDATE START
---    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
 /*
@@ -2358,6 +2474,9 @@ AS
 -- 2008/12/13 v1.17 N.Yoshida mod start
     || ' ,xxcmn_rcv_pay_mst xrpm'
 -- 2008/12/13 v1.16 ADD START
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' ,ic_whse_mst iwm'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 --    || ' ,hr_locations_all  hla '
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
@@ -2416,9 +2535,11 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/09 v1.22 UPDATE START
---    || ' AND xsupv.item_id(+) = iimb2.item_id' 
---    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
---    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' AND xsupv.item_id(+) = iimb2.item_id' 
+    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
@@ -2441,6 +2562,9 @@ AS
     || ' AND xrpm.dealings_div = ''112''' 
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' AND itp.whse_code = iwm.whse_code'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 -- 2008/12/13 v1.16 ADD START
 --    || ' AND hla.location_code  = ooha.attribute11'
 --    || ' AND hla.location_id    = xla.location_id'
@@ -2480,7 +2604,9 @@ AS
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
 -- 2009/01/09 v1.22 UPDATE START
---    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
@@ -2489,6 +2615,9 @@ AS
 -- 2008/12/13 v1.17 DELETE END
     || ' ,xxcmn_rcv_pay_mst xrpm'
 -- 2008/12/13 v1.16 ADD START
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' ,ic_whse_mst iwm'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 --    || ' ,hr_locations_all  hla '
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
@@ -2543,9 +2672,11 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/09 v1.22 UPDATE START
---    || ' AND xsupv.item_id(+) = itp.item_id' 
---    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
---    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' AND xsupv.item_id(+) = itp.item_id' 
+    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
@@ -2567,6 +2698,9 @@ AS
     || ' OR xrpm.item_div_origin IS NULL)' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
     || ' AND xrpm.item_div_origin = mcb2.segment1' 
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' AND itp.whse_code = iwm.whse_code'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 -- 2008/12/13 v1.16 ADD START
 --    || ' AND hla.location_code  = ooha.attribute11'
 --    || ' AND hla.location_id    = xla.location_id'
@@ -2603,7 +2737,9 @@ AS
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
 -- 2009/01/09 v1.22 UPDATE START
---    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
@@ -2612,6 +2748,9 @@ AS
 -- 2008/12/13 v1.17 DELETE END
     || ' ,xxcmn_rcv_pay_mst xrpm'
 -- 2008/12/13 v1.16 ADD START
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' ,ic_whse_mst iwm'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 --    || ' ,hr_locations_all  hla '
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
@@ -2666,9 +2805,11 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/09 v1.22 UPDATE START
---    || ' AND xsupv.item_id(+) = itp.item_id' 
---    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
---    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' AND xsupv.item_id(+) = itp.item_id' 
+    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
@@ -2690,6 +2831,9 @@ AS
     || ' OR xrpm.item_div_origin IS NULL)' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
     || ' AND xrpm.item_div_origin IS NULL' 
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' AND itp.whse_code = iwm.whse_code'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 -- 2008/12/13 v1.16 ADD START
 --    || ' AND hla.location_code  = ooha.attribute11'
 --    || ' AND hla.location_id    = xla.location_id'
@@ -2729,7 +2873,9 @@ AS
     || ' ,xxcmn_item_mst_b ximb2'
 --    || ' ,ic_item_mst_b iimb3'
 -- 2009/01/09 v1.22 UPDATE START
---    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
@@ -2738,6 +2884,9 @@ AS
 -- 2008/12/13 v1.17 DELETE END
     || ' ,xxcmn_rcv_pay_mst xrpm'
 -- 2008/12/13 v1.16 ADD START
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' ,ic_whse_mst iwm'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 --    || ' ,hr_locations_all  hla '
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
@@ -2796,9 +2945,11 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/09 v1.22 UPDATE START
---    || ' AND xsupv.item_id(+) = iimb2.item_id' 
---    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
---    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' AND xsupv.item_id(+) = iimb2.item_id' 
+    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
@@ -2817,6 +2968,9 @@ AS
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' AND itp.whse_code = iwm.whse_code'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 -- 2008/12/13 v1.16 ADD START
 --    || ' AND hla.location_code  = ooha.attribute11'
 --    || ' AND hla.location_id    = xla.location_id'
@@ -2858,7 +3012,9 @@ AS
     || ' ,xxcmn_item_mst_b ximb2'
 --    || ' ,ic_item_mst_b iimb3'
 -- 2009/01/09 v1.22 UPDATE START
---    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
@@ -2867,6 +3023,9 @@ AS
 -- 2008/12/13 v1.17 DELETE END
     || ' ,xxcmn_rcv_pay_mst xrpm'
 -- 2008/12/13 v1.16 ADD START
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' ,ic_whse_mst iwm'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 --    || ' ,hr_locations_all  hla '
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
@@ -2930,9 +3089,11 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/09 v1.22 UPDATE START
---    || ' AND xsupv.item_id(+) = iimb2.item_id' 
---    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
---    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE START
+    || ' AND xsupv.item_id(+) = iimb2.item_id' 
+    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/22 v1.24 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
@@ -2951,6 +3112,9 @@ AS
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2009/01/21 v1.24 N.Yoshida ADD START
+    || ' AND itp.whse_code = iwm.whse_code'
+-- 2009/01/21 v1.24 N.Yoshida ADD END
 -- 2008/12/13 v1.16 ADD START
 --    || ' AND hla.location_code  = ooha.attribute11'
 --    || ' AND hla.location_id    = xla.location_id'
@@ -2968,19 +3132,22 @@ AS
  --===============================================================
  -- GROUP1 PTN01
  --===============================================================
+-- 2009/01/22 v1.24 UPDATE START
+-- ヒント句にpush_pred(xsupv)を一律追加
+-- 2009/01/22 v1.24 UPDATE START
 --
  -- PORC_102
     lv_select_g1_po102_1_hint :=
        --' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 rsl ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 rsl ooha otta) */'; 
 -- 2008/12/17 v1.20 UPDTE START
 --       ' SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */'; 
 -- 2008/12/17 v1.20 UPDTE END
 --
  -- PORC_101
     lv_select_g1_po101_1_hint :=
        --' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 rsl ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 rsl ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */'; 
 --
  -- PORC_112
     lv_select_g1_po112_1_hint :=
@@ -2988,71 +3155,71 @@ AS
        --' SELECT /*+ leading (itp rsl xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (itp rsl xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
 -- 2008/12/17 v1.20 UPDATE START
 --       ' SELECT /*+ leading (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */';
-       ' SELECT /*+ leading (xoha ooha otta xola iimb2 gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola iimb2 gic1 mcb1 gic2 mcb2) */';
+       ' SELECT /*+ leading (xoha ooha otta xola iimb2 gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola iimb2 gic1 mcb1 gic2 mcb2) push_pred(xsupv) */';
 -- 2008/12/17 v1.20 UPDATE END
 --
  -- PORC_103_5
     lv_select_g1_po103x5_1_hint :=
        --' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 rsl ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 rsl ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */'; 
 -- 
  -- PORC_103_124
     lv_select_g1_po103x124_1_hint :=
        --' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 rsl ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 rsl ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */'; 
 -- 
  -- PORC_105
     lv_select_g1_po105_1_hint :=
        --' SELECT /*+ leading(itp rsl xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl(itp rsl xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
        --' SELECT /*+ leading (itp rsl xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (itp rsl xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) push_pred(xsupv) */'; 
 -- 
  -- PORC_108
     lv_select_g1_po108_1_hint :=
        --' SELECT /*+ leading(itp gic4 mcb4 gic5 mcb5 rsl xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl(itp gic4 mcb4 gic5 mcb5 rsl xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
        --' SELECT /*+ leading (itp rsl xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (itp rsl xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) push_pred(xsupv) */'; 
 -- 
  -- OMSO_102
     lv_select_g1_om102_1_hint :=
        --' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 wdd ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 wdd ooha otta)*/';
 -- 2008/12/17 v1.20 UPDATE START
 --       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */';
-       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */';
+       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) push_pred(xsupv) */';
 -- 2008/12/17 v1.20 UPDATE END
 -- 
  -- OMSO_101
     lv_select_g1_om101_1_hint :=
        --' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 wdd ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 wdd ooha otta)*/';
-       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */';
+       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */';
 -- 
  -- OMSO_112
     lv_select_g1_om112_1_hint :=
        --' SELECT /*+ leading(itp wdd xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl(itp wdd xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta)*/';
-       ' SELECT /*+ leading (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */';
+       ' SELECT /*+ leading (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) push_pred(xsupv) */';
 -- 
  -- OMSO_103_5
     lv_select_g1_om103x5_1_hint :=
        --' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 wdd ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 wdd ooha otta)*/';
 -- 2008/12/17 v1.20 UPDATE START
 --       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */';
-       ' SELECT /*+ leading (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) */';
+       ' SELECT /*+ leading (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) push_pred(xsupv) */';
 -- 2008/12/17 v1.20 UPDATE END
 -- 
  -- OMSO_103_124
     lv_select_g1_om103x124_1_hint :=
        --' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 wdd ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 wdd ooha otta)*/';
-       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */';
+       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */';
 -- 
  -- OMSO_105
     lv_select_g1_om105_1_hint :=
        --' SELECT /*+ leading(itp wdd xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta xrpm) use_nl(itp wdd xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta xrpm) */';
-       ' SELECT /*+ leading (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */';
+       ' SELECT /*+ leading (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) push_pred(xsupv) */';
 -- 
  -- OMSO_108
     lv_select_g1_om108_1_hint :=
        --' SELECT /*+ leading(itp gic4 mcb4 gic5 mcb5 wdd xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl(itp gic4 mcb4 gic5 mcb5 wdd xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta) */';
-       ' SELECT /*+ leading (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */';
+       ' SELECT /*+ leading (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) push_pred(xsupv) */';
 
  --===============================================================
  -- GROUP1 PTN02
@@ -3061,75 +3228,75 @@ AS
  -- PORC_102
     lv_select_g1_po102_2_hint :=
        --' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 rsl ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 rsl ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */'; 
 --
  -- PORC_101
     lv_select_g1_po101_2_hint :=
        --' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 rsl ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 rsl ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */'; 
 --
  -- PORC_112
     lv_select_g1_po112_2_hint :=
        --' SELECT /*+ leading(itp rsl xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl(itp rsl xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
        --' SELECT /*+ leading (itp rsl xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (itp rsl xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */';
+       ' SELECT /*+ leading (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) push_pred(xsupv) */';
 --
  -- PORC_103_5
     lv_select_g1_po103x5_2_hint :=
        --' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 rsl ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 rsl ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */'; 
 -- 
  -- PORC_103_124
     lv_select_g1_po103x124_2_hint :=
        --' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 rsl ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 rsl ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */'; 
 -- 
  -- PORC_105
     lv_select_g1_po105_2_hint :=
        --' SELECT /*+ leading(itp rsl xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl(itp rsl xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
        --' SELECT /*+ leading (itp rsl xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (itp rsl xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) push_pred(xsupv) */'; 
 -- 
  -- PORC_108
     lv_select_g1_po108_2_hint :=
        --' SELECT /*+ leading(itp rsl xola iimb3 gic2 mcb2 gic1 mcb1 gic4 mcb4 gic5 mcb5 ooha otta) use_nl(itp rsl xola iimb3 gic2 mcb2 gic1 gic4 mcb4 gic5 mcb5 mcb1 ooha otta) */'; 
        --' SELECT /*+ leading (itp rsl xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (itp rsl xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) push_pred(xsupv) */'; 
 -- 
  -- OMSO_102
     lv_select_g1_om102_2_hint :=
        --' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 wdd ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 wdd ooha otta)*/';
-       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */';
+       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */';
 -- 
  -- OMSO_101
     lv_select_g1_om101_2_hint :=
        --' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 wdd ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 wdd ooha otta)*/';
-       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */';
+       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */';
 -- 
  -- OMSO_112
     lv_select_g1_om112_2_hint :=
        --' SELECT /*+ leading(itp wdd xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl(itp wdd xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta)*/';
-       ' SELECT /*+ leading (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */';
+       ' SELECT /*+ leading (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) push_pred(xsupv) */';
 -- 
  -- OMSO_103_5
     lv_select_g1_om103x5_2_hint :=
        --' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 wdd ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 wdd ooha otta)*/';
-       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */';
+       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */';
 -- 
  -- OMSO_103_124
     lv_select_g1_om103x124_2_hint :=
        --' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 wdd ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 wdd ooha otta)*/';
-       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */';
+       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */';
 -- 
  -- OMSO_105
     lv_select_g1_om105_2_hint :=
        --' SELECT /*+ leading(itp wdd xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta xrpm) use_nl(itp wdd xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta xrpm) */';
-       ' SELECT /*+ leading (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */';
+       ' SELECT /*+ leading (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) push_pred(xsupv) */';
 -- 
  -- OMSO_108
     lv_select_g1_om108_2_hint :=
        --' SELECT /*+ leading(itp wdd xola iimb3 gic2 mcb2 gic1 mcb1 gic4 mcb4 gic5 mcb5 ooha otta) use_nl(itp wdd xola iimb3 gic2 mcb2 gic1 mcb1 gic4 mcb4 gic5 mcb5 ooha otta) */';
-       ' SELECT /*+ leading (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */';
+       ' SELECT /*+ leading (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) push_pred(xsupv) */';
  --===============================================================
  -- GROUP1 PTN03
  --===============================================================
@@ -3137,75 +3304,75 @@ AS
  -- PORC_102
     lv_select_g1_po102_3_hint :=
        --' SELECT /*+ leading(itp gic3 mcb3 gic2 mcb2 gic1 mcb1 rsl ooha otta) use_nl(itp gic3 mcb3 gic2 mcb2 gic1 mcb1 rsl ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola rsl itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola rsl itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */'; 
 --
  -- PORC_101
     lv_select_g1_po101_3_hint :=
        --' SELECT /*+ leading(itp gic3 mcb3 gic2 mcb2 gic1 mcb1 rsl ooha otta) use_nl(itp gic3 mcb3 gic2 mcb2 gic1 mcb1 rsl ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola rsl itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola rsl itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */'; 
 --
  -- PORC_112
     lv_select_g1_po112_3_hint :=
        --' SELECT /*+ leading(itp rsl xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl(itp rsl xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
        --' SELECT /*+ leading (itp rsl xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (itp rsl xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola gic3 mcb3 iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */';
+       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola gic3 mcb3 iimb2 gic2 mcb2 gic1 mcb1 ooha otta) push_pred(xsupv) */';
 --
  -- PORC_103_5
     lv_select_g1_po103x5_3_hint :=
        --' SELECT /*+ leading(itp gic3 mcb3 gic2 mcb2 gic1 mcb1 rsl ooha otta) use_nl(itp gic3 mcb3 gic2 mcb2 gic1 mcb1 rsl ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola rsl itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola rsl itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */'; 
 -- 
  -- PORC_103_124
     lv_select_g1_po103x124_3_hint :=
        --' SELECT /*+ leading(itp gic3 mcb3 gic2 mcb2 gic1 mcb1 rsl ooha otta) use_nl(itp gic3 mcb3 gic2 mcb2 gic1 mcb1 rsl ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola rsl itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola rsl itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */'; 
 -- 
  -- PORC_105
     lv_select_g1_po105_3_hint :=
        --' SELECT /*+ leading(itp rsl xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl(itp rsl xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
        --' SELECT /*+ leading (itp rsl xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (itp rsl xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) push_pred(xsupv) */'; 
 -- 
  -- PORC_108
     lv_select_g1_po108_3_hint :=
        --' SELECT /*+ leading(itp rsl xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1 gic4 mcb4 gic5 mcb5 ooha otta) use_nl(itp rsl xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1 gic4 mcb4 gic5 mcb5 ooha otta) */'; 
        --' SELECT /*+ leading (itp rsl xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (itp rsl xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) push_pred(xsupv) */'; 
 -- 
  -- OMSO_102
     lv_select_g1_om102_3_hint :=
        --' SELECT /*+ leading(itp gic3 mcb3 gic2 mcb2 gic1 mcb1 wdd ooha otta) use_nl(itp gic3 mcb3 gic2 mcb2 gic1 mcb1 wdd ooha otta)*/';
-       ' SELECT /*+ leading (xoha xola wdd itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) */';
+       ' SELECT /*+ leading (xoha xola wdd itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */';
 -- 
  -- OMSO_101
     lv_select_g1_om101_3_hint :=
        --' SELECT /*+ leading(itp gic3 mcb3 gic2 mcb2 gic1 mcb1 wdd ooha otta) use_nl(itp gic3 mcb3 gic2 mcb2 gic1 mcb1 wdd ooha otta)*/';
-       ' SELECT /*+ leading (xoha xola wdd itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) */';
+       ' SELECT /*+ leading (xoha xola wdd itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */';
 -- 
  -- OMSO_112
     lv_select_g1_om112_3_hint :=
        --' SELECT /*+ leading(itp wdd xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl(itp wdd xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta)*/';
-       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */';
+       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) push_pred(xsupv) */';
 -- 
  -- OMSO_103_5
     lv_select_g1_om103x5_3_hint :=
        --' SELECT /*+ leading(itp gic3 mcb3 gic2 mcb2 gic1 mcb1 wdd ooha otta) use_nl(itp gic3 mcb3 gic2 mcb2 gic1 mcb1 wdd ooha otta)*/';
-       ' SELECT /*+ leading (xoha xola wdd itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) */';
+       ' SELECT /*+ leading (xoha xola wdd itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */';
 -- 
  -- OMSO_103_124
     lv_select_g1_om103x124_3_hint :=
        --' SELECT /*+ leading(itp gic3 mcb3 gic2 mcb2 gic1 mcb1 wdd ooha otta) use_nl(itp gic3 mcb3 gic2 mcb2 gic1 mcb1 wdd ooha otta)*/';
-       ' SELECT /*+ leading (xoha xola wdd itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) */';
+       ' SELECT /*+ leading (xoha xola wdd itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta) push_pred(xsupv) */';
 -- 
  -- OMSO_105
     lv_select_g1_om105_3_hint :=
        --' SELECT /*+ leading(itp wdd xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta xrpm) use_nl(itp wdd xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta xrpm) */';
-       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */';
+       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) push_pred(xsupv) */';
 -- 
  -- OMSO_108
     lv_select_g1_om108_3_hint :=
        --' SELECT /*+ leading(itp wdd xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1 gic4 mcb4 gic5 mcb5 ooha otta) use_nl(itp wdd xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1 gic4 mcb4 gic5 mcb5 ooha otta) */';
-       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */';
+       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) push_pred(xsupv) */';
 --
  --===============================================================
  -- GROUP1 PTN04
@@ -3214,75 +3381,75 @@ AS
  -- PORC_102
     lv_select_g1_po102_4_hint :=
        --' SELECT /*+ leading(itp rsl ooha otta xrpm gic2 mcb2 gic1 mcb1) use_nl(itp rsl ooha otta xrpm gic2 mcb2 gic1 mcb1) */'; 
-       ' SELECT /*+ leading (xoha xola rsl ooha otta xrpm itp gic1 mcb1 gic2 mcb2) use_nl (xoha xola rsl ooha otta xrpm itp gic1 mcb1 gic2 mcb2) */'; 
+       ' SELECT /*+ leading (xoha xola rsl ooha otta xrpm itp gic1 mcb1 gic2 mcb2) use_nl (xoha xola rsl ooha otta xrpm itp gic1 mcb1 gic2 mcb2) push_pred(xsupv) */'; 
 --
  -- PORC_101
     lv_select_g1_po101_4_hint :=
        --' SELECT /*+ leading(itp rsl ooha otta xrpm gic2 mcb2 gic1 mcb1) use_nl(itp rsl ooha otta xrpm gic2 mcb2 gic1 mcb1) */'; 
-       ' SELECT /*+ leading (xoha xola rsl ooha otta xrpm itp gic1 mcb1 gic2 mcb2) use_nl (xoha xola rsl ooha otta xrpm itp gic1 mcb1 gic2 mcb2) */'; 
+       ' SELECT /*+ leading (xoha xola rsl ooha otta xrpm itp gic1 mcb1 gic2 mcb2) use_nl (xoha xola rsl ooha otta xrpm itp gic1 mcb1 gic2 mcb2) push_pred(xsupv) */'; 
 --
  -- PORC_112
     lv_select_g1_po112_4_hint :=
        --' SELECT /*+ leading(itp rsl ooha otta xrpm xola iimb3 gic2 mcb2 gic1 mcb1) use_nl(itp rsl ooha otta xrpm xola iimb3 gic2 mcb2 gic1 mcb1) */'; 
        --' SELECT /*+ leading (itp rsl ooha otta xrpm xoha xola iimb2 gic2 mcb2 gic1 mcb1) use_nl (itp rsl ooha otta xrpm xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */';
+       ' SELECT /*+ leading (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) push_pred(xsupv) */';
 --
  -- PORC_103_5
     lv_select_g1_po103x5_4_hint :=
        --' SELECT /*+ leading(itp rsl ooha otta xrpm gic2 mcb2 gic1 mcb1) use_nl(itp rsl ooha otta xrpm gic2 mcb2 gic1 mcb1) */'; 
-       ' SELECT /*+ leading (xoha xola rsl ooha otta xrpm itp gic1 mcb1 gic2 mcb2) use_nl (xoha xola rsl ooha otta xrpm itp gic1 mcb1 gic2 mcb2) */'; 
+       ' SELECT /*+ leading (xoha xola rsl ooha otta xrpm itp gic1 mcb1 gic2 mcb2) use_nl (xoha xola rsl ooha otta xrpm itp gic1 mcb1 gic2 mcb2) push_pred(xsupv) */'; 
 -- 
  -- PORC_103_124
     lv_select_g1_po103x124_4_hint :=
        --' SELECT /*+ leading(itp rsl ooha otta xrpm gic2 mcb2 gic1 mcb1) use_nl(itp rsl ooha otta xrpm gic2 mcb2 gic1 mcb1) */'; 
-       ' SELECT /*+ leading (xoha xola rsl ooha otta xrpm itp gic1 mcb1 gic2 mcb2) use_nl (xoha xola rsl ooha otta xrpm itp gic1 mcb1 gic2 mcb2) */'; 
+       ' SELECT /*+ leading (xoha xola rsl ooha otta xrpm itp gic1 mcb1 gic2 mcb2) use_nl (xoha xola rsl ooha otta xrpm itp gic1 mcb1 gic2 mcb2) push_pred(xsupv) */'; 
 -- 
  -- PORC_105
     lv_select_g1_po105_4_hint :=
        --' SELECT /*+ leading(itp rsl ooha otta xrpm xola iimb3 gic2 mcb2 gic1 mcb1) use_nl(itp rsl ooha otta xrpm xola iimb3 gic2 mcb2 gic1 mcb1) */'; 
        --' SELECT /*+ leading (itp rsl ooha otta xrpm xoha xola iimb2 gic2 mcb2 gic1 mcb1) use_nl (itp rsl ooha otta xrpm xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) push_pred(xsupv) */'; 
 -- 
  -- PORC_108
     lv_select_g1_po108_4_hint :=
        --' SELECT /*+ leading(itp rsl ooha otta xrpm gic4 mcb4 gic5 mcb5 xola iimb3 gic2 mcb2 gic1 mcb1) use_nl(itp rsl ooha otta xrpm gic4 mcb4 gic5 mcb5 xola iimb3 gic2 mcb2 gic1 mcb1) */'; 
        --' SELECT /*+ leading (itp rsl ooha otta xrpm xoha xola iimb2 gic2 mcb2 gic1 mcb1) use_nl (itp rsl ooha otta xrpm xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) push_pred(xsupv) */'; 
 -- 
  -- OMSO_102
     lv_select_g1_om102_4_hint :=
        --' SELECT /*+ leading(xrpm otta ooha wdd itp gic2 mcb2 gic1 mcb1) use_nl(xrpm otta ooha wdd itp gic2 mcb2 gic1 mcb1)*/';
-       ' SELECT /*+ leading (xoha xola wdd ooha otta xrpm itp gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd ooha otta xrpm itp gic1 mcb1 gic2 mcb2) */';
+       ' SELECT /*+ leading (xoha xola wdd ooha otta xrpm itp gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd ooha otta xrpm itp gic1 mcb1 gic2 mcb2) push_pred(xsupv) */';
 -- 
  -- OMSO_101
     lv_select_g1_om101_4_hint :=
        --' SELECT /*+ leading(xrpm otta ooha wdd itp gic2 mcb2 gic1 mcb1) use_nl(xrpm otta ooha wdd itp gic2 mcb2 gic1 mcb1)*/';
-       ' SELECT /*+ leading (xoha xola wdd ooha otta xrpm itp gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd ooha otta xrpm itp gic1 mcb1 gic2 mcb2) */';
+       ' SELECT /*+ leading (xoha xola wdd ooha otta xrpm itp gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd ooha otta xrpm itp gic1 mcb1 gic2 mcb2) push_pred(xsupv) */';
 -- 
  -- OMSO_112
     lv_select_g1_om112_4_hint :=
        --' SELECT /*+ leading(xrpm otta ooha wdd xola iimb3 gic2 mcb2 gic1 mcb1) use_nl(xrpm otta ooha wdd xola iimb3 gic2 mcb2 gic1 mcb1)*/';
-       ' SELECT /*+ leading (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */';
+       ' SELECT /*+ leading (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) push_pred(xsupv) */';
 -- 
  -- OMSO_103_5
     lv_select_g1_om103x5_4_hint :=
        --' SELECT /*+ leading(xrpm otta ooha wdd itp gic2 mcb2 gic1 mcb1) use_nl(xrpm otta ooha wdd itp gic2 mcb2 gic1 mcb1)*/';
-       ' SELECT /*+ leading (xoha xola wdd ooha otta xrpm itp gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd ooha otta xrpm itp gic1 mcb1 gic2 mcb2) */';
+       ' SELECT /*+ leading (xoha xola wdd ooha otta xrpm itp gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd ooha otta xrpm itp gic1 mcb1 gic2 mcb2) push_pred(xsupv) */';
 -- 
  -- OMSO_103_124
     lv_select_g1_om103x124_4_hint :=
        --' SELECT /*+ leading(xrpm otta ooha wdd itp gic2 mcb2 gic1 mcb1) use_nl(xrpm otta ooha wdd itp gic2 mcb2 gic1 mcb1)*/';
-       ' SELECT /*+ leading (xoha xola wdd ooha otta xrpm itp gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd ooha otta xrpm itp gic1 mcb1 gic2 mcb2) */';
+       ' SELECT /*+ leading (xoha xola wdd ooha otta xrpm itp gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd ooha otta xrpm itp gic1 mcb1 gic2 mcb2) push_pred(xsupv) */';
 -- 
  -- OMSO_105
     lv_select_g1_om105_4_hint :=
        --' SELECT /*+ leading(xrpm otta ooha wdd xola iimb3 gic2 mcb2 gic1 mcb1) use_nl(xrpm otta ooha wdd xola iimb3 gic2 mcb2 gic1 mcb1)*/';
-       ' SELECT /*+ leading (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */';
+       ' SELECT /*+ leading (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) push_pred(xsupv) */';
 -- 
  -- OMSO_108
     lv_select_g1_om108_4_hint :=
        --' SELECT /*+ leading(xrpm otta ooha wdd xola iimb3 gic2 mcb2 gic1 mcb1) use_nl(xrpm otta ooha wdd xola iimb3 gic2 mcb2 gic1 mcb1)*/';
-       ' SELECT /*+ leading (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */';
+       ' SELECT /*+ leading (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) push_pred(xsupv) */';
 --
  --===============================================================
  -- GROUP1 PTN05
@@ -3296,75 +3463,75 @@ AS
  -- PORC_102
     lv_select_g1_po102_6_hint :=
        --' SELECT /*+ leading(itp rsl ooha otta xrpm gic3 mcb3 gic2 mcb2 gic1 mcb1) use_nl(itp rsl ooha otta xrpm gic3 mcb3 gic2 mcb2 gic1 mcb1) */'; 
-       ' SELECT /*+ leading (xoha xola rsl ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) use_nl (xoha xola rsl ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) */'; 
+       ' SELECT /*+ leading (xoha xola rsl ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) use_nl (xoha xola rsl ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) push_pred(xsupv) */'; 
 --
  -- PORC_101
     lv_select_g1_po101_6_hint :=
        --' SELECT /*+ leading(itp rsl ooha otta xrpm gic3 mcb3 gic2 mcb2 gic1 mcb1) use_nl(itp rsl ooha otta xrpm gic3 mcb3 gic2 mcb2 gic1 mcb1) */'; 
-       ' SELECT /*+ leading (xoha xola rsl ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) use_nl (xoha xola rsl ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) */'; 
+       ' SELECT /*+ leading (xoha xola rsl ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) use_nl (xoha xola rsl ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) push_pred(xsupv) */'; 
 --
  -- PORC_112
     lv_select_g1_po112_6_hint :=
        --' SELECT /*+ leading(itp rsl ooha otta xrpm xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1) use_nl(itp rsl ooha otta xrpm xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1) */'; 
        --' SELECT /*+ leading (itp rsl ooha otta xrpm xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1) use_nl (itp rsl ooha otta xrpm xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) */';
+       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) push_pred(xsupv) */';
 --
  -- PORC_103_5
     lv_select_g1_po103x5_6_hint :=
        --' SELECT /*+ leading(itp rsl ooha otta xrpm gic3 mcb3 gic2 mcb2 gic1 mcb1) use_nl(itp rsl ooha otta xrpm gic3 mcb3 gic2 mcb2 gic1 mcb1) */'; 
-       ' SELECT /*+ leading (xoha xola rsl ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) use_nl (xoha xola rsl ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) */'; 
+       ' SELECT /*+ leading (xoha xola rsl ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) use_nl (xoha xola rsl ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) push_pred(xsupv) */'; 
 -- 
  -- PORC_103_124
     lv_select_g1_po103x124_6_hint :=
        --' SELECT /*+ leading(itp rsl ooha otta xrpm gic3 mcb3 gic2 mcb2 gic1 mcb1) use_nl(itp rsl ooha otta xrpm gic3 mcb3 gic2 mcb2 gic1 mcb1) */'; 
-       ' SELECT /*+ leading (xoha xola rsl ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) use_nl (xoha xola rsl ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) */'; 
+       ' SELECT /*+ leading (xoha xola rsl ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) use_nl (xoha xola rsl ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) push_pred(xsupv) */'; 
 -- 
  -- PORC_105
     lv_select_g1_po105_6_hint :=
        --' SELECT /*+ leading(itp rsl ooha otta xrpm xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1) use_nl(itp rsl ooha otta xrpm xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1) */'; 
        --' SELECT /*+ leading (itp rsl ooha otta xrpm xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1) use_nl (itp rsl ooha otta xrpm xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) */';
-       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) push_pred(xsupv) */'; 
 -- 
  -- PORC_108
     lv_select_g1_po108_6_hint :=
        --' SELECT /*+ leading(itp rsl ooha otta xrpm xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1) use_nl(itp rsl ooha otta xrpm xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1) */'; 
        --' SELECT /*+ leading (itp rsl ooha otta xrpm xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1) use_nl (itp rsl ooha otta xrpm xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) */';
-       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
+       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic3 mcb3 gic2 mcb2 gic1 mcb1 ooha otta) push_pred(xsupv) */'; 
 -- 
  -- OMSO_102
     lv_select_g1_om102_6_hint :=
        --' SELECT /*+ leading(xrpm otta ooha wdd itp gic3 mcb3 gic2 mcb2 gic1 mcb1) use_nl(xrpm otta ooha wdd itp gic3 mcb3 gic2 mcb2 gic1 mcb1)*/';
-       ' SELECT /*+ leading (xoha xola wdd ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) */';
+       ' SELECT /*+ leading (xoha xola wdd ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) push_pred(xsupv) */';
 -- 
  -- OMSO_101
     lv_select_g1_om101_6_hint :=
        --' SELECT /*+ leading(xrpm otta ooha wdd itp gic3 mcb3 gic2 mcb2 gic1 mcb1) use_nl(xrpm otta ooha wdd itp gic3 mcb3 gic2 mcb2 gic1 mcb1)*/';
-       ' SELECT /*+ leading (xoha xola wdd ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) */';
+       ' SELECT /*+ leading (xoha xola wdd ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) push_pred(xsupv) */';
 -- 
  -- OMSO_112
     lv_select_g1_om112_6_hint :=
        --' SELECT /*+ leading(xrpm otta ooha wdd xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1) use_nl(xrpm otta ooha wdd xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1)*/';
-       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */';
+       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) push_pred(xsupv) */';
 -- 
  -- OMSO_103_5
     lv_select_g1_om103x5_6_hint :=
        --' SELECT /*+ leading(xrpm otta ooha wdd itp gic3 mcb3 gic2 mcb2 gic1 mcb1) use_nl(xrpm otta ooha wdd itp gic3 mcb3 gic2 mcb2 gic1 mcb1)*/';
-       ' SELECT /*+ leading (xoha xola wdd ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) */';
+       ' SELECT /*+ leading (xoha xola wdd ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) push_pred(xsupv) */';
 -- 
  -- OMSO_103_124
     lv_select_g1_om103x124_6_hint :=
        --' SELECT /*+ leading(xrpm otta ooha wdd itp gic3 mcb3 gic2 mcb2 gic1 mcb1) use_nl(xrpm otta ooha wdd itp gic3 mcb3 gic2 mcb2 gic1 mcb1)*/';
-       ' SELECT /*+ leading (xoha xola wdd ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) */';
+       ' SELECT /*+ leading (xoha xola wdd ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd ooha otta xrpm itp gic3 mcb3 gic1 mcb1 gic2 mcb2) push_pred(xsupv) */';
 -- 
  -- OMSO_105
     lv_select_g1_om105_6_hint :=
        --' SELECT /*+ leading(xrpm otta ooha wdd xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1) use_nl(xrpm otta ooha wdd xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1)*/';
-       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */';
+       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) push_pred(xsupv) */';
 -- 
  -- OMSO_108
     lv_select_g1_om108_6_hint :=
        --' SELECT /*+ leading(xrpm otta ooha wdd xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1) use_nl(xrpm otta ooha wdd xola iimb3 gic3 mcb3 gic2 mcb2 gic1 mcb1)*/';
-       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */';
+       ' SELECT /*+ leading (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic3 mcb3 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) push_pred(xsupv) */';
 --
  --===============================================================
 --
@@ -4083,91 +4250,6 @@ AS
           (( ir_param.crowd_type = gc_crowd_type_4) AND ( ir_param.acnt_crowd_code  IS NULL )))
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_main_start );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_po102_4_hint );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_po102 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where2 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_po101_4_hint );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_po101 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where2 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_po112_4_hint );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_po112 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where2 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_po103x5_4_hint );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1_2 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_po103x5 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where3 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_po103x124_4_hint );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1_2 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_po103x124 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where3 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_po105_4_hint );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1_2 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_po105 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where3 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_po108_4_hint );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1_2 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_po108 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where3 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_om102_4_hint );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_om102 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where2 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_om101_4_hint );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_om101 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where2 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_om112_4_hint );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_om112 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where2 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_om103x5_4_hint );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1_2 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_om103x5 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where3 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_om103x124_4_hint );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1_2 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_om103x124 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where3 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_om105_4_hint );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1_2 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_om105 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where3 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_om108_4_hint );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1_2 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_om108 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where3 );
-FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_main_end );
         -- オープン
         OPEN  get_cur01 FOR lv_select_main_start
                          || lv_select_g1_po102_4_hint
