@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009/04/10    1.9   N.Maeda          [T1_0257]リソースid取得テーブル変更
  *  2009/04/14    1.10  T.Kitajima       [T1_0344]成績者コード、納品者コードチェック仕様変更
  *  2009/04/20    1.11  T.Kitajima       [T1_0592]百貨店画面種別チェック削除
+ *  2009/05/01    1.12  T.Kitajima       [T1_0268]CHAR項目のTRIM対応
  *
  *****************************************************************************************/
 --
@@ -744,54 +745,102 @@ AS
     -- 納品ヘッダワークテーブルデータ抽出
     CURSOR get_headers_data_cur
     IS
-      SELECT headers.order_no_hht             order_no_hht,             -- 受注No.（HHT)
-             headers.order_no_ebs             order_no_ebs,             -- 受注No.（EBS）
-             headers.base_code                base_code,                -- 拠点コード
-             headers.performance_by_code      performance_by_code,      -- 成績者コード
-             headers.dlv_by_code              dlv_by_code,              -- 納品者コード
-             headers.hht_invoice_no           hht_invoice_no,           -- HHT伝票No.
-             headers.dlv_date                 dlv_date,                 -- 納品日
-             headers.inspect_date             inspect_date,             -- 検収日
-             headers.sales_classification     sales_classification,     -- 売上分類区分
-             headers.sales_invoice            sales_invoice,            -- 売上伝票区分
-             headers.card_sale_class          card_sale_class,          -- カード売区分
-             headers.dlv_time                 dlv_time,                 -- 時間
-             headers.change_out_time_100      change_out_time_100,      -- つり銭切れ時間100円
-             headers.change_out_time_10       change_out_time_10,       -- つり銭切れ時間10円
-             headers.customer_number          customer_number,          -- 顧客コード
-             headers.input_class              input_class,              -- 入力区分
-             headers.consumption_tax_class    consumption_tax_class,    -- 消費税区分
-             headers.total_amount             total_amount,             -- 合計金額
-             headers.sale_discount_amount     sale_discount_amount,     -- 売上値引額
-             headers.sales_consumption_tax    sales_consumption_tax,    -- 売上消費税額
-             headers.tax_include              tax_include,              -- 税込金額
-             headers.keep_in_code             keep_in_code,             -- 預け先コード
-             headers.department_screen_class  department_screen_class   -- 百貨店画面種別
+--****************************** 2009/05/01 1.12 MOD START ******************************--
+--      SELECT headers.order_no_hht             order_no_hht,             -- 受注No.（HHT)
+--             headers.order_no_ebs             order_no_ebs,             -- 受注No.（EBS）
+--             headers.base_code                base_code,                -- 拠点コード
+--             headers.performance_by_code      performance_by_code,      -- 成績者コード
+--             headers.dlv_by_code              dlv_by_code,              -- 納品者コード
+--             headers.hht_invoice_no           hht_invoice_no,           -- HHT伝票No.
+--             headers.dlv_date                 dlv_date,                 -- 納品日
+--             headers.inspect_date             inspect_date,             -- 検収日
+--             headers.sales_classification     sales_classification,     -- 売上分類区分
+--             headers.sales_invoice            sales_invoice,            -- 売上伝票区分
+--             headers.card_sale_class          card_sale_class,          -- カード売区分
+--             headers.dlv_time                 dlv_time,                 -- 時間
+--             headers.change_out_time_100      change_out_time_100,      -- つり銭切れ時間100円
+--             headers.change_out_time_10       change_out_time_10,       -- つり銭切れ時間10円
+--             headers.customer_number          customer_number,          -- 顧客コード
+--             headers.input_class              input_class,              -- 入力区分
+--             headers.consumption_tax_class    consumption_tax_class,    -- 消費税区分
+--             headers.total_amount             total_amount,             -- 合計金額
+--             headers.sale_discount_amount     sale_discount_amount,     -- 売上値引額
+--             headers.sales_consumption_tax    sales_consumption_tax,    -- 売上消費税額
+--             headers.tax_include              tax_include,              -- 税込金額
+--             headers.keep_in_code             keep_in_code,             -- 預け先コード
+--             headers.department_screen_class  department_screen_class   -- 百貨店画面種別
+--      FROM   xxcos_dlv_headers_work           headers                   -- 納品ヘッダワークテーブル
+--      ORDER BY order_no_hht
+--      FOR UPDATE NOWAIT;
+      SELECT headers.order_no_hht                    order_no_hht,             -- 受注No.（HHT)
+             headers.order_no_ebs                    order_no_ebs,             -- 受注No.（EBS）
+             TRIM( headers.base_code )               base_code,                -- 拠点コード
+             TRIM( headers.performance_by_code )     performance_by_code,      -- 成績者コード
+             TRIM( headers.dlv_by_code )             dlv_by_code,              -- 納品者コード
+             TRIM( headers.hht_invoice_no )          hht_invoice_no,           -- HHT伝票No.
+             headers.dlv_date                        dlv_date,                 -- 納品日
+             headers.inspect_date                    inspect_date,             -- 検収日
+             TRIM( headers.sales_classification )    sales_classification,     -- 売上分類区分
+             TRIM( headers.sales_invoice )           sales_invoice,            -- 売上伝票区分
+             TRIM( headers.card_sale_class )         card_sale_class,          -- カード売区分
+             TRIM( headers.dlv_time )                dlv_time,                 -- 時間
+             TRIM( headers.change_out_time_100 )     change_out_time_100,      -- つり銭切れ時間100円
+             TRIM( headers.change_out_time_10 )      change_out_time_10,       -- つり銭切れ時間10円
+             TRIM( headers.customer_number )         customer_number,          -- 顧客コード
+             TRIM( headers.input_class )             input_class,              -- 入力区分
+             TRIM( headers.consumption_tax_class )   consumption_tax_class,    -- 消費税区分
+             headers.total_amount                    total_amount,             -- 合計金額
+             headers.sale_discount_amount            sale_discount_amount,     -- 売上値引額
+             headers.sales_consumption_tax           sales_consumption_tax,    -- 売上消費税額
+             headers.tax_include                     tax_include,              -- 税込金額
+             TRIM( headers.keep_in_code )            keep_in_code,             -- 預け先コード
+             TRIM( headers.department_screen_class ) department_screen_class   -- 百貨店画面種別
       FROM   xxcos_dlv_headers_work           headers                   -- 納品ヘッダワークテーブル
       ORDER BY order_no_hht
       FOR UPDATE NOWAIT;
+--****************************** 2009/05/01 1.12 MOD  END ******************************--
 --
     -- 納品明細ワークテーブルデータ抽出
     CURSOR get_lines_data_cur
     IS
+--****************************** 2009/05/01 1.12 MOD START ******************************--
+--      SELECT lines.order_no_hht           order_no_hht,           -- 受注No.（HHT）
+--             lines.line_no_hht            line_no_hht,            -- 行No.（HHT）
+--             lines.order_no_ebs           order_no_ebs,           -- 受注No.（EBS）
+--             lines.line_number_ebs        line_number_ebs,        -- 明細番号(EBS)
+--             lines.item_code_self         item_code_self,         -- 品名コード（自社）
+--             lines.case_number            case_number,            -- ケース数
+--             lines.quantity               quantity,               -- 数量
+--             lines.sale_class             sale_class,             -- 売上区分
+--             lines.wholesale_unit_ploce   wholesale_unit_ploce,   -- 卸単価
+--             lines.selling_price          selling_price,          -- 売単価
+--             lines.column_no              column_no,              -- コラムNo.
+--             lines.h_and_c                h_and_c,                -- H/C
+--             lines.sold_out_class         sold_out_class,         -- 売切区分
+--             lines.sold_out_time          sold_out_time,          -- 売切時間
+--             lines.cash_and_card          cash_and_card           -- 現金・カード併用額
+--      FROM   xxcos_dlv_lines_work         lines                   -- 納品明細ワークテーブル
+--      ORDER BY order_no_hht, line_no_hht
+--      FOR UPDATE NOWAIT;
       SELECT lines.order_no_hht           order_no_hht,           -- 受注No.（HHT）
              lines.line_no_hht            line_no_hht,            -- 行No.（HHT）
              lines.order_no_ebs           order_no_ebs,           -- 受注No.（EBS）
              lines.line_number_ebs        line_number_ebs,        -- 明細番号(EBS)
-             lines.item_code_self         item_code_self,         -- 品名コード（自社）
+             TRIM( lines.item_code_self ) item_code_self,         -- 品名コード（自社）
              lines.case_number            case_number,            -- ケース数
              lines.quantity               quantity,               -- 数量
-             lines.sale_class             sale_class,             -- 売上区分
+             TRIM( lines.sale_class )     sale_class,             -- 売上区分
              lines.wholesale_unit_ploce   wholesale_unit_ploce,   -- 卸単価
              lines.selling_price          selling_price,          -- 売単価
-             lines.column_no              column_no,              -- コラムNo.
-             lines.h_and_c                h_and_c,                -- H/C
-             lines.sold_out_class         sold_out_class,         -- 売切区分
-             lines.sold_out_time          sold_out_time,          -- 売切時間
+             TRIM( lines.column_no )      column_no,              -- コラムNo.
+             TRIM( lines.h_and_c )        h_and_c,                -- H/C
+             TRIM( lines.sold_out_class ) sold_out_class,         -- 売切区分
+             TRIM( lines.sold_out_time )  sold_out_time,          -- 売切時間
              lines.cash_and_card          cash_and_card           -- 現金・カード併用額
       FROM   xxcos_dlv_lines_work         lines                   -- 納品明細ワークテーブル
       ORDER BY order_no_hht, line_no_hht
       FOR UPDATE NOWAIT;
+--****************************** 2009/05/01 1.12 MOD  END ******************************--
 --
     -- クイックコード取得：顧客ステータス
     CURSOR get_cus_status_cur

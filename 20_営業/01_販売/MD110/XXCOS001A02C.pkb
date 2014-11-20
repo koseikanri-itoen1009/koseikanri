@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A02C (body)
  * Description      : 入金データの取込を行う
  * MD.050           : HHT入金データ取込 (MD050_COS_001_A02)
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/02/03    1.1   S.Miyakoshi      [COS_003]百貨店HHT区分変更に対応
  *                                       [COS_005]業態小分類における取込対象条件の不具合に対応
  *  2009/02/20    1.2   S.Miyakoshi      パラメータのログファイル出力対応
+ *  2009/04/30    1.3   T.Kitajima       [T1_0268]CHAR項目のTRIM対応
  *
  *****************************************************************************************/
 --
@@ -399,15 +400,27 @@ AS
     -- 入金ワークテーブルデータ抽出
     CURSOR get_payment_data_cur
     IS
-      SELECT xpw.line_id          line_id,           -- 明細ID
-             xpw.base_code        base_code,         -- 拠点コード
-             xpw.customer_number  customer_number,   -- 顧客コード
-             xpw.payment_amount   payment_amount,    -- 入金額
-             xpw.payment_date     payment_date,      -- 入金日
-             xpw.payment_class    payment_class,     -- 入金区分
-             xpw.hht_invoice_no   hht_invoice_no     -- HHT伝票No
+--****************************** 2009/04/30 1.3 T.Kitajima MOD START ******************************--
+--      SELECT xpw.line_id          line_id,           -- 明細ID
+--             xpw.base_code        base_code,         -- 拠点コード
+--             xpw.customer_number  customer_number,   -- 顧客コード
+--             xpw.payment_amount   payment_amount,    -- 入金額
+--             xpw.payment_date     payment_date,      -- 入金日
+--             xpw.payment_class    payment_class,     -- 入金区分
+--             xpw.hht_invoice_no   hht_invoice_no     -- HHT伝票No
+--      FROM   xxcos_payment_work   xpw                -- 入金ワークテーブル
+--      FOR UPDATE NOWAIT;
+--
+      SELECT xpw.line_id                  line_id,           -- 明細ID
+             TRIM( xpw.base_code )        base_code,         -- 拠点コード
+             TRIM( xpw.customer_number )  customer_number,   -- 顧客コード
+             xpw.payment_amount           payment_amount,    -- 入金額
+             xpw.payment_date             payment_date,      -- 入金日
+             TRIM( xpw.payment_class  )   payment_class,     -- 入金区分
+             TRIM( xpw.hht_invoice_no )   hht_invoice_no     -- HHT伝票No
       FROM   xxcos_payment_work   xpw                -- 入金ワークテーブル
       FOR UPDATE NOWAIT;
+--****************************** 2009/04/30 1.3 T.Kitajima MOD  END ******************************--
 --
     -- クイックコード：顧客ステータス取得
     CURSOR get_cus_status_cur
