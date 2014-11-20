@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A01R (body)
  * Description      : 受注一覧リスト
  * MD.050           : 受注一覧リスト MD050_COS_009_A01
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2011/04/20    1.13  N.Horigome       [E_本稼動_03310]EDI取込時の受注抽出条件修正対応
  *  2012/01/30    1.14  K.Kiriu          [E_本稼動_08658]EDI出力時の出力数量変更対応
  *  2012/04/18    1.15  Y.Horikawa       [E_本稼動_09441]PT対応
+ *  2012/09/13    1.16  K.Taniguchi      [E_本稼動_09939]EDI取込時の受注抽出条件修正対応
  *
  *****************************************************************************************/
 --
@@ -1649,8 +1650,10 @@ AS
       -- 受注明細.受注日の年月≧業務日付－１の年月
       AND TO_CHAR( TRUNC( NVL( ooha.ordered_date, gd_proc_date ) ), cv_yyyy_mm ) 
         >= TO_CHAR( ADD_MONTHS( TRUNC( gd_proc_date ), -1 ), cv_yyyy_mm )
-      -- 受注明細.ステータス≠取消
-      AND oola.flow_status_code NOT IN ( ct_ln_status_cancelled )
+/* 2012/09/13 1.16 Del Start */
+--      -- 受注明細.ステータス≠取消
+--      AND oola.flow_status_code NOT IN ( ct_ln_status_cancelled )
+/* 2012/09/13 1.16 Del End */
       --顧客マスタアドオン.チェーン店コード＝顧客マスタアドオン(チェーン店).チェーン店コード(EDI)【親レコード用】
       AND xca.chain_store_code              = xca_c.edi_chain_code
       --顧客マスタアドオン(チェーン店).顧客ID＝顧客マスタ(チェーン店).顧客ID
