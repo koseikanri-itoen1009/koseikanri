@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.38
+ * Version                : 1.39
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -90,6 +90,7 @@ AS
  *  2008/12/16   1.36  SCS    菅原大輔  本番#744対応(パレット重量計算不正)
  *  2008/12/25   1.37  SCS    北寒寺正夫本番#790対応(重量容積小口個数更新関数(小口個数NULL対応)
  *  2009/01/08   1.38  SCS    伊藤ひとみ[物流構成存在チェック関数]本番#894対応
+ *  2009/01/14   1.39  SCS    山本恭久  [引当解除関数]本番#991対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4548,6 +4549,9 @@ AS
     cv_compl               CONSTANT VARCHAR2(1)   := '0';               -- 成功
     cv_para_check_err      CONSTANT VARCHAR2(1)   := '1';               -- パラメータチェックエラー
     cv_enc_cancel_nodata   CONSTANT VARCHAR2(1)   := '2';               -- 引当解除データ無し
+-- 2009/01/14 Y.Yamamoto #991 add start
+    cv_sub_check_warn      CONSTANT VARCHAR2(1)   := '3';               -- 減数チェックワーニング
+-- 2009/01/14 Y.Yamamoto #991 add end
     cv_ship                CONSTANT VARCHAR2(1)   := '1';               -- 出荷
     cv_supply              CONSTANT VARCHAR2(1)   := '2';               -- 支給
     cv_move                CONSTANT VARCHAR2(1)   := '3';               -- 移動
@@ -4833,7 +4837,10 @@ AS
       AND    mril.item_id                     =  xim2.item_id
       AND    xim2.start_date_active           <= mrih.schedule_ship_date
       AND    mrih.schedule_ship_date          <= NVL(xim2.end_date_active, mrih.schedule_ship_date)
-      AND    mrih.shipped_locat_id            =  xilv.inventory_location_id
+-- 2009/01/14 Y.Yamamoto #991 update start
+--      AND    mrih.shipped_locat_id            =  xilv.inventory_location_id
+      AND    mrih.ship_to_locat_id            =  xilv.inventory_location_id
+-- 2009/01/14 Y.Yamamoto #991 update end
       FOR UPDATE OF mril.mov_line_id NOWAIT;
 --
       -- 取得できない場合はエラー
@@ -4921,7 +4928,10 @@ AS
                                                     gt_lot_no_tbl(j));
 --2008/09/03 Y.Kawano MOD End
               ROLLBACK TO advance_sp;
-              RETURN cv_enc_cancel_err;                             -- 引当解除データ無し
+-- 2009/01/14 Y.Yamamoto #991 update start
+--              RETURN cv_enc_cancel_err;                             -- 引当解除データ無し
+              RETURN cv_sub_check_warn;                             -- 減数チェックワーニング
+-- 2009/01/14 Y.Yamamoto #991 update end
             END IF;
 --
             -- 削除処理を行います
