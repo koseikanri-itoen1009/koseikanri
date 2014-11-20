@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : 消化ＶＤ納品データ作成
  * MD.050           : 消化ＶＤ納品データ作成 MD050_COS_004_A04
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *                                                出荷元保管場所、納品形態、納品拠点取得方法修正
  *  2009/03/30   1.10  T.Kitajima        [T1_0189]販売実績明細.納品明細番号の採番方法を変更
  *  2009/04/20   1.11  T.kitajima        [T1_0657]データ取得0件エラー→警告終了へ
+ *  2009/04/21   1.12  T.kitajima        [T1_0699]納品形態固定対応(1:営業車)
  *
  *****************************************************************************************/
 --
@@ -205,6 +206,10 @@ AS
   --プロファイル名称
   cv_profile_item_cd           CONSTANT  fnd_profile_options.profile_option_name%TYPE
                                       := 'XXCOS1_DIGESTION_DELI_DELAY_DAY';-- 消化ＶＤ納品データ作成猶予日数
+--****************************** 2009/04/21 1.12 T.Kitajima ADD START ******************************--
+  cv_profile_dlv_ptn           CONSTANT  fnd_profile_options.profile_option_name%TYPE
+                                      := 'XXCOS1_DIGESTION_DLV_PTN_CLS';   -- 消化VD納品データ作成用納品形態区分
+--****************************** 2009/04/21 1.12 T.Kitajima ADD  END  ******************************--
   --使用可能フラグ定数
   ct_enabled_flag_yes          CONSTANT  fnd_lookup_values.enabled_flag%TYPE
                                       := 'Y';                              --使用可能
@@ -392,6 +397,9 @@ AS
   gv_base_code                        VARCHAR2(100);                 --拠点コード
   gv_customer_number                  VARCHAR2(100);                 --顧客コード
   gn_gl_id                            NUMBER;                        --会計帳簿ID
+--****************************** 2009/04/21 1.12 T.Kitajima ADD START ******************************--
+  gv_delay_ptn                        VARCHAR2(1);                   --納品形態区分
+--****************************** 2009/04/21 1.12 T.Kitajima ADD  END  ******************************--
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -732,6 +740,18 @@ AS
     ELSE
       gn_gl_id := TO_NUMBER( lv_gl_id );
     END IF;
+--
+--****************************** 2009/04/21 1.12 T.Kitajima ADD START ******************************--
+    --============================================
+    -- 4. 納品形態区分取得
+    --============================================
+    gv_delay_ptn := FND_PROFILE.VALUE( cv_profile_dlv_ptn );
+    --納品形態区分
+    IF ( gv_delay_ptn IS NULL ) THEN
+      lv_key_info := cv_profile_dlv_ptn;
+      RAISE global_get_profile_expt;
+    END IF;
+--****************************** 2009/04/21 1.12 T.Kitajima ADD  END  ******************************--
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -1316,7 +1336,9 @@ AS
     lv_err_work            VARCHAR2(1);   --エラーワーク
     lv_organization_code   VARCHAR2(10);  --在庫組織コード
     lv_organization_id     NUMBER;        --在庫組織ＩＤ
-    lv_delivered_from      VARCHAR2(1);   --納品形態
+--****************************** 2009/04/21 1.12 T.Kitajima DEL START ******************************--
+--    lv_delivered_from      VARCHAR2(1);   --納品形態
+--****************************** 2009/04/21 1.12 T.Kitajima DEL  END  ******************************--
     ln_inventory_item_id   NUMBER;        --品目ＩＤ
     lv_after_uom_code      VARCHAR2(10);  --換算後単位コード
     ln_after_quantity      NUMBER;        --換算後数量
@@ -1871,42 +1893,44 @@ AS
                   );
               END;
 --
-              --==================================
-              -- 納品形態取得
-              --==================================
-              xxcos_common_pkg.get_delivered_from(
-                lt_ship_from_subinventory_code,                      --出荷元保管場所(IN)
-                gt_tab_sales_exp_headers(ln_h).sales_base_code,      --売上拠点(IN)
-                lt_delivery_base_code,                               --出荷拠点(IN)
-                lv_organization_code,                                --在庫組織コード(INOUT)
-                lv_organization_id,                                  --在庫組織ＩＤ(INOUT)
-                lv_delivered_from,                                   --納品形態(OUT)
-                lv_errbuf,                                           --エラー･メッセージ(OUT)
-                lv_retcode,                                          --リターンコード(OUT)
-                lv_errmsg                                            --ユーザ･エラー･メッセージ(OUT)
-              );
-              IF ( lv_retcode = cv_status_error ) THEN
-                --取得エラー
-                lv_err_work     := cv_status_warn;
-                ov_errmsg       := xxccp_common_pkg.get_msg(
-                                     iv_application        => ct_xxcos_appl_short_name,
-                                     iv_name               => cv_msg_deli_err,
-                                     iv_token_name1        => cv_tkn_parm_data1,
-                                     iv_token_value1       => gt_tab_work_data(ln_i).customer_number,
-                                     iv_token_name2        => cv_tkn_parm_data2,
-                                     iv_token_value2       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd'),
-                                     iv_token_name3        => cv_tkn_parm_data3,
-                                     iv_token_value3       => lt_ship_from_subinventory_code,
-                                     iv_token_name4        => cv_tkn_parm_data4,
-                                     iv_token_value4       => gt_tab_sales_exp_headers(ln_h).sales_base_code,
-                                     iv_token_name5        => cv_tkn_parm_data5,
-                                     iv_token_value5       => lt_delivery_base_code
-                                   );
-                FND_FILE.PUT_LINE(
-                  which  => FND_FILE.OUTPUT,
-                  buff   => ov_errmsg
-                );
-              END IF;
+--****************************** 2009/04/21 1.12 T.Kitajima DEL START ******************************--
+--              --==================================
+--              -- 納品形態取得
+--              --==================================
+--              xxcos_common_pkg.get_delivered_from(
+--                lt_ship_from_subinventory_code,                      --出荷元保管場所(IN)
+--                gt_tab_sales_exp_headers(ln_h).sales_base_code,      --売上拠点(IN)
+--                lt_delivery_base_code,                               --出荷拠点(IN)
+--                lv_organization_code,                                --在庫組織コード(INOUT)
+--                lv_organization_id,                                  --在庫組織ＩＤ(INOUT)
+--                lv_delivered_from,                                   --納品形態(OUT)
+--                lv_errbuf,                                           --エラー･メッセージ(OUT)
+--                lv_retcode,                                          --リターンコード(OUT)
+--                lv_errmsg                                            --ユーザ･エラー･メッセージ(OUT)
+--              );
+--              IF ( lv_retcode = cv_status_error ) THEN
+--                --取得エラー
+--                lv_err_work     := cv_status_warn;
+--                ov_errmsg       := xxccp_common_pkg.get_msg(
+--                                     iv_application        => ct_xxcos_appl_short_name,
+--                                     iv_name               => cv_msg_deli_err,
+--                                     iv_token_name1        => cv_tkn_parm_data1,
+--                                     iv_token_value1       => gt_tab_work_data(ln_i).customer_number,
+--                                     iv_token_name2        => cv_tkn_parm_data2,
+--                                     iv_token_value2       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd'),
+--                                     iv_token_name3        => cv_tkn_parm_data3,
+--                                     iv_token_value3       => lt_ship_from_subinventory_code,
+--                                     iv_token_name4        => cv_tkn_parm_data4,
+--                                     iv_token_value4       => gt_tab_sales_exp_headers(ln_h).sales_base_code,
+--                                     iv_token_name5        => cv_tkn_parm_data5,
+--                                     iv_token_value5       => lt_delivery_base_code
+--                                   );
+--                FND_FILE.PUT_LINE(
+--                  which  => FND_FILE.OUTPUT,
+--                  buff   => ov_errmsg
+--                );
+--              END IF;
+--****************************** 2009/04/21 1.12 T.Kitajima DEL  END  ******************************--
             END IF;
           END IF;
         END IF;
@@ -1932,7 +1956,10 @@ AS
 --**************************** 2009/03/30 1.10 T.kitajima MOD  END  ****************************
         gt_tab_sales_exp_lines(ln_m).order_invoice_line_number    := NULL;                                               --注文明細番号
         gt_tab_sales_exp_lines(ln_m).sales_class                  := cv_sales_class_vd;                                  --売上区分
-        gt_tab_sales_exp_lines(ln_m).delivery_pattern_class       := lv_delivered_from;                                  --納品形態区分
+--****************************** 2009/04/21 1.12 T.Kitajima MOD START ******************************--
+--        gt_tab_sales_exp_lines(ln_m).delivery_pattern_class       := lv_delivered_from;                                  --納品形態区分
+        gt_tab_sales_exp_lines(ln_m).delivery_pattern_class       := gv_delay_ptn;                                       --納品形態区分
+--****************************** 2009/04/21 1.12 T.Kitajima MOD  END  ******************************--
         gt_tab_sales_exp_lines(ln_m).item_code                    := gt_tab_work_data(ln_i).item_code;                   --品目コード
         gt_tab_sales_exp_lines(ln_m).dlv_qty                      := gt_tab_work_data(ln_i).sales_quantity;              --納品数量
         gt_tab_sales_exp_lines(ln_m).standard_qty                 := ln_after_quantity;                                  --基準数量
