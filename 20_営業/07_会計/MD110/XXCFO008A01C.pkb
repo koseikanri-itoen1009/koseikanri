@@ -7,7 +7,7 @@ AS
  * Description     : 顧客マスタVD釣銭基準額の更新
  * MD.050          : MD050_CFO_008_A01_顧客マスタVD釣銭基準額の更新
  * MD.070          : MD050_CFO_008_A01_顧客マスタVD釣銭基準額の更新
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -33,6 +33,7 @@ AS
  * ------------- ----- ------------- -------------------------------------
  *  2008-11-07    1.0  SCS 加藤 忠   初回作成
  *  2009-06-26    1.1  SCS 佐々木    [0000018]パフォーマンス改善
+ *  2009-11-24    1.2  SCS 寺内      [E_本稼動_00017]パフォーマンス改善
  ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -564,7 +565,10 @@ AS
     -- 顧客別釣銭残高抽出
     CURSOR get_customer_change_cur
     IS
-      SELECT glcc.segment5                segment5,         -- 顧客コード
+      SELECT /*+ LEADING(fnac glcc glbl)
+                 USE_NL (fnac glcc glbl)
+             */
+             glcc.segment5                segment5,         -- 顧客コード
              hzca.cust_account_id         cust_account_id,  -- 顧客ID
              xxca.sale_base_code          sale_base_code,   -- 売上拠点コード
              fnlt.attribute1              attribute1,       -- 業態分類(中分類)
@@ -605,7 +609,8 @@ AS
         AND NVL( fnlt.end_date_active,gd_operation_date )   >= gd_operation_date
         AND xxca.business_low_type   = fnlt.lookup_code
         AND EXISTS (
-            SELECT 'X'
+            SELECT /*+ INDEX(glblmv GL_BALANCES_N1) */
+                   'X'
             FROM gl_balances glblmv
             WHERE glblmv.set_of_books_id     = gn_set_of_bks_id
               AND glblmv.currency_code       = cv_currency_code
