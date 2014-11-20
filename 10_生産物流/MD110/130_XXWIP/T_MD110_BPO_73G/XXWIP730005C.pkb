@@ -7,7 +7,7 @@ AS
  * Description      : 請求運賃チェックリスト
  * MD.050/070       : 運賃計算（トランザクション）  (T_MD050_BPO_734)
  *                    請求運賃チェックリスト        (T_MD070_BPO_73G)
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2008/10/15    1.10  Yasuhisa Yamamoto 統合障害#300,331
  *  2008/10/24    1.11  Masayuki Nomura  統合#439対応
  *  2008/12/15    1.12  野村 正幸        本番#40対応
+ *  2009/01/29    1.13  野村 正幸        本番#431対応
  *
  *****************************************************************************************/
 --
@@ -596,14 +597,31 @@ AS
       -- 運賃明細アドオン
       ----------------------------------------------------------------------------------------------
       -- パラメータ条件
-      AND   xdl.request_no(+)     BETWEEN gr_param.request_no_from    -- 依頼No
-                                  AND     gr_param.request_no_to      --
-      AND   (  gr_param.request_no_from = lc_request_no_min
-            OR xdl.request_no          IS NOT NULL          )
-      AND   (  gr_param.request_no_to   = lc_request_no_max
-            OR xdl.request_no          IS NOT NULL          )
+-- S 2009/01/29 1.13 MOD BY M.Nomura ---------------------------------------------------------- S --
+-- 依頼No指定の場合に、依頼Noに紐付く配送Noにてチェックリストを出力する
+--      AND   xdl.request_no(+)     BETWEEN gr_param.request_no_from    -- 依頼No
+--                                  AND     gr_param.request_no_to      --
+--      AND   (  gr_param.request_no_from = lc_request_no_min
+--            OR xdl.request_no          IS NOT NULL          )
+--      AND   (  gr_param.request_no_to   = lc_request_no_max
+--            OR xdl.request_no          IS NOT NULL          )
       -- 結合条件
+--      AND   xd1.delivery_no             = xdl.delivery_no(+)
+      AND ( EXISTS ( SELECT  1
+                     FROM  xxwip_delivery_lines   xdl_reqno    -- 運賃明細アドオン
+                     WHERE xdl_reqno.request_no    BETWEEN gr_param.request_no_from    -- 依頼No From
+                                                   AND     gr_param.request_no_to      --        To
+                     AND   (  gr_param.request_no_from    = lc_request_no_min
+                           OR xdl_reqno.request_no        IS NOT NULL         )
+                     AND   (  gr_param.request_no_to      = lc_request_no_max
+                           OR xdl_reqno.request_no        IS NOT NULL         )
+                     AND   xdl_reqno.delivery_no          = xdl.delivery_no    )       -- 配送No
+            -- 指定なしの場合は、伝票なし配車も出力対象とする
+            OR ( xdl.request_no IS NULL 
+                AND gr_param.request_no_from = lc_request_no_min 
+                AND gr_param.request_no_to   = lc_request_no_max ) )      -- 配送No
       AND   xd1.delivery_no             = xdl.delivery_no(+)
+-- E 2009/01/29 1.13 MOD BY M.Nomura ---------------------------------------------------------- E --
       ----------------------------------------------------------------------------------------------
       -- 運賃ヘッダーアドオン（支払）
       ----------------------------------------------------------------------------------------------
