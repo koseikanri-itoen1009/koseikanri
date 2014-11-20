@@ -61,9 +61,6 @@ FROM XXCSO_SP_DECISION_SENDS XxcsoSpDecisionSendsEO
     ,fnd_lookup_values_vl flvv
 WHERE flvv.lookup_type                                                              = 'XXCSO1_SP_DECISION_LEVEL'
 AND   flvv.lookup_code                                                              = XxcsoSpDecisionSendsEO.APPROVAL_AUTHORITY_NUMBER
-AND   flvv.enabled_flag                                                             = 'Y'
-AND   NVL(flvv.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate)) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
-AND   NVL(flvv.end_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))   >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
