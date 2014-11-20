@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A18R(body)
  * Description      : 払出明細表（拠点別・合計）
  * MD.050           : 払出明細表（拠点別・合計） <MD050_XXCOI_006_A18>
- * Version          : V1.8
+ * Version          : V1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/09/11    1.6   N.Abe            [0001266]OPM品目アドオンの取得方法修正
  *  2009/10/06    1.7   H.Sasaki         [E_T3_00531]商品部のデータ抽出条件変更
  *  2010/02/02    1.8   N.Abe            [E_本稼動_01411]商品部のPT対応
+ *  2010/05/06    1,9   N.Abe            [E_本稼動_02562]拠点別のPT対応
  *
  *****************************************************************************************/
 --
@@ -198,7 +199,11 @@ AS
   -- 拠点別、専門店別、百貨店別のいづれか、かつ、拠点が設定されている場合
   CURSOR  svf_data_cur1
   IS
-    SELECT  xirm.base_code                      base_code                 -- 拠点コード
+-- == 2010/05/06 V1.9 Modified START ===============================================================
+--    SELECT  xirm.base_code                      base_code                 -- 拠点コード
+    SELECT  /*+ USE_NL(mic mcb msib iimb xirm xsib) */
+            xirm.base_code                      base_code                 -- 拠点コード
+-- == 2010/05/06 V1.9 Modified END   ===============================================================
            ,SUBSTRB(sca.account_name, 1, 8)     account_name              -- 拠点名称
            ,mcb.segment1                        item_type                 -- 商品製品区分（カテゴリコード）
 -- == 2009/07/14 V1.4 Modified START ===============================================================
@@ -249,7 +254,11 @@ AS
            ,ic_item_mst_b                       iimb                      -- OPM品目
            ,xxcmn_item_mst_b                    xsib                      -- OPM品目アドオン
            ,mtl_system_items_b                  msib                      -- Disc品目
-           ,(SELECT   CASE  WHEN  xca.customer_id IS NULL THEN  hca1.account_number
+-- == 2010/05/06 V1.9 Modified START ===============================================================
+--           ,(SELECT   CASE  WHEN  xca.customer_id IS NULL THEN  hca1.account_number
+           ,(SELECT   /*+ USE_NL(xca hca2) */
+                      CASE  WHEN  xca.customer_id IS NULL THEN  hca1.account_number
+-- == 2010/05/06 V1.9 Modified END   ===============================================================
                       ELSE  hca2.account_number
                       END   base_code
                      ,CASE  WHEN  xca.customer_id IS NULL THEN  hca1.account_name
