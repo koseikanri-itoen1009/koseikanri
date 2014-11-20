@@ -1,0 +1,7 @@
+CREATE INDEX xxcos.xxcos_rep_bus_newcust_sum_n01 ON xxcos.xxcos_rep_bus_newcust_sum (
+  results_employee_code
+ ,dlv_date
+ ,sale_base_code
+)
+TABLESPACE xxidx2
+/

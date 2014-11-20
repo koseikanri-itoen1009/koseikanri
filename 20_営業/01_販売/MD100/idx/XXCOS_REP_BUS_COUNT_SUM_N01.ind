@@ -1,0 +1,7 @@
+CREATE INDEX xxcos.xxcos_rep_bus_count_sum_n01 ON xxcos.xxcos_rep_bus_count_sum (
+  employee_num
+ ,target_date
+ ,base_code
+)
+TABLESPACE xxidx2
+/

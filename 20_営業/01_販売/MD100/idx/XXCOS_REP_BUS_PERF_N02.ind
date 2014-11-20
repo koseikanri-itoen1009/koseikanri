@@ -1,0 +1,6 @@
+CREATE INDEX xxcos.xxcos_rep_bus_perf_n02 ON xxcos.xxcos_rep_bus_perf (
+  request_id
+ ,section_code
+)
+TABLESPACE xxidx2
+/

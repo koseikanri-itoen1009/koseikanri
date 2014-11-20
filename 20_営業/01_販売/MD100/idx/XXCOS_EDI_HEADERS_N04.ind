@@ -1,0 +1,7 @@
+CREATE INDEX xxcos.xxcos_edi_headers_n04 ON xxcos.xxcos_edi_headers (
+  data_type_code
+ ,order_forward_flag
+ ,creation_class
+)
+TABLESPACE xxidx2
+/
