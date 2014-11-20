@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A18C(body)
  * Description      : 情報系連携IFデータ作成
  * MD.050           : MD050_CMM_003_A18_情報系連携IFデータ作成
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/11/28    1.8   Hiroshi.Oshida   障害E_本稼動_00151の対応
  *  2009/11/23    1.9   Yutaka.Kuboshima 障害E_本番_00341の対応
  *  2009/12/02    1.10  Yutaka.Kuboshima 障害E_本稼動_00262の対応
+ *  2009/12/25    1.11  Yutaka.Kuboshima 障害E_本稼動_xxxxxの対応
  *
  *****************************************************************************************/
 --
@@ -396,6 +397,13 @@ AS
     cv_single_byte_err1   CONSTANT VARCHAR2(30)    := 'ﾊﾝｶｸｴﾗｰ';                --半角エラー時のダミー値1
     cv_single_byte_err2   CONSTANT VARCHAR2(30)    := '99-9999-9999';           --半角エラー時のダミー値2
 -- 2009/06/09 Ver1.6 add end by Yutaka.Kuboshima
+--
+-- 2009/12/25 Ver1.11 E_本稼動_xxxxx add start by Yutaka.Kuboshima
+    cv_kokyaku_kbn        CONSTANT VARCHAR2(2)     := '10';                     --顧客区分・顧客
+    cv_mc_kouho_sts       CONSTANT VARCHAR2(2)     := '10';                     --顧客ステータス・MC候補
+    cv_mc_sts             CONSTANT VARCHAR2(2)     := '20';                     --顧客ステータス・MC
+    cv_sp_kessai_sts      CONSTANT VARCHAR2(2)     := '25';                     --顧客ステータス・SP決裁済
+-- 2009/12/25 Ver1.11 E_本稼動_xxxxx add end by Yutaka.Kuboshima
 --
     -- *** ローカル変数 ***
     lv_header_str                  VARCHAR2(2000)  := NULL;                     --ヘッダメッセージ格納用変数
@@ -826,6 +834,23 @@ AS
     price_list_rec price_list_cur%ROWTYPE;
 -- 2009/12/02 Ver1.10 障害E_本稼動_00262 add end by Yutaka.Kuboshima
 --
+-- 2009/12/25 Ver1.11 E_本稼動_xxxxx add start by Yutaka.Kuboshima
+    -- 担当営業員所属拠点取得カーソル
+    CURSOR resource_location_code_cur(p_employee_number IN VARCHAR2)
+    IS
+      SELECT paaf.ass_attribute5 location_code
+      FROM   per_all_people_f papf
+            ,per_all_assignments_f paaf
+            ,per_periods_of_service ppos
+      WHERE  papf.person_id = paaf.person_id
+        AND  paaf.period_of_service_id = ppos.period_of_service_id
+        AND  papf.effective_start_date = ppos.date_start
+        AND  ppos.actual_termination_date IS NULL
+        AND  papf.employee_number = p_employee_number;
+    -- 担当営業員所属拠点取得カーソルレコード型
+    resource_location_code_rec resource_location_code_cur%ROWTYPE;
+-- 2009/12/25 Ver1.11 E_本稼動_xxxxx add end by Yutaka.Kuboshima
+--
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -1036,6 +1061,40 @@ AS
       -- MC:商談経緯設定
       lv_mc_business_talk_details := xxcso_util_common_pkg.conv_multi_byte(cust_data_rec.mc_business_talk_details);
 -- 2009/06/09 Ver1.6 add end by Yutaka.Kuboshima
+--
+-- 2009/12/25 Ver1.11 E_本稼動_xxxxx add start by Yutaka.Kuboshima
+      -- 顧客区分設定
+      -- 顧客区分がNULLの場合
+      IF (cust_data_rec.customer_class_code IS NULL) THEN
+        -- 顧客区分に'10'(顧客)をセット
+        cust_data_rec.customer_class_code := cv_kokyaku_kbn;
+      END IF;
+      -- 顧客ステータスが'10'(MC候補),'20'(MC),'25'(SP決裁済)の場合
+      IF (cust_data_rec.duns_number_c IN (cv_mc_kouho_sts, cv_mc_sts, cv_sp_kessai_sts)) THEN
+        -- 獲得拠点設定
+        -- 獲得拠点がNULLの場合
+        IF (cust_data_rec.cnvs_base_code IS NULL) THEN
+          -- 売上拠点がNULLの場合
+          IF (cust_data_rec.sale_base_code IS NULL) THEN
+            -- 担当営業員の所属拠点を取得
+            OPEN resource_location_code_cur(cust_data_rec.resource_no);
+            FETCH resource_location_code_cur INTO resource_location_code_rec;
+            CLOSE resource_location_code_cur;
+            -- 獲得拠点に担当営業員の所属拠点をセット
+            cust_data_rec.cnvs_base_code := resource_location_code_rec.location_code;
+          ELSE
+            -- 獲得拠点に売上拠点をセット
+            cust_data_rec.cnvs_base_code := cust_data_rec.sale_base_code;
+          END IF;
+        END IF;
+        -- 獲得営業員設定
+        -- 獲得営業員がNULLの場合
+        IF (cust_data_rec.cnvs_business_person IS NULL) THEN
+          -- 獲得営業員に担当営業員をセット
+          cust_data_rec.cnvs_business_person := cust_data_rec.resource_no;
+        END IF;
+      END IF;
+-- 2009/12/25 Ver1.11 E_本稼動_xxxxx add end by Yutaka.Kuboshima
       --出力文字列作成
       lv_output_str := cv_dqu        || cv_comp_code || cv_dqu;                                                                    --会社コード
       lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.account_number, 1, 9);                                   --顧客コード
