@@ -7,6 +7,7 @@
 * “ú•t       Ver. ’S“–Ò       C³“à—e
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-17 1.0  SCS¬ì_    V‹Kì¬
+* 2009-03-23 1.1  SCS–ö•½’¼l   [STáŠQT1_0163]‰Û‘èNo.115æ‚è‚İ
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -193,6 +194,9 @@ public class XxcsoSpDecisionConstants
    * “d‹C‘ã‹æ•ª
    *****************************************************************************
    */
+// 2009-03-23 [STáŠQT1_0163] Add Start
+  public static final String ELEC_NONE     = "0";
+// 2009-03-23 [STáŠQT1_0163] Add End
   public static final String ELEC_FIXED    = "1";
   public static final String ELEC_VALIABLE = "2";
   

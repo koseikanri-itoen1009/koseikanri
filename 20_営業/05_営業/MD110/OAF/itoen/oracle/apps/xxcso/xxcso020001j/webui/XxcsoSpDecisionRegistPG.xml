@@ -19,7 +19,9 @@ Regist SP-DECISION information page.
 @see itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAMImpl.java
 
 HISTORY
-2009/01/05  H.Ogawa        new-->
+2009/01/05  H.Ogawa        new
+2009/03/23  N.Yanagitaira  assignment No.112 corrective action
+2009/03/23  N.Yanagitaira  assignment No.115 corrective action-->
       <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM" controllerClass="itoen.oracle.apps.xxcso.xxcso020001j.webui.XxcsoSpDecisionRegistCO" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PageLayoutRN">
          <ui:corporateBranding>
             <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
@@ -597,7 +599,7 @@ HISTORY
                                           <oa:sortableHeader id="AllSpContainerNameColHdr" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AllSpContainerNameColHdr" cellNoWrapFormat="true"/>
                                        </ui:columnHeader>
                                        <ui:contents>
-                                          <oa:messageChoice id="AllSpContainerType" viewAttr="SpContainerType" pickListViewName="XxcsoRuleBottleTypeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" readOnly="true"/>
+                                          <oa:messageChoice id="AllSpContainerType" viewAttr="SpContainerType" pickListViewName="XxcsoRuleBottleTypeListVO" pickListDispAttr="Description" pickListValAttr="LookupCode" readOnly="true"/>
                                        </ui:contents>
                                     </oa:column>
                                     <oa:column id="AllDiscountAmtCol" width="10%">
@@ -747,7 +749,7 @@ HISTORY
                                           <oa:sortableHeader id="SelSpContainerNameColHdr" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/SelSpContainerNameColHdr"/>
                                        </ui:columnHeader>
                                        <ui:contents>
-                                          <oa:messageChoice id="SelSpContainerType" viewAttr="SpContainerType" pickListViewName="XxcsoRuleBottleTypeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" readOnly="true"/>
+                                          <oa:messageChoice id="SelSpContainerType" viewAttr="SpContainerType" pickListViewName="XxcsoRuleBottleTypeListVO" pickListDispAttr="Description" pickListValAttr="LookupCode" readOnly="true"/>
                                        </ui:contents>
                                     </oa:column>
                                     <oa:column id="SelDiscountAmtCol" width="10%">
@@ -990,8 +992,8 @@ HISTORY
                                                    <ui:contents>
                                                       <oa:rowLayout id="ElectricityRlRN">
                                                          <ui:contents>
-                                                            <oa:messageChoice id="ElectricityTypeView" pickListViewName="XxcsoElectricityTypeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricityType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricityType" readOnly="true" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricityTypeViewRender}"/>
-                                                            <oa:messageChoice id="ElectricityType" pickListViewName="XxcsoElectricityTypeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricityType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricityType" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricityTypeRender}">
+                                                            <oa:messageChoice id="ElectricityTypeView" pickListViewName="XxcsoElectricityTypeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricityType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricityType" readOnly="true" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricityTypeViewRender}" allowBlankValue="false"/>
+                                                            <oa:messageChoice id="ElectricityType" pickListViewName="XxcsoElectricityTypeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricityType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricityType" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricityTypeRender}" allowBlankValue="false">
                                                                <ui:primaryClientAction>
                                                                   <ui:firePartialAction event="ElectricityTypeChange"/>
                                                                </ui:primaryClientAction>

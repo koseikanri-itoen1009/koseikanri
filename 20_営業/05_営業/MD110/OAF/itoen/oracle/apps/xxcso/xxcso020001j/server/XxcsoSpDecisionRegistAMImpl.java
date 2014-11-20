@@ -8,6 +8,7 @@
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-16 1.0  SCS小川浩     新規作成
 * 2009-03-04 1.1  SCS小川浩     課題一覧No.73対応
+* 2009-03-23 1.2  SCS柳平直人   [ST障害T1_0163]課題No.115取り込み
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -1858,7 +1859,36 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     XxcsoUtils.debug(txn, "[END]");
   }
 
-  
+// 2009-03-23 [ST障害T1_0163] Add Start
+  /*****************************************************************************
+   * 電気代区分変更イベント処理
+   *****************************************************************************
+   */
+  public void handleElectricityTypeChange()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // インスタンス取得
+    XxcsoSpDecisionHeaderFullVOImpl headerVo
+      = getXxcsoSpDecisionHeaderFullVO1();
+    if ( headerVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoSpDecisionHeaderFullVO1"
+        );
+    }
+
+    XxcsoSpDecisionReflectUtils.reflectElectricity(
+      headerVo
+    );
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+// 2009-03-23 [ST障害T1_0163] Add End
+
   /*****************************************************************************
    * 情報反映ボタン押下処理
    *****************************************************************************

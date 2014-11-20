@@ -7,6 +7,7 @@
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-10 1.0  SCS小川浩    新規作成
+* 2009-03-23 1.1  SCS柳平直人  [ST障害T1_0163]課題No.115取り込み
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.webui;
@@ -485,7 +486,10 @@ public class XxcsoSpDecisionRegistCO extends OAControllerImpl
     if ( "ElectricityTypeChange".equals(event) )
     {
       // 電気代区分変更イベント
-      // レンダリングのみ
+// 2009-03-23 [ST障害T1_0163] Mod Start
+//      // レンダリングのみ
+      am.invokeMethod("handleElectricityTypeChange");
+// 2009-03-23 [ST障害T1_0163] Mod End
     }
     
     if ( "BusinessConditionTypeChange".equals(event) )

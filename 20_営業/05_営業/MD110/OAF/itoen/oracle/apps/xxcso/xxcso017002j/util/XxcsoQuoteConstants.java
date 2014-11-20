@@ -7,6 +7,8 @@
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-01-07 1.0  SCS及川領  新規作成
+* 2009-03-24 1.1  SCS阿部大輔  【課題77対応】プロファイル値を追加
+* 2009-03-24 1.1  SCS阿部大輔  【T1_0138】ボタン制御を修正
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017002j.util;
@@ -67,6 +69,9 @@ public class XxcsoQuoteConstants
    * ステータス
    *****************************************************************************
    */
+  /* 20090324_abe_T1_0138 START*/
+  public static final String QUOTE_INIT       = "0";
+  /* 20090324_abe_T1_0138 END*/
   public static final String QUOTE_INPUT      = "1";
   public static final String QUOTE_FIXATION   = "2";
   public static final String QUOTE_OLD        = "3";
@@ -149,4 +154,11 @@ public class XxcsoQuoteConstants
   public static final String RATE_MAX        = "99.99";
   public static final String RATE_LIMIT_MIN  = "-100";
   public static final String RATE_LIMIT_MAX  = "100";
+  /* 20090324_abe_課題77 START*/
+  /*****************************************************************************
+   * プロファイルオプション値
+   *****************************************************************************
+   */
+  public static final String PERIOD_DAY    = "XXCSO1_PERIOD_DAY_017_A01";
+  /* 20090324_abe_課題77 END*/
 }

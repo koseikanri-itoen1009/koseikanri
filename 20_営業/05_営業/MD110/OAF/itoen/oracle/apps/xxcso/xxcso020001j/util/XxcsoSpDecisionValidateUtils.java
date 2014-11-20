@@ -8,6 +8,7 @@
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-27 1.0  SCSè¨êÏç_     êVãKçÏê¨
 * 2009-03-04 1.1  SCSè¨êÏç_     â€ëËàÍóóNo.73ëŒâû
+* 2009-03-23 1.2  SCSñˆïΩíºêl   [STè·äQT1_0163]â€ëËNo.115éÊÇËçûÇ›
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -912,19 +913,41 @@ public class XxcsoSpDecisionValidateUtils
     // ÇªÇÃëºèåèÅFìdãCë„
     /////////////////////////////////////
     boolean requiredFlag = false;
+// 2009-03-23 [STè·äQT1_0163] Add Start
+    boolean zeroCheckFlag = false;
+// 2009-03-23 [STè·äQT1_0163] Add End
     if ( XxcsoSpDecisionConstants.ELEC_FIXED.equals(electricityType) ||
          XxcsoSpDecisionConstants.ELEC_VALIABLE.equals(electricityType)
        )
     {
       requiredFlag = true;
+// 2009-03-23 [STè·äQT1_0163] Add Start
+      zeroCheckFlag = true;
+// 2009-03-23 [STè·äQT1_0163] Add End
     }
     if ( ! submitFlag )
     {
       requiredFlag = false;
+// 2009-03-23 [STè·äQT1_0163] Add Start
+      zeroCheckFlag = false;
+// 2009-03-23 [STè·äQT1_0163] Add End
     }
     token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
             + XxcsoConstants.TOKEN_VALUE_DELIMITER1
             + XxcsoSpDecisionConstants.TOKEN_VALUE_ELECTRICITY_AMOUNT;
+// 2009-03-23 [STè·äQT1_0163] Mod Start
+//    errorList
+//      = utils.checkStringToNumber(
+//          errorList
+//         ,headerRow.getElectricityAmount()
+//         ,token1
+//         ,0
+//         ,5
+//         ,true
+//         ,false
+//         ,requiredFlag
+//         ,0
+//        );
     errorList
       = utils.checkStringToNumber(
           errorList
@@ -933,10 +956,11 @@ public class XxcsoSpDecisionValidateUtils
          ,0
          ,5
          ,true
-         ,false
+         ,zeroCheckFlag
          ,requiredFlag
          ,0
         );
+// 2009-03-23 [STè·äQT1_0163] Mod End
     
     XxcsoUtils.debug(txn, "[END]");
 

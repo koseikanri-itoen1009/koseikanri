@@ -7,6 +7,7 @@
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-27 1.0  SCS小川浩     新規作成
+* 2009-03-23 1.1  SCS柳平直人   [ST障害T1_0163]課題No.115取り込み
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -744,6 +745,32 @@ public class XxcsoSpDecisionReflectUtils
     );
   }
 
+// 2009-03-23 [ST障害T1_0163] Add Start
+  /*****************************************************************************
+   * 電気代区分変更時情報反映
+   * @param headerVo     SP専決ヘッダ登録／更新用ビューインスタンス
+   *****************************************************************************
+   */
+  public static void reflectElectricity(
+    XxcsoSpDecisionHeaderFullVOImpl    headerVo
+  )
+  {
+    /////////////////////////////////////
+    // 各行を取得
+    /////////////////////////////////////
+    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+
+    String electricityType = headerRow.getElectricityType();
+    if ( XxcsoSpDecisionConstants.ELEC_NONE.equals(electricityType) )
+    {
+      if ( isDiffer(headerRow.getElectricityAmount(), null) )
+      {
+        headerRow.setElectricityAmount(null);
+      }
+    }
+  }
+// 2009-03-23 [ST障害T1_0163] Add End
 
   /*****************************************************************************
    * 全反映
@@ -976,8 +1003,12 @@ public class XxcsoSpDecisionReflectUtils
     // 値の設定：その他条件
     /////////////////////////////////////
     String electricityType = headerRow.getElectricityType();
-    if ( electricityType == null || "".equals(electricityType) )
+// 2009-03-23 [ST障害T1_0163] Mod Start
+//    if ( electricityType == null || "".equals(electricityType) )
+//    {
+    if ( XxcsoSpDecisionConstants.ELEC_NONE.equals(electricityType) )
     {
+// 2009-03-23 [ST障害T1_0163] Mod End
       if ( isDiffer(headerRow.getElectricityAmount(), null) )
       {
         headerRow.setElectricityAmount(null);
