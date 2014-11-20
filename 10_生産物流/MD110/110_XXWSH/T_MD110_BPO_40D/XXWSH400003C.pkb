@@ -44,6 +44,7 @@ AS
  *  2008/08/06    1.14  D.Nihei         ST不具合対応#525
  *                                      カテゴリ情報VIEW変更
  *  2008/08/11    1.15  M.Hokkanji      内部課題#32対応、内部変更要求#173,178対応
+ *  2008/09/01    1.16  N.Yoshida       PT対応(起票なし)
  *
  *****************************************************************************************/
 --
@@ -806,9 +807,63 @@ AS
     lt_weight_capacity_class         xxwsh_order_headers_all.weight_capacity_class%TYPE; -- 重量容積区分
     lt_transaction_type_id           xxwsh_oe_transaction_types_v.transaction_type_id%TYPE; -- 荒茶出荷ID保管
 -- Ver1.15 M.Hokkanji End
-    -- *** ローカル・カーソル ***
---
-    CURSOR upd_status_cur
+-- 2008/09/01 N.Yoshida ADD START
+    lv_select     VARCHAR2(32000) ;
+    lv_select_other     VARCHAR2(32000) ;
+    lv_select_c1     VARCHAR2(32000) ;
+    lv_select_c2     VARCHAR2(32000) ;
+    lv_select_c3     VARCHAR2(32000) ;
+    lv_select_c4     VARCHAR2(32000) ;
+    lv_select_c5     VARCHAR2(32000) ;
+    lv_sql     VARCHAR2(32000) ;
+    -- *** ローカル・カーソル ***    
+    TYPE   ref_cursor IS REF CURSOR ;
+    upd_status_cur ref_cursor ;
+    TYPE ret_value  IS RECORD
+      (
+        shipping_item_code          xxwsh_order_lines_all.shipping_item_code%TYPE
+       ,quantity                    xxwsh_order_lines_all.quantity%TYPE
+       ,deliver_from_id             xxwsh_order_headers_all.deliver_from_id%TYPE
+       ,schedule_ship_date          xxwsh_order_headers_all.shipped_date%TYPE
+       ,head_sales_branch           xxwsh_order_headers_all.head_sales_branch%TYPE
+       ,shipping_inventory_item_id  xxcmn_item_mst2_v.inventory_item_id %TYPE
+       ,prod_class                  xxwsh_order_headers_all.prod_class%TYPE
+       ,deliver_from                xxwsh_order_headers_all.deliver_from%TYPE
+       ,deliver_to                  xxwsh_order_headers_all.deliver_to%TYPE
+       ,request_no                  xxwsh_order_headers_all.request_no%TYPE
+       ,schedule_arrival_date       xxwsh_order_headers_all.arrival_date%TYPE
+       ,shipping_method_code        xxwsh_order_headers_all.shipping_method_code%TYPE
+       ,sum_weight                  xxwsh_order_headers_all.sum_weight%TYPE
+       ,sum_capacity                xxwsh_order_headers_all.sum_capacity%TYPE
+       ,pallet_sum_quantity         xxwsh_order_headers_all.pallet_sum_quantity %TYPE
+       ,order_type_id               xxwsh_order_headers_all.order_type_id%TYPE
+       ,base_category               xxcmn_cust_accounts2_v.leaf_base_category%TYPE
+       ,sum_pallet_weight           xxwsh_order_headers_all.sum_pallet_weight%TYPE
+       ,weight_capacity_class       xxwsh_order_headers_all.weight_capacity_class %TYPE
+       ,based_request_quantity      xxwsh_order_lines_all.based_request_quantity %TYPE
+       ,request_item_code           xxwsh_order_lines_all.request_item_code  %TYPE
+       ,request_item_id             xxwsh_order_lines_all.request_item_id%TYPE
+       ,small_amount_class          xxwsh_ship_method2_v.small_amount_class %TYPE
+       ,item_id                     xxcmn_item_mst2_v.item_id%TYPE
+       ,parent_item_id              xxcmn_item_mst2_v.parent_item_id %TYPE
+       ,num_of_deliver              xxcmn_item_mst2_v.num_of_deliver%TYPE
+       ,num_of_cases                xxcmn_item_mst2_v.num_of_cases%TYPE
+       ,ship_class                  xxcmn_item_mst2_v.ship_class%TYPE
+       ,sales_div                   xxcmn_item_mst2_v.sales_div%TYPE
+       ,obsolete_class              xxcmn_item_mst2_v.obsolete_class%TYPE
+       ,rate_class                  xxcmn_item_mst2_v.rate_class%TYPE
+       ,delivery_qty                xxcmn_item_mst2_v.delivery_qty%TYPE
+       ,item_class_code             xxcmn_item_categories5_v.item_class_code%TYPE
+       ,account_number              xxcmn_cust_accounts2_v.account_number%TYPE
+       ,cust_enable_flag            xxcmn_cust_accounts2_v.cust_enable_flag%TYPE
+       ,location_rel_code           xxcmn_cust_accounts2_v.location_rel_code %TYPE
+       ,order_header_id             xxwsh_order_headers_all.order_header_id%TYPE
+       ,conv_unit                   xxcmn_item_mst2_v.conv_unit%TYPE
+       ,freight_charge_class        xxwsh_order_headers_all.freight_charge_class %TYPE
+      );
+    loop_cnt    ret_value ;
+    
+    /*CURSOR upd_status_cur
     IS
       SELECT  xola.shipping_item_code shipping_item_code -- 品目コード - 受注明細アドオン.出荷品目
             , xola.quantity           quantity           -- 数量 - 受注明細アドオン.数量
@@ -935,7 +990,9 @@ AS
       ORDER BY xoha.request_no, xola.shipping_item_code
                                 -- 依頼No,品目コード
       FOR UPDATE OF xoha.req_status NOWAIT
-      ;
+      ;*/
+-- 2008/09/01 N.Yoshida ADD END
+--
     -- *** ローカル・レコード ***
 --
     -- ===============================
@@ -943,6 +1000,116 @@ AS
     -- ===============================
 --
   BEGIN
+--
+-- 2008/09/01 N.Yoshida ADD START
+      lv_select :=
+      'SELECT  xola.shipping_item_code shipping_item_code' -- 品目コード - 受注明細アドオン.出荷品目
+    ||      ', xola.quantity           quantity          ' -- 数量 - 受注明細アドオン.数量
+    ||      ', xoha.deliver_from_id    deliver_from_id   ' -- 出荷元ID - 受注ヘッダアドオン.出荷元ID
+    ||      ', NVL(xoha.shipped_date,xoha.schedule_ship_date)'
+    ||      '                        schedule_ship_date  ' -- 出庫日 - 受注ヘッダアドオン.出荷予定日
+    ||      ' , xoha.head_sales_branch  head_sales_branch ' -- 拠点コード - 受注ヘッダアドオン.管轄拠点
+    ||      ' , ximv.inventory_item_id '
+    ||      '                 shipping_inventory_item_id ' -- 品目ID - invの品目ID
+    ||      ' , xoha.prod_class         prod_class       ' -- 商品区分 - 受注ヘッダアドオン.商品区分
+    ||      ' , xoha.deliver_from       deliver_from     ' -- 出荷元保管場所コード - 受注ヘッダアドオン.出荷元保管場所
+    ||      ' , NVL(xoha.result_deliver_to,xoha.deliver_to)         deliver_to  '       -- 配送先コード - 受注ヘッダアドオン.出荷先
+    ||      ' , xoha.request_no         request_no       ' -- 依頼No - 受注ヘッダアドオン.依頼No
+    ||      ' , NVL(xoha.arrival_date,xoha.schedule_arrival_date) '
+    ||      '                        schedule_arrival_date ' -- 着日 - 受注ヘッダアドオン.着荷予定日
+    ||      ' , NVL(xoha.result_shipping_method_code,xoha.shipping_method_code) '
+    ||      '                        shipping_method_code ' -- 配送区分 - 受注ヘッダアドオン.配送区分
+    ||      ' , xoha.sum_weight         sum_weight        ' -- 積載重量合計 - 受注ヘッダアドオン.積載重量合計
+    ||      ' , xoha.sum_capacity       sum_capacity      ' -- 積載容積合計 - 受注ヘッダアドオン.積載容積合計
+    ||      ' , xoha.pallet_sum_quantity '
+    ||      '                         pallet_sum_quantity ' -- パレット合計枚数 - 受注ヘッダアドオン.パレット合計枚数
+    ||      ' , xoha.order_type_id      order_type_id     ' -- 受注タイプID - 受注ヘッダアドオン.受注タイプID
+    ||      ' , DECODE(''' || iv_prod_class || ''''
+    ||      '     ,''' || 1 || ''', xcav.leaf_base_category          ' -- リーフ拠点カテゴリ 顧客情報VIEW2
+    ||      '     ,''' || 2 || ''', xcav.drink_base_category         ' -- ドリンク拠点カテゴリ 顧客情報VIEW2
+    ||      '           ,'''')  base_category               ' -- 拠点カテゴリ
+    ||      ', xoha.sum_pallet_weight  sum_pallet_weight ' -- 合計パレット重量 変更#173
+    ||      ', xoha.weight_capacity_class weight_capacity_class ' -- 重量容積区分
+    ||      ', xola.based_request_quantity based_request_quantity ' -- 拠点依頼数量
+    ||      ', xola.request_item_code request_item_code  ' -- 依頼品目コード
+    ||      ', xola.request_item_id request_item_id      ' -- 依頼品目ID
+    ||      ', xsmv.small_amount_class small_amount_class ' -- 小口区分
+    ||      ', ximv.item_id item_id                      ' -- 品目ID(OPMの品目ID)
+    ||      ', ximv.parent_item_id parent_item_id        ' -- 親品目ID
+    ||      ', ximv.num_of_deliver     num_of_deliver    ' -- 出荷入数 - OPM品目マスタ.出荷入数
+    ||      ', ximv.num_of_cases       num_of_cases      ' -- 入数 OPM品目マスタ.入数
+    ||      ', ximv.ship_class         ship_class        ' -- 出荷区分 - OPM品目マスタ.出荷区分
+    ||      ', ximv.sales_div          sales_div         ' -- 売上対象区分 - OPM品目マスタ. 売上対象区分
+    ||      ', ximv.obsolete_class     obsolete_class    ' -- 廃止区分 - OPM品目マスタ. 廃止区分
+    ||      ', ximv.rate_class         rate_class        ' -- 率区分 - OPM品目マスタ. 率区分
+    ||      ', ximv.delivery_qty       delivery_qty      ' -- 配数 - OPM品目マスタ.配数
+    ||      ', xicv.item_class_code    item_class_code   ' -- 品目区分 - 品目カテゴリ.セグメント1
+    ||      ', xcav.account_number     account_number    ' -- 顧客コード - 顧客マスタ. 顧客コード
+    ||      ', xcav.cust_enable_flag   cust_enable_flag  ' -- 中止客申請フラグ - 顧客マスタ. 中止客申請フラグ
+    ||      ', xcav.location_rel_code  location_rel_code ' -- 拠点実績有無区分 - 顧客マスタ.拠点実績有無区分
+    ||      ', xoha.order_header_id    order_header_id   ' -- 受注ヘッダアドオンID
+    ||      ', ximv.conv_unit          conv_unit         ' -- 入出庫換算単位 OPM品目マスタ入出庫換算単位
+    ||      ', xoha.freight_charge_class   freight_charge_class '  -- 運賃区分 2008/07/09 ST不具合対応#430
+    ||  ' FROM'
+    ||  '   xxwsh_oe_transaction_types2_v xottv ' --①受注タイプ情報VIEW2
+    ||  '  ,xxwsh_order_headers_all       xoha  ' --②受注ヘッダアドオン
+    ||  '  ,xxwsh_order_lines_all         xola  ' --③受注明細アドオン
+    ||  '  ,xxcmn_cust_accounts2_v        xcav  ' --④顧客情報VIEW2
+    ||  '  ,xxcmn_cust_acct_sites2_v      xcasv ' --⑤顧客サイト情報VIEW2
+    ||  '  ,xxcmn_item_mst2_v             ximv  ' --⑥OPM品目情報VIEW2
+    ||  '  ,xxcmn_item_categories5_v      xicv  ' --OPM品目カテゴリ割当情報VIEW5
+    ||  '  ,xxwsh_ship_method2_v          xsmv  ' --配送区分情報VIEW2
+    ||  ' WHERE xottv.order_category_code   =  ''' || cv_order_category_code || ''''
+                                --受注カテゴリコード
+    ||  ' AND   xottv.shipping_shikyu_class =  ''' || cv_shipping_shikyu_class || ''''
+                                -- 出荷支給区分＝「出荷依頼
+    ||  ' AND   xoha.order_type_id          =  xottv.TRANSACTION_TYPE_ID '
+                                -- 受注ヘッダアドオン.受注タイプID＝受注タイプ.取引タイプIDかつ
+    ||  ' AND   xoha.latest_external_flag   =  ''' || cv_latest_external_flag || ''''
+                                -- 最新フラグ＝’Y'
+    ||  ' AND   xoha.prod_class             =  ''' || iv_prod_class || ''''
+                                -- 受注ヘッダアドオン.商品区分＝パラメータ.商品区分 かつ
+    ||  ' AND   xoha.req_status             =  ''' || gv_status_01 || ''''
+                                -- 受注ヘッダアドオン.ステータス＝「01:入力中」かつ
+    ||  ' AND   xoha.input_sales_branch     =  ''' || iv_input_sales_branch || ''''
+                                -- 受注ヘッダアドオン.入力拠点＝パラメータ.入力拠点コードかつ
+    ||  ' AND   xoha.order_header_id        =  xola.order_header_id '
+        -- 受注ヘッダアドオン.受注ヘッダアドオンID＝受注明細アドオン.受注ヘッダアドオンIDかつ
+    ||  ' AND   NVL(xoha.result_deliver_to_id,xoha.deliver_to_id)          =  xcasv.party_site_id '
+        -- 受注ヘッダアドオン.出荷先ID ＝ パーティサイトアドオンマスタ.パーティサイトIDかつ
+    ||  ' AND   xcav.party_id               =    xcasv.party_id '
+        -- パーティアドオンマスタ.パーティサイトID＝パーティサイトアドオンマスタ.パーティサイトIDかつ
+    ||  ' AND   xcav.start_date_active   <= NVL(''' || id_schedule_ship_date || ''',NVL(xoha.shipped_date,xoha.schedule_ship_date)) '
+                                -- パーティアドオンマスタ.適用開始日≦パラメータ.出庫日かつ
+    ||  ' AND   xcav.end_date_active     >= NVL(''' || id_schedule_ship_date || ''',NVL(xoha.shipped_date,xoha.schedule_ship_date)) '
+                                -- パーティアドオンマスタ.適用終了日≧パラメータ. 出庫日かつ
+    ||  ' AND   xcasv.start_date_active  <= NVL(''' || id_schedule_ship_date || ''',NVL(xoha.shipped_date,xoha.schedule_ship_date)) '
+                                -- パーティサイトアドオンマスタ.適用開始日≦パラメータ. 出庫日かつ
+    ||  ' AND   xcasv.end_date_active    >= NVL(''' || id_schedule_ship_date || ''',NVL(xoha.shipped_date,xoha.schedule_ship_date)) '
+                                -- パーティサイトアドオンマスタ.適用終了日≧パラメータ. 出庫日かつ
+    ||  ' AND   ximv.item_no             =  xola.shipping_item_code '
+                                -- OPM品目マスタ.品目＝受注明細アドオン.出荷品目かつ
+    ||  ' AND   ximv.start_date_active   <= NVL(''' || id_schedule_ship_date || ''',NVL(xoha.shipped_date,xoha.schedule_ship_date)) '
+                                -- OPM品目アドオンマスタ.適用開始日≦パラメータ. 出庫日かつ
+    ||  ' AND   ximv.end_date_active     >= NVL(''' || id_schedule_ship_date || ''',NVL(xoha.shipped_date,xoha.schedule_ship_date)) '
+                                -- OPM品目アドオンマスタ.適用終了日≧パラメータ. 出庫日かつ
+    ||  ' AND   xicv .item_id            =  ximv.item_id  '
+                                -- OPM品目カテゴリ割当(品目区分).品目ID＝OPM品目アドオンマスタ.品目ID
+    ||  ' AND   xola.delete_flag         <> ''' || cv_delete_flag || ''''
+                                -- 受注明細アドオン.削除フラグ ≠ ’Y’
+    ||  ' AND   xcav.account_status      =  ''' || gv_status_A || '''' --（有効）
+    ||  ' AND   xottv.start_date_active  <= NVL(''' || id_schedule_ship_date || ''',NVL(xoha.shipped_date,xoha.schedule_ship_date)) '
+    ||  ' AND  (xottv.end_date_active    IS NULL '
+    ||  ' OR    xottv.end_date_active    >= NVL(''' || id_schedule_ship_date || ''',NVL(xoha.shipped_date,xoha.schedule_ship_date))) '
+    ||  ' AND   xsmv.ship_method_code(+) = NVL(xoha.result_shipping_method_code,xoha.shipping_method_code) '
+    ||  ' AND   xsmv.start_date_active(+)  <= NVL(''' || id_schedule_ship_date || ''',NVL(xoha.shipped_date,xoha.schedule_ship_date)) '
+    ||  ' AND  (xsmv.end_date_active(+)    >= NVL(''' || id_schedule_ship_date || ''',NVL(xoha.shipped_date,xoha.schedule_ship_date))) ';
+
+    lv_select_other :=
+    '  ORDER BY xoha.request_no, xola.shipping_item_code '  -- 依頼No,品目コード
+    || '  FOR UPDATE OF xoha.req_status NOWAIT';
+--
+-- 2008/09/01 N.Yoshida ADD END
 --
 --##################  固定ステータス初期化部 START   ###################
 --
@@ -1067,6 +1234,8 @@ AS
     END IF;
 --
 --
+-- 2008/09/01 N.Yoshida ADD START
+    /*
     -- パラメータ.管轄拠点コードNULLチェック
     IF  (iv_head_sales_branch IS NULL) THEN
       -- 管轄拠点コードがNULLの場合
@@ -1106,6 +1275,47 @@ AS
     ELSE
       ln_s_a_d_nullflg := 0;
     END IF;
+    */
+    -- パラメータ.管轄拠点コードNULLチェック
+    IF  (iv_head_sales_branch IS NULL) THEN
+      -- 管轄拠点コードがNULLの場合
+      lv_select_c1 := '';
+    ELSE
+      lv_select_c1 := ' AND xoha.head_sales_branch = ''' || iv_head_sales_branch || '''';
+    END IF;
+--
+    -- パラメータ.配送先IDNULLチェック
+    IF  (in_deliver_to_id IS NULL) THEN
+      -- 配送先IDがNULLの場合
+      lv_select_c2 := '';
+    ELSE
+      lv_select_c2 := ' AND NVL(xoha.result_deliver_to_id,xoha.deliver_to_id) = ''' || in_deliver_to_id ||  '''';
+    END IF;
+--
+    -- パラメータ.依頼No NULLチェック
+    IF  (iv_request_no IS NULL) THEN
+      -- 配送先IDがNULLの場合
+      lv_select_c3 := '';
+    ELSE
+      lv_select_c3 := ' AND xoha.request_no = ''' || iv_request_no || '''';
+    END IF;
+--
+    -- パラメータ.出庫日 NULLチェック
+    IF  (id_schedule_ship_date IS NULL) THEN
+      -- 出庫日がNULLの場合
+      lv_select_c4 := '';
+    ELSE
+      lv_select_c4 := ' AND NVL(xoha.shipped_date,xoha.schedule_ship_date) = ''' || id_schedule_ship_date || '''';
+    END IF;
+--
+    -- パラメータ.着日 NULLチェック
+    IF  (id_schedule_arrival_date IS NULL) THEN
+      -- 着日がNULLの場合
+      lv_select_c5 := '';
+    ELSE
+      lv_select_c5 := ' AND NVL(xoha.arrival_date,xoha.schedule_arrival_date) = ''' || id_schedule_arrival_date || '''';
+    END IF;
+-- 2008/09/01 N.Yoshida ADD END
 --
     ld_sysdate := TRUNC(SYSDATE); -- システム日付の取得
 --
@@ -1115,8 +1325,17 @@ AS
     -- ========================================
     -- データのチェックを行う
     -- ========================================
+--
+-- 2008/09/01 N.Yoshida ADD START
+    --<<data_loop>>
+    --FOR loop_cnt IN upd_status_cur LOOP
+    OPEN upd_status_cur FOR lv_select || lv_select_c1 || lv_select_c2 || lv_select_c3 || lv_select_c4 ||
+                            lv_select_c5 || lv_select_other;
     <<data_loop>>
-    FOR loop_cnt IN upd_status_cur LOOP
+    LOOP
+      FETCH upd_status_cur INTO loop_cnt;
+      EXIT WHEN upd_status_cur%NOTFOUND;
+-- 2008/09/01 N.Yoshida ADD END
 --
       -- 処理件数をカウント
       IF (ln_bfr_order_header_id <> loop_cnt.order_header_id) THEN
@@ -2179,7 +2398,11 @@ AS
       ln_warn_cnt   := ln_warn_cnt + ln_warn_flg;
       ln_warn_flg   := 0;
 --
-    END LOOP upd_data_loop;
+-- 2008/09/01 N.Yoshida ADD START
+    --END LOOP upd_data_loop;
+    END LOOP data_loop;
+    CLOSE upd_status_cur;
+-- 2008/09/01 N.Yoshida ADD END
 --
     IF ( ln_data_cnt = 0 ) THEN
       -- 出荷依頼情報対象データなし
@@ -2358,6 +2581,12 @@ AS
 --
     WHEN check_lock_expt THEN                           --*** ロック取得エラー ***
       -- エラーメッセージ取得
+--
+-- 2008/09/01 N.Yoshida ADD START
+      IF ( upd_status_cur%ISOPEN )THEN
+        CLOSE upd_status_cur;
+      END IF;
+-- 2008/09/01 N.Yoshida ADD END
       lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
                                             gv_cnst_msg_001);
       lv_errbuf := lv_errmsg;
@@ -2367,6 +2596,11 @@ AS
       out_log(0,0,1,0);
 --
     WHEN global_process_warn THEN                           --*** ワーニング ***
+-- 2008/09/01 N.Yoshida ADD START
+      IF ( upd_status_cur%ISOPEN )THEN
+        CLOSE upd_status_cur;
+      END IF;
+-- 2008/09/01 N.Yoshida ADD END
       ov_errmsg := lv_errmsg;
       ov_errbuf := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_warn;
@@ -2376,17 +2610,32 @@ AS
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
+-- 2008/09/01 N.Yoshida ADD START
+      IF ( upd_status_cur%ISOPEN )THEN
+        CLOSE upd_status_cur;
+      END IF;
+-- 2008/09/01 N.Yoshida ADD END
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_error;
       out_log(ln_data_cnt,ln_normal_cnt,1,ln_warn_cnt);
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
+-- 2008/09/01 N.Yoshida ADD START
+      IF ( upd_status_cur%ISOPEN )THEN
+        CLOSE upd_status_cur;
+      END IF;
+-- 2008/09/01 N.Yoshida ADD END
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
       out_log(ln_data_cnt,ln_normal_cnt,1,ln_warn_cnt);
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
+-- 2008/09/01 N.Yoshida ADD START
+      IF ( upd_status_cur%ISOPEN )THEN
+        CLOSE upd_status_cur;
+      END IF;
+-- 2008/09/01 N.Yoshida ADD END
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
       out_log(ln_data_cnt,ln_normal_cnt,1,ln_warn_cnt);
