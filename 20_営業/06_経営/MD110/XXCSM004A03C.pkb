@@ -3,11 +3,11 @@ AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
  *
- * Package Name     : XXCSM004A03C(spec)
+ * Package Name     : XXCSM004A03C(body)
  * Description      : 従業員マスタと資格ポイントマスタから各営業員の資格ポイントを算出し、
  *                  : 新規獲得ポイント顧客別履歴テーブルに登録します。
  * MD.050           : MD050_CSM_004_A03_新規獲得ポイント集計（資格ポイント集計処理）
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -28,7 +28,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008-12-12    1.0   T.Tsukino        新規作成
- *
+ *  2009-04-15    1.1   M.Ohtsuki       ［T1_0568］新・旧職務コードNULL値の対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -865,7 +865,12 @@ AS
                       AND    NVL(flv.end_date_active,gd_process_date) >= gd_process_date      --有効終了日>=業務日付
                       AND    flv.enabled_flag = 'Y'
                       AND    flv.lookup_code =  ppf.attribute21          --職種コード（旧）が営業員
-                      AND    flv.lookup_code <> ppf.attribute19          --職種コード（新）が営業員以外
+--//+UPD START 2009/04/15 T1_0568 M.Ohtsuki
+--                      AND    flv.lookup_code <> ppf.attribute19          --職種コード（新）が営業員以外
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+                      AND    (flv.lookup_code <> ppf.attribute19          --職種コード（新）が営業員以外
+                              OR ppf.attribute19 IS NULL)                 --職種コード（新）がNULL
+--//+UPD END   2009/04/15 T1_0568 M.Ohtsuki
                       AND    SUBSTRB(paaf.ass_attribute2,1,6) >= TO_CHAR(gd_process_date,'YYYYMM')) --前月以前に営業員でなくなった従業員を除外
       UNION ALL
       --従業員の職種が新部署のみで営業員のケース
@@ -896,7 +901,12 @@ AS
                       AND    NVL(flv.start_date_active,gd_process_date) <= gd_process_date    --有効開始日<=業務日付
                       AND    NVL(flv.end_date_active,gd_process_date) >= gd_process_date      --有効終了日>=業務日付
                       AND    flv.enabled_flag = 'Y'
-                      AND    flv.lookup_code <> ppf.attribute21          --職種コード（旧）が営業員以外
+--//+UPD START 2009/04/15 T1_0568 M.Ohtsuki
+--                      AND    flv.lookup_code <> ppf.attribute21          --職種コード（旧）が営業員以外
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+                      AND    (flv.lookup_code <> ppf.attribute21          --職種コード（旧）が営業員以外
+                             OR ppf.attribute21 IS NULL)                  --職種コード（旧）がNULL
+--//+UPD END   2009/04/15 T1_0568 M.Ohtsuki
                       AND    flv.lookup_code =  ppf.attribute19          --職種コード（新）が営業員
                       AND    SUBSTRB(paaf.ass_attribute2,1,6) <= TO_CHAR(gd_process_date,'YYYYMM')) --翌月以降に営業員でとなる従業員を除外
       UNION ALL
