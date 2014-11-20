@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2010-02-17    1.24  T.Maruyama       E_本稼動_01603
  *  2010-03-08    1.25  K.Hosoi          E_本稼動_01838対応
  *  2010-04-05    1.26  T.Yoshimoto      E_本稼動_02102対応
+ *  2010-05-10    1.26  D.Abe            E_本稼動_02598対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -988,6 +989,9 @@ AS
     --
     lv_sale_base_code2         xxcso_cust_acct_sites_v.sale_base_code%TYPE;             -- 売上拠点コード
     /* 2010.03.08 K.Hosoi E_本稼動_01838対応 END */
+    /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+    ld_reqst_date              DATE;                                             -- 依頼日
+    /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
     lv_code                    VARCHAR2(20);            -- 編集用参照コード
     ld_date                    DATE;                    -- 業務処理日付格納用('yyyymmdd'形式)
     lv_log_po_head_num         VARCHAR2(20);            -- ログ用発注番号
@@ -1023,6 +1027,10 @@ AS
   lv_work_location_code  := io_get_data_rec.work_location_code;
   -- 顧客コード１（新設置先）
   lv_new_customer_code1  := io_get_data_rec.new_customer_code1;
+  /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+  -- 依頼日
+  ld_reqst_date          := TO_DATE(io_get_data_rec.reqst_date,'YYYYMMDD');
+  /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
   -- ログ用発注番号
   lv_log_po_head_num     := TO_CHAR(io_get_data_rec.po_header_num);
   -- ログ用発注明細番号
@@ -1461,9 +1469,15 @@ AS
       BEGIN
         SELECT (
                  CASE
-                   WHEN TO_DATE(xev.issue_date, 'yyyy/mm/dd') <= ld_date THEN
+                   /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+                   --WHEN TO_DATE(xev.issue_date, 'yyyy/mm/dd') <= ld_date THEN
+                   WHEN TO_DATE(xev.issue_date, 'yyyy/mm/dd') <= ld_reqst_date THEN
+                   /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
                      xev.work_base_code_new  -- 勤務地拠点コード(新)
-                   WHEN TO_DATE(xev.issue_date, 'yyyy/mm/dd')  > ld_date THEN
+                   /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+                   --WHEN TO_DATE(xev.issue_date, 'yyyy/mm/dd')  > ld_date THEN
+                   WHEN TO_DATE(xev.issue_date, 'yyyy/mm/dd')  > ld_reqst_date THEN
+                   /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
                      xev.work_base_code_old  -- 勤務地拠点コード(旧)
                    WHEN xev.issue_date IS NULL THEN
                      xev.work_base_code_old  -- 勤務地拠点コード(旧)
@@ -1472,12 +1486,20 @@ AS
         INTO   lv_reqst_base_code
         FROM   xxcso_employees_v xev
         WHERE  xev.user_id = ln_created_by
-        AND    ld_date BETWEEN TRUNC(NVL(xev.start_date, ld_date))
-                           AND TRUNC(NVL(xev.end_date, ld_date))
-        AND    ld_date BETWEEN TRUNC(NVL(xev.employee_start_date, ld_date))
-                           AND TRUNC(NVL(xev.employee_end_date, ld_date))
-        AND    ld_date BETWEEN TRUNC(NVL(xev.assign_start_date, ld_date))
-                           AND TRUNC(NVL(xev.assign_end_date, ld_date))
+        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+        --AND    ld_date BETWEEN TRUNC(NVL(xev.start_date, ld_date))
+        --                   AND TRUNC(NVL(xev.end_date, ld_date))
+        --AND    ld_date BETWEEN TRUNC(NVL(xev.employee_start_date, ld_date))
+        --                   AND TRUNC(NVL(xev.employee_end_date, ld_date))
+        --AND    ld_date BETWEEN TRUNC(NVL(xev.assign_start_date, ld_date))
+        --                   AND TRUNC(NVL(xev.assign_end_date, ld_date))
+        AND    ld_reqst_date BETWEEN TRUNC(NVL(xev.start_date, ld_reqst_date))
+                           AND TRUNC(NVL(xev.end_date, ld_reqst_date))
+        AND    ld_reqst_date BETWEEN TRUNC(NVL(xev.employee_start_date, ld_reqst_date))
+                           AND TRUNC(NVL(xev.employee_end_date, ld_reqst_date))
+        AND    ld_reqst_date BETWEEN TRUNC(NVL(xev.assign_start_date, ld_reqst_date))
+                           AND TRUNC(NVL(xev.assign_end_date, ld_reqst_date))
+        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
         ;
         --
       EXCEPTION
@@ -2150,9 +2172,15 @@ AS
       -- 依頼部署の格納
       BEGIN
         SELECT ( CASE
-                 WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd') <= ld_date THEN
+                 /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+                 --WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd') <= ld_date THEN
+                 WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd') <= ld_reqst_date THEN
+                 /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
                    empv.work_base_code_new  -- 勤務地拠点コード(新)
-                 WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd')  > ld_date THEN
+                 /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+                 --WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd')  > ld_date THEN
+                 WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd')  > ld_reqst_date THEN
+                 /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
                    empv.work_base_code_old  -- 勤務地拠点コード(旧)
                  WHEN empv.issue_date IS NULL THEN
                    empv.work_base_code_old  -- 勤務地拠点コード(旧)
@@ -2161,15 +2189,26 @@ AS
         INTO   lv_reqst_base_code
         FROM   xxcso_employees_v   empv
         WHERE  empv.user_id = ln_created_by
-          AND  ld_date 
-                 BETWEEN TRUNC(NVL(empv.start_date, ld_date)) 
-                     AND TRUNC(NVL(empv.end_date, ld_date))
-          AND  ld_date 
-                 BETWEEN TRUNC(NVL(empv.employee_start_date, ld_date)) 
-                     AND TRUNC(NVL(empv.employee_end_date, ld_date))
-          AND  ld_date 
-                 BETWEEN TRUNC(NVL(empv.assign_start_date, ld_date)) 
-                     AND TRUNC(NVL(empv.assign_end_date, ld_date))
+          /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+          --AND  ld_date 
+          --       BETWEEN TRUNC(NVL(empv.start_date, ld_date)) 
+          --           AND TRUNC(NVL(empv.end_date, ld_date))
+          --AND  ld_date 
+          --       BETWEEN TRUNC(NVL(empv.employee_start_date, ld_date)) 
+          --           AND TRUNC(NVL(empv.employee_end_date, ld_date))
+          --AND  ld_date 
+          --       BETWEEN TRUNC(NVL(empv.assign_start_date, ld_date)) 
+          --           AND TRUNC(NVL(empv.assign_end_date, ld_date))
+          AND  ld_reqst_date 
+                 BETWEEN TRUNC(NVL(empv.start_date, ld_reqst_date)) 
+                     AND TRUNC(NVL(empv.end_date, ld_reqst_date))
+          AND  ld_reqst_date 
+                 BETWEEN TRUNC(NVL(empv.employee_start_date, ld_reqst_date)) 
+                     AND TRUNC(NVL(empv.employee_end_date, ld_reqst_date))
+          AND  ld_reqst_date 
+                 BETWEEN TRUNC(NVL(empv.assign_start_date, ld_reqst_date)) 
+                     AND TRUNC(NVL(empv.assign_end_date, ld_reqst_date))
+          /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
         ;
 --
       EXCEPTION
@@ -2596,9 +2635,15 @@ AS
       -- 依頼部署の格納
       BEGIN
         SELECT ( CASE
-                 WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd') <= ld_date THEN
+                 /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+                 --WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd') <= ld_date THEN
+                 WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd') <= ld_reqst_date THEN
+                 /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
                    empv.work_base_code_new  -- 勤務地拠点コード(新)
-                 WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd')  > ld_date THEN
+                 /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+                 --WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd')  > ld_date THEN
+                 WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd')  > ld_reqst_date THEN
+                 /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
                    empv.work_base_code_old  -- 勤務地拠点コード(旧)
                  WHEN empv.issue_date IS NULL THEN
                    empv.work_base_code_old  -- 勤務地拠点コード(旧)
@@ -2607,15 +2652,26 @@ AS
         INTO   lv_reqst_base_code
         FROM   xxcso_employees_v   empv
         WHERE  empv.user_id = ln_created_by
-          AND  ld_date 
-                 BETWEEN TRUNC(NVL(empv.start_date, ld_date)) 
-                     AND TRUNC(NVL(empv.end_date, ld_date))
-          AND  ld_date 
-                 BETWEEN TRUNC(NVL(empv.employee_start_date, ld_date)) 
-                     AND TRUNC(NVL(empv.employee_end_date, ld_date))
-          AND  ld_date 
-                 BETWEEN TRUNC(NVL(empv.assign_start_date, ld_date)) 
-                     AND TRUNC(NVL(empv.assign_end_date, ld_date))
+          /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+          --AND  ld_date 
+          --       BETWEEN TRUNC(NVL(empv.start_date, ld_date)) 
+          --           AND TRUNC(NVL(empv.end_date, ld_date))
+          --AND  ld_date 
+          --       BETWEEN TRUNC(NVL(empv.employee_start_date, ld_date)) 
+          --           AND TRUNC(NVL(empv.employee_end_date, ld_date))
+          --AND  ld_date 
+          --       BETWEEN TRUNC(NVL(empv.assign_start_date, ld_date)) 
+          --           AND TRUNC(NVL(empv.assign_end_date, ld_date))
+          AND  ld_reqst_date 
+                 BETWEEN TRUNC(NVL(empv.start_date, ld_reqst_date)) 
+                     AND TRUNC(NVL(empv.end_date, ld_reqst_date))
+          AND  ld_reqst_date 
+                 BETWEEN TRUNC(NVL(empv.employee_start_date, ld_reqst_date)) 
+                     AND TRUNC(NVL(empv.employee_end_date, ld_reqst_date))
+          AND  ld_reqst_date 
+                 BETWEEN TRUNC(NVL(empv.assign_start_date, ld_reqst_date)) 
+                     AND TRUNC(NVL(empv.assign_end_date, ld_reqst_date))
+          /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
         ;
 --
       EXCEPTION
@@ -4950,12 +5006,20 @@ AS
         AND    prlv.requisition_line_id   = wrp.requisition_line_id
         AND    wrp.interface_flag         = cv_n
         AND    cev.user_id                = prh.created_by
-        AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
-                 TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
-        AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
-                 TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
-        AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
-                 TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
+        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
+        --         TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
+        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
+        --         TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
+        --AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
+        --         TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
+        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(prlv.creation_date))) AND
+                 TRUNC(NVL(cev.end_date, TRUNC(prlv.creation_date))))
+        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(prlv.creation_date))) AND
+                 TRUNC(NVL(cev.employee_end_date, TRUNC(prlv.creation_date))))
+        AND    (TRUNC(prlv.creation_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(prlv.creation_date))) AND
+                 TRUNC(NVL(cev.assign_end_date, TRUNC(prlv.creation_date))))
+        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.lookup_start_date, TRUNC(ld_process_date))) AND
                  TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
@@ -5046,12 +5110,20 @@ AS
         AND    prlv.requisition_line_id   = wrp.requisition_line_id
         AND    wrp.interface_flag         = cv_n
         AND    cev.user_id                = prh.created_by
-        AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
-                 TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
-        AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
-                 TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
-        AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
-                 TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
+        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
+        --         TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
+        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
+        --         TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
+        --AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
+        --         TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
+        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(prlv.creation_date))) AND
+                 TRUNC(NVL(cev.end_date, TRUNC(prlv.creation_date))))
+        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(prlv.creation_date))) AND
+                 TRUNC(NVL(cev.employee_end_date, TRUNC(prlv.creation_date))))
+        AND    (TRUNC(prlv.creation_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(prlv.creation_date))) AND
+                 TRUNC(NVL(cev.assign_end_date, TRUNC(prlv.creation_date))))
+        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.lookup_start_date, TRUNC(ld_process_date))) AND
                  TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
@@ -5125,12 +5197,20 @@ AS
         AND    prlv.requisition_line_id   = wrp.requisition_line_id
         AND    wrp.interface_flag         = cv_n
         AND    cev.user_id                = prh.created_by
-        AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
-                 TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
-        AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
-                 TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
-        AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
-                 TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
+        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
+        --         TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
+        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
+        --         TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
+        --AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
+        --         TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
+        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(prlv.creation_date))) AND
+                 TRUNC(NVL(cev.end_date, TRUNC(prlv.creation_date))))
+        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(prlv.creation_date))) AND
+                 TRUNC(NVL(cev.employee_end_date, TRUNC(prlv.creation_date))))
+        AND    (TRUNC(prlv.creation_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(prlv.creation_date))) AND
+                 TRUNC(NVL(cev.assign_end_date, TRUNC(prlv.creation_date))))
+        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.lookup_start_date, TRUNC(ld_process_date))) AND
                  TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
@@ -5204,12 +5284,20 @@ AS
         AND    prlv.requisition_line_id   = wrp.requisition_line_id
         AND    wrp.interface_flag         = cv_n
         AND    cev.user_id                = prh.created_by
-        AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
-                 TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
-        AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
-                 TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
-        AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
-                 TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
+        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
+        --         TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
+        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
+        --         TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
+        --AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
+        --         TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
+        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(prlv.creation_date))) AND
+                 TRUNC(NVL(cev.end_date, TRUNC(prlv.creation_date))))
+        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(prlv.creation_date))) AND
+                 TRUNC(NVL(cev.employee_end_date, TRUNC(prlv.creation_date))))
+        AND    (TRUNC(prlv.creation_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(prlv.creation_date))) AND
+                 TRUNC(NVL(cev.assign_end_date, TRUNC(prlv.creation_date))))
+        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.lookup_start_date, TRUNC(ld_process_date))) AND
                  TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
@@ -5283,12 +5371,20 @@ AS
         AND    prlv.requisition_line_id   = wrp.requisition_line_id
         AND    wrp.interface_flag         = cv_n
         AND    cev.user_id                = prh.created_by
-        AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
-                 TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
-        AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
-                 TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
-        AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
-                 TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
+        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
+        --         TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
+        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
+        --         TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
+        --AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
+        --         TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
+        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(prlv.creation_date))) AND
+                 TRUNC(NVL(cev.end_date, TRUNC(prlv.creation_date))))
+        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(prlv.creation_date))) AND
+                 TRUNC(NVL(cev.employee_end_date, TRUNC(prlv.creation_date))))
+        AND    (TRUNC(prlv.creation_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(prlv.creation_date))) AND
+                 TRUNC(NVL(cev.assign_end_date, TRUNC(prlv.creation_date))))
+        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.lookup_start_date, TRUNC(ld_process_date))) AND
                  TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
@@ -5362,12 +5458,20 @@ AS
         AND    prlv.requisition_line_id   = wrp.requisition_line_id
         AND    wrp.interface_flag         = cv_n
         AND    cev.user_id                = prh.created_by
-        AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
-                 TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
-        AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
-                 TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
-        AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
-                 TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
+        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
+        --         TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
+        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
+        --         TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
+        --AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
+        --         TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
+        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(prlv.creation_date))) AND
+                 TRUNC(NVL(cev.end_date, TRUNC(prlv.creation_date))))
+        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(prlv.creation_date))) AND
+                 TRUNC(NVL(cev.employee_end_date, TRUNC(prlv.creation_date))))
+        AND    (TRUNC(prlv.creation_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(prlv.creation_date))) AND
+                 TRUNC(NVL(cev.assign_end_date, TRUNC(prlv.creation_date))))
+        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.lookup_start_date, TRUNC(ld_process_date))) AND
                  TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
