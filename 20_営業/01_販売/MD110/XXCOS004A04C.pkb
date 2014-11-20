@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : 消化ＶＤ納品データ作成
  * MD.050           : 消化ＶＤ納品データ作成 MD050_COS_004_A04
- * Version          : 1.30
+ * Version          : 1.31
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -72,6 +72,7 @@ AS
  *  2010/03/24   1.28  K.Atsushiba       [E_本稼動_01805]顧客移行対応
  *  2010/04/06   1.29  H.Sasaki          [E_本稼動_01688]集約フラグを追加
  *  2010/04/28   1.30  K.Atsushiba       [E_本稼動_02483]販売実績登録エラー対応
+ *  2010/10/28   1.31  K.Kiriu           [E_本稼動_05352]参照カレンダ変更対応
  *
  *****************************************************************************************/
 --
@@ -328,6 +329,10 @@ AS
   ct_prof_org_id                CONSTANT fnd_profile_options.profile_option_name%TYPE
                                          := 'ORG_ID';                             --営業単位
 --******************************* 2010/02/08 1.25 N.Maeda ADD  END  ******************************--
+/* 2010/10/28 Ver1.31 Add Start */
+  ct_prof_digestion_cal_code    CONSTANT fnd_profile_options.profile_option_name%TYPE
+                                      := 'XXCOS1_DIGESTION_CALENDAR_CODE'; -- 消化計算用カレンダコード
+/* 2010/10/28 Ver1.31 Add End   */
   --使用可能フラグ定数
   ct_enabled_flag_yes          CONSTANT  fnd_lookup_values.enabled_flag%TYPE
                                       := 'Y';                              --使用可能
@@ -1377,10 +1382,12 @@ AS
     lv_err_code VARCHAR2(100);   --エラーID
 --****************************** 2009/04/22 1.13 T.Kitajima ADD START ******************************--
     lv_str_api_name               VARCHAR2(5000);                     --関数名
-    lt_organization_id            mtl_parameters.organization_id%TYPE;
-                                                                      --在庫組織ID
-    lt_organization_code          mtl_parameters.organization_code%TYPE;
-                                                                      --在庫組織コード
+/* 2010/10/28 Ver1.31 Del Start */
+--    lt_organization_id            mtl_parameters.organization_id%TYPE;
+--                                                                      --在庫組織ID
+--    lt_organization_code          mtl_parameters.organization_code%TYPE;
+--                                                                      --在庫組織コード
+/* 2010/10/28 Ver1.31 Del End   */
     ln_date_index                 NUMBER;                             --日付用インデックス
     ln_delay_days                 NUMBER;                             --猶予日数
     ld_work_delay_date            DATE;                               --猶予日計算用
@@ -1472,36 +1479,44 @@ AS
       RAISE global_call_api_expt;
     END IF;
 --
+/* 2010/10/28 Ver1.31 Mod Start */
     --============================================
-    -- 販売用カレンダコード取得
+    -- カレンダコード取得
     --============================================
-    lt_organization_id        := gt_organization_id;
-    lt_organization_code      := gt_organization_code;
-    --
-    xxcos_common_pkg.get_sales_calendar_code(
-      ion_organization_id     => lt_organization_id,             -- 在庫組織ＩＤ
-      iov_organization_code   => lt_organization_code,           -- 在庫組織コード
-      ov_calendar_code        => gt_calendar_code,               -- カレンダコード
-      ov_errbuf               => lv_errbuf,                      -- エラー・メッセージエラー       #固定#
-      ov_retcode              => lv_retcode,                     -- リターン・コード               #固定#
-      ov_errmsg               => lv_errmsg                       -- ユーザー・エラー・メッセージ   #固定#
-    );
-    --
-    IF ( lv_retcode <> cv_status_normal ) THEN
-      lv_str_api_name         := xxccp_common_pkg.get_msg(
-                                           iv_application        => ct_xxcos_appl_short_name,
-                                           iv_name               => ct_msg_get_calendar_code
-                                         );                      -- カレンダコード取得
-      RAISE global_call_api_expt;
+--    lt_organization_id        := gt_organization_id;
+--    lt_organization_code      := gt_organization_code;
+--    --
+--    xxcos_common_pkg.get_sales_calendar_code(
+--      ion_organization_id     => lt_organization_id,             -- 在庫組織ＩＤ
+--      iov_organization_code   => lt_organization_code,           -- 在庫組織コード
+--      ov_calendar_code        => gt_calendar_code,               -- カレンダコード
+--      ov_errbuf               => lv_errbuf,                      -- エラー・メッセージエラー       #固定#
+--      ov_retcode              => lv_retcode,                     -- リターン・コード               #固定#
+--      ov_errmsg               => lv_errmsg                       -- ユーザー・エラー・メッセージ   #固定#
+--    );
+--    --
+--    IF ( lv_retcode <> cv_status_normal ) THEN
+--      lv_str_api_name         := xxccp_common_pkg.get_msg(
+--                                           iv_application        => ct_xxcos_appl_short_name,
+--                                           iv_name               => ct_msg_get_calendar_code
+--                                         );                      -- カレンダコード取得
+--      RAISE global_call_api_expt;
+--    END IF;
+--    --
+--    IF ( gt_calendar_code IS NULL ) THEN
+--      lv_str_api_name         := xxccp_common_pkg.get_msg(
+--                                           iv_application        => ct_xxcos_appl_short_name,
+--                                           iv_name               => ct_msg_get_calendar_code
+--                                        );                      -- カレンダコード取得
+--      RAISE global_call_api_expt;
+--    END IF;
+    gt_calendar_code := FND_PROFILE.VALUE( ct_prof_digestion_cal_code );  --XXCOS:消化計算用カレンダコードの取得
+--
+    IF ( gt_calendar_code ) IS NULL THEN
+      lv_key_info := ct_prof_digestion_cal_code;
+      RAISE global_get_profile_expt;
     END IF;
-    --
-    IF ( gt_calendar_code IS NULL ) THEN
-      lv_str_api_name         := xxccp_common_pkg.get_msg(
-                                           iv_application        => ct_xxcos_appl_short_name,
-                                           iv_name               => ct_msg_get_calendar_code
-                                         );                      -- カレンダコード取得
-      RAISE global_call_api_expt;
-    END IF;
+/* 2010/10/28 Ver1.31 Mod End   */
 --****************************** 2009/04/22 1.13 T.Kitajima ADD  END  ******************************--
     --====================================================================================
     -- 2.「XXCOS1_DIGESTION_DELI_DELAY_DAY: 消化ＶＤ納品データ作成猶予日数」を取得します。
