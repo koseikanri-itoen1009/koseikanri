@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.25
+ * Version          : 1.26
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -62,6 +62,9 @@ AS
  *                                       [0001359]PT対応 メモリ対応
  *                                       [0001472]非大手の取引番号採番条件変更(請求先 -> 出荷先)
  *  2009/10/27    1.25  K.Kiriu          [E_最終移行リハ_00375]支払条件即時対応
+ *  2009/11/05    1.26  K.Kiriu          [E_T4_00103]AR取引番号採番単位変更対応
+ *                                       [E_最終移行リハ_00519]大手AR取引番号の採番形態変更対応
+ *                                       [I_E_00648]顧客階層不具合対応
  *
  *****************************************************************************************/
 --
@@ -207,6 +210,9 @@ AS
 /* 2009/10/27 Ver1.25 Add Start */
   cv_tkn_spot_payment_msg   CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12800'; -- XXCOS:支払条件即時
 /* 2009/10/27 Ver1.25 Add End   */
+/* 2009/11/05 Ver1.26 Add Start */
+  cv_tkn_dlv_inp_user_msg   CONSTANT VARCHAR2(20) := 'APP-XXCOS1-14001'; -- XXCOS:AR大手量販店伝票入力者
+/* 2009/11/05 Ver1.26 Add End   */
 --
   -- トークン
   cv_tkn_pro                CONSTANT  VARCHAR2(20) := 'PROFILE';         -- プロファイル
@@ -538,15 +544,23 @@ AS
 /* 2009/10/27 Ver1.25 Add Start */
   gt_spot_payment_code                ra_terms_tl.name%TYPE;                        -- 支払方法即時
 /* 2009/10/27 Ver1.25 Add End   */
+/* 2009/11/05 Ver1.26 Add Start */
+  gv_dlv_inp_user                     VARCHAR2(30);                                 -- 大手量販店伝票入力者
+/* 2009/11/05 Ver1.26 Add End   */
 --
   gn_fetch_first_flag                 NUMBER(1) DEFAULT 0;                              -- BULK処理の開始判定用 0:開始、1:2回目以降
   gn_fetch_end_flag                   NUMBER(1) DEFAULT 0;                              -- BULK処理の終了判定用 0:継続、1:終了
   --AR取引番号編集用
-  gt_create_class_brk                 xxcos_sales_exp_headers.create_class%TYPE;        -- 作成区分(ブレーク判定用)
+/* 2009/11/05 Ver1.26 Del Start */
+--  gt_create_class_brk                 xxcos_sales_exp_headers.create_class%TYPE;        -- 作成区分(ブレーク判定用)
+/* 2009/11/05 Ver1.26 Del End   */
   gt_invoice_number_brk               xxcos_sales_exp_headers.dlv_invoice_number%TYPE;  -- 納品伝票番号(ブレーク判定用)
   gt_invoice_class_brk                xxcos_sales_exp_headers.dlv_invoice_class%TYPE;   -- 納品伝票区分(非大手ブレーク判定用)
   gt_xchv_cust_id_s_brk               xxcos_cust_hierarchy_v.bill_account_id%TYPE;      -- 出荷先顧客(非大手ブレーク判定用)
   gt_xchv_cust_id_b_brk               xxcos_cust_hierarchy_v.bill_account_id%TYPE;      -- 請求先顧客(大手ブレーク判定用)
+/* 2009/11/05 Ver1.26 Add Start */
+  gt_pay_cust_number_brk              xxcos_cust_hierarchy_v.bill_account_number%TYPE;  -- 支払先請求顧客(大手ブレーク判定用)
+/* 2009/11/05 Ver1.26 Add End   */
   gt_header_id_brk                    xxcos_sales_exp_headers.sales_exp_header_id%TYPE; -- 販売実績ヘッダID(ブレーク判定用)
   gt_cash_sale_cls_brk                xxcos_sales_exp_headers.card_sale_class%TYPE;     -- カード売り区分(ブレーク判定用)
   gt_sales_date_brk                   xxcos_sales_exp_headers.inspect_date%TYPE;        -- 売上計上日(大手ブレーク判定用)
@@ -611,7 +625,7 @@ AS
   -- ===============================
 /* 2009/10/02 Ver1.24 Add Start */
 --
-  --BULK処理カーソル
+  --BULK処理カーソル(非大手)
   CURSOR bulk_data_cur
   IS
     SELECT   xseaw.sales_exp_header_id     sales_exp_header_id      --販売実績ヘッダID
@@ -660,17 +674,85 @@ AS
     FROM     xxcos_sales_exp_ar_work xseaw
     WHERE    xseaw.request_id = cn_request_id
     ORDER BY
-             xseaw.sales_exp_header_id --販売実績ヘッダID
-            ,xseaw.dlv_invoice_number  --納品伝票番号
+/* 2009/11/05 Ver1.26 Mod Start */
+--             xseaw.sales_exp_header_id --販売実績ヘッダID
+--            ,xseaw.dlv_invoice_number  --納品伝票番号
+--            ,xseaw.dlv_invoice_class   --納品伝票区分
+--            ,xseaw.card_sale_class     --カード売り区分
+--            ,xseaw.cust_gyotai_sho     --業態小分類
+--            ,xseaw.goods_prod_cls      --品目区分
+--            ,xseaw.item_code           --品目コード
+--            ,xseaw.red_black_flag      --赤黒フラグ
+--            ,xseaw.line_id             --販売実績明細番号
+             xseaw.dlv_invoice_number  --納品伝票番号
             ,xseaw.dlv_invoice_class   --納品伝票区分
-            ,xseaw.card_sale_class     --カード売り区分
+            ,xseaw.xchv_cust_id_s      --出荷先顧客
             ,xseaw.cust_gyotai_sho     --業態小分類
+            ,xseaw.sales_exp_header_id --販売実績ヘッダID
+            ,xseaw.card_sale_class     --カード売り区分
             ,xseaw.goods_prod_cls      --品目区分
-            ,xseaw.item_code           --品目コード
-            ,xseaw.red_black_flag      --赤黒フラグ
-            ,xseaw.line_id             --販売実績明細番号
+/* 2009/11/05 Ver1.26 Mod End   */
     ;
 /* 2009/10/02 Ver1.24 Add End   */
+/* 2009/11/05 Ver1.26 Add Start */
+  --BULK処理カーソル(大手)
+  CURSOR bulk_data_cur2
+  IS
+    SELECT   xseaw.sales_exp_header_id     sales_exp_header_id      --販売実績ヘッダID
+            ,xseaw.dlv_invoice_number      dlv_invoice_number       --納品伝票番号
+            ,xseaw.dlv_invoice_class       dlv_invoice_class        --納品伝票区分
+            ,xseaw.cust_gyotai_sho         cust_gyotai_sho          --業態小分類
+            ,xseaw.delivery_date           delivery_date            --納品日
+            ,xseaw.inspect_date            inspect_date             --検収日
+            ,xseaw.ship_to_customer_code   ship_to_customer_code    --顧客【納品先】
+            ,xseaw.tax_code                tax_code                 --税金コード
+            ,xseaw.tax_rate                tax_rate                 --消費税率
+            ,xseaw.consumption_tax_class   consumption_tax_class    --消費税区分
+            ,xseaw.results_employee_code   results_employee_code    --成績計上者コード
+            ,xseaw.sales_base_code         sales_base_code          --売上拠点コード
+            ,xseaw.receiv_base_code        receiv_base_code         --入金拠点コード
+            ,xseaw.create_class            create_class             --作成元区分
+            ,xseaw.card_sale_class         card_sale_class          --カード売り区分
+            ,xseaw.dlv_inv_line_no         dlv_inv_line_no          --納品明細番号
+            ,xseaw.item_code               item_code                --品目コード
+            ,xseaw.sales_class             sales_class              --売上区分
+            ,xseaw.red_black_flag          red_black_flag           --赤黒フラグ
+            ,xseaw.goods_prod_cls          goods_prod_cls           --品目区分(製品・商品)
+            ,xseaw.pure_amount             pure_amount              --本体金額
+            ,xseaw.tax_amount              tax_amount               --消費税金額
+            ,xseaw.cash_and_card           cash_and_card            --現金・カード併用額
+            ,xseaw.rcrm_receipt_id         rcrm_receipt_id          --顧客支払方法ID
+            ,xseaw.xchv_cust_id_s          xchv_cust_id_s           --出荷先顧客ID
+            ,xseaw.xchv_cust_id_b          xchv_cust_id_b           --請求先顧客ID
+            ,xseaw.xchv_cust_number_b      xchv_cust_number_b       --請求先顧客コード
+            ,xseaw.xchv_cust_id_c          xchv_cust_id_c           --入金先顧客ID
+            ,xseaw.hcss_org_sys_id         hcss_org_sys_id          --顧客所在地参照ID(出荷先)
+            ,xseaw.hcsb_org_sys_id         hcsb_org_sys_id          --顧客所在地参照ID(請求先)
+            ,xseaw.hcsc_org_sys_id         hcsc_org_sys_id          --顧客所在地参照ID(入金先)
+            ,xseaw.xchv_bill_pay_id        xchv_bill_pay_id         --支払条件ID
+            ,xseaw.xchv_bill_pay_id2       xchv_bill_pay_id2        --支払条件2
+            ,xseaw.xchv_bill_pay_id3       xchv_bill_pay_id3        --支払条件3
+            ,xseaw.xchv_tax_round          xchv_tax_round           --税金－端数処理
+            ,xseaw.xseh_rowid              xseh_rowid               --販売実績ヘッダROWID
+            ,xseaw.oif_trx_number          oif_trx_number           --AR取引番号
+            ,xseaw.oif_dff4                oif_dff4                 --DFF4：伝票No＋シーケンス
+            ,xseaw.oif_tax_dff4            oif_tax_dff4             --DFF4税金用：伝票No＋シーケンス
+            ,xseaw.line_id                 line_id                  --販売実績明細番号
+            ,xseaw.card_receiv_base        card_receiv_base         --カードVD入金拠点コード
+            ,xseaw.pay_cust_number         pay_cust_number          --支払条件用請求先顧客コード
+            ,xseaw.request_id              request_id               --要求ID
+    FROM     xxcos_sales_exp_ar_work xseaw
+    WHERE    xseaw.request_id = cn_request_id
+    ORDER BY
+             xseaw.inspect_date        --検収日(売上計上日)
+            ,xseaw.dlv_invoice_class   --納品伝票区分
+            ,xseaw.xchv_cust_id_b      --請求先顧客
+            ,xseaw.pay_cust_number     --支払条件用請求先顧客コード
+            ,xseaw.card_sale_class     --カード売り区分
+            ,xseaw.sales_exp_header_id --販売実績ヘッダID
+            ,xseaw.goods_prod_cls      --品目区分(製品・商品)
+    ;
+/* 2009/11/05 Ver1.26 Add End   */
   -- 仕訳パターンカーソル
   CURSOR jour_cls_cur
   IS
@@ -766,6 +848,10 @@ AS
     ct_spot_payment_cd       CONSTANT VARCHAR2(24) := 'XXCOS1_SPOT_PAYMENT_CODE';
                                                               -- XXCOS:支払条件即時
 /* 2009/10/27 Ver1.25 Add End   */
+/* 2009/11/05 Ver1.26 Add Start */
+    ct_dlv_inp_user          CONSTANT VARCHAR2(30) := 'XXCOS1_AR_MAJOR_DLV_INPUT_USER';
+                                                              -- XXCOS:AR大手量販店伝票入力者
+/* 2009/11/05 Ver1.26 Add End   */
 --
     -- *** ローカル変数 ***
     lv_profile_name          VARCHAR2(50);                     -- プロファイル名
@@ -1145,6 +1231,27 @@ AS
       RAISE global_api_expt;
     END IF;
 /* 2009/10/27 Ver1.25 Add End   */
+/* 2009/11/05 Ver1.26 Add Start */
+    -- ===============================
+    -- XXCOS:AR大手量販店伝票入力者
+    -- ===============================
+    gv_dlv_inp_user := FND_PROFILE.VALUE( ct_dlv_inp_user );
+    -- プロファイルが取得できない場合
+    IF ( gv_dlv_inp_user IS NULL ) THEN
+      lv_profile_name := xxccp_common_pkg.get_msg(
+         iv_application => cv_xxcos_short_nm                           -- アプリケーション短縮名
+        ,iv_name        => cv_tkn_dlv_inp_user_msg                     -- メッセージID
+      );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_xxcos_short_nm
+                     , iv_name         => cv_pro_msg
+                     , iv_token_name1  => cv_tkn_pro
+                     , iv_token_value1 => lv_profile_name
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+/* 2009/11/05 Ver1.26 Add End   */
 --
     --==================================
     -- 5.クイックコード取得
@@ -1595,8 +1702,11 @@ AS
     lv_heiyou_cash_flag          VARCHAR2(1);                                         -- フラグ
 /* 2009/08/20 Ver1.22 Add Start */
     lt_break_header_id           xxcos_sales_exp_headers.sales_exp_header_id%TYPE;    -- ヘッダブレーク用
-    lv_break_flag                VARCHAR2(1);                                         -- ヘッダブレークフラグ
+    lv_break_flag                VARCHAR2(1);                                         -- ヘッダブレークフラグ(支払条件)
 /* 2009/08/20 Ver1.22 Add End   */
+/* 2009/11/05 Ver1.26 Add Start */
+    lv_break_flag2              VARCHAR2(1);                                          -- ヘッダブレークフラグ(カード会社)
+/* 2009/11/05 Ver1.26 Add End   */
 /* 2009/10/02 Ver1.24 Add Start */
     lv_receipt_id_flag           VARCHAR2(1);                                         -- 支払方法エラーフラグ
     ln_sale_idx_bk               NUMBER DEFAULT 0;                                    -- 配列の添字用
@@ -1765,11 +1875,18 @@ AS
 --                          INDEX   (xseh xxcos_sales_exp_headers_n02) 
 --                          USE_NL  (hcas)
 --                      */
+/* 2009/11/05 Ver1.26 Mod Start */
+--               SELECT /*+
+--                          LEADING(xseh) 
+--                          INDEX(xseh xxcos_sales_exp_headers_n02)
+--                          USE_NL(xseh hcas hcar_sb hcab hcac)
+--                      */
                SELECT /*+
-                          LEADING(xseh) 
+                          LEADING(xseh)
                           INDEX(xseh xxcos_sales_exp_headers_n02)
-                          USE_NL(xseh hcas hcar_sb hcab hcac)
+                          USE_NL(xseh flvl hcas hcar_sb hcab hcac)
                       */
+/* 2009/11/05 Ver1.26 Mod Start */
 /* 2009/10/02 Ver1.24 Mod End   */
                       xseh.sales_exp_header_id      sales_exp_header_id
                      ,xseh.dlv_invoice_number       dlv_invoice_number
@@ -1799,13 +1916,18 @@ AS
                      ,hz_cust_acct_relate      hcar_sb  -- 顧客関連(請求)
                      ,hz_cust_accounts         hcab     -- 請求先顧客
                      ,hz_cust_accounts         hcac     -- 入金先顧客
+/* 2009/11/05 Ver1.26 Add Start */
+                     ,fnd_lookup_values        flvl     -- クイックコード
+/* 2009/11/05 Ver1.26 Add End   */
 /* 2009/10/02 Ver1.24 Mod Start */
 --               WHERE  xseh.ar_interface_flag            = cv_n_flag                   -- ARインタフェース済フラグ:N(未送信)
                WHERE  xseh.ar_interface_flag           IN ( cv_n_flag, cv_w_flag )    -- ARインタフェース済フラグ:N(未送信) W(警告)
 /* 2009/10/02 Ver1.24 Mod End   */
                AND    xseh.delivery_date               <= gd_process_date             -- 納品日 <= 業務日付
 /* 2009/10/02 Ver1.24 Add Start */
-               AND    xseh.create_class                 = iv_create_class             -- パラメータ.作成元区分
+/* 2009/11/05 Ver1.26 Del Start */
+--               AND    xseh.create_class                 = iv_create_class             -- パラメータ.作成元区分
+/* 2009/11/05 Ver1.26 Del End   */
                AND    (
                         ( iv_target = cv_major AND xseh.receiv_base_code = gv_busi_dept_cd )
                         OR
@@ -1827,6 +1949,17 @@ AS
                AND    hcab.cust_account_id              = hcar_sb.cust_account_id
                AND    hcab.customer_class_code          = cv_cust_class_uri           -- 顧客区分(請求):14(売掛金管理先顧客)
                AND    hcac.cust_account_id              = hcab.cust_account_id
+/* 2009/11/05 Ver1.26 Add Start */
+               AND    flvl.lookup_type                  = cv_qct_mkorg_cls
+               AND    flvl.lookup_code                  LIKE cv_qcc_code
+               AND    flvl.attribute2                   IS NULL
+               AND    flvl.attribute3                   = iv_create_class             -- パラメータ.作成元区分
+               AND    flvl.enabled_flag                 = cv_enabled_yes
+               AND    flvl.language                     = ct_lang
+               AND    gd_process_date BETWEEN NVL( flvl.start_date_active, gd_process_date )
+                                      AND     NVL( flvl.end_date_active,   gd_process_date )
+               AND    flvl.meaning                      = xseh.create_class
+/* 2009/11/05 Ver1.26 Add End   */
                AND    EXISTS (
                         SELECT /*+ USE_NL(ship_hasa_1 ship_hsua_1 ship_hzad_1 bill_hasa_1 bill_hsua_1 bill_hzad_1) */
                                'X'
@@ -1863,11 +1996,18 @@ AS
 --                          INDEX   (xseh xxcos_sales_exp_headers_n02)
 --                          USE_NL  (hcas)
 --                      */
+/* 2009/11/05 Ver1.26 Mod Start */
+--               SELECT /*+
+--                          LEADING(xseh)
+--                          INDEX(xseh xxcos_sales_exp_headers_n02)
+--                          USE_NL(xseh hcas hcar_sb hcab hcar_sc hcac)
+--                      */
                SELECT /*+
                           LEADING(xseh)
                           INDEX(xseh xxcos_sales_exp_headers_n02)
-                          USE_NL(xseh hcas hcar_sb hcab hcar_sc hcac)
+                          USE_NL(xseh flvl hcas hcar_sb hcab hcac)
                       */
+/* 2009/11/05 Ver1.26 Mod End   */
 /* 2009/10/02 Ver1.24 Mod End   */
                       xseh.sales_exp_header_id      sales_exp_header_id
                      ,xseh.dlv_invoice_number       dlv_invoice_number
@@ -1898,13 +2038,18 @@ AS
                      ,hz_cust_accounts         hcab    -- 請求先顧客
                      ,hz_cust_acct_relate      hcar_sc -- 顧客関連(入金)
                      ,hz_cust_accounts         hcac    -- 入金先顧客
+/* 2009/11/05 Ver1.26 Add Start */
+                     ,fnd_lookup_values        flvl    -- クイックコード
+/* 2009/11/05 Ver1.26 Add End   */
 /* 2009/10/02 Ver1.24 Mod Start */
 --               WHERE  xseh.ar_interface_flag             = cv_n_flag                  -- ARインタフェース済フラグ:N(未送信)
                WHERE  xseh.ar_interface_flag            IN ( cv_n_flag, cv_w_flag )   -- ARインタフェース済フラグ:N(未送信) W(警告)
 /* 2009/10/02 Ver1.24 Mod End   */
                AND    xseh.delivery_date                <= gd_process_date            -- 納品日 <= 業務日付
 /* 2009/10/02 Ver1.24 Add Start */
-               AND    xseh.create_class                  = iv_create_class            -- パラメータ.作成元区分
+/* 2009/11/05 Ver1.26 Del Start */
+--               AND    xseh.create_class                  = iv_create_class            -- パラメータ.作成元区分
+/* 2009/11/05 Ver1.26 Del End   */
                AND    (
                         ( iv_target = cv_major AND xseh.receiv_base_code = gv_busi_dept_cd )
                         OR
@@ -1930,6 +2075,17 @@ AS
                AND    hcar_sc.attribute1                 = cv_cust_cash               -- 関連分類(入金)
                AND    hcac.cust_account_id               = hcar_sc.cust_account_id
                AND    hcac.customer_class_code           = cv_cust_class_uri          -- 顧客区分(入金):14(売掛金管理先顧客)
+/* 2009/11/05 Ver1.26 Add Start */
+               AND    flvl.lookup_type                   = cv_qct_mkorg_cls
+               AND    flvl.lookup_code                   LIKE cv_qcc_code
+               AND    flvl.attribute2                    IS NULL
+               AND    flvl.attribute3                    = iv_create_class            -- パラメータ.作成元区分
+               AND    flvl.enabled_flag                  = cv_enabled_yes
+               AND    flvl.language                      = ct_lang
+               AND    gd_process_date BETWEEN NVL( flvl.start_date_active, gd_process_date )
+                                      AND     NVL( flvl.end_date_active,   gd_process_date )
+               AND    flvl.meaning                       = xseh.create_class
+/* 2009/11/05 Ver1.26 Add End   */
                AND    EXISTS (
                         SELECT /*+ USE_NL(ship_hasa_2 ship_hsua_2 ship_hzad_2 bill_hasa_2 bill_hsua_2 bill_hzad_2 cash_hasa_2 cash_hzad_2) */
                                'X'
@@ -1961,11 +2117,18 @@ AS
 --                          INDEX   (xseh xxcos_sales_exp_headers_n02)
 --                          USE_NL  (hcas)
 --                      */
+/* 2009/11/05 Ver1.26 Mod Start */
+--               SELECT /*+
+--                          LEADING(xseh)
+--                          INDEX(xseh xxcos_sales_exp_headers_n02)
+--                          USE_NL(xseh hcas hcab hcar_sc hcac)
+--                      */
                SELECT /*+
                           LEADING(xseh)
                           INDEX(xseh xxcos_sales_exp_headers_n02)
-                          USE_NL(xseh hcas hcab hcar_sc hcac)
+                          USE_NL(xseh flvl hcas hcar_sb hcab hcac)
                       */
+/* 2009/11/05 Ver1.26 Mod End   */
 /* 2009/10/02 Ver1.24 Mod End   */
                       xseh.sales_exp_header_id      sales_exp_header_id
                      ,xseh.dlv_invoice_number       dlv_invoice_number
@@ -1995,13 +2158,18 @@ AS
                      ,hz_cust_accounts         hcab     -- 請求先顧客
                      ,hz_cust_acct_relate      hcar_sc  -- 顧客関連(入金)
                      ,hz_cust_accounts         hcac     -- 入金先顧客
+/* 2009/11/05 Ver1.26 Add Start */
+                     ,fnd_lookup_values        flvl     -- クイックコード
+/* 2009/11/05 Ver1.26 Add End   */
 /* 2009/10/02 Ver1.24 Mod Start */
 --               WHERE  xseh.ar_interface_flag            = cv_n_flag                  -- ARインタフェース済フラグ:N(未送信)
                WHERE  xseh.ar_interface_flag           IN ( cv_n_flag, cv_w_flag )   -- ARインタフェース済フラグ:N(未送信) W(警告)
 /* 2009/10/02 Ver1.24 Mod End   */
                AND    xseh.delivery_date               <= gd_process_date            -- 納品日 <= 業務日付
 /* 2009/10/02 Ver1.24 Add Start */
-               AND    xseh.create_class                 = iv_create_class            -- パラメータ.作成元区分
+/* 2009/11/05 Ver1.26 Del Start */
+--               AND    xseh.create_class                 = iv_create_class            -- パラメータ.作成元区分
+/* 2009/11/05 Ver1.26 Del End   */
                AND    (
                         ( iv_target = cv_major AND xseh.receiv_base_code = gv_busi_dept_cd )
                         OR
@@ -2024,6 +2192,17 @@ AS
                AND    hcar_sc.attribute1                = cv_cust_cash               -- 関連分類(入金)
                AND    hcac.cust_account_id              = hcar_sc.cust_account_id
                AND    hcac.customer_class_code          = cv_cust_class_uri          -- 顧客区分(入金):14(売掛金管理先顧客)
+/* 2009/11/05 Ver1.26 Add Start */
+               AND    flvl.lookup_type                  = cv_qct_mkorg_cls
+               AND    flvl.lookup_code                  LIKE cv_qcc_code
+               AND    flvl.attribute2                   IS NULL
+               AND    flvl.attribute3                   = iv_create_class            -- パラメータ.作成元区分
+               AND    flvl.enabled_flag                 = cv_enabled_yes
+               AND    flvl.language                     = ct_lang
+               AND    gd_process_date BETWEEN NVL( flvl.start_date_active, gd_process_date )
+                                      AND     NVL( flvl.end_date_active,   gd_process_date )
+               AND    flvl.meaning                      = xseh.create_class
+/* 2009/11/05 Ver1.26 Add End   */
                AND    EXISTS (
                         SELECT /*+ USE_NL(ship_hasa_3 ship_hsua_3 ship_hzad_3 bill_hasa_3 bill_hsua_3 cash_hasa_3 cash_hzad_3) */
                                'X'
@@ -2062,11 +2241,18 @@ AS
 --                          USE_NL  (hcas)
 --                          USE_NL  (hcab)
 --                      */
+/* 2009/11/05 Ver1.26 Mod Start */
+--               SELECT /*+
+--                          LEADING (xseh)
+--                          INDEX   (xseh xxcos_sales_exp_headers_n02)
+--                          USE_NL  (hcas hcab hcac)
+--                      */
                SELECT /*+
-                          LEADING (xseh)
-                          INDEX   (xseh xxcos_sales_exp_headers_n02)
-                          USE_NL  (hcas hcab hcac)
+                          LEADING(xseh)
+                          INDEX(xseh xxcos_sales_exp_headers_n02)
+                          USE_NL(xseh flvl hcas hcar_sb hcab hcac)
                       */
+/* 2009/11/05 Ver1.26 Mod End   */
 /* 2009/10/02 Ver1.24 Mod End   */
                       xseh.sales_exp_header_id      sales_exp_header_id
                      ,xseh.dlv_invoice_number       dlv_invoice_number
@@ -2095,13 +2281,18 @@ AS
                      ,hz_cust_accounts         hcas  -- 出荷先顧客
                      ,hz_cust_accounts         hcab  -- 請求先顧客
                      ,hz_cust_accounts         hcac  -- 入金先顧客
+/* 2009/11/05 Ver1.26 Add Start */
+                     ,fnd_lookup_values        flvl  -- クイックコード
+/* 2009/11/05 Ver1.26 Add End   */
 /* 2009/10/02 Ver1.24 Mod Start */
 --              WHERE   xseh.ar_interface_flag     = cv_n_flag                   -- ARインタフェース済フラグ:N(未送信)
                WHERE  xseh.ar_interface_flag    IN ( cv_n_flag, cv_w_flag )    -- ARインタフェース済フラグ:N(未送信) W(警告)
 /* 2009/10/02 Ver1.24 Mod End   */
                AND    xseh.delivery_date        <= gd_process_date             -- 納品日 <= 業務日付
 /* 2009/10/02 Ver1.24 Add Start */
-               AND    xseh.create_class          = iv_create_class             -- パラメータ.作成元区分
+/* 2009/11/05 Ver1.26 Del Start */
+--               AND    xseh.create_class          = iv_create_class             -- パラメータ.作成元区分
+/* 2009/11/05 Ver1.26 Del End   */
                AND    (
                         ( iv_target = cv_major AND xseh.receiv_base_code = gv_busi_dept_cd )
                         OR
@@ -2120,6 +2311,17 @@ AS
               AND     hcas.customer_class_code  IN ( cv_cust_class_cust, cv_cust_class_ue ) -- 顧客区分:10(顧客),12(上様)
               AND     hcab.cust_account_id       = hcas.cust_account_id
               AND     hcac.cust_account_id       = hcas.cust_account_id
+/* 2009/11/05 Ver1.26 Add Start */
+              AND     flvl.lookup_type           = cv_qct_mkorg_cls
+              AND     flvl.lookup_code           LIKE cv_qcc_code
+              AND     flvl.attribute2            IS NULL
+              AND     flvl.attribute3            = iv_create_class                    -- パラメータ.作成元区分
+              AND     flvl.enabled_flag          = cv_enabled_yes
+              AND     flvl.language              = ct_lang
+              AND     gd_process_date BETWEEN NVL( flvl.start_date_active, gd_process_date )
+                                      AND     NVL( flvl.end_date_active,   gd_process_date )
+              AND     flvl.meaning               = xseh.create_class
+/* 2009/11/05 Ver1.26 Add End   */
               AND     EXISTS (
                         SELECT /*+ USE_NL(ship_hasa_4 ship_hsua_4 ship_hzad_4 bill_hasa_4 bill_hsua_4) */
                                'X'
@@ -2137,22 +2339,37 @@ AS
                         AND    ship_hsua_4.bill_to_site_use_id = bill_hsua_4.site_use_id
                         AND    ROWNUM                          = 1
                       )
-              AND   NOT EXISTS (
-                      SELECT /*+ USE_NL(ex_hcar_4) */
-                             'X'
-                      FROM   hz_cust_acct_relate  ex_hcar_4
-                      WHERE  ex_hcar_4.cust_account_id = hcas.cust_account_id
-                      AND    ex_hcar_4.status          = cv_cust_relate_status  -- 顧客関連ステータス:A(有効)
-                      AND    ROWNUM                    = 1
-                    )
-             AND    NOT EXISTS (
-                      SELECT /*+ USE_NL(ex_hcar_4) */
-                             'X'
-                      FROM   hz_cust_acct_relate  ex_hcar_4
-                      WHERE  ex_hcar_4.related_cust_account_id = hcas.cust_account_id
-                      AND    ex_hcar_4.status                  = cv_cust_relate_status  -- 顧客関連ステータス:A(有効)
-                      AND    ROWNUM                            = 1
-                    )
+/* 2009/11/05 Ver1.26 Mod Start */
+--              AND   NOT EXISTS (
+--                      SELECT /*+ USE_NL(ex_hcar_4) */
+--                             'X'
+--                      FROM   hz_cust_acct_relate  ex_hcar_4
+--                      WHERE  ex_hcar_4.cust_account_id = hcas.cust_account_id
+--                      AND    ex_hcar_4.status          = cv_cust_relate_status  -- 顧客関連ステータス:A(有効)
+--                      AND    ROWNUM                    = 1
+--                    )
+--             AND    NOT EXISTS (
+--                      SELECT /*+ USE_NL(ex_hcar_4) */
+--                             'X'
+--                      FROM   hz_cust_acct_relate  ex_hcar_4
+--                      WHERE  ex_hcar_4.related_cust_account_id = hcas.cust_account_id
+--                      AND    ex_hcar_4.status                  = cv_cust_relate_status  -- 顧客関連ステータス:A(有効)
+--                      AND    ROWNUM                            = 1
+--                    )
+              AND     NOT EXISTS (
+                        SELECT /*+
+                                  USE_NL(ex_hcar_4)
+                               */
+                               'X'
+                        FROM   hz_cust_acct_relate ex_hcar_4
+                        WHERE  (
+                                  ex_hcar_4.cust_account_id         = hcas.cust_account_id 
+                               OR ex_hcar_4.related_cust_account_id = hcas.cust_account_id
+                               )
+                        AND    ex_hcar_4.status                     = cv_cust_relate_status  -- 顧客関連ステータス:A(有効)
+                        AND    ex_hcar_4.attribute1                 = cv_cust_cash           -- 関連分類(入金)
+                      )
+/* 2009/11/05 Ver1.26 Mod End   */
              )                                 xsehv                   -- 販売実績ヘッダテーブル(顧客階層込み)
 /* 2009/07/27 Ver1.21 Add End   */
            , xxcos_sales_exp_lines             xsel                    -- 販売実績明細テーブル
@@ -2250,27 +2467,29 @@ AS
 --      AND xseh.create_class                     NOT IN (
 --          SELECT
 --              flvl.meaning                      meaning
-      AND NOT EXISTS (
-          SELECT
-              'X'
-/* 2009/07/27 Ver1.21 Mod End */
-          FROM
-              fnd_lookup_values                 flvl
-          WHERE
-              flvl.lookup_type                  = cv_qct_mkorg_cls
-          AND flvl.lookup_code                  LIKE cv_qcc_code
-          AND flvl.attribute2                   = cv_attribute_y
-          AND flvl.enabled_flag                 = cv_enabled_yes
-/* 2009/07/27 Ver1.21 Mod Start */
---          AND flvl.language                     = USERENV( 'LANG' )
-          AND flvl.language                     = ct_lang
-/* 2009/07/27 Ver1.21 Mod End   */
-          AND gd_process_date BETWEEN           NVL( flvl.start_date_active, gd_process_date )
-                              AND               NVL( flvl.end_date_active,   gd_process_date )
-/* 2009/07/27 Ver1.21 Add Start */
-          AND flvl.meaning                      = xsehv.create_class
-/* 2009/07/27 Ver1.21 Add End   */
-          )
+/* 2009/11/05 Ver1.26 Del Start */
+--      AND NOT EXISTS (
+--          SELECT
+--              'X'
+--/* 2009/07/27 Ver1.21 Mod End */
+--          FROM
+--              fnd_lookup_values                 flvl
+--          WHERE
+--              flvl.lookup_type                  = cv_qct_mkorg_cls
+--          AND flvl.lookup_code                  LIKE cv_qcc_code
+--          AND flvl.attribute2                   = cv_attribute_y
+--          AND flvl.enabled_flag                 = cv_enabled_yes
+--/* 2009/07/27 Ver1.21 Mod Start */
+----          AND flvl.language                     = USERENV( 'LANG' )
+--          AND flvl.language                     = ct_lang
+--/* 2009/07/27 Ver1.21 Mod End   */
+--          AND gd_process_date BETWEEN           NVL( flvl.start_date_active, gd_process_date )
+--                              AND               NVL( flvl.end_date_active,   gd_process_date )
+--/* 2009/07/27 Ver1.21 Add Start */
+--          AND flvl.meaning                      = xsehv.create_class
+--/* 2009/07/27 Ver1.21 Add End   */
+--          )
+/* 2009/11/05 Ver1.26 Del End   */
 /* 2009/07/27 Ver1.21 Mod Start */
 --      AND xsel.sales_class                      NOT IN (
 --          SELECT
@@ -2368,7 +2587,7 @@ AS
         gt_sales_target_tbl(ln_sale_idx_bk).xseh_rowid          := gt_sales_exp_tbl2(sale_idx).xseh_rowid;
 /* 2009/10/02 Ver1.24 Add End   */
 /* 2009/08/20 Ver1.22 Add Start */
-        --ブレーク用変数初期化
+        --ブレーク用変数(支払条件)初期化
         lv_break_flag := cv_n_flag;
         --ヘッダ単位の処理の為のブレーク処理
         IF ( lt_break_header_id IS NULL )
@@ -2376,7 +2595,10 @@ AS
            ( lt_break_header_id <> gt_sales_exp_tbl2( sale_idx ).sales_exp_header_id )
         THEN
           --ブレーク処理用変数初期化
-          lv_break_flag       := cv_y_flag;                                          --ブレーク処理実行
+          lv_break_flag       := cv_y_flag;                                          --ブレーク処理実行(支払条件)
+/* 2009/11/05 Ver1.26 Add Start */
+          lv_break_flag2      := cv_y_flag;                                          --ブレーク処理実行(カード会社)
+/* 2009/11/05 Ver1.26 Add End   */
           lt_break_header_id  := gt_sales_exp_tbl2( sale_idx ).sales_exp_header_id;  --ブレーク判定値の設定
           lv_sale_flag        := cv_y_flag;                                          --作成対象判定用のフラグ
 /* 2009/10/02 Ver1.24 Mod Start */
@@ -2499,11 +2721,18 @@ AS
 /* 2009/08/20 Ver1.22 Mod Start */
 --        lv_sale_flag := cv_y_flag;
 --        BEGIN
-          --ヘッダ単位でチェックする
-          IF ( lv_break_flag = cv_y_flag ) THEN
+          --ヘッダ単位で1度のみチェックする
+/* 2009/11/05 Ver1.26 Mod Start */
+--          IF ( lv_break_flag = cv_y_flag ) THEN
+          IF ( lv_break_flag2 = cv_y_flag ) THEN
+/* 2009/11/05 Ver1.26 Mod End   */
 --
 /* 2009/08/20 Ver1.22 Mod End   */
             BEGIN
+/* 2009/11/05 Ver1.26 Add Start */
+              --カード会社の取得を実行済にする
+              lv_break_flag2 := cv_n_flag;
+/* 2009/11/05 Ver1.26 Add End   */
               SELECT xcab.card_company                -- 顧客追加情報カード会社
                    , cst.customer_id                  -- 顧客追加情報顧客ID
                    , cst.receiv_base_code             -- 入金拠点
@@ -2685,7 +2914,13 @@ AS
 /* 2009/10/02 Ver1.24 Del End   */
 /* 2009/08/20 Ver1.22 Add Start */
             --カード会社情報のチェックでエラーの場合、ヘッダ単位でメッセージを出力する
-            IF ( lv_break_flag = cv_y_flag ) THEN
+/* 2009/11/05 Ver1.26 Mod Start */
+--            IF ( lv_break_flag = cv_y_flag ) THEN
+            IF ( lv_break_flag2 = cv_n_flag ) THEN
+--
+              --フラグをメッセージ出力済にする
+              lv_break_flag2 := cv_s_flag;
+/* 2009/11/05 Ver1.26 Mod End   */
 /* 2009/08/20 Ver1.22 Add End   */
 /* 2009/10/02 Ver1.24 Add Start */
               --スキップ処理
@@ -3199,8 +3434,11 @@ AS
     FOR sale_norm_idx IN 1 .. gt_sales_norm_tbl.COUNT LOOP
 --
       -- AR取引番号の自動採番
-      IF (  NVL( gt_create_class_brk, 'X' )     <> gt_sales_norm_tbl( sale_norm_idx ).create_class        -- 作成元区分
-         OR NVL( gt_invoice_number_brk, 'X' )   <> gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_number  -- 納品伝票No
+/* 2009/11/05 Ver1.26 Mod Start */
+--      IF (  NVL( gt_create_class_brk, 'X' )     <> gt_sales_norm_tbl( sale_norm_idx ).create_class        -- 作成元区分
+--         OR NVL( gt_invoice_number_brk, 'X' )   <> gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_number  -- 納品伝票No
+      IF (  NVL( gt_invoice_number_brk, 'X' )   <> gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_number  -- 納品伝票No
+/* 2009/11/05 Ver1.26 Mod End   */
          OR NVL( gt_invoice_class_brk, 'X' )    <> NVL( gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_class, 'X' )   -- 納品伝票区分
          OR gt_xchv_cust_id_s_brk               <> gt_sales_norm_tbl( sale_norm_idx ).xchv_cust_id_s      -- 出荷先顧客
          OR (
@@ -3317,7 +3555,9 @@ AS
 --
       -- 取引番号キー
       gt_invoice_class_brk    := gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_class;
-      gt_create_class_brk     := gt_sales_norm_tbl( sale_norm_idx ).create_class;
+/* 2009/11/05 Ver1.26 Del Start */
+--      gt_create_class_brk     := gt_sales_norm_tbl( sale_norm_idx ).create_class;
+/* 2009/11/05 Ver1.26 Del End   */
       gt_invoice_number_brk   := gt_sales_norm_tbl( sale_norm_idx ).dlv_invoice_number;
       gt_xchv_cust_id_s_brk   := gt_sales_norm_tbl( sale_norm_idx ).xchv_cust_id_s;
       gt_cash_sale_cls_brk    := gt_sales_norm_tbl( sale_norm_idx ).card_sale_class;
@@ -3521,7 +3761,10 @@ AS
           gt_goods_item_code  := gt_item_code_brk2;
         END IF;
         gn_max_amount       := 0;
-        gn_term_amount      := 0;
+/* 2009/11/15 Ver1.26 Mod Start */
+--        gn_term_amount      := 0;
+        gn_term_amount      := gt_sales_norm_tbl( sale_norm_idx ).pure_amount;
+/* 2009/11/15 Ver1.26 Mod End   */
         gt_item_code_brk2   := gt_sales_norm_tbl( sale_norm_idx ).item_code;
         gt_prod_cls_brk2    := gt_sales_norm_tbl( sale_norm_idx ).goods_prod_cls;
         gv_sum_flag         := cv_n_flag;
@@ -5414,7 +5657,10 @@ AS
     -- *** ローカル定数 ***
 --
     cv_pad_char             CONSTANT VARCHAR2(1) := '0';     -- PAD関数で埋め込む文字
-    cn_pad_num_char         CONSTANT NUMBER := 3;            -- PAD関数で埋め込む文字数
+/* 2009/11/05 Ver1.26 Mod Start */
+--    cn_pad_num_char         CONSTANT NUMBER := 3;            -- PAD関数で埋め込む文字数
+    cn_pad_num_char         CONSTANT NUMBER := 2;            -- PAD関数で埋め込む文字数
+/* 2009/11/05 Ver1.26 Mod End   */
 --
     -- *** ローカル変数 ***
 /* 2009/10/02 Ver1.24 Mod Start */
@@ -5478,7 +5724,9 @@ AS
 --    lv_sum_flag             VARCHAR2(1);                -- 集約フラグ
 --    lv_sum_card_flag        VARCHAR2(1);                -- カード集約フラグ
 /* 2009/10/02 Ver1.24 Del End   */
-    lv_employee_name        VARCHAR2(100);              -- 伝票入力者
+/* 2009/11/05 Ver1.26 Del Start */
+--    lv_employee_name        VARCHAR2(100);              -- 伝票入力者
+/* 2009/11/05 Ver1.26 Del End   */
 /* 2009/10/02 Ver1.24 Del Start */
 --    lv_idx_key              VARCHAR2(300);              -- PL/SQL表ソート用インデックス文字列
 --    ln_now_index            VARCHAR2(300);
@@ -5586,17 +5834,31 @@ AS
     FOR sale_bulk_idx IN 1 .. gt_sales_bulk_tbl.COUNT LOOP
 --
       -- AR取引番号の自動採番
-      IF (  NVL( gt_create_class_brk, 'X' )     <> gt_sales_bulk_tbl( sale_bulk_idx ).create_class   -- 作成元区分
-         OR gt_sales_date_brk                   <> gt_sales_bulk_tbl( sale_bulk_idx ).inspect_date   -- 売上計上日
+/* 2009/11/05 Ver1.26 Mod Start */
+--      IF (  NVL( gt_create_class_brk, 'X' )     <> gt_sales_bulk_tbl( sale_bulk_idx ).create_class   -- 作成元区分
+--         OR gt_sales_date_brk                   <> gt_sales_bulk_tbl( sale_bulk_idx ).inspect_date   -- 売上計上日
+      IF (  gt_sales_date_brk                   <> gt_sales_bulk_tbl( sale_bulk_idx ).inspect_date   -- 売上計上日
+/* 2009/11/05 Ver1.26 Mod End   */
          OR NVL( gt_invoice_class_brk, 'X' )    <> NVL( gt_sales_bulk_tbl( sale_bulk_idx ).dlv_invoice_class, 'X' )   -- 納品伝票区分
-         OR gt_xchv_cust_id_b_brk               <> gt_sales_bulk_tbl( sale_bulk_idx ).xchv_cust_id_b      -- 請求先顧客
+/* 2009/11/05 Ver1.26 Mod Start */
+--         OR gt_xchv_cust_id_b_brk               <> gt_sales_bulk_tbl( sale_bulk_idx ).xchv_cust_id_b      -- 請求先顧客
+         OR (
+              (    gt_xchv_cust_id_b_brk        <> gt_sales_bulk_tbl( sale_bulk_idx ).xchv_cust_id_b   -- 請求先顧客
+                OR gt_pay_cust_number_brk       <> gt_sales_bulk_tbl( sale_bulk_idx ).pay_cust_number  -- 支払請求先顧客
+              )
+            )  --請求先が異なるか、カード会社が異なる場合
+/* 2009/11/05 Ver1.26 Mod End   */
          OR (
               (    gt_fvd_xiaoka    =  gt_sales_bulk_tbl( sale_bulk_idx ).cust_gyotai_sho   -- フルサービス（消化）VD :24
                 OR gt_gyotai_fvd    =  gt_sales_bulk_tbl( sale_bulk_idx ).cust_gyotai_sho   -- フルサービス VD :25
               )
               AND
-              (    gt_header_id_brk                 <> gt_sales_bulk_tbl( sale_bulk_idx ).sales_exp_header_id  -- 販売実績ヘッダID
-                OR NVL( gt_cash_sale_cls_brk, 'X' ) <> gt_sales_bulk_tbl( sale_bulk_idx ).card_sale_class      -- カード売り区分
+/* 2009/11/05 Ver1.26 Mod Start */
+--              (    gt_header_id_brk                 <> gt_sales_bulk_tbl( sale_bulk_idx ).sales_exp_header_id  -- 販売実績ヘッダID
+--                OR NVL( gt_cash_sale_cls_brk, 'X' ) <> gt_sales_bulk_tbl( sale_bulk_idx ).card_sale_class      -- カード売り区分
+              (
+                NVL( gt_cash_sale_cls_brk, 'X' ) <> gt_sales_bulk_tbl( sale_bulk_idx ).card_sale_class      -- カード売り区分
+/* 2009/11/05 Ver1.26 Mod End   */
               )
             )
          )
@@ -5613,12 +5875,15 @@ AS
           ;
         END;
 --
-        -- AR取引番号の編集 売上計上日(YYYYMMDD：8桁) + 請求先顧客番号(9桁)＋シーケンス3桁
+        -- AR取引番号の編集 売上計上日(YYYYMMDD：8桁) + 請求先顧客番号(9桁)＋納品伝票区分(1桁)＋シーケンス2桁
 /* 2009/10/02 Ver1.24 Mod Start */
 --        lv_trx_number := TO_CHAR( gt_sales_bulk_tbl2( sale_bulk_idx ).inspect_date,cv_date_format_non_sep )
         gv_trx_number := TO_CHAR( gt_sales_bulk_tbl( sale_bulk_idx ).inspect_date, cv_date_format_non_sep )
 /* 2009/10/02 Ver1.24 Mod End   */
                            || gt_sales_bulk_tbl( sale_bulk_idx ).xchv_cust_number_b
+/* 2009/11/05 Ver1.26 Add Start */
+                           || gt_sales_bulk_tbl( sale_bulk_idx ).dlv_invoice_class
+/* 2009/11/05 Ver1.26 Add End   */
                            || LPAD( TO_CHAR( ln_trx_number_large )
                                             ,cn_pad_num_char
                                             ,cv_pad_char
@@ -5703,9 +5968,14 @@ AS
 --
       -- 取引番号キー
       gt_invoice_class_brk    := gt_sales_bulk_tbl( sale_bulk_idx ).dlv_invoice_class;
-      gt_create_class_brk     := gt_sales_bulk_tbl( sale_bulk_idx ).create_class;
+/* 2009/11/05 Ver1.26 Del Start */
+--      gt_create_class_brk     := gt_sales_bulk_tbl( sale_bulk_idx ).create_class;
+/* 2009/11/05 Ver1.26 Del End   */
       gt_sales_date_brk       := gt_sales_bulk_tbl( sale_bulk_idx ).inspect_date;
       gt_xchv_cust_id_b_brk   := gt_sales_bulk_tbl( sale_bulk_idx ).xchv_cust_id_b;
+/* 2009/11/05 Ver1.26 Add Start */
+      gt_pay_cust_number_brk  := gt_sales_bulk_tbl( sale_bulk_idx ).pay_cust_number;
+/* 2009/11/05 Ver1.26 Add End   */
       gt_cash_sale_cls_brk    := gt_sales_bulk_tbl( sale_bulk_idx ).card_sale_class;
 --
       -- 納品伝票番号＋シーケンスの採番の集約キーの値セット
@@ -5905,7 +6175,10 @@ AS
           gt_goods_item_code  := gt_item_code_brk2;
         END IF;
         gn_max_amount       := 0;
-        gn_term_amount      := 0;
+/* 2009/11/05 Ver1.26 Mod Start */
+--        gn_term_amount      := 0;
+        gn_term_amount      := gt_sales_bulk_tbl( sale_bulk_idx ).pure_amount;
+/* 2009/11/05 Ver1.26 Mod End   */
         gt_item_code_brk2   := gt_sales_bulk_tbl( sale_bulk_idx ).item_code;
         gt_prod_cls_brk2    := gt_sales_bulk_tbl( sale_bulk_idx ).goods_prod_cls;
         gv_sum_flag         := cv_n_flag;
@@ -6400,111 +6673,113 @@ AS
           gt_sel_item_desp_tbl( lv_item_idx ).description := lv_item_desp;
 --
         END IF;
-        --伝票入力者取得
-        BEGIN
-          SELECT fu.user_name
-          INTO   lv_employee_name
-          FROM   fnd_user             fu
-                ,per_all_people_f     papf
-          WHERE  fu.employee_id       = papf.person_id
-/* 2009/07/30 Ver1.21 ADD START */
-/* 2009/08/24 Ver1.23 Mod START */
---            AND  gt_sales_norm_tbl2( ln_trx_idx ).inspect_date
-            AND  gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date
-/* 2009/08/24 Ver1.23 Mod End   */
-                   BETWEEN papf.effective_start_date AND papf.effective_end_date
-/* 2009/07/30 Ver1.21 ADD End   */
-            AND  papf.employee_number = gv_busi_emp_cd;
+/* 2009/11/05 Ver1.26 Del Start */
+--        --伝票入力者取得
+--        BEGIN
+--          SELECT fu.user_name
+--          INTO   lv_employee_name
+--          FROM   fnd_user             fu
+--                ,per_all_people_f     papf
+--          WHERE  fu.employee_id       = papf.person_id
+--/* 2009/07/30 Ver1.21 ADD START */
+--/* 2009/08/24 Ver1.23 Mod START */
+----            AND  gt_sales_norm_tbl2( ln_trx_idx ).inspect_date
+--            AND  gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date
+--/* 2009/08/24 Ver1.23 Mod End   */
+--                   BETWEEN papf.effective_start_date AND papf.effective_end_date
+--/* 2009/07/30 Ver1.21 ADD End   */
+--            AND  papf.employee_number = gv_busi_emp_cd;
+----
+--          EXCEPTION
+--            WHEN NO_DATA_FOUND THEN
+--              -- 伝票入力者取得出来ない場合
+--              lv_tbl_nm :=xxccp_common_pkg.get_msg(
+--                              iv_application   => cv_xxcos_short_nm
+--                            , iv_name          => cv_tkn_user_msg
+--                            );
 --
-          EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-              -- 伝票入力者取得出来ない場合
-              lv_tbl_nm :=xxccp_common_pkg.get_msg(
-                              iv_application   => cv_xxcos_short_nm
-                            , iv_name          => cv_tkn_user_msg
-                            );
+--              lv_employee_nm :=xxccp_common_pkg.get_msg(
+--                              iv_application   => cv_xxcos_short_nm
+--                            , iv_name          => cv_employee_code_msg
+--                            );
 --
-              lv_employee_nm :=xxccp_common_pkg.get_msg(
-                              iv_application   => cv_xxcos_short_nm
-                            , iv_name          => cv_employee_code_msg
-                            );
+--              lv_header_id_nm :=xxccp_common_pkg.get_msg(
+--                              iv_application   => cv_xxcos_short_nm
+--                            , iv_name          => cv_header_id_msg
+--                            );
 --
-              lv_header_id_nm :=xxccp_common_pkg.get_msg(
-                              iv_application   => cv_xxcos_short_nm
-                            , iv_name          => cv_header_id_msg
-                            );
+--              lv_order_no_nm  :=xxccp_common_pkg.get_msg(
+--                              iv_application   => cv_xxcos_short_nm
+--                            , iv_name          => cv_order_no_msg
+--                            );
 --
-              lv_order_no_nm  :=xxccp_common_pkg.get_msg(
-                              iv_application   => cv_xxcos_short_nm
-                            , iv_name          => cv_order_no_msg
-                            );
---
-              xxcos_common_pkg.makeup_key_info(
-                            iv_item_name1         =>  lv_employee_nm,
-                            iv_data_value1        =>  gv_busi_emp_cd,
-                            iv_item_name2         =>  lv_header_id_nm,
-/* 2009/10/02 Ver1.24 Mod Start */
---                            iv_data_value2        =>  lt_header_id,
-                            iv_data_value2        =>  gt_sales_bulk_tbl2( ln_trx_idx ).sales_exp_header_id,
-/* 2009/10/02 Ver1.24 Mod End   */
-                            iv_item_name3         =>  lv_order_no_nm,
-                            iv_data_value3        =>  gt_sales_bulk_tbl2( ln_trx_idx ).dlv_invoice_number,
-                            ov_key_info           =>  lv_key_info,                --編集されたキー情報
-                            ov_errbuf             =>  lv_errbuf,                  --エラーメッセージ
-                            ov_retcode            =>  lv_retcode,                 --リターンコード
-                            ov_errmsg             =>  lv_errmsg                   --ユーザ・エラー・メッセージ
-                          );
---
-              lv_errmsg := xxccp_common_pkg.get_msg(
-                              iv_application   => cv_xxcos_short_nm
-                            , iv_name          => cv_data_get_msg
-                            , iv_token_name1   => cv_tkn_tbl_nm
-                            , iv_token_value1  => lv_tbl_nm
-                            , iv_token_name2   => cv_tkn_key_data
-                            , iv_token_value2  => lv_key_info
-                          );
-              lv_errbuf  := lv_errmsg;
---
-              lv_err_flag  := cv_y_flag;
-              gn_warn_flag := cv_y_flag;
---
-              -- 空行出力
-              FND_FILE.PUT_LINE(
-                 which  => FND_FILE.LOG
-                ,buff   => cv_blank
-              );
---
-              -- メッセージ出力
-              FND_FILE.PUT_LINE(
-                 which  => FND_FILE.LOG
-                ,buff   => lv_errmsg
-              );
---
-              -- 空行出力
-              FND_FILE.PUT_LINE(
-                 which  => FND_FILE.LOG
-                ,buff   => cv_blank
-              );
---
-               -- 空行出力
-               FND_FILE.PUT_LINE(
-                  which  => FND_FILE.OUTPUT
-                 ,buff   => cv_blank
-               );
---
-               -- メッセージ出力
-               FND_FILE.PUT_LINE(
-                  which  => FND_FILE.OUTPUT
-                 ,buff   => lv_errmsg
-               );
---
-               -- 空行出力
-               FND_FILE.PUT_LINE(
-                  which  => FND_FILE.OUTPUT
-                 ,buff   => cv_blank
-               );
---
-        END;
+--              xxcos_common_pkg.makeup_key_info(
+--                            iv_item_name1         =>  lv_employee_nm,
+--                            iv_data_value1        =>  gv_busi_emp_cd,
+--                            iv_item_name2         =>  lv_header_id_nm,
+--/* 2009/10/02 Ver1.24 Mod Start */
+----                            iv_data_value2        =>  lt_header_id,
+--                            iv_data_value2        =>  gt_sales_bulk_tbl2( ln_trx_idx ).sales_exp_header_id,
+--/* 2009/10/02 Ver1.24 Mod End   */
+--                            iv_item_name3         =>  lv_order_no_nm,
+--                            iv_data_value3        =>  gt_sales_bulk_tbl2( ln_trx_idx ).dlv_invoice_number,
+--                            ov_key_info           =>  lv_key_info,                --編集されたキー情報
+--                            ov_errbuf             =>  lv_errbuf,                  --エラーメッセージ
+--                            ov_retcode            =>  lv_retcode,                 --リターンコード
+--                            ov_errmsg             =>  lv_errmsg                   --ユーザ・エラー・メッセージ
+--                          );
+----
+--              lv_errmsg := xxccp_common_pkg.get_msg(
+--                              iv_application   => cv_xxcos_short_nm
+--                            , iv_name          => cv_data_get_msg
+--                            , iv_token_name1   => cv_tkn_tbl_nm
+--                            , iv_token_value1  => lv_tbl_nm
+--                            , iv_token_name2   => cv_tkn_key_data
+--                            , iv_token_value2  => lv_key_info
+--                          );
+--              lv_errbuf  := lv_errmsg;
+----
+--              lv_err_flag  := cv_y_flag;
+--              gn_warn_flag := cv_y_flag;
+----
+--              -- 空行出力
+--              FND_FILE.PUT_LINE(
+--                 which  => FND_FILE.LOG
+--                ,buff   => cv_blank
+--              );
+----
+--              -- メッセージ出力
+--              FND_FILE.PUT_LINE(
+--                 which  => FND_FILE.LOG
+--                ,buff   => lv_errmsg
+--              );
+----
+--              -- 空行出力
+--              FND_FILE.PUT_LINE(
+--                 which  => FND_FILE.LOG
+--                ,buff   => cv_blank
+--              );
+----
+--               -- 空行出力
+--               FND_FILE.PUT_LINE(
+--                  which  => FND_FILE.OUTPUT
+--                 ,buff   => cv_blank
+--               );
+----
+--               -- メッセージ出力
+--               FND_FILE.PUT_LINE(
+--                  which  => FND_FILE.OUTPUT
+--                 ,buff   => lv_errmsg
+--               );
+----
+--               -- 空行出力
+--               FND_FILE.PUT_LINE(
+--                  which  => FND_FILE.OUTPUT
+--                 ,buff   => cv_blank
+--               );
+----
+--        END;
+/* 2009/11/05 Ver1.26 Del End */
       END IF;
 --
       --スキップ処理
@@ -6637,10 +6912,16 @@ AS
                                                         := gv_mo_org_id;
                                                         -- ヘッダーDFFカテゴリ
         gt_ar_interface_tbl( ln_ar_idx ).header_attribute5
-                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).sales_base_code;
+/* 2009/11/05 Ver1.26 Mod Start */
+--                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).sales_base_code;
+                                                        := gt_sales_bulk_tbl2( ln_trx_idx ).receiv_base_code;
+/* 2009/11/05 Ver1.26 Mod End   */
                                                         -- ヘッダーdff5(起票部門)
         gt_ar_interface_tbl( ln_ar_idx ).header_attribute6
-                                                        := lv_employee_name;
+/* 2009/11/05 Ver1.26 Mod Start */
+--                                                        := lv_employee_name;
+                                                        := gv_dlv_inp_user;
+/* 2009/11/05 Ver1.26 Mod End   */
                                                         -- ヘッダーdff6(伝票入力者)
         IF( lv_trx_sent_dv = cv_n_flag ) THEN
           gt_ar_interface_tbl( ln_ar_idx ).header_attribute7
@@ -8294,11 +8575,19 @@ AS
     -- *** ローカル・カーソル ***
     CURSOR no_target_cur
     IS
-      SELECT xseh.rowid  xseh_rowid
+/* 2009/11/05 Ver1.26 Mod Start */
+--      SELECT xseh.rowid  xseh_rowid
+      SELECT /*+
+               INDEX(xseh xxcos_sales_exp_headers_n02)
+             */
+             xseh.rowid  xseh_rowid
+/* 2009/11/05 Ver1.26 Mod End   */
       FROM   xxcos_sales_exp_headers xseh
       WHERE  xseh.ar_interface_flag   = cv_n_flag          -- 全処理終了後Nで残っているもの
       AND    xseh.delivery_date      <= gd_process_date    -- 納品日 <= 業務日付
-      AND    xseh.create_class        = iv_create_class    -- パラメータ.作成元区分
+/* 2009/11/05 Ver1.26 Del Start */
+--      AND    xseh.create_class        = iv_create_class    -- パラメータ.作成元区分
+/* 2009/11/05 Ver1.26 Del End   */
       AND    (
                ( iv_target = cv_major AND xseh.receiv_base_code = gv_busi_dept_cd )
                OR
@@ -8312,6 +8601,23 @@ AS
                  )
                )
              )                                             -- パラメータ.処理対象区分 1:大手 2:非大手
+/* 2009/11/05 Ver1.26 Add Start */
+      AND    EXISTS (
+             SELECT
+                 'X'
+             FROM
+                 fnd_lookup_values   flvl
+             WHERE
+                 flvl.lookup_type       = cv_qct_mkorg_cls
+             AND flvl.lookup_code       LIKE cv_qcc_code
+             AND flvl.attribute3        = iv_create_class    -- パラレル処理区分が引数と同じ
+             AND flvl.enabled_flag      = cv_enabled_yes
+             AND flvl.language          = ct_lang
+             AND gd_process_date BETWEEN NVL( flvl.start_date_active, gd_process_date )
+                                 AND     NVL( flvl.end_date_active,   gd_process_date )
+             AND flvl.meaning           = xseh.create_class
+             )
+/* 2009/11/05 Ver1.26 Add End   */
       FOR UPDATE OF
              xseh.sales_exp_header_id
       NOWAIT
@@ -9006,7 +9312,10 @@ AS
         -- ===============================
         -- A-2-2.販売実績AR用ワークデータ取得
         -- ===============================
-        OPEN bulk_data_cur;
+/* 2009/11/05 Ver1.26 Mod Start */
+--        OPEN bulk_data_cur;
+        OPEN bulk_data_cur2;
+/* 2009/11/05 Ver1.26 Mod End   */
 --
         LOOP
 --
@@ -9016,12 +9325,18 @@ AS
           gt_ar_dis_tbl1.DELETE;       -- AR会計配分OIFインサート用配列
 --
           --リミット毎に処理する
-          FETCH bulk_data_cur BULK COLLECT INTO gt_sales_bulk_tbl LIMIT gn_ar_bulk_collect_cnt;
+/* 2009/11/05 Ver1.26 Mod Start */
+--          FETCH bulk_data_cur BULK COLLECT INTO gt_sales_bulk_tbl LIMIT gn_ar_bulk_collect_cnt;
+          FETCH bulk_data_cur2 BULK COLLECT INTO gt_sales_bulk_tbl LIMIT gn_ar_bulk_collect_cnt;
+/* 2009/11/05 Ver1.26 Mod End   */
 --
           EXIT WHEN gn_fetch_end_flag = 1;
 --
           -- データ有無チェック
-          IF ( bulk_data_cur%NOTFOUND ) THEN
+/* 2009/11/05 Ver1.26 Mod Start */
+--          IF ( bulk_data_cur%NOTFOUND ) THEN
+          IF ( bulk_data_cur2%NOTFOUND ) THEN
+/* 2009/11/05 Ver1.26 Mod End   */
             gn_fetch_end_flag := 1; --最後のBULK処理
           END IF;
 --
@@ -9191,6 +9506,11 @@ AS
         CLOSE bulk_data_cur;
       END IF;
 /* 2009/10/02 Ver1.24 Add End   */
+/* 2009/11/05 Ver1.26 Add Start */
+      IF ( bulk_data_cur2%ISOPEN ) THEN
+        CLOSE bulk_data_cur2;
+      END IF;
+/* 2009/11/05 Ver1.26 Add End   */
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
@@ -9211,6 +9531,11 @@ AS
         CLOSE bulk_data_cur;
       END IF;
 /* 2009/10/02 Ver1.24 Add End   */
+/* 2009/11/05 Ver1.26 Add Start */
+      IF ( bulk_data_cur2%ISOPEN ) THEN
+        CLOSE bulk_data_cur2;
+      END IF;
+/* 2009/11/05 Ver1.26 Add End   */
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
@@ -9225,6 +9550,11 @@ AS
         CLOSE bulk_data_cur;
       END IF;
 /* 2009/10/02 Ver1.24 Add End   */
+/* 2009/11/05 Ver1.26 Add Start */
+      IF ( bulk_data_cur2%ISOPEN ) THEN
+        CLOSE bulk_data_cur2;
+      END IF;
+/* 2009/11/05 Ver1.26 Add End   */
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
 --
