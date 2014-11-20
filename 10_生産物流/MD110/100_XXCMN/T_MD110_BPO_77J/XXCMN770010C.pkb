@@ -7,7 +7,7 @@ AS
  * Description      : •W€Œ´‰¿“à–ó•\
  * MD.050/070       : ŒŸYØˆ—’ •[Issue1.0 (T_MD050_BPO_770)
  *                    ŒŸYØˆ—’ •[Issue1.0 (T_MD070_BPO_77J)
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2008/12/22    1.22  N.Yoshida        –{”ÔáŠQ825A828‘Î‰
  *  2009/01/15    1.23  N.Yoshida        –{”ÔáŠQ1023‘Î‰
  *  2009/03/10    1.24  A.Shiina         –{”ÔáŠQ1298‘Î‰
+ *  2009/04/10    1.25  A.Shiina         –{”ÔáŠQ1396‘Î‰
  *
  *****************************************************************************************/
 --
@@ -2826,6 +2827,10 @@ AS
     || '  AND    xrpm.source_document_code = rsl.source_document_code'
     || '  AND    xrpm.transaction_type     = rt.transaction_type'
     || '  AND    xrpm.new_div_account      = ''' || ir_param.rcv_pay_div || ''''
+-- 2009/04/10 v1.25 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/04/10 v1.25 ADD END
     ;
 --
     --===============================================================
