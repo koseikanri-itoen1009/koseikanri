@@ -7,7 +7,7 @@ AS
  * Description      : 出庫指示確認表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 出庫指示確認表 T_MD070_BPO_62G
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -29,6 +29,8 @@ AS
  * ------------- ----- --------------------- -------------------------------------------------
  *  2008/05/12    1.0   Masakazu Yamashita    新規作成
  *  2008/06/04    1.1   Jun Nakada            クイックコード警告区分の結合を外部結合に変更(出荷移動)
+ *  2008/06/17    1.2   Masao Hokkanji        システムテスト不具合No150対応
+ *  2008/06/18    1.3   Kazuo Kumamoto        事業所情報VIEWの結合を外部結合に変更
  *
  *****************************************************************************************/
 --
@@ -219,7 +221,7 @@ AS
     -- 着荷時間TO
     ,arrival_time_to                  xxwsh_order_headers_all.arrival_time_to%TYPE
     -- 担当者コード
-    ,tanto_code                       xxwsh_order_headers_all.screen_update_by%TYPE
+    ,tanto_code                       per_all_people_f.employee_number%TYPE
     -- 画面更新日時
     ,screen_update_date               xxwsh_order_headers_all.screen_update_date%TYPE
     -- 明細番号
@@ -820,7 +822,12 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
         gt_xml_data_table(gl_xml_idx).tag_value := it_report_data(l_cnt).request_quantity_unit;
 --
-        IF (it_report_data(l_cnt).request_quantity <> it_report_data(l_cnt).quantity) THEN
+        IF (it_report_data(l_cnt).request_quantity = it_report_data(l_cnt).quantity) THEN
+          NULL;
+        ELSIF ((it_report_data(l_cnt).request_quantity IS NULL) AND
+               (it_report_data(l_cnt).quantity IS NULL)) THEN
+          NULL;
+        ELSE
           -- 【データ】数量
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'quantity';
@@ -1207,7 +1214,7 @@ AS
       || ' ,xoha.shipping_instructions       AS  tekiyou'                 -- 摘要
       || ' ,xoha.arrival_time_from           AS  arrival_time_from'       -- 着荷時間FROM
       || ' ,xoha.arrival_time_to             AS  arrival_time_to'         -- 着荷時間TO
-      || ' ,xoha.screen_update_by            AS  tanto_code'              -- 担当者コード
+      || ' ,papf.employee_number             AS  tanto_code'              -- 担当者コード
       || ' ,xoha.screen_update_date          AS  screen_update_date'      -- 画面更新日時
       || ' ,xola.order_line_number           AS  meisai_number'           -- 明細番号
       || ' ,xola.shipping_item_code          AS  item_code'               -- 品名（コード）
@@ -1428,13 +1435,19 @@ AS
            -------------------------------------------------------------------------------
            -- 事業所情報VIEW2
            -------------------------------------------------------------------------------
-      || ' AND   xoha.transfer_location_id          = xl2v.location_id'
-      || ' AND   xl2v.start_date_active            <=  xoha.schedule_ship_date'
-      || '     AND   ('
-      || '         xl2v.end_date_active            >=  xoha.schedule_ship_date'
-      || '       OR'
-      || '         xl2v.end_date_active IS NULL'
-      || '       )'
+--mod start 1.3
+--      || ' AND   xoha.transfer_location_id          = xl2v.location_id'
+--      || ' AND   xl2v.start_date_active            <=  xoha.schedule_ship_date'
+--      || '     AND   ('
+--      || '         xl2v.end_date_active            >=  xoha.schedule_ship_date'
+--      || '       OR'
+--      || '         xl2v.end_date_active IS NULL'
+--      || '       )'
+      || ' AND   xoha.transfer_location_id          = xl2v.location_id(+)'
+      || ' AND   xoha.schedule_ship_date'
+      || '   BETWEEN xl2v.start_date_active(+)'
+      || '   AND NVL(xl2v.end_date_active(+),xoha.schedule_ship_date)'
+--mod end 1.3
            -------------------------------------------------------------------------------
            -- 受注明細アドオン
            -------------------------------------------------------------------------------
@@ -1590,7 +1603,7 @@ AS
       || ' ,xmrih.description                     AS  tekiyou'                 -- 摘要
       || ' ,xmrih.arrival_time_from               AS  arrival_time_from'       -- 着荷時間FROM
       || ' ,xmrih.arrival_time_to                 AS  arrival_time_to'         -- 着荷時間TO
-      || ' ,xmrih.screen_update_by                AS  tanto_code'              -- 担当者コード
+      || ' ,papf.employee_number                  AS  tanto_code'              -- 担当者コード
       || ' ,xmrih.screen_update_date              AS  screen_update_date'      -- 画面更新日時
       || ' ,xmril.line_number                     AS  meisai_number'           -- 明細番号
       || ' ,xmril.item_code                       AS  item_code'               -- 品名（コード）

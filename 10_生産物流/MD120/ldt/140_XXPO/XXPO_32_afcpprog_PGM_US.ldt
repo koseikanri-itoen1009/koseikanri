@@ -3893,14 +3893,14 @@ BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO360004C1"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_art1" "ATTRIBUTE14"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/04/21 15:20:10"
+      OWNER = "SCS_YTAKAYAMA1"
+      LAST_UPDATE_DATE = "2008/06/18 15:24:17"
       COLUMN_SEQ_NUM = "140"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO_SECURITY"
       DISPLAY_SIZE = "7"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -3910,14 +3910,14 @@ BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO360004C1"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_art2" "ATTRIBUTE15"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/04/21 15:20:10"
+      OWNER = "SCS_YTAKAYAMA1"
+      LAST_UPDATE_DATE = "2008/06/18 15:24:18"
       COLUMN_SEQ_NUM = "150"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO_SECURITY"
       DISPLAY_SIZE = "7"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -3927,14 +3927,14 @@ BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO360004C1"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_art3" "ATTRIBUTE16"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/04/21 15:20:10"
+      OWNER = "SCS_YTAKAYAMA1"
+      LAST_UPDATE_DATE = "2008/06/18 15:24:18"
       COLUMN_SEQ_NUM = "160"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO_SECURITY"
       DISPLAY_SIZE = "7"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -4018,11 +4018,11 @@ BEGIN PROGRAM "XXPO360004C1" "XXPO"
   * @param iv_crowd3 åQÇR\n\
   * @rep:paraminfo {@rep:type XXCMN_S_4_CHAR} {@rep:displayed Y}\n\
   * @param iv_art1 ïiñ⁄ÇP\n\
-  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO_SECURITY} {@rep:displayed Y}\n\
   * @param iv_art2 ïiñ⁄ÇQ\n\
-  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO_SECURITY} {@rep:displayed Y}\n\
   * @param iv_art3 ïiñ⁄ÇR\n\
-  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO_SECURITY} {@rep:displayed Y}\n\
   * @param iv_security_flg ÉZÉLÉÖÉäÉeÉBãÊï™\n\
   * @rep:paraminfo {@rep:type XXCMN_S_1_CHAR} {@rep:displayed N} {@rep:required}\n\
   */"
@@ -4282,14 +4282,14 @@ BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO360004C2"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_art1" "ATTRIBUTE14"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/04/21 15:26:17"
+      OWNER = "SCS_YTAKAYAMA1"
+      LAST_UPDATE_DATE = "2008/06/18 15:25:42"
       COLUMN_SEQ_NUM = "140"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO_SECURITY"
       DISPLAY_SIZE = "7"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -4299,14 +4299,14 @@ BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO360004C2"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_art2" "ATTRIBUTE15"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/04/21 15:26:17"
+      OWNER = "SCS_YTAKAYAMA1"
+      LAST_UPDATE_DATE = "2008/06/18 15:25:42"
       COLUMN_SEQ_NUM = "150"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO_SECURITY"
       DISPLAY_SIZE = "7"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -4316,14 +4316,14 @@ BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO360004C2"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_art3" "ATTRIBUTE16"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/04/21 15:26:17"
+      OWNER = "SCS_YTAKAYAMA1"
+      LAST_UPDATE_DATE = "2008/06/18 15:25:42"
       COLUMN_SEQ_NUM = "160"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO_SECURITY"
       DISPLAY_SIZE = "7"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -4407,11 +4407,11 @@ BEGIN PROGRAM "XXPO360004C2" "XXPO"
   * @param iv_crowd3 åQÇR\n\
   * @rep:paraminfo {@rep:type XXCMN_S_4_CHAR} {@rep:displayed Y}\n\
   * @param iv_art1 ïiñ⁄ÇP\n\
-  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO_SECURITY} {@rep:displayed Y}\n\
   * @param iv_art2 ïiñ⁄ÇQ\n\
-  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO_SECURITY} {@rep:displayed Y}\n\
   * @param iv_art3 ïiñ⁄ÇR\n\
-  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO_SECURITY} {@rep:displayed Y}\n\
   * @param iv_security_flg ÉZÉLÉÖÉäÉeÉBãÊï™\n\
   * @rep:paraminfo {@rep:type XXCMN_S_1_CHAR} {@rep:displayed N} {@rep:required}\n\
   */"
@@ -5205,8 +5205,8 @@ BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO330001C"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_creation_date_t" "ATTRIBUTE10"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/04/16 17:58:04"
+      OWNER = "SCS_YTAKAYAMA1"
+      LAST_UPDATE_DATE = "2008/06/18 15:18:15"
       COLUMN_SEQ_NUM = "50"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
@@ -5216,8 +5216,9 @@ BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO330001C"
       DISPLAY_SIZE = "20"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
-      DEFAULT_TYPE = "A"
-      DEFAULT_VALUE = "iv_creation_date_f"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE =
+     "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') FROM DUAL"
       FORM_LEFT_PROMPT = "çÏê¨ì˙éûTO"
       FORM_ABOVE_PROMPT = "çÏê¨ì˙éûTO"
       DESCRIPTION = "çÏê¨ì˙éûTO"
