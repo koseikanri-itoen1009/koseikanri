@@ -7,7 +7,7 @@ AS
  * Description      : d“üi’ •[j
  * MD.050/070       : d“üi’ •[jIssue1.0  (T_MD050_BPO_360)
  *                    ‘ãs¿‹‘            (T_MD070_BPO_36F)
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2008/10/24    1.10  T.Ohashi         T_S_432‘Î‰iŒhÌ‚Ì•t—^j
  *  2008/11/04    1.11  Y.Yamamoto       “‡áŠQ#471
  *  2008/11/28    1.12  T.Yoshimoto      –{”ÔáŠQ#204
+ *  2009/01/08    1.13  N.Yoshida        –{”ÔáŠQ#970
  *
  *****************************************************************************************/
 --
@@ -156,6 +157,10 @@ AS
      ,purchase_amount      NUMBER                                 -- d“ü‹àŠz
      ,attribute5           po_line_locations_all.attribute5%TYPE  -- —a‚©‚èŒû‘K‹àŠz
      ,attribute8           po_line_locations_all.attribute8%TYPE  -- •Š‰Û‹àŠz
+-- 2009/01/08 v1.13 N.Yoshida Mod Start –{”Ô#970
+     ,purchase_amount_tax  NUMBER                                 -- d“ü‹àŠz(Á”ïÅ)
+     ,attribute5_tax       po_line_locations_all.attribute5%TYPE  -- —a‚©‚èŒû‘K‹àŠz(Á”ïÅ)
+-- 2009/01/08 v1.13 N.Yoshida Mod End –{”Ô#970
     ) ;
   TYPE tab_data_type_dtl IS TABLE OF rec_data_type_dtl INDEX BY BINARY_INTEGER ;
 --
@@ -608,6 +613,10 @@ AS
       || '  ,comm.purchase_amount      AS purchase_amount     ' -- d“ü‹àŠz
       || '  ,comm.attribute5           AS attribute5          ' -- —a‚©‚èŒû‘K‹àŠz
       || '  ,comm.attribute8           AS attribute8          ' -- •Š‰Û‹àŠz
+-- 2009/01/08 v1.13 N.Yoshida Mod Start –{”Ô#970
+      || '  ,comm.purchase_amount_tax  AS purchase_amount_tax ' -- d“ü‹àŠz(Á”ïÅ)
+      || '  ,comm.attribute5_tax       AS attribute5_tax      ' -- —a‚©‚èŒû‘K‹àŠz(Á”ïÅ)
+-- 2009/01/08 v1.13 N.Yoshida Mod End –{”Ô#970
       || ' FROM'
       || '   ('
       || '    SELECT'
@@ -615,8 +624,13 @@ AS
       || '     ,com.attribute3    AS attribute3'
       || '     ,com.attribute10   AS attribute10'
       || '     ,SUM(com.sum_quantity) AS quantity'
-      || '     ,SUM(NVL(com.sum_quantity,0) * com.unit_price) AS purchase_amount'
+-- 2009/01/08 v1.13 N.Yoshida Mod Start –{”Ô#970
+--      || '     ,SUM(NVL(com.sum_quantity,0) * com.unit_price) AS purchase_amount'
+      || '     ,SUM(ROUND(NVL(com.sum_quantity,0) * com.unit_price)) AS purchase_amount'
       || '     ,SUM(com.attribute5) AS attribute5'
+      || '     ,SUM(ROUND(ROUND(NVL(com.sum_quantity,0) * com.unit_price ) * ' || gn_tax || ')) AS purchase_amount_tax'
+      || '     ,SUM(ROUND(com.attribute5 * ' || gn_tax || ')) AS attribute5_tax'
+-- 2009/01/08 v1.13 N.Yoshida Mod End –{”Ô#970
       || '     ,SUM(com.attribute8) AS attribute8'
       || '   FROM'
       || '     ('
@@ -1435,7 +1449,10 @@ AS
       ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
       ot_xml_data_table(lt_xml_idx).tag_value := TO_CHAR(ln_purchase_amount);
       -- Á”ïÅ:d“ü‹àŠz
-      ln_purchase_amount_tax := ROUND(ln_purchase_amount * gn_tax);
+-- 2009/01/08 v1.13 N.Yoshida Mod Start –{”Ô#970
+--      ln_purchase_amount_tax := ROUND(ln_purchase_amount * gn_tax);
+      ln_purchase_amount_tax := it_data_rec(i).purchase_amount_tax;
+-- 2009/01/08 v1.13 N.Yoshida Mod End –{”Ô#970
       lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
       ot_xml_data_table(lt_xml_idx).tag_name  := 'purchase_amount_tax' ;
       ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
@@ -1454,7 +1471,10 @@ AS
         ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
         ot_xml_data_table(lt_xml_idx).tag_value := it_data_rec(i).attribute5;
         -- Á”ïÅ:Œû‘K‹àŠz
-        ln_cupr_tax := ROUND(it_data_rec(i).attribute5 * gn_tax);
+-- 2009/01/08 v1.13 N.Yoshida Mod Start –{”Ô#970
+--        ln_cupr_tax := ROUND(it_data_rec(i).attribute5 * gn_tax);
+        ln_cupr_tax := it_data_rec(i).attribute5_tax;
+-- 2009/01/08 v1.13 N.Yoshida Mod End –{”Ô#970
         lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
         ot_xml_data_table(lt_xml_idx).tag_name  := 'commission_unit_price_rate_tax' ;
         ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
