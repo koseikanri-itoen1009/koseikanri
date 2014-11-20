@@ -3,13 +3,15 @@
  *
  * View Name       : xxcos_dlv_headers_info_v
  * Description     : ”[•i“`•[ƒwƒbƒ_î•ñƒrƒ…[
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008/12/08    1.0   T.Tyou           V‹Kì¬
+ *  2009/04/09    1.1   K.kiriu          [T1_0248]•S‰Ý“XHHT‹æ•ª‚Æ•S‰Ý“X‰æ–ÊŽí•Ê‚Ì•s®‡C³
+ *                                       [T1_0259]”[•iŽÒ‚ÌŒ‹‡•s³‘Î‰ž
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_dlv_headers_info_v
 (
@@ -78,7 +80,10 @@ SELECT
        xdh.performance_by_code performance_by_code,                --¬ÑŽÒƒR[ƒh
        papf.per_information18||' '||papf.per_information19 source_name,                             --¬ÑŽÒ–¼Ì
        xdh.dlv_by_code dlv_by_code,                                --”[•iŽÒƒR[ƒh
-       xsv.kanji_last || ' ' || xsv.kanji_first dlv_by_name,       --”[•iŽÒ–¼Ì
+/* 2009/04/09 Ver1.9 Mod Start */
+--       xsv.kanji_last || ' ' || xsv.kanji_first dlv_by_name,       --”[•iŽÒ–¼Ì
+       papf_dlv.per_information18||' '||papf_dlv.per_information19 dlv_by_name,                     --”[•iŽÒ–¼Ì
+/* 2009/04/09 Ver1.9 Mod End   */
        xdh.hht_invoice_no hht_invoice_no,                          --“`•[No.
        xdh.dlv_date dlv_date,                                      --”[•i“ú
        xdh.inspect_date inspect_date,                              --ŒŸŽû“ú
@@ -132,6 +137,9 @@ FROM
        xxcos_salesreps_v    xsv,                                  --’S“–ŽÒ‰c‹Æˆõƒrƒ…[(ŒÚ‹qŠÖ˜A)
        hz_parties           hp,                                   --party
        per_all_people_f     papf,                                 --]‹Æˆõƒ}ƒXƒ^
+/* 2009/04/09 Ver1.9 Add Start */
+       per_all_people_f     papf_dlv,                             --]‹Æˆõƒ}ƒXƒ^(”[•iŽÒ)
+/* 2009/04/09 Ver1.9 Add End   */
        (
        --ƒJ[ƒh”„‹æ•ª
        SELECT look_val.lookup_code lookup_code
@@ -208,18 +216,24 @@ FROM
        AND     types.security_group_id = types_tl.security_group_id
        AND     types.view_application_id = types_tl.view_application_id
        AND     types_tl.language = userenv('LANG')
-       AND     look_val.attribute2 = 'Y'
+/* 2009/04/09 Ver1.1 Del Start */
+--       AND     look_val.attribute2 = 'Y'
+/* 2009/04/09 Ver1.1 Del Start */
        AND     xxccp_common_pkg2.get_process_date      >= 
          NVL(look_val.start_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
        AND     xxccp_common_pkg2.get_process_date      <= 
          NVL(look_val.end_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
        AND     look_val.enabled_flag = 'Y'
-       ORDER BY look_val.lookup_code
+/* 2009/04/09 Ver1.1 Del Start */
+--       ORDER BY look_val.lookup_code
+/* 2009/04/09 Ver1.1 Del Start */
        ) dsc                                                      
 WHERE  xdh.customer_number = xsv.account_number
 AND    xsv.cust_account_id = custadd.customer_id 
 AND    hp.party_id         = xsv.party_id
-AND    xdh.dlv_by_code     = xsv.employee_number   --2009/01/09’Ç‰Á
+/* 2009/04/09 Ver1.1 Del Start */
+--AND    xdh.dlv_by_code     = xsv.employee_number   --2009/01/09’Ç‰Á
+/* 2009/04/09 Ver1.1 Del Start */
 AND    (xdh.dlv_date >=  
   NVL(xsv.effective_start_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
 AND    xdh.dlv_date <=  
@@ -234,12 +248,22 @@ AND    xdh.card_sale_class = csc.lookup_code(+)
 AND    xdh.input_class IN (
         ic.lookup_code
        )
-AND  ( xdh.department_screen_class IS NULL    --2009/02/06’Ç‰Á Žd—l•ÏX‚Ì‚½‚ß
-       OR
-       xdh.department_screen_class IN (
-         dsc.lookup_code
-       )
-     )
+/* 2009/04/09 Ver1.1 Mod Start */
+--AND  ( xdh.department_screen_class IS NULL    --2009/02/06’Ç‰Á Žd—l•ÏX‚Ì‚½‚ß
+--       OR
+--       xdh.department_screen_class IN (
+--         dsc.lookup_code
+--       )
+--     )
+AND    xdh.department_screen_class = dsc.lookup_code
+/* 2009/04/09 Ver1.1 Mod End   */
+/* 2009/04/09 Ver1.1 Add Start */
+AND    xdh.dlv_by_code     = papf_dlv.employee_number
+AND    xdh.dlv_date >=
+  NVL(papf_dlv.effective_start_date, FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
+AND    xdh.dlv_date <=
+  NVL(papf_dlv.effective_end_date, FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
+/* 2009/04/09 Ver1.1 Add End   */
 AND    xdh.performance_by_code = papf.employee_number    --2009/01/09•ÏX ”[•iŽÒ[„¬ÑŽÒ
 AND    xdh.dlv_date >=  
   NVL(papf.effective_start_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
