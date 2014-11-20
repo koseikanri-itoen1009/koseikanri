@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼確定関数(BODY)
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_EDO_BPO_40D_出荷依頼確定関数
- * Version                : 1.13
+ * Version                : 1.14
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -25,22 +25,24 @@ AS
  * ------------- ----------- --------- --------------------------------------------------
  *  Date         Ver.  Editor          Description
  * ------------- ----- --------------- --------------------------------------------------
- *  2008/3/13    1.0   R.Matusita      新規作成
- *  2008/4/23    1.1   R.Matusita      内部変更要求#65
- *  2008/6/03    1.2   M.Uehara        内部変更要求#80
- *  2008/6/05    1.3   N.Yoshida       リードタイム妥当性チェック D-2出庫日 > 稼働日に修正
- *  2008/6/05    1.4   M.Uehara        積載効率チェック(積載効率算出)の実施条件を修正
- *  2008/6/05    1.5   N.Yoshida       出荷可否チェックにて引数設定の修正
+ *  2008/03/13    1.0   R.Matusita      新規作成
+ *  2008/04/23    1.1   R.Matusita      内部変更要求#65
+ *  2008/06/03    1.2   M.Uehara        内部変更要求#80
+ *  2008/06/05    1.3   N.Yoshida       リードタイム妥当性チェック D-2出庫日 > 稼働日に修正
+ *  2008/06/05    1.4   M.Uehara        積載効率チェック(積載効率算出)の実施条件を修正
+ *  2008/06/05    1.5   N.Yoshida       出荷可否チェックにて引数設定の修正
  *                                     (入力パラメータ：管轄拠点⇒受注ヘッダの管轄拠点)
- *  2008/6/06    1.6   T.Ishiwata      出荷可否チェックにてエラーメッセージの修正
- *  2008/6/18    1.7   T.Ishiwata      締めステータスチェック区分＝２の場合、Updateするよう修正
- *                                     全体的にネスト修正
- *  2008/6/19    1.8   Y.Shindou       内部変更要求#143対応
- *  2008/7/08    1.9   N.Fukuda        ST不具合対応#405
- *  2008/7/08    1.10  M.Uehara        ST不具合対応#424
- *  2008/7/09    1.11  N.Fukuda        ST不具合対応#430
- *  2008/7/29    1.12  D.Nihei         ST不具合対応#503
- *  2008/7/30    1.13  M.Uehara        ST不具合対応#501
+ *  2008/06/06    1.6   T.Ishiwata      出荷可否チェックにてエラーメッセージの修正
+ *  2008/06/18    1.7   T.Ishiwata      締めステータスチェック区分＝２の場合、Updateするよう修正
+ *                                      全体的にネスト修正
+ *  2008/06/19    1.8   Y.Shindou       内部変更要求#143対応
+ *  2008/07/08    1.9   N.Fukuda        ST不具合対応#405
+ *  2008/07/08    1.10  M.Uehara        ST不具合対応#424
+ *  2008/07/09    1.11  N.Fukuda        ST不具合対応#430
+ *  2008/07/29    1.12  D.Nihei         ST不具合対応#503
+ *  2008/07/30    1.13  M.Uehara        ST不具合対応#501
+ *  2008/08/06    1.14  D.Nihei         ST不具合対応#525
+ *                                      カテゴリ情報VIEW変更
  *
  *****************************************************************************************/
 --
@@ -171,6 +173,9 @@ AS
 -- 2008/07/29 D.Nihei ADD START
   gv_drink                    CONSTANT VARCHAR2(1) := '2'; -- 商品区分「ドリンク」2008/07/29 ST不具合対応#503
 -- 2008/07/29 D.Nihei ADD END
+-- 2008/08/06 D.Nihei ADD START
+  gv_prod                     CONSTANT VARCHAR2(1) := '5'; -- 品目区分「製品」2008/08/06 ST不具合対応#525
+-- 2008/08/06 D.Nihei ADD END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -775,6 +780,9 @@ AS
     ln_request_no_nullflg            NUMBER;       -- 依頼NoNULLチェックフラグ
     ln_schedule_ship_date_nullflg    NUMBER;       -- 出庫日NULLチェックフラグ
     ln_s_a_d_nullflg                 NUMBER;       -- 着日NULLチェックフラグ
+-- 2008/08/06 D.Nihei ADD START
+    ln_case_total                    NUMBER;       -- ケース総合計
+-- 2008/08/06 D.Nihei ADD END
     -- *** ローカル・カーソル ***
 --
     CURSOR upd_status_cur
@@ -825,7 +833,7 @@ AS
         ,xxcmn_cust_accounts2_v        xcav   --④顧客情報VIEW2
         ,xxcmn_cust_acct_sites2_v      xcasv  --⑤顧客サイト情報VIEW2
         ,xxcmn_item_mst2_v             ximv   --⑥OPM品目情報VIEW2
-        ,xxcmn_item_categories4_v      xicv   --OPM品目カテゴリ割当情報VIEW4
+        ,xxcmn_item_categories5_v      xicv   --OPM品目カテゴリ割当情報VIEW5
       WHERE xottv.order_category_code   =  cv_order_category_code 
                                 --受注カテゴリコード
       AND   xottv.shipping_shikyu_class =  cv_shipping_shikyu_class
@@ -1384,21 +1392,23 @@ AS
                                                 loop_cnt.shipping_item_code);
           RAISE global_api_expt;
 --
-        -- D-2で取得した数量がD-2で取得した配数の整数倍でない場合
-        ELSIF (mod(loop_cnt.quantity, loop_cnt.delivery_qty) <> 0) THEN
-          -- 数量を配数で割った余りが0でない場合
-          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                                gv_cnst_msg_167,
-                                                'REQUEST_NO',
-                                                loop_cnt.request_no,
-                                                'ITEM_CODE',
-                                                loop_cnt.shipping_item_code);
-          -- 警告をセット
-          lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
-          ln_warn_flg := 1;
-          IF (gv_callfrom_flg = '1') THEN
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg );
-          END IF;
+-- 2008/08/06 D.Nihei DEL START
+--        -- D-2で取得した数量がD-2で取得した配数の整数倍でない場合
+--        ELSIF (mod(loop_cnt.quantity, loop_cnt.delivery_qty) <> 0) THEN
+--          -- 数量を配数で割った余りが0でない場合
+--          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+--                                                gv_cnst_msg_167,
+--                                                'REQUEST_NO',
+--                                                loop_cnt.request_no,
+--                                                'ITEM_CODE',
+--                                                loop_cnt.shipping_item_code);
+--          -- 警告をセット
+--          lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
+--          ln_warn_flg := 1;
+--          IF (gv_callfrom_flg = '1') THEN
+--            FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg );
+--          END IF;
+-- 2008/08/06 D.Nihei DEL END
 --
         -- D-2で取得した数量がD-2で取得した出荷入数の整数倍でない場合
         ELSIF ((loop_cnt.num_of_deliver IS NOT NULL)
@@ -1431,6 +1441,44 @@ AS
 --
         END IF;
 --
+-- 2008/08/06 D.Nihei ADD START
+        ln_case_total := 0; -- ケース総合計
+        -- 商品区分が「ドリンク」且つ品目区分が「製品」の場合
+        IF ( ( loop_cnt.prod_class      = gv_drink )
+         AND ( loop_cnt.item_class_code = gv_prod  ) ) THEN
+--
+          -- 「ケース総合計」を取得
+          IF ( loop_cnt.num_of_deliver IS NOT NULL ) THEN
+            ln_case_total := loop_cnt.quantity / loop_cnt.num_of_deliver;
+--
+          ELSIF ( loop_cnt.num_of_cases IS NOT NULL ) THEN
+            ln_case_total := loop_cnt.quantity / loop_cnt.num_of_cases;
+--
+          ELSE
+            ln_case_total := loop_cnt.quantity;
+--
+          END IF;
+--
+          -- 「ケース総合計」がD-2で取得した配数の整数倍でない場合
+          IF (mod(ln_case_total, loop_cnt.delivery_qty) <> 0) THEN
+            -- 数量を配数で割った余りが0でない場合
+            lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                  gv_cnst_msg_167,
+                                                  'REQUEST_NO',
+                                                  loop_cnt.request_no,
+                                                  'ITEM_CODE',
+                                                  loop_cnt.shipping_item_code);
+            -- 警告をセット
+            lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
+            ln_warn_flg := 1;
+            IF (gv_callfrom_flg = '1') THEN
+              FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg );
+            END IF;
+--
+          END IF;
+--
+        END IF;
+-- 2008/08/06 D.Nihei ADD END
       -- ステータスチェック有りの場合は出荷可否チェック処理を実施
 --      IF ( iv_status_kbn = '1' ) THEN -- 2008/07/30 ST不具合対応#501
                                         -- マスタチェックの実施条件にステータスチェック区分を追加
@@ -1990,7 +2038,7 @@ AS
           lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
                                                 gv_cnst_msg_158,
                                                 'API_NAME',
-                                                cv_calc_load_efficiency_api,                                                                    
+                                                cv_calc_load_efficiency_api,
                                                 'ERR_MSG',
                                                 lv_errmsg,
                                                 'REQUEST_NO',
