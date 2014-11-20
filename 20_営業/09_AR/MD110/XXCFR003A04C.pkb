@@ -7,7 +7,7 @@ AS
  * Description      : EDI請求書データ作成
  * MD.050           : MD050_CFR_003_A04_EDI請求書データ作成
  * MD.070           : MD050_CFR_003_A04_EDI請求書データ作成
- * Version          : 1.5
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,7 +44,8 @@ AS
                                                        請求金額合計,値引き合計,返品合計,返品合計の集計単位修正 
                                                        取引先レコード通番設定処理修正   
                                                        税差額レコード出力処理修正
- *  2009/06/23    1.6   SCS 萱原 伸哉    [障害T1_1379] EDI請求書の伝票番号チェック処理対応                           
+ *  2009/06/23    1.6   SCS 萱原 伸哉    [障害T1_1379] EDI請求書の伝票番号チェック処理対応
+ *  2009/10/15    1.7   SCS 萱原 伸哉     AR仕様変更IE558対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -266,7 +267,7 @@ AS
    * Description      : EDI書式変換関数
    ***********************************************************************************/
   FUNCTION pad_edi_char(
-    iv_string_data      IN VARCHAR2,  -- 変換対象文字列
+    iv_string_data      IN VARCHAR2,  -- 変換対象文字列	
     iv_data_format      IN VARCHAR2,  -- フォーマット
     in_length           IN NUMBER   ) -- 桁数
   RETURN VARCHAR2
@@ -1007,6 +1008,11 @@ AS
                WHEN cv_sold_return_type_r THEN xil.ship_amount + xil.tax_amount
                ELSE 0
              END                                      return_amount          -- 返品合計金額
+-- Modify 2009.10.15 Ver1.7 Start
+           ,xil.jan_code                              jan_code               -- JANコード
+           ,xil.num_of_cases                          num_of_cases           -- ケース入数
+           ,xil.medium_class                          medium_class           -- 受注ソース
+-- Modify 2009.10.15 Ver1.7 End
       FROM xxcfr_invoice_headers          xih    -- 請求ヘッダ
           ,xxcfr_invoice_lines            xil    -- 請求明細
       WHERE xih.invoice_id = xil.invoice_id      -- 一括請求書ID
@@ -1348,6 +1354,11 @@ AS
             lt_set_edi_data_tbl1(ln_data_cnt).sold_amount            := NULL ; -- 原価金額
             lt_set_edi_data_tbl1(ln_data_cnt).sold_location_code     := NULL ; -- 備考コード
             lt_set_edi_data_tbl1(ln_data_cnt).chain_st_area          := NULL ; -- チェーン店固有エリア
+-- Modify 2009.10.15 Ver1.7 Start
+            lt_set_edi_data_tbl1(ln_data_cnt).jan_code               := NULL ; -- JANコード
+            lt_set_edi_data_tbl1(ln_data_cnt).num_of_cases           := NULL ; -- ケース入数
+            lt_set_edi_data_tbl1(ln_data_cnt).medium_class           := NULL ; -- 受注ソース
+-- Modify 2009.10.15 Ver1.7 End
             -- 請求額合計に税差額を加算
             ln_vend_amount := ln_vend_amount + lt_get_edi_data_tbl1(i-1).tax_gap_amount;
             -- 変数加算
@@ -1542,6 +1553,14 @@ AS
           := lt_get_edi_data_tbl1(i).sold_location_code     ; -- 備考コード
         lt_set_edi_data_tbl1(ln_data_cnt).chain_st_area          
           := lt_get_edi_data_tbl1(i).chain_st_area          ; -- チェーン店固有エリア
+-- Modify 2009.10.15 Ver1.7 Start
+        lt_set_edi_data_tbl1(ln_data_cnt).jan_code               
+          := lt_get_edi_data_tbl1(i).jan_code               ; -- JANコード
+        lt_set_edi_data_tbl1(ln_data_cnt).num_of_cases           
+          := lt_get_edi_data_tbl1(i).num_of_cases           ; -- ケース入数
+        lt_set_edi_data_tbl1(ln_data_cnt).medium_class           
+          := lt_get_edi_data_tbl1(i).medium_class           ; -- 受注ソース
+-- Modify 2009.10.15 Ver1.7 End
 --
         -- 変数加算
         ln_data_cnt := ln_data_cnt + 1; -- 集計結果格納先レコードカウンタ
@@ -2312,6 +2331,50 @@ AS
           IF lv_retcode = cv_status_warn THEN
             ov_retcode := cv_status_warn;
           END IF;
+-- Modify 2009.10.15 Ver1.7 Start
+          -- JANコード
+          set_edi_char(62                                               -- 項目順
+                      ,lt_set_edi_data_tbl1(ln_loop_cnt).jan_code       -- 変換対象文字列
+                      ,ln_loop_cnt                                      -- レコード通番
+                      ,lt_set_edi_data_tbl1(ln_loop_cnt).slip_num       -- 伝票番号
+                      ,lt_set_edi_data_tbl1(ln_loop_cnt).note_line_id   -- 伝票行No
+                      ,lv_output_str                                    -- 戻り値
+                      ,lv_overflow_msg
+                      ,lv_retcode
+                      ,lv_errmsg);
+           lt_set_edi_data_tbl1(ln_loop_cnt).jan_code := lv_output_str;
+          IF lv_retcode = cv_status_warn THEN
+            ov_retcode := cv_status_warn;
+          END IF;
+          -- ケース入数
+          set_edi_char(63                                               -- 項目順
+                      ,lt_set_edi_data_tbl1(ln_loop_cnt).num_of_cases   -- 変換対象文字列
+                      ,ln_loop_cnt                                      -- レコード通番
+                      ,lt_set_edi_data_tbl1(ln_loop_cnt).slip_num       -- 伝票番号
+                      ,lt_set_edi_data_tbl1(ln_loop_cnt).note_line_id   -- 伝票行No
+                      ,lv_output_str                                    -- 戻り値
+                      ,lv_overflow_msg
+                      ,lv_retcode
+                      ,lv_errmsg);
+           lt_set_edi_data_tbl1(ln_loop_cnt).num_of_cases := lv_output_str;
+          IF lv_retcode = cv_status_warn THEN
+            ov_retcode := cv_status_warn;
+          END IF;
+          -- 受注ソース
+          set_edi_char(64                                               -- 項目順
+                      ,lt_set_edi_data_tbl1(ln_loop_cnt).medium_class   -- 変換対象文字列
+                      ,ln_loop_cnt                                      -- レコード通番
+                      ,lt_set_edi_data_tbl1(ln_loop_cnt).slip_num       -- 伝票番号
+                      ,lt_set_edi_data_tbl1(ln_loop_cnt).note_line_id   -- 伝票行No
+                      ,lv_output_str                                    -- 戻り値
+                      ,lv_overflow_msg
+                      ,lv_retcode
+                      ,lv_errmsg);
+           lt_set_edi_data_tbl1(ln_loop_cnt).medium_class := lv_output_str;
+          IF lv_retcode = cv_status_warn THEN
+            ov_retcode := cv_status_warn;
+          END IF;
+-- Modify 2009.10.15 Ver1.7 End
 --
           -- 出力文字列作成
           lv_edi_text := pad_edi_char(lt_set_edi_data_tbl1(ln_loop_cnt).file_rec_type
@@ -2502,11 +2565,25 @@ AS
                       || pad_edi_char(lt_set_edi_data_tbl1(ln_loop_cnt).return_amount
                                      ,gt_edi_item_tab(61).data_type
                                      ,gt_edi_item_tab(61).edi_length)                                                      -- 返品合計金額
+-- Modify 2009.10.15 Ver1.7 Start
 -- Modify 2009.05.08 Ver1.3 Start
-                      || pad_edi_char(null
-                                     ,gt_edi_item_tab(62).data_type
-                                     ,gt_edi_item_tab(62).edi_length)                                                      -- 予備エリア
+--                      || pad_edi_char(null
+--                                     ,gt_edi_item_tab(62).data_type
+--                                     ,gt_edi_item_tab(62).edi_length)                                                      -- 予備エリア
 -- Modify 2009.05.08 Ver1.3 End
+                      || pad_edi_char(lt_set_edi_data_tbl1(ln_loop_cnt).jan_code
+                                     ,gt_edi_item_tab(62).data_type
+                                     ,gt_edi_item_tab(62).edi_length)                                                      -- JANコード
+                      || pad_edi_char(lt_set_edi_data_tbl1(ln_loop_cnt).num_of_cases
+                                     ,gt_edi_item_tab(63).data_type
+                                     ,gt_edi_item_tab(63).edi_length)                                                      -- ケース入数
+                      || pad_edi_char(lt_set_edi_data_tbl1(ln_loop_cnt).medium_class
+                                     ,gt_edi_item_tab(64).data_type
+                                     ,gt_edi_item_tab(64).edi_length)                                                      -- 受注ソース
+                      || pad_edi_char(null
+                                     ,gt_edi_item_tab(65).data_type
+                                     ,gt_edi_item_tab(65).edi_length)                                                      -- 予備エリア
+-- Modify 2009.10.15 Ver1.7 End
                       ;
 --
           -- ====================================================
