@@ -204,9 +204,7 @@ REM
 REM   Anthony Cataldo 03-Oct-2006 Bug 5398369
 REM   Exception handling cleanup - removed begin/end/rollback as no longer autonom
 REM   Also now handled OTHERS exception
-REM
-REM   07/JUN/2012  SCSK D.Sugahara  E_本稼動_09617対応(再カスタマイズ)
-REM
+REM 
 REM *hf************************************************************************
 
 SET VERIFY OFF
@@ -514,8 +512,7 @@ r_item_rec		c_item_cur%ROWTYPE;
    This cursor would select discrete default category sets for OPM items  
    which are defined in mtl_item_categories but not in gmi_item_categories for 
    organizations/masters as defined in gmi_item_organizations table */
-/*
--- 2012/06/11 D.Sugahara Del Start
+   
 Cursor Cur_missing_def_cat_in_opm (V_opm_item_id NUMBER, V_odm_item_id NUMBER) IS 
   SELECT distinct mic.category_set_id category_set_id 
   FROM   mtl_item_categories mic, mtl_default_category_sets mdcs 
@@ -533,80 +530,9 @@ Cursor Cur_missing_def_cat_in_opm (V_opm_item_id NUMBER, V_odm_item_id NUMBER) I
                                  where  item_id		= V_opm_item_id 
                                  and    category_set_id	= mic.category_set_id 
                                 );
--- 2012/06/11 D.Sugahara Del End
-*/                              
--- 2012/06/11 D.Sugahara Add Start
-  CURSOR cur_missing_def_cat_in_opm (V_opm_item_id NUMBER, V_odm_item_id NUMBER) IS
-    SELECT /*+ use_nl( mic mdcs ) */
-           DISTINCT mic.category_set_id category_set_id
-    FROM   mtl_item_categories mic
-          ,mtl_default_category_sets mdcs
-    WHERE  mic.inventory_item_id  = V_odm_item_id
-    AND    mdcs.category_set_id   = mic.category_set_id
-    AND    (EXISTS (SELECT /*+ INDEX(mp mtl_parameters_u1) */
-                           1
-                    FROM   mtl_parameters mp
-                         , gmi_item_organizations gio
-                    WHERE  mp.organization_id = gio.organization_id
-                    AND    mp.organization_id = mic.organization_id
-                    AND    ROWNUM = 1)
-           OR
-            EXISTS (SELECT /*+ INDEX(mp mtl_parameters_N1) */
-                           1
-                    FROM   mtl_parameters mp
-                         , gmi_item_organizations gio
-                    WHERE  mp.organization_id = gio.organization_id
-                    AND    mp.master_organization_id = mic.organization_id
-                    AND    ROWNUM = 1)
-           )
-    AND    NOT EXISTS (SELECT 1
-                       FROM   gmi_item_categories
-                       where  item_id = V_opm_item_id
-                       and    category_set_id = mic.category_set_id
-                       AND    ROWNUM = 1);
---
-  lb_ret             BOOLEAN;
-  ln_req_id          NUMBER;
--- 2012/06/11 D.Sugahara Add End
---  
+                                
 BEGIN
--- 2012/06/11 D.Sugahara Add Start
-  IF ((INSERTING)
-      AND (:new.program_update_date IS NULL)
-      AND (:new.program_application_id IS NULL)
-      AND (:new.program_id IS NULL))
-  OR ((UPDATING)
-      AND (NVL(:old.program_update_date,SYSDATE-1) = NVL(:new.program_update_date,SYSDATE-1)))
-  THEN
---
-    GMI_DEBUG_UTIL.Println('Insert/Update from Forms');
---
-    IF  (UPDATING)
-    AND (:old.last_update_date  = :new.last_update_date)
-    AND (:old.last_updated_by   = :new.last_updated_by)
-    AND (:old.last_update_login = :new.last_update_login)
-    THEN
---
-      GMI_DEBUG_UTIL.Println('Pre Set_Mode');
---
-      lb_ret    := FND_REQUEST.SET_MODE(
-                     db_trigger => TRUE
-                     );
---
-      GMI_DEBUG_UTIL.Println('Pre Submit_Request');
---
-      ln_req_id := FND_REQUEST.SUBMIT_REQUEST(
-                     application => 'XXCMN'
-                    ,program     => 'XXCMN810003C'
-                    ,argument1   => :new.item_no
-                     );
---
-      GMI_DEBUG_UTIL.Println('Success : '||TO_CHAR(ln_req_id));
---
-    END IF;
---
-  ELSE
--- 2012/06/11 D.Sugahara Add End
+
   GMI_DEBUG_UTIL.Println('Entering Item Synch Trigger.........');
   GMI_DEBUG_UTIL.Println('Calling gmf_sync.glsynch_initialize.........');
 
@@ -1342,9 +1268,6 @@ BEGIN
   
   -- 5499101 remove commit as we have removed autonomous transaction definition from this trigger
   -- COMMIT;
--- 2012/06/11 D.Sugahara Add Start
-  END IF; --yutsuzuk modify
--- 2012/06/11 D.Sugahara Add End
 
 EXCEPTION
          --Jalaj Srivastava Bug 2847159

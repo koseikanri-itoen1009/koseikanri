@@ -1,7 +1,3 @@
--- 2012/06/07 D.Sugahara Add Start
--- 構成管理版のスクリプトには下記記載があったため、追加
-WHENEVER SQLERROR EXIT FAILURE ROLLBACK;
--- 2012/06/07 D.Sugahara Add End
 create or replace PACKAGE BODY GMI_ITEM_PUB AS
 --$Header: GMIPITMB.pls 115.13.115100.2 2005/12/21 16:26:58 adeshmuk ship $
 -- Body start of comments
@@ -36,7 +32,6 @@ create or replace PACKAGE BODY GMI_ITEM_PUB AS
 --|    23/Oct/2001  Joe DiIorio Bug 1989860 11.5.1H - Removed references to  |
 --|                 Intrastat and commodity code. i.e. SY$INTRASTAT.         |
 --|    28/Oct/2002  Joe DiIorio Bug 2643440 11.5.1J - Added nocopy.          |
---|    07/JUN/2012  SCSK D.Sugahara  E_本稼動_09617対応(再カスタマイズ)      |
 --+==========================================================================+
 -- Body end of comments
 -- Global variables
@@ -312,13 +307,6 @@ l_ic_item_mst_rec.attribute28        := UPPER(p_item_rec.attribute28);
 l_ic_item_mst_rec.attribute29        := UPPER(p_item_rec.attribute29);
 l_ic_item_mst_rec.attribute30        := UPPER(p_item_rec.attribute30);
 l_ic_item_mst_rec.attribute_category := UPPER(p_item_rec.attribute_category);
-
--- 2012/06/07 D.Sugahara Add Start
-l_ic_item_mst_rec.program_application_id := FND_GLOBAL.PROG_APPL_ID;
-l_ic_item_mst_rec.program_id         := FND_GLOBAL.CONC_PROGRAM_ID;
-l_ic_item_mst_rec.program_update_date := SYSDATE;
-l_ic_item_mst_rec.request_id         := FND_GLOBAL.CONC_REQUEST_ID;
--- 2012/06/07 D.Sugahara Add End
 
 -- dbms_output.put_line('item_id   '||'!'||l_item_id||'!');
 -- dbms_output.put_line('item_no   '||'!'||l_item_no||'!');
@@ -1241,10 +1229,3 @@ EXCEPTION
 
 END Validate_Item;
 END GMI_ITEM_PUB;
--- 2012/06/07 D.Sugahara Add Start
--- 構成管理版のスクリプトには下記記載があったため、追加
-/
-COMMIT;
-EXIT;
--- 2012/06/07 D.Sugahara Add End
-
