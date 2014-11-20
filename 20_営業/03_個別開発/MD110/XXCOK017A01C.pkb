@@ -36,6 +36,7 @@ AS
  *                                                        AFF部門は当月売上拠点とする
  *                                                        起票部門は仕入先の問合せ担当拠点とする
  *                                                        販手残高テーブルに項目「伝票番号」追加、採番された伝票番号で更新する
+ *  2010/04/26    1.7   S.Arizumi        [E_本稼動_02268] 自販機販売手数料に対する課税時の勘定科目は、課税仕入5％を設定する。
  *
  *****************************************************************************************/
 --
@@ -2579,6 +2580,9 @@ AS
   cv_profile_name_23               CONSTANT VARCHAR2(50)    := 'XXCOK1_FB_TERM_NAME';                 -- FB支払条件
   cv_profile_name_24               CONSTANT VARCHAR2(50)    := 'XXCOK1_GL_CATEGORY_BM';               -- 仕訳カテゴリ_販売手数料
   cv_profile_name_25               CONSTANT VARCHAR2(50)    := 'XXCOK1_GL_SOURCE_COK';                -- 仕訳ソース_個別開発
+-- 2010/03/02 Ver.1.7 [E_本稼動_02268] SCS S.Arizumi ADD START
+  cv_profile_name_26               CONSTANT VARCHAR2(50)    := 'XXCOK1_PURCHASE_WITHIN_TAX_CODE';     -- 課税仕入内税消費税コード
+-- 2010/03/02 Ver.1.7 [E_本稼動_02268] SCS S.Arizumi ADD END
   -- 参照タイプ名
   cv_lookup_type_01                CONSTANT VARCHAR2(30)    := 'XXCMM_CHAIN_CODE';                    -- チェーン店コード
   -- 会計期間ステータス
@@ -2636,6 +2640,9 @@ AS
   gv_prof_fb_term_name             VARCHAR2(100) DEFAULT NULL;   -- FB支払条件
   gv_prof_gl_category_bm           VARCHAR2(100) DEFAULT NULL;   -- 仕訳カテゴリ_販売手数料
   gv_prof_gl_source_cok            VARCHAR2(100) DEFAULT NULL;   -- 仕訳ソース_個別開発
+-- 2010/03/02 Ver.1.7 [E_本稼動_02268] SCS S.Arizumi ADD START
+  gv_prof_tax_code                 VARCHAR2(100) DEFAULT NULL;   -- 税金コード
+-- 2010/03/02 Ver.1.7 [E_本稼動_02268] SCS S.Arizumi ADD END
   gd_close_date                    DATE          DEFAULT NULL;   -- 締め日
   gd_payment_date                  DATE          DEFAULT NULL;   -- 支払日
   gn_group_id                      NUMBER        DEFAULT NULL;   -- グループID
@@ -2685,7 +2692,10 @@ AS
                 )
               , gv_prof_aff6_dummy )                   AS enterprise_code                 -- 企業コード
          , xca.sale_base_code                          AS base_code                       -- 拠点コード
-         , xbb.tax_code                                AS tax_code                        -- 税コード
+-- 2010/03/02 Ver.1.7 [E_本稼動_02268] SCS S.Arizumi REPAIR START
+--         , xbb.tax_code                                AS tax_code                        -- 税コード
+         , gv_prof_tax_code                            AS tax_code                        -- 税コード
+-- 2010/03/02 Ver.1.7 [E_本稼動_02268] SCS S.Arizumi REPAIR END
          , pvs.bank_charge_bearer                      AS bank_charge_bearer              -- 手数料負担者
          , pvs.payment_currency_code                   AS payment_currency_code           -- 通貨コード
          , pvs.attribute5                              AS section_code                    -- 起票部門
@@ -2718,7 +2728,9 @@ AS
            , xbb.cust_code
            , xca.delivery_chain_code
            , xca.sale_base_code
-           , xbb.tax_code
+-- 2010/03/02 Ver.1.7 [E_本稼動_02268] SCS S.Arizumi DELETE START
+--           , xbb.tax_code
+-- 2010/03/02 Ver.1.7 [E_本稼動_02268] SCS S.Arizumi DELETE END
            , pvs.bank_charge_bearer
            , pvs.payment_currency_code
            , pvs.attribute5
@@ -3059,7 +3071,10 @@ AS
             , it_aff6_enterprise          => gv_prof_aff6_dummy
             , it_entered_dr               => NULL
             , it_entered_cr               => ln_transfer_amount
-            , it_tax_code                 => lt_tax_code
+-- 2010/03/02 Ver.1.7 [E_本稼動_02268] SCS S.Arizumi REPAIR START
+--            , it_tax_code                 => lt_tax_code
+            , it_tax_code                 => NULL
+-- 2010/03/02 Ver.1.7 [E_本稼動_02268] SCS S.Arizumi REPAIR END
             , it_slip_number              => lt_slip_number
             , it_section                  => lt_section_code
             , it_supplier_code            => lt_break_supplier_code
@@ -3269,7 +3284,10 @@ AS
         , it_aff6_enterprise          => gv_prof_aff6_dummy
         , it_entered_dr               => NULL
         , it_entered_cr               => ln_transfer_amount
-        , it_tax_code                 => lt_tax_code
+-- 2010/03/02 Ver.1.7 [E_本稼動_02268] SCS S.Arizumi REPAIR START
+--        , it_tax_code                 => lt_tax_code
+        , it_tax_code                 => NULL
+-- 2010/03/02 Ver.1.7 [E_本稼動_02268] SCS S.Arizumi REPAIR END
         , it_slip_number              => lt_slip_number
         , it_section                  => lt_section_code
         , it_supplier_code            => lt_break_supplier_code
@@ -3886,6 +3904,26 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'gd_process_date' || '【' || TO
                     );
       RAISE error_proc_expt;
     END IF;
+-- 2010/03/02 Ver.1.7 [E_本稼動_02268] SCS S.Arizumi ADD START
+    --==================================================
+    -- プロファイル取得(課税仕入内税消費税コード)
+    --==================================================
+    gv_prof_tax_code := FND_PROFILE.VALUE( cv_profile_name_26 );
+    IF( gv_prof_tax_code IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_26
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
+    END IF;
+-- 2010/03/02 Ver.1.7 [E_本稼動_02268] SCS S.Arizumi ADD END
     --==================================================
     -- 締め・支払日取得
     --==================================================

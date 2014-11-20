@@ -40,6 +40,7 @@ AS
  *  2009/4/24     1.6   M.Hiruta         [障害T1_0736]取引タイプにより請求書保留ステータスを設定
  *  2009/10/05    1.7   K.Yamaguchi      [仕様変更I_E_566] 取引タイプを業態（小分類）毎に設定可能に変更
  *  2009/10/19    1.8   K.Yamaguchi      [障害E_T3_00631] 消費税コード取得方法を変更
+ *  2010/04/26    1.9   S.Arizumi        [E_本稼動_02268] 入金時値引に対する課税時の勘定科目は仮受消費税を設定
  *
  *****************************************************************************************/
 --
@@ -81,7 +82,10 @@ AS
   cv_aff7_preliminary1_dummy CONSTANT VARCHAR2(30) := 'XXCOK1_AFF7_PRELIMINARY1_DUMMY';     --ダミー値:予備１
   cv_aff8_preliminary2_dummy CONSTANT VARCHAR2(30) := 'XXCOK1_AFF8_PRELIMINARY2_DUMMY';     --ダミー値:予備２
   cv_aff3_allowance_payment  CONSTANT VARCHAR2(30) := 'XXCOK1_AFF3_ALLOWANCE_PAYMENT';      --勘定科目:入金時値引高
-  cv_aff3_payment_excise_tax CONSTANT VARCHAR2(30) := 'XXCOK1_AFF3_PAYMENT_EXCISE_TAX';     --勘定科目:仮払消費税等
+-- 2010/04/26 Ver.1.9 [E_本稼動_02268] SCS S.Arizumi REPAIR START
+--  cv_aff3_payment_excise_tax CONSTANT VARCHAR2(30) := 'XXCOK1_AFF3_PAYMENT_EXCISE_TAX';     --勘定科目:仮払消費税等
+  cv_aff3_receive_excise_tax CONSTANT VARCHAR2(30) := 'XXCOK1_AFF3_RECEIVE_EXCISE_TAX';     --勘定科目:仮受消費税等
+-- 2010/04/26 Ver.1.9 [E_本稼動_02268] SCS S.Arizumi REPAIR END
   cv_aff3_receivable         CONSTANT VARCHAR2(22) := 'XXCOK1_AFF3_RECEIVABLE';             --勘定科目:未収入金
   cv_aff3_account_receivable CONSTANT VARCHAR2(30) := 'XXCOK1_AFF3_ACCOUNT_RECEIVABLE';     --勘定科目:売掛金
   cv_aff4_receivable_vd      CONSTANT VARCHAR2(25) := 'XXCOK1_AFF4_RECEIVABLE_VD';          --補助科目:未収入金VD売上
@@ -187,7 +191,10 @@ AS
   gv_aff7_preliminary1_dummy VARCHAR2(50)   DEFAULT NULL; --ダミー値:予備１
   gv_aff8_preliminary2_dummy VARCHAR2(50)   DEFAULT NULL; --ダミー値:予備２
   gv_aff3_allowance_payment  VARCHAR2(50)   DEFAULT NULL; --勘定科目:入金時値引高
-  gv_aff3_payment_excise_tax VARCHAR2(50)   DEFAULT NULL; --勘定科目:仮払消費税等
+-- 2010/04/26 Ver.1.9 [E_本稼動_02268] SCS S.Arizumi REPAIR START
+--  gv_aff3_payment_excise_tax VARCHAR2(50)   DEFAULT NULL; --勘定科目:仮払消費税等
+  gv_aff3_receive_excise_tax VARCHAR2(50)   DEFAULT NULL; --勘定科目:仮受消費税等
+-- 2010/04/26 Ver.1.9 [E_本稼動_02268] SCS S.Arizumi REPAIR END
   gv_aff3_receivable         VARCHAR2(50)   DEFAULT NULL; --勘定科目:未収入金
   gv_aff3_account_receivable VARCHAR2(50)   DEFAULT NULL; --勘定科目:売掛金
   gv_aff4_receivable_vd      VARCHAR2(50)   DEFAULT NULL; --補助科目:未収入金VD売上
@@ -371,6 +378,12 @@ AS
            , xcbs.last_updated_by     = cn_last_updated_by     -- 最終更新者 = WHOカラム情報.ユーザID
            , xcbs.last_update_date    = SYSDATE                -- 最終更新日 = SYSDATE
            , xcbs.last_update_login   = cn_last_update_login   -- 最終更新ログインID=WHOカラム情報. ログインID
+-- 2010/04/26 Ver.1.9 [E_本稼動_02268] SCS S.Arizumi ADD START
+           , xcbs.request_id              = cn_request_id
+           , xcbs.program_application_id  = cn_program_application_id
+           , xcbs.program_id              = cn_program_id
+           , xcbs.program_update_date     = SYSDATE
+-- 2010/04/26 Ver.1.9 [E_本稼動_02268] SCS S.Arizumi ADD END
       WHERE  xcbs.ar_interface_status = cv_untreated_ar_status -- 連携ステータス (AR) = 0: 未処理
       AND    xcbs.csh_rcpt_discount_amt IS NOT NULL;
 --
@@ -972,7 +985,10 @@ AS
       ELSIF ( ln_cnt = 2 )
         AND ( gn_tax_rate <> cn_no_tax ) THEN
         lv_segment2             := gv_aff2_dept_fin;                                  -- 部門コード     :財務経理部
-        lv_segment3             := gv_aff3_payment_excise_tax;                        -- 勘定科目コード :仮払消費税等
+-- 2010/04/26 Ver.1.9 [E_本稼動_02268] SCS S.Arizumi REPAIR START
+--        lv_segment3             := gv_aff3_payment_excise_tax;                        -- 勘定科目コード :仮払消費税等
+        lv_segment3             := gv_aff3_receive_excise_tax;                        -- 勘定科目コード :仮受消費税等
+-- 2010/04/26 Ver.1.9 [E_本稼動_02268] SCS S.Arizumi REPAIR END
         lv_segment4             := gv_aff4_subacct_dummy;                             -- 補助科目コード :ダミー値
         lt_account_class        := cv_tax_class;                                      -- 配分タイプ(税金)
 -- 2009/3/24     ver1.2   T.Taniguchi  MOD STR
@@ -1581,7 +1597,10 @@ AS
     gv_aff7_preliminary1_dummy := FND_PROFILE.VALUE( cv_aff7_preliminary1_dummy );  -- ダミー値:予備１
     gv_aff8_preliminary2_dummy := FND_PROFILE.VALUE( cv_aff8_preliminary2_dummy );  -- ダミー値:予備２
     gv_aff3_allowance_payment  := FND_PROFILE.VALUE( cv_aff3_allowance_payment  );  -- 勘定科目:入金時値引高
-    gv_aff3_payment_excise_tax := FND_PROFILE.VALUE( cv_aff3_payment_excise_tax );  -- 勘定科目:仮払消費税等
+-- 2010/04/26 Ver.1.9 [E_本稼動_02268] SCS S.Arizumi REPAIR START
+--    gv_aff3_payment_excise_tax := FND_PROFILE.VALUE( cv_aff3_payment_excise_tax );  -- 勘定科目:仮払消費税等
+    gv_aff3_receive_excise_tax := FND_PROFILE.VALUE( cv_aff3_receive_excise_tax );  -- 勘定科目:仮受消費税等
+-- 2010/04/26 Ver.1.9 [E_本稼動_02268] SCS S.Arizumi REPAIR END
     gv_aff3_receivable         := FND_PROFILE.VALUE( cv_aff3_receivable         );  -- 勘定科目:未収入金
     gv_aff3_account_receivable := FND_PROFILE.VALUE( cv_aff3_account_receivable );  -- 勘定科目:売掛金
     gv_aff4_receivable_vd      := FND_PROFILE.VALUE( cv_aff4_receivable_vd      );  -- 補助科目:未収入金VD売上
@@ -1635,9 +1654,14 @@ AS
       lv_token_value := cv_aff3_allowance_payment;
       RAISE profile_expt;
 --
-    ELSIF( gv_aff3_payment_excise_tax IS NULL ) THEN
-      lv_token_value := cv_aff3_payment_excise_tax;
+-- 2010/04/26 Ver.1.9 [E_本稼動_02268] SCS S.Arizumi REPAIR START
+--    ELSIF( gv_aff3_payment_excise_tax IS NULL ) THEN
+--      lv_token_value := cv_aff3_payment_excise_tax;
+--      RAISE profile_expt;
+    ELSIF( gv_aff3_receive_excise_tax IS NULL ) THEN
+      lv_token_value := cv_aff3_receive_excise_tax;
       RAISE profile_expt;
+-- 2010/04/26 Ver.1.9 [E_本稼動_02268] SCS S.Arizumi REPAIR END
 --
     ELSIF( gv_aff3_receivable IS NULL ) THEN
       lv_token_value := cv_aff3_receivable;
