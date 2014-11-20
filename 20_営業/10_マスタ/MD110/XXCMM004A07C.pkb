@@ -7,7 +7,7 @@ AS
  * Description      : EBS(ファイルアップロードIF)に取込まれた営業原価データを
  *                  : Disc品目変更履歴テーブル(アドオン)に取込みます。
  * MD.050           : 営業原価一括改定    MD050_CMM_004_A07
- * Version          : Draft2C
+ * Version          : Issue3.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2009/02/09    1.08  R.Takigawa       ロックエラー時のメッセージ変更
  *  2009/05/15    1.1   H.Yoshikawa      障害T1_0569,T1_0588 対応
  *  2009/08/11    1.2   Y.Kuboshima      障害0000894 対応
+ *  2010/04/07    1.3   Y.Kuboshima      障害E_本稼動02018 対応 標準原価 > 営業原価の場合、エラー -> 警告とするよう修正
  *
  *****************************************************************************************/
 --
@@ -158,6 +159,9 @@ AS
   cv_msg_xxcmm_00466         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00466';   -- データ登録エラー
   cv_msg_xxcmm_00467         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00467';   -- データ更新エラー
   cv_msg_xxcmm_00468         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00468';   -- データ削除エラー
+-- 2010/04/07 Ver1.3 E_本稼動_02018 add start by Y.Kuboshima
+  cv_msg_xxcmm_00495         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00495';   -- 営業原価比較エラー
+-- 2010/04/07 Ver1.3 E_本稼動_02018 add end by Y.Kuboshima
   --
   --トークンコード
   cv_tkn_table               CONSTANT VARCHAR2(20)  := 'TABLE';              -- テーブル名
@@ -1212,15 +1216,22 @@ AS
         -- 営業原価チェックエラー
         lv_errmsg  :=  xxccp_common_pkg.get_msg(
                          iv_application   =>  cv_appl_name_xxcmm              -- アプリケーション短縮名
-                        ,iv_name          =>  cv_msg_xxcmm_00461              -- メッセージコード
+-- 2010/04/07 Ver1.3 E_本稼動_02018 modify start by Y.Kuboshima
+--                        ,iv_name          =>  cv_msg_xxcmm_00461              -- メッセージコード
+                        ,iv_name          =>  cv_msg_xxcmm_00495              -- メッセージコード
+-- 2010/04/07 Ver1.3 E_本稼動_02018 modify end by Y.Kuboshima
                         ,iv_token_name1   =>  cv_tkn_disc_cost                -- トークンコード1
                         ,iv_token_value1  =>  i_disc_cost_rec.discrete_cost   -- トークン値1
                         ,iv_token_name2   =>  cv_tkn_opm_cost                 -- トークンコード2
                         ,iv_token_value2  =>  TO_CHAR( ln_opm_cost )          -- トークン値2
-                        ,iv_token_name3   =>  cv_tkn_input_item               -- トークンコード3
+-- 2010/04/07 Ver1.3 E_本稼動_02018 modify start by Y.Kuboshima
+--                        ,iv_token_name3   =>  cv_tkn_input_item               -- トークンコード3
+--                        ,iv_token_value3  =>  i_disc_cost_rec.item_no         -- トークン値3
+--                        ,iv_token_name4   =>  cv_tkn_input_apply_date         -- トークンコード4
+--                        ,iv_token_value4  =>  i_disc_cost_rec.apply_date      -- トークン値4
+                        ,iv_token_name3   =>  cv_tkn_item_code                -- トークンコード3
                         ,iv_token_value3  =>  i_disc_cost_rec.item_no         -- トークン値3
-                        ,iv_token_name4   =>  cv_tkn_input_apply_date         -- トークンコード4
-                        ,iv_token_value4  =>  i_disc_cost_rec.apply_date      -- トークン値4
+-- 2010/04/07 Ver1.3 E_本稼動_02018 modify end by Y.Kuboshima
                        );
         -- メッセージ出力
         xxcmm_004common_pkg.put_message(
@@ -1230,14 +1241,26 @@ AS
          ,ov_errmsg        =>  lv_errmsg
         );
         --
-        -- ステータスをエラーにする。
-        lv_warnig_flg := cv_status_error;
+-- 2010/04/07 Ver1.3 E_本稼動_02018 modify start by Y.Kuboshima
+--        -- ステータスをエラーにする。
+--        lv_warnig_flg := cv_status_error;
+        -- ステータスを警告にする。
+        IF ( lv_warnig_flg = cv_status_normal ) THEN
+          lv_warnig_flg := cv_status_warn;
+        END IF;
+-- 2010/04/07 Ver1.3 E_本稼動_02018 modify end by Y.Kuboshima
       END IF;
     END IF;
     --
     IF ( lv_warnig_flg = cv_status_normal ) THEN
       -- 型変換実施後OUT変数に格納
       o_disc_hst_rec := l_disc_hst_rec;
+-- 2010/04/07 Ver1.3 E_本稼動_02018 add start by Y.Kuboshima
+    ELSIF ( lv_warnig_flg = cv_status_warn ) THEN
+      -- 型変換実施後OUT変数に格納
+      o_disc_hst_rec  := l_disc_hst_rec;
+      ov_retcode      := cv_status_warn;
+-- 2010/04/07 Ver1.3 E_本稼動_02018 add end by Y.Kuboshima
     ELSE
       ov_retcode      := cv_status_error;
     END IF;
@@ -1296,6 +1319,9 @@ AS
     -- ===============================
     -- *** ローカル変数 ***
     lv_step                    VARCHAR2(10);
+-- 2010/04/07 Ver1.3 E_本稼動_02018 add start by Y.Kuboshima
+    lv_vi_retcode              VARCHAR2(1);                                    -- データ妥当性チェックのリターン・コード
+-- 2010/04/07 Ver1.3 E_本稼動_02018 add end by Y.Kuboshima
     --
     -- *** カーソル ***
     -- 営業原価一括改定データ取得カーソル
@@ -1352,8 +1378,15 @@ AS
        ,ov_errmsg         =>  lv_errmsg
       );
       --
-      -- データ妥当性チェック結果が正常のもののみ登録・更新処理へ
-      IF ( lv_retcode = cv_status_normal ) THEN
+-- 2010/04/07 Ver1.3 E_本稼動_02018 modify start by Y.Kuboshima
+--      -- データ妥当性チェック結果が正常のもののみ登録・更新処理へ
+--      IF ( lv_retcode = cv_status_normal ) THEN
+      -- データ妥当性チェックのリターン・コードを保持
+      lv_vi_retcode := lv_retcode;
+      --
+      -- データ妥当性チェック結果がエラー以外のもののみ登録・更新処理へ
+      IF ( lv_retcode <> cv_status_error ) THEN
+-- 2010/04/07 Ver1.3 E_本稼動_02018 modify end by Y.Kuboshima
         --==============================================================
         -- Disc品目変更履歴反映
         --  A-5 品目変更履歴アドオン登録・更新判定
@@ -1372,6 +1405,11 @@ AS
       --
       IF ( lv_retcode = cv_status_normal ) THEN
         gn_normal_cnt := gn_normal_cnt + 1;
+-- 2010/04/07 Ver1.3 E_本稼動_02018 add start by Y.Kuboshima
+        IF ( lv_vi_retcode = cv_status_warn ) THEN
+          gn_warn_cnt   := gn_warn_cnt + 1;
+        END IF;
+-- 2010/04/07 Ver1.3 E_本稼動_02018 add end by Y.Kuboshima
       ELSE
         gn_error_cnt  := gn_error_cnt  + 1;
       END IF;
@@ -1379,6 +1417,10 @@ AS
     --
     IF ( gn_error_cnt > 0 ) THEN
       ov_retcode := cv_status_error;
+-- 2010/04/07 Ver1.3 E_本稼動_02018 add start by Y.Kuboshima
+    ELSIF ( gn_warn_cnt > 0 ) THEN
+      ov_retcode := cv_status_warn;
+-- 2010/04/07 Ver1.3 E_本稼動_02018 add end by Y.Kuboshima
     END IF;
     --
   EXCEPTION

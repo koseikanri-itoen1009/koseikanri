@@ -7,7 +7,7 @@ AS
  * Description      : Disc品目変更履歴アドオンマスタにて変更予約管理されている項目を
  *                  : 適用日が到来したタイミングで各品目情報に反映します。
  * MD.050           : 変更予約適用    MD050_CMM_004_A04
- * Version          : Issue3.10
+ * Version          : Issue3.11
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -73,6 +73,7 @@ AS
  *                                                              (重量/体積、ITFコード、配数、段数、商品分類、ボール入数)
  *                                                              重量/体積、配数、段数の必須チェックを子品目時も実施するよう修正
  *  2010/02/17    1.16  Y.Kuboshima      障害対応(本稼動_01485) 子品目継承時に重量容積区分を継承しないよう修正
+ *  2010/04/07    1.17  Y.Kuboshima      障害対応(本稼動_02018) 標準原価 > 営業原価の場合、警告としないよう修正
  *
  *****************************************************************************************/
 --
@@ -209,6 +210,10 @@ AS
 -- 2009/09/11 Ver1.12 障害0001130 add start by Y.Kuboshima
   cv_msg_xxcmm_00002           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00002';   -- プロファイル取得エラー
 -- 2009/09/11 Ver1.12 障害0001130 add end by Y.Kuboshima
+--
+-- 2010/04/07 Ver1.17 E_本稼動_02018 add start by Y.Kuboshima
+  cv_msg_xxcmm_00495           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00495';   -- 営業原価エラー
+-- 2010/04/07 Ver1.17 E_本稼動_02018 add end by Y.Kuboshima
   --
   -- トークン
   cv_tkn_param_name            CONSTANT VARCHAR2(100) := 'PARAM_NAME';
@@ -3313,7 +3318,32 @@ AS
       IF ( i_update_item_rec.discrete_cost IS NOT NULL ) THEN
         -- 営業原価 < 標準原価 の場合エラー
         IF ( i_update_item_rec.discrete_cost < ln_cmpnt_cost_sum ) THEN
-          RAISE disc_cost_chk_expt;
+-- 2010/04/07 Ver1.17 E_本稼動_02018 modify start by Y.Kuboshima
+-- 営業原価 < 標準原価の場合エラーとせずにメッセージを出力して正常終了とする
+--          RAISE disc_cost_chk_expt;
+          -- エラーメッセージ取得
+          lv_errmsg  := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
+                         ,iv_name         => cv_msg_xxcmm_00495                    -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_disc_cost                      -- トークンコード1
+                         ,iv_token_value1 => TO_CHAR( i_update_item_rec.discrete_cost )
+                                                                                   -- トークン値1
+                         ,iv_token_name2  => cv_tkn_opm_cost                       -- トークンコード2
+                         ,iv_token_value2 => TO_CHAR( ln_cmpnt_cost_sum )          -- トークン値2
+                         ,iv_token_name3  => cv_tkn_item_code                      -- トークンコード3
+                         ,iv_token_value3 => i_update_item_rec.item_no             -- トークン値3
+                        );
+          -- 出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_errmsg
+          );
+          -- ログ
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => lv_errmsg
+          );
+-- 2010/04/07 Ver1.17 E_本稼動_02018 modify end by Y.Kuboshima
         END IF;
       END IF;
       --
@@ -3335,23 +3365,25 @@ AS
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
       ov_retcode := cv_status_error;
       --
-    -- *** 営業原価チェック例外ハンドラ ***
-    WHEN disc_cost_chk_expt THEN
-      lv_errmsg  := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
-                     ,iv_name         => cv_msg_xxcmm_00433                    -- メッセージコード
-                     ,iv_token_name1  => cv_tkn_disc_cost                      -- トークンコード1
-                     ,iv_token_value1 => TO_CHAR( i_update_item_rec.discrete_cost )
-                                                                               -- トークン値1
-                     ,iv_token_name2  => cv_tkn_opm_cost                       -- トークンコード2
-                     ,iv_token_value2 => TO_CHAR( ln_cmpnt_cost_sum )          -- トークン値2
-                     ,iv_token_name3  => cv_tkn_item_code                      -- トークンコード3
-                     ,iv_token_value3 => i_update_item_rec.item_no             -- トークン値3
-                    );
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
-      ov_retcode := cv_status_error;
-      --
+-- 2010/04/07 Ver1.17 E_本稼動_02018 delete start by Y.Kuboshima
+--    -- *** 営業原価チェック例外ハンドラ ***
+--    WHEN disc_cost_chk_expt THEN
+--      lv_errmsg  := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
+--                     ,iv_name         => cv_msg_xxcmm_00433                    -- メッセージコード
+--                     ,iv_token_name1  => cv_tkn_disc_cost                      -- トークンコード1
+--                     ,iv_token_value1 => TO_CHAR( i_update_item_rec.discrete_cost )
+--                                                                               -- トークン値1
+--                     ,iv_token_name2  => cv_tkn_opm_cost                       -- トークンコード2
+--                     ,iv_token_value2 => TO_CHAR( ln_cmpnt_cost_sum )          -- トークン値2
+--                     ,iv_token_name3  => cv_tkn_item_code                      -- トークンコード3
+--                     ,iv_token_value3 => i_update_item_rec.item_no             -- トークン値3
+--                    );
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
+--      ov_retcode := cv_status_error;
+--      --
+-- 2010/04/07 Ver1.17 E_本稼動_02018 delete end by Y.Kuboshima
 -- End1.9
 --
 -- Ver1.5 チェック処理追加
