@@ -7,7 +7,7 @@ AS
  * Description      : éxï•êÊÇÃå⁄ãqÇÊÇËñ‚çáÇπÇ™Ç†Ç¡ÇΩèÍçáÅA
  *                    éÊà¯èåèï ÇÃã‡äzÇ™àÛéöÇ≥ÇÍÇΩéxï•àƒì‡èëÇàÛç¸ÇµÇ‹Ç∑ÅB
  * MD.050           : éxï•àƒì‡èëàÛç¸Åiñæç◊Åj MD050_COK_015_A03
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -29,6 +29,8 @@ AS
  *  2009/02/18    1.1   K.Yamaguchi      [è·äQCOK_045] ç≈êVÇÃédì¸êÊÉTÉCÉgèÓïÒÇéÊìæÇ∑ÇÈÇÊÇ§ïœçX
  *                                                     ì¸óÕÉpÉâÉÅÅ[É^ÇÃèëéÆÇïœçXÅiYYYYMM => YYYY/MMÅj
  *  2009/03/03    1.2   M.Hiruta         [è·äQCOK_067] óeäÌãÊï™éÊìæï˚ñ@ïœçX
+ *  2009/05/11    1.3   K.Yamaguchi      [è·äQT1_0841] éxï•äzÅiê≈çûÅjÇÃéÊìæï˚ñ@ÇïœçX
+ *                                       [è·äQT1_0866] ñ{êUÅiàƒì‡èëÇ†ÇËÅjÇÃèÍçáÇÃíäèoèåèÇïœçX
  *
  *****************************************************************************************/
   --==================================================
@@ -594,7 +596,11 @@ AS
          , NULL                                                 AS bm_amt_1
          , NULL                                                 AS bm_index_2
          , NULL                                                 AS bm_amt_2
-         , SUM( xbb.expect_payment_amt_tax )                    AS payment_amt_tax
+-- 2009/05/11 Ver.1.3 [è·äQT1_0841] SCS K.Yamaguchi REPAIR START
+--         , SUM( xbb.expect_payment_amt_tax )                    AS payment_amt_tax
+         , SUM( NVL( xcbs.cond_bm_amt_tax,  0 )
+              + NVL( xcbs.electric_amt_tax, 0 ) )               AS payment_amt_tax
+-- 2009/05/11 Ver.1.3 [è·äQT1_0841] SCS K.Yamaguchi REPAIR END
          , MAX( xbb.closing_date )                              AS target_month
          , MIN( xcbs.calc_target_period_from)                   AS term_from
          , MAX( xcbs.calc_target_period_to )                    AS term_to
@@ -714,8 +720,21 @@ AS
       AND pvsa.org_id                  = gn_org_id
       AND pvsa.attribute4              = cv_bm_type_1
       AND pvsa.attribute5              = gv_param_base_code
-      AND xbb.publication_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
-                                     AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
+-- 2009/05/11 Ver.1.3 [è·äQT1_0866] SCS K.Yamaguchi REPAIR START
+--      AND xbb.publication_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
+--                                     AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
+      AND (    (     xbb.fb_interface_status      = '0'
+                 AND xbb.fb_interface_date       IS NULL
+                 AND xbb.publication_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
+                                                AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
+               )
+            OR
+               (     xbb.fb_interface_status      = '1'
+                 AND xbb.fb_interface_date  BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
+                                                AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
+               )
+          )
+-- 2009/05/11 Ver.1.3 [è·äQT1_0866] SCS K.Yamaguchi REPAIR END
       AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
     GROUP BY xbb.supplier_code
            , pvsa.zip
@@ -814,7 +833,11 @@ AS
          , NULL                                                 AS bm_amt_1
          , NULL                                                 AS bm_index_2
          , NULL                                                 AS bm_amt_2
-         , SUM( xbb.expect_payment_amt_tax )                    AS payment_amt_tax
+-- 2009/05/11 Ver.1.3 [è·äQT1_0841] SCS K.Yamaguchi REPAIR START
+--         , SUM( xbb.expect_payment_amt_tax )                    AS payment_amt_tax
+         , SUM( NVL( xcbs.cond_bm_amt_tax,  0 )
+              + NVL( xcbs.electric_amt_tax, 0 ) )               AS payment_amt_tax
+-- 2009/05/11 Ver.1.3 [è·äQT1_0841] SCS K.Yamaguchi REPAIR END
          , MAX( xbb.closing_date )                              AS target_month
          , MIN( xcbs.calc_target_period_from)                   AS term_from
          , MAX( xcbs.calc_target_period_to )                    AS term_to
@@ -937,7 +960,10 @@ AS
       AND xbb.fb_interface_date  BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
                                       AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
       AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
-      AND xbb.edi_interface_status     = '1'
+-- 2009/05/11 Ver.1.3 [è·äQT1_0866] SCS K.Yamaguchi REPAIR START
+--      AND xbb.edi_interface_status     = '1'
+      AND xbb.fb_interface_status      = '1'
+-- 2009/05/11 Ver.1.3 [è·äQT1_0866] SCS K.Yamaguchi REPAIR END
     GROUP BY xbb.supplier_code
            , pvsa.zip
            , pvsa.state || pvsa.city || pvsa.address_line1
@@ -1035,7 +1061,11 @@ AS
          , NULL                                                 AS bm_amt_1
          , NULL                                                 AS bm_index_2
          , NULL                                                 AS bm_amt_2
-         , SUM( xbb.expect_payment_amt_tax )                    AS payment_amt_tax
+-- 2009/05/11 Ver.1.3 [è·äQT1_0841] SCS K.Yamaguchi REPAIR START
+--         , SUM( xbb.expect_payment_amt_tax )                    AS payment_amt_tax
+         , SUM( NVL( xcbs.cond_bm_amt_tax,  0 )
+              + NVL( xcbs.electric_amt_tax, 0 ) )               AS payment_amt_tax
+-- 2009/05/11 Ver.1.3 [è·äQT1_0841] SCS K.Yamaguchi REPAIR END
          , MAX( xbb.closing_date )                              AS target_month
          , MIN( xcbs.calc_target_period_from)                   AS term_from
          , MAX( xcbs.calc_target_period_to )                    AS term_to
@@ -1242,7 +1272,11 @@ AS
          , NULL                                                 AS bm_amt_1
          , NULL                                                 AS bm_index_2
          , NULL                                                 AS bm_amt_2
-         , SUM( xbb.expect_payment_amt_tax )                    AS payment_amt_tax
+-- 2009/05/11 Ver.1.3 [è·äQT1_0841] SCS K.Yamaguchi REPAIR START
+--         , SUM( xbb.expect_payment_amt_tax )                    AS payment_amt_tax
+         , SUM( NVL( xcbs.cond_bm_amt_tax,  0 )
+              + NVL( xcbs.electric_amt_tax, 0 ) )               AS payment_amt_tax
+-- 2009/05/11 Ver.1.3 [è·äQT1_0841] SCS K.Yamaguchi REPAIR END
          , MAX( xbb.closing_date )                              AS target_month
          , MIN( xcbs.calc_target_period_from)                   AS term_from
          , MAX( xcbs.calc_target_period_to )                    AS term_to
