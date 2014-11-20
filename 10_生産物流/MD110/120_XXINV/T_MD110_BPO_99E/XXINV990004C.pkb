@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫実績のアップロード
  * MD.050           : ファイルアップロード   T_MD050_BPO_990
  * MD.070           : 入出庫実績のアップロード T_MD070_BPO_99E
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  set_data_proc          登録データ設定
  *  insert_header_proc     ヘッダ登録 (E-6)
  *  insert_details_proc    明細登録 (E-7)
+ *  check_repeated_key_proc 重複チェック (E-9)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -32,6 +33,7 @@ AS
  *  2008/05/28    1.3   Oracle 山根 一浩  変更要求No87対応
  *  2008/07/08    1.4   Oracle 山根 一浩  I_S_192対応
  *  2009/06/29    1.5   SCS    伊藤       本番障害#1550
+ *  2009/08/17    1.6   SCS    伊藤       本番障害#1609
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -99,6 +101,9 @@ AS
 -- 2009/06/29 H.Itou Add Start 本番障害#1550
   gv_c_msg_99e_006   CONSTANT VARCHAR2(15)  := 'APP-XXINV-10190'; -- ヘッダなしエラー
 -- 2009/06/29 H.Itou Add End
+-- 2009/08/17 H.Itou Add Start 本番障害#1609
+  gv_c_msg_99e_007   CONSTANT VARCHAR2(15)  := 'APP-XXINV-10191'; -- 依頼No重複エラー
+-- 2009/08/17 H.Itou Add End
 --
   gv_c_msg_99e_101   CONSTANT VARCHAR2(15)  := 'APP-XXINV-00001'; -- ファイル名
   gv_c_msg_99e_103   CONSTANT VARCHAR2(15)  := 'APP-XXINV-00003'; -- アップロード日時
@@ -1906,6 +1911,109 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END insert_details_proc;
+-- 2009/08/17 H.Itou Add Start 本番障害#1609
+  /**********************************************************************************
+   * Procedure Name   : check_repeated_key_proc
+   * Description      : 重複チェック (E-9)
+   ***********************************************************************************/
+  PROCEDURE check_repeated_key_proc(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'check_repeated_key_proc'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+    -- 重複データ
+    CURSOR cur_repeated_key_data
+    IS
+    SELECT xshi.order_source_ref             order_source_ref -- 受注ソース参照
+          ,xshi.eos_data_type                eos_data_type    -- EOSデータ種別
+          ,xshi.repeated_cnt                 repeated_cnt     -- 重複カウント
+    FROM  (SELECT xshi.order_source_ref      order_source_ref -- 受注ソース参照
+                 ,xshi.eos_data_type         eos_data_type    -- EOSデータ種別
+                 ,COUNT(1)                   repeated_cnt     -- カウント
+           FROM   xxwsh_shipping_headers_if  xshi             -- 出荷依頼インタフェースヘッダ
+           WHERE  xshi.request_id = gn_conc_request_id        -- 要求ID
+           GROUP BY 
+                  xshi.order_source_ref                       -- 受注ソース参照
+                 ,xshi.eos_data_type                          -- EOSデータ種別
+          ) xshi
+    WHERE  xshi.repeated_cnt > 1                              -- 同一キーで2件以上のデータ
+    ;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+  -- ==========================
+  -- 重複データカーソルLOOP
+  -- =========================
+  <<repeated_key_data_loop>>
+  FOR lr_repeated_key_data IN cur_repeated_key_data LOOP
+    -- エラーメッセージ取得
+    lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn,
+                                          gv_c_msg_99e_007,
+                                          gv_c_tkn_value,
+                                             '受注ソース参照:'|| lr_repeated_key_data.order_source_ref
+                                          ||',EOSデータ種別 :'|| lr_repeated_key_data.eos_data_type
+                                         );
+    -- エラーメッセージ部出力
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_errmsg);
+    -- エラーコードセット
+    ov_retcode := gv_status_error;
+    -- エラー件数カウント
+    gn_error_cnt  := gn_error_cnt + lr_repeated_key_data.repeated_cnt;
+    -- 成功件数カウントをリセット
+    gn_normal_cnt := 0;
+  END LOOP repeated_key_data_loop;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END check_repeated_key_proc;
+-- 2009/08/17 h.Itou Add End
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -2078,6 +2186,19 @@ AS
       IF (lv_retcode = gv_status_error) THEN
         RAISE global_process_expt;
       END IF;
+-- 2009/08/17 H.Itou Add Start 本番障害#1609
+      -- ===============================
+      -- 重複チェック (E-9)
+      -- ===============================
+      check_repeated_key_proc(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+-- 2009/08/17 H.Itou Add End
 --
     END IF;
 --
