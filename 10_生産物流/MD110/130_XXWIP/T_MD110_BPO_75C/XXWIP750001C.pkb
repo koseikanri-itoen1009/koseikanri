@@ -7,7 +7,7 @@ AS
  * Description      : 振替運賃情報更新
  * MD.050           : 運賃計算（振替） T_MD050_BPO_750
  * MD.070           : 振替運賃情報更新 T_MD070_BPO_75C
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2009/01/08    1.14 野村 正幸         本番#961対応
  *  2009/01/19    1.15 椎名 昭圭         本番#1003対応
  *  2009/01/27    1.16 野村 正幸         本番#1078対応
+ *  2009/04/06    1.17 野村 正幸         年度切替対応
  *
  *****************************************************************************************/
 --
@@ -2528,11 +2529,17 @@ AS
       BEGIN
         SELECT CASE                         -- 営業ブロック
                  WHEN (gt_trans_inf_tbl(ln_index).target_date || '01' <
-                   TO_CHAR(xpv.start_date_active, 'YYYYMMDD'))
+-- *----------* 2009/04/06 Ver.1.17 年度切替対応 start *----------*
+--                   TO_CHAR(xpv.start_date_active, 'YYYYMMDD'))
+                   TO_CHAR(TO_DATE(xpv.division_start_date, 'YYYY/MM/DD'), 'YYYYMMDD'))
+-- *----------* 2009/04/06 Ver.1.17 年度切替対応 end   *----------*
                  THEN
                    SUBSTR(xpv.old_division_code, 0, 4) -- 旧・本部コードの頭文字4桁
                  WHEN (gt_trans_inf_tbl(ln_index).target_date || '01' >=
-                   TO_CHAR(xpv.start_date_active, 'YYYYMMDDD'))
+-- *----------* 2009/04/06 Ver.1.17 年度切替対応 start *----------*
+--                   TO_CHAR(xpv.start_date_active, 'YYYYMMDDD'))
+                   TO_CHAR(TO_DATE(xpv.division_start_date, 'YYYY/MM/DD'), 'YYYYMMDD'))
+-- *----------* 2009/04/06 Ver.1.17 年度切替対応 end   *----------*
                  THEN
                    SUBSTR(xpv.new_division_code, 0, 4) -- 新・本部コードの頭文字4桁
                  ELSE '0'
