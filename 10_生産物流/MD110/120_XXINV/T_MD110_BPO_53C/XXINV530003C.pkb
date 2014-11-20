@@ -7,7 +7,7 @@ AS
  * Description      : 棚卸表
  * MD.050/070       : 棚卸Issue1.0 (T_MD050_BPO_530)
                       棚卸表Draft1A (T_MD070_BPO_530C)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/06/03    1.3   T.Endou          担当部署または担当者名が未取得時は正常終了に修正
  *  2008/06/24    1.4   T.Ikehara        特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
+ *  2008/12/06    1.5   N.Yoshida        本番障害No.493対応 入数の少数点以下表示を修正
  *
  *****************************************************************************************/
 --
@@ -660,7 +661,10 @@ AS
     lv_whse_class         VARCHAR2(100) DEFAULT '*' ;  -- 倉庫コード
     lv_item_class         VARCHAR2(100) DEFAULT '*' ;  -- 品目
 --
-    ln_pac_cases          NUMBER(20)    DEFAULT 0 ;
+--Mod Ver1.5 ↓
+--    ln_pac_cases          NUMBER(20)    DEFAULT 0 ;
+    ln_pac_cases          NUMBER(20,3)    DEFAULT 0 ;
+--Mod Ver1.5 ↑
 --
   BEGIN
 --
