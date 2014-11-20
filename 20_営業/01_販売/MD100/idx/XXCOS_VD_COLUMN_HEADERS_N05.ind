@@ -1,0 +1,5 @@
+CREATE INDEX xxcos.xxcos_vd_column_headers_n05 ON xxcos.xxcos_vd_column_headers (
+  digestion_vd_rate_maked_date             -- –¢ŒvŽZ‹æ•ª
+)
+TABLESPACE xxidx2
+;

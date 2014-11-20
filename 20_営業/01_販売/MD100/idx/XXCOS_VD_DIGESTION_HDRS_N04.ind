@@ -1,0 +1,8 @@
+CREATE INDEX xxcos.xxcos_vd_digestion_hdrs_n04 ON xxcos.xxcos_vd_digestion_hdrs (
+  uncalculate_class             -- 未計算区分
+ ,sales_result_creation_flag    -- 販売実績作成済フラグ
+ ,digestion_due_date            -- 消化計算締年月日
+ ,customer_number               -- 顧客コード
+)
+TABLESPACE xxidx2
+;
