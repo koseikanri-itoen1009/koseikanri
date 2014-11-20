@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.29
+ * Version          : 1.30
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -91,6 +91,8 @@ AS
  *  2010/09/02    1.27  K.Kiriu          [E_本稼動_02635] 汎用エラーリスト出力対応
  *  2011/03/22    1.28  S.Ochiai         [E_本稼動_06589,06590] オーダーNo連携対応
  *  2011/04/05    1.29  T.Ishiwata       [E_本稼動_01433] OM受注クローズ時の抽出条件変更
+ *  2011/04/26    1.30  Y.Nishino        [E_本稼動_07244] OM受注のオーダーNo連携対応
+ *                                                        オーダーNo内のスペース削除対応
  *
  *****************************************************************************************/
 --
@@ -584,6 +586,9 @@ AS
      head_flow_status_code  oe_order_headers_all.flow_status_code%TYPE, -- ヘッダステータス
      order_source_id      oe_order_headers_all.order_source_id%TYPE,    -- 受注ソースID
      cust_po_number       oe_order_headers_all.cust_po_number%TYPE,     -- 顧客発注
+-- 2011/04/26 1.30 Y.Nishino ADD START
+     order_invoice_number oe_order_headers_all.attribute19%TYPE,        -- オーダーNo
+-- 2011/04/26 1.30 Y.Nishino ADD END
      line_id              oe_order_lines_all.line_id%TYPE,              -- 受注明細ID
      line_flow_status_code  oe_order_lines_all.flow_status_code%TYPE    -- 明細ステータス
 -- **************** 2009/10/13 1.22 N.Maeda ADD START **************** --
@@ -1940,7 +1945,10 @@ AS
                       VALUES(
                         gt_head_id( i ),                    -- 1.販売実績ヘッダID
                         gt_head_hht_invoice_no( i ),        -- 2.HHT伝票番号
-                        gt_head_order_invoice_number( i ),  -- 3.注文伝票番号
+-- 2011/04/26 1.30 Y.Nishino MOD START
+--                        gt_head_order_invoice_number( i ),  -- 3.注文伝票番号
+                        TRIM(gt_head_order_invoice_number( i )),  -- 3.注文伝票番号
+-- 2011/04/26 1.30 Y.Nishino MOD END
                         gt_head_order_no_ebs( i ),          -- 4.受注番号
                         gt_head_order_no_hht( i ),          -- 5.受注No(HHT)
                         gt_head_digestion_ln_number( i ),   -- 6.受注No(HHT)枝番
@@ -3306,6 +3314,9 @@ AS
   lt_open_dlv_date                xxcos_dlv_headers.dlv_date%TYPE;                 -- オープン済み納品日
   lt_open_inspect_date            xxcos_dlv_headers.inspect_date%TYPE;             -- オープン済み検収日
 --******************************* 2010/03/01 1.26 N.Maeda ADD  END  ***************************************
+-- 2011/04/26 1.30 Y.Nishino ADD START
+  lt_order_invoice_number         oe_order_headers_all.attribute19%TYPE DEFAULT NULL;   -- OM受注.オーダーNo
+-- 2011/04/26 1.30 Y.Nishino ADD END
 --
     -- *** ローカル・カーソル ***
 --******************************* 2009/06/23 N.Maeda Var1.17 ADD START ***************************************
@@ -3380,6 +3391,9 @@ AS
              ooh.flow_status_code  head_flow_status_code,   -- ステータス
              ooh.order_source_id   order_source_id,         -- 受注ソースID
              ooh.cust_po_number    cust_po_number,          -- 顧客発注
+-- 2011/04/26 1.30 Y.Nishino ADD START
+             ooh.attribute19       order_invoice_number,    -- オーダーNo
+-- 2011/04/26 1.30 Y.Nishino ADD END
              ool.line_id           line_id,                 -- 受注明細ID
              ool.flow_status_code  line_flow_status_code    -- ステータス
 -- ************ 2009/10/13 1.22 N.Maeda ADD START *********** --
@@ -5966,6 +5980,9 @@ AS
     --******************************* 2009/05/18 N.Maeda Var1.15 ADD END   ***************************************
     --******************************* 2009/05/12 N.Maeda Var1.13 MOD  END ***************************************
               END LOOP om_order_loop;
+-- 2011/04/26 1.30 Y.Nishino ADD START
+              lt_order_invoice_number := gt_oe_order_all( gn_om_data_cnt ).order_invoice_number;
+-- 2011/04/26 1.30 Y.Nishino ADD END
             END IF;
     --
             -- 赤・黒の金額換算
@@ -6143,7 +6160,10 @@ AS
             gt_head_order_source_id( gn_head_data_no )         := cv_tkn_null;                -- 受注ソースID(NULL設定)
 -- 2011/03/22 Ver.1.28 S.Ochiai MOD Start
 --            gt_head_order_invoice_number( gn_head_data_no )    := cv_tkn_null;                -- 注文伝票番号
-            gt_head_order_invoice_number( gn_head_data_no )    := lt_order_number;            -- 注文伝票番号
+-- 2011/04/26 1.30 Y.Nishino MOD START
+--            gt_head_order_invoice_number( gn_head_data_no )    := lt_order_number;            -- 注文伝票番号
+            gt_head_order_invoice_number( gn_head_data_no )    := NVL( lt_order_number , lt_order_invoice_number );  -- 注文伝票番号
+-- 2011/04/26 1.30 Y.Nishino MOD END
 -- 2011/03/22 Ver.1.28 S.Ochiai MOD End
             gt_head_order_connection_num( gn_head_data_no )    := cv_tkn_null;                -- 受注関連番号(NULL設定)
             gt_head_ar_interface_flag( gn_head_data_no )       := cv_tkn_n;                   -- AR-IF済フラグ('N')
@@ -6506,6 +6526,9 @@ AS
   lt_mon_sale_base_code                xxcmm_cust_accounts.sale_base_code%TYPE;
   lt_past_sale_base_code               xxcmm_cust_accounts.past_sale_base_code%TYPE;
 -- ************* 2009/08/21 1.20 N.Maeda ADD  END  *************--
+-- 2011/04/26 1.30 Y.Nishino ADD START
+  lt_order_invoice_number              oe_order_headers_all.attribute19%TYPE DEFAULT NULL;   -- OM受注.オーダーNo
+-- 2011/04/26 1.30 Y.Nishino ADD END
 --
     -- *** ローカル・カーソル ***
   CURSOR get_sales_exp_cur
@@ -6583,6 +6606,9 @@ AS
              ooh.flow_status_code  head_flow_status_code,   -- ステータス
              ooh.order_source_id   order_source_id,         -- 受注ソースID
              ooh.cust_po_number    cust_po_number,          -- 顧客発注
+-- 2011/04/26 1.30 Y.Nishino ADD START
+             ooh.attribute19       order_invoice_number,    -- オーダーNo
+-- 2011/04/26 1.30 Y.Nishino ADD END
              ool.line_id           line_id,                 -- 受注明細ID
              ool.flow_status_code  line_flow_status_code    -- ステータス
 -- ************ 2009/10/13 1.22 N.Maeda ADD START *********** --
@@ -9222,6 +9248,9 @@ AS
 -- ************ 2009/10/13 1.22 N.Maeda DEL  END  *********** --
                   gn_cnt_om_order := gn_cnt_om_order + 1;
                 END LOOP om_order_loop;
+-- 2011/04/26 1.30 Y.Nishino ADD START
+                lt_order_invoice_number := gt_inp_oe_order_all( gt_inp_oe_order_all.COUNT ).order_invoice_number;
+-- 2011/04/26 1.30 Y.Nishino ADD END
               END IF;
             END IF;
     --      END IF;
@@ -9391,7 +9420,10 @@ AS
             gt_head_order_source_id( gn_head_data_no )         := cv_tkn_null;                  -- 受注ソースID(NULL設定)
 -- 2011/03/22 Ver.1.28 S.Ochiai MOD Start
 --            gt_head_order_invoice_number( gn_head_data_no )    := cv_tkn_null;                  -- 注文伝票番号(NULL設定)
-            gt_head_order_invoice_number( gn_head_data_no )    := lt_order_number;              -- 注文伝票番号
+-- 2011/04/26 1.30 Y.Nishino MOD START
+--            gt_head_order_invoice_number( gn_head_data_no )    := lt_order_number;              -- 注文伝票番号
+            gt_head_order_invoice_number( gn_head_data_no )    := NVL( lt_order_number , lt_order_invoice_number );  -- 注文伝票番号
+-- 2011/04/26 1.30 Y.Nishino MOD END
 -- 2011/03/22 Ver.1.28 S.Ochiai MOD End
             gt_head_order_connection_num( gn_head_data_no )    := cv_tkn_null;                  -- 受注関連番号(NULL設定)
             gt_head_ar_interface_flag( gn_head_data_no )       := cv_tkn_n;                     -- AR-IF済フラグ('N')
