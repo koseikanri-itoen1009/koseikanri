@@ -7,7 +7,7 @@ AS
  * Description      : HHT受入実績計上
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : HHT受入実績計上     T_MD070_BPO_31G
- * Version          : 1.10
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,8 @@ AS
  *  2008/12/30    1.8   Oracle 吉元 強樹 標準-ｱﾄﾞｵﾝ受入差異対応
  *  2008/12/30    1.9   Oracle 吉元 強樹 在庫調整APIパラメータ不備対応
  *  2009/01/23    1.10  Oracle 椎名 昭圭 本番#1047対応
+ *  2009/01/27    1.11  Oracle 椎名 昭圭 本番#819対応
+ *  2009/01/28    1.12  Oracle 椎名 昭圭 本番#1047対応(再)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1434,6 +1436,118 @@ AS
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
 --
         gn_warn_cnt := gn_warn_cnt + 1;
+-- 2009/01/27 v1.11 ADD START
+--
+      -- 受入実績インタフェース(アドオン)の元文書番号、元文書明細番号をもとに発注情報を取得できる
+      ELSIF (mst_rec.po_header_id IS NULL) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                              gv_tkn_number_31g_05,
+                                              gv_tkn_h_no,
+                                              mst_rec.src_doc_num,
+                                              gv_tkn_m_no,
+                                              mst_rec.src_doc_line_num,
+                                              gv_tkn_date,
+                                              TO_CHAR(mst_rec.rcv_date,'YYYY/MM/DD'),
+                                              gv_tkn_item_no,
+                                              mst_rec.item_code);
+--
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--
+        gn_warn_cnt     := gn_warn_cnt + 1;
+        gn_proper_error := 1;
+--
+      -- 受入実績インタフェース(アドオン)の取引先コードが該当発注の取引先と同一か。
+      ELSIF (mst_rec.vendor_code <> NVL(mst_rec.vendor_no,gv_one_space)) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                              gv_tkn_number_31g_06,
+                                              gv_tkn_h_no,
+                                              mst_rec.src_doc_num,
+                                              gv_tkn_m_no,
+                                              mst_rec.src_doc_line_num,
+                                              gv_tkn_name,
+                                              gv_tkn_name_vendor_code,
+                                              gv_tkn_value,
+                                              mst_rec.vendor_code);
+--
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--
+        gn_warn_cnt     := gn_warn_cnt + 1;
+        gn_proper_error := 1;
+--
+      -- 受入実績インタフェース(アドオン)の納入先コードが該当発注の納入先と同一か。
+      ELSIF (mst_rec.location_code <> NVL(mst_rec.delivery_code,gv_one_space)) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                              gv_tkn_number_31g_06,
+                                              gv_tkn_h_no,
+                                              mst_rec.src_doc_num,
+                                              gv_tkn_m_no,
+                                              mst_rec.src_doc_line_num,
+                                              gv_tkn_name,
+                                              gv_tkn_name_location_code,
+                                              gv_tkn_value,
+                                              mst_rec.location_code);
+--
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--
+        gn_warn_cnt     := gn_warn_cnt + 1;
+        gn_proper_error := 1;
+--
+      -- 受入実績インタフェース(アドオン)のロットNoが該当発注のロットNoと同一か。
+      ELSIF (NVL(mst_rec.lot_number,gv_one_space) <> NVL(mst_rec.lot_no,gv_one_space)) THEN
+--
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                              gv_tkn_number_31g_06,
+                                              gv_tkn_h_no,
+                                              mst_rec.src_doc_num,
+                                              gv_tkn_m_no,
+                                              mst_rec.src_doc_line_num,
+                                              gv_tkn_name,
+                                              gv_tkn_name_lot_number,
+                                              gv_tkn_value,
+                                              mst_rec.lot_number);
+--
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--
+        gn_warn_cnt     := gn_warn_cnt + 1;
+        gn_proper_error := 1;
+--
+      -- 受入実績インタフェース(アドオン)の品目コードが該当発注の品目と同一か。
+      ELSIF (mst_rec.item_code <> NVL(mst_rec.item_no,gv_one_space)) THEN
+--
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                              gv_tkn_number_31g_06,
+                                              gv_tkn_h_no,
+                                              mst_rec.src_doc_num,
+                                              gv_tkn_m_no,
+                                              mst_rec.src_doc_line_num,
+                                              gv_tkn_name,
+                                              gv_tkn_name_item_code,
+                                              gv_tkn_value,
+                                              mst_rec.item_code);
+--
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--
+        gn_warn_cnt     := gn_warn_cnt + 1;
+        gn_proper_error := 1;
+--
+      -- 受入数量 が正数であること。
+      ELSIF (mst_rec.rcv_quantity < 0) THEN
+--
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                              gv_tkn_number_31g_07,
+                                              gv_tkn_h_no,
+                                              mst_rec.src_doc_num,
+                                              gv_tkn_m_no,
+                                              mst_rec.src_doc_line_num,
+                                              gv_tkn_rcv_num,
+                                              TO_CHAR(mst_rec.rcv_quantity));
+--
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--
+        gn_warn_cnt     := gn_warn_cnt + 1;
+        gn_proper_error := 1;
+--
+-- 2009/01/27 v1.11 ADD END
       ELSE
 --2008/09/25 Add ↑
 --
@@ -1452,7 +1566,9 @@ AS
 -- 2008/05/23 v1.3 Changed
         gt_po_description(ln_cnt)    := mst_rec.po_description;
         gt_rcv_date(ln_cnt)          := mst_rec.rcv_date;
-        gt_rcv_quantity(ln_cnt)      := mst_rec.rcv_quantity;
+-- 2009/01/28 v1.12 DELETE START
+--        gt_rcv_quantity(ln_cnt)      := mst_rec.rcv_quantity;
+-- 2009/01/28 v1.12 DELETE END
         gt_po_header_id(ln_cnt)      := mst_rec.po_header_id;
         gt_attribute6(ln_cnt)        := mst_rec.attribute6;
         gt_vendor_id(ln_cnt)         := mst_rec.vendor_id;
@@ -1520,6 +1636,9 @@ AS
 --
         gt_calc_quantity(ln_cnt) := ln_qty;
         gt_rtn_quantity(ln_cnt) := ln_qty;
+-- 2009/01/28 v1.12 ADD START
+        gt_rcv_quantity(ln_cnt)  := ln_qty;
+-- 2009/01/28 v1.12 ADD END
 --
         IF (mst_rec.delivery_code IS NOT NULL) THEN
           BEGIN
@@ -1699,11 +1818,12 @@ AS
 --
   END master_data_get;
 --
+-- 2009/01/27 v1.11 DELETE START
   /**********************************************************************************
    * Procedure Name   : proper_check
    * Description      : 妥当性チェック(F-5)
    ***********************************************************************************/
-  PROCEDURE proper_check(
+/*  PROCEDURE proper_check(
     ov_errbuf           OUT NOCOPY VARCHAR2,         -- エラー・メッセージ           --# 固定 #
     ov_retcode          OUT NOCOPY VARCHAR2,         -- リターン・コード             --# 固定 #
     ov_errmsg           OUT NOCOPY VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1887,6 +2007,8 @@ AS
 --
   END proper_check;
 --
+*/
+-- 2009/01/27 v1.11 DELETE END
   /**********************************************************************************
    * Procedure Name   : insert_open_if
    * Description      : 受入オープンIFへの受入情報登録(F-6)
@@ -3036,6 +3158,8 @@ AS
 --###########################  固定部 END   ############################
 --
 --
+-- 2009/01/27 v1.11 DELETE START
+/*
     -- 妥当性チェックエラーあり
     IF (gn_proper_error = 1) THEN
 --
@@ -3046,6 +3170,8 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE term_proc_expt;
     END IF;
+*/
+-- 2009/01/27 v1.11 DELETE END
 --2008/09/25 Mod ↓
 /*
 --
@@ -3221,6 +3347,8 @@ AS
     -- 件数が１件以上
     IF (gt_master_tbl.COUNT > 0) THEN
 --
+-- 2009/01/27 v1.11 DELETE START
+/*
       -- ================================
       -- F-5.妥当性チェック
       -- ================================
@@ -3236,6 +3364,8 @@ AS
       -- 妥当性チェックエラーなし
       IF (lv_retcode = gv_status_normal) THEN
 --
+*/
+-- 2009/01/27 v1.11 DELETE END
         -- ================================
         -- F-6.受入オープンIFへの受入情報登録
         -- ================================
@@ -3344,9 +3474,13 @@ AS
           RAISE global_process_expt;
         END IF;
 --
+-- 2009/01/27 v1.11 DELETE START
+/*
       ELSE
         gn_proper_error := 1;
       END IF;
+*/
+-- 2009/01/27 v1.11 DELETE END
 --
       -- ================================
       -- F-14.受入実績IF(アドオン)の全データ削除
@@ -3382,6 +3516,13 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- 2009/01/27 v1.11 ADD START
+    -- 妥当性チェックエラーあり
+    IF (gn_proper_error = 1) THEN
+      ov_retcode := gv_status_warn;
+    END IF;
+--
+-- 2009/01/27 v1.11 ADD END
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ###################################
