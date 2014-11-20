@@ -1,4 +1,4 @@
-CREATE OR REPLACE VIEW xxcmn_item_categories4_v
+CREATE OR REPLACE FORCE VIEW xxcmn_item_categories4_v
 (
   item_id
  ,prod_class_code
@@ -8,43 +8,61 @@ CREATE OR REPLACE VIEW xxcmn_item_categories4_v
  ,crowd_code
 )
 AS
-  SELECT gic.item_id
-        ,MAX( CASE
-               WHEN mcst.category_set_name = '商品区分' THEN mcb.segment1
-               ELSE NULL
-             END ) AS prod_class_code
-        ,MAX( CASE
-               WHEN mcst.category_set_name = '商品区分' THEN mct.description
-               ELSE NULL
-             END ) AS prod_class_name
-        ,MAX( CASE
-               WHEN mcst.category_set_name = '品目区分' THEN mcb.segment1
-               ELSE NULL
-             END ) AS item_class_code
-        ,MAX( CASE
-               WHEN mcst.category_set_name = '品目区分' THEN mct.description
-               ELSE NULL
-             END ) AS item_class_name
-        ,MAX( CASE
-               WHEN mcst.category_set_name = '群コード' THEN mcb.segment1
-               ELSE NULL
-             END ) AS crowd_code
-  FROM gmi_item_categories    gic
-      ,mtl_categories_b       mcb
-      ,mtl_categories_tl      mct
-      ,mtl_category_sets_b    mcsb
-      ,mtl_category_sets_tl   mcst
-  WHERE mct.source_lang       = 'JA'
-  AND   mct.language          = 'JA'
-  AND   mcb.category_id       = mct.category_id
-  AND   mcsb.structure_id     = mcb.structure_id
-  AND   gic.category_id       = mcb.category_id
-  AND   mcst.source_lang      = 'JA'
-  AND   mcst.language         = 'JA'
-  AND   mcst.category_set_name IN( '商品区分','品目区分','群コード' )
-  AND   mcsb.category_set_id  = mcst.category_set_id
-  AND   gic.category_set_id   = mcsb.category_set_id
-  GROUP BY gic.item_id
+  SELECT gic_s.item_id
+        ,mcb_s.segment1    AS prod_class_code
+        ,mct_s.description AS prod_class_name
+        ,mcb_h.segment1    AS item_class_code
+        ,mct_h.description AS item_class_name
+        ,mcb_g.segment1    AS crowd_code
+  FROM   gmi_item_categories    gic_s
+        ,mtl_categories_b       mcb_s
+        ,mtl_categories_tl      mct_s
+        ,mtl_category_sets_b    mcsb_s
+        ,mtl_category_sets_tl   mcst_s
+        ,gmi_item_categories    gic_h
+        ,mtl_categories_b       mcb_h
+        ,mtl_categories_tl      mct_h
+        ,mtl_category_sets_b    mcsb_h
+        ,mtl_category_sets_tl   mcst_h
+        ,gmi_item_categories    gic_g
+        ,mtl_categories_b       mcb_g
+        ,mtl_categories_tl      mct_g
+        ,mtl_category_sets_b    mcsb_g
+        ,mtl_category_sets_tl   mcst_g
+  WHERE mct_s.source_lang        = 'JA'
+  AND   mct_s.language           = 'JA'
+  AND   mcb_s.category_id        = mct_s.category_id
+  AND   mcsb_s.structure_id      = mcb_s.structure_id
+  AND   gic_s.category_id        = mcb_s.category_id
+  AND   mcst_s.source_lang       = 'JA'
+  AND   mcst_s.language          = 'JA'
+  AND   mcst_s.category_set_name = '商品区分'
+  AND   mcsb_s.category_set_id   = mcst_s.category_set_id
+  AND   gic_s.category_set_id    = mcsb_s.category_set_id
+--
+  AND   gic_s.item_id            = gic_h.item_id
+  AND   mct_h.source_lang        = 'JA'
+  AND   mct_h.language           = 'JA'
+  AND   mcb_h.category_id        = mct_h.category_id
+  AND   mcsb_h.structure_id      = mcb_h.structure_id
+  AND   gic_h.category_id        = mcb_h.category_id
+  AND   mcst_h.source_lang       = 'JA'
+  AND   mcst_h.language          = 'JA'
+  AND   mcst_h.category_set_name = '品目区分'
+  AND   mcsb_h.category_set_id   = mcst_h.category_set_id
+  AND   gic_h.category_set_id    = mcsb_h.category_set_id
+--
+  AND   gic_s.item_id            = gic_g.item_id
+  AND   mct_g.source_lang        = 'JA'
+  AND   mct_g.language           = 'JA'
+  AND   mcb_g.category_id        = mct_g.category_id
+  AND   mcsb_g.structure_id      = mcb_g.structure_id
+  AND   gic_g.category_id        = mcb_g.category_id
+  AND   mcst_g.source_lang       = 'JA'
+  AND   mcst_g.language          = 'JA'
+  AND   mcst_g.category_set_name = '群コード'
+  AND   mcsb_g.category_set_id   = mcst_g.category_set_id
+  AND   gic_g.category_set_id    = mcsb_g.category_set_id
 ;
 --
 COMMENT ON COLUMN xxcmn_item_categories4_v.item_id          IS '品目ID' ;
