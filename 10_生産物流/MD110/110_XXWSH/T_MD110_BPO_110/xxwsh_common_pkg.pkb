@@ -51,6 +51,7 @@ AS
  *  2008/07/04   1.13  Oracle 北寒寺正夫[締めステータスチェック関数]拠点カテゴリ=0をALLとして
  *                                      扱うように修正。
  *                                      ST#320不具合対応
+ *  2008/07/09   1.14  Oracle 熊本和郎  [重量容積小口個数更新関数] ST障害#430対応
  *
  *****************************************************************************************/
 --
@@ -92,6 +93,9 @@ AS
   gn_status_error  CONSTANT NUMBER := 1;
   gv_pkg_name      CONSTANT VARCHAR2(100) := 'xxwsh_common_pkg'; -- パッケージ名
 --
+--add start 1.14
+  gv_freight_charge_yes CONSTANT VARCHAR2(1) := '1';
+--add end 1.14
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -1584,6 +1588,9 @@ AS
     lv_prod_class                   VARCHAR2(2);                -- 商品区分
     ln_real_pallet_quantity         NUMBER;                     -- パレット実績枚数
     lv_vendor_site_code             VARCHAR2(100);              -- 取引先サイト
+--add start 1.14
+    lv_freight_charge_class         xxwsh_order_headers_all.freight_charge_class%TYPE; --運賃区分
+--add end 1.14
     -- 受注明細アドオン
     ln_shipped_quantity             NUMBER;                     -- 出荷実績数量
     lv_shipping_item_code           VARCHAR2(7);                -- 出荷品目
@@ -1768,6 +1775,9 @@ AS
                   xoha.prod_class,                      -- 商品区分
                   --xoha.real_pallet_quantity             -- パレット実績枚数
                   NVL(xoha.real_pallet_quantity, 0)     -- パレット実績枚数、NULLのときは、0を設定
+--add start 1.14
+                 ,freight_charge_class                  -- 運賃区分
+--add end 1.14
           INTO    lv_req_status,
                   lv_result_shipping_method_code,
                   lv_result_deliver_to,
@@ -1777,6 +1787,9 @@ AS
                   ld_shipped_date,
                   lv_prod_class,
                   ln_real_pallet_quantity
+--add start 1.14
+                 ,lv_freight_charge_class
+--add end 1.14
           FROM    xxwsh_order_headers_all       xoha,       -- 受注ヘッダアドオン
                   xxwsh_oe_transaction_types2_v ott2        -- 受注タイプ情報VIEW
           WHERE   xoha.request_no                             =  iv_request_no
@@ -1826,42 +1839,48 @@ AS
         -- 取得した配送Noを配車配送計画更新項目としてセット
         lv_update_delivery_no := lv_delivery_no;
 --
-        BEGIN
-          -- (2)取得した配送区分_実績をもとにクイックコード｢XXCMN_SHIP_METHOD｣から小口区分を取得
-          SELECT  xsm2.small_amount_class
-          INTO    lv_small_sum_class
-          FROM    xxwsh_ship_method2_v    xsm2
-          WHERE   xsm2.ship_method_code   =  lv_result_shipping_method_code
-          AND     xsm2.start_date_active  <= ld_shipped_date
-          AND     ld_shipped_date         <= NVL(xsm2.end_date_active, ld_shipped_date);
+--add start 1.14
+        IF lv_freight_charge_class = gv_freight_charge_yes THEN
+--add end 1.14
+          BEGIN
+            -- (2)取得した配送区分_実績をもとにクイックコード｢XXCMN_SHIP_METHOD｣から小口区分を取得
+            SELECT  xsm2.small_amount_class
+            INTO    lv_small_sum_class
+            FROM    xxwsh_ship_method2_v    xsm2
+            WHERE   xsm2.ship_method_code   =  lv_result_shipping_method_code
+            AND     xsm2.start_date_active  <= ld_shipped_date
+            AND     ld_shipped_date         <= NVL(xsm2.end_date_active, ld_shipped_date);
 --
-        EXCEPTION
-          -- 取得できなかった場合は返り値に1：処理エラーを返し終了
-          WHEN NO_DATA_FOUND THEN
-            lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_get_err,
-                                                  cv_tkn_table, cv_small_sum_class,
-                                                  cv_tkn_type, lv_tkn_biz_type,
-                                                  cv_tkn_no_type, lv_tkn_request_no,
-                                                  cv_tkn_request_no, iv_request_no);
-            FND_LOG.STRING(cv_log_level,gv_pkg_name
-                          || cv_colon
-                          || cv_prg_name,lv_except_msg);
+          EXCEPTION
+            -- 取得できなかった場合は返り値に1：処理エラーを返し終了
+            WHEN NO_DATA_FOUND THEN
+              lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_get_err,
+                                                    cv_tkn_table, cv_small_sum_class,
+                                                    cv_tkn_type, lv_tkn_biz_type,
+                                                    cv_tkn_no_type, lv_tkn_request_no,
+                                                    cv_tkn_request_no, iv_request_no);
+              FND_LOG.STRING(cv_log_level,gv_pkg_name
+                            || cv_colon
+                            || cv_prg_name,lv_except_msg);
+              RETURN gn_status_error;
+--
+            -- その他の例外が発生した場合は返り値に1：処理エラーを返し終了
+            WHEN OTHERS THEN
+              lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_api_err,
+                                                    cv_tkn_api_name, cv_api_xoha_im,
+                                                    cv_tkn_type, lv_tkn_biz_type,
+                                                    cv_tkn_no_type, lv_tkn_request_no,
+                                                    cv_tkn_request_no, iv_request_no,
+                                                    cv_tkn_err_msg, SQLERRM);
+              FND_LOG.STRING(cv_log_level,gv_pkg_name
+                            || cv_colon
+                            || cv_prg_name,lv_except_msg);
             RETURN gn_status_error;
 --
-          -- その他の例外が発生した場合は返り値に1：処理エラーを返し終了
-          WHEN OTHERS THEN
-            lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_api_err,
-                                                  cv_tkn_api_name, cv_api_xoha_im,
-                                                  cv_tkn_type, lv_tkn_biz_type,
-                                                  cv_tkn_no_type, lv_tkn_request_no,
-                                                  cv_tkn_request_no, iv_request_no,
-                                                  cv_tkn_err_msg, SQLERRM);
-            FND_LOG.STRING(cv_log_level,gv_pkg_name
-                          || cv_colon
-                          || cv_prg_name,lv_except_msg);
-          RETURN gn_status_error;
---
-        END;
+          END;
+--add start 1.14
+        END IF;
+--add end 1.14
 --
         BEGIN
         -- カウント変数の初期化
@@ -1980,7 +1999,11 @@ AS
         lv_errmsg       :=NULL;   -- エラーメッセージ
 --
         -- (5)(1)で配送Noが設定されている場合、共通関数｢積載効率チェック(積載効率算出)｣を呼び出す
-        IF (lv_update_delivery_no IS NOT NULL) THEN
+--mod start 1.14
+--        IF (lv_update_delivery_no IS NOT NULL) THEN
+        IF (lv_update_delivery_no IS NOT NULL 
+        AND lv_freight_charge_class = gv_freight_charge_yes) THEN
+--mod end 1.14
           -- 合計重量が設定されている場合
           IF (ln_update_sum_weight > 0) THEN
             -- 重量積載効率算出
@@ -2115,10 +2138,28 @@ AS
         BEGIN
           -- (7)受注ヘッダアドオンをヘッダ更新項目に登録されている内容で更新
           UPDATE  xxwsh_order_headers_all         xoha            -- 受注ヘッダアドオン
+--mod start 1.14
+--          -- 積載重量合計
+--          SET     xoha.sum_weight         = ln_update_sum_weight,
+--          -- 積載容積合計
+--                  xoha.sum_capacity       = ln_update_sum_capacity,
           -- 積載重量合計
-          SET     xoha.sum_weight         = ln_update_sum_weight,
+          SET     xoha.sum_weight         = 
+                   (CASE
+                     WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
+                       ln_update_sum_weight
+                     ELSE
+                       xoha.sum_weight
+                    END),
           -- 積載容積合計
-                  xoha.sum_capacity       = ln_update_sum_capacity,
+                  xoha.sum_capacity       =
+                   (CASE
+                     WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
+                       ln_update_sum_capacity
+                     ELSE
+                       xoha.sum_capacity
+                    END),
+--mod end 1.14
           -- 合計パレット重量
                   xoha.sum_pallet_weight  = ln_update_sum_pallet_weight,
           -- 小口個数
@@ -2126,7 +2167,10 @@ AS
           -- 重量積載効率
                   xoha.loading_efficiency_weight =
                    (CASE
-                     WHEN (lv_update_delivery_no IS NOT NULL) THEN
+--mod start 1.14
+--                     WHEN (lv_update_delivery_no IS NOT NULL) THEN
+                     WHEN (lv_update_delivery_no IS NOT NULL OR lv_freight_charge_class = gv_freight_charge_yes) THEN
+--mod end 1.14
                        ln_update_load_effi_weight
                      ELSE
                        xoha.loading_efficiency_weight
@@ -2134,7 +2178,10 @@ AS
           -- 容積積載効率
                   xoha.loading_efficiency_capacity  =
                    (CASE
-                     WHEN (lv_update_delivery_no IS NOT NULL) THEN
+--mod start 1.14
+--                     WHEN (lv_update_delivery_no IS NOT NULL) THEN
+                     WHEN (lv_update_delivery_no IS NOT NULL OR lv_freight_charge_class = gv_freight_charge_yes) THEN
+--mod end 1.14
                        ln_update_load_effi_capacity
                      ELSE
                        xoha.loading_efficiency_capacity
