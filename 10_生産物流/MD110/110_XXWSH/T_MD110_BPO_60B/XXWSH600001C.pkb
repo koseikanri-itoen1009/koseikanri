@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2008/12/02    1.15 SCS    H.Itou     本番障害#220対応
  *  2008/12/07    1.16 SCS    D.Sugahara 本番障害#524暫定対応
  *  2009/01/05    1.17 SCS    H.Itou     本番障害#879対応
+ *  2009/01/08    1.18 SCS    H.Itou     本番障害#558,599対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1081,7 +1082,10 @@ debug_log(FND_FILE.LOG,'出荷依頼SQL: '||lv_sql_buff_ship);
     lv_sql_m0 := lv_sql_m0 || ', xmrh.weight_capacity_class weight_capacity_cls'; -- 重量容積区分
     lv_sql_m0 := lv_sql_m0 || ', xmrh.sum_pallet_weight sum_pallet_weight';       -- 合計パレット重量
     lv_sql_m0 := lv_sql_m0 || ', xmrh.item_class  item_class';                    -- 商品区分
-    lv_sql_m0 := lv_sql_m0 || ', xmrh.mov_type business_type_id';                 -- 取引タイプ
+-- 2009/01/08 H.Itou Mod Start 本番障害#599
+--    lv_sql_m0 := lv_sql_m0 || ', xmrh.mov_type business_type_id';                 -- 取引タイプ
+    lv_sql_m0 := lv_sql_m0 || ', NULL business_type_id';                          -- 取引タイプ
+-- 2009/01/08 H.Itou Mod End
     lv_sql_m0 := lv_sql_m0 || ', NULL reserve_order';                             -- 引当順
     lv_sql_m0 := lv_sql_m0 || ', NULL sales_branch';                              -- 管轄拠点
     lv_sql_m0 := lv_sql_m0 || ' FROM xxinv_mov_req_instr_headers xmrh';   -- 移動依頼/指示ヘッダ
@@ -5042,6 +5046,9 @@ debug_log(FND_FILE.LOG,'配送No設定処理終了');
     cv_yes            CONSTANT VARCHAR2(1)  := 'Y';     -- YES
     cv_small_amount_b CONSTANT VARCHAR2(2)  := '11';    -- 小口B
     cv_small_amount_a CONSTANT VARCHAR2(2)  := '12';    -- 小口A
+-- 2009/01/08 H.Itou Add Start 本番障害#558
+    cv_small_amount_2 CONSTANT VARCHAR2(2)  := '15';    -- 2t車小口
+-- 2009/01/08 H.Itou Add End
 --
     -- *** ローカル変数 ***
     -- 自動配車集約中間テーブル登録用PL/SQL表
@@ -5288,6 +5295,16 @@ debug_log(FND_FILE.LOG,'【小口配送情報作成処理】');
     lt_mixed_total_capacity_tab.DELETE; -- 混載合計容積
     lt_mixed_no_tab.DELETE;             -- 混載元No
 --
+-- 2009/01/08 H.Itou Add Start
+    -- 小口B最大ケース数取得
+    SELECT  xsmv.max_case_quantity    -- 最大ケース数
+    INTO    lt_max_case_qty
+    FROM    xxwsh_ship_method_v xsmv  -- クイックコード
+    WHERE   xsmv.ship_method_code = cv_small_amount_b
+    ;
+debug_log(FND_FILE.LOG,'小口Bケース数:'||lt_max_case_qty);
+-- 2009/01/08 H.Itou Add End
+--
     OPEN small_amount_cur;
     FETCH small_amount_cur BULK COLLECT INTO lt_get_tab;
     CLOSE small_amount_cur;
@@ -5325,9 +5342,26 @@ debug_log(FND_FILE.LOG,'ループカウント：'||ln_loop_cnt);
 --                                                                                      -- 修正配送区分
 --      lt_delivery_no_tab(ln_loop_cnt)     := lt_get_tab(ln_loop_cnt).delivery_no;     -- 配送No
 -- 2008/10/16 H.Itou Del End
--- 2008/10/30 H.Itou Mod Start 統合テスト指摘526 リーフの場合の配送区分が設定されないので、INパラメータで渡された値をセットする
-      lt_fix_ship_method_cd(ln_loop_cnt)  := iv_ship_method;                          -- 修正配送区分
--- 2008/10/30 H.Itou Mod End
+-- 2009/01/08 H.Itou Mod Start 本番障害#558 リーフの場合も配送区分を固定値(2t車小口)にする
+---- 2008/10/30 H.Itou Mod Start 統合テスト指摘526 リーフの場合の配送区分が設定されないので、INパラメータで渡された値をセットする
+--      lt_fix_ship_method_cd(ln_loop_cnt)  := iv_ship_method;                          -- 修正配送区分
+---- 2008/10/30 H.Itou Mod End
+      -- 修正配送区分
+      -- ドリンクかつ、小口B最大ケース数より多い場合
+      IF ((gv_prod_class = gv_prod_cls_drink)
+      AND (lt_get_tab(ln_loop_cnt).small_quantity > lt_max_case_qty)) THEN
+        lt_fix_ship_method_cd(ln_loop_cnt) := cv_small_amount_a;    -- 小口A
+--
+      -- ドリンクかつ、小口B最大ケース数以下の場合
+      ELSIF ((gv_prod_class = gv_prod_cls_drink)
+      AND    (lt_get_tab(ln_loop_cnt).small_quantity <= lt_max_case_qty)) THEN
+        lt_fix_ship_method_cd(ln_loop_cnt) := cv_small_amount_b;    -- 小口B
+--
+      -- リーフの場合
+      ELSE
+        lt_fix_ship_method_cd(ln_loop_cnt) := cv_small_amount_2;    -- 2t車小口
+      END IF;
+-- 2009/01/08 H.Itou Mod End
       lt_request_no_tab(ln_loop_cnt)      := lt_get_tab(ln_loop_cnt).req_no;          -- 依頼No
       lt_sum_case_qty_tab(ln_loop_cnt)    := lt_get_tab(ln_loop_cnt).small_quantity;   -- ケース数
 --
@@ -5438,46 +5472,48 @@ debug_log(FND_FILE.LOG,'PLSQL表：lt_ins_int_no_tab');
         );
 debug_log(FND_FILE.LOG,'自動配車集約中間明細テーブル登録');
 --
-    -- 商品区分がドリンクの場合のみ配送区分設定を行う
-    IF (gv_prod_class = gv_prod_cls_drink) THEN
-debug_log(FND_FILE.LOG,'最大ケース数チェック：商品区分：ドリンク');
-      -- ==================================
-      --  配送区分設定
-      -- ==================================
-      -- 最大ケース数取得
-      SELECT  xsmv.max_case_quantity    -- 最大ケース数
-      INTO    lt_max_case_qty
-      FROM    xxwsh_ship_method_v xsmv  -- クイックコード
-      WHERE   xsmv.ship_method_code = cv_small_amount_b
-      ;
-debug_log(FND_FILE.LOG,'小口Bケース数:'||lt_max_case_qty);
-debug_log(FND_FILE.LOG,'lt_intensive_no_tab.COUNT:'||lt_intensive_no_tab.COUNT);
---
-      <<reset_ship_method>>
---2008.05.27 D.Sugahara 不具合No9対応->
---      FOR rec_cnt IN 1..lt_intensive_no_tab.COUNT LOOP
-      FOR rec_cnt IN 1..lt_ins_int_no_tab.COUNT LOOP
---2008.05.27 D.Sugahara 不具合No9対応<-
---
-        ln_loop_cnt_2 := ln_loop_cnt_2 + 1;
---
-        lt_intensive_no_tab(ln_loop_cnt_2)  := lt_int_no_tab(ln_loop_cnt_2);  -- 集約No
---
-debug_log(FND_FILE.LOG,'ケース数合計:'||lt_sum_case_qty_tab(ln_loop_cnt_2));
-        -- 修正配送区分
-        IF (lt_sum_case_qty_tab(ln_loop_cnt_2) > lt_max_case_qty) THEN
---
-          lt_fix_ship_method_cd(ln_loop_cnt_2)     := cv_small_amount_a;    -- 小口A
---
-        ELSIF (lt_sum_case_qty_tab(ln_loop_cnt_2) <= lt_max_case_qty) THEN
---
-          lt_fix_ship_method_cd(ln_loop_cnt_2)     := cv_small_amount_b;    -- 小口B
---
-        END IF;
---
-      END LOOP reset_ship_method;
---
-    END IF;
+-- 2009/01/08 H.Itou Del Start 本番障害#558 small_amount_loop内で配送区分の設定を行うため
+--    -- 商品区分がドリンクの場合のみ配送区分設定を行う
+--    IF (gv_prod_class = gv_prod_cls_drink) THEN
+--debug_log(FND_FILE.LOG,'最大ケース数チェック：商品区分：ドリンク');
+--      -- ==================================
+--      --  配送区分設定
+--      -- ==================================
+--      -- 最大ケース数取得
+--      SELECT  xsmv.max_case_quantity    -- 最大ケース数
+--      INTO    lt_max_case_qty
+--      FROM    xxwsh_ship_method_v xsmv  -- クイックコード
+--      WHERE   xsmv.ship_method_code = cv_small_amount_b
+--      ;
+--debug_log(FND_FILE.LOG,'小口Bケース数:'||lt_max_case_qty);
+--debug_log(FND_FILE.LOG,'lt_intensive_no_tab.COUNT:'||lt_intensive_no_tab.COUNT);
+----
+--      <<reset_ship_method>>
+----2008.05.27 D.Sugahara 不具合No9対応->
+----      FOR rec_cnt IN 1..lt_intensive_no_tab.COUNT LOOP
+--      FOR rec_cnt IN 1..lt_ins_int_no_tab.COUNT LOOP
+----2008.05.27 D.Sugahara 不具合No9対応<-
+----
+--        ln_loop_cnt_2 := ln_loop_cnt_2 + 1;
+----
+--        lt_intensive_no_tab(ln_loop_cnt_2)  := lt_int_no_tab(ln_loop_cnt_2);  -- 集約No
+----
+--debug_log(FND_FILE.LOG,'ケース数合計:'||lt_sum_case_qty_tab(ln_loop_cnt_2));
+--        -- 修正配送区分
+--        IF (lt_sum_case_qty_tab(ln_loop_cnt_2) > lt_max_case_qty) THEN
+----
+--          lt_fix_ship_method_cd(ln_loop_cnt_2)     := cv_small_amount_a;    -- 小口A
+----
+--        ELSIF (lt_sum_case_qty_tab(ln_loop_cnt_2) <= lt_max_case_qty) THEN
+----
+--          lt_fix_ship_method_cd(ln_loop_cnt_2)     := cv_small_amount_b;    -- 小口B
+----
+--        END IF;
+----
+--      END LOOP reset_ship_method;
+----
+--    END IF;
+-- 2009/01/08 H.Itou Del End
 --
 -- 2008/10/01 H.Itou Del Start PT 6-1_27 指摘18
 --for ln_cnt_3 in 1.. lt_ins_int_no_tab.COUNT loop
