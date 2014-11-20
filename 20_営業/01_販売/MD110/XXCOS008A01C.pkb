@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS008A01C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS008A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A01C(body)
  * Description      : 工場直送出荷依頼IF作成を行う
  * MD.050           : 工場直送出荷依頼IF作成 MD050_COS_008_A01
- * Version          : 1.7
+ * Version          : 1.9
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -39,6 +39,8 @@ AS
  *  2009/04/16    1.5   T.Kitajima       [T1_0609]出荷依頼No採番ルール変更[97]→[98]
  *  2009/05/15    1.6   S.Tomita         [T1_1004]生産物流SへのUO切替/戻し、[顧客発注からの自動作成]機能呼出対応
  *  2009/05/26    1.7   T.Kitajima       [T1_0457]再送対応
+ *  2009/07/07    1.8   T.Miyata         [0000478]顧客所在地の抽出条件に有効フラグを追加
+ *  2009/07/13    1.9   T.Miyata         [0000293]出荷予定日／受注日算出時のリードタイム変更
  *
  *****************************************************************************************/
 --
@@ -208,6 +210,10 @@ AS
   cv_new_send                   CONSTANT VARCHAR2(1)  := '1';
   cv_re_send                    CONSTANT VARCHAR2(1)  := '2';
 --****************************** 2009/05/15 1.7 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/07/07 1.8 T.Miyata ADD  START ******************************--
+  --顧客マスタ系の有効フラグ
+  cv_cust_status_active         CONSTANT VARCHAR2(1)  := 'A';             -- 有効
+--****************************** 2009/07/07 1.8 T.Miyata ADD  END   ******************************--
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -322,6 +328,9 @@ AS
     AND   uses.site_use_code                      = cv_cust_site_use_code                     -- 顧客使用目的(出荷先)
     AND   sites.org_id                            = gn_prod_ou_id                             -- 生産営業単位
     AND   uses.org_id                             = gn_prod_ou_id                             -- 生産営業単位
+--****************************** 2009/07/07 1.8 T.Miyata ADD  START ******************************--
+    AND   sites.status                            = cv_cust_status_active                     -- 顧客所在地.ステータス
+--****************************** 2009/07/07 1.8 T.Miyata ADD  END   ******************************--
     AND   sites.party_site_id                     = hps.party_site_id                         -- パーティサイトID
     AND   hps.location_id                         = hl.location_id                            -- 事業所ID
     AND   hca.account_number                      IS NOT NULL                                 -- 顧客番号
@@ -1279,7 +1288,10 @@ AS
          id_date            => it_order_rec.request_date           -- 納品予定日
         ,iv_whse_code       => NULL                                -- 保管倉庫コード
         ,iv_deliver_to_code => it_order_rec.province               -- 配送先コード
-        ,in_lead_time       => ln_lead_time                        -- リードタイム
+--****************************** 2009/07/13 1.9 T.Miyata MODIFY START ******************************--
+--      ,in_lead_time       => ln_lead_time                        -- リードタイム
+        ,in_lead_time       => ln_delivery_lt                      -- 配送リードタイム
+--****************************** 2009/07/13 1.9 T.Miyata MODIFY END   ******************************--
         ,iv_prod_class      => it_order_rec.prod_class_code        -- 商品区分
         ,od_oprtn_day       => ld_oprtn_day                        -- 稼働日日付(出荷予定日)
       );
@@ -1309,7 +1321,10 @@ AS
           ,iv_token_name6  => cv_tkn_delivery_code                         -- 配送先コード
           ,iv_token_value6 => it_order_rec.province
           ,iv_token_name7  => cv_tkn_lead_time                             -- リードタイム
-          ,iv_token_value7 => TO_CHAR(ln_lead_time)
+--****************************** 2009/07/13 1.9 T.Miyata MODIFY START ******************************--
+--        ,iv_token_value7 => TO_CHAR(ln_lead_time)
+          ,iv_token_value7 => TO_CHAR(ln_delivery_lt)
+--****************************** 2009/07/13 1.9 T.Miyata MODIFY END   ******************************--
           ,iv_token_name8  => cv_tkn_commodity_class                       -- 商品区分
           ,iv_token_value8 => it_order_rec.item_div_name
         );
@@ -1809,7 +1824,10 @@ AS
        id_date             => it_order_rec.schedule_ship_date      -- 日付
       ,iv_whse_code        => NULL                                 -- 保管倉庫コード
       ,iv_deliver_to_code  => it_order_rec.province                -- 配送先コード
-      ,in_lead_time        => it_order_rec.delivery_lt             -- リードタイム(生産物流)
+--****************************** 2009/07/13 1.9 T.Miyata MODIFY START ******************************--
+--    ,in_lead_time        => it_order_rec.delivery_lt             -- リードタイム(生産物流)
+      ,in_lead_time        => it_order_rec.lead_time               -- リードタイム(生産物流)
+--****************************** 2009/07/13 1.9 T.Miyata MODIFY END   ******************************--
       ,iv_prod_class       => it_order_rec.prod_class_code         -- 商品区分
       ,od_oprtn_day        => ld_ope_request_day                   -- 稼働日日付
     );
@@ -1838,7 +1856,10 @@ AS
         ,iv_token_name6  => cv_tkn_delivery_code                         -- 配送先コード
         ,iv_token_value6 => it_order_rec.province
         ,iv_token_name7  => cv_tkn_lead_time                             -- リードタイム
-        ,iv_token_value7 => it_order_rec.delivery_lt
+--****************************** 2009/07/13 1.9 T.Miyata MODIFY START ******************************--
+--      ,iv_token_value7 => it_order_rec.delivery_lt
+        ,iv_token_value7 => it_order_rec.lead_time
+--****************************** 2009/07/13 1.9 T.Miyata MODIFY END   ******************************--
         ,iv_token_name8  => cv_tkn_commodity_class                       -- 商品区分
         ,iv_token_value8 => it_order_rec.item_div_name
       );
