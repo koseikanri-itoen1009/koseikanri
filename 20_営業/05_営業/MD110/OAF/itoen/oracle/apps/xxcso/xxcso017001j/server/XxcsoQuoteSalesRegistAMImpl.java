@@ -13,6 +13,7 @@
 * 2009-04-13 1.3  SCSˆ¢•”‘å•ã  yT1_0299zCSVo—Í§Œä
 * 2009-04-14 1.4  SCSˆ¢•”‘å•ã  yT1_0442zŒ©Ï‘ˆóü§Œä
 * 2009-04-16 1.5  SCSˆ¢•”‘å•ã  yT1_0462zƒRƒs[‚ÌŒÚ‹q–¼‚ğ’Ç‰Á
+* 2009-05-07 1.6  SCS–ö•½’¼l  yT1_0803zƒRƒs[‚Ì¤•i–¼‚ğ’Ç‰Á
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017001j.server;
@@ -298,6 +299,11 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
       lineRow.setInventoryItemCode(      
         lineRow2.getInventoryItemCode()      
       );
+// 2009-05-08 yT1_0803z Add Start
+      lineRow.setItemShortName(
+        lineRow2.getItemShortName()
+      );
+// 2009-05-08 yT1_0803z Add End
       lineRow.setQuoteDiv(               
         lineRow2.getQuoteDiv()               
       );
