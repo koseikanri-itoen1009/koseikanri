@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -98,6 +98,7 @@ AS
  *  2008/07/15    1.3  Oracle 野村       ST障害#452対応（切上対応含む）
  *  2008/07/16    1.4  Oracle 野村       ST障害#455対応
  *  2008/07/17    1.5  Oracle 野村       変更要求#96、#98対応
+ *  2008/08/04    1.6  Oracle 山根       内部課題#187対応
  *
  *****************************************************************************************/
 --
@@ -883,6 +884,13 @@ AS
     , pay_picking_amount    xxwip_delivery_company.pay_picking_amount%TYPE -- 運送：支払ピッキング単価
     , shipping_expenses     xxwip_delivery_charges.shipping_expenses%TYPE  -- 運賃：運送費
     , leaf_consolid_add     xxwip_delivery_charges.leaf_consolid_add%TYPE  -- 運賃：リーフ混載割増
+--2008/08/04 Add ↓
+    , actual_distance       xxwip_deliverys.actual_distance%TYPE        -- 最長実際距離
+    , whs_code              xxwip_deliverys.whs_code%TYPE               -- 代表出庫倉庫コード
+    , code_division         xxwip_deliverys.code_division%TYPE          -- 代表配送先コード区分
+    , shipping_address_code xxwip_deliverys.shipping_address_code%TYPE  -- 代表配送先コード
+    , dispatch_type         xxwip_deliverys.dispatch_type%TYPE          -- 配車タイプ
+--2008/08/04 Add ↑
   );
 --
   TYPE exch_deliv_tbl IS TABLE OF exch_deliv_rec INDEX BY PLS_INTEGER;
@@ -898,6 +906,10 @@ AS
   ueh_head_output_flag_tab        head_output_flag_type;      -- 差異区分
   ueh_head_defined_flag_tab       head_defined_flag_type;     -- 支払確定区分
   ueh_head_return_flag_tab        head_return_flag_type;      -- 支払確定戻
+--2008/08/04 Add ↓
+  ueh_head_distance_type_tab      head_distance_type;         -- 最長距離
+  ueh_head_actual_ditnc_type_tab  head_actual_ditnc_type;     -- 最長実際距離
+--2008/08/04 Add ↑
 --
   -- 洗替時 運賃ヘッダアドオン 削除用変数定義
   deh_head_deliv_no_tab           head_deliv_no_type;          -- 配送No
@@ -7755,6 +7767,13 @@ AS
             , NVL(xdec.pay_picking_amount, 0) -- 運送業者：支払ピッキング単価
             , NULL                            -- 運賃：運送費
             , NULL                            -- 運賃：リーフ混載割増
+--2008/08/04 Add 
+            , xd.actual_distance        -- 最長実際距離
+            , xd.whs_code               -- 代表出庫倉庫コード
+            , xd.code_division          -- 代表配送先コード区分
+            , xd.shipping_address_code  -- 代表配送先コード
+            , xd.dispatch_type          -- 配車タイプ
+--2008/08/04 Add ↑
     BULK COLLECT INTO gt_exch_deliv_tab
     FROM  xxwip_deliverys         xd,   -- 運賃ヘッダアドオン
           xxwip_delivery_company  xdec  -- 運賃用運送業者アドオンマスタ
@@ -7829,6 +7848,9 @@ AS
 --
     -- *** ローカル変数 ***
     lr_delivery_charges_tab   xxwip_common3_pkg.delivery_charges_rec;   -- 運賃
+--2008/08/04 Add ↓
+    lr_delivery_distance_tab  xxwip_common3_pkg.delivery_distance_rec;  -- 配送距離
+--2008/08/04 Add ↑
 --
     -- *** ローカル・カーソル ***
 --
@@ -7854,6 +7876,34 @@ AS
 --
     <<deliv_loop>>
     FOR ln_index IN  gt_exch_deliv_tab.FIRST.. gt_exch_deliv_tab.LAST LOOP
+--
+--2008/08/04 Add ↓
+      -- 伝票なし配車（リーフ小口）
+      IF (gt_exch_deliv_tab(ln_index).dispatch_type = gv_carcan_target_y) THEN
+        -- **************************************************
+        -- ***  配送距離アドオンマスタ抽出
+        -- **************************************************
+        xxwip_common3_pkg.get_delivery_distance(
+          gt_exch_deliv_tab(ln_index).goods_classe,           -- 商品区分
+          gt_exch_deliv_tab(ln_index).delivery_company_code,  -- 運送業者
+          gt_exch_deliv_tab(ln_index).whs_code,               -- 出庫倉庫
+          gt_exch_deliv_tab(ln_index).code_division,          -- コード区分
+          gt_exch_deliv_tab(ln_index).shipping_address_code,  -- 配送先コード
+          gt_exch_deliv_tab(ln_index).judgement_date,         -- 判断日
+          lr_delivery_distance_tab,
+          lv_errbuf,
+          lv_retcode,
+          lv_errmsg);
+  --
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE global_api_expt;
+        END IF;
+--
+        -- 小口距離を設定
+        gt_exch_deliv_tab(ln_index).distance        := lr_delivery_distance_tab.small_distance;
+        gt_exch_deliv_tab(ln_index).actual_distance := lr_delivery_distance_tab.actual_distance;
+      END IF;
+--2008/08/04 Add ↑
 --
       -- **************************************************
       -- * 運賃アドオンマスタ抽出
@@ -8056,6 +8106,11 @@ AS
         ueh_head_return_flag_tab(ln_index)  := gv_ktg_no ;
       END IF;
 --
+--2008/08/04 Add ↓
+      ueh_head_distance_type_tab(ln_index)     := gt_exch_deliv_tab(ln_index).distance;
+      ueh_head_actual_ditnc_type_tab(ln_index) := gt_exch_deliv_tab(ln_index).actual_distance;
+--2008/08/04 Add ↑
+--
       -- **************************************************
       -- * 削除用PL/SQL表 設定
       -- **************************************************
@@ -8160,6 +8215,10 @@ AS
               , output_flag             = ueh_head_output_flag_tab(ln_index)  -- 差異区分
               , defined_flag            = ueh_head_defined_flag_tab(ln_index) -- 支払確定区分
               , return_flag             = ueh_head_return_flag_tab(ln_index)  -- 支払確定戻
+--2008/08/04 Add ↓
+              , distance                = ueh_head_distance_type_tab(ln_index)     -- 最長距離
+              , actual_distance         = ueh_head_actual_ditnc_type_tab(ln_index) -- 最長実際距離
+--2008/08/04 Add ↑
               , last_updated_by         = gn_user_id                 -- 最終更新者
               , last_update_date        = gd_sysdate                 -- 最終更新日
               , last_update_login       = gn_login_id                -- 最終更新ログイン
