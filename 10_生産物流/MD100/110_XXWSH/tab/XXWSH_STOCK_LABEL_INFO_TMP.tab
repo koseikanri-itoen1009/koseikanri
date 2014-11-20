@@ -2,7 +2,10 @@ CREATE TABLE xxwsh.xxwsh_stock_label_info_tmp
 (
   request_id                  NUMBER(15,0)  NOT NULL,
   delivery_no                 VARCHAR2(12)  NOT NULL,
-  request_no                  VARCHAR2(12)  NOT NULL,
+-- 2008.07.04 mod S.Takemoto start
+--  request_no                  VARCHAR2(12)  NOT NULL,
+  request_no                  VARCHAR2(12),
+-- 2008.07.04 mod S.Takemoto end
   address                     VARCHAR2(60),
   phone                       VARCHAR2(15),
   deliver_to_name             VARCHAR2(60),

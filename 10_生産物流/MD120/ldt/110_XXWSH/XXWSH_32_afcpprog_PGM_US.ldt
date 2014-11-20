@@ -432,7 +432,7 @@ END VALUE_SET
 
 BEGIN VALUE_SET "XXCMN_YYYYMMDD"
   OWNER = "SCS_YTAKAYAMA1"
-  LAST_UPDATE_DATE = "2008/04/25 14:54:23"
+  LAST_UPDATE_DATE = "2008/04/25 00:00:00"
   VALIDATION_TYPE = "U"
   PROTECTED_FLAG = "N"
   SECURITY_ENABLED_FLAG = "N"
@@ -448,23 +448,23 @@ BEGIN VALUE_SET "XXCMN_YYYYMMDD"
 
   BEGIN VSET_EVENT "V"
     OWNER = "SCS_YTAKAYAMA1"
-    LAST_UPDATE_DATE = "2008/04/25 14:54:23"
+    LAST_UPDATE_DATE = "2008/04/25 00:00:00"
     USER_EXIT =
    "FND PLSQL \"\n\
   DECLARE \n\
-    iv_item_value  VARCHAR2(250); \n\
-    ld_item_value  DATE; \n\
-    cv_date_format CONSTANT VARCHAR2(10) := 'RRRR/MM/DD'; \n\
+  iv_item_value  VARCHAR2(250); \n\
+  ld_item_value  DATE; \n\
+  cv_date_format CONSTANT VARCHAR2(10) := 'RRRR/MM/DD'; \n\
   BEGIN \n\
-    iv_item_value := :!VALUE; \n\
-    ld_item_value := TO_DATE(iv_item_value, cv_date_format); \n\
-    :!VALUE := TO_CHAR(ld_item_value, cv_date_format); \n\
+  iv_item_value := :!VALUE; \n\
+  ld_item_value := TO_DATE(iv_item_value, cv_date_format); \n\
+  :!VALUE := TO_CHAR(ld_item_value, cv_date_format); \n\
   EXCEPTION \n\
-    WHEN OTHERS THEN \n\
-      FND_MESSAGE.SET_NAME('FND','FLEX-INVALID DATE'); \n\
-      FND_MESSAGE.SET_TOKEN( 'DATE', iv_item_value ); \n\
-      FND_MESSAGE.SET_TOKEN( 'FORMAT', cv_date_format ); \n\
-      FND_MESSAGE.RAISE_ERROR; \n\
+  WHEN OTHERS THEN \n\
+  FND_MESSAGE.SET_NAME('FND','FLEX-INVALID DATE'); \n\
+  FND_MESSAGE.SET_TOKEN( 'DATE', iv_item_value ); \n\
+  FND_MESSAGE.SET_TOKEN( 'FORMAT', cv_date_format ); \n\
+  FND_MESSAGE.RAISE_ERROR; \n\
   END;\""
   END VSET_EVENT
   
@@ -693,7 +693,7 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH600004C"
       FORM_ABOVE_PROMPT = "部署10"
       DESCRIPTION = "部署10"
     END DFF_SEGMENT
-
+    
     BEGIN DFF_SEGMENT "iv_date_fix" "ATTRIBUTE2"
       OWNER = "XX_SETUP_USER01"
       LAST_UPDATE_DATE = "2008/06/02 21:35:58"
@@ -809,6 +809,239 @@ BEGIN PROGRAM "XXWSH600004C" "XXWSH"
   */"
 
 
+END PROGRAM
+
+BEGIN EXECUTABLE "XXWSH920005C" "XXWSH"
+  OWNER = "SCS_MHOKKANJI"
+  LAST_UPDATE_DATE = "2008/07/25"
+  EXECUTION_METHOD_CODE = "I"
+  EXECUTION_FILE_NAME = "XXWSH920005C.main"
+  USER_EXECUTABLE_NAME = "XXWSH920005C"
+  DESCRIPTION = "倉庫品目マスタアップロード処理"
+END EXECUTABLE
+
+BEGIN VALUE_SET "XXCMN_15_NUM"
+  OWNER = "SCS_HMARUSHITA"
+  LAST_UPDATE_DATE = "2008/04/22 18:41:24"
+  VALIDATION_TYPE = "N"
+  PROTECTED_FLAG = "N"
+  SECURITY_ENABLED_FLAG = "N"
+  LONGLIST_FLAG = "N"
+  FORMAT_TYPE = "N"
+  MAXIMUM_SIZE = "15"
+  NUMBER_PRECISION = "0"
+  ALPHANUMERIC_ALLOWED_FLAG = "N"
+  UPPERCASE_ONLY_FLAG = "N"
+  NUMERIC_MODE_ENABLED_FLAG = "N"
+  DESCRIPTION = "XXCMN：数字15桁"
+
+
+
+
+
+
+
+END VALUE_SET
+
+BEGIN VALUE_SET "XXCMN_S_2_CHAR"
+  OWNER = "XX_SETUP_USER01"
+  LAST_UPDATE_DATE = "2008/03/28 00:00:00"
+  VALIDATION_TYPE = "N"
+  PROTECTED_FLAG = "N"
+  SECURITY_ENABLED_FLAG = "N"
+  LONGLIST_FLAG = "N"
+  FORMAT_TYPE = "C"
+  MAXIMUM_SIZE = "2"
+  ALPHANUMERIC_ALLOWED_FLAG = "Y"
+  UPPERCASE_ONLY_FLAG = "N"
+  NUMERIC_MODE_ENABLED_FLAG = "N"
+  DESCRIPTION = "XXCMN：文字2桁"
+
+
+
+
+
+
+
+END VALUE_SET
+
+BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH920005C"
+  OWNER = "SCS_MHOKKANJI"
+  LAST_UPDATE_DATE = "2008/07/25 10:19:13"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXWSH920005C"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "倉庫品目マスタアップロード処理"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "SCS_MHOKKANJI"
+    LAST_UPDATE_DATE = "2008/07/25 10:19:13"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+    BEGIN DFF_SEGMENT "iv_file_id" "ATTRIBUTE1"
+      OWNER = "SCS_MHOKKANJI"
+      LAST_UPDATE_DATE = "2008/07/25 10:24:27"
+      COLUMN_SEQ_NUM = "10"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_15_NUM"
+      DISPLAY_SIZE = "15"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "FILE_ID"
+      FORM_ABOVE_PROMPT = "FILE_ID"
+      DESCRIPTION = "FILE_ID"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_format_pattern" "ATTRIBUTE2"
+      OWNER = "SCS_MHOKKANJI"
+      LAST_UPDATE_DATE = "2008/07/25 10:25:22"
+      COLUMN_SEQ_NUM = "20"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_S_2_CHAR"
+      DISPLAY_SIZE = "2"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "iv_format_pattern"
+      FORM_ABOVE_PROMPT = "iv_format_pattern"
+      DESCRIPTION = "フォーマットパターン"
+    END DFF_SEGMENT
+    
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXWSH920005C" "XXWSH"
+  OWNER = "SCS_MHOKKANJI"
+  LAST_UPDATE_DATE = "2008/07/25"
+  USER_CONCURRENT_PROGRAM_NAME = "倉庫品目マスタアップロード処理"
+  EXEC = "XXWSH920005C" "XXWSH"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "B"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "倉庫品目マスタアップロード処理"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXWSH" "$SRS$.XXWSH920005C"
+  AUTO_ANNOTATION =
+ "/**\n\
+  * @param iv_file_id FILE_ID\n\
+  * @rep:paraminfo {@rep:type XXCMN_15_NUM} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_format_pattern フォーマットパターン\n\
+  * @rep:paraminfo {@rep:type XXCMN_S_2_CHAR} {@rep:displayed N}\n\
+  */"
+
+  BEGIN INCOMPATABILITY "XXWSH920006C" "XXWSH"
+    OWNER = "SCS_MHOKKANJI"
+    LAST_UPDATE_DATE = "2008/07/25"
+    RUNNING_TYPE = "P"
+    TO_RUN_TYPE = "P"
+    INCOMPATIBILITY_TYPE = "G"
+  END INCOMPATABILITY
+  
+
+END PROGRAM
+
+BEGIN EXECUTABLE "XXWSH920006C" "XXWSH"
+  OWNER = "SCS_MHOKKANJI"
+  LAST_UPDATE_DATE = "2008/07/25"
+  EXECUTION_METHOD_CODE = "I"
+  EXECUTION_FILE_NAME = "XXWSH920006C.MAIN"
+  USER_EXECUTABLE_NAME = "XXWSH920006C"
+  DESCRIPTION = "倉庫品目マスタ取込処理"
+END EXECUTABLE
+
+BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH920006C"
+  OWNER = "SCS_MHOKKANJI"
+  LAST_UPDATE_DATE = "2008/07/25 10:28:54"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXWSH920006C"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "倉庫品目マスタ取込処理"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "SCS_MHOKKANJI"
+    LAST_UPDATE_DATE = "2008/07/25 10:27:00"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXWSH920006C" "XXWSH"
+  OWNER = "SCS_MHOKKANJI"
+  LAST_UPDATE_DATE = "2008/07/25"
+  USER_CONCURRENT_PROGRAM_NAME = "倉庫品目マスタ取込処理"
+  EXEC = "XXWSH920006C" "XXWSH"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "B"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "倉庫品目マスタ取込処理"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXWSH" "$SRS$.XXWSH920006C"
+  AUTO_ANNOTATION = "/**\n\
+  */"
+
+  BEGIN INCOMPATABILITY "XXWSH920005C" "XXWSH"
+    OWNER = "SCS_MHOKKANJI"
+    LAST_UPDATE_DATE = "2008/07/25"
+    RUNNING_TYPE = "P"
+    TO_RUN_TYPE = "P"
+    INCOMPATIBILITY_TYPE = "G"
+  END INCOMPATABILITY
+  
 
 END PROGRAM
 
@@ -1049,7 +1282,7 @@ END VALUE_SET
 
 BEGIN VALUE_SET "XXCMN_PROD_DIV"
   OWNER = "SCS_HMARUSHITA"
-  LAST_UPDATE_DATE = "2008/04/08 18:05:51"
+  LAST_UPDATE_DATE = "2008/04/08 00:00:00"
   VALIDATION_TYPE = "F"
   PROTECTED_FLAG = "N"
   SECURITY_ENABLED_FLAG = "N"
@@ -1064,7 +1297,7 @@ BEGIN VALUE_SET "XXCMN_PROD_DIV"
 
   BEGIN VSET_TABLE
     OWNER = "SCS_HMARUSHITA"
-    LAST_UPDATE_DATE = "2008/04/08 18:05:51"
+    LAST_UPDATE_DATE = "2008/04/08 00:00:00"
     APPLICATION_TABLE_NAME = "xxcmn_categories_v xcv"
     SUMMARY_ALLOWED_FLAG = "N"
     VALUE_COLUMN_NAME = "xcv.segment1"
@@ -1457,9 +1690,9 @@ BEGIN EXECUTABLE "XXWSH620014R" "XXWSH"
   DESCRIPTION = "送り状１２"
 END EXECUTABLE
 
-BEGIN VALUE_SET "XXWSH_BIZ_TYPE_ALL"
-  OWNER = "XX_SETUP_USER01"
-  LAST_UPDATE_DATE = "2008/05/13 00:00:00"
+BEGIN VALUE_SET "XXWSH_BIZ_TYPE_NOSLIP"
+  OWNER = "SCS_MUEHARA"
+  LAST_UPDATE_DATE = "2008/07/16 21:34:36"
   VALIDATION_TYPE = "F"
   PROTECTED_FLAG = "N"
   SECURITY_ENABLED_FLAG = "N"
@@ -1469,19 +1702,17 @@ BEGIN VALUE_SET "XXWSH_BIZ_TYPE_ALL"
   ALPHANUMERIC_ALLOWED_FLAG = "Y"
   UPPERCASE_ONLY_FLAG = "N"
   NUMERIC_MODE_ENABLED_FLAG = "N"
-  DESCRIPTION = "XXWSH：業務種別(全て)"
+  DESCRIPTION = "XXWSH：業務種別(伝票なし)"
 
 
   BEGIN VSET_TABLE
-    OWNER = "XX_SETUP_USER01"
-    LAST_UPDATE_DATE = "2008/05/13 00:00:00"
-    TABLE_APPLICATION_SHORT_NAME = "XXWSH"
+    OWNER = "SCS_MUEHARA"
+    LAST_UPDATE_DATE = "2008/07/16 21:34:36"
     APPLICATION_TABLE_NAME = "XXCMN_LOOKUP_VALUES_V"
     SUMMARY_ALLOWED_FLAG = "N"
     VALUE_COLUMN_NAME = "LOOKUP_CODE"
     VALUE_COLUMN_TYPE = "V"
     VALUE_COLUMN_SIZE = "1"
-    ID_COLUMN_TYPE = "C"
     MEANING_COLUMN_NAME = "MEANING"
     MEANING_COLUMN_TYPE = "V"
     MEANING_COLUMN_SIZE = "20"
@@ -1492,7 +1723,8 @@ BEGIN VALUE_SET "XXWSH_BIZ_TYPE_ALL"
     END_DATE_COLUMN_NAME = "to_date(null)"
     SUMMARY_COLUMN_NAME = "'N'"
     ADDITIONAL_WHERE_CLAUSE =
-   "LOOKUP_TYPE  = 'XXWSH_SHIPPING_BIZ_TYPE'\n\
+   "LOOKUP_TYPE  = 'XXWSH_SHIPPING_BIZ_TYPE_NOSLIP'
+\n\
   ORDER BY LOOKUP_CODE"
   END VSET_TABLE
   
@@ -1593,9 +1825,9 @@ BEGIN VALUE_SET "XXWSH_CARRIERS_CODE1"
 
 END VALUE_SET
 
-BEGIN VALUE_SET "XXWSH_DELIVERY_NO_ALL"
-  OWNER = "XX_SETUP_USER01"
-  LAST_UPDATE_DATE = "2008/05/13 00:00:00"
+BEGIN VALUE_SET "XXWSH_DELIVERY_NO_NOSLIP"
+  OWNER = "SCS_MUEHARA"
+  LAST_UPDATE_DATE = "2008/07/16 21:39:55"
   VALIDATION_TYPE = "F"
   PROTECTED_FLAG = "N"
   SECURITY_ENABLED_FLAG = "N"
@@ -1605,19 +1837,17 @@ BEGIN VALUE_SET "XXWSH_DELIVERY_NO_ALL"
   ALPHANUMERIC_ALLOWED_FLAG = "Y"
   UPPERCASE_ONLY_FLAG = "N"
   NUMERIC_MODE_ENABLED_FLAG = "N"
-  DESCRIPTION = "XXWSH：配送No(全て)"
+  DESCRIPTION = "XXWSH：配送No(伝票なし）"
 
 
   BEGIN VSET_TABLE
-    OWNER = "SCS_TMIYATA"
-    LAST_UPDATE_DATE = "2008/05/28 14:28:34"
-    TABLE_APPLICATION_SHORT_NAME = "XXWSH"
-    APPLICATION_TABLE_NAME = "XXWSH_DELIVERY_NO_ALL_V"
+    OWNER = "SCS_MUEHARA"
+    LAST_UPDATE_DATE = "2008/07/16 21:39:55"
+    APPLICATION_TABLE_NAME = "XXWSH_DELIVERY_NO_NOSLIP_V"
     SUMMARY_ALLOWED_FLAG = "N"
     VALUE_COLUMN_NAME = "DELIVERY_NO"
     VALUE_COLUMN_TYPE = "V"
     VALUE_COLUMN_SIZE = "12"
-    ID_COLUMN_TYPE = "C"
     MEANING_COLUMN_TYPE = "C"
     ENABLED_COLUMN_NAME = "'Y'"
     COMPILED_ATTRIBUTE_COLUMN_NAME = "NULL"
@@ -1626,7 +1856,7 @@ BEGIN VALUE_SET "XXWSH_DELIVERY_NO_ALL"
     END_DATE_COLUMN_NAME = "to_date(null)"
     SUMMARY_COLUMN_NAME = "'N'"
     ADDITIONAL_WHERE_CLAUSE =
-   "WHERE ROW_ID IN (SELECT MIN(XDNAV.ROW_ID) FROM XXWSH_DELIVERY_NO_ALL_V XDNAV GROUP BY XDNAV.DELIVERY_NO) ORDER BY DELIVERY_NO"
+   "ROW_ID IN (SELECT MIN(XDNNV.ROW_ID) FROM XXWSH_DELIVERY_NO_NOSLIP_V XDNNV GROUP BY XDNNV.DELIVERY_NO) ORDER BY DELIVERY_NO"
   END VSET_TABLE
   
 
@@ -1662,14 +1892,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620014R"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
     BEGIN DFF_SEGMENT "iv_gyomu_class" "ATTRIBUTE1"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/16 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:52:32"
       COLUMN_SEQ_NUM = "10"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_NOSLIP"
       DISPLAY_SIZE = "1"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -1792,14 +2022,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620014R"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_delivery_no" "ATTRIBUTE8"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/16 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:52:59"
       COLUMN_SEQ_NUM = "80"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_NOSLIP"
       DISPLAY_SIZE = "12"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -1840,7 +2070,7 @@ BEGIN PROGRAM "XXWSH620014R" "XXWSH"
   AUTO_ANNOTATION =
  "/**\n\
   * @param iv_gyomu_class 業務種別\n\
-  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_ALL} {@rep:displayed Y} {@rep:required}\n\
+  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_NOSLIP} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_shipped_pattern_id 出庫形態\n\
   * @rep:paraminfo {@rep:type XXWSH_ORD_TYPE_SHIP_SHIKYU1} {@rep:displayed Y}\n\
   * @param iv_freight_carrier 運送業者\n\
@@ -1854,7 +2084,7 @@ BEGIN PROGRAM "XXWSH620014R" "XXWSH"
   * @param iv_shipped_date 出庫日\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_delivery_no 配送No\n\
-  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_ALL} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_NOSLIP} {@rep:displayed Y}\n\
   */"
 
 
@@ -1895,14 +2125,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620015R"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
     BEGIN DFF_SEGMENT "iv_gyomu_class" "ATTRIBUTE1"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/16 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:53:33"
       COLUMN_SEQ_NUM = "10"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_NOSLIP"
       DISPLAY_SIZE = "1"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -2025,14 +2255,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620015R"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_delivery_no" "ATTRIBUTE8"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/16 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:54:01"
       COLUMN_SEQ_NUM = "80"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_NOSLIP"
       DISPLAY_SIZE = "12"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -2073,7 +2303,7 @@ BEGIN PROGRAM "XXWSH620015R" "XXWSH"
   AUTO_ANNOTATION =
  "/**\n\
   * @param iv_gyomu_class 業務種別\n\
-  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_ALL} {@rep:displayed Y} {@rep:required}\n\
+  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_NOSLIP} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_shipped_pattern_id 出庫形態\n\
   * @rep:paraminfo {@rep:type XXWSH_ORD_TYPE_SHIP_SHIKYU1} {@rep:displayed Y}\n\
   * @param iv_freight_carrier 運送業者\n\
@@ -2087,7 +2317,7 @@ BEGIN PROGRAM "XXWSH620015R" "XXWSH"
   * @param iv_shipped_date 出庫日\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_delivery_no 配送No\n\
-  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_ALL} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_NOSLIP} {@rep:displayed Y}\n\
   */"
 
 
@@ -2128,14 +2358,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620016R"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
     BEGIN DFF_SEGMENT "iv_gyomu_class" "ATTRIBUTE1"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/16 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:54:42"
       COLUMN_SEQ_NUM = "10"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_NOSLIP"
       DISPLAY_SIZE = "1"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -2258,14 +2488,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620016R"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_delivery_no" "ATTRIBUTE8"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/16 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:55:08"
       COLUMN_SEQ_NUM = "80"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_NOSLIP"
       DISPLAY_SIZE = "12"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -2306,7 +2536,7 @@ BEGIN PROGRAM "XXWSH620016R" "XXWSH"
   AUTO_ANNOTATION =
  "/**\n\
   * @param iv_gyomu_class 業務種別\n\
-  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_ALL} {@rep:displayed Y} {@rep:required}\n\
+  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_NOSLIP} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_shipped_pattern_id 出庫形態\n\
   * @rep:paraminfo {@rep:type XXWSH_ORD_TYPE_SHIP_SHIKYU1} {@rep:displayed Y}\n\
   * @param iv_freight_carrier 運送業者\n\
@@ -2320,7 +2550,7 @@ BEGIN PROGRAM "XXWSH620016R" "XXWSH"
   * @param iv_shipped_date 出庫日\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_delivery_no 配送No\n\
-  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_ALL} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_NOSLIP} {@rep:displayed Y}\n\
   */"
 
 
@@ -2361,14 +2591,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620006R"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
     BEGIN DFF_SEGMENT "iv_gyomu_class" "ATTRIBUTE1"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/16 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:32:04"
       COLUMN_SEQ_NUM = "10"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_NOSLIP"
       DISPLAY_SIZE = "1"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -2491,14 +2721,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620006R"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_delivery_no" "ATTRIBUTE8"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/16 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:32:35"
       COLUMN_SEQ_NUM = "80"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_NOSLIP"
       DISPLAY_SIZE = "12"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -2539,7 +2769,7 @@ BEGIN PROGRAM "XXWSH620006R" "XXWSH"
   AUTO_ANNOTATION =
  "/**\n\
   * @param iv_gyomu_class 業務種別\n\
-  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_ALL} {@rep:displayed Y} {@rep:required}\n\
+  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_NOSLIP} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_shipped_pattern_id 出庫形態\n\
   * @rep:paraminfo {@rep:type XXWSH_ORD_TYPE_SHIP_SHIKYU1} {@rep:displayed Y}\n\
   * @param iv_freight_carrier 運送業者\n\
@@ -2553,7 +2783,7 @@ BEGIN PROGRAM "XXWSH620006R" "XXWSH"
   * @param iv_shipped_date 出庫日\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_delivery_no 配送No\n\
-  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_ALL} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_NOSLIP} {@rep:displayed Y}\n\
   */"
 
 
@@ -2585,7 +2815,7 @@ BEGIN VALUE_SET "XXWSH_DEPT_CODE_RF"
 
   BEGIN VSET_TABLE
     OWNER = "SCS_NAKADA01"
-    LAST_UPDATE_DATE = "2008/07/01 16:53:05"
+    LAST_UPDATE_DATE = "2008/07/01 00:00:00"
     TABLE_APPLICATION_SHORT_NAME = "XXWSH"
     APPLICATION_TABLE_NAME =
    "FND_USER FU, PER_ALL_PEOPLE_F PAPF, PER_ALL_ASSIGNMENTS_F PAAF, XXCMN_LOCATIONS_V XLV"
@@ -2997,14 +3227,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620002C_01"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_gyoumu_shubetsu" "ATTRIBUTE6"
-      OWNER = "SCS_STOMITA"
-      LAST_UPDATE_DATE = "2008/06/04 15:40:02"
+      OWNER = "SCS_MUEHARA"
+      LAST_UPDATE_DATE = "2008/07/16 22:08:54"
       COLUMN_SEQ_NUM = "60"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
+      REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_NOSLIP"
       DISPLAY_SIZE = "1"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -3339,7 +3569,7 @@ BEGIN PROGRAM "XXWSH620002C_01" "XXWSH"
   * @param iv_shukko_haisou_kbn 出庫/配送区分\n\
   * @rep:paraminfo {@rep:type XXWSH_SHIP_DELIV_CLASS} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_gyoumu_shubetsu 業務種別\n\
-  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_ALL} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_NOSLIP} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_notif_date 確定通知実施日\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y}\n\
   * @param iv_notif_time_from 確定通知実施時間From\n\
@@ -3638,14 +3868,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620002C_02"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_gyoumu_shubetsu" "ATTRIBUTE6"
-      OWNER = "SCS_STOMITA"
-      LAST_UPDATE_DATE = "2008/06/04 15:40:28"
+      OWNER = "SCS_MUEHARA"
+      LAST_UPDATE_DATE = "2008/07/16 22:09:48"
       COLUMN_SEQ_NUM = "60"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
+      REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_NOSLIP"
       DISPLAY_SIZE = "1"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -3968,7 +4198,7 @@ BEGIN PROGRAM "XXWSH620002C_02" "XXWSH"
   * @param iv_shukko_haisou_kbn 出庫/配送区分\n\
   * @rep:paraminfo {@rep:type XXWSH_SHIP_DELIV_CLASS} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_gyoumu_shubetsu 業務種別\n\
-  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_ALL} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_NOSLIP} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_notif_date 確定通知実施日\n\
   * @rep:paraminfo {@rep:type FND_STANDARD_DATE} {@rep:displayed N}\n\
   * @param iv_notif_time_from 確定通知実施時間From\n\
@@ -4014,6 +4244,52 @@ BEGIN EXECUTABLE "XXWSH620004C" "XXWSH"
   USER_EXECUTABLE_NAME = "XXWSH620004C"
   DESCRIPTION = "倉庫払出指示書"
 END EXECUTABLE
+
+BEGIN VALUE_SET "XXWSH_BIZ_TYPE_ALL"
+  OWNER = "XX_SETUP_USER01"
+  LAST_UPDATE_DATE = "2008/05/13 00:00:00"
+  VALIDATION_TYPE = "F"
+  PROTECTED_FLAG = "N"
+  SECURITY_ENABLED_FLAG = "N"
+  LONGLIST_FLAG = "N"
+  FORMAT_TYPE = "C"
+  MAXIMUM_SIZE = "1"
+  ALPHANUMERIC_ALLOWED_FLAG = "Y"
+  UPPERCASE_ONLY_FLAG = "N"
+  NUMERIC_MODE_ENABLED_FLAG = "N"
+  DESCRIPTION = "XXWSH：業務種別(全て)"
+
+
+  BEGIN VSET_TABLE
+    OWNER = "XX_SETUP_USER01"
+    LAST_UPDATE_DATE = "2008/05/13 00:00:00"
+    TABLE_APPLICATION_SHORT_NAME = "XXWSH"
+    APPLICATION_TABLE_NAME = "XXCMN_LOOKUP_VALUES_V"
+    SUMMARY_ALLOWED_FLAG = "N"
+    VALUE_COLUMN_NAME = "LOOKUP_CODE"
+    VALUE_COLUMN_TYPE = "V"
+    VALUE_COLUMN_SIZE = "1"
+    ID_COLUMN_TYPE = "C"
+    MEANING_COLUMN_NAME = "MEANING"
+    MEANING_COLUMN_TYPE = "V"
+    MEANING_COLUMN_SIZE = "20"
+    ENABLED_COLUMN_NAME = "'Y'"
+    COMPILED_ATTRIBUTE_COLUMN_NAME = "NULL"
+    HIERARCHY_LEVEL_COLUMN_NAME = "NULL"
+    START_DATE_COLUMN_NAME = "to_date(null)"
+    END_DATE_COLUMN_NAME = "to_date(null)"
+    SUMMARY_COLUMN_NAME = "'N'"
+    ADDITIONAL_WHERE_CLAUSE =
+   "LOOKUP_TYPE  = 'XXWSH_SHIPPING_BIZ_TYPE'\n\
+  ORDER BY LOOKUP_CODE"
+  END VSET_TABLE
+  
+
+
+
+
+
+END VALUE_SET
 
 BEGIN VALUE_SET "XXWSH_DELIVER_TO_ALL_RF"
   OWNER = "XX_SETUP_USER01"
@@ -4061,8 +4337,8 @@ BEGIN VALUE_SET "XXWSH_DELIVER_TO_ALL_RF"
 END VALUE_SET
 
 BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620004C"
-  OWNER = "XX_SETUP_USER01"
-  LAST_UPDATE_DATE = "2008/05/16 00:00:00"
+  OWNER = "SCS_NAKADA01"
+  LAST_UPDATE_DATE = "2008/07/25 13:30:28"
   TABLE_APPLICATION_SHORT_NAME = "FND"
   APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
   CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
@@ -4230,8 +4506,8 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620004C"
 END DESC_FLEX
 
 BEGIN PROGRAM "XXWSH620004C" "XXWSH"
-  OWNER = "XX_SETUP_USER01"
-  LAST_UPDATE_DATE = "2008/05/16"
+  OWNER = "SCS_NAKADA01"
+  LAST_UPDATE_DATE = "2008/07/25"
   USER_CONCURRENT_PROGRAM_NAME = "倉庫払出指示書"
   EXEC = "XXWSH620004C" "XXWSH"
   EXECUTION_METHOD_CODE = "I"
@@ -4551,8 +4827,8 @@ BEGIN VALUE_SET "XXWSH_ITEM_NO"
 END VALUE_SET
 
 BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620001C"
-  OWNER = "XX_SETUP_USER01"
-  LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+  OWNER = "SCS_NAKADA01"
+  LAST_UPDATE_DATE = "2008/07/25 13:30:11"
   TABLE_APPLICATION_SHORT_NAME = "FND"
   APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
   CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
@@ -4760,8 +5036,8 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620001C"
 END DESC_FLEX
 
 BEGIN PROGRAM "XXWSH620001C" "XXWSH"
-  OWNER = "XX_SETUP_USER01"
-  LAST_UPDATE_DATE = "2008/05/12"
+  OWNER = "SCS_NAKADA01"
+  LAST_UPDATE_DATE = "2008/07/25"
   USER_CONCURRENT_PROGRAM_NAME = "在庫不足確認リスト"
   EXEC = "XXWSH620001C" "XXWSH"
   EXECUTION_METHOD_CODE = "I"
@@ -5161,14 +5437,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620007R"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
     BEGIN DFF_SEGMENT "iv_gyomu_class" "ATTRIBUTE1"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/16 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:33:16"
       COLUMN_SEQ_NUM = "10"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_NOSLIP"
       DISPLAY_SIZE = "1"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -5291,14 +5567,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620007R"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_delivery_no" "ATTRIBUTE8"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/16 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:33:42"
       COLUMN_SEQ_NUM = "80"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_NOSLIP"
       DISPLAY_SIZE = "12"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -5339,7 +5615,7 @@ BEGIN PROGRAM "XXWSH620007R" "XXWSH"
   AUTO_ANNOTATION =
  "/**\n\
   * @param iv_gyomu_class 業務種別\n\
-  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_ALL} {@rep:displayed Y} {@rep:required}\n\
+  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_NOSLIP} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_shipped_pattern_id 出庫形態\n\
   * @rep:paraminfo {@rep:type XXWSH_ORD_TYPE_SHIP_SHIKYU1} {@rep:displayed Y}\n\
   * @param iv_freight_carrier 運送業者\n\
@@ -5353,7 +5629,7 @@ BEGIN PROGRAM "XXWSH620007R" "XXWSH"
   * @param iv_shipped_date 出庫日\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_delivery_no 配送No\n\
-  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_ALL} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_NOSLIP} {@rep:displayed Y}\n\
   */"
 
 
@@ -5712,14 +5988,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620004R"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
     BEGIN DFF_SEGMENT "iv_gyomu_class" "ATTRIBUTE1"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:29:53"
       COLUMN_SEQ_NUM = "10"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_NOSLIP"
       DISPLAY_SIZE = "1"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -5842,14 +6118,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620004R"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_delivery_no" "ATTRIBUTE8"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:30:16"
       COLUMN_SEQ_NUM = "80"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_NOSLIP"
       DISPLAY_SIZE = "12"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -5890,7 +6166,7 @@ BEGIN PROGRAM "XXWSH620004R" "XXWSH"
   AUTO_ANNOTATION =
  "/**\n\
   * @param iv_gyomu_class 業務種別\n\
-  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_ALL} {@rep:displayed Y} {@rep:required}\n\
+  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_NOSLIP} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_shipped_patterm_id 出庫形態\n\
   * @rep:paraminfo {@rep:type XXWSH_ORD_TYPE_SHIP_SHIKYU1} {@rep:displayed Y}\n\
   * @param iv_freight_carrier 運送業者\n\
@@ -5904,7 +6180,7 @@ BEGIN PROGRAM "XXWSH620004R" "XXWSH"
   * @param iv_shipped_date 出庫日\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_delivery_no 配送No\n\
-  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_ALL} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_NOSLIP} {@rep:displayed Y}\n\
   */"
 
 
@@ -6012,14 +6288,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620011R"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
     BEGIN DFF_SEGMENT "iv_gyomu_class" "ATTRIBUTE1"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:48:57"
       COLUMN_SEQ_NUM = "10"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_NOSLIP"
       DISPLAY_SIZE = "1"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -6142,14 +6418,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620011R"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_delivery_no" "ATTRIBUTE8"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:49:20"
       COLUMN_SEQ_NUM = "80"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_NOSLIP"
       DISPLAY_SIZE = "12"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -6190,7 +6466,7 @@ BEGIN PROGRAM "XXWSH620011R" "XXWSH"
   AUTO_ANNOTATION =
  "/**\n\
   * @param iv_gyomu_class 業務種別\n\
-  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_ALL} {@rep:displayed Y} {@rep:required}\n\
+  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_NOSLIP} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_shipped_pattern_id 出庫形態\n\
   * @rep:paraminfo {@rep:type XXWSH_ORD_TYPE_SHIP_SHIKYU1} {@rep:displayed Y}\n\
   * @param iv_freight_carrier 運送業者\n\
@@ -6204,7 +6480,7 @@ BEGIN PROGRAM "XXWSH620011R" "XXWSH"
   * @param iv_shipped_date 出庫日\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_delivery_no 配送No\n\
-  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_ALL} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_NOSLIP} {@rep:displayed Y}\n\
   */"
 
 
@@ -6973,14 +7249,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620003R"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
     BEGIN DFF_SEGMENT "iv_gyomu_class" "ATTRIBUTE1"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:28:27"
       COLUMN_SEQ_NUM = "10"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_NOSLIP"
       DISPLAY_SIZE = "1"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -7103,14 +7379,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620003R"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_delivery_no" "ATTRIBUTE8"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:29:12"
       COLUMN_SEQ_NUM = "80"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_NOSLIP"
       DISPLAY_SIZE = "12"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -7151,7 +7427,7 @@ BEGIN PROGRAM "XXWSH620003R" "XXWSH"
   AUTO_ANNOTATION =
  "/**\n\
   * @param iv_gyomu_class 業務種別\n\
-  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_ALL} {@rep:displayed Y} {@rep:required}\n\
+  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_NOSLIP} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_shipped_pattern_id 出庫形態\n\
   * @rep:paraminfo {@rep:type XXWSH_ORD_TYPE_SHIP_SHIKYU1} {@rep:displayed Y}\n\
   * @param iv_freight_carrier 運送業者\n\
@@ -7165,7 +7441,7 @@ BEGIN PROGRAM "XXWSH620003R" "XXWSH"
   * @param iv_shipped_date 出庫日\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_delivery_no 配送No\n\
-  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_ALL} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_NOSLIP} {@rep:displayed Y}\n\
   */"
 
 
@@ -7206,14 +7482,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620012R"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
     BEGIN DFF_SEGMENT "iv_gyomu_class" "ATTRIBUTE1"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:50:42"
       COLUMN_SEQ_NUM = "10"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_NOSLIP"
       DISPLAY_SIZE = "1"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -7336,14 +7612,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620012R"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_delivery_no" "ATTRIBUTE8"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:51:05"
       COLUMN_SEQ_NUM = "80"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_NOSLIP"
       DISPLAY_SIZE = "12"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -7384,7 +7660,7 @@ BEGIN PROGRAM "XXWSH620012R" "XXWSH"
   AUTO_ANNOTATION =
  "/**\n\
   * @param iv_gyomu_class 業務種別\n\
-  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_ALL} {@rep:displayed Y} {@rep:required}\n\
+  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_NOSLIP} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_shipped_pattern_id 出庫形態\n\
   * @rep:paraminfo {@rep:type XXWSH_ORD_TYPE_SHIP_SHIKYU1} {@rep:displayed Y}\n\
   * @param iv_freight_carrier 運送業者\n\
@@ -7398,7 +7674,7 @@ BEGIN PROGRAM "XXWSH620012R" "XXWSH"
   * @param iv_shipped_date 出庫日\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_delivery_no 配送No\n\
-  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_ALL} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_NOSLIP} {@rep:displayed Y}\n\
   */"
 
 
@@ -7439,14 +7715,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620013R"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
     BEGIN DFF_SEGMENT "iv_gyomu_class" "ATTRIBUTE1"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:51:38"
       COLUMN_SEQ_NUM = "10"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_NOSLIP"
       DISPLAY_SIZE = "1"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -7569,14 +7845,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620013R"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_delivery_no" "ATTRIBUTE8"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:52:02"
       COLUMN_SEQ_NUM = "80"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_NOSLIP"
       DISPLAY_SIZE = "12"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -7617,7 +7893,7 @@ BEGIN PROGRAM "XXWSH620013R" "XXWSH"
   AUTO_ANNOTATION =
  "/**\n\
   * @param iv_gyomu_class 業務種別\n\
-  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_ALL} {@rep:displayed Y} {@rep:required}\n\
+  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_NOSLIP} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_shipped_pattern_id 出庫形態\n\
   * @rep:paraminfo {@rep:type XXWSH_ORD_TYPE_SHIP_SHIKYU1} {@rep:displayed Y}\n\
   * @param iv_freight_carrier 運送業者\n\
@@ -7631,7 +7907,7 @@ BEGIN PROGRAM "XXWSH620013R" "XXWSH"
   * @param iv_shipped_date 出庫日\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_delivery_no 配送No\n\
-  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_ALL} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_NOSLIP} {@rep:displayed Y}\n\
   */"
 
 
@@ -8922,7 +9198,7 @@ END VALUE_SET
 
 BEGIN VALUE_SET "XXCMN_YES_NO"
   OWNER = "SCS_HMARUSHITA"
-  LAST_UPDATE_DATE = "2008/05/01 21:01:07"
+  LAST_UPDATE_DATE = "2008/05/01 00:00:00"
   VALIDATION_TYPE = "I"
   PROTECTED_FLAG = "N"
   SECURITY_ENABLED_FLAG = "N"
@@ -8942,7 +9218,7 @@ BEGIN VALUE_SET "XXCMN_YES_NO"
 
   BEGIN VSET_VALUE "" "N"
     OWNER = "SCS_HMARUSHITA"
-    LAST_UPDATE_DATE = "2008/05/01 21:01:52"
+    LAST_UPDATE_DATE = "2008/05/01 00:00:00"
     ENABLED_FLAG = "Y"
     SUMMARY_FLAG = "N"
     START_DATE_ACTIVE = "1900/01/01 00:00:00"
@@ -8953,7 +9229,7 @@ BEGIN VALUE_SET "XXCMN_YES_NO"
   
   BEGIN VSET_VALUE "" "Y"
     OWNER = "SCS_HMARUSHITA"
-    LAST_UPDATE_DATE = "2008/05/01 21:01:52"
+    LAST_UPDATE_DATE = "2008/05/01 00:00:00"
     ENABLED_FLAG = "Y"
     SUMMARY_FLAG = "N"
     START_DATE_ACTIVE = "1900/01/01 00:00:00"
@@ -8966,7 +9242,7 @@ END VALUE_SET
 
 BEGIN VALUE_SET "XXWSH_REQ_NO_SHIP_ONLY_02"
   OWNER = "SCS_MUEHARA"
-  LAST_UPDATE_DATE = "2008/05/27 19:21:35"
+  LAST_UPDATE_DATE = "2008/05/27 00:00:00"
   VALIDATION_TYPE = "F"
   PROTECTED_FLAG = "N"
   SECURITY_ENABLED_FLAG = "N"
@@ -8981,7 +9257,7 @@ BEGIN VALUE_SET "XXWSH_REQ_NO_SHIP_ONLY_02"
 
   BEGIN VSET_TABLE
     OWNER = "SCS_MUEHARA"
-    LAST_UPDATE_DATE = "2008/05/27 19:27:39"
+    LAST_UPDATE_DATE = "2008/05/27 00:00:00"
     TABLE_APPLICATION_SHORT_NAME = "XXWSH"
     APPLICATION_TABLE_NAME =
    "XXWSH_ORDER_HEADERS_ALL XOHA, XXWSH_OE_TRANSACTION_TYPES_V XOTTV"
@@ -9053,7 +9329,7 @@ END VALUE_SET
 
 BEGIN VALUE_SET "XXWSH_15_NUM"
   OWNER = "XX_SETUP_USER01"
-  LAST_UPDATE_DATE = "2008/05/13 13:52:09"
+  LAST_UPDATE_DATE = "2008/05/13 00:00:00"
   VALIDATION_TYPE = "N"
   PROTECTED_FLAG = "N"
   SECURITY_ENABLED_FLAG = "N"
@@ -11450,12 +11726,12 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH400001C"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_base" "ATTRIBUTE2"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+      OWNER = "SCS_HMARUSHITA"
+      LAST_UPDATE_DATE = "2008/07/30 17:42:47"
       COLUMN_SEQ_NUM = "20"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
+      REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
       FLEX_VALUE_SET_NAME = "XXWSH_HEAD_SALES_BRANCH1"
       DISPLAY_SIZE = "4"
@@ -11498,7 +11774,7 @@ BEGIN PROGRAM "XXWSH400001C" "XXWSH"
   * @param iv_yyyymm 対象年月\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMM} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_base 管轄拠点\n\
-  * @rep:paraminfo {@rep:type XXWSH_HEAD_SALES_BRANCH1} {@rep:displayed Y} {@rep:required}\n\
+  * @rep:paraminfo {@rep:type XXWSH_HEAD_SALES_BRANCH1} {@rep:displayed Y}\n\
   */"
 
   BEGIN INCOMPATABILITY "XXINV100001C_01" "XXINV"
@@ -11547,14 +11823,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620008R"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
     BEGIN DFF_SEGMENT "iv_gyomu_class" "ATTRIBUTE1"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:35:48"
       COLUMN_SEQ_NUM = "10"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_NOSLIP"
       DISPLAY_SIZE = "1"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -11677,14 +11953,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620008R"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_delivery_no" "ATTRIBUTE8"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:36:14"
       COLUMN_SEQ_NUM = "80"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_NOSLIP"
       DISPLAY_SIZE = "12"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -11725,7 +12001,7 @@ BEGIN PROGRAM "XXWSH620008R" "XXWSH"
   AUTO_ANNOTATION =
  "/**\n\
   * @param iv_gyomu_class 業務種別\n\
-  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_ALL} {@rep:displayed Y} {@rep:required}\n\
+  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_NOSLIP} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_shipped_pattern_id 出庫形態\n\
   * @rep:paraminfo {@rep:type XXWSH_ORD_TYPE_SHIP_SHIKYU1} {@rep:displayed Y}\n\
   * @param iv_freight_carrier 運送業者\n\
@@ -11739,7 +12015,7 @@ BEGIN PROGRAM "XXWSH620008R" "XXWSH"
   * @param iv_shipped_date 出庫日\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_delivery_no 配送No\n\
-  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_ALL} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_NOSLIP} {@rep:displayed Y}\n\
   */"
 
 
@@ -11780,14 +12056,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620005R"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
     BEGIN DFF_SEGMENT "iv_gyomu_class" "ATTRIBUTE1"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:30:56"
       COLUMN_SEQ_NUM = "10"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_NOSLIP"
       DISPLAY_SIZE = "1"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -11910,14 +12186,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620005R"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_delivery_no" "ATTRIBUTE8"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:31:19"
       COLUMN_SEQ_NUM = "80"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_NOSLIP"
       DISPLAY_SIZE = "12"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -11958,7 +12234,7 @@ BEGIN PROGRAM "XXWSH620005R" "XXWSH"
   AUTO_ANNOTATION =
  "/**\n\
   * @param iv_gyomu_class 業務種別\n\
-  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_ALL} {@rep:displayed Y} {@rep:required}\n\
+  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_NOSLIP} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_shipped_pattern_id 出庫形態\n\
   * @rep:paraminfo {@rep:type XXWSH_ORD_TYPE_SHIP_SHIKYU1} {@rep:displayed Y}\n\
   * @param iv_freight_carrier 運送業者\n\
@@ -11972,7 +12248,7 @@ BEGIN PROGRAM "XXWSH620005R" "XXWSH"
   * @param iv_shipped_date 出庫日\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_delivery_no 配送No\n\
-  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_ALL} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_NOSLIP} {@rep:displayed Y}\n\
   */"
 
 
@@ -13531,8 +13807,8 @@ BEGIN VALUE_SET "XXWSH_LG_CONFIRM_REQ_CLASS"
 END VALUE_SET
 
 BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH400009C"
-  OWNER = "SCS_SHINDOU"
-  LAST_UPDATE_DATE = "2008/07/01 19:57:06"
+  OWNER = "SCS_NAKADA01"
+  LAST_UPDATE_DATE = "2008/07/25 14:34:23"
   TABLE_APPLICATION_SHORT_NAME = "FND"
   APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
   CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
@@ -13771,8 +14047,8 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH400009C"
 END DESC_FLEX
 
 BEGIN PROGRAM "XXWSH400009C" "XXWSH"
-  OWNER = "SCS_SHINDOU"
-  LAST_UPDATE_DATE = "2008/07/01"
+  OWNER = "SCS_NAKADA01"
+  LAST_UPDATE_DATE = "2008/07/25"
   USER_CONCURRENT_PROGRAM_NAME = "出荷依頼確認表"
   EXEC = "XXWSH400009C" "XXWSH"
   EXECUTION_METHOD_CODE = "I"
@@ -14141,7 +14417,7 @@ END PROGRAM
 
 BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH400009C_02"
   OWNER = "SCS_NAKADA01"
-  LAST_UPDATE_DATE = "2008/07/01 21:37:16"
+  LAST_UPDATE_DATE = "2008/07/25 14:34:14"
   TABLE_APPLICATION_SHORT_NAME = "FND"
   APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
   CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
@@ -14400,7 +14676,7 @@ END DESC_FLEX
 
 BEGIN PROGRAM "XXWSH400009C_02" "XXWSH"
   OWNER = "SCS_NAKADA01"
-  LAST_UPDATE_DATE = "2008/07/01"
+  LAST_UPDATE_DATE = "2008/07/25"
   USER_CONCURRENT_PROGRAM_NAME = "出荷依頼確認表（ドリンク）"
   EXEC = "XXWSH400009C" "XXWSH"
   EXECUTION_METHOD_CODE = "I"
@@ -15235,14 +15511,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620009R"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
     BEGIN DFF_SEGMENT "iv_gyomu_class" "ATTRIBUTE1"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:36:48"
       COLUMN_SEQ_NUM = "10"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_NOSLIP"
       DISPLAY_SIZE = "1"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -15365,14 +15641,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620009R"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_delivery_no" "ATTRIBUTE8"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:37:16"
       COLUMN_SEQ_NUM = "80"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_NOSLIP"
       DISPLAY_SIZE = "12"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -15412,7 +15688,7 @@ BEGIN PROGRAM "XXWSH620009R" "XXWSH"
   AUTO_ANNOTATION =
  "/**\n\
   * @param iv_gyomu_class 業務種別\n\
-  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_ALL} {@rep:displayed Y} {@rep:required}\n\
+  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_NOSLIP} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_shipped_pattern_id 出庫形態\n\
   * @rep:paraminfo {@rep:type XXWSH_ORD_TYPE_SHIP_SHIKYU1} {@rep:displayed Y}\n\
   * @param iv_freight_carrier 運送業者\n\
@@ -15426,7 +15702,7 @@ BEGIN PROGRAM "XXWSH620009R" "XXWSH"
   * @param iv_shipped_date 出庫日\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_delivery_no 配送No\n\
-  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_ALL} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_NOSLIP} {@rep:displayed Y}\n\
   */"
 
 
@@ -15467,14 +15743,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620010R"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
     BEGIN DFF_SEGMENT "iv_gyomu_class" "ATTRIBUTE1"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:40:44"
       COLUMN_SEQ_NUM = "10"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_NOSLIP"
       DISPLAY_SIZE = "1"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -15597,14 +15873,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620010R"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_delivery_no" "ATTRIBUTE8"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/05/12 00:00:00"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:41:32"
       COLUMN_SEQ_NUM = "80"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_NOSLIP"
       DISPLAY_SIZE = "12"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -15645,7 +15921,7 @@ BEGIN PROGRAM "XXWSH620010R" "XXWSH"
   AUTO_ANNOTATION =
  "/**\n\
   * @param iv_gyomu_class 業務種別\n\
-  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_ALL} {@rep:displayed Y} {@rep:required}\n\
+  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_NOSLIP} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_shipped_pattern_id 出庫形態\n\
   * @rep:paraminfo {@rep:type XXWSH_ORD_TYPE_SHIP_SHIKYU1} {@rep:displayed Y}\n\
   * @param iv_freight_carrier 運送業者\n\
@@ -15659,7 +15935,7 @@ BEGIN PROGRAM "XXWSH620010R" "XXWSH"
   * @param iv_shipped_date 出庫日\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_delivery_no 配送No\n\
-  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_ALL} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_NOSLIP} {@rep:displayed Y}\n\
   */"
 
 
@@ -17141,14 +17417,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620001R"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
     BEGIN DFF_SEGMENT "iv_biz_type" "ATTRIBUTE1"
-      OWNER = "SCS_STOMITA"
-      LAST_UPDATE_DATE = "2008/05/19 19:24:13"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:55:47"
       COLUMN_SEQ_NUM = "10"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_BIZ_TYPE_NOSLIP"
       DISPLAY_SIZE = "1"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -17253,14 +17529,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620001R"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_delivery_no" "ATTRIBUTE7"
-      OWNER = "SCS_STOMITA"
-      LAST_UPDATE_DATE = "2008/05/19 19:24:13"
+      OWNER = "SCS_FUKADA"
+      LAST_UPDATE_DATE = "2008/07/28 15:56:18"
       COLUMN_SEQ_NUM = "70"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_ALL"
+      FLEX_VALUE_SET_NAME = "XXWSH_DELIVERY_NO_NOSLIP"
       DISPLAY_SIZE = "12"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -17337,7 +17613,7 @@ BEGIN PROGRAM "XXWSH620001R" "XXWSH"
   AUTO_ANNOTATION =
  "/**\n\
   * @param iv_biz_type 業務種別\n\
-  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_ALL} {@rep:displayed Y} {@rep:required}\n\
+  * @rep:paraminfo {@rep:type XXWSH_BIZ_TYPE_NOSLIP} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_order_type_id 出庫形態\n\
   * @rep:paraminfo {@rep:type XXWSH_ORD_TYPE_SHIP_SHIKYU1} {@rep:displayed Y}\n\
   * @param iv_deliver_from 出庫元\n\
@@ -17349,7 +17625,7 @@ BEGIN PROGRAM "XXWSH620001R" "XXWSH"
   * @param iv_prod_class 商品区分\n\
   * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_delivery_no 配送No\n\
-  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_ALL} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXWSH_DELIVERY_NO_NOSLIP} {@rep:displayed Y}\n\
   * @param iv_deliver_to 配送先/入庫先\n\
   * @rep:paraminfo {@rep:type XXWSH_DELIVER_TO_ALL_RF} {@rep:displayed Y}\n\
   * @param iv_block ブロック\n\
@@ -18136,7 +18412,6 @@ BEGIN PROGRAM "XXWSH600002C" "XXWSH"
   */"
 
 
-
 END PROGRAM
 
 BEGIN EXECUTABLE "XXWSH930001C" "XXWSH"
@@ -18783,8 +19058,8 @@ BEGIN VALUE_SET "XXWSH_WARNING_CLASS"
 END VALUE_SET
 
 BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620006C"
-  OWNER = "XX_SETUP_USER01"
-  LAST_UPDATE_DATE = "2008/04/26 00:00:00"
+  OWNER = "SCS_NAKADA01"
+  LAST_UPDATE_DATE = "2008/07/25 13:30:47"
   TABLE_APPLICATION_SHORT_NAME = "FND"
   APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
   CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
@@ -19003,8 +19278,8 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH620006C"
 END DESC_FLEX
 
 BEGIN PROGRAM "XXWSH620006C" "XXWSH"
-  OWNER = "XX_SETUP_USER01"
-  LAST_UPDATE_DATE = "2008/04/26"
+  OWNER = "SCS_NAKADA01"
+  LAST_UPDATE_DATE = "2008/07/25"
   USER_CONCURRENT_PROGRAM_NAME = "出庫調整表"
   EXEC = "XXWSH620006C" "XXWSH"
   EXECUTION_METHOD_CODE = "I"

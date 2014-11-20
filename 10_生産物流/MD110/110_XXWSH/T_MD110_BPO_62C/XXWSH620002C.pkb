@@ -7,7 +7,7 @@ AS
  * Description      : 出庫配送依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 出庫配送依頼表 T_MD070_BPO_62C
- * Version          : 1.8
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,12 @@ AS
  *  2008/07/04    1.6   Naoki Fukuda     ST不具合対応#394
  *  2008/07/04    1.7   Naoki Fukuda     ST不具合対応#409
  *  2008/07/07    1.8   Naoki Fukuda     ST不具合対応#337
+ *  2008/07/09    1.9   Satoshi Takemoto 変更要求対応#92,#98
+ *  2008/07/17    1.10  Kazuo Kumamoto   結合テスト障害対応
+ *                                       1.10.1 パラメータ.品目区分未指定時の品目区分名を空欄とする。
+ *                                       1.10.2 支給の配送先等の情報取得先を変更。
+ *                                       1.10.3 配送先が混載している場合は全ての配送先を出力する。
+ *  2008/07/17    1.11  Satoshi Takemoto 結合テスト不具合対応(変更要求対応#92,#98)
  *
  *****************************************************************************************/
 --
@@ -141,9 +147,15 @@ AS
   gc_biz_type_cd_ship         CONSTANT  VARCHAR2(1)   := '1' ;              -- 出荷
   gc_biz_type_cd_shikyu       CONSTANT  VARCHAR2(1)   := '2' ;              -- 支給
   gc_biz_type_cd_move         CONSTANT  VARCHAR2(1)   := '3' ;              -- 移動
+-- 2008/07/09 add S.Takemoto start
+  gc_biz_type_cd_etc          CONSTANT  VARCHAR2(1)   := '4' ;              -- その他
+-- 2008/07/09 add S.Takemoto end
   gc_biz_type_nm_ship         CONSTANT  VARCHAR2(4)   := '出荷' ;           -- 出荷
   gc_biz_type_nm_shik         CONSTANT  VARCHAR2(4)   := '支給' ;           -- 支給
   gc_biz_type_nm_move         CONSTANT  VARCHAR2(4)   := '移動' ;           -- 移動
+-- 2008/07/09 add S.Takemoto start
+  gc_biz_type_nm_etc          CONSTANT  VARCHAR2(6)   := 'その他' ;              -- その他
+-- 2008/07/09 add S.Takemoto end
   -- 最新フラグ
   gc_latest_external_flag     CONSTANT  VARCHAR2(1)   := 'Y' ;
   -- 削除・取消フラグ
@@ -154,6 +166,15 @@ AS
   -- 締め実施時間
   gc_shime_time_from_def      CONSTANT  VARCHAR2(5)   := '00:00' ;
   gc_shime_time_to_def        CONSTANT  VARCHAR2(5)   := '23:59' ;
+-- 2008/07/09 add S.Takemoto start
+  gc_non_slip_class_2         CONSTANT  VARCHAR2(1)   := '2' ;              -- 2:伝票なし配車
+  gc_deliver_to_class_1       CONSTANT  VARCHAR2(1)   := '1' ;              -- 1:拠点
+  gc_deliver_to_class_4       CONSTANT  VARCHAR2(1)   := '4' ;              -- 4:移動
+  gc_deliver_to_class_10      CONSTANT  VARCHAR2(2)   := '10' ;             -- 10:顧客
+  gc_deliver_to_class_11      CONSTANT  VARCHAR2(2)   := '11' ;             -- 11:支給先
+  gc_freight_charge_code_1    CONSTANT  VARCHAR2(1)   := '1' ;              -- 1:対象
+  gc_output_code_1            CONSTANT  VARCHAR2(1)   := '1' ;              -- 1:対象
+-- 2008/07/09 add S.Takemoto end
   ------------------------------
   -- プロファイル関連
   ------------------------------
@@ -250,7 +271,10 @@ AS
   -- 出力データ格納用レコード
   TYPE rec_report_data IS RECORD
   (
-     gyoumu_shubetsu            VARCHAR2(4)                           -- 業務種別
+-- 2008/07/09 mod S.Takemoto start
+--     gyoumu_shubetsu            VARCHAR2(4)                           -- 業務種別
+     gyoumu_shubetsu            VARCHAR2(6)                           -- 業務種別
+-- 2008/07/09 mod S.Takemoto end
     ,gyoumu_shubetsu_code       VARCHAR2(1)                           -- 業務種別コード
     ,freight_carrier_code       xoha.freight_carrier_code%TYPE        -- 運送業者
     ,carrier_full_name          xc2v.party_name%TYPE                  -- 運送業者(名称)
@@ -658,6 +682,12 @@ AS
     lv_sql_ido_sel_from2  VARCHAR2(32767);
     lv_sql_ido_where1     VARCHAR2(32767);
     lv_sql_ido_where2     VARCHAR2(32767);
+-- 2008/07/09 add S.Takemoto start
+    lv_sql_etc_sel_from1  VARCHAR2(32767);
+    lv_sql_etc_sel_from2  VARCHAR2(32767);
+    lv_sql_etc_where1     VARCHAR2(32767);
+    lv_sql_etc_where2     VARCHAR2(32767);
+-- 2008/07/09 add S.Takemoto end
     lv_sql_tail           VARCHAR2(32767);
 --add start 1.2
     lb_union              BOOLEAN := FALSE;
@@ -1142,7 +1172,14 @@ AS
     || ' AND' 
     || ' papf.attribute5 IS NOT NULL ' 
     || ' AND' 
-    || ' xoha.freight_carrier_code = papf.attribute5 ' 
+    || ' xoha.freight_carrier_code = papf.attribute5 '
+-- 2008/07/09 add S.Takemoto start
+    -- 従業員区分が'外部'で、｢運賃区分＝対象｣または｢強制出力フラグ＝対象｣の場合、出力対象外
+    || ' AND' 
+    || ' xoha.freight_charge_class =''' || gc_freight_charge_code_1 || ''''       -- 運賃区分
+    || ' AND' 
+    || ' xc2v.complusion_output_code =''' || gc_freight_charge_code_1|| ''''      -- 強制出力区分
+-- 2008/07/09 add S.Takemoto end
     || ' )' 
     || ' )' 
     || ' )' 
@@ -1181,9 +1218,15 @@ AS
     || ' ,xoha.delivery_no AS delivery_no ' 
     || ' ,xoha.shipping_method_code AS shipping_method_code ' 
     || ' ,xsm2v.ship_method_meaning AS ship_method_meaning ' 
-    || ' ,xoha.head_sales_branch AS head_sales_branch ' 
+--mod start 1.10.2
+--    || ' ,xoha.head_sales_branch AS head_sales_branch ' 
+    || ' ,xoha.vendor_code AS head_sales_branch ' 
+--mod end 1.10.2
     || ' ,xv2v.vendor_full_name AS party_name ' 
-    || ' ,xoha.deliver_to AS deliver_to ' 
+--mod start 1.10.2
+--    || ' ,xoha.deliver_to AS deliver_to ' 
+    || ' ,xoha.vendor_site_code AS deliver_to ' 
+--mod end 1.10.2
     || ' ,xvs2v.vendor_site_name AS party_site_full_name ' 
     || ' ,xvs2v.address_line1 AS address_line1 ' 
     || ' ,xvs2v.address_line2 AS address_line2 ' 
@@ -1239,7 +1282,7 @@ AS
     || ' OR ( xola.reserved_quantity = 0 ) ) THEN ' 
     || ' xola.quantity ' 
     || ' END AS qty ' 
-    || ' ,xim2v.item_um AS conv_unit ' 
+    || ' ,xim2v.item_um AS conv_unit '
     || ' FROM' 
     || ' xxwsh_carriers_schedule xcs '            -- 配車配送計画(アドオン)
     || ' ,xxwsh_order_headers_all xoha '          -- 受注ヘッダアドオン
@@ -1291,8 +1334,16 @@ AS
       || ' AND TO_CHAR(xoha.notif_date, '''|| gc_date_fmt_hh24mi ||''') <= '''
       || gt_param.iv_notif_time_to ||'''' ;
     END IF ;
+-- 2008/07/09 mod S.Takemoto start
+--    lv_sql_sik_where1 :=  lv_sql_sik_where1
+--    || ' AND xoha.instruction_dept = '''|| gt_param.iv_dept ||'''' 
+    IF ( gt_param.iv_dept IS NOT NULL ) THEN
+      lv_sql_sik_where1 :=  lv_sql_sik_where1
+      || ' AND xoha.instruction_dept = '''|| gt_param.iv_dept ||'''' ;
+    END IF;
+--
     lv_sql_sik_where1 :=  lv_sql_sik_where1
-    || ' AND xoha.instruction_dept = '''|| gt_param.iv_dept ||'''' 
+-- 2008/07/09 mod S.Takemoto end
     || ' AND (' 
     || ' (' 
     || ' '''|| gt_param.iv_plan_decide_kbn ||''' = '''|| gc_plan_decide_p ||'''' 
@@ -1480,6 +1531,13 @@ AS
     || ' papf.attribute5 IS NOT NULL ' 
     || ' AND' 
     || ' xoha.freight_carrier_code = papf.attribute5 ' 
+-- 2008/07/09 add S.Takemoto start
+    -- 従業員区分が'外部'で、｢運賃区分＝対象｣または｢強制出力フラグ＝対象｣の場合、出力対象外
+    || ' AND'
+    || ' xoha.freight_charge_class =''' || gc_freight_charge_code_1 || ''''       -- 運賃区分
+    || ' AND'
+    || ' xc2v.complusion_output_code =''' || gc_freight_charge_code_1|| ''''      -- 強制出力区分
+-- 2008/07/09 add S.Takemoto end
     || ' )' 
     || ' )' 
     || ' )' 
@@ -1615,7 +1673,7 @@ AS
     || ' xim2v.conv_unit' 
     || ' ELSE' 
     || ' xim2v.item_um' 
-    || ' END AS conv_unit' 
+    || ' END AS conv_unit'
     || ' FROM' 
     || ' xxinv_mov_req_instr_headers xmrih '  -- 移動依頼/指示ヘッダ(アドオン)
     || ' ,xxinv_mov_req_instr_lines xmril '   -- 移動依頼/指示明細(アドオン)
@@ -1663,8 +1721,14 @@ AS
       || ' AND TO_CHAR(xmrih.notif_date, '''|| gc_date_fmt_hh24mi ||''') <= '''
       || gt_param.iv_notif_time_to ||'''' ;
     END IF ;
-    lv_sql_ido_where1 :=  lv_sql_ido_where1
-    || ' AND xmrih.instruction_post_code = '''|| gt_param.iv_dept ||'''' ;
+-- 2008/07/09 mod S.Takemoto start
+--    lv_sql_ido_where1 :=  lv_sql_ido_where1
+--    || ' AND xmrih.instruction_post_code = '''|| gt_param.iv_dept ||'''' ;
+    IF ( gt_param.iv_dept IS NOT NULL ) THEN
+      lv_sql_ido_where1 :=  lv_sql_ido_where1
+      || ' AND xmrih.instruction_post_code = '''|| gt_param.iv_dept ||'''' ;
+    END IF;
+-- 2008/07/09 mod S.Takemoto end
     IF ( gt_param.iv_freight_carrier_code IS NOT NULL ) THEN
       --2008/07/04 ST不具合対応#409
       --lv_sql_ido_where1 :=  lv_sql_ido_where1
@@ -1843,6 +1907,13 @@ AS
     || ' papf.attribute5 IS NOT NULL ' 
     || ' AND' 
     || ' xmrih.freight_carrier_code = papf.attribute5 ' 
+-- 2008/07/09 add S.Takemoto start
+    -- 従業員区分が'外部'で、｢運賃区分＝対象｣または｢強制出力フラグ＝対象｣の場合、出力対象外
+    || ' AND' 
+    || ' xmrih.freight_charge_class =''' || gc_freight_charge_code_1 || ''''       -- 運賃区分
+    || ' AND' 
+    || ' xc2v.complusion_output_code =''' || gc_freight_charge_code_1|| ''''      -- 強制出力区分
+-- 2008/07/09 add S.Takemoto end
     || ' )' 
     || ' )' 
     || ' )' 
@@ -1850,6 +1921,267 @@ AS
 --add start 1.2
   END IF;
 --add end 1.2
+-- 2008/07/09 add S.Takemoto start
+  IF (NVL(gt_param.iv_gyoumu_shubetsu,gc_biz_type_cd_etc) = gc_biz_type_cd_etc) THEN
+    IF (lb_union) THEN
+      lv_sql_etc_sel_from1 := ' UNION ALL' ;
+    END IF;
+--
+    lv_sql_etc_sel_from1  :=  lv_sql_etc_sel_from1
+    --=====================================================================
+    -- その他情報
+    --=====================================================================
+    || ' SELECT' 
+    || ' '''|| gc_biz_type_nm_etc ||''' AS gyoumu_shubetsu ' 
+    || ' ,'''|| gc_biz_type_cd_etc ||''' AS gyoumu_shubetsu_code ' 
+    || ' ,xil2v1.distribution_block AS dist_block' 
+    || ' ,xcs.carrier_code AS freight_carrier_code ' 
+    || ' ,xc2v.party_name AS carrier_full_name '
+    || ' ,xcs.deliver_from AS deliver_from ' 
+    || ' ,xil2v1.description AS description ' 
+    || ' ,xcs.schedule_ship_date AS schedule_ship_date ' 
+    || ' ,NULL AS item_class_name ' 
+    || ' ,NULL AS new_modify_flg ' 
+    || ' ,xcs.schedule_arrival_date AS schedule_arrival_date' 
+    || ' ,xcs.delivery_no AS delivery_no ' 
+    || ' ,xcs.delivery_type AS shipping_method_code ' 
+    || ' ,xsm2v.ship_method_meaning AS ship_method_meaning ' 
+    || ' ,NULL AS head_sales_branch ' 
+    || ' ,NULL AS party_name ' 
+    || ' ,xcs.deliver_to AS deliver_to ' 
+    || ' ,CASE'
+    || ' WHEN ( xcs.deliver_to_code_class IN ('''|| gc_deliver_to_class_1 ||''''         -- 1:拠点
+                                       || ' ,''' || gc_deliver_to_class_10 ||''' )) THEN' -- 10:顧客
+    || ' xcas2v.party_site_full_name'
+    || ' WHEN ( xcs.deliver_to_code_class = '''|| gc_deliver_to_class_11 ||''' ) THEN'   -- 11:支給先
+    || ' xvs2v.vendor_site_name'
+    || ' WHEN ( xcs.deliver_to_code_class = '''|| gc_deliver_to_class_4 ||''' ) THEN'    -- 4:移動
+    || ' xil2v2.description'
+    || ' END AS party_site_full_name'
+    || ' ,CASE'
+    || ' WHEN ( xcs.deliver_to_code_class IN ('''|| gc_deliver_to_class_1 ||''''         -- 1:拠点
+                                       || ' ,''' || gc_deliver_to_class_10 ||''' )) THEN' -- 10:顧客
+    || ' xcas2v.address_line1'
+    || ' WHEN ( xcs.deliver_to_code_class = '''|| gc_deliver_to_class_11 ||''' ) THEN'   -- 11:支給先
+    || ' xvs2v.address_line1'
+    || ' WHEN ( xcs.deliver_to_code_class = '''|| gc_deliver_to_class_4 ||''' ) THEN'    -- 4:移動
+    || ' xl2v.address_line1'
+    || ' END AS address_line1'
+    || ' ,CASE'
+    || ' WHEN ( xcs.deliver_to_code_class IN ('''|| gc_deliver_to_class_1 ||''''         -- 1:拠点
+                                       || ' ,''' || gc_deliver_to_class_10 ||''' )) THEN' -- 10:顧客
+    || ' xcas2v.address_line2'
+    || ' WHEN ( xcs.deliver_to_code_class = '''|| gc_deliver_to_class_11 ||''' ) THEN'   -- 11:支給先
+    || ' xvs2v.address_line2'
+    || ' WHEN ( xcs.deliver_to_code_class = '''|| gc_deliver_to_class_4 ||''' ) THEN'    -- 4:移動
+    || ' NULL'
+    || ' END AS address_line2'
+    || ' ,CASE'
+    || ' WHEN ( xcs.deliver_to_code_class IN ('''|| gc_deliver_to_class_1 ||''''         -- 1:拠点
+                                       || ' ,''' || gc_deliver_to_class_10 ||''' )) THEN' -- 10:顧客
+    || ' xcas2v.phone'
+    || ' WHEN ( xcs.deliver_to_code_class = '''|| gc_deliver_to_class_11 ||''' ) THEN'   -- 11:支給先
+    || ' xvs2v.phone'
+    || ' WHEN ( xcs.deliver_to_code_class = '''|| gc_deliver_to_class_4 ||''' ) THEN'    -- 4:移動
+    || ' xl2v.phone'
+    || ' END AS phone'
+    || ' ,NULL AS arrival_time_from ' 
+    || ' ,NULL AS arrival_time_to ' 
+    || ' ,xcs.sum_loading_capacity AS sum_loading_capacity ' 
+    || ' ,xcs.sum_loading_weight AS sum_loading_weight ' 
+    || ' ,NULL AS req_mov_no ' 
+    || ' ,NULL AS sum_weightm_capacity' 
+    || ' ,NULL AS sum_weightm_capacity_t ' 
+--
+    || ' ,NULL AS tehai_no ' 
+    || ' ,NULL AS prev_delivery_no ' 
+    || ' ,NULL AS po_no ' 
+    || ' ,NULL AS jpr_user_code ' ;
+--
+    lv_sql_etc_sel_from2  :=  lv_sql_etc_sel_from2
+    || ' ,NULL AS collected_pallet_qty ' 
+    || ' ,NULL AS shipping_instructions ' 
+    || ' ,xcs.slip_number AS slip_number ' 
+    || ' ,xcs.small_quantity AS small_quantity ' 
+    || ' ,NULL AS item_code ' 
+    || ' ,NULL AS item_name ' 
+    || ' ,NULL AS lot_no ' 
+    || ' ,NULL AS attribute1 ' 
+    || ' ,NULL AS attribute3 ' 
+    || ' ,NULL AS attribute2 ' 
+    || ' ,NULL AS num_of_cases' 
+    || ' ,NULL AS net' 
+    || ' ,NULL AS qty' 
+    || ' ,NULL AS conv_unit'
+    || ' FROM' 
+    || ' xxwsh_carriers_schedule xcs '        -- 配車配送計画（アドオン）
+    || ' ,xxcmn_item_locations2_v xil2v1 '    -- OPM保管場所情報VIEW2(出)
+    || ' ,xxcmn_cust_acct_sites2_v xcas2v '   -- 顧客サイト情報VIEW2
+    || ' ,xxcmn_vendor_sites2_v xvs2v '       -- 仕入先サイト情報VIEW2
+    || ' ,xxcmn_item_locations2_v xil2v2 '    -- OPM保管場所情報VIEW2(入)
+    || ' ,xxcmn_locations2_v xl2v '           -- 事業所情報VIEW2
+    || ' ,xxcmn_carriers2_v xc2v '            -- 運送業者情報VIEW2
+    || ' ,fnd_user fu '                       -- ユーザーマスタ
+    || ' ,per_all_people_f papf '             -- 従業員情報VIEW2
+    || ' ,xxwsh_ship_method2_v xsm2v ' ;      -- 配送区分情報VIEW2
+--
+    lv_sql_etc_where1 :=  lv_sql_etc_where1
+    || ' WHERE' ;
+    -------------------------------------------------------------------------------
+    -- 配車配送計画アドオン
+    -------------------------------------------------------------------------------
+    lv_sql_etc_where1 :=  lv_sql_etc_where1 
+    || ' xcs.non_slip_class ='''|| gc_non_slip_class_2 ||''''            --伝票なし配車区分 2：伝票なし配車
+    || ' AND xcs.deliver_to_code_class IN('''|| gc_deliver_to_class_1  ||'''' -- 1:拠点
+                               || ' ,''' || gc_deliver_to_class_4  ||''''     -- 4:移動
+                               || ' ,''' || gc_deliver_to_class_10 ||''''     -- 10:顧客
+                               || ' ,''' || gc_deliver_to_class_11 ||''')'    -- 11:支給先
+    || ' AND xcs.schedule_ship_date >= '''|| TRUNC(gt_param.iv_ship_from) ||'''' 
+    || ' AND xcs.schedule_ship_date <= '''|| TRUNC(gt_param.iv_ship_to) ||'''' ;
+    IF ( gt_param.iv_freight_carrier_code IS NOT NULL ) THEN
+      lv_sql_etc_where1 :=  lv_sql_etc_where1 
+      || ' AND ( xcs.carrier_code = '''|| gt_param.iv_freight_carrier_code ||''')' ;
+    END IF ;
+-- 2008/07/29 add S.Takemoto start
+    lv_sql_etc_where1 :=  lv_sql_etc_where1 
+    || ' AND xcs.prod_class ='''|| gv_prod_kbn ||'''' ;
+-- 2008/07/29 add S.Takemoto end
+    -------------------------------------------------------------------------------
+    -- 配送区分情報VIEW2
+    -------------------------------------------------------------------------------
+    lv_sql_etc_where1 :=  lv_sql_etc_where1
+    || ' AND xcs.delivery_type = xsm2v.ship_method_code'  -- 配送区分
+    || ' AND xcs.schedule_ship_date'                 --適用開始日 <= 出荷日(出荷予定日) <= 適用終了日
+    || ' BETWEEN xsm2v.start_date_active'
+    || ' AND NVL(xsm2v.end_date_active , xcs.schedule_ship_date)'
+    ------------------------------------------------
+    -- OPM保管場所情報VIEW2
+    ------------------------------------------------
+    || ' AND xcs.deliver_from_id = xil2v1.inventory_location_id';
+    IF ( gt_param.iv_online_kbn IS NOT NULL ) THEN
+      lv_sql_etc_where1 :=  lv_sql_etc_where1
+      || ' AND xil2v1.eos_control_type = '''|| gt_param.iv_online_kbn ||'''' ;
+    END IF ;
+    lv_sql_etc_where1 :=  lv_sql_etc_where1
+    || ' AND (' 
+    || ' xil2v1.distribution_block IN ( '''|| gt_param.iv_block1 ||'''' 
+    || '  , '''|| gt_param.iv_block2 ||'''' 
+    || '  , '''|| gt_param.iv_block3 ||''' )' 
+    || ' OR' 
+    || ' xcs.deliver_from = '''|| gt_param.iv_shipped_locat_code ||''' '
+    || ' OR' 
+    || ' (' 
+    || ' '''|| gt_param.iv_block1 ||''' IS NULL' 
+    || ' AND' 
+    || ' '''|| gt_param.iv_block2 ||''' IS NULL' 
+    || ' AND' 
+    || ' '''|| gt_param.iv_block3 ||''' IS NULL' 
+    || ' AND' 
+    || ' '''|| gt_param.iv_shipped_locat_code ||''' IS NULL' 
+    || ' )' 
+    || ' )' 
+    ------------------------------------------------
+    -- 顧客サイト情報VIEW2
+    ------------------------------------------------
+    || ' AND xcs.deliver_to_id = xcas2v.party_site_id(+)' 
+    || ' AND xcas2v.start_date_active(+) <= xcs.schedule_ship_date' 
+    || ' AND xcas2v.end_date_active(+) >= xcs.schedule_ship_date'
+    -------------------------------------------------------------------------------
+    -- 仕入先サイト情報VIEW2
+    -------------------------------------------------------------------------------
+    || ' AND xcs.deliver_to_id = xvs2v.vendor_site_id(+)' 
+    || ' AND xvs2v.start_date_active(+) <= xcs.schedule_ship_date' 
+    || ' AND xvs2v.end_date_active(+) >= xcs.schedule_ship_date' 
+    -------------------------------------------------------------------------------
+    -- OPM保管場所マスタ（入）
+    -------------------------------------------------------------------------------
+    || ' AND xcs.deliver_to_id = xil2v2.inventory_location_id(+)' 
+    -------------------------------------------------------------------------------
+    -- 事業所情報VIEW2
+    -------------------------------------------------------------------------------
+    || ' AND xil2v2.location_id = xl2v.location_id(+)' 
+    || ' AND ( xcs.schedule_ship_date'                 --適用開始日 <= 出荷日(出荷予定日) <= 適用終了日
+    || ' BETWEEN xl2v.start_date_active'
+    || ' AND NVL(xl2v.end_date_active , xcs.schedule_ship_date)'
+    || ' OR xil2v2.location_id IS NULL'  --または、事業所情報未存在 外部結合とするため
+    || ' )' ;
+    ------------------------------------------------
+    -- 運送業者情報VIEW2
+    ------------------------------------------------
+    ----------------------------------------------------------------------
+    -- 運送業者
+    -- 運送業者（名称）
+    lv_sql_etc_where2 :=  lv_sql_etc_where2
+    || ' AND xcs.carrier_id = xc2v.party_id' 
+    || ' AND (' 
+    || ' xc2v.start_date_active IS NULL' 
+    || ' OR' 
+    || ' xc2v.start_date_active <= xcs.schedule_ship_date' 
+    || ' )' 
+    || ' AND (' 
+    || ' xc2v.end_date_active IS NULL' 
+    || ' OR' 
+    || ' xc2v.end_date_active >= xcs.schedule_ship_date' 
+    || ' )' 
+    ----------------------------------------------------------------------
+    || ' AND (' 
+    || ' (' 
+    || ' '''|| gt_param.iv_shukko_haisou_kbn ||''' = '''|| gc_shukko_haisou_kbn_d ||''' '
+    || ' AND' 
+    || ' xcs.carrier_code <> xcs.deliver_from' 
+    || ' )' 
+    || ' OR' 
+    || ' '''|| gt_param.iv_shukko_haisou_kbn ||''' = '''|| gc_shukko_haisou_kbn_p ||''' '
+    || ' )' 
+    ------------------------------------------------
+    -- ユーザ情報
+    ------------------------------------------------
+    || ' AND fu.user_id = '''|| FND_GLOBAL.USER_ID ||'''' 
+    || ' AND fu.employee_id = papf.person_id' 
+    || ' AND (' 
+    || ' NVL(papf.attribute3, '''|| gc_user_kbn_inside ||''') = '''|| gc_user_kbn_inside ||'''' 
+    || ' OR' 
+    || ' (' 
+    || ' papf.attribute3 = '''|| gc_user_kbn_outside ||'''' 
+    || ' AND' 
+    || ' (' 
+    || ' (' 
+    || ' papf.attribute4 IS NOT NULL ' 
+    || ' AND' 
+    || ' papf.attribute5 IS NULL ' 
+    || ' AND' 
+    || ' xil2v1.purchase_code = papf.attribute4 ' 
+    || ' )' 
+    || ' OR' 
+    || ' (' 
+    || ' papf.attribute4 IS NOT NULL ' 
+    || ' AND' 
+    || ' papf.attribute5 IS NOT NULL ' 
+    || ' AND' 
+    || ' (' 
+    || ' xil2v1.purchase_code = papf.attribute4 ' 
+    || ' OR' 
+    || ' xcs.carrier_code = papf.attribute5 ' 
+    || ' )' 
+    || ' )' 
+    || ' OR' 
+    || ' (' 
+    || ' papf.attribute4 IS NULL ' 
+    || ' AND' 
+    || ' papf.attribute5 IS NOT NULL ' 
+    || ' AND' 
+    || ' xcs.carrier_code = papf.attribute5 '
+    || ' AND' 
+    -- 従業員区分が'外部'で、｢運賃区分＝対象｣または｢強制出力フラグ＝対象｣の場合、出力対象外
+    || ' xc2v.complusion_output_code =''' || gc_freight_charge_code_1|| ''''      -- 強制出力区分
+    || ' )' 
+    || ' )' 
+    || ' )' 
+    || ' )' 
+    ;
+    lb_union := true;
+  END IF;
+-- 2008/07/09 add S.Takemoto end
 --
     lv_sql_tail := lv_sql_tail
     || ' )' 
@@ -1869,7 +2201,11 @@ AS
                     lv_sql_shu_where1     || lv_sql_shu_where2    || lv_sql_sik_sel_from1 || 
                     lv_sql_sik_sel_from2  || lv_sql_sik_where1    || lv_sql_sik_where2    || 
                     lv_sql_ido_sel_from1  || lv_sql_ido_sel_from2 || lv_sql_ido_where1    ||
-                    lv_sql_ido_where2     || lv_sql_tail ;
+-- 2008/07/09 add S.Takemoto start
+--                    lv_sql_ido_where2     || lv_sql_tail ;
+                    lv_sql_ido_where2     || lv_sql_etc_sel_from1 || lv_sql_etc_sel_from2 ||
+                    lv_sql_etc_where1     || lv_sql_etc_where2    || lv_sql_tail ;
+-- 2008/07/09 add S.Takemoto end
     -- バルクフェッチ
     FETCH c_cur BULK COLLECT INTO gt_report_data ;
     -- カーソルクローズ
@@ -2107,7 +2443,14 @@ AS
       IF ( lb_dispflg_bsns_kind_info ) THEN
         prcsub_set_xml_data('g_bsns_kind_info') ;
         prcsub_set_xml_data('bsns_kind'             , gt_report_data(i).gyoumu_shubetsu) ;
-        prcsub_set_xml_data('item_kbn'              , gt_report_data(i).item_class_name) ;
+--mod start 1.10.1
+--        prcsub_set_xml_data('item_kbn'              , gt_report_data(i).item_class_name) ;
+        IF (gt_param.iv_item_kbn IS NOT NULL) THEN
+          prcsub_set_xml_data('item_kbn'              , gt_report_data(i).item_class_name) ;
+        ELSE
+          prcsub_set_xml_data('item_kbn'              , NULL) ;
+        END IF;
+--mod end 1.10.1
         -- 運送発注元
         prcsub_set_xml_data('career_order_nm'       , gv_hchu_cat_value) ;
         prcsub_set_xml_data('career_order_adr'      , gv_hchu_address_value) ;
@@ -2148,14 +2491,16 @@ AS
           prcsub_set_xml_data('mixed_capacity_tani'   , NULL) ;
         END IF;
 --mod end 1.3
-        prcsub_set_xml_data('knkt_base_cd'          , gt_report_data(i).head_sales_branch) ;
-        prcsub_set_xml_data('knkt_base_nm'          , gt_report_data(i).party_name) ;
-        prcsub_set_xml_data('delivery_ship'         , gt_report_data(i).deliver_to) ;
-        prcsub_set_xml_data('delivery_ship_nm'      , gt_report_data(i).party_site_full_name) ;
-        prcsub_set_xml_data('delivery_ship_adr'
-                          , gt_report_data(i).address_line1 || gt_report_data(i).address_line2) ;
-        prcsub_set_xml_data('jpr_user_cd'           , gt_report_data(i).jpr_user_code) ;
-        prcsub_set_xml_data('tel_no'                , gt_report_data(i).phone) ;
+--del start 1.10.3
+--        prcsub_set_xml_data('knkt_base_cd'          , gt_report_data(i).head_sales_branch) ;
+--        prcsub_set_xml_data('knkt_base_nm'          , gt_report_data(i).party_name) ;
+--        prcsub_set_xml_data('delivery_ship'         , gt_report_data(i).deliver_to) ;
+--        prcsub_set_xml_data('delivery_ship_nm'      , gt_report_data(i).party_site_full_name) ;
+--        prcsub_set_xml_data('delivery_ship_adr'
+--                          , gt_report_data(i).address_line1 || gt_report_data(i).address_line2) ;
+--        prcsub_set_xml_data('jpr_user_cd'           , gt_report_data(i).jpr_user_code) ;
+--        prcsub_set_xml_data('tel_no'                , gt_report_data(i).phone) ;
+--del end 1.10.3
         prcsub_set_xml_data('lg_irai') ;
       END IF ;
 --
@@ -2174,6 +2519,16 @@ AS
         prcsub_set_xml_data('time_shitei_to'        , gt_report_data(i).arrival_time_to) ;
         prcsub_set_xml_data('kosu'                  , gt_report_data(i).small_quantity) ;
         prcsub_set_xml_data('collected_pallet_qty'  , gt_report_data(i).collected_pallet_qty) ;
+--add start 1.10.3
+        prcsub_set_xml_data('knkt_base_cd'          , gt_report_data(i).head_sales_branch) ;
+        prcsub_set_xml_data('knkt_base_nm'          , gt_report_data(i).party_name) ;
+        prcsub_set_xml_data('delivery_ship'         , gt_report_data(i).deliver_to) ;
+        prcsub_set_xml_data('delivery_ship_nm'      , gt_report_data(i).party_site_full_name) ;
+        prcsub_set_xml_data('delivery_ship_adr'
+                          , gt_report_data(i).address_line1 || gt_report_data(i).address_line2) ;
+        prcsub_set_xml_data('jpr_user_cd'           , gt_report_data(i).jpr_user_code) ;
+        prcsub_set_xml_data('tel_no'                , gt_report_data(i).phone) ;
+--add end 1.10.3
         prcsub_set_xml_data('lg_dtl_info') ;
       END IF ;
 --

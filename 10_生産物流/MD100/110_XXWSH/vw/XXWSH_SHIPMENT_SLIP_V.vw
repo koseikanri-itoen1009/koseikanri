@@ -31,6 +31,9 @@ CREATE OR REPLACE VIEW xxwsh_shipment_slip_v
   xvs2v_end_date_active,
   xv2v_start_date_active,
   xv2v_end_date_active
+--add start 2008/07/15
+ ,payment_condition
+--add end 2008/07/15
   )
 AS
 SELECT
@@ -73,6 +76,9 @@ SELECT
   ,NULL                                                AS   xv2v_start_date_active
   ,NULL                                                AS   xv2v_end_date_active
 ----------------------------------------------------------------------------------------------------
+--add start 2008/07/15
+  ,NULL
+--add end 2008/07/15
 FROM   xxwsh_order_headers_all          xoha         -- 受注ヘッダアドオン
       ,xxwsh_order_lines_all            xola         -- 受注明細アドオン
       ,xxcmn_item_locations2_v          xil2v        -- OPM保管場所情報VIEW2  
@@ -194,6 +200,9 @@ SELECT
   ,NULL                                                AS    xv2v_start_date_active
   ,NULL                                                AS    xv2v_end_date_active
 ----------------------------------------------------------------------------------------------------
+--add start 2008/07/15
+  ,NULL                                                AS    payment_condition
+--add end 2008/07/15
 FROM   xxwsh_order_headers_all          xoha         -- 受注ヘッダアドオン
       ,xxwsh_order_lines_all            xola         -- 受注明細アドオン
       ,xxcmn_item_locations2_v          xil2v        -- OPM保管場所情報VIEW2  
@@ -279,6 +288,9 @@ SELECT
   ,xv2v.start_date_active                               AS    xv2v_start_date_active
   ,xv2v.end_date_active                                 AS    xv2v_end_date_active
 ---------------------------------------------------------------------------------------------------
+--add start 2008/07/15
+  ,xxcmn_common_pkg.get_term_of_payment(xoha.vendor_id,NULL) AS payment_condition
+--add end 2008/07/15
 FROM   
        xxwsh_order_headers_all          xoha         -- 受注ヘッダアドオン
       ,xxwsh_order_lines_all            xola         -- 受注明細アドオン
@@ -384,6 +396,9 @@ SELECT
   ,xv2v.start_date_active                              AS    xv2v_start_date_active
   ,xv2v.end_date_active                                AS    xv2v_end_date_active
 ---------------------------------------------------------------------------------------------------
+--add start 2008/07/15
+  ,xxcmn_common_pkg.get_term_of_payment(xoha.vendor_id,NULL) AS payment_condition
+--add end 2008/07/15
 FROM   
       xxwsh_order_headers_all           xoha         -- 受注ヘッダアドオン
       ,xxwsh_order_lines_all            xola         -- 受注明細アドオン

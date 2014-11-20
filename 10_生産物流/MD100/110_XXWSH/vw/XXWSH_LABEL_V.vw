@@ -50,6 +50,9 @@ FROM
   ,xxcmn_item_locations2_v           xilv          -- OPM保管場所マスタ2
   ,xxwsh_oe_transaction_types2_v     xottv         -- 受注タイプ
   ,xxwsh_ship_method2_v              xsm2v         -- 配送区分情報VIEW2
+-- 2008.07.07 ADD S.Takemoto start
+  ,xxcmn_lookup_values_v             xlvv
+-- 2008.07.07 ADD S.Takemoto end
 WHERE
   ----------------------------------------------------------------------------------
   -- ヘッダ情報
@@ -59,7 +62,25 @@ WHERE
   AND xoha.req_status               <>  '99'       -- ステータス：取消
   --------------------------------------------------------------------------------------------
   --------------------------------------------------------------------------------------------
-  AND  xoha.shipping_method_code    =    xsm2v.ship_method_code
+-- 2008.07.03 ADD S.Takemoto start
+  --------------------------------------------------------------------------------------------
+  AND  xoha.latest_external_flag    = 'Y'        -- 最新フラグ
+  --OPM保管場所情報(出荷元情報)(実績)
+  AND  xoha.deliver_from_id = xilv.inventory_location_id                    --配送元ID = 倉庫ID
+  AND   NVL(xoha.shipped_date,xoha.schedule_ship_date)                 --適用開始日 <= 出荷日(出荷予定日) <= 適用終了日
+    BETWEEN xilv.date_from
+    AND NVL(xilv.date_to,NVL(xoha.shipped_date,xoha.schedule_ship_date))
+  -- 配送区分情報VIEW2
+  AND   NVL(xoha.shipped_date,xoha.schedule_ship_date)                 --適用開始日 <= 出荷日(出荷予定日) <= 適用終了日
+    BETWEEN xsm2v.start_date_active
+    AND NVL(xsm2v.end_date_active,NVL(xoha.shipped_date,xoha.schedule_ship_date))
+-- 2008.07.03 ADD S.Takemoto end
+-- 2008.07.07 ADD S.Takemoto start
+  AND xlvv.lookup_type    ='XXCMN_SHIP_METHOD' -- 配送区分
+  AND xlvv.attribute6     = '1'  -- 小口区分：小口
+  AND xlvv.lookup_code    = NVL(xoha.result_shipping_method_code,xoha.shipping_method_code) -- 配送区分
+-- 2008.07.07 ADD S.Takemoto end
+  AND  xoha.shipping_method_code    = xsm2v.ship_method_code
   AND  (CASE 
          WHEN  xoha.req_status = '03' THEN  xoha.deliver_to_id
          WHEN  xoha.req_status = '04' THEN  xoha.result_deliver_to_id
@@ -121,6 +142,9 @@ FROM
   ,xxcmn_item_locations2_v           xilv    -- OPM保管場所マスタ2
   ,xxwsh_oe_transaction_types2_v     xottv   -- 受注タイプ
   ,xxwsh_ship_method2_v              xsm2v   -- 配送区分情報VIEW2
+-- 2008.07.07 ADD S.Takemoto start
+  ,xxcmn_lookup_values_v             xlvv
+-- 2008.07.07 ADD S.Takemoto end
 WHERE
   ----------------------------------------------------------------------------------
   -- ヘッダ情報
@@ -130,6 +154,24 @@ WHERE
   AND  xoha.req_status              <>  '99'       -- ステータス：取消
   --------------------------------------------------------------------------------------------
   --------------------------------------------------------------------------------------------
+-- 2008.07.03 ADD S.Takemoto start
+  --------------------------------------------------------------------------------------------
+  AND  xoha.latest_external_flag    = 'Y'        -- 最新フラグ
+  --OPM保管場所情報(出荷元情報)(実績)
+  AND  xoha.deliver_from_id         = xilv.inventory_location_id
+  AND   NVL(xoha.shipped_date,xoha.schedule_ship_date)                 --適用開始日 <= 出荷日(出荷予定日) <= 適用終了日
+    BETWEEN xilv.date_from
+    AND NVL(xilv.date_to,NVL(xoha.shipped_date,xoha.schedule_ship_date))
+  -- 配送区分情報VIEW2
+  AND   NVL(xoha.shipped_date,xoha.schedule_ship_date)                 --適用開始日 <= 出荷日(出荷予定日) <= 適用終了日
+    BETWEEN xsm2v.start_date_active
+    AND NVL(xsm2v.end_date_active,NVL(xoha.shipped_date,xoha.schedule_ship_date))
+-- 2008.07.03 ADD S.Takemoto end
+-- 2008.07.07 ADD S.Takemoto start
+  AND xlvv.lookup_type    ='XXCMN_SHIP_METHOD' -- 配送区分
+  AND xlvv.attribute6     = '1'  -- 小口区分：小口
+  AND xlvv.lookup_code    = NVL(xoha.result_shipping_method_code,xoha.shipping_method_code) -- 配送区分
+-- 2008.07.07 ADD S.Takemoto end
   AND  xoha.shipping_method_code    =    xsm2v.ship_method_code
   AND  xoha.vendor_site_id          =    xvsa.vendor_site_id ( + )
   AND  xoha.delivery_no             =    xcs.delivery_no
@@ -180,7 +222,10 @@ SELECT
   ,xmrih.item_class                  AS  prod_class             --"商品区分"
   ,xcs.delivery_no                   AS  delivery_no            --"配送No"
   ,xmrih.ship_to_locat_code          AS  deliver_to             --"配送先/入庫先"
-  ,xilv.distribution_block           AS  block                  --"ブロック"
+-- 2008.07.03 mod S.Takemoto start
+--  ,xilv.distribution_block           AS  block                  --"ブロック"
+  ,xilv2.distribution_block          AS  block                  --"ブロック"
+-- 2008.07.03 mod S.Takemoto end
   ------------------------------------------------
   ,xmrih.mov_num                     AS  request_no             --"依頼No"
   ,xmrih.small_quantity              AS  small_quantity         --"小口個数"
@@ -191,9 +236,15 @@ SELECT
 FROM
    xxwsh_carriers_schedule          xcs      --配車配送計画( アドオン)
   ,xxcmn_item_locations2_v          xilv     --OPM保管場所マスタ2
+-- 2008.07.03 ADD S.Takemoto start
+  ,xxcmn_item_locations2_v          xilv2     --OPM保管場所マスタ2
+-- 2008.07.03 ADD S.Takemoto end
   ,xxcmn_locations2_v               xl2v     --事業所アドオンマスタ
   ,xxinv_mov_req_instr_headers      xmrih    --移動依頼/指示ヘッダ( アドオン)
   ,xxwsh_ship_method2_v             xsm2v    --配送区分情報VIEW2
+-- 2008.07.07 ADD S.Takemoto start
+  ,xxcmn_lookup_values_v             xlvv
+-- 2008.07.07 ADD S.Takemoto end
 WHERE 
       xmrih.status                  >=   '02'
   AND xmrih.status                  <>   '99'
@@ -203,6 +254,27 @@ WHERE
   AND xmrih.shipping_method_code    =    xsm2v.ship_method_code
   AND xmrih.delivery_no             =    xcs.delivery_no
   --------------------------------------------------------------------------------------------
+-- 2008.07.03 ADD S.Takemoto start
+  --------------------------------------------------------------------------------------------
+--OPM保管場所情報view(出庫元)抽出条件
+  AND   xmrih.ship_to_locat_id = xilv2.inventory_location_id                    --配送元ID = 倉庫ID
+  AND   NVL(xmrih.actual_ship_date,xmrih.schedule_ship_date)                 --適用開始日 <= 出荷日(出荷予定日) <= 適用終了日
+    BETWEEN xilv2.date_from
+    AND NVL(xilv2.date_to,NVL(xmrih.actual_ship_date,xmrih.schedule_ship_date))
+  --OPM保管場所情報(出荷元情報)(実績)
+  AND   NVL(xmrih.actual_ship_date,xmrih.schedule_ship_date)                 --適用開始日 <= 出荷日(出荷予定日) <= 適用終了日
+    BETWEEN xilv.date_from
+    AND NVL(xilv.date_to,NVL(xmrih.actual_ship_date,xmrih.schedule_ship_date))
+  -- 配送区分情報VIEW2
+  AND   NVL(xmrih.actual_ship_date,xmrih.schedule_ship_date)                 --適用開始日 <= 出荷日(出荷予定日) <= 適用終了日
+    BETWEEN xsm2v.start_date_active
+    AND NVL(xsm2v.end_date_active,NVL(xmrih.actual_ship_date,xmrih.schedule_ship_date))
+-- 2008.07.03 ADD S.Takemoto end
+-- 2008.07.07 ADD S.Takemoto start
+  AND xlvv.lookup_type    ='XXCMN_SHIP_METHOD' -- 配送区分
+  AND xlvv.attribute6     = '1'  -- 小口区分：小口
+  AND xlvv.lookup_code    = NVL(xmrih.actual_shipping_method_code,xmrih.shipping_method_code) -- 配送区分
+-- 2008.07.07 ADD S.Takemoto end
   AND ( xl2v.start_date_active IS NULL
         OR ( ( ( xmrih.status                =    '02' 
                  OR
@@ -234,6 +306,91 @@ WHERE
               AND 
                xl2v.end_date_active         >=   xmrih.actual_ship_date ) ) 
   )
+-- 2008.07.02 add S.Takemoto START
+UNION 
+SELECT
+  ---------------------------------------------------------------------------------
+  -- パラメータ指定項目
+  -- 業務種別共通
+   TO_CHAR('4')                      AS  ship_type              --"業務種別"
+  ,NULL                              AS  order_type_id          --"出庫形態"
+  ,xcs.deliver_from                  AS  deliver_from           --"出荷元ID"
+  ,NVL(xcs.result_freight_carrier_code,xcs.carrier_code)
+                                     AS  career_id              --"運送業者" -- 実績
+  ,NVL(xcs.shipped_date,xcs.schedule_ship_date)
+                                     AS  schedule_ship_date     --"出荷日"
+  ,xcs.prod_class                    AS  prod_class             --"商品区分"
+  ,xcs.delivery_no                   AS  delivery_no            --"配送No"
+  ,xcs.deliver_to                    AS  deliver_to             --"配送先/入庫先"
+  ,xilv2.distribution_block           AS  block                  --"ブロック"
+  ------------------------------------------------
+  ,NULL                              AS  request_no             --"依頼No"
+  ,xcs.small_quantity                AS  small_quantity         --"小口個数"
+  ,xcs.label_quantity                AS  label_quantity         --"ラベル枚数"
+  ,CASE
+    WHEN (xcs.deliver_to_code_class IN('1','10'))  THEN xcas.party_site_full_name
+    WHEN (xcs.deliver_to_code_class = '11') THEN xvsa.vendor_site_name
+    WHEN (xcs.deliver_to_code_class = '4')  THEN xilv_loc.description
+   END                               AS  party_site_name        --"正式名(顧客名)"
+  ,CASE
+    WHEN (xcs.deliver_to_code_class IN('1','10'))  THEN ( xcas.address_line1 || xcas.address_line2 )
+    WHEN (xcs.deliver_to_code_class = '11') THEN ( xvsa.address_line1 || xvsa.address_line2 )
+    WHEN (xcs.deliver_to_code_class = '4')  THEN xilv_loc.address_line1
+   END                               AS  address_line           --"住所"
+  ,CASE
+    WHEN (xcs.deliver_to_code_class IN('1','10')) THEN xcas.phone
+    WHEN (xcs.deliver_to_code_class = '11') THEN xvsa.phone
+    WHEN (xcs.deliver_to_code_class = '4') THEN xilv_loc.phone
+   END                               AS  phone                  --"電話番号"
+FROM
+   xxwsh_carriers_schedule          xcs      --配車配送計画( アドオン)
+  ,xxcmn_cust_acct_sites2_v         xcas     -- 顧客サイト  -- 出荷
+  ,xxcmn_vendor_sites2_v            xvsa    -- 仕入先サイト情報VIEW
+  ,xxcmn_item_locations2_v          xilv2    --OPM保管場所マスタ2
+  ,(SELECT xilv.inventory_location_id
+           ,xl2v.start_date_active
+           ,xl2v.end_date_active
+           ,xilv.date_from
+           ,xilv.date_to
+           ,xilv.description
+           ,xl2v.address_line1
+           ,xl2v.phone           
+    FROM xxcmn_item_locations2_v          xilv     --OPM保管場所マスタ2 -- 移動
+        ,xxcmn_locations2_v               xl2v     --事業所アドオンマスタ
+    WHERE xilv.location_id         = xl2v.location_id ) xilv_loc  -- 移動
+  ,xxwsh_ship_method2_v             xsm2v    --配送区分情報VIEW2
+-- 2008.07.07 ADD S.Takemoto start
+  ,xxcmn_lookup_values_v             xlvv
+-- 2008.07.07 ADD S.Takemoto end
+WHERE  xcs.non_slip_class   =    '2'   --伝票なし配車区分 2：伝票なし配車
+  AND  xcs.deliver_to_code_class IN ('1','4','10','11')
+  AND  xcs.delivery_type    =    xsm2v.ship_method_code
+  AND   NVL(xcs.shipped_date,xcs.schedule_ship_date)                 --適用開始日 <= 出荷日(出荷予定日) <= 適用終了日
+    BETWEEN xsm2v.start_date_active
+    AND NVL(xsm2v.end_date_active,NVL(xcs.shipped_date,xcs.schedule_ship_date))
+--OPM保管場所情報view(出庫元)抽出条件
+  AND   xcs.deliver_from_id = xilv2.inventory_location_id                    --配送元ID = 倉庫ID
+  AND   NVL(xcs.shipped_date,xcs.schedule_ship_date)                             --適用開始日 <= 出荷日(出荷予定日) <= 適用終了日
+  BETWEEN xilv2.date_from
+  AND NVL(xilv2.date_to,NVL(xcs.shipped_date,xcs.schedule_ship_date))
+-- 2008.07.07 ADD S.Takemoto start
+  AND xlvv.lookup_type    ='XXCMN_SHIP_METHOD' -- 配送区分
+  AND xlvv.attribute6     = '1'  -- 小口区分：小口
+  AND xlvv.lookup_code    = NVL(xcs.result_shipping_method_code,xcs.delivery_type) -- 配送区分
+-- 2008.07.07 ADD S.Takemoto end
+  AND  xcs.deliver_to_id         = xcas.party_site_id (+)             -- 出荷
+  AND  NVL(xcs.shipped_date,xcs.schedule_ship_date)  >= xcas.start_date_active(+)
+  AND  NVL(xcs.shipped_date,xcs.schedule_ship_date)  <= xcas.end_date_active(+)
+  AND  xcs.deliver_to_id         = xvsa.vendor_site_id (+)            -- 支給
+  AND  NVL(xcs.shipped_date,xcs.schedule_ship_date)  >= xvsa.start_date_active(+)
+  AND  NVL(xcs.shipped_date,xcs.schedule_ship_date)  <= xvsa.end_date_active(+)
+  AND  xcs.deliver_to_id         = xilv_loc.inventory_location_id (+) -- 移動
+  AND  NVL(xcs.shipped_date,xcs.schedule_ship_date)  >= xilv_loc.start_date_active(+)
+  AND  NVL(xcs.shipped_date,xcs.schedule_ship_date)  <= xilv_loc.end_date_active(+)
+  AND  NVL(xcs.shipped_date,xcs.schedule_ship_date)                             --適用開始日 <= 出荷日(出荷予定日) <= 適用終了日
+    BETWEEN xilv_loc.date_from(+)
+    AND NVL(xilv_loc.date_to(+),NVL(xcs.shipped_date,xcs.schedule_ship_date))
+-- 2008.07.03 ADD S.Takemoto end
 /
 COMMENT ON TABLE xxwsh_label_v IS 'ラベルVIEW'
 /
