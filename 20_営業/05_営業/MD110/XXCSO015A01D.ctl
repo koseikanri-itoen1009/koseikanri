@@ -6,7 +6,7 @@
 -- BR.050        : T_BR050_CCO_200_自販_作業データ
 -- MD.050        : MD050_CSO_015_A01_自販機-EBSインタフェース：（IN）作業データ
 -- MD.070        : なし
--- Version       : 1.3
+-- Version       : 1.4
 --
 -- Target Table  : XXCSO_IN_WORK_DATA
 --
@@ -19,6 +19,7 @@
 --  2009/03/10    1.1     abe              シーケンス番号の追加
 --  2009/05/29    1.2     K.Satomura       システムテスト障害対応(T1_1017,T1_1107)
 --  2009/06/04    1.3     K.Satomura       システムテスト障害対応(T1_1107再修正)
+--  2009/12/08    1.4     K.Hosoi          E_本稼動_00219対応
 -- ************************************************************************************************
 --
 OPTIONS (SKIP=0, DIRECT=FALSE, ERRORS=99999)
@@ -101,5 +102,9 @@ FIELDS TERMINATED BY "," TRAILING NULLCOLS
     REQUEST_ID                     "FND_GLOBAL.CONC_REQUEST_ID",            -- 要求ID
     PROGRAM_APPLICATION_ID         "FND_GLOBAL.PROG_APPL_ID",     -- コンカレント・プログラム・アプリケーションID
     PROGRAM_ID                     "FND_GLOBAL.CONC_PROGRAM_ID",            -- コンカレント・プログラムID
-    PROGRAM_UPDATE_DATE            SYSDATE                                  -- プログラム更新日
+    PROGRAM_UPDATE_DATE            SYSDATE,                                 -- プログラム更新日
+    -- 2009.12.08 K.Hosoi E_本稼動_00219対応 START
+    INFOS_INTERFACE_FLAG           CONSTANT 'N',                            -- 情報系連携済フラグ
+    INFOS_INTERFACE_DATE           CONSTANT ""                              -- 情報系連携日
+    -- 2009.12.08 K.Hosoi E_本稼動_00219対応 END
   )
