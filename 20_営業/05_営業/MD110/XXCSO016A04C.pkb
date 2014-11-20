@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           :  MD050_CSO_016_A04_情報系-EBSインターフェース：
  *                     (OUT)訪問実績データ
- * Version          : 1.10
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2009-10-23    1.9   Daisuke.Abe      障害対応(E_T4_00056)
  *  2009-11-24    1.10  Daisuke.Abe      障害対応(E_本稼動_00026)
  *  2009-12-02    1.11  T.Maruyama       障害対応(E_本稼動_00081)
+ *  2009-12-11    1.12  K.Hosoi          障害対応(E_本稼動_00413)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1253,13 +1254,20 @@ AS
       --        ) missing_part_time                                -- 欠品時間
       SELECT (SELECT COUNT(xsv1.sold_out_class) sold_out_class1
               FROM   xxcso_sales_of_task_v xsv1  -- 有効訪問販売実績ビュー
-              WHERE  xsv1.sold_out_class = cv_sld_out_clss1
+              /* 2009.12.11 K.Hosoi E_本稼動_00413対応 START */
+              --WHERE  xsv1.sold_out_class = cv_sld_out_clss1
+              WHERE  xsv1.sold_out_class = cv_sld_out_clss2
+              /* 2009.12.11 K.Hosoi E_本稼動_00413対応 END */
               AND    xsv1.order_no_hht = TO_NUMBER(io_get_data_rec.attribute13)
               AND    xsv1.digestion_ln_number = 0
               ) missing_column_number                            -- 欠品コラム数
             ,(SELECT COUNT(xsv2.sold_out_class) sold_out_class2
               FROM   xxcso_sales_of_task_v xsv2  -- 有効訪問販売実績ビュー
-              WHERE  xsv2.sold_out_class = cv_sld_out_clss2
+              /* 2009.12.11 K.Hosoi E_本稼動_00413対応 START */
+              --WHERE  xsv2.sold_out_class = cv_sld_out_clss2
+              WHERE  (xsv2.sold_out_class = cv_sld_out_clss1
+                      OR  xsv2.sold_out_class = cv_sld_out_clss2)
+              /* 2009.12.11 K.Hosoi E_本稼動_00413対応 END */
               AND    xsv2.order_no_hht = TO_NUMBER(io_get_data_rec.attribute13)
               AND    xsv2.digestion_ln_number = 0
               ) active_column_number                             -- 有効コラム数
