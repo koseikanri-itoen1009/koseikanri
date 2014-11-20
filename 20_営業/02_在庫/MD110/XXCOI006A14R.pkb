@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A14R(body)
  * Description      : 受払残高表（営業員）
  * MD.050           : 受払残高表（営業員） <MD050_COI_A14>
- * Version          : 1.1
+ * Version          : 1.0
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,7 +25,6 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/26    1.0   N.Abe            新規作成
- *  2009/04/12    1.1   H.Sasaki         [T1_0840]倉替入出庫の帳票への出力を追加
  *
  *****************************************************************************************/
 --
@@ -129,52 +128,40 @@ AS
            ,iv_inventory_date   IN VARCHAR2
            ,in_organization_id  IN NUMBER)
   IS
-    SELECT      papf.employee_number                emp_no              -- 1.営業員コード
-             ,  papf.per_information18 || papf.per_information19
-                                                    emp_name            -- 2.営業員名称（漢字姓＋漢字名）
-             ,  SUBSTR(iimb.attribute2, 1, 3)       policy_group        -- 3.群コード
-             ,  iimb.item_no                        item_no             -- 4.品目コード
-             ,  ximb.item_short_name                item_short_name     -- 5.略称（商品）
-             ,  xird.operation_cost                 operation_cost      -- 6.営業原価
-             ,  xird.previous_inventory_quantity    month_begin_qty     -- 7.月首棚卸高
--- == 2009/05/11 V1.1 Modified START ===============================================================
---             ,  xird.warehouse_stock                                    --   倉庫より入庫
---              + xird.vd_supplement_stock                                --   消化VD補充入庫
---                                                    vd_sp_stock         -- 8.倉庫より入庫
-             ,  xird.warehouse_stock                                    --   倉庫より入庫
-              + xird.vd_supplement_stock                                --   消化VD補充入庫
-              + xird.change_stock                                       --   倉替入庫
-                                                    vd_sp_stock         -- 8.倉庫より入庫
--- == 2009/05/11 V1.1 Modified END   ===============================================================
-             ,  xird.sales_shipped                                      --   売上出庫
-              - xird.sales_shipped_b                                    --   売上出庫振戻
-                                                    sales_shipped       -- 9.売上出庫
-             ,  xird.return_goods                                       --   返品
-              - xird.return_goods_b                                     --   返品振戻
-                                                    customer_return     --10.顧客返品
-             ,  xird.customer_sample_ship                               --   顧客見本出庫
-              - xird.customer_sample_ship_b                             --   顧客見本出庫振戻
-              + xird.customer_support_ss                                --   顧客協賛見本出庫
-              - xird.customer_support_ss_b                              --   顧客協賛見本出庫振戻
-              + xird.sample_quantity                                    --   見本出庫
-              - xird.sample_quantity_b                                  --   見本出庫振戻
-              + xird.ccm_sample_ship                                    --   顧客広告宣伝費A自社商品
-              - xird.ccm_sample_ship_b                                  --   顧客広告宣伝費A自社商品振戻
-                                                    support_sample      --11.協賛見本
-             ,  xird.inventory_change_out           inv_change_out      --12.VD出庫
-             ,  xird.inventory_change_in            inv_change_in       --13.VD入庫
--- == 2009/05/11 V1.1 Modified START ===============================================================
---             ,  xird.warehouse_ship                                     --   倉庫へ返庫
---              + xird.vd_supplement_ship                                 --   消化VD補充出庫
---                                                    warehouse_ship      --14.倉庫へ返庫
-             ,  xird.warehouse_ship                                     --   倉庫へ返庫
-              + xird.vd_supplement_ship                                 --   消化VD補充出庫
-              + xird.change_ship                                        --   倉替出庫
-                                                    warehouse_ship      --14.倉庫へ返庫
--- == 2009/05/11 V1.1 Modified END   ===============================================================
-             ,  xird.book_inventory_quantity        tyoubo_stock        --15.帳簿在庫
-             ,  0                                   inventory           --16.棚卸高
-             ,  0                                   inv_wear            --17.棚卸減耗
+    SELECT    papf.employee_number                emp_no              -- 1.営業員コード
+             ,papf.per_information18 || papf.per_information19
+                                                  emp_name            -- 2.営業員名称（漢字姓＋漢字名）
+             ,SUBSTR(iimb.attribute2, 1, 3)       policy_group        -- 3.群コード
+             ,iimb.item_no                        item_no             -- 4.品目コード
+             ,ximb.item_short_name                item_short_name     -- 5.略称（商品）
+             ,xird.operation_cost                 operation_cost      -- 6.営業原価
+             ,xird.previous_inventory_quantity    month_begin_qty     -- 7.月首棚卸高
+             ,xird.warehouse_stock          +                         --   倉庫より入庫
+              xird.vd_supplement_stock                                --   消化VD補充入庫
+                                                  vd_sp_stock         -- 8.倉庫より入庫
+             ,xird.sales_shipped            -                         --   売上出庫
+              xird.sales_shipped_b                                    --   売上出庫振戻
+                                                  sales_shipped       -- 9.売上出庫
+             ,xird.return_goods             -                         --   返品
+              xird.return_goods_b                                     --   返品振戻
+                                                  customer_return     --10.顧客返品
+             ,xird.customer_sample_ship     -                         --   顧客見本出庫
+              xird.customer_sample_ship_b   +                         --   顧客見本出庫振戻
+              xird.customer_support_ss      -                         --   顧客協賛見本出庫
+              xird.customer_support_ss_b    +                         --   顧客協賛見本出庫振戻
+              xird.sample_quantity          -                         --   見本出庫
+              xird.sample_quantity_b        +                         --   見本出庫振戻
+              xird.ccm_sample_ship          -                         --   顧客広告宣伝費A自社商品
+              xird.ccm_sample_ship_b                                  --   顧客広告宣伝費A自社商品振戻
+                                                  support_sample      --11.協賛見本
+             ,xird.inventory_change_out           inv_change_out      --12.VD出庫
+             ,xird.inventory_change_in            inv_change_in       --13.VD入庫
+             ,xird.warehouse_ship           +                         --   倉庫へ返庫
+              xird.vd_supplement_ship                                 --   消化VD補充出庫
+                                                  warehouse_ship      --14.倉庫へ返庫
+             ,xird.book_inventory_quantity        tyoubo_stock        --15.帳簿在庫
+             ,0                                   inventory           --16.棚卸高
+             ,0                                   inv_wear            --17.棚卸減耗
     FROM      xxcoi_inv_reception_daily   xird                        --月次在庫受払表（日次）
              ,mtl_secondary_inventories   msi                         --保管場所マスタ
              ,per_all_people_f            papf                        --従業員マスタ
@@ -210,63 +197,51 @@ AS
            ,iv_inventory_kbn    IN VARCHAR2
            ,in_organization_id  IN NUMBER)
   IS
-    SELECT      papf.employee_number                emp_no              -- 1.営業員コード
-             ,  papf.per_information18 || papf.per_information19
-                                                    emp_name            -- 2.営業員名称（漢字姓＋漢字名）
-             ,  SUBSTR(iimb.attribute2, 1, 3)       policy_group        -- 3.群コード
-             ,  iimb.item_no                        item_no             -- 4.品目コード
-             ,  ximb.item_short_name                item_short_name     -- 5.略称（商品）
-             ,  xirm.operation_cost                 operation_cost      -- 6.営業原価
-             ,  xirm.month_begin_quantity           month_begin_qty     -- 7.月首棚卸高
--- == 2009/05/11 V1.1 Modified START ===============================================================
---             ,  xirm.warehouse_stock                                    --   倉庫より入庫
---              + xirm.vd_supplement_stock                                --   消化VD補充入庫
---                                                    vd_sp_stock         -- 8.倉庫より入庫
-             ,  xirm.warehouse_stock                                    --   倉庫より入庫
-              + xirm.vd_supplement_stock                                --   消化VD補充入庫
-              + xirm.change_stock                                       --   倉替入庫
-                                                    vd_sp_stock         -- 8.倉庫より入庫
--- == 2009/05/11 V1.1 Modified START ===============================================================
-             ,  xirm.sales_shipped                                      --   売上出庫
-              - xirm.sales_shipped_b                                    --   売上出庫振戻
-                                                    sales_shipped       -- 9.売上出庫
-             ,  xirm.return_goods                                       --   返品
-              - xirm.return_goods_b                                     --   返品振戻
-                                                    customer_retuen     --10.顧客返品
-             ,  xirm.customer_sample_ship                               --   顧客見本出庫
-              -  xirm.customer_sample_ship_b                            --   顧客見本出庫振戻
-              +  xirm.customer_support_ss                               --   顧客協賛見本出庫
-              -  xirm.customer_support_ss_b                             --   顧客協賛見本出庫振戻
-              +  xirm.sample_quantity                                   --   見本出庫
-              -  xirm.sample_quantity_b                                 --   見本出庫振戻
-              +  xirm.ccm_sample_ship                                   --   顧客広告宣伝費A自社商品
-              -  xirm.ccm_sample_ship_b                                 --   顧客広告宣伝費A自社商品振戻
-                                                    support_sample      --11.協賛見本
-             ,  xirm.inventory_change_out                               --12.VD出庫
-             ,  xirm.inventory_change_in                                --13.VD入庫
--- == 2009/05/11 V1.1 Modified START ===============================================================
---             ,  xirm.warehouse_ship                                     --   倉庫へ返庫
---              + xirm.vd_supplement_ship                                 --   消化VD補充出庫
---                                                    warehouse_ship      --14.倉庫へ返庫
-             ,  xirm.warehouse_ship                                     --   倉庫へ返庫
-              + xirm.vd_supplement_ship                                 --   消化VD補充出庫
-              + xirm.change_ship                                        --   倉替出庫
-                                                    warehouse_ship      --14.倉庫へ返庫
--- == 2009/05/11 V1.1 Modified START ===============================================================
-             ,  xirm.inv_result                                         --   棚卸結果
-              +  xirm.inv_result_bad                                    --   棚卸結果（不良品）
-              +  xirm.inv_wear                                          --   棚卸減耗
-                                                    tyoubo_stock        --15.帳簿在庫
-             ,  xirm.inv_result                                         --   棚卸結果
-              + xirm.inv_result_bad                                     --   棚卸結果（不良品）
-                                                    inventory           --16.棚卸高
-             ,  xirm.inv_wear                       inv_wear            --17.棚卸減耗
-    FROM      xxcoi_inv_reception_monthly xirm                          --月次在庫受払表（月次）
-             ,mtl_secondary_inventories   msi                           --保管場所マスタ
-             ,per_all_people_f            papf                          --従業員マスタ
-             ,mtl_system_items_b          msib                          --Disc品目
-             ,ic_item_mst_b               iimb                          --OPM品目
-             ,xxcmn_item_mst_b            ximb                          --OPM品目アドオン
+    SELECT    papf.employee_number                emp_no              -- 1.営業員コード
+             ,papf.per_information18 || papf.per_information19
+                                                  emp_name            -- 2.営業員名称（漢字姓＋漢字名）
+             ,SUBSTR(iimb.attribute2, 1, 3)       policy_group        -- 3.群コード
+             ,iimb.item_no                        item_no             -- 4.品目コード
+             ,ximb.item_short_name                item_short_name     -- 5.略称（商品）
+             ,xirm.operation_cost                 operation_cost      -- 6.営業原価
+             ,xirm.month_begin_quantity           month_begin_qty     -- 7.月首棚卸高
+             ,xirm.warehouse_stock          +                         --   倉庫より入庫
+              xirm.vd_supplement_stock                                --   消化VD補充入庫
+                                                  vd_sp_stock         -- 8.倉庫より入庫
+             ,xirm.sales_shipped            -                         --   売上出庫
+              xirm.sales_shipped_b                                    --   売上出庫振戻
+                                                  sales_shipped       -- 9.売上出庫
+             ,xirm.return_goods             -                         --   返品
+              xirm.return_goods_b                                     --   返品振戻
+                                                  customer_retuen     --10.顧客返品
+             ,xirm.customer_sample_ship     -                         --   顧客見本出庫
+              xirm.customer_sample_ship_b   +                         --   顧客見本出庫振戻
+              xirm.customer_support_ss      -                         --   顧客協賛見本出庫
+              xirm.customer_support_ss_b    +                         --   顧客協賛見本出庫振戻
+              xirm.sample_quantity          -                         --   見本出庫
+              xirm.sample_quantity_b        +                         --   見本出庫振戻
+              xirm.ccm_sample_ship          -                         --   顧客広告宣伝費A自社商品
+              xirm.ccm_sample_ship_b                                  --   顧客広告宣伝費A自社商品振戻
+                                                  support_sample      --11.協賛見本
+             ,xirm.inventory_change_out                               --12.VD出庫
+             ,xirm.inventory_change_in                                --13.VD入庫
+             ,xirm.warehouse_ship           +                         --   倉庫へ返庫
+              xirm.vd_supplement_ship                                 --   消化VD補充出庫
+                                                  warehouse_ship      --14.倉庫へ返庫
+             ,xirm.inv_result               +                         --   棚卸結果
+              xirm.inv_result_bad           +                         --   棚卸結果（不良品）
+              xirm.inv_wear                                           --   棚卸減耗
+                                                  tyoubo_stock        --15.帳簿在庫
+             ,xirm.inv_result               +                         --   棚卸結果
+              xirm.inv_result_bad                                     --   棚卸結果（不良品）
+                                                  inventory           --16.棚卸高
+             ,xirm.inv_wear                       inv_wear            --17.棚卸減耗
+    FROM      xxcoi_inv_reception_monthly xirm                        --月次在庫受払表（月次）
+             ,mtl_secondary_inventories   msi                         --保管場所マスタ
+             ,per_all_people_f            papf                        --従業員マスタ
+             ,mtl_system_items_b          msib                        --Disc品目
+             ,ic_item_mst_b               iimb                        --OPM品目
+             ,xxcmn_item_mst_b            ximb                        --OPM品目アドオン
     WHERE     papf.employee_number        = NVL(iv_business, msi.attribute3)
     AND       papf.effective_start_date  <= gd_process_date
     AND       (papf.effective_end_date   >= gd_process_date
