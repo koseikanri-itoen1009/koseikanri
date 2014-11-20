@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼確認表
  * MD.050           : 出荷依頼       T_MD050_BPO_401
  * MD.070           : 出荷依頼確認表 T_MD070_BPO_40J
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2008/07/31    1.9   Yuko  Kawano     結合テスト不具合対応(総重量/総容積の算出ロジック変更)
  *  2008/10/20    1.10  Yuko  Kawano     課題＃32,48,62、統合指摘＃294、T_S_627対応
  *  2008/11/14    1.11  大橋  孝郎       指摘567,599,605対応
+ *  2008/12/11    1.12  山本  恭久       本番障害#641対応
  *
  *****************************************************************************************/
 --
@@ -407,7 +408,11 @@ AS
     iv_tag_name       IN     VARCHAR2,
     iv_tag_value      IN     VARCHAR2,
     ic_tag_type       IN     CHAR,
-    ic_tag_value_type IN     CHAR
+-- mod start ver1.12 Y.Yamamoto
+--    ic_tag_value_type IN     CHAR
+    ic_tag_value_type IN     CHAR,
+    in_tag_length     IN     NUMBER
+-- mod end ver1.12 Y.Yamamoto
   )
   IS
 --
@@ -447,7 +452,10 @@ AS
     ELSIF (ic_tag_value_type = 'B') THEN
       iox_xml_data( ln_count ).TAG_VALUE := TO_CHAR(TO_NUMBER(iv_tag_value), '9999990.90');
     ELSE
-      iox_xml_data( ln_count ).TAG_VALUE := iv_tag_value;
+-- mod start ver1.12 Y.Yamamoto
+--      iox_xml_data( ln_count ).TAG_VALUE := iv_tag_value;
+      iox_xml_data( ln_count ).TAG_VALUE := SUBSTRB(iv_tag_value, 1, in_tag_length);
+-- mod end ver1.12 Y.Yamamoto
     END IF;
     iox_xml_data( ln_count ).TAG_TYPE  := ic_tag_type;
 --
@@ -1041,15 +1049,16 @@ AS
     IF ( lv_retcode = gv_status_error ) THEN
       RAISE global_api_expt ;
 --
+-- mod start ver1.12 Y.Yamamoto 全体に文字数を追加する修正
     -- 取得データが０件の場合
     ELSIF ( lt_main_data.COUNT = 0 ) THEN
       --データグループ名開始タグセット
-      insert_xml_plsql_table(iox_xml_data, 'g_irai', NULL, 'T', 'C');
+      insert_xml_plsql_table(iox_xml_data, 'g_irai', NULL, 'T', 'C', 0);
       --データセット（ヘッダ）
       insert_xml_plsql_table(iox_xml_data, 'msg', 
-             xxcmn_common_pkg.get_msg( gv_application_cmn, gv_err_nodata ), 'D', 'C');
+             xxcmn_common_pkg.get_msg( gv_application_cmn, gv_err_nodata ), 'D', 'C', 50);
       --データグループ名終了タグセット
-      insert_xml_plsql_table(iox_xml_data, '/g_irai', NULL, 'T', 'C');
+      insert_xml_plsql_table(iox_xml_data, '/g_irai', NULL, 'T', 'C', 0);
 --
       lv_retcode := gv_status_warn;
 --
@@ -1064,95 +1073,95 @@ AS
 --
           IF ( get_user_rec <> 1 ) THEN
             --データグループ名終了タグセット
-            insert_xml_plsql_table(iox_xml_data, '/lg_mei', NULL, 'T', 'C');
+            insert_xml_plsql_table(iox_xml_data, '/lg_mei', NULL, 'T', 'C', 0);
 --
             --データセット(計)
             insert_xml_plsql_table(iox_xml_data, 'sum_palette', 
-                                    lt_main_data(get_user_rec -1).pallet_sum_quantity,'D','C');
+                                    lt_main_data(get_user_rec -1).pallet_sum_quantity,'D','C', 3);
             insert_xml_plsql_table(iox_xml_data, 'sum_weight', 
 -- 2008/07/31 Y.Kawano mod start
 --                                    lt_main_data(get_user_rec -1).sum_weight, 'D', 'C');
-                                    CEIL(TRUNC(lt_main_data(get_user_rec -1).sum_weight, 1)), 'D', 'C');
+                                    CEIL(TRUNC(lt_main_data(get_user_rec -1).sum_weight, 1)), 'D', 'C', 9);
 -- 2008/07/31 Y.Kawano mod end
             insert_xml_plsql_table(iox_xml_data, 'unit_sum2', 
-                                    lt_main_data(get_user_rec -1).sum_weight_capacity_class, 'D', 'C');
+                                    lt_main_data(get_user_rec -1).sum_weight_capacity_class, 'D', 'C', 9);
             insert_xml_plsql_table(iox_xml_data, 'carry_rate', 
-                                    lt_main_data(get_user_rec -1).loading_efficiency_weight, 'D', 'C');
+                                    lt_main_data(get_user_rec -1).loading_efficiency_weight, 'D', 'C', 6);
 --
             --データグループ名終了タグセット
-            insert_xml_plsql_table(iox_xml_data, '/g_irai',NULL,'T','C');
+            insert_xml_plsql_table(iox_xml_data, '/g_irai',NULL,'T','C', 0);
 -- 2008/07/03 ST不具合対応#344 Start
             IF ( pre_add_l_name <> lt_main_data(get_user_rec).address_line_name ) THEN
               --データグループ名終了タグセット
-              insert_xml_plsql_table(iox_xml_data, '/lg_irai_info',NULL,'T','C');
+              insert_xml_plsql_table(iox_xml_data, '/lg_irai_info',NULL,'T','C', 0);
 --
               --データグループ名開始タグセット
-              insert_xml_plsql_table(iox_xml_data, 'lg_irai_info', NULL, 'T', 'C');
+              insert_xml_plsql_table(iox_xml_data, 'lg_irai_info', NULL, 'T', 'C', 0);
 --
             END IF;
 -- 2008/07/03 ST不具合対応#344 End
           END IF;
 --
           --データグループ名開始タグセット
-          insert_xml_plsql_table(iox_xml_data, 'g_irai', NULL, 'T', 'C');
+          insert_xml_plsql_table(iox_xml_data, 'g_irai', NULL, 'T', 'C', 0);
 --
           --データセット（ヘッダ）
-          insert_xml_plsql_table(iox_xml_data, 'tyohyo_id', gc_report_id, 'D', 'C');
+          insert_xml_plsql_table(iox_xml_data, 'tyohyo_id', gc_report_id, 'D', 'C', 12);
           insert_xml_plsql_table(iox_xml_data, 'exec_time', 
-                                       TO_CHAR(ld_now_date, gc_char_d_format2), 'D', 'C');
-          insert_xml_plsql_table(iox_xml_data, 'post' ,gv_department_code, 'D', 'C');
-          insert_xml_plsql_table(iox_xml_data, 'name', gv_department_name, 'D', 'C');
+                                       TO_CHAR(ld_now_date, gc_char_d_format2), 'D', 'C', 19);
+          insert_xml_plsql_table(iox_xml_data, 'post' ,gv_department_code, 'D', 'C', 10);
+          insert_xml_plsql_table(iox_xml_data, 'name', gv_department_name, 'D', 'C', 14);
 --
           --データセット(左)
           insert_xml_plsql_table(iox_xml_data, 'req_no', 
-                                  lt_main_data(get_user_rec).request_no, 'D', 'C');
+                                  lt_main_data(get_user_rec).request_no, 'D', 'C', 12);
           insert_xml_plsql_table(iox_xml_data, 'client_code', 
-                                  lt_main_data(get_user_rec).customer_code, 'D', 'C');
+                                  lt_main_data(get_user_rec).customer_code, 'D', 'C', 9);
           insert_xml_plsql_table(iox_xml_data, 'client_name', 
-                                  lt_main_data(get_user_rec).party_short_name, 'D', 'C');
+                                  lt_main_data(get_user_rec).party_short_name, 'D', 'C', 20);
           insert_xml_plsql_table(iox_xml_data, 'delivery_address', 
-                                  lt_main_data(get_user_rec).address, 'D', 'C');
+                                  lt_main_data(get_user_rec).address, 'D', 'C', 60);
           insert_xml_plsql_table(iox_xml_data, 'control_code', 
-                                  lt_main_data(get_user_rec).address_line1, 'D', 'C');
+                                  lt_main_data(get_user_rec).address_line1, 'D', 'C', 4);
           insert_xml_plsql_table(iox_xml_data, 'control_name', 
-                                  lt_main_data(get_user_rec).address_line_name, 'D', 'C');
+                                  lt_main_data(get_user_rec).address_line_name, 'D', 'C', 20);
           insert_xml_plsql_table(iox_xml_data, 'delivery_code', 
-                                  lt_main_data(get_user_rec).deliver_to, 'D', 'C');
+                                  lt_main_data(get_user_rec).deliver_to, 'D', 'C', 9);
           insert_xml_plsql_table(iox_xml_data, 'delivery_name', 
-                                  lt_main_data(get_user_rec).party_site_full_name, 'D', 'C');
+                                  lt_main_data(get_user_rec).party_site_full_name, 'D', 'C', 60);
           insert_xml_plsql_table(iox_xml_data, 'mix_no', 
-                                  lt_main_data(get_user_rec).mixed_no, 'D', 'C');
+                                  lt_main_data(get_user_rec).mixed_no, 'D', 'C', 12);
           insert_xml_plsql_table(iox_xml_data, 'order_no', 
-                                  lt_main_data(get_user_rec).cust_po_number, 'D', 'C');
+                                  lt_main_data(get_user_rec).cust_po_number, 'D', 'C', 20);
           insert_xml_plsql_table(iox_xml_data, 'ship_day', 
-             TO_CHAR(lt_main_data(get_user_rec).schedule_ship_date, gc_char_d_format), 'D', 'C');
+             TO_CHAR(lt_main_data(get_user_rec).schedule_ship_date, gc_char_d_format), 'D', 'C', 10);
           insert_xml_plsql_table(iox_xml_data, 'arrive_day', 
              TO_CHAR(lt_main_data(get_user_rec).schedule_arrival_date,
-                                                                    gc_char_d_format), 'D', 'C');
+                                                                    gc_char_d_format), 'D', 'C', 10);
           insert_xml_plsql_table(iox_xml_data, 'from_time', 
-                                  lt_main_data(get_user_rec).arrival_time_from, 'D', 'C');
+                                  lt_main_data(get_user_rec).arrival_time_from, 'D', 'C', 4);
           insert_xml_plsql_table(iox_xml_data, 'to_time', 
-                                  lt_main_data(get_user_rec).arrival_time_to, 'D', 'C');
+                                  lt_main_data(get_user_rec).arrival_time_to, 'D', 'C', 4);
           insert_xml_plsql_table(iox_xml_data, 'ship_form', 
-                                  lt_main_data(get_user_rec).order_type_id, 'D', 'C');
+                                  lt_main_data(get_user_rec).order_type_id, 'D', 'C', 20);
           insert_xml_plsql_table(iox_xml_data, 'req_division', 
-                                  lt_main_data(get_user_rec).meaning1, 'D', 'C');
+                                  lt_main_data(get_user_rec).meaning1, 'D', 'C', 8);
           insert_xml_plsql_table(iox_xml_data, 'delivery_division', 
-                                  lt_main_data(get_user_rec).ship_method_meaning, 'D', 'C');
+                                  lt_main_data(get_user_rec).ship_method_meaning, 'D', 'C', 8);
           insert_xml_plsql_table(iox_xml_data, 'collect_palette', 
-                                  lt_main_data(get_user_rec).collected_pallet_qty, 'D', 'C');
+                                  lt_main_data(get_user_rec).collected_pallet_qty, 'D', 'C', 3);
           insert_xml_plsql_table(iox_xml_data, 'status', 
-                                  lt_main_data(get_user_rec).meaning2, 'D', 'C');
+                                  lt_main_data(get_user_rec).meaning2, 'D', 'C', 20);
           insert_xml_plsql_table(iox_xml_data, 'pd_division', 
-                                  lt_main_data(get_user_rec).meaning3, 'D', 'C');
+                                  lt_main_data(get_user_rec).meaning3, 'D', 'C', 4);
           insert_xml_plsql_table(iox_xml_data, 'abstract', 
-                                  lt_main_data(get_user_rec).shipping_instructions, 'D', 'C');
+                                  lt_main_data(get_user_rec).shipping_instructions, 'D', 'C', 60);
           insert_xml_plsql_table(iox_xml_data, 'shipment_code', 
-                                  lt_main_data(get_user_rec).deliver_from, 'D', 'C');
+                                  lt_main_data(get_user_rec).deliver_from, 'D', 'C', 4);
           insert_xml_plsql_table(iox_xml_data, 'shipment_name', 
-                                  lt_main_data(get_user_rec).description, 'D', 'C');
+                                  lt_main_data(get_user_rec).description, 'D', 'C', 20);
           --データグループ名開始タグセット
-          insert_xml_plsql_table(iox_xml_data, 'lg_mei', NULL, 'T', 'C');
+          insert_xml_plsql_table(iox_xml_data, 'lg_mei', NULL, 'T', 'C', 0);
 --
           pre_req_no      := lt_main_data(get_user_rec).request_no;
 -- 2008/07/03 ST不具合対応#344 Start
@@ -1162,55 +1171,55 @@ AS
         END IF;
 --
         --データグループ名開始タグセット
-        insert_xml_plsql_table(iox_xml_data, 'g_mei' , NULL, 'T', 'C');
+        insert_xml_plsql_table(iox_xml_data, 'g_mei' , NULL, 'T', 'C', 0);
         --データセット(右)
         insert_xml_plsql_table(iox_xml_data, 'list_code', 
-                                lt_main_data(get_user_rec).request_item_code, 'D', 'C');
+                                lt_main_data(get_user_rec).request_item_code, 'D', 'C', 7);
         insert_xml_plsql_table(iox_xml_data, 'list_name', 
-                                lt_main_data(get_user_rec).item_short_name, 'D', 'C');
+                                lt_main_data(get_user_rec).item_short_name, 'D', 'C', 20);
         insert_xml_plsql_table(iox_xml_data, 'num_palette', 
-                                lt_main_data(get_user_rec).pallet_quantity, 'D', 'C');
+                                lt_main_data(get_user_rec).pallet_quantity, 'D', 'C', 3);
         insert_xml_plsql_table(iox_xml_data, 'steps_palette', 
-                                lt_main_data(get_user_rec).layer_quantity, 'D', 'C');
+                                lt_main_data(get_user_rec).layer_quantity, 'D', 'C', 3);
         insert_xml_plsql_table(iox_xml_data, 'num_case', 
-                                lt_main_data(get_user_rec).case_quantity, 'D', 'C');
+                                lt_main_data(get_user_rec).case_quantity, 'D', 'C', 3);
         insert_xml_plsql_table(iox_xml_data, 'sum', 
-                                lt_main_data(get_user_rec).quantity, 'D', 'C');
+                                lt_main_data(get_user_rec).quantity, 'D', 'C', 15);
         insert_xml_plsql_table(iox_xml_data, 'unit_sum1', 
-                                lt_main_data(get_user_rec).item_um, 'D', 'C');
+                                lt_main_data(get_user_rec).item_um, 'D', 'C', 3);
         insert_xml_plsql_table(iox_xml_data, 'in_num', 
-                                lt_main_data(get_user_rec).num_of_cases, 'D', 'C');
+                                lt_main_data(get_user_rec).num_of_cases, 'D', 'C', 7);
         insert_xml_plsql_table(iox_xml_data, 'total_weight', 
 -- 2008/07/03 ST不具合対応#344 Start
 --                                lt_main_data(get_user_rec).weight, 'D', 'C');
-                                CEIL(TRUNC(lt_main_data(get_user_rec).weight, 1)), 'D', 'C');
+                                CEIL(TRUNC(lt_main_data(get_user_rec).weight, 1)), 'D', 'C', 9);
 -- 2008/07/03 ST不具合対応#344 End
         insert_xml_plsql_table(iox_xml_data, 'unit_total', 
-                                lt_main_data(get_user_rec).weight_capacity_class, 'D', 'C');
+                                lt_main_data(get_user_rec).weight_capacity_class, 'D', 'C', 3);
 --
         --データグループ名終了タグセット
-        insert_xml_plsql_table(iox_xml_data, '/g_mei', NULL, 'T', 'C');
+        insert_xml_plsql_table(iox_xml_data, '/g_mei', NULL, 'T', 'C', 0);
 --
       END LOOP lg_irai_info;
 --
       --データグループ名終了タグセット
-      insert_xml_plsql_table(iox_xml_data, '/lg_mei', NULL, 'T', 'C');
+      insert_xml_plsql_table(iox_xml_data, '/lg_mei', NULL, 'T', 'C', 0);
 --
       --データセット(計)
       insert_xml_plsql_table(iox_xml_data, 'sum_palette', 
-                              lt_main_data(lt_main_data.COUNT).pallet_sum_quantity,'D','C');
+                              lt_main_data(lt_main_data.COUNT).pallet_sum_quantity,'D','C', 9);
       insert_xml_plsql_table(iox_xml_data, 'sum_weight', 
 -- 2008/07/03 ST不具合対応#344 Start
 --                              lt_main_data(lt_main_data.COUNT).sum_weight, 'D', 'C');
-                             CEIL(TRUNC(lt_main_data(lt_main_data.COUNT).sum_weight, 1)), 'D', 'C');
+                             CEIL(TRUNC(lt_main_data(lt_main_data.COUNT).sum_weight, 1)), 'D', 'C', 9);
 -- 2008/07/03 ST不具合対応#344 End
       insert_xml_plsql_table(iox_xml_data, 'unit_sum2', 
-                              lt_main_data(lt_main_data.COUNT).sum_weight_capacity_class, 'D', 'C');
+                              lt_main_data(lt_main_data.COUNT).sum_weight_capacity_class, 'D', 'C', 3);
       insert_xml_plsql_table(iox_xml_data, 'carry_rate', 
-                              lt_main_data(lt_main_data.COUNT).loading_efficiency_weight, 'D', 'C');
+                              lt_main_data(lt_main_data.COUNT).loading_efficiency_weight, 'D', 'C', 6);
 --
       --データグループ名終了タグセット
-      insert_xml_plsql_table(iox_xml_data, '/g_irai',NULL,'T','C');
+      insert_xml_plsql_table(iox_xml_data, '/g_irai',NULL,'T','C', 0);
 --
     END IF ;
    -- ==================================================
