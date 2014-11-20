@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM001A01C(spec)
  * Description      : 仕入先マスタIF出力（情報系）
  * MD.050           : 仕入先マスタIF出力（情報系）MD050_CMM_001_A01
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,8 @@ AS
  *  2009/03/09    1.1   SCS 瀧川 倫太郎  仕入先の銀行口座登録チェックをコメントアウト
  *  2009/05/13    1.2   SCS 吉川 博章    T1_0978対応
  *  2009/12/04    1.3   SCS 仁木 重人    E_本稼動_00307対応
+ *  2010/03/08    1.4   SCS 久保島 豊    E_本稼動_01820対応
+ *                                       ・預金種別名称に「貯蓄預金,別段預金」を追加
  *
  *****************************************************************************************/
 --
@@ -34,7 +36,7 @@ AS
   cv_status_normal CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_normal; --正常:0
 --  cv_status_warn   CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_warn;   --警告:1(未使用)
   cv_status_error  CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_error;  --異常:2
-
+--
   cv_msg_part      CONSTANT VARCHAR2(3) := ' : ';
   cv_msg_cont      CONSTANT VARCHAR2(3) := '.';
 --
@@ -89,7 +91,7 @@ AS
   -- プロファイル
   cv_prf_dir           CONSTANT VARCHAR2(30) := 'XXCMM1_JYOHO_OUT_DIR';   -- 仕入先マスタ連携用CSVファイル出力先
   cv_prf_fil           CONSTANT VARCHAR2(30) := 'XXCMM1_001A01_OUT_FILE'; -- 仕入先マスタ連携用CSVファイル名
-
+--
   -- トークン
   cv_tkn_ng_profile    CONSTANT VARCHAR2(30) := 'NG_PROFILE';        -- エラープロファイル名
   cv_tkn_ng_word       CONSTANT VARCHAR2(30) := 'NG_WORD';           -- エラー項目名
@@ -106,6 +108,10 @@ AS
   cc_output            CONSTANT CHAR(1)      := 'w';                 -- 出力ステータス
   cc_payment_eft       CONSTANT CHAR(3)      := 'EFT';               -- 電信支払
 --
+-- 2010/03/08 Ver1.4 E_本稼動_01820 add start by Y.Kuboshima
+  -- 参照タイプ
+  cv_koza_type         CONSTANT VARCHAR2(30) := 'XXCSO1_KOZA_TYPE';  -- 参照タイプ(口座種別)
+-- 2010/03/08 Ver1.4 E_本稼動_01820 add end by Y.Kuboshima
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -145,8 +151,8 @@ AS
   gv_csv_file       VARCHAR2(5000);        -- 出力情報
   gt_csv_out_tbl    csv_out_tbl;           -- 結合配列の定義
   gc_del_flg        CHAR(1) := ' ';        -- CSV削除フラグ('1':削除)
-
-
+--
+--
   /**********************************************************************************
    * Procedure Name   : init
    * Description      : 初期処理(A-1)
@@ -209,13 +215,13 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
-
+--
     --空行挿入
     FND_FILE.PUT_LINE(
        which  => FND_FILE.OUTPUT
       ,buff   => ''
     );
-
+--
     -- ===============================
     -- プロファイル取得
     -- ===============================
@@ -248,7 +254,7 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
-
+--
     -- ===============================
     -- コンカレントメッセージ出力
     -- ===============================
@@ -259,18 +265,18 @@ AS
                  ,iv_token_name1  => cv_tkn_filename
                  ,iv_token_value1 => gv_file_name
                 );
-
+--
     FND_FILE.PUT_LINE(
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
-
+--
     --空行挿入
     FND_FILE.PUT_LINE(
        which  => FND_FILE.OUTPUT
       ,buff   => ''
     );
-
+--
     -- ===============================
     -- CSVファイル存在チェック
     -- ===============================
@@ -289,11 +295,11 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
-
+--
     -- ===============================
     -- 仕入先サイトマスタ０件チェック
     -- ===============================
-
+--
     BEGIN
       SELECT 1
       INTO   gn_target_cnt
@@ -372,11 +378,11 @@ AS
                    );
         lv_errbuf := lv_errmsg;
         RAISE global_api_expt;
-
+--
       WHEN OTHERS THEN
         RAISE global_api_others_expt;
     END;
-
+--
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -455,7 +461,7 @@ AS
 --
     <<gt_csv_out_tbl_loop>>
     FOR out_cnt IN gt_csv_out_tbl.FIRST .. gt_csv_out_tbl.LAST LOOP
-
+--
       gv_csv_file   := lv_char_dq || cc_itoen || lv_char_dq        -- 会社コード（固定値:001)
         || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).vender_num) || lv_char_dq  -- 仕入先番号
         || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).vendor_site_code) || lv_char_dq  -- 仕入先サイトコード
@@ -480,7 +486,7 @@ AS
       BEGIN
       -- CSVファイルへ出力
           UTL_FILE.PUT_LINE(gf_file_hand,gv_csv_file);
-
+--
       EXCEPTION
         WHEN UTL_FILE.INVALID_OPERATION THEN       -- ファイルアクセス権限エラー
           -- エラー件数
@@ -506,12 +512,12 @@ AS
         WHEN OTHERS THEN
           RAISE global_api_others_expt;
       END;
-
+--
       -- 正常件数
       gn_normal_cnt := gn_normal_cnt + 1;
-
+--
     END LOOP gt_csv_out_tblloop;
-
+--
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -600,7 +606,10 @@ AS
              SUBSTRB(abb.bank_branch_name_alt,1,30)
                                                 bank_branch_nm_alt, --銀行支店カナ
              SUBSTRB(aba.bank_account_type,1,1) bank_account_type,  --口座種別
-             DECODE(aba.bank_account_type,'1','普通預金','2','当座預金',NULL)
+-- 2010/03/08 Ver1.4 E_本稼動_01820 modify start by Y.Kuboshima
+--             DECODE(aba.bank_account_type,'1','普通預金','2','当座預金',NULL)
+             SUBSTRB(koza.meaning, 1, 30)
+-- 2010/03/08 Ver1.4 E_本稼動_01820 modify end by Y.Kuboshima
                                                 bank_account_type_nm, --預金種別名称
              SUBSTRB(aba.bank_account_num,1,30) bank_account_num,   --銀行口座番号
              SUBSTRB(aba.account_holder_name_alt,1,50)
@@ -613,6 +622,14 @@ AS
 --             po_vendor_sites_all pvs     --仕入先サイトマスタ
              po_vendor_sites  pvs        --仕入先サイトマスタ
 -- End
+-- 2010/03/08 Ver1.4 E_本稼動_01820 add start by Y.Kuboshima
+            ,(SELECT ffvv.lookup_code
+                    ,ffvv.meaning
+              FROM   fnd_lookup_values_vl ffvv   --参照タイプマスタ
+              WHERE  ffvv.lookup_type  = cv_koza_type
+                AND  ffvv.enabled_flag = 'Y'
+             ) koza                      --口座種別
+-- 2010/03/08 Ver1.4 E_本稼動_01820 add end by Y.Kuboshima
       WHERE  pv.vendor_id = pvs.vendor_id
       AND    EXISTS
              (SELECT 'x'
@@ -623,6 +640,9 @@ AS
               AND    abau.external_bank_account_id = aba.bank_account_id)
       AND    pvs.terms_id = att.term_id(+)
       AND    aba.bank_branch_id = abb.bank_branch_id(+)
+-- 2010/03/08 Ver1.4 E_本稼動_01820 add start by Y.Kuboshima
+      AND    aba.bank_account_type = koza.lookup_code(+)
+-- 2010/03/08 Ver1.4 E_本稼動_01820 add end by Y.Kuboshima
       UNION ALL
       SELECT SUBSTRB(pv.segment1,1,9)           vender_num,         --仕入先番号
 -- Ver1.2 Mod 2009/05/13 T1_0978対応 仕入先サイトコードは半角のみのため仕入先サイトIDを連携するよう修正
@@ -711,7 +731,7 @@ AS
     CLOSE vendor_cur;
 --
     gn_target_cnt := gt_csv_out_tbl.COUNT;  -- 処理件数カウントアップ
-
+--
     -- ===============================
     -- CSVファイル出力処理(A-3)
     -- ===============================
@@ -724,21 +744,21 @@ AS
     IF (gn_normal_cnt = 0) THEN
       gc_del_flg    := '1';   --CSV削除
     END IF;
-
+--
     IF (lv_retcode = cv_status_error) THEN
       IF (UTL_FILE.IS_OPEN(gf_file_hand)) THEN
         UTL_FILE.FCLOSE(gf_file_hand);
       END IF;
       RAISE global_process_expt;
     END IF;
-
+--
     -- ===============================
     -- 終了処理(A-4)
     -- ===============================
-
+--
     -- CSVファイルをクローズする
     UTL_FILE.FCLOSE(gf_file_hand);
-
+--
   EXCEPTION
       -- *** 任意で例外処理を記述する ****
 --
@@ -793,7 +813,7 @@ AS
     cv_normal_msg      CONSTANT VARCHAR2(30) := 'APP-XXCCP1-90004'; -- 正常終了メッセージ
 --    cv_warn_msg        CONSTANT VARCHAR2(30) := 'APP-XXCCP1-90005'; -- 警告終了メッセージ
     cv_error_msg       CONSTANT VARCHAR2(30) := 'APP-XXCCP1-90006'; -- エラー終了全ロールバック
-
+--
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -817,14 +837,14 @@ AS
     IF (lv_retcode = cv_status_error) THEN
       RAISE global_api_others_expt;
     END IF;
-
+--
     --空行挿入
     FND_FILE.PUT_LINE(
        which  => FND_FILE.OUTPUT
       ,buff   => ''
     );
-
-
+--
+--
 --###########################  固定部 END   #############################
 --
     -- ===============================================
@@ -858,7 +878,7 @@ AS
       gn_normal_cnt := 0;
       gn_error_cnt := 1;
     END IF;
-
+--
     --対象件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
                   iv_application  => cv_common_short_name
@@ -900,7 +920,7 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => ''
     );
-
+--
     --終了メッセージ
     IF (lv_retcode = cv_status_normal) THEN
       lv_message_code := cv_normal_msg;
@@ -919,14 +939,14 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
-
+--
     --CSV出力データが０件の場合、CSVファイルを削除する
     IF (gc_del_flg = '1') THEN
        UTL_FILE.FREMOVE(gv_directory,   -- 出力先
                         gv_file_name    -- CSVファイル名
       );
     END IF;
-
+--
     --ステータスセット
     retcode := lv_retcode;
     --終了ステータスがエラーの場合はROLLBACKする
