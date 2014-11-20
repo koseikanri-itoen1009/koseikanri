@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.46
+ * Version                : 1.47
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -101,6 +101,7 @@ AS
  *  2009/02/27   1.44  SCS    伊藤ひとみ[配車解除関数]本番#863対応(再対応)
  *  2009/03/04   1.45  SCS    北寒寺正夫[配車解除関数]本番#1268対応
  *  2009/03/05   1.46  SCS    北寒寺正夫[重量容積小口個数更新関数]本番#1068対応
+ *  2009/05/07   1.47  SCS    伊藤ひとみ[引当解除関数]本番#1443対応 減数チェックエラー時も引当を解除する。
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4962,6 +4963,9 @@ AS
     lt_item_short_name       ic_item_mst_b.attribute25%TYPE;                         -- 保管場所名称
     lt_description           hr_locations_all.description%TYPE;                      -- 保管場所
 --2008/09/03 Y.Kawano ADD End
+-- 2009/05/07 H.Itou ADD START 本番障害#1443
+   lv_retcode                     VARCHAR2(1);      -- リターンコード
+-- 2009/05/07 H.Itou ADD END
 --
     -- *** ローカル・カーソル ***
 --
@@ -5297,12 +5301,15 @@ AS
                                                     lt_item_short_name,
                                                     'LOT',
                                                     gt_lot_no_tbl(j));
---2008/09/03 Y.Kawano MOD End
-              ROLLBACK TO advance_sp;
--- 2009/01/14 Y.Yamamoto #991 update start
---              RETURN cv_enc_cancel_err;                             -- 引当解除データ無し
-              RETURN cv_sub_check_warn;                             -- 減数チェックワーニング
--- 2009/01/14 Y.Yamamoto #991 update end
+-- 2009/05/07 H.Itou MOD START 本番障害#1443 減数チェック警告時も引当解除する。
+----2008/09/03 Y.Kawano MOD End
+--              ROLLBACK TO advance_sp;
+---- 2009/01/14 Y.Yamamoto #991 update start
+----              RETURN cv_enc_cancel_err;                             -- 引当解除データ無し
+--              RETURN cv_sub_check_warn;                             -- 減数チェックワーニング
+---- 2009/01/14 Y.Yamamoto #991 update end
+              lv_retcode := cv_sub_check_warn;    -- リターンコード(減数警告)
+-- 2009/05/07 H.Itou MOD END
             END IF;
 --
             -- 削除処理を行います
@@ -5356,8 +5363,17 @@ AS
 --
       END LOOP gt_mov_req_instr_tbl_loop;
 --
-      -- 正常終了の場合
-      RETURN cv_compl;
+-- 2009/05/07 H.Itou ADD START 本番障害#1443
+      IF (lv_retcode = cv_sub_check_warn) THEN    -- リターンコード(減数警告)
+        RETURN cv_sub_check_warn;
+--
+      ELSE
+-- 2009/05/07 H.Itou ADD END
+        -- 正常終了の場合
+        RETURN cv_compl;
+-- 2009/05/07 H.Itou ADD START 本番障害#1443
+      END IF;
+-- 2009/05/07 H.Itou ADD END
 --
     END IF;
 --
