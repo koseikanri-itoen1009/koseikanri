@@ -7,7 +7,7 @@ AS
  * Description      : 出庫配送依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 出庫配送依頼表 T_MD070_BPO_62C
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2008/11/07    1.14  Y.Yamamoto       統合指摘#143対応(数量0のデータを対象外とする)
  *  2008/11/13    1.15  Y.Yamamoto       統合指摘#595対応、内部変更#168
  *  2008/11/20    1.16  Y.Yamamoto       統合指摘#464、#686対応
+ *  2008/11/27    1.17  A.Shiina         本番#185対応
  *
  *****************************************************************************************/
 --
@@ -1083,7 +1084,16 @@ AS
 -- 2008/10/27 add start 1.13 T_TE080_BPO_620指摘47 出庫配送区分が出庫の場合、倉庫兼運送業者を除外
     IF ( gt_param.iv_shukko_haisou_kbn = gc_shukko_haisou_kbn_d ) THEN
       lv_sql_shu_where1 :=  lv_sql_shu_where1 
-      || ' AND ( xil2v.eos_detination <> xc2v.eos_detination ) ' ;
+-- 2008/11/27 v1.17 UPDATE START
+--      || ' AND ( xil2v.eos_detination <> xc2v.eos_detination ) ' ;
+      || ' AND ( '
+      || '       ( xil2v.eos_detination IS NULL ) '
+      || '       OR '
+      || '       ( xc2v.eos_detination IS NULL ) '
+      || '       OR '
+      || '       ( xil2v.eos_detination <> xc2v.eos_detination ) '
+      || '     ) ' ;
+-- 2008/11/27 v1.17 UPDATE END
     END IF ;
 -- 2008/10/27 add end 1.13 
     lv_sql_shu_where1 :=  lv_sql_shu_where1
@@ -1528,7 +1538,16 @@ AS
 -- 2008/10/27 add start 1.13 T_TE080_BPO_620指摘47 出庫配送区分が出庫の場合、倉庫兼運送業者を除外
     IF ( gt_param.iv_shukko_haisou_kbn = gc_shukko_haisou_kbn_d ) THEN
       lv_sql_sik_where1 :=  lv_sql_sik_where1 
-      || ' AND ( xil2v.eos_detination <> xc2v.eos_detination ) ' ;
+-- 2008/11/27 v1.17 UPDATE START
+--      || ' AND ( xil2v.eos_detination <> xc2v.eos_detination ) ' ;
+      || ' AND ( '
+      || '       ( xil2v.eos_detination IS NULL ) '
+      || '       OR '
+      || '       ( xc2v.eos_detination IS NULL ) '
+      || '       OR '
+      || '       ( xil2v.eos_detination <> xc2v.eos_detination ) '
+      || '     ) ' ;
+-- 2008/11/27 v1.17 UPDATE END
     END IF ;
 -- 2008/10/27 add end 1.13 
     lv_sql_sik_where1 :=  lv_sql_sik_where1
@@ -1989,7 +2008,16 @@ AS
     ;
     IF ( gt_param.iv_shukko_haisou_kbn = gc_shukko_haisou_kbn_d ) THEN
       lv_sql_ido_where1 :=  lv_sql_ido_where1 
-      || ' AND ( xil2v1.eos_detination <> xc2v.eos_detination ) ' ;
+-- 2008/11/27 v1.17 UPDATE START
+--      || ' AND ( xil2v1.eos_detination <> xc2v.eos_detination ) ' ;
+      || ' AND ( '
+      || '       ( xil2v1.eos_detination IS NULL ) '
+      || '       OR '
+      || '       ( xc2v.eos_detination IS NULL ) '
+      || '       OR '
+      || '       ( xil2v1.eos_detination <> xc2v.eos_detination ) '
+      || '     ) ' ;
+-- 2008/11/27 v1.17 UPDATE END
     END IF ;
     lv_sql_ido_where1 :=  lv_sql_ido_where1 
 -- 2008/10/27 add end 1.13 
@@ -2294,7 +2322,16 @@ AS
 -- 2008/10/27 add start 1.13 T_TE080_BPO_620指摘47 出庫配送区分が出庫の場合、倉庫兼運送業者を除外
     IF ( gt_param.iv_shukko_haisou_kbn = gc_shukko_haisou_kbn_d ) THEN
       lv_sql_etc_where1 :=  lv_sql_etc_where1 
-      || ' AND ( xil2v1.eos_detination <> xc2v.eos_detination ) ' ;
+-- 2008/11/27 v1.17 UPDATE START
+--      || ' AND ( xil2v1.eos_detination <> xc2v.eos_detination ) ' ;
+      || ' AND ( '
+      || '       ( xil2v1.eos_detination IS NULL ) '
+      || '       OR '
+      || '       ( xc2v.eos_detination IS NULL ) '
+      || '       OR '
+      || '       ( xil2v1.eos_detination <> xc2v.eos_detination ) '
+      || '     ) ' ;
+-- 2008/11/27 v1.17 UPDATE END
     END IF ;
 -- 2008/10/27 add end 1.13 
     lv_sql_etc_where1 :=  lv_sql_etc_where1

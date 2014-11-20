@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.30
+ * Version                : 1.31
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -82,6 +82,7 @@ AS
  *  2008/10/23   1.28  Oracle 二瓶大輔  [配車解除関数] TE080_BPO_600 No22対応
  *  2008/11/13   1.29  Oracle 伊藤ひとみ[重量容積小口個数更新関数] 統合テスト指摘311対応
  *  2008/11/25   1.30  Oracle 北寒寺正夫[配車解除関数] 本番障害#84対応
+ *  2008/11/27   1.31  Oracle 椎名昭圭  [依頼Noコンバート関数] 本番障害#179対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1245,12 +1246,19 @@ AS
     cn_twelve_chars CONSTANT NUMBER      := 12;  -- 12文字
     -- 補完文字列
     cn_supplement_chars CONSTANT VARCHAR2(3) := '000';  -- 000
+-- 2008/11/27 v1.31 ADD START
+    cv_ship_drink   CONSTANT VARCHAR2(3) := '900';
+    cv_ship_leaf    CONSTANT VARCHAR2(3) := '930';
+-- 2008/11/27 v1.31 ADD END
 --
     -- *** ローカル変数 ***
     lv_wsh_or_base_code VARCHAR2(4);
     ln_mast_count1      NUMBER;
     ln_mast_count2      NUMBER;
     ld_date_char        DATE;
+-- 2008/11/27 v1.31 ADD START
+    lv_ship_chk         VARCHAR2(3);
+-- 2008/11/27 v1.31 ADD END
 --
     -- *** ローカル・カーソル ***
 --
@@ -1291,6 +1299,17 @@ AS
       IF ( LENGTHB( iv_pre_conv_request_no ) = cn_twelve_chars ) THEN
         -- 変換前依頼Noの先頭4文字を取得
         lv_wsh_or_base_code := SUBSTR( iv_pre_conv_request_no, 1 , 4 );
+-- 2008/11/27 v1.31 ADD START
+        -- 出荷情報チェックとして先頭3文字を取得
+        lv_ship_chk := SUBSTR( lv_wsh_or_base_code, 1, 3 );
+--
+       -- ドリンクまたはリーフの出荷情報の場合
+       IF ( lv_ship_chk IN ( cv_ship_drink, cv_ship_leaf ) ) THEN
+         -- 4桁目以降の9桁へ変換
+         ov_aft_conv_request_no := SUBSTR( iv_pre_conv_request_no, 4 );
+--
+       ELSE
+-- 2008/11/27 v1.31 ADD END
         -- 顧客マスタチェック
         SELECT COUNT(1)
         INTO   ln_mast_count1
@@ -1330,6 +1349,9 @@ AS
             || SUBSTR( iv_pre_conv_request_no, 6 , 7 );
 --
         END IF;
+-- 2008/11/27 ADD START
+       END IF;
+-- 2008/11/27 ADD END
       ELSE
         RETURN gn_status_error;
       END IF;

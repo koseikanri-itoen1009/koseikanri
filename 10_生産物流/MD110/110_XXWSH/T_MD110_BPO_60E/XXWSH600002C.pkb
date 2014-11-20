@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫配送計画情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60E_入出庫配送計画情報抽出処理
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -70,6 +70,7 @@ AS
  *  2008/10/23    1.25  M.Nomura         T_S_440対応
  *  2008/10/28    1.26  M.Nomura         統合#143対応
  *  2008/11/12    1.27  M.Nomura         統合#626対応
+ *  2008/11/27    1.28  M.Nomura         本番177対応
  *
  *****************************************************************************************/
 --
@@ -1490,7 +1491,13 @@ AS
             ,xim.item_name                            -- 40:品目名
             ,xim.item_um                              -- 41:単位
             ,xim.conv_unit                            -- 42:入出庫換算単位
-            ,xola.quantity                            -- 43:数量
+-- ##### 20081127 Ver.1.28 本番177対応 START #####
+--            ,xola.quantity                            -- 43:数量
+            ,CASE
+               WHEN xoha.req_status = gc_req_status_syu_5 THEN 0
+               ELSE xola.quantity                       -- 43:数量
+             END                                      -- 07:データタイプ
+-- ##### 20081127 Ver.1.28 本番177対応 END   #####
             ,xim.num_of_cases                         -- 44:ケース入数
             ,xim.lot_ctl                              -- 45:ロット使用
 -- ##### 20080925 Ver.1.20 統合#26対応 START #####
@@ -1531,7 +1538,10 @@ AS
       -- 受注明細
       AND   xoha.order_header_id = xola.order_header_id
 -- ##### 20081028 Ver.1.26 統合#143対応 START #####
-      AND   xola.delete_flag     = gc_yes_no_n    -- 削除フラグ = N
+-- ##### 20081127 Ver.1.28 本番177対応 START #####
+-- 削除フラグの条件はここではしない
+--      AND   xola.delete_flag     = gc_yes_no_n    -- 削除フラグ = N
+-- ##### 20081127 Ver.1.28 本番177対応 END   #####
 -- ##### 20081028 Ver.1.26 統合#143対応 END   #####
       ----------------------------------------------------------------------------------------------
       -- 配送配車計画
@@ -1677,7 +1687,12 @@ AS
             ,xim.item_name                            -- 40:品目名
             ,xim.item_um                              -- 41:単位
             ,xim.conv_unit                            -- 42:入出庫換算単位
-            ,xola.quantity                            -- 43:数量
+-- ##### 20081127 Ver.1.28 本番177対応 START #####
+            ,CASE
+               WHEN xoha.req_status = gc_req_status_shi_5 THEN 0
+               ELSE xola.quantity                     -- 43:数量
+             END                                      -- 07:データタイプ
+-- ##### 20081127 Ver.1.28 本番177対応 END   #####
             ,xim.num_of_cases                         -- 44:ケース入数
             ,xim.lot_ctl                              -- 45:ロット使用
 -- ##### 20080925 Ver.1.20 統合#26対応 START #####
@@ -1710,7 +1725,10 @@ AS
       -- 受注明細
       AND   xoha.order_header_id = xola.order_header_id
 -- ##### 20081028 Ver.1.26 統合#143対応 START #####
-      AND   xola.delete_flag     = gc_yes_no_n      -- 削除フラグ = N
+-- ##### 20081127 Ver.1.28 本番177対応 START #####
+-- 削除フラグの条件はここではしない
+--      AND   xola.delete_flag     = gc_yes_no_n      -- 削除フラグ = N
+-- ##### 20081127 Ver.1.28 本番177対応 END   #####
 -- ##### 20081028 Ver.1.26 統合#143対応 END   #####
       ----------------------------------------------------------------------------------------------
       -- 配送配車計画
@@ -1859,7 +1877,12 @@ AS
             ,xim.item_name                            -- 40:品目名
             ,xim.item_um                              -- 41:単位
             ,xim.conv_unit                            -- 42:入出庫換算単位
-            ,xmril.instruct_qty                       -- 43:数量
+-- ##### 20081127 Ver.1.28 本番177対応 START #####
+            ,CASE
+               WHEN xmrih.status = gc_req_status_syu_5 THEN 0
+               ELSE xmril.instruct_qty                       -- 43:数量
+             END                                      -- 07:データタイプ
+-- ##### 20081127 Ver.1.28 本番177対応 END   #####
             ,xim.num_of_cases                         -- 44:ケース入数
             ,xim.lot_ctl                              -- 45:ロット使用
 -- ##### 20080925 Ver.1.20 統合#26対応 START #####
@@ -1891,7 +1914,10 @@ AS
       -- 移動依頼指示明細
       AND   xmrih.mov_hdr_id = xmril.mov_hdr_id
 -- ##### 20081028 Ver.1.26 統合#143対応 START #####
-      AND   xmril.delete_flg = gc_yes_no_n          -- 削除フラグ = N
+-- ##### 20081127 Ver.1.28 本番177対応 START #####
+-- 削除フラグの条件はここではしない
+--      AND   xmril.delete_flg = gc_yes_no_n          -- 削除フラグ = N
+-- ##### 20081127 Ver.1.28 本番177対応 END   #####
 -- ##### 20081028 Ver.1.26 統合#143対応 END   #####
       ----------------------------------------------------------------------------------------------
       -- 配送配車計画
@@ -2043,7 +2069,12 @@ AS
             ,xim.item_name                            -- 40:品目名
             ,xim.item_um                              -- 41:単位
             ,xim.conv_unit                            -- 42:入出庫換算単位
-            ,xola.quantity                            -- 43:数量
+-- ##### 20081127 Ver.1.28 本番177対応 START #####
+            ,CASE
+               WHEN xoha.req_status = gc_req_status_syu_5 THEN 0
+               ELSE xola.quantity                            -- 43:数量
+             END                                      -- 07:データタイプ
+-- ##### 20081127 Ver.1.28 本番177対応 END   #####
             ,xim.num_of_cases                         -- 44:ケース入数
             ,xim.lot_ctl                              -- 45:ロット使用
 -- ##### 20080925 Ver.1.20 統合#26対応 START #####
@@ -2079,7 +2110,10 @@ AS
       -- 受注明細
       AND   xoha.order_header_id = xola.order_header_id
 -- ##### 20081028 Ver.1.26 統合#143対応 START #####
-      AND   xola.delete_flag     = gc_yes_no_n      -- 削除フラグ = N
+-- ##### 20081127 Ver.1.28 本番177対応 START #####
+-- 削除フラグの条件はここではしない
+--      AND   xola.delete_flag     = gc_yes_no_n      -- 削除フラグ = N
+-- ##### 20081127 Ver.1.28 本番177対応 END   #####
 -- ##### 20081028 Ver.1.26 統合#143対応 END   #####
       ----------------------------------------------------------------------------------------------
       -- 配送配車計画
@@ -2226,7 +2260,12 @@ AS
             ,xim.item_name                            -- 40:品目名
             ,xim.item_um                              -- 41:単位
             ,xim.conv_unit                            -- 42:入出庫換算単位
-            ,xola.quantity                            -- 43:数量
+-- ##### 20081127 Ver.1.28 本番177対応 START #####
+            ,CASE
+               WHEN xoha.req_status = gc_req_status_shi_5 THEN 0
+               ELSE xola.quantity                            -- 43:数量
+             END                                      -- 07:データタイプ
+-- ##### 20081127 Ver.1.28 本番177対応 END   #####
             ,xim.num_of_cases                         -- 44:ケース入数
             ,xim.lot_ctl                              -- 45:ロット使用
 -- ##### 20080925 Ver.1.20 統合#26対応 START #####
@@ -2259,7 +2298,10 @@ AS
       -- 受注明細
       AND   xoha.order_header_id = xola.order_header_id
 -- ##### 20081028 Ver.1.26 統合#143対応 START #####
-      AND   xola.delete_flag     = gc_yes_no_n      -- 削除フラグ = N
+-- ##### 20081127 Ver.1.28 本番177対応 START #####
+-- 削除フラグの条件はここではしない
+--      AND   xola.delete_flag     = gc_yes_no_n      -- 削除フラグ = N
+-- ##### 20081127 Ver.1.28 本番177対応 END   #####
 -- ##### 20081028 Ver.1.26 統合#143対応 END   #####
       ----------------------------------------------------------------------------------------------
       -- 配送配車計画
@@ -2403,7 +2445,12 @@ AS
             ,xim.item_name                            -- 40:品目名
             ,xim.item_um                              -- 41:単位
             ,xim.conv_unit                            -- 42:入出庫換算単位
-            ,xmril.instruct_qty                       -- 43:数量
+-- ##### 20081127 Ver.1.28 本番177対応 START #####
+            ,CASE
+               WHEN xmrih.status = gc_req_status_syu_5 THEN 0
+               ELSE xmril.instruct_qty                       -- 43:数量
+             END                                      -- 07:データタイプ
+-- ##### 20081127 Ver.1.28 本番177対応 END   #####
             ,xim.num_of_cases                         -- 44:ケース入数
             ,xim.lot_ctl                              -- 45:ロット使用
 -- ##### 20080925 Ver.1.20 統合#26対応 START #####
@@ -2435,7 +2482,10 @@ AS
       -- 移動依頼指示明細
       AND   xmrih.mov_hdr_id = xmril.mov_hdr_id
 -- ##### 20081028 Ver.1.26 統合#143対応 START #####
-      AND   xmril.delete_flg = gc_yes_no_n        -- 削除フラグ = N
+-- ##### 20081127 Ver.1.28 本番177対応 START #####
+-- 削除フラグの条件はここではしない
+--      AND   xmril.delete_flg = gc_yes_no_n        -- 削除フラグ = N
+-- ##### 20081127 Ver.1.28 本番177対応 END   #####
 -- ##### 20081028 Ver.1.26 統合#143対応 END   #####
       ----------------------------------------------------------------------------------------------
       -- 配送配車計画
