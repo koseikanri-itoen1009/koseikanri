@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common2_pkg(BODY)
  * Description            : 共通関数2(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_000_引当可能数算出（補足資料）.doc
- * Version                : 1.14
+ * Version                : 1.15
  *
  * Program List
  *  ---------------------------- ---- ----- --------------------------------------------------
@@ -77,6 +77,7 @@ AS
  *  2008/09/17   1.12  oracle 椎名     PT 6-1_28 指摘73 追加修正
  *  2008/11/19   1.13  oracle 伊藤     統合障害#681修正
  *  2008/12/02   1.14  oracle 二瓶     本番障害#251対応（条件追加) 
+ *  2008/12/15   1.15  oracle 伊藤     本番障害#645対応 予定日でなく実績日で取得する。
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1430,7 +1431,10 @@ AS
     WHERE   mrih.ship_to_locat_id   = in_whse_id
     AND     mrih.comp_actual_flg    = cv_flag_off
     AND     mrih.status             = cv_move_status
-    AND     mrih.schedule_arrival_date  <= id_eff_date
+-- 2008/12/15 H.Itou Mod Start 本番障害#645
+--    AND     mrih.schedule_arrival_date  <= id_eff_date
+    AND     NVL(mrih.actual_arrival_date, mrih.schedule_arrival_date) <= id_eff_date
+-- 2008/12/15 H.Itou Mod End
     AND     mrih.mov_hdr_id         = mril.mov_hdr_id
     AND     mril.mov_line_id        = mld.mov_line_id
     AND     mril.delete_flg         = cv_flag_off
@@ -2076,7 +2080,10 @@ AS
     WHERE   mrih.shipped_locat_id   = in_whse_id
     AND     mrih.comp_actual_flg    = cv_flag_off
     AND     mrih.status             = cv_move_status
-    AND     mrih.schedule_ship_date  <= id_eff_date
+-- 2008/12/15 H.Itou Mod Start 本番障害#645
+--    AND     mrih.schedule_ship_date  <= id_eff_date
+    AND     NVL(mrih.actual_ship_date, mrih.schedule_ship_date) <= id_eff_date
+-- 2008/12/15 H.Itou Mod End
     AND     mrih.mov_hdr_id         = mril.mov_hdr_id
     AND     mril.mov_line_id        = mld.mov_line_id
     AND     mril.delete_flg         = cv_flag_off
@@ -3379,7 +3386,10 @@ AS
     WHERE   mrih.ship_to_locat_id       = in_whse_id
     AND     mrih.comp_actual_flg        = cv_flag_off
     AND     mrih.status                 = cv_move_status
-    AND     mrih.schedule_arrival_date <= id_eff_date
+-- 2008/12/15 H.Itou Mod Start 本番障害#645
+--    AND     mrih.schedule_arrival_date <= id_eff_date
+    AND     NVL(mrih.actual_arrival_date, mrih.schedule_arrival_date)   <= id_eff_date
+-- 2008/12/15 H.Itou Mod End
     AND     mrih.mov_hdr_id             = mril.mov_hdr_id
     AND     mril.delete_flg             = cv_flag_off
     AND     mril.item_id                = in_item_id
@@ -3730,7 +3740,10 @@ AS
     WHERE   mrih.shipped_locat_id   = in_whse_id
     AND     mrih.comp_actual_flg    = cv_flag_off
     AND     mrih.status             = cv_move_status
-    AND     mrih.schedule_ship_date <= id_eff_date
+-- 2008/12/15 H.Itou Mod Start 本番障害#645
+--    AND     mrih.schedule_ship_date <= id_eff_date
+    AND     NVL(mrih.actual_ship_date, mrih.schedule_ship_date)  <= id_eff_date
+-- 2008/12/15 H.Itou Mod End
     AND     mrih.mov_hdr_id         = mril.mov_hdr_id
     AND     mril.delete_flg         = cv_flag_off
     AND     mril.item_id            = in_item_id
