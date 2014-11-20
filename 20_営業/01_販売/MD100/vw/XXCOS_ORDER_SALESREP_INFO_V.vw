@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_order_salesrep_info_v
  * Description     : ‰c‹Æ’S“–ƒrƒ…[(ƒNƒCƒbƒNó’—p)
- * Version         : 1.3
+ * Version         : 1.4
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -13,6 +13,7 @@
  *  2009/5/12     1.1   S.Tomita         [T1_0964]ƒJƒ‰ƒ€ƒRƒƒ“ƒgŠÔˆá‚¢C³
  *  2009/5/13     1.2   S.Tomita         [T1_0976]ƒNƒCƒbƒNó’ƒI[ƒKƒiƒCƒUƒZƒLƒ…ƒŠƒeƒB‘Î‰
  *  2009/09/03    1.3   M.Sano           áŠQ”Ô†0001227 ‘Î‰
+ *  2012/06/06    1.4   N.Koyama         E_–{‰Ò“®_09610‘Î‰
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcos_order_salesrep_info_v (
@@ -24,6 +25,10 @@ CREATE OR REPLACE VIEW apps.xxcos_order_salesrep_info_v (
   end_date_active,
   effective_start_date,
   effective_end_date,
+-- 2012/06/06 Ver1.4 Add Start
+  papf_effective_start_date,
+  papf_effective_end_date,
+-- 2012/06/06 Ver1.4 Add End
   employee_number,
   hatsurei_date,
   new_base_code,
@@ -42,6 +47,10 @@ SELECT
       jrs.end_date_active   end_date_active,
       paaf.effective_start_date  effective_start_date,
       paaf.effective_end_date    effective_end_date,
+-- 2012/06/06 Ver1.4 Add Start
+      papf.effective_start_date  papf_effective_start_date,
+      papf.effective_end_date    papf_effective_end_date,
+-- 2012/06/06 Ver1.4 Add End
       jrre.source_number    employee_number,
       TO_DATE( paaf.ass_attribute2, 'RRRRMMDD' )          hatsurei_date,                --”­—ß“ú
       paaf.ass_attribute5                                 new_base_code,                --‹’“_ƒR[ƒhiVj
@@ -63,14 +72,16 @@ FROM   jtf_rs_salesreps          jrs
                xxcmm_cust_accounts  xca
         WHERE  hca.cust_account_id   = xca.customer_id
        ) cust
-      ,(
+--      ,(
 -- 2009/09/03 Ver1.3 Mod Start
 --        SELECT TRUNC( xxccp_common_pkg2.get_process_date )     process_date        --‹Æ–±“ú•t
 --        FROM   dual
-        SELECT TRUNC( xpd.process_date ) process_date
-        FROM   xxccp_process_dates  xpd
+-- 2012/06/06 Ver1.4 Del Start
+--        SELECT TRUNC( xpd.process_date ) process_date
+--        FROM   xxccp_process_dates  xpd
 -- 2009/09/03 Ver1.3 Mod End
-       ) pd
+--       ) pd
+-- 2012/06/06 Ver1.4 Del End
 WHERE
       jrre.category             =   'EMPLOYEE'
 AND   jrs.resource_id           =   jrre.resource_id
@@ -84,9 +95,12 @@ AND   nvl(jrs.org_id,   nvl(to_number(decode(substrb(userenv('CLIENT_INFO'),   1
         NULL,   substrb(userenv('CLIENT_INFO'),   1,   10))),   -99)) =
          nvl(to_number(decode(substrb(userenv('CLIENT_INFO'),   1,   1),   ' ',  
           NULL,   substrb(userenv('CLIENT_INFO'),   1,   10))),   -99)
-AND   NVL(TRUNC(papf.effective_start_date),pd.process_date) <= pd.process_date
-AND   NVL(TRUNC(papf.effective_end_date)  ,pd.process_date) >= pd.process_date
+-- 2012/06/06 Ver1.4 Del Start
+--AND   NVL(TRUNC(papf.effective_start_date),pd.process_date) <= pd.process_date
+--AND   NVL(TRUNC(papf.effective_end_date)  ,pd.process_date) >= pd.process_date
+-- 2012/06/06 Ver1.4 Del End
 ;
+
 COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.name                  IS  ']‹Æˆõ–¼Ì';
 COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.salesrep_id           IS  'ƒZ[ƒ‹ƒXID';
 COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.salesrep_number       IS  'ƒZ[ƒ‹ƒX”Ô†';
@@ -95,6 +109,10 @@ COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.start_date_active     IS  '—LŒøŠ
 COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.end_date_active       IS  '—LŒøI—¹“ú';
 COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.effective_start_date  IS  '—LŒøŠJn“ú';
 COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.effective_end_date    IS  '—LŒøI—¹“ú';
+-- 2012/06/06 Ver1.4 Add Start
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.papf_effective_start_date  IS  ']‹Æˆõ—LŒøŠJn“ú';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.papf_effective_end_date    IS  ']‹Æˆõ—LŒøI—¹“ú';
+-- 2012/06/06 Ver1.4 Add End
 COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.employee_number       IS  ']‹ÆˆõƒR[ƒh';
 COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.hatsurei_date         IS  '”­—ß“ú';
 COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.new_base_code         IS  '‹’“_ƒR[ƒhiVj';
