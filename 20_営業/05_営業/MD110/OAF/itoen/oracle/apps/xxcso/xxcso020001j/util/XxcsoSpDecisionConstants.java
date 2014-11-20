@@ -314,23 +314,23 @@ public class XxcsoSpDecisionConstants
   public static final String
     TOKEN_VALUE_START                 = "起動";
   public static final String 
-    TOKEN_VALUE_INST_PARTY_NAME       = "顧客名";
+    TOKEN_VALUE_INST_PARTY_NAME       = "顧客名(全角)";
   public static final String
-    TOKEN_VALUE_INST_PARTY_NAME_ALT   = "顧客名（カナ）";
+    TOKEN_VALUE_INST_PARTY_NAME_ALT   = "顧客名カナ(半角)";
   public static final String
-    TOKEN_VALUE_INST_NAME             = "設置先名";
+    TOKEN_VALUE_INST_NAME             = "設置先名(全角)";
   public static final String
     TOKEN_VALUE_POSTAL_CODE           = "郵便番号";
   public static final String
-    TOKEN_VALUE_STATE                 = "都道府県";
+    TOKEN_VALUE_STATE                 = "都道府県(全角)";
   public static final String
-    TOKEN_VALUE_CITY                  = "市・区";
+    TOKEN_VALUE_CITY                  = "市・区(全角)";
   public static final String
-    TOKEN_VALUE_ADDRESS1              = "住所1";
+    TOKEN_VALUE_ADDRESS1              = "住所1(全角)";
   public static final String
-    TOKEN_VALUE_ADDRESS2              = "住所2";
+    TOKEN_VALUE_ADDRESS2              = "住所2(全角)";
   public static final String
-    TOKEN_VALUE_ADDRESS_LINIE         = "電話番号";
+    TOKEN_VALUE_ADDRESS_LINIE         = "電話番号(00-0000-0000)";
   public static final String
     TOKEN_VALUE_BUSINESS_CONDITION    = "業態（小分類）";
   public static final String
@@ -346,11 +346,11 @@ public class XxcsoSpDecisionConstants
   public static final String
     TOKEN_VALUE_LEASE_COMP            = "リース仲介会社";
   public static final String 
-    TOKEN_VALUE_CNTR_PARTY_NAME       = "契約先名";
+    TOKEN_VALUE_CNTR_PARTY_NAME       = "契約先名(全角)";
   public static final String
-    TOKEN_VALUE_CNTR_PARTY_NAME_ALT   = "契約先名カナ";
+    TOKEN_VALUE_CNTR_PARTY_NAME_ALT   = "契約先名カナ(半角)";
   public static final String
-    TOKEN_VALUE_DELEGATE              = "代表者";
+    TOKEN_VALUE_DELEGATE              = "代表者(全角)";
   public static final String
     TOKEN_VALUE_NEW_OLD               = "新／旧";
   public static final String
@@ -402,9 +402,9 @@ public class XxcsoSpDecisionConstants
   public static final String
     TOKEN_VALUE_BM1_SEND_TYPE         = "送付先";
   public static final String 
-    TOKEN_VALUE_BM_PARTY_NAME         = "送付先名";
+    TOKEN_VALUE_BM_PARTY_NAME         = "送付先名(全角)";
   public static final String
-    TOKEN_VALUE_BM_PARTY_NAME_ALT     = "送付先名（カナ）";
+    TOKEN_VALUE_BM_PARTY_NAME_ALT     = "送付先名カナ(半角)";
   public static final String
     TOKEN_VALUE_TRANSFER              = "振込手数料負担";
   public static final String
@@ -412,7 +412,7 @@ public class XxcsoSpDecisionConstants
   public static final String
     TOKEN_VALUE_SALES_MONTH           = "月間売上";
   public static final String
-    TOKEN_VALUE_BM_RATE               = "BM率";
+    TOKEN_VALUE_BM_RATE               = "支払ＢＭ率";
   public static final String
     TOKEN_VALUE_LEASE_CHARGE          = "リース料（月額）";
   public static final String
