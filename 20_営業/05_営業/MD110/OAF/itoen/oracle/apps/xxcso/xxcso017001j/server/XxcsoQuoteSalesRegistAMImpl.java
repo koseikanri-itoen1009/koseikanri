@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteSalesRegistAMImpl
 * 概要説明   : 販売先用見積入力画面アプリケーション・モジュールクラス
-* バージョン : 1.10
+* バージョン : 1.11
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -19,6 +19,7 @@
 *                              【T1_1249】CSV出力制御、見積書印刷制御を修正
 * 2009-06-16 1.9  SCS阿部大輔  【T1_1257】マージン額の変更修正
 * 2009-07-23 1.10 SCS阿部大輔  【0000806】マージン額／マージン率の計算対象変更
+* 2009-08-31 1.11 SCS阿部大輔  【0001212】通常店納価格導出ボタンの見積区分を変更
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017001j.server;
@@ -1977,33 +1978,37 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
 
     while ( lineRow != null )
     {
-       // 見積区分が通常以外の場合、通常店納価格を自動導出します。
-      if ( ! XxcsoQuoteConstants.QUOTE_DIV_USUALLY.equals(
-             lineRow.getQuoteDiv()) )
+/* 20090831_abe_0001212 START*/
+      //// 見積区分が通常以外の場合、通常店納価格を自動導出します。
+      //if ( ! XxcsoQuoteConstants.QUOTE_DIV_USUALLY.equals(
+      //       lineRow.getQuoteDiv()) )
+      //{
+/* 20090831_abe_0001212 END*/
+      if ( "Y".equals(lineRow.getSelectFlag()) )
       {
-        if ( "Y".equals(lineRow.getSelectFlag()) )
+        // 問屋帳合先用見積の存在チェックを行う
+        validateReference();
+
+        // 検索実行
+        usuallyVo.initQuery(
+          headerRow.getAccountNumber(),
+          lineRow.getInventoryItemId()
+        );
+
+        // 通常店納価格取得
+        XxcsoUsuallyDelivPriceVORowImpl usuallyRow
+          = (XxcsoUsuallyDelivPriceVORowImpl)usuallyVo.first();
+
+        //通常店納価格が取得できた場合
+        if ( usuallyRow != null )
         {
-          // 問屋帳合先用見積の存在チェックを行う
-          validateReference();
-
-          // 検索実行
-          usuallyVo.initQuery(
-            headerRow.getAccountNumber(),
-            lineRow.getInventoryItemId()
-          );
-
-          // 通常店納価格取得
-          XxcsoUsuallyDelivPriceVORowImpl usuallyRow
-            = (XxcsoUsuallyDelivPriceVORowImpl)usuallyVo.first();
-
-          //通常店納価格が取得できた場合
-          if ( usuallyRow != null )
-          {
-            // 取得した通常店納価格を設定
-            lineRow.setUsuallyDelivPrice(usuallyRow.getUsuallyDelivPrice());
-          }
+          // 取得した通常店納価格を設定
+          lineRow.setUsuallyDelivPrice(usuallyRow.getUsuallyDelivPrice());
         }
       }
+/* 20090831_abe_0001212 START*/
+      //}
+/* 20090831_abe_0001212 END*/
       
       lineRow = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.next();
     }
