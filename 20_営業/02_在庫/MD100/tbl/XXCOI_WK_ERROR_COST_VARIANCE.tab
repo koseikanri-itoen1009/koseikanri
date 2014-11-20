@@ -1,0 +1,104 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOI_WK_ERROR_COST_VARIANCE
+ * Description : 原価差額ワークテーブル（エラー）
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/09/25    1.0   H.Sasaki         新規作成
+ *
+ **************************************************************************************/
+CREATE TABLE XXCOI.XXCOI_WK_ERROR_COST_VARIANCE (
+     transaction_id               NUMBER(15)    NOT NULL
+    ,dept_code                    VARCHAR2(4)
+    ,adj_dept_code                VARCHAR2(4)
+    ,account_id                   NUMBER
+    ,account_code                 VARCHAR2(5)
+    ,subacct_code                 VARCHAR2(5)
+    ,inventory_item_id            NUMBER        NOT NULL
+    ,item_code                    VARCHAR2(40)
+    ,transaction_date             DATE          NOT NULL
+    ,transaction_value            NUMBER
+    ,primary_quantity             NUMBER
+    ,base_transaction_value       NUMBER        NOT NULL
+    ,organization_id              NUMBER        NOT NULL
+    ,gl_batch_id                  NUMBER        NOT NULL
+    ,transaction_type_id          NUMBER
+    ,standard_cost                NUMBER        NOT NULL
+    ,operation_cost               NUMBER        NOT NULL
+    ,cost_variance                NUMBER
+    ,status                       VARCHAR2(1)
+    ,created_by                   NUMBER(15)    NOT NULL
+    ,creation_date                DATE          NOT NULL
+    ,last_updated_by              NUMBER(15)    NOT NULL
+    ,last_update_date             DATE          NOT NULL
+    ,last_update_login            NUMBER(15)
+    ,request_id                   NUMBER(15)
+    ,program_application_id       NUMBER(15)
+    ,program_id                   NUMBER(15)
+    ,program_update_date          DATE
+  )
+  STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE xxcoi.xxcoi_wk_error_cost_variance IS '原価差額ワークテーブル（エラー）';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.transaction_id                          IS '在庫取引ID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.dept_code                               IS '部門コード';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.adj_dept_code                           IS '調整部門コード';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.account_id                              IS '勘定科目ID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.account_code                            IS '勘定科目コード';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.subacct_code                            IS '補助科目コード';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.inventory_item_id                       IS '品目ID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.item_code                               IS '品目コード';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.transaction_date                        IS '取引日';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.transaction_value                       IS '取引金額';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.primary_quantity                        IS '取引数量';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.base_transaction_value                  IS '基準単位金額';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.organization_id                         IS '組織ID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.gl_batch_id                             IS 'GLバッチID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.transaction_type_id                     IS '取引タイプID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.standard_cost                           IS '標準原価';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.operation_cost                          IS '営業原価';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.cost_variance                           IS '原価差額';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.status                                  IS 'ステータス';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.created_by                              IS '作成者';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.creation_date                           IS '作成日';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.last_updated_by                         IS '最終更新者';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.last_update_date                        IS '最終更新日';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.last_update_login                       IS '最終更新ログイン';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.request_id                              IS '要求ID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.program_application_id                  IS 'コンカレント・プログラム・アプリケーションID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.program_id                              IS 'コンカレント・プログラムID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.program_update_date                     IS 'プログラム更新日';
+/
