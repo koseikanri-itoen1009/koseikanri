@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.13
+ * Version                : 1.14
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *  2008/09/10   1.11  Oracle 二瓶 大輔   統合障害#112対応(ロット追加・更新関数)
  *  2008/09/10   1.12  Oracle 二瓶 大輔   結合テスト指摘対応No30
  *  2008/10/09   1.13  Oracle 二瓶 大輔   統合障害#169対応(手持在庫数量算出API(投入実績用))
+ *  2008/11/14   1.14  Oracle 二瓶 大輔   統合障害#649対応(委託加工費更新関数)
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -2450,7 +2451,9 @@ AS
 -- 2008/05/28 D.Nihei MOD END
 -- 2008/06/12 D.Nihei ADD START
       AND    xph.vendor_code(+)    = lt_vendor_code
-      AND    xph.factory_code(+)   = lt_vendor_code
+-- 2008/11/14 v1.14 D.Nihei DEL START
+--      AND    xph.factory_code(+)   = lt_vendor_code
+-- 2008/11/14 v1.14 D.Nihei DEL END
 -- 2008/06/12 D.Nihei ADD END
 -- 2008/06/25 D.Nihei ADD START
       AND    xph.supply_to_code(+)    IS NULL
