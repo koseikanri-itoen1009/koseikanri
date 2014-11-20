@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_REP_BM_PG_DETAIL
  * Description : 支払案内書明細版帳票ワークテーブル
- * Version     : 1.3
+ * Version     : 1.4
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -13,6 +13,7 @@
  *  2009/01/22    1.1   K.Yamaguchi      項目追加・データ型変更
  *  2009/07/09    1.2   K.Yamaguchi      [障害0000515]STORAGE句追加
  *  2009/09/10    1.3   S.Moriyama       [障害0000060]住所の桁数変更対応
+ *  2010/03/16    1.4   S.Moriyama       [E_本稼動_01897]振込手数料出力対応
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_REP_BM_PG_DETAIL
@@ -46,6 +47,10 @@ CREATE TABLE XXCOK.XXCOK_REP_BM_PG_DETAIL
    BM_AMT_1               NUMBER,
    BM_INDEX_2             VARCHAR2(20),
    BM_AMT_2               NUMBER,
+-- 2010/03/16 Ver.1.4 [E_本稼動_01897] SCS S.Moriyama ADD START
+   BM_INDEX_3             VARCHAR2(20),
+   BM_AMT_3               NUMBER,
+-- 2010/03/16 Ver.1.4 [E_本稼動_01897] SCS S.Moriyama ADD END
    PAYMENT_AMT_TAX        NUMBER,
    TARGET_MONTH           VARCHAR2(30),
    CLOSING_DATE           DATE,
@@ -71,6 +76,11 @@ CREATE TABLE XXCOK.XXCOK_REP_BM_PG_DETAIL
    SELLING_AMT            NUMBER,
    SELLING_QTY            NUMBER,
    BACKMARGIN             NUMBER,
+-- 2010/03/16 Ver.1.4 [E_本稼動_01897] SCS S.Moriyama ADD START
+   ORG_SLIP_NUMBER        VARCHAR2(50),
+   BANK_CHARGE_BEARER     VARCHAR2(1),
+   BALANCE_CANCEL_DATE    DATE,
+-- 2010/03/16 Ver.1.4 [E_本稼動_01897] SCS S.Moriyama ADD END
    CREATED_BY             NUMBER(15,0)   NOT NULL,
    CREATION_DATE          DATE           NOT NULL,
    LAST_UPDATED_BY        NUMBER(15,0)   NOT NULL,
@@ -123,6 +133,12 @@ COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.BM_INDEX_2             IS '合計見
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.BM_AMT_2               IS '合計手数料2'
 /
+-- 2010/03/16 Ver.1.4 [E_本稼動_01897] SCS S.Moriyama ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.BM_INDEX_3             IS '合計見出し3'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.BM_AMT_3               IS '合計手数料3'
+/
+-- 2010/03/16 Ver.1.4 [E_本稼動_01897] SCS S.Moriyama ADD END
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.PAYMENT_AMT_TAX        IS '支払金額(税込)'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.TARGET_MONTH           IS '年月分'
@@ -167,6 +183,14 @@ COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.SELLING_QTY            IS '販売数
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.BACKMARGIN             IS '販売手数料'
 /
+-- 2010/03/16 Ver.1.4 [E_本稼動_01897] SCS S.Moriyama ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.ORG_SLIP_NUMBER        IS '元伝票番号'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.BANK_CHARGE_BEARER     IS '手数料負担者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.BALANCE_CANCEL_DATE    IS '残高取消日'
+/
+-- 2010/03/16 Ver.1.4 [E_本稼動_01897] SCS S.Moriyama ADD END
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.CREATED_BY             IS '作成者'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.CREATION_DATE          IS '作成日'

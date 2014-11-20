@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK016A01C(spec)
  * Description      : 組み戻し・残高取消・保留情報(CSVファイル)の取込処理
  * MD.050           : 残高更新Excelアップロード MD050_COK_016_A01
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2009/02/19    1.1   A.Yano           [障害COK_047] 残高取消日の更新不具合対応
  *  2009/05/29    1.2   M.Hiruta         [障害T1_1139] 日付条件を変更し、過去分のデータを処理できるよう変更
  *  2010/01/20    1.3   K.Kiriu          [E_本稼動_01115]残高更新を拠点で処理可、１仕入先の複数処理を可能とできるよう変更
+ *  2010/03/19    1.4   S.Moriyama       [E_本稼動_01897]組み戻し時に元伝票番号、連携日時のクリアを行うように変更
  *
  *****************************************************************************************/
 --
@@ -601,6 +602,12 @@ AS
               ,xbb.program_application_id = cn_prg_appl_id            -- プログラムアプリID
               ,xbb.program_id             = cn_program_id             -- プログラムID
               ,xbb.program_update_date    = SYSDATE                   -- プログラム更新日
+-- 2010/03/19 Ver.1.4 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+              ,xbb.fb_interface_date      = NULL                      -- 連携日（本振用FB）
+              ,xbb.edi_interface_date     = NULL                      -- 連携日（EDI支払案内書）
+              ,xbb.gl_interface_date      = NULL                      -- 連携日（GL）
+              ,xbb.org_slip_number        = NULL                      -- 元伝票番号
+-- 2010/03/19 Ver.1.4 [障害E_本稼動_01897] SCS S.Moriyama ADD END
         WHERE  xbb.supplier_code       = it_check_data(in_index).vendor_code
 -- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
 --        AND    xbb.expect_payment_date = it_check_data(in_index).pay_date

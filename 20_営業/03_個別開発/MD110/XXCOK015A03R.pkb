@@ -7,7 +7,7 @@ AS
  * Description      : 支払先の顧客より問合せがあった場合、
  *                    取引条件別の金額が印字された支払案内書を印刷します。
  * MD.050           : 支払案内書印刷（明細） MD050_COK_015_A03
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -36,6 +36,9 @@ AS
  *  2009/10/14    1.6   S.Moriyama       [変更依頼I_E_573] 仕入先名称、住所の設定内容変更対応
  *  2009/12/15    1.7   K.Nakamura       [障害E_本稼動_00477] 支払保留中のBM、また販売手数料が0円の場合は、出力しないよう修正
  *  2010/03/02    1.8   S.Moriyama       [障害E_本稼動_01299] 組み戻し後の本振残高出力対応
+ *  2010/03/16    1.9   S.Moriyama       [障害E_本稼動_01897] 振込手数料出力対応
+ *  2010/04/06    1.9   K.Yamaguchi      [障害E_本稼動_01897] 現金持参のシステムテストで発覚した障害
+ *                                                            振込手数料負担者が設定されていない場合を考慮
  *
  *****************************************************************************************/
   --==================================================
@@ -46,6 +49,9 @@ AS
   -- アプリケーション短縮名
   cv_appl_short_name_cok           CONSTANT VARCHAR2(10)    := 'XXCOK';
   cv_appl_short_name_ccp           CONSTANT VARCHAR2(10)    := 'XXCCP';
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+  cv_appl_short_name_gl            CONSTANT VARCHAR2(10)    := 'SQLGL';
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
   -- ステータス・コード
   cv_status_normal                 CONSTANT VARCHAR2(1)     := xxccp_common_pkg.set_status_normal;  -- 正常:0
   cv_status_warn                   CONSTANT VARCHAR2(1)     := xxccp_common_pkg.set_status_warn;    -- 警告:1
@@ -84,6 +90,18 @@ AS
   cv_profile_name_01               CONSTANT VARCHAR2(50)    := 'XXCOK1_PAY_GUIDE_PROMPT_BM';   -- XXCOK:支払案内書_販売手数料見出し
   cv_profile_name_02               CONSTANT VARCHAR2(50)    := 'XXCOK1_PAY_GUIDE_PROMPT_EP';   -- XXCOK:支払案内書_電気料見出し
   cv_profile_name_03               CONSTANT VARCHAR2(50)    := 'ORG_ID';                       -- MO: 営業単位
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+  cv_profile_name_04               CONSTANT VARCHAR2(50)    := 'XXCOK1_PAY_GUIDE_PROMPT_FE';      -- XXCOK:支払案内書_振込手数料
+  cv_profile_name_05               CONSTANT VARCHAR2(50)    := 'XXCOK1_AFF3_FEE';                 -- XXCOK:勘定科目_手数料
+  cv_profile_name_06               CONSTANT VARCHAR2(50)    := 'XXCOK1_AFF4_TRANSFER_FEE';        -- XXCOK:補助科目_手数料_振込手数料
+  cv_profile_name_07               CONSTANT VARCHAR2(50)    := 'XXCOK1_GL_CATEGORY_BM';           -- XXCOK:仕訳カテゴリ_販売手数料
+  cv_profile_name_08               CONSTANT VARCHAR2(50)    := 'XXCOK1_GL_SOURCE_COK';            -- XXCOK:仕訳ソース_個別開発
+  cv_profile_name_09               CONSTANT VARCHAR2(50)    := 'GL_SET_OF_BKS_ID';                -- GL会計帳簿ID
+  cv_profile_name_10               CONSTANT VARCHAR2(50)    := 'XXCOK1_BANK_FEE_TRANS_CRITERION'; -- 銀行手数料_振込額基準
+  cv_profile_name_11               CONSTANT VARCHAR2(50)    := 'XXCOK1_BANK_FEE_LESS_CRITERION';  -- 銀行手数料_基準額未満
+  cv_profile_name_12               CONSTANT VARCHAR2(50)    := 'XXCOK1_BANK_FEE_MORE_CRITERION';  -- 銀行手数料_基準額以上
+  cv_profile_name_13               CONSTANT VARCHAR2(50)    := 'XXCOK1_BM_TAX';                   -- 販売手数料_消費税率
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
   -- 参照タイプ名
 -- Start 2009/03/03 M.Hiruta
 --  cv_lookup_type_01                CONSTANT VARCHAR2(30)    := 'XXCMM_YOKI_KUBUN';    -- 容器区分
@@ -111,6 +129,10 @@ AS
   cv_bm_type_2                     CONSTANT VARCHAR2(1)     := '2';                  -- 本振（案内無）
   cv_bm_type_3                     CONSTANT VARCHAR2(1)     := '3';                  -- AP支払
   cv_bm_type_4                     CONSTANT VARCHAR2(1)     := '4';                  -- 現金支払
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+  -- 銀行手数料負担者
+  cv_bank_charge_bearer            CONSTANT VARCHAR2(1)     := 'I';                  -- 当方
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
   --==================================================
   -- グローバル変数
   --==================================================
@@ -127,6 +149,18 @@ AS
   gn_org_id                        NUMBER        DEFAULT NULL;   -- 営業単位ID
   gv_prompt_bm                     VARCHAR2(100) DEFAULT NULL;   -- 支払案内書_販売手数料見出し
   gv_prompt_ep                     VARCHAR2(100) DEFAULT NULL;   -- 支払案内書_電気料見出し
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+  gv_prompt_fe                     VARCHAR2(100) DEFAULT NULL;                  -- 支払案内書_振込手数料
+  gt_aff3_fee                      gl_code_combinations.segment3%TYPE;          -- 勘定科目：手数料
+  gt_aff4_transfer_fee             gl_code_combinations.segment4%TYPE;          -- 補助科目：手数料-振込手数料
+  gt_category_bm                   gl_je_categories.user_je_category_name%TYPE; -- 仕訳カテゴリ_販売手数料
+  gt_source_cok                    gl_je_sources.user_je_source_name%TYPE;      -- 仕訳ソース_個別開発
+  gt_set_of_books_id               gl_sets_of_books.set_of_books_id%TYPE;       -- 会計帳簿ID
+  gn_bank_fee_trans                NUMBER;                                      -- 銀行手数料_振込額基準
+  gn_bank_fee_less                 NUMBER;                                      -- 銀行手数料_基準額未満
+  gn_bank_fee_more                 NUMBER;                                      -- 銀行手数料_基準額以上
+  gn_bm_tax                        NUMBER;                                      -- 販売手数料_消費税率
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
   --==================================================
   -- グローバルカーソル
   --==================================================
@@ -150,10 +184,69 @@ AS
          , MIN( xrbpd.term_from_wk )              AS term_from
          , MAX( xrbpd.term_to_wk )                AS term_to
          , MAX( xrbpd.payment_date_wk )           AS payment_date
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+         , gv_prompt_fe                           AS bm_index_3
+         , CASE WHEN xrbpd.org_slip_number IS NOT NULL THEN
+               (SELECT SUM( NVL(gjl.entered_cr,0) - NVL(gjl.entered_dr,0) )
+                  FROM gl_sets_of_books     gsob
+                      ,gl_je_sources        gjs
+                      ,gl_je_categories     gjc
+                      ,gl_je_headers        gjh
+                      ,gl_je_lines          gjl
+                      ,gl_code_combinations gcc
+                      ,gl_period_statuses   gps
+                      ,fnd_application      fa
+                 WHERE gsob.set_of_books_id      = gt_set_of_books_id
+                   AND gjs.user_je_source_name   = gt_source_cok
+                   AND gjc.user_je_category_name = gt_category_bm
+                   AND gjs.language              = userenv('LANG')
+                   AND gjs.source_lang           = gjs.language
+                   AND gjs.source_lang           = gjc.language
+                   AND gjs.source_lang           = gjc.source_lang
+                   AND gsob.set_of_books_id      = gjh.set_of_books_id
+                   AND gjs.je_source_name        = gjh.je_source
+                   AND gjh.je_header_id          = gjl.je_header_id
+                   AND gjl.code_combination_id   = gcc.code_combination_id
+                   AND gcc.segment3              = gt_aff3_fee
+                   AND gcc.segment4              = gt_aff4_transfer_fee
+                   AND gjl.attribute7            = xrbpd.payment_code
+                   AND gjl.attribute3            = xrbpd.org_slip_number
+                   AND xrbpd.payment_date_wk     BETWEEN gps.start_date AND gps.end_date
+                   AND gps.set_of_books_id       = gsob.set_of_books_id
+                   AND gps.period_name           = gjh.period_name
+                   AND fa.application_short_name = cv_appl_short_name_gl
+                   AND fa.application_id         = gps.application_id
+               )
+           ELSE CASE WHEN xrbpd.bank_charge_bearer = cv_bank_charge_bearer THEN 0
+                     WHEN xrbpd.balance_cancel_date IS NOT NULL THEN 0
+                ELSE(SELECT CASE WHEN SUM( CASE WHEN xrbpd2.calc_type <> 50
+                                                 AND xrbpd2.balance_cancel_date IS NULL THEN xrbpd2.backmargin
+                                           ELSE 0 END
+                                         + CASE WHEN xrbpd2.calc_type =  50
+                                                 AND xrbpd2.balance_cancel_date IS NULL THEN xrbpd2.backmargin
+                                           ELSE 0 END
+                                         ) < gn_bank_fee_trans THEN gn_bank_fee_less
+                            ELSE gn_bank_fee_more END
+                       FROM xxcok_rep_bm_pg_detail xrbpd2
+                      WHERE xrbpd2.payment_code    = xrbpd.payment_code
+                        AND xrbpd2.payment_date_wk = xrbpd.payment_date_wk
+                    )
+                END
+           END * ( 1 + gn_bm_tax / 100 )          AS bm_amt_3
+         , xrbpd.org_slip_number
+         , xrbpd.payment_date_wk
+         , xrbpd.bank_charge_bearer
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
     FROM xxcok_rep_bm_pg_detail    xrbpd
     WHERE xrbpd.request_id = cn_request_id
     GROUP BY xrbpd.payment_code
-  ;
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+            ,xrbpd.org_slip_number
+            ,xrbpd.payment_date_wk
+            ,xrbpd.bank_charge_bearer
+            ,xrbpd.balance_cancel_date
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
+    ;
   --==================================================
   -- グローバルコレクション型変数
   --==================================================
@@ -389,29 +482,62 @@ AS
                                      WHEN g_summary_tab(i).bm_amt_1 > 0 THEN
                                        g_summary_tab(i).bm_index_1
                                      ELSE
-                                       g_summary_tab(i).bm_index_2
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama UPD START
+--                                       g_summary_tab(i).bm_index_2
+                                       CASE WHEN g_summary_tab(i).bm_amt_2 > 0 THEN
+                                         g_summary_tab(i).bm_index_2
+                                       ELSE g_summary_tab(i).bm_index_3
+                                       END
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama UPD END
                                      END
         , xrbpd.bm_amt_1           = CASE
                                      WHEN g_summary_tab(i).bm_amt_1 > 0 THEN
                                        g_summary_tab(i).bm_amt_1
                                      ELSE
-                                       g_summary_tab(i).bm_amt_2
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama UPD START
+--                                       g_summary_tab(i).bm_amt_2
+                                       CASE WHEN g_summary_tab(i).bm_amt_2 > 0 THEN
+                                         g_summary_tab(i).bm_amt_2
+                                       ELSE g_summary_tab(i).bm_amt_3
+                                       END
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama UPD END
                                      END
         , xrbpd.bm_index_2         = CASE
                                      WHEN g_summary_tab(i).bm_amt_1 > 0
                                       AND g_summary_tab(i).bm_amt_2 > 0 THEN
                                        g_summary_tab(i).bm_index_2
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama UPD START
+--                                     ELSE
+--                                       NULL
                                      ELSE
-                                       NULL
+                                       CASE WHEN(g_summary_tab(i).bm_amt_1 > 0
+                                                 OR g_summary_tab(i).bm_amt_2 > 0)
+                                             AND g_summary_tab(i).bm_amt_3 > 0 THEN
+                                              g_summary_tab(i).bm_index_3
+                                       ELSE NULL
+                                       END
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama UPD END
                                      END
         , xrbpd.bm_amt_2           = CASE
                                      WHEN g_summary_tab(i).bm_amt_1 > 0
                                       AND g_summary_tab(i).bm_amt_2 > 0 THEN
                                        g_summary_tab(i).bm_amt_2
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama UPD START
+--                                     ELSE
+--                                       NULL
                                      ELSE
-                                       NULL
+                                       CASE WHEN(g_summary_tab(i).bm_amt_1 > 0
+                                                 OR g_summary_tab(i).bm_amt_2 > 0)
+                                             AND g_summary_tab(i).bm_amt_3 > 0 THEN
+                                              g_summary_tab(i).bm_amt_3 * -1
+                                       ELSE NULL
+                                       END
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama UPD END
                                      END
-        , xrbpd.payment_amt_tax    = g_summary_tab(i).payment_amt_tax
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama UPD START
+--        , xrbpd.payment_amt_tax    = g_summary_tab(i).payment_amt_tax
+        , xrbpd.payment_amt_tax    = g_summary_tab(i).payment_amt_tax - NVL(g_summary_tab(i).bm_amt_3 , 0)
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama UPD END
         , xrbpd.target_month       = TO_CHAR( g_summary_tab(i).closing_date
                                             , cv_format_ee_month
                                             , cv_nls_param )
@@ -424,8 +550,36 @@ AS
         , xrbpd.payment_date       = TO_CHAR( g_summary_tab(i).payment_date
                                             , cv_format_ee_date
                                             , cv_nls_param )
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+        , xrbpd.bm_index_3         = CASE WHEN g_summary_tab(i).bm_amt_1 > 0
+                                           AND g_summary_tab(i).bm_amt_2 > 0
+                                           AND g_summary_tab(i).bm_amt_3 > 0 THEN
+                                          g_summary_tab(i).bm_index_3
+                                     ELSE NULL END
+        , xrbpd.bm_amt_3           = CASE WHEN g_summary_tab(i).bm_amt_1 > 0
+                                           AND g_summary_tab(i).bm_amt_2 > 0
+                                           AND g_summary_tab(i).bm_amt_3 > 0 THEN
+                                          g_summary_tab(i).bm_amt_3 * -1
+                                     ELSE NULL END
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
       WHERE xrbpd.request_id       = cn_request_id
         AND xrbpd.payment_code     = g_summary_tab(i).payment_code
+-- 2010/04/06 Ver.1.9 [障害E_本稼動_01897] SCS K.Yamaguchi UPD START
+---- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+--        AND NVL(xrbpd.org_slip_number,'X') = NVL(g_summary_tab(i).org_slip_number,'X')
+--        AND xrbpd.payment_date_wk    = g_summary_tab(i).payment_date_wk
+--        AND xrbpd.bank_charge_bearer = g_summary_tab(i).bank_charge_bearer
+---- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
+        AND (    ( xrbpd.org_slip_number                  = g_summary_tab(i).org_slip_number            )
+              OR ( xrbpd.org_slip_number IS NULL        AND g_summary_tab(i).org_slip_number IS NULL    )
+            )
+        AND (    ( xrbpd.payment_date_wk                  = g_summary_tab(i).payment_date_wk            )
+              OR ( xrbpd.payment_date_wk IS NULL        AND g_summary_tab(i).payment_date_wk IS NULL    )
+            )
+        AND (    ( xrbpd.bank_charge_bearer               = g_summary_tab(i).bank_charge_bearer         )
+              OR ( xrbpd.bank_charge_bearer IS NULL     AND g_summary_tab(i).bank_charge_bearer IS NULL )
+            )
+-- 2010/04/06 Ver.1.9 [障害E_本稼動_01897] SCS K.Yamaguchi UPD END
       ;
     END LOOP;
     --==================================================
@@ -582,6 +736,13 @@ AS
     , program_application_id           -- コンカレント・プログラム・アプリケーションID
     , program_id                       -- コンカレント・プログラムID
     , program_update_date              -- プログラム更新日
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+    , bm_index_3                       -- 合計見出し3
+    , bm_amt_3                         -- 合計手数料3
+    , org_slip_number                  -- 元伝票番号
+    , bank_charge_bearer               -- 手数料負担者
+    , balance_cancel_date              -- 残高取消日
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
     )
     SELECT xbb.supplier_code                                    AS payment_code
 -- Start 2009/05/25 Ver_1.4 T1_1168 M.Hiruta
@@ -685,6 +846,13 @@ AS
          , cn_program_application_id                            AS program_application_id
          , cn_program_id                                        AS program_id
          , SYSDATE                                              AS program_update_date
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+         , NULL                                                 AS bm_index_3
+         , NULL                                                 AS bm_amt_3
+         , xbb.org_slip_number                                  AS org_slip_number
+         , pvsa.bank_charge_bearer                              AS bank_charge_bearer
+         , xbb.balance_cancel_date                              AS balance_cancel_date
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -789,6 +957,9 @@ AS
       AND NVL( xbb.resv_flag, 'N' )    != 'Y'
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
     GROUP BY xbb.supplier_code
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+           , xbb.publication_date
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
            , pvsa.zip
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD START
 --           , pvsa.state || pvsa.city || pvsa.address_line1
@@ -828,6 +999,11 @@ AS
                 WHEN '20' THEN
                   flv1.container_type_name
                 END
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+           , xbb.org_slip_number
+           , pvsa.bank_charge_bearer
+           , xbb.balance_cancel_date
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
@@ -893,6 +1069,13 @@ AS
     , program_application_id           -- コンカレント・プログラム・アプリケーションID
     , program_id                       -- コンカレント・プログラムID
     , program_update_date              -- プログラム更新日
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+    , bm_index_3                       -- 合計見出し3
+    , bm_amt_3                         -- 合計手数料3
+    , org_slip_number                  -- 元伝票番号
+    , bank_charge_bearer               -- 手数料負担者
+    , balance_cancel_date              -- 残高取消日
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
     )
     SELECT xbb.supplier_code                                    AS payment_code
 -- Start 2009/05/25 Ver_1.4 T1_1168 M.Hiruta
@@ -996,6 +1179,13 @@ AS
          , cn_program_application_id                            AS program_application_id
          , cn_program_id                                        AS program_id
          , SYSDATE                                              AS program_update_date
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+         , NULL                                                 AS bm_index_3
+         , NULL                                                 AS bm_amt_3
+         , xbb.org_slip_number                                  AS org_slip_number
+         , pvsa.bank_charge_bearer                              AS bank_charge_bearer
+         , xbb.balance_cancel_date                              AS balance_cancel_date
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -1091,6 +1281,9 @@ AS
       AND NVL( xbb.resv_flag, 'N' )    != 'Y'
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
     GROUP BY xbb.supplier_code
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+           , xbb.publication_date
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
            , pvsa.zip
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD START
 --           , pvsa.state || pvsa.city || pvsa.address_line1
@@ -1130,6 +1323,11 @@ AS
                 WHEN '20' THEN
                   flv1.container_type_name
                 END
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+           , xbb.org_slip_number
+           , pvsa.bank_charge_bearer
+           , xbb.balance_cancel_date
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
@@ -1195,6 +1393,13 @@ AS
     , program_application_id           -- コンカレント・プログラム・アプリケーションID
     , program_id                       -- コンカレント・プログラムID
     , program_update_date              -- プログラム更新日
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+    , bm_index_3                       -- 合計見出し3
+    , bm_amt_3                         -- 合計手数料3
+    , org_slip_number                  -- 元伝票番号
+    , bank_charge_bearer               -- 手数料負担者
+    , balance_cancel_date              -- 残高取消日
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
     )
     SELECT xbb.supplier_code                                    AS payment_code
 -- Start 2009/05/25 Ver_1.4 T1_1168 M.Hiruta
@@ -1298,6 +1503,13 @@ AS
          , cn_program_application_id                            AS program_application_id
          , cn_program_id                                        AS program_id
          , SYSDATE                                              AS program_update_date
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+         , NULL                                                 AS bm_index_3
+         , NULL                                                 AS bm_amt_3
+         , xbb.org_slip_number                                  AS org_slip_number
+         , pvsa.bank_charge_bearer                              AS bank_charge_bearer
+         , xbb.balance_cancel_date                              AS balance_cancel_date
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -1376,6 +1588,9 @@ AS
       AND NVL( xbb.resv_flag, 'N' )    != 'Y'
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
     GROUP BY xbb.supplier_code
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+           , xbb.publication_date
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
            , pvsa.zip
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama DEL START
 --           , pvsa.state || pvsa.city || pvsa.address_line1
@@ -1415,6 +1630,11 @@ AS
                 WHEN '20' THEN
                   flv1.container_type_name
                 END
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+           , xbb.org_slip_number
+           , pvsa.bank_charge_bearer
+           , xbb.balance_cancel_date
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
@@ -1480,6 +1700,13 @@ AS
     , program_application_id           -- コンカレント・プログラム・アプリケーションID
     , program_id                       -- コンカレント・プログラムID
     , program_update_date              -- プログラム更新日
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+    , bm_index_3                       -- 合計見出し3
+    , bm_amt_3                         -- 合計手数料3
+    , org_slip_number                  -- 元伝票番号
+    , bank_charge_bearer               -- 手数料負担者
+    , balance_cancel_date              -- 残高取消日
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
     )
     SELECT xbb.supplier_code                                    AS payment_code
 -- Start 2009/05/25 Ver_1.4 T1_1168 M.Hiruta
@@ -1583,6 +1810,13 @@ AS
          , cn_program_application_id                            AS program_application_id
          , cn_program_id                                        AS program_id
          , SYSDATE                                              AS program_update_date
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+         , NULL                                                 AS bm_index_3
+         , NULL                                                 AS bm_amt_3
+         , xbb.org_slip_number                                  AS org_slip_number
+         , pvsa.bank_charge_bearer                              AS bank_charge_bearer
+         , xbb.balance_cancel_date                              AS balance_cancel_date
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -1655,6 +1889,9 @@ AS
       AND NVL( xbb.resv_flag, 'N' )    != 'Y'
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
     GROUP BY xbb.supplier_code
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+           , xbb.publication_date
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
            , pvsa.zip
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPS START
 --           , pvsa.state || pvsa.city || pvsa.address_line1
@@ -1694,6 +1931,11 @@ AS
                 WHEN '20' THEN
                   flv1.container_type_name
                 END
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+           , xbb.org_slip_number
+           , pvsa.bank_charge_bearer
+           , xbb.balance_cancel_date
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
@@ -1881,6 +2123,188 @@ AS
                     );
       RAISE error_proc_expt;
     END IF;
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
+    --==================================================
+    -- プロファイル取得(支払案内書_振込手数料)
+    --==================================================
+    gv_prompt_fe := FND_PROFILE.VALUE( cv_profile_name_04 );
+    IF( gv_prompt_fe IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_04
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.LOG
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
+    END IF;
+    --==================================================
+    -- プロファイル取得(勘定科目_手数料)
+    --==================================================
+    gt_aff3_fee := FND_PROFILE.VALUE( cv_profile_name_05 );
+    IF( gt_aff3_fee IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_05
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.LOG
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
+    END IF;
+    --==================================================
+    -- プロファイル取得(補助科目_手数料_振込手数料)
+    --==================================================
+    gt_aff4_transfer_fee := FND_PROFILE.VALUE( cv_profile_name_06 );
+    IF( gt_aff4_transfer_fee IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_06
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.LOG
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
+    END IF;
+    --==================================================
+    -- プロファイル取得(仕訳カテゴリ_販売手数料)
+    --==================================================
+    gt_category_bm := FND_PROFILE.VALUE( cv_profile_name_07 );
+    IF( gt_category_bm IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_07
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.LOG
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
+    END IF;
+    --==================================================
+    -- プロファイル取得(仕訳ソース_個別開発)
+    --==================================================
+    gt_source_cok := FND_PROFILE.VALUE( cv_profile_name_08 );
+    IF( gt_source_cok IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_08
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.LOG
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
+    END IF;
+    --==================================================
+    -- プロファイル取得(GL会計帳簿ID)
+    --==================================================
+    gt_set_of_books_id := FND_PROFILE.VALUE( cv_profile_name_09 );
+    IF( gt_set_of_books_id IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_09
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.LOG
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
+    END IF;
+    --==================================================
+    -- プロファイル取得(銀行手数料_振込額基準)
+    --==================================================
+    gn_bank_fee_trans := TO_NUMBER( FND_PROFILE.VALUE( cv_profile_name_10 ) );
+    IF( gn_bank_fee_trans IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_10
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.LOG
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
+    END IF;
+    --==================================================
+    -- プロファイル取得(銀行手数料_基準額未満)
+    --==================================================
+    gn_bank_fee_less := TO_NUMBER( FND_PROFILE.VALUE( cv_profile_name_11 ) );
+    IF( gn_bank_fee_less IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_11
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.LOG
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
+    END IF;
+    --==================================================
+    -- プロファイル取得(銀行手数料_基準額以上)
+    --==================================================
+    gn_bank_fee_more := TO_NUMBER( FND_PROFILE.VALUE( cv_profile_name_12 ) );
+    IF( gn_bank_fee_more IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_12
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.LOG
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
+    END IF;
+    --==================================================
+    -- プロファイル取得(販売手数料_消費税率)
+    --==================================================
+    gn_bm_tax := TO_NUMBER( FND_PROFILE.VALUE( cv_profile_name_13 ) );
+    IF( gn_bm_tax IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_13
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.LOG
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
+    END IF;
+-- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
     gv_param_base_code   := iv_base_code;
     gv_param_target_ym   := iv_target_ym;
     gv_param_vendor_code := iv_vendor_code;
