@@ -25,6 +25,7 @@ AS
  *  2009-02-26    1.1  Yutaka.Kuboshima パーティマスタ更新関数追加
  *  2009-03-26    1.2  Yutaka.Kuboshima 顧客名称・顧客名称カナチェック
  *                                      顧客所在地全角半角チェック追加
+ *  2009-04-07    1.3  Yutaka.Kuboshima 障害T1_0303の対応
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -72,6 +73,9 @@ AS
     cv_approved       CONSTANT VARCHAR2(2) := '30';
     cv_cust           CONSTANT VARCHAR2(2) := '40';
     cv_rested         CONSTANT VARCHAR2(2) := '50';
+-- 2009/04/07 Ver1.3 add start by Yutaka.Kuboshima
+    cv_mc_candidates  CONSTANT VARCHAR2(2) := '10';
+-- 2009/04/07 Ver1.3 add end by Yutaka.Kuboshima
     cv_customer       CONSTANT VARCHAR2(2) := '10';
     cv_su_customer    CONSTANT VARCHAR2(2) := '12';
     cv_trust_corp     CONSTANT VARCHAR2(2) := '13';
@@ -105,6 +109,10 @@ AS
         RETURN cv_success;
       ELSIF (iv_cust_status = cv_rectif_credit) AND (iv_cust_will_status = cv_stop_approved)  THEN
         RETURN cv_success;
+-- 2009/04/07 Ver1.3 add start by Yutaka.Kuboshima
+      ELSIF (iv_cust_status = cv_mc_candidates) AND (iv_cust_will_status = cv_stop_approved)  THEN
+        RETURN cv_success;
+-- 2009/04/07 Ver1.3 add end by Yutaka.Kuboshima
       END IF;
     ELSIF (iv_cust_class = cv_su_customer) THEN
       IF (iv_cust_status = cv_approved) AND (iv_cust_will_status = cv_stop_approved) THEN
