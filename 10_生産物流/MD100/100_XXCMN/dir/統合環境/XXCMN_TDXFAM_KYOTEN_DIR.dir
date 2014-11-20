@@ -1,0 +1,1 @@
+CREATE DIRECTORY xxcmn_tdxfam_kyoten_dir AS '/ebst/tebs04/ebsif/outbound/TDXFAM_KYOTEN';
