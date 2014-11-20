@@ -7,7 +7,7 @@ AS
  * Description      : ロックボックス入金処理自動化
  * MD.050           : MD050_CFR_005_A03_ロックボックス入金処理自動化
  * MD.070           : MD050_CFR_005_A03_ロックボックス入金処理自動化
- * Version          : 1.00
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/15    1.00  SCS 濱中 亮一    初回作成
+ *  2009/12/12    1.1   SCS 金田 拓朗    処理後に残るごみデータを削除するよう修正
  *
  *****************************************************************************************/
 --
@@ -123,6 +124,9 @@ AS
   cv_file_type_out   CONSTANT VARCHAR2(10) := 'OUTPUT';               -- メッセージ出力
   cv_file_type_log   CONSTANT VARCHAR2(10) := 'LOG';                  -- ログ出力
 --
+-- Modify 2009.12.12 Ver1.1 Start
+  cv_2               CONSTANT VARCHAR2(30) := '2';                    -- データレコード
+-- Modify 2009.12.12 Ver1.1 End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -395,6 +399,17 @@ AS
 --
     -- *** ローカル・カーソル ***
 --
+-- Modify 2009.12.12 Ver1.1 Start
+    CURSOR ar_payments_interface_cur(in_transmission_request_id IN NUMBER)
+    IS
+      SELECT apia.transmission_request_id transmission_request_id
+      FROM ar_payments_interface_all apia                              -- ロックボックスIF
+      WHERE apia.transmission_request_id = in_transmission_request_id  -- 当初要求ID
+        AND apia.record_type = cv_2                                    -- データレコード
+      GROUP BY apia.transmission_request_id
+    ;
+    ar_payments_interface_rec    ar_payments_interface_cur%ROWTYPE;
+-- Modify 2009.12.12 Ver1.1 End
     -- ===============================
     -- ローカル例外
     -- ===============================
@@ -551,6 +566,15 @@ AS
       RAISE wait_for_request_expt;
     END IF;
 --
+-- Modify 2009.12.12 Ver1.1 Start
+    OPEN ar_payments_interface_cur(iv_transmission_request_id);
+    FETCH ar_payments_interface_cur INTO ar_payments_interface_rec;
+    IF ar_payments_interface_cur%NOTFOUND THEN
+    -- データレコードが存在しない場合は、ごみデータを全て削除する
+      DELETE FROM ar_payments_interface
+      WHERE transmission_request_id = iv_transmission_request_id;
+    END IF;
+-- Modify 2009.12.12 Ver1.1 End
   EXCEPTION
 --
     -- *** 要求発行失敗時 ***
