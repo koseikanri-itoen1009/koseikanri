@@ -7,7 +7,7 @@ AS
  * Description      : 販売実績ヘッダデータ、販売実績明細データを取得して、販売実績データファイルを
  *                    作成する。
  * MD.050           : 販売実績データ作成（MD050_COS_011_A06）
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *                                                      顧客マスタモデルの対応
  *  2010/06/22    1.11  S.Arizumi       [E_本稼動_02995] 菱食EDI販売実績のオーダーNo.（注文伝票番号）不具合対応
  *  2011/02/08    1.12  OuKou           [E_本稼動_05917]EDI販売実績データ伝送取引先追加（カナカン）
+ *  2011/10/11    1.13  K.Kiriu         [E_本稼動_07906]流通ＢＭＳ対応
  *
  *****************************************************************************************/
 --
@@ -1755,7 +1756,10 @@ AS
       --==============================================================
       xxcos_common2_pkg.get_layout_info(
          iv_file_type        => cv_0                --ファイル形式(固定長)
-        ,iv_layout_class     => cv_0                --情報区分(受注系)
+/* 2011/10/11 Ver1.13 Mod Start */
+--        ,iv_layout_class     => cv_0                --情報区分(受注系)
+        ,iv_layout_class     => cv_2                --情報区分(受注系流通ＢＭＳ以外)
+/* 2011/10/11 Ver1.13 Mod End   */
         ,ov_data_type_table  => gt_data_type_table  --データ型表
         ,ov_csv_header       => lv_dummy            --CSVヘッダ
         ,ov_errbuf           => lv_errbuf           --エラーメッセージ
@@ -3422,7 +3426,10 @@ AS
      ,iv_base_name       =>  lv_dummy3         --拠点名称
      ,iv_chain_code      =>  lv_dummy4         --チェーン店コード
      ,iv_chain_name      =>  lv_dummy5         --チェーン店名称
-     ,iv_data_kind       =>  lv_dummy6         --データ種コード
+/* 2011/10/11 Ver1.13 Mod Start */
+--     ,iv_data_kind       =>  lv_dummy6         --データ種コード
+     ,iv_data_kind       =>  gt_data_type_code --データ種コード
+/* 2011/10/11 Ver1.13 Mod End   */
      ,iv_row_number      =>  lv_dummy7         --並列処理番号
      ,in_num_of_records  =>  gn_data_cnt       --レコード件数
      ,ov_retcode         =>  lv_retcode        --リターンコード
