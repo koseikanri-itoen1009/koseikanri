@@ -3,11 +3,11 @@ AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
  *
- * Package Name     : XXCSO013A03C(spec)
+ * Package Name     : XXCSO012A02C(body)
  * Description      : ファイルアップロードIFに取込まれたデータを
  *                    物件マスタ情報(IB)に登録します。
  * MD.050           : MD050_CSO_012_A02_自動販売機データ格納
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009-03-18    1.0   T.Matsunaka      新規作成
+ *  2009-03-26    1.1   T.Matsunaka      【ST障害対応183】自動販売機データ格納でIB拡張属性値テーブル登録不正
  *
  *****************************************************************************************/
 --
@@ -120,6 +121,7 @@ AS
   cv_tkn_number_48        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00270';  -- データ削除エラー
   cv_tkn_number_50        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00557';  -- 機器区分取得エラー
   cv_tkn_number_32        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00518';  -- データ抽出0件メッセージ
+  cv_tkn_number_51        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00550';  -- CSVデータフォーマットエラー
   cv_target_rec_msg       CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90000';  -- 対象件数メッセージ
   cv_success_rec_msg      CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90001';  -- 成功件数メッセージ
   cv_error_rec_msg        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90002';  -- エラー件数メッセージ
@@ -185,7 +187,55 @@ AS
     ,jotai_kbn2            NUMBER               -- 機器状態2（状態詳細）
     ,jotai_kbn3            NUMBER               -- 機器状態3（廃棄情報）
     ,lease_kbn             NUMBER               -- リース区分
-    ,chiku_cd              VARCHAR2(150)        -- 地区コード
+/*20090326_matsunaka_ST183 START*/
+--    ,chiku_cd              VARCHAR2(150)        -- 地区コード
+    ,chiku_cd              NUMBER               -- 地区コード
+    ,count_no              NUMBER               -- カウンターNo.
+    ,sagyougaisya_cd       NUMBER               -- 作業会社コード
+    ,jigyousyo_cd          NUMBER               -- 事業所コード
+    ,den_no                NUMBER               -- 最終作業伝票No.
+    ,job_kbn               NUMBER               -- 最終作業区分
+    ,sintyoku_kbn          NUMBER               -- 最終作業進捗
+    ,yotei_dt              NUMBER               -- 最終作業完了予定日
+    ,kanryo_dt             NUMBER               -- 最終作業完了日
+    ,sagyo_level           NUMBER               -- 最終整備内容
+    ,den_no2               NUMBER               -- 最終設置伝票No.
+    ,job_kbn2              NUMBER               -- 最終設置区分
+    ,sintyoku_kbn2         NUMBER               -- 最終設置進捗
+    ,nyuko_dt              NUMBER               -- 入庫日
+    ,hikisakigaisya_cd     NUMBER               -- 引揚会社コード
+    ,hikisakijigyosyo_cd   NUMBER               -- 引揚事業所コード
+    ,setti_tanto           NUMBER               -- 設置先担当者名
+    ,setti_tel1            NUMBER               -- 設置先tel1
+    ,setti_tel2            NUMBER               -- 設置先tel2
+    ,setti_tel3            NUMBER               -- 設置先tel3
+    ,haikikessai_dt        NUMBER               -- 廃棄決裁日
+    ,tenhai_tanto          NUMBER               -- 転売廃棄業者
+    ,tenhai_den_no         NUMBER               -- 転売廃棄伝票№
+    ,syoyu_cd              NUMBER               -- 所有者
+    ,tenhai_flg            NUMBER               -- 転売廃棄状況フラグ
+    ,kanryo_kbn            NUMBER               -- 転売完了区分
+    ,sakujo_flg            NUMBER               -- 削除フラグ
+    ,ven_kyaku_last        NUMBER               -- 最終顧客コード
+    ,ven_tasya_cd01        NUMBER               -- 他社コード１
+    ,ven_tasya_daisu01     NUMBER               -- 他社台数１
+    ,ven_tasya_cd02        NUMBER               -- 他社コード２
+    ,ven_tasya_daisu02     NUMBER               -- 他社台数２
+    ,ven_tasya_cd03        NUMBER               -- 他社コード３
+    ,ven_tasya_daisu03     NUMBER               -- 他社台数３
+    ,ven_tasya_cd04        NUMBER               -- 他社コード４
+    ,ven_tasya_daisu04     NUMBER               -- 他社台数４
+    ,ven_tasya_cd05        NUMBER               -- 他社コード５
+    ,ven_tasya_daisu05     NUMBER               -- 他社台数５
+    ,ven_haiki_flg         NUMBER               -- 廃棄フラグ
+    ,ven_sisan_kbn         NUMBER               -- 資産区分
+    ,ven_kobai_ymd         NUMBER               -- 購買日付
+    ,ven_kobai_kg          NUMBER               -- 購買金額
+    ,safty_level           NUMBER               -- 安全設置基準
+    ,last_inst_cust_code   NUMBER               -- 先月末設置先顧客コード
+    ,last_jotai_kbn        NUMBER               -- 先月末機器状態
+    ,last_year_month       NUMBER               -- 先月末年月
+/*20090326_matsunaka_ST183 END*/
   );
   -- 追加属性ID格納用レコード変数
   gr_ext_attribs_id_rec   gr_ib_ext_attribs_id_rtype;
@@ -296,6 +346,189 @@ AS
     cv_chiku_cd               CONSTANT VARCHAR2(100) := 'CHIKU_CD';
     -- 本社/工場区分
     cv_owner_company          CONSTANT VARCHAR2(100) := '本社/工場区分';
+--
+/*20090326_matsunaka_ST183 START*/
+    -- カウンターNo.
+    cv_i_ext_count_no         CONSTANT VARCHAR2(100) := 'カウンターNo.';
+    -- 作業会社コード
+    cv_i_ext_sagyougaisya_cd  CONSTANT VARCHAR2(100) := '作業会社コード';
+    -- 事業所コード
+    cv_i_ext_jigyousyo_cd     CONSTANT VARCHAR2(100) := '事業所コード';
+    -- 最終作業伝票No.
+    cv_i_ext_den_no           CONSTANT VARCHAR2(100) := '最終作業伝票No.';
+    -- 最終作業区分
+    cv_i_ext_job_kbn          CONSTANT VARCHAR2(100) := '最終作業区分';
+    -- 最終作業進捗
+    cv_i_ext_sintyoku_kbn     CONSTANT VARCHAR2(100) := '最終作業進捗';
+    -- 最終作業完了予定日
+    cv_i_ext_yotei_dt         CONSTANT VARCHAR2(100) := '最終作業完了予定日';
+    -- 最終作業完了日
+    cv_i_ext_kanryo_dt        CONSTANT VARCHAR2(100) := '最終作業完了日';
+    -- 最終整備内容
+    cv_i_ext_sagyo_level      CONSTANT VARCHAR2(100) := '最終整備内容';
+    -- 最終設置伝票No.
+    cv_i_ext_den_no2          CONSTANT VARCHAR2(100) := '最終設置伝票No.';
+    -- 最終設置区分
+    cv_i_ext_job_kbn2         CONSTANT VARCHAR2(100) := '最終設置区分';
+    -- 最終設置進捗
+    cv_i_ext_sintyoku_kbn2    CONSTANT VARCHAR2(100) := '最終設置進捗';
+    -- 入庫日
+    cv_i_ext_nyuko_dt         CONSTANT VARCHAR2(100) := '入庫日';
+    -- 引揚会社コード
+    cv_i_ext_hikisakicmy_cd   CONSTANT VARCHAR2(100) := '引揚会社コード';
+    -- 引揚事業所コード
+    cv_i_ext_hikisakilct_cd   CONSTANT VARCHAR2(100) := '引揚事業所コード';
+    -- 設置先担当者名
+    cv_i_ext_setti_tanto      CONSTANT VARCHAR2(100) := '設置先担当者名';
+    -- 設置先tel1
+    cv_i_ext_setti_tel1       CONSTANT VARCHAR2(100) := '設置先tel1';
+    -- 設置先tel2
+    cv_i_ext_setti_tel2       CONSTANT VARCHAR2(100) := '設置先tel2';
+    -- 設置先tel3
+    cv_i_ext_setti_tel3       CONSTANT VARCHAR2(100) := '設置先tel3';
+    -- 廃棄決裁日
+    cv_i_ext_haikikessai_dt   CONSTANT VARCHAR2(100) := '廃棄決裁日';
+    -- 転売廃棄業者
+    cv_i_ext_tenhai_tanto     CONSTANT VARCHAR2(100) := '転売廃棄業者';
+    -- 転売廃棄伝票№
+    cv_i_ext_tenhai_den_no    CONSTANT VARCHAR2(100) := '転売廃棄伝票№';
+    -- 所有者
+    cv_i_ext_syoyu_cd         CONSTANT VARCHAR2(100) := '所有者';
+    -- 転売廃棄状況フラグ
+    cv_i_ext_tenhai_flg       CONSTANT VARCHAR2(100) := '転売廃棄状況フラグ';
+    -- 転売完了区分
+    cv_i_ext_kanryo_kbn       CONSTANT VARCHAR2(100) := '転売完了区分';
+    -- 削除フラグ
+    cv_i_ext_sakujo_flg       CONSTANT VARCHAR2(100) := '削除フラグ';
+    -- 最終顧客コード
+    cv_i_ext_ven_kyaku_last   CONSTANT VARCHAR2(100) := '最終顧客コード';
+    -- 他社コード１
+    cv_i_ext_ven_tasya_cd01   CONSTANT VARCHAR2(100) := '他社コード１';
+    -- 他社台数１
+    cv_i_ext_ven_tasya_ds01   CONSTANT VARCHAR2(100) := '他社台数１';
+    -- 他社コード２
+    cv_i_ext_ven_tasya_cd02   CONSTANT VARCHAR2(100) := '他社コード２';
+    -- 他社台数２
+    cv_i_ext_ven_tasya_ds02   CONSTANT VARCHAR2(100) := '他社台数２';
+    -- 他社コード３
+    cv_i_ext_ven_tasya_cd03   CONSTANT VARCHAR2(100) := '他社コード３';
+    -- 他社台数３
+    cv_i_ext_ven_tasya_ds03   CONSTANT VARCHAR2(100) := '他社台数３';
+    -- 他社コード４
+    cv_i_ext_ven_tasya_cd04   CONSTANT VARCHAR2(100) := '他社コード４';
+    -- 他社台数４
+    cv_i_ext_ven_tasya_ds04   CONSTANT VARCHAR2(100) := '他社台数４';
+    -- 他社コード５
+    cv_i_ext_ven_tasya_cd05   CONSTANT VARCHAR2(100) := '他社コード５';
+    -- 他社台数５
+    cv_i_ext_ven_tasya_ds05   CONSTANT VARCHAR2(100) := '他社台数５';
+    -- 廃棄フラグ
+    cv_i_ext_ven_haiki_flg    CONSTANT VARCHAR2(100) := '廃棄フラグ';
+    -- 資産区分
+    cv_i_ext_ven_sisan_kbn    CONSTANT VARCHAR2(100) := '資産区分';
+    -- 購買日付
+    cv_i_ext_ven_kobai_ymd    CONSTANT VARCHAR2(100) := '購買日付';
+    -- 購買金額
+    cv_i_ext_ven_kobai_kg     CONSTANT VARCHAR2(100) := '購買金額';
+    -- 安全設置基準
+    cv_i_ext_safty_level      CONSTANT VARCHAR2(100) := '安全設置基準';
+    -- 先月末設置先顧客コード
+    cv_i_ext_last_inst_cust_code  CONSTANT VARCHAR2(100) := '先月末設置先顧客コード';
+    -- 先月末機器状態
+    cv_i_ext_last_jotai_kbn   CONSTANT VARCHAR2(100) := '先月末機器状態';
+    -- 先月末年月
+    cv_i_ext_last_year_month  CONSTANT VARCHAR2(100) := '先月末年月';
+    -- カウンターNo.
+    cv_count_no               CONSTANT VARCHAR2(100) := 'COUNT_NO';
+    -- 作業会社コード
+    cv_sagyougaisya_cd        CONSTANT VARCHAR2(100) := 'SAGYOUGAISYA_CD'; 
+    -- 事業所コード
+    cv_jigyousyo_cd           CONSTANT VARCHAR2(100) := 'JIGYOUSYO_CD';
+    -- 最終作業伝票No.
+    cv_den_no                 CONSTANT VARCHAR2(100) := 'DEN_NO';
+    -- 最終作業区分
+    cv_job_kbn                CONSTANT VARCHAR2(100) := 'JOB_KBN';
+    -- 最終作業進捗
+    cv_sintyoku_kbn           CONSTANT VARCHAR2(100) := 'SINTYOKU_KBN';
+    -- 最終作業完了予定日
+    cv_yotei_dt               CONSTANT VARCHAR2(100) := 'YOTEI_DT';
+    -- 最終作業完了日
+    cv_kanryo_dt              CONSTANT VARCHAR2(100) := 'KANRYO_DT';
+    -- 最終整備内容
+    cv_sagyo_level            CONSTANT VARCHAR2(100) := 'SAGYO_LEVEL';
+    -- 最終設置伝票No.
+    cv_den_no2                CONSTANT VARCHAR2(100) := 'DEN_NO2';
+    -- 最終設置区分
+    cv_job_kbn2               CONSTANT VARCHAR2(100) := 'JOB_KBN2';
+    -- 最終設置進捗
+    cv_sintyoku_kbn2          CONSTANT VARCHAR2(100) := 'SINTYOKU_KBN2';
+    -- 入庫日
+    cv_nyuko_dt               CONSTANT VARCHAR2(100) := 'NYUKO_DT';
+    -- 引揚会社コード
+    cv_hikisakigaisya_cd      CONSTANT VARCHAR2(100) := 'HIKISAKIGAISYA_CD';
+    -- 引揚事業所コード
+    cv_hikisakijigyosyo_cd    CONSTANT VARCHAR2(100) := 'HIKISAKIJIGYOSYO_CD';
+    -- 設置先担当者名
+    cv_setti_tanto            CONSTANT VARCHAR2(100) := 'SETTI_TANTO';
+    -- 設置先tel1
+    cv_setti_tel1             CONSTANT VARCHAR2(100) := 'SETTI_TEL1';
+    -- 設置先tel2
+    cv_setti_tel2             CONSTANT VARCHAR2(100) := 'SETTI_TEL2';
+    -- 設置先tel3
+    cv_setti_tel3             CONSTANT VARCHAR2(100) := 'SETTI_TEL3';
+    -- 廃棄決裁日
+    cv_haikikessai_dt         CONSTANT VARCHAR2(100) := 'HAIKIKESSAI_DT';
+    -- 転売廃棄業者
+    cv_tenhai_tanto           CONSTANT VARCHAR2(100) := 'TENHAI_TANTO';
+    -- 転売廃棄伝票№
+    cv_tenhai_den_no          CONSTANT VARCHAR2(100) := 'TENHAI_DEN_NO';
+    -- 所有者
+    cv_syoyu_cd               CONSTANT VARCHAR2(100) := 'SYOYU_CD';
+    -- 転売廃棄状況フラグ
+    cv_tenhai_flg             CONSTANT VARCHAR2(100) := 'TENHAI_FLG';
+    -- 転売完了区分
+    cv_kanryo_kbn             CONSTANT VARCHAR2(100) := 'KANRYO_KBN';
+    -- 削除フラグ
+    cv_sakujo_flg             CONSTANT VARCHAR2(100) := 'SAKUJO_FLG';
+    -- 最終顧客コード
+    cv_ven_kyaku_last         CONSTANT VARCHAR2(100) := 'VEN_KYAKU_LAST';
+    -- 他社コード１
+    cv_ven_tasya_cd01         CONSTANT VARCHAR2(100) := 'VEN_TASYA_CD01';
+    -- 他社台数１
+    cv_ven_tasya_daisu01      CONSTANT VARCHAR2(100) := 'VEN_TASYA_DAISU01';
+    -- 他社コード2
+    cv_ven_tasya_cd02         CONSTANT VARCHAR2(100) := 'VEN_TASYA_CD02';
+    -- 他社台数2
+    cv_ven_tasya_daisu02      CONSTANT VARCHAR2(100) := 'VEN_TASYA_DAISU02';
+    -- 他社コード3
+    cv_ven_tasya_cd03         CONSTANT VARCHAR2(100) := 'VEN_TASYA_CD03';
+    -- 他社台数3
+    cv_ven_tasya_daisu03      CONSTANT VARCHAR2(100) := 'VEN_TASYA_DAISU03';
+    -- 他社コード4
+    cv_ven_tasya_cd04         CONSTANT VARCHAR2(100) := 'VEN_TASYA_CD04';
+    -- 他社台数4
+    cv_ven_tasya_daisu04      CONSTANT VARCHAR2(100) := 'VEN_TASYA_DAISU04';
+    -- 他社コード5
+    cv_ven_tasya_cd05         CONSTANT VARCHAR2(100) := 'VEN_TASYA_CD05';
+    -- 他社台数5
+    cv_ven_tasya_daisu05      CONSTANT VARCHAR2(100) := 'VEN_TASYA_DAISU05';
+    -- 廃棄フラグ
+    cv_ven_haiki_flg          CONSTANT VARCHAR2(100) := 'VEN_HAIKI_FLG';
+    -- 資産区分
+    cv_ven_sisan_kbn          CONSTANT VARCHAR2(100) := 'VEN_SISAN_KBN';
+    -- 購買日付
+    cv_ven_kobai_ymd          CONSTANT VARCHAR2(100) := 'VEN_KOBAI_YMD';
+    -- 購買金額
+    cv_ven_kobai_kg           CONSTANT VARCHAR2(100) := 'VEN_KOBAI_KG';
+    -- 安全設置基準
+    cv_safty_level            CONSTANT VARCHAR2(100) := 'SAFTY_LEVEL';
+    -- 先月末設置先顧客コード
+    cv_last_inst_cust_code    CONSTANT VARCHAR2(100) := 'LAST_INST_CUST_CODE';
+    -- 先月末機器状態
+    cv_last_jotai_kbn         CONSTANT VARCHAR2(100) := 'LAST_JOTAI_KBN';
+    -- 先月末年月
+    cv_last_year_month        CONSTANT VARCHAR2(100) := 'LAST_YEAR_MONTH';
+/*20090326_matsunaka_ST183 END*/
 --
     -- *** ローカル変数 ***
     -- 業務処理日
@@ -776,6 +1009,862 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_process_expt;
     END IF;
+/*20090326_matsunaka_ST183 START*/
+    -- 追加属性ID(カウンターNo.)
+    gr_ext_attribs_id_rec.count_no := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                         cv_count_no
+                                        ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.count_no IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_count_no            -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_count_no                  -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(作業会社コード)
+    gr_ext_attribs_id_rec.sagyougaisya_cd := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                                cv_sagyougaisya_cd
+                                               ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.sagyougaisya_cd IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_sagyougaisya_cd     -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_sagyougaisya_cd                  -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(事業所コード)
+    gr_ext_attribs_id_rec.jigyousyo_cd := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                             cv_jigyousyo_cd
+                                            ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.jigyousyo_cd IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_jigyousyo_cd        -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_jigyousyo_cd                  -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(最終作業伝票No.)
+    gr_ext_attribs_id_rec.den_no := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                       cv_den_no
+                                      ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.den_no IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_den_no              -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_den_no                    -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(最終作業区分)
+    gr_ext_attribs_id_rec.job_kbn := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                        cv_job_kbn
+                                       ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.job_kbn IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_job_kbn             -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_job_kbn                   -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(最終作業進捗)
+    gr_ext_attribs_id_rec.sintyoku_kbn := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                             cv_sintyoku_kbn
+                                            ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.sintyoku_kbn IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_sintyoku_kbn        -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_sintyoku_kbn              -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(最終作業完了予定日)
+    gr_ext_attribs_id_rec.yotei_dt := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                         cv_yotei_dt
+                                        ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.yotei_dt IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_yotei_dt            -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_yotei_dt                  -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(最終作業完了日)
+    gr_ext_attribs_id_rec.kanryo_dt := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                          cv_kanryo_dt
+                                         ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.kanryo_dt IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_kanryo_dt           -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_kanryo_dt                 -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(最終整備内容)
+    gr_ext_attribs_id_rec.sagyo_level := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                            cv_sagyo_level
+                                           ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.sagyo_level IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_sagyo_level         -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_sagyo_level               -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 最終設置伝票No.
+    gr_ext_attribs_id_rec.den_no2 := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                        cv_den_no2
+                                       ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.den_no2 IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_den_no2             -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_den_no2                   -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(最終設置区分)
+    gr_ext_attribs_id_rec.job_kbn2 := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                         cv_job_kbn2
+                                        ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.job_kbn2 IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_job_kbn2            -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_job_kbn2                  -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(最終設置進捗)
+    gr_ext_attribs_id_rec.sintyoku_kbn2 := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                              cv_sintyoku_kbn2
+                                             ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.sintyoku_kbn2 IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_sintyoku_kbn2       -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_sintyoku_kbn2             -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(入庫日)
+    gr_ext_attribs_id_rec.nyuko_dt := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                         cv_nyuko_dt
+                                        ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.nyuko_dt IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_nyuko_dt            -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_nyuko_dt                  -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(引揚会社コード)
+    gr_ext_attribs_id_rec.hikisakigaisya_cd := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                                  cv_hikisakigaisya_cd
+                                                 ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.hikisakigaisya_cd IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_hikisakicmy_cd      -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_hikisakigaisya_cd                  -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(引揚事業所コード)
+    gr_ext_attribs_id_rec.hikisakijigyosyo_cd := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                                    cv_hikisakijigyosyo_cd
+                                                   ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.hikisakijigyosyo_cd IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_hikisakilct_cd      -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_hikisakijigyosyo_cd       -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(設置先担当者名)
+    gr_ext_attribs_id_rec.setti_tanto := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                             cv_setti_tanto
+                                            ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.setti_tanto IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_setti_tanto         -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_setti_tanto               -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(設置先tel1)
+    gr_ext_attribs_id_rec.setti_tel1 := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                             cv_setti_tel1
+                                            ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.setti_tel1 IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_setti_tel1          -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_setti_tel1                -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(設置先tel2)
+    gr_ext_attribs_id_rec.setti_tel2 := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                             cv_setti_tel2
+                                            ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.setti_tel2 IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_setti_tel2          -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_setti_tel2                -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(設置先tel3)
+    gr_ext_attribs_id_rec.setti_tel3 := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                             cv_setti_tel3
+                                            ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.setti_tel3 IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_setti_tel3          -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_setti_tel3                -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(廃棄決裁日)
+    gr_ext_attribs_id_rec.haikikessai_dt := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                             cv_haikikessai_dt
+                                            ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.haikikessai_dt IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_haikikessai_dt      -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_haikikessai_dt            -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(転売廃棄業者)
+    gr_ext_attribs_id_rec.tenhai_tanto := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                             cv_tenhai_tanto
+                                            ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.tenhai_tanto IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_tenhai_tanto        -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_tenhai_tanto              -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(転売廃棄伝票№)
+    gr_ext_attribs_id_rec.tenhai_den_no := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                              cv_tenhai_den_no
+                                             ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.tenhai_den_no IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_tenhai_den_no       -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_tenhai_den_no             -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(所有者)
+    gr_ext_attribs_id_rec.syoyu_cd := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                         cv_syoyu_cd
+                                        ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.syoyu_cd IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_syoyu_cd            -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_syoyu_cd                  -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(転売廃棄状況フラグ)
+    gr_ext_attribs_id_rec.tenhai_flg := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                           cv_tenhai_flg
+                                          ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.tenhai_flg IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_tenhai_flg          -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_tenhai_flg                -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(転売完了区分)
+    gr_ext_attribs_id_rec.kanryo_kbn := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                           cv_kanryo_kbn
+                                          ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.kanryo_kbn IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_kanryo_kbn          -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_kanryo_kbn                  -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(削除フラグ)
+    gr_ext_attribs_id_rec.sakujo_flg := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                           cv_sakujo_flg
+                                          ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.sakujo_flg IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_sakujo_flg          -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_sakujo_flg                -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(最終顧客コード)
+    gr_ext_attribs_id_rec.ven_kyaku_last := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                               cv_ven_kyaku_last
+                                              ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.ven_kyaku_last IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_ven_kyaku_last      -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_ven_kyaku_last            -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(他社コード１)
+    gr_ext_attribs_id_rec.ven_tasya_cd01 := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                               cv_ven_tasya_cd01
+                                              ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.ven_tasya_cd01 IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_ven_tasya_cd01      -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_ven_tasya_cd01            -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(他社台数１)
+    gr_ext_attribs_id_rec.ven_tasya_daisu01 := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                               cv_ven_tasya_daisu01
+                                              ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.ven_tasya_daisu01 IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_ven_tasya_ds01      -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_ven_tasya_daisu01         -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(他社コード2)
+    gr_ext_attribs_id_rec.ven_tasya_cd02 := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                               cv_ven_tasya_cd02
+                                              ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.ven_tasya_cd02 IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_ven_tasya_cd02      -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_ven_tasya_cd02                -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(他社台数2)
+    gr_ext_attribs_id_rec.ven_tasya_daisu02 := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                               cv_ven_tasya_daisu02
+                                              ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.ven_tasya_daisu02 IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_ven_tasya_ds02      -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_ven_tasya_daisu02         -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(他社コード3)
+    gr_ext_attribs_id_rec.ven_tasya_cd03 := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                               cv_ven_tasya_cd03
+                                              ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.ven_tasya_cd03 IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_ven_tasya_cd03      -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_ven_tasya_cd03            -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(他社台数3)
+    gr_ext_attribs_id_rec.ven_tasya_daisu03 := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                               cv_ven_tasya_daisu03
+                                              ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.ven_tasya_daisu03 IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_ven_tasya_ds03      -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_ven_tasya_daisu03         -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(他社コード4)
+    gr_ext_attribs_id_rec.ven_tasya_cd04 := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                               cv_ven_tasya_cd04
+                                              ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.ven_tasya_cd04 IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_ven_tasya_cd04      -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_ven_tasya_cd04                -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(他社台数4)
+    gr_ext_attribs_id_rec.ven_tasya_daisu04 := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                               cv_ven_tasya_daisu04
+                                              ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.ven_tasya_daisu04 IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_ven_tasya_ds04          -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_ven_tasya_daisu04             -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(他社コード5)
+    gr_ext_attribs_id_rec.ven_tasya_cd05 := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                               cv_ven_tasya_cd05
+                                              ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.ven_tasya_cd05 IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_ven_tasya_cd05      -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_ven_tasya_cd05                -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(他社台数5)
+    gr_ext_attribs_id_rec.ven_tasya_daisu05 := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                               cv_ven_tasya_daisu05
+                                              ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.ven_tasya_daisu01 IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_ven_tasya_ds05          -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_ven_tasya_daisu05             -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(廃棄フラグ)
+    gr_ext_attribs_id_rec.ven_haiki_flg := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                              cv_ven_haiki_flg
+                                             ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.ven_haiki_flg IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_ven_haiki_flg       -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_ven_haiki_flg             -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(資産区分)
+    gr_ext_attribs_id_rec.ven_sisan_kbn := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                              cv_ven_sisan_kbn
+                                             ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.ven_sisan_kbn IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_ven_sisan_kbn       -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_ven_sisan_kbn             -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(購買日付)
+    gr_ext_attribs_id_rec.ven_kobai_ymd := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                              cv_ven_kobai_ymd
+                                             ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.ven_kobai_ymd IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_ven_kobai_ymd       -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_ven_kobai_ymd             -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(購買金額)
+    gr_ext_attribs_id_rec.ven_kobai_kg := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                              cv_ven_kobai_kg
+                                             ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.ven_kobai_kg IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_ven_kobai_kg        -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_ven_kobai_kg              -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(安全設置基準)
+    gr_ext_attribs_id_rec.safty_level := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                            cv_safty_level
+                                           ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.safty_level IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_safty_level         -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_safty_level               -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(先月末設置先顧客コード)
+    gr_ext_attribs_id_rec.last_inst_cust_code := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                          cv_last_inst_cust_code
+                                         ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.last_inst_cust_code IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_last_inst_cust_code -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_last_inst_cust_code       -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(先月末機器状態)
+    gr_ext_attribs_id_rec.last_jotai_kbn := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                          cv_last_jotai_kbn
+                                         ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.last_jotai_kbn IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_last_jotai_kbn      -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_last_jotai_kbn            -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(先月末年月)
+    gr_ext_attribs_id_rec.last_year_month := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                          cv_last_year_month
+                                         ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.last_year_month IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_last_year_month     -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_last_year_month           -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+/*20090326_matsunaka_ST183 END*/
 --
     -- ========================
     -- 本社/工場区分(本社)取得 
@@ -992,6 +2081,8 @@ AS
     cv_serial_code  CONSTANT VARCHAR2(100) := '機種コード';
     -- 拠点コード
     cv_base_code    CONSTANT VARCHAR2(100) := '拠点コード';
+    -- 物件データ
+    cv_object_data  CONSTANT VARCHAR2(100) := '物件データ';
 
 --
 --#####################  固定ローカル変数宣言部 START   ########################
@@ -1007,11 +2098,17 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
 --
+    cn_format_col_cnt        CONSTANT NUMBER := 3;  -- 項目数
+--
     -- *** ローカル変数 ***
     lv_object_front          VARCHAR2(3);
     lv_object_tail           VARCHAR2(6);
     lv_substr                VARCHAR2(1);
     lb_ret                   BOOLEAN;
+    lb_format_flag           BOOLEAN := TRUE;
+    lv_tmp                   VARCHAR2(2000);
+    ln_pos                   NUMBER;
+    ln_cnt                   NUMBER := 1;
 --
     -- *** ローカル例外 ***
 --    
@@ -1023,9 +2120,44 @@ AS
 --
 --###########################  固定部 END   ############################
 --  
-  -- ***************************************************
-  -- 1.blobデータ分割
-  -- ***************************************************
+    -- ***************************************************
+    -- 1.項目数取得
+    -- ***************************************************
+    IF (it_blob_data(in_data_num) IS NULL) THEN
+      lb_format_flag := FALSE;
+    END IF;
+--
+    IF lb_format_flag THEN
+      lv_tmp := it_blob_data(in_data_num);
+      LOOP
+        ln_pos := INSTR(lv_tmp, cv_msg_conm);
+        IF ((ln_pos IS NULL) OR (ln_pos = 0)) THEN
+          EXIT;
+        ELSE
+          ln_cnt := ln_cnt + 1;
+          lv_tmp := SUBSTR(lv_tmp, ln_pos + 1);
+          ln_pos := 0;
+        END IF;
+      END LOOP;
+    END IF;
+--
+    -- 1.項目数チェック
+    IF ((lb_format_flag = FALSE) OR (ln_cnt <> cn_format_col_cnt)) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_51           -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm             -- トークンコード1
+                     ,iv_token_value1 => cv_object_data             -- トークン値1
+                     ,iv_token_name2  => cv_tkn_base_value          -- トークンコード1
+                     ,iv_token_value2 => it_blob_data(in_data_num)  -- トークン値1
+                   );
+      lv_errbuf  := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+
+    -- ***************************************************
+    -- 2.blobデータ分割
+    -- ***************************************************
     --物件コード
     gr_blob_data.object_code := xxccp_common_pkg.char_delim_partition(it_blob_data(in_data_num)
                                                                      ,cv_msg_conm
@@ -1078,7 +2210,7 @@ AS
     END IF;
 --
     -- ***************************************************
-    -- 2.項目値妥当性チェック
+    -- 3.項目値妥当性チェック
     -- ***************************************************
     --物件コード書式チェック
     lv_substr := SUBSTRB(gr_blob_data.object_code,4,1);
@@ -1559,6 +2691,9 @@ AS
     cv_party_source_table    CONSTANT VARCHAR2(100) := 'HZ_PARTIES';        -- パーティソーステーブル
     cv_relatnsh_type_code    CONSTANT VARCHAR2(100) := 'OWNER';             -- リレーションタイプ
     cv_flg_no                CONSTANT VARCHAR2(1)   := 'N';                 -- フラグNO
+    /*20090326_matsunaka_ST183 START*/
+    cv_flg_yes               CONSTANT VARCHAR2(1)   := 'Y';                 -- フラグYES
+    /*20090326_matsunaka_ST183 END*/
 --
     -- *** ローカル変数 ***
     ln_validation_level        NUMBER;                  -- バリデーションレーベル
@@ -1613,6 +2748,9 @@ AS
     l_instance_rec.install_date               := gd_process_date;              -- 導入日
     l_instance_rec.attribute1                 := gr_blob_data.serial_code;     -- 機種(コード)
     l_instance_rec.attribute4                 := cv_flg_no;                    -- 作業依頼中フラグ
+    /*20090326_matsunaka_ST183 START*/
+    l_instance_rec.attribute5                 := cv_flg_yes;                   -- 新古台フラグ
+    /*20090326_matsunaka_ST183 END*/
     l_instance_rec.instance_usage_code        := cv_instance_usage_code;       -- インスタンス使用コード
     l_instance_rec.request_id                 := cn_request_id;                -- REQUEST_ID
     l_instance_rec.program_application_id     := cn_program_application_id;    -- PROGRAM_APPLICATION_ID
@@ -1646,6 +2784,233 @@ AS
     ln_cnt := ln_cnt + 1;
     l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.chiku_cd;
     l_ext_attrib_values_tab(ln_cnt).attribute_value := gv_address3;
+--
+/*20090326_matsunaka_ST183 START*/
+    -- カウンターNo.
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.count_no;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 作業会社コード
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.sagyougaisya_cd;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 事業所コード
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.jigyousyo_cd;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 最終作業伝票No.
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.den_no;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 最終作業区分
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.job_kbn;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 最終作業進捗
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.sintyoku_kbn;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 最終作業完了予定日
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.yotei_dt;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 最終作業完了日
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.kanryo_dt;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 最終整備内容
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.sagyo_level;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 最終設置伝票No.2
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.den_no2;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 最終設置区分2
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.job_kbn2;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 最終設置進捗2
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.sintyoku_kbn2;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 入庫日
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.nyuko_dt;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 引揚会社コード
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.hikisakigaisya_cd;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 引揚事業所コード
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.hikisakijigyosyo_cd;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 設置先担当者名
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.setti_tanto;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 設置先tel1
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.setti_tel1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 設置先tel2
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.setti_tel2;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 設置先tel3
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.setti_tel3;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 廃棄決裁日
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.haikikessai_dt;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 転売廃棄業者
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.tenhai_tanto;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 転売廃棄伝票№
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.tenhai_den_no;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 所有者
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.syoyu_cd;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 転売廃棄状況フラグ
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.tenhai_flg;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 転売完了区分
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.kanryo_kbn;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 削除フラグ
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.sakujo_flg;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 最終顧客コード
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.ven_kyaku_last;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 他社コード１
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.ven_tasya_cd01;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 他社台数１
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.ven_tasya_daisu01;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 他社コード２
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.ven_tasya_cd02;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 他社台数２
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.ven_tasya_daisu02;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 他社コード３
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.ven_tasya_cd03;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 他社台数３
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.ven_tasya_daisu03;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 他社コード４
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.ven_tasya_cd04;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 他社台数４
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.ven_tasya_daisu04;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 他社コード５
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.ven_tasya_cd05;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 他社台数５
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.ven_tasya_daisu05;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 廃棄フラグ
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.ven_haiki_flg;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 資産区分
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.ven_sisan_kbn;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 購買日付
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.ven_kobai_ymd;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 購買金額
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.ven_kobai_kg;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 安全設置基準
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.safty_level;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 先月末設置先顧客コード
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.last_inst_cust_code;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 先月末機器状態
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.last_jotai_kbn;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--
+    -- 先月末年月
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.last_year_month;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+/*20090326_matsunaka_ST183 END*/
 --
     -- ====================
     -- 3.パーティデータ作成
