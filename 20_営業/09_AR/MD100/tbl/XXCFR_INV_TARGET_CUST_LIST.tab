@@ -12,6 +12,7 @@ CREATE GLOBAL TEMPORARY TABLE xxcfr.xxcfr_inv_target_cust_list
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2008/11/12    1.0  SCS 松尾 泰生  初回作成
+ *  2009/06/18    1.0  SCS 金田 拓朗  インデックス名修正
  ************************************************************************/
 ( 
   bill_cust_code             VARCHAR2(30)       NOT NULL  ,-- 請求先顧客コード
@@ -23,7 +24,7 @@ CREATE GLOBAL TEMPORARY TABLE xxcfr.xxcfr_inv_target_cust_list
   term_id                    NUMBER                       ,-- 支払条件ID
   tax_div                    VARCHAR2(1)                  ,-- 消費税区分
   bill_pub_cycle             VARCHAR2(1)                  ,-- 請求書発行サイクル
-  CONSTRAINT xxcfr_inv_target_cust_list PRIMARY KEY ( bill_cust_code, cutoff_date )
+  CONSTRAINT xxcfr_inv_target_cust_list_pk PRIMARY KEY ( bill_cust_code, cutoff_date )
 )
 ON COMMIT DELETE ROWS
 ;
