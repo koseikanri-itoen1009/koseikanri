@@ -7,7 +7,7 @@ AS
  * Description            : 生産バッチロット詳細画面データソースパッケージ(SPEC)
  * MD.050                 : T_MD050_BPO_200_生産バッチ.doc
  * MD.070                 : T_MD070_BPO_20A_生産バッチ一覧画面.doc
- * Version                : 1.0
+ * Version                : 1.1
  *
  * Program List
  *  --------------------  ---- ----- -------------------------------------------------
@@ -20,6 +20,7 @@ AS
  *  Date         Ver.  Editor           Description
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008/08/28   1.0   D.Nihei          新規作成
+ *  2008/10/07   1.1   D.Nihei          統合障害#123対応（PT 6-2_31）
  *
  *****************************************************************************************/
 --
@@ -43,6 +44,10 @@ AS
   , instructions_qty            xxwip_material_detail.instructions_qty%TYPE           -- 指示総数
   , instructions_qty_orig       xxwip_material_detail.instructions_qty%TYPE           -- 元指示総数
   , stock_qty                   NUMBER                                                -- 在庫総数
+-- 2008/10/07 D.Nihei ADD START
+  , inbound_qty                 NUMBER                                                -- 入庫予定数
+  , outbound_qty                NUMBER                                                -- 出庫予定数
+-- 2008/10/07 D.Nihei ADD END
   , enabled_qty                 NUMBER                                                -- 可能数
   , entity_inner                NUMBER                                                -- 在庫入数
   , unit_price                  NUMBER                                                -- 単価
