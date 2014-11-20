@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼/出荷実績作成処理起動処理
  * MD.050           : 出荷実績 T_MD050_BPO_420
  * MD.070           : 出荷依頼出荷実績作成処理 T_MD070_BPO_42C
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,8 +25,9 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2008/12/15   1.0  Oracle 北寒寺正夫   新規作成
+ *  2008/12/15   1.0  SCS  北寒寺正夫   新規作成
  *  2008/12/25   1.1  SCS  菅原大輔     本番障害#845対応(子処理起動順変更、ディレイ追加) 
+ *  2009/11/05   1.2  SCS  伊藤 ひとみ  本番#1648 顧客フラグ対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -243,12 +244,17 @@ AS
     lv_select2 := 'SELECT xoha.deliver_from, '
         ||       '        COUNT(xoha.order_header_id) '
         ||       ' FROM   xxwsh_order_headers_all      xoha,'
-        ||       '        xxcmn_cust_accounts_v        xcav,'
-        ||       '        xxwsh_oe_transaction_types_v  xottv1,'
-        ||       '        xxcmn_item_locations_v        xilv'
+-- 2009/11/05 H.Itou Del Start 本番障害#1648 顧客ほ保管場所は不要な結合なので削除。
+--        ||       '        xxcmn_cust_accounts_v        xcav,'
+--        ||       '        xxwsh_oe_transaction_types_v  xottv1,'
+        ||       '        xxwsh_oe_transaction_types_v  xottv1'
+--        ||       '        xxcmn_item_locations_v        xilv'
+-- 2009/11/05 H.Itou Del End
         ||       ' WHERE  xoha.req_status IN (''' || gv_order_status_04 || ''','''|| gv_order_status_08 || ''')'
-        ||       ' AND    xilv.segment1 = xoha.deliver_from'
-        ||       ' AND    xcav.party_id = xoha.customer_id'
+-- 2009/11/05 H.Itou Del Start 本番障害#1648
+--        ||       ' AND    xilv.segment1 = xoha.deliver_from'
+--        ||       ' AND    xcav.party_id = xoha.customer_id'
+-- 2009/11/05 H.Itou Del End
         ||       ' AND    xottv1.transaction_type_id = xoha.order_type_id'
         ||       ' AND    NVL(xoha.actual_confirm_class, '''|| gv_no || ''') = ''' || gv_no || ''''
         ||       ' AND    ((xoha.latest_external_flag = ''' || gv_yes || ''')'

@@ -7,7 +7,7 @@ AS
  * Description      : 確定ブロック処理
  * MD.050           : 出荷依頼 T_MD050_BPO_601
  * MD.070           : 確定ブロック処理  T_MD070_BPO_60D
- * Version          : 1.8
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2008/09/10    1.7  Oracle 福田直樹   統合#45の再修正(配送L/Tに関する条件をLT2に入れ忘れ)
  *  2008/12/01    1.8  SCS    伊藤ひとみ 本番#148対応
  *  2008/12/02    1.9  SCS    菅原大輔   本番#148対応
+ *  2009/08/18    1.10 SCS    伊藤ひとみ 本番#1581対応(営業システム:特別横持マスタ対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -107,6 +108,10 @@ AS
                                                                  -- パッケージ名
   gv_cons_msg_kbn_wsh         CONSTANT VARCHAR2(100) := 'XXWSH';
                                                                  -- アプリケーション短縮名
+-- 2009/08/18 H.Itou Add Start 本番#1581対応(営業システム:特別横持マスタ対応)
+  gv_cons_msg_kbn_cmn         CONSTANT VARCHAR2(100) := 'XXCMN';
+                                                                 -- アプリケーション短縮名 XXCMN
+-- 2009/08/18 H.Itou Add End
   gv_prof_item_div_security   CONSTANT VARCHAR2(100) := 'XXCMN_ITEM_DIV_SECURITY';
                                                                  -- XXCMN：商品区分(セキュリティ)
   gv_line_feed                CONSTANT VARCHAR2(1)   := CHR(10);
@@ -187,6 +192,11 @@ AS
   -- レコードタイプ
   gv_record_type_code_plan    CONSTANT VARCHAR2(2) :=  '10';   -- 指示
   -- エラーメッセージ
+-- 2009/08/18 H.Itou Add Start 本番#1581対応(営業システム:特別横持マスタ対応)
+  -- 特別横持更新関数
+  gv_process_type_plus        CONSTANT VARCHAR2(1) :=  '0';    -- 処理区分 0：加算
+  gv_process_type_minus       CONSTANT VARCHAR2(1) :=  '1';    -- 処理区分 1：減算
+-- 2009/08/18 H.Itou Add End
   gv_output_msg               CONSTANT VARCHAR2(100) := 'APP-XXWSH-01701';
                                                              -- 出力件数
   gv_input_date_err           CONSTANT VARCHAR2(100) := 'APP-XXWSH-11851';
@@ -207,6 +217,10 @@ AS
   gv_check_line_err2          CONSTANT VARCHAR2(100) := 'APP-XXWSH-11858';
                                                              -- 配車済・引当処理済チェックエラー２
 -- 2008/12/01 H.Itou Add End
+-- 2009/08/18 H.Itou Add Start 本番#1581対応(営業システム:特別横持マスタ対応)
+  gv_process_err              CONSTANT VARCHAR2(100) := 'APP-XXCMN-05002';
+                                                             -- 処理失敗
+-- 2009/08/18 H.Itou Add End
   gv_cnst_tkn_para            CONSTANT VARCHAR2(100) := 'PARAMETER';
                                                              -- 入力パラメータ名
   gv_cnst_tkn_para2           CONSTANT VARCHAR2(100) := 'PARAMETER2';
@@ -223,6 +237,10 @@ AS
                                                              -- 依頼No
   gv_cnst_tkn_item_no         CONSTANT VARCHAR2(100) := 'ITEM_NO';
                                                              -- 品目No
+-- 2009/08/18 H.Itou Add Start 本番#1581対応(営業システム:特別横持マスタ対応)
+  gv_cnst_tkn_process         CONSTANT VARCHAR2(100) := 'PROCESS';
+                                                             -- 処理名
+-- 2009/08/18 H.Itou Add End
   -- トークン
   gv_tkn_item_div_security    CONSTANT VARCHAR2(100) := 'XXCMN：商品区分(セキュリティ)';
   gv_tkn_dept_code            CONSTANT VARCHAR2(100) := '部署';
@@ -247,6 +265,10 @@ AS
 -- 2008/12/01 H.Itou Add Start 本番障害#148
   gv_tkn_reserved02_err       CONSTANT VARCHAR2(100) := '引当エラー２';
 -- 2008/12/01 H.Itou Add End
+-- 2009/08/18 H.Itou Add Start 本番#1581対応(営業システム:特別横持マスタ対応)
+  gv_tkn_upd_assignment       CONSTANT VARCHAR2(100) := '割当セットAPI起動';
+                                                             -- 処理名
+-- 2009/08/18 H.Itou Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -3082,6 +3104,30 @@ AS
       -- データ区分が'3'移動指示の場合
       ---------------------------------------------------------
       ELSIF (gr_upd_data_tab(ln_cnt).data_class IN (gc_data_class_move)) THEN
+-- 2009/08/18 H.Itou Add Start 本番#1581対応(営業システム:特別横持マスタ対応)
+        ---------------------------------------------------------
+        -- 割当セットAPI起動
+        ---------------------------------------------------------
+        xxcop_common_pkg2.upd_assignment(
+          iv_mov_num      => gr_upd_data_tab(ln_cnt).request_no  -- 移動番号
+         ,iv_process_type => gv_process_type_plus                -- 処理区分(0：加算、1：減算)
+         ,ov_errbuf       => lv_errbuf                           --   エラー・メッセージ           --# 固定 #
+         ,ov_retcode      => lv_retcode                          --   リターン・コード             --# 固定 #
+         ,ov_errmsg       => lv_errmsg                           --   ユーザー・エラー・メッセージ --# 固定 #
+        );
+--
+        -- エラーの場合、処理終了
+        IF (lv_retcode = gv_status_error) THEN
+          -- エラーメッセージ取得
+          lv_errmsg := xxcmn_common_pkg.get_msg(
+                         gv_cons_msg_kbn_cmn                        -- アプリケーション名:XXCMN
+                        ,gv_process_err                             -- メッセージコード:処理失敗
+                        ,gv_cnst_tkn_process ,gv_tkn_upd_assignment -- トークン:PROCESS = 割当セットAPI起動
+                      );
+          lv_errmsg := lv_errmsg || ' (移動番号:' || gr_upd_data_tab(ln_cnt).request_no || ')';
+          RAISE global_api_expt;
+        END IF;
+-- 2009/08/18 H.Itou Add End
         ---------------------------------------------------------
         -- 移動依頼/指示ヘッダアドオン更新
         ---------------------------------------------------------

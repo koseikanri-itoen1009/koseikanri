@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼/出荷実績作成処理
  * MD.050           : 出荷実績 T_MD050_BPO_420
  * MD.070           : 出荷依頼出荷実績作成処理 T_MD070_BPO_42A
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2009/04/14    1.14  SCS    伊藤 ひとみ 本番#1406
  *  2009/04/21    1.15  SCS    伊藤 ひとみ 本番#1356(再対応) 出荷先_指示IDと管轄拠点も最新に洗替する
  *  2009/10/09    1.16  SCS    伊藤 ひとみ 本番#1655 中止客申請フラグを見ない
+ *  2009/11/05    1.17  SCS    伊藤 ひとみ 本番#1648 顧客フラグ対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1233,7 +1234,10 @@ AS
 -- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
            ,ot_base_code                              -- 05.base_code
 -- 2009/04/21 H.Itou ADD END
-    FROM   xxcmn_cust_accounts_v      xcav            -- 顧客情報VIEW
+-- 2009/11/05 H.Itou MOD START 本番障害#1648 顧客ステータスを見ずにデータを取得し、無効顧客の場合はAPIエラーとする。
+--    FROM   xxcmn_cust_accounts_v      xcav            -- 顧客情報VIEW
+    FROM   xxcmn_cust_accounts3_v     xcav            -- 顧客情報VIEW3
+-- 2009/11/05 H.Itou MOD END
           ,xxcmn_cust_acct_sites_v    xcasv           -- 顧客サイト情報VIEW
     WHERE  xcav.party_id            = xcasv.party_id  -- 結合条件
     AND    xcasv.party_site_number  = it_party_site_number   -- 配送先番号
@@ -1314,7 +1318,10 @@ AS
     INTO    ot_party_id                               -- 01.party_id
            ,ot_cust_account_id                        -- 02.cust_account_id
            ,ot_party_number                           -- 03.party_number
-    FROM   xxcmn_cust_accounts_v      xcav            -- 顧客情報VIEW
+-- 2009/11/05 H.Itou MOD START 本番障害#1648 顧客ステータスを見ずにデータを取得し、無効顧客の場合はAPIエラーとする。
+--    FROM   xxcmn_cust_accounts_v      xcav            -- 顧客情報VIEW
+    FROM   xxcmn_cust_accounts3_v     xcav            -- 顧客情報VIEW3
+-- 2009/11/05 H.Itou MOD END
     WHERE  xcav.party_number        = it_party_number -- 顧客番号
     AND    xcav.customer_class_code IN ('1','10')     -- 顧客区分
                                                       -- (中止客申請フラグは、ダミー顧客9999に設定がないので、条件に入れない)
@@ -1774,17 +1781,24 @@ AS
         ||   ' xilv.location_id,'                                          -- 事業所ID
         ||   ' xilv.subinventory_code,'                                    -- 保管場所コード
         ||   ' xilv.inventory_location_id,'                                -- 倉庫ID
-        ||   ' xcav.cust_account_id,'                                      -- 顧客ID
+-- 2009/11/05 H.Itou MOD START 本番障害#1648 顧客IDは対象データ抽出後、洗い替えで取得するので、ここでは取得しない。
+--        ||   ' xcav.cust_account_id,'                                      -- 顧客ID
+        ||   ' NULL cust_account_id,'
+-- 2009/11/05 H.Itou MOD END
         ||   ' ximv.lot_ctl'                                               -- ロット管理
         ||' FROM   xxwsh_order_headers_all     xoha,'                      -- 受注ヘッダアドオン
         ||   '       xxwsh_order_lines_all        xola,'                   -- 受注明細アドオン
         ||   '       xxwsh_oe_transaction_types_v xottv1,'                 -- 受注タイプVIEW1
         ||   '       xxcmn_item_locations_v       xilv,'                   -- OPM保管場所情報VIEW
-        ||   '       xxcmn_cust_accounts_v        xcav,'                   -- 顧客情報VIEW
+-- 2009/11/05 H.Itou DEL START 本番障害#1648 顧客IDは対象データ抽出後、洗い替えで取得するので、ここでは結合不要。
+--        ||   '       xxcmn_cust_accounts_v        xcav,'                   -- 顧客情報VIEW
+-- 2009/11/05 H.Itou DEL END
         ||   '       xxcmn_item_mst_v             ximv';                   -- OPM品目情報VIEW
 --
     lv_select_where := ' WHERE  xottv1.transaction_type_id = xoha.order_type_id'
-        ||   ' AND    xcav.party_id = xoha.customer_id'
+-- 2009/11/05 H.Itou DEL START 本番障害#1648 顧客IDは対象データ抽出後、洗い替えで取得するので、ここでは結合不要。
+--        ||   ' AND    xcav.party_id = xoha.customer_id'
+-- 2009/11/05 H.Itou DEL END
         ||   ' AND    xola.order_header_id = xoha.order_header_id'
         ||   ' AND    xilv.segment1 = xoha.deliver_from'
         ||   ' AND    ximv.item_no  = xola.shipping_item_code'
@@ -2451,13 +2465,18 @@ AS
              xilv.location_id,                                          -- 事業所ID
              xilv.subinventory_code,                                    -- 保管場所コード
              xilv.inventory_location_id,                                -- 倉庫ID
-             xcav.cust_account_id,                                      -- 顧客ID
+-- 2009/11/05 H.Itou MOD START 本番障害#1648 顧客IDは対象データ抽出後、洗い替えで取得するので、ここでは取得しない。
+--             xcav.cust_account_id,                                      -- 顧客ID
+             NULL cust_account_id,                                      -- 顧客ID
+-- 2009/11/05 H.Itou MOD END
              ximv.lot_ctl                                               -- ロット管理
       FROM   xxwsh_order_headers_all xoha,                              -- 受注ヘッダアドオン
              xxwsh_order_lines_all xola,                                -- 受注明細アドオン
              xxwsh_oe_transaction_types_v xottv1,                       -- 受注タイプVIEW1
              xxwsh_oe_transaction_types_v xottv2,                       -- 受注タイプVIEW2
-             xxcmn_cust_accounts_v xcav,                                -- 顧客情報VIEW
+-- 2009/11/05 H.Itou DEL START 本番障害#1648 顧客IDは対象データ抽出後、洗い替えで取得するので、ここでは結合不要。
+--             xxcmn_cust_accounts_v xcav,                                -- 顧客情報VIEW
+-- 2009/11/05 H.Itou DEL END
              xxcmn_item_locations_v xilv,                               -- OPM保管場所情報VIEW
              xxcmn_item_mst_v ximv                                      -- OPM品目情報VIEW
       WHERE  xoha.order_header_id = it_order_header_id
@@ -2465,7 +2484,9 @@ AS
       AND    xilv.segment1 = xoha.deliver_from
       AND    xottv1.transaction_type_id = xoha.order_type_id
       AND    xottv2.transaction_type_name = xottv1.cancel_order_type
-      AND    xcav.party_id = xoha.customer_id
+-- 2009/11/05 H.Itou DEL START 本番障害#1648 顧客IDは対象データ抽出後、洗い替えで取得するので、ここでは結合不要。
+--      AND    xcav.party_id = xoha.customer_id
+-- 2009/11/05 H.Itou DEL END
       AND    xola.order_header_id = xoha.order_header_id
       AND    NVL(xola.delete_flag,gv_no) = gv_no
       AND    ximv.item_no  = xola.shipping_item_code;

@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼情報抽出
  * MD.050           : 出荷依頼         T_MD050_BPO_401
  * MD.070           : 出荷依頼情報抽出 T_MD070_BPO_40F
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2008/12/24    1.11  SCS    椎名 昭圭 本番#827対応
  *  2009/01/21    1.12  SCS    上原 正好 本番#1010対応
  *  2009/05/22    1.13  SCS    伊藤 ひとみ 本番#1398対応
+ *  2009/10/06    1.14  SCS    伊藤 ひとみ 本番#1648対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -787,7 +788,9 @@ AS
       AND    xcasv.end_date_active           >= lr_mst_data_rec.shipped_date
       AND    xcasv.party_site_number          = lr_mst_data_rec.result_deliver_to
 -- 2009/05/22 H.Itou Add Start 本番障害#1398
-      AND    xcav.account_status              = 'A'
+-- 2009/10/06 H.Itou Del Start 本番障害#1648 顧客ステータスは参照せず、無効でも処理対象とする。
+--      AND    xcav.account_status              = 'A'
+-- 2009/10/06 H.Itou Del End
       AND    xcasv.party_site_status          = 'A'
       AND    xcasv.cust_acct_site_status      = 'A'
 -- 2009/05/22 H.Itou Add End
@@ -1055,7 +1058,9 @@ AS
       AND    xcasv.end_date_active           >= lr_mst_data_rec.shipped_date
       AND    xcasv.party_site_number          = lr_mst_data_rec.deliver_to
 -- 2009/05/22 H.Itou Add Start 本番障害#1398
-      AND    xcav.account_status              = 'A'
+-- 2009/10/06 H.Itou Del Start 本番障害#1648 顧客ステータスは参照せず、無効でも処理対象とする。
+--      AND    xcav.account_status              = 'A'
+-- 2009/10/06 H.Itou Del End
       AND    xcasv.party_site_status          = 'A'
       AND    xcasv.cust_acct_site_status      = 'A'
 -- 2009/05/22 H.Itou Add End

@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.48
+ * Version                : 1.49
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -103,6 +103,7 @@ AS
  *  2009/03/05   1.46  SCS    北寒寺正夫[重量容積小口個数更新関数]本番#1068対応
  *  2009/05/07   1.47  SCS    伊藤ひとみ[引当解除関数]本番#1443対応 減数チェックエラー時も引当を解除する。
  *  2009/06/25   1.48  SCS    伊藤ひとみ[稼働日算出関数]本番#1463対応 日付＋LTも算出できるよう変更
+ *  2009/08/18   1.49  SCS    伊藤ひとみ[配車解除関数]本番#1581対応(営業システム:特別横持マスタ対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -152,6 +153,11 @@ AS
   code_class_ship       CONSTANT VARCHAR2(10) := '9';  -- 出荷
   code_class_supply     CONSTANT VARCHAR2(10) := '11'; -- 支給
 -- 2008/08/04 Add H.Itou End
+-- 2009/08/18 H.Itou Add Start 本番#1581対応(営業システム:特別横持マスタ対応)
+  -- 特別横持更新関数
+  gv_process_type_plus        CONSTANT VARCHAR2(2) :=  '0';    -- 処理区分 0：加算
+  gv_process_type_minus       CONSTANT VARCHAR2(2) :=  '1';    -- 処理区分 1：減算
+-- 2009/08/18 H.Itou Add End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -5552,7 +5558,13 @@ AS
     cv_supply_req          CONSTANT VARCHAR2(1)   := '2';                -- 支給依頼
     cv_cate_order          CONSTANT VARCHAR2(10)  := 'ORDER';            -- 受注
     cv_app_name_xxwsh      CONSTANT VARCHAR2(5)   := 'XXWSH';            -- アプリケーション短縮名
+-- 2009/08/18 H.Itou Add Start 本番#1581対応(営業システム:特別横持マスタ対応)
+    cv_app_name_xxcmn      CONSTANT VARCHAR2(5)   := 'XXCMN';            -- アプリケーション短縮名
+-- 2009/08/18 H.Itou Add End
     cv_tkn_request_no      CONSTANT VARCHAR2(10)  := 'REQUEST_NO';       -- トークン名
+-- 2009/08/18 H.Itou Add Start 本番#1581対応(営業システム:特別横持マスタ対応)
+    cv_msg_process_err     CONSTANT VARCHAR2(100) := 'APP-XXCMN-05002';  -- 処理失敗
+-- 2009/08/18 H.Itou Add End
     cv_msg_para_err        CONSTANT VARCHAR2(15)  := 'APP-XXWSH-10001';  -- パラメータ指定不正
     cv_msg_lock_err        CONSTANT VARCHAR2(15)  := 'APP-XXWSH-10006';  -- ロック処理エラー
     cv_msg_del_req_instr   CONSTANT VARCHAR2(15)  := 'APP-XXWSH-10007';  -- 依頼/指示解除エラー
@@ -5567,6 +5579,9 @@ AS
     cv_msg_move_max_err    CONSTANT VARCHAR2(15)  := 'APP-XXWSH-10022';  -- 移動指示エラー(共通関数)
     cv_tkn_program         CONSTANT VARCHAR2(15)  := 'PROGRAM';          -- トークン名
 -- Ver1.20 M.Hokkanji END
+-- 2009/08/18 H.Itou Add Start 本番#1581対応(営業システム:特別横持マスタ対応)
+    cv_tkn_process         CONSTANT VARCHAR2(15)  := 'PROCESS';          -- トークン名
+-- 2009/08/18 H.Itou Add End
     cv_tightening          CONSTANT VARCHAR2(2)   := '03';               -- 締め済み
     cv_adjustment          CONSTANT VARCHAR2(2)   := '03';               -- 調整中
     cv_received            CONSTANT VARCHAR2(2)   := '07';               -- 受領済み
@@ -5579,6 +5594,9 @@ AS
     cv_tkn_ship_char       CONSTANT VARCHAR2(30)  := '出荷依頼No';       -- 出荷依頼No
     cv_tkn_supl_char       CONSTANT VARCHAR2(30)  := '支給依頼No';       -- 支給依頼No
     cv_tkn_move_char       CONSTANT VARCHAR2(30)  := '移動番号';         -- 移動番号
+-- 2009/08/18 H.Itou Add Start 本番#1581対応(営業システム:特別横持マスタ対応)
+    cv_tkn_upd_assignment  CONSTANT VARCHAR2(100) := '割当セットAPI起動';-- 処理名
+-- 2009/08/18 H.Itou Add End
 -- Ver1.20 M.Hokkanji START
     cv_code_kbn_mov        CONSTANT VARCHAR2(1)   := '4';                -- 移動
     cv_code_kbn_ship       CONSTANT VARCHAR2(1)   := '9';                -- 出荷
@@ -5722,6 +5740,9 @@ AS
          '  ORDER BY xoha.order_header_id     ';  -- 受注ヘッダアドオン.受注ヘッダアドオンID
 -- 2008/09/03 H.Itou Add End
 --
+-- 2009/08/18 H.Itou Add Start 本番#1581対応(営業システム:特別横持マスタ対応)
+    lv_errbuf               VARCHAR2(5000);           --   エラー・メッセージ           --# 固定 #
+-- 2009/08/18 H.Itou Add End
     -- *** ローカル変数 ***
     lv_status               VARCHAR2(2);              -- ステータス
     lv_delivery_no          VARCHAR2(12);             -- 配送No
@@ -8206,6 +8227,34 @@ END;
         IF ( ( i = lt_chk_move_tbl.FIRST ) 
           OR ( lt_chk_move_tbl(i).mov_hdr_id <> lt_chk_move_tbl(i - 1).mov_hdr_id ) ) THEN
 --
+-- 2009/08/18 H.Itou Add Start 本番#1581対応(営業システム:特別横持マスタ対応)
+          -- 確定通知済の場合
+          IF (lt_chk_move_tbl(i).notif_status = cv_deci_noti) THEN
+            ---------------------------------------------------------
+            -- 割当セットAPI起動
+            ---------------------------------------------------------
+            xxcop_common_pkg2.upd_assignment(
+              iv_mov_num      => lt_chk_move_tbl(i).mov_num          -- 移動番号
+             ,iv_process_type => gv_process_type_minus               -- 処理区分(0：加算、1：減算)
+             ,ov_errbuf       => lv_errbuf                           --   エラー・メッセージ           --# 固定 #
+             ,ov_retcode      => lv_retcode                          --   リターン・コード             --# 固定 #
+             ,ov_errmsg       => lv_errmsg                           --   ユーザー・エラー・メッセージ --# 固定 #
+            );
+--
+            -- エラーの場合、処理終了
+            IF (lv_retcode = gv_status_error) THEN
+              -- エラーメッセージ取得
+              ov_errmsg := xxcmn_common_pkg.get_msg(
+                             cv_app_name_xxcmn                     -- アプリケーション名:XXCMN
+                            ,cv_msg_process_err                    -- メッセージコード:処理失敗
+                            ,cv_tkn_process ,cv_tkn_upd_assignment -- トークン:PROCESS = 割当セットAPI起動
+                          );
+              ov_errmsg := lv_errmsg || ' (移動番号:' || lt_chk_move_tbl(i).mov_num || ')' || lv_errmsg || lv_errbuf;
+--
+              RETURN cv_career_cancel_err;
+            END IF;
+          END IF;
+-- 2009/08/18 H.Itou Add End
           -- 新規修正フラグ
           IF ( lt_chk_move_tbl(i).notif_status = cv_deci_noti ) THEN
             --通知ステータス＝確定通知済 の場合：修正
