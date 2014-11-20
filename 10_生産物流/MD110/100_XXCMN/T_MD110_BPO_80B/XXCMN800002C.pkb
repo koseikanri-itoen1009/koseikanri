@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目インタフェース T_MD070_BPO_80B
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -73,6 +73,7 @@ AS
  *  2008/06/25    1.5   Oracle 山根 一浩 不具合No275対応
  *  2008/07/07    1.6   Oracle 山根 一浩 I_S_192対応
  *  2008/08/07    1.7   Oracle 椎名 昭圭 内部変更要求#178対応
+ *  2008/08/20    1.8   Oracle 椎名 昭圭 PT_3-2_22_指摘13対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -495,6 +496,8 @@ AS
     -- OPM品目マスタ(IC_ITEM_MST_B)
     CURSOR ic_item_mst_b_cur
     IS
+-- 2008/08/20 v1.8 UPDATE START
+/*
       SELECT imb.item_id
       FROM   ic_item_mst_b imb
       WHERE  EXISTS (
@@ -504,10 +507,20 @@ AS
         AND    ROWNUM = 1)
       AND    imb.inactive_ind = gv_inactive_ind_on
       FOR UPDATE OF imb.item_id NOWAIT;
+*/
+      SELECT imb.item_id
+      FROM   ic_item_mst_b imb
+            ,xxcmn_item_if xif
+      WHERE  imb.item_no      = xif.item_code
+      AND    imb.inactive_ind = gv_inactive_ind_on
+      FOR UPDATE OF imb.item_id NOWAIT;
+-- 2008/08/20 v1.8 UPDATE END
 --
     -- OPM品目アドオンマスタ(XXCMN_ITEM_MST_B)
     CURSOR xxcmn_item_mst_b_cur
     IS
+-- 2008/08/20 v1.8 UPDATE START
+/*
       SELECT xmb.item_id
       FROM   xxcmn_item_mst_b xmb
       WHERE  EXISTS (
@@ -522,10 +535,23 @@ AS
         AND    imb.item_id      = xmb.item_id
         AND    ROWNUM = 1)
       FOR UPDATE OF xmb.item_id NOWAIT;
+*/
+      SELECT xmb.item_id
+      FROM   xxcmn_item_mst_b xmb
+      WHERE  xmb.item_id IN (
+             SELECT imb.item_id
+             FROM   ic_item_mst_b imb
+                   ,xxcmn_item_if xif
+             WHERE  imb.item_no      = xif.item_code
+             AND    imb.inactive_ind = gv_inactive_ind_on )
+      FOR UPDATE OF xmb.item_id NOWAIT;
+-- 2008/08/20 v1.8 UPDATE END
 --
     -- OPM品目カテゴリ割当(GMI_ITEM_CATEGORIES)
     CURSOR gmi_item_categories_cur
     IS
+-- 2008/08/20 v1.8 UPDATE START
+/*
       SELECT gic.item_id
       FROM   gmi_item_categories gic
       WHERE  EXISTS (
@@ -540,10 +566,23 @@ AS
         AND    imb.item_id      = gic.item_id
         AND    ROWNUM = 1)
       FOR UPDATE OF gic.item_id NOWAIT;
+*/
+      SELECT gic.item_id 
+      FROM   gmi_item_categories gic
+      WHERE  gic.item_id IN (
+             SELECT imb.item_id
+             FROM   ic_item_mst_b imb
+                   ,xxcmn_item_if xif
+             WHERE  imb.item_no      = xif.item_code
+             AND    imb.inactive_ind = gv_inactive_ind_on ) 
+      FOR UPDATE OF gic.item_id NOWAIT;
+-- 2008/08/20 v1.8 UPDATE END
 --
     -- 品目原価マスタ(CM_CMPT_DTL)
     CURSOR cm_cmpt_dtl_cur
     IS
+-- 2008/08/20 v1.8 UPDATE START
+/*
       SELECT ccd.item_id
       FROM   cm_cmpt_dtl ccd
       WHERE  EXISTS (
@@ -562,6 +601,21 @@ AS
       AND    ccd.cost_mthd_code = gv_cost_div
       AND    ccd.cost_level     = gv_cost_level_on
       FOR UPDATE OF ccd.item_id NOWAIT;
+*/
+      SELECT ccd.item_id
+      FROM   cm_cmpt_dtl ccd
+      WHERE  ccd.item_id IN (
+             SELECT imb.item_id
+             FROM   ic_item_mst_b imb
+                   ,xxcmn_item_if xif
+             WHERE  imb.inactive_ind = gv_inactive_ind_on
+             AND    imb.item_no      = xif.item_code )
+      AND    ccd.whse_code      = gv_whse_code
+      AND    ccd.calendar_code  = gv_item_cal
+      AND    ccd.cost_mthd_code = gv_cost_div
+      AND    ccd.cost_level     = gv_cost_level_on
+      FOR UPDATE OF ccd.item_id NOWAIT;
+-- 2008/08/20 v1.8 UPDATE END
 --
   /***********************************************************************************
    * Procedure Name   : get_profile
