@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（出荷）
  * MD.050           : 出荷依頼 T_MD050_BPO_401
  * MD.070           : 出荷調整表 T_MD070_BPO_40I
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/07/02    1.3   Naoki Fukuda          ST不具合対応(#373)
  *  2008/07/02    1.4   Satoshi Yunba         禁則文字対応
  *  2008/07/23    1.5   Naoki Fukuda          ST不具合対応(#475)
+ *  2008/08/20    1.6   Takao Ohashi          変更#183,T_S_612対応
  *
  *****************************************************************************************/
 --
@@ -1474,7 +1475,10 @@ AS
          ,xxwsh_order_headers_all   xoha              -- 受注ヘッダアドオン
          ,xxwsh_order_lines_all     xola              -- 受注明細アドオン
          ,xxcmn_item_mst2_v         ximv              -- OPM品目情報VIEW
-         ,xxcmn_item_categories4_v  xicv              -- OPM品目カテゴリ割当情報VIEW4
+-- mod start ver1.6
+--         ,xxcmn_item_categories4_v  xicv              -- OPM品目カテゴリ割当情報VIEW4
+         ,xxcmn_item_categories5_v  xicv              -- OPM品目カテゴリ割当情報VIEW5
+-- mod end ver1.6
          ,xxcmn_lookup_values2_v    xlvv1             -- クイックコード1
          ,xxcmn_lookup_values2_v    xlvv2             -- クイックコード2
 --
@@ -1639,7 +1643,10 @@ AS
     FROM xxcmn_sourcing_rules             xsr                      -- 物流構成アドオンマスタ
         ,xxwsh_shippng_adj_bucket_tmp     xsabt                    -- 出荷調整表バケット中間テーブル
         ,xxcmn_item_mst2_v                ximv                     -- OPM品目情報VIEW
-        ,xxcmn_item_categories4_v         xicv                     -- OPM品目カテゴリ割当情報VIEW4
+-- mod start ver1.6
+--        ,xxcmn_item_categories4_v         xicv                     -- OPM品目カテゴリ割当情報VIEW4
+        ,xxcmn_item_categories5_v         xicv                     -- OPM品目カテゴリ割当情報VIEW5
+-- mod end ver1.6
         ,(SELECT mfde.attribute3          AS head_sales_branch     -- フォーキャスト名.拠点
                 ,MAX(ximv.item_no)        AS item_code             -- OPM品目情報VIEW.品目コード
                 ,SUM(CASE
@@ -1658,7 +1665,10 @@ AS
           FROM  mrp_forecast_designators  mfde                     -- フォーキャスト名
                ,mrp_forecast_dates        mfda                     -- フォーキャスト日付
                ,xxcmn_item_mst2_v         ximv                     -- OPM品目情報VIEW
-               ,xxcmn_item_categories4_v  xicv                     -- OPM品目カテゴリ割当情報VIEW4
+-- mod start ver1.6
+--               ,xxcmn_item_categories4_v  xicv                     -- OPM品目カテゴリ割当情報VIEW4
+               ,xxcmn_item_categories5_v  xicv                     -- OPM品目カテゴリ割当情報VIEW5
+-- mod end ver1.6
 --
           WHERE
           ------------------------------------------------------------------------
@@ -2223,7 +2233,11 @@ AS
            -- フォーキャスト日付
            AND mfde.forecast_designator            = mfda.forecast_designator
            AND mfde.organization_id                = mfda.organization_id
-           AND mfda.forecast_date                  = id_arrival_date
+-- mod start ver1.6
+--           AND mfda.forecast_date                  = id_arrival_date
+           AND mfda.forecast_date                  >=  TRUNC(id_arrival_date, 'MONTH')
+           AND mfda.forecast_date                  <=  id_arrival_date
+-- mod end ver1.6
            ------------------------------------------------------------------------
            -- OPM品目情報VIEW
            AND mfda.inventory_item_id              = ximv.inventory_item_id
@@ -2281,7 +2295,11 @@ AS
            -- 受注ヘッダアドオン条件
            AND xoha.req_status                     = xlvv2.lookup_code
            AND xoha.latest_external_flag           = 'Y'
-           AND xoha.schedule_arrival_date          = id_arrival_date
+-- mod start ver1.6
+--           AND xoha.schedule_arrival_date          = id_arrival_date
+           AND xoha.schedule_arrival_date          >= TRUNC(id_arrival_date, 'MONTH')
+           AND xoha.schedule_arrival_date          <= id_arrival_date
+-- mod end ver1.6
            ------------------------------------------------------------------------
            -- 受注明細アドオン条件
            AND xoha.order_header_id                = xola.order_header_id
@@ -2590,7 +2608,10 @@ AS
     FROM   xxwsh_order_headers_all    xoha        -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola        -- 受注明細アドオン
           ,xxcmn_item_mst2_v          ximv        -- OPM品目情報VIEW
-          ,xxcmn_item_categories4_v   xicv        -- OPM品目カテゴリ割当情報VIEW4
+-- mod start ver1.6
+--          ,xxcmn_item_categories4_v   xicv        -- OPM品目カテゴリ割当情報VIEW4
+          ,xxcmn_item_categories5_v   xicv        -- OPM品目カテゴリ割当情報VIEW5
+-- mod end ver1.6
           ,xxcmn_lookup_values2_v     xlvv1       -- クイックコード1
           ,xxcmn_lookup_values2_v     xlvv2       -- クイックコード2
     WHERE
@@ -2755,7 +2776,10 @@ AS
     FROM  mrp_forecast_designators  mfde                          -- フォーキャスト名
          ,mrp_forecast_dates        mfda                          -- フォーキャスト日付
          ,xxcmn_item_mst2_v         ximv                          -- OPM品目情報VIEW
-         ,xxcmn_item_categories4_v  xicv                          -- OPM品目カテゴリ割当情報VIEW4
+-- mod start ver1.6
+--         ,xxcmn_item_categories4_v  xicv                          -- OPM品目カテゴリ割当情報VIEW4
+         ,xxcmn_item_categories5_v  xicv                          -- OPM品目カテゴリ割当情報VIEW5
+-- mod end ver1.6
 --
     WHERE
     ------------------------------------------------------------------------
