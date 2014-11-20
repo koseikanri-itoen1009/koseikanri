@@ -18,10 +18,12 @@
  *                                       ・ヒント句削除
  *                                       ・インラインビューの別名追加
  *                                       ・④表別名変更
+ *  2009/08/05    1.4   K.Kakishita      [0000938] 修正ミス
+ *                                       ・条件追加
+ *                                       ・ROWNUMを'X'に変更
  ************************************************************************/
   CREATE OR REPLACE FORCE VIEW "APPS"."XXCOS_CUST_HIERARCHY_V" ("CASH_ACCOUNT_ID", "CASH_ACCOUNT_NUMBER", "CASH_ACCOUNT_NAME", "BILL_ACCOUNT_ID", "BILL_ACCOUNT_NUMBER", "BILL_ACCOUNT_NAME", "SHIP_ACCOUNT_ID", "SHIP_ACCOUNT_NUMBER", "SHIP_ACCOUNT_NAME", "CASH_RECEIV_BASE_CODE", "BILL_PARTY_ID", "BILL_BILL_BASE_CODE", "BILL_POSTAL_CODE", "BILL_STATE", "BILL_CITY", "BILL_ADDRESS1", "BILL_ADDRESS2", "BILL_TEL_NUM", "BILL_CONS_INV_FLAG", "BILL_TORIHIKISAKI_CODE", "BILL_STORE_CODE", "BILL_CUST_STORE_NAME", "BILL_TAX_DIV", "BILL_CRED_REC_CODE1", "BILL_CRED_REC_CODE2", "BILL_CRED_REC_CODE3", "BILL_INVOICE_TYPE", "BILL_PAYMENT_TERM_ID", "BILL_PAYMENT_TERM2", "BILL_PAYMENT_TERM3", "BILL_TAX_ROUND_RULE", "SHIP_SALE_BASE_CODE") AS
-  SELECT
-         cust_hier.cash_account_id                        --入金先顧客ID
+  SELECT cust_hier.cash_account_id                        --入金先顧客ID
         ,cust_hier.cash_account_number                    --入金先顧客コード
         ,xxcfr_common_pkg.get_cust_account_name(
                             cust_hier.cash_account_number,
@@ -61,8 +63,7 @@
         ,cust_hier.ship_sale_base_code                    --売上拠点コード
   FROM   (
   --①入金先顧客＆請求先顧客－出荷先顧客
-    SELECT
-           bill_hzca_1.cust_account_id         AS cash_account_id         --入金先顧客ID
+    SELECT bill_hzca_1.cust_account_id         AS cash_account_id         --入金先顧客ID
           ,bill_hzca_1.account_number          AS cash_account_number     --入金先顧客コード
           ,bill_hzca_1.cust_account_id         AS bill_account_id         --請求先顧客ID
           ,bill_hzca_1.account_number          AS bill_account_number     --請求先顧客コード
@@ -129,8 +130,7 @@
                      )
     UNION ALL
     --②入金先顧客－請求先顧客－出荷先顧客
-    SELECT
-           cash_hzca_2.cust_account_id           AS cash_account_id         --入金先顧客ID
+    SELECT cash_hzca_2.cust_account_id           AS cash_account_id         --入金先顧客ID
           ,cash_hzca_2.account_number            AS cash_account_number     --入金先顧客コード
           ,bill_hzca_2.cust_account_id           AS bill_account_id         --請求先顧客ID
           ,bill_hzca_2.account_number            AS bill_account_number     --請求先顧客コード
@@ -200,8 +200,7 @@
     AND    bill_hsua_2.site_use_id = bill_hzcp_2.site_use_id(+)              --請求先顧客使用目的.使用目的ID = 請求先顧客プロファイル.使用目的ID
     UNION ALL
     --③入金先顧客－請求先顧客＆出荷先顧客
-    SELECT
-           cash_hzca_3.cust_account_id             AS cash_account_id         --入金先顧客ID
+    SELECT cash_hzca_3.cust_account_id             AS cash_account_id         --入金先顧客ID
           ,cash_hzca_3.account_number              AS cash_account_number     --入金先顧客コード
           ,ship_hzca_3.cust_account_id             AS bill_account_id         --請求先顧客ID
           ,ship_hzca_3.account_number              AS bill_account_number     --請求先顧客コード
@@ -251,7 +250,7 @@
     AND    cash_hcar_3.attribute1 = '2'                                      --顧客関連マスタ(入金関連).関連分類 = ‘2’ (入金)
     AND    NOT EXISTS (
                SELECT /*+ INDEX( ex_hcar_3 HZ_CUST_ACCT_RELATE_N1 ) */
-                      ROWNUM
+                      'X'
                FROM   hz_cust_acct_relate     ex_hcar_3       --顧客関連マスタ(請求関連)
                WHERE  ex_hcar_3.cust_account_id = ship_hzca_3.cust_account_id         --顧客関連マスタ(請求関連).顧客ID = 出荷先顧客マスタ.顧客ID
                AND    ex_hcar_3.status = 'A'                                          --顧客関連マスタ(請求関連).ステータス = ‘A’
@@ -268,8 +267,7 @@
     AND    bill_hsua_3.site_use_id = bill_hzcp_3.site_use_id(+)              --請求先顧客使用目的.使用目的ID = 請求先顧客プロファイル.使用目的ID
     UNION ALL
     --④入金先顧客＆請求先顧客＆出荷先顧客
-    SELECT
-           ship_hzca_4.cust_account_id               AS cash_account_id         --入金先顧客ID
+    SELECT ship_hzca_4.cust_account_id               AS cash_account_id         --入金先顧客ID
           ,ship_hzca_4.account_number                AS cash_account_number     --入金先顧客コード
           ,ship_hzca_4.cust_account_id               AS bill_account_id         --請求先顧客ID
           ,ship_hzca_4.account_number                AS bill_account_number     --請求先顧客コード
@@ -306,10 +304,14 @@
           ,hz_party_sites            bill_hzps_4              --請求先パーティサイト
           ,hz_locations              bill_hzlo_4              --請求先顧客事業所
           ,hz_customer_profiles      bill_hzcp_4              --請求先顧客プロファイル
-    WHERE  ship_hzca_4.customer_class_code IN ('10','12')             --請求先顧客.顧客区分 = '10'(顧客)
+    WHERE  (
+             ship_hzca_4.customer_class_code  IS NULL
+           OR
+             ship_hzca_4.customer_class_code  IN ( '10', '12' )               --請求先顧客.顧客区分 = '10'(顧客)、'12'(上様顧客)
+           )
     AND    NOT EXISTS (
                SELECT /*+ INDEX( ex_hcar_41 HZ_CUST_ACCT_RELATE_N1 ) */
-                      ROWNUM
+                      'X'
                FROM   hz_cust_acct_relate     ex_hcar_41      --顧客関連マスタ
                WHERE
                       ex_hcar_41.cust_account_id = ship_hzca_4.cust_account_id          --顧客関連マスタ(請求関連).顧客ID = 出荷先顧客マスタ.顧客ID
@@ -317,7 +319,7 @@
                     )
     AND    NOT EXISTS (
                SELECT /*+ INDEX( ex_hcar_42 HZ_CUST_ACCT_RELATE_N2 ) */
-                      ROWNUM
+                      'X'
                FROM   hz_cust_acct_relate     ex_hcar_42      --顧客関連マスタ
                WHERE
                       ex_hcar_42.related_cust_account_id = ship_hzca_4.cust_account_id   --顧客関連マスタ(請求関連).関連先顧客ID = 出荷先顧客マスタ.顧客ID
