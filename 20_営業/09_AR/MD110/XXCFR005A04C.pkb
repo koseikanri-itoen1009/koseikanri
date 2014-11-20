@@ -7,7 +7,7 @@ AS
  * Description      : ロックボックス入金処理
  * MD.050           : MD050_CFR_005_A04_ロックボックス入金処理
  * MD.070           : MD050_CFR_005_A04_ロックボックス入金処理
- * Version          : 1.0
+ * Version          : 1.01
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2010/10/15    1.00 SCS 廣瀬 真佐人  初回作成
+ *  2013/07/22    1.01 SCSK 中村 健一   E_本稼動_10950 消費税増税対応
  *
  *****************************************************************************************/
 --
@@ -449,8 +450,12 @@ AS
             ,ap_bank_charge_lines abcl  -- 銀行手数料明細
       WHERE  abc.bank_charge_id    = abcl.bank_charge_id  -- 内部ID
       AND    abc.transfer_priority = cv_ar                -- 優先度
-      AND    gd_process_date BETWEEN NVL( abcl.start_date, gd_process_date )  -- 開始日
-                                 AND NVL( abcl.end_date  , gd_process_date )  -- 終了日
+-- Mod 2013/07/22 Ver1.01 Start
+--      AND    gd_process_date BETWEEN NVL( abcl.start_date, gd_process_date )  -- 開始日
+--                                 AND NVL( abcl.end_date  , gd_process_date )  -- 終了日
+      AND    abcl.start_date                          <= gd_process_date  -- 開始日
+      AND    NVL( abcl.end_date, gd_process_date + 1 ) > gd_process_date  -- 終了日
+-- Mod 2013/07/22 Ver1.01 End
       AND    abcl.tolerance_limit IS NOT NULL  -- 手数料限度額がNULL以外
       ;
 --
