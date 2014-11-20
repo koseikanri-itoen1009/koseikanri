@@ -7,7 +7,7 @@ AS
  * Description      : 請求明細データ作成
  * MD.050           : MD050_CFR_003_A03_請求明細データ作成
  * MD.070           : MD050_CFR_003_A03_請求明細データ作成
- * Version          : 1.60
+ * Version          : 1.70
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009/08/03    1.40 SCS 廣瀬 真佐人  [障害0000914]パフォーマンス改善
  *  2009/09/29    1.50 SCS 廣瀬 真佐人  [共通課題IE535] 請求書問題
  *  2009/11/02    1.60 SCS 廣瀬 真佐人  [共通課題IE603] EDI用に出力項目を追加(納品先チェーンコード)
+ *  2009/11/16    1.70 SCS 廣瀬 真佐人  [共通課題IE678] パフォーマンス対応
  *
  *****************************************************************************************/
 --
@@ -3574,6 +3575,15 @@ AS
         FORALL ln_loop_cnt IN lt_upd_trx_id_tab.FIRST..lt_upd_trx_id_tab.LAST
           UPDATE ra_customer_trx_all rcta
           SET    rcta.attribute7      = cv_inv_hold_status_p    -- 請求書保留ステータス(印刷済)
+-- Modify 2009.11.16 Ver1.7 Start
+                ,rcta.last_updated_by        = cn_last_updated_by         --最終更新者
+                ,rcta.last_update_date       = cd_last_update_date        --最終更新日
+                ,rcta.last_update_login      = cn_last_update_login       --最終更新ログイン
+                ,rcta.request_id             = cn_request_id              --要求ID
+                ,rcta.program_application_id = cn_program_application_id  --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+                ,rcta.program_id             = cn_program_id              --コンカレントプログラ
+                ,rcta.program_update_date    = cd_program_update_date     --ﾌﾟﾛｸﾞﾗﾑ更新日
+-- Modify 2009.11.16 Ver1.7 End
           WHERE  rcta.customer_trx_id = lt_upd_trx_id_tab(ln_loop_cnt)
           ;
 --

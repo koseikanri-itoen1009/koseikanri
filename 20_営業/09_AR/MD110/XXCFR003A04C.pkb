@@ -7,7 +7,7 @@ AS
  * Description      : EDI請求書データ作成
  * MD.050           : MD050_CFR_003_A04_EDI請求書データ作成
  * MD.070           : MD050_CFR_003_A04_EDI請求書データ作成
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2009/06/23    1.6   SCS 萱原 伸哉    [障害T1_1379] EDI請求書の伝票番号チェック処理対応
  *  2009/10/15    1.7   SCS 萱原 伸哉     AR仕様変更IE558対応
  *  2009/11/02    1.8   SCS 廣瀬 真佐人   AR仕様変更IE601,603対応  
+ *  2009/11/16    1.9   SCS 廣瀬 真佐人   AR共通課題IE678対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1039,19 +1040,33 @@ AS
       FROM xxcfr_invoice_headers          xih    -- 請求ヘッダ
           ,xxcfr_invoice_lines            xil    -- 請求明細
       WHERE xih.invoice_id = xil.invoice_id      -- 一括請求書ID
-        AND EXISTS (SELECT 'X'
-                    FROM  xxcfr_bill_customers_v xbcv
-                    WHERE xih.bill_cust_code = xbcv.bill_customer_code
-                      AND xbcv.receiv_code1  = iv_ar_code1
-                      AND xbcv.inv_prt_type  = cv_inv_prt_type -- '3'(EDI)
-                   )
+-- Modify 2009.11.16 Ver1.9 Start  夜間バッチの時は、トランザクション=マスタであるのでマスタを見る必要はない
+--        AND EXISTS (SELECT 'X'
+--                    FROM  xxcfr_bill_customers_v xbcv
+--                    WHERE xih.bill_cust_code = xbcv.bill_customer_code
+--                      AND xbcv.receiv_code1  = iv_ar_code1
+--                      AND xbcv.inv_prt_type  = cv_inv_prt_type -- '3'(EDI)
+--                   )
+-- Modify 2009.11.16 Ver1.9 End
         AND ((gv_start_mode_flg = cv_start_mode_b
+-- Modify 2009.11.16 Ver1.9 Start  夜間バッチの時は、トランザクション=マスタであるのでマスタを見る必要はない
+              AND xih.payment_cust_code   = iv_ar_code1     -- 売掛コード１
+              AND xih.invoice_output_form = cv_inv_prt_type -- '3'(EDI)
+-- Modify 2009.11.16 Ver1.9 End
               AND EXISTS (SELECT 'x'
                           FROM xxcfr_inv_info_transfer xiit  -- 請求情報引渡テーブル
                           WHERE xih.request_id = xiit.request_id
                             AND xiit.set_of_books_id = gn_set_of_bks_id
                             AND xiit.org_id = gn_org_id)) OR
              (gv_start_mode_flg = cv_start_mode_h
+-- Modify 2009.11.16 Ver1.9 Start  日中のリカバリジョブの時は、トランザクション≠マスタであるのでマスタを見る必要がある
+              AND EXISTS (SELECT 'X'
+                          FROM  xxcfr_bill_customers_v xbcv
+                          WHERE xih.bill_cust_code = xbcv.bill_customer_code
+                            AND xbcv.receiv_code1  = iv_ar_code1
+                            AND xbcv.inv_prt_type  = cv_inv_prt_type -- '3'(EDI)
+                         )
+-- Modify 2009.11.16 Ver1.9 End
               AND xih.cutoff_date = gd_target_date ))        -- パラメータ．締日
         AND xih.set_of_books_id = gn_set_of_bks_id
         AND xih.org_id = gn_org_id
@@ -2923,12 +2938,16 @@ AS
               AND EXISTS (SELECT 'x'
                           FROM xxcfr_inv_info_transfer xiit  -- 請求情報引渡テーブル
                               ,xxcfr_invoice_headers   xih
-                              ,xxcfr_invoice_lines     xil
-                              ,xxcfr_bill_customers_v  xbcv
-                          WHERE flvv.lookup_code = xbcv.receiv_code1
-                            AND xbcv.inv_prt_type = cv_inv_prt_type
-                            AND xih.invoice_id = xil.invoice_id      -- 一括請求書	ID
-                            AND xbcv.bill_customer_code = xih.bill_cust_code
+-- Modify 2009.11.16 Ver1.9 Start
+--                              ,xxcfr_invoice_lines     xil
+--                              ,xxcfr_bill_customers_v  xbcv
+--                          WHERE flvv.lookup_code = xbcv.receiv_code1
+--                            AND xbcv.inv_prt_type = cv_inv_prt_type
+--                            AND xih.invoice_id = xil.invoice_id      -- 一括請求書	ID
+--                            AND xbcv.bill_customer_code = xih.bill_cust_code
+                          WHERE flvv.lookup_code = xih.payment_cust_code  -- 売掛コード１
+                            AND xih.invoice_output_form = cv_inv_prt_type  -- 請求書出力形式
+-- Modify 2009.11.16 Ver1.9 End
                             AND xih.request_id = xiit.request_id
                             AND xiit.set_of_books_id = gn_set_of_bks_id
                             AND xiit.org_id = gn_org_id
