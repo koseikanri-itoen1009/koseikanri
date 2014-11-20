@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A01C(body)
  * Description      : 工場直送出荷依頼IF作成を行う
  * MD.050           : 工場直送出荷依頼IF作成 MD050_COS_008_A01
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -67,6 +67,7 @@ AS
  *  2009/12/29    1.21  N.Maeda          [E_本稼動_00683]出荷予定日取得関数による翌稼働日算出の追加。
  *  2011/02/19    1.22  K.Ou             [E_本稼動_01671]パフォマンス改善対応
  *  2011/04/19    1.23  M.Hirose         [E_本稼動_02070]受注日と出荷日から導出した受注日の妥当性チェック処理を削除
+ *  2012/07/26    1.24  K.Onotsuka       [E_本稼動_09616]受注明細登録時に項目追加(unit_list_price(単価))
  *
  *****************************************************************************************/
 --
@@ -505,6 +506,9 @@ AS
 /* 2009/09/19 Ver.1.13 Add Start */
           ,xca.sale_base_code                      sale_base_code      -- 売上拠点コード
 /* 2009/09/19 Ver.1.13 Add End */
+/* 2012/07/26 Ver.1.24 Add Start */
+          ,oola.unit_list_price                      unit_list_price                         -- 単価
+/* 2012/07/26 Ver.1.24 Add End */
     FROM   oe_order_headers_all                   ooha             -- 受注ヘッダ
           ,oe_order_lines_all                     oola             -- 受注明細
           ,hz_cust_accounts                       hca              -- 顧客マスタ
@@ -5973,6 +5977,9 @@ AS
 /* 2009/12/07 Ver1.19 Add Start */
       lt_line_tbl(cn_index).context                := gt_order_ins_tbl(ln_idx).line_context;
 /* 2009/12/07 Ver1.19 Add Start */
+/* 2012/07/26 Ver.1.24 Add Start */
+      lt_line_tbl(cn_index).unit_list_price        := gt_order_ins_tbl(ln_idx).unit_list_price;          -- 単価
+/* 2012/07/26 Ver.1.24 Add End */
       --
       -- 数量の設定
       IF ( gt_order_ins_tbl(ln_idx).order_quantity_uom = gt_order_ins_tbl(ln_idx).conv_order_quantity_uom ) THEN
