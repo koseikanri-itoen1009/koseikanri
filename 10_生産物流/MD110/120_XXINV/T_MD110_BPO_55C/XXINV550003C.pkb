@@ -8,7 +8,7 @@ AS
  * Description      : 計画・移動・在庫：在庫(帳票)
  * MD.050/070       : T_MD050_BPO_550_在庫(帳票)Issue1.0 (T_MD050_BPO_550)
  *                  : 振替明細表                         (T_MD070_BPO_55C)
- * Version          : 1.21
+ * Version          : 1.22
  * Program List
  * ---------------------------    ----------------------------------------------------------
  *  Name                           Description
@@ -57,6 +57,8 @@ AS
  *  2009/03/06    1.19 H.Itou           本番#1283対応
  *  2009/03/12    1.20 Akiyoshi Shiina  本番#1296対応
  *  2009/03/17    1.21 Akiyoshi Shiina  本番#1325対応
+ *  2009/05/12    1.22 M.Nomura         本番#1468対応
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2355,7 +2357,10 @@ AS
     lv_sql_body := lv_sql_body || ' ,xxcmn_item_locations2_v  xilv' ;
     lv_sql_body := lv_sql_body || ' ,xxcmn_locations2_v        xlv' ;
     lv_sql_body := lv_sql_body || ' ,fnd_lookup_values         flv' ;
-    lv_sql_body := lv_sql_body || ' ,xxcmn_stnd_unit_price_v xsupv' ;
+-- %%%%%%%%%% 2009/5/12 v1.22 S %%%%%%%%%%
+--    lv_sql_body := lv_sql_body || ' ,xxcmn_stnd_unit_price_v xsupv' ;
+    lv_sql_body := lv_sql_body || ' ,xxcmn_stnd_unit_price2_v xsupv' ;
+-- %%%%%%%%%% 2009/5/12 v1.22 E %%%%%%%%%%
     lv_sql_body := lv_sql_body || ' ,fnd_user                   fu' ;
     lv_sql_body := lv_sql_body || ' ,per_all_people_f         papf' ;
     lv_sql_body := lv_sql_body || ' ,per_all_assignments_f    paaf' ;
