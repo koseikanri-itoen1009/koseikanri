@@ -60,9 +60,7 @@
 C_appl_name="XXCCP"                #アプリケーション短縮名
 C_program_id="ZBZZEXINBOUND"       #プログラムID
 L_logpath="/var/log/jp1/PEBSITO"   #ログファイルパス[環境依存値]
-#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
-L_tmppath="/var/tmp"               #一時ファイルパス[環境依存値]
-#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+L_tmppath="$COMMON_TOP/temp"       #一時ファイルパス[環境依存値]
 
 # 戻り値
 #2009/04/06 UPDATE BY Masayuki.Sano Ver.1.5 Start

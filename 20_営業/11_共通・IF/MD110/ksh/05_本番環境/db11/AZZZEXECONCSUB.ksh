@@ -42,9 +42,9 @@
 ################################################################################
 
 ## 変数定義
-#L_shellpath="/uspg/jp1/zb/shl/T1"                                  #2009/08/19 Ver1.4 DEL
-L_logpath="/var/log/jp1/PEBSITO"  #ログファイルパス[環境依存値]
-L_tmppath="/var/tmp"                  #一時ファイルパス[環境依存値] #2009/08/19 Ver1.4 Add
+#L_shellpath="/uspg/jp1/zb/shl/T1"            #2009/08/19 Ver1.4 DEL
+L_logpath="/var/log/jp1/PEBSITO"              #ログファイルパス[環境依存値]
+L_tmppath="$COMMON_TOP/temp"                  #一時ファイルパス[環境依存値] #2009/08/19 Ver1.4 Add
 
 L_cmd=${0}
 L_cmdname=`/bin/basename ${L_cmd}`
