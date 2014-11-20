@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A03C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : GLへの販売実績データ連携 MD050_COS_013_A03
- * Version          : 1.9
+ * Version          : 1.8
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -34,7 +34,6 @@ AS
  *  2009/05/13    1.6   T.Kitajima       [T1_0764]OIF連携不正データ修正
  *  2009/07/06    1.7   T.Tominaga       [0000235]対象データ無しメッセージのトークン削除
  *  2009/08/25    1.8   M.Sano           [0001166]CCID取得関数の入力パラメータを変更
- *  2009/08/31    1.9   M.Sano           [0001177]PT対応
  *
  *****************************************************************************************/
 --
@@ -195,12 +194,6 @@ AS
   ct_round_rule_down       CONSTANT  VARCHAR2(10)  := 'DOWN';                           -- 切り下げ
   ct_round_rule_nearest    CONSTANT  VARCHAR2(10)  := 'NEAREST';                        -- 四捨五入
   ct_percent               CONSTANT  NUMBER        := 100;                              -- 100
---****************************** 2009/08/31 1.9 M.Sano     ADD START ******************************--
---
-  -- その他
-  ct_lang                  CONSTANT  fnd_lookup_values.language%TYPE := USERENV('LANG'); -- 言語コード
-  cv_exists_flag           CONSTANT  VARCHAR2(1)   := '1';                               -- EXISTS文表示用 
---****************************** 2009/08/31 1.9 T.Sano     ADD END   ******************************--
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -590,10 +583,7 @@ AS
       WHERE  flvl.lookup_type            = ct_qct_card_cls
         AND  flvl.attribute3             = ct_attribute_y
         AND  flvl.enabled_flag           = ct_enabled_yes
---****************************** 2009/08/31 1.9 M.Sano     MOD START ******************************--
---        AND  flvl.language               = USERENV( 'LANG' )
-        AND  flvl.language               = ct_lang
---****************************** 2009/08/31 1.9 M.Sano     MOD END   ******************************--
+        AND  flvl.language               = USERENV( 'LANG' )
         AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
                              AND         NVL( flvl.end_date_active,   gd_process_date );
 --
@@ -620,10 +610,7 @@ AS
       WHERE  flvl.lookup_type            = ct_qct_tax_cls
         AND  flvl.attribute4             = ct_attribute_y
         AND  flvl.enabled_flag           = ct_enabled_yes
---****************************** 2009/08/31 1.9 M.Sano     MOD START ******************************--
---        AND  flvl.language               = USERENV( 'LANG' )
-        AND  flvl.language               = ct_lang
---****************************** 2009/08/31 1.9 M.Sano     MOD END   ******************************--
+        AND  flvl.language               = USERENV( 'LANG' )
         AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
                              AND         NVL( flvl.end_date_active,   gd_process_date );
 --
@@ -650,10 +637,7 @@ AS
       WHERE  flvl.lookup_type            = ct_cust_cls_cd
         AND  flvl.lookup_code            LIKE ct_qcc_code
         AND  flvl.enabled_flag           = ct_enabled_yes
---****************************** 2009/08/31 1.9 M.Sano     MOD START ******************************--
---        AND  flvl.language               = USERENV( 'LANG' )
-        AND  flvl.language               = ct_lang
---****************************** 2009/08/31 1.9 M.Sano     MOD END   ******************************--
+        AND  flvl.language               = USERENV( 'LANG' )
         AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
                              AND         NVL( flvl.end_date_active,   gd_process_date );
 --
@@ -844,14 +828,6 @@ AS
     CURSOR sales_data_cur
     IS
       SELECT
---****************************** 2009/08/31 1.9 M.Sano     ADD START ******************************--
-            /*+ LEADING(xseh)
-                INDEX(xseh xxcos_sales_exp_headers_n05 )
-                USE_NL(xseh xsel msib )
-                USE_NL(xseh hca avta gcct )
-                USE_NL(xseh xchv)
-             */
---****************************** 2009/08/31 1.9 M.Sano     ADD END   ******************************--
              xseh.sales_exp_header_id          sales_exp_header_id      -- 販売実績ヘッダID
            , xseh.dlv_invoice_number           dlv_invoice_number       -- 納品伝票番号
            , xseh.dlv_invoice_class            dlv_invoice_class        -- 納品伝票区分
@@ -891,96 +867,49 @@ AS
       AND xsel.item_code                      <> gv_var_elec_item_cd
       AND hca.account_number                   = xseh.ship_to_customer_code
       AND xchv.ship_account_number             = xseh.ship_to_customer_code
---****************************** 2009/08/31 1.9 M.Sano     MOD START ******************************--
---      AND ( xseh.cust_gyotai_sho                 IN (
---            SELECT
---                flvl.meaning                   meaning
---            FROM
---                fnd_lookup_values              flvl
---            WHERE
---                flvl.lookup_type               = ct_qct_gyotai_sho
---            AND flvl.lookup_code               LIKE ct_qcc_code
---            AND flvl.attribute1                = ct_attribute_y
---            AND flvl.enabled_flag              = ct_enabled_yes
---            AND flvl.language                  = USERENV( 'LANG' )
---            AND gd_process_date BETWEEN        NVL( flvl.start_date_active, gd_process_date )
---                                AND            NVL( flvl.end_date_active,   gd_process_date )
-      AND ( EXISTS (
-            SELECT /*+ USE_NL(flvl1) */
-                cv_exists_flag                 exists_flag
+      AND ( xseh.cust_gyotai_sho                 IN (
+            SELECT
+                flvl.meaning                   meaning
             FROM
-                fnd_lookup_values              flvl1
+                fnd_lookup_values              flvl
             WHERE
-                flvl1.lookup_type              = ct_qct_gyotai_sho
-            AND flvl1.lookup_code              LIKE ct_qcc_code
-            AND flvl1.meaning                  = xseh.cust_gyotai_sho
-            AND flvl1.attribute1               = ct_attribute_y
-            AND flvl1.enabled_flag             = ct_enabled_yes
-            AND flvl1.language                 = ct_lang
-            AND gd_process_date BETWEEN        NVL( flvl1.start_date_active, gd_process_date )
-                                AND            NVL( flvl1.end_date_active,   gd_process_date )
---****************************** 2009/08/31 1.9 M.Sano     MOD END   ******************************--
+                flvl.lookup_type               = ct_qct_gyotai_sho
+            AND flvl.lookup_code               LIKE ct_qcc_code
+            AND flvl.attribute1                = ct_attribute_y
+            AND flvl.enabled_flag              = ct_enabled_yes
+            AND flvl.language                  = USERENV( 'LANG' )
+            AND gd_process_date BETWEEN        NVL( flvl.start_date_active, gd_process_date )
+                                AND            NVL( flvl.end_date_active,   gd_process_date )
             )
             OR hca.customer_class_code          = gt_cust_cls_cd
           )
---****************************** 2009/08/31 1.9 M.Sano     MOD START ******************************--
---      AND xsel.sales_class                     NOT IN (
---          SELECT
---              flvl.meaning                     meaning
---          FROM
---              fnd_lookup_values                flvl
---          WHERE
---              flvl.lookup_type                 = ct_qct_sale_class
---          AND flvl.lookup_code                 LIKE ct_qcc_code
---          AND flvl.attribute1                  = ct_attribute_y
---          AND flvl.enabled_flag                = ct_enabled_yes
---          AND flvl.language                    = USERENV( 'LANG' )
---          AND gd_process_date BETWEEN          NVL( flvl.start_date_active, gd_process_date )
---                              AND              NVL( flvl.end_date_active,   gd_process_date )
---          )
---      AND xseh.dlv_invoice_class               IN (
---          SELECT
---              flvl.meaning                     meaning
---          FROM
---              fnd_lookup_values                flvl
---          WHERE
---              flvl.lookup_type                 = ct_qct_dlv_slp_cls
---          AND flvl.lookup_code                 LIKE ct_qcc_code
---          AND flvl.attribute1                  = ct_attribute_y
---          AND flvl.enabled_flag                = ct_enabled_yes
---          AND flvl.language                    = USERENV( 'LANG' )
---          AND gd_process_date BETWEEN          NVL( flvl.start_date_active, gd_process_date )
---                              AND              NVL( flvl.end_date_active,   gd_process_date )
-      AND NOT EXISTS (
-          SELECT /*+ USE_NL(flvl2) */
-              cv_exists_flag                   exists_flag
+      AND xsel.sales_class                     NOT IN (
+          SELECT
+              flvl.meaning                     meaning
           FROM
-              fnd_lookup_values                flvl2
+              fnd_lookup_values                flvl
           WHERE
-              flvl2.lookup_type                = ct_qct_sale_class
-          AND flvl2.lookup_code                LIKE ct_qcc_code
-          AND flvl2.meaning                    = xsel.sales_class
-          AND flvl2.attribute1                 = ct_attribute_y
-          AND flvl2.enabled_flag               = ct_enabled_yes
-          AND flvl2.language                   = ct_lang
-          AND gd_process_date BETWEEN          NVL( flvl2.start_date_active, gd_process_date )
-                              AND              NVL( flvl2.end_date_active,   gd_process_date )
+              flvl.lookup_type                 = ct_qct_sale_class
+          AND flvl.lookup_code                 LIKE ct_qcc_code
+          AND flvl.attribute1                  = ct_attribute_y
+          AND flvl.enabled_flag                = ct_enabled_yes
+          AND flvl.language                    = USERENV( 'LANG' )
+          AND gd_process_date BETWEEN          NVL( flvl.start_date_active, gd_process_date )
+                              AND              NVL( flvl.end_date_active,   gd_process_date )
           )
-      AND EXISTS (
-          SELECT /*+ USE_NL(flvl3) */
-              cv_exists_flag                   exists_flag
+      AND xseh.dlv_invoice_class               IN (
+          SELECT
+              flvl.meaning                     meaning
           FROM
-              fnd_lookup_values                flvl3
+              fnd_lookup_values                flvl
           WHERE
-              flvl3.lookup_type                = ct_qct_dlv_slp_cls
-          AND flvl3.lookup_code                LIKE ct_qcc_code
-          AND flvl3.meaning                    = xseh.dlv_invoice_class
-          AND flvl3.attribute1                 = ct_attribute_y
-          AND flvl3.enabled_flag               = ct_enabled_yes
-          AND flvl3.language                   = ct_lang
-          AND gd_process_date BETWEEN          NVL( flvl3.start_date_active, gd_process_date )
-                              AND              NVL( flvl3.end_date_active,   gd_process_date )
---****************************** 2009/08/31 1.9 M.Sano     MOD END   ******************************--
+              flvl.lookup_type                 = ct_qct_dlv_slp_cls
+          AND flvl.lookup_code                 LIKE ct_qcc_code
+          AND flvl.attribute1                  = ct_attribute_y
+          AND flvl.enabled_flag                = ct_enabled_yes
+          AND flvl.language                    = USERENV( 'LANG' )
+          AND gd_process_date BETWEEN          NVL( flvl.start_date_active, gd_process_date )
+                              AND              NVL( flvl.end_date_active,   gd_process_date )
           )
       AND msib.organization_id                 = gv_org_id
       AND xsel.item_code                       = msib.segment1
@@ -1782,10 +1711,7 @@ AS
               flvl.lookup_type            = ct_qct_jour_cls
         AND   flvl.lookup_code            LIKE ct_qcc_code
         AND   flvl.enabled_flag           = ct_enabled_yes
---****************************** 2009/08/31 1.9 M.Sano     MOD START ******************************--
---        AND   flvl.language               = USERENV( 'LANG' )
-        AND   flvl.language               = ct_lang
---****************************** 2009/08/31 1.9 M.Sano     MOD END   ******************************--
+        AND   flvl.language               = USERENV( 'LANG' )
         AND   gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
                               AND         NVL( flvl.end_date_active,   gd_process_date )
       ;
