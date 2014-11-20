@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common3_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.5
+ * Version                : 1.6
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -29,7 +29,8 @@ AS
  *  2008/07/17   1.2   M.Nomura         変更要求#96、#98対応・内部課題32対応
  *  2008/10/01   1.3   Y.Kawano         内部変更#220,T_S_500対応
  *  2008/11/27   1.4   D.Nihei          本番障害#173対応
- *  2008/12/24   1.5    M.Nomura         本番障害#832対応
+ *  2008/12/24   1.5   M.Nomura         本番障害#832対応
+ *  2009/04/09   1.6   A.Shiina         本番障害#432対応
  *
  *****************************************************************************************/
 --
@@ -548,10 +549,16 @@ AS
             , small_distance
             , consolid_add_distance
             , actual_distance
+-- 2009/04/09 v1.6 ADD START
+            , change_flg
+-- 2009/04/09 v1.6 ADD END
       INTO    or_delivery_distance.post_distance            -- 車立距離
             , or_delivery_distance.small_distance           -- 小口距離
             , or_delivery_distance.consolid_add_distance    -- 混載割増距離
             , or_delivery_distance.actual_distance          -- 実際距離
+-- 2009/04/09 v1.6 ADD START
+            , or_delivery_distance.change_flg               -- 変更フラグ
+-- 2009/04/09 v1.6 ADD END
       FROM    xxwip_delivery_distance
       WHERE   goods_classe           = iv_goods_classe           -- 商品区分
       AND     delivery_company_code  = iv_delivery_company_code  -- 運送業者
@@ -567,6 +574,9 @@ AS
         or_delivery_distance.small_distance         := 0; -- 小口距離
         or_delivery_distance.consolid_add_distance  := 0; -- 混載割増距離
         or_delivery_distance.actual_distance        := 0; -- 実際距離
+-- 2009/04/09 v1.6 ADD START
+        or_delivery_distance.change_flg             := 0; -- 変更フラグ
+-- 2009/04/09 v1.6 ADD END
 --
       WHEN TOO_MANY_ROWS THEN
         RAISE global_api_expt;
@@ -683,9 +693,17 @@ AS
       SELECT  small_weight
             , pay_picking_amount
             , bill_picking_amount
+-- 2009/04/09 v1.6 ADD START
+            , pay_change_flg
+            , bill_change_flg
+-- 2009/04/09 v1.6 ADD END
       INTO    or_delivery_company.small_weight          -- 小口重量
             , or_delivery_company.pay_picking_amount    -- 支払ピッキング単価
             , or_delivery_company.bill_picking_amount   -- 請求ピッキング単価
+-- 2009/04/09 v1.6 ADD START
+            , or_delivery_company.pay_change_flg        -- 支払変更フラグ
+            , or_delivery_company.bill_change_flg       -- 請求変更フラグ
+-- 2009/04/09 v1.6 ADD END
       FROM    xxwip_delivery_company
       WHERE   goods_classe           = iv_goods_classe           -- 商品区分
       AND     delivery_company_code  = iv_delivery_company_code  -- 運送業者
@@ -697,6 +715,10 @@ AS
         or_delivery_company.small_weight        := 0;  -- 小口重量
         or_delivery_company.pay_picking_amount  := 0;  -- 支払ピッキング単価
         or_delivery_company.bill_picking_amount := 0;  -- 請求ピッキング単価
+-- 2009/04/09 v1.6 ADD START
+        or_delivery_company.pay_change_flg      := 0;  -- 支払変更フラグ
+        or_delivery_company.bill_change_flg     := 0;  -- 請求変更フラグ
+-- 2009/04/09 v1.6 ADD END                                
 --
       WHEN TOO_MANY_ROWS THEN
         RAISE global_api_expt;
@@ -863,8 +885,17 @@ AS
     -- **************************************************
     BEGIN
       SELECT xdc.shipping_expenses
+-- 2009/04/09 v1.6 ADD START
+           , xdc.change_flg
+-- 2009/04/09 v1.6 ADD END
       INTO   or_delivery_charges.shipping_expenses                         -- 運送費
+-- 2009/04/09 v1.6 ADD START
+           , or_delivery_charges.shipping_change_flg
+-- 2009/04/09 v1.6 ADD END
       FROM  (SELECT  shipping_expenses
+-- 2009/04/09 v1.6 ADD START
+                   , change_flg
+-- 2009/04/09 v1.6 ADD END
              FROM    xxwip_delivery_charges
              WHERE   p_b_classe              = iv_p_b_classe               -- 支払請求区分
              AND     goods_classe            = iv_goods_classe             -- 商品区分
@@ -880,6 +911,9 @@ AS
       WHEN NO_DATA_FOUND THEN
         -- 存在なしを設定
         or_delivery_charges.shipping_expenses := 0;   -- 運送費
+-- 2009/04/09 v1.6 ADD START
+        or_delivery_charges.shipping_change_flg := 0; -- 変更フラグ
+-- 2009/04/09 v1.6 ADD END
 --
       WHEN TOO_MANY_ROWS THEN
         RAISE global_api_expt;
@@ -890,7 +924,13 @@ AS
     -- **************************************************
     BEGIN
       SELECT  leaf_consolid_add
+-- 2009/04/09 v1.6 ADD START
+            , change_flg
+-- 2009/04/09 v1.6 ADD END
       INTO    or_delivery_charges.leaf_consolid_add                 -- リーフ混載割増
+-- 2009/04/09 v1.6 ADD START
+            , or_delivery_charges.leaf_change_flg                   -- 変更フラグ
+-- 2009/04/09 v1.6 ADD END
       FROM    xxwip_delivery_charges
       WHERE   p_b_classe              = iv_p_b_classe               -- 支払請求区分
       AND     goods_classe            = iv_goods_classe             -- 商品区分
@@ -904,6 +944,9 @@ AS
       WHEN NO_DATA_FOUND THEN
         -- 存在なしを設定
         or_delivery_charges.leaf_consolid_add := 0;   -- リーフ混載割増
+-- 2009/04/09 v1.6 ADD START
+        or_delivery_charges.leaf_change_flg   := 0;   -- 変更フラグ                   -- 変更フラグ
+-- 2009/04/09 v1.6 ADD END
 --
       WHEN TOO_MANY_ROWS THEN
         RAISE global_api_expt;

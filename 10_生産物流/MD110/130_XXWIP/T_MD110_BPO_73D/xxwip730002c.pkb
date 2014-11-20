@@ -7,13 +7,14 @@ AS
  * Description      : 運賃更新
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_733
  * MD.070           : 運賃更新 T_MD070_BPO_73D
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
  *  cal_money_proc         金額計算処理(機能詳細番号無し)
+ *  cal_money_proc         金額計算処理(洗替用)(機能詳細番号無し)
  *  chk_param_proc         パラメータチェック処理(D-1)
  *  get_init               関連データ取得(D-2)
  *  chk_close_proc         運賃用締日情報取得(D-3)
@@ -33,6 +34,8 @@ AS
  *
  *  upd_xd_exchange_proc   洗替運賃ヘッダアドオン一括更新処理(D-14)
  *
+ *  upd_xdc_mst_proc       運賃マスタ・運賃用運送業者マスタ更新処理(D-15)
+ *
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -45,6 +48,7 @@ AS
  *  2008/07/23    1.2  Oracle 野村 正幸  内部変更#132対応
  *  2008/09/16    1.3  Oracle 吉田 夏樹  T_S_570 対応
  *  2008/10/24    1.4  Oracle 野村 正幸  統合#408対応
+ *  2009/04/10    1.5  SCS    伊藤ひとみ 本番#432対応
  *
  *****************************************************************************************/
 --
@@ -126,6 +130,10 @@ AS
   gv_exchange_type_name      CONSTANT VARCHAR2(30) := '洗替区分';
   gv_deli_ctrl_name          CONSTANT VARCHAR2(30) := '運賃計算用コントロール';
   gv_deli_name               CONSTANT VARCHAR2(30) := '運賃ヘッダアドオン';
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD START #####
+  gv_deli_comp_name          CONSTANT VARCHAR2(50) := '運賃用運送業者アドオンマスタ';
+  gv_deli_charges_name       CONSTANT VARCHAR2(50) := '運賃アドオンマスタ';
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD END   #####
 --
   -- YESNO区分
   gv_ktg_yes                 CONSTANT VARCHAR2(1) := 'Y';
@@ -147,6 +155,11 @@ AS
   -- 配車タイプ(2008/07/11)
   gv_dispatch_type_1         CONSTANT VARCHAR2(1) := '1';   -- 1:通常配車
   gv_dispatch_type_2         CONSTANT VARCHAR2(1) := '2';   -- 2:伝票なし配車(リーフ小口)
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD START #####
+  -- 変更フラグ
+  gv_change_flg_on           CONSTANT VARCHAR2(1) := '1';   -- 1:変更あり
+  gv_change_flg_off          CONSTANT VARCHAR2(1) := '0';   -- 2:変更なし
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD END   #####
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -210,6 +223,12 @@ AS
     qty1                     xxwip_deliverys.qty1%TYPE,                     -- 個数１
     delivery_weight1         xxwip_deliverys.delivery_weight1%TYPE,         -- 重量１
     consolid_qty             xxwip_deliverys.consolid_qty%TYPE,             -- 混載数
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD START #####
+    before_picking_charge     xxwip_deliverys.picking_charge%TYPE,          -- ピッキング単価(洗替前)
+    before_contract_rate      xxwip_deliverys.contract_rate%TYPE,           -- 契約運賃(洗替前)
+    before_consolid_surcharge xxwip_deliverys.consolid_surcharge%TYPE,      -- 混載割増金額(洗替前)
+    bill_change_flg           xxwip_delivery_company.bill_change_flg%TYPE,  -- 運賃用運送業者マスタ 請求変更フラグ
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD END   #####
     bill_picking_amount      xxwip_delivery_company.bill_picking_amount%TYPE-- 請求ピッキング単価
   );
 --
@@ -736,6 +755,155 @@ AS
 --
   END cal_money_proc;
 --
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD START #####  運賃マスタ・運賃用運送業者マスタの変更フラグによって、計算し直すかが異なるので、別プロシージャを作成
+  /**********************************************************************************
+   * Procedure Name   : cal_money_proc
+   * Description      : 金額計算処理(洗替用)(機能詳細番号無し)
+   ***********************************************************************************/
+  PROCEDURE cal_money_proc(
+    ir_xd_ex_data          IN         rec_extraction_ex_xd,                     -- 洗替運賃ヘッダーアドオンレコード
+    ir_xdc_ex_data         IN         xxwip_common3_pkg.delivery_charges_rec,   -- 洗替運賃アドオンマスタレコード
+    on_balance             OUT NOCOPY xxwip_deliverys.balance%TYPE,             -- 差額
+    on_total_amount        OUT NOCOPY xxwip_deliverys.total_amount%TYPE,        -- 合計
+    on_consolid_surcharge  OUT NOCOPY xxwip_deliverys.consolid_surcharge%TYPE,  -- 混載割増金額
+    on_picking_charge      OUT NOCOPY xxwip_deliverys.picking_charge%TYPE,      -- ピッキング料
+    on_contract_rate       OUT NOCOPY xxwip_deliverys.contract_rate%TYPE,       -- 契約運賃
+    ov_errbuf              OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode             OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg              OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'cal_money_proc'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+--
+    -- *** ローカル変数 ***
+    ln_balance            NUMBER; -- ｢差額｣算出結果格納用
+    ln_total_amount       NUMBER; -- ｢合計｣算出結果格納用
+    ln_consolid_surcharge NUMBER; -- ｢混載割増金額｣算出結果格納用
+    ln_picking_charge     NUMBER; -- ｢ピッキング料｣算出結果格納用
+    ln_contract_rate      NUMBER; -- ｢契約運賃｣算出結果格納用
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ==============================
+    -- 混載割増金額算出
+    -- ==============================
+    -- 運賃マスタ(リーフ混載割増)の変更フラグがONの場合、計算する。
+    IF (ir_xdc_ex_data.leaf_change_flg = gv_change_flg_on) THEN
+      -- リーフで混載の場合
+      IF ((ir_xd_ex_data.goods_classe = gv_prod_class_lef)
+        AND (ir_xd_ex_data.mixed_code = gv_mixed_code_1))
+      THEN
+        -- 混載割増料金＝運賃マスタ.リーフ混載割増×運賃ヘッダ.混載数
+        ln_consolid_surcharge := ROUND(ir_xdc_ex_data.leaf_consolid_add * ir_xd_ex_data.consolid_qty);
+      ELSE
+        -- 混載割増料金＝0
+        ln_consolid_surcharge := 0;
+      END IF;
+--
+    -- 運賃マスタ変更フラグがOFFの場合、洗替前の混載割増金額を設定
+    ELSIF (ir_xdc_ex_data.leaf_change_flg = gv_change_flg_off) THEN
+      -- 混載割増料金＝運賃ヘッダ.混載割増料金
+      ln_consolid_surcharge := ir_xd_ex_data.before_consolid_surcharge;
+    END IF;
+--
+    -- ==============================
+    -- 契約運賃算出
+    -- ==============================
+    -- 運賃マスタ(運送費)の変更フラグがONの場合、運賃マスタの運送料を設定
+    IF (ir_xdc_ex_data.shipping_change_flg = gv_change_flg_on) THEN
+      -- 契約運賃＝運賃マスタ.運送費
+      ln_contract_rate := ir_xdc_ex_data.shipping_expenses;
+--
+    -- 運賃マスタ(運送費)の変更フラグがOFFの場合、洗替前の運送料を設定
+    ELSIF (ir_xdc_ex_data.shipping_change_flg = gv_change_flg_off) THEN
+      -- 契約運賃＝運賃ヘッダ.契約運賃
+      ln_contract_rate := ir_xd_ex_data.before_contract_rate;
+    END IF;
+--
+    -- ==============================
+    -- ピッキング料算出
+    -- ==============================
+    -- 運賃用運送業者マスタ 請求変更フラグがONの場合、計算する。
+    IF (ir_xd_ex_data.bill_change_flg = gv_change_flg_on) THEN
+      -- ピッキング料＝運賃ヘッダ.個数1×運賃用運送業者マスタ.請求ピッキング単価
+      ln_picking_charge := ROUND(ir_xd_ex_data.qty1 * ir_xd_ex_data.bill_picking_amount);
+--
+    -- 運賃用運送業者マスタ 請求変更フラグがOFFの場合、洗替前の混載割増金額を設定
+    ELSIF (ir_xd_ex_data.bill_change_flg = gv_change_flg_off) THEN
+      -- ピッキング料＝運賃ヘッダ.ピッキング料
+      ln_picking_charge := ir_xd_ex_data.before_picking_charge;
+    END IF;
+--
+    -- ==============================
+    -- 合計算出
+    -- ==============================
+    -- 合計 ＝ 運賃ヘッダ.請求運賃＋混載割増金額＋PIC＋運賃ヘッダ.諸料金
+    ln_total_amount := NVL(ir_xd_ex_data.charged_amount,0)
+                     + ln_consolid_surcharge
+                     + ln_picking_charge
+                     + NVL(ir_xd_ex_data.many_rate, 0)
+                     ;
+--
+    -- ==============================
+    -- 差額算出
+    -- ==============================
+    ln_balance := ln_total_amount 
+                - (NVL(ir_xd_ex_data.charged_amount,0)
+                 + ln_consolid_surcharge
+                 + ln_picking_charge
+                 + NVL(ir_xd_ex_data.many_rate, 0)
+                  );
+--
+    -- 各算出値をOUT変数にセット
+    on_balance            := ln_balance;
+    on_total_amount       := ln_total_amount;
+    on_picking_charge     := ln_picking_charge;
+    on_consolid_surcharge := ln_consolid_surcharge;
+    on_contract_rate      := ln_contract_rate;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END cal_money_proc;
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD END   #####
+--
   /**********************************************************************************
    * Procedure Name   : chk_param_proc
    * Description      : パラメータチェック処理(D-1)
@@ -1001,6 +1169,9 @@ AS
    * Description      : ロック取得(D-4)
    ***********************************************************************************/
   PROCEDURE get_lock_xd(
+-- ##### 20090410 Ver.1.5 本番#432対応 START #####
+    iv_exchange_type IN         VARCHAR2,     -- 洗替区分
+-- ##### 20090410 Ver.1.5 本番#432対応 END   #####
     ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1021,6 +1192,9 @@ AS
     -- ===============================
     -- ユーザー宣言部
     -- ===============================
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD START #####
+    lv_lock_err_tbl_name VARCHAR2(100);  -- ロックエラー発生テーブル名
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD END   #####
 --
     -- *** ローカル・カーソル ***
     CURSOR cur_lock_xd IS
@@ -1028,6 +1202,22 @@ AS
       FROM   xxwip_deliverys xd
       WHERE  xd.p_b_classe = gv_paycharge_type_2
       FOR UPDATE NOWAIT;
+-- ##### 20090410 Ver.1.5 本番#432対応 START #####
+    -- 運賃用運送業者アドオンマスタロック取得
+    CURSOR cur_lock_xdco IS
+      SELECT xdco.delivery_company_id
+      FROM   xxwip_delivery_company xdco              -- 運賃用運送業者アドオンマスタ
+      WHERE  xdco.bill_change_flg = gv_change_flg_on  -- 請求変更フラグ:ON
+      FOR UPDATE NOWAIT;
+--
+    -- 運賃アドオンマスタロック取得
+    CURSOR cur_lock_xdch IS
+      SELECT xdch.delivery_charges_id
+      FROM   xxwip_delivery_charges xdch              -- 運賃アドオンマスタ
+      WHERE  xdch.change_flg = gv_change_flg_on       -- 変更フラグ:ON
+      AND    xdch.p_b_classe = gv_paycharge_type_2    -- 支払請求区分:請求
+      FOR UPDATE NOWAIT;
+-- ##### 20090410 Ver.1.5 本番#432対応 END   #####
 --
   BEGIN
 --
@@ -1042,15 +1232,63 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
-    -- 運賃ヘッダアドオンのレコードロックを取得
-    OPEN cur_lock_xd;
+-- ##### 20090410 Ver.1.5 本番#432対応 MOD START #####
+--    -- 運賃ヘッダアドオンのレコードロックを取得
+--    OPEN cur_lock_xd;
+--
+    -- ==================================
+    -- 運賃ヘッダアドオンロックを取得
+    -- ==================================
+    BEGIN
+      OPEN  cur_lock_xd;
+      CLOSE cur_lock_xd;
+--
+    EXCEPTION
+      WHEN lock_expt THEN
+        lv_lock_err_tbl_name := gv_deli_name;
+        RAISE lock_expt;
+    END;
+--
+    -- 洗替区分YESの場合、マスタのロック取得
+    IF (iv_exchange_type = gv_ktg_yes) THEN
+      -- ========================================
+      -- 運賃用運送業者アドオンマスタロック取得
+      -- ========================================
+      BEGIN
+        OPEN  cur_lock_xdco;
+        CLOSE cur_lock_xdco;
+--
+      EXCEPTION
+        WHEN lock_expt THEN
+          lv_lock_err_tbl_name := gv_deli_comp_name;
+          RAISE lock_expt;
+      END;
+--
+      -- ========================================
+      -- 運賃アドオンマスタロック取得
+      -- ========================================
+      BEGIN
+        OPEN  cur_lock_xdch;
+        CLOSE cur_lock_xdch;
+--
+      EXCEPTION
+        WHEN lock_expt THEN
+          lv_lock_err_tbl_name := gv_deli_charges_name;
+          RAISE lock_expt;
+      END;
+--
+    END IF;
+-- ##### 20090410 Ver.1.5 本番#432対応 MOD END   #####
 --
   EXCEPTION
 --
     -- ロック失敗エラー
     WHEN lock_expt THEN
       lv_errmsg  := xxcmn_common_pkg.get_msg(gv_msg_kbn_wip, gv_msg_wip_10004,
-                                             gv_tkn_table,   gv_deli_name);
+-- ##### 20090410 Ver.1.5 本番#432対応 MOD START #####
+--                                             gv_tkn_table,   gv_deli_name);
+                                             gv_tkn_table,   lv_lock_err_tbl_name);
+-- ##### 20090410 Ver.1.5 本番#432対応 MOD END   #####
       lv_errbuf  := lv_errmsg;
       -- OUT変数に書き出し
       ov_errmsg  := lv_errmsg;
@@ -1946,12 +2184,20 @@ AS
              xd.qty1,                        -- 個数１
              xd.delivery_weight1,            -- 重量１
              xd.consolid_qty,                -- 混載数
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD START #####
+             xd.picking_charge                           before_picking_charge,      -- 請求ピッキング単価(洗替前)
+             xd.contract_rate                            before_contract_rate,       -- 契約運賃(洗替前)
+             xd.consolid_surcharge                       before_consolid_surcharge,  -- 混載割増金額(洗替前)
+             NVL(xdc.bill_change_flg, gv_change_flg_off) bill_change_flg,            -- 運賃用運送業者マスタ 請求変更フラグ
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD END   #####
              NVL(xdc.bill_picking_amount, 0) -- 請求ピッキング単価
       BULK COLLECT INTO gt_extraction_ex_xd
       FROM   xxwip_deliverys        xd,  -- 運賃ヘッダアドオン
              xxwip_delivery_company xdc  -- 運賃用運送業者アドオンマスタ
       WHERE  xd.p_b_classe            =  gv_paycharge_type_2
-      AND    xd.dispatch_type IN (gv_dispatch_type_1,gv_dispatch_type_2)    -- 2008/07/11
+-- ##### 20090410 Ver.1.5 本番#432対応 DEL START #####
+--      AND    xd.dispatch_type IN (gv_dispatch_type_1,gv_dispatch_type_2)    -- 2008/07/11
+-- ##### 20090410 Ver.1.5 本番#432対応 DEL END   #####
       AND    xd.goods_classe IS NOT NULL
       AND    xd.goods_classe          =  xdc.goods_classe(+)
       AND    xd.delivery_company_code =  xdc.delivery_company_code(+)
@@ -2098,6 +2344,9 @@ AS
     ln_total_amount        NUMBER; -- ｢合計｣
     ln_consolid_surcharge  NUMBER; -- ｢混載割増金額｣
     ln_picking_charge      NUMBER; -- ｢ピッキング料｣
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD START #####
+    ln_contract_rate       NUMBER; -- ｢契約運賃｣
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD END   #####
 --
   BEGIN
 --
@@ -2112,27 +2361,42 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
-    -- ｢差額｣｢合計｣｢混載割増金額｣｢ピッキング料｣の算出
+-- ##### 20090410 Ver.1.5 本番#432対応 MOD START ##### 運賃マスタ・運賃用運送業者マスタの変更フラグによって、計算し直すかが異なるので、別プロシージャを作成
+--    -- ｢差額｣｢合計｣｢混載割増金額｣｢ピッキング料｣の算出
+--    cal_money_proc(
+--      in_goods_classe        => ir_xd_ex_data.goods_classe,        -- 商品区分
+--      in_mixed_code          => ir_xd_ex_data.mixed_code,          -- 混載区分
+---- ##### 20080723 Ver.1.2 内部変更#132対応 START #####
+--      in_charged_amount      => ir_xd_ex_data.charged_amount,      -- 請求運賃
+---- ##### 20080723 Ver.1.2 内部変更#132対応 END   #####
+--      in_shipping_expenses   => ir_xdc_ex_data.shipping_expenses,  -- 運送料
+--      in_many_rate           => ir_xd_ex_data.many_rate,           -- 諸料金
+--      in_leaf_consolid_add   => ir_xdc_ex_data.leaf_consolid_add,  -- リーフ混載割増
+--      in_consolid_qty        => ir_xd_ex_data.consolid_qty,        -- 混載数
+--      in_qty1                => ir_xd_ex_data.qty1,                -- 個数1
+--      in_bill_picking_amount => ir_xd_ex_data.bill_picking_amount, -- 請求ピッキング単価
+--      on_balance             => ln_balance,                     -- 差額
+--      on_total_amount        => ln_total_amount,                -- 合計
+--      on_consolid_surcharge  => ln_consolid_surcharge,          -- 混載割増金額
+--      on_picking_charge      => ln_picking_charge,              -- ピッキング料
+--      ov_errbuf              => lv_errbuf,                      -- エラー・メッセージ
+--      ov_retcode             => lv_retcode,                     -- リターン・コード
+--      ov_errmsg              => lv_errmsg);                     -- ユーザー・エラー・メッセージ
+--
+    -- 金額計算処理(洗替用)
+    -- ｢差額｣｢合計｣｢混載割増金額｣｢ピッキング料｣｢契約運賃｣の算出
     cal_money_proc(
-      in_goods_classe        => ir_xd_ex_data.goods_classe,        -- 商品区分
-      in_mixed_code          => ir_xd_ex_data.mixed_code,          -- 混載区分
--- ##### 20080723 Ver.1.2 内部変更#132対応 START #####
-      in_charged_amount      => ir_xd_ex_data.charged_amount,      -- 請求運賃
--- ##### 20080723 Ver.1.2 内部変更#132対応 END   #####
-      in_shipping_expenses   => ir_xdc_ex_data.shipping_expenses,  -- 運送料
-      in_many_rate           => ir_xd_ex_data.many_rate,           -- 諸料金
-      in_leaf_consolid_add   => ir_xdc_ex_data.leaf_consolid_add,  -- リーフ混載割増
-      in_consolid_qty        => ir_xd_ex_data.consolid_qty,        -- 混載数
-      in_qty1                => ir_xd_ex_data.qty1,                -- 個数1
-      in_bill_picking_amount => ir_xd_ex_data.bill_picking_amount, -- 請求ピッキング単価
+      ir_xd_ex_data          => ir_xd_ex_data,                  -- 洗替運賃ヘッダーアドオンレコード
+      ir_xdc_ex_data         => ir_xdc_ex_data,                 -- 洗替運賃アドオンマスタレコード
       on_balance             => ln_balance,                     -- 差額
       on_total_amount        => ln_total_amount,                -- 合計
       on_consolid_surcharge  => ln_consolid_surcharge,          -- 混載割増金額
       on_picking_charge      => ln_picking_charge,              -- ピッキング料
+      on_contract_rate       => ln_contract_rate,               -- 契約運賃
       ov_errbuf              => lv_errbuf,                      -- エラー・メッセージ
       ov_retcode             => lv_retcode,                     -- リターン・コード
       ov_errmsg              => lv_errmsg);                     -- ユーザー・エラー・メッセージ
---
+-- ##### 20090410 Ver.1.5 本番#432対応 MOD END   #####
     -- 処理結果チェック
     IF (lv_retcode = gv_status_error) THEN
       RAISE global_api_expt;
@@ -2146,7 +2410,10 @@ AS
       gn_ex_cnt := gn_ex_cnt + 1;
 --
       tab_ex_delivery_no(gn_ex_cnt)        := ir_xd_ex_data.delivery_no;        -- 配送No
-      tab_ex_contract_rate(gn_ex_cnt)      := ir_xdc_ex_data.shipping_expenses; -- 契約運賃
+-- ##### 20090410 Ver.1.5 本番#432対応 MOD START #####
+--      tab_ex_contract_rate(gn_ex_cnt)      := ir_xdc_ex_data.shipping_expenses; -- 契約運賃
+      tab_ex_contract_rate(gn_ex_cnt)      := ln_contract_rate;                 -- 契約運賃
+-- ##### 20090410 Ver.1.5 本番#432対応 MOD END   #####
       tab_ex_balance(gn_ex_cnt)            := ln_balance;                       -- 差額
       tab_ex_total_amount(gn_ex_cnt)       := ln_total_amount;                  -- 合計
       tab_ex_consolid_surcharge(gn_ex_cnt) := ln_consolid_surcharge;            -- 混載割増金額
@@ -2252,6 +2519,90 @@ AS
 --
   END upd_xd_exchange_proc;
 --
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD START ##### 洗替処理が完了したので、マスタの変更フラグをOFFにする。
+  /**********************************************************************************
+   * Procedure Name   : upd_xdc_mst_proc
+   * Description      : 運賃マスタ・運賃用運送業者マスタ更新処理(D-15)
+   ***********************************************************************************/
+  PROCEDURE upd_xdc_mst_proc(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_xdc_mst_proc'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 運賃用運送業者アドオンマスタ請求変更フラグをOFFに変更
+    UPDATE xxwip_delivery_company xdco                             -- 運賃用運送業者アドオンマスタ
+    SET    xdco.bill_change_flg        = gv_change_flg_off         -- 請求変更フラグ:OFF
+          ,xdco.last_updated_by        = gn_user_id                -- 最終更新者
+          ,xdco.last_update_date       = gd_sysdate                -- 最終更新日
+          ,xdco.last_update_login      = gn_login_id               -- 最終更新ログイン
+          ,xdco.request_id             = gn_conc_request_id        -- 要求ID
+          ,xdco.program_application_id = gn_prog_appl_id           -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+          ,xdco.program_id             = gn_conc_program_id        -- コンカレント・プログラムID
+          ,xdco.program_update_date    = gd_sysdate                -- プログラム更新日
+    WHERE  xdco.bill_change_flg        = gv_change_flg_on          -- 請求変更フラグ:ON
+    ;
+--
+    -- 運賃アドオンマスタ変更フラグをOFFに変更
+    UPDATE xxwip_delivery_charges xdch                             -- 運賃アドオンマスタ
+    SET    xdch.change_flg             = gv_change_flg_off         -- 変更フラグ:OFF
+          ,xdch.last_updated_by        = gn_user_id                -- 最終更新者
+          ,xdch.last_update_date       = gd_sysdate                -- 最終更新日
+          ,xdch.last_update_login      = gn_login_id               -- 最終更新ログイン
+          ,xdch.request_id             = gn_conc_request_id        -- 要求ID
+          ,xdch.program_application_id = gn_prog_appl_id           -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+          ,xdch.program_id             = gn_conc_program_id        -- コンカレント・プログラムID
+          ,xdch.program_update_date    = gd_sysdate                -- プログラム更新日
+    WHERE  xdch.change_flg             = gv_change_flg_on          -- 変更フラグ:ON
+    AND    xdch.p_b_classe             = gv_paycharge_type_2       -- 支払請求区分:請求
+    ;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END upd_xdc_mst_proc;
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD END   #####
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -2344,6 +2695,9 @@ AS
     -- ロック取得(D-4)
     -- =========================================
     get_lock_xd(
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD START #####
+      iv_exchange_type,  -- 洗替区分
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD END   #####
       lv_errbuf,         -- エラー・メッセージ           --# 固定 #
       lv_retcode,        -- リターン・コード             --# 固定 #
       lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2466,18 +2820,27 @@ AS
             RAISE global_process_expt;
           END IF;
 --
-          -- =========================================
-          -- 洗替運賃ヘッダアドオンPL/SQL表格納(D-13)
-          -- =========================================
-          set_xd_exchange_data(
-            gt_extraction_ex_xd(ln_index),   -- 洗替運賃ヘッダーアドオンレコード
-            gr_extraction_ex_xdc,            -- 洗替運賃アドオンマスタレコード
-            lv_errbuf,                       -- エラー・メッセージ           --# 固定 #
-            lv_retcode,                      -- リターン・コード             --# 固定 #
-            lv_errmsg);                      -- ユーザー・エラー・メッセージ --# 固定 #
-          IF (lv_retcode = gv_status_error) THEN
-            RAISE global_process_expt;
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD START ##### マスタの変更区分がONの場合のみ、更新。
+          IF ( (gt_extraction_ex_xd(ln_index).bill_change_flg = gv_change_flg_on)   -- 運賃用運送業者マスタ 請求変更フラグがON
+            OR (gr_extraction_ex_xdc.shipping_change_flg      = gv_change_flg_on)   -- 運賃マスタ(運送費) 変更フラグがON
+            OR (gr_extraction_ex_xdc.leaf_change_flg          = gv_change_flg_on) ) -- 運賃マスタ(リーフ混載割増) 変更フラグがON
+          THEN
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD END   #####
+            -- =========================================
+            -- 洗替運賃ヘッダアドオンPL/SQL表格納(D-13)
+            -- =========================================
+            set_xd_exchange_data(
+              gt_extraction_ex_xd(ln_index),   -- 洗替運賃ヘッダーアドオンレコード
+              gr_extraction_ex_xdc,            -- 洗替運賃アドオンマスタレコード
+              lv_errbuf,                       -- エラー・メッセージ           --# 固定 #
+              lv_retcode,                      -- リターン・コード             --# 固定 #
+              lv_errmsg);                      -- ユーザー・エラー・メッセージ --# 固定 #
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD START #####
           END IF;
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD END   #####
 --
         END LOOP set_ex_xd_tab_loop;
 --
@@ -2492,6 +2855,18 @@ AS
           RAISE global_process_expt;
         END IF;
       END IF;
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD START ##### 洗替処理が完了したので、マスタの変更フラグをOFFにする。
+      -- =========================================
+      -- 運賃マスタ・運賃用運送業者マスタ更新処理(D-15)
+      -- =========================================
+      upd_xdc_mst_proc(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+-- ##### 20090410 Ver.1.5 本番#432対応 ADD END   #####
 --
     END IF;
 --

@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -16,6 +16,7 @@ AS
  *  chk_param_proc         パラメータチェック処理(A-1)
  *  get_init               関連データ取得(A-2) 運賃用締日情報取得(A-3)
  *  get_deliv_lock         ロック取得(A-4)
+ *  get_delivmst_lock      ロック取得(運賃関連マスタ)   2009/04/07 add
  *
  *  get_order              受注実績情報抽出(A-5)
  *  get_order_other        受注関連情報抽出
@@ -84,6 +85,7 @@ AS
  *
  *  update_exch_deliv_head 洗替運賃アドオンマスタ一括更新(A-47)
  *  delete_exch_deliv_head 洗替運賃アドオンマスタ一括削除(A-48)
+ *  delete_exch_deliv_mst  洗替運賃マスタ一括更新    2009/04/07 add
  *
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
@@ -115,6 +117,7 @@ AS
  *  2009/01/23    1.20 Oracle 野村       本番#1074対応
  *  2009/02/03    1.21 Oracle 野村       本番#1017対応
  *  2009/02/09    1.22 Oracle 野村       本番#1017対応
+ *  2009/04/07    1.23 Oracle 野村       本番#432対応
  *
  *****************************************************************************************/
 --
@@ -203,6 +206,11 @@ AS
   gv_item_mst2_v              CONSTANT VARCHAR2(50) := 'OPM品目情報VIEW2';
   gv_order_headers_all        CONSTANT VARCHAR2(50) := '受注明細アドオン';
   gv_mov_req_instr_lines      CONSTANT VARCHAR2(50) := '移動依頼/指示明細アドオン';
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+  gv_delivery_company         CONSTANT VARCHAR2(50) := '運賃用運送業者マスタ';
+  gv_delivery_distance        CONSTANT VARCHAR2(50) := '配送距離マスタ';
+  gv_delivery_charges         CONSTANT VARCHAR2(50) := '運賃マスタ';
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
 --
   -- トークン
   gv_tkn_parameter            CONSTANT VARCHAR2(10) := 'PARAMETER';
@@ -852,6 +860,14 @@ AS
     , qty                    xxwip_delivery_lines.qty%TYPE                       -- 個数
     , delivery_weight        xxwip_delivery_lines.delivery_weight%TYPE           -- 重量
     , mixed_code             xxwip_delivery_lines.mixed_code%TYPE                -- 混載区分
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+    , judgement_date         xxwip_delivery_lines.judgement_date%TYPE            -- 判断日
+    , distance               xxwip_delivery_lines.distance%TYPE                  -- 距離
+    , xdl_actual_distance    xxwip_delivery_lines.actual_distance%TYPE           -- 実際距離
+    , dellivary_classe       xxwip_delivery_lines.dellivary_classe%TYPE          -- 配送区分
+    , distance_chk           VARCHAR2(1)                                         -- 配送距離フラグ
+    , company_chk            VARCHAR2(1)                                         -- 運送業者フラグ
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
     , post_distance          xxwip_delivery_distance.post_distance%TYPE          -- 車立距離
     , small_distance         xxwip_delivery_distance.small_distance%TYPE         -- 小口距離
     , consolid_add_distance  xxwip_delivery_distance.consolid_add_distance%TYPE  -- 混載距離
@@ -874,6 +890,21 @@ AS
     , distance            xxwip_delivery_lines.distance%TYPE          -- 最長距離（最大）
     , actual_distance     xxwip_delivery_lines.actual_distance%TYPE   -- 実際距離
     , delivery_weight     xxwip_delivery_lines.delivery_weight%TYPE   -- 重量（合計）
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+    , invoice_no               xxwip_delivery_lines.invoice_no%TYPE               -- 送り状No
+    , payments_judgment_classe xxwip_delivery_lines.payments_judgment_classe%TYPE -- 支払判断区分
+    , ship_date                xxwip_delivery_lines.ship_date%TYPE                -- 出庫日
+    , arrival_date             xxwip_delivery_lines.arrival_date%TYPE             -- 入庫日
+    , judgement_date           xxwip_delivery_lines.judgement_date%TYPE           -- 判断日
+    , mixed_code               xxwip_delivery_lines.mixed_code%TYPE               -- 混載区分
+    , dellivary_classe         xxwip_delivery_lines.dellivary_classe%TYPE         -- 配送区分
+    , whs_code                 xxwip_delivery_lines.whs_code%TYPE                 -- 出庫倉庫コード
+    , code_division            xxwip_delivery_lines.code_division%TYPE            -- 配送先コード区分
+    , shipping_address_code    xxwip_delivery_lines.shipping_address_code%TYPE    -- 配送先コード
+    , order_type               xxwip_delivery_lines.order_type%TYPE               -- タイプ
+    , outside_contract         xxwip_delivery_lines.outside_contract%TYPE         -- 契約外区分
+    , transfer_location        xxwip_delivery_lines.transfer_location%TYPE        -- 振替先
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
   );
   TYPE exch_delivno_line_tbl IS TABLE OF exch_delivno_line_rec INDEX BY PLS_INTEGER;
   gt_exch_delivno_line_tab   exch_delivno_line_tbl;
@@ -883,8 +914,25 @@ AS
   ue_head_distance_tab           head_distance_type;        -- 最長距離
   ue_head_deliv_wght1_tab        head_deliv_wght1_type;     -- 重量１
   ue_head_actual_ditnc_tab       head_actual_ditnc_type;    -- 最長実際距離
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+  ue_head_invoice_no_tab         head_invoice_no_type;      -- 送り状No
+  ue_head_pay_judg_cls_tab       head_pay_judg_cls_type;    -- 支払判断区分
+  ue_head_ship_date_tab          head_ship_date_type;       -- 出庫日
+  ue_head_arrival_date_tab       head_arrival_date_type;    -- 到着日
+  ue_head_judg_date_tab          head_judg_date_type;       -- 判断日
+  ue_head_mixed_cd_tab           head_mixed_cd_type;        -- 混載区分
+  ue_head_deliv_cls_tab          head_deliv_cls_type;       -- 配送区分
+  ue_head_whs_cd_tab             head_whs_cd_type;          -- 代表出庫倉庫コード
+  ue_head_cd_dvsn_tab            head_cd_dvsn_type;         -- 代表配送先コード区分
+  ue_head_ship_addr_cd_tab       head_ship_addr_cd_type;    -- 代表配送先コード
+  ue_head_order_type_tab         head_order_type_type;      -- 代表タイプ
+  ue_head_out_cont_tab           head_out_cont_type;        -- 契約外区分
+  ue_head_trans_lcton_tab        head_trans_lcton_type;     -- 振替先
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
 --
   -- 洗替時 運賃ヘッダアドオン 抽出項目
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+/*****
   TYPE exch_deliv_rec IS RECORD(
       delivery_company_code xxwip_deliverys.delivery_company_code%TYPE  -- 運送業者
     , delivery_no           xxwip_deliverys.delivery_no%TYPE            -- 配送No
@@ -914,6 +962,49 @@ AS
     , dispatch_type         xxwip_deliverys.dispatch_type%TYPE          -- 配車タイプ
 --2008/08/04 Add ↑
   );
+*****/
+  -- 洗替時 運賃ヘッダアドオン 抽出項目
+  TYPE exch_deliv_rec IS RECORD(
+      delivery_company_code xxwip_deliverys.delivery_company_code%TYPE  -- 運送業者
+    , delivery_no           xxwip_deliverys.delivery_no%TYPE            -- 配送No
+    , p_b_classe            xxwip_deliverys.p_b_classe%TYPE             -- 支払請求区分
+    , ship_date             xxwip_deliverys.ship_date%TYPE              -- 出庫日
+    , judgement_date        xxwip_deliverys.judgement_date%TYPE         -- 判断日
+    , goods_classe          xxwip_deliverys.goods_classe%TYPE           -- 商品区分
+    , mixed_code            xxwip_deliverys.mixed_code%TYPE             -- 混載区分
+    , charged_amount        xxwip_deliverys.charged_amount%TYPE         -- 請求運賃
+    , many_rate             xxwip_deliverys.many_rate%TYPE              -- 諸料金
+    , distance              xxwip_deliverys.distance%TYPE               -- 最長距離
+    , delivery_classe       xxwip_deliverys.delivery_classe%TYPE        -- 配送区分
+    , qty1                  xxwip_deliverys.qty1%TYPE                   -- 個数１
+    , delivery_weight1      xxwip_deliverys.delivery_weight1%TYPE       -- 重量１
+    , consolid_surcharge    xxwip_deliverys.consolid_surcharge%TYPE     -- 混載割増金額
+    , consolid_qty          xxwip_deliverys.consolid_qty%TYPE           -- 混載数
+    , output_flag           xxwip_deliverys.output_flag%TYPE            -- 差異区分
+    , defined_flag          xxwip_deliverys.defined_flag%TYPE           -- 支払確定区分
+    , return_flag           xxwip_deliverys.return_flag%TYPE            -- 支払確定戻
+    , actual_distance       xxwip_deliverys.actual_distance%TYPE        -- 最長実際距離
+    , whs_code              xxwip_deliverys.whs_code%TYPE               -- 代表出庫倉庫コード
+    , code_division         xxwip_deliverys.code_division%TYPE          -- 代表配送先コード区分
+    , shipping_address_code xxwip_deliverys.shipping_address_code%TYPE  -- 代表配送先コード
+    , dispatch_type         xxwip_deliverys.dispatch_type%TYPE          -- 配車タイプ
+    , picking_charge        xxwip_deliverys.picking_charge%TYPE         -- 支払ピッキング料
+    , contract_rate         xxwip_deliverys.contract_rate%TYPE          -- 契約運賃
+    , last_update_date      xxwip_deliverys.last_update_date%TYPE       -- 最終更新日
+    , pay_picking_amount    xxwip_delivery_company.pay_picking_amount%TYPE      -- 運送：支払ピッキング単価
+    , pay_change_flg        xxwip_delivery_company.pay_change_flg%TYPE          -- 運送：支払変更フラグ
+    , small_amount_class    xxwsh_ship_method_v.small_amount_class%TYPE         -- 配送区分：小口区分
+    , post_distance         xxwip_delivery_distance.post_distance%TYPE          -- 配送：車立距離
+    , small_distance        xxwip_delivery_distance.small_distance%TYPE         -- 配送：小口距離
+    , consolid_add_distance xxwip_delivery_distance.consolid_add_distance%TYPE  -- 配送：混載距離
+    , dis_actual_distance   xxwip_delivery_distance.actual_distance%TYPE        -- 配送：実際距離
+    , distance_change_flg   xxwip_delivery_distance.change_flg%TYPE             -- 配送：変更フラグ
+    , shipping_expenses     xxwip_delivery_charges.shipping_expenses%TYPE       -- 運賃：運送費
+    , leaf_consolid_add     xxwip_delivery_charges.leaf_consolid_add%TYPE       -- 運賃：リーフ混載割増
+    , charg_shp_change_flg  xxwip_delivery_charges.change_flg%TYPE              -- 運賃：変更フラグ
+    , charg_lrf_change_flg  xxwip_delivery_charges.change_flg%TYPE              -- 運賃：変更フラグ
+  );
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
 --
   TYPE exch_deliv_tbl IS TABLE OF exch_deliv_rec INDEX BY PLS_INTEGER;
   gt_exch_deliv_tab   exch_deliv_tbl;
@@ -1314,6 +1405,160 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END get_deliv_lock;
+--
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+  /**********************************************************************************
+   * Procedure Name   : get_delivmst_lock
+   * Description      : ロック取得(運賃関連マスタ)
+   ***********************************************************************************/
+  PROCEDURE get_delivmst_lock(
+    ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_deliv_lock'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lb_retcd          BOOLEAN;
+--
+    -- *** ローカル・カーソル ***
+    --運賃用運送業者マスタ
+    CURSOR get_xdco_cur
+    IS
+      SELECT  delivery_company_id
+      FROM    xxwip_delivery_company
+      WHERE   pay_change_flg = gv_target_y  -- 支払変更フラグ
+      FOR UPDATE NOWAIT
+      ;
+--
+    -- 配送距離マスタ
+    CURSOR get_xddi_cur
+    IS
+      SELECT  delivery_distance_id
+      FROM    xxwip_delivery_distance
+      WHERE   change_flg = gv_target_y      -- 変更フラグ
+      FOR UPDATE NOWAIT
+      ;
+--
+    -- 運賃マスタ
+    CURSOR get_xdch_cur
+    IS
+      SELECT  delivery_charges_id
+      FROM    xxwip_delivery_charges
+      WHERE   p_b_classe = gv_pay
+      AND     change_flg = gv_target_y      -- 変更フラグ
+      FOR UPDATE NOWAIT
+      ;
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- **************************************************
+    -- *** ロック取得（運賃用運送業者マスタ）
+    -- **************************************************
+      BEGIN
+        <<get_xdco_loop>>
+        FOR loop_cnt IN get_xdco_cur LOOP
+          EXIT;
+        END LOOP get_xdco_loop;
+      EXCEPTION
+        --*** ロック取得エラー ***
+        WHEN lock_expt THEN
+          -- エラーメッセージ取得
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxwip_msg_kbn,
+                                                gv_xxwip_msg_lock_err,
+                                                gv_tkn_table,
+                                                gv_delivery_company);
+          lv_errbuf := lv_errmsg ||gv_msg_part|| SQLERRM;
+          RAISE global_api_expt;
+      END;
+--
+    -- **************************************************
+    -- *** ロック取得（配送距離マスタ）
+    -- **************************************************
+      BEGIN
+        <<get_xddi_loop>>
+        FOR loop_cnt IN get_xddi_cur LOOP
+          EXIT;
+        END LOOP get_xddi_loop;
+      EXCEPTION
+        --*** ロック取得エラー ***
+        WHEN lock_expt THEN
+          -- エラーメッセージ取得
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxwip_msg_kbn,
+                                                gv_xxwip_msg_lock_err,
+                                                gv_tkn_table,
+                                                gv_delivery_distance);
+          lv_errbuf := lv_errmsg ||gv_msg_part|| SQLERRM;
+          RAISE global_api_expt;
+      END;
+--
+    -- **************************************************
+    -- *** ロック取得（運賃マスタ）
+    -- **************************************************
+      BEGIN
+        <<get_xdch_loop>>
+        FOR loop_cnt IN get_xdch_cur LOOP
+          EXIT;
+        END LOOP get_xdch_loop;
+      EXCEPTION
+        --*** ロック取得エラー ***
+        WHEN lock_expt THEN
+          -- エラーメッセージ取得
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxwip_msg_kbn,
+                                                gv_xxwip_msg_lock_err,
+                                                gv_tkn_table,
+                                                gv_delivery_charges);
+          lv_errbuf := lv_errmsg ||gv_msg_part|| SQLERRM;
+          RAISE global_api_expt;
+      END;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_delivmst_lock;
+--
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
 --
   /**********************************************************************************
    * Procedure Name   : get_order
@@ -9060,6 +9305,8 @@ AS
     -- ***************************************
 --
     -- 運賃明細アドオン 抽出
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+/***** 取得SQL変更
     SELECT    xdl.request_no                      -- 依頼No
             , xdl.small_lot_class                 -- リーフ小口区分
             , xdl.goods_classe                    -- 商品区分
@@ -9089,6 +9336,82 @@ AS
     AND   TRUNC(xdl.judgement_date)   >= xdc.start_date_active(+)     -- 運送業者：適用開始日
     AND   TRUNC(xdl.judgement_date)  <= xdc.end_date_active(+)        -- 運送業者：適用終了日
     ORDER BY xdl.request_no;
+*****/
+    SELECT    xdl.request_no                    request_no            -- 依頼No
+            , xdl.small_lot_class               small_lot_class       -- リーフ小口区分
+            , xdl.goods_classe                  goods_classe          -- 商品区分
+            , xdl.weight_capacity_class         weight_capacity_class -- 重量容積区分
+            , xdl.qty                           qty                   -- 個数
+            , xdl.delivery_weight               delivery_weight       -- 重量
+            , xdl.mixed_code                    mixed_code            -- 混載区分
+            , xdl.judgement_date                judgement_date        -- 判断日
+            , xdl.distance                      distance              -- 距離
+            , xdl.actual_distance               xdl_actual_distance   -- 実際距離
+            , xdl.dellivary_classe              dellivary_classe      -- 配送区分
+            , xdd.change_flg                    distance_chk          -- 配送距離フラグ（1:対象あり 0:対象なし）
+            , xdc.pay_change_flg                company_chk           -- 運送業者フラグ（1:対象あり 0:対象なし）
+            , xdd.post_distance                 post_distance         -- 配送距離：車立距離
+            , xdd.small_distance                small_distance        -- 配送距離：小口距離
+            , xdd.consolid_add_distance         consolid_add_distance -- 配送距離：混載距離
+            , xdd.actual_distance               actual_distance       -- 配送距離：実際距離
+            , xdc.small_weight                  small_weight          -- 運送業者：小口重量
+    BULK COLLECT INTO gt_exch_deliv_line_tab
+    FROM
+          (
+            -- *** 運賃明細アドオン－配送距離マスタ ***
+            SELECT  xdl.request_no                        -- 依頼No
+                  , xdl.judgement_date                    -- 判断日
+                  , xdl.goods_classe                      -- 商品区分
+                  , xdl.delivery_company_code             -- 運送業者
+                  , xdl.whs_code                          -- 出庫倉庫
+                  , xdl.code_division                     -- コード区分
+                  , xdl.shipping_address_code             -- 配送先コード
+            FROM  xxwip_delivery_lines        xdl     -- 運賃明細アドオン
+                , xxwip_delivery_distance     xdd     -- 配送距離アドオンマスタ
+            WHERE xdl.judgement_date         >= gd_target_date                -- 判断日 >= 締日
+            AND   xdl.goods_classe            = xdd.goods_classe              -- 配送距離：商品区分
+            AND   xdl.delivery_company_code   = xdd.delivery_company_code     -- 配送距離：運送業者
+            AND   xdl.whs_code                = xdd.origin_shipment           -- 配送距離：出庫倉庫
+            AND   xdl.code_division           = xdd.code_division             -- 配送距離：コード区分
+            AND   xdl.shipping_address_code   = xdd.shipping_address_code     -- 配送距離：配送先コード
+            AND   TRUNC(xdl.judgement_date)  >= xdd.start_date_active         -- 配送距離：適用開始日
+            AND   TRUNC(xdl.judgement_date)  <= xdd.end_date_active           -- 配送距離：適用終了日
+            AND   change_flg                  = gv_target_y                   -- 支払変更フラグ
+            UNION
+            -- *** 運賃明細アドオン－運賃用運送業者マスタ ***
+            SELECT  xdl.request_no                        -- 依頼No
+                  , xdl.judgement_date                    -- 判断日
+                  , xdl.goods_classe                      -- 商品区分
+                  , xdl.delivery_company_code             -- 運送業者
+                  , xdl.whs_code                          -- 出庫倉庫
+                  , xdl.code_division                     -- コード区分
+                  , xdl.shipping_address_code             -- 配送先コード
+            FROM  xxwip_delivery_lines        xdl     -- 運賃明細アドオン
+                , xxwip_delivery_company      xdc     -- 運賃用運送業者アドオンマスタ
+            WHERE xdl.judgement_date         >= gd_target_date                -- 判断日 >= 締日
+            AND   xdl.goods_classe            = xdc.goods_classe              -- 運送業者：商品区分
+            AND   xdl.delivery_company_code   = xdc.delivery_company_code     -- 運送業者：運送業者
+            AND   TRUNC(xdl.judgement_date)  >= xdc.start_date_active         -- 運送業者：適用開始日
+            AND   TRUNC(xdl.judgement_date)  <= xdc.end_date_active           -- 運送業者：適用終了日
+            AND   pay_change_flg              = gv_target_y                   -- 支払変更フラグ
+          ) xd_req
+          , xxwip_delivery_lines        xdl     -- 運賃明細アドオン
+          , xxwip_delivery_company      xdc     -- 運賃用運送業者アドオンマスタ
+          , xxwip_delivery_distance     xdd     -- 配送距離アドオンマスタ
+    WHERE xd_req.request_no              = xdl.request_no                -- 依頼No
+    AND   xd_req.goods_classe            = xdd.goods_classe(+)           -- 配送距離：商品区分
+    AND   xd_req.delivery_company_code   = xdd.delivery_company_code(+)  -- 配送距離：運送業者
+    AND   xd_req.whs_code                = xdd.origin_shipment(+)        -- 配送距離：出庫倉庫
+    AND   xd_req.code_division           = xdd.code_division(+)          -- 配送距離：コード区分
+    AND   xd_req.shipping_address_code   = xdd.shipping_address_code(+)  -- 配送距離：配送先コード
+    AND   TRUNC(xd_req.judgement_date)  >= xdd.start_date_active(+)      -- 配送距離：適用開始日
+    AND   TRUNC(xd_req.judgement_date)  <= xdd.end_date_active(+)        -- 配送距離：適用終了日
+    AND   xd_req.goods_classe            = xdc.goods_classe(+)           -- 運送業者：商品区分
+    AND   xd_req.delivery_company_code   = xdc.delivery_company_code(+)  -- 運送業者：運送業者
+    AND   TRUNC(xd_req.judgement_date)   >= xdc.start_date_active(+)     -- 運送業者：適用開始日
+    AND   TRUNC(xd_req.judgement_date)  <= xdc.end_date_active(+)        -- 運送業者：適用終了日
+    ORDER BY xd_req.request_no;
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
     IF (gv_debug_flg = gv_debug_on) THEN
@@ -9146,6 +9469,9 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+    lr_ship_method_tab        xxwip_common3_pkg.ship_method_rec;        -- 配送区分
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
 --
     -- *** ローカル・カーソル ***
 --
@@ -9174,63 +9500,145 @@ AS
       END IF;
 --<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
 --
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+      -- **************************************************
+      -- ***  配送区分情報取得
+      -- **************************************************
+      xxwip_common3_pkg.get_ship_method(
+        gt_exch_deliv_line_tab(ln_index).dellivary_classe,  -- 配送区分
+        gt_exch_deliv_line_tab(ln_index).judgement_date,    -- 判断日
+        lr_ship_method_tab,
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg);
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
+--
       -- *** 依頼No ***
       ue_line_request_no_tab(ln_index)    := gt_exch_deliv_line_tab(ln_index).request_no ;
 --
       -- *** 距離 ***
-      -- リーフ小口区分 = Y の場合
-      IF (gt_exch_deliv_line_tab(ln_index).small_lot_class = gv_ktg_yes) THEN
-        -- 小口距離を設定
-        ue_line_ditnc_tab(ln_index)  := gt_exch_deliv_line_tab(ln_index).small_distance ;
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+      -- 配送距離マスタが洗替対象の場合
+      IF (gt_exch_deliv_line_tab(ln_index).distance_chk = gv_target_y) THEN
 --
-      -- 商品区分 ＝ リーフ   又は 
-      -- 商品区分 ＝ ドリンク 且つ、混載区分 ＜＞ 混載 の場合
-      ELSIF (
-                (gt_exch_deliv_line_tab(ln_index).goods_classe = gv_prod_class_lef)
-              OR    
-                ((gt_exch_deliv_line_tab(ln_index).goods_classe = gv_prod_class_drk)
-                AND (gt_exch_deliv_line_tab(ln_index).mixed_code <> gv_target_y))
-            ) THEN
-        -- 車立距離を設定
-        ue_line_ditnc_tab(ln_index)  := gt_exch_deliv_line_tab(ln_index).post_distance ;
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：%%% 配送距離マスタ 洗替対象 %%%：' || TO_CHAR(ln_index));
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
 --
-      -- 上記以外の場合
-      ELSE
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
+        -- リーフ小口区分 = Y の場合
+        IF (gt_exch_deliv_line_tab(ln_index).small_lot_class = gv_ktg_yes) THEN
+          -- 小口距離を設定
+          ue_line_ditnc_tab(ln_index)  := gt_exch_deliv_line_tab(ln_index).small_distance ;
+--
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+/***** 条件変更の為、コメントアウト
+        -- 商品区分 ＝ リーフ   又は 
+        -- 商品区分 ＝ ドリンク 且つ、混載区分 ＜＞ 混載 の場合
+        ELSIF (
+                  (gt_exch_deliv_line_tab(ln_index).goods_classe = gv_prod_class_lef)
+                OR    
+                  ((gt_exch_deliv_line_tab(ln_index).goods_classe = gv_prod_class_drk)
+                  AND (gt_exch_deliv_line_tab(ln_index).mixed_code <> gv_target_y))
+              ) THEN
+          -- 車立距離を設定
+          ue_line_ditnc_tab(ln_index)  := gt_exch_deliv_line_tab(ln_index).post_distance ;
+--
+        -- 上記以外の場合
+        ELSE
 --
 -- ##### 20081027 Ver.1.10 統合#436対応 START #####
         -- 車立距離（明細は混載割増距離を加算しない）
 --        ue_line_ditnc_tab(ln_index)  := gt_exch_deliv_line_tab(ln_index).post_distance +
 --                                        gt_exch_deliv_line_tab(ln_index).consolid_add_distance;
-        ue_line_ditnc_tab(ln_index)  := gt_exch_deliv_line_tab(ln_index).post_distance;
+          ue_line_ditnc_tab(ln_index)  := gt_exch_deliv_line_tab(ln_index).post_distance;
 -- ##### 20081027 Ver.1.10 統合#436対応 END   #####
 --
+*****/
+        -- 上記以外の場合
+        ELSE
+            -- 小口区分＝「小口」の場合
+            IF (lr_ship_method_tab.small_amount_class = gv_small_sum_yes) THEN
+              -- 小口距離を設定
+              ue_line_ditnc_tab(ln_index) := gt_exch_deliv_line_tab(ln_index).small_distance;
+--
+            -- 小口区分＝「車立」の場合
+            ELSE
+              -- 車立て距離を設定
+              ue_line_ditnc_tab(ln_index) := gt_exch_deliv_line_tab(ln_index).post_distance;
+            END IF;
+--
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
+        END IF;
+--
+        -- *** 実際距離 ***
+        ue_line_actual_dstnc_tab(ln_index)  := gt_exch_deliv_line_tab(ln_index).actual_distance ;
+--
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+      -- 配送距離マスタが洗替対象外の場合、設定されているそのままの値を設定
+      ELSE
+        -- 距離
+        ue_line_ditnc_tab(ln_index)         := gt_exch_deliv_line_tab(ln_index).distance;
+        -- 実際距離
+        ue_line_actual_dstnc_tab(ln_index)  := gt_exch_deliv_line_tab(ln_index).xdl_actual_distance;
+--
       END IF;
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
 --
-      -- *** 実際距離 ***
-      ue_line_actual_dstnc_tab(ln_index)  := gt_exch_deliv_line_tab(ln_index).actual_distance ;
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+      -- 運送業者マスタが洗替対象の場合
+      IF (gt_exch_deliv_line_tab(ln_index).company_chk = gv_target_y) THEN
 --
-      -- *** 重量 ***
-      -- リーフ小口区分 = Y 、且つ、重量容積区分=容積 の場合
-      IF (gt_exch_deliv_line_tab(ln_index).small_lot_class = gv_ktg_yes) THEN
-        -- 個数 × 小口重量
-        ue_line_deliv_weight_tab(ln_index) := gt_exch_deliv_line_tab(ln_index).qty *
-                                              gt_exch_deliv_line_tab(ln_index).small_weight;
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：%%% 運送業者マスタ 洗替対象 %%%：' || TO_CHAR(ln_index));
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
+        -- *** 重量 ***
+        -- リーフ小口区分 = Y 、且つ、重量容積区分=容積 の場合
+        IF (gt_exch_deliv_line_tab(ln_index).small_lot_class = gv_ktg_yes) THEN
+          -- 個数 × 小口重量
+          ue_line_deliv_weight_tab(ln_index) := gt_exch_deliv_line_tab(ln_index).qty *
+                                                gt_exch_deliv_line_tab(ln_index).small_weight;
+        ELSE
+          -- 重量
+          ue_line_deliv_weight_tab(ln_index) := gt_exch_deliv_line_tab(ln_index).delivery_weight;
+        END IF;
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+      -- 運送業者マスタが洗替対象外の場合、設定されているそのままの値を設定
       ELSE
         -- 重量
         ue_line_deliv_weight_tab(ln_index) := gt_exch_deliv_line_tab(ln_index).delivery_weight;
       END IF;
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
       IF (gv_debug_flg = gv_debug_on) THEN
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：リーフ小口区分：' || gt_exch_deliv_line_tab(ln_index).small_lot_class);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：混載区分      ：' || gt_exch_deliv_line_tab(ln_index).mixed_code);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：小口距離：' || TO_CHAR(gt_exch_deliv_line_tab(ln_index).small_distance));
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：車立距離：' || TO_CHAR(gt_exch_deliv_line_tab(ln_index).post_distance));
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：混載距離：' || TO_CHAR(gt_exch_deliv_line_tab(ln_index).consolid_add_distance));
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：実際距離：' || TO_CHAR(gt_exch_deliv_line_tab(ln_index).actual_distance));
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：個数      ：' || TO_CHAR(gt_exch_deliv_line_tab(ln_index).qty));
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：小口重量  ：' || TO_CHAR(gt_exch_deliv_line_tab(ln_index).small_weight));
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：重量      ：' || TO_CHAR(gt_exch_deliv_line_tab(ln_index).delivery_weight));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：依頼No        ：' || gt_exch_deliv_line_tab(ln_index).request_no           );
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：リーフ小口区分：' || gt_exch_deliv_line_tab(ln_index).small_lot_class      );
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：商品区分      ：' || gt_exch_deliv_line_tab(ln_index).goods_classe         );
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：重量容積区分  ：' || gt_exch_deliv_line_tab(ln_index).weight_capacity_class);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：個数          ：' || gt_exch_deliv_line_tab(ln_index).qty                  );
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：重量          ：' || gt_exch_deliv_line_tab(ln_index).delivery_weight      );
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：混載区分      ：' || gt_exch_deliv_line_tab(ln_index).mixed_code           );
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：距離          ：' || gt_exch_deliv_line_tab(ln_index). distance            );
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：実際距離      ：' || gt_exch_deliv_line_tab(ln_index).xdl_actual_distance  );
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：配送距離フラグ：' || gt_exch_deliv_line_tab(ln_index).distance_chk         );
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：運送業者フラグ：' || gt_exch_deliv_line_tab(ln_index).company_chk          );
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：配：車立距離  ：' || gt_exch_deliv_line_tab(ln_index).post_distance        );
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：配：小口距離  ：' || gt_exch_deliv_line_tab(ln_index).small_distance       );
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：配：混載距離  ：' || gt_exch_deliv_line_tab(ln_index).consolid_add_distance);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：配：実際距離  ：' || gt_exch_deliv_line_tab(ln_index).actual_distance      );
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：運：小口重量  ：' || gt_exch_deliv_line_tab(ln_index).small_weight         );
       END IF;
 --<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
 --
@@ -9405,9 +9813,32 @@ AS
             , MAX(xdl.distance)           -- 最長距離
             , NULL                        -- 実際距離
             , SUM(xdl.delivery_weight)    -- 重量
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+            , NULL                        -- 送り状No
+            , NULL                        -- 支払判断区分
+            , NULL                        -- 出庫日
+            , NULL                        -- 入庫日
+            , NULL                        -- 判断日
+            , NULL                        -- 混載区分
+            , NULL                        -- 配送区分
+            , NULL                        -- 出庫倉庫コード
+            , NULL                        -- 配送先コード区分
+            , NULL                        -- 配送先コード
+            , NULL                        -- タイプ
+            , NULL                        -- 契約外区分
+            , NULL                        -- 振替先
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
       BULK COLLECT INTO gt_exch_delivno_line_tab
       FROM   xxwip_delivery_lines    xdl                -- 運賃明細アドオン
       WHERE  xdl.judgement_date >= gd_target_date       -- 判断日 >= 締め日
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+      -- 明細の洗い替え処理で対象となった依頼Noのみを本処理の対象とする
+      AND    EXISTS (SELECT 'x'
+                     FROM   xxwip_delivery_lines xdl_ex
+                     WHERE  xdl_ex.delivery_no      = xdl.delivery_no -- 配送No
+                     AND    xdl_ex.last_update_date = gd_sysdate      -- 最終更新日（明細洗替時に更新したもの）
+                    )
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
       GROUP BY xdl.delivery_no                          -- 配送No（集約）
       ORDER BY xdl.delivery_no;                         -- 配送No（順序）
     EXCEPTION
@@ -9527,10 +9958,55 @@ AS
 --      -- 最長距離と等しい運賃明細アドオンの実際距離取得
         -- 同一レコードが存在する場合は
         SELECT  max_deliv_line.actual_distance                      -- 実際距離
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+              , max_deliv_line.invoice_no                           -- 送り状No
+              , max_deliv_line.payments_judgment_classe             -- 支払判断区分
+              , max_deliv_line.ship_date                            -- 出庫日
+              , max_deliv_line.arrival_date                         -- 入庫日
+              , max_deliv_line.judgement_date                       -- 判断日
+              , max_deliv_line.mixed_code                           -- 混載区分
+              , max_deliv_line.dellivary_classe                     -- 配送区分
+              , max_deliv_line.whs_code                             -- 出庫倉庫コード
+              , max_deliv_line.code_division                        -- 配送先コード区分
+              , max_deliv_line.shipping_address_code                -- 配送先コード
+              , max_deliv_line.order_type                           -- タイプ
+              , max_deliv_line.outside_contract                     -- 契約外区分
+              , max_deliv_line.transfer_location                    -- 振替先
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
         INTO    gt_exch_delivno_line_tab(ln_index).actual_distance
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+              , gt_exch_delivno_line_tab(ln_index).invoice_no               -- 送り状No
+              , gt_exch_delivno_line_tab(ln_index).payments_judgment_classe -- 支払判断区分
+              , gt_exch_delivno_line_tab(ln_index).ship_date                -- 出庫日
+              , gt_exch_delivno_line_tab(ln_index).arrival_date             -- 入庫日
+              , gt_exch_delivno_line_tab(ln_index).judgement_date           -- 判断日
+              , gt_exch_delivno_line_tab(ln_index).mixed_code               -- 混載区分
+              , gt_exch_delivno_line_tab(ln_index).dellivary_classe         -- 配送区分
+              , gt_exch_delivno_line_tab(ln_index).whs_code                 -- 出庫倉庫コード
+              , gt_exch_delivno_line_tab(ln_index).code_division            -- 配送先コード区分
+              , gt_exch_delivno_line_tab(ln_index).shipping_address_code    -- 配送先コード
+              , gt_exch_delivno_line_tab(ln_index).order_type               -- タイプ
+              , gt_exch_delivno_line_tab(ln_index).outside_contract         -- 契約外区分
+              , gt_exch_delivno_line_tab(ln_index).transfer_location        -- 振替先
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
         FROM
           (
-            SELECT  xdl.actual_distance                                               -- 実際距離
+            SELECT  xdl.actual_distance           -- 実際距離
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+                  , xdl.invoice_no                -- 送り状No
+                  , xdl.payments_judgment_classe  -- 支払判断区分
+                  , xdl.ship_date                 -- 出庫日
+                  , xdl.arrival_date              -- 入庫日
+                  , xdl.judgement_date            -- 判断日
+                  , xdl.mixed_code                -- 混載区分
+                  , xdl.dellivary_classe          -- 配送区分
+                  , xdl.whs_code                  -- 出庫倉庫コード
+                  , xdl.code_division             -- 配送先コード区分
+                  , xdl.shipping_address_code     -- 配送先コード
+                  , xdl.order_type                -- タイプ
+                  , xdl.outside_contract          -- 契約外区分
+                  , xdl.transfer_location         -- 振替先
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
             FROM    xxwip_delivery_lines    xdl                                       -- 運賃明細アドオン
             WHERE   xdl.delivery_no = gt_exch_delivno_line_tab(ln_index).delivery_no  -- 配送No
             AND     xdl.distance    = gt_exch_delivno_line_tab(ln_index).distance     -- 距離
@@ -9646,13 +10122,55 @@ AS
       -- 最長実際距離
       ue_head_actual_ditnc_tab(ln_index)  := gt_exch_delivno_line_tab(ln_index).actual_distance;
 --
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+      -- 送り状No
+      ue_head_invoice_no_tab(ln_index)    := gt_exch_delivno_line_tab(ln_index).invoice_no;
+      -- 支払判断区分
+      ue_head_pay_judg_cls_tab(ln_index)  := gt_exch_delivno_line_tab(ln_index).payments_judgment_classe;
+      -- 出庫日
+      ue_head_ship_date_tab(ln_index)     := gt_exch_delivno_line_tab(ln_index).ship_date;
+      -- 入庫日
+      ue_head_arrival_date_tab(ln_index)  := gt_exch_delivno_line_tab(ln_index).arrival_date;
+      -- 判断日
+      ue_head_judg_date_tab(ln_index)     := gt_exch_delivno_line_tab(ln_index).judgement_date;
+      -- 混載区分
+      ue_head_mixed_cd_tab(ln_index)      := gt_exch_delivno_line_tab(ln_index).mixed_code;
+      -- 配送区分
+      ue_head_deliv_cls_tab(ln_index)     := gt_exch_delivno_line_tab(ln_index).dellivary_classe;
+      -- 出庫倉庫コード
+      ue_head_whs_cd_tab(ln_index)        := gt_exch_delivno_line_tab(ln_index).whs_code;
+      -- 配送先コード区分
+      ue_head_cd_dvsn_tab(ln_index)       := gt_exch_delivno_line_tab(ln_index).code_division;
+      -- 配送先コード
+      ue_head_ship_addr_cd_tab(ln_index)  := gt_exch_delivno_line_tab(ln_index).shipping_address_code;
+      -- タイプ
+      ue_head_order_type_tab(ln_index)    := gt_exch_delivno_line_tab(ln_index).order_type;
+      -- 契約外区分
+      ue_head_out_cont_tab(ln_index)      := gt_exch_delivno_line_tab(ln_index).outside_contract;
+      -- 振替先
+      ue_head_trans_lcton_tab(ln_index)   := gt_exch_delivno_line_tab(ln_index).transfer_location;
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
+--
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
       IF (gv_debug_flg = gv_debug_on) THEN
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：%%%%%%%%%% 洗替運賃ヘッダアドオン明細項目 %%%%%%%%%%：' || TO_CHAR(ln_index));
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：配送No  ：' || gt_exch_delivno_line_tab(ln_index).delivery_no);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：距離    ：' || gt_exch_delivno_line_tab(ln_index).distance);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：実際距離：' || gt_exch_delivno_line_tab(ln_index).actual_distance);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：重量    ：' || gt_exch_delivno_line_tab(ln_index).delivery_weight);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：配送No          ：' || gt_exch_delivno_line_tab(ln_index).delivery_no);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：距離            ：' || gt_exch_delivno_line_tab(ln_index).distance);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：実際距離        ：' || gt_exch_delivno_line_tab(ln_index).actual_distance);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：重量            ：' || gt_exch_delivno_line_tab(ln_index).delivery_weight);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：送り状No        ：' || gt_exch_delivno_line_tab(ln_index).invoice_no);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：支払判断区分    ：' || gt_exch_delivno_line_tab(ln_index).payments_judgment_classe );
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：出庫日          ：' || gt_exch_delivno_line_tab(ln_index).ship_date);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：入庫日          ：' || gt_exch_delivno_line_tab(ln_index).arrival_date);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：判断日          ：' || gt_exch_delivno_line_tab(ln_index).judgement_date);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：混載区分        ：' || gt_exch_delivno_line_tab(ln_index).mixed_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：配送区分        ：' || gt_exch_delivno_line_tab(ln_index).dellivary_classe);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：出庫倉庫コード  ：' || gt_exch_delivno_line_tab(ln_index).whs_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：配送先コード区分：' || gt_exch_delivno_line_tab(ln_index).code_division);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：配送先コード    ：' || gt_exch_delivno_line_tab(ln_index).shipping_address_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：タイプ          ：' || gt_exch_delivno_line_tab(ln_index).order_type);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：契約外区分      ：' || gt_exch_delivno_line_tab(ln_index).outside_contract);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：振替先          ：' || gt_exch_delivno_line_tab(ln_index).transfer_location);
       END IF;
 --<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
 --
@@ -9734,6 +10252,21 @@ AS
       SET     distance                  = ue_head_distance_tab(ln_index)       -- 最長距離
             , delivery_weight1          = ue_head_deliv_wght1_tab(ln_index)    -- 重量１
             , actual_distance           = ue_head_actual_ditnc_tab(ln_index)   -- 最長実際距離
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+            , invoice_no                = ue_head_invoice_no_tab(ln_index)     -- 送り状No
+            , payments_judgment_classe  = ue_head_pay_judg_cls_tab(ln_index)   -- 支払判断区分
+            , ship_date                 = ue_head_ship_date_tab(ln_index)      -- 出庫日
+            , arrival_date              = ue_head_arrival_date_tab(ln_index)   -- 入庫日
+            , judgement_date            = ue_head_judg_date_tab(ln_index)      -- 判断日
+            , mixed_code                = ue_head_mixed_cd_tab(ln_index)       -- 混載区分
+            , delivery_classe           = ue_head_deliv_cls_tab(ln_index)      -- 配送区分
+            , whs_code                  = ue_head_whs_cd_tab(ln_index)         -- 出庫倉庫コード
+            , code_division             = ue_head_cd_dvsn_tab(ln_index)        -- 配送先コード区分
+            , shipping_address_code     = ue_head_ship_addr_cd_tab(ln_index)   -- 配送先コード
+            , order_type                = ue_head_order_type_tab(ln_index)     -- タイプ
+            , outside_contract          = ue_head_out_cont_tab(ln_index)       -- 契約外区分
+            , transfer_location         = ue_head_trans_lcton_tab(ln_index)    -- 振替先
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
             , last_updated_by           = gn_user_id                  -- 最終更新者
             , last_update_date          = gd_sysdate                  -- 最終更新日
             , last_update_login         = gn_login_id                 -- 最終更新ログイン
@@ -9812,6 +10345,8 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+/***** SQL見直し
     -- 運賃ヘッダアドオン 抽出
     SELECT    xd.delivery_company_code  -- 運送業者
             , xd.delivery_no            -- 配送No
@@ -9848,11 +10383,11 @@ AS
 -- ##### 20080717 Ver.1.5 変更要求96,98 START #####
 --    AND   xd.goods_classe IS NOT NULL                 -- 商品区分
 -- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
-/***** 伝票なし配車は全て再計算対象とする
+***** 伝票なし配車は全て再計算対象とする
     AND   xd.dispatch_type          IN (gv_car_normal, gv_carcan_target_y)  -- 配車タイプ
                                                                             --   1：通常配車
                                                                             --   2：伝票なし配車（リーフ小口）
-*****/
+*****
 -- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
 -- ##### 20080717 Ver.1.5 変更要求96,98 END   #####
     AND   xd.goods_classe           = xdec.goods_classe(+)          -- 商品区分
@@ -9860,6 +10395,53 @@ AS
     AND   TRUNC(xd.judgement_date) >= xdec.start_date_active(+)     -- 適用開始日
     AND   TRUNC(xd.judgement_date) <= xdec.end_date_active(+)       -- 適用終了日
     ORDER BY delivery_no;
+*****/
+    -- 運賃ヘッダアドオン 抽出
+    SELECT    xd.delivery_company_code  -- 運送業者
+            , xd.delivery_no            -- 配送No
+            , xd.p_b_classe             -- 支払請求区分
+            , xd.ship_date              -- 出庫日
+            , xd.judgement_date         -- 判断日
+            , xd.goods_classe           -- 商品区分
+            , xd.mixed_code             -- 混載区分
+            , xd.charged_amount         -- 請求運賃
+            , xd.many_rate              -- 諸料金
+            , xd.distance               -- 最長距離
+            , xd.delivery_classe        -- 配送区分
+            , xd.qty1                   -- 個数１
+            , xd.delivery_weight1       -- 重量１
+            , xd.consolid_surcharge     -- 混載割増金額
+            , xd.consolid_qty           -- 混載数
+            , xd.output_flag            -- 差異区分
+            , xd.defined_flag           -- 支払確定区分
+            , xd.return_flag            -- 支払確定戻
+            , xd.actual_distance        -- 最長実際距離
+            , xd.whs_code               -- 代表出庫倉庫コード
+            , xd.code_division          -- 代表配送先コード区分
+            , xd.shipping_address_code  -- 代表配送先コード
+            , xd.dispatch_type          -- 配車タイプ
+            , xd.picking_charge         -- 支払ピッキング料
+            , xd.contract_rate          -- 契約運賃
+            , xd.last_update_date       -- 最終更新日
+            , NULL                      -- 運送：支払ピッキング単価
+            , NULL                      -- 運送：支払変更フラグ
+            , NULL                      -- 配送区分：小口区分
+            , NULL                      -- 配送：車立距離
+            , NULL                      -- 配送：小口距離
+            , NULL                      -- 配送：混載距離
+            , NULL                      -- 配送：実際距離
+            , NULL                      -- 配送：変更フラグ
+            , NULL                      -- 運賃：運送費
+            , NULL                      -- 運賃：リーフ混載割増
+            , NULL                      -- 運賃：運賃変更フラグ
+            , NULL                      -- 運賃：混載変更フラグ
+    BULK COLLECT INTO gt_exch_deliv_tab
+    FROM  xxwip_deliverys         xd    -- 運賃ヘッダアドオン
+    WHERE xd.p_b_classe = gv_pay                      -- 支払請求区分（支払）
+    AND   xd.judgement_date >= gd_target_date         -- 判断日 >= 締め日
+    ORDER BY delivery_no;
+--
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
     IF (gv_debug_flg = gv_debug_on) THEN
@@ -9921,6 +10503,12 @@ AS
 --2008/08/04 Add ↓
     lr_delivery_distance_tab  xxwip_common3_pkg.delivery_distance_rec;  -- 配送距離
 --2008/08/04 Add ↑
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+    lr_delivery_company_tab   xxwip_common3_pkg.delivery_company_rec;   -- 運賃用運送業者
+    lr_ship_method_tab        xxwip_common3_pkg.ship_method_rec;        -- 配送区分
+--
+    lt_actual_distance        xxwip_delivery_lines.actual_distance%TYPE;-- 最長実際距離
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
 --
     -- *** ローカル・カーソル ***
 --
@@ -9947,6 +10535,48 @@ AS
     <<deliv_loop>>
     FOR ln_index IN  gt_exch_deliv_tab.FIRST.. gt_exch_deliv_tab.LAST LOOP
 --
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+      -- **************************************************
+      -- ***  運賃用運送業者アドオンマスタ抽出
+      -- **************************************************
+      xxwip_common3_pkg.get_delivery_company(
+        gt_exch_deliv_tab(ln_index).goods_classe,           -- 商品区分
+        gt_exch_deliv_tab(ln_index).delivery_company_code,  -- 運送業者
+        gt_exch_deliv_tab(ln_index).judgement_date,         -- 判断日
+        lr_delivery_company_tab,                            -- 運賃用運送業者レコード
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg);
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+      -- ***** 支払ピッキング単価設定 *****
+      gt_exch_deliv_tab(ln_index).pay_picking_amount  := lr_delivery_company_tab.pay_picking_amount;
+      -- ***** 支払変更フラグ *****
+      gt_exch_deliv_tab(ln_index).pay_change_flg      := lr_delivery_company_tab.pay_change_flg;
+--
+      -- **************************************************
+      -- ***  配送区分情報取得
+      -- **************************************************
+      xxwip_common3_pkg.get_ship_method(
+        gt_exch_deliv_tab(ln_index).delivery_classe,  -- 配送区分
+        gt_exch_deliv_tab(ln_index).judgement_date,   -- 判断日
+        lr_ship_method_tab,
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg);
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+      -- ***** 小口区分 *****
+      gt_exch_deliv_tab(ln_index).small_amount_class  := lr_ship_method_tab.small_amount_class;
+--
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
+--
 --2008/08/04 Add ↓
 -- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
 --      IF (gt_exch_deliv_tab(ln_index).dispatch_type = gv_carcan_target_y) THEN
@@ -9956,25 +10586,27 @@ AS
 --                                                        gv_carcan_target_n)) THEN
 -- ##### 20081027 Ver.1.10 統合#436対応 END   #####
 -- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
-        -- **************************************************
-        -- ***  配送距離アドオンマスタ抽出
-        -- **************************************************
-        xxwip_common3_pkg.get_delivery_distance(
-          gt_exch_deliv_tab(ln_index).goods_classe,           -- 商品区分
-          gt_exch_deliv_tab(ln_index).delivery_company_code,  -- 運送業者
-          gt_exch_deliv_tab(ln_index).whs_code,               -- 出庫倉庫
-          gt_exch_deliv_tab(ln_index).code_division,          -- コード区分
-          gt_exch_deliv_tab(ln_index).shipping_address_code,  -- 配送先コード
-          gt_exch_deliv_tab(ln_index).judgement_date,         -- 判断日
-          lr_delivery_distance_tab,
-          lv_errbuf,
-          lv_retcode,
-          lv_errmsg);
-  --
-        IF (lv_retcode = gv_status_error) THEN
-          RAISE global_api_expt;
-        END IF;
+      -- **************************************************
+      -- ***  配送距離アドオンマスタ抽出
+      -- **************************************************
+      xxwip_common3_pkg.get_delivery_distance(
+        gt_exch_deliv_tab(ln_index).goods_classe,           -- 商品区分
+        gt_exch_deliv_tab(ln_index).delivery_company_code,  -- 運送業者
+        gt_exch_deliv_tab(ln_index).whs_code,               -- 出庫倉庫
+        gt_exch_deliv_tab(ln_index).code_division,          -- コード区分
+        gt_exch_deliv_tab(ln_index).shipping_address_code,  -- 配送先コード
+        gt_exch_deliv_tab(ln_index).judgement_date,         -- 判断日
+        lr_delivery_distance_tab,
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg);
 --
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+/***** 条件関係なく設定するように修正
 -- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
 --        gt_exch_deliv_tab(ln_index).distance        := lr_delivery_distance_tab.small_distance;
         -- 伝票なし配車（リーフ小口）の場合
@@ -10013,29 +10645,62 @@ AS
 --      END IF;
 -- ##### 20081027 Ver.1.10 統合#436対応 END   #####
 --2008/08/04 Add ↑
+*****/
+      -- ***** 車立距離 *****
+      gt_exch_deliv_tab(ln_index).post_distance         := lr_delivery_distance_tab.post_distance;
+      -- ***** 小口距離 *****
+      gt_exch_deliv_tab(ln_index).small_distance        := lr_delivery_distance_tab.small_distance;
+      -- ***** 混載距離 *****
+      gt_exch_deliv_tab(ln_index).consolid_add_distance := lr_delivery_distance_tab.consolid_add_distance;
+      -- ***** 実際距離 *****
+      gt_exch_deliv_tab(ln_index).actual_distance       := lr_delivery_distance_tab.actual_distance;
+      -- ***** 変更フラグ *****
+      gt_exch_deliv_tab(ln_index).distance_change_flg   := lr_delivery_distance_tab.change_flg;
 --
---
---<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
-      IF (gv_debug_flg = gv_debug_on) THEN
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：********** 洗替配送距離アドオンマスタ抽出 **********：'|| TO_CHAR(ln_index));
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：運送業者：' || gt_exch_deliv_tab(ln_index).delivery_company_code);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：配送No  ：' || gt_exch_deliv_tab(ln_index).delivery_no);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：商品区分：' || gt_exch_deliv_tab(ln_index).goods_classe);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：混載区分：' || gt_exch_deliv_tab(ln_index).mixed_code);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：最長距離    ：' || gt_exch_deliv_tab(ln_index).distance);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：最長実際距離：' || gt_exch_deliv_tab(ln_index).actual_distance);
-      END IF;
---<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
 --
       -- **************************************************
       -- * 運賃アドオンマスタ抽出
       -- **************************************************
+      -- 商品区分 = 「ドリンク」且つ、混載区分 = 「混載」の場合
+      IF  ((gt_exch_deliv_tab(ln_index).goods_classe = gv_prod_class_drk)
+        AND(gt_exch_deliv_tab(ln_index).mixed_code   = gv_target_y      )) THEN
+        -- 車立距離＋混載割増距離
+        lt_actual_distance := gt_exch_deliv_tab(ln_index).post_distance +
+                                                gt_exch_deliv_tab(ln_index).consolid_add_distance;
+      ELSE
+--
+        -- 伝票なし配車（リーフ小口）の場合
+        IF (gt_exch_deliv_tab(ln_index).dispatch_type = gv_carcan_target_y) THEN
+          lt_actual_distance := gt_exch_deliv_tab(ln_index).distance;
+--
+        -- 伝票なし配車（リーフ小口以外）の場合
+        ELSIF (gt_exch_deliv_tab(ln_index).dispatch_type = gv_carcan_target_n) THEN
+--
+          -- 小口区分 =「小口」の場合
+          IF (gt_exch_deliv_tab(ln_index).small_amount_class = gv_small_sum_yes) THEN
+            -- 小口距離を設定
+            lt_actual_distance := gt_exch_deliv_tab(ln_index).small_distance;
+--
+          -- 小口区分 =「車立」の場合
+          ELSE
+            -- 車立距離を設定
+            lt_actual_distance := gt_exch_deliv_tab(ln_index).post_distance;
+          END IF;
+--
+        -- 通常配車の場合
+        ELSE
+          -- 変更無の為、取得した最長距離を設定
+          lt_actual_distance := gt_exch_deliv_tab(ln_index).distance;
+        END IF;
+      END IF;
+--
       xxwip_common3_pkg.get_delivery_charges(
         gt_exch_deliv_tab(ln_index).p_b_classe,             -- 支払請求区分
         gt_exch_deliv_tab(ln_index).goods_classe,           -- 商品区分
         gt_exch_deliv_tab(ln_index).delivery_company_code,  -- 運送業者
         gt_exch_deliv_tab(ln_index).delivery_classe,        -- 配送区分
-        gt_exch_deliv_tab(ln_index).distance,               -- 運賃距離
+        lt_actual_distance,                                 -- 運賃距離
         gt_exch_deliv_tab(ln_index).delivery_weight1,       -- 重量
         gt_exch_deliv_tab(ln_index).judgement_date,         -- 判断日
         lr_delivery_charges_tab,                            -- 運賃アドオンレコード
@@ -10051,14 +10716,36 @@ AS
       gt_exch_deliv_tab(ln_index).shipping_expenses := lr_delivery_charges_tab.shipping_expenses;
       -- *** リーフ混載割増 ***
       gt_exch_deliv_tab(ln_index).leaf_consolid_add := lr_delivery_charges_tab.leaf_consolid_add;
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+      -- *** 運賃・変更フラグ ***
+      gt_exch_deliv_tab(ln_index).charg_shp_change_flg := lr_delivery_charges_tab.shipping_change_flg;
+      -- *** 混載・変更フラグ ***
+      gt_exch_deliv_tab(ln_index).charg_lrf_change_flg := lr_delivery_charges_tab.leaf_change_flg;
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
       IF (gv_debug_flg = gv_debug_on) THEN
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：********** 洗替運賃アドオンマスタ抽出 **********：'|| TO_CHAR(ln_index));
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：運送業者：' || gt_exch_deliv_tab(ln_index).delivery_company_code);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：配送No  ：' || gt_exch_deliv_tab(ln_index).delivery_no);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：運送費        ：' || gt_exch_deliv_tab(ln_index).shipping_expenses);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：リーフ混載割増：' || gt_exch_deliv_tab(ln_index).leaf_consolid_add);
+        -- 運送業者、配送距離、運賃マスタの変更フラグが'1'の場合はPL/SQL表へ格納する
+        IF  (( gt_exch_deliv_tab(ln_index).pay_change_flg       = gv_target_y )
+          OR ( gt_exch_deliv_tab(ln_index).distance_change_flg  = gv_target_y )
+          OR ( gt_exch_deliv_tab(ln_index).charg_shp_change_flg = gv_target_y )
+          OR ( gt_exch_deliv_tab(ln_index).charg_lrf_change_flg = gv_target_y )) THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：********** 洗替運賃アドオンマスタ抽出(対象のみ) **********：'|| TO_CHAR(ln_index));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：運送業者：' || gt_exch_deliv_tab(ln_index).delivery_company_code);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：配送No  ：' || gt_exch_deliv_tab(ln_index).delivery_no);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：支払ピッキング単価：' || gt_exch_deliv_tab(ln_index).pay_picking_amount);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：支払変更フラグ    ：' || gt_exch_deliv_tab(ln_index).pay_change_flg);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：小口区分          ：' || gt_exch_deliv_tab(ln_index).small_amount_class);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：車立距離          ：' || gt_exch_deliv_tab(ln_index).post_distance);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：小口距離          ：' || gt_exch_deliv_tab(ln_index).small_distance);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：混載距離          ：' || gt_exch_deliv_tab(ln_index).consolid_add_distance);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：実際距離          ：' || gt_exch_deliv_tab(ln_index).actual_distance);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：距離 変更フラグ   ：' || gt_exch_deliv_tab(ln_index).distance_change_flg);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：運送費            ：' || gt_exch_deliv_tab(ln_index).shipping_expenses);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：リーフ混載割増    ：' || gt_exch_deliv_tab(ln_index).leaf_consolid_add);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：運賃 変更フラグ   ：' || gt_exch_deliv_tab(ln_index).charg_shp_change_flg);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：混載 変更フラグ   ：' || gt_exch_deliv_tab(ln_index).charg_lrf_change_flg);
+        END IF;
       END IF;
 --<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
 --
@@ -10115,6 +10802,9 @@ AS
 --
     -- *** ローカル変数 ***
     ln_delete_cnt   NUMBER;       -- 削除件数
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+    ln_target_cnt   NUMBER;       -- 洗替対象件数
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
 --
     -- *** ローカル・カーソル ***
 --
@@ -10130,6 +10820,9 @@ AS
 --
     -- 変数初期化
     ln_delete_cnt := 0 ;
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+    ln_target_cnt := 0 ;
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
 --
     -- 対象データ無の場合
     IF (gt_exch_deliv_tab.COUNT = 0) THEN
@@ -10139,16 +10832,11 @@ AS
     <<deliv_loop>>
     FOR ln_index IN  gt_exch_deliv_tab.FIRST.. gt_exch_deliv_tab.LAST LOOP
 --
---<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
-      IF (gv_debug_flg = gv_debug_on) THEN
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：********** 洗替 更新用PL/SQL表 設定 **********：'|| TO_CHAR(ln_index));
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：配送No：' || gt_exch_deliv_tab(ln_index).delivery_no);
-      END IF;
---<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
---
       -- **************************************************
       -- * 更新用PL/SQL表 設定
       -- **************************************************
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+/***** PL/SQL表格納処理全面変更の為コメントアウト
       -- 配送No
       ueh_head_deliv_no_tab(ln_index)       := gt_exch_deliv_tab(ln_index).delivery_no ;
       -- 契約運賃
@@ -10192,7 +10880,7 @@ AS
 --
       -- *** 差異区分 ***
 -- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
-/*****
+*****
       -- 請求運賃 = NULLの場合
       IF (gt_exch_deliv_tab(ln_index).charged_amount IS NULL) THEN
         -- Y を設定
@@ -10209,7 +10897,7 @@ AS
         -- Y を設定
         ueh_head_output_flag_tab(ln_index) := gv_ktg_yes ;
       END IF;
-*****/
+*****
       -- 差額≠０の場合
       IF (ueh_head_balance_tab(ln_index) <> 0) THEN
         ueh_head_output_flag_tab(ln_index) := gv_ktg_yes ;
@@ -10221,7 +10909,7 @@ AS
 --
       -- *** 支払確定区分 ***
 -- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
-/*****
+*****
       -- 差異区分 = N の場合
       IF (ueh_head_output_flag_tab(ln_index) = gv_ktg_no) THEN
         ueh_head_defined_flag_tab(ln_index) :=  gv_ktg_yes;
@@ -10230,7 +10918,7 @@ AS
       ELSE
         ueh_head_defined_flag_tab(ln_index) :=  gv_ktg_no;
       END IF;
-*****/
+*****
       -- 請求金額＝NULL
       IF (gt_exch_deliv_tab(ln_index).charged_amount IS NULL) THEN
         ueh_head_defined_flag_tab(ln_index) :=  gv_ktg_no;
@@ -10245,7 +10933,7 @@ AS
 --
       -- *** 支払確定戻 ***
 -- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
-/*****
+*****
       -- 元の支払確定区分 = Y 且つ 設定する支払確定区分 = N の場合
       IF ((gt_exch_deliv_tab(ln_index).defined_flag = gv_ktg_yes )
         AND (ueh_head_defined_flag_tab(ln_index) = gv_ktg_no)) THEN
@@ -10257,7 +10945,7 @@ AS
         -- N を設定
         ueh_head_return_flag_tab(ln_index)  := gv_ktg_no ;
       END IF;
-*****/
+*****
       -- 元の支払確定区分 = Y の場合
       IF (gt_exch_deliv_tab(ln_index).defined_flag = gv_ktg_yes ) THEN
         ueh_head_return_flag_tab(ln_index)  := gv_ktg_yes ;
@@ -10280,8 +10968,8 @@ AS
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
       IF (gv_debug_flg = gv_debug_on) THEN
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：********** 洗替 削除用PL/SQL表 設定 **********：'|| TO_CHAR(ln_index));
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：配送No：' || gt_exch_deliv_tab(ln_index).delivery_no);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_hate：********** 洗替 削除用PL/SQL表 設定 **********：'|| TO_CHAR(ln_index));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_hate：配送No：' || gt_exch_deliv_tab(ln_index).delivery_no);
       END IF;
 --<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
 --
@@ -10290,6 +10978,204 @@ AS
         deh_head_deliv_no_tab(ln_delete_cnt) := gt_exch_deliv_tab(ln_index).delivery_no;
       END IF;
 --
+*****/
+      -- 運送業者、配送距離、運賃マスタの変更フラグが'1'の場合はPL/SQL表へ格納する
+      IF  (( gt_exch_deliv_tab(ln_index).pay_change_flg      = gv_target_y )
+        OR ( gt_exch_deliv_tab(ln_index).distance_change_flg = gv_target_y )
+        OR ( gt_exch_deliv_tab(ln_index).charg_shp_change_flg = gv_target_y )
+        OR ( gt_exch_deliv_tab(ln_index).charg_lrf_change_flg = gv_target_y )) THEN
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_hate：洗替対象  配送No：' || gt_exch_deliv_tab(ln_index).delivery_no);
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+        -- 対象件数 カウントUP
+        ln_target_cnt := ln_target_cnt + 1;
+--
+        -- ***** 配送No *****
+        ueh_head_deliv_no_tab(ln_target_cnt) := gt_exch_deliv_tab(ln_index).delivery_no ;
+--
+        -- ***** 支払ピッキング料 *****
+        -- 運賃用運送業者マスタ 支払変更フラグ = '1'の場合
+        IF (gt_exch_deliv_tab(ln_index).pay_change_flg = gv_target_y) THEN
+          -- 個数 × 支払ピッキング単価
+          ueh_head_pick_charge_tab(ln_target_cnt)  := CEIL(gt_exch_deliv_tab(ln_index).qty1 *
+                                                      gt_exch_deliv_tab(ln_index).pay_picking_amount);
+--
+        -- 運賃用運送業者マスタ 支払変更フラグ = '1'以外の場合
+        ELSE
+          -- 取得した、支払ピッキング料を設定
+          ueh_head_pick_charge_tab(ln_target_cnt)  := gt_exch_deliv_tab(ln_index).picking_charge;
+        END IF;
+--
+--
+        -- ***** 距離・実際距離 *****
+        -- 配送距離マスタ 変更フラグ = '1'の場合
+        IF  ((gt_exch_deliv_tab(ln_index).distance_change_flg = gv_target_y)
+          OR (gt_exch_deliv_tab(ln_index).last_update_date    = gd_sysdate )) THEN
+--
+          -- 伝票なし配車（リーフ小口）の場合
+          IF (gt_exch_deliv_tab(ln_index).dispatch_type = gv_carcan_target_y) THEN
+            -- 小口距離を設定
+            ueh_head_distance_type_tab(ln_target_cnt) := gt_exch_deliv_tab(ln_index).small_distance;
+--
+          -- 伝票なし配車（リーフ小口以外）の場合
+          ELSIF (gt_exch_deliv_tab(ln_index).dispatch_type = gv_carcan_target_n) THEN
+--
+            -- 小口区分 = 「小口」 の場合
+            IF (gt_exch_deliv_tab(ln_index).small_amount_class = gv_small_sum_yes ) THEN
+              -- 小口距離を設定
+              ueh_head_distance_type_tab(ln_target_cnt) := gt_exch_deliv_tab(ln_index).small_distance;
+--
+            -- 小口区分 = 「車立」 の場合
+            ELSE
+              -- 車立距離を設定
+              ueh_head_distance_type_tab(ln_target_cnt) := gt_exch_deliv_tab(ln_index).post_distance;
+            END IF;
+--
+            -- 車立距離を設定
+            ueh_head_distance_type_tab(ln_target_cnt) := gt_exch_deliv_tab(ln_index).post_distance;
+--
+          -- 通常配車の場合
+          ELSIF (gt_exch_deliv_tab(ln_index).dispatch_type = gv_car_normal) THEN
+--
+            -- 商品区分 = 「ドリンク」且つ、混載区分 = 「混載」の場合
+            IF ((gt_exch_deliv_tab(ln_index).goods_classe = gv_prod_class_drk)
+             AND(gt_exch_deliv_tab(ln_index).mixed_code   = gv_target_y      )) THEN
+              -- 車立距離＋混載割増距離
+              ueh_head_distance_type_tab(ln_target_cnt) := gt_exch_deliv_tab(ln_index).post_distance +
+                                                      gt_exch_deliv_tab(ln_index).consolid_add_distance;
+            ELSE
+              -- 変更無の為、取得した最長距離を設定
+              ueh_head_distance_type_tab(ln_target_cnt) := gt_exch_deliv_tab(ln_index).distance;
+            END IF;
+--
+          END IF;
+          -- 実際距離を設定
+          ueh_head_actual_ditnc_type_tab(ln_target_cnt) := gt_exch_deliv_tab(ln_index).dis_actual_distance;
+--
+        -- 配送距離マスタ 変更フラグ = '1'以外の場合
+        ELSE
+          -- 変更無の為、取得した最長距離、実際最長距離を設定
+          ueh_head_distance_type_tab(ln_target_cnt)     := gt_exch_deliv_tab(ln_index).distance;
+          ueh_head_actual_ditnc_type_tab(ln_target_cnt) := gt_exch_deliv_tab(ln_index).actual_distance;
+        END IF;
+--
+--
+        -- ***** 契約運賃・混載割増金額 *****
+        -- 配送距離マスタ 変更フラグ = '1'
+        --   又は、運賃マスタ 運賃変更フラグ・混載変更フラグ = '1'、
+        --   又は、最終更新日が明細更新した日時と同じ場合
+        IF  ((gt_exch_deliv_tab(ln_index).distance_change_flg   = gv_target_y)
+          OR (gt_exch_deliv_tab(ln_index).charg_shp_change_flg  = gv_target_y)
+          OR (gt_exch_deliv_tab(ln_index).charg_lrf_change_flg  = gv_target_y)
+          OR (gt_exch_deliv_tab(ln_index).last_update_date      = gd_sysdate )) THEN
+--
+          --    配送距離マスタ 変更フラグ = '1' 
+          -- or 運賃変更フラグ = '1' の場合
+          -- or 運賃明細更新対象の場合
+          IF  ((gt_exch_deliv_tab(ln_index).distance_change_flg   = gv_target_y)
+            OR (gt_exch_deliv_tab(ln_index).charg_shp_change_flg  = gv_target_y) 
+            OR (gt_exch_deliv_tab(ln_index).last_update_date      = gd_sysdate )) THEN
+            -- 契約運賃
+            ueh_head_contract_rate_tab(ln_target_cnt)  := gt_exch_deliv_tab(ln_index).shipping_expenses ;
+          ELSE
+            -- 変更無の為、取得した契約運賃を設定
+            ueh_head_contract_rate_tab(ln_target_cnt)  := gt_exch_deliv_tab(ln_index).contract_rate ;
+          END IF;
+--
+          -- 混載変更フラグ = '1' の場合
+          IF (( gt_exch_deliv_tab(ln_index).charg_lrf_change_flg  = gv_target_y)
+            OR (gt_exch_deliv_tab(ln_index).last_update_date      = gd_sysdate )) THEN
+            -- 商品区分 = リーフ、且つ、混載区分 = 混載 の場合
+            IF  (( gt_exch_deliv_tab(ln_index).goods_classe = gv_prod_class_lef )
+              AND (gt_exch_deliv_tab(ln_index).mixed_code = gv_target_y         )) THEN
+              -- リーフ混載割増 × 混載数
+              ueh_head_cnsld_srhrg_tab(ln_target_cnt)  := gt_exch_deliv_tab(ln_index).leaf_consolid_add *
+                                                          gt_exch_deliv_tab(ln_index).consolid_qty;
+            ELSE
+              -- リーフ混載以外の為、取得した混載割増金額を設定
+              ueh_head_cnsld_srhrg_tab(ln_target_cnt)  := gt_exch_deliv_tab(ln_index).consolid_surcharge;
+            END IF;
+          ELSE
+            -- 変更無の為、取得した混載割増金額を設定
+            ueh_head_cnsld_srhrg_tab(ln_target_cnt)  := gt_exch_deliv_tab(ln_index).consolid_surcharge;
+          END IF;
+--
+        -- 運賃マスタ 変更フラグ = '1'以外の場合
+        ELSE
+          -- 変更無の為、取得した契約運賃を設定
+          ueh_head_contract_rate_tab(ln_target_cnt)  := gt_exch_deliv_tab(ln_index).contract_rate ;
+          -- 変更無の為、取得した混載割増金額を設定
+          ueh_head_cnsld_srhrg_tab(ln_target_cnt)  := gt_exch_deliv_tab(ln_index).consolid_surcharge;
+        END IF;
+--
+--
+        -- ***** 合計 *****
+        -- 契約運賃 + 混載割増金額 + 支払ピッキング料 + 諸料金
+        ueh_head_total_amount_tab(ln_target_cnt) :=  ueh_head_contract_rate_tab(ln_target_cnt) +
+                                                ueh_head_cnsld_srhrg_tab(ln_target_cnt) +
+                                                ueh_head_pick_charge_tab(ln_target_cnt) +
+                                                NVL(gt_exch_deliv_tab(ln_index).many_rate,0);
+--
+        -- *** 差額 ***
+        -- 請求運賃 － 合計
+        ueh_head_balance_tab(ln_target_cnt)  :=  NVL(gt_exch_deliv_tab(ln_index).charged_amount, 0) -
+                                            ueh_head_total_amount_tab(ln_target_cnt);
+--
+        -- *** 差異区分 ***
+        -- 差額≠０の場合
+        IF (ueh_head_balance_tab(ln_target_cnt) <> 0) THEN
+          ueh_head_output_flag_tab(ln_target_cnt) := gv_ktg_yes ;
+        -- 差額＝０の場合
+        ELSE
+          ueh_head_output_flag_tab(ln_target_cnt) := gv_ktg_no ;
+        END IF;
+--
+        -- *** 支払確定区分 ***
+        -- 請求金額 = NULL の場合
+        IF (gt_exch_deliv_tab(ln_index).charged_amount IS NULL) THEN
+          ueh_head_defined_flag_tab(ln_target_cnt) :=  gv_ktg_no;
+        -- 差異区分 = YES の場合
+        ELSIF (ueh_head_output_flag_tab(ln_target_cnt) = gv_ktg_yes) THEN
+          ueh_head_defined_flag_tab(ln_target_cnt) :=  gv_ktg_no;
+        -- 差異区分 = NO の場合
+        ELSE
+          ueh_head_defined_flag_tab(ln_target_cnt) :=  gv_ktg_yes;
+        END IF;
+--
+        -- *** 支払確定戻 ***
+        ueh_head_return_flag_tab(ln_target_cnt)  := gv_ktg_no ;
+--
+        -- **************************************************
+        -- * 削除用PL/SQL表 設定
+        -- **************************************************
+        -- 差異区分 = Y の場合
+        IF (ueh_head_output_flag_tab(ln_target_cnt) = gv_ktg_yes) THEN
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+          IF (gv_debug_flg = gv_debug_on) THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_hate：*** 洗替 削除用PL/SQL表 設定 ：'|| TO_CHAR(ln_index) || '配送No：' || gt_exch_deliv_tab(ln_index).delivery_no);
+          END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+          --削除用 PL/SQL表に設定
+          ln_delete_cnt := ln_delete_cnt + 1;
+          deh_head_deliv_no_tab(ln_delete_cnt) := gt_exch_deliv_tab(ln_index).delivery_no;
+
+          -- 実績変更による削除 ログ出力用領域格納
+          gn_delete_data_idx := gn_delete_data_idx + 1;
+          gt_delete_data_msg(gn_delete_data_idx) :=  gt_exch_deliv_tab(ln_index).delivery_no     || '  ' ;  -- 配送No
+          gt_delete_data_msg(gn_delete_data_idx) :=  gt_delete_data_msg(gn_delete_data_idx) || gt_exch_deliv_tab(ln_index).delivery_company_code || '  ' ; -- 運送業者
+          gt_delete_data_msg(gn_delete_data_idx) :=  gt_delete_data_msg(gn_delete_data_idx) || TO_CHAR(gt_exch_deliv_tab(ln_index).ship_date, 'YYYY/MM/DD'); -- 出荷日
+--
+        END IF;
+--
+      END IF;
+--
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
     END LOOP deliv_loop;
 --
   EXCEPTION
@@ -10469,7 +11355,7 @@ AS
     IF (deh_head_deliv_no_tab.COUNT <> 0) THEN
 --
       -- **************************************************
-      -- * 運賃明細アドオン 再計算 更新
+      -- * 運賃ヘッダアドオン 削除
       -- **************************************************
       FORALL ln_index IN deh_head_deliv_no_tab.FIRST .. deh_head_deliv_no_tab.LAST
       DELETE FROM  xxwip_deliverys  -- 運賃ヘッダアドオン
@@ -10504,6 +11390,123 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END delete_exch_deliv_head;
+--
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+--
+  /**********************************************************************************
+   * Procedure Name   : delete_exch_deliv_mst
+   * Description      : 洗替運賃マスタ一括更新
+   ***********************************************************************************/
+  PROCEDURE delete_exch_deliv_mst(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'delete_exch_deliv_mst'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    --
+    -- 洗替完了後、各マスタのフラグを'0'に更新する
+    --
+--
+    --運賃用運送業者マスタ
+      UPDATE xxwip_delivery_company
+      SET    pay_change_flg          = gv_target_n                -- 支払変更フラグ（N）
+           , last_updated_by         = gn_user_id                 -- 最終更新者
+           , last_update_date        = gd_sysdate                 -- 最終更新日
+           , last_update_login       = gn_login_id                -- 最終更新ログイン
+           , request_id              = gn_conc_request_id         -- 要求ID
+           , program_application_id  = gn_prog_appl_id            -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
+           , program_id              = gn_conc_program_id         -- コンカレント・プログラムID
+           , program_update_date     = gd_sysdate                 -- プログラム更新日
+      WHERE  pay_change_flg = gv_target_y   -- 支払変更フラグ
+      ;
+--
+    -- 配送距離マスタ
+      UPDATE  xxwip_delivery_distance
+      SET     change_flg              = gv_target_n                -- 変更フラグ（N）
+            , last_updated_by         = gn_user_id                 -- 最終更新者
+            , last_update_date        = gd_sysdate                 -- 最終更新日
+            , last_update_login       = gn_login_id                -- 最終更新ログイン
+            , request_id              = gn_conc_request_id         -- 要求ID
+            , program_application_id  = gn_prog_appl_id            -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
+            , program_id              = gn_conc_program_id         -- コンカレント・プログラムID
+            , program_update_date     = gd_sysdate                 -- プログラム更新日
+      WHERE   change_flg = gv_target_y      -- 変更フラグ
+      ;
+--
+    -- 運賃マスタ
+      UPDATE  xxwip_delivery_charges
+      SET     change_flg = gv_target_n                             -- 変更フラグ（N）
+            , last_updated_by         = gn_user_id                 -- 最終更新者
+            , last_update_date        = gd_sysdate                 -- 最終更新日
+            , last_update_login       = gn_login_id                -- 最終更新ログイン
+            , request_id              = gn_conc_request_id         -- 要求ID
+            , program_application_id  = gn_prog_appl_id            -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
+            , program_id              = gn_conc_program_id         -- コンカレント・プログラムID
+            , program_update_date     = gd_sysdate                 -- プログラム更新日
+      WHERE   change_flg = gv_target_y      -- 変更フラグ（Y）
+      AND     p_b_classe = gv_pay           -- 支払請求区分:支払
+      ;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END delete_exch_deliv_mst;
+--
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
 --
 -- ##### 20081210 Ver.1.16 本番#401対応 START #####
   /**********************************************************************************
@@ -10996,6 +11999,21 @@ AS
     -- 洗替区分 = Y の場合
     ELSE
 --
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+--
+      -- =========================================
+      -- ロック取得（運賃関連マスタ）
+      -- =========================================
+      get_delivmst_lock(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
+--
       -- =========================================
       -- 洗替運賃明細アドオン抽出(A-37)
       -- =========================================
@@ -11127,6 +12145,21 @@ AS
       IF (lv_retcode = gv_status_error) THEN
         RAISE global_process_expt;
       END IF;
+--
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
+--
+      -- =========================================
+      -- 洗替運賃マスタ一括更新
+      -- =========================================
+      delete_exch_deliv_mst(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+-- *----------* 2009/04/07 Ver.1.23 本番#432対応 end   *----------*
 --
     END IF;
 --

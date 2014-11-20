@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common3_pkg(SPEC)
  * Description            : 共通関数(XXWIP)(SPEC)
  * MD.070(CMD.050)        : なし
- * Version                : 1.5
+ * Version                : 1.6
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/10/01  1.3    Y.Kawano        内部変更#220,T_S_500対応
  *  2008/11/27  1.4    D.Nihei         本番障害#173対応
  *  2008/12/24  1.5    M.Nomura        本番障害#832対応
+ *  2009/04/09  1.6    A.Shiina        本番障害#432対応
  *
  *****************************************************************************************/
 --
@@ -58,6 +59,9 @@ AS
     , small_distance        xxwip_delivery_distance.small_distance%TYPE         -- 小口距離
     , consolid_add_distance xxwip_delivery_distance.consolid_add_distance%TYPE  -- 混載割増距離
     , actual_distance       xxwip_delivery_distance.actual_distance%TYPE        -- 実際距離
+-- 2009/04/09 v1.6 ADD START
+    , change_flg            xxwip_delivery_distance.change_flg%TYPE             -- 変更フラグ
+-- 2009/04/09 v1.6 ADD END
   );
 --
   -- **************************************************
@@ -68,6 +72,10 @@ AS
       small_weight          xxwip_delivery_company.small_weight%TYPE         -- 小口重量
     , pay_picking_amount    xxwip_delivery_company.pay_picking_amount%TYPE   -- 支払ピッキング単価
     , bill_picking_amount   xxwip_delivery_company.bill_picking_amount%TYPE  -- 請求ピッキング単価
+-- 2009/04/09 v1.6 ADD START
+    , pay_change_flg        xxwip_delivery_company.pay_change_flg%TYPE       -- 支払変更フラグ
+    , bill_change_flg       xxwip_delivery_company.bill_change_flg%TYPE      -- 請求変更フラグ
+-- 2009/04/09 v1.6 ADD END
   );
 --
   -- **************************************************
@@ -77,6 +85,10 @@ AS
   TYPE delivery_charges_rec IS RECORD(
       shipping_expenses   xxwip_delivery_charges.shipping_expenses%TYPE   -- 運送費
     , leaf_consolid_add   xxwip_delivery_charges.leaf_consolid_add%TYPE   -- リーフ混載割増
+-- 2009/04/09 v1.6 ADD START
+    , shipping_change_flg xxwip_delivery_charges.change_flg%TYPE          -- 変更フラグ
+    , leaf_change_flg     xxwip_delivery_charges.change_flg%TYPE          -- 変更フラグ
+-- 2009/04/09 v1.6 ADD END
   );
 --
   -- ********** 共通 定数 **********
