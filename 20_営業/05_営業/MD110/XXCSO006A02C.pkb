@@ -43,6 +43,7 @@ AS
  *  2009-05-28    1.5   Kazuo.Satomura   T1_0137対応
  *  2009-07-16    1.6   Kazuo.Satomura   0000070対応
  *  2009-09-08    1.7   Daisuke.Abe      0001312対応
+ *  2010-02-15    1.8   T.Maruyama       E_本稼動_01130対応
  *****************************************************************************************/
 -- 
 -- #######################  固定グローバル定数宣言部 START   #######################
@@ -1002,7 +1003,10 @@ AS
 --
       -- 2). 日付書式チェック
       -- 訪問日時
-      lv_visit_date := l_col_data_tab(cn_visit_ymd) || ' ' || l_col_data_tab(cn_visit_time);
+       /* 2010.02.15 T.Maruyama E_本稼動_01130対応 START */
+      --lv_visit_date := l_col_data_tab(cn_visit_ymd) || ' ' || l_col_data_tab(cn_visit_time);
+      lv_visit_date := REPLACE(l_col_data_tab(cn_visit_ymd), '-', '/') || ' ' || l_col_data_tab(cn_visit_time);
+       /* 2010.02.15 T.Maruyama E_本稼動_01130対応 END */
       lb_return := xxcso_util_common_pkg.check_date(lv_visit_date, cv_visit_date_fmt);
       IF (lb_return = FALSE) THEN
         lv_item_nm := cv_visit_nm;
