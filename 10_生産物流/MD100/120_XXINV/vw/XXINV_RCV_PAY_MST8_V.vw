@@ -13,6 +13,9 @@ CREATE OR REPLACE VIEW xxinv_rcv_pay_mst8_v
 -- 08/12/07 v1.4 N.Yoshida update start
  ,line_id
 -- 08/12/07 v1.4 N.Yoshida update end
+-- 08/12/07 v1.6 Y.Yamamoto update start
+ ,category_code
+-- 08/12/07 v1.6 Y.Yamamoto update end
 )
 AS
   SELECT xrpm.new_div_invent
@@ -28,6 +31,9 @@ AS
 -- 08/12/07 v1.4 N.Yoshida update start
         ,rt.transaction_id      AS line_id
 -- 08/12/07 v1.4 N.Yoshida update end
+-- 08/12/07 v1.6 Y.Yamamoto update start
+        ,otta.order_category_code AS category_code
+-- 08/12/07 v1.6 Y.Yamamoto update end
   FROM   xxcmn_rcv_pay_mst         xrpm
         ,rcv_shipment_lines        rsl
         ,oe_order_headers_all      ooha
@@ -136,7 +142,9 @@ AS
      AND  xrpm.prod_div_ahead             IS NULL ))
 -- 08/12/07 v1.4 N.Yoshida update start
   AND    rsl.shipment_line_id             = rt.shipment_line_id
-  AND    rsl.destination_type_code        = rt.destination_type_code
+-- 08/12/07 v1.5 N.Yoshida update start
+--  AND    rsl.destination_type_code        = rt.destination_type_code
+-- 08/12/07 v1.5 N.Yoshida update end
 -- 08/12/07 v1.4 N.Yoshida update end
 -- 08/11/10 v1.3 Y.Yamamoto update end
 -- 08/07/08 Y.Yamamoto Update v1.02 End
@@ -155,6 +163,9 @@ UNION ALL
 -- 08/12/07 v1.4 N.Yoshida update start
         ,rt.transaction_id      AS line_id
 -- 08/12/07 v1.4 N.Yoshida update end
+-- 08/12/07 v1.6 Y.Yamamoto update start
+        ,'ORDER'                AS category_code
+-- 08/12/07 v1.6 Y.Yamamoto update end
   FROM   xxcmn_rcv_pay_mst         xrpm
         ,rcv_shipment_lines        rsl
         ,rcv_transactions          rt
@@ -165,7 +176,9 @@ UNION ALL
   AND    rsl.po_header_id                 = pha.po_header_id
   AND    rsl.po_line_id                   = pla.po_line_id
   AND    rsl.shipment_line_id             = rt.shipment_line_id
-  AND    rsl.destination_type_code        = rt.destination_type_code
+-- 08/12/07 v1.5 N.Yoshida update start
+--  AND    rsl.destination_type_code        = rt.destination_type_code
+-- 08/12/07 v1.5 N.Yoshida update end
   AND    xrpm.transaction_type            = rt.transaction_type
   ;
 --
@@ -179,6 +192,10 @@ COMMENT ON COLUMN xxinv_rcv_pay_mst8_v.stock_adjustment_div IS '在庫調整区分' ;
 COMMENT ON COLUMN xxinv_rcv_pay_mst8_v.doc_type             IS '文書タイプ' ;
 COMMENT ON COLUMN xxinv_rcv_pay_mst8_v.doc_id               IS '文書ID' ;
 COMMENT ON COLUMN xxinv_rcv_pay_mst8_v.doc_line             IS '取引明細番号' ;
+-- 08/12/07 v1.6 Y.Yamamoto update start
+COMMENT ON COLUMN xxinv_rcv_pay_mst8_v.line_id              IS 'ラインID' ;
+COMMENT ON COLUMN xxinv_rcv_pay_mst8_v.category_code        IS 'カテゴリーコード' ;
+-- 08/12/07 v1.6 Y.Yamamoto update end
 --
 COMMENT ON TABLE  xxinv_rcv_pay_mst8_v IS '受払区分情報VIEW_PORC' ;
 /
