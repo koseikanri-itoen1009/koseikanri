@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A40C(body)
  * Description      : 顧客一括登録ワークテーブルに取込済のデータから顧客レコードを登録します。
  * MD.050           : 顧客一括登録 MD050_CMM_003_A40
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2010/10/05    1.0   Shigeto.Niki     新規作成
+ *  2010/11/05    1.1   Shigeto.Niki     E_本稼動_05492対応  担当営業員登録時のチェック追加
  *
  *****************************************************************************************/
 --
@@ -121,7 +122,9 @@ AS
   cv_msg_xxcmm_10330     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10330';                                  -- 参照コード存在チェックエラー
   cv_msg_xxcmm_10331     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10331';                                  -- 郵便番号チェックエラー
   cv_msg_xxcmm_10332     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10332';                                  -- 電話番号チェックエラー
-  cv_msg_xxcmm_10333     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10333';                                  -- 適用開始日入力チェックエラー
+-- 2010/11/05 Ver1.1 障害：E_本稼動_05492 delete start by Shigeto.Niki
+--  cv_msg_xxcmm_10333     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10333';                                  -- 適用開始日入力チェックエラー
+-- 2010/11/05 Ver1.1 障害：E_本稼動_05492 delete end by Shigeto.Niki
   cv_msg_xxcmm_10334     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10334';                                  -- 担当営業員存在チェックエラー
   cv_msg_xxcmm_10335     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10335';                                  -- データ登録エラー
   cv_msg_xxcmm_10336     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10336';                                  -- 顧客一括登録用CSVファイル取得エラー
@@ -883,7 +886,9 @@ AS
       l_validate_cust_tab(22) := i_wk_cust_rec.mc_conf_info;                          -- MC：競合情報
       l_validate_cust_tab(23) := i_wk_cust_rec.mc_business_talk_details;              -- MC：商談経緯
       l_validate_cust_tab(24) := i_wk_cust_rec.resource_no;                           -- 担当営業員
-      l_validate_cust_tab(25) := i_wk_cust_rec.resource_s_date;                       -- 適用開始日(担当営業員)
+-- 2010/11/05 Ver1.1 障害：E_本稼動_05492 delete start by Shigeto.Niki
+--      l_validate_cust_tab(25) := i_wk_cust_rec.resource_s_date;                       -- 適用開始日(担当営業員)
+-- 2010/11/05 Ver1.1 障害：E_本稼動_05492 delete end by Shigeto.Niki
     --
     -- フォーマットパターン「502:店舗営業」の場合
     ELSE
@@ -954,7 +959,9 @@ AS
     END LOOP validate_column_loop;
 --
     -- 適用開始日をDATE型に変換
-    gd_apply_date := TO_DATE(i_wk_cust_rec.resource_s_date, cv_date_fmt_std);
+-- 2010/11/05 Ver1.1 障害：E_本稼動_05492 delete start by Shigeto.Niki
+--    gd_apply_date := TO_DATE(i_wk_cust_rec.resource_s_date, cv_date_fmt_std);
+-- 2010/11/05 Ver1.1 障害：E_本稼動_05492 delete end by Shigeto.Niki
 --
     IF ( lv_check_status = cv_status_normal ) THEN
       --==============================================================
@@ -1189,7 +1196,8 @@ AS
                                              ,xxcmm_cust_accounts xca3            -- 顧客追加情報マスタ
                                        WHERE  hca3.cust_account_id      = xca3.customer_id
                                          AND  hca3.customer_class_code  = cv_base_kbn
-                                         AND  xca3.management_base_code = gt_belong_base_code)
+                                         AND  xca3.management_base_code = gt_belong_base_code
+                                     )
                              )
                )
          AND   ROWNUM = 1;
@@ -1826,45 +1834,74 @@ AS
       lv_step := 'A-4.26-1';
       -- フォーマットパターン「501:MC顧客」の場合
       IF ( gv_format = cv_file_format_mc ) THEN
-        -- 開始日 < 業務日付の場合はエラー
-        IF (gd_apply_date < gd_process_date) THEN
-          lv_check_status   := cv_status_error;
-          ov_retcode        := cv_status_error;
-          -- 適用開始日入力チェックエラー
-          gv_out_msg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
-                        ,iv_name         => cv_msg_xxcmm_10333                    -- メッセージコード
-                        ,iv_token_name1  => cv_tkn_input_line_no                  -- トークンコード1
-                        ,iv_token_value1 => i_wk_cust_rec.line_no                 -- トークン値1
-                        ,iv_token_name2  => cv_tkn_apply_date                     -- トークンコード2
-                        ,iv_token_value2 => gd_apply_date                         -- トークン値2
-                       );
-          -- メッセージ出力
-          FND_FILE.PUT_LINE(
-             which  => FND_FILE.OUTPUT
-            ,buff   => gv_out_msg);
-          lv_check_flag := cv_status_error;
-          --
-          FND_FILE.PUT_LINE(
-             which  => FND_FILE.LOG
-            ,buff   => gv_out_msg);
-          lv_check_flag := cv_status_error;
-        END IF;
-        --
-        -- フォーマットパターン「501:MC顧客」かつ、適用開始日 => 業務日付の場合、
-        -- 担当営業員のリソースマスタ存在チェックを実施する
-        lv_step := 'A-4.26-2';
+-- 2010/11/05 Ver1.1 障害：E_本稼動_05492 modify start by Shigeto.Niki
+--        -- 開始日 < 業務日付の場合はエラー
+--        IF (gd_apply_date < gd_process_date) THEN
+--          lv_check_status   := cv_status_error;
+--          ov_retcode        := cv_status_error;
+--          -- 適用開始日入力チェックエラー
+--          gv_out_msg := xxccp_common_pkg.get_msg(
+--                         iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
+--                        ,iv_name         => cv_msg_xxcmm_10333                    -- メッセージコード
+--                        ,iv_token_name1  => cv_tkn_input_line_no                  -- トークンコード1
+--                        ,iv_token_value1 => i_wk_cust_rec.line_no                 -- トークン値1
+--                        ,iv_token_name2  => cv_tkn_apply_date                     -- トークンコード2
+--                        ,iv_token_value2 => gd_apply_date                         -- トークン値2
+--                       );
+--          -- メッセージ出力
+--          FND_FILE.PUT_LINE(
+--             which  => FND_FILE.OUTPUT
+--            ,buff   => gv_out_msg);
+--          lv_check_flag := cv_status_error;
+--          --
+--          FND_FILE.PUT_LINE(
+--             which  => FND_FILE.LOG
+--            ,buff   => gv_out_msg);
+--          lv_check_flag := cv_status_error;
+--        END IF;
+--        --
+--        -- フォーマットパターン「501:MC顧客」かつ、適用開始日 => 業務日付の場合、
+--        -- 担当営業員のリソースマスタ存在チェックを実施する
+--        lv_step := 'A-4.26-2';
+--        -- 担当営業員存在チェック
+--        SELECT COUNT(1)
+--        INTO   ln_cnt
+--        FROM   jtf_rs_resource_extns   jrre         -- リソースマスタ
+--              ,xxcso_employees_v3      xev3         -- 従業員マスタ（最新）ビュー3
+--        WHERE  jrre.source_number    = xev3.employee_number
+--        AND    jrre.category         = cv_category
+--        AND    gd_apply_date BETWEEN jrre.start_date_active
+--                                 AND NVL(jrre.end_date_active, TO_DATE(cv_max_date, cv_date_fmt_std))
+--        AND    xev3.employee_number  = i_wk_cust_rec.resource_no
+--        ;
         -- 担当営業員存在チェック
         SELECT COUNT(1)
         INTO   ln_cnt
-        FROM   jtf_rs_resource_extns   jrre         -- リソースマスタ
-              ,xxcso_employees_v3      xev3         -- 従業員マスタ（最新）ビュー3
-        WHERE  jrre.source_number    = xev3.employee_number
-        AND    jrre.category         = cv_category
-        AND    gd_apply_date BETWEEN jrre.start_date_active
-                                 AND NVL(jrre.end_date_active, TO_DATE(cv_max_date, cv_date_fmt_std))
-        AND    xev3.employee_number  = i_wk_cust_rec.resource_no
+        FROM   jtf_rs_resource_extns_vl  jrre         -- リソース
+              ,jtf_rs_group_members      jrgm         -- リソースグループメンバー
+              ,jtf_rs_groups_vl          jrgv         -- リソースグループ
+              ,per_all_people_f          papf         -- 従業員マスタ
+              ,per_all_assignments_f     paaf         -- アサインメントマスタ
+              ,per_periods_of_service    ppos         -- 従業員サービス期間マスタ
+        WHERE  papf.person_id               = jrre.source_id
+        AND    papf.person_id               = paaf.person_id
+        AND    papf.current_emp_or_apl_flag = cv_yes
+        AND    paaf.period_of_service_id    = ppos.period_of_service_id
+        AND    papf.effective_start_date    = ppos.date_start
+        AND    ppos.actual_termination_date IS NULL
+        AND    jrre.category                = cv_category
+        AND    jrre.resource_id             = jrgm.resource_id
+        AND    gd_process_date BETWEEN jrre.start_date_active 
+                               AND NVL(jrre.end_date_active,TO_DATE(cv_max_date, cv_date_fmt_std))
+        AND    jrgm.group_id                = jrgv.group_id
+        AND    jrgm.delete_flag             = cv_no
+        AND    gd_process_date BETWEEN jrgv.start_date_active 
+                               AND NVL(jrgv.end_date_active,TO_DATE(cv_max_date, cv_date_fmt_std))
+        AND    papf.employee_number         = i_wk_cust_rec.resource_no           -- 従業員番号
+        AND    jrgv.attribute1              = i_wk_cust_rec.sale_base_code        -- 拠点コード
+        AND    paaf.ass_attribute5          = i_wk_cust_rec.sale_base_code        -- 拠点コード
         ;
+-- 2010/11/05 Ver1.1 障害：E_本稼動_05492 modify end by Shigeto.Niki
         --
         IF (ln_cnt = 0) THEN
           lv_check_status   := cv_status_error;
@@ -1878,7 +1915,10 @@ AS
                         ,iv_token_name2  => cv_tkn_input_line_no                  -- トークンコード2
                         ,iv_token_value2 => i_wk_cust_rec.line_no                 -- トークン値2
                         ,iv_token_name3  => cv_tkn_apply_date                     -- トークンコード3
-                        ,iv_token_value3 => gd_apply_date                         -- トークン値3
+-- 2010/11/05 Ver1.1 障害：E_本稼動_05492 modify start by Shigeto.Niki
+--                        ,iv_token_value3 => gd_apply_date                         -- トークン値3
+                        ,iv_token_value3 => gd_process_date                        -- トークン値3
+-- 2010/11/05 Ver1.1 障害：E_本稼動_05492 modify end by Shigeto.Niki
                        );
           -- メッセージ出力
           FND_FILE.PUT_LINE(
@@ -2146,7 +2186,10 @@ AS
     lr_report_rec.account_number           := io_save_cust_key_info_rec.lv_account_number;  -- 顧客コード
     lr_report_rec.customer_status          := i_wk_cust_rec.customer_status;                -- 顧客ステータス
     lr_report_rec.resource_no              := i_wk_cust_rec.resource_no;                    -- 担当営業員
-    lr_report_rec.resource_s_date          := i_wk_cust_rec.resource_s_date;                -- 適用開始日
+-- 2010/11/05 Ver1.1 障害：E_本稼動_05492 modify start by Shigeto.Niki
+--    lr_report_rec.resource_s_date          := i_wk_cust_rec.resource_s_date;                -- 適用開始日
+    lr_report_rec.resource_s_date          := gd_process_date;                              -- 業務日付
+-- 2010/11/05 Ver1.1 障害：E_本稼動_05492 modify end by Shigeto.Niki
     lr_report_rec.customer_name            := i_wk_cust_rec.customer_name;                  -- 顧客名
     --
     -- レポートテーブルに追加
@@ -3717,13 +3760,18 @@ AS
 --
     lv_account_number    := io_save_cust_key_info_rec.lv_account_number;              -- 顧客コード
     lv_resource_no       := i_wk_cust_rec.resource_no;                                -- レコード変数.担当営業員
-    gd_apply_date        := TO_DATE(i_wk_cust_rec.resource_s_date, cv_date_fmt_std);  -- レコード変数.適用開始日
+-- 2010/11/05 Ver1.1 障害：E_本稼動_05492 modify start by Shigeto.Niki
+--    gd_apply_date        := TO_DATE(i_wk_cust_rec.resource_s_date, cv_date_fmt_std);  -- レコード変数.適用開始日
+-- 2010/11/05 Ver1.1 障害：E_本稼動_05492 modify end by Shigeto.Niki
     --
     -- 担当営業員登録の標準APIをコール
     xxcso_rtn_rsrc_pkg.regist_resource_no(
       iv_account_number    => lv_account_number     -- 顧客コード
      ,iv_resource_no       => lv_resource_no        -- 担当営業員（従業員コード）
-     ,id_start_date        => gd_apply_date         -- 適用開始日
+-- 2010/11/05 Ver1.1 障害：E_本稼動_05492 modify start by Shigeto.Niki
+--     ,id_start_date        => gd_apply_date         -- 適用開始日
+     ,id_start_date        => gd_process_date       -- 業務日付
+-- 2010/11/05 Ver1.1 障害：E_本稼動_05492 modify end by Shigeto.Niki
      ,ov_errbuf            => lv_errbuf             -- システムメッセージ
      ,ov_retcode           => lv_retcode            -- 処理結果('0':正常, '1':警告, '2':エラー)
      ,ov_errmsg            => lv_errmsg             -- ユーザーメッセージ
@@ -4706,7 +4754,10 @@ AS
              ,l_wk_item_tab(22)             -- MC：競合情報
              ,l_wk_item_tab(23)             -- MC：商談経緯
              ,l_wk_item_tab(24)             -- 担当営業員
-             ,l_wk_item_tab(25)             -- 適用開始日(担当営業員)
+-- 2010/11/05 Ver1.1 障害：E_本稼動_05492 delete start by Shigeto.Niki
+--             ,l_wk_item_tab(25)             -- 適用開始日(担当営業員)
+             ,gd_process_date               -- 業務日付
+-- 2010/11/05 Ver1.1 障害：E_本稼動_05492 delete end by Shigeto.Niki
              ,NULL                          -- 業態小分類
              ,NULL                          -- 業種
              ,NULL                          -- 取引形態
