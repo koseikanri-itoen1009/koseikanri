@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI010A02C(body)
  * Description      : 気づき情報IF出力
  * MD.050           : 気づき情報IF出力 MD050_COI_010_A02
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/03/30    1.1   T.Nakamura       [障害T1_0083]IF項目の桁数を修正
  *                                       [障害T1_0084]IF項目の形式を修正
  *  2009/04/21    1.2   T.Nakamura       [障害T1_0580]メイン倉庫重複チェックを追加
+ *  2010/02/16    1.3   N.Abe            [E_本稼動_01593]保管場所の無効日を参照
  *
  *****************************************************************************************/
 --
@@ -451,12 +452,20 @@ AS
       SELECT    msi.attribute7             AS base_code             -- 拠点コード
       FROM      mtl_secondary_inventories  msi                      -- 保管場所マスタ
       WHERE     msi.attribute1             =  cv_subinv_type_store  -- 抽出条件：保管場所区分が'1'
+-- == 2010/02/16 V1.3 Added START ===============================================================
+      AND       NVL(msi.disable_date, TO_DATE('9999/12/31', 'YYYY/MM/DD'))
+                                           >  gd_process_date       -- 取得条件：失効日がNULLか業務日付より後
+-- == 2010/02/16 V1.3 Added END   ===============================================================
       GROUP BY  msi.attribute7                                      -- 集約条件：拠点コード
       MINUS                                                         -- マージ：マイナス
       SELECT    msi.attribute7             AS base_code             -- 拠点コード
       FROM      mtl_secondary_inventories  msi                      -- 保管場所マスタ
       WHERE     msi.attribute6             =  cv_main_store_div_y   -- 抽出条件：メイン倉庫区分が'Y'
       AND       msi.attribute1             =  cv_subinv_type_store  -- 抽出条件：保管場所区分が'1'
+-- == 2010/02/16 V1.3 Added START ===============================================================
+      AND       NVL(msi.disable_date, TO_DATE('9999/12/31', 'YYYY/MM/DD'))
+                                           >  gd_process_date       -- 取得条件：失効日がNULLか業務日付より後
+-- == 2010/02/16 V1.3 Added END   ===============================================================
       GROUP BY  msi.attribute7                                      -- 集約条件：拠点コード
       ;
 --
