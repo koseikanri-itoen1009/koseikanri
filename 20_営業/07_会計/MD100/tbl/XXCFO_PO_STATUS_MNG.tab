@@ -12,6 +12,7 @@ CREATE TABLE xxcfo.xxcfo_po_status_mng
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2008/11/21    1.0  SCS 山口 優    初回作成
+ *  2009/06/16    1.1  SCS 萱原 伸哉  [T1_0267]インデックスを表領域xxidx2に割当
  ************************************************************************/
 ( 
   po_num                     VARCHAR2(20)         NOT NULL  ,-- 発注番号
@@ -26,6 +27,7 @@ CREATE TABLE xxcfo.xxcfo_po_status_mng
   program_id                 NUMBER                         ,-- コンカレント・プログラムID
   program_update_date        DATE                           ,-- プログラム更新日
   CONSTRAINT xxcfo_po_status_mng_pk PRIMARY KEY ( po_num, org_id )
+  USING INDEX TABLESPACE xxidx2
 )
 ;
 --
