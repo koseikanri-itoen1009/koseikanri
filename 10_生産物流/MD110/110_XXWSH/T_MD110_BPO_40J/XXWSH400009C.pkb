@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼確認表
  * MD.050           : 出荷依頼       T_MD050_BPO_401
  * MD.070           : 出荷依頼確認表 T_MD070_BPO_40J
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2008/07/01    1.4   福田  直樹       ST不具合対応#331 商品区分は入力パラメータから取得
  *  2008/07/02    1.5   Satoshi Yunba    禁則文字「'」「"」「<」「>」「＆」対応
  *  2008/07/03    1.6   椎名  昭圭       ST不具合対応#344･357･406対応
+ *  2008/07/10    1.7   上原  正好       変更要求#91対応 配送区分情報VIEWを外部結合に変更
  *
  *****************************************************************************************/
 --
@@ -614,7 +615,10 @@ AS
                                 WHEN xoha.weight_capacity_class = '1' THEN xola.weight
                                 WHEN xoha.weight_capacity_class = '2' THEN xola.capacity
                               END 
-              WHEN xsm2v.small_amount_class = '0' THEN
+              -- MOD START 1.7
+              WHEN NVL(xsm2v.small_amount_class,'0') = '0' THEN
+--              WHEN xsm2v.small_amount_class = '0' THEN
+              -- MOD END 1.7
                               CASE 
                                 WHEN xoha.weight_capacity_class = '1'
                                  THEN xola.pallet_weight + xola.weight
@@ -633,7 +637,10 @@ AS
                                 WHEN xoha.weight_capacity_class = '1' THEN xoha.sum_weight
                                 WHEN xoha.weight_capacity_class = '2' THEN xoha.sum_capacity
                               END 
-              WHEN xsm2v.small_amount_class = '0' THEN
+              -- MOD START 1.7
+              WHEN NVL(xsm2v.small_amount_class,'0') = '0' THEN
+--              WHEN xsm2v.small_amount_class = '0' THEN
+              -- MOD END 1.7
                               CASE 
                                 WHEN xoha.weight_capacity_class = '1'
                                  THEN xola.pallet_weight + xoha.sum_weight
@@ -784,8 +791,11 @@ AS
         AND NVL(xlv2v.attribute4, xca2v.customer_class_code) = xca2v.customer_class_code
             -- クイックコード(依頼区分).顧客区分(DFF)＝顧客情報VIEW2(顧客情報)．顧客区分
 -- 2008/07/04 SST不具合対応#406 End
-        AND xoha.shipping_method_code        = xsm2v.ship_method_code
+-- MOD START 1.7
+        AND xoha.shipping_method_code        = xsm2v.ship_method_code(+)
+--        AND xoha.shipping_method_code        = xsm2v.ship_method_code
                       -- 受注ヘッダアドオン.配送区分=配送区分情報VIEW.配送区分コード
+-- MOD END 1.7
 -- 2008/07/03 ST不具合対応#357 Start
         AND xoha.req_status                  <> gv_cancel
                                        -- 受注ヘッダアドオン.ステータス <> 取消

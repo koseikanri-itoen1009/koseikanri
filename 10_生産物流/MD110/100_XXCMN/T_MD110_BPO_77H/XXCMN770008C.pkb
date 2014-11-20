@@ -7,7 +7,7 @@ AS
  * Description      : 返品原料原価差異表
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77H)
- * Version          : 1.2
+ * Version          : 1.5
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -28,6 +28,8 @@ AS
  *                                       担当部署、担当者名の最大長処理を修正
  *  2008/06/03    1.2   T.Endou          担当部署または担当者名が未取得時は正常終了に修正
  *  2008/06/10    1.3   T.Ikehara        投入品と製品のラインタイプを修正
+ *  2008/06/13    1.4   T.Ikehara        生産原料詳細(アドオン)の結合が不要の為削除
+ *  2008/06/19    1.5   Y.Ishikawa       金額、数量がNULLの場合は0を表示する。
  *
  *****************************************************************************************/
 --
@@ -309,7 +311,6 @@ AS
       ||  ',xxcmn_lot_each_item_v     xleiv2'   -- ロット別品目情報VIEW(製品用)
       ||  ',xxcmn_stnd_unit_price_v   xsupv'    -- 標準原価情報VIEW
       ||  ',fm_matl_dtl               fmd'      -- フォーミュラディテール
-      ||  ',xxwip_material_detail     xmd'      -- 生産原料詳細（アドオン）
       ;
 --
     -- ----------------------------------------------------
@@ -380,8 +381,6 @@ AS
       ||  ' AND xrpmpv2.line_type     = fmd.line_type(+)'
       ||  ' AND xrpmpv2.doc_line      = fmd.line_no(+)'
       ||  ' AND itp1.reverse_id       IS NULL'
-      ||  ' AND itp1.item_id          = xmd.item_id'
-      ||  ' AND itp1.lot_id           = xmd.lot_id'
       ;
 --
     -- ----------------------------------------------------
@@ -757,43 +756,29 @@ AS
       prc_set_xml(gc_d, 'product_item_name', gt_body_data(i).product_item_name, 20);
 --
       -- 受入数量(原料)
-      IF (gt_body_data(i).quantity != 0) THEN
-        prc_set_xml(gc_d, 'quantity', gt_body_data(i).quantity);
-      END IF;
+      prc_set_xml(gc_z, 'quantity', gt_body_data(i).quantity);
 --
       -- 標準原価(原料)
-      IF (gt_body_data(i).standard_cost != 0) THEN
-        prc_set_xml(gc_d, 'standard_cost', gt_body_data(i).standard_cost);
-      END IF;
+      prc_set_xml(gc_z, 'standard_cost', gt_body_data(i).standard_cost);
 --
       -- 標準金額(原料) ：受入数量(原料)×標準原価(原料)
       ln_standard_amount  := gt_body_data(i).quantity * gt_body_data(i).standard_cost;
-      IF (ln_standard_amount != 0) THEN
-        prc_set_xml(gc_d, 'standard_amount', ln_standard_amount);
-      END IF;
+      prc_set_xml(gc_z, 'standard_amount', ln_standard_amount);
 --
       -- 基準単価(製品)
-      IF (gt_body_data(i).turn_price != 0) THEN
-        prc_set_xml(gc_d, 'turn_price', gt_body_data(i).turn_price);
-      END IF;
+      prc_set_xml(gc_z, 'turn_price', gt_body_data(i).turn_price);
 --
       -- 基準金額(原料)
       ln_turn_amount  := gt_body_data(i).turn_price * gt_body_data(i).turn_qty;
-      IF (ln_turn_amount != 0) THEN
-        prc_set_xml(gc_d, 'turn_amount', ln_turn_amount);
-      END IF;
+      prc_set_xml(gc_z, 'turn_amount', ln_turn_amount);
 --
       -- 単価差異
       ln_difference_price := gt_body_data(i).turn_price - gt_body_data(i).standard_cost;
-      IF (ln_difference_price != 0) THEN
-        prc_set_xml(gc_d, 'difference_price', ln_difference_price);
-      END IF;
+      prc_set_xml(gc_z, 'difference_price', ln_difference_price);
 --
       -- 原価差異
       ln_differense_cost  := ln_turn_amount - ln_standard_amount;
-      IF (ln_differense_cost != 0) THEN
-        prc_set_xml(gc_d, 'difference_cost', ln_differense_cost);
-      END IF;
+      prc_set_xml(gc_z, 'difference_cost', ln_differense_cost);
 --
 --
       ------------------------------

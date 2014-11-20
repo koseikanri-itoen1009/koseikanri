@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼確定関数(BODY)
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_EDO_BPO_40D_出荷依頼確定関数
- * Version                : 1.10
+ * Version                : 1.11
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2008/6/19    1.8   Y.Shindou       内部変更要求#143対応
  *  2008/7/08    1.9   N.Fukuda        ST不具合対応#405
  *  2008/7/08    1.10  M.Uehara        ST不具合対応#424
+ *  2008/7/09    1.11  N.Fukuda        ST不具合対応#430
  *
  *****************************************************************************************/
 --
@@ -162,6 +163,9 @@ AS
   gv_status_A             CONSTANT VARCHAR2(1)   := 'A'; -- 有効
 --
   gv_transaction_type_name_ship CONSTANT VARCHAR2(100) := '引取変更'; -- 出庫形態 2008/07/08 ST不具合対応#405
+--
+  gv_freight_charge_class_on  CONSTANT VARCHAR2(1) := '1'; -- 運賃区分「対象」  2008/07/09 ST不具合対応#430
+  gv_freight_charge_class_off CONSTANT VARCHAR2(1) := '0'; -- 運賃区分「対象外」2008/07/09 ST不具合対応#430
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -752,6 +756,7 @@ AS
     lv_bfr_shipping_method_code      VARCHAR2(2);  -- 前配送区分
     lv_bfr_prod_class                VARCHAR2(2);  -- 前商品区分
     id_bfr_schedule_ship_date        DATE;         -- 前出庫日
+    lv_bfr_freight_charge_class      VARCHAR2(1);  -- 前運賃区分 2008/07/09 ST不具合対応#430
 --
     lv_loading_over_class            VARCHAR2(1);  -- 積載オーバー区分
     lv_ship_methods                  VARCHAR2(30); -- 出荷方法
@@ -807,6 +812,7 @@ AS
             , xcav.location_rel_code  location_rel_code  -- 拠点実績有無区分 - 顧客マスタ.拠点実績有無区分
             , xoha.order_header_id    order_header_id    -- 受注ヘッダアドオンID
             , ximv.conv_unit          conv_unit          -- 入出庫換算単位 OPM品目マスタ入出庫換算単位
+            , xoha.freight_charge_class   freight_charge_class   -- 運賃区分 2008/07/09 ST不具合対応#430
       FROM
          xxwsh_oe_transaction_types2_v xottv  --①受注タイプ情報VIEW2
         ,xxwsh_order_headers_all       xoha   --②受注ヘッダアドオン
@@ -1256,42 +1262,45 @@ AS
         -- *** 最大パレット枚数チェック(D-6)
         -- **************************************************
 --
-        -- 最大パレット枚数算出関数
-        ln_retcode :=
-        xxwsh_common_pkg.get_max_pallet_qty(cv_whse_code, -- クイックコード「コード区分」「倉庫」
-                                            loop_cnt.deliver_from,         -- D-2出荷元保管場所
-                                            cv_deliver_to,
-                                                          -- クイックコード「コード区分」「配送先」
-                                            loop_cnt.deliver_to,           -- D-2配送先コード
-                                            loop_cnt.schedule_ship_date,   -- D-2出庫日
-                                            loop_cnt.shipping_method_code, -- D-2配送区分
-                                            ln_drink_deadweight,           -- ドリンク積載重量
-                                            ln_leaf_deadweight,            -- リーフ積載重量
-                                            ln_drink_loading_capacity,     -- ドリンク積載容積
-                                            ln_leaf_loading_capacity,      -- リーフ積載容積
-                                            ln_palette_max_qty);           -- パレット最大枚数
+        -- 最大パレット枚数算出関数               運賃区分がONの場合にチェックする(2008/07/09 ST不具合対応#430)
+        IF ( loop_cnt.freight_charge_class = gv_freight_charge_class_on ) THEN  -- 2008/07/09 ST不具合対応#430
 --
-        -- リターン・コードにエラーが返された場合はエラー
-        IF (ln_retcode = gn_status_error) THEN
-          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                                gv_cnst_msg_155,
-                                                'API_NAME',
-                                                cv_get_max_pallet_qty_api,
-                                                'ERR_MSG',
-                                                cv_get_max_pallet_qty_msg,
-                                                'REQUEST_NO',
-                                                loop_cnt.request_no);
-          RAISE global_api_expt;
+          ln_retcode :=
+          xxwsh_common_pkg.get_max_pallet_qty(cv_whse_code, -- クイックコード「コード区分」「倉庫」
+                                              loop_cnt.deliver_from,         -- D-2出荷元保管場所
+                                              cv_deliver_to,
+                                                            -- クイックコード「コード区分」「配送先」
+                                              loop_cnt.deliver_to,           -- D-2配送先コード
+                                              loop_cnt.schedule_ship_date,   -- D-2出庫日
+                                              loop_cnt.shipping_method_code, -- D-2配送区分
+                                              ln_drink_deadweight,           -- ドリンク積載重量
+                                              ln_leaf_deadweight,            -- リーフ積載重量
+                                              ln_drink_loading_capacity,     -- ドリンク積載容積
+                                              ln_leaf_loading_capacity,      -- リーフ積載容積
+                                              ln_palette_max_qty);           -- パレット最大枚数
 --
-        -- D-2パレット合計枚数 > D-6パレット最大枚数の場合はエラー
-        ELSIF (loop_cnt.pallet_sum_quantity > ln_palette_max_qty) THEN
-          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                            gv_cnst_msg_151,
-                                            'REQUEST_NO',
-                                            loop_cnt.request_no);
-          RAISE global_api_expt;
+          -- リターン・コードにエラーが返された場合はエラー
+          IF (ln_retcode = gn_status_error) THEN
+            lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                  gv_cnst_msg_155,
+                                                  'API_NAME',
+                                                  cv_get_max_pallet_qty_api,
+                                                  'ERR_MSG',
+                                                  cv_get_max_pallet_qty_msg,
+                                                  'REQUEST_NO',
+                                                  loop_cnt.request_no);
+            RAISE global_api_expt;
 --
-        END IF;
+          -- D-2パレット合計枚数 > D-6パレット最大枚数の場合はエラー
+          ELSIF (loop_cnt.pallet_sum_quantity > ln_palette_max_qty) THEN
+            lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                              gv_cnst_msg_151,
+                                              'REQUEST_NO',
+                                              loop_cnt.request_no);
+            RAISE global_api_expt;
+--
+          END IF;
+        END IF;  -- 2008/07/09 ST不具合対応#430
       END IF;
 --
       -- **************************************************
@@ -1775,6 +1784,7 @@ AS
         -- **************************************************
 --
         IF ((lv_bfr_request_no <> loop_cnt.request_no)
+        AND ( lv_bfr_freight_charge_class = gv_freight_charge_class_on ) -- 運賃区分がONの場合にチェックする(2008/07/09 ST不具合対応#430)
         AND ( ln_data_cnt > 1 )) THEN
 --
           -- 前依頼No <> D-2依頼No の場合
@@ -1889,7 +1899,8 @@ AS
       lv_bfr_deliver_to            := loop_cnt.deliver_to;           -- 前配送先コード
       lv_bfr_shipping_method_code  := loop_cnt.shipping_method_code; -- 前配送区分
       lv_bfr_prod_class            := loop_cnt.prod_class;           -- 前商品区分
-      id_bfr_schedule_ship_date    := loop_cnt.schedule_ship_date;-- 前出庫日
+      id_bfr_schedule_ship_date    := loop_cnt.schedule_ship_date;   -- 前出庫日
+      lv_bfr_freight_charge_class  := loop_cnt.freight_charge_class; -- 前運賃区分 2008/07/09 ST不具合対応#430
 --
 --
       -- **************************************************
@@ -1924,102 +1935,106 @@ AS
       -- *** 積載効率チェック(積載効率算出)(D-10)
       -- **************************************************
 --
-      -- 前依頼No <> D-2依頼No の場合（重量チェック）
-      xxwsh_common910_pkg.calc_load_efficiency(ln_bfr_sum_weight,        -- 前積載重量合計
-                                               NULL,                     -- 前積載容積合計
-                                               cv_whse_code,
-                                                        -- クイックコード「コード区分」「倉庫」
-                                               lv_bfr_deliver_from,      -- 前出荷元保管場所
-                                               cv_deliver_to,
-                                                        -- クイックコード「コード区分」「配送先」
-                                               lv_bfr_deliver_to,        -- 前配送先コード
-                                               lv_bfr_shipping_method_code,
-                                                                             -- 前配送区分
-                                               lv_bfr_prod_class,            -- 前商品区分
-                                               '0',                          -- 対象外 
-                                               id_bfr_schedule_ship_date,    -- 前出庫日
-                                               lv_retcode,                   -- リターンコード
-                                               lv_errbuf,                    -- エラーメッセージコード
-                                               lv_errmsg,                    -- エラーメッセージ
-                                               lv_loading_over_class,        -- 積載オーバー区分
-                                               lv_ship_methods,              -- 出荷方法
-                                               ln_load_efficiency_weight,    -- 重量積載効率
-                                               ln_load_efficiency_capacity,  -- 容積積載効率
-                                               lv_mixed_ship_method);        -- 混載配送区分
+      -- 運賃区分がONの場合にチェックする   2008/07/09 ST不具合対応#430
+      IF ( lv_bfr_freight_charge_class = gv_freight_charge_class_on ) THEN
 --
-      -- リターン・コードにエラーが返された場合はエラー
-      IF ( lv_retcode = gn_status_error ) THEN
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                              gv_cnst_msg_155,
-                                              'API_NAME',
-                                              cv_calc_load_efficiency_api,
-                                              'ERR_MSG',
-                                              lv_errmsg,
-                                              'REQUEST_NO',
-                                              lv_bfr_request_no,'POS',29);
-        RAISE global_api_expt;
+        -- 前依頼No <> D-2依頼No の場合（重量チェック）
+        xxwsh_common910_pkg.calc_load_efficiency(ln_bfr_sum_weight,        -- 前積載重量合計
+                                                 NULL,                     -- 前積載容積合計
+                                                 cv_whse_code,
+                                                          -- クイックコード「コード区分」「倉庫」
+                                                 lv_bfr_deliver_from,      -- 前出荷元保管場所
+                                                 cv_deliver_to,
+                                                          -- クイックコード「コード区分」「配送先」
+                                                 lv_bfr_deliver_to,        -- 前配送先コード
+                                                 lv_bfr_shipping_method_code,
+                                                                               -- 前配送区分
+                                                 lv_bfr_prod_class,            -- 前商品区分
+                                                 '0',                          -- 対象外 
+                                                 id_bfr_schedule_ship_date,    -- 前出庫日
+                                                 lv_retcode,                   -- リターンコード
+                                                 lv_errbuf,                    -- エラーメッセージコード
+                                                 lv_errmsg,                    -- エラーメッセージ
+                                                 lv_loading_over_class,        -- 積載オーバー区分
+                                                 lv_ship_methods,              -- 出荷方法
+                                                 ln_load_efficiency_weight,    -- 重量積載効率
+                                                 ln_load_efficiency_capacity,  -- 容積積載効率
+                                                 lv_mixed_ship_method);        -- 混載配送区分
 --
-      ELSIF ( lv_loading_over_class = 1 ) THEN-- 積載オーバーの場合
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                              gv_cnst_msg_158,
-                                              'API_NAME',
-                                              cv_calc_load_efficiency_api,                                                                    
-                                              'ERR_MSG',
-                                              lv_errmsg,
-                                              'REQUEST_NO',
-                                              lv_bfr_request_no,'POS',30);
-        RAISE global_api_expt;
+        -- リターン・コードにエラーが返された場合はエラー
+        IF ( lv_retcode = gn_status_error ) THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                gv_cnst_msg_155,
+                                                'API_NAME',
+                                                cv_calc_load_efficiency_api,
+                                                'ERR_MSG',
+                                                lv_errmsg,
+                                                'REQUEST_NO',
+                                                lv_bfr_request_no,'POS',29);
+          RAISE global_api_expt;
 --
-      END IF;
+        ELSIF ( lv_loading_over_class = 1 ) THEN-- 積載オーバーの場合
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                gv_cnst_msg_158,
+                                                'API_NAME',
+                                                cv_calc_load_efficiency_api,                                                                    
+                                                'ERR_MSG',
+                                                lv_errmsg,
+                                                'REQUEST_NO',
+                                                lv_bfr_request_no,'POS',30);
+          RAISE global_api_expt;
 --
-      -- 前依頼No <> D-2依頼No の場合(容積チェック)
-      xxwsh_common910_pkg.calc_load_efficiency(NULL,                     -- 前積載重量合計
-                                               ln_bfr_sum_capacity,      -- 前積載容積合計
-                                               cv_whse_code,
-                                                        -- クイックコード「コード区分」「倉庫」
-                                               lv_bfr_deliver_from,      -- 前出荷元保管場所
-                                               cv_deliver_to,
-                                                        -- クイックコード「コード区分」「配送先」
-                                               lv_bfr_deliver_to,        -- 前配送先コード
-                                               lv_bfr_shipping_method_code,
-                                                                             -- 前配送区分
-                                               lv_bfr_prod_class,            -- 前商品区分
-                                               '0',                          -- 対象外 
-                                               id_bfr_schedule_ship_date,    -- 前出庫日
-                                               lv_retcode,                   -- リターンコード
-                                               lv_errbuf,                    -- エラーメッセージコード
-                                               lv_errmsg,                    -- エラーメッセージ
-                                               lv_loading_over_class,        -- 積載オーバー区分
-                                               lv_ship_methods,              -- 出荷方法
-                                               ln_load_efficiency_weight,    -- 重量積載効率
-                                               ln_load_efficiency_capacity,  -- 容積積載効率
-                                               lv_mixed_ship_method);        -- 混載配送区分
+        END IF;
 --
-      -- リターン・コードにエラーが返された場合はエラー
-      IF ( lv_retcode = gn_status_error ) THEN
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                              gv_cnst_msg_155,
-                                              'API_NAME',
-                                              cv_calc_load_efficiency_api,
-                                              'ERR_MSG',
-                                              lv_errmsg,
-                                              'REQUEST_NO',
-                                              lv_bfr_request_no);
-        RAISE global_api_expt;
+        -- 前依頼No <> D-2依頼No の場合(容積チェック)
+        xxwsh_common910_pkg.calc_load_efficiency(NULL,                     -- 前積載重量合計
+                                                 ln_bfr_sum_capacity,      -- 前積載容積合計
+                                                 cv_whse_code,
+                                                          -- クイックコード「コード区分」「倉庫」
+                                                 lv_bfr_deliver_from,      -- 前出荷元保管場所
+                                                 cv_deliver_to,
+                                                          -- クイックコード「コード区分」「配送先」
+                                                 lv_bfr_deliver_to,        -- 前配送先コード
+                                                 lv_bfr_shipping_method_code,
+                                                                               -- 前配送区分
+                                                 lv_bfr_prod_class,            -- 前商品区分
+                                                 '0',                          -- 対象外 
+                                                 id_bfr_schedule_ship_date,    -- 前出庫日
+                                                 lv_retcode,                   -- リターンコード
+                                                 lv_errbuf,                    -- エラーメッセージコード
+                                                 lv_errmsg,                    -- エラーメッセージ
+                                                 lv_loading_over_class,        -- 積載オーバー区分
+                                                 lv_ship_methods,              -- 出荷方法
+                                                 ln_load_efficiency_weight,    -- 重量積載効率
+                                                 ln_load_efficiency_capacity,  -- 容積積載効率
+                                                 lv_mixed_ship_method);        -- 混載配送区分
 --
-      ELSIF ( lv_loading_over_class = 1 ) THEN-- 積載オーバーの場合
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                              gv_cnst_msg_158,
-                                              'API_NAME',
-                                              cv_calc_load_efficiency_api,                                                                    
-                                              'ERR_MSG',
-                                              lv_errmsg,
-                                              'REQUEST_NO',
-                                              lv_bfr_request_no);
-        RAISE global_api_expt;
+        -- リターン・コードにエラーが返された場合はエラー
+        IF ( lv_retcode = gn_status_error ) THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                gv_cnst_msg_155,
+                                                'API_NAME',
+                                                cv_calc_load_efficiency_api,
+                                                'ERR_MSG',
+                                                lv_errmsg,
+                                                'REQUEST_NO',
+                                                lv_bfr_request_no);
+          RAISE global_api_expt;
 --
-      END IF;
+        ELSIF ( lv_loading_over_class = 1 ) THEN-- 積載オーバーの場合
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                gv_cnst_msg_158,
+                                                'API_NAME',
+                                                cv_calc_load_efficiency_api,                                                                    
+                                                'ERR_MSG',
+                                                lv_errmsg,
+                                                'REQUEST_NO',
+                                                lv_bfr_request_no);
+          RAISE global_api_expt;
 --
+        END IF;
+--
+      END IF;  -- 2008/07/09 ST不具合対応#430
 --
     END IF;
 --
