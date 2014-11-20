@@ -3,7 +3,7 @@
  *
  * View Name       : XXCMN_RCV_PAY_MST_PORC_RMA_V
  * Description     : Œo—ó•¥‹æ•ªî•ñVIEW_w”ƒŠÖ˜A_o‰×
- * Version         : 1.1
+ * Version         : 1.4
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,10 @@
  *  2008-04-14    1.0   Y.Ishikawa       V‹Kì¬
  *  2008-05-20    1.1   Y.Ishikawa       XXCMN_ITEM_CATEGORIES3_V‚ğ‚â‚ß
  *                                       •K—v‚Èƒe[ƒuƒ‹‚Ì‚İ‚ÌŒ‹‡‚Æ‚·‚éB
+ *  2008-06-10    1.2   Y.Ishikawa       æˆø‹æ•ª'Œ©–{oŒÉ','”p‹poŒÉ' ¨
+ *                                       'Œ©–{','”p‹p'‚Ö•ÏX
+ *  2008-06-12    1.3   Y.Ishikawa       €–Ú‚Éæˆø‹æ•ª–¼‚ğ’Ç‰Á
+ *  2008-06-12    1.4   Y.Ishikawa       €–Ú‚Éd“üæID‚ğ’Ç‰Á
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCMN_RCV_PAY_MST_PORC_RMA_V
@@ -19,7 +23,7 @@ CREATE OR REPLACE VIEW XXCMN_RCV_PAY_MST_PORC_RMA_V
      SHIPMENT_PROVISION_DIV,STOCK_ADJUSTMENT_DIV,SHIP_PROV_RCV_PAY_CATEGORY,ITEM_DIV_AHEAD,
      ITEM_DIV_ORIGIN,PROD_DIV_AHEAD,PROD_DIV_ORIGIN,ROUTING_CLASS,LINE_TYPE,HIT_IN_DIV,REASON_CODE,
      DOC_ID,DOC_LINE,RESULT_POST,UNIT_PRICE,REQUEST_ITEM_CODE,DELIVER_TO_ID,ITEM_ID,ITEM_DIV
-     ,PROD_DIV,CROWD_CODE,ACNT_CROWD_CODE)
+     ,PROD_DIV,CROWD_CODE,ACNT_CROWD_CODE,DEALINGS_DIV_NAME,VENDOR_SITE_ID)
 AS
 SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—ó•¥‹æ•ª
        ,xrpm.dealings_div               AS dealings_div               -- æˆø‹æ•ª
@@ -49,6 +53,8 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,xicv3_o.prod_class_code         AS prod_div                   -- ¤•i‹æ•ª
        ,xicv3_o.crowd_code              AS crowd_code                 -- ŒS
        ,xicv3_o.acnt_crowd_code         AS acnt_crowd_code            -- Œo—ŒS
+       ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
+       ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
        ,rcv_shipment_lines       rsl     -- ó“ü–¾×
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
@@ -175,6 +181,8 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,xicv3_o.prod_class_code         AS prod_div                   -- ¤•i‹æ•ª
        ,xicv3_o.crowd_code              AS crowd_code                 -- ŒS
        ,xicv3_o.acnt_crowd_code         AS acnt_crowd_code            -- Œo—ŒS
+       ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
+       ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
        ,rcv_shipment_lines       rsl     -- ó“ü–¾×
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
@@ -316,6 +324,8 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
                  'U‘Ö—L_ó“ü',xicv3_a.acnt_crowd_code,             -- U‘ÖæŒo—ŒS
                  'U‘Ö—L_o‰×',xicv3_a.acnt_crowd_code,             -- U‘ÖæŒo—ŒS
                  'U‘Ö—L_•¥o',xicv3_o.acnt_crowd_code) AS acnt_crowd_code  -- U‘ÖŒ³Œo—ŒS
+       ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
+       ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
        ,rcv_shipment_lines       rsl     -- ó“ü–¾×
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
@@ -455,6 +465,8 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
                  '¤•iU‘Ö—L_ó“ü',xicv3_a.acnt_crowd_code,             -- U‘ÖæŒo—ŒS
                  '¤•iU‘Ö—L_o‰×',xicv3_a.acnt_crowd_code,             -- U‘ÖæŒo—ŒS
                  '¤•iU‘Ö—L_•¥o',xicv3_o.acnt_crowd_code) AS acnt_crowd_code -- U‘ÖŒ³Œo—ŒS
+       ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
+       ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
        ,rcv_shipment_lines       rsl     -- ó“ü–¾×
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
@@ -601,6 +613,8 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
                  'U‘Öo‰×_ó“ü_”¼',xicv3_a.acnt_crowd_code,          -- U‘ÖæŒo—ŒS
                  'U‘Öo‰×_o‰×'   ,xicv3_a.acnt_crowd_code,          -- U‘ÖæŒo—ŒS
                  'U‘Öo‰×_•¥o'   ,xicv3_o.acnt_crowd_code) AS acnt_crowd_code -- U‘ÖŒ³Œo—ŒS
+       ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
+       ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
        ,rcv_shipment_lines       rsl     -- ó“ü–¾×
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
@@ -745,6 +759,8 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
                  'U‘Öo‰×_ó“ü_”¼',xicv3_a.acnt_crowd_code,          -- U‘ÖæŒo—ŒS
                  'U‘Öo‰×_o‰×'   ,xicv3_a.acnt_crowd_code,          -- U‘ÖæŒo—ŒS
                  'U‘Öo‰×_•¥o'   ,xicv3_o.acnt_crowd_code) AS acnt_crowd_code -- U‘ÖŒ³Œo—ŒS
+       ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
+       ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
        ,rcv_shipment_lines       rsl     -- ó“ü–¾×
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
@@ -869,6 +885,8 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,xicv3.prod_class_code           AS prod_div                   -- ¤•i‹æ•ª
        ,xicv3.crowd_code                AS crowd_code                 -- ŒS
        ,xicv3.acnt_crowd_code           AS acnt_crowd_code            -- Œo—ŒS
+       ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
+       ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
        ,rcv_shipment_lines       rsl     -- ó“ü–¾×
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
@@ -955,6 +973,8 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,xicv3.prod_class_code           AS prod_div                   -- ¤•i‹æ•ª
        ,xicv3.crowd_code                AS crowd_code                 -- ŒS
        ,xicv3.acnt_crowd_code           AS acnt_crowd_code            -- Œo—ŒS
+       ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
+       ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
        ,rcv_shipment_lines       rsl     -- ó“ü–¾×
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
@@ -997,7 +1017,7 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
 WHERE xrpm.doc_type                   = 'PORC'
   AND xrpm.source_document_code       = 'RMA'
   AND xlvv.lookup_type                = 'XXCMN_DEALINGS_DIV'
-  AND xlvv.meaning                    IN ('Œ©–{oŒÉ','”p‹poŒÉ')
+  AND xlvv.meaning                    IN ('Œ©–{','”p‹p')
   AND xrpm.dealings_div               = xlvv.lookup_code
   AND ooha.header_id                  = rsl.oe_order_header_ID
   AND otta.transaction_type_id        = ooha.order_type_id
@@ -1066,4 +1086,8 @@ COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.PROD_DIV IS '¤•i‹æ•ª'
 COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.CROWD_CODE IS 'ŒS'
 /
 COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.ACNT_CROWD_CODE IS 'Œo—ŒS'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.DEALINGS_DIV_NAME IS 'æˆø‹æ•ª–¼'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.VENDOR_SITE_ID IS 'd“üæID'
 /

@@ -3,13 +3,14 @@
  *
  * View Name       : XXCMN_RCV_PAY_MST_PORC_PO_V
  * Description     : Œo—ó•¥‹æ•ªî•ñVIEW_w”ƒŠÖ˜A_d“ü
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008-04-14    1.0   Y.Ishikawa       V‹Kì¬
+ *  2008-06-12    1.1   Y.Ishikawa       €–Ú‚Éæˆø‹æ•ª–¼‚ğ’Ç‰Á
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCMN_RCV_PAY_MST_PORC_PO_V
@@ -17,7 +18,7 @@ CREATE OR REPLACE VIEW XXCMN_RCV_PAY_MST_PORC_PO_V
      SHIPMENT_PROVISION_DIV,STOCK_ADJUSTMENT_DIV,SHIP_PROV_RCV_PAY_CATEGORY,ITEM_DIV_AHEAD,
      ITEM_DIV_ORIGIN,PROD_DIV_AHEAD,PROD_DIV_ORIGIN,ROUTING_CLASS,LINE_TYPE,HIT_IN_DIV,REASON_CODE,
      LINE_ID,DOC_ID,DOC_LINE,POWDER_PRICE,COMMISSION_PRICE,ASSESSMENT,VENDOR_ID,RESULT_POST,
-     UNIT_PRICE)
+     UNIT_PRICE,DEALINGS_DIV_NAME)
 AS
 SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—ó•¥‹æ•ª
        ,xrpm.dealings_div               AS dealings_div               -- æˆø‹æ•ª
@@ -45,6 +46,7 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,pha.vendor_id                   AS vendor_id                  -- d“üæID
        ,pha.attribute10                 AS result_post                -- ¬Ñ•”
        ,pla.unit_price                  AS unit_price                 -- ”Ì”„’P‰¿
+       ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
        ,rcv_shipment_lines       rsl     -- ó“ü–¾×
        ,rcv_transactions         rt      -- ó“üæˆø
@@ -52,8 +54,11 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,po_lines_all             pla     -- ”­’–¾×
        ,po_line_locations_all    plla    -- ”­’”[“ü–¾×
        ,po_vendors               pv      -- d“üæƒ}ƒXƒ^
+       ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
 WHERE xrpm.doc_type             = 'PORC'
   AND xrpm.source_document_code <> 'RMA'
+  AND xlvv.lookup_type          = 'XXCMN_DEALINGS_DIV'
+  AND xrpm.dealings_div         = xlvv.lookup_code
   AND pha.vendor_id             = pv.vendor_id
   AND rsl.po_header_id          = pha.po_header_id
   AND rsl.po_line_id            = pla.po_line_id
@@ -115,4 +120,6 @@ COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_PO_V.VENDOR_ID IS 'd“üæID'
 COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_PO_V.RESULT_POST IS '¬Ñ•”'
 /
 COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_PO_V.UNIT_PRICE IS '”Ì”„’P‰¿'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_PO_V.DEALINGS_DIV_NAME IS 'æˆø‹æ•ª–¼'
 /

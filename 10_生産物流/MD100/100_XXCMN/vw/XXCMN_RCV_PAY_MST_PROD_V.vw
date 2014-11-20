@@ -3,13 +3,14 @@
  *
  * View Name       : XXCMN_RCV_PAY_MST_PROD_V
  * Description     : Œo—ó•¥‹æ•ªî•ñVIEW_¶YŠÖ˜A
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008-04-14    1.0    R.Tomoyose       V‹Kì¬
+ *  2008-06-12    1.1   Y.Ishikawa       €–Ú‚Éæˆø‹æ•ª–¼‚ğ’Ç‰Á
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCMN_RCV_PAY_MST_PROD_V (
@@ -37,7 +38,8 @@ CREATE OR REPLACE VIEW XXCMN_RCV_PAY_MST_PROD_V (
   RESULT_POST,
   FORMULA_ID,
   ITEM_ID,
-  BATCH_NO
+  BATCH_NO,
+  DEALINGS_DIV_NAME
 )
 AS
 SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—ó•¥‹æ•ª
@@ -65,6 +67,7 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,xrpm.formula_id                 AS formula_id                 -- ƒtƒH[ƒ~ƒ…ƒ‰‚h‚c
        ,xrpm.item_id                    AS item_id                    -- •i–Ú‚h‚c
        ,xrpm.batch_no                   AS batch_no                   -- ƒoƒbƒ`‚m‚
+       ,xrpm.dealings_div_name          AS dealings_div_name          -- æˆø‹æ•ª–¼
 FROM (
       SELECT xrpm_a.new_div_account            AS new_div_account
             ,xrpm_a.dealings_div               AS dealings_div
@@ -91,12 +94,16 @@ FROM (
             ,gbh_a.formula_id                  AS formula_id
             ,gmd_a.item_id                     AS item_id
             ,gbh_a.batch_no                    AS batch_no
-      FROM   xxcmn_rcv_pay_mst        xrpm_a      
+            ,xlvv.meaning                      AS dealings_div_name          -- æˆø‹æ•ª–¼
+      FROM   xxcmn_rcv_pay_mst        xrpm_a
             ,gme_material_details     gmd_a
             ,gme_batch_header         gbh_a
             ,gmd_routings_b           grb_a
+            ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
       WHERE  xrpm_a.doc_type          = 'PROD'
       AND    xrpm_a.routing_class    <> '70'
+      AND    xlvv.lookup_type         = 'XXCMN_DEALINGS_DIV'
+      AND    xrpm_a.dealings_div      = xlvv.lookup_code
       AND    gbh_a.batch_id           = gmd_a.batch_id
       AND    grb_a.routing_id         = gbh_a.routing_id
       AND    xrpm_a.routing_class     = grb_a.routing_class
@@ -129,6 +136,7 @@ FROM (
             ,gbh_b.formula_id                  AS formula_id
             ,gmd_b.item_id                     AS item_id
             ,gbh_b.batch_no                    AS batch_no
+            ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
       FROM   xxcmn_rcv_pay_mst        xrpm_b
             ,gme_material_details     gmd_b
             ,gme_batch_header         gbh_b
@@ -147,8 +155,11 @@ FROM (
                AND    gmd_item.item_id       = xicv.item_id
                GROUP BY gbh_item.batch_id
                        ,gmd_item.line_no ) gmd_item_b
+             ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
       WHERE  xrpm_b.doc_type          = 'PROD'
       AND    xrpm_b.routing_class     = '70'
+      AND    xlvv.lookup_type         = 'XXCMN_DEALINGS_DIV'
+      AND    xrpm_b.dealings_div      = xlvv.lookup_code
       AND    gbh_b.batch_id           = gmd_b.batch_id
       AND    grb_b.routing_id         = gbh_b.routing_id
       AND    xrpm_b.routing_class     = grb_b.routing_class
@@ -212,4 +223,6 @@ COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PROD_V.FORMULA_ID IS 'ƒtƒH[ƒ~ƒ…ƒ‰‚h‚c'
 COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PROD_V.ITEM_ID IS '•i–Ú‚h‚c'
 /
 COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PROD_V.BATCH_NO IS 'ƒoƒbƒ`‚m‚'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PROD_V.DEALINGS_DIV_NAME IS 'æˆø‹æ•ª–¼'
 /

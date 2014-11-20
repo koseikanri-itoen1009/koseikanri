@@ -3,13 +3,14 @@
  *
  * View Name       : XXCMN_RCV_PAY_MST_ADJI_V
  * Description     : Œo—Žó•¥‹æ•ªî•ñVIEW_ÝŒÉ’²®
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008-04-14    1.0   R.Tomoyose       V‹Kì¬
+ *  2008-06-12    1.1   Y.Ishikawa       €–Ú‚ÉŽæˆø‹æ•ª–¼‚ð’Ç‰Á
  *
  ************************************************************************/
  CREATE OR REPLACE VIEW XXCMN_RCV_PAY_MST_ADJI_V (
@@ -29,7 +30,8 @@
   ROUTING_CLASS,
   LINE_TYPE,
   HIT_IN_DIV,
-  REASON_CODE
+  REASON_CODE,
+  DEALINGS_DIV_NAME
 )
 AS
 SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—Žó•¥‹æ•ª
@@ -49,8 +51,12 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—Ž
        ,xrpm.line_type                  AS line_type                  -- ƒ‰ƒCƒ“ƒ^ƒCƒv
        ,xrpm.hit_in_div                 AS hit_in_div                 -- ‘Åž‹æ•ª
        ,xrpm.reason_code                AS reason_code                -- Ž–—RƒR[ƒh
+       ,xlvv.meaning                    AS dealings_div_name          -- Žæˆø‹æ•ª–¼
 FROM   xxcmn_rcv_pay_mst  xrpm
+       ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
 WHERE  xrpm.doc_type  = 'ADJI'
+  AND  xlvv.lookup_type          = 'XXCMN_DEALINGS_DIV'
+  AND  xrpm.dealings_div         = xlvv.lookup_code
 /
 COMMENT ON TABLE XXCMN_RCV_PAY_MST_ADJI_V IS 'Œo—Žó•¥‹æ•ªî•ñVIEW_ÝŒÉ’²®'
 /
@@ -87,4 +93,6 @@ COMMENT ON COLUMN XXCMN_RCV_PAY_MST_ADJI_V.LINE_TYPE IS 'ƒ‰ƒCƒ“ƒ^ƒCƒv'
 COMMENT ON COLUMN XXCMN_RCV_PAY_MST_ADJI_V.HIT_IN_DIV IS '‘Åž‹æ•ª'
 /
 COMMENT ON COLUMN XXCMN_RCV_PAY_MST_ADJI_V.REASON_CODE IS 'Ž–—RƒR[ƒh'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_ADJI_V.DEALINGS_DIV_NAME IS 'Žæˆø‹æ•ª–¼'
 /
