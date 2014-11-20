@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A07C(body)
  * Description      : 親コード出荷実績作成
  * MD.050           : 親コード出荷実績作成 MD050_COP_004_A07
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ----------------------   ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/02/09    1.1   SCS.Kikuchi      結合不具合No.004対応(A-5.該当データ無しの場合の処理変更)
  *  2009/02/16    1.2   SCS.Tsubomatsu   結合不具合No.010対応(A-3.更新条件見直し)
  *  2009/04/13    1.3   SCS.Kikuchi      T1_0507対応
+ *  2009/05/12    1.4   SCS.Kikuchi      T1_0951対応
  *
  *****************************************************************************************/
 --
@@ -981,7 +982,10 @@ AS
                                        AND         xicv_n.end_date_active
 --
       AND    xoha.req_status                     = cv_req_status
-      AND    xola.shipping_result_if_flg         = cv_chr_y
+--20090512_Ver1.4_T1_0951_SCS.Kikuchi_MOD_START
+--      AND    xola.shipping_result_if_flg         = cv_chr_y
+      AND    xoha.actual_confirm_class           = cv_chr_y                -- 実績計上済区分
+--20090512_Ver1.4_T1_0951_SCS.Kikuchi_MOD_END
       AND    xola.last_update_date              >= gd_last_process_date
       AND    otta.attribute1                     = cv_chr_1
       AND    NVL( otta.attribute4, cv_chr_1 )   <> cv_chr_2
