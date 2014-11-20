@@ -7,7 +7,7 @@ AS
  * Description      : 倉庫払出指示書（配送先明細）
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 倉庫払出指示書（配送先明細） T_MD070_BPO_62I
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *                                         vendor_site_codeに変更。
  *  2008/07/04    1.2   Satoshi Yunba      禁則文字対応
  *  2008/07/10    1.3   Naoki Fukuda       ロットNo.がNULLだと品目が違っても一括りで出力される
+ *  2008/08/05    1.4   Akiyoshi Shiina    ST不具合#519対応
  *
  *****************************************************************************************/
 --
@@ -1131,12 +1132,26 @@ AS
       -- ====================================================
       IF (i < gt_report_data.COUNT) THEN
         -- ロットNo
-        -- 2008/07/10 Fukuda Start 品目が違ってもロットNo.がNULLだと一括りで出力されてしまう
+  -- 2008/08/05 v1.4 UPDATE START
+/*        -- 2008/07/10 Fukuda Start 品目が違ってもロットNo.がNULLだと一括りで出力されてしまう
         --IF ( (lv_tmp_lot_no = gt_report_data(i + 1).lot_no)
         --  OR ((lv_tmp_lot_no IS NULL) AND (gt_report_data(i + 1).lot_no IS NULL)) ) THEN
         IF (lv_tmp_lot_no = gt_report_data(i + 1).lot_no)
           AND (lv_tmp_item_code = gt_report_data(i + 1).item_code) THEN
-        -- 2008/07/10 Fukuda End
+*/        -- 2008/07/10 Fukuda End
+        -- 品目コードが同じ、かつロットNo.が同じか互いにNULLの場合
+        IF (
+             (lv_tmp_item_code = gt_report_data(i + 1).item_code)
+               AND (
+                     (lv_tmp_lot_no = gt_report_data(i + 1).lot_no)
+                     OR
+                     (
+                       (lv_tmp_lot_no IS NULL)
+                         AND (gt_report_data(i + 1).lot_no IS NULL)
+                     )
+                   )
+           ) THEN
+-- 2008/08/05 v1.4 UPDATE END
           lb_dispflg_lot_no := FALSE ;
         ELSE
           lb_dispflg_lot_no := TRUE ;

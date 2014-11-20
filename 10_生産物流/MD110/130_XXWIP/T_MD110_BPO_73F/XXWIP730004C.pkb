@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃チェックリスト
  * MD.050/070       : 運賃計算（トランザクション）  (T_MD050_BPO_734)
  *                    支払運賃チェックリスト        (T_MD070_BPO_73F)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2008/07/24    1.6   Satoshi Takemoto ST障害対応#477
  *  2008/07/25    1.7   Masayuki Nomura  ST障害対応#456
  *  2008/07/28    1.8   Masayuki Nomura  変更要求結合テスト障害対応
+ *  2008/08/04    1.9   Masayuki Nomura  内部変更要求#186対応
  *
  *****************************************************************************************/
 --
@@ -72,8 +73,12 @@ AS
   gc_cat_set_name_prod      CONSTANT VARCHAR2(10) := '商品区分' ;
   -- 代表タイプ
   gc_order_type_s           CONSTANT VARCHAR2(1) := '1' ;   -- 出荷
-  gc_order_type_m           CONSTANT VARCHAR2(1) := '2' ;   -- 移動
-  gc_order_type_p           CONSTANT VARCHAR2(1) := '3' ;   -- 支給
+-- ##### 20080804 1.9 内部変更要求#186対応 START #####
+--  gc_order_type_m           CONSTANT VARCHAR2(1) := '2' ;   -- 移動
+--  gc_order_type_p           CONSTANT VARCHAR2(1) := '3' ;   -- 支給
+  gc_order_type_m           CONSTANT VARCHAR2(1) := '3' ;   -- 移動
+  gc_order_type_p           CONSTANT VARCHAR2(1) := '2' ;   -- 支給
+-- ##### 20080804 1.9 内部変更要求#186対応 END   #####
   gc_order_type_js          CONSTANT VARCHAR2(2) := '出' ;
   gc_order_type_jm          CONSTANT VARCHAR2(2) := '移' ;
   gc_order_type_jp          CONSTANT VARCHAR2(2) := '支' ;
