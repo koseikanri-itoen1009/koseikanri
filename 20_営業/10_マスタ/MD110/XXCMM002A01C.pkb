@@ -48,6 +48,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/09    1.0   SCS 工藤 真純    初回作成
  *  2009/03/09    1.1   SCS 竹下 昭範    正常終了時だけ、CSVファイルを削除するように変更
+ *  2009/04/03    1.2   SCS 吉川 博章    追加従業員情報詳細のコンテキスト設定を追加
  *
  *****************************************************************************************/
 --
@@ -118,7 +119,11 @@ AS
   cv_appl_short_name   CONSTANT VARCHAR2(10) := 'XXCMM';             -- アドオン：マスタ
   cv_common_short_name CONSTANT VARCHAR2(10) := 'XXCCP';             -- アドオン：共通・IF
   cv_pkg_name          CONSTANT VARCHAR2(15) := 'XXCMM002A01C';      -- パッケージ名
-
+--
+-- Ver1.2  2009/04/03 Add コンテキストに SALES-OU を設定 
+  gn_org_id            CONSTANT NUMBER       := FND_GLOBAL.ORG_ID;   -- ORG_ID
+-- End
+--
   -- 更新区分をあらわすステータス(masters_rec.proc_flg)
   gv_sts_error     CONSTANT VARCHAR2(1) := 'E';   --ステータス(更新中止)
   gv_sts_thru      CONSTANT VARCHAR2(1) := 'S';   --ステータス(変更なし)
@@ -3786,6 +3791,9 @@ AS
         ,P_EMPLOYEE_NUMBER         =>  ir_masters_rec.employee_number   -- 社員番号(IN/OUT)
         ,P_FIRST_NAME              =>  ir_masters_rec.first_name        -- カナ名
         ,P_SEX                     =>  ir_masters_rec.sex               -- 性別
+-- Ver1.2  2009/04/03 Add コンテキストに SALES-OU を設定 
+        ,P_ATTRIBUTE_CATEGORY      =>  gn_org_id                        -- ORG_ID
+-- End
         ,P_ATTRIBUTE3              =>  ir_masters_rec.employee_division -- 従業員区分
         ,P_ATTRIBUTE7              =>  ir_masters_rec.license_code      -- 資格コード（新）
         ,P_ATTRIBUTE8              =>  ir_masters_rec.license_name      -- 資格名（新）
@@ -4624,49 +4632,52 @@ AS
 --
       HR_EMPLOYEE_API.CREATE_EMPLOYEE(
          P_VALIDATE                  =>  FALSE
-        ,P_HIRE_DATE                 =>  ir_masters_rec.hire_date            -- 入社年月日
-        ,P_BUSINESS_GROUP_ID         =>  gv_bisiness_grp_id                  -- ビジネスグループID
-        ,P_LAST_NAME                 =>  ir_masters_rec.last_name            -- カナ姓
-        ,P_SEX                       =>  ir_masters_rec.sex                  -- 性別
-        ,P_PERSON_TYPE_ID            =>  gv_person_type                      -- パーソンタイプ
-        ,P_EMPLOYEE_NUMBER           =>  ir_masters_rec.employee_number      -- 社員番号
-        ,P_FIRST_NAME                =>  ir_masters_rec.first_name           -- カナ名
-        ,P_ATTRIBUTE3                =>  ir_masters_rec.employee_division    -- 従業員区分
-        ,P_ATTRIBUTE7                =>  ir_masters_rec.license_code         -- 資格コード（新）
-        ,P_ATTRIBUTE8                =>  ir_masters_rec.license_name         -- 資格名（新）
-        ,P_ATTRIBUTE9                =>  ir_masters_rec.license_code_old     -- 資格コード（旧）
-        ,P_ATTRIBUTE10               =>  ir_masters_rec.license_code_name_old -- 資格名（旧）
-        ,P_ATTRIBUTE11               =>  ir_masters_rec.job_post             -- 職位コード（新）
-        ,P_ATTRIBUTE12               =>  ir_masters_rec.job_post_name        -- 職位名（新）
-        ,P_ATTRIBUTE13               =>  ir_masters_rec.job_post_old         -- 職位コード（旧）
-        ,P_ATTRIBUTE14               =>  ir_masters_rec.job_post_name_old    -- 職位名（旧）
-        ,P_ATTRIBUTE15               =>  ir_masters_rec.job_duty             -- 職務コード（新）
-        ,P_ATTRIBUTE16               =>  ir_masters_rec.job_duty_name        -- 職務名（新）
-        ,P_ATTRIBUTE17               =>  ir_masters_rec.job_duty_old         -- 職務コード（旧）
-        ,P_ATTRIBUTE18               =>  ir_masters_rec.job_duty_name_old    -- 職務名（旧）
-        ,P_ATTRIBUTE19               =>  ir_masters_rec.job_type             -- 職種コード（新）
-        ,P_ATTRIBUTE20               =>  ir_masters_rec.job_type_name        -- 職種名（新）
-        ,P_ATTRIBUTE21               =>  ir_masters_rec.job_type_old         -- 職種コード（旧）
-        ,P_ATTRIBUTE22               =>  ir_masters_rec.job_type_name_old    -- 職種名（旧）
-        ,P_ATTRIBUTE28               =>  ir_masters_rec.location_code        -- 起票部門(所属コード（新）)
-        ,P_ATTRIBUTE29               =>  ir_masters_rec.location_code        -- 照会範囲(所属コード（新）)
-        ,P_ATTRIBUTE30               =>  ir_masters_rec.location_code        -- 承認者範囲(所属コード（新）)
-        ,P_PER_INFORMATION_CATEGORY  =>  gv_info_category                    -- 'JP'
-        ,P_PER_INFORMATION18         =>  ir_masters_rec.last_name_kanji      -- 漢字姓
-        ,P_PER_INFORMATION19         =>  ir_masters_rec.first_name_kanji     -- 漢字名
-        ,P_PERSON_ID                 =>  ir_masters_rec.person_id            -- OUT（従業員ID）
-        ,P_ASSIGNMENT_ID             =>  ir_masters_rec.assignment_id        -- OUT（ｱｻｲﾝﾒﾝﾄID）
-        ,P_PER_OBJECT_VERSION_NUMBER =>  ir_masters_rec.pap_version          -- OUT（従業員ﾏｽﾀﾊﾞｰｼﾞｮﾝ番号）
-        ,P_ASG_OBJECT_VERSION_NUMBER =>  ir_masters_rec.paa_version          -- OUT（ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号）
-        ,P_PER_EFFECTIVE_START_DATE  =>  ir_masters_rec.effective_start_date -- OUT（登録年月日）
-        ,P_PER_EFFECTIVE_END_DATE    =>  ir_masters_rec.effective_end_date   -- OUT（登録期限年月日）
-        ,P_FULL_NAME                 =>  lv_full_name                        -- OUT（フルネーム）
-        ,P_PER_COMMENT_ID            =>  ln_per_comment_id                   -- OUT
-        ,P_ASSIGNMENT_SEQUENCE       =>  ln_assignment_sequence              -- OUT
-        ,P_ASSIGNMENT_NUMBER         =>  ir_masters_rec.assignment_number    -- OUT（ｱｻｲﾝﾒﾝﾄ番号）
-        ,P_NAME_COMBINATION_WARNING  =>  lb_name_combination_warning         -- OUT
-        ,P_ASSIGN_PAYROLL_WARNING    =>  lb_assign_payroll_warning           -- OUT
-        ,P_ORIG_HIRE_WARNING         =>  lb_orig_hire_warning                -- OUT
+        ,P_HIRE_DATE                 =>  ir_masters_rec.hire_date              -- 入社年月日
+        ,P_BUSINESS_GROUP_ID         =>  gv_bisiness_grp_id                    -- ビジネスグループID
+        ,P_LAST_NAME                 =>  ir_masters_rec.last_name              -- カナ姓
+        ,P_SEX                       =>  ir_masters_rec.sex                    -- 性別
+        ,P_PERSON_TYPE_ID            =>  gv_person_type                        -- パーソンタイプ
+        ,P_EMPLOYEE_NUMBER           =>  ir_masters_rec.employee_number        -- 社員番号
+        ,P_FIRST_NAME                =>  ir_masters_rec.first_name             -- カナ名
+-- Ver1.2  2009/04/03 Add コンテキストに SALES-OU を設定 
+        ,P_ATTRIBUTE_CATEGORY        =>  gn_org_id                             -- ORG_ID
+-- End
+        ,P_ATTRIBUTE3                =>  ir_masters_rec.employee_division      -- 従業員区分
+        ,P_ATTRIBUTE7                =>  ir_masters_rec.license_code           -- 資格コード（新）
+        ,P_ATTRIBUTE8                =>  ir_masters_rec.license_name           -- 資格名（新）
+        ,P_ATTRIBUTE9                =>  ir_masters_rec.license_code_old       -- 資格コード（旧）
+        ,P_ATTRIBUTE10               =>  ir_masters_rec.license_code_name_old  -- 資格名（旧）
+        ,P_ATTRIBUTE11               =>  ir_masters_rec.job_post               -- 職位コード（新）
+        ,P_ATTRIBUTE12               =>  ir_masters_rec.job_post_name          -- 職位名（新）
+        ,P_ATTRIBUTE13               =>  ir_masters_rec.job_post_old           -- 職位コード（旧）
+        ,P_ATTRIBUTE14               =>  ir_masters_rec.job_post_name_old      -- 職位名（旧）
+        ,P_ATTRIBUTE15               =>  ir_masters_rec.job_duty               -- 職務コード（新）
+        ,P_ATTRIBUTE16               =>  ir_masters_rec.job_duty_name          -- 職務名（新）
+        ,P_ATTRIBUTE17               =>  ir_masters_rec.job_duty_old           -- 職務コード（旧）
+        ,P_ATTRIBUTE18               =>  ir_masters_rec.job_duty_name_old      -- 職務名（旧）
+        ,P_ATTRIBUTE19               =>  ir_masters_rec.job_type               -- 職種コード（新）
+        ,P_ATTRIBUTE20               =>  ir_masters_rec.job_type_name          -- 職種名（新）
+        ,P_ATTRIBUTE21               =>  ir_masters_rec.job_type_old           -- 職種コード（旧）
+        ,P_ATTRIBUTE22               =>  ir_masters_rec.job_type_name_old      -- 職種名（旧）
+        ,P_ATTRIBUTE28               =>  ir_masters_rec.location_code          -- 起票部門(所属コード（新）)
+        ,P_ATTRIBUTE29               =>  ir_masters_rec.location_code          -- 照会範囲(所属コード（新）)
+        ,P_ATTRIBUTE30               =>  ir_masters_rec.location_code          -- 承認者範囲(所属コード（新）)
+        ,P_PER_INFORMATION_CATEGORY  =>  gv_info_category                      -- 'JP'
+        ,P_PER_INFORMATION18         =>  ir_masters_rec.last_name_kanji        -- 漢字姓
+        ,P_PER_INFORMATION19         =>  ir_masters_rec.first_name_kanji       -- 漢字名
+        ,P_PERSON_ID                 =>  ir_masters_rec.person_id              -- OUT（従業員ID）
+        ,P_ASSIGNMENT_ID             =>  ir_masters_rec.assignment_id          -- OUT（ｱｻｲﾝﾒﾝﾄID）
+        ,P_PER_OBJECT_VERSION_NUMBER =>  ir_masters_rec.pap_version            -- OUT（従業員ﾏｽﾀﾊﾞｰｼﾞｮﾝ番号）
+        ,P_ASG_OBJECT_VERSION_NUMBER =>  ir_masters_rec.paa_version            -- OUT（ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号）
+        ,P_PER_EFFECTIVE_START_DATE  =>  ir_masters_rec.effective_start_date   -- OUT（登録年月日）
+        ,P_PER_EFFECTIVE_END_DATE    =>  ir_masters_rec.effective_end_date     -- OUT（登録期限年月日）
+        ,P_FULL_NAME                 =>  lv_full_name                          -- OUT（フルネーム）
+        ,P_PER_COMMENT_ID            =>  ln_per_comment_id                     -- OUT
+        ,P_ASSIGNMENT_SEQUENCE       =>  ln_assignment_sequence                -- OUT
+        ,P_ASSIGNMENT_NUMBER         =>  ir_masters_rec.assignment_number      -- OUT（ｱｻｲﾝﾒﾝﾄ番号）
+        ,P_NAME_COMBINATION_WARNING  =>  lb_name_combination_warning           -- OUT
+        ,P_ASSIGN_PAYROLL_WARNING    =>  lb_assign_payroll_warning             -- OUT
+        ,P_ORIG_HIRE_WARNING         =>  lb_orig_hire_warning                  -- OUT
       );
     EXCEPTION
       WHEN OTHERS THEN
@@ -4714,13 +4725,13 @@ AS
         ,P_ASS_ATTRIBUTE16       =>  ir_masters_rec.agent_division_old       -- 代行区分（旧）
         ,P_ASS_ATTRIBUTE17       =>  NULL                                    -- 差分連携用日付（自販機）
         ,P_ASS_ATTRIBUTE18       =>  NULL                                    -- 差分連携用日付（帳票）
-        ,P_CONCATENATED_SEGMENTS  => lv_concatenated_segments           -- OUT
-        ,P_SOFT_CODING_KEYFLEX_ID => ln_soft_coding_keyflex_id          -- IN/OUT
-        ,P_COMMENT_ID             => ln_comment_id                      -- OUT
-        ,P_EFFECTIVE_START_DATE   => ir_masters_rec.effective_start_date -- OUT（登録年月日）
-        ,P_EFFECTIVE_END_DATE     => ir_masters_rec.effective_end_date   -- OUT（登録期限年月日）
-        ,P_NO_MANAGERS_WARNING    => lb_no_managers_warning             -- OUT
-        ,P_OTHER_MANAGER_WARNING  => lb_other_manager_warning           -- OUT
+        ,P_CONCATENATED_SEGMENTS  => lv_concatenated_segments                -- OUT
+        ,P_SOFT_CODING_KEYFLEX_ID => ln_soft_coding_keyflex_id               -- IN/OUT
+        ,P_COMMENT_ID             => ln_comment_id                           -- OUT
+        ,P_EFFECTIVE_START_DATE   => ir_masters_rec.effective_start_date     -- OUT（登録年月日）
+        ,P_EFFECTIVE_END_DATE     => ir_masters_rec.effective_end_date       -- OUT（登録期限年月日）
+        ,P_NO_MANAGERS_WARNING    => lb_no_managers_warning                  -- OUT
+        ,P_OTHER_MANAGER_WARNING  => lb_other_manager_warning                -- OUT
         );
 
     EXCEPTION
@@ -6321,12 +6332,17 @@ AS
     -- ===============================
     -- CSVファイル削除処理
     -- ===============================
+-- Ver1.1 Mod by SCS 竹下 昭範  エラー終了時にファイルは削除しないよう修正
+--    UTL_FILE.FREMOVE(gv_directory,   -- 出力先
+--                     gv_file_name    -- CSVファイル名
+--    );
+    -- 正常時のみファイル削除処理を実施
     IF (retcode = cv_status_normal) THEN
       UTL_FILE.FREMOVE(gv_directory,   -- 出力先
                        gv_file_name    -- CSVファイル名
       );
     END IF;
-
+-- Ver1.1 End
     -- ===============================
     -- 職責自動割当ワーク削除処理
     -- ===============================
@@ -6345,9 +6361,11 @@ AS
       errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       retcode := cv_status_error;
       ROLLBACK;
+-- Ver1.1 Del by SCS 竹下 昭範  エラー終了時にファイルは削除しないよう修正
 --      UTL_FILE.FREMOVE(gv_directory,   -- 出力先
 --                       gv_file_name    -- CSVファイル名
 --      );
+-- Ver1.1 End
       DELETE xxcmm_in_people_if;
       DELETE xxcmm_wk_people_resp;
       COMMIT;
@@ -6356,9 +6374,11 @@ AS
       errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       retcode := cv_status_error;
       ROLLBACK;
+-- Ver1.1 Del by SCS 竹下 昭範  エラー終了時にファイルは削除しないよう修正
 --      UTL_FILE.FREMOVE(gv_directory,   -- 出力先
 --                       gv_file_name    -- CSVファイル名
 --      );
+-- Ver1.1 End
       DELETE xxcmm_in_people_if;
       DELETE xxcmm_wk_people_resp;
       COMMIT;
