@@ -8,7 +8,7 @@ AS
  *                    
  * MD.050           : MD050_CSO_016_A06_情報系-EBSインターフェース：(OUT)什器移動明細
  *                    
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *  2009-06-15    1.3   Kazuyo.Hosoi     T1_1240対応
  *  2009-10-01    1.4   Daisuke.Abe      0001452対応
+ *  2009-11-25    1.5   Daisuke.Abe      E_本稼動_00045対応
  *
  *****************************************************************************************/
 --
@@ -958,10 +959,18 @@ AS
     -- INパラメータをローカル変数に代入
     l_get_rec := io_get_rec;
     -- 物件コード1がNULLでない場合、
-    -- 什器移動区分=(1[新台設置], 2[旧台設置], 3[新台代替], 4[旧台代替], 6[店内移動], 8[是正])の場合
+    /* 2009.11.25 D.Abe E_本稼動_00045 対応 START */
+    ---- 什器移動区分=(1[新台設置], 2[旧台設置], 3[新台代替], 4[旧台代替], 6[店内移動], 8[是正])の場合
+    -- 什器移動区分=(1[新台設置], 2[旧台設置], 3[新台代替], 4[旧台代替], 6[店内移動], 8[是正], 
+    --               15[転送], 16[転売], 18[廃棄引取])の場合
+    /* 2009.11.25 D.Abe E_本稼動_00045 対応 END */
     IF ((l_get_rec.install_code1 IS NOT NULL)
           AND (l_get_rec.job_kbn IN (cn_job_kbn_1,cn_job_kbn_2,cn_job_kbn_3,cn_job_kbn_4,
-                                     cn_job_kbn_6,cn_job_kbn_8)) ) THEN
+                                     /* 2009.11.25 D.Abe E_本稼動_00045 対応 START */
+                                     cn_job_kbn_6,cn_job_kbn_8,
+                                     cn_job_kbn_15,cn_job_kbn_16,cn_job_kbn_dspsl_lv)) ) THEN
+                                     --cn_job_kbn_6,cn_job_kbn_8)) ) THEN
+                                     /* 2009.11.25 D.Abe E_本稼動_00045 対応 END */
       BEGIN
         SELECT  xca.sale_base_code         -- 拠点(部門)コード(設置用)
         INTO    lv_sale_base_code_s
@@ -1009,11 +1018,17 @@ AS
     /* 2009.06.09 K.Hosoi T1_1240 対応 START */
     -- 物件コード2がNULLでない場合
 --    -- 什器移動区分=(3[新台代替], 4[旧台代替],5[引揚], 15[転送], 16[転売], 17[廃棄引取])の場合
-    -- 什器移動区分=(3[新台代替], 4[旧台代替],5[引揚], 15[転送], 16[転売], 18[廃棄引取])の場合
+    /* 2009.11.25 D.Abe E_本稼動_00045 対応 START */
+    ---- 什器移動区分=(3[新台代替], 4[旧台代替],5[引揚], 15[転送], 16[転売], 18[廃棄引取])の場合
+    -- 什器移動区分=(3[新台代替], 4[旧台代替],5[引揚])の場合
+    /* 2009.11.25 D.Abe E_本稼動_00045 対応 END */
     IF ((l_get_rec.install_code2 IS NOT NULL)
-          AND (l_get_rec.job_kbn IN (cn_job_kbn_3,cn_job_kbn_4,cn_job_kbn_5,
---                                     cn_job_kbn_15,cn_job_kbn_16,cn_job_kbn_17)) ) THEN
-                                     cn_job_kbn_15,cn_job_kbn_16,cn_job_kbn_dspsl_lv)) ) THEN
+/* 2009.11.25 D.Abe E_本稼動_00045 対応 START */
+          AND (l_get_rec.job_kbn IN (cn_job_kbn_3,cn_job_kbn_4,cn_job_kbn_5)) ) THEN
+--          AND (l_get_rec.job_kbn IN (cn_job_kbn_3,cn_job_kbn_4,cn_job_kbn_5,
+----                                     cn_job_kbn_15,cn_job_kbn_16,cn_job_kbn_17)) ) THEN
+--                                     cn_job_kbn_15,cn_job_kbn_16,cn_job_kbn_dspsl_lv)) ) THEN
+/* 2009.11.25 D.Abe E_本稼動_00045 対応 END */
     /* 2009.06.09 K.Hosoi T1_1240 対応 END */
       BEGIN
         SELECT xca.sale_base_code         -- 拠点(部門)コード(引揚用)
