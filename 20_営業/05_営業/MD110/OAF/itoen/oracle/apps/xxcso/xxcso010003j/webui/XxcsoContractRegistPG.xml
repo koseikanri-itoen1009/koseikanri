@@ -19,7 +19,9 @@ Regist CONTRACT_MANAGEMENT information page.
 @see itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.xml
 @see itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAMImpl.java
 
-HISTORY 2009/01/27  H.Ogawa        Initialcode drop.-->
+HISTORY
+2009/01/27  H.Ogawa        Initialcode drop.
+2009/05/15  N.Yanagitaira  T1_0230.-->
       <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM" controllerClass="itoen.oracle.apps.xxcso.xxcso010003j.webui.XxcsoContractRegistCO" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PageLayoutRN">
          <ui:corporateBranding>
             <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
@@ -1099,8 +1101,10 @@ HISTORY 2009/01/27  H.Ogawa        Initialcode drop.-->
                                     <oa:messageLovInput id="InstallCode" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="InstallCode" maximumLength="10" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallCode" columns="15" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso010003j/lov/webui/XxcsoContractInstCodeLovRN" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}">
                                        <lovMappings>
                                           <lovMap id="InstallCodeMap" lovItem="InstallCode" resultTo="InstallCode" criteriaFrom="InstallCode"/>
+                                          <lovMap id="InstanceIdMap" lovItem="InstanceId" resultTo="InstanceId"/>
                                        </lovMappings>
                                     </oa:messageLovInput>
+                                    <oa:formValue id="InstanceId" dataType="NUMBER"/>
                                  </ui:contents>
                               </oa:messageLayout>
                            </ui:contents>

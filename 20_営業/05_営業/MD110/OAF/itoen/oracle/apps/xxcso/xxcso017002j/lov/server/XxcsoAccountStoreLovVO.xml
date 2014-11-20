@@ -14,10 +14,11 @@
 SELECT  xcav.account_number
        ,xcav.party_name
        ,xcav.customer_class_name
+       ,xcav.cust_account_id
 FROM    xxcso_employees_v2       xev
        ,xxcso_resource_custs_V2  xrcv
        ,xxcso_cust_accounts_v    xcav
-WHERE   xev.user_id = fnd_global.user_id
+WHERE   xev.user_id          = fnd_global.user_id
 AND     xrcv.employee_number = xev.employee_number
 AND     xcav.account_number  = xrcv.account_number
 AND     (
@@ -76,6 +77,21 @@ AND     (
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CustAccountId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="CUST_ACCOUNT_ID"
+      Expression="CUST_ACCOUNT_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
       </DesignTime>
    </ViewAttribute>
 </ViewObject>
