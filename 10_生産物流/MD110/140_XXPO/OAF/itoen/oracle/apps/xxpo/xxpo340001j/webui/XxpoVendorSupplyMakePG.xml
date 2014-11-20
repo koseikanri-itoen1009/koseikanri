@@ -1,0 +1,297 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <!--*[Enter Javadoc like developer documentation, delete this line once you fill the included template.] [Put a one line description of the region here.] [Put a brief description of the usage of the region here.] @param [Parameter_name] [Put parameter use here.] @param [Parameter_name] [Put parameter use here.] @see [Put any additional links apart from controller class and BC4J objects directly referenced by this region]-->
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxpo.xxpo340001j.server.XxpoVendorSupplyAM" windowTitle="外注出来高報告" title="外注出来高報告：登録" controllerClass="itoen.oracle.apps.xxpo.xxpo340001j.webui.XxpoVendorSupplyMakeCO">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:flowLayout id="MainRN">
+               <ui:contents>
+                  <oa:tableLayout id="ReqFieldDescRN" extends="/oracle/apps/fnd/framework/webui/OAReqFieldDescRG"/>
+                  <oa:header id="VendorHdr" text="取引先情報">
+                     <ui:contents>
+                        <oa:tableLayout id="VendorTab" hAlign="left" width="100%">
+                           <ui:contents>
+                              <oa:rowLayout id="VendorRow01">
+                                 <ui:contents>
+                                    <oa:cellFormat id="VendorCell0100" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtManufacturedDatePrompt" prompt="生産日" required="uiOnly"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="VendorCell0101" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtManufacturedDate" dataType="DATE" maximumLength="10" columns="12" shortDesc="生産日" viewAttr="ManufacturedDate" viewName="XxpoVendorSupplyMakeVO1" readOnly="${oa.XxpoVendorSupplyMakePVO1.ManufacturedDateReadOnly}" styleClass="LegendText">
+                                             <ui:primaryClientAction>
+                                                <ui:firePartialAction unvalidated="true" event="ManufacturedDateChanged"/>
+                                             </ui:primaryClientAction>
+                                          </oa:messageTextInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="VendorRow02">
+                                 <ui:contents>
+                                    <oa:cellFormat id="VendorCell0200" hAlign="right" height="25" width="8%">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtVenvorCodePrompt" prompt="取引先" required="uiOnly"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="VendorCell0201" width="12%">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtVendorCode" maximumLength="4" columns="4" shortDesc="取引先" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/VendorCodeRN" viewName="XxpoVendorSupplyMakeVO1" viewAttr="VendorCode" readOnly="${oa.XxpoVendorSupplyMakePVO1.VendorCodeReadOnly}" styleClass="LegendText">
+                                             <lovMappings>
+                                                <lovMap id="VendorCodeLovMap" lovItem="VendorCode" criteriaFrom="TxtVendorCode"/>
+                                                <lovMap id="VendorCodeRetLovMap" lovItem="VendorCode" resultTo="TxtVendorCode"/>
+                                                <lovMap id="VendorNameRetLovMap" lovItem="VendorName" resultTo="VendorName"/>
+                                                <lovMap id="VendorIdRetLovMap" lovItem="VendorId" resultTo="VendorId"/>
+                                                <lovMap id="DepartmentRetLovMap" lovItem="Department" resultTo="Department"/>
+                                                <lovMap id="ProductedResultRetLovMap" lovItem="ProductResultType" resultTo="ProductResultType"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="VendorCell0202" width="80%">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtVendorName" shortDesc="取引先名" viewName="XxpoVendorSupplyMakeVO1" viewAttr="VendorName" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="VendorRow03">
+                                 <ui:contents>
+                                    <oa:cellFormat id="VendorCell0300" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtFactoryCodePrompt" prompt="工場" required="uiOnly"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="VendorCell0301">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtFactoryCode" maximumLength="4" columns="4" shortDesc="工場" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/FactoryCodeRN" viewName="XxpoVendorSupplyMakeVO1" viewAttr="FactoryCode" readOnly="${oa.XxpoVendorSupplyMakePVO1.FactoryCodeReadOnly}" styleClass="LegendText">
+                                             <lovMappings>
+                                                <lovMap id="FactoryCodeLovMap" lovItem="FactoryCode" criteriaFrom="TxtFactoryCode"/>
+                                                <lovMap id="FactoryCodeRetLovMap" lovItem="FactoryCode" resultTo="TxtFactoryCode"/>
+                                                <lovMap id="FactoryNameRetLovMap" lovItem="FactoryName" resultTo="FactoryName"/>
+                                                <lovMap id="DeliveryWhseRetLovMap" resultTo="DeliveryWhse" lovItem="DeliveryWhse"/>
+                                                <lovMap id="VendorStockWhseRetLovMap" lovItem="VendorStockWhse" resultTo="VendorStockWhse"/>
+                                                <lovMap id="FactoryIdRetLovMap" lovItem="FactoryId" resultTo="FactoryId"/>
+                                                <lovMap id="VendorIdLovMap" lovItem="VendorId" criteriaFrom="VendorId"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="VendorCell0302">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtFactoryName" shortDesc="工場名" viewName="XxpoVendorSupplyMakeVO1" viewAttr="FactoryName" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="LotHdr" text="ロット情報">
+                     <ui:contents>
+                        <oa:tableLayout id="LotTab" hAlign="left" width="100%">
+                           <ui:contents>
+                              <oa:rowLayout id="LotRow01">
+                                 <ui:contents>
+                                    <oa:cellFormat id="LotCell0100" hAlign="right" height="25" width="8%">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtItemPrompt" prompt="品目" required="uiOnly"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="LotCell0101" width="12%">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtItemCode" maximumLength="7" columns="8" shortDesc="品目" viewName="XxpoVendorSupplyMakeVO1" viewAttr="ItemCode" readOnly="${oa.XxpoVendorSupplyMakePVO1.ItemCodeReadOnly}" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/ItemCode2RN" styleClass="LegendText">
+                                             <lovMappings>
+                                                <lovMap id="ItemCodeLovMap" lovItem="ItemCode" criteriaFrom="TxtItemCode"/>
+                                                <lovMap id="ItemCodeRetLovMap" lovItem="ItemCode" resultTo="TxtItemCode"/>
+                                                <lovMap id="ConversionFactorRetLovMap" lovItem="ConversionFactor" resultTo="ConversionFactor"/>
+                                                <lovMap id="CoseManageCodeRetLovMap" lovItem="CostManageCode" resultTo="CostManageCode"/>
+                                                <lovMap id="ItemNameRetLovMap" lovItem="ItemName" resultTo="ItemName"/>
+                                                <lovMap id="LotStatusRetLovMap" lovItem="LotStatus" resultTo="LotStatus"/>
+                                                <lovMap id="ProductedUomRetLovMap" lovItem="ProductedUom" resultTo="ProductedUom"/>
+                                                <lovMap id="StockQtyRetLovMap" lovItem="StockQty" resultTo="StockQty"/>
+                                                <lovMap id="TestCodeRetLovMap" lovItem="TestCode" resultTo="TestCode"/>
+                                                <lovMap id="UomRetLovMap" lovItem="Uom" resultTo="Uom"/>
+                                                <lovMap id="IItemIdRetlovMap" lovItem="ItemId" resultTo="ItemId"/>
+                                                <lovMap id="ExpirationDayRetLovMap" lovItem="ExpirationDay" resultTo="ExpirationDay"/>
+                                                <lovMap id="UnitPriceCalcCodeRetLovMap" lovItem="UnitPriceCalcCode" resultTo="UnitPriceCalcCode"/>
+                                                <lovMap id="InventoryItemIdRetLovMap" lovItem="InventoryItemId" resultTo="InventoryItemId"/>
+                                                <lovMap id="ItemClassCodeRetLovMap" resultTo="ItemClassCode" lovItem="ItemClassCode"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="LotCell0102" hAlign="left" width="80%">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtItemName" shortDesc="品目名" viewName="XxpoVendorSupplyMakeVO1" viewAttr="ItemName" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="LotRow02">
+                                 <ui:contents>
+                                    <oa:cellFormat id="LotCell0200" height="25" hAlign="right">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtLotNamePrompt" prompt="ロットNo"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="LotCell0201" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtLotNumber" shortDesc="ロット番号" viewName="XxpoVendorSupplyMakeVO1" viewAttr="LotNumber" maximumLength="10" columns="10" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="LotRow03">
+                                 <ui:contents>
+                                    <oa:cellFormat id="LotCell0300" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtProductedDatePrompt" prompt="製造日" required="${oa.XxpoVendorSupplyMakePVO1.ProductedDateRequired}"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="LotCell0301" columnSpan="2" styleClass="LegendText">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtProductedDate" dataType="DATE" shortDesc="製造日" columns="12" maximumLength="10" viewName="XxpoVendorSupplyMakeVO1" viewAttr="ProductedDate" readOnly="${oa.XxpoVendorSupplyMakePVO1.ProductedDateReadOnly}" styleClass="LegendText">
+                                             <ui:primaryClientAction>
+                                                <ui:firePartialAction unvalidated="true" event="ProductedDateChanged"/>
+                                             </ui:primaryClientAction>
+                                          </oa:messageTextInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="LotRow04">
+                                 <ui:contents>
+                                    <oa:cellFormat id="LotCell0400" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtKoyuCodePrompt" prompt="固有記号" required="no"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="LotCell0401" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtKoyuCode" maximumLength="6" columns="7" shortDesc="固有記号" viewName="XxpoVendorSupplyMakeVO1" viewAttr="KoyuCode" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="LotRow05">
+                                 <ui:contents>
+                                    <oa:cellFormat id="LotCell0500" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtUseByDatePrompt" prompt="賞味期限"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="LotCell0501" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtUseByDate" shortDesc="賞味期限" dataType="DATE" viewName="XxpoVendorSupplyMakeVO1" viewAttr="UseByDate" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="LotRow06">
+                                 <ui:contents>
+                                    <oa:cellFormat id="LotCell0600" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtProductedQuantityPrompt" prompt="数量" required="uiOnly"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="LotCell0601" width="120" hAlign="right">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtProductedQuantity" shortDesc="数量" dataType="VARCHAR2" maximumLength="15" columns="20" viewName="XxpoVendorSupplyMakeVO1" viewAttr="ProductedQuantity" required="no" serverUnvalidated="true" styleClass="OraFieldNumber" readOnly="${oa.XxpoVendorSupplyMakePVO1.ProductedQuantityReadOnly}"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="LotCell0602" hAlign="left">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtPrductedUom" viewName="XxpoVendorSupplyMakeVO1" viewAttr="ProductedUom" shortDesc="数量(単位コード)" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="LotRow07">
+                                 <ui:contents>
+                                    <oa:cellFormat id="LotCell0700" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtDescriptionPrompt" prompt="備考"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="LotCell0701" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtDescription" shortDesc="備考" maximumLength="150" viewName="XxpoVendorSupplyMakeVO1" viewAttr="Description" columns="150" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="LotRow08">
+                                 <ui:contents>
+                                    <oa:cellFormat id="LotCell0800" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtCorrectedQuantityPrompt" prompt="訂正数量"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="LotCell0801" hAlign="right">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtCorrectedQuantity" shortDesc="訂正数量" dataType="VARCHAR2" maximumLength="15" columns="20" viewName="XxpoVendorSupplyMakeVO1" viewAttr="CorrectedQuantity" serverUnvalidated="true" styleClass="OraFieldNumber" readOnly="${oa.XxpoVendorSupplyMakePVO1.CorrectedQuantityReadOnly}"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="LotCell0802"/>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:formValue id="TxnsId" dataType="NUMBER" prompt="実績ID" viewName="XxpoVendorSupplyMakeVO1" viewAttr="TxnsId"/>
+                  <oa:formValue id="PoNumber" prompt="発注番号" viewName="XxpoVendorSupplyMakeVO1" viewAttr="PoNumber"/>
+                  <oa:formValue id="VendorId" dataType="NUMBER" prompt="取引先ID" viewName="XxpoVendorSupplyMakeVO1" viewAttr="VendorId"/>
+                  <oa:formValue id="VendorName" dataType="VARCHAR2" prompt="取引先ID" viewName="XxpoVendorSupplyMakeVO1" viewAttr="VendorName"/>
+                  <oa:formValue id="FactoryId" dataType="NUMBER" prompt="工場ID" viewName="XxpoVendorSupplyMakeVO1" viewAttr="FactoryId"/>
+                  <oa:formValue id="FactoryName" dataType="VARCHAR2" prompt="工場ID" viewName="XxpoVendorSupplyMakeVO1" viewAttr="FactoryName"/>
+                  <oa:formValue id="ProductResultType" prompt="処理タイプ" viewName="XxpoVendorSupplyMakeVO1" viewAttr="ProductResultType"/>
+                  <oa:formValue id="Department" prompt="部署" viewName="XxpoVendorSupplyMakeVO1" viewAttr="Department"/>
+                  <oa:formValue id="VendorStockWhse" prompt="相手先在庫入庫先" viewName="XxpoVendorSupplyMakeVO1" viewAttr="VendorStockWhse"/>
+                  <oa:formValue id="DeliveryWhse" prompt="発注納入先" viewName="XxpoVendorSupplyMakeVO1" viewAttr="DeliveryWhse"/>
+                  <oa:formValue id="CostManageCode" prompt="原価管理区分" viewName="XxpoVendorSupplyMakeVO1" viewAttr="CostManageCode"/>
+                  <oa:formValue id="StockValue" prompt="在庫単価" dataType="VARCHAR2" viewName="XxpoVendorSupplyMakeVO1" viewAttr="StockValue"/>
+                  <oa:formValue id="StockQty" prompt="在庫入数" dataType="VARCHAR2" viewName="XxpoVendorSupplyMakeVO1" viewAttr="StockQty"/>
+                  <oa:formValue id="ConversionFactor" prompt="換算入数" dataType="NUMBER" viewName="XxpoVendorSupplyMakeVO1" viewAttr="ConversionFactor"/>
+                  <oa:formValue id="TestCode" prompt="試験有無区分" dataType="VARCHAR2" viewName="XxpoVendorSupplyMakeVO1" viewAttr="TestCode"/>
+                  <oa:formValue id="LotId" prompt="ロットID" dataType="NUMBER" viewName="XxpoVendorSupplyMakeVO1" viewAttr="LotId"/>
+                  <oa:formValue id="LotStatus" prompt="ロットステータス" dataType="VARCHAR2" viewName="XxpoVendorSupplyMakeVO1" viewAttr="LotStatus"/>
+                  <oa:formValue id="ItemId" prompt="品目ID" dataType="NUMBER" viewName="XxpoVendorSupplyMakeVO1" viewAttr="ItemId"/>
+                  <oa:formValue id="ProductedUom" prompt="出来高数量(単位コード)" dataType="VARCHAR2" viewName="XxpoVendorSupplyMakeVO1" viewAttr="ProductedUom"/>
+                  <oa:formValue id="ItemName" prompt="品目ID" dataType="VARCHAR2" viewName="XxpoVendorSupplyMakeVO1" viewAttr="ItemName"/>
+                  <oa:formValue id="Uom" prompt="単位コード" dataType="VARCHAR2" viewName="XxpoVendorSupplyMakeVO1" viewAttr="Uom"/>
+                  <oa:formValue id="UnitPriceCalcCode" prompt="仕入単価導出日タイプ" dataType="VARCHAR2" viewName="XxpoVendorSupplyMakeVO1" viewAttr="UnitPriceCalcCode"/>
+                  <oa:formValue id="ItemClassCode" prompt="品目区分" dataType="VARCHAR2" viewName="XxpoVendorSupplyMakeVO1" viewAttr="ItemClassCode"/>
+                  <oa:formValue id="Quantity" prompt="数量" dataType="NUMBER" viewName="XxpoVendorSupplyMakeVO1" viewAttr="Quantity"/>
+                  <oa:formValue id="ExpirationDay" prompt="賞味期間" dataType="VARCHAR2" viewName="XxpoVendorSupplyMakeVO1" viewAttr="ExpirationDay"/>
+                  <oa:formValue id="ProcessFlag" prompt="処理フラグ" dataType="VARCHAR2" viewName="XxpoVendorSupplyMakeVO1" viewAttr="ProcessFlag"/>
+                  <oa:formValue id="LocationId" prompt="納入先ID" dataType="NUMBER" viewName="XxpoVendorSupplyMakeVO1" viewAttr="LocationId"/>
+                  <oa:formValue id="LocationCode" prompt="納入先コード" dataType="VARCHAR2" viewName="XxpoVendorSupplyMakeVO1" viewAttr="LocationCode"/>
+                  <oa:formValue id="WhseCode" prompt="倉庫コード" dataType="VARCHAR2" viewName="XxpoVendorSupplyMakeVO1" viewAttr="WhseCode"/>
+                  <oa:formValue id="CoCode" prompt="会社コード" dataType="VARCHAR2" viewName="XxpoVendorSupplyMakeVO1" viewAttr="CoCode"/>
+                  <oa:formValue id="OrgnCode" prompt="組織コード" dataType="VARCHAR2" viewName="XxpoVendorSupplyMakeVO1" viewAttr="OrgnCode"/>
+                  <oa:formValue id="PeopleCode" prompt="従業員コード" dataType="VARCHAR2" viewName="XxpoVendorSupplyMakeVO1" viewAttr="PeopleCode"/>
+                  <oa:formValue id="Division" prompt="区分" dataType="VARCHAR2" viewName="XxpoVendorSupplyMakeVO1" viewAttr="Division"/>
+                  <oa:formValue id="QtInspectReqNo" prompt="検査依頼No" dataType="VARCHAR2" viewName="XxpoVendorSupplyMakeVO1" viewAttr="QtInspectReqNo"/>
+                  <oa:formValue id="ShipToLocationId" prompt="納入先事業所ID" dataType="VARCHAR2" viewName="XxpoVendorSupplyMakeVO1" viewAttr="ShipToLocationId"/>
+                  <oa:formValue id="InventoryItemId" prompt="INV品目ID" dataType="NUMBER" viewName="XxpoVendorSupplyMakeVO1" viewAttr="InventoryItemId"/>
+               </ui:contents>
+            </oa:flowLayout>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="Cancel" prompt="取消" serverUnvalidated="true" unvalidated="true"/>
+                  <oa:submitButton id="Go" text="適用" prompt="適用" disabled="${oa.XxpoVendorSupplyMakePVO1.GoDisabled}"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

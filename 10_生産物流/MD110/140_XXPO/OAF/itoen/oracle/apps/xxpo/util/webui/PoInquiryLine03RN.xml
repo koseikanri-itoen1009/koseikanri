@@ -1,0 +1,30 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:advancedTable version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" viewName="XxpoPoInquiryLineVO1" tableBanding="rowBanding" scope="/" shortDesc="3" width="50%">
+   <ui:contents>
+      <oa:column id="PoInquiryLine03Col01" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine03Col01Hdr" prompt="No"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="No" viewAttr="Line03LineNum" shortDesc="No" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine03Col02">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine03Col02Hdr" prompt="日付指定"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="SpecifyDate" viewAttr="Line03SpecifyDate" shortDesc="日付指定" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine03Col03">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine03Col03Hdr" prompt="摘要"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="Description" viewAttr="Line03Description" shortDesc="摘要" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+   </ui:contents>
+</oa:advancedTable>

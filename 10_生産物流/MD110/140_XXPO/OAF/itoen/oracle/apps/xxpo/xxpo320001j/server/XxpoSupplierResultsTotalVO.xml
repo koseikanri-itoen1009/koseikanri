@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxpoSupplierResultsTotalVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="itoen.oracle.apps.xxpo.xxpo320001j.server.XxpoSupplierResultsTotalVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT TO_CHAR(SUM(pla.attribute11), 'FM999,999,990.000')                       total_order_amount
+      ,TO_CHAR(SUM(NVL(pla.attribute6,pla.attribute11)), 'FM999,999,990.000') total_leaving_shed_amount
+FROM po_lines_all pla
+WHERE pla.po_header_id = :0
+GROUP BY po_header_id
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="TotalOrderAmount"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TOTAL_ORDER_AMOUNT"
+      Expression="TOTAL_ORDER_AMOUNT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TotalLeavingShedAmount"
+      IsPersistent="false"
+      Precision="18"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TOTAL_LEAVING_SHED_AMOUNT"
+      Expression="TOTAL_LEAVING_SHED_AMOUNT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="18" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

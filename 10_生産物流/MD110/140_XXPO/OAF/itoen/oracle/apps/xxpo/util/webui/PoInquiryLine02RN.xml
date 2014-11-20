@@ -1,0 +1,94 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:advancedTable version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" viewName="XxpoPoInquiryLineVO1" tableBanding="rowBanding" width="100%" scope="/" shortDesc="2">
+   <ui:contents>
+      <oa:column id="PoInquiryLine02Col01" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine02Col01Hdr" prompt="No"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="LineNum" viewAttr="Line02LineNum" shortDesc="No" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine02Col02" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine02Col02Hdr" prompt="入数"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="StockQty" viewAttr="Line02StockQty" shortDesc="入数" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine02Col03" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine02Col03Hdr" prompt="発注数"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="PoQty" shortDesc="発注数" viewAttr="Line02PoQty" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine02Col04" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine02Col04Hdr" prompt="出荷数"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="VendorShipQty" shortDesc="出荷数" viewAttr="Line02VendorShipQty" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine02Col05" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine02Col05Hdr" prompt="受入数"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ReceiveQty" viewAttr="Line02ReceiveQty" shortDesc="受入数" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine02Col06">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine02Col06Hdr" prompt="単位"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="PoUm" viewAttr="Line02PoUm" shortDesc="単位" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine02Col07" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine02Col07Hdr" prompt="単価"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="SupplierPrice" viewAttr="Line02SupplierPrice" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine02Col08" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine02Col08Hdr" prompt="金額"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="Price" viewAttr="Line02Price" shortDesc="金額" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine02Col09" columnDataFormat="iconButtonFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine02Col09Hdr" prompt="数確"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageCheckBox id="QytDecideFlg" viewAttr="Line02QytDecideFlg" readOnly="true" shortDesc="数確" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine02Col10" columnDataFormat="iconButtonFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine02Col10Hdr" prompt="金確"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageCheckBox id="PriceDecideFlg" readOnly="true" viewAttr="Line02PriceDecideFlg" shortDesc="金確" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine02Col11" columnDataFormat="iconButtonFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine02Col11Hdr" prompt="取消"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageCheckBox id="CancelFlag" readOnly="true" viewAttr="Line02CancelFlag" shortDesc="取消" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+   </ui:contents>
+</oa:advancedTable>

@@ -1,0 +1,417 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header: /cvsrepo/itoen/oracle/apps/xxpo/xxpo370002j/webui/XxpoInspectLotRegistPG.xml,v 1.10 2008/02/22 09:01:03 usr3003 Exp $">
+   <content>
+      <oa:pageLayout id="PageLayout" amDefName="itoen.oracle.apps.xxpo.xxpo370001j.server.XxpoInspectLotSearchAM" windowTitle="検査ロット情報" title="検査ロット情報登録" warnAboutChanges="true" controllerClass="itoen.oracle.apps.xxpo.xxpo370002j.webui.XxpoInspectLotRegistCO">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:tableLayout id="ReqFieldDescRN" extends="/oracle/apps/fnd/framework/webui/OAReqFieldDescRG" width="100%"/>
+            <oa:pageButtonBar id="PageButtons">
+               <ui:contents>
+                  <oa:submitButton id="Cancel" serverUnvalidated="true" unvalidated="true" shortDesc="このトランザクションを取り消す場合に選択します" text="取消" prompt="取消"/>
+                  <oa:submitButton id="Apply" shortDesc="検査ロット情報を保存する場合に選択します" text="適用" prompt="適用"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:messageComponentLayout id="Layout1RN" promptWidth="120">
+               <ui:contents>
+                  <oa:messageLayout id="messageLayout1">
+                     <ui:contents>
+                        <oa:tableLayout id="InspectLotInfoRN" hAlign="start">
+                           <ui:contents>
+                              <oa:rowLayout id="VendorRwLytRN" hAlign="start">
+                                 <ui:contents>
+                                    <oa:cellFormat id="PromptVendorCdCllFmtRN" height="25" hAlign="right" width="150">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="PromptVendor" prompt="取引先" required="uiOnly"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="VendorCdCllFmtRN" hAlign="start" vAlign="middle" height="25" width="30%">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="Attribute8" viewName="XxpoLotsMstRegVO1" viewAttr="Attribute8" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/VendorCode2LovRN" styleClass="OraFieldText" columns="4" shortDesc="取引先" maximumLength="4">
+                                             <lovMappings>
+                                                <lovMap id="ToFromVendorCode" resultTo="Attribute8" criteriaFrom="Attribute8" lovItem="VendorCode"/>
+                                                <lovMap id="ToVendorName" lovItem="VendorName" resultTo="VendorName"/>
+                                                <lovMap id="ToHiddenVendorName" lovItem="VendorName" resultTo="HiddenVendorName"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="VendorNmCllFmtRN" hAlign="left" vAlign="middle" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="VendorName" viewName="XxpoLotsMstRegVO1" viewAttr="VendorName" styleClass="LegendText" maximumLength="240" shortDesc="取引先名"/>
+                                          <oa:formValue id="HiddenVendorName" viewName="XxpoLotsMstRegVO1" viewAttr="VendorName"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="ItemRwLytRN">
+                                 <ui:contents>
+                                    <oa:cellFormat id="PromptItemCllFmtRN" height="25" hAlign="right" width="150">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="PromptItem" prompt="品目" required="uiOnly"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="ItemNoCllFmtRN" hAlign="left">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="ItemNo" viewName="XxpoLotsMstRegVO1" viewAttr="ItemNo" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/ItemCode3LovRN" styleClass="OraFieldText" columns="10" shortDesc="品目" maximumLength="7">
+                                             <lovMappings>
+                                                <lovMap id="ToFromItemNo" lovItem="ItemCode" resultTo="ItemNo" criteriaFrom="ItemNo"/>
+                                                <lovMap id="ToItemName" lovItem="ItemName" resultTo="ItemShortName"/>
+                                                <lovMap id="ToHiddenItemName" lovItem="ItemName" resultTo="HiddenItemShortName"/>
+                                                <lovMap id="ToItemId" lovItem="ItemId" resultTo="ItemId"/>
+                                                <lovMap id="ToHiddenItemNo" lovItem="ItemCode" resultTo="HiddenItemNo"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                          <oa:formValue id="HiddenItemNo" viewName="XxpoLotsMstRegVO1" viewAttr="ItemNo"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="ItemNmCllFmtRN" hAlign="left" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="ItemShortName" viewName="XxpoLotsMstRegVO1" viewAttr="ItemShortName" styleClass="LegendText" maximumLength="20" shortDesc="品目名"/>
+                                          <oa:formValue id="HiddenItemShortName" viewName="XxpoLotsMstRegVO1" viewAttr="ItemShortName"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="ItemIdCllFmtRN">
+                                       <ui:contents>
+                                          <oa:formValue id="ItemId" viewName="XxpoLotsMstRegVO1" viewAttr="ItemId" prompt="品目ID" dataType="NUMBER"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="LotNoRwLytRN">
+                                 <ui:contents>
+                                    <oa:cellFormat id="PromptLotNoCllFmtRN" height="25" hAlign="right" width="150">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="PromptLotNo" prompt="ロットNo"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="LotNoCllFmtRN" height="20" vAlign="middle" styleClass="OraBGAccentLight">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="LotNo" viewName="XxpoLotsMstRegVO1" viewAttr="LotNo" styleClass="LegendText" disabled="false" readOnly="true" shortDesc="ロットNo" maximumLength="32"/>
+                                          <oa:formValue id="HiddenLotNo" viewName="XxpoLotsMstRegVO1" viewAttr="LotNo"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="LotIdCllFmtRN">
+                                       <ui:contents>
+                                          <oa:formValue id="LotId" prompt="ロットID" viewName="XxpoLotsMstRegVO1" viewAttr="LotId" dataType="NUMBER"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="LotStsCllFmtRN">
+                                       <ui:contents>
+                                          <oa:formValue id="Attribute23" viewName="XxpoLotsMstRegVO1" viewAttr="Attribute23" prompt="ロットステータス"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MakeDivisionCllFmtRN">
+                                       <ui:contents>
+                                          <oa:formValue id="Attribute24" prompt="作成区分" viewName="XxpoLotsMstRegVO1" viewAttr="Attribute24"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="FactoryRwLytRN">
+                                 <ui:contents>
+                                    <oa:cellFormat id="PromptFactoryCllFmtRN" height="25" hAlign="right" width="150">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="PromptAttribute20" prompt="製造工場"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="FactoryCllFmtRN" columnSpan="3">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="Attribute20" viewName="XxpoLotsMstRegVO1" viewAttr="Attribute20" maximumLength="20" styleClass="OraFieldText" columns="28" shortDesc="製造工場"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="ProdLotNoRwLytRN">
+                                 <ui:contents>
+                                    <oa:cellFormat id="PromptProdLotNoCllFmtRN" height="25" hAlign="right" width="150">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="PromptAttribute21" prompt="製造ロットNo"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="ProdLotNoCllFmtRN" columnSpan="3">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="Attribute21" viewName="XxpoLotsMstRegVO1" viewAttr="Attribute21" maximumLength="20" styleClass="OraFieldText" columns="28" shortDesc="製造ロットNo"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="ProdDateRwLytRN">
+                                 <ui:contents>
+                                    <oa:cellFormat id="PromptProDateCllFmtRN" height="25" hAlign="right" width="150">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="PromptAttribute1" prompt="製造日/仕入日" required="uiOnly"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="ProDateCllFmtRN" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="Attribute1" viewName="XxpoLotsMstRegVO1" viewAttr="Attribute1" maximumLength="10" dataType="DATE" styleClass="OraFieldText" columns="12" shortDesc="製造日/仕入日">
+                                             <ui:primaryClientAction>
+                                                <ui:firePartialAction event="ProductDateChanged"/>
+                                             </ui:primaryClientAction>
+                                          </oa:messageTextInput>
+                                          <oa:formValue id="PreAttribute1" viewName="XxpoLotsMstRegVO1" viewAttr="PreAttribute1" dataType="VARCHAR2"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="BestBeforeRwLytRN">
+                                 <ui:contents>
+                                    <oa:cellFormat id="PromptBestBeforeCllFmtRN" height="25" hAlign="right" width="150">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="PromptAttribute3" prompt="賞味期限"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="BestBeforeCllFmtRN">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="Attribute3" viewName="XxpoLotsMstRegVO1" viewAttr="Attribute3" styleClass="OraFieldText" maximumLength="10" columns="12" dataType="DATE" shortDesc="賞味期限"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SourceRwLytRN">
+                                 <ui:contents>
+                                    <oa:cellFormat id="PromptSourceCllFmtRN" height="25" hAlign="right" width="150">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="PromptDescription" prompt="産地"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SourceCllFmtRN">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="Description" viewName="XxpoLotsMstRegVO1" viewAttr="Description" styleClass="OraFieldText" maximumLength="10" columns="14" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/SourceCodeLovRN" shortDesc="産地" unvalidated="false" selectiveSearchCriteria="false">
+                                             <lovMappings>
+                                                <lovMap id="lovMapAttribute12" lovItem="LookupCode" resultTo="Attribute12" criteriaFrom="Attribute12"/>
+                                                <lovMap id="lovMapDescritption" lovItem="Meaning" resultTo="Description" criteriaFrom="Description"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SourceCodeCllFmtRN">
+                                       <ui:contents>
+                                          <oa:formValue id="Attribute12" viewName="XxpoLotsMstRegVO1" viewAttr="Attribute12" prompt="産地コード"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="Rank1RwLytRN">
+                                 <ui:contents>
+                                    <oa:cellFormat id="PromptRank1CllFmtRN" height="25" hAlign="right" width="150">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="PromptAttribute14" prompt="ランク1"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="Rank1CllFmtRN">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="Attribute14" viewName="XxpoLotsMstRegVO1" viewAttr="Attribute14" maximumLength="10" styleClass="OraFieldText" columns="14" shortDesc="ランク1"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="Rank2RwLytRN">
+                                 <ui:contents>
+                                    <oa:cellFormat id="PromptRank2CllFmtRN" height="25" hAlign="right" width="150">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="PromptAttribute15" prompt="ランク2"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="Rank2CllFmtRN">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="Attribute15" viewName="XxpoLotsMstRegVO1" viewAttr="Attribute15" maximumLength="10" styleClass="OraFieldText" columns="14" shortDesc="ランク2"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="DigestRwLytRN">
+                                 <ui:contents>
+                                    <oa:cellFormat id="PromptDigestCllFmtRN1" height="25" hAlign="right" width="150">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="PromptAttribute18" prompt="摘要"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="DigestCllFmtRN" columnSpan="3">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="Attribute18" viewName="XxpoLotsMstRegVO1" viewAttr="Attribute18" maximumLength="50" styleClass="OraFieldText" columns="70" shortDesc="摘要"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="IlmWhoColumnRwLytRN">
+                                 <ui:contents>
+                                    <oa:cellFormat id="IlmLastUpdateDateCllFmtRN" columnSpan="3">
+                                       <ui:contents>
+                                          <oa:formValue id="IlmLastUpdateDate" viewName="XxpoLotsMstRegVO1" viewAttr="IlmLastUpdateDate"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:messageLayout>
+               </ui:contents>
+            </oa:messageComponentLayout>
+            <oa:header id="InspectResultHdrRN" text="検査結果情報"/>
+            <oa:messageComponentLayout id="Layout2RN" promptWidth="120">
+               <ui:contents>
+                  <oa:messageLayout id="messageLayout2">
+                     <ui:contents>
+                        <oa:tableLayout id="InspectResultRN" hAlign="start" width="900">
+                           <ui:contents>
+                              <oa:rowLayout id="InspectReqRwLytRN">
+                                 <ui:contents>
+                                    <oa:cellFormat id="InsReqPromptRN" width="150" height="25" vAlign="middle" hAlign="right">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="InsReqPrompt" prompt="検査依頼No"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="InspectReqCllFmtRN" styleClass="OraBGAccentLight" width="160" height="25" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="QtInspectReqNo" viewName="XxwipQtInspectionSummaryVO1" viewAttr="QtInspectReqNo" prompt="" disabled="false" dataType="NUMBER" styleClass="LegendText" maximumLength="10" readOnly="true" shortDesc="検査依頼No."/>
+                                          <oa:formValue id="HiddenQtInspectReqNo" viewName="XxwipQtInspectionSummaryVO1" viewAttr="QtInspectReqNo" prompt="" dataType="NUMBER"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="DummyRwLytRN3">
+                                 <ui:contents>
+                                    <oa:cellFormat id="DummyCllFmtRN3" height="5"/>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="Inspect1RwLytRN">
+                                 <ui:contents>
+                                    <oa:cellFormat id="InsDueDate1PromptRN" width="150" height="25" vAlign="middle" hAlign="right">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="InsDueDate1Prompt" prompt="検査予定日１"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="InsDueDate1CllFmtRN" styleClass="OraBGAccentLight" width="160" height="25" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="InspectDueDate1" viewName="XxwipQtInspectionSummaryVO1" viewAttr="InspectDueDate1" styleClass="LegendText" maximumLength="10" readOnly="true" dataType="DATE" shortDesc="検査予定日１"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="TestDate1PromptRN" width="60" height="25" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TestDate1Prompt" prompt="検査日１"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="TestDate1CllFmtRN" styleClass="OraBGAccentLight" width="160" height="25" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TestDate1" viewName="XxwipQtInspectionSummaryVO1" viewAttr="TestDate1" prompt="" styleClass="LegendText" maximumLength="10" readOnly="true" dataType="DATE" shortDesc="検査日１"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="QtEffect1PromptRN" width="60" height="25" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="QtEffect1Prompt" prompt="結果１"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="QtEffect1CllFmtRN" styleClass="OraBGAccentLight" width="160" height="25" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="QtEffect1" viewName="XxwipQtInspectionSummaryVO1" viewAttr="QtEffect1" styleClass="LegendText" readOnly="true" shortDesc="結果１" maximumLength="10"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="DummyRwLytRN1">
+                                 <ui:contents>
+                                    <oa:cellFormat id="DummyCllFmtRN1" height="5"/>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="Inspect2RwLytRN">
+                                 <ui:contents>
+                                    <oa:cellFormat id="InsDueDate2PromptRN" width="150" height="25" vAlign="middle" hAlign="right">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="InsDueDate2Prompt" prompt="検査予定日２"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="InsDueDate2CllFmtRN" styleClass="OraBGAccentLight" width="160" height="25" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="InspectDueDate2" viewName="XxwipQtInspectionSummaryVO1" viewAttr="InspectDueDate2" styleClass="LegendText" maximumLength="10" readOnly="true" dataType="DATE" shortDesc="検査予定日２"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="TestDate2PromptRN" width="60" height="25" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TestDate2Prompt" prompt="検査日２"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="TestDate2CllFmtRN" styleClass="OraBGAccentLight" width="160" height="25" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TestDate2" viewName="XxwipQtInspectionSummaryVO1" viewAttr="TestDate2" styleClass="LegendText" maximumLength="10" readOnly="true" dataType="DATE" shortDesc="検査日２"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="QtEffect2PromptRN" width="60" height="25" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="QtEffect2Prompt" prompt="結果２"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="QtEffect2CllFmtRN" styleClass="OraBGAccentLight" width="160" height="25" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="QtEffect2" viewName="XxwipQtInspectionSummaryVO1" viewAttr="QtEffect2" styleClass="LegendText" readOnly="true" shortDesc="結果２" maximumLength="10"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="DummyRwLytRN2">
+                                 <ui:contents>
+                                    <oa:cellFormat id="DummyCllFmtRN2" height="5"/>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="Inspect3RwLytRN">
+                                 <ui:contents>
+                                    <oa:cellFormat id="InsDueDate3PromptRN" width="150" height="25" vAlign="middle" hAlign="right">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="InsDueDate3Prompt" prompt="検査予定日３"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="InsDueDate3CllFmtRN" styleClass="OraBGAccentLight" width="160" height="25" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="InspectDueDate3" viewName="XxwipQtInspectionSummaryVO1" viewAttr="InspectDueDate3" styleClass="LegendText" maximumLength="10" readOnly="true" dataType="DATE" shortDesc="検査予定日３"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="TestDate3PromptRN" width="60" height="25" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TestDate3Prompt" prompt="検査日３"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="TestDate3CllFmtRN" styleClass="OraBGAccentLight" width="160" height="25" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TestDate3" viewName="XxwipQtInspectionSummaryVO1" viewAttr="TestDate3" styleClass="LegendText" maximumLength="10" readOnly="true" dataType="DATE" shortDesc="検査日３"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="QtEffect3PromptRN" width="60" height="25" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="QtEffect3Prompt" prompt="結果３"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="QtEffect3CllFmtRN" styleClass="OraBGAccentLight" width="160" height="25" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="QtEffect3" viewName="XxwipQtInspectionSummaryVO1" viewAttr="QtEffect3" styleClass="LegendText" readOnly="true" shortDesc="結果３" maximumLength="10"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="DummyRwLytRN4">
+                                 <ui:contents>
+                                    <oa:cellFormat id="DummyCllFmtRN21" height="5"/>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="XqiWhoColumnRwLytRN">
+                                 <ui:contents>
+                                    <oa:cellFormat id="XqiLastUpdateDateCllFmtRN" height="5">
+                                       <ui:contents>
+                                          <oa:formValue id="XqiLastUpdateDate" viewName="XxwipQtInspectionSummaryVO1" viewAttr="XqiLastUpdateDate" dataType="VARCHAR2"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:messageLayout>
+               </ui:contents>
+            </oa:messageComponentLayout>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

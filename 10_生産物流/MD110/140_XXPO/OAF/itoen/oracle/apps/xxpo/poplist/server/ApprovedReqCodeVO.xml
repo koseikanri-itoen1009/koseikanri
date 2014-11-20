@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding='windows-31j'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="ApprovedReqCodeVO"
+   OrderBy="APPROVED_REQ_CODE"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="oracle.apps.fnd.framework.server.OAViewObjectImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+select xcmnlv.LOOKUP_CODE approved_req_code
+,xcmnlv.MEANING approved_req_disp
+from XXCMN_LOOKUP_VALUES_V xcmnlv
+where LOOKUP_TYPE = 'XXPO_APPROVED_REQ_TYPE'
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="4" />
+   </DesignTime>
+   <ViewAttribute
+      Name="ApprovedReqCode"
+      IsUpdateable="false"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="APPROVED_REQ_CODE"
+      Expression="APPROVED_REQ_CODE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ApprovedReqDisp"
+      IsUpdateable="false"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="APPROVED_REQ_DISP"
+      Expression="APPROVED_REQ_DISP"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+</ViewObject>

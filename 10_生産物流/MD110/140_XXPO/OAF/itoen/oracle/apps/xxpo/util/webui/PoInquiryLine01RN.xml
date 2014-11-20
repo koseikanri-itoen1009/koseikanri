@@ -1,0 +1,87 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--*[Enter Javadoc like developer documentation, delete this line once you fill the included template.] [Put a one line description of the region here.] [Put a brief description of the usage of the region here.] @param [Parameter_name] [Put parameter use here.] @param [Parameter_name] [Put parameter use here.] @see [Put any additional links apart from controller class and BC4J objects directly referenced by this region]-->
+<oa:advancedTable version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" viewName="XxpoPoInquiryLineVO1" tableBanding="rowBanding" width="100%" scope="/" shortDesc="1">
+   <ui:contents>
+      <oa:column id="PoInquiryLine01Col01" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine01Col01Hdr" prompt="No"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="LineNum" shortDesc="No" viewAttr="Line01LineNum" dataType="NUMBER" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine01Col02">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine01Col02Hdr" prompt="品目"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ItemNo" shortDesc="品目" viewAttr="Line01ItemNo" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine01Col03">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine01Col03Hdr" prompt="品名称"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ItemName" shortDesc="品名称" viewAttr="Line01ItemName" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine01Col04">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine01Col04Hdr" prompt="付帯"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="FutaiCode" shortDesc="付帯" viewAttr="Line01FutaiCode" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine01Col05">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine01Col05Hdr" prompt="工場"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="FactoryCode" shortDesc="工場" viewAttr="Line01FactoryCode"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine01Col06">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine01Col06Hdr" prompt="工場名"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="FactoryName" shortDesc="工場名" viewAttr="Line01FactoryName" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine01Col07">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine01Col07Hdr" prompt="ロットNo"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="LotNo" shortDesc="ロットNo" viewAttr="Line01LotNo" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine01Col08">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine01Col08Hdr" prompt="製造日"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ProductedDate" shortDesc="製造日" viewAttr="Line01ProductedDate" styleClass="LegendText" dataType="DATE"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine01Col09">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine01Col09Hdr" prompt="賞味期限"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="UseByDate" shortDesc="賞味期限" viewAttr="Line01UseByDate" styleClass="LegendText" dataType="DATE"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine01Col10">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine01Col10Hdr" prompt="固有記号"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="KoyuCode" shortDesc="固有記号" viewAttr="Line01KoyuCode" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+   </ui:contents>
+</oa:advancedTable>

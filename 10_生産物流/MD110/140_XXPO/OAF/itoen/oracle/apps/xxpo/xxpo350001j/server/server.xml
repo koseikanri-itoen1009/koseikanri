@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE JboPackage SYSTEM "jbo_03_01.dtd">
+
+<JboPackage
+   Name="server"
+   SeparateXMLFiles="true"
+   PackageName="itoen.oracle.apps.xxpo.xxpo350001j.server" >
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_ejbPackage" Value="false" />
+   </DesignTime>
+   <Containee
+      Name="XxpoPoConfirmAM"
+      FullName="itoen.oracle.apps.xxpo.xxpo350001j.server.XxpoPoConfirmAM"
+      ObjectType="AppModule" >
+   </Containee>
+   <Containee
+      Name="XxpoPoConfirmSearchVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo350001j.server.XxpoPoConfirmSearchVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoPoConfirmVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo350001j.server.XxpoPoConfirmVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoPoInquiryVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo350001j.server.XxpoPoInquiryVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoPoInquirySumVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo350001j.server.XxpoPoInquirySumVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoPoInquiryPVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo350001j.server.XxpoPoInquiryPVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoPoInquiryLineVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo350001j.server.XxpoPoInquiryLineVO"
+      ObjectType="ViewObject" >
+   </Containee>
+</JboPackage>

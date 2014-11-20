@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="TransStatusVO"
+   OrderBy="TRANS_STATUS_CODE"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="oracle.apps.fnd.framework.server.OAViewObjectImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT xlvv.lookup_code trans_status_code -- 支給依頼ステータス
+      ,xlvv.meaning     trans_status_name -- 支給依頼ステータス名称
+FROM   xxcmn_lookup_values_v xlvv -- クイックコード情報VIEW
+WHERE  xlvv.lookup_type = 'XXPO_TRANSACTION_STATUS'
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="4" />
+   </DesignTime>
+   <ViewAttribute
+      Name="TransStatusCode"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TRANS_STATUS_CODE"
+      Expression="TRANS_STATUS_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TransStatusName"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TRANS_STATUS_NAME"
+      Expression="TRANS_STATUS_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="TransStatusCode" />
+   </AttrArray>
+</ViewObject>

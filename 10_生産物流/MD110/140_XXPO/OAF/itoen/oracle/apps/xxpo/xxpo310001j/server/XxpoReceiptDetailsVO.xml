@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxpoReceiptDetailsVO"
+   OrderBy="RCV_RTN_LINE_NUMBER"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="itoen.oracle.apps.xxpo.xxpo310001j.server.XxpoReceiptDetailsVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT rart.txns_id txns_id                         -- 取引ID
+      ,rart.rcv_rtn_uom rcv_rtn_uom                 -- 受入返品単位
+      ,rart.quantity quantity                       -- 訂正前受入数量
+      ,rart.rcv_rtn_line_number rcv_rtn_line_number -- No
+      ,rart.txns_date txns_date                     -- 納入日
+      ,TO_CHAR(rart.rcv_rtn_quantity, 'FM999,999,990.000') rcv_rtn_quantity -- 受入数量
+      ,rart.uom uom                                 -- 単位
+      ,rart.line_description line_description       -- 摘要
+      ,rart.created_by                              -- 作成者(WHOカラム)
+      ,rart.creation_date                           -- 作成日(WHOカラム)
+      ,rart.last_updated_by                         -- 最終更新者(WHOカラム)
+      ,TO_CHAR(rart.last_update_date, 'YYYY/MM/DD HH24:MI:SS') last_update_date -- 最終更新日(WHOカラム)
+      ,rart.last_update_login                       -- 最終ログイン(WHOカラム)
+      ,rart.line_description base_line_description       -- DB.摘要
+FROM xxpo_rcv_and_rtn_txns rart
+WHERE rart.source_document_number   = :0
+  AND rart.source_document_line_num = :1
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="TxnsId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="TXNS_ID"
+      Expression="TXNS_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RcvRtnUom"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="3"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="RCV_RTN_UOM"
+      Expression="RCV_RTN_UOM"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="3" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Quantity"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="12"
+      Scale="3"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="QUANTITY"
+      Expression="QUANTITY"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RcvRtnLineNumber"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="RCV_RTN_LINE_NUMBER"
+      Expression="RCV_RTN_LINE_NUMBER"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TxnsDate"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="TXNS_DATE"
+      Expression="TXNS_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RcvRtnQuantity"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="RCV_RTN_QUANTITY"
+      Expression="RCV_RTN_QUANTITY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Uom"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="3"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="UOM"
+      Expression="UOM"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="3" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LineDescription"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE_DESCRIPTION"
+      Expression="LINE_DESCRIPTION"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="CREATED_BY"
+      Expression="CREATED_BY"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="CREATION_DATE"
+      Expression="CREATION_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LAST_UPDATED_BY"
+      Expression="LAST_UPDATED_BY"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsPersistent="false"
+      Precision="19"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LAST_UPDATE_DATE"
+      Expression="LAST_UPDATE_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="19" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      IsPersistent="false"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LAST_UPDATE_LOGIN"
+      Expression="LAST_UPDATE_LOGIN"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseLineDescription"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_LINE_DESCRIPTION"
+      Expression="BASE_LINE_DESCRIPTION"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NewRowFlag"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TxnsDateReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ReceiptDetailsReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="TxnsId" />
+      <Item Value="RcvRtnLineNumber" />
+   </AttrArray>
+</ViewObject>

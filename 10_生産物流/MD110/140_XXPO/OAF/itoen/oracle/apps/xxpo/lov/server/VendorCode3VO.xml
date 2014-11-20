@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding='windows-31j'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="VendorCode3VO"
+   OrderBy="VENDOR_CODE"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="oracle.apps.fnd.framework.server.OAViewObjectImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT xvv.segment1           vendor_code   -- 仕入先番号(取引先コード)
+      ,xvv.vendor_short_name  vendor_name   -- 略称      (取引先名)
+      ,xvv.vendor_id          vendor_id     -- 仕入先ID  (取引先ID)
+      ,xcav.party_id          customer_id   -- 顧客ID(パーティーID)
+      ,xcav.party_number      customer_code -- 顧客コード(組織番号)
+      ,xvv.spare2             price_list    -- 価格表ID
+FROM   xxcmn_vendors_v       xvv  -- 仕入先情報VIEW
+      ,xxcmn_cust_accounts_v xcav -- 顧客情報VIEW
+WHERE xvv.customer_num = xcav.account_number
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="4" />
+   </DesignTime>
+   <ViewAttribute
+      Name="VendorCode"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="12"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VENDOR_CODE"
+      Expression="VENDOR_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VendorName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VENDOR_NAME"
+      Expression="VENDOR_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VendorId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="VENDOR_ID"
+      Expression="VENDOR_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CustomerId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="CUSTOMER_ID"
+      Expression="CUSTOMER_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CustomerCode"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CUSTOMER_CODE"
+      Expression="CUSTOMER_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PriceList"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PRICE_LIST"
+      Expression="PRICE_LIST"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="VendorCode" />
+   </AttrArray>
+</ViewObject>

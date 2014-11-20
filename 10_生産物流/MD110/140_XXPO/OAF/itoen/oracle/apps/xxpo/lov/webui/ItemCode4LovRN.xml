@@ -1,0 +1,23 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxpo.lov.server.LovAM" scope="/">
+   <ui:contents>
+      <oa:table name="ItemCode4LovRN" id="ItemCode4RN" shortDesc="品目">
+         <ui:contents>
+            <oa:messageStyledText id="ItemNo" prompt="品目" viewName="ItemCode4VO1" viewAttr="ItemNo" maximumLength="32" queryable="true"/>
+            <oa:formValue id="ItemId" dataType="NUMBER" viewName="ItemCode4VO1" viewAttr="ItemId"/>
+            <oa:formValue id="ItemName" viewName="ItemCode4VO1" viewAttr="ItemName"/>
+            <oa:formValue id="ItemUm" viewName="ItemCode4VO1" viewAttr="ItemUm"/>
+            <oa:formValue id="InvItemId" dataType="NUMBER" viewName="ItemCode4VO1" viewAttr="InvItemId"/>
+            <oa:formValue id="ConvUnit" viewName="ItemCode4VO1" viewAttr="ConvUnit"/>
+            <oa:formValue id="NumOfDeliver" dataType="VARCHAR2" viewName="ItemCode4VO1" viewAttr="NumOfDeliver"/>
+            <oa:formValue id="NumOfCases" viewName="ItemCode4VO1" viewAttr="NumOfCases"/>
+            <oa:formValue id="WhseItemId" dataType="NUMBER" viewName="ItemCode4VO1" viewAttr="WhseItemId"/>
+            <oa:formValue id="WhseItemNo" viewName="ItemCode4VO1" viewAttr="WhseItemNo"/>
+            <oa:formValue id="WhseInvItemId" viewName="ItemCode4VO1" viewAttr="WhseInvItemId"/>
+            <oa:formValue id="LotCtl" viewName="ItemCode4VO1" viewAttr="LotCtl"/>
+            <oa:formValue id="WeightCapacityClass" viewName="ItemCode4VO1" viewAttr="WeightCapacityClass"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>

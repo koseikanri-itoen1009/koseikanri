@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE JboPackage SYSTEM "jbo_03_01.dtd">
+
+<JboPackage
+   Name="server"
+   SeparateXMLFiles="true"
+   PackageName="itoen.oracle.apps.xxpo.xxpo310001j.server" >
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_ejbPackage" Value="false" />
+   </DesignTime>
+   <Containee
+      Name="XxpoOrderReceiptAM"
+      FullName="itoen.oracle.apps.xxpo.xxpo310001j.server.XxpoOrderReceiptAM"
+      ObjectType="AppModule" >
+   </Containee>
+   <Containee
+      Name="XxpoOrderReceiptMakePVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo310001j.server.XxpoOrderReceiptMakePVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoOrderDetailsVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo310001j.server.XxpoOrderDetailsVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoOrderReceiptSerchVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo310001j.server.XxpoOrderReceiptSerchVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoOrderReceiptVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo310001j.server.XxpoOrderReceiptVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoOrderHeaderVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo310001j.server.XxpoOrderHeaderVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoOrderDetailTotalVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo310001j.server.XxpoOrderDetailTotalVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoOrderReceiptDetailsPVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo310001j.server.XxpoOrderReceiptDetailsPVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoOrderDetailsTabVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo310001j.server.XxpoOrderDetailsTabVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoReceiptDetailsVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo310001j.server.XxpoReceiptDetailsVO"
+      ObjectType="ViewObject" >
+   </Containee>
+</JboPackage>

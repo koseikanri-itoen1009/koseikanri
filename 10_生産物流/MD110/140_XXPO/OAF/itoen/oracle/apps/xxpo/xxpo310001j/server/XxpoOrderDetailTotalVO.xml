@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxpoOrderDetailTotalVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="itoen.oracle.apps.xxpo.xxpo310001j.server.XxpoOrderDetailTotalVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT TO_CHAR(SUM(NVL(pla.attribute11, 0)), 'FM999,999,990.000') total_order_amount -- 合計発注数量
+      ,TO_CHAR(SUM(NVL(pla.attribute6, 0)), 'FM999,999,990.000') total_supplier_shipment_amount             -- 合計仕入先出荷数量
+      ,TO_CHAR(SUM(NVL(pla.attribute7, 0)), 'FM999,999,990.000') total_receipt_amount                       -- 合計受入数量
+FROM po_headers_all pha
+    ,po_lines_all pla
+WHERE pha.po_header_id = pla.po_header_id
+  AND pha.segment1     = :0
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="TotalOrderAmount"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TOTAL_ORDER_AMOUNT"
+      Expression="TOTAL_ORDER_AMOUNT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TotalSupplierShipmentAmount"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TOTAL_SUPPLIER_SHIPMENT_AMOUNT"
+      Expression="TOTAL_SUPPLIER_SHIPMENT_AMOUNT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TotalReceiptAmount"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TOTAL_RECEIPT_AMOUNT"
+      Expression="TOTAL_RECEIPT_AMOUNT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

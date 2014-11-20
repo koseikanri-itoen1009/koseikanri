@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding='windows-31j'?>
+<!DOCTYPE JboPackage SYSTEM "jbo_03_01.dtd">
+
+<JboPackage
+   Name="server"
+   SeparateXMLFiles="true"
+   PackageName="itoen.oracle.apps.xxpo.poplist.server" >
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_ejbPackage" Value="false" />
+   </DesignTime>
+   <Containee
+      Name="StatusCodeVO"
+      FullName="itoen.oracle.apps.xxpo.poplist.server.StatusCodeVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="ApprovedReqCodeVO"
+      FullName="itoen.oracle.apps.xxpo.poplist.server.ApprovedReqCodeVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="DropShipCodeVO"
+      FullName="itoen.oracle.apps.xxpo.poplist.server.DropShipCodeVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="ApprovedCodeVO"
+      FullName="itoen.oracle.apps.xxpo.poplist.server.ApprovedCodeVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="OrderTypeVO"
+      FullName="itoen.oracle.apps.xxpo.poplist.server.OrderTypeVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="TransStatusVO"
+      FullName="itoen.oracle.apps.xxpo.poplist.server.TransStatusVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="NotifStatusVO"
+      FullName="itoen.oracle.apps.xxpo.poplist.server.NotifStatusVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="WeightCapacityVO"
+      FullName="itoen.oracle.apps.xxpo.poplist.server.WeightCapacityVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="TakebackVO"
+      FullName="itoen.oracle.apps.xxpo.poplist.server.TakebackVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="FreightVO"
+      FullName="itoen.oracle.apps.xxpo.poplist.server.FreightVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="OrderType2VO"
+      FullName="itoen.oracle.apps.xxpo.poplist.server.OrderType2VO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="TransStatus2VO"
+      FullName="itoen.oracle.apps.xxpo.poplist.server.TransStatus2VO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="ShipMethodVO"
+      FullName="itoen.oracle.apps.xxpo.poplist.server.ShipMethodVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="StatusCode2VO"
+      FullName="itoen.oracle.apps.xxpo.poplist.server.StatusCode2VO"
+      ObjectType="ViewObject" >
+   </Containee>
+</JboPackage>

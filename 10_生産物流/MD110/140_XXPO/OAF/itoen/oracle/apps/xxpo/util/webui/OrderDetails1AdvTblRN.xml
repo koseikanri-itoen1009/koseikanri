@@ -1,0 +1,122 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:advancedTable version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" blockSize="20" viewName="XxpoOrderDetailsTabVO1" unvalidated="true">
+   <ui:contents>
+      <oa:column id="column1">
+         <ui:columnHeader>
+            <oa:sortableHeader id="LineNumberHdr" prompt="No"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="LineNumber" viewAttr="LineNum" serverUnvalidated="false" warnAboutChanges="true">
+               <ui:primaryClientAction>
+                  <ui:fireAction event="LineNumberLink" unvalidated="false">
+                     <ui:parameters>
+                        <ui:parameter key="searchHeaderNumber" value="${oa.current.HeaderNumber}"/>
+                        <ui:parameter key="searchLineNumber" value="${oa.current.LineNum}"/>
+                     </ui:parameters>
+                  </ui:fireAction>
+               </ui:primaryClientAction>
+            </oa:messageStyledText>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="column2">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ItemCodeHdr" prompt="品目"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ItemCode" shortDesc="品目" viewAttr="OpmItemNo"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="column3">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ItemNameHdr" prompt="品名称"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ItemName" shortDesc="品名称" viewAttr="OpmItemName"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="column4">
+         <ui:columnHeader>
+            <oa:sortableHeader id="AccompanyCodeHdr" prompt="付帯"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="AccompanyCode" shortDesc="付帯" viewAttr="AccompanyCode"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="column5">
+         <ui:columnHeader>
+            <oa:sortableHeader id="FactoryHdr" prompt="工場"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="Factory" shortDesc="工場" viewAttr="FactoryCode"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="column6">
+         <ui:columnHeader>
+            <oa:sortableHeader id="LotNoHdr" prompt="ロットNo"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="LotNo" shortDesc="ロットNo" viewAttr="LotNo"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="column7">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ProductionDateHdr" prompt="製造日"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageTextInput id="ProductionDate" shortDesc="製造日" dataType="DATE" maximumLength="10" styleClass="LegendText" viewAttr="ProductionDate" columns="13" readOnly="${oa.current.ProductionDateReadOnly}">
+               <ui:primaryClientAction>
+                  <ui:firePartialAction event="ProductedDateChanged">
+                     <ui:parameters>
+                        <ui:parameter key="pChangedLineNum" value="${oa.current.LineNum}"/>
+                     </ui:parameters>
+                  </ui:firePartialAction>
+               </ui:primaryClientAction>
+            </oa:messageTextInput>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="column8">
+         <ui:columnHeader>
+            <oa:sortableHeader id="UseByDateHdr" prompt="賞味期限"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="UseByDate" dataType="DATE" viewAttr="UseByDate"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="column9">
+         <ui:columnHeader>
+            <oa:sortableHeader id="KoyuCodeHdr" prompt="固有記号"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="KoyuCode" shortDesc="固有記号" viewAttr="KoyuCode"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="column10" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ItemAmountHdr" prompt="入数"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageTextInput id="ItemAmount" shortDesc="入数" maximumLength="10" dataType="NUMBER" styleClass="OraFieldNumber" viewAttr="ItemAmount" readOnly="${oa.current.ItemAmountReadOnly}"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="column11" columnDataFormat="iconButtonFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="AllReceiptHdr" prompt="全受"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageCheckBox id="AllReceipt" shortDesc="全受" viewAttr="AllReceipt" readOnly="${oa.current.AllReceiptReadOnly}"/>
+         </ui:contents>
+      </oa:column>
+      <oa:formValue id="LineId" prompt="発注明細ID" viewAttr="LineId"/>
+      <oa:formValue id="ItemId" prompt="品目ID" viewAttr="PlaItemId"/>
+      <oa:formValue id="UnitName" prompt="発注単位" viewAttr="UnitName"/>
+      <oa:formValue id="UnitMeasLookupCode" prompt="品目基準単位" viewAttr="UnitMeasLookupCode"/>
+      <oa:formValue id="OpmItemId" prompt="OPM品目ID" viewAttr="OpmItemId"/>
+      <oa:formValue id="LotId" prompt="ロットID" viewAttr="LotId"/>
+      <oa:formValue id="VendorStockWhse" prompt="相手先在庫入庫先" viewAttr="VendorStockWhse"/>
+      <oa:formValue id="LastUpdatedBy" dataType="NUMBER" viewAttr="LastUpdatedBy"/>
+      <oa:formValue id="LastUpdateDate" dataType="VARCHAR2" viewAttr="LastUpdateDate"/>
+      <oa:formValue id="LastUpdateLogin" dataType="NUMBER" viewAttr="LastUpdateLogin"/>
+      <oa:formValue id="LotLastUpdateDate" viewAttr="LotLastUpdateDate"/>
+   </ui:contents>
+</oa:advancedTable>

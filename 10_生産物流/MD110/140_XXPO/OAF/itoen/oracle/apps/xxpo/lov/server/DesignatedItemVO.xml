@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="DesignatedItemVO"
+   OrderBy="TO_NUMBER(ITEM_CODE)"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="oracle.apps.fnd.framework.server.OAViewObjectImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT ximv.inventory_item_id  inventory_item_id -- INV品目ID
+      ,ximv.item_id            item_id           -- 品目ID
+      ,ximv.item_no            item_code         -- 品目コード
+      ,ximv.item_short_name    item_name         -- 品目名
+FROM   xxcmn_item_mst_v  ximv /* OPM品目情報VIEW */
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="4" />
+   </DesignTime>
+   <ViewAttribute
+      Name="InventoryItemId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="INVENTORY_ITEM_ID"
+      Expression="INVENTORY_ITEM_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="10"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="ITEM_ID"
+      Expression="ITEM_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemCode"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="32"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_CODE"
+      Expression="ITEM_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="32" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_NAME"
+      Expression="ITEM_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="ItemId" />
+   </AttrArray>
+</ViewObject>

@@ -1,0 +1,6 @@
+f60gen module=/ebst/tebs02/tebs02appl/xxau/11.5.0/forms/JA/XXPO330001F.fmb userid=apps/apps output_file=/ebst/tebs02/tebs02appl/xxpo/11.5.0/forms/JA/XXPO330001F.fmx
+f60gen module=/ebst/tebs02/tebs02appl/xxau/11.5.0/forms/JA/XXPO380001F.fmb userid=apps/apps output_file=/ebst/tebs02/tebs02appl/xxpo/11.5.0/forms/JA/XXPO380001F.fmx
+f60gen module=/ebst/tebs02/tebs02appl/xxau/11.5.0/forms/JA/XXPO710001F.fmb userid=apps/apps output_file=/ebst/tebs02/tebs02appl/xxpo/11.5.0/forms/JA/XXPO710001F.fmx
+f60gen module=/ebst/tebs02/tebs02appl/xxau/11.5.0/forms/JA/XXPO870001F.fmb userid=apps/apps output_file=/ebst/tebs02/tebs02appl/xxpo/11.5.0/forms/JA/XXPO870001F.fmx
+f60gen module=/ebst/tebs02/tebs02appl/xxau/11.5.0/forms/JA/XXPO870002F.fmb userid=apps/apps output_file=/ebst/tebs02/tebs02appl/xxpo/11.5.0/forms/JA/XXPO870002F.fmx
+f60gen module=/ebst/tebs02/tebs02appl/xxau/11.5.0/forms/JA/XXPO300001F.fmb userid=apps/apps output_file=/ebst/tebs02/tebs02appl/xxpo/11.5.0/forms/JA/XXPO300001F.fmx

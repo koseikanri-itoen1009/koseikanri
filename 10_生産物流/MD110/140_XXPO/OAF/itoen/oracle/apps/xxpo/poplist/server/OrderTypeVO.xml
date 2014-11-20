@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="OrderTypeVO"
+   OrderBy="TRANS_TYPE_ID"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="oracle.apps.fnd.framework.server.OAViewObjectImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT xottv.transaction_type_id     trans_type_id    -- 受注タイプID
+      ,xottv.transaction_type_name   trans_type_name  -- 名称
+FROM   xxwsh_oe_transaction_types_v xottv -- 受注タイプ情報VIEW
+WHERE  xottv.shipping_shikyu_class  = '2'  -- 支給依頼
+AND    xottv.ship_sikyu_rcv_pay_ctg = '05' -- 有償出荷
+AND    xottv.used_disp_flg          = 'Y'
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="4" />
+   </DesignTime>
+   <ViewAttribute
+      Name="TransTypeId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="TRANS_TYPE_ID"
+      Expression="TRANS_TYPE_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TransTypeName"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TRANS_TYPE_NAME"
+      Expression="TRANS_TYPE_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="TransTypeId" />
+   </AttrArray>
+</ViewObject>

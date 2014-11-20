@@ -1,0 +1,398 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <oa:pageLayout id="PageLayoutRN" windowTitle="(仕入先発注・受入照会)発注確認" title="(仕入先発注・受入照会)発注確認" amDefName="itoen.oracle.apps.xxpo.xxpo350001j.server.XxpoPoConfirmAM" controllerClass="itoen.oracle.apps.xxpo.xxpo350001j.webui.XxpoPoConfirmCO">
+         <ui:contents>
+            <oa:flowLayout id="MainRN">
+               <ui:contents>
+                  <oa:header id="SearchHdrRN" text="検索">
+                     <ui:contents>
+                        <oa:tableLayout id="ReqFieldDescRN" extends="/oracle/apps/fnd/framework/webui/OAReqFieldDescRG"/>
+                        <oa:tableLayout id="SearchTableRN">
+                           <ui:contents>
+                              <oa:rowLayout id="SearchRow01">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell0100" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtHeaderNumberPrompt" prompt="発注No"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0101" width="16%">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtHeaderNumber" maximumLength="12" shortDesc="発注No." styleClass="LegendText" columns="15" viewName="XxpoPoConfirmSearchVO1" viewAttr="HeaderNumber"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0102" columnSpan="2" hAlign="right">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtStatusPrompt" prompt="ステータス" required="no"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0103">
+                                       <ui:contents>
+                                          <oa:messageChoice id="TxtStatus" prompt="" required="no" dataType="VARCHAR2" shortDesc="ステータス" pickListViewDef="itoen.oracle.apps.xxpo.poplist.server.StatusCodeVO" pickListDispAttr="StatusDisp" pickListValAttr="StatusCode" styleClass="LegendText" viewName="XxpoPoConfirmSearchVO1" viewAttr="Status"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0104" width="10%">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtSpace01" prompt="　" shortDesc="スペース"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0105" hAlign="right" columnSpan="4"/>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow02">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell0200" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtVendorCodePrompt" prompt="取引先"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0201">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtVendorCode" maximumLength="4" shortDesc="取引先" styleClass="LegendText" columns="6" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/VendorCodeRN">
+                                             <lovMappings>
+                                                <lovMap id="VendorCodeLovMap" lovItem="VendorCode" criteriaFrom="TxtVendorCode" resultTo="TxtVendorCode"/>
+                                                <lovMap id="VendorNameLovMap" lovItem="VendorName" resultTo="fVendorName"/>
+                                                <lovMap id="VendorIdLovMap" lovItem="VendorId" resultTo="TxtVendorId"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                          <oa:formValue id="TxtVendorId" prompt="取引先ID" dataType="NUMBER" viewName="XxpoPoConfirmSearchVO1" viewAttr="VendorId"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0202" columnSpan="3">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtVendorName" prompt="" viewName="XxpoPoConfirmSearchVO1" viewAttr="VendorName" styleClass="LegendText"/>
+                                          <oa:formValue id="fVendorName" viewName="XxpoPoConfirmSearchVO1" viewAttr="VendorName"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0203">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtSpace02" prompt="　" shortDesc="スペース"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0204" hAlign="right">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtMediationCodePrompt" prompt="斡旋者"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0205" width="16%">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtMediationCode" maximumLength="4" shortDesc="斡旋者" styleClass="LegendText" columns="6" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/MediationCodeRN">
+                                             <lovMappings>
+                                                <lovMap id="MediationCodeLovMap" lovItem="VendorCode" resultTo="TxtMediationCode" criteriaFrom="TxtMediationCode"/>
+                                                <lovMap id="MediationNameLovMap" lovItem="VendorName" resultTo="fMediatorName"/>
+                                                <lovMap id="MediationIdLovMap" lovItem="VendorId" resultTo="TxtMediationId"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                          <oa:formValue id="TxtMediationId" prompt="斡旋者ID" dataType="NUMBER" viewName="XxpoPoConfirmSearchVO1" viewAttr="MediationId"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0206" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtMediatorName" prompt="" viewName="XxpoPoConfirmSearchVO1" viewAttr="MediatorName" styleClass="LegendText"/>
+                                          <oa:formValue id="fMediatorName" viewName="XxpoPoConfirmSearchVO1" viewAttr="MediatorName"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow03">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell0300" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtDeliveryDatePrompt" prompt="納入日" required="uiOnly"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0301">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtDeliveryDateFrom" prompt="" required="no" shortDesc="納入日（開始）" dataType="DATE" styleClass="LegendText" maximumLength="10" columns="12" viewName="XxpoPoConfirmSearchVO1" viewAttr="DeliveryDateFrom"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0302" hAlign="center">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtHyphen" prompt="-"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0303" rendered="true" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtDeliveryDateTo" required="no" shortDesc="納入日（終了）" dataType="DATE" styleClass="LegendText" maximumLength="10" columns="12" viewName="XxpoPoConfirmSearchVO1" viewAttr="DeliveryDateTo"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0304">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtSpace03" prompt="　" shortDesc="スペース"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0305" hAlign="right">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtDepartmentPrompt" prompt="発注部署" required="no"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0306">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtDepartment" prompt="" required="no" shortDesc="発注部署" styleClass="LegendText" maximumLength="4" columns="6" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/DepartmentCodeRN" viewName="XxpoPoConfirmSearchVO1" viewAttr="Department">
+                                             <lovMappings>
+                                                <lovMap id="DepartmentLovMap" lovItem="DeptCode" resultTo="TxtDepartment" criteriaFrom="TxtDepartment"/>
+                                                <lovMap id="DeptNameLovMap" lovItem="DeptName" resultTo="fDepartmentName"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0307" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtDepartmentName" prompt="" required="no" styleClass="LegendText" viewName="XxpoPoConfirmSearchVO1" viewAttr="DepartmentName"/>
+                                          <oa:formValue id="fDepartmentName" viewName="XxpoPoConfirmSearchVO1" viewAttr="DepartmentName"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow04">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCel0400" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtLocationPrompt" prompt="納入先" required="no"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0401">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtLocation" prompt="" required="no" shortDesc="納入先" maximumLength="4" columns="6" styleClass="LegendText" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/ItemLocationCodeRN" viewName="XxpoPoConfirmSearchVO1" viewAttr="Location">
+                                             <lovMappings>
+                                                <lovMap id="LocCodeLovMap" lovItem="LocationCode" resultTo="TxtLocation" criteriaFrom="TxtLocation"/>
+                                                <lovMap id="LocNameLovMap1" lovItem="LocationName" resultTo="fLocationName"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0402" hAlign="start" columnSpan="3">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtLocationName" prompt="" required="no" styleClass="LegendText" viewName="XxpoPoConfirmSearchVO1" viewAttr="LocationName"/>
+                                          <oa:formValue id="fLocationName" viewName="XxpoPoConfirmSearchVO1" viewAttr="LocationName"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0403">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtSpace04" prompt="　" shortDesc="スペース"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0404" hAlign="right">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtApprovedPrompt" prompt="承諾要" required="no"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0405" columnSpan="3">
+                                       <ui:contents>
+                                          <oa:messageChoice id="TxtApproved" shortDesc="承諾要" pickListViewDef="itoen.oracle.apps.xxpo.poplist.server.ApprovedReqCodeVO" pickListDispAttr="ApprovedReqDisp" pickListValAttr="ApprovedReqCode" styleClass="LegendText" viewName="XxpoPoConfirmSearchVO1" viewAttr="Approved"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow05">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell0600" columnSpan="5" height="25"/>
+                                    <oa:cellFormat id="SearchCell0601">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtSpace05" prompt="　" shortDesc="スペース"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0602" hAlign="right">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtOrderApprovedPrompt" prompt="発注承諾" required="no"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0603">
+                                       <ui:contents>
+                                          <oa:messageChoice id="TxtOrderApproved" shortDesc="発注承諾" pickListViewDef="itoen.oracle.apps.xxpo.poplist.server.ApprovedCodeVO" pickListDispAttr="ApprovedDisp" pickListValAttr="ApprovedCode" styleClass="LegendText" viewName="XxpoPoConfirmSearchVO1" viewAttr="OrderApproved"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0604">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtPurchasePrompt" prompt="直送区分" required="no"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0605" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageChoice id="TxtPurchase" shortDesc="直送区分" pickListViewDef="itoen.oracle.apps.xxpo.poplist.server.DropShipCodeVO" pickListValAttr="DropshipCode" pickListDispAttr="DropshipDisp" styleClass="LegendText" viewName="XxpoPoConfirmSearchVO1" viewAttr="Purchase"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow06">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell0700" columnSpan="5" height="25"/>
+                                    <oa:cellFormat id="SearchCell0701">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtSpace06" prompt="　" shortDesc="スペース"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0702" hAlign="right">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtPurchaseApprovedPrompt" prompt="仕入承諾" required="no"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0703">
+                                       <ui:contents>
+                                          <oa:messageChoice id="TxtPurchaseApproved" shortDesc="仕入承諾" pickListViewDef="itoen.oracle.apps.xxpo.poplist.server.ApprovedCodeVO" pickListDispAttr="ApprovedDisp" pickListValAttr="ApprovedCode" styleClass="LegendText" viewName="XxpoPoConfirmSearchVO1" viewAttr="PurchaseApproved"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0704" columnSpan="3">
+                                       <ui:contents>
+                                          <oa:messageCheckBox id="TxtCancelSearch" shortDesc="取消検索" checked="false" text="取消検索" prompt="取消検索" styleClass="LegendText" viewName="XxpoPoConfirmSearchVO1" viewAttr="CancelSearch"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow07">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell0800" columnSpan="10" hAlign="center" height="25">
+                                       <ui:contents>
+                                          <oa:pageButtonBar id="PageButtonBarSearchRN">
+                                             <ui:contents>
+                                                <oa:submitButton id="Go" text="進む" prompt="進む"/>
+                                                <oa:submitButton id="Delete" text="消去" prompt="消去"/>
+                                             </ui:contents>
+                                          </oa:pageButtonBar>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="SearchResultsHdrRN">
+                     <ui:contents>
+                        <oa:advancedTable id="ResultsAdvTblRN" width="100%" viewName="XxpoPoConfirmVO1" blockSize="20">
+                           <ui:contents>
+                              <oa:column id="column01">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="HeaderNumberHdr" prompt="発注No"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageStyledText id="HeaderNumber" viewAttr="HeaderNumber">
+                                       <ui:primaryClientAction>
+                                          <ui:fireAction event="HeaderNumberLink" id="fireAction1">
+                                             <ui:parameters>
+                                                <ui:parameter key="searchHeaderId" value="${oa.XxpoPoConfirmVO1.HeaderId}"/>
+                                             </ui:parameters>
+                                          </ui:fireAction>
+                                       </ui:primaryClientAction>
+                                    </oa:messageStyledText>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="column02">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="VendorCodeHdr" prompt="取引先"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageStyledText id="VendorCode" viewAttr="VendorCode" styleClass="LegendText"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="column03">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="VendorNameHdr" prompt="取引先名"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageStyledText id="VendorName" viewAttr="VendorName" styleClass="LegendText"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="column04">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="DeliveryDateHdr" prompt="納入日"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageStyledText id="DeliveryDate" dataType="DATE" viewAttr="DeliveryDate" styleClass="LegendText"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="column05">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="LocationHdr" prompt="納入先"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageStyledText id="Location" viewAttr="LocationCode" styleClass="LegendText"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="column06">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="LocationNameHdr" prompt="納入先名"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageStyledText id="LocationName" viewAttr="LocationName" styleClass="LegendText"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="column07">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="MediationCodeHdr" prompt="斡旋者"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageStyledText id="MediationCode" viewAttr="MediationCode" styleClass="LegendText"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="column08">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="DepartmentCodeHdr" prompt="発注部署"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageStyledText id="DepartmentCode" viewAttr="DepartmentCode" styleClass="LegendText"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="column09">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="StatusDispHdr" prompt="ステータス"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageStyledText id="StatusDisp" viewAttr="StatusDisp" styleClass="LegendText"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="column10" columnDataFormat="iconButtonFormat">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="ApprovedFlagHdr" prompt="承認要"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageCheckBox id="ApprovedFlag" shortDesc="承諾要" viewAttr="ApprovedFlag" readOnly="true"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="column11" columnDataFormat="iconButtonFormat">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="OrderApprovedFlagHdr" prompt="発注承諾"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageCheckBox id="OrderApprovedFlag" viewAttr="OrderApprovedFlag" readOnly="true"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="column12" columnDataFormat="iconButtonFormat">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="PurchaseApprovedFlagHdr" prompt="仕入承諾"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageCheckBox id="PurchaseApprovedFlag" viewAttr="PurchaseApprovedFlag" readOnly="true"/>
+                                 </ui:contents>
+                              </oa:column>
+                           </ui:contents>
+                           <ui:tableSelection>
+                              <oa:multipleSelection id="multipleSelection" viewAttr="Selection">
+                                 <ui:contents>
+                                    <oa:rowLayout id="MultiSelectRow">
+                                       <ui:contents>
+                                          <oa:pageButtonBar id="PageButtonBarResultRN">
+                                             <ui:contents>
+                                                <oa:submitButton id="OrderApproving" text="発注承諾" prompt="発注承諾"/>
+                                                <oa:submitButton id="PurchaseApproving" text="仕入承諾" prompt="仕入承諾"/>
+                                             </ui:contents>
+                                          </oa:pageButtonBar>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:multipleSelection>
+                           </ui:tableSelection>
+                        </oa:advancedTable>
+                     </ui:contents>
+                  </oa:header>
+               </ui:contents>
+            </oa:flowLayout>
+         </ui:contents>
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage"/>
+         </ui:corporateBranding>
+      </oa:pageLayout>
+   </content>
+</page>

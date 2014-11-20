@@ -1,0 +1,297 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxpo.xxpo320001j.server.XxpoSupplierResultsAM" windowTitle="(仕入先出荷実績)仕入先出荷実績入力" title="仕入先出荷実績入力" controllerClass="itoen.oracle.apps.xxpo.xxpo320001j.webui.XxpoSupplierResultsMakeCO">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:flowLayout id="MainRN">
+               <ui:contents>
+                  <oa:header id="ShipmentResultsHdr" extends="/itoen/oracle/apps/xxpo/util/webui/ShipmentResultsHdrRN" text="出荷実績ヘッダー"/>
+                  <oa:header id="DetailsHdrRN" text="発注・受入明細" rendered="true">
+                     <ui:contents>
+                        <oa:advancedTable id="SearchResultsAdvTblRN" width="100%" viewName="XxpoSupplierResultsDetailsVO1" blockSize="20">
+                           <ui:contents>
+                              <oa:column id="column1" rendered="true" columnDataFormat="textFormat">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="DetailNumHdr" prompt="No." rendered="true"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:tableLayout id="DetailNumTab" width="100%">
+                                       <ui:contents>
+                                          <oa:rowLayout id="DetailNumRow01" hAlign="right">
+                                             <ui:contents>
+                                                <oa:cellFormat id="DetailNumCell100">
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="DetailNum" dataType="NUMBER" comment="明細番号" viewAttr="LineNum" vAlign="top" styleClass="LegendText"/>
+                                                      <oa:spacer id="Spacer01" height="35"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:tableLayout>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="column2" columnDataFormat="textFormat">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="ItemHdr" prompt="品目/入数"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:tableLayout id="ItemTab" width="100%">
+                                       <ui:contents>
+                                          <oa:rowLayout id="ItemRow01">
+                                             <ui:contents>
+                                                <oa:cellFormat id="ItemCell100" hAlign="right">
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="ItemCode" comment="品目コード" viewAttr="ItemNo" styleClass="LegendText"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                          <oa:rowLayout id="ItemRow02">
+                                             <ui:contents>
+                                                <oa:cellFormat id="region1"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                          <oa:rowLayout id="ItemRow03">
+                                             <ui:contents>
+                                                <oa:cellFormat id="ItemCell300" hAlign="right">
+                                                   <ui:contents>
+                                                      <oa:messageTextInput id="ItemAmount" comment="入数" dataType="VARCHAR2" maximumLength="9" columns="11" viewAttr="ItemAmount" readOnly="${oa.current.ItemAmountReadOnly}" shortDesc="入数" styleClass="OraFieldNumber"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:tableLayout>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="column3">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="ItemLotOrderHdr" prompt="品目/ロット/発注数"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:tableLayout id="ItemLotOrderTab" width="100%">
+                                       <ui:contents>
+                                          <oa:rowLayout id="ItemLotOrderRow01" hAlign="left">
+                                             <ui:contents>
+                                                <oa:cellFormat id="ItemLotOrderCell100" hAlign="left">
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="ItemName" comment="品目名" viewAttr="ItemName" styleClass="LegendText"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                          <oa:rowLayout id="ItemLotOrderRow02" hAlign="left">
+                                             <ui:contents>
+                                                <oa:cellFormat id="ItemLotOrderCell200">
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="LotNo" comment="ロットNo." viewAttr="LotNo" styleClass="LegendText"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                          <oa:rowLayout id="ItemLotOrderRow03" hAlign="right">
+                                             <ui:contents>
+                                                <oa:cellFormat id="ItemLotOrder300">
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="OrderAmount" comment="発注数" dataType="NUMBER" viewAttr="OrderAmount" styleClass="LegendText"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:tableLayout>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="column4" columnDataFormat="textFormat">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="AccompanyCodeHdr" prompt="付"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:tableLayout id="region5" width="100%">
+                                       <ui:contents>
+                                          <oa:rowLayout id="region6" hAlign="right">
+                                             <ui:contents>
+                                                <oa:cellFormat id="region7" rowSpan="3">
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="AccompanyCode" comment="付帯コード" viewAttr="AccompanyCode" styleClass="LegendText"/>
+                                                      <oa:spacer id="Spacer02" height="35"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:tableLayout>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="column5">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="PdateLeavingShedHdr" prompt="製造日/出庫数"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:tableLayout id="PdateLeavingShedTab" hAlign="center">
+                                       <ui:contents>
+                                          <oa:rowLayout id="region8">
+                                             <ui:contents>
+                                                <oa:cellFormat id="region9"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                          <oa:rowLayout id="PdateLeavingShedRow01">
+                                             <ui:contents>
+                                                <oa:cellFormat id="PdateLeavingShedCell100">
+                                                   <ui:contents>
+                                                      <oa:messageTextInput id="ProductionDate" comment="製造日" dataType="DATE" maximumLength="10" columns="13" viewAttr="ProductionDate" styleClass="LegendText" readOnly="${oa.current.ProductionDateReadOnly}" serverUnvalidated="false">
+                                                         <ui:primaryClientAction>
+                                                            <ui:firePartialAction event="ProductedDateChanged" unvalidated="false">
+                                                               <ui:parameters>
+                                                                  <ui:parameter key="pChangedLineNum" value="${oa.current.LineNum}"/>
+                                                               </ui:parameters>
+                                                            </ui:firePartialAction>
+                                                         </ui:primaryClientAction>
+                                                      </oa:messageTextInput>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                          <oa:rowLayout id="PdateLeavingShedRow02">
+                                             <ui:contents>
+                                                <oa:cellFormat id="PdateLeavingShedCell200">
+                                                   <ui:contents>
+                                                      <oa:messageTextInput id="LeavingShedAmount" comment="出庫数量" dataType="VARCHAR2" maximumLength="13" columns="16" viewAttr="LeavingShedAmount" readOnly="${oa.current.LeavingShedAmountReadOnly}" disabled="false" shortDesc="出庫数" styleClass="OraFieldNumber"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:tableLayout>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="column6" rendered="true">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="AppoUseByDateHdr" prompt="指定/賞味期限"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:tableLayout id="AppoUseByDateTab" hAlign="center">
+                                       <ui:contents>
+                                          <oa:rowLayout id="AppoUseByDateRow01">
+                                             <ui:contents>
+                                                <oa:cellFormat id="AppoUseByDateCell100">
+                                                   <ui:contents>
+                                                      <oa:messageTextInput id="AppointmentDate" dataType="DATE" comment="日付指定" maximumLength="10" columns="13" viewAttr="AppointmentDate" styleClass="LegendText" readOnly="${oa.current.AppointmentDateReadOnly}"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                          <oa:rowLayout id="AppoUseByDateRow02">
+                                             <ui:contents>
+                                                <oa:cellFormat id="AppoUseByDateCell200">
+                                                   <ui:contents>
+                                                      <oa:messageTextInput id="UseByDate" dataType="DATE" comment="賞味期限" maximumLength="10" columns="13" viewAttr="UseByDate" styleClass="LegendText" readOnly="${oa.current.UseByDateReadOnly}"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                          <oa:rowLayout id="AppoUseByDateRow03" hAlign="left">
+                                             <ui:contents>
+                                                <oa:cellFormat id="AppoUseByDateCell300">
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="Unit" comment="単位" viewAttr="UnitName" styleClass="LegendText"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:tableLayout>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="column7">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="DescKoyuRankHdr" prompt="摘要/固有記号/ランク1"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:tableLayout id="DescKoyuRankTab">
+                                       <ui:contents>
+                                          <oa:rowLayout id="DescKoyuRankRow01">
+                                             <ui:contents>
+                                                <oa:cellFormat id="DescKoyuRankCell100">
+                                                   <ui:contents>
+                                                      <oa:messageTextInput id="Description" dataType="VARCHAR2" comment="摘要" maximumLength="40" columns="40" viewAttr="Description" styleClass="LegendText" readOnly="${oa.current.DescriptionReadOnly}"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                          <oa:rowLayout id="DescKoyuRankRow02">
+                                             <ui:contents>
+                                                <oa:cellFormat id="DescKoyuRankCell200">
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="KoyuCode" comment="固有記号" viewAttr="KoyuCode" styleClass="LegendText"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                          <oa:rowLayout id="DescKoyuRankRow03">
+                                             <ui:contents>
+                                                <oa:cellFormat id="DescKoyuRankCell300">
+                                                   <ui:contents>
+                                                      <oa:messageTextInput id="Rank" comment="ランク" columns="10" maximumLength="10" viewAttr="Rank" styleClass="LegendText" readOnly="${oa.current.RankReadOnly}"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:tableLayout>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:formValue id="HeaderId" comment="発注ヘッダID" dataType="NUMBER" viewAttr="PoHeaderId"/>
+                              <oa:formValue id="dCreatedBy" dataType="NUMBER" comment="明細作成者" viewAttr="CreatedBy"/>
+                              <oa:formValue id="dLastUpdateBy" comment="明細最終更新者" viewAttr="LastUpdatedBy"/>
+                              <oa:formValue id="dLastUpdateLogin" comment="明細最終更新ログイン" viewAttr="LastUpdateLogin"/>
+                           </ui:contents>
+                        </oa:advancedTable>
+                        <oa:spacer id="Spacer" height="10"/>
+                        <oa:tableLayout id="AmountTab" hAlign="right">
+                           <ui:contents>
+                              <oa:rowLayout id="Row01">
+                                 <ui:contents>
+                                    <oa:cellFormat id="cell01" hAlign="right" width="25%">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="OrderTotalPrompt" comment="" prompt="合計発注数"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="cell02" width="25%">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="OrderTotal" comment="合計発注数" prompt="" viewName="XxpoSupplierResultsTotalVO1" viewAttr="TotalOrderAmount" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="cell03" hAlign="right" styleClass="25%">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="LSTotalPrompt" comment="" prompt="合計出庫数"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="cell04" width="25%">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="LeavingShedTotal" comment="合計出庫数" prompt="" rendered="true" viewName="XxpoSupplierResultsTotalVO1" viewAttr="TotalLeavingShedAmount" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:header>
+               </ui:contents>
+            </oa:flowLayout>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="Cancel" text="取消" prompt="取消"/>
+                  <oa:submitButton id="Apply" text="適用" prompt="適用" disabled="${oa.XxpoSupplierResultsMakePVO1.ApplyReadOnly}"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

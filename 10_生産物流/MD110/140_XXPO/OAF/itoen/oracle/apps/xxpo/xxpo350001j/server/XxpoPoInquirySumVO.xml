@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxpoPoInquirySumVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="itoen.oracle.apps.xxpo.xxpo350001j.server.XxpoPoInquirySumVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT REPLACE(TO_CHAR(SUM(subsql.po_qty),      '999,999,990.000'),' ')  ttl_po_qty        -- 合計発注数
+      ,REPLACE(TO_CHAR(SUM(subsql.receive_qty), '999,999,990.000'),' ')  ttl_receive_qty   -- 合計受入数
+      ,REPLACE(TO_CHAR(
+           SUM(TRUNC(subsql.konabiki_unit_price * subsql.qty))
+         , '9,999,999,999,999'),' ') ttl_price             -- 合計金額
+FROM (
+  SELECT TO_NUMBER(pla.attribute11) po_qty               -- 発注数量
+        ,TO_NUMBER(pla.attribute7)  receive_qty          -- 受入数量
+        ,pla.unit_price             konabiki_unit_price  -- 粉引後単価
+        ,CASE -- 数量
+           -- 発注アドオンステータスが「25:受入あり」以降 かつ、入出庫換算単位に値ありの場合、受入数量 × ケース入数
+           WHEN (('25' <= :0) AND (ximv.conv_unit IS NOT NULL)) THEN 
+             TO_NUMBER(pla.attribute7) * ximv.num_of_cases
+           -- 発注アドオンステータスが「25:受入あり」以降 かつ、入出庫換算単位に値なしの場合、受入数量
+           WHEN (('25' <= :1) AND (ximv.conv_unit IS NULL)) THEN 
+             TO_NUMBER(pla.attribute7)
+           -- 発注アドオンステータスが「25:受入あり」未満 かつ、入出庫換算単位に値ありの場合、発注数量 × ケース入数
+           WHEN (('25' > :2) AND  (ximv.conv_unit IS NOT NULL)) THEN 
+             TO_NUMBER(pla.attribute11) * ximv.num_of_cases
+           -- 発注アドオンステータスが「25:受入あり」未満 かつ、入出庫換算単位に値ありの場合、発注数量
+           WHEN (('25' > :3) AND  (ximv.conv_unit IS NULL)) THEN 
+             TO_NUMBER(pla.attribute11)
+         END                        qty                  -- 数量
+  FROM  po_lines_all          pla                  -- 発注明細
+       ,xxcmn_item_mst_v       ximv                -- OPM品目情報V
+  WHERE pla.item_id       = ximv.inventory_item_id -- OPM品目情報2V結合条件(品目ID)
+  AND   pla.po_header_id = :4
+) subsql
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="TtlPoQty"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TTL_PO_QTY"
+      Expression="TTL_PO_QTY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TtlReceiveQty"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TTL_RECEIVE_QTY"
+      Expression="TTL_RECEIVE_QTY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TtlPrice"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TTL_PRICE"
+      Expression="TTL_PRICE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RowKey"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="VIEW_ATTR"
+      SQLType="NUMERIC" >
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="RowKey" />
+   </AttrArray>
+</ViewObject>

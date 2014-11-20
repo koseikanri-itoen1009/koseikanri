@@ -1,0 +1,906 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxpoPoInquiryLineVO"
+   OrderBy="line01_line_num"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="itoen.oracle.apps.xxpo.xxpo350001j.server.XxpoPoInquiryLineVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT 
+      /* 明細1 */
+       subsql2.line_num           line01_line_num             -- 明細番号
+      ,subsql2.item_no            line01_item_no              -- 品目コード
+      ,subsql2.item_name          line01_item_name            -- 品名称
+      ,subsql2.futai_code         line01_futai_code           -- 付帯コード
+      ,subsql2.factory_code       line01_factory_code         -- 工場コード
+      ,subsql2.factory_name       line01_factory_name         -- 工場名
+      ,subsql2.lot_no             line01_lot_no               -- ロットNo
+      ,subsql2.producted_date     line01_producted_date       -- 製造日
+      ,subsql2.use_by_date        line01_use_by_date          -- 賞味期限
+      ,subsql2.koyu_code          line01_koyu_code            -- 固有記号
+      /* 明細2 */
+      ,subsql2.line_num           line02_line_num             -- 明細番号
+      ,REPLACE(TO_CHAR(subsql2.stock_qty,  '99,990.000'),' ')    
+                                  line02_stock_qty            -- 在庫入数
+      ,REPLACE(TO_CHAR(subsql2.po_qty, '999,999,990.000'),' ')  
+                                  line02_po_qty               -- 発注数量
+      ,REPLACE(TO_CHAR(subsql2.vendor_ship_qty,  '999,999,990.000'),' ')
+                                  line02_vendor_ship_qty      -- 仕入先出荷数量
+      ,REPLACE(TO_CHAR(subsql2.receive_qty ,  '999,999,990.000'),' ')    
+                                  line02_receive_qty          -- 受入数量
+      ,subsql2.po_um              line02_po_um                -- 発注単位
+      ,REPLACE(TO_CHAR(subsql2.supplier_price,  '9,999,990.000'),' ')
+                                  line02_supplier_price       -- 仕入単価
+      ,REPLACE(
+         TO_CHAR(
+           round(subsql2.konabiki_amount - 
+                 subsql2.keep_kousen_amount - 
+                 subsql2.fuka_price)
+           ,'9,999,999,999,999')
+         ,' ')                    line02_price                -- 金額
+      ,subsql2.qyt_decide_flg     line02_qyt_decide_flg       -- 数量確定フラグ
+      ,subsql2.price_decide_flg   line02_price_decide_flg     -- 金額確定フラグ
+      ,subsql2.cancel_flag        line02_cancel_flag          -- 取消フラグ
+      /* 明細3 */
+      ,subsql2.line_num           line03_line_num             -- 明細番号
+      ,subsql2.specify_date       line03_specify_date         -- 日付指定
+      ,subsql2.description        line03_description          -- 摘要
+      /* 明細4 */
+      ,subsql2.line_num           line04_line_num             -- 明細番号
+      ,subsql2.nendo              line04_nendo                -- 年度
+      ,subsql2.production_center  line04_production_center    -- 産地
+      ,subsql2.rank1              line04_rank1                -- ランク1
+      ,subsql2.rank2              line04_rank2                -- ランク2
+      ,subsql2.rank3              line04_rank3                -- ランク3
+      ,subsql2.material_factory   line04_material_factory     -- 原料製造工場
+      ,subsql2.material_lot_no    line04_material_lot_no      -- 原料製造ロットNo
+      /* 明細5 */
+      ,subsql2.line_num           line05_line_num             -- 明細番号
+      ,subsql2.origin_item_no     line05_origin_item_no       -- 元品目No
+      ,subsql2.origin_item_name   line05_origin_item_name     -- 元品名称
+      ,subsql2.origin_lot_no      line05_origin_lot_no        -- ロットNo
+      /* 明細6 */
+      ,subsql2.line_num           line06_line_num             -- 明細番号
+      ,subsql2.purchasing_type    line06_purchasing_type      -- 仕入形態 XXCMN_L05
+      ,subsql2.tea_type           line06_tea_type             -- 茶期区分 XXCMN_L06
+      ,subsql2.keep_type          line06_keep_type            -- タイプ XXCMN_L08
+      ,REPLACE(TO_CHAR(subsql2.konabiki_rate, '990.0'),' ')
+                                  line06_konabiki_rate        -- 粉引率
+      ,REPLACE(TO_CHAR(subsql2.konabiki_unit_price, '9,999,990.00'),' ') 
+                                  line06_konabiki_unit_price  -- 粉引後単価
+      ,subsql2.kousen_name        line06_kousen_name          -- 口銭名称
+      ,REPLACE(TO_CHAR(subsql2.kousen_amount, '999,999,990.00'),' ')
+                                  line06_kousen_amount        -- 口銭
+      ,REPLACE(TO_CHAR(subsql2.keep_kousen_amount, '999,999,999,999'),' ')
+                                  line06_keep_kousen_amount   -- 預かり口銭額
+      ,subsql2.fuka_name          line06_fuka_name            -- 賦課名称
+      ,REPLACE(TO_CHAR(subsql2.fuka_amount, '999,999,990.00'),' ') 
+                                  line06_fuka_amount          -- 賦課
+      ,REPLACE(TO_CHAR(subsql2.fuka_price, '9,999,999,999,999'),' ') 
+                                  line06_fuka_price           -- 賦課金額
+      ,REPLACE(TO_CHAR(subsql2.konabiki_amount, '9,999,999,999,999'),' ')
+                                  line06_konabiki_amount      -- 粉引後金額
+FROM (SELECT subsql.line_num          line_num                    -- 明細番号
+             /* 明細1 */
+            ,subsql.item_no           item_no                     -- 品目コード
+            ,subsql.item_name         item_name                   -- 品名称
+            ,subsql.futai_code        futai_code                  -- 付帯コード
+            ,subsql.factory_code      factory_code                -- 工場コード
+            ,subsql.factory_name      factory_name                -- 工場名
+            ,subsql.lot_no            lot_no                      -- ロットNo
+            ,FND_DATE.STRING_TO_DATE(ilm.attribute1,'YYYY/MM/DD')
+                                      producted_date              -- 製造日
+            ,FND_DATE.STRING_TO_DATE(ilm.attribute3,'YYYY/MM/DD')
+                                      use_by_date                 -- 賞味期限
+            ,ilm.attribute2           koyu_code                   -- 固有記号
+             /* 明細2 */
+            ,subsql.stock_qty         stock_qty                   -- 在庫入数
+            ,subsql.po_qty            po_qty                      -- 発注数量
+            ,subsql.vendor_ship_qty   vendor_ship_qty             -- 仕入先出荷数量
+            ,subsql.receive_qty       receive_qty                 -- 受入数量
+            ,subsql.po_um             po_um                       -- 発注単位
+            ,subsql.supplier_price    supplier_price              -- 仕入単価
+            ,subsql.qyt_decide_flg    qyt_decide_flg              -- 数量確定フラグ
+            ,subsql.price_decide_flg  price_decide_flg            -- 金額確定フラグ
+            ,subsql.cancel_flag       cancel_flag                 -- 取消フラグ
+            ,TRUNC(subsql.qty * subsql.konabiki_unit_price)
+                                      konabiki_amount             -- 粉引後金額
+            ,CASE -- 預かり口銭額
+              -- 口銭区分が「1:円」の場合、数量×口銭
+              WHEN (subsql.kousen_kbn = '1') THEN 
+                TRUNC(subsql.qty * subsql.kousen_amount)
+              -- 口銭区分が「2:率」の場合、数量×粉引後単価×口銭÷100
+              WHEN (subsql.kousen_kbn = '2') THEN 
+                TRUNC(subsql.qty * subsql.supplier_price * subsql.kousen_amount / 100)
+              -- それ以外は0
+              ELSE 0
+             END                      keep_kousen_amount          -- 預かり口銭額
+            ,CASE -- 賦課金額
+               -- 賦課区分が「1:円」の場合、数量×賦課金
+               WHEN (subsql.fuka_kbn = '1') THEN 
+                 TRUNC(subsql.qty * subsql.fuka_amount)
+               -- 賦課区分が「2:率」の場合、数量×単価－(数量×単価×粉引率÷100)×賦課額÷100
+               WHEN (subsql.fuka_kbn = '2') THEN 
+                 TRUNC(((subsql.qty * 
+                         subsql.supplier_price) - 
+                        (subsql.qty * 
+                         subsql.supplier_price *
+                         subsql.konabiki_rate / 100)) * 
+                        subsql.fuka_amount / 100)
+               -- それ以外は0
+               ELSE 0
+             END                      fuka_price                  -- 賦課金額
+              /* 明細3 */
+              ,subsql.specify_date    specify_date                -- 日付指定
+              ,subsql.description     description                 -- 摘要
+              /* 明細4 */
+              ,ilm.attribute11         nendo                      -- 年度
+              ,(SELECT xlvv.meaning    production_center
+                FROM   xxcmn_lookup_values_v  xlvv                -- クイックコード
+                WHERE  xlvv.lookup_code = ilm.attribute12         -- クイックコード結合条件(コード)
+                AND    xlvv.lookup_type = 'XXCMN_L07')
+                                       production_center          -- 産地
+              ,ilm.attribute14         rank1                      -- ランク1
+              ,ilm.attribute15         rank2                      -- ランク2
+              ,ilm.attribute19         rank3                      -- ランク3
+              ,ilm.attribute20         material_factory           -- 原料製造工場
+              ,ilm.attribute21         material_lot_no            -- 原料製造ロットNo
+              /* 明細5 */
+              ,subsql.origin_item_no   origin_item_no             -- 元品目No
+              ,subsql.origin_item_name origin_item_name           -- 元品名称
+              ,subsql.origin_lot_no    origin_lot_no              -- ロットNo
+              /* 明細6 */
+              ,(SELECT xlvv.meaning    purchasing_type
+              FROM   xxcmn_lookup_values_v  xlvv
+              WHERE  xlvv.lookup_code    = ilm.attribute9
+              AND    xlvv.lookup_type    = 'XXCMN_L05')
+                                       purchasing_type            -- 仕入形態 XXCMN_L05
+            ,(SELECT xlvv.meaning      tea_type
+              FROM   xxcmn_lookup_values_v  xlvv
+              WHERE  xlvv.lookup_code = ilm.attribute10
+              AND    xlvv.lookup_type = 'XXCMN_L06')
+                                       tea_type                   -- 茶期区分 XXCMN_L06
+            ,(SELECT xlvv.meaning  keep_type
+              FROM   xxcmn_lookup_values_v  xlvv
+              WHERE  xlvv.lookup_code = ilm.attribute13
+              AND    xlvv.lookup_type = 'XXCMN_L08')  
+                                         keep_type                -- タイプ XXCMN_L08 
+            ,subsql.konabiki_rate        konabiki_rate            -- 粉引率
+            ,subsql.konabiki_unit_price  konabiki_unit_price      -- 粉引後単価
+            ,subsql.kousen_name          kousen_name              -- 口銭名称
+            ,subsql.kousen_amount        kousen_amount            -- 口銭
+            ,subsql.fuka_name            fuka_name                -- 賦課名称
+            ,subsql.fuka_amount          fuka_amount              -- 賦課
+      FROM (SELECT pla.line_num                 line_num             -- 明細番号
+                   /* 明細1 */
+                  ,ximv.item_no                 item_no              -- 品目コード
+                  ,ximv.item_short_name         item_name            -- 品名称
+                  ,pla.attribute3               futai_code           -- 付帯コード
+                  ,pla.attribute2               factory_code         -- 工場コード
+                  ,xvsv.vendor_site_short_name  factory_name         -- 工場名
+                  ,pla.attribute1               lot_no               -- ロットNo
+
+                   /* 明細2 */
+                  ,pla.attribute4               stock_qty            -- 在庫入数
+                  ,pla.attribute11              po_qty               -- 発注数量
+                  ,pla.attribute6               vendor_ship_qty      -- 仕入先出荷数量
+                  ,pla.attribute7               receive_qty          -- 受入数量
+                  ,pla.attribute10              po_um                -- 発注単位
+                  ,TO_NUMBER(pla.attribute8)    supplier_price       -- 仕入単価
+                  ,pla.attribute13              qyt_decide_flg       -- 数量確定フラグ
+                  ,pla.attribute14              price_decide_flg     -- 金額確定フラグ
+                  ,pla.cancel_flag              cancel_flag          -- 取消フラグ
+
+                  ,CASE -- 数量
+                     -- 発注アドオンステータスが「25:受入あり」以降 かつ、入出庫換算単位に値ありの場合、受入数量 × ケース入数
+                     WHEN (('25' <= :0) AND (ximv.conv_unit IS NOT NULL)) THEN 
+                       TO_NUMBER(pla.attribute7) * ximv.num_of_cases
+                     -- 発注アドオンステータスが「25:受入あり」以降 かつ、入出庫換算単位に値なしの場合、受入数量
+                     WHEN (('25' <= :1) AND (ximv.conv_unit IS NULL)) THEN 
+                       TO_NUMBER(pla.attribute7)
+                     -- 発注アドオンステータスが「25:受入あり」未満 かつ、入出庫換算単位に値ありの場合、発注数量 × ケース入数
+                     WHEN (('25' > :2) AND  (ximv.conv_unit IS NOT NULL)) THEN 
+                       TO_NUMBER(pla.attribute11) * ximv.num_of_cases
+                     -- 発注アドオンステータスが「25:受入あり」未満 かつ、入出庫換算単位に値ありの場合、発注数量
+                     WHEN (('25' > :3) AND  (ximv.conv_unit IS NULL)) THEN 
+                       TO_NUMBER(pla.attribute11)
+                   END                          qty                  -- 数量
+                   /* 明細3 */
+                  ,pla.attribute9               specify_date         -- 日付指定
+                  ,pla.attribute15              description          -- 摘要
+                  /* 明細5 */
+                  ,plla.attribute10             origin_item_no       -- 元品目No
+                  ,ximv2.item_short_name        origin_item_name     -- 元品名称
+                  ,plla.attribute11             origin_lot_no        -- ロットNo
+                  /* 明細6 */
+                  ,plla.attribute1              konabiki_rate        -- 粉引率
+                  ,pla.unit_price               konabiki_unit_price  -- 粉引後単価
+                  ,TO_NUMBER(plla.attribute4)   kousen_amount        -- 口銭
+                  ,xlvv1.meaning                kousen_name          -- 口銭名称
+                  ,TO_NUMBER(plla.attribute7)   fuka_amount          -- 賦課金
+                  ,xlvv2.meaning                fuka_name            -- 賦課名称
+                  /* 非表示 */
+                  ,ximv.item_id                 item_id              -- OPM品目ID
+                  ,plla.attribute3              kousen_kbn           -- 口銭区分
+                  ,plla.attribute6              fuka_kbn             -- 賦課区分
+            FROM  po_lines_all                  pla                  -- 発注明細
+                 ,po_line_locations_all         plla                 -- 発注納入明細
+                 ,xxcmn_item_mst2_v             ximv                 -- 品目情報
+                 ,xxcmn_vendor_sites2_v         xvsv                 -- 仕入先サイト情報
+                 ,xxcmn_item_mst2_v             ximv2                -- 元品目情報
+                 ,xxcmn_lookup_values_v         xlvv1                -- クイックコード：口銭名称
+                 ,xxcmn_lookup_values_v         xlvv2                -- クイックコード：賦課名称
+            WHERE pla.po_line_id           = plla.po_line_id                 -- 発注納入明細結合条件
+            AND   pla.item_id              = ximv.inventory_item_id          -- 品目情報結合条件①
+            AND   ximv.start_date_active  <= TRUNC(TO_DATE(:4,'YYYY/MM/DD')) -- 品目情報結合条件②
+            AND   ximv.end_date_active    >= TRUNC(TO_DATE(:5,'YYYY/MM/DD')) -- 品目情報結合条件③
+            AND   pla.attribute2           = xvsv.vendor_site_code           -- 仕入先サイト情報結合条件①
+            AND   xvsv.start_date_active  <= TRUNC(TO_DATE(:6,'YYYY/MM/DD')) -- 仕入先サイト情報結合条件②
+            AND   xvsv.end_date_active    >= TRUNC(TO_DATE(:7,'YYYY/MM/DD')) -- 仕入先サイト情報結合条件③
+            AND   plla.attribute10         = ximv2.item_no(+)                -- 元品目情報結合条件①
+            AND   (ximv2.start_date_active <= TRUNC(TO_DATE(:8,'YYYY/MM/DD'))
+              OR (ximv2.start_date_active IS NULL))                          -- 元品目情報結合条件②
+            AND   (ximv2.end_date_active   >= TRUNC(TO_DATE(:9,'YYYY/MM/DD'))
+              OR (ximv2.end_date_active IS NULL))                            -- 元品目情報結合条件③
+            AND   xlvv1.lookup_code        = plla.attribute3                 -- クイックコード：口銭名称結合条件
+            AND   xlvv2.lookup_code        = plla.attribute6                 -- クイックコード：賦課名称結合条件
+            AND   xlvv1.lookup_type        = 'XXPO_KOUSEN_TYPE'              -- 口銭名称
+            AND   xlvv2.lookup_type        = 'XXPO_FUKAKIN_TYPE'             -- 賦課名称
+            AND   pla.po_header_id = :10                                     -- 発注ヘッダID
+            )                                   subsql                       -- 発注明細データ副問合せ
+           ,ic_lots_mst                         ilm                          -- OPMロットマスタ
+     WHERE subsql.item_id    = ilm.item_id(+)           -- OPMロットマスタ結合条件①
+     AND   subsql.lot_no     = ilm.lot_no(+)            -- OPMロットマスタ結合条件②
+     )                                          subsql2
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="Line01LineNum"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LINE01_LINE_NUM"
+      Expression="LINE01_LINE_NUM"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line01ItemNo"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="32"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE01_ITEM_NO"
+      Expression="LINE01_ITEM_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="32" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line01ItemName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE01_ITEM_NAME"
+      Expression="LINE01_ITEM_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line01FutaiCode"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE01_FUTAI_CODE"
+      Expression="LINE01_FUTAI_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line01FactoryCode"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE01_FACTORY_CODE"
+      Expression="LINE01_FACTORY_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line01FactoryName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE01_FACTORY_NAME"
+      Expression="LINE01_FACTORY_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line01LotNo"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE01_LOT_NO"
+      Expression="LINE01_LOT_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line01ProductedDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="LINE01_PRODUCTED_DATE"
+      Expression="LINE01_PRODUCTED_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line01UseByDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="LINE01_USE_BY_DATE"
+      Expression="LINE01_USE_BY_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line01KoyuCode"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE01_KOYU_CODE"
+      Expression="LINE01_KOYU_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line02LineNum"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LINE02_LINE_NUM"
+      Expression="LINE02_LINE_NUM"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line02StockQty"
+      IsPersistent="false"
+      Precision="11"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE02_STOCK_QTY"
+      Expression="LINE02_STOCK_QTY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="11" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line02PoQty"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE02_PO_QTY"
+      Expression="LINE02_PO_QTY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line02VendorShipQty"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE02_VENDOR_SHIP_QTY"
+      Expression="LINE02_VENDOR_SHIP_QTY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line02ReceiveQty"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE02_RECEIVE_QTY"
+      Expression="LINE02_RECEIVE_QTY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line02PoUm"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE02_PO_UM"
+      Expression="LINE02_PO_UM"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line02SupplierPrice"
+      IsPersistent="false"
+      Precision="14"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE02_SUPPLIER_PRICE"
+      Expression="LINE02_SUPPLIER_PRICE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="14" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line02Price"
+      IsPersistent="false"
+      Precision="18"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE02_PRICE"
+      Expression="LINE02_PRICE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="18" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line02QytDecideFlg"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE02_QYT_DECIDE_FLG"
+      Expression="LINE02_QYT_DECIDE_FLG"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line02PriceDecideFlg"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE02_PRICE_DECIDE_FLG"
+      Expression="LINE02_PRICE_DECIDE_FLG"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line02CancelFlag"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE02_CANCEL_FLAG"
+      Expression="LINE02_CANCEL_FLAG"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line03LineNum"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LINE03_LINE_NUM"
+      Expression="LINE03_LINE_NUM"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line03SpecifyDate"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE03_SPECIFY_DATE"
+      Expression="LINE03_SPECIFY_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line03Description"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE03_DESCRIPTION"
+      Expression="LINE03_DESCRIPTION"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line04LineNum"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LINE04_LINE_NUM"
+      Expression="LINE04_LINE_NUM"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line04Nendo"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE04_NENDO"
+      Expression="LINE04_NENDO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line04ProductionCenter"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE04_PRODUCTION_CENTER"
+      Expression="LINE04_PRODUCTION_CENTER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line04Rank1"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE04_RANK1"
+      Expression="LINE04_RANK1"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line04Rank2"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE04_RANK2"
+      Expression="LINE04_RANK2"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line04Rank3"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE04_RANK3"
+      Expression="LINE04_RANK3"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line04MaterialFactory"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE04_MATERIAL_FACTORY"
+      Expression="LINE04_MATERIAL_FACTORY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line04MaterialLotNo"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE04_MATERIAL_LOT_NO"
+      Expression="LINE04_MATERIAL_LOT_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line05LineNum"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LINE05_LINE_NUM"
+      Expression="LINE05_LINE_NUM"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line05OriginItemNo"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE05_ORIGIN_ITEM_NO"
+      Expression="LINE05_ORIGIN_ITEM_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line05OriginItemName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE05_ORIGIN_ITEM_NAME"
+      Expression="LINE05_ORIGIN_ITEM_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line05OriginLotNo"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE05_ORIGIN_LOT_NO"
+      Expression="LINE05_ORIGIN_LOT_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line06LineNum"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LINE06_LINE_NUM"
+      Expression="LINE06_LINE_NUM"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line06PurchasingType"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE06_PURCHASING_TYPE"
+      Expression="LINE06_PURCHASING_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line06TeaType"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE06_TEA_TYPE"
+      Expression="LINE06_TEA_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line06KeepType"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE06_KEEP_TYPE"
+      Expression="LINE06_KEEP_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line06KonabikiRate"
+      IsPersistent="false"
+      Precision="6"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE06_KONABIKI_RATE"
+      Expression="LINE06_KONABIKI_RATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="6" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line06KonabikiUnitPrice"
+      IsPersistent="false"
+      Precision="13"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE06_KONABIKI_UNIT_PRICE"
+      Expression="LINE06_KONABIKI_UNIT_PRICE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="13" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line06KousenName"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE06_KOUSEN_NAME"
+      Expression="LINE06_KOUSEN_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line06KousenAmount"
+      IsPersistent="false"
+      Precision="15"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE06_KOUSEN_AMOUNT"
+      Expression="LINE06_KOUSEN_AMOUNT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="15" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line06KeepKousenAmount"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE06_KEEP_KOUSEN_AMOUNT"
+      Expression="LINE06_KEEP_KOUSEN_AMOUNT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line06FukaName"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE06_FUKA_NAME"
+      Expression="LINE06_FUKA_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line06FukaAmount"
+      IsPersistent="false"
+      Precision="15"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE06_FUKA_AMOUNT"
+      Expression="LINE06_FUKA_AMOUNT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="15" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line06FukaPrice"
+      IsPersistent="false"
+      Precision="18"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE06_FUKA_PRICE"
+      Expression="LINE06_FUKA_PRICE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="18" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Line06KonabikiAmount"
+      IsPersistent="false"
+      Precision="18"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE06_KONABIKI_AMOUNT"
+      Expression="LINE06_KONABIKI_AMOUNT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="18" />
+      </DesignTime>
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="Line01LineNum" />
+   </AttrArray>
+</ViewObject>

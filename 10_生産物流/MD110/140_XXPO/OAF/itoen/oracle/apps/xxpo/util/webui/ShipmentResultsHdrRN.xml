@@ -1,0 +1,164 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:header version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/">
+   <ui:contents>
+      <oa:tableLayout id="HeaderTab" hAlign="start">
+         <ui:contents>
+            <oa:rowLayout id="HeaderRow01">
+               <ui:contents>
+                  <oa:cellFormat id="HeaderCell100" hAlign="right" height="1" width="10%">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtHeaderNumberPrompt" prompt="発注No."/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="HeaderCell101" height="1" columnSpan="2" width="40%">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtHeaderNumber" shortDesc="発注No." styleClass="LegendText" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="HeaderNumber"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="HeaderCell102" hAlign="right" height="1" width="10%">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtRequestNumberPrompt" prompt="支給No."/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="HeaderCell103" height="1" columnSpan="2" width="40%">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtRequestNumber" shortDesc="支給No." styleClass="LegendText" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="RequestNumber"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+               </ui:contents>
+            </oa:rowLayout>
+            <oa:rowLayout id="HeaderRow02">
+               <ui:contents>
+                  <oa:cellFormat id="HeaderCell200" hAlign="right" height="1" width="10%">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtVendorCodePrompt" prompt="取引先"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="HeaderCell201" height="1" columnSpan="1">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtVendorCode" shortDesc="取引先" styleClass="LegendText" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="VendorCode"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="HeaderCell202" height="1" columnSpan="1">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtVendorName" prompt="" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="VendorName" styleClass="LegendText"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="HeaderCell203" hAlign="right" height="1" width="10%">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtMediationCodePrompt" prompt="斡旋者"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="HeaderCell204" height="1">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtMediationCode" shortDesc="斡旋者" styleClass="LegendText" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="MediationCode"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="HeaderCell205" height="1">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtMediatorName" prompt="" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="MediationName" styleClass="LegendText"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+               </ui:contents>
+            </oa:rowLayout>
+            <oa:rowLayout id="HeaderRow03">
+               <ui:contents>
+                  <oa:cellFormat id="HeaderCell300" hAlign="right" height="1" width="10%">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtDeliveryDatePrompt" prompt="納入日" required="no"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="HeaderCell301" height="1" columnSpan="2">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtDeliveryDate" prompt="" required="no" shortDesc="納入日" dataType="VARCHAR2" styleClass="LegendText" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="DeliveryDate"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="HeaderCell302" hAlign="right" height="1" width="10%">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtStatusPrompt" prompt="ステータス" required="no"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="HeaderCell303" height="1" columnSpan="2">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtStatus" prompt="" required="no" dataType="VARCHAR2" shortDesc="ステータス" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="StatusDisp" styleClass="LegendText"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+               </ui:contents>
+            </oa:rowLayout>
+            <oa:rowLayout id="HeaderRow04">
+               <ui:contents>
+                  <oa:cellFormat id="HeaderCell400" hAlign="right" width="10%">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtLocationPrompt" prompt="納入先" required="no"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="HeaderCell401" columnSpan="1">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtLocation" prompt="" required="no" shortDesc="納入先" styleClass="LegendText" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="LocationCode"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="HeaderCell402" columnSpan="1" hAlign="start">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtLocationName" prompt="" required="no" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="LocationName" styleClass="LegendText"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="HeaderCell403" hAlign="right" width="10%">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtDepartmentPrompt" prompt="発注部署" required="no"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="HeaderCell404">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtDepartment" prompt="" required="no" shortDesc="発注部署" styleClass="LegendText" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="DepartmentCode"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="HeaderCell405">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtDepartmentName" prompt="" required="no" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="DepartmentName" styleClass="LegendText"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+               </ui:contents>
+            </oa:rowLayout>
+            <oa:rowLayout id="HeaderRow05">
+               <ui:contents>
+                  <oa:cellFormat id="HeaderCell500" hAlign="right" width="10%">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtDeliveryPrompt" prompt="配送先" required="no"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="HeaderCell501" columnSpan="1">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtDelivery" prompt="" required="no" shortDesc="配送先" styleClass="LegendText" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="DeliveryCode"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="HeaderCell502" columnSpan="1" hAlign="start">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtDeliveryName" prompt="" required="no" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="DeliveryName" styleClass="LegendText"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+               </ui:contents>
+            </oa:rowLayout>
+            <oa:rowLayout id="HeaderRow06" rendered="true">
+               <ui:contents>
+                  <oa:cellFormat id="HeaderCell600" hAlign="right" width="10%">
+                     <ui:contents>
+                        <oa:messageStyledText id="TxtDescriptionPrompt" prompt="摘要" required="no"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="HeaderCell601" columnSpan="5" width="100%">
+                     <ui:contents>
+                        <oa:messageTextInput id="TxtDescription" prompt="" required="no" shortDesc="摘要" maximumLength="150" columns="60" styleClass="LegendText" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="Description" readOnly="${oa.XxpoSupplierResultsMakePVO1.DescriptionReadOnly}" disabled="false"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+               </ui:contents>
+            </oa:rowLayout>
+         </ui:contents>
+      </oa:tableLayout>
+      <oa:formValue id="hCreatedBy" dataType="NUMBER" comment="ヘッダ作成者" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="CreatedBy"/>
+      <oa:formValue id="hCreationDate" comment="ヘッダ作成日" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="CreationDate"/>
+      <oa:formValue id="hLastUpdateBy" comment="ヘッダ最終更新者" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="LastUpdatedBy"/>
+      <oa:formValue id="hLastUpdateDate" comment="ヘッダ最終更新日" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="LastUpdateDate"/>
+      <oa:formValue id="hLastUpdateLogin" comment="ヘッダ最終更新ログイン" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="LastUpdateLogin"/>
+   </ui:contents>
+</oa:header>

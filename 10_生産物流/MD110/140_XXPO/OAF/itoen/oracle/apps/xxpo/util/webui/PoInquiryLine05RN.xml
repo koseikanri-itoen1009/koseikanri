@@ -1,0 +1,38 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:advancedTable version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" viewName="XxpoPoInquiryLineVO1" shortDesc="ロット2" tableBanding="rowBanding" scope="/" width="50%">
+   <ui:contents>
+      <oa:column id="PoInquiryLine05Cell01" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine05Cell01Hdr" prompt="No"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="LineNum" viewAttr="Line05LineNum" styleClass="OraFieldNumber" shortDesc="No"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine05Cell02">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine05Cell02Hdr" prompt="元品目"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="OriginItemNo" viewAttr="Line05OriginItemNo" shortDesc="元品目" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine05Cell03">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine05Cell03Hdr" prompt="元品名称"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="OriginItemName" viewAttr="Line05OriginItemName" shortDesc="元品名称" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine05Cell04">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine05Cell04Hdr" prompt="元ロットNo"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="OriginLotNo" viewAttr="Line05OriginLotNo" shortDesc="元ロットNo" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+   </ui:contents>
+</oa:advancedTable>

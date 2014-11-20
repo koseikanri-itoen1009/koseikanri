@@ -1,0 +1,79 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:advancedTable version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" blockSize="20" viewName="XxpoOrderDetailsTabVO1">
+   <ui:contents>
+      <oa:column id="column1">
+         <ui:columnHeader>
+            <oa:sortableHeader id="LineNumberHdr" prompt="No"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="LineNumber" viewAttr="LineNum">
+               <ui:primaryClientAction>
+                  <ui:fireAction event="LineNumberLink" id="fireAction1">
+                     <ui:parameters>
+                        <ui:parameter key="searchHeaderNumber" value="${oa.current.HeaderNumber}"/>
+                        <ui:parameter key="searchLineNumber" value="${oa.current.LineNum}"/>
+                     </ui:parameters>
+                  </ui:fireAction>
+               </ui:primaryClientAction>
+            </oa:messageStyledText>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="column2">
+         <ui:columnHeader>
+            <oa:sortableHeader id="FiscalYearHdr" prompt="年度"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="FiscalYear" shortDesc="年度" dataType="NUMBER" viewAttr="FiscalYear"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="column3">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ProductionGroundHdr" prompt="産地"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ProductionGround" viewAttr="ProductionGround"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="column4">
+         <ui:columnHeader>
+            <oa:sortableHeader id="Rank1Hdr" prompt="R1"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="Rank1" shortDesc="R1" viewAttr="Rank1"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="column5">
+         <ui:columnHeader>
+            <oa:sortableHeader id="Rank2Hdr" prompt="R2"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="Rank2" shortDesc="R2" viewAttr="Rank2"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="column6">
+         <ui:columnHeader>
+            <oa:sortableHeader id="Rank3Hdr" prompt="R3"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="Rank3" shortDesc="R3" viewAttr="Rank3"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="column7">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ManufacturingFactoryHdr" prompt="製造工場"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ManufacturingFactory" shortDesc="製造工場" viewAttr="ManufacturingFactory"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="column8">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ManufacturingLotNoHdr" prompt="製造ロットNo"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ManufacturingLotNo" shortDesc="製造ロットNo" viewAttr="ManufacturingLotNo"/>
+         </ui:contents>
+      </oa:column>
+   </ui:contents>
+</oa:advancedTable>

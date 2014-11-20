@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="FactoryCodeVO"
+   OrderBy="factory_code"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="oracle.apps.fnd.framework.server.OAViewObjectImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT xvsv.vendor_site_code  factory_code      -- 仕入先サイトコード
+      ,xvsv.vendor_site_short_name factory_name -- 仕入先サイト名
+      ,xvsv.vendor_site_id         factory_id   -- 工場ID
+      ,xvsv.vendor_stock_whse vendor_stock_whse -- 相手先在庫入庫先
+      ,xvsv.delivery_whse     delivery_whse     -- 発注納入先
+      ,xvsv.vendor_id         vendor_id         -- 仕入先ID
+FROM   xxcmn_vendor_sites_v  xvsv
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="4" />
+   </DesignTime>
+   <ViewAttribute
+      Name="FactoryCode"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="15"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FACTORY_CODE"
+      Expression="FACTORY_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="15" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FactoryName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FACTORY_NAME"
+      Expression="FACTORY_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FactoryId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="FACTORY_ID"
+      Expression="FACTORY_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VendorStockWhse"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VENDOR_STOCK_WHSE"
+      Expression="VENDOR_STOCK_WHSE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DeliveryWhse"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DELIVERY_WHSE"
+      Expression="DELIVERY_WHSE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VendorId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="VENDOR_ID"
+      Expression="VENDOR_ID"
+      SQLType="NUMERIC" >
+   </ViewAttribute>
+</ViewObject>

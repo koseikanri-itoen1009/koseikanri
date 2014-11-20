@@ -1,0 +1,365 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header: /cvsrepo/itoen/oracle/apps/xxpo/xxpo370001j/webui/XxpoInspectLotSearchPG.xml,v 1.6 2008/02/22 09:01:11 usr3003 Exp $">
+   <content>
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxpo.xxpo370001j.server.XxpoInspectLotSearchAM" windowTitle="検査ロット情報" controllerClass="itoen.oracle.apps.xxpo.xxpo370001j.webui.XxpoInspectLotSearchCO" title="検査ロット情報検索">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:flowLayout id="MainRN">
+               <ui:contents>
+                  <oa:tableLayout id="ReqFieldDescRN" extends="/oracle/apps/fnd/framework/webui/OAReqFieldDescRG" width="100%"/>
+                  <oa:tableLayout id="SearchHdrTbl">
+                     <ui:contents>
+                        <oa:rowLayout id="SearchHdrRow01">
+                           <ui:contents>
+                              <oa:cellFormat id="SearchHdrCell011" height="25" hAlign="right" width="150">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="PromptVendor" prompt="取引先" required="uiOnly"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SearchHdrCell012">
+                                 <ui:contents>
+                                    <oa:messageLovInput id="SearchVendorNo" shortDesc="取引先" columns="4" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/VendorCode2LovRN" styleClass="OraFieldText" maximumLength="4" viewName="XxpoDispInspectLotSummaryVO1" viewAttr="SearchVendorNo">
+                                       <lovMappings>
+                                          <lovMap id="lovMapVendorNo" lovItem="VendorCode" resultTo="SearchVendorNo" criteriaFrom="SearchVendorNo"/>
+                                          <lovMap id="lovMapVendorName" lovItem="VendorName" resultTo="SearchVendorName" criteriaFrom="SearchVendorName"/>
+                                          <lovMap id="lovMapVendorId" lovItem="VendorId" resultTo="SearchVendorId"/>
+                                          <lovMap id="lovMapHiddenVendorName" lovItem="VendorName" resultTo="HiddenSearchVendorName"/>
+                                          <lovMap id="lovMapHiddenVendorNo" lovItem="VendorCode" resultTo="HiddenSearchVendorNo"/>
+                                       </lovMappings>
+                                    </oa:messageLovInput>
+                                    <oa:formValue id="HiddenSearchVendorNo" viewName="XxpoDispInspectLotSummaryVO1" viewAttr="SearchVendorNo"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SearchHdrCell013" hAlign="left" columnSpan="2">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="SearchVendorName" shortDesc="取引先名" styleClass="LegendText" rendered="true" viewName="XxpoDispInspectLotSummaryVO1" viewAttr="SearchVendorName" maximumLength="240"/>
+                                    <oa:formValue id="HiddenSearchVendorName" viewName="XxpoDispInspectLotSummaryVO1" viewAttr="SearchVendorName"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SearchHdrCell014">
+                                 <ui:contents>
+                                    <oa:formValue id="SearchVendorId" viewName="XxpoDispInspectLotSummaryVO1" viewAttr="SearchVendorId" dataType="NUMBER"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                        <oa:rowLayout id="SearchHdrRow02">
+                           <ui:contents>
+                              <oa:cellFormat id="SearchHdrCell021" height="25" hAlign="right" width="150">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="PromptItem" prompt="品目"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SearchHdrCell022">
+                                 <ui:contents>
+                                    <oa:messageLovInput id="SearchItemNo" columns="10" comment="「品目(品目コード)」を格納" shortDesc="品目" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/ItemCode3LovRN" styleClass="OraFieldText" viewName="XxpoDispInspectLotSummaryVO1" viewAttr="SearchItemNo" selectiveSearchCriteria="true" maximumLength="7">
+                                       <lovMappings>
+                                          <lovMap id="lovMapItemNo" lovItem="ItemCode" resultTo="SearchItemNo" criteriaFrom="SearchItemNo"/>
+                                          <lovMap id="lovMapItemShortName" lovItem="ItemName" resultTo="SearchItemShortName" criteriaFrom="SearchItemShortName"/>
+                                          <lovMap id="lovMapItemId" lovItem="ItemId" resultTo="SearchItemId"/>
+                                          <lovMap id="lovMapHiddenItemShortName" lovItem="ItemName" resultTo="HiddenItemShortName"/>
+                                       </lovMappings>
+                                    </oa:messageLovInput>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SearchHdrCell023" columnSpan="2">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="SearchItemShortName" comment="「品目名」を格納" shortDesc="品目名" styleClass="LegendText" rendered="true" maximumLength="20" viewName="XxpoDispInspectLotSummaryVO1" viewAttr="SearchItemShortName"/>
+                                    <oa:formValue id="HiddenItemShortName" viewName="XxpoDispInspectLotSummaryVO1" viewAttr="SearchItemShortName"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SearchHdrCell024">
+                                 <ui:contents>
+                                    <oa:formValue id="SearchItemId" viewName="XxpoDispInspectLotSummaryVO1" viewAttr="SearchItemId" dataType="NUMBER"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                        <oa:rowLayout id="SearchHdrRow03">
+                           <ui:contents>
+                              <oa:cellFormat id="SearchHdrCell031" height="25" hAlign="right" width="150">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="PromptLotNo" prompt="ロットNo"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SearchHdrCell032" columnSpan="3">
+                                 <ui:contents>
+                                    <oa:messageTextInput id="SearchLotNo" columns="14" shortDesc="ロットNo" styleClass="OraFieldText" selectiveSearchCriteria="true" viewName="XxpoDispInspectLotSummaryVO1" viewAttr="SearchLotNo" maximumLength="10"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                        <oa:rowLayout id="SearchHdrRow04">
+                           <ui:contents>
+                              <oa:cellFormat id="SearchHdrCell041" height="25" hAlign="right" width="150">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="PromptAttribute20" prompt="製造工場"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SearchHdrCell042" columnSpan="3">
+                                 <ui:contents>
+                                    <oa:messageTextInput id="SearchAttribute20" columns="28" shortDesc="製造工場" styleClass="OraFieldText" selectiveSearchCriteria="true" viewName="XxpoDispInspectLotSummaryVO1" viewAttr="SearchAttribute20" maximumLength="20"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                        <oa:rowLayout id="SearchHdrRow05">
+                           <ui:contents>
+                              <oa:cellFormat id="SearchHdrCell051" height="25" hAlign="right" width="150">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="PromptAttribute21" prompt="製造ロットNo"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SearchHdrCell052" columnSpan="3">
+                                 <ui:contents>
+                                    <oa:messageTextInput id="SearchAttribute21" columns="28" shortDesc="製造ロットNo" styleClass="OraFieldText" selectiveSearchCriteria="true" viewName="XxpoDispInspectLotSummaryVO1" viewAttr="SearchAttribute21" maximumLength="20"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                        <oa:rowLayout id="SearchHdrRow06">
+                           <ui:contents>
+                              <oa:cellFormat id="SearchHdrCell061" height="25" hAlign="right" width="150">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="PromptAttribute1" prompt="製造日/仕入日"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SearchHdrCell062">
+                                 <ui:contents>
+                                    <oa:messageTextInput id="SearchAttribute1From" dataType="DATE" columns="12" shortDesc="製造日/仕入日(自)" styleClass="OraFieldText" viewName="XxpoDispInspectLotSummaryVO1" viewAttr="SearchAttribute1From" selectiveSearchCriteria="true"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SearchHdrCell063" hAlign="center" width="50">
+                                 <ui:contents>
+                                    <oa:staticStyledText id="Hyphen01" text="-" prompt="-"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SearchHdrCell064">
+                                 <ui:contents>
+                                    <oa:messageTextInput id="SearchAttribute1To" dataType="DATE" columns="12" shortDesc="製造日/仕入日(至)" styleClass="OraFieldText" viewName="XxpoDispInspectLotSummaryVO1" viewAttr="SearchAttribute1To" selectiveSearchCriteria="true"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                        <oa:rowLayout id="SearchHdrRow07">
+                           <ui:contents>
+                              <oa:cellFormat id="SearchHdrCell071" height="25" hAlign="right" width="150">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="PromptCreationDate" prompt="入力日"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SearchHdrCell072">
+                                 <ui:contents>
+                                    <oa:messageTextInput id="SearchCreationDateFrom" dataType="DATE" columns="12" shortDesc="入力日(自)" styleClass="OraFieldText" viewName="XxpoDispInspectLotSummaryVO1" viewAttr="SearchCreationDateFrom" selectiveSearchCriteria="true"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SearchHdrCell073" hAlign="center" width="50">
+                                 <ui:contents>
+                                    <oa:staticStyledText id="Hyphen02" text="-" prompt="-"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SearchHdrCell074">
+                                 <ui:contents>
+                                    <oa:messageTextInput id="SearchCreationDateTo" dataType="DATE" columns="12" shortDesc="入力日(至)" styleClass="OraFieldText" viewName="XxpoDispInspectLotSummaryVO1" viewAttr="SearchCreationDateTo" selectiveSearchCriteria="true"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                        <oa:rowLayout id="SearchHdrRow08">
+                           <ui:contents>
+                              <oa:cellFormat id="SearchHdrCell081" height="25" hAlign="right" width="150">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="PromptQtInspectReqNo" prompt="検査依頼No"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SearchHdrCell082" columnSpan="3">
+                                 <ui:contents>
+                                    <oa:messageTextInput id="SearchQtInspectReqNo" shortDesc="検査依頼No" styleClass="OraFieldText" queryable="false" selectiveSearchCriteria="true" viewName="XxpoDispInspectLotSummaryVO1" viewAttr="SearchQtInspectReqNo" maximumLength="10" dataType="NUMBER"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                        <oa:rowLayout id="SearchHdrRowButton">
+                           <ui:contents>
+                              <oa:cellFormat id="SearchHdrCellButton" hAlign="center" columnSpan="5" height="25">
+                                 <ui:contents>
+                                    <oa:pageButtonBar id="SearchHdrButtonBarRN">
+                                       <ui:contents>
+                                          <oa:submitButton id="Go" text="進む" prompt="進む" shortDesc="入力項目を条件に検索を実行します。" hAlign="start" comment="「進む」ボタン"/>
+                                          <oa:submitButton id="Clear" text="消去" shortDesc="入力項目をクリアします。" hAlign="end" viewName="XxpoInspectLotSummaryVO1" comment="「消去」ボタン" prompt="消去"/>
+                                       </ui:contents>
+                                    </oa:pageButtonBar>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                     </ui:contents>
+                  </oa:tableLayout>
+                  <oa:separator id="Separator01" styleClass="OraSpacingHeaderLarge"/>
+                  <oa:tableLayout id="SearchResultTbl" width="100%">
+                     <ui:contents>
+                        <oa:rowLayout id="SearchResultRow01">
+                           <ui:contents>
+                              <oa:cellFormat id="SearchResultCell011" hAlign="left" height="30">
+                                 <ui:contents>
+                                    <oa:submitButton id="New" text="新規" prompt="新規" shortDesc="検査ロット情報の登録画面に遷移します。" hAlign="left" comment="「新規」ボタン"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SearchResultCell012" hAlign="right" height="30">
+                                 <ui:contents>
+                                    <oa:exportButton id="Export" text="エクスポート" shortDesc="検索結果のエクスポートを行います。" hAlign="right" viewName="XxpoInspectLotSummaryVO1" comment="「エクスポート」ボタン" exportAllRows="true"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                        <oa:rowLayout id="SearchResultRow02">
+                           <ui:contents>
+                              <oa:cellFormat id="SearchResultCell021" columnSpan="2">
+                                 <ui:contents>
+                                    <oa:advancedTable id="SearchResultAdvTbl" viewName="XxpoInspectLotSummaryVO1" width="100%" blockSize="20">
+                                       <ui:contents>
+                                          <oa:column id="column01">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="Attribute8Header" prompt="取引先"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="Attribute8" viewAttr="Attribute8" prompt="取引先"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="column02" rendered="false">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="ItemIdHeader" prompt="品目ID" rendered="false"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ItemId" viewAttr="ItemId" rendered="false" prompt="品目ID"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="column03">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="ItemNoHeader" prompt="品目"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ItemNo" viewAttr="ItemNo" prompt="品目"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="column04">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="ItemShortNameHeader" prompt="品目名"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ItemShortName" viewAttr="ItemShortName" prompt="品目名"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="column05">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="LotNoHeader" prompt="ロットNo"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="LotNo" viewAttr="LotNo" styleClass="OraLinkText" prompt="ロットNo">
+                                                   <ui:primaryClientAction>
+                                                      <ui:fireAction event="LotNoClick">
+                                                         <ui:parameters>
+                                                            <ui:parameter key="pSearchLotId" value="${oa.XxpoInspectLotSummaryVO1.LotId}"/>
+                                                         </ui:parameters>
+                                                      </ui:fireAction>
+                                                   </ui:primaryClientAction>
+                                                </oa:messageStyledText>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="column06" rendered="false">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="LotIdHeader" prompt="ロットID" rendered="false"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="LotId" viewAttr="LotId" rendered="false" prompt="ロットID"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="column07" rendered="false">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="Attribute20Header" prompt="製造工場"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="Attribute20" viewAttr="Attribute20" prompt="製造工場"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="column08">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="Attribute21Header" prompt="製造ロットNo"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="Attribute21" viewAttr="Attribute21" prompt="製造ロットNo"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="column09">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="Attribute1Header" prompt="製造日/仕入日"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="Attribute1" viewAttr="Attribute1" prompt="製造日/仕入日"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="column10" rendered="false">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="CreationDateHeader" prompt="入力日" rendered="false"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="CreationDate" viewAttr="CreationDate" rendered="false" prompt="入力日"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="column11">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="Attriubte3Header" prompt="賞味期限"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="Attribute3" viewAttr="Attribute3" prompt="賞味期限"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="column12">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="QtInspectReqNoHeader" prompt="検査依頼No"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="QtInspectReqNo" viewAttr="QtInspectReqNo" prompt="検査依頼No"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="column13">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="QtEffect1Header" prompt="結果１"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="QtEffect1" viewAttr="QtEffect1" prompt="結果１"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="column14">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="QtEffect2Header" prompt="結果２"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="QtEffect2" viewAttr="QtEffect2" prompt="結果２"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="column15">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="QtEffect3Header" prompt="結果３"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="QtEffect3" viewAttr="QtEffect3" prompt="結果３"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                       </ui:contents>
+                                    </oa:advancedTable>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                     </ui:contents>
+                  </oa:tableLayout>
+               </ui:contents>
+            </oa:flowLayout>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

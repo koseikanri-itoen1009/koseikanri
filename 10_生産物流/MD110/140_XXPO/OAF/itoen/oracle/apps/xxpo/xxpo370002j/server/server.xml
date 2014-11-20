@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding='Shift_JIS'?>
+<!DOCTYPE JboPackage SYSTEM "jbo_03_01.dtd">
+
+<JboPackage
+   Name="server"
+   SeparateXMLFiles="true"
+   PackageName="itoen.oracle.apps.xxpo.xxpo370002j.server" >
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.12.66" />
+      <Attr Name="_ejbPackage" Value="false" />
+   </DesignTime>
+   <Containee
+      Name="XxpoLotsMstRegVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo370002j.server.XxpoLotsMstRegVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxwipQtInspectionSummaryVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo370002j.server.XxwipQtInspectionSummaryVO"
+      ObjectType="ViewObject" >
+   </Containee>
+</JboPackage>

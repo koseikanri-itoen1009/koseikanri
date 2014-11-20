@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE JboPackage SYSTEM "jbo_03_01.dtd">
+
+<JboPackage
+   Name="server"
+   SeparateXMLFiles="true"
+   PackageName="itoen.oracle.apps.xxpo.xxpo320001j.server" >
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_ejbPackage" Value="false" />
+   </DesignTime>
+   <Containee
+      Name="XxpoSupplierResultsAM"
+      FullName="itoen.oracle.apps.xxpo.xxpo320001j.server.XxpoSupplierResultsAM"
+      ObjectType="AppModule" >
+   </Containee>
+   <Containee
+      Name="XxpoResultsSearchVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo320001j.server.XxpoResultsSearchVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoSupplierResultsMakePVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo320001j.server.XxpoSupplierResultsMakePVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoSupplierResultsTotalVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo320001j.server.XxpoSupplierResultsTotalVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoSupplierResultsMakeHdrVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo320001j.server.XxpoSupplierResultsMakeHdrVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoSupplierResultsVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo320001j.server.XxpoSupplierResultsVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoSupplierResultsDetailsVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo320001j.server.XxpoSupplierResultsDetailsVO"
+      ObjectType="ViewObject" >
+   </Containee>
+</JboPackage>

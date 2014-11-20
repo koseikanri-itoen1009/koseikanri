@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding='windows-31j'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="InstDeptCodeVO"
+   OrderBy="INST_DEPT_CODE"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="oracle.apps.fnd.framework.server.OAViewObjectImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT xlv.location_code        inst_dept_code   -- 事業所コード(指示部署コード)
+      ,xlv.location_short_name  inst_dept_name   -- 略称(指示部署名)
+FROM   xxcmn_locations_v xlv  -- 事業所情報VIEW 
+WHERE  xlv.parent_location_id IS NOT NULL
+AND    xlv.location_id <> xlv.parent_location_id
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="4" />
+   </DesignTime>
+   <ViewAttribute
+      Name="InstDeptCode"
+      IsPersistent="false"
+      Precision="60"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INST_DEPT_CODE"
+      Expression="INST_DEPT_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="60" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstDeptName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INST_DEPT_NAME"
+      Expression="INST_DEPT_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="InstDeptCode" />
+   </AttrArray>
+</ViewObject>

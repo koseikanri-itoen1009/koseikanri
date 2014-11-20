@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxpoVendorSupplyVO"
+   OrderBy="manufactured_date,factory_code,TO_NUMBER(item_code)"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="itoen.oracle.apps.xxpo.xxpo340001j.server.XxpoVendorSupplyVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT xvst.txns_id                 txns_id                   -- 実績ID
+      ,xvst.manufactured_date       manufactured_date         -- 生産日
+      ,xvst.vendor_code             vendor_code               -- 取引先コード
+      ,xvst.factory_code            factory_code              -- 工場コード
+      ,xvsv.vendor_site_short_name  vendor_site_short_name    -- 工場名
+      ,xvst.item_code               item_code                 -- 品目コード
+      ,ximv.item_short_name         item_short_name           -- 品目名
+      ,xvst.lot_number              lot_number                -- ロット番号
+      ,xvst.producted_date          producted_date            -- 製造日
+      ,xvst.koyu_code               koyu_code                 -- 固有番号
+      ,xvst.quantity                quantity                  -- 数量 
+      ,xvst.corrected_quantity      corrected_quantity        -- 訂正数量
+      ,REPLACE(TO_CHAR(xvst.producted_quantity,'999,999,990.000'),' ','')       
+                                    producted_quantity        -- 外注出来高数量
+FROM  xxpo_vendor_supply_txns       xvst                      -- 外注出来高実績
+     ,xxcmn_item_mst2_v             ximv                      -- OPM品目情報2V
+     ,xxcmn_vendor_sites2_v         xvsv                      -- 仕入先サイト情報2V
+WHERE xvst.item_id            = ximv.item_id                  -- OPM品目情報2V結合条件(品目ID)
+AND   xvst.vendor_id          = xvsv.vendor_id           -- 仕入先サイト情報2V結合条件(仕入先ID)
+AND   xvst.factory_id         = xvsv.vendor_site_id           -- 仕入先サイト情報2V結合条件(仕入先サイトID)
+AND   ximv.start_date_active <= TRUNC(xvst.manufactured_date) -- 適用開始日 <= 生産日
+AND   ximv.end_date_active   >= TRUNC(xvst.manufactured_date) -- 適用終了日 >= 生産日
+AND   xvsv.start_date_active <= TRUNC(xvst.manufactured_date) -- 適用開始日 <= 生産日
+AND   xvsv.end_date_active   >= TRUNC(xvst.manufactured_date)
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="TxnsId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="TXNS_ID"
+      Expression="TXNS_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ManufacturedDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="MANUFACTURED_DATE"
+      Expression="MANUFACTURED_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VendorCode"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VENDOR_CODE"
+      Expression="VENDOR_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FactoryCode"
+      IsPersistent="false"
+      Precision="15"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FACTORY_CODE"
+      Expression="FACTORY_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="15" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VendorSiteShortName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VENDOR_SITE_SHORT_NAME"
+      Expression="VENDOR_SITE_SHORT_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemCode"
+      IsPersistent="false"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_CODE"
+      Expression="ITEM_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemShortName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_SHORT_NAME"
+      Expression="ITEM_SHORT_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LotNumber"
+      IsPersistent="false"
+      Precision="32"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LOT_NUMBER"
+      Expression="LOT_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="32" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProductedDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="PRODUCTED_DATE"
+      Expression="PRODUCTED_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="KoyuCode"
+      IsPersistent="false"
+      Precision="6"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="KOYU_CODE"
+      Expression="KOYU_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="6" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Quantity"
+      IsPersistent="false"
+      Precision="12"
+      Scale="3"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="QUANTITY"
+      Expression="QUANTITY"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CorrectedQuantity"
+      IsPersistent="false"
+      Precision="12"
+      Scale="3"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="CORRECTED_QUANTITY"
+      Expression="CORRECTED_QUANTITY"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProductedQuantity"
+      IsPersistent="false"
+      Precision="15"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PRODUCTED_QUANTITY"
+      Expression="PRODUCTED_QUANTITY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PeopleCode"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="TxnsId" />
+   </AttrArray>
+</ViewObject>

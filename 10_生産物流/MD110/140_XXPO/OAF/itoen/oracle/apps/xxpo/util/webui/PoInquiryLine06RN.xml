@@ -1,0 +1,110 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:advancedTable version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" shortDesc="緑茶" viewName="XxpoPoInquiryLineVO1" tableBanding="rowBanding" width="100%">
+   <ui:contents>
+      <oa:column id="PoInquiryLine06Cell01" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine06Cell01Hdr" prompt="No"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="LineNum" viewAttr="Line06LineNum" shortDesc="No" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine06Cell02">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine06Cell02Hdr" prompt="仕入形態"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="PurchasingType" viewAttr="Line06PurchasingType" shortDesc="仕入形態" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine06Cell03">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine06Cell03Hdr" prompt="茶期区分"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="TeaType" viewAttr="Line06TeaType" shortDesc="茶期区分" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine06Cell04">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine06Cell04Hdr" prompt="タイプ"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="KeepType" viewAttr="Line06KeepType" shortDesc="タイプ" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine06Cell05" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine06Cell05Hdr" prompt="粉引"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="KonabikiRate" viewAttr="Line06KonabikiRate" shortDesc="粉引" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine06Cell06" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine06Cell06Hdr" prompt="粉引後単価"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="KonabikiUnitPrice" viewAttr="Line06KonabikiUnitPrice" shortDesc="粉引後単価" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine06Cell07">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine06Cell07Hdr" prompt="口銭"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="KousenName" viewAttr="Line06KousenName" shortDesc="口銭名" prompt="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine06Cell08" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine06Cell08Hdr" prompt="口銭"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="KousenAmount" viewAttr="Line06KousenAmount" shortDesc="口銭金額" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine06Cell09" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine06Cell09Hdr" prompt="預り口銭額"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="KeepKousenAmount" viewAttr="Line06KeepKousenAmount" shortDesc="預り口銭額" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine06Cell10">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine06Cell10Hdr" prompt="賦課"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="FukaName" viewAttr="Line06FukaName" shortDesc="賦課名" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine06Cell11" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine06Cell11Hdr" prompt="賦課金"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="FukaAmount" viewAttr="Line06FukaAmount" shortDesc="賦課金" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine06Cell12" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine06Cell12Hdr" prompt="賦課金額"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="FukaPrice" viewAttr="Line06FukaPrice" shortDesc="賦課金額" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="PoInquiryLine06Cell13" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PoInquiryLine06Cell13Hdr" prompt="粉引後金額"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="KonabikiAmount" viewAttr="Line06KonabikiAmount" shortDesc="粉引後金額" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+   </ui:contents>
+</oa:advancedTable>

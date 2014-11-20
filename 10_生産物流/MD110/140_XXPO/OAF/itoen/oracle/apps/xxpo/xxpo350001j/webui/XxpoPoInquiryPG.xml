@@ -1,0 +1,294 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxpo.xxpo350001j.server.XxpoPoConfirmAM" windowTitle="(仕入先発注・受入照会)発注・受入照会" title="(仕入先発注・受入照会)発注・受入照会" controllerClass="itoen.oracle.apps.xxpo.xxpo350001j.webui.XxpoPoInquiryCO">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="Reset" text="取消" prompt="取消"/>
+                  <oa:submitButton id="OrderApproving" text="発注承諾" prompt="発注承諾" disabled="${oa.XxpoPoInquiryPVO1.OrderApprovingDisabled}"/>
+                  <oa:submitButton id="PurchaseApproving" text="仕入承諾" prompt="仕入承諾" disabled="${oa.XxpoPoInquiryPVO1.PurchaseApprovingDisabled}"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:flowLayout id="MainRN">
+               <ui:contents>
+                  <oa:header id="HederHdrRN" text="発注・受入ヘッダー">
+                     <ui:contents>
+                        <oa:tableLayout id="HdrTabRN" width="70%" hAlign="left">
+                           <ui:contents>
+                              <oa:rowLayout id="HdrRow01">
+                                 <ui:contents>
+                                    <oa:cellFormat id="HdrCell0100">
+                                       <ui:contents>
+                                          <oa:tableLayout id="HdrTab01RN" width="100%">
+                                             <ui:contents>
+                                                <oa:rowLayout id="HdrTab01Row01">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="HdrTab01Cell0100" hAlign="right" width="10%">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="TxtHeaderNumberPrompt1" prompt="発注No"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="HdrTab01Cell0101" width="15%">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="HeaderNumber1" maximumLength="12" shortDesc="発注No" styleClass="LegendText" columns="15" viewName="XxpoPoInquiryVO1" viewAttr="HeaderNumber"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="HdrTab01Cell0102" width="35%">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="Status" required="no" dataType="VARCHAR2" shortDesc="ステータス" styleClass="LegendText" viewName="XxpoPoInquiryVO1" viewAttr="StatusDisp" prompt="ステータス"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="HdrTab01Cell0103" width="15%">
+                                                         <ui:contents>
+                                                            <oa:messageCheckBox id="Order" readOnly="true" text="承諾要求　" prompt="承諾要求　" styleClass="LegendText" viewName="XxpoPoInquiryVO1" viewAttr="ApprovedFlag"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="HdrTab01Cell0104" width="15%">
+                                                         <ui:contents>
+                                                            <oa:messageCheckBox id="OrderApproved1" shortDesc="発注承諾" styleClass="LegendText" readOnly="true" viewName="XxpoPoInquiryVO1" viewAttr="OrderApprovedFlag" text="発注承諾　" prompt="発注承諾　"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="HdrTab01Cell0105" width="15%">
+                                                         <ui:contents>
+                                                            <oa:messageCheckBox id="PurchaseApproved1" shortDesc="仕入承諾" styleClass="LegendText" readOnly="true" viewName="XxpoPoInquiryVO1" viewAttr="PurchaseApprovedFlag" text="仕入承諾　" prompt="仕入承諾　"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                             </ui:contents>
+                                          </oa:tableLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="HdrRow02">
+                                 <ui:contents>
+                                    <oa:cellFormat id="HdrCell0200">
+                                       <ui:contents>
+                                          <oa:tableLayout id="HdrTab02RN" width="100%">
+                                             <ui:contents>
+                                                <oa:rowLayout id="HdrTab02Row01">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="HdrTab02Cell0100" hAlign="right" width="10%">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="TxtVendorCodePrompt" prompt="取引先"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="HdrTab02Cell0101" width="5%">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="VendorCode" maximumLength="4" shortDesc="取引先" styleClass="LegendText" columns="6" viewName="XxpoPoInquiryVO1" viewAttr="VendorCode"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="HdrTab02Cell0102" width="25%">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="VendorName" prompt="" styleClass="LegendText" viewName="XxpoPoInquiryVO1" viewAttr="VendorName"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="HdrTab02Cell0103" hAlign="right" width="10%">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="TxtMediationCodePrompt" prompt="斡旋者"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="HdrTab02Cell0104" width="5%">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="MediationCode" maximumLength="4" shortDesc="斡旋者" styleClass="LegendText" columns="6" viewName="XxpoPoInquiryVO1" viewAttr="MediationCode"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="HdrTab02Cell0105" width="45%">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="MediatorName" prompt="" styleClass="LegendText" viewName="XxpoPoInquiryVO1" viewAttr="MediationName"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="HdrTab02Row02">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="HdrTab02Cell0200" hAlign="right">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="TxtDeliveryDatePrompt" prompt="納入日"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="HdrTab02Cell0201" columnSpan="5">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="DeliveryDate" prompt="" required="no" shortDesc="納入日" dataType="DATE" styleClass="LegendText" viewName="XxpoPoInquiryVO1" viewAttr="DeliveryDate"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="HdrTab02Row03">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="HdrTab02Cell0300" hAlign="right">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="TxtLocationPrompt" prompt="納入先" required="no"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="HdrTab02Cell0301">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="LocationCode" prompt="" required="no" shortDesc="納入先" maximumLength="4" columns="6" styleClass="LegendText" viewName="XxpoPoInquiryVO1" viewAttr="LocationCode"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="HdrTab02Cell0302">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="LocationName" prompt="" required="no" styleClass="LegendText" viewName="XxpoPoInquiryVO1" viewAttr="LocationName"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="HdrTab02Cell0303" hAlign="right">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="TxtDepartment" prompt="発注部署"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="HdrTab02Cell0304">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="Department" prompt="" required="no" shortDesc="発注部署" styleClass="LegendText" maximumLength="4" columns="6" viewName="XxpoPoInquiryVO1" viewAttr="DepartmentCode"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="HdrTab02Cell0305">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="DepartmentName" prompt="" required="no" styleClass="LegendText" viewName="XxpoPoInquiryVO1" viewAttr="DepartmentName"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="HdrTab02Row04">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="HdrTab02Cell0400" hAlign="right">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="TxtDelivery" prompt="配送先"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="HdrTab02Cell0401">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="DeliveryCode" viewName="XxpoPoInquiryVO1" viewAttr="DeliveryCode" shortDesc="配送先コード" styleClass="LegendText"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="HdrTab02Cell0402" columnSpan="4">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="DeliveryName" shortDesc="配送先名" styleClass="LegendText" viewName="XxpoPoInquiryVO1" viewAttr="DeliveryName"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="HdrTab02Row05">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="HdrTab02Cell0500" hAlign="right">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="TxtDescriptionPrompt" prompt="　摘要"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="HdrTab02Cell0501" columnSpan="5">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="Description" viewName="XxpoPoInquiryVO1" viewAttr="Description" maximumLength="150" shortDesc="摘要" styleClass="LegendText"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                             </ui:contents>
+                                          </oa:tableLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="LinesHdrRN" text="発注・受入明細">
+                     <ui:contents>
+                        <oa:subTabLayout id="SubTabRN">
+                           <ui:contents>
+                              <oa:advancedTable id="PoInquiryLine01RN" extends="/itoen/oracle/apps/xxpo/util/webui/PoInquiryLine01RN" blockSize="20"/>
+                              <oa:advancedTable id="PoInquiryLine02RN" extends="/itoen/oracle/apps/xxpo/util/webui/PoInquiryLine02RN" blockSize="20"/>
+                              <oa:advancedTable id="PoInquiryLine03RN" extends="/itoen/oracle/apps/xxpo/util/webui/PoInquiryLine03RN" blockSize="20"/>
+                              <oa:advancedTable id="PoInquiryLine04RN" extends="/itoen/oracle/apps/xxpo/util/webui/PoInquiryLine04RN" blockSize="20"/>
+                              <oa:advancedTable id="PoInquiryLine05RN" extends="/itoen/oracle/apps/xxpo/util/webui/PoInquiryLine05RN" blockSize="20"/>
+                              <oa:advancedTable id="PoInquiryLine06RN" extends="/itoen/oracle/apps/xxpo/util/webui/PoInquiryLine06RN" blockSize="20"/>
+                           </ui:contents>
+                           <ui:subTabs>
+                              <oa:subTabBar id="subTabBar">
+                                 <ui:contents>
+                                    <oa:link id="Line01Link" text="1">
+                                       <ui:primaryClientAction>
+                                          <ui:fireAction event="Line01Link"/>
+                                       </ui:primaryClientAction>
+                                    </oa:link>
+                                    <oa:link id="Line02Link" text="2">
+                                       <ui:primaryClientAction>
+                                          <ui:fireAction event="Line02Link"/>
+                                       </ui:primaryClientAction>
+                                    </oa:link>
+                                    <oa:link id="Line03Link" text="3">
+                                       <ui:primaryClientAction>
+                                          <ui:fireAction event="Line03Link"/>
+                                       </ui:primaryClientAction>
+                                    </oa:link>
+                                    <oa:link id="Line04Link" text="ロット1">
+                                       <ui:primaryClientAction>
+                                          <ui:fireAction event="Line04Link"/>
+                                       </ui:primaryClientAction>
+                                    </oa:link>
+                                    <oa:link id="Line05Link" text="ロット2">
+                                       <ui:primaryClientAction>
+                                          <ui:fireAction event="Line04Link"/>
+                                       </ui:primaryClientAction>
+                                    </oa:link>
+                                    <oa:link id="Line06Link" text="緑茶">
+                                       <ui:primaryClientAction>
+                                          <ui:fireAction event="Line06Link"/>
+                                       </ui:primaryClientAction>
+                                    </oa:link>
+                                 </ui:contents>
+                              </oa:subTabBar>
+                           </ui:subTabs>
+                        </oa:subTabLayout>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:tableLayout id="SumRN" hAlign="center" width="100%">
+                     <ui:contents>
+                        <oa:rowLayout id="SumRow01">
+                           <ui:contents>
+                              <oa:cellFormat id="SumCell0100" width="40%"/>
+                              <oa:cellFormat id="SumCell0101" width="5%">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="TtlPoQtyPrompt" prompt="合計発注数" styleClass="LegendText"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SumCell0102" width="15%">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="TtlPoQty" viewName="XxpoPoInquirySumVO1" viewAttr="TtlPoQty" shortDesc="合計発注数" styleClass="OraFieldNumber"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SumCell0103" width="5%">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="TtlReceiveQtyPrompt" prompt="合計受入数" styleClass="LegendText"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SumCell0104" width="15%">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="TtlReceiveQty" shortDesc="合計受入数" viewName="XxpoPoInquirySumVO1" viewAttr="TtlReceiveQty" styleClass="OraFieldNumber"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SumCell0105" width="5%">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="TtlPricePrompt" prompt="合計金額" styleClass="LegendText"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SumCell0106" width="15%">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="TtlPrice" viewName="XxpoPoInquirySumVO1" viewAttr="TtlPrice" shortDesc="合計金額" styleClass="OraFieldNumber"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                     </ui:contents>
+                  </oa:tableLayout>
+               </ui:contents>
+            </oa:flowLayout>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

@@ -1,0 +1,335 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxpo.xxpo340001j.server.XxpoVendorSupplyAM" title="外注出来高報告：検索" windowTitle="外注出来高報告" controllerClass="itoen.oracle.apps.xxpo.xxpo340001j.webui.XxpoVendorSupplyCO">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:flowLayout id="MainRN">
+               <ui:contents>
+                  <oa:header id="SearchHdr" text="検索条件">
+                     <ui:contents>
+                        <oa:tableLayout id="SearchTab" hAlign="left">
+                           <ui:contents>
+                              <oa:rowLayout id="SearchRow01">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell0100" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtManufacturedDatePrompt" prompt="生産日(FROM-TO)"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0101" columnSpan="1">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtManufacturedDateFrom" dataType="DATE" shortDesc="生産日(FROM)" columns="12" maximumLength="10" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0102" hAlign="center">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtMsg01" prompt="-"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0103">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtManufacturedDateTo" dataType="DATE" shortDesc="生産日(TO)" columns="12" maximumLength="10" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow02">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell0200" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtVenvorCodePrompt" prompt="取引先"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0201">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtVendorCode" maximumLength="4" columns="5" shortDesc="取引先" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/VendorCodeRN" viewName="XxpoVendorSupplySearchVO1" viewAttr="VendorCode" readOnly="${oa.XxpoVendorSupplyPVO1.VendorCodeReadOnly}" styleClass="LegendText">
+                                             <lovMappings>
+                                                <lovMap id="VendorCodeLovMap" lovItem="VendorCode" criteriaFrom="TxtVendorCode"/>
+                                                <lovMap id="VendorCodeRetLovMap" lovItem="VendorCode" resultTo="TxtVendorCode"/>
+                                                <lovMap id="VendorNameRetLovMap" lovItem="VendorName" resultTo="VendorName"/>
+                                                <lovMap id="VendorIdRetLovMap" lovItem="VendorId" resultTo="VendorId"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0202" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtVendorName" shortDesc="取引先名" viewName="XxpoVendorSupplySearchVO1" viewAttr="VendorName" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow03">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell0300" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtFactoryCodePrompt" prompt="工場"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0301">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtFactoryCode" maximumLength="4" columns="5" shortDesc="工場" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/FactoryCodeRN" styleClass="LegendText">
+                                             <lovMappings>
+                                                <lovMap id="FactoryCodeLovMap" lovItem="FactoryCode" criteriaFrom="TxtFactoryCode"/>
+                                                <lovMap id="FactoryCodeRetLovMap" lovItem="FactoryCode" resultTo="TxtFactoryCode"/>
+                                                <lovMap id="FactoryNameRetLovMap" lovItem="FactoryName" resultTo="FactoryName"/>
+                                                <lovMap id="VendorIdLovMap" criteriaFrom="VendorId" lovItem="VendorId"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0302" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtFactoryName" shortDesc="工場名" styleClass="LegendText" viewName="XxpoVendorSupplySearchVO1" viewAttr="FactoryName"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow04">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell0400" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtItemCodePrompt" prompt="品目"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0401">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtItemCode" maximumLength="7" columns="8" shortDesc="品目" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/ItemCodeRN" styleClass="LegendText">
+                                             <lovMappings>
+                                                <lovMap id="ItemCodeLovMap" lovItem="ItemCode" criteriaFrom="TxtItemCode"/>
+                                                <lovMap id="ItemCodeRetLovMap" lovItem="ItemCode" resultTo="TxtItemCode"/>
+                                                <lovMap id="ItemNameRetLovMap" lovItem="ItemName" resultTo="ItemName"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0402" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtItemName" shortDesc="品目名" styleClass="LegendText" viewName="XxpoVendorSupplySearchVO1" viewAttr="ItemName"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow05">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell0500" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtLotNumberPrompt" prompt="ロットNo"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0501" columnSpan="3">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtLotNumber" maximumLength="10" columns="12" shortDesc="ロット番号" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow06">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell0600" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtProductedDatePrompt" prompt="製造日(FROM-TO)"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0601" columnSpan="1">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtProductedDateFrom" dataType="DATE" shortDesc="生産日(FROM)" columns="12" maximumLength="10" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0602" hAlign="center">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtMsg02" prompt="-"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0603">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtProductedDateTo" dataType="DATE" shortDesc="製造日(TO)" columns="12" maximumLength="10" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow07">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell0700" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtKoyuCodePrompt" prompt="固有記号"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0701">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtKoyuCode" maximumLength="6" columns="7" shortDesc="固有記号" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/KoyuCodeRN" styleClass="LegendText">
+                                             <lovMappings>
+                                                <lovMap id="KoyuCodeLovMap" lovItem="KoyuCode" criteriaFrom="TxtKoyuCode"/>
+                                                <lovMap id="KoyuCodeRetLovMap" lovItem="KoyuCode" resultTo="TxtKoyuCode"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0702" hAlign="right">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtCorrectedPrompt" prompt="訂正有"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell0703">
+                                       <ui:contents>
+                                          <oa:messageCheckBox id="TxtCorrected" shortDesc="訂正有"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow08">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell0801" hAlign="center" columnSpan="4" height="25">
+                                       <ui:contents>
+                                          <oa:pageButtonBar id="PageButtonBarRN">
+                                             <ui:contents>
+                                                <oa:submitButton id="Go" prompt="進む"/>
+                                                <oa:submitButton id="Delete" text="消去" prompt="消去"/>
+                                             </ui:contents>
+                                          </oa:pageButtonBar>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                        <oa:formValue id="PeopleCode" viewName="XxpoVendorSupplySearchVO1" viewAttr="PeopleCode"/>
+                        <oa:formValue id="FactoryName" viewName="XxpoVendorSupplySearchVO1" viewAttr="FactoryName"/>
+                        <oa:formValue id="ItemName" viewName="XxpoVendorSupplySearchVO1" viewAttr="ItemName"/>
+                        <oa:formValue id="VendorId" viewName="XxpoVendorSupplySearchVO1" viewAttr="VendorId" dataType="NUMBER"/>
+                        <oa:formValue id="VendorName" viewName="XxpoVendorSupplySearchVO1" viewAttr="VendorName"/>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="SearchResultHdr" text="外注出来高情報">
+                     <ui:contents>
+                        <oa:tableLayout id="SearchResultTab" hAlign="center" width="100%">
+                           <ui:contents>
+                              <oa:rowLayout id="SearchResultRow01">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchResultCell0101" hAlign="left">
+                                       <ui:contents>
+                                          <oa:submitButton id="New" prompt="新規" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchResultCell0102" hAlign="right">
+                                       <ui:contents>
+                                          <oa:exportButton id="Export" exportAllRows="true" text="エクスポート" viewName="XxpoVendorSupplyVO1" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchResultRow02">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchResultCell0201" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:advancedTable id="AdvancedTab" viewName="XxpoVendorSupplyVO1" width="100%" blockSize="20">
+                                             <ui:contents>
+                                                <oa:column id="Column01">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="ManufacturedDateHdr" prompt="生産日"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="ManufacturedDate" viewAttr="ManufacturedDate" styleClass="LegendText"/>
+                                                   </ui:contents>
+                                                </oa:column>
+                                                <oa:column id="Column02">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="VendorCodeHdr" prompt="取引先"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="VendorCode" viewAttr="VendorCode" styleClass="LegendText"/>
+                                                   </ui:contents>
+                                                </oa:column>
+                                                <oa:column id="Column03">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="FactoryCodeHdr" prompt="工場"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="FactoryCode" viewAttr="FactoryCode" shortDesc="LegendText"/>
+                                                   </ui:contents>
+                                                </oa:column>
+                                                <oa:column id="Column04">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="VendorShortNameHdr" prompt="工場名"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="VendorSiteShortName" viewAttr="VendorSiteShortName" shortDesc="LegendText"/>
+                                                   </ui:contents>
+                                                </oa:column>
+                                                <oa:column id="Column05">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="ItemCodeHdr" prompt="品目"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="ItemCode" viewAttr="ItemCode" styleClass="LegendText"/>
+                                                   </ui:contents>
+                                                </oa:column>
+                                                <oa:column id="Column06">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="ItemShortNameHdr" prompt="品目名"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="ItemShortName" viewAttr="ItemShortName" styleClass="LegendText"/>
+                                                   </ui:contents>
+                                                </oa:column>
+                                                <oa:column id="Column07">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="LotNumberHdr" prompt="ロットNo"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:link id="LotNumber" viewAttr="LotNumber" styleClass="LegendText">
+                                                         <ui:primaryClientAction>
+                                                            <ui:fireAction event="LotNumberClick">
+                                                               <ui:parameters>
+                                                                  <ui:parameter key="searchTxnsId" value="${oa.XxpoVendorSupplyVO1.TxnsId}"/>
+                                                                  <ui:parameter key="updateFlag" value=""/>
+                                                               </ui:parameters>
+                                                            </ui:fireAction>
+                                                         </ui:primaryClientAction>
+                                                      </oa:link>
+                                                   </ui:contents>
+                                                </oa:column>
+                                                <oa:column id="Column08">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="ProductedDateHdr" prompt="製造日"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="ProductedDate" viewAttr="ProductedDate" styleClass="LegendText"/>
+                                                   </ui:contents>
+                                                </oa:column>
+                                                <oa:column id="Column09">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="KoyuCodeHdr" prompt="固有記号"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="KoyuCode" viewAttr="KoyuCode" styleClass="LegendText"/>
+                                                   </ui:contents>
+                                                </oa:column>
+                                                <oa:column id="Column10" columnDataFormat="numberFormat">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="QuantityHdr" prompt="数量"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="ProductedQuantity" viewAttr="ProductedQuantity" dataType="VARCHAR2" styleClass="OraFieldNumber"/>
+                                                   </ui:contents>
+                                                </oa:column>
+                                             </ui:contents>
+                                          </oa:advancedTable>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:header>
+               </ui:contents>
+            </oa:flowLayout>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

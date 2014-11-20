@@ -1,0 +1,904 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxpoOrderDetailsTabVO"
+   OrderBy="LINE_NUM"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="itoen.oracle.apps.xxpo.xxpo310001j.server.XxpoOrderDetailsTabVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT pha.segment1 header_number                      -- 発注番号
+      ,pha.attribute9 request_number                   -- 依頼番号
+      ,pla.po_line_id line_id                          -- 発注明細ID
+      ,pla.item_id pla_item_id                         -- 明細.品目ID
+      ,pla.attribute10 unit_name                       -- 発注単位
+      ,pla.unit_meas_lookup_code unit_meas_lookup_code -- 品目基準単位
+      ,pla.opm_item_id opm_item_id                     -- OPM品目ID
+      ,ilm.lot_id lot_id                               -- ロットID
+      ,cvsv.vendor_stock_whse vendor_stock_whse        -- 相手先在庫入庫先
+      ,pla.line_num line_num                           -- 明細.明細番号
+      ,pla.opm_item_no opm_item_no                     -- 品目コード
+      ,pla.opm_item_name opm_item_name                 -- 品目名
+      ,pla.attribute3 accompany_code                   -- 付帯コード
+      ,pla.attribute2 factory_code                     -- 工場コード
+      ,pla.attribute1 lot_no                           -- 明細.ロットNo
+      ,FND_DATE.STRING_TO_DATE(ilm.attribute1, 'YYYY/MM/DD') production_date                  -- OPMロットマスタ.製造年月日
+      ,FND_DATE.STRING_TO_DATE(ilm.attribute1, 'YYYY/MM/DD') base_production_date             -- OPMロットマスタ.製造年月日(DB)
+      ,FND_DATE.STRING_TO_DATE(ilm.attribute3, 'YYYY/MM/DD') use_by_date                      -- OPMロットマスタ.賞味期限
+      ,FND_DATE.STRING_TO_DATE(ilm.attribute3, 'YYYY/MM/DD') base_use_by_date                 -- OPMロットマスタ.賞味期限(DB)
+      ,ilm.attribute2 koyu_code                        -- 固有記号
+      ,TO_CHAR(pla.attribute4, 'FM99,990.000') item_amount                               -- 在庫入数
+      ,TO_CHAR(pla.attribute4, 'FM99,990.000') base_item_amount                          -- 在庫入数(DB)
+      ,TO_CHAR(pla.attribute11, 'FM999,999,990.000') order_amount                        -- 発注数量
+      ,TO_CHAR(pla.attribute6, 'FM999,999,990.000') supplier_shipment_amount             -- 仕入先出荷数量
+      ,TO_CHAR(pla.attribute7, 'FM999,999,990.000') receipt_amount                       -- 受入数量
+      ,TO_CHAR((pla.attribute11 - NVL(pla.attribute7, 0)), 'FM999,999,990.000') order_remainder  -- 発注残数
+      ,pla.attribute13 decision_amount_flag            -- 数量確定フラグ
+      ,pla.attribute14 money_decision_flag             -- 金額確定フラグ
+      ,FND_DATE.STRING_TO_DATE(pla.attribute9, 'YYYY/MM/DD') appointment_date            -- 日付指定
+      ,pla.attribute15 description                     -- 明細.摘要
+      ,pla.attribute15 base_description                -- 明細.摘要(DB)
+      ,ilm.attribute11 fiscal_year                     -- 年度
+      ,xlvv1.meaning  production_ground                -- 産地
+      ,ilm.attribute14 rank1                           -- ランク1
+      ,ilm.attribute15 rank2                           -- ランク2
+      ,ilm.attribute19 rank3                           -- ランク3
+      ,ilm.attribute20 manufacturing_factory           -- 原料製造工場
+      ,ilm.attribute21 manufacturing_lot_no            -- 製造ロットNo
+      ,xlvv2.meaning stock_form                        -- 仕入形態 XXCMN_L05
+      ,xlvv3.meaning harvest_time_division             -- 茶期区分 XXCMN_L06
+      ,xlvv4.meaning type                              -- タイプ XXCMN_L08
+      ,pla.expiration_day expiration_day               -- 賞味期間
+      ,pla.cost_manage_code cost_manage_code           -- 原価管理区分
+      ,xcicv.prod_class_code prod_class_code           -- 商品区分
+      ,xcicv.item_class_code item_class_code           -- 品目区分
+      ,pla.lot_ctl lot_ctl                             -- ロット
+      ,pla.conv_unit conv_unit                         -- 入出庫換算単位
+      ,pha.attribute6    dropship_code         -- 直送区分コード
+      ,pla.unit_price unit_price              -- 単価
+      ,pla.last_updated_by last_updated_by                                             -- 発注明細.最終更新者(WHOカラム)
+      ,TO_CHAR(pla.last_update_date, 'YYYY/MM/DD HH24:MI:SS')  last_update_date        -- 最終更新日(WHOカラム)
+      ,pla.last_update_login last_update_login                                         -- 最終ログイン(WHOカラム)
+      ,TO_CHAR(ilm.last_update_date, 'YYYY/MM/DD HH24:MI:SS')  lot_last_update_date    -- ロット.最終更新日(WHOカラム)
+      ,FND_DATE.STRING_TO_DATE(ilm.ATTRIBUTE4, 'YYYY/MM/DD') first_time_delivery_date  -- ロット.納入日(初回)
+      ,FND_DATE.STRING_TO_DATE(ilm.ATTRIBUTE5, 'YYYY/MM/DD') final_delivery_date       -- ロット.納入日(最終)
+FROM po_headers_all pha                          -- 発注ヘッダ
+    ,(SELECT pla.po_header_id
+            ,pla.po_line_id
+            ,pla.unit_meas_lookup_code
+            ,pla.item_id
+            ,pla.line_num
+            ,pla.attribute1
+            ,pla.attribute2
+            ,pla.attribute3
+            ,pla.attribute4
+            ,pla.attribute6
+            ,pla.attribute7
+            ,pla.attribute9
+            ,pla.attribute10
+            ,pla.attribute11
+            ,pla.attribute13
+            ,pla.attribute14
+            ,pla.attribute15
+            ,pla.created_by
+            ,pla.creation_date
+            ,pla.last_updated_by
+            ,pla.last_update_date
+            ,pla.last_update_login
+            ,pla.unit_price
+            ,xcimv.item_id opm_item_id            -- OPM品目ID
+            ,xcimv.item_no opm_item_no            -- 品目コード
+            ,xcimv.item_short_name opm_item_name  -- 品目名
+            ,xcimv.conv_unit conv_unit            -- 入出庫換算単位
+            ,xcimv.lot_ctl lot_ctl                -- ロット
+            ,xcimv.expiration_day expiration_day  -- 賞味期間
+            ,xcimv.cost_manage_code               -- 原価管理区分
+      FROM po_headers_all pha                     -- 発注ヘッダ
+          ,po_lines_all pla                       -- 発注明細
+          ,xxcmn_item_mst_v xcimv                 -- OPM品目情報VIEW
+      WHERE pha.po_header_id = pla.po_header_id
+      AND   pla.item_id      = xcimv.inventory_item_id
+      AND   pha.segment1     = :0) pla
+    ,ic_lots_mst ilm                 -- OPMロットマスタ
+    ,xxcmn_vendor_sites_v cvsv       -- 仕入先情報サイト情報VIEW
+    ,xxcmn_item_categories3_v xcicv  -- 品目カテゴリ情報V3
+    ,xxcmn_lookup_values_v  xlvv1    -- ルックアップ(産地)
+    ,xxcmn_lookup_values_v  xlvv2    -- ルックアップ(仕入形態)
+    ,xxcmn_lookup_values_v  xlvv3    -- ルックアップ(茶期区分)
+    ,xxcmn_lookup_values_v  xlvv4    -- ルックアップ(タイプ)
+WHERE pha.po_header_id = pla.po_header_id
+  AND pla.opm_item_id  = ilm.item_id(+)
+  AND pla.attribute1   = ilm.lot_no(+)
+  AND pha.vendor_id    = cvsv.vendor_id
+  AND pla.attribute2   = cvsv.vendor_site_code
+  AND pla.opm_item_id  = xcicv.item_id
+  AND xlvv1.lookup_code(+) =ilm.attribute12
+  AND xlvv1.lookup_type(+) = 'XXCMN_L07'
+  AND xlvv2.lookup_code(+) = ilm.attribute9
+  AND xlvv2.lookup_type(+) = 'XXCMN_L05'
+  AND xlvv3.lookup_code(+) = ilm.attribute10
+  AND xlvv3.lookup_type(+) = 'XXCMN_L06'
+  AND xlvv4.lookup_code(+) = ilm.attribute13
+  AND xlvv4.lookup_type(+) = 'XXCMN_L08'
+  AND pha.segment1     = :1
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="HeaderNumber"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="HEADER_NUMBER"
+      Expression="HEADER_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestNumber"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="REQUEST_NUMBER"
+      Expression="REQUEST_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LineId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LINE_ID"
+      Expression="LINE_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PlaItemId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="PLA_ITEM_ID"
+      Expression="PLA_ITEM_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UnitName"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="UNIT_NAME"
+      Expression="UNIT_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UnitMeasLookupCode"
+      IsPersistent="false"
+      Precision="25"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="UNIT_MEAS_LOOKUP_CODE"
+      Expression="UNIT_MEAS_LOOKUP_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="25" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OpmItemId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="10"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="OPM_ITEM_ID"
+      Expression="OPM_ITEM_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LotId"
+      IsPersistent="false"
+      Precision="10"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LOT_ID"
+      Expression="LOT_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VendorStockWhse"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VENDOR_STOCK_WHSE"
+      Expression="VENDOR_STOCK_WHSE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LineNum"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LINE_NUM"
+      Expression="LINE_NUM"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OpmItemNo"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="32"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="OPM_ITEM_NO"
+      Expression="OPM_ITEM_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="32" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OpmItemName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="OPM_ITEM_NAME"
+      Expression="OPM_ITEM_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AccompanyCode"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ACCOMPANY_CODE"
+      Expression="ACCOMPANY_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FactoryCode"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FACTORY_CODE"
+      Expression="FACTORY_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LotNo"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LOT_NO"
+      Expression="LOT_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProductionDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="PRODUCTION_DATE"
+      Expression="PRODUCTION_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseProductionDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="BASE_PRODUCTION_DATE"
+      Expression="BASE_PRODUCTION_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UseByDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="USE_BY_DATE"
+      Expression="USE_BY_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseUseByDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="BASE_USE_BY_DATE"
+      Expression="BASE_USE_BY_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="KoyuCode"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="KOYU_CODE"
+      Expression="KOYU_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemAmount"
+      IsPersistent="false"
+      Precision="11"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_AMOUNT"
+      Expression="ITEM_AMOUNT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="11" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseItemAmount"
+      IsPersistent="false"
+      Precision="11"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_ITEM_AMOUNT"
+      Expression="BASE_ITEM_AMOUNT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="11" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OrderAmount"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ORDER_AMOUNT"
+      Expression="ORDER_AMOUNT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SupplierShipmentAmount"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SUPPLIER_SHIPMENT_AMOUNT"
+      Expression="SUPPLIER_SHIPMENT_AMOUNT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ReceiptAmount"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="RECEIPT_AMOUNT"
+      Expression="RECEIPT_AMOUNT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OrderRemainder"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ORDER_REMAINDER"
+      Expression="ORDER_REMAINDER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DecisionAmountFlag"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DECISION_AMOUNT_FLAG"
+      Expression="DECISION_AMOUNT_FLAG"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="MoneyDecisionFlag"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="MONEY_DECISION_FLAG"
+      Expression="MONEY_DECISION_FLAG"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AppointmentDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="APPOINTMENT_DATE"
+      Expression="APPOINTMENT_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Description"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DESCRIPTION"
+      Expression="DESCRIPTION"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseDescription"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_DESCRIPTION"
+      Expression="BASE_DESCRIPTION"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FiscalYear"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FISCAL_YEAR"
+      Expression="FISCAL_YEAR"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProductionGround"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PRODUCTION_GROUND"
+      Expression="PRODUCTION_GROUND"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Rank1"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="RANK1"
+      Expression="RANK1"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Rank2"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="RANK2"
+      Expression="RANK2"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Rank3"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="RANK3"
+      Expression="RANK3"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ManufacturingFactory"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="MANUFACTURING_FACTORY"
+      Expression="MANUFACTURING_FACTORY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ManufacturingLotNo"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="MANUFACTURING_LOT_NO"
+      Expression="MANUFACTURING_LOT_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="StockForm"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="STOCK_FORM"
+      Expression="STOCK_FORM"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="HarvestTimeDivision"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="HARVEST_TIME_DIVISION"
+      Expression="HARVEST_TIME_DIVISION"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Type"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TYPE"
+      Expression="TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ExpirationDay"
+      IsPersistent="false"
+      Precision="4"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="EXPIRATION_DAY"
+      Expression="EXPIRATION_DAY"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CostManageCode"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="COST_MANAGE_CODE"
+      Expression="COST_MANAGE_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProdClassCode"
+      IsPersistent="false"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PROD_CLASS_CODE"
+      Expression="PROD_CLASS_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemClassCode"
+      IsPersistent="false"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_CLASS_CODE"
+      Expression="ITEM_CLASS_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LotCtl"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="5"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LOT_CTL"
+      Expression="LOT_CTL"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ConvUnit"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CONV_UNIT"
+      Expression="CONV_UNIT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DropshipCode"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DROPSHIP_CODE"
+      Expression="DROPSHIP_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UnitPrice"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="UNIT_PRICE"
+      Expression="UNIT_PRICE"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LAST_UPDATED_BY"
+      Expression="LAST_UPDATED_BY"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsPersistent="false"
+      Precision="19"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LAST_UPDATE_DATE"
+      Expression="LAST_UPDATE_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="19" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LAST_UPDATE_LOGIN"
+      Expression="LAST_UPDATE_LOGIN"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LotLastUpdateDate"
+      IsPersistent="false"
+      Precision="19"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LOT_LAST_UPDATE_DATE"
+      Expression="LOT_LAST_UPDATE_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="19" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FirstTimeDeliveryDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="FIRST_TIME_DELIVERY_DATE"
+      Expression="FIRST_TIME_DELIVERY_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FinalDeliveryDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="FINAL_DELIVERY_DATE"
+      Expression="FINAL_DELIVERY_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AllReceipt"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      Passivate="true"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProductionDateReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemAmountReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AllReceiptReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OrderDetailDescReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="LineId" />
+   </AttrArray>
+</ViewObject>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding='windows-31j'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="LovAM"
+   ComponentClass="oracle.apps.fnd.framework.server.OAApplicationModuleImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="VendorCodeVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.VendorCodeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="FactoryCodeVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.FactoryCodeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="ItemCodeVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.ItemCodeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="KoyuCodeVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.KoyuCodeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="ItemCode2VO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.ItemCode2VO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="DepartmentCodeVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.DepartmentCodeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="ItemLocationCodeVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.ItemLocationCodeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="VendorCode2VO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.VendorCode2VO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="ItemCode3VO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.ItemCode3VO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="SourceCodeVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.SourceCodeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="VendorCode3VO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.VendorCode3VO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="ShipToCodeVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.ShipToCodeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="ShipWhseCodeVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.ShipWhseCodeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="InstDeptCodeVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.InstDeptCodeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="ReqDeptCodeVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.ReqDeptCodeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="ArrivalTimeVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.ArrivalTimeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="FreightCarrierVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.FreightCarrierVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="DesignatedItemVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.DesignatedItemVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="ItemCode4VO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.ItemCode4VO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="OrderNumberVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.OrderNumberVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="RequestNumberVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.RequestNumberVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="ItemLocationCode2VO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.ItemLocationCode2VO" >
+   </ViewUsage>
+</AppModule>
