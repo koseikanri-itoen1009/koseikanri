@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼締め関数
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_BPO_40E_出荷依頼締め関数
- * Version                : 1.7
+ * Version                : 1.8
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -43,7 +43,7 @@ AS
  *  2008/6/30    1.5   Oracle 北寒寺正夫 ST不具合対応#326
  *  2008/7/01    1.6   Oracle 北寒寺正夫 ST不具合対応#338
  *  2008/08/05   1.7   Oracle 山根一浩 出荷追加_5対応
- *
+ *  2008/10/10   1.8   Oracle 伊藤ひとみ 統合テスト指摘239対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1885,6 +1885,29 @@ AS
       CLOSE reupd_status_cur;
     END IF;
 --
+-- 2008/10/10 H.Itou Add Start 締めレコード作成は、対象データなしでも行う。
+    -- **************************************************
+    -- *** 締め済みレコード登録(E-5)
+    -- **************************************************
+--
+    insert_tightening_control(in_order_type_id,       -- 出庫形態ID
+                              iv_deliver_from,        -- 出荷元
+                              iv_sales_base,          -- 拠点
+                              gv_sales_base_category, -- 拠点カテゴリ
+                              in_lead_time_day,       -- 生産物流LT
+                              id_schedule_ship_date,  -- 出庫日
+                              iv_prod_class,          -- 商品区分
+                              gv_base_record_class,   -- 基準レコード区分
+                              lv_retcode,             -- リターンコード
+                              lv_errbuf,              -- エラーメッセージコード
+                              lv_errmsg);             -- エラーメッセージ
+--
+    -- 締め済みレコード登録処理がエラーの場合
+    IF (lv_retcode = gv_status_error) THEN
+      RAISE global_api_expt;
+    END IF;
+-- 2008/10/10 H.Itou Add End
+--
     IF ( ln_data_cnt = 0 ) THEN
       -- 出荷依頼情報対象データなし
       lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
@@ -1901,26 +1924,28 @@ AS
         -- 呼出元フラグ 1:コンカレント
       -- Del end 2008/06/27 uehara
 --
-      -- **************************************************
-      -- *** 締め済みレコード登録(E-5)
-      -- **************************************************
---
-      insert_tightening_control(in_order_type_id,       -- 出庫形態ID
-                                iv_deliver_from,        -- 出荷元
-                                iv_sales_base,          -- 拠点
-                                gv_sales_base_category, -- 拠点カテゴリ
-                                in_lead_time_day,       -- 生産物流LT
-                                id_schedule_ship_date,  -- 出庫日
-                                iv_prod_class,          -- 商品区分
-                                gv_base_record_class,   -- 基準レコード区分
-                                lv_retcode,             -- リターンコード
-                                lv_errbuf,              -- エラーメッセージコード
-                                lv_errmsg);             -- エラーメッセージ
---
-      -- 締め済みレコード登録処理がエラーの場合
-      IF (lv_retcode = gv_status_error) THEN
-        RAISE global_api_expt;
-      END IF;
+-- 2008/10/10 H.Itou Del Start 締めレコード作成は、対象データなしでも行うので、移動
+--      -- **************************************************
+--      -- *** 締め済みレコード登録(E-5)
+--      -- **************************************************
+----
+--      insert_tightening_control(in_order_type_id,       -- 出庫形態ID
+--                                iv_deliver_from,        -- 出荷元
+--                                iv_sales_base,          -- 拠点
+--                                gv_sales_base_category, -- 拠点カテゴリ
+--                                in_lead_time_day,       -- 生産物流LT
+--                                id_schedule_ship_date,  -- 出庫日
+--                                iv_prod_class,          -- 商品区分
+--                                gv_base_record_class,   -- 基準レコード区分
+--                                lv_retcode,             -- リターンコード
+--                                lv_errbuf,              -- エラーメッセージコード
+--                                lv_errmsg);             -- エラーメッセージ
+----
+--      -- 締め済みレコード登録処理がエラーの場合
+--      IF (lv_retcode = gv_status_error) THEN
+--        RAISE global_api_expt;
+--      END IF;
+-- 2008/10/10 H.Itou Del End
       -- Del start 2008/06/27 uehara
 --      END IF;
       -- Del end 2008/06/27 uehara

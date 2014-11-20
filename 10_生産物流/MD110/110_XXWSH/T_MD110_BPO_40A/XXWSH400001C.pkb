@@ -7,27 +7,28 @@ AS
  * Description      : 引取計画からのリーフ出荷依頼自動作成
  * MD.050/070       : 出荷依頼                              (T_MD050_BPO_400)
  *                    引取計画からのリーフ出荷依頼自動作成  (T_MD070_BPO_40A)
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
- * ---------------------- ----------------------------------------------------------
- *  Name                   Description
- * ---------------------- ----------------------------------------------------------
- *  pro_err_list_make      P エラーリスト作成
- *  pro_get_cus_option     P 関連データ取得                     (A-1)
- *  pro_param_chk          P 入力パラメータチェック             (A-2)
- *  pro_get_to_plan        P 引取計画情報抽出                   (A-3)
- *  pro_ship_max_kbn       P 出荷予定日/最大配送区分算出        (A-4)
- *  pro_lines_chk          P 明細項目チェック                   (A-5)
- *  pro_xsr_chk            P 物流構成アドオンマスタ存在チェック (A-6)
- *  pro_total_we_ca        P 合計重量/合計容積算出              (A-7)
- *  pro_ship_y_n_chk       P 出荷可否チェック                   (A-8)
- *  pro_lines_create       P 受注明細アドオンレコード生成       (A-9)
- *  pro_load_eff_chk       P 積載効率チェック                   (A-10)
- *  pro_headers_create     P 受注ヘッダアドオンレコード生成     (A-11)
- *  pro_ship_order         P 出荷依頼登録処理                   (A-12)
- *  submain                P メイン処理プロシージャ
- *  main                   P コンカレント実行ファイル登録プロシージャ
+ * -------------------------- ----------------------------------------------------------
+ *  Name                       Description
+ * -------------------------- ----------------------------------------------------------
+ *  pro_err_list_make          P エラーリスト作成
+ *  pro_get_cus_option         P 関連データ取得                     (A-1)
+ *  pro_param_chk              P 入力パラメータチェック             (A-2)
+ *  pro_get_to_plan            P 引取計画情報抽出                   (A-3)
+ *  pro_ship_max_kbn           P 出荷予定日/最大配送区分算出        (A-4)
+ *  pro_lines_chk              P 明細項目チェック                   (A-5)
+ *  pro_xsr_chk                P 物流構成アドオンマスタ存在チェック (A-6)
+ *  pro_total_we_ca            P 合計重量/合計容積算出              (A-7)
+ *  pro_ship_y_n_chk           P 出荷可否チェック                   (A-8)
+ *  pro_lines_create           P 受注明細アドオンレコード生成       (A-9)
+ *  pro_duplication_item_chk   P 品目重複チェック                   (A-13)  -- 2008/10/09 H.Itou Add 統合テスト指摘118
+ *  pro_load_eff_chk           P 積載効率チェック                   (A-10)
+ *  pro_headers_create         P 受注ヘッダアドオンレコード生成     (A-11)
+ *  pro_ship_order             P 出荷依頼登録処理                   (A-12)
+ *  submain                    P メイン処理プロシージャ
+ *  main                       P コンカレント実行ファイル登録プロシージャ
  *
  * Change Record
  * ------------- ----- ------------------ -------------------------------------------------
@@ -50,6 +51,8 @@ AS
  *  2008/08/18    1.12  Oracle 伊藤ひとみ  出荷追加_1のバグ エラー出力順を明細順に変更
  *  2008/08/19    1.13  Oracle 伊藤ひとみ  T_S_611 出荷元保管場所より代表運送業者を取得し、設定する。
  *                                         結合指摘#87 出荷停止日エラーログの日付フォーマット修正
+ *  2008/10/09    1.14  Oracle 伊藤ひとみ  統合テスト指摘118 1依頼に重複品目がある場合はエラー終了とする。
+ *                                         統合テスト指摘240 積載効率チェック(合計値算出)のINパラメータに基準日を追加。
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -92,10 +95,10 @@ AS
      ,item_um     xxcmn_item_mst2_v.item_um%TYPE                     -- 単位
      ,case_am     xxcmn_item_mst2_v.num_of_cases%TYPE                -- 入数
      ,ship_am     xxcmn_item_mst2_v.num_of_deliver%TYPE              -- 出荷入数
-     ,skbn        xxcmn_item_categories3_v.prod_class_code%TYPE      -- 商品区分
+     ,skbn        xxcmn_item_categories5_v.prod_class_code%TYPE      -- 商品区分
      ,wei_kbn     xxcmn_item_mst2_v.weight_capacity_class%TYPE       -- 重量容積区分
      ,out_kbn     xxcmn_item_mst2_v.ship_class%TYPE                  -- 出荷区分
-     ,item_kbn    xxcmn_item_categories3_v.item_class_code%TYPE      -- 品目区分
+     ,item_kbn    xxcmn_item_categories5_v.item_class_code%TYPE      -- 品目区分
      ,sale_kbn    xxcmn_item_mst2_v.sales_div%TYPE                   -- 売上対象区分
      ,end_kbn     xxcmn_item_mst2_v.obsolete_class%TYPE              -- 廃止区分
      ,rit_kbn     xxcmn_item_mst2_v.rate_class%TYPE                  -- 率区分
@@ -103,9 +106,12 @@ AS
      ,conv_unit   xxcmn_item_mst2_v.conv_unit%TYPE                   -- 入出庫換算単位
      ,a_p_flg     xxcmn_item_locations_v.allow_pickup_flag%TYPE      -- 出荷引当対象フラグ
 -- 2008/08/18 H.Itou Add Start
-     ,we_loading_msg_seq NUMBER                                   -- 積載効率(重量)メッセージ格納SEQ
-     ,ca_loading_msg_seq NUMBER                                   -- 積載効率(容積)メッセージ格納SEQ
+     ,we_loading_msg_seq NUMBER                                      -- 積載効率(重量)メッセージ格納SEQ
+     ,ca_loading_msg_seq NUMBER                                      -- 積載効率(容積)メッセージ格納SEQ
 -- 2008/08/18 H.Itou Add End
+-- 2008/10/09 H.Itou Add Start 統合テスト指摘240
+     ,dup_item_msg_seq   NUMBER                                      -- 品目重複メッセージ格納SEQ
+-- 2008/10/09 H.Itou Add End
 -- 2008/08/19 H.Itou Add Start T_S_611
      ,career_id            xxwsh_order_headers_all.career_id%TYPE             -- 運送業者ID
      ,freight_carrier_code xxwsh_order_headers_all.freight_carrier_code%TYPE  -- 運送業者
@@ -417,6 +423,9 @@ AS
   -- 2008/07/30 Add ↓
   gv_tkn_msg_24      CONSTANT VARCHAR2(50) := 'ケース入数に0より大きい値を設定して下さい。';
   -- 2008/07/30 Add ↑
+-- 2008/10/09 H.Itou Add Start 統合テスト指摘118
+  gv_tkn_msg_25      CONSTANT VARCHAR2(50) := '１依頼内に同一品目が重複しています';
+-- 2008/10/09 H.Itou Add End
 -- クイックコード
   gv_ship_method     CONSTANT VARCHAR2(20) := 'XXCMN_SHIP_METHOD';
   gv_tr_status       CONSTANT VARCHAR2(25) := 'XXWSH_TRANSACTION_STATUS';
@@ -649,7 +658,7 @@ AS
      ,iv_err_msg       IN VARCHAR2     --   エラーメッセージ
      ,iv_err_clm       IN VARCHAR2     --   エラー項目
 -- 2008/08/18 H.Itou Add Start
-     ,in_calc_load_eff_msg_seq IN NUMBER DEFAULT NULL-- -- 積載効率メッセージ格納SEQ
+     ,in_msg_seq       IN NUMBER DEFAULT NULL -- メッセージ格納SEQ
 -- 2008/08/18 H.Itou Add End
      ,ov_errbuf       OUT VARCHAR2     --   エラー・メッセージ           --# 固定 #
      ,ov_retcode      OUT VARCHAR2     --   リターン・コード             --# 固定 #
@@ -705,9 +714,9 @@ AS
                   iv_arrival_date || CHR(9) || iv_err_msg || CHR(9) || iv_err_clm;
 --
 -- 2008/08/18 H.Itou Add Start
-    -- 積載効率メッセージ格納SEQに値がある場合、積載効率エラーなので、指定箇所にセット
-    IF (in_calc_load_eff_msg_seq IS NOT NULL) THEN
-      gt_err_msg(in_calc_load_eff_msg_seq).err_msg  := lv_err_msg;
+    -- メッセージ格納SEQに値がある場合、指定箇所にメッセージをセット
+    IF (in_msg_seq IS NOT NULL) THEN
+      gt_err_msg(in_msg_seq).err_msg  := lv_err_msg;
 --
     -- それ以外は、テーブルカウントを進めてセット
     ELSE
@@ -1114,6 +1123,9 @@ AS
             ,NULL                                         -- 積載効率(重量)メッセージ格納SEQ
             ,NULL                                         -- 積載効率(容積)メッセージ格納SEQ
 -- 2008/08/18 H.Itou Add End
+-- 2008/10/09 H.Itou Add Start 統合テスト指摘240
+            ,NULL                                         -- 品目重複メッセージ格納SEQ
+-- 2008/10/09 H.Itou Add End
 -- 2008/08/19 H.Itou Add T_S_611
             ,xcv.party_id                   AS career_id            -- 運送業者ID
             ,xcv.party_number               AS freight_carrier_code -- 運送業者
@@ -1124,7 +1136,7 @@ AS
            ,xxcmn_item_locations_v   xilv    -- OPM保管場所情報         V
            ,xxcmn_cust_accounts_v    xcav    -- 顧客情報                V
            ,xxcmn_cust_acct_sites_v  xcasv   -- 顧客サイト情報          V
-           ,xxcmn_item_categories3_v  xicv   -- OPM品目カテゴリ割当情報 V
+           ,xxcmn_item_categories5_v  xicv   -- OPM品目カテゴリ割当情報 V
            ,xxcmn_item_mst2_v         ximv   -- OPM品目情報             V
 -- 2008/08/19 H.Itou Add T_S_611
            ,xxcmn_carriers_v          xcv    -- 運送業者情報            V
@@ -1482,10 +1494,13 @@ AS
     --   『出荷予定日』の会計期間がOpenされているかチェック                   --
     ----------------------------------------------------------------------------
     -- クローズの最大年月取得
-    gv_opm_c_p := xxcmn_common_pkg.get_opminv_close_period; 
+    gv_opm_c_p := xxcmn_common_pkg.get_opminv_close_period;
 --
     -- 出荷予定日がOPM在庫会計期間でクローズの場合
-    IF (gv_opm_c_p > TO_CHAR(gd_ship_day,'YYYYMM')) THEN
+-- 2008/10/09 H.Itou Mod Start クローズ年月と同じ年月の場合もエラー
+--    IF (gv_opm_c_p > TO_CHAR(gd_ship_day,'YYYYMM')) THEN
+    IF (gv_opm_c_p >= TO_CHAR(gd_ship_day,'YYYYMM')) THEN
+-- 2008/10/09 H.Itou Mod End
 --
       -- エラーリスト作成
       pro_err_list_make
@@ -1508,7 +1523,9 @@ AS
       -- 共通エラーメッセージ 終了ST エラー登録
       gv_err_sts := gv_status_error;
 --
-      RAISE err_header_expt;
+-- 2008/10/09 H.Itou Del Start 在庫会計期間クローズの場合、後続の明細項目チェックを行うため、例外処理を行わない
+--      RAISE err_header_expt;
+-- 2008/10/09 H.Itou Del End
     END IF;
 --
   EXCEPTION
@@ -1986,6 +2003,9 @@ AS
                                 ,gn_ttl_we                -- 合計重量         out 合計重量
                                 ,gn_ttl_ca                -- 合計容積         out 合計容積
                                 ,gn_ttl_prt_we            -- 合計パレット重量 out 合計パレット重量
+-- 2008/10/09 H.Itou Add Start 統合テスト指摘240
+                                ,gd_ship_day              -- 基準日            in 出荷予定日
+-- 2008/10/09 H.Itou Add End
                                );
 --
 -- 2008/07/30 Mod ↓
@@ -2541,18 +2561,21 @@ AS
       END IF;
     END IF;
 --
--- 2008/08/18 H.Itou Add Start 積載効率(重量)・積載効率(容積)メッセージ用にダミーエラーメッセージ作成。
-    -- テーブルカウント
-    gn_cut := gn_cut + 1;
-    gt_err_msg(gn_cut).err_msg  := NULL;
-    gt_to_plan(gn_i).we_loading_msg_seq := gn_cut; -- 積載効率(重量)メッセージ格納SEQ
+-- 2008/10/09 H.Itou Del Start
+---- 2008/08/18 H.Itou Add Start 積載効率(重量)・積載効率(容積)メッセージ用にダミーエラーメッセージ作成。
+--    -- テーブルカウント
+--    gn_cut := gn_cut + 1;
+--    gt_err_msg(gn_cut).err_msg  := NULL;
+--    gt_to_plan(gn_i).we_loading_msg_seq := gn_cut; -- 積載効率(重量)メッセージ格納SEQ
+----
+--    -- テーブルカウント
+--    gn_cut := gn_cut + 1;
+--    gt_err_msg(gn_cut).err_msg  := NULL;
+--    gt_to_plan(gn_i).ca_loading_msg_seq := gn_cut; -- 積載効率(容積)メッセージ格納SEQ
+----
+---- 2008/08/18 H.Itou Add End
+-- 2008/10/09 H.Itou Del End
 --
-    -- テーブルカウント
-    gn_cut := gn_cut + 1;
-    gt_err_msg(gn_cut).err_msg  := NULL;
-    gt_to_plan(gn_i).ca_loading_msg_seq := gn_cut; -- 積載効率(容積)メッセージ格納SEQ
---
--- 2008/08/18 H.Itou Add End
 /*
     ---------------------------------------------------
     -- 3.出荷単位換算数の算出                        --
@@ -2692,6 +2715,119 @@ AS
 --
   END pro_lines_create;
 --
+-- 2008/10/09 H.Itou Add Start 統合テスト指摘118
+  /**********************************************************************************
+   * Procedure Name   : pro_duplication_item_chk
+   * Description      : 品目重複チェック (A-13)
+   ***********************************************************************************/
+  PROCEDURE pro_duplication_item_chk
+    (
+      in_plan_cnt   IN  NUMBER       -- 対象としているForecastの件数
+     ,ov_errbuf     OUT VARCHAR2     -- エラー・メッセージ           --# 固定 #
+     ,ov_retcode    OUT VARCHAR2     -- リターン・コード             --# 固定 #
+     ,ov_errmsg     OUT VARCHAR2     -- ユーザー・エラー・メッセージ --# 固定 #
+    )
+  IS
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'pro_duplication_item_chk'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+--
+    -- *** ローカル変数 ***
+    lv_dup_item_err_flg VARCHAR2(1);  -- 品目重複エラーフラグ
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    <<line_loop>>  -- ヘッダに紐付く明細全件ループ
+    FOR ln_line_loop_cnt IN in_plan_cnt - gn_line_number + 1..in_plan_cnt LOOP
+      <<chk_loop>>  -- 品目重複エラーチェックループ
+      FOR ln_chk_loop_cnt IN in_plan_cnt - gn_line_number + 1..in_plan_cnt LOOP
+        -- 同一品目がある場合、品目重複エラー
+        IF ((ln_line_loop_cnt <> ln_chk_loop_cnt)
+        AND (gt_to_plan(ln_line_loop_cnt).item_no  = gt_to_plan(ln_chk_loop_cnt).item_no)) THEN
+          -- エラーリスト作成
+          pro_err_list_make
+            (
+              iv_kind         => gv_tkn_msg_err                                --  in 種別   'エラー'
+             ,iv_dec          => gv_tkn_msg_hfn                                --  in 確定   '-'
+             ,iv_req_no       => gv_req_no                                     --  in 依頼No
+             ,iv_kyoten       => gt_to_plan(ln_line_loop_cnt).ktn              --  in 管轄拠点
+             ,iv_item         => gt_to_plan(ln_line_loop_cnt).item_no          --  in 品目
+             ,in_qty          => gt_to_plan(ln_line_loop_cnt).amount           --  in 数量
+             ,iv_ship_date    => TO_CHAR(gd_ship_day,'YYYY/MM/DD')             --  in 出庫日 [出荷予定日]
+             ,iv_arrival_date => TO_CHAR(gt_to_plan(ln_line_loop_cnt).for_date, 'YYYY/MM/DD')
+                                                                               --  in 着日
+             ,iv_err_msg      => gv_tkn_msg_25                                 --  in エラーメッセージ
+             ,iv_err_clm      => gv_tkn_msg_hfn                                --  in エラー項目  '-'
+             ,in_msg_seq      => gt_to_plan(ln_line_loop_cnt).dup_item_msg_seq --  in 品目重複メッセージ格納SEQ
+             ,ov_errbuf       => lv_errbuf                                     -- out エラー・メッセージ
+             ,ov_retcode      => lv_retcode                                    -- out リターン・コード
+             ,ov_errmsg       => lv_errmsg                                     -- out ユーザー・エラー・メッセージ
+            );
+--
+          -- 品目重複エラーフラグ：エラーあり
+          lv_dup_item_err_flg := gv_status_error;
+--
+          -- 品目重複エラーをみつけたら、品目重複エラーチェックループ終了
+          EXIT;
+        END IF;
+      END LOOP chk_loop;
+    END LOOP line_loop;
+--
+    -- 品目重複エラーがあった場合
+    IF (lv_dup_item_err_flg = gv_status_error) THEN
+      -- 共通エラーメッセージ 終了ST エラー登録
+      gv_err_sts := gv_status_error;
+      RAISE err_header_expt;
+    END IF;
+--
+  EXCEPTION
+--
+    -- *** 共通関数 警告・エラー ***
+    WHEN err_header_expt THEN
+      gv_err_flg := gv_1;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END pro_duplication_item_chk;
+-- 2008/10/09 H.Itou Add End
+--
   /**********************************************************************************
    * Procedure Name   : pro_load_eff_chk
    * Description      : 積載効率チェック (A-10)
@@ -2821,7 +2957,7 @@ AS
            ,iv_err_msg      => gv_tkn_msg_20                      --  in エラーメッセージ
            ,iv_err_clm      => gt_to_plan(i).amount               --  in エラー項目  [数量]
 -- 2008/08/18 H.Itou Add Start 積載効率メッセージを格納するSEQ番号
-           ,in_calc_load_eff_msg_seq => gt_to_plan(i).we_loading_msg_seq -- 積載効率(重量)メッセージ格納SEQ
+           ,in_msg_seq      => gt_to_plan(i).we_loading_msg_seq   -- 積載効率(重量)メッセージ格納SEQ
 --
 -- 2008/08/18 H.Itou Add End
            ,ov_errbuf       => lv_errbuf                          -- out エラー・メッセージ
@@ -2902,7 +3038,7 @@ AS
            ,iv_err_msg      => gv_tkn_msg_20                      --  in エラーメッセージ
            ,iv_err_clm      => gt_to_plan(i).amount               --  in エラー項目  [数量]
 -- 2008/08/18 H.Itou Add Start 積載効率メッセージを格納するSEQ番号
-           ,in_calc_load_eff_msg_seq => gt_to_plan(i).we_loading_msg_seq -- 積載効率(重量)メッセージ格納SEQ
+           ,in_msg_seq      => gt_to_plan(i).we_loading_msg_seq   -- 積載効率(重量)メッセージ格納SEQ
 -- 2008/08/18 H.Itou Add End
            ,ov_errbuf       => lv_errbuf                          -- out エラー・メッセージ
            ,ov_retcode      => lv_retcode                         -- out リターン・コード
@@ -3004,7 +3140,7 @@ AS
            ,iv_err_msg      => gv_tkn_msg_20                      --  in エラーメッセージ
            ,iv_err_clm      => gt_to_plan(i).amount               --  in エラー項目  [数量]
 -- 2008/08/18 H.Itou Add Start 積載効率メッセージを格納するSEQ番号
-           ,in_calc_load_eff_msg_seq => gt_to_plan(i).ca_loading_msg_seq -- 積載効率(容積)メッセージ格納SEQ
+           ,in_msg_seq      => gt_to_plan(i).ca_loading_msg_seq   -- 積載効率(容積)メッセージ格納SEQ
 -- 2008/08/18 H.Itou Add End
            ,ov_errbuf       => lv_errbuf                          -- out エラー・メッセージ
            ,ov_retcode      => lv_retcode                         -- out リターン・コード
@@ -3085,7 +3221,7 @@ AS
            ,iv_err_msg      => gv_tkn_msg_20                      --  in エラーメッセージ
            ,iv_err_clm      => gt_to_plan(i).amount               --  in エラー項目  [数量]
 -- 2008/08/18 H.Itou Add Start 積載効率メッセージを格納するSEQ番号
-           ,in_calc_load_eff_msg_seq => gt_to_plan(i).ca_loading_msg_seq -- 積載効率(容積)メッセージ格納SEQ
+           ,in_msg_seq      => gt_to_plan(i).ca_loading_msg_seq   -- 積載効率(容積)メッセージ格納SEQ
 -- 2008/08/18 H.Itou Add End
            ,ov_errbuf       => lv_errbuf                          -- out エラー・メッセージ
            ,ov_retcode      => lv_retcode                         -- out リターン・コード
@@ -3162,7 +3298,25 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-        gn_h_cnt := gn_h_cnt + 1;
+-- 2008/10/09 H.Itou Del Start ヘッダレコードを作る直前に移動
+--    gn_h_cnt := gn_h_cnt + 1;
+-- 2008/10/09 H.Itou Del End
+--
+-- 2008/10/09 H.Itou Add Start 統合テスト指摘240
+    -- =====================================================
+    -- 品目重複チェック (A-13)
+    -- =====================================================
+    pro_duplication_item_chk
+      (
+        in_plan_cnt       => in_plan_cnt        -- 対象としているForecastの件数
+       ,ov_errbuf         => lv_errbuf          -- エラー・メッセージ           --# 固定 #
+       ,ov_retcode        => lv_retcode         -- リターン・コード             --# 固定 #
+       ,ov_errmsg         => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+    IF (lv_retcode = gv_status_error) THEN
+      RAISE global_api_expt;
+    END IF;
+-- 2008/10/09 H.Itou Add End
 --
     -- =====================================================
     -- 積載効率チェック (A-10)
@@ -3179,76 +3333,85 @@ AS
       --RAISE global_process_expt;
     END IF;
 --
-    ------------------------------------------------------
-    -- 受注ヘッダアドオン作成用レコード変数へ格納       --
-    ------------------------------------------------------
+-- 2008/10/09 H.Itou Add Start
+    -- 品目重複エラーか、積載効率チェックエラーの時はヘッダレコードを作成しない。
+    IF (gv_err_flg <> gv_1) THEN
+      -- ヘッダ作成レコードカウントアップ
+      gn_h_cnt := gn_h_cnt + 1;
+-- 2008/10/09 H.Itou Add End
+      ------------------------------------------------------
+      -- 受注ヘッダアドオン作成用レコード変数へ格納       --
+      ------------------------------------------------------
 --
-    gt_h_order_header_id(gn_h_cnt)         := gn_headers_seq;              -- 受注ヘッダアドオンID
-    gt_h_order_type_id(gn_h_cnt)           := gv_odr_type;                 -- 受注タイプID
-    gt_h_organization_id(gn_h_cnt)         := gv_name_m_org;               -- 組織ID
-    gt_h_latest_external_flag(gn_h_cnt)    := gv_yes;                      -- 最新フラグ
-    gt_h_ordered_date(gn_h_cnt)            := gd_sysdate;                  -- 受注日
-    --gt_h_customer_id(gn_h_cnt)             := gt_to_plan(gn_i).par_id;     -- 顧客ID
-    --gt_h_customer_code(gn_h_cnt)           := gt_to_plan(gn_i).par_num;    -- 顧客
-    --gt_h_deliver_to_id(gn_h_cnt)           := gt_to_plan(gn_i).p_s_site;   -- 配送先ID
-    --gt_h_deliver_to(gn_h_cnt)              := gt_to_plan(gn_i).ship_t_no;  -- 配送先
-    --
-    gt_h_customer_id(gn_h_cnt)             := gt_to_plan(in_plan_cnt).par_id;     -- 顧客ID
-    gt_h_customer_code(gn_h_cnt)           := gt_to_plan(in_plan_cnt).par_num;    -- 顧客
-    gt_h_deliver_to_id(gn_h_cnt)           := gt_to_plan(in_plan_cnt).p_s_site;   -- 配送先ID
-    gt_h_deliver_to(gn_h_cnt)              := gt_to_plan(in_plan_cnt).ship_t_no;  -- 配送先
-    --
+      gt_h_order_header_id(gn_h_cnt)         := gn_headers_seq;              -- 受注ヘッダアドオンID
+      gt_h_order_type_id(gn_h_cnt)           := gv_odr_type;                 -- 受注タイプID
+      gt_h_organization_id(gn_h_cnt)         := gv_name_m_org;               -- 組織ID
+      gt_h_latest_external_flag(gn_h_cnt)    := gv_yes;                      -- 最新フラグ
+      gt_h_ordered_date(gn_h_cnt)            := gd_sysdate;                  -- 受注日
+      --gt_h_customer_id(gn_h_cnt)             := gt_to_plan(gn_i).par_id;     -- 顧客ID
+      --gt_h_customer_code(gn_h_cnt)           := gt_to_plan(gn_i).par_num;    -- 顧客
+      --gt_h_deliver_to_id(gn_h_cnt)           := gt_to_plan(gn_i).p_s_site;   -- 配送先ID
+      --gt_h_deliver_to(gn_h_cnt)              := gt_to_plan(gn_i).ship_t_no;  -- 配送先
+      --
+      gt_h_customer_id(gn_h_cnt)             := gt_to_plan(in_plan_cnt).par_id;     -- 顧客ID
+      gt_h_customer_code(gn_h_cnt)           := gt_to_plan(in_plan_cnt).par_num;    -- 顧客
+      gt_h_deliver_to_id(gn_h_cnt)           := gt_to_plan(in_plan_cnt).p_s_site;   -- 配送先ID
+      gt_h_deliver_to(gn_h_cnt)              := gt_to_plan(in_plan_cnt).ship_t_no;  -- 配送先
+      --
 -- 2008/08/19 H.Itou Add Start T_S_611
-    gt_h_career_id(gn_h_cnt)               := gt_to_plan(in_plan_cnt).career_id;            -- 運送業者ID
-    gt_h_freight_carrier_code(gn_h_cnt)    := gt_to_plan(in_plan_cnt).freight_carrier_code; -- 運送業者
+      gt_h_career_id(gn_h_cnt)               := gt_to_plan(in_plan_cnt).career_id;            -- 運送業者ID
+      gt_h_freight_carrier_code(gn_h_cnt)    := gt_to_plan(in_plan_cnt).freight_carrier_code; -- 運送業者
 -- 2008/08/19 H.Itou Add End
-    gt_h_shipping_method_code(gn_h_cnt)    := gv_max_kbn;                  -- 配送区分
-    gt_h_request_no(gn_h_cnt)              := gv_req_no;                   -- 依頼No
-    gt_h_req_status(gn_h_cnt)              := gr_ship_st;                  -- ステータス
-    gt_h_schedule_ship_date(gn_h_cnt)      := gd_ship_day;                 -- 出荷予定日
-    --gt_h_schedule_arrival_date(gn_h_cnt)   := gt_to_plan(gn_i).for_date;   -- 着荷予定日
-    gt_h_schedule_arrival_date(gn_h_cnt)   := gt_to_plan(in_plan_cnt).for_date;   -- 着荷予定日
-    gt_h_notif_status(gn_h_cnt)            := gr_notice_st;                -- 通知ステータス
-    --gt_h_deliver_from_id(gn_h_cnt)         := gt_to_plan(gn_i).ship_id;    -- 出荷元ID
-    --gt_h_deliver_from(gn_h_cnt)            := gt_to_plan(gn_i).ship_fr;    -- 出荷元保管場所
-    --gt_h_Head_sales_branch(gn_h_cnt)       := gt_to_plan(gn_i).ktn;        -- 管轄拠点
-    gt_h_deliver_from_id(gn_h_cnt)         := gt_to_plan(in_plan_cnt).ship_id;    -- 出荷元ID
-    gt_h_deliver_from(gn_h_cnt)            := gt_to_plan(in_plan_cnt).ship_fr;    -- 出荷元保管場所
-    gt_h_Head_sales_branch(gn_h_cnt)       := gt_to_plan(in_plan_cnt).ktn;        -- 管轄拠点
-    gt_h_input_sales_branch(gn_h_cnt)      := gr_param.base;               -- 入力拠点
-    --gt_h_prod_class(gn_h_cnt)              := gt_to_plan(gn_i).skbn;       -- 商品区分
-    gt_h_prod_class(gn_h_cnt)              := gt_to_plan(in_plan_cnt).skbn; -- 商品区分
-    gt_h_sum_quantity(gn_h_cnt)            := gn_ttl_amount;               -- 合計数量
-    gt_h_small_quantity(gn_h_cnt)          := gn_ttl_ship_am;              -- 小口個数
-    gt_h_label_quantity(gn_h_cnt)          := gn_ttl_ship_am;              -- ラベル枚数
-    gt_h_loading_eff_weight(gn_h_cnt)      := gn_we_loading;               -- 重量積載効率
-    gt_h_loading_eff_capacity(gn_h_cnt)    := gn_ca_loading;               -- 容積積載効率
-    gt_h_based_weight(gn_h_cnt)            := gn_leaf_we;                  -- 基本重量
-    gt_h_based_capacity(gn_h_cnt)          := gn_leaf_ca;                  -- 基本容積
-    gt_h_sum_weight(gn_h_cnt)              := gn_h_ttl_weight;             -- 積載重量合計
-    gt_h_sum_capacity(gn_h_cnt)            := gn_h_ttl_capa;               -- 積載容積合計
-    gt_h_sum_pallet_weight(gn_h_cnt)       := gn_h_ttl_pallet;             -- 合計パレット重量
-    --gt_h_weight_capacity_class(gn_h_cnt)   := gt_to_plan(gn_i).wei_kbn;      -- 重量容積区分
-    gt_h_weight_capacity_class(gn_h_cnt)   := gt_to_plan(in_plan_cnt).wei_kbn; -- 重量容積区分
-    gt_h_actual_confirm_class(gn_h_cnt)    := gv_no;                       -- 実績計上済区分
-    gt_h_new_modify_flg(gn_h_cnt)          := gv_no;                       -- 新規修正フラグ
-    gt_h_per_management_dept(gn_h_cnt)     := NULL;                        -- 成績管理部署
-    gt_h_screen_update_date(gn_h_cnt)      := NULL;                        -- 画面更新日時
+      gt_h_shipping_method_code(gn_h_cnt)    := gv_max_kbn;                  -- 配送区分
+      gt_h_request_no(gn_h_cnt)              := gv_req_no;                   -- 依頼No
+      gt_h_req_status(gn_h_cnt)              := gr_ship_st;                  -- ステータス
+      gt_h_schedule_ship_date(gn_h_cnt)      := gd_ship_day;                 -- 出荷予定日
+      --gt_h_schedule_arrival_date(gn_h_cnt)   := gt_to_plan(gn_i).for_date;   -- 着荷予定日
+      gt_h_schedule_arrival_date(gn_h_cnt)   := gt_to_plan(in_plan_cnt).for_date;   -- 着荷予定日
+      gt_h_notif_status(gn_h_cnt)            := gr_notice_st;                -- 通知ステータス
+      --gt_h_deliver_from_id(gn_h_cnt)         := gt_to_plan(gn_i).ship_id;    -- 出荷元ID
+      --gt_h_deliver_from(gn_h_cnt)            := gt_to_plan(gn_i).ship_fr;    -- 出荷元保管場所
+      --gt_h_Head_sales_branch(gn_h_cnt)       := gt_to_plan(gn_i).ktn;        -- 管轄拠点
+      gt_h_deliver_from_id(gn_h_cnt)         := gt_to_plan(in_plan_cnt).ship_id;    -- 出荷元ID
+      gt_h_deliver_from(gn_h_cnt)            := gt_to_plan(in_plan_cnt).ship_fr;    -- 出荷元保管場所
+      gt_h_Head_sales_branch(gn_h_cnt)       := gt_to_plan(in_plan_cnt).ktn;        -- 管轄拠点
+      gt_h_input_sales_branch(gn_h_cnt)      := gr_param.base;               -- 入力拠点
+      --gt_h_prod_class(gn_h_cnt)              := gt_to_plan(gn_i).skbn;       -- 商品区分
+      gt_h_prod_class(gn_h_cnt)              := gt_to_plan(in_plan_cnt).skbn; -- 商品区分
+      gt_h_sum_quantity(gn_h_cnt)            := gn_ttl_amount;               -- 合計数量
+      gt_h_small_quantity(gn_h_cnt)          := gn_ttl_ship_am;              -- 小口個数
+      gt_h_label_quantity(gn_h_cnt)          := gn_ttl_ship_am;              -- ラベル枚数
+      gt_h_loading_eff_weight(gn_h_cnt)      := gn_we_loading;               -- 重量積載効率
+      gt_h_loading_eff_capacity(gn_h_cnt)    := gn_ca_loading;               -- 容積積載効率
+      gt_h_based_weight(gn_h_cnt)            := gn_leaf_we;                  -- 基本重量
+      gt_h_based_capacity(gn_h_cnt)          := gn_leaf_ca;                  -- 基本容積
+      gt_h_sum_weight(gn_h_cnt)              := gn_h_ttl_weight;             -- 積載重量合計
+      gt_h_sum_capacity(gn_h_cnt)            := gn_h_ttl_capa;               -- 積載容積合計
+      gt_h_sum_pallet_weight(gn_h_cnt)       := gn_h_ttl_pallet;             -- 合計パレット重量
+      --gt_h_weight_capacity_class(gn_h_cnt)   := gt_to_plan(gn_i).wei_kbn;      -- 重量容積区分
+      gt_h_weight_capacity_class(gn_h_cnt)   := gt_to_plan(in_plan_cnt).wei_kbn; -- 重量容積区分
+      gt_h_actual_confirm_class(gn_h_cnt)    := gv_no;                       -- 実績計上済区分
+      gt_h_new_modify_flg(gn_h_cnt)          := gv_no;                       -- 新規修正フラグ
+      gt_h_per_management_dept(gn_h_cnt)     := NULL;                        -- 成績管理部署
+      gt_h_screen_update_date(gn_h_cnt)      := NULL;                        -- 画面更新日時
 -- add start 1.7 uehara
-    gt_h_confirm_request_class(gn_h_cnt)   := gv_0;                        -- 物流担当確認依頼区分
-    gt_h_freight_charge_class(gn_h_cnt)    := gv_1;                        -- 運賃区分
-    gt_h_no_cont_freight_class(gn_h_cnt)   := gv_0;                        -- 契約外運賃区分
+      gt_h_confirm_request_class(gn_h_cnt)   := gv_0;                        -- 物流担当確認依頼区分
+      gt_h_freight_charge_class(gn_h_cnt)    := gv_1;                        -- 運賃区分
+      gt_h_no_cont_freight_class(gn_h_cnt)   := gv_0;                        -- 契約外運賃区分
 -- add end 1.7 uehara
-    gt_h_created_by(gn_h_cnt)              := gn_created_by;               -- 作成者
-    gt_h_creation_date(gn_h_cnt)           := gd_creation_date;            -- 作成日
-    gt_h_last_updated_by(gn_h_cnt)         := gn_last_upd_by;              -- 最終更新者
-    gt_h_last_update_date(gn_h_cnt)        := gd_last_upd_date;            -- 最終更新日
-    gt_h_last_update_login(gn_h_cnt)       := gn_last_upd_login;           -- 最終更新ログイン
-    gt_h_request_id(gn_h_cnt)              := gn_request_id;               -- 要求ID
-    gt_h_program_application_id(gn_h_cnt)  := gn_prog_appl_id;             -- プログラムアプリID
-    gt_h_program_id(gn_h_cnt)              := gn_prog_id;                  -- プログラムID
-    gt_h_program_update_date(gn_h_cnt)     := gd_prog_upd_date;            -- プログラム更新日
+      gt_h_created_by(gn_h_cnt)              := gn_created_by;               -- 作成者
+      gt_h_creation_date(gn_h_cnt)           := gd_creation_date;            -- 作成日
+      gt_h_last_updated_by(gn_h_cnt)         := gn_last_upd_by;              -- 最終更新者
+      gt_h_last_update_date(gn_h_cnt)        := gd_last_upd_date;            -- 最終更新日
+      gt_h_last_update_login(gn_h_cnt)       := gn_last_upd_login;           -- 最終更新ログイン
+      gt_h_request_id(gn_h_cnt)              := gn_request_id;               -- 要求ID
+      gt_h_program_application_id(gn_h_cnt)  := gn_prog_appl_id;             -- プログラムアプリID
+      gt_h_program_id(gn_h_cnt)              := gn_prog_id;                  -- プログラムID
+      gt_h_program_update_date(gn_h_cnt)     := gd_prog_upd_date;            -- プログラム更新日
 --
+-- 2008/10/09 H.Itou Add Start
+    END IF;
+-- 2008/10/09 H.Itou Add End
     -- 受注ヘッダアドオン項目用変数 初期化
     gn_ttl_ship_am  := 0;       -- 出荷単位換算数
     gn_ttl_amount   := 0;       -- 合計数量
@@ -3642,9 +3805,9 @@ AS
       THEN
 --
         ln_plan_cnt := gn_i - 1;
-      -- =====================================================
-      -- 受注ヘッダアドオンレコード生成 (A-11)
-      -- =====================================================
+        -- =====================================================
+        -- 受注ヘッダアドオンレコード生成 (A-11)
+        -- =====================================================
         pro_headers_create
           (
             in_plan_cnt       => ln_plan_cnt        -- 対象としているForecastの件数
@@ -3655,6 +3818,10 @@ AS
         IF (lv_retcode = gv_status_error) THEN
           RAISE global_process_expt;
         END IF;
+-- 2008/10/09 H.Itou Add Start A-11内で発生したエラーの初期化を行う。
+        -- エラー確認用フラグ初期化
+        gv_err_flg := gv_0;
+-- 2008/10/09 H.Itou Add End
 --
       END IF;
 --
@@ -3812,6 +3979,22 @@ AS
           gv_err_flg := gv_0;
         END IF;
       END IF;
+-- 2008/10/09 H.Itou Add Start A-9から移動(A-9の処理が最後までいかない場合があるため)
+      -- テーブルカウント
+      gn_cut := gn_cut + 1;
+      gt_err_msg(gn_cut).err_msg  := NULL;
+      gt_to_plan(gn_i).dup_item_msg_seq := gn_cut; -- 品目重複メッセージ格納SEQ
+--
+      -- テーブルカウント
+      gn_cut := gn_cut + 1;
+      gt_err_msg(gn_cut).err_msg  := NULL;
+      gt_to_plan(gn_i).we_loading_msg_seq := gn_cut; -- 積載効率(重量)メッセージ格納SEQ
+--
+      -- テーブルカウント
+      gn_cut := gn_cut + 1;
+      gt_err_msg(gn_cut).err_msg  := NULL;
+      gt_to_plan(gn_i).ca_loading_msg_seq := gn_cut; -- 積載効率(容積)メッセージ格納SEQ
+-- 2008/10/09 H.Itou Add End
 --
       -- 拠点/出荷元/着荷予定日/重量容積区分判定用項目更新
       gv_ktn      := gt_to_plan(i).ktn;          -- 拠点
@@ -3825,9 +4008,9 @@ AS
     END LOOP headers_data_loop;
 --
     IF (gt_to_plan.COUNT <> 0) THEN
-      -- =====================================================
-      -- 受注ヘッダアドオンレコード生成 (A-11)
-      -- =====================================================
+        -- =====================================================
+        -- 受注ヘッダアドオンレコード生成 (A-11)
+        -- =====================================================
         pro_headers_create
           (
              in_plan_cnt       => (gn_i)            -- 対象としているForecastの件数
