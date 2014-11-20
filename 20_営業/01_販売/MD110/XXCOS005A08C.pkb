@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A08C (body)
  * Description      : CSVファイルの受注取込
  * MD.050           : CSVファイルの受注取込 MD050_COS_005_A08
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *  2009/12/16    1.16  N.Maeda          [E_本稼動_00495] 締め時間のNULL判定用IF文設定箇所修正
  *  2009/12/28    1.17  N.Maeda          [E_本稼動_00683]出荷予定日取得関数による翌稼働日算出の追加。
  *  2010/01/12    1.18  M.Uehara         [E_本稼動_01011]問屋CSV取込時「出荷日」が登録されている場合、受注の出荷予定日に登録。
+ *  2010/04/15    1.19  M.Sano           [E_本稼動_02317] 売上拠点の判定条件修正
  *
  *****************************************************************************************/
 --
@@ -123,6 +124,9 @@ AS
   -- ===============================
   -- ユーザー定義例外
   -- ===============================
+--****************************** 2010/04/15 1.19 M.Sano ADD  START *******************************--
+  global_proc_date_err_expt         EXCEPTION;                                                       --業務日付取得例外ハンドラ
+--****************************** 2010/04/15 1.19 M.Sano ADD  END   *******************************--
   global_get_profile_expt           EXCEPTION;                                                       --プロファイル取得例外ハンドラ
   global_get_stock_org_id_expt      EXCEPTION;                                                       --営業用在庫組織IDの取得外ハンドラ
   global_get_order_source_expt      EXCEPTION;                                                       --受注ソース情報の取得ハンドラ
@@ -343,6 +347,10 @@ AS
   cv_order_qty_err                  CONSTANT fnd_new_messages.message_name%TYPE
                                               := 'APP-XXCOS1-11327';
 -- *********** 2009/12/04 1.15 N.Maeda ADD  END  ***********--
+--****************************** 2010/04/15 1.19 M.Sano ADD  START *******************************--
+  ct_msg_process_date_err   CONSTANT  fnd_new_messages.message_name%TYPE
+                                              :=  'APP-XXCOS1-00014';                                -- 業務日付取得エラー
+--****************************** 2010/04/15 1.19 M.Sano ADD  END   *******************************--
 --
   --トークン
   cv_tkn_profile                    CONSTANT  VARCHAR2(512) := 'PROFILE';                            --プロファイル名
@@ -478,6 +486,9 @@ AS
   cn_category_class_digit           CONSTANT NUMBER         := 4;                                    -- 分類区分(桁数)
   cn_category_class_stand           CONSTANT NUMBER         := 48;                                   -- 分類区分(項目順位)
 -- *********** 2009/12/04 1.15 N.Maeda ADD  END  ***********--
+--****************************** 2010/04/15 1.19 M.Sano ADD  START *******************************--
+  cv_trunc_mm                       CONSTANT VARCHAR2(2)    := 'MM';                                 --日付切捨用
+--****************************** 2010/04/15 1.19 M.Sano ADD  END   *******************************--
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -558,6 +569,9 @@ AS
 -- ********************* 2009/11/18 1.14 N.Maeda ADD START ********************* -
   gt_case_num                       ic_item_mst_b.attribute11%TYPE;                                  --ケース入数
 -- ********************* 2009/11/18 1.14 N.Maeda ADD  END  ********************* --
+--****************************** 2010/04/15 1.19 M.Sano ADD  START *******************************--
+  gd_process_date                   DATE;                                                            --業務日付
+--****************************** 2010/04/15 1.19 M.Sano ADD  END   *******************************--
 --
   /**********************************************************************************
    * Procedure Name   : para_out
@@ -1188,8 +1202,18 @@ AS
       RAISE global_get_stock_org_id_expt;
     END IF;
 --
+--****************************** 2010/04/15 1.19 M.Sano ADD  START *******************************--
     ------------------------------------
-    -- 4.受注ソース名の取得
+    -- 4.業務日付取得
+    ------------------------------------
+    gd_process_date := TRUNC( xxccp_common_pkg2.get_process_date );
+    IF  ( gd_process_date IS NULL ) THEN
+      RAISE global_proc_date_err_expt;
+    END IF;
+--
+--****************************** 2010/04/15 1.19 M.Sano ADD  END   *******************************--
+    ------------------------------------
+    -- 5.受注ソース名の取得
     ------------------------------------
     BEGIN
       --
@@ -1216,7 +1240,7 @@ AS
     END;
 --
     ------------------------------------
-    -- 5.受注ソースIDの取得
+    -- 6.受注ソースIDの取得
     ------------------------------------
     BEGIN
     --
@@ -1240,7 +1264,7 @@ AS
     END;
 --
     ------------------------------------
-    -- 6.受注タイプ情報の取得(ヘッダー)
+    -- 7.受注タイプ情報の取得(ヘッダー)
     ------------------------------------
     BEGIN
     --
@@ -1273,7 +1297,7 @@ AS
     END;
 --
     ------------------------------------
-    -- 6.受注タイプ情報の取得(明細)
+    -- 8.受注タイプ情報の取得(明細)
     ------------------------------------
     BEGIN
     --
@@ -1306,7 +1330,7 @@ AS
     END;
 --
     ------------------------------------
-    -- 7.ケース単位(国際CSV)
+    -- 9.ケース単位(国際CSV)
     ------------------------------------
     gv_case_uom := FND_PROFILE.VALUE( cv_case_uom_code );
 --
@@ -1319,7 +1343,7 @@ AS
       RAISE global_get_profile_expt;
     END IF;
     ------------------------------------
-    -- 8.生産営業単位名称
+    -- 10.生産営業単位名称
     ------------------------------------
     -- 営業単位の取得
     gv_prod_ou_nm := FND_PROFILE.VALUE( ct_prod_ou_nm );
@@ -1333,7 +1357,7 @@ AS
       RAISE global_get_profile_expt;
     END IF;
     ------------------------------------
-    -- 9.生産営業単位ID
+    -- 11.生産営業単位ID
     ------------------------------------
     BEGIN
       SELECT hou.organization_id organization_id
@@ -1350,7 +1374,7 @@ AS
         RAISE global_get_profile_expt;
     END;
     ------------------------------------
-    -- 10.自拠点取得
+    -- 12.自拠点取得
     ------------------------------------
     OPEN  get_data_cur;
     -- バルクフェッチ
@@ -1359,7 +1383,7 @@ AS
     CLOSE get_data_cur;
 --****************************** 2009/07/10 1.7 T.Tominaga ADD START ******************************
     ------------------------------------
-    -- 11.待機間隔の取得
+    -- 13.待機間隔の取得
     ------------------------------------
     -- XXCOS:待機間隔の取得
     gn_interval := TO_NUMBER( FND_PROFILE.VALUE( ct_prof_interval ) );
@@ -1374,7 +1398,7 @@ AS
     END IF;
 --
     ------------------------------------
-    -- 12.最大待機時間の取得
+    -- 14.最大待機時間の取得
     ------------------------------------
     -- XXCOS:最大待機時間の取得
     gn_max_wait := TO_NUMBER( FND_PROFILE.VALUE( ct_prof_max_wait ) );
@@ -1391,7 +1415,7 @@ AS
 --
 -- ************** 2009/10/30 1.13 N.Maeda ADD START ************** --
     ------------------------------------
-    -- ログインユーザ情報取得
+    -- 15.ログインユーザ情報取得
     ------------------------------------
     BEGIN
       SELECT    fnd_global.user_id       -- ログインユーザID
@@ -1411,7 +1435,7 @@ AS
     END;
     --
     ------------------------------------
-    --プロファイル「XXCOS:生産への切替用職責名称」取得
+    -- 16.プロファイル「XXCOS:生産への切替用職責名称」取得
     ------------------------------------
     lt_resp_prod := FND_PROFILE.VALUE(
       name => cv_resp_prod);
@@ -1427,7 +1451,7 @@ AS
     END IF;
 --
     ------------------------------------
-    --  切替先ログイン情報取得
+    -- 17.切替先ログイン情報取得
     ------------------------------------
     BEGIN
       SELECT   frv.responsibility_id    -- 切替先職責ID
@@ -1449,6 +1473,17 @@ AS
 -- ************** 2009/10/30 1.13 N.Maeda ADD  END  ************** --
 --
   EXCEPTION
+--****************************** 2010/04/15 1.19 M.Sano ADD  START *******************************--
+    -- *** 業務日付取得例外ハンドラ ***
+    WHEN global_proc_date_err_expt THEN
+      ov_errmsg  :=  xxccp_common_pkg.get_msg(
+                       iv_application   =>  ct_xxcos_appl_short_name,
+                       iv_name          =>  ct_msg_process_date_err
+                     );
+      ov_errbuf   :=  SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode  :=  cv_status_error;
+--
+--****************************** 2010/04/15 1.19 M.Sano ADD  END   *******************************--
      --***** プロファイル取得例外ハンドラ(MO:営業単位の取得)
      --***** プロファイル取得例外ハンドラ(XXCOI:在庫組織コードの取得)
      --***** プロファイル取得例外ハンドラ(受注ソースの取得)
@@ -2556,6 +2591,10 @@ AS
     lv_jan_cd_name    VARCHAR2(50);    --JANコード
     lv_stock_name     VARCHAR2(50);    --在庫コード
     lv_sej_cd_name    VARCHAR2(50);    --SEJ商品コード
+--****************************** 2010/04/15 1.19 M.Sano ADD  START *******************************--
+    ld_process_month  DATE;            --業務日付(月単位)
+    ld_request_month  DATE;            --要求日　(月単位)
+--****************************** 2010/04/15 1.19 M.Sano ADD  END   *******************************--
 --
     -- *** ローカル・カーソル ***
     -- *** ローカル・レコード ***
@@ -2572,20 +2611,36 @@ AS
     -- ***   マスタデータチェック処理      ***
     -- ***************************************
 --
+--****************************** 2010/04/15 1.19 M.Sano ADD  START *******************************--
+    -- 業務日付を月単位に変更(yyyy/mm/01:に変更)
+    ld_process_month := TRUNC(gd_process_date, cv_trunc_mm);
+    -- 要求日　を月単位に変更(yyyy/mm/01:に変更)
+    ld_request_month := TRUNC(id_request_date, cv_trunc_mm);
+--****************************** 2010/04/15 1.19 M.Sano ADD  END   *******************************--
     ------------------------------------
-    -- 1.顧客追加情報マスタのチェック
+    -- 1.顧客追加情報マスタのチェック(問屋CSV)
     --  (チェーン店コードとセンターコードのチェック)
     ------------------------------------
     IF ( iv_get_format = cv_tonya_format )  THEN
       BEGIN
-        SELECT  accounts.account_number,                                          -- 顧客コード
-                addon.delivery_base_code,                                         -- 納品拠点コード
+--****************************** 2010/04/15 1.19 M.Sano MOD  START *******************************--
+--        SELECT  accounts.account_number,                                          -- 顧客コード
+--                addon.delivery_base_code,                                         -- 納品拠点コード
+--                CASE
+----                  WHEN rsv_sale_base_act_date > id_order_date THEN
+--                    addon.past_sale_base_code
+--                  ELSE
+--                    addon.sale_base_code
+--                END                                                               -- 売上 or 前月 拠点コード
+        SELECT  accounts.account_number    account_number,                        -- 顧客コード
+                addon.delivery_base_code   delivery_base_code,                    -- 納品拠点コード
                 CASE
-                  WHEN rsv_sale_base_act_date > id_order_date THEN
+                  WHEN ld_process_month > ld_request_month THEN
                     addon.past_sale_base_code
                   ELSE
                     addon.sale_base_code
-                END                                                               -- 売上 or 前月 拠点コード
+                END                        sale_base_code                         -- 売上 or 前月 拠点コード
+--****************************** 2010/04/15 1.19 M.Sano MOD  END   *******************************--
         INTO    ov_account_number,                                                -- 顧客コード
                 ov_delivery_base_code,                                            -- 納品拠点コード
                 ov_salse_base_code
@@ -2695,19 +2750,29 @@ AS
       END;
 --
     ------------------------------------
-    -- 2.顧客追加情報マスタのチェック
+    -- 2.顧客追加情報マスタのチェック(国際CSV)
     --  (納品先)
     ------------------------------------
     ELSIF ( iv_get_format = cv_kokusai_format ) THEN
       BEGIN
-        SELECT  accounts.account_number,                                          -- 顧客コード
-                addon.delivery_base_code,                                         -- 納品拠点コード
+--****************************** 2010/04/15 1.19 M.Sano MOD  START *******************************--
+--        SELECT  accounts.account_number,                                          -- 顧客コード
+--                addon.delivery_base_code,                                         -- 納品拠点コード
+--                CASE
+--                  WHEN rsv_sale_base_act_date > id_order_date THEN 
+--                    addon.past_sale_base_code
+--                  ELSE
+--                    addon.sale_base_code
+--                END                                                               -- 売上 or 前月 拠点コード
+        SELECT  accounts.account_number    account_number,                        -- 顧客コード
+                addon.delivery_base_code   delivery_base_code,                    -- 納品拠点コード
                 CASE
-                  WHEN rsv_sale_base_act_date > id_order_date THEN 
+                  WHEN ld_process_month > ld_request_month THEN
                     addon.past_sale_base_code
                   ELSE
                     addon.sale_base_code
-                END                                                               -- 売上 or 前月 拠点コード
+                END                        sale_base_code                         -- 売上 or 前月 拠点コード
+--****************************** 2010/04/15 1.19 M.Sano MOD  END   *******************************--
         INTO    ov_account_number,                                                -- 顧客コード
                 ov_delivery_base_code,                                            -- 納品拠点コード
                 ov_salse_base_code                                                -- 売上or前月拠点コード
