@@ -16,6 +16,7 @@
 ##        更新履歴：   SCS 長濱              2009/07/06 1.0.1                 ##
 ##                       初版                                                 ##
 ##                     SCS    川田           2009/11/26 1.0.2                 ##
+##                     SCS    川田           2009/12/01 1.0.3                 ##
 ##                                                                            ##
 ##   [戻り値]                                                                 ##
 ##      0 : 正常                                                              ##
@@ -148,6 +149,10 @@ do
          then
             /usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} >> ${L_rogumei}
             /usr/bin/find ${L_direkutori} -name "${L_fmei}" -mtime +${L_hozonkikan} -exec rm {} \;
+            if [ ${L_fmei} = "access_log.*" ]
+            then
+               /usr/bin/find ${L_direkutori} -name "access_log.*" -mtime 1 -exec /usr/bin/gzip {} \;
+            fi
          else
             echo ${TE_ZCZZ00700} >> ${L_rogumei}
          fi
