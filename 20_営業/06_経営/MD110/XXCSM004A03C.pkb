@@ -7,7 +7,7 @@ AS
  * Description      : 従業員マスタと資格ポイントマスタから各営業員の資格ポイントを算出し、
  *                  : 新規獲得ポイント顧客別履歴テーブルに登録します。
  * MD.050           : MD050_CSM_004_A03_新規獲得ポイント集計（資格ポイント集計処理）
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008-12-12    1.0   T.Tsukino        新規作成
  *  2009-04-15    1.1   M.Ohtsuki       ［T1_0568］新・旧職務コードNULL値の対応
+ *  2009-07-01    1.2   M.Ohtsuki       ［SCS障害管理番号0000253］対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -852,7 +853,21 @@ AS
                per_people_f                ppf                                    --従業員マスタ
               ,per_periods_of_service      ppos                                   --従業員サービスマスタ
               ,per_all_assignments_f       paaf                                   --従業員アサイメントマスタ
-      WHERE    ppf.person_id = ppos.person_id                                     -- (紐付け) 従業員マスタ．従業員ID = 従業員サービスマスタ．従業員ID
+--//+ADD START 2009/07/01 0000253 M.Ohtsuki
+              ,(SELECT   ippf.person_id                  person_id                                  -- 従業員ID
+                        ,MAX(ippf.effective_start_date)  effective_start_date                       -- 最新(適用開始日)
+                FROM     per_people_f      ippf                                                     -- 従業員マスタ
+                WHERE    ippf.current_emp_or_apl_flag = 'Y'                                         -- 有効フラグ
+                GROUP BY ippf.person_id)   ippf                                                     -- 従業員ID
+--//+ADD END   2009/07/01 0000253 M.Ohtsuki
+--//+UPD START 2009/07/01 0000253 M.Ohtsuki
+--      WHERE    ppf.person_id = ppos.person_id                                     -- (紐付け) 従業員マスタ．従業員ID = 従業員サービスマスタ．従業員ID
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+      WHERE    ippf.person_id = ppf.person_id                                                       -- 従業員ID紐付↓
+      AND      ippf.effective_start_date = ppf.effective_start_date                                 -- 適用開始日紐付け
+      AND      paaf.effective_start_date = ppf.effective_start_date                                 -- 適用開始日紐付け
+      AND      paaf.period_of_service_id = ppos.period_of_service_id                                -- サービスID紐付け
+--//+UPD END   2009/07/01 0000253 M.Ohtsuki
       AND      ppf.person_id = paaf.person_id                                     --（紐付け）従業員マスタ．従業員ID = 従業員アサインメントマスタ．従業員ID
       AND      ppos.date_start <= gd_process_date                                 --（抽出条件）入社年月日が業務日付以下
       AND     (ppos.actual_termination_date > gd_process_date
@@ -889,7 +904,21 @@ AS
                per_people_f                ppf                                    --従業員マスタ
               ,per_periods_of_service      ppos                                   --従業員サービスマスタ
               ,per_all_assignments_f       paaf                                   --従業員アサイメントマスタ
-      WHERE    ppf.person_id = ppos.person_id                                     -- (紐付け) 従業員マスタ．従業員ID = 従業員サービスマスタ．従業員ID
+--//+ADD START 2009/07/01 0000253 M.Ohtsuki
+              ,(SELECT   ippf.person_id                  person_id                                  -- 従業員ID
+                        ,MAX(ippf.effective_start_date)  effective_start_date                       -- 最新(適用開始日)
+                FROM     per_people_f      ippf                                                     -- 従業員マスタ
+                WHERE    ippf.current_emp_or_apl_flag = 'Y'                                         -- 有効フラグ
+                GROUP BY ippf.person_id)   ippf                                                     -- 従業員ID
+--//+ADD END   2009/07/01 0000253 M.Ohtsuki
+--//+UPD START 2009/07/01 0000253 M.Ohtsuki
+--      WHERE    ppf.person_id = ppos.person_id                                     -- (紐付け) 従業員マスタ．従業員ID = 従業員サービスマスタ．従業員ID
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+      WHERE    ippf.person_id = ppf.person_id                                                       -- 従業員ID紐付↓
+      AND      ippf.effective_start_date = ppf.effective_start_date                                 -- 適用開始日紐付け
+      AND      paaf.effective_start_date = ppf.effective_start_date                                 -- 適用開始日紐付け
+      AND      paaf.period_of_service_id = ppos.period_of_service_id                                -- サービスID紐付け
+--//+UPD END   2009/07/01 0000253 M.Ohtsuki
       AND      ppf.person_id = paaf.person_id                                     --（紐付け）従業員マスタ．従業員ID = 従業員アサインメントマスタ．従業員ID
       AND      ppos.date_start <= gd_process_date                                 --（抽出条件）入社年月日が業務日付以下
       AND     (ppos.actual_termination_date > gd_process_date
@@ -926,7 +955,21 @@ AS
                per_people_f                ppf                                    --従業員マスタ
               ,per_periods_of_service      ppos                                   --従業員サービスマスタ
               ,per_all_assignments_f       paaf                                   --従業員アサイメントマスタ
-      WHERE    ppf.person_id = ppos.person_id                                     -- (紐付け) 従業員マスタ．従業員ID = 従業員サービスマスタ．従業員ID
+--//+ADD START 2009/07/01 0000253 M.Ohtsuki
+              ,(SELECT   ippf.person_id                  person_id                                  -- 従業員ID
+                        ,MAX(ippf.effective_start_date)  effective_start_date                       -- 最新(適用開始日)
+                FROM     per_people_f      ippf                                                     -- 従業員マスタ
+                WHERE    ippf.current_emp_or_apl_flag = 'Y'                                         -- 有効フラグ
+                GROUP BY ippf.person_id)   ippf                                                     -- 従業員ID
+--//+ADD END   2009/07/01 0000253 M.Ohtsuki
+--//+UPD START 2009/07/01 0000253 M.Ohtsuki
+--      WHERE    ppf.person_id = ppos.person_id                                     -- (紐付け) 従業員マスタ．従業員ID = 従業員サービスマスタ．従業員ID
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+      WHERE    ippf.person_id = ppf.person_id                                                       -- 従業員ID紐付↓
+      AND      ippf.effective_start_date = ppf.effective_start_date                                 -- 適用開始日紐付け
+      AND      paaf.effective_start_date = ppf.effective_start_date                                 -- 適用開始日紐付け
+      AND      paaf.period_of_service_id = ppos.period_of_service_id                                -- サービスID紐付け
+--//+UPD END   2009/07/01 0000253 M.Ohtsuki
       AND      ppf.person_id = paaf.person_id                                     --（紐付け）従業員マスタ．従業員ID = 従業員アサインメントマスタ．従業員ID
       AND      ppos.date_start <= gd_process_date                                 --（抽出条件）入社年月日が業務日付以下
       AND     (ppos.actual_termination_date > gd_process_date
