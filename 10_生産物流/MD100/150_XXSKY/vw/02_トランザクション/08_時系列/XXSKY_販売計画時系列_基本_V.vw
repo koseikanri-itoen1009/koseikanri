@@ -216,7 +216,10 @@ SELECT
           SELECT
                   ICD.fiscal_year                                     year                --年度
                  ,MFDN.attribute5                                     generation          --世代
-                 ,MFDN.attribute3                                     hs_branch           --拠点
+                 -- 2009/05/12 T.Yoshimoto Mod Start 本番#1469
+                 --,MFDN.attribute3                                     hs_branch           --拠点
+                 ,MFDN.attribute5                                     hs_branch           --拠点
+                 -- 2009/05/12 T.Yoshimoto Mod End 本番#1469
                  ,MFDT.inventory_item_id                              inv_item_id         --品目ID(INV品目ID)
                   --年間
                  ,SUM( MFDT.current_forecast_quantity )               sum_year_qty        --年間合計数量
@@ -276,7 +279,10 @@ SELECT
           GROUP BY
                   ICD.fiscal_year                           --年度
                  ,MFDN.attribute5                           --世代
-                 ,MFDN.attribute3                           --拠点
+                 -- 2009/05/12 T.Yoshimoto Mod Start 本番#1469
+                 --,MFDN.attribute3                           --拠点
+                 ,MFDN.attribute5                           --拠点
+                 -- 2009/05/12 T.Yoshimoto Mod End 本番#1469
                  ,MFDT.inventory_item_id                    --品目ID(INV品目ID)
        )                           SMFC                     --販売計画集計
        ,xxsky_cust_accounts_v      BRCH                     --拠点名取得用（SYSDATEで有効データを抽出）
