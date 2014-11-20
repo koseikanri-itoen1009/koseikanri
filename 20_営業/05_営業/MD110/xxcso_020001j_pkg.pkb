@@ -46,8 +46,9 @@ AS
  *  2009/04/27    1.5   N.Yanagitaira    [障害T1_0708]入力項目チェック処理統一修正
  *                                                    chk_double_byte
  *                                                    chk_single_byte_kana
- *  2009-05-01    1.6   Tomoko.Mori      T1_0897対応
- *  2009/05/07    1.7   N.Yanagitaira     [障害T1_0200]VDリース料、費用合計算出方法修正
+ *  2009/05/01    1.6   T.Mori           [障害T1_0897]スキーマ名設定
+ *  2009/05/07    1.7   N.Yanagitaira    [障害T1_0200]VDリース料、費用合計算出方法修正
+ *  2009/06/05    1.8   N.Yanagitaira    [障害T1_1307]chk_single_byte_kana修正
  *****************************************************************************************/
 --
   -- ===============================
@@ -2427,7 +2428,11 @@ AS
 --
     lv_return_value := '1';
 --
-    lb_return_value := xxccp_common_pkg.chk_single_byte_kana(iv_value);
+-- 20090605_N.Yanagitaira T1_1307 Mod START
+--    lb_return_value := xxccp_common_pkg.chk_single_byte_kana(iv_value);
+    -- 共通関数の半角文字チェックを行う
+    lb_return_value := xxccp_common_pkg.chk_single_byte(iv_value);
+-- 20090605_N.Yanagitaira T1_1307 Mod END
 --
     IF NOT ( lb_return_value ) THEN
 --

@@ -34,11 +34,12 @@ AS
  *  2009/02/17    1.1   N.Yanagitaira    [CT1-012]decode_cont_manage_info追加
  *  2009/02/23    1.1   N.Yanagitaira    [内部障害-028]全角カナチェック処理不正修正
  *  2009/03/12    1.1   N.Yanagitaira    [CT2-058]get_sales_charge追加
- *  2009/04/03    1.2   N.Yanagitaira    [障害T1_0223]chk_duplicate_vendor_name修正
+ *  2009/04/03    1.2   N.Yanagitaira    [ST障害T1_0223]chk_duplicate_vendor_name修正
  *  2009/04/27    1.3   N.Yanagitaira    [ST障害T1_0708]入力項目チェック処理統一修正
  *                                                      chk_double_byte
  *                                                      chk_single_byte_kana
- *  2009-05-01    1.4   Tomoko.Mori      T1_0897対応
+ *  2009/05/01    1.4   T.Mori           [ST障害T1_0897]スキーマ名設定
+ *  2009/06/05    1.5   N.Yanagitaira    [ST障害T1_1307]chk_single_byte_kana修正
  *****************************************************************************************/
 --
   -- ===============================
@@ -1200,7 +1201,11 @@ AS
 --
     lv_return_value := '1';
 --
-    lb_return_value := xxccp_common_pkg.chk_single_byte_kana(iv_value);
+-- 20090605_N.Yanagitaira T1_1307 Mod START
+--    lb_return_value := xxccp_common_pkg.chk_single_byte_kana(iv_value);
+    -- 共通関数の半角文字チェックを行う
+    lb_return_value := xxccp_common_pkg.chk_single_byte(iv_value);
+-- 20090605_N.Yanagitaira T1_1307 Mod END
 --
     IF NOT ( lb_return_value ) THEN
 --
