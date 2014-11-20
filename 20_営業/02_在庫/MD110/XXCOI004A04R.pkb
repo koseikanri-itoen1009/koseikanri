@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI004A04R(body)
  * Description      : VD機内在庫表
  * MD.050           : MD050_COI_004_A04
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ------------------------ --------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009/09/08    1.6   N.Abe            [0001266]OPM品目アドオンの取得方法修正
  *  2009/10/21    1.7   N.Abe            [E_最終移行リハ_00502]物件マスタの機器区分を参照する修正
  *  2009/12/25    1.8   N.Abe            [E_本稼動_00222]顧客名称取得方法修正
+ *  2010/02/03    1.9   H.Sasaki         [E_本稼動_01410]品目未設定コラムを出力するよう変更
  *
  *****************************************************************************************/
 --
@@ -2026,7 +2027,10 @@ AS
            AND    iimb.item_id         = xsib.item_id 
            AND    iimb.attribute26 = '1')                                           sub_query   -- 2.品目情報サブクエリー
     WHERE  xmvc.customer_id  = lv_customer_id
-    AND    sub_query.item_id = CASE lv_output_period
+-- == 2010/02/03 V1.9 Modified START ===============================================================
+--    AND    sub_query.item_id = CASE lv_output_period
+    AND    sub_query.item_id(+) = CASE lv_output_period
+-- == 2010/02/03 V1.9 Modified END   ===============================================================
                                  WHEN '0' THEN xmvc.item_id
                                  WHEN '1' THEN xmvc.last_month_item_id
                                END
