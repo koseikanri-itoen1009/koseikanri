@@ -7,7 +7,7 @@ AS
  * Description      : 顧客マスタから新規獲得した顧客を抽出し、新規獲得ポイント顧客別履歴テーブル
  *                  : にデータを登録します。
  * MD.050           : 新規獲得ポイント集計（新規獲得ポイント集計処理）MD050_CSM_004_A04
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/27    1.0   n.izumi         新規作成
  *  2009/04/09    1.1   M.Ohtsuki      ［障害T1_0416］業務日付とシステム日付比較の不具合
+ *  2009/04/22    1.2   M.Ohtsuki      ［障害T1_0704］コード定義書の不具合
+ *  2009/04/22    1.2   M.Ohtsuki      ［障害T1_0713］情報確定判定処理の不具合
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -136,8 +138,10 @@ AS
   cv_post_level_name        CONSTANT VARCHAR2(100) := 'XXCSM1_CALC_POINT_POST_LEVEL';               -- ポイント算出用部署階層
   cv_set_of_bks_id_name     CONSTANT VARCHAR2(100) := 'GL_SET_OF_BKS_ID';                           -- 会計帳簿ID
   cv_closing_status_o       CONSTANT VARCHAR2(1)   := 'O';                                          -- 会計期間ステータス(オープン)
-  cv_closing_status_p       CONSTANT VARCHAR2(1)   := 'P';                                          -- 会計期間ステータス(永久クローズ)
-  cv_closing_status_c       CONSTANT VARCHAR2(1)   := 'C';                                          -- 会計期間ステータス(クローズ)
+--//+DEL START 2009/04/27 T1_0713 M.Ohtsuki
+--  cv_closing_status_p       CONSTANT VARCHAR2(1)   := 'P';                                          -- 会計期間ステータス(永久クローズ)
+--  cv_closing_status_c       CONSTANT VARCHAR2(1)   := 'C';                                          -- 会計期間ステータス(クローズ)
+--//+DEL END   2009/04/27 T1_0713 M.Ohtsuki
   cn_new_data               CONSTANT NUMBER        := 1;                                            -- ポイントデータ区分（1：新規獲得ポイント）
   cv_new_point              CONSTANT VARCHAR2(1)   := '1';                                          -- 新規ポイント区分(1：新規）
   cv_lang                   CONSTANT VARCHAR2(10)  := USERENV('LANG');                              -- 言語
@@ -164,9 +168,15 @@ AS
   cv_cond_all               CONSTANT VARCHAR2(1)   := '1';                                          -- ポイント付与条件1
   cv_cond_any               CONSTANT VARCHAR2(1)   := '2';                                          -- ポイント付与条件2
   cv_cond_sum               CONSTANT VARCHAR2(1)   := '3';                                          -- ポイント付与条件3
-  cv_business_low_type_s_vd CONSTANT VARCHAR2(2)   := '26';                                         -- 業態（小分類）フルサービス（消化）VD
-  cv_business_low_type_vd   CONSTANT VARCHAR2(2)   := '27';                                         -- 業態（小分類）フルサービスVD
-  cv_business_low_type_n_vd CONSTANT VARCHAR2(2)   := '28';                                         -- 業態（小分類）納品VD
+--//+UPD START 2009/04/22 T1_0704 M.Ohtsuki
+--  cv_business_low_type_s_vd CONSTANT VARCHAR2(2)   := '26';                                         -- 業態（小分類）フルサービス（消化）VD
+--  cv_business_low_type_vd   CONSTANT VARCHAR2(2)   := '27';                                         -- 業態（小分類）フルサービスVD
+--  cv_business_low_type_n_vd CONSTANT VARCHAR2(2)   := '28';                                         -- 業態（小分類）納品VD
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+  cv_business_low_type_s_vd CONSTANT VARCHAR2(2)   := '24';                                         -- 業態（小分類）フルサービス（消化）VD
+  cv_business_low_type_vd   CONSTANT VARCHAR2(2)   := '25';                                         -- 業態（小分類）フルサービスVD
+  cv_business_low_type_n_vd CONSTANT VARCHAR2(2)   := '26';                                         -- 業態（小分類）納品VD
+--//+UPD END   2009/04/22 T1_0704 M.Ohtsuki
   cv_custom_condition_fvd   CONSTANT VARCHAR2(2)   := '01';                                         -- 顧客業態コード フルVD
   cv_custom_condition_nvd   CONSTANT VARCHAR2(2)   := '02';                                         -- 顧客業態コード 納品VD
   cv_custom_condition_gvd   CONSTANT VARCHAR2(2)   := '03';                                         -- 顧客業態コード 一般
@@ -174,6 +184,9 @@ AS
   cv_error_off              CONSTANT VARCHAR2(1)   := '0';                                          -- エラーオフ
   cv_customer_class_cust    CONSTANT VARCHAR2(2)   := '10';                                         -- 顧客区分（顧客）
   cv_flg_y                  CONSTANT VARCHAR2(1)   := 'Y';                                          -- フラグ'Y'
+--//+ADD END   2009/04/27 T1_0713 M.Ohtsuki
+  cv_flg_n                  CONSTANT VARCHAR2(1)   := 'N';                                          -- フラグ'N'
+--//+ADD END   2009/04/27 T1_0713 M.Ohtsuki
   cv_kyousan                CONSTANT VARCHAR2(1)   := '5';                                          -- 売上区分'協賛'
   cv_mihon                  CONSTANT VARCHAR2(1)   := '6';                                          -- 売上区分'見本'
   cv_cm                     CONSTANT VARCHAR2(1)   := '7';                                          -- 売上区分'広告'
@@ -1236,7 +1249,14 @@ AS
                 FROM gl_period_statuses gps                                                         -- 会計期間ステータス
                WHERE gps.application_id   = gt_ar_appl_id                                           -- アプリケーションID
                  AND gps.set_of_books_id  = gt_set_of_bks_id                                        -- 会計帳簿ID
-                 AND gps.closing_status  NOT IN ( cv_closing_status_c,cv_closing_status_p)          -- クローズでない
+--//+UPD START 2009/04/27 T1_0713 M.Ohtsuki
+--                 AND gps.closing_status  NOT IN ( cv_closing_status_c,cv_closing_status_p)          -- クローズでない
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+                 AND (gps.closing_status = cv_closing_status_o                                      -- オープン
+                    OR TO_CHAR(ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),ln_add_mm),'YYYYMM')
+                    >= TO_CHAR(gd_process_date,'YYYYMM'))                                           -- 未来日
+                 AND gps.adjustment_period_flag = cv_flg_n                                          -- 通常の会計期間
+--//+UPD END   2009/04/27 T1_0713 M.Ohtsuki
                  AND TO_CHAR(ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),ln_add_mm),'YYYYMM') = TO_CHAR(gps.start_date,'YYYYMM')
                 ;
               IF ln_dummy >= 1 THEN
@@ -1348,23 +1368,47 @@ AS
                lt_decision_flg_upd := cv_mikakutei;                                                 -- 確定フラグを未確定とする。
             END IF;            
           ELSE
-            -- ポイント条件無しで、初回取引日から3ヵ月後の会計期間がクローズしているか判定
+--//+UPD START 2009/04/22 T1_0713 M.Ohtsuki
+--            -- ポイント条件無しで、初回取引日から3ヵ月後の会計期間がクローズしているか判定
+--            SELECT COUNT(1)
+--              INTO ln_dummy
+--              FROM gl_period_statuses gps                                                           -- 会計期間ステータス
+--             WHERE gps.application_id   = gt_ar_appl_id                                             -- アプリケーションID
+--               AND gps.set_of_books_id  = gt_set_of_bks_id                                          -- 会計帳簿ID
+--               AND gps.closing_status  IN ( cv_closing_status_c,cv_closing_status_p)                -- クローズしている
+--               AND TO_CHAR(ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),2),'YYYYMM') = TO_CHAR(gps.start_date,'YYYYMM')  -- 翌々月の会計年月を判定
+--              ;
+--            --初回取引日から3ヵ月後の会計期間がクローズしている場合
+--            IF (ln_dummy >= 1) THEN
+--              lt_decision_flg_upd := cv_kakutei;                                                    -- 確定フラグを確定とする。
+--            --初回取引日から3ヵ月後の会計期間がクローズしていない場合
+--            ELSE
+--              lt_decision_flg_upd := cv_mikakutei;                                                  -- 確定フラグを未確定とする。
+--            END IF;
+--          END IF;
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            -- ポイント条件なしで、初回取引日が業務日付の3ヶ月前以前に存在し、ステータスがオープン以外か判定
             SELECT COUNT(1)
               INTO ln_dummy
               FROM gl_period_statuses gps                                                           -- 会計期間ステータス
-             WHERE gps.application_id   = gt_ar_appl_id                                             -- アプリケーションID
-               AND gps.set_of_books_id  = gt_set_of_bks_id                                          -- 会計帳簿ID
-               AND gps.closing_status  IN ( cv_closing_status_c,cv_closing_status_p)                -- クローズしている
-               AND TO_CHAR(ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),2),'YYYYMM') = TO_CHAR(gps.start_date,'YYYYMM')  -- 翌々月の会計年月を判定
-              ;
-            --初回取引日から3ヵ月後の会計期間がクローズしている場合
-            IF (ln_dummy >= 1) THEN
+             WHERE gps.application_id   =  gt_ar_appl_id                                            -- アプリケーションID
+               AND gps.set_of_books_id  =  gt_set_of_bks_id                                         -- 会計帳簿ID
+               AND gps.closing_status   <>  cv_closing_status_o                                     -- オープン
+               AND gps.adjustment_period_flag = cv_flg_n                                            -- 通常の会計期間
+               AND TO_CHAR(TRUNC(set_new_point_rec.start_tran_date,'MM'),'YYYYMM')
+                   <= TO_CHAR(ADD_MONTHS(gd_process_date,-3),'YYYYMM')                              -- 初回取引日が業務日付の3ヶ月前以前
+               AND TO_CHAR(TRUNC(set_new_point_rec.start_tran_date,'MM'),'YYYYMM')
+                    = TO_CHAR(gps.start_date,'YYYYMM')                                              -- 初回取引日の会計年月を判定
+            ;
+            --初回取引日の会計期間がオープン以外の場合
+            IF(ln_dummy >= 1) THEN
               lt_decision_flg_upd := cv_kakutei;                                                    -- 確定フラグを確定とする。
-            --初回取引日から3ヵ月後の会計期間がクローズしていない場合
+            --初回取引日の会計期間がオープンの場合
             ELSE
               lt_decision_flg_upd := cv_mikakutei;                                                  -- 確定フラグを未確定とする。
             END IF;
           END IF;
+--//+UPD END   2009/04/22 T1_0713 M.Ohtsuki
           -- ========================================
           -- A-11 ワークテープル確定フラグ／新規評価対象区分更新処理  獲得営業員／紹介従業員の両方を更新する。
           -- ========================================
