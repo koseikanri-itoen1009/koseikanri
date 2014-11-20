@@ -8,7 +8,7 @@ AS
  * Description      : 倉庫毎に日次または月中、月末の受払残高情報を受払残高表に出力します。
  *                    預け先毎に月末の受払残高情報を受払残高表に出力します。
  * MD.050           : 受払残高表(倉庫・預け先)    MD050_COI_006_A15
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *                                       [0001266]OPM品目アドオンの取得方法修正
  *  2009/09/15    1.9   H.Sasaki         [0001346]PT対応
  *  2009/12/22    1.10  N.Abe            [E_本稼動_00222]顧客名称取得方法修正(月次のみ)
+ *  2010/04/08    1.11  N.Abe            [E_本稼動_02211]拠点情報ビュー使用部分の修正
  *
  *****************************************************************************************/
 --
@@ -716,11 +717,20 @@ AS
     END;
     --
     BEGIN
-      SELECT SUBSTRB(account_name,1,8)            -- 拠点略称
+-- == 2010/04/08 V1.11 Modified START ===============================================================
+--      SELECT SUBSTRB(account_name,1,8)            -- 拠点略称
+--      INTO   gv_base_short_name
+--      FROM   xxcoi_user_base_info_v               -- 拠点ビュー
+--      WHERE  account_number = iv_base_code
+--      AND    ROWNUM = 1;
+      SELECT SUBSTRB(hca.account_name, 1, 8)      -- 拠点略称
       INTO   gv_base_short_name
-      FROM   xxcoi_user_base_info_v               -- 拠点ビュー
-      WHERE  account_number = iv_base_code
-      AND    ROWNUM = 1;
+      FROM   hz_cust_accounts   hca
+      WHERE  hca.account_number = iv_base_code
+      AND    hca.customer_class_code = '1'
+      AND    hca.status = 'A'
+      ;
+-- == 2010/04/08 V1.11 Modified END   ===============================================================
     EXCEPTION
       WHEN OTHERS THEN
         gv_base_short_name := NULL;
@@ -1849,11 +1859,20 @@ AS
       END;
       --
       BEGIN
-        SELECT SUBSTRB(account_name,1,8)            -- 拠点略称
-        INTO   gv_base_short_name
-        FROM   xxcoi_user_base_info_v               -- 拠点ビュー
-        WHERE  account_number = iv_base_code
-        AND    ROWNUM = 1;
+-- == 2010/04/08 V1.11 Modified START ===============================================================
+--      SELECT SUBSTRB(account_name,1,8)            -- 拠点略称
+--      INTO   gv_base_short_name
+--      FROM   xxcoi_user_base_info_v               -- 拠点ビュー
+--      WHERE  account_number = iv_base_code
+--      AND    ROWNUM = 1;
+      SELECT SUBSTRB(hca.account_name, 1, 8)      -- 拠点略称
+      INTO   gv_base_short_name
+      FROM   hz_cust_accounts   hca
+      WHERE  hca.account_number = iv_base_code
+      AND    hca.customer_class_code = '1'
+      AND    hca.status = 'A'
+      ;
+-- == 2010/04/08 V1.11 Modified END   ===============================================================
       EXCEPTION
         WHEN OTHERS THEN
           gv_base_short_name := NULL;
@@ -2230,11 +2249,25 @@ AS
       RAISE global_process_expt;
     END IF;
     -- A-2-3.拠点チェック(管理課以外必須)
-    SELECT management_base_flag                 -- 管理元拠点フラグ
+-- == 2010/04/08 V1.11 Modified START ===============================================================
+--    SELECT management_base_flag                 -- 管理元拠点フラグ
+--    INTO   gv_focus_base_flag
+--    FROM   xxcoi_user_base_info_v               -- 拠点ビュー
+--    WHERE  account_number = gv_user_base
+--    AND    ROWNUM = 1;
+    SELECT CASE WHEN xca.customer_code = xca.management_base_code
+           THEN '1'
+           ELSE '0'
+           END  management_base_flag                 -- 管理元拠点フラグ
     INTO   gv_focus_base_flag
-    FROM   xxcoi_user_base_info_v               -- 拠点ビュー
-    WHERE  account_number = gv_user_base
-    AND    ROWNUM = 1;
+    FROM   hz_cust_accounts     hca
+          ,xxcmm_cust_accounts  xca
+    WHERE  hca.account_number = gv_user_base
+    AND    hca.customer_class_code = '1'
+    AND    hca.status = 'A'
+    AND    hca.cust_account_id = xca.customer_id
+    ;
+-- == 2010/04/08 V1.11 Modified END   ===============================================================
     --
     IF (gv_focus_base_flag <> '1' AND iv_base_code IS NULL) THEN
       -- 拠点コードNullチェックエラーメッセージ(APP-XXCOI1-10115)
