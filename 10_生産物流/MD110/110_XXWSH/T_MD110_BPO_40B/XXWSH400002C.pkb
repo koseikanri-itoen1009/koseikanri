@@ -7,7 +7,7 @@ AS
  * Description      : 顧客発注からの出荷依頼自動作成
  * MD.050/070       : 出荷依頼                        (T_MD050_BPO_400)
  *                    顧客発注からの出荷依頼自動作成  (T_MD070_BPO_40B)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -58,6 +58,8 @@ AS
  *                                       積載効率チェックでのパレット最大枚数超過チェックの対象を
  *                                       ドリンク製品のみとする。
  *  2008/07/09    1.15  Oracle 山根一浩  I_S_192対応
+ *  2008/08/05    1.16  二瓶  大輔       ST不具合#489対応
+ *                                       カテゴリ情報VIEW変更
  *
  *****************************************************************************************/
 --
@@ -361,15 +363,15 @@ AS
   gr_party_number  xxcmn_carriers_v.party_number%TYPE;                     -- 代表運送会社
   gr_party_id      xxcmn_carriers_v.party_id%TYPE;                         -- 代表運送会社ID
 --
-  gr_skbn          xxcmn_item_categories4_v.prod_class_code%TYPE;          -- 商品区分
+  gr_skbn          xxcmn_item_categories5_v.prod_class_code%TYPE;          -- 商品区分
   gr_wei_kbn       xxcmn_item_mst_v.weight_capacity_class%TYPE;            -- 重量容積区分
 --
   gr_i_item_id     xxcmn_item_mst2_v.inventory_item_id%TYPE;               -- 品目ID
   gr_item_um       xxcmn_item_mst2_v.item_um%TYPE;                         -- 単位
   gr_conv_unit     xxcmn_item_mst2_v.conv_unit%TYPE;                       -- 入出庫換算単位
   gr_case_am       xxcmn_item_mst2_v.num_of_cases%TYPE;                    -- 入数
-  gr_item_skbn     xxcmn_item_categories4_v.prod_class_code%TYPE;          -- 商品区分
-  gr_item_kbn      xxcmn_item_categories4_v.item_class_code%TYPE;          -- 品目区分
+  gr_item_skbn     xxcmn_item_categories5_v.prod_class_code%TYPE;          -- 商品区分
+  gr_item_kbn      xxcmn_item_categories5_v.item_class_code%TYPE;          -- 品目区分
   gr_max_p_step    xxcmn_item_mst2_v.max_palette_steps%TYPE;               -- パレット当り最大段数
   gr_del_qty       xxcmn_item_mst2_v.delivery_qty%TYPE;                    -- 配数
   gr_i_wei_kbn     xxcmn_item_mst2_v.weight_capacity_class%TYPE;           -- 重量容積区分
@@ -1577,7 +1579,7 @@ AS
         INTO   gr_skbn
               ,gr_wei_kbn
         FROM   xxcmn_item_mst_v          ximv        -- OPM品目情報VIEW
-              ,xxcmn_item_categories4_v  xicv        -- OPM品目カテゴリ割当情報VIEW4
+              ,xxcmn_item_categories5_v  xicv        -- OPM品目カテゴリ割当情報VIEW4
         WHERE  ximv.item_id = xicv.item_id                   -- 品目ID
         AND    ximv.item_no = gt_head_line(gn_i).ord_i_code  -- 品目
         ;
@@ -2143,7 +2145,7 @@ AS
           ,gr_end_kbn
           ,gr_rit_kbn
     FROM  xxcmn_item_mst2_v         ximv     -- OPM品目情報VIEW
-         ,xxcmn_item_categories4_v  xicv     -- OPM品目カテゴリ割当情報VIEW
+         ,xxcmn_item_categories5_v  xicv     -- OPM品目カテゴリ割当情報VIEW
     WHERE ximv.item_no            = gt_head_line(gn_i).ord_i_code -- 品目
     AND   ximv.item_id            = xicv.item_id                  -- 品目ID
     AND   ximv.start_date_active <= gd_sysdate
@@ -3203,54 +3205,66 @@ AS
     gn_case_am        := 0;  -- ケース数
     gn_pallet_co_am   := 0;  -- パレット枚数
 --
-    -- (1).各値の最適化
-    -- 「パレット当り最大ケース数」= 配数 * パレット当り最大段数
-    gn_p_max_case_am := gr_del_qty * gr_max_p_step;
---
-    -- 「ケース入数」0除算判定
-    IF (gr_case_am = 0) THEN
-      gn_case_total := 0;                -- ケース総合計
-    ELSE
-      -- 「ケース総合計」= B-3の数量 / ケース入数 [小数点以下切捨て]
-      gn_case_total := TRUNC(gt_head_line(gn_i).ord_quant / gr_case_am);
-    END IF;
---
-    -- 「パレット当り最大ケース数」0除算判定
-    IF (gn_p_max_case_am = 0) THEN
-      gn_pallet_am  := 0;                -- パレット数
-    ELSE
-      -- 「パレット数」= ケース総合計 / パレット当り最大ケース数 [小数点以下切捨て]
-      gn_pallet_am  := TRUNC(gn_case_total / gn_p_max_case_am);
-    END IF;
---
-    -- 「配数」0除算判定
-    IF (TO_NUMBER(gr_del_qty) = 0) THEN
-      gn_step_am    := 0;                -- 段数
-      gn_case_am    := 0;                -- ケース数
-    ELSE
-      -- 「段数」= ((ケース総合計 / パレット当り最大ケース数)の剰余) / 配数 [小数点以下切捨て]
-      gn_step_am := TRUNC(MOD(gn_case_total,gn_p_max_case_am) / TO_NUMBER(gr_del_qty));
-      -- 「ケース数」= (((ケース総合計 / パレット当り最大ケース数)の剰余) / 配数)の剰余
-      gn_case_am := MOD(MOD(gn_case_total,gn_p_max_case_am),TO_NUMBER(gr_del_qty));
-    END IF;
---
-    -- (2).パレット枚数の算出
-    -- 「段数」又は「ケース数」が0以上の場合
-    IF ((gn_step_am > 0)
-    OR  (gn_case_am > 0))
+-- 2008/08/05 D.Nihei ADD START
+    -- 商品区分「ドリンク」かつ品目区分「製品」の場合
+    IF ( ( gr_item_skbn = gv_2 ) 
+     AND ( gr_item_kbn  = gv_5 ) ) 
     THEN
-      gn_pallet_co_am := gn_pallet_am + 1;
-    ELSE
-      gn_pallet_co_am := gn_pallet_am;
+-- 2008/08/05 D.Nihei ADD END
+      -- (1).各値の最適化
+      -- 「パレット当り最大ケース数」= 配数 * パレット当り最大段数
+      gn_p_max_case_am := gr_del_qty * gr_max_p_step;
+--
+      -- 「ケース入数」0除算判定
+      IF (gr_case_am = 0) THEN
+        gn_case_total := 0;                -- ケース総合計
+      ELSE
+        -- 「ケース総合計」= B-3の数量 / ケース入数 [小数点以下切捨て]
+        gn_case_total := TRUNC(gt_head_line(gn_i).ord_quant / gr_case_am);
+      END IF;
+--
+      -- 「パレット当り最大ケース数」0除算判定
+      IF (gn_p_max_case_am = 0) THEN
+        gn_pallet_am  := 0;                -- パレット数
+      ELSE
+        -- 「パレット数」= ケース総合計 / パレット当り最大ケース数 [小数点以下切捨て]
+        gn_pallet_am  := TRUNC(gn_case_total / gn_p_max_case_am);
+      END IF;
+--
+      -- 「配数」0除算判定
+      IF (TO_NUMBER(gr_del_qty) = 0) THEN
+        gn_step_am    := 0;                -- 段数
+        gn_case_am    := 0;                -- ケース数
+      ELSE
+        -- 「段数」= ((ケース総合計 / パレット当り最大ケース数)の剰余) / 配数 [小数点以下切捨て]
+        gn_step_am := TRUNC(MOD(gn_case_total,gn_p_max_case_am) / TO_NUMBER(gr_del_qty));
+        -- 「ケース数」= (((ケース総合計 / パレット当り最大ケース数)の剰余) / 配数)の剰余
+        gn_case_am := MOD(MOD(gn_case_total,gn_p_max_case_am),TO_NUMBER(gr_del_qty));
+      END IF;
+--
+      -- (2).パレット枚数の算出
+      -- 「段数」又は「ケース数」が0以上の場合
+      IF ((gn_step_am > 0)
+      OR  (gn_case_am > 0))
+      THEN
+        gn_pallet_co_am := gn_pallet_am + 1;
+      ELSE
+        gn_pallet_co_am := gn_pallet_am;
+      END IF;
+--
+      -- (3).パレット合計枚数の算出
+      gn_pallet_t_c_am  := gn_pallet_t_c_am + gn_pallet_co_am;
+-- 2008/08/05 D.Nihei ADD START
     END IF;
+-- 2008/08/05 D.Nihei ADD END
 --
-    -- (3).パレット合計枚数の算出
-    gn_pallet_t_c_am  := gn_pallet_t_c_am + gn_pallet_co_am;
---
---
-    -- ｢数量｣が｢配数｣の整数倍ではない場合。ワーニング
-    ln_mod_chk := MOD(gn_item_amount,TO_NUMBER(gr_del_qty));
-    IF (ln_mod_chk <> 0) THEN
+-- 2008/08/05 D.Nihei MOD START
+--    -- ｢数量｣が｢配数｣の整数倍ではない場合。ワーニング
+--    ln_mod_chk := MOD(gn_item_amount,TO_NUMBER(gr_del_qty));
+--    IF (ln_mod_chk <> 0) THEN
+    -- ｢ケース数｣が0以外の場合。ワーニング
+    IF (gn_case_am <> 0) THEN
+-- 2008/08/05 D.Nihei MOD END
       pro_err_list_make
         (
           iv_kind         => gv_msg_war                     --  in 種別   '警告'
