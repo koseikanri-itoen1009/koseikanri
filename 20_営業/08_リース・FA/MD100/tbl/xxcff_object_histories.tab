@@ -3,7 +3,7 @@
  * Table Name      : xxcff_object_histories
  * Description     : リース物件履歴
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ------------ -------------------------------------
  *  2009/01/23    1.0  SCS 奥河美樹  初回作成
  *  2009/04/13    1.1  SCS 松中俊樹  【T1_0471】物件設置場所の桁数を変更
+ *  2009/07/16    1.2  SCS 渡辺学    【0000772】移動元現設置場所の桁数を変更(T1_0721のチェックイン漏れ)
  ************************************************************************/
 CREATE TABLE xxcff.xxcff_object_histories (
      object_header_id               NUMBER        NOT NULL
@@ -50,7 +51,10 @@ CREATE TABLE xxcff.xxcff_object_histories (
     ,accounting_if_flag             VARCHAR2(1)   NOT NULL
     ,m_owner_company                VARCHAR2(4)
     ,m_department_code              VARCHAR2(5)
-    ,m_installation_address         VARCHAR2(50)
+    --0000772 UPD START 2009/07/16
+    --,m_installation_address         VARCHAR2(50)
+    ,m_installation_address         VARCHAR2(600)
+    --0000772 UPD END 2009/04/16
     ,m_installation_place           VARCHAR2(50)
     ,m_registration_number          VARCHAR2(20)
     ,description                    VARCHAR2(100)
