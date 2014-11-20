@@ -441,7 +441,10 @@ SELECT  SMRP.year                         year                   --年度
                              ,ROUND( ROUND( PAY.unit_price * PAY.quantity ) * ( TO_NUMBER( FLV02.lookup_code ) * 0.01 ) )
                                                                 pay_cn_tax      --有償消費税( 有償金額 * (消費税率*0.01) )
                         FROM  (  --標準単価マスタとの外部結合の為、副問い合わせとする
-                                 SELECT  NVL( XOHA.arrival_date, XOHA.shipped_date )
+-- 2010/01/08 T.Yoshimoto Mod Start E_本稼動#716
+                                 --SELECT  NVL( XOHA.arrival_date, XOHA.shipped_date )
+                                   SELECT  XOHA.arrival_date
+-- 2010/01/08 T.Yoshimoto Mod End E_本稼動#716
                                                                            tran_date       --対象日(着荷日)
                                         ,XOHA.performance_management_dept  dept_code       --部署コード
                                         ,XOHA.vendor_id                    vendor_id       --取引先ID
@@ -469,6 +472,10 @@ SELECT  SMRP.year                         year                   --年度
                                     AND  XMLD.document_type_code = '30'                    --支給支持
                                     AND  XMLD.record_type_code = '20'                      --出庫実績
                                     AND  XOLA.order_line_id = XMLD.mov_line_id
+-- 2010/01/08 T.Yoshimoto Mod Start E_本稼動#716
+                                    AND  XOHA.arrival_date IS NOT NULL
+-- 2010/01/08 T.Yoshimoto Mod End E_本稼動#716
+
                               )                                 PAY             --支給データ
                              ,ic_item_mst_b                     IIM             --OPM品目マスタ
                              ,ic_lots_mst                       ILM             --ロット情報取得用
