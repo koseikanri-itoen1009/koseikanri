@@ -11,7 +11,7 @@ AS
  *                    顧客ステータスを「顧客」に更新します。
  * MD.050           : MD050_CSO_013_A01_CSI→ARインタフェース：（OUT）顧客マスタ
  *
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,7 +43,7 @@ AS
  *  2009-03-12    1.1   Daisuke.Abe      変更依頼:IE_108対応
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *  2009-05-07    1.3   Tomoko.Mori      【T1_0439対応】自販機のみ顧客関連情報更新
- *
+ *  2009-07-23    1.4   Kazuo.Satomura   0000671対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -870,22 +870,24 @@ AS
     END;
 --
     -- 顧客ステータスのチェック
-    IF o_cust_rec.duns_number_c <> iv_cust_status THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_app_name                     -- アプリケーション短縮名
-                     , iv_name         => cv_tkn_number_11                -- メッセージコード
-                     , iv_token_name1  => cv_tkn_slip_num                 -- トークンコード1
-                     , iv_token_value1 => i_work_data_rec.slip_no         -- トークン値1
-                     , iv_token_name2  => cv_tkn_slip_branch_num          -- トークンコード2
-                     , iv_token_value2 => i_work_data_rec.slip_branch_no  -- トークン値2
-                     , iv_token_name3  => cv_tkn_line_num                 -- トークンコード3
-                     , iv_token_value3 => i_work_data_rec.line_number     -- トークン値3
-                     , iv_token_name4  => cv_tkn_kokyaku                  -- トークンコード4
-                     , iv_token_value4 => i_work_data_rec.account_number  -- トークン値4
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE sql_expt;
-    END IF;
+    /* 2009.07.23 K.Satomura 0000671対応 START */
+    --IF o_cust_rec.duns_number_c <> iv_cust_status THEN
+    --  lv_errmsg := xxccp_common_pkg.get_msg(
+    --                   iv_application  => cv_app_name                     -- アプリケーション短縮名
+    --                 , iv_name         => cv_tkn_number_11                -- メッセージコード
+    --                 , iv_token_name1  => cv_tkn_slip_num                 -- トークンコード1
+    --                 , iv_token_value1 => i_work_data_rec.slip_no         -- トークン値1
+    --                 , iv_token_name2  => cv_tkn_slip_branch_num          -- トークンコード2
+    --                 , iv_token_value2 => i_work_data_rec.slip_branch_no  -- トークン値2
+    --                 , iv_token_name3  => cv_tkn_line_num                 -- トークンコード3
+    --                 , iv_token_value3 => i_work_data_rec.line_number     -- トークン値3
+    --                 , iv_token_name4  => cv_tkn_kokyaku                  -- トークンコード4
+    --                 , iv_token_value4 => i_work_data_rec.account_number  -- トークン値4
+    --               );
+    --  lv_errbuf := lv_errmsg;
+    --  RAISE sql_expt;
+    --END IF;
+    /* 2009.07.23 K.Satomura 0000671対応 END */
 --
   EXCEPTION
     -- *** SQL例外ハンドラ ***
@@ -2059,97 +2061,109 @@ AS
           --
         END IF;
         --
-      /*20090507_mori_T1_0439 START*/
-        -- 引揚物件が自販機である場合
-        IF (l_work_data_rec.instance_type_code = cv_instance_type_vd) THEN
-      /*20090507_mori_T1_0439 END*/
-          -- ========================================
-          -- A-7.設置先顧客・物件チェック処理
-          -- ========================================
-          chk_cust_ib(
-              i_work_data_rec => l_work_data_rec               -- 作業データ情報
-            , in_acnt_id      => l_cust_rec.cust_account_id    -- アカウントID
-            , ov_errbuf       => lv_errbuf                     -- エラー・メッセージ            --# 固定 #
-            , ov_retcode      => lv_retcode                    -- リターン・コード              --# 固定 #
-            , ov_errmsg       => lv_errmsg                     -- ユーザー・エラー・メッセージ  --# 固定 #
-          );
-          --
-          IF ( lv_retcode = cv_status_warn ) THEN
-            -- 次のレコードへ処理をスキップ
-            EXIT;
+        /* 2009.07.23 K.Satomura 0000671対応 START */
+        IF (l_cust_rec.duns_number_c = lt_cust_sts_customer) THEN
+        /* 2009.07.23 K.Satomura 0000671対応 END */
+          /*20090507_mori_T1_0439 START*/
+          -- 引揚物件が自販機である場合
+          IF (l_work_data_rec.instance_type_code = cv_instance_type_vd) THEN
+          /*20090507_mori_T1_0439 END*/
+            -- ========================================
+            -- A-7.設置先顧客・物件チェック処理
+            -- ========================================
+            chk_cust_ib(
+                i_work_data_rec => l_work_data_rec               -- 作業データ情報
+              , in_acnt_id      => l_cust_rec.cust_account_id    -- アカウントID
+              , ov_errbuf       => lv_errbuf                     -- エラー・メッセージ            --# 固定 #
+              , ov_retcode      => lv_retcode                    -- リターン・コード              --# 固定 #
+              , ov_errmsg       => lv_errmsg                     -- ユーザー・エラー・メッセージ  --# 固定 #
+            );
             --
-          ELSIF ( lv_retcode = cv_status_error ) THEN
-            RAISE global_process_expt;
-            --
+            IF ( lv_retcode = cv_status_warn ) THEN
+              -- 次のレコードへ処理をスキップ
+              EXIT;
+              --
+            ELSIF ( lv_retcode = cv_status_error ) THEN
+              RAISE global_process_expt;
+              --
+            END IF;
+          /*20090507_mori_T1_0439 START*/
           END IF;
-      /*20090507_mori_T1_0439 START*/
+          /*20090507_mori_T1_0439 END*/
+          --
+        /* 2009.07.23 K.Satomura 0000671対応 START */
         END IF;
-      /*20090507_mori_T1_0439 END*/
-        --
+        /* 2009.07.23 K.Satomura 0000671対応 END */
         -- ========================================
         -- A-8.セーブポイント設定
         -- ========================================
         SAVEPOINT g_save_pt;
         --
-      /*20090507_mori_T1_0439 START*/
-        -- 引揚物件が自販機且つ現設置先顧客の自販機残数が0件である場合
-        IF (
-                (gv_cust_upd_flg = cv_cust_upd_y)
-            AND (l_work_data_rec.instance_type_code = cv_instance_type_vd)
-           ) THEN
-      /*20090507_mori_T1_0439 END*/
-          -- ========================================
-          -- A-15.顧客アドオンマスタ更新処理
-          -- ========================================
-          upd_xxcmm_cust_acnts(
-              iv_proc_kbn       => cv_proc_kbn1                        -- 処理区分
-            , i_cust_rec        => l_cust_rec                          -- 顧客情報
-            , iv_duns_number_c  => lt_cust_sts_suspended                -- DUNS番号（顧客ステータス（休止））
-            , id_actual_work_date => ld_actual_work_date               -- 実作業日
-            , iv_account_number => l_work_data_rec.account_number      -- 顧客コード
-            , id_process_date   => ld_process_date                     -- 業務処理日付
-            , ov_errbuf         => lv_errbuf                           -- エラー・メッセージ            --# 固定 #
-            , ov_retcode        => lv_retcode                          -- リターン・コード              --# 固定 #
-            , ov_errmsg         => lv_errmsg                           -- ユーザー・エラー・メッセージ  --# 固定 #
-          );
-          --
-          IF ( lv_retcode = cv_status_warn ) THEN
-            -- セーブポイントまでロールバックし、次のレコードへ処理をスキップ
-            ROLLBACK TO g_save_pt;
-            EXIT;
+        /* 2009.07.23 K.Satomura 0000671対応 START */
+        IF (l_cust_rec.duns_number_c = lt_cust_sts_customer) THEN
+        /* 2009.07.23 K.Satomura 0000671対応 END */
+          /*20090507_mori_T1_0439 START*/
+          -- 引揚物件が自販機且つ現設置先顧客の自販機残数が0件である場合
+          IF (
+                  (gv_cust_upd_flg = cv_cust_upd_y)
+              AND (l_work_data_rec.instance_type_code = cv_instance_type_vd)
+             ) THEN
+          /*20090507_mori_T1_0439 END*/
+            -- ========================================
+            -- A-15.顧客アドオンマスタ更新処理
+            -- ========================================
+            upd_xxcmm_cust_acnts(
+                iv_proc_kbn       => cv_proc_kbn1                        -- 処理区分
+              , i_cust_rec        => l_cust_rec                          -- 顧客情報
+              , iv_duns_number_c  => lt_cust_sts_suspended                -- DUNS番号（顧客ステータス（休止））
+              , id_actual_work_date => ld_actual_work_date               -- 実作業日
+              , iv_account_number => l_work_data_rec.account_number      -- 顧客コード
+              , id_process_date   => ld_process_date                     -- 業務処理日付
+              , ov_errbuf         => lv_errbuf                           -- エラー・メッセージ            --# 固定 #
+              , ov_retcode        => lv_retcode                          -- リターン・コード              --# 固定 #
+              , ov_errmsg         => lv_errmsg                           -- ユーザー・エラー・メッセージ  --# 固定 #
+            );
             --
-          ELSIF ( lv_retcode = cv_status_error ) THEN
+            IF ( lv_retcode = cv_status_warn ) THEN
+              -- セーブポイントまでロールバックし、次のレコードへ処理をスキップ
+              ROLLBACK TO g_save_pt;
+              EXIT;
+              --
+            ELSIF ( lv_retcode = cv_status_error ) THEN
+              --
+              RAISE global_process_expt;
+              --
+            END IF;
+            -- ========================================
+            -- A-9.顧客ステータス更新処理（休止処理）
+            -- ========================================
+            update_cust_status(
+                iv_proc_kbn      => cv_proc_kbn1           -- 処理区分
+              , i_work_data_rec  => l_work_data_rec        -- 作業データ情報
+              , i_cust_rec       => l_cust_rec             -- 顧客情報
+              , iv_duns_number_c => lt_cust_sts_suspended  -- DUNS番号（顧客ステータス（休止））
+              , ov_errbuf        => lv_errbuf              -- エラー・メッセージ            --# 固定 #
+              , ov_retcode       => lv_retcode             -- リターン・コード              --# 固定 #
+              , ov_errmsg        => lv_errmsg              -- ユーザー・エラー・メッセージ  --# 固定 #
+            );
             --
-            RAISE global_process_expt;
-            --
+            IF ( lv_retcode = cv_status_warn ) THEN
+              -- セーブポイントまでロールバックし、次のレコードへ処理をスキップ
+              ROLLBACK TO g_save_pt;
+              EXIT;
+              --
+            ELSIF ( lv_retcode = cv_status_error ) THEN
+              --
+              RAISE global_process_expt;
+              --
+            END IF;
+          /*20090507_mori_T1_0439 START*/
           END IF;
-          -- ========================================
-          -- A-9.顧客ステータス更新処理（休止処理）
-          -- ========================================
-          update_cust_status(
-              iv_proc_kbn      => cv_proc_kbn1           -- 処理区分
-            , i_work_data_rec  => l_work_data_rec        -- 作業データ情報
-            , i_cust_rec       => l_cust_rec             -- 顧客情報
-            , iv_duns_number_c => lt_cust_sts_suspended  -- DUNS番号（顧客ステータス（休止））
-            , ov_errbuf        => lv_errbuf              -- エラー・メッセージ            --# 固定 #
-            , ov_retcode       => lv_retcode             -- リターン・コード              --# 固定 #
-            , ov_errmsg        => lv_errmsg              -- ユーザー・エラー・メッセージ  --# 固定 #
-          );
+          /*20090507_mori_T1_0439 END*/
           --
-          IF ( lv_retcode = cv_status_warn ) THEN
-            -- セーブポイントまでロールバックし、次のレコードへ処理をスキップ
-            ROLLBACK TO g_save_pt;
-            EXIT;
-            --
-          ELSIF ( lv_retcode = cv_status_error ) THEN
-            --
-            RAISE global_process_expt;
-            --
-          END IF;
-      /*20090507_mori_T1_0439 START*/
+        /* 2009.07.23 K.Satomura 0000671対応 START */
         END IF;
-      /*20090507_mori_T1_0439 END*/
-        --
+        /* 2009.07.23 K.Satomura 0000671対応 END */
         -- ========================================
         -- A-10.セーブポイント２設定
         -- ========================================
