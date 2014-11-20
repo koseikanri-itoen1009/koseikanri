@@ -44,6 +44,7 @@ AS
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *  2009-05-07    1.3   Tomoko.Mori      【T1_0439対応】自販機のみ顧客関連情報更新
  *  2009-07-23    1.4   Kazuo.Satomura   0000671対応
+ *  2009-07-23    1.5   T.Maruyama       E_本稼動_00270対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -236,6 +237,9 @@ AS
   /*20090507_mori_T1_0439 START*/
     , instance_type_code  csi_item_instances.instance_type_code%TYPE -- インスタンスタイプコード
   /*20090507_mori_T1_0439 END*/
+  /* 2009/12/03 T.maruyama E_本稼動_00270対応 START */
+    , seq_no            xxcso_in_work_data.seq_no%TYPE           -- シーケンス番号
+  /* 2009/12/03 T.maruyama E_本稼動_00270対応 END */
   );
   --
   -- 顧客情報格納用レコード型定義
@@ -1313,6 +1317,9 @@ AS
       WHERE xiwd.slip_no        = i_work_data_rec.slip_no         -- 伝票No
       AND   xiwd.slip_branch_no = i_work_data_rec.slip_branch_no  -- 伝票枝番
       AND   xiwd.line_number    = i_work_data_rec.line_number     -- 行番号
+      /* 2009/12/03 T.maruyama E_本稼動_00270対応 START */
+      AND   xiwd.seq_no         = i_work_data_rec.seq_no          -- シーケンス番号
+      /* 2009/12/03 T.maruyama E_本稼動_00270対応 END */
       FOR UPDATE NOWAIT
       ;
       --
@@ -1448,6 +1455,9 @@ AS
       WHERE xiwd.slip_no        = i_work_data_rec.slip_no         -- 伝票No
       AND   xiwd.slip_branch_no = i_work_data_rec.slip_branch_no  -- 伝票枝番
       AND   xiwd.line_number    = i_work_data_rec.line_number     -- 行番号
+      /* 2009/12/03 T.maruyama E_本稼動_00270対応 START */
+      AND   xiwd.seq_no         = i_work_data_rec.seq_no          -- シーケンス番号
+      /* 2009/12/03 T.maruyama E_本稼動_00270対応 END */
       ;
       --
     EXCEPTION
@@ -1774,6 +1784,9 @@ AS
          /*20090507_mori_T1_0439 START*/
            , cii.instance_type_code instance_type_code           -- インスタンスタイプコード
          /*20090507_mori_T1_0439 END*/
+         /* 2009/12/03 T.maruyama E_本稼動_00270対応 START */
+           , xiwd.seq_no           seq_no           -- シーケンス番号
+         /* 2009/12/03 T.maruyama E_本稼動_00270対応 END */
       FROM   xxcso_in_work_data         xiwd    -- 作業データテーブル
            , po_requisition_headers     prh     -- 発注依頼ヘッダビュー
            , xxcso_requisition_lines_v  xrlv    -- 発注依頼明細情報ビュー
@@ -2010,6 +2023,9 @@ AS
       /*20090507_mori_T1_0439 START*/
       l_work_data_rec.instance_type_code := l_get_work_data_rec.instance_type_code;
       /*20090507_mori_T1_0439 END*/
+      /* 2009/12/03 T.maruyama E_本稼動_00270対応 START */
+      l_work_data_rec.seq_no := l_get_work_data_rec.seq_no;
+      /* 2009/12/03 T.maruyama E_本稼動_00270対応 END */
       --
       -- 実作業日を設定
       ld_actual_work_date := TO_DATE(l_get_work_data_rec.actual_work_date,'YYYY/MM/DD');
