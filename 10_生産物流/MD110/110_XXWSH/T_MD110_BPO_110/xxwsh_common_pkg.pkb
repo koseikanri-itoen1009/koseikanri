@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.35
+ * Version                : 1.37
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -88,6 +88,7 @@ AS
  *  2008/12/15   1.34  SCS    伊藤ひとみ[重量容積小口個数関数]メッセージ格納変数の桁を増やす対応
  *  2008/12/16   1.35  SCS    二瓶大輔  本番#568対応(配車解除関数変数定義修正)
  *  2008/12/16   1.36  SCS    菅原大輔  本番#744対応(パレット重量計算不正)
+ *  2008/12/25   1.37  SCS    北寒寺正夫本番#790対応(重量容積小口個数更新関数(小口個数NULL対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2618,7 +2619,10 @@ AS
 --
               -- ①(3)で取得した出荷実績数量が0の場合
               IF (lt_ship_tab(ln_counter).shipped_quantity = 0) THEN
-                NULL;
+-- Ver1.37 M.Hokkanji Start
+                ln_update_small_quantity := NVL(ln_update_small_quantity, 0);
+                --NULL;
+-- Ver1.37 M.Hokkanji End
 --
               -- ②(3)で取得した出荷入数が設定されている場合
 -- 2008/08/07 H.Itou Mod Start 内部課題#32 出荷入数 > 0 に条件変更。
@@ -3599,7 +3603,10 @@ AS
 --
               -- ①(1)で取得した製品識別区分が｢製品｣以外の場合
               IF (lv_product_flg <> cv_product) THEN
-                NULL;
+-- Ver1.37 M.Hokkanji Start
+                ln_update_small_quantity := NVL(ln_update_small_quantity, 0);
+                --NULL;
+-- Ver1.37 M.Hokkanji End
 --
               -- ②(3)で取得した出庫実績数量が0の場合
               ELSIF (lt_move_tab(ln_counter).shipped_quantity = 0) THEN
