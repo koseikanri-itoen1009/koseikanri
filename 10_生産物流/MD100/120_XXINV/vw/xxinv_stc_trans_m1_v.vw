@@ -85,7 +85,9 @@ AS
   AND    pha_in_po.attribute5           = mil_in_po.segment1
   AND    pha_in_po.vendor_id            = pv_in_po.vendor_id
   AND    pv_in_po.vendor_id             = xv_in_po.vendor_id
-  AND    pv_in_po.end_date_active      IS NULL
+-- 2008/12/24 #826 Y.Yamamoto delete start
+--  AND    pv_in_po.end_date_active      IS NULL
+-- 2008/12/24 #826 Y.Yamamoto delete end
   AND    xv_in_po.start_date_active    <= TRUNC( SYSDATE )
   AND    xv_in_po.end_date_active      >= TRUNC( SYSDATE )
   AND    iwm_in_po.mtl_organization_id  = mil_in_po.organization_id
@@ -262,6 +264,59 @@ AS
   AND    xmrih_in_xf20.comp_actual_flg        = 'N'                -- 実績未計上
   AND    xmrih_in_xf20.status                 = '04'               -- 出庫報告有
   AND    xmril_in_xf20.delete_flg             = 'N'                -- OFF
+-- 2008/12/24 #752 Y.Yamamoto add start
+  UNION ALL
+  -- 移動入庫予定(出庫報告有 積送なし)
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_in_tr20.attribute1                        AS ownership_code
+        ,mil_in_tr20.inventory_location_id             AS inventory_location_id
+        ,xmld_in_tr20.item_id                          AS item_id
+        ,ilm_in_tr20.lot_no                            AS lot_no
+        ,ilm_in_tr20.attribute1                        AS manufacture_date
+        ,ilm_in_tr20.attribute2                        AS uniqe_sign
+        ,ilm_in_tr20.attribute3                        AS expiration_date -- <---- ここまで共通
+        ,xmrih_in_tr20.schedule_arrival_date           AS arrival_date
+        ,xmrih_in_tr20.schedule_ship_date              AS leaving_date
+        ,'1'                                           AS status         -- 予定
+        ,xrpm.new_div_invent                           AS reason_code
+        ,xrpm.meaning                                  AS reason_code_name
+        ,xmrih_in_tr20.mov_num                         AS voucher_no
+        ,mil2_in_tr20.description                      AS deliver_to_name
+        ,NULL                                          AS deliver_to_name
+        ,xmld_in_tr20.actual_quantity                  AS stock_quantity
+        ,0                                             AS leaving_quantity
+  FROM   xxinv_mov_req_instr_headers  xmrih_in_tr20                -- 移動依頼/指示ヘッダ(アドオン)
+        ,xxinv_mov_req_instr_lines    xmril_in_tr20                -- 移動依頼/指示明細(アドオン)
+        ,xxinv_mov_lot_details        xmld_in_tr20                 -- 移動ロット詳細(アドオン)
+        ,ic_whse_mst                  iwm_in_tr20                  -- OPM倉庫マスタ
+        ,mtl_item_locations           mil_in_tr20                  -- OPM保管場所マスタ
+        ,mtl_item_locations           mil2_in_tr20                 -- OPM保管場所マスタ
+        ,ic_lots_mst                  ilm_in_tr20                  -- OPMロットマスタ
+        ,(SELECT xrpm_in_tr20.new_div_invent
+                ,flv_in_tr20.meaning 
+          FROM   xxcmn_rcv_pay_mst       xrpm_in_tr20               -- 受払区分アドオンマスタ
+                ,fnd_lookup_values       flv_in_tr20                -- クイックコード
+          WHERE  flv_in_tr20.lookup_type              = 'XXCMN_NEW_DIVISION'
+          AND    flv_in_tr20.language                 = 'JA'
+          AND    flv_in_tr20.lookup_code              = xrpm_in_tr20.new_div_invent
+          AND    xrpm_in_tr20.doc_type                = 'TRNI'             -- 移動積送なし
+          AND    xrpm_in_tr20.use_div_invent          = 'Y'
+          AND    xrpm_in_tr20.rcv_pay_div             = '1'                -- 受入
+         ) xrpm
+  WHERE  xmrih_in_tr20.mov_hdr_id             = xmril_in_tr20.mov_hdr_id
+  AND    xmrih_in_tr20.ship_to_locat_id       = mil_in_tr20.inventory_location_id
+  AND    iwm_in_tr20.mtl_organization_id      = mil_in_tr20.organization_id
+  AND    xmrih_in_tr20.shipped_locat_id       = mil2_in_tr20.inventory_location_id
+  AND    xmld_in_tr20.mov_line_id             = xmril_in_tr20.mov_line_id
+  AND    xmld_in_tr20.item_id                 = ilm_in_tr20.item_id
+  AND    xmld_in_tr20.lot_id                  = ilm_in_tr20.lot_id
+  AND    xmld_in_tr20.document_type_code      = '20'               -- 移動
+  AND    xmld_in_tr20.record_type_code        = '20'               -- 出庫実績
+  AND    xmrih_in_tr20.mov_type               = '2'                -- 積送なし
+  AND    xmrih_in_tr20.comp_actual_flg        = 'N'                -- 実績未計上
+  AND    xmrih_in_tr20.status                 = '04'               -- 出庫報告有
+  AND    xmril_in_tr20.delete_flg             = 'N'                -- OFF
+-- 2008/12/24 #752 Y.Yamamoto add end
   UNION ALL
   -- 生産入庫予定
 -- 2008/12/07 N.Yoshida start
@@ -538,6 +593,59 @@ AS
   AND    xmrih_out_xf20.comp_actual_flg        = 'N'                -- 実績未計上
   AND    xmrih_out_xf20.status                 = '05'               -- 入庫報告有
   AND    xmril_out_xf20.delete_flg             = 'N'                -- OFF
+-- 2008/12/24 #752 Y.Yamamoto add start
+  UNION ALL
+  -- 移動出庫予定(入庫報告有 積送なし)
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_tr20.attribute1                       AS ownership_code
+        ,mil_out_tr20.inventory_location_id            AS inventory_location_id
+        ,xmld_out_tr20.item_id                         AS item_id
+        ,ilm_out_tr20.lot_no                           AS lot_no
+        ,ilm_out_tr20.attribute1                       AS manufacture_date
+        ,ilm_out_tr20.attribute2                       AS uniqe_sign
+        ,ilm_out_tr20.attribute3                       AS expiration_date -- <---- ここまで共通
+        ,xmrih_out_tr20.schedule_arrival_date          AS arrival_date
+        ,xmrih_out_tr20.schedule_ship_date             AS leaving_date
+        ,'1'                                           AS status         -- 予定
+        ,xrpm.new_div_invent                           AS reason_code
+        ,xrpm.meaning                                  AS reason_code_name
+        ,xmrih_out_tr20.mov_num                        AS voucher_no
+        ,mil2_out_tr20.description                     AS ukebaraisaki_name
+        ,NULL                                          AS deliver_to_name
+        ,0                                             AS stock_quantity
+        ,xmld_out_tr20.actual_quantity                 AS leaving_quantity
+  FROM   xxinv_mov_req_instr_headers  xmrih_out_tr20                -- 移動依頼/指示ヘッダ(アドオン)
+        ,xxinv_mov_req_instr_lines    xmril_out_tr20                -- 移動依頼/指示明細(アドオン)
+        ,xxinv_mov_lot_details        xmld_out_tr20                 -- 移動ロット詳細(アドオン)
+        ,ic_whse_mst                  iwm_out_tr20                  -- OPM倉庫マスタ
+        ,mtl_item_locations           mil_out_tr20                  -- OPM保管場所マスタ
+        ,mtl_item_locations           mil2_out_tr20                 -- OPM保管場所マスタ
+        ,ic_lots_mst                  ilm_out_tr20                  -- OPMロットマスタ
+        ,(SELECT xrpm_out_tr20.new_div_invent
+                ,flv_out_tr20.meaning
+          FROM   fnd_lookup_values flv_out_tr20                     -- クイックコード
+                ,xxcmn_rcv_pay_mst xrpm_out_tr20                    -- 受払区分アドオンマスタ
+          WHERE  flv_out_tr20.lookup_type              = 'XXCMN_NEW_DIVISION'
+          AND    flv_out_tr20.language                 = 'JA'
+          AND    flv_out_tr20.lookup_code              = xrpm_out_tr20.new_div_invent
+          AND    xrpm_out_tr20.doc_type                = 'TRNI'             -- 移動積送なし
+          AND    xrpm_out_tr20.use_div_invent          = 'Y'
+          AND    xrpm_out_tr20.rcv_pay_div             = '-1'               -- 払出
+         ) xrpm
+  WHERE  xmrih_out_tr20.mov_hdr_id             = xmril_out_tr20.mov_hdr_id
+  AND    xmrih_out_tr20.shipped_locat_id       = mil_out_tr20.inventory_location_id
+  AND    iwm_out_tr20.mtl_organization_id      = mil_out_tr20.organization_id
+  AND    xmrih_out_tr20.ship_to_locat_id       = mil2_out_tr20.inventory_location_id
+  AND    xmld_out_tr20.mov_line_id             = xmril_out_tr20.mov_line_id
+  AND    xmld_out_tr20.item_id                 = ilm_out_tr20.item_id
+  AND    xmld_out_tr20.lot_id                  = ilm_out_tr20.lot_id
+  AND    xmld_out_tr20.document_type_code      = '20'               -- 移動
+  AND    xmld_out_tr20.record_type_code        = '30'               -- 入庫実績
+  AND    xmrih_out_tr20.mov_type               = '2'                -- 積送なし
+  AND    xmrih_out_tr20.comp_actual_flg        = 'N'                -- 実績未計上
+  AND    xmrih_out_tr20.status                 = '05'               -- 入庫報告有
+  AND    xmril_out_tr20.delete_flg             = 'N'                -- OFF
+-- 2008/12/24 #752 Y.Yamamoto add end
   UNION ALL
   -- 受注出荷予定
 -- 2008/12/07 N.Yoshida start
@@ -627,13 +735,17 @@ AS
   OR     xrpm.ship_prov_rcv_pay_category             IS NULL)
   AND    xoha_out_om.customer_id                      = hpat_out_om.party_id
   AND    hpat_out_om.party_id                         = hcsa_out_om.party_id
-  AND    hpat_out_om.status                           = 'A'
-  AND    hcsa_out_om.status                           = 'A'
+-- 2008/12/24 #826 Y.Yamamoto delete start
+--  AND    hpat_out_om.status                           = 'A'
+--  AND    hcsa_out_om.status                           = 'A'
+-- 2008/12/24 #826 Y.Yamamoto delete end
   AND    xoha_out_om.deliver_to_id                    = hpas_out_om.party_site_id
   AND    hpas_out_om.party_site_id                    = xpas_out_om.party_site_id
   AND    hpas_out_om.party_id                         = xpas_out_om.party_id
   AND    hpas_out_om.location_id                      = xpas_out_om.location_id
-  AND    hpas_out_om.status                           = 'A'
+-- 2008/12/24 #826 Y.Yamamoto delete start
+--  AND    hpas_out_om.status                           = 'A'
+-- 2008/12/24 #826 Y.Yamamoto delete end
   AND    xpas_out_om.start_date_active               <= TRUNC(SYSDATE)
   AND    xpas_out_om.end_date_active                 >= TRUNC(SYSDATE)
 -- 2008/12/01 Upd Y.Kawano Start
@@ -1010,7 +1122,9 @@ AS
 -- 2008/11/26 Upd Y.Kawano End
   AND    pha_out_ad.vendor_id             = xv_out_ad.vendor_id   -- 仕入先情報VIEW
   AND    pv_out_ad.vendor_id              = xv_out_ad.vendor_id
-  AND    pv_out_ad.end_date_active       IS NULL
+-- 2008/12/24 #826 Y.Yamamoto delete start
+--  AND    pv_out_ad.end_date_active       IS NULL
+-- 2008/12/24 #826 Y.Yamamoto delete end
   AND    xv_out_ad.start_date_active     <= TRUNC( SYSDATE )
   AND    xv_out_ad.end_date_active       >= TRUNC( SYSDATE )
   UNION ALL
@@ -1091,7 +1205,9 @@ AS
   AND    xrpm.transaction_type             = rt_in_po_e.transaction_type
   AND    pha_in_po_e.vendor_id             = xv_in_po_e.vendor_id   -- 仕入先情報VIEW
   AND    pv_in_po_e.vendor_id              = xv_in_po_e.vendor_id
-  AND    pv_in_po_e.end_date_active       IS NULL
+-- 2008/12/24 #826 Y.Yamamoto delete start
+--  AND    pv_in_po_e.end_date_active       IS NULL
+-- 2008/12/24 #826 Y.Yamamoto delete end
   AND    xv_in_po_e.start_date_active     <= TRUNC( SYSDATE )
   AND    xv_in_po_e.end_date_active       >= TRUNC( SYSDATE )
   UNION ALL
@@ -1201,7 +1317,11 @@ AS
   AND    xmld_in_tr_e.document_type_code      = '20'              -- 移動
   AND    xmld_in_tr_e.record_type_code        = '30'              -- 入庫実績
   AND    xmrih_in_tr_e.mov_type               = '2'               -- 積送なし
-  AND    xmrih_in_tr_e.status                 = '06'              -- 入出庫報告有
+-- 2008/12/24 #752 Y.Yamamoto update start
+--  AND    xmrih_in_tr_e.status                 = '06'              -- 入出庫報告有
+  AND    xmrih_in_tr_e.status                IN ( '06'               -- 入出庫報告有
+                                                 ,'05' )             -- 入庫報告有
+-- 2008/12/24 #752 Y.Yamamoto update end
   AND    xmril_in_tr_e.delete_flg             = 'N'               -- OFF
   UNION ALL
   -- 生産入庫実績
@@ -1517,13 +1637,17 @@ AS
   AND    xola_in_po_e_rma.delete_flag                 = 'N'            -- OFF
   AND    xoha_in_po_e_rma.customer_id                 = hpat_in_po_e_rma.party_id
   AND    hpat_in_po_e_rma.party_id                    = hcsa_in_po_e_rma.party_id
-  AND    hpat_in_po_e_rma.status                      = 'A'
-  AND    hcsa_in_po_e_rma.status                      = 'A'
+-- 2008/12/24 #826 Y.Yamamoto delete start
+--  AND    hpat_in_po_e_rma.status                      = 'A'
+--  AND    hcsa_in_po_e_rma.status                      = 'A'
+-- 2008/12/24 #826 Y.Yamamoto delete end
   AND    xoha_in_po_e_rma.result_deliver_to_id        = hpas_in_po_e_rma.party_site_id
   AND    hpas_in_po_e_rma.party_site_id               = xpas_in_po_e_rma.party_site_id
   AND    hpas_in_po_e_rma.party_id                    = xpas_in_po_e_rma.party_id
   AND    hpas_in_po_e_rma.location_id                 = xpas_in_po_e_rma.location_id
-  AND    hpas_in_po_e_rma.status                      = 'A'
+-- 2008/12/24 #826 Y.Yamamoto delete start
+--  AND    hpas_in_po_e_rma.status                      = 'A'
+-- 2008/12/24 #826 Y.Yamamoto delete end
   AND    xpas_in_po_e_rma.start_date_active          <= TRUNC(SYSDATE)
   AND    xpas_in_po_e_rma.end_date_active            >= TRUNC(SYSDATE)
 -- 2008/12/01 Upd Y.Kawano Start
@@ -1589,6 +1713,9 @@ AS
   AND    iaj_in_ad_e_x97.doc_id                  = itc_in_ad_e_x97.doc_id       --OPM在庫調整ジャーナル抽出条件
   AND    iaj_in_ad_e_x97.doc_line                = itc_in_ad_e_x97.doc_line     --OPM在庫調整ジャーナル抽出条件
   AND    ijm_in_ad_e_x97.attribute1             IS NULL                         --OPMジャーナルマスタ.実績IDがNULL
+-- 2008/12/24 #809 Y.Yamamoto add start
+  AND    ijm_in_ad_e_x97.attribute4              = 'Y'
+-- 2008/12/24 #809 Y.Yamamoto add end
   UNION ALL
   -- 在庫調整 入庫実績(外注出来高)
 -- 2008/12/07 N.Yoshida start
@@ -1651,9 +1778,14 @@ AS
   AND    iaj_in_ad_e_x97.doc_line                = itc_in_ad_e_x97.doc_line           -- OPM在庫調整ジャーナル抽出条件
   AND    ijm_in_ad_e_x97.attribute1             IS NOT NULL                           -- OPMジャーナルマスタ.実績IDがNULLでない
   AND    ijm_in_ad_e_x97.attribute1              = TO_CHAR(xvst_in_ad_e_x97.txns_id)  -- 実績ID
+-- 2008/12/24 #809 Y.Yamamoto add start
+  AND    ijm_in_ad_e_x97.attribute4              = 'Y'
+-- 2008/12/24 #809 Y.Yamamoto add end
   AND    xvst_in_ad_e_x97.vendor_id              = xv_in_ad_e_x97.vendor_id          -- 仕入先ID
   AND    pv_in_ad_e_x97.vendor_id                = xv_in_ad_e_x97.vendor_id
-  AND    pv_in_ad_e_x97.end_date_active         IS NULL
+-- 2008/12/24 #826 Y.Yamamoto delete start
+--  AND    pv_in_ad_e_x97.end_date_active         IS NULL
+-- 2008/12/24 #826 Y.Yamamoto delete end
   AND    xv_in_ad_e_x97.start_date_active       <= TRUNC( SYSDATE )
   AND    xv_in_ad_e_x97.end_date_active         >= TRUNC( SYSDATE )
   UNION ALL
@@ -1716,6 +1848,9 @@ AS
   AND    itc_in_ad_e_x9.doc_id                  = iaj_in_ad_e_x9.doc_id
   AND    itc_in_ad_e_x9.doc_line                = iaj_in_ad_e_x9.doc_line
   AND    ijm_in_ad_e_x9.attribute1              = xnpt_in_ad_e_x9.entry_number
+-- 2008/12/24 #809 Y.Yamamoto add start
+  AND    ijm_in_ad_e_x9.attribute4              = 'Y'
+-- 2008/12/24 #809 Y.Yamamoto add end
   UNION ALL
 -- 2008/12/3 Y.Kawano delete start
 --  -- 在庫調整 入庫実績(移動実績訂正)
@@ -1845,6 +1980,9 @@ AS
   AND    itc_in_ad_e_xx.location                = mil_in_ad_e_xx.segment1
   AND    mil_in_ad_e_xx.organization_id         = iwm_in_ad_e_xx.mtl_organization_id
   AND    iaj_in_ad_e_xx.journal_id              = ijm_in_ad_e_xx.journal_id
+-- 2008/12/24 #809 Y.Yamamoto add start
+  AND    ijm_in_ad_e_xx.attribute4              = 'Y'
+-- 2008/12/24 #809 Y.Yamamoto add end
   AND    itc_in_ad_e_xx.doc_type                = iaj_in_ad_e_xx.trans_type
   AND    itc_in_ad_e_xx.doc_id                  = iaj_in_ad_e_xx.doc_id
   AND    itc_in_ad_e_xx.doc_line                = iaj_in_ad_e_xx.doc_line
@@ -1958,7 +2096,11 @@ AS
   AND    xmld_out_tr_e.document_type_code      = '20'              -- 移動
   AND    xmld_out_tr_e.record_type_code        = '20'              -- 出庫実績
   AND    xmrih_out_tr_e.mov_type               = '2'               -- 積送なし
-  AND    xmrih_out_tr_e.status                 = '06'              -- 入出庫報告有
+-- 2008/12/24 #752 Y.Yamamoto update start
+--  AND    xmrih_out_tr_e.status                 = '06'              -- 入出庫報告有
+  AND    xmrih_out_tr_e.status                IN ( '06'               -- 入出庫報告有
+                                                  ,'04' )             -- 出庫報告有
+-- 2008/12/24 #752 Y.Yamamoto update end
   AND    xmril_out_tr_e.delete_flg             = 'N'               -- OFF
   UNION ALL
   -- 生産出庫実績
@@ -2301,13 +2443,17 @@ AS
       OR xrpm.ship_prov_rcv_pay_category               IS NULL)
   AND    xoha_out_om_e.customer_id                      = hpat_out_om_e.party_id
   AND    hpat_out_om_e.party_id                         = hcsa_out_om_e.party_id
-  AND    hpat_out_om_e.status                           = 'A'
-  AND    hcsa_out_om_e.status                           = 'A'
+-- 2008/12/24 #826 Y.Yamamoto delete start
+--  AND    hpat_out_om_e.status                           = 'A'
+--  AND    hcsa_out_om_e.status                           = 'A'
+-- 2008/12/24 #826 Y.Yamamoto delete end
   AND    xoha_out_om_e.result_deliver_to_id             = hpas_out_om_e.party_site_id
   AND    hpas_out_om_e.party_site_id                    = xpas_out_om_e.party_site_id
   AND    hpas_out_om_e.party_id                         = xpas_out_om_e.party_id
   AND    hpas_out_om_e.location_id                      = xpas_out_om_e.location_id
-  AND    hpas_out_om_e.status                           = 'A'
+-- 2008/12/24 #826 Y.Yamamoto delete start
+--  AND    hpas_out_om_e.status                           = 'A'
+-- 2008/12/24 #826 Y.Yamamoto delete end
   AND    xpas_out_om_e.start_date_active               <= TRUNC(SYSDATE)
   AND    xpas_out_om_e.end_date_active                 >= TRUNC(SYSDATE)
   AND    xrpm.stock_adjustment_div                      = otta_out_om_e.attribute4
@@ -2810,13 +2956,17 @@ AS
   AND    xrpm.ship_prov_rcv_pay_category                IN ( '01' , '02' )
   AND    xoha_out_om3_e.customer_id                      = hpat_out_om3_e.party_id
   AND    hpat_out_om3_e.party_id                         = hcsa_out_om3_e.party_id
-  AND    hpat_out_om3_e.status                           = 'A'
-  AND    hcsa_out_om3_e.status                           = 'A'
+-- 2008/12/24 #826 Y.Yamamoto delete start
+--  AND    hpat_out_om3_e.status                           = 'A'
+--  AND    hcsa_out_om3_e.status                           = 'A'
+-- 2008/12/24 #826 Y.Yamamoto delete end
   AND    xoha_out_om3_e.result_deliver_to_id             = hpas_out_om3_e.party_site_id
   AND    hpas_out_om3_e.party_site_id                    = xpas_out_om3_e.party_site_id
   AND    hpas_out_om3_e.party_id                         = xpas_out_om3_e.party_id
   AND    hpas_out_om3_e.location_id                      = xpas_out_om3_e.location_id
-  AND    hpas_out_om3_e.status                           = 'A'
+-- 2008/12/24 #826 Y.Yamamoto delete start
+--  AND    hpas_out_om3_e.status                           = 'A'
+-- 2008/12/24 #826 Y.Yamamoto delete end
   AND    xpas_out_om3_e.start_date_active               <= TRUNC(SYSDATE)
   AND    xpas_out_om3_e.end_date_active                 >= TRUNC(SYSDATE)
 -- 2008/12/01 Upd Y.Kawano Start
@@ -2883,6 +3033,9 @@ AS
   AND    iaj_out_ad_e_x97.doc_id                  = itc_out_ad_e_x97.doc_id       -- OPM在庫調整ジャーナル抽出条件
   AND    iaj_out_ad_e_x97.doc_line                = itc_out_ad_e_x97.doc_line     -- OPM在庫調整ジャーナル抽出条件
   AND    ijm_out_ad_e_x97.attribute1             IS NULL                          -- OPMジャーナルマスタ.実績IDがNULL
+-- 2008/12/24 #809 Y.Yamamoto add start
+  AND    ijm_out_ad_e_x97.attribute4             IS NULL
+-- 2008/12/24 #809 Y.Yamamoto add end
   UNION ALL
   -- 相手先在庫出庫実績
 -- 2008/12/07 N.Yoshida start
@@ -2946,9 +3099,14 @@ AS
   AND    iaj_out_ad_e_x97.doc_line                = itc_out_ad_e_x97.doc_line     -- OPM在庫調整ジャーナル抽出条件
   AND    ijm_out_ad_e_x97.attribute1             IS NOT NULL                      -- OPMジャーナルマスタ.実績IDがNULLでない
   AND    TO_NUMBER(ijm_out_ad_e_x97.attribute1)   = xrart_out_ad_e_x97.txns_id    -- 実績ID
+-- 2008/12/24 #809 Y.Yamamoto add start
+  AND    ijm_out_ad_e_x97.attribute4             IS NULL
+-- 2008/12/24 #809 Y.Yamamoto add end
   AND    xrart_out_ad_e_x97.vendor_id             = xv_out_ad_e_x97.vendor_id     -- 仕入先ID
   AND    pv_out_ad_e_x97.vendor_id                = xv_out_ad_e_x97.vendor_id
-  AND    pv_out_ad_e_x97.end_date_active         IS NULL
+-- 2008/12/24 #826 Y.Yamamoto delete start
+--  AND    pv_out_ad_e_x97.end_date_active         IS NULL
+-- 2008/12/24 #826 Y.Yamamoto delete end
   AND    xv_out_ad_e_x97.start_date_active       <= TRUNC( SYSDATE )
   AND    xv_out_ad_e_x97.end_date_active         >= TRUNC( SYSDATE )
   UNION ALL
@@ -3024,9 +3182,14 @@ AS
   AND    itc_out_ad_e_x2.doc_id                  = iaj_out_ad_e_x2.doc_id
   AND    itc_out_ad_e_x2.doc_line                = iaj_out_ad_e_x2.doc_line
   AND    TO_NUMBER( ijm_out_ad_e_x2.attribute1 ) = xrart_out_ad_e_x2.txns_id
+-- 2008/12/24 #809 Y.Yamamoto add start
+  AND    ijm_out_ad_e_x2.attribute4             IS NULL
+-- 2008/12/24 #809 Y.Yamamoto add end
   AND    xrart_out_ad_e_x2.vendor_id             = xv_out_ad_e_x2.vendor_id     -- 仕入先ID
   AND    pv_out_ad_e_x2.vendor_id                = xv_out_ad_e_x2.vendor_id
-  AND    pv_out_ad_e_x2.end_date_active         IS NULL
+-- 2008/12/24 #826 Y.Yamamoto delete start
+--  AND    pv_out_ad_e_x2.end_date_active         IS NULL
+-- 2008/12/24 #826 Y.Yamamoto delete end
   AND    xv_out_ad_e_x2.start_date_active       <= TRUNC( SYSDATE )
   AND    xv_out_ad_e_x2.end_date_active         >= TRUNC( SYSDATE )
   UNION ALL
@@ -3163,6 +3326,9 @@ AS
   AND    itc_out_ad_e_xx.whse_code               = iwm_out_ad_e_xx.whse_code
   AND    itc_out_ad_e_xx.location                = mil_out_ad_e_xx.segment1
   AND    iaj_out_ad_e_xx.journal_id              = ijm_out_ad_e_xx.journal_id
+-- 2008/12/24 #809 Y.Yamamoto add start
+  AND    ijm_out_ad_e_xx.attribute4             IS NULL
+-- 2008/12/24 #809 Y.Yamamoto add end
   AND    itc_out_ad_e_xx.doc_type                = iaj_out_ad_e_xx.trans_type
   AND    itc_out_ad_e_xx.doc_id                  = iaj_out_ad_e_xx.doc_id
   AND    itc_out_ad_e_xx.doc_line                = iaj_out_ad_e_xx.doc_line
