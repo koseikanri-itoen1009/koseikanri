@@ -7,7 +7,7 @@ AS
  * Description      : 自販機管理システムから連携されたリース物件に関連する作業の情報を、
  *                    リースアドオンに反映します。
  * MD.050           :  MD050_CSO_013_A02_CSI→FAインタフェース：（OUT）リース資産情報
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009-05-14    1.8   Kazuo.Satomura   T1_0413対応,SQLをコーディング規約通りに修正
  *  2009-05-20    1.9   Kazuo.Satomura   T1_1095対応
  *  2009-05-26    1.10  Daisuke.Abe      T1_1042対応
+ *  2009-05-28    1.11  Daisuke.Abe      T1_1042(再)対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -330,10 +331,16 @@ AS
           ,csi_instance_statuses cis -- インスタンスステータスマスタ
     WHERE
       (
-/* 2009.05.26 D.Abe T1_1042対応 START */
+          /* 2009.05.26 D.Abe T1_1042対応 START */
           ( (
-                    gv_prm_process_date IS NULL
-               AND  xiih.interface_flag  = cv_no         -- 連携済フラグ
+               /* 2009.05.28 D.Abe T1_1042(再)対応 START */
+               gv_prm_process_date IS NULL
+               AND  (xiih.history_creation_date < gd_process_date  -- 履歴作成日
+               OR    xiih.interface_flag  =  cv_no             -- 連携済フラグ
+                    )
+               --     gv_prm_process_date IS NULL
+               --AND  xiih.interface_flag  = cv_no         -- 連携済フラグ
+              /* 2009.05.28 D.Abe T1_1042(再)対応 END */
             )
             OR (
                      gv_prm_process_date IS NOT NULL
@@ -352,7 +359,7 @@ AS
         --  )
         --AND
         --/* 2009.05.14 K.Satomura T1_0413対応 END */
-/* 2009.05.26 D.Abe T1_1042対応 END */
+        /* 2009.05.26 D.Abe T1_1042対応 END */
             gv_prm_process_div = cv_prm_normal          -- パラメータ：処理区分
         AND xiih.install_code  = cii.external_reference -- 物件コード
         AND xxcso_ib_common_pkg.get_ib_ext_attribs(
@@ -361,12 +368,12 @@ AS
             ) = cv_jisya_lease -- 自社リース
         AND cii.instance_status_id = cis.instance_status_id -- インスタンスステータスID
         AND cis.attribute2         = cv_no                  -- 廃棄済フラグ
-/* 2009.05.26 D.Abe T1_1042対応 START */
+        /* 2009.05.26 D.Abe T1_1042対応 START */
         --AND (
         --         xiih.history_creation_date < gd_process_date  -- 履歴作成日
         --      OR xiih.interface_flag        = cv_no            -- 連携済フラグ
         --    )
-/* 2009.05.26 D.Abe T1_1042対応 END */
+        /* 2009.05.26 D.Abe T1_1042対応 END */
       )
     OR
       (
