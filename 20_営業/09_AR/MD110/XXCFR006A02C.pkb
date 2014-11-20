@@ -7,7 +7,7 @@ AS
  * Description      : HHT入金処理
  * MD.050           : MD050_CFR_006_A02_HHT入金処理
  * MD.070           : MD050_CFR_006_A02_HHT入金処理
- * Version          : 1.00
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/02    1.00  SCS 濱中 亮一    初回作成
  *  2009/07/23    1.1   SCS T.KANEDA     T3時障害0000837対応
+ *  2009/10/16    1.2   SCS T.KANEDA     T4時障害対応
  *
  *****************************************************************************************/
 --
@@ -598,7 +599,16 @@ AS
     WHERE  base_code        = iv_base_code        -- 拠点コード
     AND    payment_date     = id_payment_date     -- 入金日
     AND    payment_class    = iv_payment_class    -- 入金区分
-    AND    customer_number  = iv_customer_number  -- 顧客コード
+-- Modify 2009.10.16 Ver1.2 Start
+--    AND    customer_number  = iv_customer_number  -- 顧客コード
+    AND    customer_number  in ( SELECT xchv.ship_account_number  -- 顧客コード
+                                   FROM xxcfr_cust_hierarchy_v xchv
+                                  WHERE iv_customer_number = xchv.cash_account_number
+                                 UNION ALL
+                                 SELECT iv_customer_number  -- 顧客コード
+                                   FROM DUAL
+                                )
+-- Modify 2009.10.16 Ver1.2 End
     AND    delete_flag      = 'N'                 -- 削除フラグ
     ;
 --
@@ -701,24 +711,49 @@ AS
     -- ===============================
 --
     -- 抽出
+-- Modify 2009.10.16 Ver1.2 Start
+--    CURSOR payment_cur
+--    IS
+--      SELECT hht.base_code           base_code,
+--             hht.customer_number     customer_number,
+--             SUM(hht.payment_amount) payment_amount,
+--             hht.payment_date        payment_date,
+--             hht.payment_class       payment_class,
+--             cus.cust_account_id     cust_account_id
+--      FROM xxcos_payment    hht,
+--           hz_cust_accounts cus
+--      WHERE hht.customer_number = cus.account_number(+)  -- 顧客コード
+--        AND hht.delete_flag     = 'N'                    -- 削除フラグ
+--      GROUP BY hht.base_code
+--              ,hht.customer_number
+--              ,hht.payment_date
+--              ,hht.payment_class
+--              ,cus.cust_account_id
+--    ;
+--
+--
+-- 入金先顧客が存在する場合は、入金先顧客を使用するよう変更
     CURSOR payment_cur
     IS
       SELECT hht.base_code           base_code,
-             hht.customer_number     customer_number,
+             NVL(xchv.cash_account_number,hht.customer_number)  customer_number,
              SUM(hht.payment_amount) payment_amount,
              hht.payment_date        payment_date,
              hht.payment_class       payment_class,
-             cus.cust_account_id     cust_account_id
+             NVL(xchv.cash_account_id,cus.cust_account_id)     cust_account_id
       FROM xxcos_payment    hht,
-           hz_cust_accounts cus
-      WHERE hht.customer_number = cus.account_number(+)  -- 顧客コード
-        AND hht.delete_flag     = 'N'                    -- 削除フラグ
+           hz_cust_accounts cus,
+           xxcfr_cust_hierarchy_v xchv
+      WHERE hht.customer_number = cus.account_number(+)         -- 顧客コード
+        AND hht.delete_flag     = 'N'                           -- 削除フラグ
+        AND hht.customer_number = xchv.ship_account_number(+)   -- 顧客コード
       GROUP BY hht.base_code
-              ,hht.customer_number
+              ,NVL(xchv.cash_account_number,hht.customer_number)
               ,hht.payment_date
               ,hht.payment_class
-              ,cus.cust_account_id
+              ,NVL(xchv.cash_account_id,cus.cust_account_id)
     ;
+-- Modify 2009.10.16 Ver1.2 End
 --
     payment_rec payment_cur%ROWTYPE;
 --
