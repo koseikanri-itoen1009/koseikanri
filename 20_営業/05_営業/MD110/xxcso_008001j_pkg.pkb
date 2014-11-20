@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_008001j_pkg(BODY)
  * Description      : 週次活動状況照会画面共通関数
  * MD.050/070       : 
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -26,7 +26,7 @@ AS
  *  2009/05/21    1.2   N.Yanagitaira    [ST障害T1_1104]get_baseline_base_code修正
  *                                                      get_init_base_code追加
  *                                                      get_init_base_name追加
- *
+ *  2012/09/11    1.3   M.Nagai          E_本稼動_09619対応
  *****************************************************************************************/
 --
   -- ===============================
@@ -49,6 +49,9 @@ AS
 -- 20090521_N.Yanagitaira T1_1104 Add START
     cv_manage_base_code          CONSTANT VARCHAR2(30)    := 'XXCSO1_MANAGE_BASE_CODE';
 -- 20090521_N.Yanagitaira T1_1104 Add END
+/* 2012/09/11 Ver1.3 M.Nagai E_本稼動_09619対応 ADD START */
+    cv_week_aff                  CONSTANT VARCHAR2(30)    := 'XXCSO1_WEEKRY_TASK_AFF';
+/* 2012/09/11 Ver1.3 M.Nagai E_本稼動_09619対応 ADD END */
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -56,6 +59,10 @@ AS
 -- 20090521_N.Yanagitaira T1_1104 Add START
     lv_manage_base_code          fnd_flex_value_norm_hierarchy.parent_flex_value%TYPE;
 -- 20090521_N.Yanagitaira T1_1104 Add END
+/* 2012/09/11 Ver1.3 M.Nagai E_本稼動_09619対応 ADD START */
+    ln_week_aff                  NUMBER;
+    ln_cnt                       NUMBER := 1;
+/* 2012/09/11 Ver1.3 M.Nagai E_本稼動_09619対応 ADD END */
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -83,6 +90,10 @@ AS
 --
   -- 検索基準拠点コード取得
   BEGIN
+/* 2012/09/11 Ver1.3 M.Nagai E_本稼動_09619対応 ADD START */
+    --プロファイル取得
+    ln_week_aff := TO_NUMBER(fnd_profile.value(cv_week_aff));
+/* 2012/09/11 Ver1.3 M.Nagai E_本稼動_09619対応 ADD END */
 --
     lv_baseline_base_code := NULL;
 -- 20090521_N.Yanagitaira T1_1104 Add START
@@ -108,11 +119,27 @@ AS
       <<root_base_data_rec>>
       FOR root_base_data_rec IN root_base_data_cur
       LOOP
+--
+/* 2012/09/11 Ver1.3 M.Nagai E_本稼動_09619対応 ADD START */
+         --プロファイルで指定された階層が存在しない階層である場合の為、L1階層を保持する。
+        IF ( ln_cnt = 1 ) THEN
+          lv_baseline_base_code := root_base_data_rec.base_code;
+        END IF;
+/* 2012/09/11 Ver1.3 M.Nagai E_本稼動_09619対応 ADD END */
+--
         -- child_base_codeの2番目が常にL3の第3階層
-        IF (root_base_data_cur%ROWCOUNT = 2) THEN
+/* 2012/09/11 Ver1.3 M.Nagai E_本稼動_09619対応 MOD START */
+--        IF (root_base_data_cur%ROWCOUNT = 2) THEN
+        IF ( root_base_data_cur%ROWCOUNT = ln_week_aff ) THEN
+/* 2012/09/11 Ver1.3 M.Nagai E_本稼動_09619対応 MOD END */
           lv_baseline_base_code := root_base_data_rec.child_base_code;
           EXIT;
         END IF;
+--
+/* 2012/09/11 Ver1.3 M.Nagai E_本稼動_09619対応 ADD START */
+        ln_cnt := ln_cnt + 1;
+/* 2012/09/11 Ver1.3 M.Nagai E_本稼動_09619対応 ADD END */
+--
       END LOOP root_base_data_rec;
 --
     END IF;
@@ -303,6 +330,7 @@ AS
     lv_init_base_code            fnd_flex_values.flex_value%TYPE;
     lv_manage_base_code          fnd_flex_values.flex_value%TYPE;
     lv_login_base_code           fnd_flex_values.flex_value%TYPE;
+
 --
   BEGIN
 --
