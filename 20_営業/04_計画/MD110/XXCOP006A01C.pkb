@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP006A01C(body)
  * Description      : 横持計画
  * MD.050           : 横持計画 MD050_COP_006_A01
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/19    1.0   Y.Goto           新規作成
+ *  2009/04/07    1.1   Y.Goto           T1_0273,T1_0274,T1_0289,T1_0366,T1_0367対応
  *
  *****************************************************************************************/
 --
@@ -230,6 +231,12 @@ AS
   cv_xicv_status            CONSTANT VARCHAR2(8)   := 'Inactive';               -- 
   cn_xicv_inactive          CONSTANT NUMBER := 1;                               -- 
   cn_xsr_plan_item          CONSTANT NUMBER := 1;                               -- 計画商品
+--20090407_Ver1.1_T1_0366_SCS.Goto_ADD_START
+  --DISC品目アドオンマスタ
+  cn_xsib_status_temporary  CONSTANT NUMBER := 20;                              -- 仮登録
+  cn_xsib_status_registered CONSTANT NUMBER := 30;                              -- 本登録
+  cn_xsib_status_obsolete   CONSTANT NUMBER := 40;                              -- 廃
+--20090407_Ver1.1_T1_0366_SCS.Goto_ADD_END
   --入出庫予定情報ビュー
   cv_xstv_status            CONSTANT VARCHAR2(1)   := '1';                      -- 予定
 --
@@ -396,6 +403,9 @@ AS
     ,lot_revers_type         xxcop_wk_yoko_plan_output.lot_revers_type%TYPE
     ,freshness_condition     fnd_lookup_values.description%TYPE
     ,quality_type            fnd_lookup_values.meaning%TYPE
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
+    ,num_of_case             NUMBER
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
   );
   --横持計画出力ワークテーブルCSV出力コレクション型
   TYPE g_xwypo_csv_ttype IS TABLE OF g_xwypo_csv_rtype
@@ -854,7 +864,10 @@ AS
           AND xstv.whse_code       = iv_whse_code
           AND xstv.status          = cv_xstv_status
           AND xstv.arrival_date BETWEEN cd_sysdate
-                                    AND id_plan_date
+--20090407_Ver1.1_T1_0274_SCS.Goto_ADD_START
+--                                    AND id_plan_date
+                                    AND id_plan_date - 1
+--20090407_Ver1.1_T1_0274_SCS.Goto_ADD_END
           --最終期限ルール
           AND id_plan_date < ADD_MONTHS(TO_DATE(xstv.expiration_date, cv_date_format), - gn_deadline_months)
                            - gn_deadline_buffer_days
@@ -929,7 +942,10 @@ AS
           AND xstv.whse_code       = iv_whse_code
           AND xstv.status          = cv_xstv_status
           AND xstv.arrival_date BETWEEN cd_sysdate
-                                    AND id_plan_date
+--20090407_Ver1.1_T1_0274_SCS.Goto_ADD_START
+--                                    AND id_plan_date
+                                    AND id_plan_date - 1
+--20090407_Ver1.1_T1_0274_SCS.Goto_ADD_END
           --最終期限ルール
           AND id_plan_date < ADD_MONTHS(TO_DATE(xstv.expiration_date, cv_date_format), - gn_deadline_months)
                            - gn_deadline_buffer_days
@@ -1009,7 +1025,10 @@ AS
           AND xstv.whse_code       = iv_whse_code
           AND xstv.status          = cv_xstv_status
           AND xstv.arrival_date BETWEEN cd_sysdate
-                                    AND id_plan_date
+--20090407_Ver1.1_T1_0274_SCS.Goto_ADD_START
+--                                    AND id_plan_date
+                                    AND id_plan_date - 1
+--20090407_Ver1.1_T1_0274_SCS.Goto_ADD_END
           --最終期限ルール
           AND id_plan_date < ADD_MONTHS(TO_DATE(xstv.expiration_date, cv_date_format), - gn_deadline_months)
                            - gn_deadline_buffer_days
@@ -2484,7 +2503,10 @@ AS
             AND xstv.whse_code       = iv_whse_code
             AND xstv.status          = cv_xstv_status
             AND xstv.arrival_date BETWEEN cd_sysdate
-                                      AND id_plan_date
+--20090407_Ver1.1_T1_0274_SCS.Goto_ADD_START
+--                                      AND id_plan_date
+                                      AND id_plan_date - 1
+--20090407_Ver1.1_T1_0274_SCS.Goto_ADD_END
             --最終期限ルール
             AND id_plan_date < ADD_MONTHS(TO_DATE(xstv.expiration_date, cv_date_format), - gn_deadline_months)
                              - gn_deadline_buffer_days
@@ -2544,7 +2566,10 @@ AS
             AND xstv.whse_code       = iv_whse_code
             AND xstv.status          = cv_xstv_status
             AND xstv.arrival_date BETWEEN cd_sysdate
-                                      AND id_plan_date
+--20090407_Ver1.1_T1_0274_SCS.Goto_ADD_START
+--                                      AND id_plan_date
+                                      AND id_plan_date - 1
+--20090407_Ver1.1_T1_0274_SCS.Goto_ADD_END
             --最終期限ルール
             AND id_plan_date < ADD_MONTHS(TO_DATE(xstv.expiration_date, cv_date_format), - gn_deadline_months)
                              - gn_deadline_buffer_days
@@ -2607,7 +2632,10 @@ AS
             AND xstv.whse_code   = iv_whse_code
             AND xstv.status      = cv_xstv_status
             AND xstv.arrival_date BETWEEN cd_sysdate
-                                      AND id_plan_date
+--20090407_Ver1.1_T1_0274_SCS.Goto_ADD_START
+--                                      AND id_plan_date
+                                      AND id_plan_date - 1
+--20090407_Ver1.1_T1_0274_SCS.Goto_ADD_END
             --最終期限ルール
             AND id_plan_date < ADD_MONTHS(TO_DATE(xstv.expiration_date, cv_date_format), - gn_deadline_months)
                              - gn_deadline_buffer_days
@@ -3134,6 +3162,9 @@ AS
 --
     -- *** ローカル変数 ***
     ln_condition_idx          NUMBER;
+--20090407_Ver1.1_T1_0367_SCS.Goto_ADD_START
+    ln_exists                 NUMBER;
+--20090407_Ver1.1_T1_0367_SCS.Goto_ADD_END
 --
     -- *** ローカル・カーソル ***
     --出荷倉庫を取得
@@ -3507,6 +3538,33 @@ AS
             RAISE global_api_expt;
           END IF;
         END IF;
+--20090407_Ver1.1_T1_0367_SCS.Goto_ADD_START
+        --移動先倉庫の鮮度条件が全て登録されているかチェック
+        SELECT COUNT(*)
+        INTO ln_exists
+        FROM xxcop_wk_ship_planning xwsp
+        WHERE xwsp.transaction_id = cn_request_id
+          AND xwsp.item_id        = l_xwsp_rec.item_id
+          AND xwsp.ship_org_id    = l_xwsp_rec.receipt_org_id
+          AND NOT EXISTS (
+            SELECT 'x'
+            FROM xxcop_wk_ship_planning xwspv
+            WHERE xwspv.transaction_id      = cn_request_id
+              AND xwspv.plant_org_id        = gn_dummy_src_org_id
+              AND xwspv.item_id             = l_xwsp_rec.item_id
+              AND xwspv.receipt_org_id      = l_xwsp_rec.receipt_org_id
+              AND xwspv.freshness_condition = xwsp.freshness_condition
+          );
+          IF ( ln_exists <> 0 ) THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_msg_appl_cont
+                           ,iv_name         => cv_msg_10040
+                           ,iv_token_name1  => cv_msg_10040_token_1
+                           ,iv_token_value1 => l_xwsp_rec.receipt_org_code
+                         );
+            RAISE internal_api_expt;
+          END IF;
+--20090407_Ver1.1_T1_0367_SCS.Goto_ADD_END
       END LOOP msr_ship_loop;
       IF ( msr_ship_cur%ROWCOUNT = 0 ) THEN
         lv_errmsg := xxccp_common_pkg.get_msg(
@@ -4055,13 +4113,26 @@ AS
             ,xicv.item_no
             ,xicv.item_short_name
             ,xicv.prod_class_code
-            ,TO_NUMBER(xicv.num_of_cases)
+--20090407_Ver1.1_T1_0273_SCS.Goto_MOD_START
+--            ,TO_NUMBER(xicv.num_of_cases)
+            ,NVL(TO_NUMBER(xicv.num_of_cases), 1)
+--20090407_Ver1.1_T1_0273_SCS.Goto_MOD_END
       FROM  xxcop_item_categories1_v xicv
+--20090407_Ver1.1_T1_0366_SCS.Goto_ADD_START
+           ,xxcmm_system_items_b     xsib
+--20090407_Ver1.1_T1_0366_SCS.Goto_ADD_END
       WHERE xicv.inactive_ind               <> cn_xicv_inactive
         AND xicv.inventory_item_status_code <> cv_xicv_status
         AND xicv.prod_class_code             = cv_product_class_drink
         AND cd_sysdate BETWEEN NVL(xicv.start_date_active, cd_sysdate)
                            AND NVL(xicv.end_date_active, cd_sysdate)
+--20090407_Ver1.1_T1_0366_SCS.Goto_ADD_START
+        AND xsib.item_status                IN (cn_xsib_status_temporary
+                                               ,cn_xsib_status_registered
+                                               ,cn_xsib_status_obsolete)
+        AND xsib.item_status_apply_date     <= cd_sysdate
+        AND xicv.item_id                     = xsib.item_id
+--20090407_Ver1.1_T1_0366_SCS.Goto_ADD_END
         AND NOT EXISTS (
           SELECT 'x'
           FROM xxcmn_sourcing_rules xsr
@@ -4070,6 +4141,7 @@ AS
             AND cd_sysdate BETWEEN NVL(xsr.start_date_active, cd_sysdate)
                                AND NVL(xsr.end_date_active, cd_sysdate)
         )
+        AND xicv.item_no IN ( '0006999', '0007000', '0007001' )
       ORDER BY xicv.item_no ASC;
 --
     --経路情報の取得
@@ -4106,8 +4178,11 @@ AS
           SELECT msso.source_organization_id             source_organization_id --移動元倉庫ID
                 ,msro.receipt_organization_id           receipt_organization_id --移動先組織ID
                 ,mas.assignment_set_name                    assignment_set_name --割当セット名
-                ,NVL(msa.organization_id, msro.receipt_organization_id)
-                                                               organization_id --組織
+--20090407_Ver1.1_T1_0367_SCS.Goto_MOD_START
+--                ,NVL(msa.organization_id, msro.receipt_organization_id)
+--                                                               organization_id --組織
+                ,msa.organization_id                            organization_id --組織
+--20090407_Ver1.1_T1_0367_SCS.Goto_MOD_END
                 ,mas.attribute1                             assignment_set_type --割当セット区分
                 ,msa.assignment_type                            assignment_type --割当先タイプ
                 ,msa.sourcing_rule_type                      sourcing_rule_type --ソースルールタイプ
@@ -4181,10 +4256,12 @@ AS
                 ,msrv.attribute12                                   attribute12 --在庫維持日数4
                 ,msrv.attribute13                                   attribute13 --最大在庫日数4
                 ,msrv.assign_type_priority                 assign_type_priority --割当先タイプ優先度
-                ,ROW_NUMBER() OVER ( PARTITION BY msrv.source_organization_id
-                                                 ,msrv.organization_id
-                                     ORDER BY     msrv.assign_type_priority ASC
-                                   )                                   priority --優先順位
+--20090407_Ver1.1_T1_0367_SCS.Goto_DEL_START
+--                ,ROW_NUMBER() OVER ( PARTITION BY msrv.source_organization_id
+--                                                 ,msrv.organization_id
+--                                     ORDER BY     msrv.assign_type_priority ASC
+--                                   )                                   priority --優先順位
+--20090407_Ver1.1_T1_0367_SCS.Goto_DEL_END
           FROM msr_vw msrv
           WHERE msrv.assignment_set_type    IN (cv_base_plan)
             AND msrv.source_organization_id IN (gn_master_org_id)
@@ -4269,6 +4346,9 @@ AS
                                                  ,msrv.receipt_organization_id
                                      ORDER BY     msrv.assign_type_priority ASC
                                                  ,msrv.sourcing_rule_type   DESC
+--20090407_Ver1.1_T1_0367_SCS.Goto_ADD_START
+                                                 ,mdv.assign_type_priority  ASC
+--20090407_Ver1.1_T1_0367_SCS.Goto_ADD_END
                                    )                                   priority --優先順位
                 ,RANK () OVER ( PARTITION BY msrv.receipt_organization_id
                                 ORDER BY     msrv.assign_type_priority    ASC
@@ -4280,8 +4360,11 @@ AS
           WHERE msrv.assignment_set_type        IN (cv_base_plan)
             AND msrv.source_organization_id NOT IN (gn_master_org_id
                                                    ,gn_dummy_src_org_id)
-            AND msrv.receipt_organization_id = mdv.organization_id(+)
-            AND mdv.priority(+) = 1
+--20090407_Ver1.1_T1_0367_SCS.Goto_MOD_START
+--            AND msrv.receipt_organization_id = mdv.organization_id(+)
+--            AND mdv.priority(+) = 1
+            AND msrv.receipt_organization_id = NVL( mdv.organization_id(+), msrv.receipt_organization_id )
+--20090407_Ver1.1_T1_0367_SCS.Goto_MOD_END
         )
         , msr_custom_vw AS (
           --特別横持計画
@@ -4894,23 +4977,57 @@ AS
                               || l_cp_tab(l_cp_idx).freshness_condition
             );
             --移動元倉庫の鮮度条件を取得
-            SELECT xwsp.item_id                     item_id
-                  ,xwsp.item_no                     item_no
-                  ,xwsp.receipt_org_id              ship_org_id
-                  ,xwsp.receipt_org_code            ship_org_code
-                  ,xwsp.shipping_date               shipping_date
-                  ,NULL                             before_stock
-                  ,NULL                             manufacture_date
-                  ,xwsp.shipping_pace               shipping_pace
-                  ,xwsp.stock_maintenance_days      stock_maintenance_days
-                  ,xwsp.max_stock_days              max_stock_days
+--20090407_Ver1.1_T1_0367_SCS.Goto_MOD_START
+            SELECT xwspv.item_id
+                  ,xwspv.item_no
+                  ,xwspv.ship_org_id
+                  ,xwspv.ship_org_code
+                  ,xwspv.shipping_date
+                  ,xwspv.before_stock
+                  ,xwspv.manufacture_date
+                  ,xwspv.shipping_pace
+                  ,xwspv.stock_maintenance_days
+                  ,xwspv.max_stock_days
             INTO l_xwsp_rec
-            FROM xxcop_wk_ship_planning xwsp
-            WHERE xwsp.transaction_id      = cn_request_id
-              AND xwsp.item_no             = l_xwsp_so_rec.item_no
-              AND xwsp.plant_org_id        = gn_dummy_src_org_id
-              AND xwsp.receipt_org_code    = l_xwsp_so_rec.ship_org_code
-              AND xwsp.freshness_condition = l_cp_tab(l_cp_idx).freshness_condition;
+            FROM (
+              SELECT xwsp.item_id                     item_id
+                    ,xwsp.item_no                     item_no
+                    ,xwsp.receipt_org_id              ship_org_id
+                    ,xwsp.receipt_org_code            ship_org_code
+                    ,xwsp.shipping_date               shipping_date
+                    ,NULL                             before_stock
+                    ,NULL                             manufacture_date
+                    ,xwsp.shipping_pace               shipping_pace
+                    ,xwsp.stock_maintenance_days      stock_maintenance_days
+                    ,xwsp.max_stock_days              max_stock_days
+                    ,ROW_NUMBER() OVER ( ORDER BY xwsp.freshness_priority ASC )
+                                                      freshness_priority
+              FROM xxcop_wk_ship_planning xwsp
+              WHERE xwsp.transaction_id      = cn_request_id
+                AND xwsp.item_no             = l_xwsp_so_rec.item_no
+                AND xwsp.plant_org_id        = gn_dummy_src_org_id
+                AND xwsp.receipt_org_code    = l_xwsp_so_rec.ship_org_code
+                AND xwsp.freshness_condition = l_cp_tab(l_cp_idx).freshness_condition
+            ) xwspv
+            WHERE xwspv.freshness_priority = 1;
+--            SELECT xwsp.item_id                     item_id
+--                  ,xwsp.item_no                     item_no
+--                  ,xwsp.receipt_org_id              ship_org_id
+--                  ,xwsp.receipt_org_code            ship_org_code
+--                  ,xwsp.shipping_date               shipping_date
+--                  ,NULL                             before_stock
+--                  ,NULL                             manufacture_date
+--                  ,xwsp.shipping_pace               shipping_pace
+--                  ,xwsp.stock_maintenance_days      stock_maintenance_days
+--                  ,xwsp.max_stock_days              max_stock_days
+--            INTO l_xwsp_rec
+--            FROM xxcop_wk_ship_planning xwsp
+--            WHERE xwsp.transaction_id      = cn_request_id
+--              AND xwsp.item_no             = l_xwsp_so_rec.item_no
+--              AND xwsp.plant_org_id        = gn_dummy_src_org_id
+--              AND xwsp.receipt_org_code    = l_xwsp_so_rec.ship_org_code
+--              AND xwsp.freshness_condition = l_cp_tab(l_cp_idx).freshness_condition;
+--20090407_Ver1.1_T1_0367_SCS.Goto_MOD_END
             --移動元倉庫の鮮度条件を満たす在庫数の取得
             get_stock_quantity(
                in_item_id          => l_xwsp_rec.item_id
@@ -5226,10 +5343,16 @@ AS
           ,xwypo.lot_revers_type
           ,flv1.description                            freshness_condition
           ,flv2.meaning                                quality_type
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
+          ,NVL(TO_NUMBER(iimb.attribute11), 1)         num_of_case
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
     BULK COLLECT INTO l_xwypo_csv_tab
     FROM xxcop_wk_yoko_plan_output xwypo
         ,fnd_lookup_values         flv1
         ,fnd_lookup_values         flv2
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
+        ,ic_item_mst_b             iimb
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
     WHERE xwypo.transaction_id = cn_request_id
       AND flv1.lookup_type     = cv_flv_freshness_cond
       AND flv1.lookup_code     = xwypo.freshness_condition
@@ -5245,6 +5368,9 @@ AS
       AND flv2.enabled_flag(+) = cv_enable
       AND cd_sysdate BETWEEN NVL(flv2.start_date_active(+), cd_sysdate)
                          AND NVL(flv2.end_date_active(+), cd_sysdate)
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
+      AND xwypo.item_id        = iimb.item_id
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
     ORDER BY xwypo.shipping_date      ASC
             ,xwypo.ship_org_code      ASC
             ,xwypo.receipt_org_code   ASC
@@ -5331,23 +5457,55 @@ AS
                  || cv_csv_char_bracket || cv_csv_delimiter
                  || cv_csv_char_bracket || l_xwypo_csv_tab(l_xwypo_idx).quality_type
                  || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).plan_min_qty)
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
+--                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).plan_min_qty)
+                 || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).plan_min_qty
+                                                       / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
                  || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).plan_max_qty)
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
+--                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).plan_max_qty)
+                 || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).plan_max_qty
+                                                       / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
                  || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).plan_bal_qty)
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
+--                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).plan_bal_qty)
+                 || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).plan_bal_qty
+                                                       / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
                  || cv_csv_char_bracket || cv_csv_delimiter
                  || cv_csv_char_bracket || l_xwypo_csv_tab(l_xwypo_idx).delivery_unit
                  || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).before_stock)
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
+--                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).before_stock)
+                 || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).before_stock
+                                                       / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
                  || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).after_stock)
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
+--                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).after_stock)
+                 || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).after_stock
+                                                       / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
                  || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).safety_stock)
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
+--                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).safety_stock)
+                 || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).safety_stock
+                                                       / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
                  || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).max_stock)
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
+--                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).max_stock)
+                 || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).max_stock
+                                                       / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
                  || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).shipping_pace)
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
+--                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).shipping_pace)
+                 || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).shipping_pace
+                                                       / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
                  || cv_csv_char_bracket || cv_csv_delimiter
                  || cv_csv_char_bracket || l_xwypo_csv_tab(l_xwypo_idx).special_yoko_type
                  || cv_csv_char_bracket || cv_csv_delimiter
