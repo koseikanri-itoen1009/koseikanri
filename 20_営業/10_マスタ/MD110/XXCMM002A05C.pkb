@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A05C(body)
  * Description      : 仕入先マスタデータ連携
  * MD.050           : 仕入先マスタデータ連携 MD050_CMM_002_A05
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,8 @@ AS
  *  2009/01/20    1.0   SCS 福間 貴子    初回作成
  *  2009/03/03    1.1   SCS 吉川 博章    新規連携時、仕入先サイトのATTRIBUTE_CATEGORYに
  *                                       ORG_IDを設定するよう修正
+ *  2009/04/21    1.2   SCS 吉川 博章    障害T1_0255, T1_0388, T1_0438 対応
+ *  2009/04/24          SCS 吉川 博章    仕入先登録済み、サイト「会社」未登録時の対応
  *
  *****************************************************************************************/
 --
@@ -38,18 +40,18 @@ AS
   cv_status_warn            CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_warn;   --警告:1
   cv_status_error           CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_error;  --異常:2
 --
-  cv_msg_part      CONSTANT VARCHAR2(3) := ' : ';
-  cv_msg_cont      CONSTANT VARCHAR2(3) := '.';
+  cv_msg_part               CONSTANT VARCHAR2(3) := ' : ';
+  cv_msg_cont               CONSTANT VARCHAR2(3) := '.';
 --
 --################################  固定部 END   ##################################
 --
 --#######################  固定グローバル変数宣言部 START   #######################
 --
-  gv_out_msg       VARCHAR2(2000);
-  gn_target_cnt    NUMBER;                    -- 対象件数
-  gn_normal_cnt    NUMBER;                    -- 正常件数
-  gn_error_cnt     NUMBER;                    -- エラー件数
-  gn_warn_cnt      NUMBER;                    -- スキップ件数
+  gv_out_msg                VARCHAR2(2000);
+  gn_target_cnt             NUMBER;                    -- 対象件数
+  gn_normal_cnt             NUMBER;                    -- 正常件数
+  gn_error_cnt              NUMBER;                    -- エラー件数
+  gn_warn_cnt               NUMBER;                    -- スキップ件数
 --
 --################################  固定部 END   ##################################
 --
@@ -95,6 +97,9 @@ AS
   cv_koguti_genkin_nm       CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_KOGUTI_GENKIN_NM';  -- 小口現金支払方法名称
   cv_pay_type_nm            CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PAY_TYPE_NM';       -- 支払種類名称
   cv_terms_id               CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_TERMS_ID';          -- 支払条件
+-- Ver1.2  2009/04/21  Add  障害：T1_0438対応  銀行手数料負担者を追加「当方(I)」
+  cv_bank_charge_bearer     CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_BANK_CHARGE';       -- 銀行手数料負担者
+-- End Ver1.2
   cv_bank_number            CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_BANK_NUMBER';       -- 現金ダミー銀行支店コード
   cv_bank_num               CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_BANK_NUM';          -- 現金ダミー銀行コード
   cv_bank_nm                CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_BANK_NM';           -- 現金ダミー銀行名称
@@ -125,6 +130,9 @@ AS
   cv_tkn_koguti_genkin_nm   CONSTANT VARCHAR2(20)  := '小口現金支払方法名称';
   cv_tkn_pay_type_nm        CONSTANT VARCHAR2(20)  := '支払種類名称';
   cv_tkn_terms_id_nm        CONSTANT VARCHAR2(10)  := '支払条件';
+-- Ver1.2  2009/04/21  Add  障害：T1_0438対応  銀行手数料負担者を追加
+  cv_tkn_bank_charge        CONSTANT VARCHAR2(30)  := '銀行手数料負担者';
+-- End Ver1.2
   cv_tkn_bank_number_nm     CONSTANT VARCHAR2(24)  := '現金ダミー銀行支店コード';
   cv_tkn_bank_num_nm        CONSTANT VARCHAR2(20)  := '現金ダミー銀行コード';
   cv_tkn_bank_nm            CONSTANT VARCHAR2(20)  := '現金ダミー銀行名称';
@@ -182,6 +190,9 @@ AS
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
+-- Ver1.2  2009/04/21  Add  障害：T1_0255、T1_0388対応
+  cv_site_code_comp         po_vendor_sites.vendor_site_code%TYPE := '会社';
+-- End Ver1.2
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -314,6 +325,9 @@ AS
   gv_s_email_address        VARCHAR2(2000);       -- 仕入先サイトEメールアドレス
   gv_s_pps_flag             VARCHAR2(1);          -- 仕入先サイト主支払サイトフラグ
   gv_s_ps_flag              VARCHAR2(1);          -- 仕入先サイト購買フラグ
+-- Ver1.2  2009/04/21  Add  障害：T1_0438対応  銀行手数料負担者を追加
+  gv_s_bank_charge_new      VARCHAR2(1);          -- 仕入先サイト銀行手数料負担者(新規登録用)
+-- End Ver1.2
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -327,8 +341,14 @@ AS
              t.actual_termination_date AS actual_termination_date,  -- 退職年月日
              a.ass_attribute3 AS ass_attribute3,                    -- 部門コード
              s.vendor_id AS vendor_id                               -- 仕入先ID
+-- Ver1.2  2009/04/21  Add  障害：T1_0388対応  従業員仕入先サイト対応
+            ,pvs.vendor_site_id
+-- End Ver1.2
     FROM     per_periods_of_service t,
              per_all_assignments_f a,
+-- Ver1.2  2009/04/21  Add  障害：T1_0388対応  従業員仕入先サイト対応
+             po_vendor_sites  pvs,
+-- End Ver1.2
              po_vendors s,
              per_all_people_f p,
              (SELECT   pp.person_id AS person_id,
@@ -342,12 +362,17 @@ AS
     AND      p.person_id = a.person_id
     AND      p.effective_start_date = a.effective_start_date
     AND      p.person_id = s.employee_id
+-- Ver1.2  2009/04/21  Add  障害：T1_0388対応  従業員仕入先サイト対応
+    AND      s.vendor_id = pvs.vendor_id
+    AND      pvs.vendor_site_code = cv_site_code_comp
+-- End Ver1.2
     AND      a.period_of_service_id = t.period_of_service_id
     ORDER BY p.employee_number
   ;
   TYPE g_u_people_data_ttype IS TABLE OF get_u_people_data_cur%ROWTYPE INDEX BY PLS_INTEGER;
   gt_u_people_data            g_u_people_data_ttype;
   --
+  -- 仕入先自体は登録済みだが、サイトに「会社」が存在しないものも新規として抽出する（2009/04/24）
   CURSOR get_i_people_data_cur
   IS
     SELECT   p.person_id AS person_id,                              -- 従業員ID
@@ -355,6 +380,9 @@ AS
              p.per_information18 AS per_information18,              -- 氏名(姓)
              p.per_information19 AS per_information19,              -- 氏名(名)
              a.ass_attribute3 AS ass_attribute3                     -- 部門コード
+-- Ver1.2  2009/04/24  Add  仕入先登録済み、サイト「会社」未登録対応
+            ,s.vendor_id AS vendor_id                               -- 仕入先ID
+-- End Ver1.2
     FROM     po_vendors s,
              per_periods_of_service t,
              per_all_assignments_f a,
@@ -372,7 +400,13 @@ AS
     AND      a.period_of_service_id = t.period_of_service_id
     AND      (t.actual_termination_date IS NULL OR t.actual_termination_date >= gd_process_date)
     AND      p.person_id = s.employee_id(+)
-    AND      s.employee_id IS NULL
+-- 2009/04/21  Mod  障害：T1_0388対応  従業員仕入先サイト対応
+--    AND      s.employee_id IS NULL
+    AND      NOT EXISTS ( SELECT   'x'
+                          FROM     po_vendor_sites  pvs
+                          WHERE    s.vendor_id = pvs.vendor_id
+                          AND      pvs.vendor_site_code = cv_site_code_comp )
+-- End Ver1.2
     ORDER BY p.employee_number
   ;
   TYPE g_i_people_data_ttype IS TABLE OF get_i_people_data_cur%ROWTYPE INDEX BY PLS_INTEGER;
@@ -417,6 +451,9 @@ AS
     CURSOR get_vendors_interface_cur IS
       SELECT   vendors_interface_id
       FROM     xx03_vendors_interface
+-- Ver1.2  2009/04/21  Add  障害：T1_0255対応  会計とバッティングしないよう条件を追加
+      WHERE    vndr_vendor_type_lkup_code = gv_vendor_type
+-- End Ver1.2
       FOR UPDATE NOWAIT;
 --
     -- *** ローカル・レコード ***
@@ -480,16 +517,18 @@ AS
       lv_tkn_nm := cv_tkn_country_nm;
       RAISE global_process_expt;
     END IF;
-    gv_accts_pay_ccid := fnd_profile.value(cv_accts_pay_ccid);
-    IF (gv_accts_pay_ccid IS NULL) THEN
-      lv_tkn_nm := cv_tkn_accts_pay_ccid_nm;
-      RAISE global_process_expt;
-    END IF;
-    gv_prepay_ccid := fnd_profile.value(cv_prepay_ccid);
-    IF (gv_prepay_ccid IS NULL) THEN
-      lv_tkn_nm := cv_tkn_prepay_ccid_nm;
-      RAISE global_process_expt;
-    END IF;
+-- Ver1.2  2009/04/21  Del  障害：T1_0438対応  会計オプションから取得するよう変更（負債・前払金）
+--    gv_accts_pay_ccid := fnd_profile.value(cv_accts_pay_ccid);
+--    IF (gv_accts_pay_ccid IS NULL) THEN
+--      lv_tkn_nm := cv_tkn_accts_pay_ccid_nm;
+--      RAISE global_process_expt;
+--    END IF;
+--    gv_prepay_ccid := fnd_profile.value(cv_prepay_ccid);
+--    IF (gv_prepay_ccid IS NULL) THEN
+--      lv_tkn_nm := cv_tkn_prepay_ccid_nm;
+--      RAISE global_process_expt;
+--    END IF;
+-- End Ver1.2
     gv_group_type_nm := fnd_profile.value(cv_group_type_nm);
     IF (gv_group_type_nm IS NULL) THEN
       lv_tkn_nm := cv_tkn_group_type_nm;
@@ -530,6 +569,13 @@ AS
       lv_tkn_nm := cv_tkn_terms_id_nm;
       RAISE global_process_expt;
     END IF;
+-- Ver1.2  2009/04/21  Add  障害：T1_0438対応  銀行手数料負担者を追加「当方(I)」
+    gv_s_bank_charge_new := fnd_profile.value(cv_bank_charge_bearer);
+    IF (gv_s_bank_charge_new IS NULL) THEN
+      lv_tkn_nm := cv_tkn_bank_charge;
+      RAISE global_process_expt;
+    END IF;
+-- End Ver1.2
     gv_bank_number := fnd_profile.value(cv_bank_number);
     IF (gv_bank_number IS NULL) THEN
       lv_tkn_nm := cv_tkn_bank_number_nm;
@@ -595,6 +641,18 @@ AS
       lv_tkn_nm := cv_tkn_jyugoin_kbn_d_nm;
       RAISE global_process_expt;
     END IF;
+    --
+-- Ver1.2  2009/04/21  Del  障害：T1_0438対応  会計オプションから取得するよう変更（負債・前払金）
+    -- ============================================================
+    --  会計オプションの取得
+    -- ============================================================
+    SELECT   TO_CHAR( accts_pay_code_combination_id )   -- 負債勘定
+            ,TO_CHAR( prepay_code_combination_id )      -- 前払金
+    INTO     gv_accts_pay_ccid
+            ,gv_prepay_ccid
+    FROM     financials_system_parameters;    -- 会計オプション
+-- End Ver1.2
+    --
     -- ============================================================
     --  固定出力(I/Fファイル名部)
     -- ============================================================
@@ -891,6 +949,9 @@ AS
     --
     <<u_out_loop>>
     FOR ln_loop_cnt IN gt_u_people_data.FIRST..gt_u_people_data.LAST LOOP
+-- Ver1.2  2009/04/21  Add  障害：T1_0388対応
+      gn_s_vendor_site_id := gt_u_people_data(ln_loop_cnt).vendor_site_id;
+-- End Ver1.2
       --========================================
       -- 従業員番号重複チェック(A-3-1)
       --========================================
@@ -948,12 +1009,20 @@ AS
         -- 以前の支払グループ取得(A-3-3)
         --========================================
         BEGIN
-          SELECT   pay_group_lookup_code,         -- 以前の支払グループ
-                   vendor_site_id                 -- 仕入先サイトID
-          INTO     lv_old_pay_group,
-                   gn_s_vendor_site_id
-          FROM     po_vendor_sites_all
-          WHERE    vendor_id = gt_u_people_data(ln_loop_cnt).vendor_id;
+-- Ver1.2  2009/04/21  Mod  障害：T1_0388対応  営業ＯＵの「会社」のみ取得するよう修正
+--          SELECT   pay_group_lookup_code,         -- 以前の支払グループ
+--                   vendor_site_id                 -- 仕入先サイトID
+--          INTO     lv_old_pay_group,
+--                   gn_s_vendor_site_id
+--          FROM     po_vendor_sites_all
+--          WHERE    vendor_id = gt_u_people_data(ln_loop_cnt).vendor_id;
+          --
+          SELECT   pay_group_lookup_code         -- 以前の支払グループ
+          INTO     lv_old_pay_group
+          FROM     po_vendor_sites
+          WHERE    vendor_site_id = gn_s_vendor_site_id;
+-- End Ver1.2
+          --
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             lv_errmsg := xxccp_common_pkg.get_msg(
@@ -1029,6 +1098,7 @@ AS
           -- 異動した社員
           lv_kbn := cv_i;
         END IF;
+        --
         IF (lv_kbn = cv_o) THEN
           -- 異動も退職もしなかった社員の件数をカウント
           ln_o_cnt := ln_o_cnt + 1;
@@ -1276,6 +1346,13 @@ AS
               RAISE global_api_expt;
             END IF;
           END IF;
+          --
+-- Ver1.2  2009/04/21  Add  障害：T1_0255対応  シーケンスを取得処理を追加
+          SELECT   xxcso_xx03_vendors_if_s01.NEXTVAL
+          INTO     gn_v_interface_id
+          FROM     dual;
+-- End Ver1.2
+          --
           --========================================
           -- CSVファイル出力(A-6)
           --========================================
@@ -1569,7 +1646,9 @@ AS
               RAISE global_api_others_expt;
           END;
           gn_normal_cnt := gn_normal_cnt + 1;
-          gn_v_interface_id := gn_v_interface_id + 1;
+-- Ver1.2  2009/04/21  Del  障害：T1_0255対応  シーケンスを取得するため削除
+--          gn_v_interface_id := gn_v_interface_id + 1;
+-- End Ver1.2
         END IF;
       END IF;
       lv_employee_number := gt_u_people_data(ln_loop_cnt).employee_number;
@@ -1709,9 +1788,9 @@ AS
 --
 --#######################  固定ローカル変数宣言部 START   ######################
 --
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+    lv_errbuf           VARCHAR2(5000);           -- エラー・メッセージ
+    lv_retcode          VARCHAR2(1);              -- リターン・コード
+    lv_errmsg           VARCHAR2(5000);           -- ユーザー・エラー・メッセージ
 --
 --###########################  固定部 END   ####################################
 --
@@ -1746,7 +1825,6 @@ AS
     -- ***        ループ処理の記述         ***
     -- ***       処理部の呼び出し          ***
     -- ***************************************
---
     <<i_out_loop>>
     FOR ln_loop_cnt IN gt_i_people_data.FIRST..gt_i_people_data.LAST LOOP
       --========================================
@@ -1839,12 +1917,22 @@ AS
           lv_errbuf := lv_errmsg;
           RAISE global_api_expt;
         END IF;
+        --
+-- Ver1.2  2009/04/21  Add  障害：T1_0255対応  シーケンスを取得処理を追加
+        SELECT   xxcso_xx03_vendors_if_s01.NEXTVAL
+        INTO     gn_v_interface_id
+        FROM     dual;
+-- End Ver1.2
+        --
         --========================================
         -- CSVファイル出力(A-9)
         --========================================
         lv_csv_text := gn_v_interface_id || cv_delimiter                                    -- 仕入先インターフェースID(連番)
           || cv_enclosed || cv_insert_flg || cv_enclosed || cv_delimiter                    -- 追加更新フラグ
-          || NULL || cv_delimiter                                                           -- 仕入先仕入先ID
+-- Ver1.2  2009/04/24  Add  仕入先登録済み、サイト「会社」未登録対応
+--          || NULL || cv_delimiter                                                           -- 仕入先仕入先ID
+          || gt_i_people_data(ln_loop_cnt).vendor_id || cv_delimiter                        -- 仕入先仕入先ID
+-- End Ver1.2
           || cv_enclosed || SUBSTRB(gt_i_people_data(ln_loop_cnt).per_information18         -- 仕入先仕入先名
           || gt_i_people_data(ln_loop_cnt).per_information19 || '／'
           || TO_MULTI_BYTE(gt_i_people_data(ln_loop_cnt).employee_number),1,80)
@@ -1885,9 +1973,13 @@ AS
           || cv_enclosed || NULL || cv_enclosed || cv_delimiter                             -- 仕入先請求税自動計算上書きの許
           || cv_enclosed || NULL || cv_enclosed || cv_delimiter                             -- 仕入先銀行手数料負担者
           || NULL || cv_delimiter                                                           -- 仕入先サイト仕入先サイトID
-          || cv_enclosed || SUBSTRB(cv_9000                                                 -- 仕入先サイト仕入先サイト名
-          || gt_i_people_data(ln_loop_cnt).employee_number,1,15)
-          || cv_enclosed || cv_delimiter
+
+-- Ver1.2  2009/04/21  Mod  障害：T1_0438対応  サイトコードを「会社」に修正
+--          || cv_enclosed || SUBSTRB(cv_9000                                                 -- 仕入先サイト仕入先サイト名
+--          || gt_i_people_data(ln_loop_cnt).employee_number,1,15)
+--          || cv_enclosed || cv_delimiter
+          || cv_enclosed || cv_site_code_comp || cv_enclosed || cv_delimiter                -- 仕入先サイト仕入先サイト名
+-- End Ver1.2
           || cv_enclosed || gv_address_nm1 || cv_enclosed || cv_delimiter                   -- 仕入先サイト所在地1
           || cv_enclosed || gv_address_nm2 || cv_enclosed || cv_delimiter                   -- 仕入先サイト所在地2
           || cv_enclosed || NULL || cv_enclosed || cv_delimiter                             -- 仕入先サイト所在地3
@@ -1942,7 +2034,10 @@ AS
           || cv_enclosed || NULL || cv_enclosed || cv_delimiter                             -- 仕入先サイト請求税自動計算端数
           || cv_enclosed || NULL || cv_enclosed || cv_delimiter                             -- 仕入先サイト請求税自動計算計算
           || cv_enclosed || NULL || cv_enclosed || cv_delimiter                             -- 仕入先サイト請求税自動計算上書
-          || cv_enclosed || NULL || cv_enclosed || cv_delimiter                             -- 仕入先サイト銀行手数料負担者
+-- Ver1.2  2009/04/21  Add  障害：T1_0438対応  銀行手数料負担者を追加
+--          || cv_enclosed || NULL || cv_enclosed || cv_delimiter                             -- 仕入先サイト銀行手数料負担者
+          || cv_enclosed || gv_s_bank_charge_new || cv_enclosed || cv_delimiter             -- 仕入先サイト銀行手数料負担者
+-- End Ver1.2
           || cv_enclosed || NULL || cv_enclosed || cv_delimiter                             -- 仕入先サイト銀行支店タイプ
           || cv_enclosed || NULL || cv_enclosed || cv_delimiter                             -- 仕入先サイトRTS取引からデビッ
           || cv_enclosed || NULL || cv_enclosed || cv_delimiter                             -- 仕入先サイト仕入先通知方法
@@ -2028,7 +2123,9 @@ AS
             RAISE global_api_others_expt;
         END;
         gn_normal_cnt := gn_normal_cnt + 1;
-        gn_v_interface_id := gn_v_interface_id + 1;
+-- Ver1.2  2009/04/21  Del  障害：T1_0255対応  シーケンスを取得するため削除
+--        gn_v_interface_id := gn_v_interface_id + 1;
+-- End Ver1.2
       END IF;
       lv_employee_number := gt_i_people_data(ln_loop_cnt).employee_number;
     END LOOP i_out_loop;
@@ -2109,7 +2206,11 @@ AS
     -- ***************************************
 --
     BEGIN
-      DELETE FROM xx03_vendors_interface;
+-- Ver1.2  2009/04/21  Mod  障害：T1_0255対応  会計とバッティングしないよう条件を追加
+--      DELETE FROM xx03_vendors_interface;
+      DELETE FROM xx03_vendors_interface
+      WHERE  vndr_vendor_type_lkup_code = gv_vendor_type;
+-- End Ver1.2
     EXCEPTION
       WHEN OTHERS THEN
         lv_errmsg := xxccp_common_pkg.get_msg(
@@ -2195,8 +2296,10 @@ AS
     gn_warn_cnt   := 0;
     gn_error_cnt  := 0;
     gv_warn_flg   := '0';
-    -- インターフェースID
-    gn_v_interface_id := 1;
+-- Ver1.2  2009/04/21  Del  障害：T1_0255対応  シーケンスを取得するため削除
+--    -- インターフェースID
+--    gn_v_interface_id := 1;
+-- End Ver1.2
     --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -2265,13 +2368,13 @@ AS
     -- =============================================================
     --  仕入先従業員情報中間I/Fテーブルデータ削除プロシージャ(A-10)
     -- =============================================================
-      delete_table(
-         lv_errbuf             -- エラー・メッセージ           --# 固定 #
-        ,lv_retcode            -- リターン・コード             --# 固定 #
-        ,lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
-      IF (lv_retcode = cv_status_error) THEN
-        RAISE global_process_expt;
-      END IF;
+    delete_table(
+       lv_errbuf             -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode            -- リターン・コード             --# 固定 #
+      ,lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
     --
     -- =====================================================
     --  終了処理プロシージャ(A-11)
