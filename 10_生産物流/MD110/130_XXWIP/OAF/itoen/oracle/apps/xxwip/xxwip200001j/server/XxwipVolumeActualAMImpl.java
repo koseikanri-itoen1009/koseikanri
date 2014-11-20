@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwipVolumeActualAMImpl
 * 概要説明   : 出来高実績入力アプリケーションモジュール
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2008-05-12      二瓶大輔     変更要求対応(#75)
 * 2008-06-12 1.1  二瓶大輔     ST不具合対応(#78)
 * 2008-06-27 1.2  二瓶大輔     結合テスト指摘対応
+* 2008-07-29 1.3  二瓶大輔     ST不具合対応(#498)
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.xxwip200001j.server;
@@ -44,7 +45,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出来高実績入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.2
+ * @version 1.3
  ***************************************************************************
  */
 public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -1442,7 +1443,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       expirationDate = (Date)hdrRow.getAttribute("ExpirationDate");
       productDate    = (Date)hdrRow.getAttribute("ProductDate");
       makerDate      = (Date)hdrRow.getAttribute("MakerDate");
-      row.setAttribute("BatchId", batchId);
+// 2008-07-29 D.Nihei DEL START
+//      row.setAttribute("BatchId", batchId);
+// 2008-07-29 D.Nihei DEL END
     }
     if (row != null) 
     {
@@ -1464,6 +1467,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
         type  = (String)row.getAttribute("Type");
         rank1 = (String)row.getAttribute("Rank1");
         rank2 = (String)row.getAttribute("Rank2");
+// 2008-07-29 D.Nihei ADD START
+        row.setAttribute("BatchId", batchId);
+// 2008-07-29 D.Nihei ADD END
       }
       // 引数を設定します。
       HashMap params = new HashMap();
@@ -2325,7 +2331,7 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       }
     }
     return dialogMsg.toString();
-  } // lotExecute
+  } // checkLotQty
 
   /***************************************************************************
    * 検査依頼Noの取得を行うメソッドです。
