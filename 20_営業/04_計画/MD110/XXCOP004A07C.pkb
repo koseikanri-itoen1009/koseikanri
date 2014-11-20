@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A07C(body)
  * Description      : 親コード出荷実績作成
  * MD.050           : 親コード出荷実績作成 MD050_COP_004_A07
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ----------------------   ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/02/16    1.2   SCS.Tsubomatsu   結合不具合No.010対応(A-3.更新条件見直し)
  *  2009/04/13    1.3   SCS.Kikuchi      T1_0507対応
  *  2009/05/12    1.4   SCS.Kikuchi      T1_0951対応
+ *  2009/06/15    1.5   SCS.Goto         T1_1193,T1_1194対応
  *
  *****************************************************************************************/
 --
@@ -154,7 +155,9 @@ AS
    ,shipped_date          xxwsh_order_headers_all.shipped_date%TYPE         -- 受注ヘッダアドオン.出荷日
    ,shipped_quantity      xxwsh_order_lines_all.shipped_quantity%TYPE       -- 受注明細アドオン.数量
    ,uom_code              xxwsh_order_lines_all.uom_code%TYPE               -- 受注明細アドオン.単位
-   ,parent_item_no_now    xxcop_item_categories1_v.parent_item_no%TYPE      -- 計画_品目カテゴリビュー1(システム日付基準).親品目No
+--20090615_Ver1.5_T1_1194_SCS.Goto_DEL_START
+--   ,parent_item_no_now    xxcop_item_categories1_v.parent_item_no%TYPE      -- 計画_品目カテゴリビュー1(システム日付基準).親品目No
+--20090615_Ver1.5_T1_1194_SCS.Goto_DEL_END
   );
 --
   -- ===============================
@@ -589,31 +592,87 @@ AS
       -- 変更を反映させる可能性のある親コード出荷実績表アドオンのデータを全て抽出する。
       -- （変更を反映させない場合も存在する）
       -- ===================================================================================
-      SELECT DISTINCT
-             xsr.ROWID                  xsr_rowid             -- 親コード出荷実績表アドオン.ROWID
+--20090616_Ver1.5_T1_1193_SCS.Goto_MOD_START
+--      SELECT DISTINCT
+--             xsr.ROWID                  xsr_rowid             -- 親コード出荷実績表アドオン.ROWID
+--            ,xsr.item_no                item_no               -- 品目コード
+--            ,xsr.deliver_to             deliver_to            -- 配送先コード
+--            ,xsr.base_code              base_code             -- 拠点コード
+--            ,xsr.latest_deliver_from    latest_deliver_from   -- 最新出荷倉庫コード
+--      FROM   xxcop_shipment_results xsr       -- 親コード出荷実績表アドオン
+--            ,xxcmn_sourcing_rules   xsrl      -- 物流構成表アドオンマスタ
+--        -- システム日時時点で有効なデータ
+--      WHERE  SYSDATE BETWEEN xsrl.start_date_active
+--                     AND     xsrl.end_date_active
+--          -- 前回処理日時からシステム日時までの間に有効開始となるデータ
+--          -- または前回処理日時以降に更新されたデータ
+--      AND  ( ( xsrl.start_date_active BETWEEN TRUNC( gd_last_process_date )
+--                                      AND     SYSDATE )
+--      OR     ( xsrl.last_update_date >= gd_last_process_date ) )
+--          -- 配送先または拠点が一致するデータ
+--      AND  ( xsr.deliver_to           = xsrl.ship_to_code
+--      OR     xsr.base_code            = xsrl.base_code )
+--          -- 品目が一致するデータ(ZZZZZZZ(品目ワイルドカード)の場合は除く)
+--      AND    xsr.item_no              = DECODE( xsrl.item_code
+--                                               ,cv_wild_item_code
+--                                               ,xsr.item_no          -- 品目ワイルドカードの場合は全品目対象
+--                                               ,xsrl.item_code )     -- それ以外の場合は一致する品目のみ
+--      ;
+      SELECT xsr.ROWID                  xsr_rowid             -- 親コード出荷実績表アドオン.ROWID
             ,xsr.item_no                item_no               -- 品目コード
             ,xsr.deliver_to             deliver_to            -- 配送先コード
             ,xsr.base_code              base_code             -- 拠点コード
             ,xsr.latest_deliver_from    latest_deliver_from   -- 最新出荷倉庫コード
       FROM   xxcop_shipment_results xsr       -- 親コード出荷実績表アドオン
-            ,xxcmn_sourcing_rules   xsrl      -- 物流構成表アドオンマスタ
-        -- システム日時時点で有効なデータ
-      WHERE  SYSDATE BETWEEN xsrl.start_date_active
-                     AND     xsrl.end_date_active
-          -- 前回処理日時からシステム日時までの間に有効開始となるデータ
-          -- または前回処理日時以降に更新されたデータ
-      AND  ( ( xsrl.start_date_active BETWEEN TRUNC( gd_last_process_date )
-                                      AND     SYSDATE )
-      OR     ( xsrl.last_update_date >= gd_last_process_date ) )
-          -- 配送先または拠点が一致するデータ
-      AND  ( xsr.deliver_to           = xsrl.ship_to_code
-      OR     xsr.base_code            = xsrl.base_code )
-          -- 品目が一致するデータ(ZZZZZZZ(品目ワイルドカード)の場合は除く)
-      AND    xsr.item_no              = DECODE( xsrl.item_code
-                                               ,cv_wild_item_code
-                                               ,xsr.item_no          -- 品目ワイルドカードの場合は全品目対象
-                                               ,xsrl.item_code )     -- それ以外の場合は一致する品目のみ
+      WHERE EXISTS
+            ( SELECT 'X'
+              FROM
+                ( SELECT xsrl.base_code         base_code
+                        ,xsrl.item_code         item_no
+                  FROM   xxcmn_sourcing_rules   xsrl      -- 物流構成表アドオンマスタ
+                  WHERE  xsrl.start_date_active BETWEEN TRUNC( gd_last_process_date )
+                                                    AND SYSDATE
+                  UNION ALL
+                  SELECT xsrl.base_code         base_code
+                        ,xsrl.item_code         item_no
+                  FROM   xxcmn_sourcing_rules   xsrl      -- 物流構成表アドオンマスタ
+                  WHERE  xsrl.last_update_date  BETWEEN TRUNC( gd_last_process_date )
+                                                    AND SYSDATE
+                ) xsrlv
+              WHERE  xsr.base_code  = xsrlv.base_code
+              AND    xsr.item_no LIKE DECODE( xsrlv.item_no
+                                             ,cv_wild_item_code,'%'
+                                             ,xsrlv.item_no )
+            )
+      UNION
+      SELECT xsr.ROWID                  xsr_rowid             -- 親コード出荷実績表アドオン.ROWID
+            ,xsr.item_no                item_no               -- 品目コード
+            ,xsr.deliver_to             deliver_to            -- 配送先コード
+            ,xsr.base_code              base_code             -- 拠点コード
+            ,xsr.latest_deliver_from    latest_deliver_from   -- 最新出荷倉庫コード
+      FROM   xxcop_shipment_results xsr       -- 親コード出荷実績表アドオン
+      WHERE EXISTS
+            ( SELECT 'X'
+              FROM
+                ( SELECT xsrl.ship_to_code      ship_to_code
+                        ,xsrl.item_code         item_no
+                  FROM   xxcmn_sourcing_rules   xsrl      -- 物流構成表アドオンマスタ
+                  WHERE  xsrl.start_date_active BETWEEN TRUNC( gd_last_process_date )
+                                                    AND SYSDATE
+                  UNION ALL
+                  SELECT xsrl.ship_to_code      ship_to_code
+                        ,xsrl.item_code         item_no
+                  FROM   xxcmn_sourcing_rules   xsrl      -- 物流構成表アドオンマスタ
+                  WHERE  xsrl.last_update_date  BETWEEN TRUNC( gd_last_process_date )
+                                                    AND SYSDATE
+                ) xsrlv
+              WHERE  xsr.deliver_to = xsrlv.ship_to_code
+              AND    xsr.item_no LIKE DECODE( xsrlv.item_no
+                                             ,cv_wild_item_code,'%'
+                                             ,xsrlv.item_no )
+            )
       ;
+--20090616_Ver1.5_T1_1193_SCS.Goto_MOD_END
 --
     -- 物流構成表アドオン参照パターン１(品目コード＋配送先コード)
     CURSOR get_sourcing_rules_cur1(
@@ -932,7 +991,10 @@ AS
     BEGIN
 --20090413_Ver1.3_T1_0507_SCS.Kikuchi_MOD_START
 --      SELECT xoha.order_header_id             order_header_id       -- 受注ヘッダアドオン.受注ヘッダアドオンID
-      SELECT /*+ ORDERED */
+--20090615_Ver1.5_T1_1194_SCS.Goto_MOD_START
+--      SELECT /*+ ORDERED */
+      SELECT
+--20090615_Ver1.5_T1_1194_SCS.Goto_MOD_END
              xoha.order_header_id             order_header_id       -- 受注ヘッダアドオン.受注ヘッダアドオンID
 --20090413_Ver1.3_T1_0507_SCS.Kikuchi_MOD_END
             ,xola.order_line_id               order_line_id         -- 受注明細アドオン.受注明細アドオンID
@@ -953,7 +1015,9 @@ AS
              END                              quantity              -- 受注明細アドオン.数量
 --
             ,xola.uom_code                    uom_code              -- 受注明細アドオン.単位
-            ,xicv_n.parent_item_no            parent_item_no_now    -- 計画_品目カテゴリビュー1(システム日付基準).親品目No
+--20090615_Ver1.5_T1_1194_SCS.Goto_DEL_START
+--            ,xicv_n.parent_item_no            parent_item_no_now    -- 計画_品目カテゴリビュー1(システム日付基準).親品目No
+--20090615_Ver1.5_T1_1194_SCS.Goto_DEL_END
       BULK COLLECT
       INTO   o_shipment_result_tab
 --20090413_Ver1.3_T1_0507_SCS.Kikuchi_MOD_START
@@ -967,7 +1031,9 @@ AS
             ,oe_transaction_types_all   otta      -- 受注タイプマスタ
             ,xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
             ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
-            ,xxcop_item_categories1_v   xicv_n    -- 品目カテゴリビュー(システム日付基準)
+--20090615_Ver1.5_T1_1194_SCS.Goto_DEL_START
+--            ,xxcop_item_categories1_v   xicv_n    -- 品目カテゴリビュー(システム日付基準)
+--20090615_Ver1.5_T1_1194_SCS.Goto_DEL_END
             ,xxcop_item_categories1_v   xicv_s    -- 品目カテゴリビュー(出荷日基準)
 --20090413_Ver1.3_T1_0507_SCS.Kikuchi_MOD_END
       WHERE  xoha.order_header_id = xola.order_header_id
@@ -976,10 +1042,12 @@ AS
       AND    xola.shipping_inventory_item_id     = xicv_s.inventory_item_id
       AND    xoha.shipped_date         BETWEEN     xicv_s.start_date_active
                                        AND         xicv_s.end_date_active
-        -- 品目カテゴリビューをシステム日付基準で結合
-      AND    xola.shipping_inventory_item_id     = xicv_n.inventory_item_id
-      AND    SYSDATE                   BETWEEN     xicv_n.start_date_active
-                                       AND         xicv_n.end_date_active
+--20090615_Ver1.5_T1_1194_SCS.Goto_DEL_START
+--        -- 品目カテゴリビューをシステム日付基準で結合
+--      AND    xola.shipping_inventory_item_id     = xicv_n.inventory_item_id
+--      AND    SYSDATE                   BETWEEN     xicv_n.start_date_active
+--                                       AND         xicv_n.end_date_active
+--20090615_Ver1.5_T1_1194_SCS.Goto_DEL_END
 --
       AND    xoha.req_status                     = cv_req_status
 --20090512_Ver1.4_T1_0951_SCS.Kikuchi_MOD_START
