@@ -5,7 +5,7 @@
 ## Program Name     : XXCCP009A01C                                              ##
 ## Description      : 画面起動ジョブネット対応                                  ##
 ## MD.050           : 画面起動ジョブネット対応 <MD050_CCP_009_A01>              ##
-## Version          : 1.5                                                       ##
+## Version          : 1.6                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -73,6 +73,8 @@
 ##                                         whoカラムを更新しない                ##
 ##                                       ・ジョブ状況ステータス更新処理で       ##
 ##                                         ステータスが"0","i"時のみ更新する    ##
+##  2009/06/03    1.6   Masayuki.Sano    [障害T1_0642]                          ##
+##                                       ・エラーメッセージ内のパスを表示しない ##
 ##                                                                              ##
 ##################################################################################
 
@@ -919,7 +921,10 @@ do
     sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
     SET HEADING OFF
     SET LINES 240
-    SELECT 'C_10010_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10010','FILE_NAME','${L_file_dir_to}')||''''
+-- 2009/06/03 Ver.1.6 Masayuki.Sano mod START
+--    SELECT 'C_10010_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10010','FILE_NAME','${L_file_dir_to}')||''''
+    SELECT 'C_10010_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10010','FILE_NAME','${L_file_nam}')||''''
+-- 2009/06/03 Ver.1.6 Masayuki.Sano mod END
     FROM DUAL
     ;
     EXIT
@@ -959,7 +964,10 @@ EOF
       SELECT 'C_10062_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}'
                                                        ,'APP-XXCCP1-10062'
                                                        ,'FILE_NAME'
-                                                       ,'${L_file_dir_to}')||''''
+-- 2009/06/03 Ver.1.6 Masayuki.Sano mod START
+--                                                      ,'${L_file_dir_to}')||''''
+                                                      ,'${L_file_nam}')||''''
+-- 2009/06/03 Ver.1.6 Masayuki.Sano mod END
       FROM DUAL
       ;
       EXIT
@@ -1375,7 +1383,10 @@ EOF
         if [ ${L_cnt} -gt ${L_esc_bk_num} ]
         then
           rm "${L_if_esc_to}/${L_filelist}"
-          echo "Delete Esp_Backup_file : ${L_if_esc_to}/${L_filelist}"
+# 2009/06/03 Ver.1.6 Masayuki.Sano mod START
+#          echo "Delete Esp_Backup_file : ${L_if_esc_to}/${L_filelist}"
+          echo "Delete Esp_Backup_file : ${L_filelist}"
+# 2009/06/03 Ver.1.6 Masayuki.Sano mod End
         fi
       done
 # 2009/02/25 Ver.1.2 Koji.Oomata add END
@@ -1500,7 +1511,10 @@ EOF
     if [ ${L_cnt} -gt ${10} ]
     then
       rm "${L_if_bkup_to}/${L_dirlist}"
-      echo "Delete Backup_file : ${L_if_bkup_to}/${L_dirlist}"
+# 2009/06/03 Ver.1.6 Masayuki.Sano mod START
+#      echo "Delete Backup_file : ${L_if_bkup_to}/${L_dirlist}"
+      echo "Delete Backup_file : ${L_dirlist}"
+# 2009/06/03 Ver.1.6 Masayuki.Sano mod End
     fi
   done
 
