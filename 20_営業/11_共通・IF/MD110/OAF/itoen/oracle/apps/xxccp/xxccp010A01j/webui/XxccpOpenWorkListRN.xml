@@ -1,0 +1,87 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:stackLayout version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxccp.xxccp010A01j.server.XxccpOpenWorkListAM" scope="/" controllerClass="itoen.oracle.apps.xxccp.xxccp010A01j.webui.XxccpOpenWorkListCO">
+   <ui:contents>
+      <oa:header id="XxccpSysHdrRN" rendered="${oa.XxccpOpenWorkListPVO1.SysOpenWorkListRender}" use="/itoen/oracle/apps/xxccp/xxccp010A01j/attributesets/Xxccp010A01jAttrSets/XxccpSysHdrRN">
+         <ui:contents>
+            <oa:tableLayout id="XxccpSysTlRN" hAlign="center" width="100%">
+               <ui:contents>
+                  <oa:rowLayout id="XxccpSysRlRN01" width="100%">
+                     <ui:contents>
+                        <oa:cellFormat id="XxccpSysCfRN0101" hAlign="end" width="100%">
+                           <ui:contents>
+                              <oa:button id="XxccpSysAllListButton" use="/itoen/oracle/apps/xxccp/xxccp010A01j/attributesets/Xxccp010A01jAttrSets/XxccpSysAllListButton" destination="OA.jsp?page=/itoen/oracle/apps/xxccp/xxccp010A01j/webui/XxccpSysAllWorkListPG&amp;addBreadCrumb=Y"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="XxccpSysRlRN02" width="100%">
+                     <ui:contents>
+                        <oa:cellFormat id="XxccpSysCfRN0201" width="100%">
+                           <ui:contents>
+                              <oa:stackLayout id="XxccpSysAdvancWorklistRG" extends="/oracle/apps/fnd/wf/worklist/webui/AdvancWorklistRG"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+               </ui:contents>
+            </oa:tableLayout>
+         </ui:contents>
+      </oa:header>
+      <oa:spacer id="XxccpSpacer1" height="10" rendered="${oa.XxccpOpenWorkListPVO1.SysOpenWorkListRender}"/>
+      <oa:header id="XxccpMfgHdrRN" rendered="${oa.XxccpOpenWorkListPVO1.MfgOpenWorkListRender}" use="/itoen/oracle/apps/xxccp/xxccp010A01j/attributesets/Xxccp010A01jAttrSets/XxccpMfgHdrRN">
+         <ui:contents>
+            <oa:tableLayout id="XxccpMfgTlRN" hAlign="center" width="100%">
+               <ui:contents>
+                  <oa:rowLayout id="XxccpMfgRlRN01" width="100%">
+                     <ui:contents>
+                        <oa:cellFormat id="XxccpMfgCfRN0101" width="100%" hAlign="end">
+                           <ui:contents>
+                              <oa:button id="XxccpMfgAllListButton" use="/itoen/oracle/apps/xxccp/xxccp010A01j/attributesets/Xxccp010A01jAttrSets/XxccpMfgAllListButton" destination="OA.jsp?page=/itoen/oracle/apps/xxccp/xxccp010A01j/webui/XxccpMfgAllWorkListPG&amp;addBreadCrumb=Y"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="XxccpMfgRlRN02" width="100%">
+                     <ui:contents>
+                        <oa:cellFormat id="XxccpMfgCfRN0201" width="100%">
+                           <ui:contents>
+                              <oa:stackLayout id="XxccpMfgAdvancWorklistRG" extends="/oracle/apps/fnd/wf/worklist/webui/AdvancWorklistRG"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+               </ui:contents>
+            </oa:tableLayout>
+         </ui:contents>
+      </oa:header>
+      <oa:spacer id="XxccpSpacer2" height="10" rendered="${oa.XxccpOpenWorkListPVO1.MfgOpenWorkListRender}"/>
+      <oa:header id="XxccpSalesHdrRN" use="/itoen/oracle/apps/xxccp/xxccp010A01j/attributesets/Xxccp010A01jAttrSets/XxccpMainHdrRN" rendered="${oa.XxccpOpenWorkListPVO1.SalesOpenWorkListRender}">
+         <ui:contents>
+            <oa:tableLayout id="XxccpSalesTlRN" width="100%" hAlign="center">
+               <ui:contents>
+                  <oa:rowLayout id="XxccpSalesRlRN01" width="100%">
+                     <ui:contents>
+                        <oa:cellFormat id="XxccpSalesCfRN0101" width="100%" hAlign="end">
+                           <ui:contents>
+                              <oa:submitButton id="XxccpSalesAllListButton" use="/itoen/oracle/apps/xxccp/xxccp010A01j/attributesets/Xxccp010A01jAttrSets/XxccpAllListButton"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="XxccpSalesRlRN02" width="100%">
+                     <ui:contents>
+                        <oa:cellFormat id="XxccpSalesCfRN0201" width="100%">
+                           <ui:contents>
+                              <oa:stackLayout id="XxccpSalesAdvancWorklistRG" extends="/oracle/apps/fnd/wf/worklist/webui/AdvancWorklistRG"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+               </ui:contents>
+            </oa:tableLayout>
+         </ui:contents>
+      </oa:header>
+      <oa:spacer id="XxccpSpacer3" height="10" rendered="${oa.XxccpOpenWorkListPVO1.SalesOpenWorkListRender}"/>
+   </ui:contents>
+</oa:stackLayout>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxccpOpenWorkListAM"
+   ComponentClass="itoen.oracle.apps.xxccp.xxccp010A01j.server.XxccpOpenWorkListAMImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxccpUserRespCheckVO1"
+      ViewObjectName="itoen.oracle.apps.xxccp.xxccp010A01j.server.XxccpUserRespCheckVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxccpOpenWorkListPVO1"
+      ViewObjectName="itoen.oracle.apps.xxccp.xxccp010A01j.server.XxccpOpenWorkListPVO" >
+   </ViewUsage>
+</AppModule>

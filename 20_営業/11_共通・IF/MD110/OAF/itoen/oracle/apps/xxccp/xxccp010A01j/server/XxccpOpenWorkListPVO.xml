@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxccpOpenWorkListPVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxccp.xxccp010A01j.server.XxccpOpenWorkListPVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxccp.xxccp010A01j.server.XxccpOpenWorkListPVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  TRUNC(xxccp_common_pkg2.get_process_date)   process_date
+FROM    DUAL
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="ProcessDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="PROCESS_DATE"
+      Expression="PROCESS_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SalesOpenWorkListRender"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="SALESOPENWORKLISTRENDER"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="MfgOpenWorkListRender"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="MFGOPENWORKLISTRENDER"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SysOpenWorkListRender"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="SYSOPENWORKLISTRENDER"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+</ViewObject>
