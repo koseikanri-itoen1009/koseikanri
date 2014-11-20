@@ -9,7 +9,9 @@
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
- *  2009/01/30    1.0   SCS K.Kakishita新規作成
+ *  2009/01/30    1.0   SCS K.Kakishita 新規作成
+ *  2009/05/20    1.1   SCS M.Sano      [T1_0970]商品コード表示不正対応
+ *                                      (商品コードをNUMBER(7,0)⇒VARCHAR2(7)に変更)
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_DELI_REQ
@@ -35,7 +37,7 @@ CREATE TABLE XXCOS.XXCOS_REP_DELI_REQ
     TELEPHONE_NO                   VARCHAR2(15),                     --電話番号
     DESCRIPTION                    VARCHAR2(80),                     --摘要
     ORDER_LINE_NUMBER              NUMBER(3,0),                      --受注明細番号
-    ITEM_CODE                      NUMBER(7,0),                      --商品コード
+    ITEM_CODE                      VARCHAR2(7),                      --商品コード
     ITEM_NAME                      VARCHAR2(40),                     --品名
     CONTENT                        NUMBER(4,0),                      --入数
     SHIPMENT_QUANTITY              NUMBER(7,0),                      --出荷数量
