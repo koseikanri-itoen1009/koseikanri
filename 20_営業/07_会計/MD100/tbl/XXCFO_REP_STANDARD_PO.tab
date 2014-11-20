@@ -1,0 +1,93 @@
+CREATE TABLE xxcfo.xxcfo_rep_standard_po
+/*************************************************************************
+ * 
+ * Table Name      : xxcfo_rep_standard_po
+ * Description     : 標準発注書作成用帳票ワークテーブル
+ * MD.050          : MD.050_LDM_CFO_001
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2008/11/25    1.0  SCS 山口 優    初回作成
+ *  2009/02/09    1.1  SCS 嵐田勇人  [障害CFO_002]出力桁数対応
+ ************************************************************************/
+( 
+  vendor_name                   VARCHAR2(150)                   ,-- 仕入先名
+  vendor_phone                  VARCHAR2(15)                    ,-- 仕入先_電話番号
+  vendor_fax                    VARCHAR2(15)                    ,-- 仕入先_FAX番号
+  area_code                     VARCHAR2(10)                    ,-- 仕入先_電話エリアコード
+  fax_area_code                 VARCHAR2(10)                    ,-- 仕入先_FAXエリアコード
+  po_num                        VARCHAR2(20)                    ,-- 発注番号
+  revision_num                  NUMBER                          ,-- 改訂番号
+  po_agent_dept_name            VARCHAR2(60)                    ,-- 発注担当者_所属部署名
+  address_line1                 VARCHAR2(60)                    ,-- 発注担当者_住所
+  zip                           VARCHAR2(8)                     ,-- 発注担当者_郵便番号
+  phone                         VARCHAR2(15)                    ,-- 発注担当者_電話番号
+  fax                           VARCHAR2(15)                    ,-- 発注担当者_FAX
+  apply_location_name           VARCHAR2(20)                    ,-- 申請拠点名
+  deliver_location_name         VARCHAR2(240)                   ,-- 納品場所名
+  vendor_product_num            VARCHAR2(25)                    ,-- 発注商品
+  unit_price                    NUMBER                          ,-- 単価
+  quantity                      NUMBER                          ,-- 数量
+  unit_meas_lookup_code         VARCHAR2(25)                    ,-- 単位
+  promised_date                 DATE                            ,-- 納期
+  remarks                       VARCHAR2(480)                   ,-- 備考
+  requisition_num               VARCHAR2(20)                    ,-- 購買依頼番号
+  apply_division_code           VARCHAR2(6)                     ,-- 申請拠点本部コード
+  deliver_division_code         VARCHAR2(6)                     ,-- 納入先本部コード
+  pay_on_code                   VARCHAR2(25)                    ,-- 支払使用コード
+  org_id                        NUMBER              NOT NULL    ,-- 組織ID
+  data_empty_message            VARCHAR2(150)                   ,-- 0件メッセージ
+  created_by                    NUMBER              NOT NULL    ,-- 作成者
+  created_date                  DATE                NOT NULL    ,-- 作成日
+  last_updated_by               NUMBER              NOT NULL    ,-- 最終更新者
+  last_updated_date             DATE                            ,-- 最終更新日
+  last_update_login             NUMBER                          ,-- 最終更新ログイン
+  request_id                    NUMBER                          ,-- 要求ID
+  program_application_id        NUMBER                          ,-- コンカレント・プログラム・アプリケーションID
+  program_id                    NUMBER                          ,-- コンカレント・プログラムID
+  program_update_date           DATE                             -- プログラム更新日
+)
+/
+--
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.vendor_name              IS '仕入先名';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.vendor_phone             IS '仕入先_電話番号';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.vendor_fax               IS '仕入先_FAX番号';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.area_code                IS '仕入先_電話エリアコード';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.fax_area_code            IS '仕入先_FAXエリアコード';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.po_num                   IS '発注番号';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.revision_num             IS '改訂番号';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.po_agent_dept_name       IS '発注担当者_所属部署名';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.address_line1            IS '発注担当者_住所';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.zip                      IS '発注担当者_郵便番号';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.phone                    IS '発注担当者_電話番号';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.fax                      IS '発注担当者_FAX';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.apply_location_name      IS '申請拠点名';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.deliver_location_name    IS '納品場所名';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.vendor_product_num       IS '発注商品';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.unit_price               IS '単価';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.quantity                 IS '数量';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.unit_meas_lookup_code    IS '単位';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.promised_date            IS '納期';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.remarks                  IS '備考';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.requisition_num          IS '購買依頼番号';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.apply_division_code      IS '申請拠点本部コード';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.deliver_division_code    IS '納入先本部コード';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.pay_on_code              IS '支払使用コード';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.org_id                   IS '組織ID';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.data_empty_message       IS '0件メッセージ';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.created_by               IS '作成者';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.created_date             IS '作成日';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.last_updated_by          IS '最終更新者';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.last_updated_date        IS '最終更新日';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.last_update_login        IS '最終更新ログイン';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.request_id               IS '要求ID';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.program_application_id   IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.program_id               IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.program_update_date      IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxcfo.xxcfo_rep_standard_po IS '標準発注書作成用帳票ワークテーブル';
+/

@@ -1,0 +1,295 @@
+CREATE GLOBAL TEMPORARY TABLE xxcfo.xxcfo_tmp_standard_data_po
+/*************************************************************************
+ * 
+ * Table Name      : xxcfo_tmp_standard_data_po
+ * Description     : 発注書データ出力ワークテーブル
+ * MD.050          : MD.050_LDM_CFO_001
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2008/11/21    1.0  SCS 山口 優    初回作成
+ *  2009/02/09    1.1  SCS 嵐田勇人  [障害CFO_002]出力桁数対応
+ ************************************************************************/
+( 
+  po_num                         VARCHAR2(20)                  ,-- 発注番号
+  revision_num                   NUMBER                        ,-- 発注毎の改訂番号
+  authorization_status_name      VARCHAR2(80)                  ,-- 承認のステータス
+  po_creation_date               DATE                          ,-- 発注の作成日時
+  vendor_name                    VARCHAR2(150)                 ,-- 仕入先名称（正式名）
+  vendor_site_code               VARCHAR2(15)                  ,-- 仕入先サイトコード
+  currency_code                  VARCHAR2(15)                  ,-- 通貨コード
+  full_name                      VARCHAR2(240)                 ,-- 購買担当者
+  line_num                       NUMBER                        ,-- 発注明細番号
+  item_category_name             VARCHAR2(240)                 ,-- 品目カテゴリ名
+  item_description               VARCHAR2(240)                 ,-- 摘要
+  quantity_ordered               NUMBER                        ,-- 発注数量
+  unit_meas_lookup_code          VARCHAR2(30)                  ,-- 単位
+  unit_price                     NUMBER                        ,-- 価格
+  amount                         NUMBER                        ,-- 金額
+  vendor_product_num             VARCHAR2(25)                  ,-- 仕入先品目（自販機の場合は機種コード）
+  requisition_num                VARCHAR2(20)                  ,-- 購買依頼番号
+  apply_location_code            VARCHAR2(60)                  ,-- 申請拠点コード
+  apply_location_name            VARCHAR2(20)                  ,-- 申請拠点名
+  shipment_num                   NUMBER                        ,-- 納入明細番号
+  deliver_location_code          VARCHAR2(60)                  ,-- 納品場所コード（自販機の場合は顧客番号）
+  deliver_location_name          VARCHAR2(240)                 ,-- 納品場所名（自販機の場合は、顧客名）
+  promised_date                  DATE                          ,-- 納期
+  need_by_date                   DATE                          ,-- 希望入手日
+  deliver_address                VARCHAR2(240)                 ,-- 納品場所の住所（顧客事業所マスタより）
+  standard_po_output             VARCHAR2(2)                   ,-- 発注書を出力したかを設定する。未/済
+  special_info_item1             VARCHAR2(300)                 ,-- 特別情報項目1
+  special_info_item2             VARCHAR2(300)                 ,-- 特別情報項目2
+  special_info_item3             VARCHAR2(300)                 ,-- 特別情報項目3
+  special_info_item4             VARCHAR2(300)                 ,-- 特別情報項目4
+  special_info_item5             VARCHAR2(300)                 ,-- 特別情報項目5
+  special_info_item6             VARCHAR2(300)                 ,-- 特別情報項目6
+  special_info_item7             VARCHAR2(300)                 ,-- 特別情報項目7
+  special_info_item8             VARCHAR2(300)                 ,-- 特別情報項目8
+  special_info_item9             VARCHAR2(300)                 ,-- 特別情報項目9
+  special_info_item10            VARCHAR2(300)                 ,-- 特別情報項目10
+  special_info_item11            VARCHAR2(300)                 ,-- 特別情報項目11
+  special_info_item12            VARCHAR2(300)                 ,-- 特別情報項目12
+  special_info_item13            VARCHAR2(300)                 ,-- 特別情報項目13
+  special_info_item14            VARCHAR2(300)                 ,-- 特別情報項目14
+  special_info_item15            VARCHAR2(300)                 ,-- 特別情報項目15
+  special_info_item16            VARCHAR2(300)                 ,-- 特別情報項目16
+  special_info_item17            VARCHAR2(300)                 ,-- 特別情報項目17
+  special_info_item18            VARCHAR2(300)                 ,-- 特別情報項目18
+  special_info_item19            VARCHAR2(300)                 ,-- 特別情報項目19
+  special_info_item20            VARCHAR2(300)                 ,-- 特別情報項目20
+  special_info_item21            VARCHAR2(300)                 ,-- 特別情報項目21
+  special_info_item22            VARCHAR2(300)                 ,-- 特別情報項目22
+  special_info_item23            VARCHAR2(300)                 ,-- 特別情報項目23
+  special_info_item24            VARCHAR2(300)                 ,-- 特別情報項目24
+  special_info_item25            VARCHAR2(300)                 ,-- 特別情報項目25
+  special_info_item26            VARCHAR2(300)                 ,-- 特別情報項目26
+  special_info_item27            VARCHAR2(300)                 ,-- 特別情報項目27
+  special_info_item28            VARCHAR2(300)                 ,-- 特別情報項目28
+  special_info_item29            VARCHAR2(300)                 ,-- 特別情報項目29
+  special_info_item30            VARCHAR2(300)                 ,-- 特別情報項目30
+  special_info_item31            VARCHAR2(300)                 ,-- 特別情報項目31
+  special_info_item32            VARCHAR2(300)                 ,-- 特別情報項目32
+  special_info_item33            VARCHAR2(300)                 ,-- 特別情報項目33
+  special_info_item34            VARCHAR2(300)                 ,-- 特別情報項目34
+  special_info_item35            VARCHAR2(300)                 ,-- 特別情報項目35
+  special_info_item36            VARCHAR2(300)                 ,-- 特別情報項目36
+  special_info_item37            VARCHAR2(300)                 ,-- 特別情報項目37
+  special_info_item38            VARCHAR2(300)                 ,-- 特別情報項目38
+  special_info_item39            VARCHAR2(300)                 ,-- 特別情報項目39
+  special_info_item40            VARCHAR2(300)                 ,-- 特別情報項目40
+  special_info_item41            VARCHAR2(300)                 ,-- 特別情報項目41
+  special_info_item42            VARCHAR2(300)                 ,-- 特別情報項目42
+  special_info_item43            VARCHAR2(300)                 ,-- 特別情報項目43
+  special_info_item44            VARCHAR2(300)                 ,-- 特別情報項目44
+  special_info_item45            VARCHAR2(300)                 ,-- 特別情報項目45
+  special_info_item46            VARCHAR2(300)                 ,-- 特別情報項目46
+  special_info_item47            VARCHAR2(300)                 ,-- 特別情報項目47
+  special_info_item48            VARCHAR2(300)                 ,-- 特別情報項目48
+  special_info_item49            VARCHAR2(300)                 ,-- 特別情報項目49
+  special_info_item50            VARCHAR2(300)                 ,-- 特別情報項目50
+  special_info_item51            VARCHAR2(300)                 ,-- 特別情報項目51
+  special_info_item52            VARCHAR2(300)                 ,-- 特別情報項目52
+  special_info_item53            VARCHAR2(300)                 ,-- 特別情報項目53
+  special_info_item54            VARCHAR2(300)                 ,-- 特別情報項目54
+  special_info_item55            VARCHAR2(300)                 ,-- 特別情報項目55
+  special_info_item56            VARCHAR2(300)                 ,-- 特別情報項目56
+  special_info_item57            VARCHAR2(300)                 ,-- 特別情報項目57
+  special_info_item58            VARCHAR2(300)                 ,-- 特別情報項目58
+  special_info_item59            VARCHAR2(300)                 ,-- 特別情報項目59
+  special_info_item60            VARCHAR2(300)                 ,-- 特別情報項目60
+  special_info_item61            VARCHAR2(300)                 ,-- 特別情報項目61
+  special_info_item62            VARCHAR2(300)                 ,-- 特別情報項目62
+  special_info_item63            VARCHAR2(300)                 ,-- 特別情報項目63
+  special_info_item64            VARCHAR2(300)                 ,-- 特別情報項目64
+  special_info_item65            VARCHAR2(300)                 ,-- 特別情報項目65
+  special_info_item66            VARCHAR2(300)                 ,-- 特別情報項目66
+  special_info_item67            VARCHAR2(300)                 ,-- 特別情報項目67
+  special_info_item68            VARCHAR2(300)                 ,-- 特別情報項目68
+  special_info_item69            VARCHAR2(300)                 ,-- 特別情報項目69
+  special_info_item70            VARCHAR2(300)                 ,-- 特別情報項目70
+  special_info_item71            VARCHAR2(300)                 ,-- 特別情報項目71
+  special_info_item72            VARCHAR2(300)                 ,-- 特別情報項目72
+  special_info_item73            VARCHAR2(300)                 ,-- 特別情報項目73
+  special_info_item74            VARCHAR2(300)                 ,-- 特別情報項目74
+  special_info_item75            VARCHAR2(300)                 ,-- 特別情報項目75
+  special_info_item76            VARCHAR2(300)                 ,-- 特別情報項目76
+  special_info_item77            VARCHAR2(300)                 ,-- 特別情報項目77
+  special_info_item78            VARCHAR2(300)                 ,-- 特別情報項目78
+  special_info_item79            VARCHAR2(300)                 ,-- 特別情報項目79
+  special_info_item80            VARCHAR2(300)                 ,-- 特別情報項目80
+  special_info_item81            VARCHAR2(300)                 ,-- 特別情報項目81
+  special_info_item82            VARCHAR2(300)                 ,-- 特別情報項目82
+  special_info_item83            VARCHAR2(300)                 ,-- 特別情報項目83
+  special_info_item84            VARCHAR2(300)                 ,-- 特別情報項目84
+  special_info_item85            VARCHAR2(300)                 ,-- 特別情報項目85
+  special_info_item86            VARCHAR2(300)                 ,-- 特別情報項目86
+  special_info_item87            VARCHAR2(300)                 ,-- 特別情報項目87
+  special_info_item88            VARCHAR2(300)                 ,-- 特別情報項目88
+  special_info_item89            VARCHAR2(300)                 ,-- 特別情報項目89
+  special_info_item90            VARCHAR2(300)                 ,-- 特別情報項目90
+  special_info_item91            VARCHAR2(300)                 ,-- 特別情報項目91
+  special_info_item92            VARCHAR2(300)                 ,-- 特別情報項目92
+  special_info_item93            VARCHAR2(300)                 ,-- 特別情報項目93
+  special_info_item94            VARCHAR2(300)                 ,-- 特別情報項目94
+  special_info_item95            VARCHAR2(300)                 ,-- 特別情報項目95
+  special_info_item96            VARCHAR2(300)                 ,-- 特別情報項目96
+  special_info_item97            VARCHAR2(300)                 ,-- 特別情報項目97
+  special_info_item98            VARCHAR2(300)                 ,-- 特別情報項目98
+  special_info_item99            VARCHAR2(300)                 ,-- 特別情報項目99
+  special_info_item100           VARCHAR2(300)                 ,-- 特別情報項目100
+  org_id                         NUMBER              NOT NULL  ,-- 組織のID
+  created_by                     NUMBER              NOT NULL  ,-- 作成者
+  created_date                   DATE                NOT NULL  ,-- 作成日
+  last_updated_by                NUMBER              NOT NULL  ,-- 最終更新者
+  last_updated_date              DATE                NOT NULL  ,-- 最終更新日
+  last_update_login              NUMBER                        ,-- 最終更新ログイン
+  request_id                     NUMBER                        ,-- 要求ID
+  program_application_id         NUMBER                        ,-- コンカレント・プログラム・アプリケーションID
+  program_id                     NUMBER                        ,-- コンカレント・プログラムID
+  program_update_date            DATE                           -- プログラム更新日
+)ON COMMIT PRESERVE ROWS ;
+/
+--
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.po_num                     IS '発注番号';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.revision_num               IS '発注毎の改訂番号';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.authorization_status_name  IS '承認のステータス';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.po_creation_date           IS '発注の作成日時';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.vendor_name                IS '仕入先名称（正式名）';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.vendor_site_code           IS '仕入先サイトコード';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.currency_code              IS '通貨コード';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.full_name                  IS '購買担当者';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.line_num                   IS '発注明細番号';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.item_category_name         IS '品目カテゴリ名';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.item_description           IS '摘要';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.quantity_ordered           IS '発注数量';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.unit_meas_lookup_code      IS '単位';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.unit_price                 IS '価格';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.amount                     IS '金額';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.vendor_product_num         IS '仕入先品目（自販機の場合は機種コード）';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.requisition_num            IS '購買依頼番号';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.apply_location_code        IS '申請拠点コード';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.apply_location_name        IS '申請拠点名';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.shipment_num               IS '納入明細番号';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.deliver_location_code      IS '納品場所コード（自販機の場合は顧客番号）';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.deliver_location_name      IS '納品場所名（自販機の場合は、顧客名）';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.promised_date              IS '納期';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.need_by_date               IS '希望入手日';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.deliver_address            IS '納品場所の住所（顧客事業所マスタより）';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.standard_po_output         IS '発注書を出力したかを設定する。未/済';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item1         IS '特別情報項目1';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item2         IS '特別情報項目2';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item3         IS '特別情報項目3';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item4         IS '特別情報項目4';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item5         IS '特別情報項目5';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item6         IS '特別情報項目6';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item7         IS '特別情報項目7';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item8         IS '特別情報項目8';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item9         IS '特別情報項目9';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item10        IS '特別情報項目10';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item11        IS '特別情報項目11';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item12        IS '特別情報項目12';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item13        IS '特別情報項目13';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item14        IS '特別情報項目14';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item15        IS '特別情報項目15';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item16        IS '特別情報項目16';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item17        IS '特別情報項目17';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item18        IS '特別情報項目18';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item19        IS '特別情報項目19';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item20        IS '特別情報項目20';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item21        IS '特別情報項目21';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item22        IS '特別情報項目22';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item23        IS '特別情報項目23';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item24        IS '特別情報項目24';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item25        IS '特別情報項目25';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item26        IS '特別情報項目26';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item27        IS '特別情報項目27';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item28        IS '特別情報項目28';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item29        IS '特別情報項目29';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item30        IS '特別情報項目30';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item31        IS '特別情報項目31';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item32        IS '特別情報項目32';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item33        IS '特別情報項目33';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item34        IS '特別情報項目34';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item35        IS '特別情報項目35';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item36        IS '特別情報項目36';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item37        IS '特別情報項目37';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item38        IS '特別情報項目38';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item39        IS '特別情報項目39';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item40        IS '特別情報項目40';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item41        IS '特別情報項目41';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item42        IS '特別情報項目42';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item43        IS '特別情報項目43';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item44        IS '特別情報項目44';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item45        IS '特別情報項目45';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item46        IS '特別情報項目46';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item47        IS '特別情報項目47';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item48        IS '特別情報項目48';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item49        IS '特別情報項目49';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item50        IS '特別情報項目50';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item51        IS '特別情報項目51';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item52        IS '特別情報項目52';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item53        IS '特別情報項目53';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item54        IS '特別情報項目54';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item55        IS '特別情報項目55';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item56        IS '特別情報項目56';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item57        IS '特別情報項目57';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item58        IS '特別情報項目58';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item59        IS '特別情報項目59';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item60        IS '特別情報項目60';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item61        IS '特別情報項目61';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item62        IS '特別情報項目62';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item63        IS '特別情報項目63';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item64        IS '特別情報項目64';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item65        IS '特別情報項目65';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item66        IS '特別情報項目66';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item67        IS '特別情報項目67';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item68        IS '特別情報項目68';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item69        IS '特別情報項目69';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item70        IS '特別情報項目70';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item71        IS '特別情報項目71';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item72        IS '特別情報項目72';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item73        IS '特別情報項目73';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item74        IS '特別情報項目74';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item75        IS '特別情報項目75';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item76        IS '特別情報項目76';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item77        IS '特別情報項目77';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item78        IS '特別情報項目78';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item79        IS '特別情報項目79';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item80        IS '特別情報項目80';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item81        IS '特別情報項目81';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item82        IS '特別情報項目82';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item83        IS '特別情報項目83';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item84        IS '特別情報項目84';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item85        IS '特別情報項目85';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item86        IS '特別情報項目86';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item87        IS '特別情報項目87';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item88        IS '特別情報項目88';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item89        IS '特別情報項目89';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item90        IS '特別情報項目90';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item91        IS '特別情報項目91';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item92        IS '特別情報項目92';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item93        IS '特別情報項目93';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item94        IS '特別情報項目94';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item95        IS '特別情報項目95';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item96        IS '特別情報項目96';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item97        IS '特別情報項目97';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item98        IS '特別情報項目98';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item99        IS '特別情報項目99';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item100       IS '特別情報項目100';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.org_id                     IS '組織のID';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.created_by                 IS '作成者';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.created_date               IS '作成日';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.last_updated_by            IS '最終更新者';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.last_updated_date          IS '最終更新日';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.last_update_login          IS '最終更新ログイン';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.request_id                 IS '要求ID';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.program_application_id     IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.program_id                 IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.program_update_date        IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxcfo.xxcfo_tmp_standard_data_po IS '発注書データ出力ワークテーブル';
+/

@@ -1,0 +1,44 @@
+CREATE TABLE xxcfo.xxcfo_po_status_mng
+/*************************************************************************
+ * 
+ * Table Name      : xxcfo_po_status_mng
+ * Description     : 発注書出力ステータス管理テーブル
+ * MD.050          : MD.050_LDM_CFO_001
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2008/11/21    1.0  SCS 山口 優    初回作成
+ ************************************************************************/
+( 
+  po_num                     VARCHAR2(20)         NOT NULL  ,-- 発注番号
+  org_id                     NUMBER               NOT NULL  ,-- 組織ID
+  created_by                 NUMBER               NOT NULL  ,-- 作成者
+  created_date               DATE                 NOT NULL  ,-- 作成日
+  last_updated_by            NUMBER               NOT NULL  ,-- 最終更新者
+  last_updated_date          DATE                 NOT NULL  ,-- 最終更新日
+  last_update_login          NUMBER                         ,-- 最終更新ログイン
+  request_id                 NUMBER                         ,-- 要求ID
+  program_application_id     NUMBER                         ,-- コンカレント・プログラム・アプリケーションID
+  program_id                 NUMBER                         ,-- コンカレント・プログラムID
+  program_update_date        DATE                           ,-- プログラム更新日
+  CONSTRAINT xxcfo_po_status_mng_pk PRIMARY KEY ( po_num, org_id )
+)
+/
+--
+COMMENT ON COLUMN xxcfo.xxcfo_po_status_mng.po_num                 IS '発注番号';
+COMMENT ON COLUMN xxcfo.xxcfo_po_status_mng.org_id                 IS '組織ID';
+COMMENT ON COLUMN xxcfo.xxcfo_po_status_mng.created_by             IS '作成者';
+COMMENT ON COLUMN xxcfo.xxcfo_po_status_mng.created_date           IS '作成日';
+COMMENT ON COLUMN xxcfo.xxcfo_po_status_mng.last_updated_by        IS '最終更新者';
+COMMENT ON COLUMN xxcfo.xxcfo_po_status_mng.last_updated_date      IS '最終更新日';
+COMMENT ON COLUMN xxcfo.xxcfo_po_status_mng.last_update_login      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcfo.xxcfo_po_status_mng.request_id             IS '要求ID';
+COMMENT ON COLUMN xxcfo.xxcfo_po_status_mng.program_application_id IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcfo.xxcfo_po_status_mng.program_id             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcfo.xxcfo_po_status_mng.program_update_date    IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxcfo.xxcfo_po_status_mng IS '発注書出力ステータス管理テーブル';
