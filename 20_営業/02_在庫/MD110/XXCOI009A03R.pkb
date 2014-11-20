@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI009A03R(body)
  * Description      : 工場入庫明細リスト
  * MD.050           : 工場入庫明細リスト MD050_COI_009_A03
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/04/22    1.2   T.Nakamura       [障害T1_0491]資材品目のみ抽出対象となる取引タイプを変更
  *  2009/05/21    1.3   T.Nakamura       [障害T1_1111]取引タイプの絞込条件から梱包材料原価振替、梱包材料原価振替振戻を除外
  *  2009/07/22    1.4   N.Abe            [障害0000785]リーフ資材品を商品、製品抽出時の除外条件に追加
+ *  2009/08/05    1.5   H.Sasaki         [障害0000926]品目カテゴリの印字制御のための修正
  *
  *****************************************************************************************/
 --
@@ -178,7 +179,7 @@ AS
   gn_kojo_nyuko_cnt         NUMBER;                                         -- 工場入庫情報件数
   gn_kojo_nyuko_loop_cnt    NUMBER;                                         -- 工場入庫情報ループカウンタ
   gn_organization_id        mtl_parameters.organization_id%TYPE;            -- 在庫組織ID
-  -- 
+  --
   gr_param                  gr_param_rec;
   gt_base_num_tab           gt_base_num_ttype;
   gt_kojo_nyuko_tab         gt_kojo_nyuko_ttype;
@@ -259,7 +260,7 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END del_work;
---  
+--
   /**********************************************************************************
    * Procedure Name   : svf_request
    * Description      : SVF起動(A-5)
@@ -475,7 +476,7 @@ AS
       ,iv_item_name                              -- 略称
       ,in_trn_qty                                -- 取引数量
       ,in_stand_cost                             -- 原価額
-      ,iv_prm_flg                                -- パラメータフラグ  
+      ,iv_prm_flg                                -- パラメータフラグ
       ,iv_nodata_msg                             -- 0件メッセージ
       --WHOカラム
       ,cn_created_by
@@ -557,7 +558,7 @@ AS
 --    cv_tran_type_packing_cost_b    CONSTANT VARCHAR2(3)   := '280';  -- 取引タイプコード 梱包材料原価振替振戻
 -- == 2009/05/21 V1.3 Deleted END   =============================================================
 -- == 2009/04/22 V1.2 Added END   ===============================================================
---   
+--
     -- *** ローカル変数 ***
     lv_tran_type_factory_store     mtl_transaction_types.transaction_type_name%TYPE;   -- 取引タイプ名 工場入庫
     ln_tran_type_factory_store     mtl_transaction_types.transaction_type_id%TYPE;     -- 取引タイプID 工場入庫
@@ -566,7 +567,7 @@ AS
     lv_base_code                   hz_cust_accounts.account_number%TYPE DEFAULT  NULL; -- 入庫拠点コード判別用
     lv_item_code                   mtl_system_items_b.segment1%TYPE DEFAULT  NULL;     -- 商品コード判別用
     lv_item_short_name             xxcmn_item_mst_b.item_short_name%TYPE DEFAULT  NULL; -- 商品略称保持用
-    lv_item_category               mtl_categories_b.segment1%TYPE DEFAULT  NULL;        -- カテゴリコード保持用           
+    lv_item_category               mtl_categories_b.segment1%TYPE DEFAULT  NULL;        -- カテゴリコード保持用
     ln_tran_qty                    mtl_material_transactions.transaction_quantity%TYPE DEFAULT  0; -- 取引数量
     lv_cmpnt_cost                  VARCHAR2(30) DEFAULT  NULL;                                       -- 標準原価
     ln_cmpnt_cost_sum              NUMBER       DEFAULT  0;                                       -- 標準原価
@@ -617,7 +618,7 @@ AS
              ,hz_cust_accounts              hca                            -- 顧客マスタ
              ,mtl_material_transactions     mmt                            -- 資材取引
              ,mtl_system_items_b            msib                           -- 品目マスタ
-             ,ic_item_mst_b                 iimb                           -- OPM品目マスタ  
+             ,ic_item_mst_b                 iimb                           -- OPM品目マスタ
              ,xxcmn_item_mst_b              ximb                           -- OPM品目アドオンマスタ
              ,( SELECT msib.segment1          item_no                   -- 品目コード
                       ,decode(mcb.segment1,cv_2,cv_3 )   item_category  -- 品目カテゴリコード
@@ -633,7 +634,7 @@ AS
                  AND  mcst.category_set_id   =  mcsb.category_set_id
                  AND  mcst.language          =  USERENV( 'LANG' )
                  AND  mcst.category_set_name =  cv_category_hinmoku
-                 AND  mcb.segment1           =  cv_2    
+                 AND  mcb.segment1           =  cv_2
                  AND  mic.organization_id   =  gn_organization_id
                  AND  msib.organization_id   =   mic.organization_id
              UNION
@@ -1007,13 +1008,17 @@ AS
            ,lv_item_short_name                                   -- 略称
            ,ln_tran_qty                                          -- 取引数量
            ,ln_cmpnt_cost_sum                                    -- 原価額
-           ,cv_1                                                 -- パラメータフラグ
+-- == 2009/08/05 V1.5 Modified START ===============================================================
+--           ,cv_1                                                 -- パラメータフラグ
+           ,CASE  WHEN  gr_param.item_ctg IS NULL THEN cv_1
+                  ELSE  cv_2
+            END
+-- == 2009/08/05 V1.5 Modified END   ===============================================================
            ,NULL
            ,lv_errbuf            -- エラー・メッセージ           --# 固定 #
            ,lv_retcode           -- リターン・コード             --# 固定 #
            ,lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
         );
-
         IF ( lv_retcode = cv_status_error )
          OR ( lv_retcode = cv_status_warn ) THEN
           RAISE global_process_expt ;
@@ -1047,13 +1052,17 @@ AS
            ,lv_item_short_name                                   -- 略称
            ,ln_tran_qty                                          -- 取引数量
            ,ln_cmpnt_cost_sum                                    -- 原価額
-           ,cv_1                                                 -- パラメータフラグ
+-- == 2009/08/05 V1.5 Modified START ===============================================================
+--           ,cv_1                                                 -- パラメータフラグ
+           ,CASE  WHEN  gr_param.item_ctg IS NULL THEN cv_1
+                  ELSE  cv_2
+            END
+-- == 2009/08/05 V1.5 Modified END   ===============================================================
            ,NULL
            ,lv_errbuf            -- エラー・メッセージ           --# 固定 #
            ,lv_retcode           -- リターン・コード             --# 固定 #
            ,lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
         );
-
         IF ( lv_retcode = cv_status_error )
          OR ( lv_retcode = cv_status_warn ) THEN
           RAISE global_process_expt ;
@@ -1155,7 +1164,7 @@ AS
         AND  xca.management_base_code = gv_base_code
       ORDER BY hca.account_number
     ;
---    
+--
     -- 拠点情報(商品部)
     CURSOR info_base2_cur
     IS
@@ -1285,7 +1294,6 @@ AS
     -- *** ローカル変数 ***
     lv_organization_code mtl_parameters.organization_code%TYPE;  -- 在庫組織コード
 --
-      
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -1304,7 +1312,7 @@ AS
     -- ***************************************
 --
     -- =====================================
-    -- 業務日付取得(共通関数)   
+    -- 業務日付取得(共通関数)
     -- =====================================
     gd_process_date := xxccp_common_pkg2.get_process_date;
     --
@@ -1317,10 +1325,10 @@ AS
                     );
         lv_errbuf := lv_errmsg;
         RAISE global_api_expt;
-      END IF;         
+      END IF;
 --
     -- =====================================
-    -- パラメータ妥当性チェック(年月)   
+    -- パラメータ妥当性チェック(年月)
     -- =====================================
     IF ( ( SUBSTRB(gr_param.year_month,5,6) < cv_01 ) OR ( SUBSTRB ( gr_param.year_month,5,6 ) > cv_12 ) ) THEN
         -- エラーメッセージ取得
@@ -1338,15 +1346,15 @@ AS
                     );
         lv_errbuf := lv_errmsg;
         RAISE get_value_expt;
-    END IF;         
+    END IF;
 --
     -- =====================================
-    -- プロファイル値取得(在庫組織コード)   
+    -- プロファイル値取得(在庫組織コード)
     -- =====================================
     lv_organization_code := FND_PROFILE.VALUE(cv_profile_name);
     IF ( lv_organization_code IS NULL ) THEN
       -- エラーメッセージ取得
-      lv_errmsg := xxccp_common_pkg.get_msg( 
+      lv_errmsg := xxccp_common_pkg.get_msg(
                       iv_application  => cv_app_name
                      ,iv_name         => cv_msg_xxcoi00005
                      ,iv_token_name1  => cv_token_pro
@@ -1354,15 +1362,15 @@ AS
                   );
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
-    END IF;         
+    END IF;
 --
     -- =====================================
-    -- 在庫組織ID取得                       
+    -- 在庫組織ID取得
     -- =====================================
     gn_organization_id := xxcoi_common_pkg.get_organization_id(lv_organization_code);
     IF ( gn_organization_id IS NULL ) THEN
       -- エラーメッセージ取得
-      lv_errmsg := xxcmn_common_pkg.get_msg( 
+      lv_errmsg := xxcmn_common_pkg.get_msg(
                       iv_application  => cv_app_name
                      ,iv_name         => cv_msg_xxcoi00006
                      ,iv_token_name1  => cv_token_org_code
@@ -1370,17 +1378,17 @@ AS
                   );
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
-    END IF;         
+    END IF;
 --
     -- =====================================
-    -- 所属拠点取得                       
+    -- 所属拠点取得
     -- =====================================
-    gv_base_code := xxcoi_common_pkg.get_base_code( 
+    gv_base_code := xxcoi_common_pkg.get_base_code(
                         in_user_id     => cn_created_by     -- ユーザーID
                        ,id_target_date => gd_process_date); -- 対象日
     IF ( gv_base_code IS NULL ) THEN
       -- エラーメッセージ取得
-      lv_errmsg := xxcmn_common_pkg.get_msg( 
+      lv_errmsg := xxcmn_common_pkg.get_msg(
                       iv_application  => cv_app_name
                      ,iv_name         => cv_msg_xxcoi10092);
       lv_errbuf := lv_errmsg;
@@ -1433,7 +1441,7 @@ AS
   EXCEPTION
 --
     --*** 値エラー ***
-    WHEN get_value_expt THEN                                                    
+    WHEN get_value_expt THEN
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
@@ -1525,11 +1533,11 @@ AS
     -- パラメータ値の格納
     -- =====================================================
     gr_param.year_month    := SUBSTRB(iv_year_month,1,4)
-                            ||SUBSTRB(iv_year_month,6,7); 
+                            ||SUBSTRB(iv_year_month,6,7);
                                                    -- 01 : 処理年月      (必須)
     gr_param.in_kyoten     := iv_in_kyoten;        -- 02 : 入庫拠点     （任意)
     gr_param.item_ctg      := iv_item_ctgr;        -- 03 : カテゴリコード(任意)
-    gr_param.output_dpt    := iv_output_dpt;       -- 04 : 出力場所(任意)  
+    gr_param.output_dpt    := iv_output_dpt;       -- 04 : 出力場所(任意)
 --
     -- =====================================================
     -- 初期処理(A-1)
