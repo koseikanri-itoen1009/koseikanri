@@ -7,7 +7,7 @@ AS
  * Description      : 出庫指示確認表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 出庫指示確認表 T_MD070_BPO_62G
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2008/08/05    1.7   Yasuhisa Yamamoto     内部変更要求対応
  *  2008/09/25    1.8   Yasuhisa Yamamoto     T_TE080_BPO_620 #36,41、使用不備障害T_S_479,501
  *  2008/11/14    1.9   Naoki Fukuda          課題#62(内部変更#168)対応(指示無し実績を除外する)
+ *  2009/05/28    1.10  Hitomi Itou           本番障害#1398
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1506,7 +1507,14 @@ AS
            -------------------------------------------------------------------------------
            -- 顧客サイト情報VIEW2
            -------------------------------------------------------------------------------
-      || ' AND   xoha.deliver_to_id                  =   xcas2v.party_site_id'
+-- 2009/05/28 H.Itou Mod Start 本番障害#1398
+--      || ' AND   xoha.deliver_to_id                  =   xcas2v.party_site_id'
+      || ' AND   xoha.deliver_to                     =   xcas2v.party_site_number'
+-- 2009/05/28 H.Itou Mod End
+-- 2009/05/28 H.Itou Add Start 本番障害#1398
+      || ' AND   xcas2v.party_site_status            = ''A'' '  -- 有効な出荷先
+      || ' AND   xcas2v.cust_acct_site_status        = ''A'' '  -- 有効な出荷先
+-- 2009/05/28 H.Itou Add End
       || ' AND   xcas2v.start_date_active           <=  xoha.schedule_ship_date'
       || ' AND   ('
       || '         xcas2v.end_date_active           >=  xoha.schedule_ship_date'
