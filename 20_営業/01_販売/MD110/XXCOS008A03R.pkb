@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A03R (body)
  * Description      : 直送受注例外データリスト
  * MD.050           : 直送受注例外データリスト MD050_COS_008_A03
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,7 +36,10 @@ AS
  *  2009/10/05    1.9   K.Satomura       [0001369]納品予定日をプロファイルオプション値以降の
  *                                                日時を対象とする
  *  2009/10/07    1.10  K.Satomura       [0001378]帳票ワークテーブルの桁あふれ対応
- *  2009/11/26    1.11  N.Maeda          [E_本番_00092] 納品予定日条件のメインSQL取込
+ *  2009/11/26    1.11  N.Maeda          [E_本稼動_00092] 納品予定日条件のメインSQL取込
+ *  2009/12/11    1.12  N.Maeda          [E_本稼動_00238] リスト対象ステータスに'CLOSED'を追加
+ *                                       [E_本稼動_00275] 出荷実績未計上データ出荷実績数の取得先修正
+ *  2009/12/17    1.12  S.Tomita         [E_本稼動_00275] (追加修正)例外1の出荷依頼情報の数量0データ対象化
  *
  *****************************************************************************************/
 --
@@ -153,6 +156,9 @@ AS
 -- ******************** 2009/10/05 1.9 K.Satomura ADD START ******************************* --
   cv_msg_vl_trans_st_dt     CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-00196';    -- XXCOS:工場直送例外リスト対象開始年月日
 -- ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
+-- ******************** 2009/12/11 1.12 N.Maeda ADD START ****************************** --
+  cv_msg_vl_closed_month    CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-11704';    -- XXCOS:工場直送例外リストCLOSED取得月数
+-- ******************** 2009/12/11 1.12 N.Maeda ADD  END  ****************************** --
 --
   --プロファイル
   cv_prof_org_id            CONSTANT  VARCHAR2(100) := 'ORG_ID';              -- 営業単位
@@ -160,6 +166,9 @@ AS
 -- ******************** 2009/10/05 1.9 K.Satomura ADD START ******************************* --
   cv_prof_trans_st_dt       CONSTANT  VARCHAR2(100) := 'XXCOS1_TRANS_START_YMD'; -- 工場直送例外リスト対象開始年月日
 -- ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
+-- ******************** 2009/12/11 1.12 N.Maeda ADD START ****************************** --
+  cv_prof_target_closed_mon CONSTANT  VARCHAR2(100) := 'XXCOS1_TARGET_CLOSED_MONTH'; -- XXCOS:工場直送例外リストCLOSED取得月数
+-- ******************** 2009/12/11 1.12 N.Maeda ADD  END  ****************************** --
 --
   --クイックタイプ
   -- 保管場所分類直送特定マスタ
@@ -229,6 +238,9 @@ AS
 --****************************** 2009/04/10 1.3 T.Kitajima ADD START ******************************--
   cn_ship_zero              CONSTANT  NUMBER        := 0;                    -- 出荷実績0
 --****************************** 2009/04/10 1.3 T.Kitajima ADD  END  ******************************--
+-- ******************** 2009/12/11 1.12 N.Maeda ADD START ****************************** --
+  cv_month                  CONSTANT  VARCHAR2(100) := 'MONTH';
+-- ******************** 2009/12/11 1.12 N.Maeda ADD  END  ****************************** --
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -252,6 +264,10 @@ AS
 -- ******************** 2009/10/05 1.9 K.Satomura ADD START ******************************* --
   gd_trans_start_date    DATE; -- 工場直送例外リスト対象開始年月日
 -- ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
+--
+-- ******************** 2009/12/11 1.12 N.Maeda ADD START ****************************** --
+  gd_target_closed_month DATE;  -- 工場直送例外リストCLOSED取得月
+-- ******************** 2009/12/11 1.12 N.Maeda ADD  END  ****************************** --
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -289,6 +305,10 @@ AS
 -- ******************** 2009/10/05 1.9 K.Satomura ADD START ******************************* --
     lv_trans_start_date VARCHAR2(1000);
 -- ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
+--
+-- ******************** 2009/12/11 1.12 N.Maeda ADD START ****************************** --
+    lv_target_closed_month VARCHAR2(1000);
+-- ******************** 2009/12/11 1.12 N.Maeda ADD  END  ****************************** --
 --
     -- *** ローカル・カーソル ***
 --
@@ -425,6 +445,30 @@ AS
     gd_trans_start_date := TO_DATE(lv_trans_start_date, cv_fmt_date);
     --
 -- ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
+--
+-- ******************** 2009/12/11 1.12 N.Maeda ADD START ****************************** --
+    --==============================================================
+    -- 6.プロファイルの取得(XXCOS:工場直送例外リストCLOSED取得月数)
+    --==============================================================
+    lv_target_closed_month := fnd_profile.value( cv_prof_target_closed_mon );
+    --
+    -- プロファイルが取得できない場合はエラー
+    IF ( lv_target_closed_month IS NULL ) THEN
+      lv_profile_name := xxccp_common_pkg.get_msg(
+                           iv_application => cv_xxcos_short_name,
+                           iv_name        => cv_msg_vl_closed_month
+                         );
+      --
+      RAISE global_profile_expt;
+      --
+    END IF;
+    --
+    -- 受注例外取得開始日設定(CLOSED分)
+    gd_target_closed_month := ADD_MONTHS (  TRUNC ( gd_process_date , cv_month ) 
+                                           , ( TO_NUMBER( lv_target_closed_month ) * -1 )
+                                         );
+    --
+-- ******************** 2009/12/11 1.12 N.Maeda ADD  END  ****************************** --
 --
   EXCEPTION
     -- プロファイル取得例外
@@ -594,9 +638,14 @@ AS
                AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
                AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
                AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
-               AND  ooha.flow_status_code  =  cv_status_booked               -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
-                                                                             -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
-               AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
+-- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+--               AND  ooha.flow_status_code  =  cv_status_booked               -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
+--                                                                             -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
+--               AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
+               AND  ooha.flow_status_code  IN  ( cv_status_booked , cv_status_closed )    -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED' , 'CLOSED' )
+                                                                             -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+               AND  oola.flow_status_code  <> cv_status_cancelled
+-- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
                AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
                AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
                                    'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
@@ -631,9 +680,16 @@ AS
                                                          ,cv_base_all
                                                          ,xca.delivery_base_code
                                                          ,iv_base_code )
--- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
-               AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
--- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+-- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+---- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+--               AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+---- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+               AND  ( ( oola.flow_status_code = cv_status_closed
+                      AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
+                    OR ( oola.flow_status_code <> cv_status_closed
+                      AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
+                    )
+-- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
                GROUP BY
                   oola.packing_instructions
                  ,NVL( oola.attribute6, oola.ordered_item )
@@ -754,9 +810,13 @@ AS
           AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
           AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
           AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
-          AND  ooha.flow_status_code  =  cv_status_booked             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
-                                                                      -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
-          AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
+-- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+--          AND  ooha.flow_status_code  =  cv_status_booked             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
+--                                                                      -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
+--          AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
+          AND  ooha.flow_status_code  IN ( cv_status_booked ,cv_status_closed )   -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED' , 'CLOSED' )
+          AND  oola.flow_status_code  <> cv_status_cancelled          -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+-- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
           AND  oola.packing_instructions  IS NOT NULL                 -- 受注明細.梱包指示 IS NOT NULL
           AND  ooha.sold_to_org_id     =  hca.cust_account_id         -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
           AND  hca.cust_account_id     =  xca.customer_id             -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
@@ -777,9 +837,16 @@ AS
           AND  oola.line_id               = ooal.line_id                  -- 受注明細.受注明細ID = 最終歴用.受注明細ID
           AND  oola.packing_instructions  = ooas.deliver_requested_no     -- 例外１営業サブクエリ.出荷依頼No = サマリー用サブクエリ.出荷依頼No
           AND  NVL( oola.attribute6, oola.ordered_item ) = ooas.item_code -- 例外１営業サブクエリ.品目コード = サマリー用サブクエリ.品目コード
--- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
-          AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
--- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+-- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+---- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+--          AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+---- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+          AND  ( ( oola.flow_status_code = cv_status_closed
+                 AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
+               OR ( oola.flow_status_code <> cv_status_closed
+                 AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
+               )
+-- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
         )
         ooa1,
         -- ****** 例外１生産サブクエリ：ooa2 ******
@@ -805,9 +872,12 @@ AS
           AND  xoha.req_status           =   cv_h_add_status_04        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
           AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
           AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+-- ********** 2009/12/17 1.12 S.Tomita MOD START ********** --
 --****************************** 2009/04/10 1.3 T.Kitajima ADD START ******************************--
-          AND  NVL( xola.shipped_quantity, cn_ship_zero ) != cn_ship_zero  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量が0以外
+--          AND  NVL( xola.shipped_quantity, cn_ship_zero ) != cn_ship_zero  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量が0以外
+          AND  xola.shipped_quantity IS NOT NULL
 --****************************** 2009/04/10 1.3 T.Kitajima ADD  END  ******************************--
+-- ********** 2009/12/17 1.12 S.Tomita MOD START ********** --
 --MIYATA MODIFY
 --          AND  xoha.customer_id          =   hca.cust_account_id       -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客ID = 顧客ﾏｽﾀ.顧客ID
           AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
@@ -913,9 +983,13 @@ AS
                AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
                AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
                AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
-               AND  ooha.flow_status_code  =  cv_status_booked               -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
-                                                                             -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
-               AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
+-- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+--               AND  ooha.flow_status_code  =  cv_status_booked               -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
+--                                                                             -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
+--               AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
+               AND  ooha.flow_status_code  IN  ( cv_status_booked ,cv_status_closed )  -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED' , 'CLOSED' )
+               AND  oola.flow_status_code  <> cv_status_cancelled            -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+-- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
                AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
                AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
                                    'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
@@ -950,9 +1024,16 @@ AS
                                                          ,cv_base_all
                                                          ,xca.delivery_base_code
                                                          ,iv_base_code )
--- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
-               AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
--- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+-- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+---- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+--               AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+---- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+               AND  ( ( oola.flow_status_code = cv_status_closed
+                      AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
+                    OR ( oola.flow_status_code <> cv_status_closed
+                      AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
+                    )
+-- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
                GROUP BY
                   oola.packing_instructions
                  ,NVL( oola.attribute6, oola.ordered_item )
@@ -964,9 +1045,13 @@ AS
           AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
           AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
           AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
-          AND  ooha.flow_status_code  =  cv_status_booked             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
-                                                                      -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
-          AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
+-- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+--          AND  ooha.flow_status_code  =  cv_status_booked             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
+--                                                                      -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
+--          AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
+          AND  ooha.flow_status_code  IN ( cv_status_booked , cv_status_closed )  -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+          AND  oola.flow_status_code  <> cv_status_cancelled          -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+-- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
           AND  oola.packing_instructions  IS NOT NULL                 -- 受注明細.梱包指示 IS NOT NULL
           AND  ooha.sold_to_org_id     =  hca.cust_account_id         -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
           AND  hca.cust_account_id     =  xca.customer_id             -- 顧客ﾏｽﾀ.顧客ID   = 顧客追加情報ﾏｽﾀ.顧客ID
@@ -985,9 +1070,16 @@ AS
 --          AND  ooha.header_id             = ooal.header_id               -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 最終歴用ｻﾌﾞｸｴﾘ.受注ﾍｯﾀﾞID
 --MIYATA DELETE
           AND  oola.line_id               = ooal.line_id                 -- 受注明細.受注明細ID = 最終歴用ｻﾌﾞｸｴﾘ.受注明細ID
--- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
-          AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
--- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+-- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+---- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+--          AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+---- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+          AND  ( ( oola.flow_status_code = cv_status_closed
+                 AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
+               OR ( oola.flow_status_code <> cv_status_closed
+                 AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
+               )
+-- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
         )
         ooa1,
         -- ****** 例外２生産サブクエリ：ooa2 ******
@@ -999,9 +1091,12 @@ AS
 --            ,xola.shipping_item_code    item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
 -- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
             ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
---MIYATA MODIFY 出荷実績済みではないので数量に変更
---            ,xola.shipped_quantity      deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
-            ,xola.quantity              deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.数量          ：出荷実績数
+-- ******************** 2009/12/11 1.12 N.Maeda MOD START ****************************** --
+----MIYATA MODIFY 出荷実績済みではないので数量に変更
+----            ,xola.shipped_quantity      deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+--            ,xola.quantity              deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.数量          ：出荷実績数
+            ,NVL( xola.shipped_quantity , cn_ship_zero ) deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+-- ******************** 2009/12/11 1.12 N.Maeda MOD  END  ****************************** --
 -- ******************** 2009/07/27 1.8 N.Maeda MOD start ******************************* --
             ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
 -- ******************** 2009/07/27 1.8 N.Maeda MOD  end  ******************************* --
@@ -1204,9 +1299,13 @@ AS
       AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
       AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
       AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
-      AND  ooha.flow_status_code  =  cv_status_booked             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
-                                                                  -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
-      AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
+-- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+--      AND  ooha.flow_status_code  =  cv_status_booked             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
+--                                                                  -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
+--      AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
+      AND  ooha.flow_status_code  IN ( cv_status_booked , cv_status_closed ) -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+      AND  oola.flow_status_code  <> cv_status_cancelled          -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+-- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
       AND  oola.packing_instructions  IS NOT NULL                 -- 受注明細.梱包指示 IS NOT NULL
       AND  NOT EXISTS ( SELECT                                    -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
                           'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
@@ -1276,9 +1375,16 @@ AS
 --              AND  NVL( oola.attribute6, oola.ordered_item ) = xola.shipping_item_code
 -- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
               )
--- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
-      AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
--- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+-- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+---- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+--      AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+---- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+        AND  ( ( oola.flow_status_code = cv_status_closed
+               AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
+             OR ( oola.flow_status_code <> cv_status_closed
+               AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
+             )
+-- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
 --
       UNION
 --
@@ -1596,9 +1702,13 @@ AS
 --****************************** 2009/05/26 1.4 T.Kitajima ADD  END  ******************************--
       AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
       AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
-      AND  ooha.flow_status_code  =  cv_status_booked             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
-                                                                  -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
-      AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
+-- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+--      AND  ooha.flow_status_code  =  cv_status_booked             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
+--                                                                  -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
+--      AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
+      AND  ooha.flow_status_code  IN  ( cv_status_booked , cv_status_closed )  -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CANCELLED' )
+      AND  oola.flow_status_code  <>  cv_status_cancelled         -- 受注明細.ｽﾃｰﾀｽ <> 'CLOSED'
+-- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
       AND  oola.packing_instructions  IS NOT NULL                 -- 受注明細.梱包指示 IS NOT NULL
       AND  NOT EXISTS ( SELECT                                    -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
                           'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
@@ -1663,9 +1773,16 @@ AS
                                                         ,iv_base_code )
               AND  oola.packing_instructions =   xoha.request_no           -- 受注明細.梱包指示 = 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No
               )
--- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
-      AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
--- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+-- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+---- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+--      AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+---- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+      AND  ( ( oola.flow_status_code = cv_status_closed
+             AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
+           OR ( oola.flow_status_code <> cv_status_closed
+             AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
+           )
+-- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
       ;
 --
     -- *** ローカル・レコード ***
