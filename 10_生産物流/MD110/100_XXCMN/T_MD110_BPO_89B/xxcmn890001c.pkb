@@ -7,7 +7,7 @@ AS
  * Description      : 物流構成アドオンインポート
  * MD.050           : 物流構成マスタ T_MD050_BPO_890
  * MD.070           : 物流構成アドオンインポート T_MD070_BPO_89B
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009/06/10    1.7   SCS 丸下          本番障害1204、1439対応
  *  2009/06/29    1.8   SCS 丸下          本番障害1552対応
  *  2009/10/02    1.9   SCS 丸下          本番障害1648
+ *  2010/02/12    1.10  SCS 宮川          E_本稼動_01497
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1287,7 +1288,11 @@ AS
       INTO ln_count
       FROM xxcmn_item_mst2_v ximv    -- OPM品目情報VIEW
       WHERE ximv.item_no = ir_sr_line.item_code
-        AND ximv.obsolete_date IS NULL
+-- 2010/02/12 M.Miyagawa Mod Start
+--        AND ximv.obsolete_date IS NULL    --廃止日
+        AND ximv.inactive_ind   <> '1'    --無効フラグ
+        AND ximv.obsolete_class <> '1'    --廃止区分
+-- 2010/02/12 M.Miyagawa Mod End
         AND ROWNUM = 1;
 --
       IF (ln_count = 0) THEN
