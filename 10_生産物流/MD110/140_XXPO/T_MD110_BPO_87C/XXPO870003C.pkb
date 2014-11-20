@@ -7,7 +7,7 @@ AS
  * Description      : 発注単価洗替処理
  * MD.050           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD050_BPO_870
  * MD.070           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD070_BPO_870
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -41,6 +41,11 @@ AS
  *                                       MTL_SYSTEM_ITEMS_Bの参照を削除
  *  2008/05/09    1.3   Y.Ishikawa       mainの起動時間出力にて、日付のフォーマットを
  *                                       'YYYY/MM/DD HH:MM:SS'→'YYYY/MM/DD HH24:MI:SS'に変更
+ *  2008/06/03    1.4   Y.Ishikawa       仕入単価マスタ複数発注更新時に１件のみしか更新されない
+ *                                       不具合対応
+ *  2008/06/03    1.5   Y.Ishikawa       仕入単価マスタの支給先コードが登録されていない場合は
+ *                                       条件に含めない。
+ *                                       粉引後単価がNULLの場合は、0として計算する。
  *
  *****************************************************************************************/
 --
@@ -186,7 +191,7 @@ AS
   gv_rate                   CONSTANT VARCHAR2(1) := '2';   -- 率
 --
 -- 発注ステータス
-  gv_po_stats               CONSTANT VARCHAR2(1) := '3';   -- 受入あり
+  gv_po_stats               CONSTANT VARCHAR2(2) := '25';   -- 受入あり
 --
 -- 発注変更API
   gv_version                CONSTANT VARCHAR2(8) := '1.0'; -- バージョン
@@ -195,7 +200,6 @@ AS
 -- 計算フラグ
   gn_depo_flg               NUMBER;                       -- 預り口銭金額計算フラグ
   gn_cane_flg               NUMBER;                       -- 賦課金額計算フラグ
-  gn_cohi_flg               NUMBER;                       -- 粉引後金額計算フラグ
 --
   -- WHOカラム
   gn_user_id    po_lines_all.last_updated_by%TYPE   DEFAULT FND_GLOBAL.USER_ID;         -- ﾕｰｻﾞｰID
@@ -293,6 +297,9 @@ AS
   TYPE gt_vender_cd  IS TABLE OF xxcmn_vendors_v.segment1%TYPE INDEX BY BINARY_INTEGER;
   TYPE gt_item_id    IS TABLE OF mtl_system_items_b.inventory_item_id%TYPE INDEX BY BINARY_INTEGER;
   TYPE gt_vender_id  IS TABLE OF xxcmn_vendors_v.vendor_id%TYPE INDEX BY BINARY_INTEGER;
+--
+  -- 仕入単価ヘッダーID
+  TYPE gt_p_header_id IS TABLE OF xxpo_price_headers.price_header_id%TYPE INDEX BY BINARY_INTEGER;
 --
   TYPE g_rec_item IS RECORD(
     item_no            gt_item_no,     -- 品目コード
@@ -547,7 +554,7 @@ AS
           || ' ,pla.attribute10           AS  po_uom'                -- 発注単位
           || ' ,plla.line_location_id     AS  line_location_id'      -- 納入明細ID
           || ' ,plla.shipment_num         AS  shipment_num'          -- 納入明細番号
-          || ' ,plla.attribute1           AS  powde_lead'            -- 粉引率
+          || ' ,NVL(plla.attribute1,'|| '''0''' || ')  AS  powde_lead' -- 粉引率
           || ' ,plla.attribute3           AS  commission_type'       -- 口銭区分
           || ' ,plla.attribute4           AS  commission'            -- 口銭
           || ' ,plla.attribute6           AS  assessment_type'       -- 賦課金区分
@@ -786,10 +793,10 @@ AS
    * Description      : 仕入/標準単価ヘッダの変更処理フラグを更新(C-10)
    ***********************************************************************************/
   PROCEDURE proc_upd_price_headers_flg(
-    in_price_header_id IN  NUMBER,        -- ヘッダID
-    ov_errbuf          OUT VARCHAR2,      -- エラー・メッセージ           --# 固定 #
-    ov_retcode         OUT VARCHAR2,      -- リターン・コード             --# 固定 #
-    ov_errmsg          OUT VARCHAR2)      -- ユーザー・エラー・メッセージ --# 固定 #
+    in_price_header_id IN  xxcmn_vendors_v.vendor_id%TYPE, -- ヘッダID
+    ov_errbuf          OUT VARCHAR2,       -- エラー・メッセージ           --# 固定 #
+    ov_retcode         OUT VARCHAR2,       -- リターン・コード             --# 固定 #
+    ov_errmsg          OUT VARCHAR2)       -- ユーザー・エラー・メッセージ --# 固定 #
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -813,7 +820,6 @@ AS
     ln_result             NUMBER;                            -- API関数戻り値
     ltbl_api_errors       PO_API_ERRORS_REC_TYPE;            -- APIエラー戻り値
     lv_out_msg            VARCHAR2(2000);                    -- ログメッセージ
-    ln_price              NUMBER;                            -- 価格
 --
     -- *** ローカル・カーソル ***
     -- <カーソル名>
@@ -1018,7 +1024,6 @@ AS
     l_lot_mst_rec         ic_lots_mst%ROWTYPE;               -- ロットマスタレコードタイプ
     l_lot_cpg_rec         ic_lots_cpg%ROWTYPE;               -- ロット期間レコードタイプ
     lv_out_msg            VARCHAR2(2000);                    -- ログメッセージ
-    ln_price              NUMBER;                            -- 価格
 --
     -- *** ローカル・カーソル ***
     -- <カーソル名>
@@ -1037,16 +1042,6 @@ AS
 --
    -- 原価管理区分が実勢の場合のみロット更新
    IF (ir_po_data.cost_manage_code = cv_jisei) AND (ir_lot_data.lot_id IS NOT NULL) THEN
-     -- ===============================
-     -- 価格の算定
-     -- ===============================
-     IF (ir_po_data.powde_lead IS NOT NULL) THEN
-       -- 計算処理(C-6)で粉引後単価の計算を行った場合、粉引後単価を設定
-       ln_price := in_cohi_unit_price;
-     ELSE
-       -- 計算処理(C-6)で粉引後単価の計算を行ってない場合、内訳合計を設定
-       ln_price := in_total_amount;
-     END IF;
 --
      -- ロットマスタレコードセット
      l_lot_mst_rec.item_id            := ir_po_data.item_id;           -- 品目ID
@@ -1068,7 +1063,7 @@ AS
      l_lot_mst_rec.attribute4         := ir_lot_data.attribute4;       -- 納入日（初回）
      l_lot_mst_rec.attribute5         := ir_lot_data.attribute5;       -- 納入日（最終）
      l_lot_mst_rec.attribute6         := ir_lot_data.attribute6;       -- 在庫入数
-     l_lot_mst_rec.attribute7         := ln_price;                     -- 在庫単価
+     l_lot_mst_rec.attribute7         := in_cohi_unit_price;           -- 在庫単価
      l_lot_mst_rec.attribute8         := ir_lot_data.attribute8;       -- 取引先
      l_lot_mst_rec.attribute9         := ir_lot_data.attribute9;       -- 仕入形態
      l_lot_mst_rec.attribute10        := ir_lot_data.attribute10;      -- 茶期区分
@@ -1195,7 +1190,6 @@ AS
     ln_result             NUMBER;                            -- API関数戻り値
     ltbl_api_errors       PO_API_ERRORS_REC_TYPE;            -- APIエラー戻り値
     lv_out_msg            VARCHAR2(2000);                    -- ログメッセージ
-    ln_price              NUMBER;                            -- 価格
 --
     -- *** ローカル・カーソル ***
     -- <カーソル名>
@@ -1212,17 +1206,6 @@ AS
 --
 --
     -- ===============================
-    -- 価格の算定
-    -- ===============================
-    IF (ir_po_data.powde_lead IS NOT NULL) THEN
-      -- 計算処理(C-6)で粉引後単価の計算を行った場合、粉引後単価を設定
-      ln_price := in_cohi_unit_price;
-    ELSE
-      -- 計算処理(C-6)で粉引後単価の計算を行ってない場合、内訳合計を設定
-      ln_price := in_total_amount;
-    END IF;
---
-    -- ===============================
     -- 発注変更API実行
     -- ===============================
     ln_result := PO_CHANGE_API1_S.UPDATE_PO(
@@ -1232,7 +1215,7 @@ AS
                    x_line_number             => ir_po_data.po_l_no,               -- 発注明細番号
                    x_shipment_number         => NULL,                             -- 納入明細番号
                    new_quantity              => NULL,                             -- 数量
-                   new_price                 => ln_price,                         -- 価格
+                   new_price                 => in_cohi_unit_price,               -- 価格
                    new_promised_date         => NULL,                             -- 納期
                    launch_approvals_flag     => gv_y,                             -- 承認ステータス
                    update_source             => NULL,                             -- アップデート
@@ -1270,13 +1253,10 @@ AS
     -- 発注納入明細の更新
     -- ===============================
     -- 預り口銭金額、賦課金額、粉引後金額のいずれかの計算が行われた場合のみ更新
-    IF (gn_depo_flg = 1) OR (gn_cane_flg = 1) OR (gn_cohi_flg = 1) THEN
+    IF (gn_depo_flg = 1) OR (gn_cane_flg = 1) THEN
 --
-      UPDATE po_line_locations_all plla                                      -- 発注納入明細
-      SET    plla.attribute2             = CASE
-                                             WHEN gn_cohi_flg = 0 THEN plla.attribute2
-                                             ELSE TO_CHAR(ln_price)          -- 粉引後単価
-                                           END
+      UPDATE po_line_locations_all plla                                       -- 発注納入明細
+      SET    plla.attribute2             = in_cohi_unit_price                 -- 粉引後単価
             ,plla.attribute5             = CASE
                                              WHEN gn_depo_flg = 0 THEN plla.attribute5
                                              ELSE TO_CHAR(in_depo_commission) -- 預り口銭金額
@@ -1285,18 +1265,15 @@ AS
                                              WHEN gn_cane_flg = 0 THEN  plla.attribute8
                                              ELSE TO_CHAR(in_cane)            -- 賦課金額
                                            END
-            ,plla.attribute9             = CASE
-                                             WHEN gn_cohi_flg = 0 THEN plla.attribute9
-                                             ELSE TO_CHAR(in_cohi_rest)       -- 粉引後金額
-                                           END
-            ,plla.last_updated_by        = gn_user_id                        -- 最終更新者
-            ,plla.last_update_date       = gd_sysdate                        -- 最終更新日
-            ,plla.last_update_login      = gn_login_id                       -- 最終更新ログイン
-            ,plla.request_id             = gn_request_id                     -- 要求ID
-            ,plla.program_application_id = gn_appl_id                        -- ｱﾌﾟﾘｹｰｼｮﾝID
-            ,plla.program_id             = gn_program_id                     -- プログラムID
-            ,plla.program_update_date    = gd_sysdate                        -- プログラム更新日
-      WHERE plla.line_location_id        = ir_po_data.line_location_id       -- 発注納入明細ID
+            ,plla.attribute9             = in_cohi_rest                       -- 粉引後金額
+            ,plla.last_updated_by        = gn_user_id                         -- 最終更新者
+            ,plla.last_update_date       = gd_sysdate                         -- 最終更新日
+            ,plla.last_update_login      = gn_login_id                        -- 最終更新ログイン
+            ,plla.request_id             = gn_request_id                      -- 要求ID
+            ,plla.program_application_id = gn_appl_id                         -- ｱﾌﾟﾘｹｰｼｮﾝID
+            ,plla.program_id             = gn_program_id                      -- プログラムID
+            ,plla.program_update_date    = gd_sysdate                         -- プログラム更新日
+      WHERE plla.line_location_id        = ir_po_data.line_location_id        -- 発注納入明細ID
       ;
 --
     END IF;
@@ -1402,10 +1379,8 @@ AS
     -- ===============================
     -- 粉引後単価の計算
     -- ===============================
-    IF (ir_po_data.powde_lead IS NOT NULL) THEN
-      on_cohi_unit_price := TRUNC(in_total_amount * (gn_100 - TO_NUMBER(ir_po_data.powde_lead))
-                            / gn_100);
-    END IF;
+    on_cohi_unit_price := TRUNC(in_total_amount * (gn_100 - TO_NUMBER(ir_po_data.powde_lead))
+                          / gn_100);
 --
     -- ===============================
     -- 預り口銭金額の計算
@@ -1420,9 +1395,8 @@ AS
     -- ===============================
     -- 賦課金額の計算
     -- ===============================
-    IF (ir_po_data.assessment_type = gv_rate)
-      AND (ir_po_data.assessment IS NOT NULL)
-      AND (ir_po_data.powde_lead IS NOT NULL) THEN
+    IF ((ir_po_data.assessment_type = gv_rate)
+      AND (ir_po_data.assessment IS NOT NULL)) THEN
       ln_kona := in_total_amount * ln_quantity * TO_NUMBER(ir_po_data.powde_lead) / gn_100;
       on_cane := TRUNC((in_total_amount * ln_quantity - ln_kona)
                        * TO_NUMBER(ir_po_data.assessment) / gn_100);
@@ -1432,10 +1406,7 @@ AS
     -- ===============================
     -- 粉引後金額の計算
     -- ===============================
-    IF (ir_po_data.powde_lead IS NOT NULL) THEN
-      on_cohi_rest := TRUNC(on_cohi_unit_price * ln_quantity);
-       gn_cohi_flg := 1;
-    END IF;
+    on_cohi_rest := TRUNC(on_cohi_unit_price * ln_quantity);
 --
 --
   EXCEPTION
@@ -1546,7 +1517,8 @@ AS
       IF (ir_po_data.direct_sending_type = gv_provision) THEN
 --
         lv_sql := lv_sql
-          || '   AND xph.supply_to_code      = :supply_to_code'    -- 支給先コード
+          || '   AND (xph.supply_to_code      = :supply_to_code'    -- 支給先コード
+          || '        OR xph.supply_to_code   IS NULL)'
           || ' FOR UPDATE NOWAIT';
 --
         EXECUTE IMMEDIATE lv_sql
@@ -2536,6 +2508,8 @@ AS
     ln_cohi_rest       NUMBER DEFAULT 0;                                       -- 粉引後金額
     ln_item_cnt        NUMBER DEFAULT 0;                                       -- 件数
     ln_vender_cnt      NUMBER DEFAULT 0;                                       -- 件数
+    ln_p_h_cnt         NUMBER DEFAULT 1;                                       -- 件数
+    lt_p_header_id     gt_p_header_id;                                         -- 仕入単価ID
 --
     -- *** ローカル・カーソル ***
 --
@@ -2673,7 +2647,6 @@ AS
       -- 変数初期化
       gn_depo_flg         := 0;
       gn_cane_flg         := 0;
-      gn_cohi_flg         := 0;
       ln_price_header_id  := NULL;
       ln_total_amount     := 0;
       ln_cohi_unit_price  := 0;
@@ -2803,24 +2776,34 @@ AS
             RAISE global_process_expt;
           END IF;
 --
-          -- ===============================
-          -- C-10.仕入/標準単価ヘッダ(アドオン)の変更処理フラグを更新
-          -- ===============================
-          proc_upd_price_headers_flg(
-            in_price_header_id  =>  ln_price_header_id,         -- ヘッダID
-            ov_errbuf           =>  lv_errbuf,                  -- エラー・メッセージ
-            ov_retcode          =>  lv_retcode,                 -- リターン・コード
-            ov_errmsg           =>  lv_errmsg);                 -- ユーザー・エラー・メッセージ
+          -- 仕入単価ヘッダーIDの格納
+          lt_p_header_id(ln_p_h_cnt) := ln_price_header_id;
 --
-          -- エラー処理
-          IF (lv_retcode = gv_status_error) THEN
-            RAISE global_process_expt;
-          END IF;
+          -- 仕入単価ヘッダー更新件数の取得
+          ln_p_h_cnt := ln_p_h_cnt + 1;
+--
         END IF;
 --
       END IF;
 --
     END LOOP main_data_loop ;
+--
+    <<ph_loop>>
+    FOR i IN 1..lt_p_header_id.COUNT LOOP
+      -- ===============================
+      -- C-10.仕入/標準単価ヘッダ(アドオン)の変更処理フラグを更新
+      -- ===============================
+      proc_upd_price_headers_flg(
+        in_price_header_id  =>  lt_p_header_id(i),          -- ヘッダID
+        ov_errbuf           =>  lv_errbuf,                  -- エラー・メッセージ
+        ov_retcode          =>  lv_retcode,                 -- リターン・コード
+        ov_errmsg           =>  lv_errmsg);                 -- ユーザー・エラー・メッセージ
+--
+      -- エラー処理
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+    END LOOP ph_loop ;
 --
     -- ===============================
     -- C-11.処理結果出力
