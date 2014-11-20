@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A18R(body)
  * Description      : 払出明細表（拠点別・合計）
  * MD.050           : 払出明細表（拠点別・合計） <MD050_XXCOI_006_A18>
- * Version          : V1.0
+ * Version          : V1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/11    1.0   Y.Kobayashi      初版作成
+ *  2009/05/13    1.1   T.Nakamura       [障害T1_0960]参照するカテゴリを商品製品区分に変更
  *
  *****************************************************************************************/
 --
@@ -104,7 +105,10 @@ AS
   cv_msg_xxcoi1_10118       CONSTANT VARCHAR2(16) :=  'APP-XXCOI1-10118';         -- 百貨店計拠点コード取得エラーメッセージ
   cv_msg_xxcoi1_10296       CONSTANT VARCHAR2(16) :=  'APP-XXCOI1-10296';         -- 百貨店計拠点コード取得エラーメッセージ
   cv_msg_xxcoi1_10119       CONSTANT VARCHAR2(16) :=  'APP-XXCOI1-10119';         -- SVF起動APIエラーメッセージ
-  cv_msg_xxcoi1_10146       CONSTANT VARCHAR2(16) :=  'APP-XXCOI1-10146';         -- 品目区分カテゴリセット名取得エラーメッセージ
+-- == 2009/05/13 V1.1 Modified START ===============================================================
+--  cv_msg_xxcoi1_10146       CONSTANT VARCHAR2(16) :=  'APP-XXCOI1-10146';         -- 品目区分カテゴリセット名取得エラーメッセージ
+  cv_msg_xxcoi1_10382       CONSTANT VARCHAR2(16) :=  'APP-XXCOI1-10382';         -- 商品製品区分カテゴリセット名取得エラーメッセージ
+-- == 2009/05/13 V1.1 Modified END   ===============================================================
   cv_token_10098_1          CONSTANT VARCHAR2(30) :=  'P_OUT_TYPE';               -- APP-XXCOI1-10098用トークン（出力区分）
   cv_token_10107_1          CONSTANT VARCHAR2(30) :=  'P_INVENTORY_MONTH';        -- APP-XXCOI1-10107用トークン（受払年月）
   cv_token_10108_1          CONSTANT VARCHAR2(30) :=  'P_COST_TYPE';              -- APP-XXCOI1-10108用トークン（原価区分）
@@ -113,7 +117,10 @@ AS
   cv_prf_name_sp_manage     CONSTANT VARCHAR2(30) :=  'XXCOI1_SP_MANAGEMENT';         -- プロファイル名（専門店計拠点コード）
   cv_prf_name_dp_manage     CONSTANT VARCHAR2(30) :=  'XXCOI1_DEPT_MANAGEMENT';       -- プロファイル名（百貨店計拠点コード）
   cv_prf_name_item_dept     CONSTANT VARCHAR2(30) :=  'XXCOI1_ITEM_DEPT_BASE_CODE';   -- プロファイル名（商品部拠点コード）
-  cv_prf_name_category      CONSTANT VARCHAR2(30) :=  'XXCOI1_ITEM_CATEGORY_CLASS';   -- プロファイル名（品目区分カテゴリセット名）
+-- == 2009/05/13 V1.1 Modified START ===============================================================
+--  cv_prf_name_category      CONSTANT VARCHAR2(30) :=  'XXCOI1_ITEM_CATEGORY_CLASS';   -- プロファイル名（品目区分カテゴリセット名）
+  cv_prf_name_category      CONSTANT VARCHAR2(30) :=  'XXCOI1_GOODS_PRODUCT_CLASS';   -- プロファイル名（商品製品区分カテゴリセット名）
+-- == 2009/05/13 V1.1 Modified END   ===============================================================
   -- 出力区分（30:拠点別 40:専門店別 50:百貨店別 60:専門店計 70:百貨店計 80:直営店計 90:全社計）
   cv_output_kbn_30          CONSTANT VARCHAR2(2)  :=  '30';
   cv_output_kbn_40          CONSTANT VARCHAR2(2)  :=  '40';
@@ -150,7 +157,10 @@ AS
   cv_output_mode            CONSTANT VARCHAR2(30) :=  '1';                     -- 出力区分
   cv_frm_file               CONSTANT VARCHAR2(30) :=  'XXCOI006A18S.xml';      -- フォーム様式ファイル名
   cv_vrq_file               CONSTANT VARCHAR2(30) :=  'XXCOI006A18S.vrq';      -- クエリー様式ファイル名
-  gv_item_category          VARCHAR2(10);                       -- カテゴリー名
+-- == 2009/05/13 V1.1 Modified START ===============================================================
+--  gv_item_category          VARCHAR2(10);                       -- カテゴリー名
+  gv_item_category          VARCHAR2(12);                       -- カテゴリー名
+-- == 2009/05/13 V1.1 Modified END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1318,10 +1328,13 @@ AS
       gv_item_category  :=  fnd_profile.value(cv_prf_name_category);
       --
       IF (gv_item_category IS NULL) THEN
-        -- 品目区分カテゴリセット名取得エラーメッセージ
+        -- 商品製品区分カテゴリセット名取得エラーメッセージ
         lv_errmsg   := xxccp_common_pkg.get_msg(
                          iv_application  => cv_short_name_xxcoi
-                        ,iv_name         => cv_msg_xxcoi1_10146
+-- == 2009/05/13 V1.1 Modified START ===============================================================
+--                        ,iv_name         => cv_msg_xxcoi1_10146
+                        ,iv_name         => cv_msg_xxcoi1_10382
+-- == 2009/05/13 V1.1 Modified END   ===============================================================
                         ,iv_token_name1  => cv_token_10146_1
                         ,iv_token_value1 => cv_prf_name_category
                        );
