@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO_92J
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2008/12/02   1.3   SCS二瓶           本番障害#251対応（条件追加）
  *  2008/12/15   1.4   SCS伊藤           本番障害#645対応（D4需要数 S4供給数 予定日から実績日に変更）
  *  2008/12/19   1.5   SCS伊藤           本番障害#648対応（I5実績未取在庫数 I6 実績未取在庫数 抽出項目を実績数－前回数に変更）
+ *  2008/12/25   1.6   SCS北寒寺正夫     本番障害#859対応 (ログのオーバーフローによりコンカレントエラーとなるため余分なログを出力しないように変更)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -599,7 +600,9 @@ AS
 --
     -- 配列に存在しないので格納して添え字を返す
 -- Ver1.01 M.Hokkanji Start
-   FND_FILE.PUT_LINE(FND_FILE.LOG,'処理依頼NO：' || iv_request_no);
+-- Ver1.6 M.Hokkanji Start
+--   FND_FILE.PUT_LINE(FND_FILE.LOG,'処理依頼NO：' || iv_request_no);
+-- Ver1.6 M.Hokkanji End
 -- Ver1.01 M.Hokkanji End
     gr_number_tbl(NVL(gr_number_tbl.LAST,0) + 1).request_no := iv_request_no;
     RETURN ln_cnt;
@@ -2248,7 +2251,9 @@ AS
     -- ***************************************
 --
 -- Ver1.01 M.Hokkanji Start
-    FND_FILE.PUT_LINE(FND_FILE.LOG,iv_fwd_sql);
+-- Ver1.6 M.Hokkanji Start
+--    FND_FILE.PUT_LINE(FND_FILE.LOG,iv_fwd_sql);
+-- Ver1.6 M.Hokkanji End
 -- Ver1.01 M.Hokkanji End
     -- カーソルオープン
     OPEN fwd_cur FOR iv_fwd_sql USING gv_cons_biz_t_deliv
@@ -2363,7 +2368,9 @@ AS
     -- ***************************************
 --
 -- Ver1.01 M.Hokkanji Start
-    FND_FILE.PUT_LINE(FND_FILE.LOG,iv_mov_sql);
+-- Ver1.6 M.Hokkanji Start
+--    FND_FILE.PUT_LINE(FND_FILE.LOG,iv_mov_sql);
+-- Ver1.6 M.Hokkanji End
 -- Ver1.01 M.Hokkanji End
     -- カーソルオープン
     OPEN mov_cur FOR iv_mov_sql USING gv_cons_biz_t_move
