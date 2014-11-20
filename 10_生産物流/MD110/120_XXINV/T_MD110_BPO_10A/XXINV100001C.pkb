@@ -8,7 +8,7 @@ PACKAGE BODY XXINV100001C AS
  * Description      : 生産物流(計画)
  * MD.050           : 計画・移動・在庫・販売計画/引取計画 T_MD050_BPO100
  * MD.070           : 計画・移動・在庫・販売計画/引取計画 T_MD070_BPO10A
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -99,6 +99,7 @@ PACKAGE BODY XXINV100001C AS
  *  2008/08/01    1.10 Oracle 山根 一浩 ST障害No10,変更要求No184対応
  *  2008/09/01    1.11 Oracle 大橋 孝郎 PT 2-2_13 指摘56,PT 2-2_14 指摘58,メッセージ出力不具合対応
  *  2008/09/16    1.12 Oracle 大橋 孝郎 PT 2-2_14指摘75,76,77対応
+ *  2008/11/07    1.13 Oracle Yuko Kawano 統合指摘#585
  *
  *****************************************************************************************/
 --
@@ -9144,54 +9145,56 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
       END IF;
     END IF;
 */
---add start 1.9
-    -- 開始日付の比較
-    IF (TRUNC(in_if_data_tbl(in_if_data_cnt).start_date_active) <> -- インタフェース開始日付
-      TRUNC(gd_keikaku_start_date))                                -- 計画商品対象開始日付
-    THEN
-      -- メッセージセット
-      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv  -- 'XXINV'
-                                                    ,gv_msg_10a_021) -- フォーキャスト日付更新ワーニング
-                                                    ,1
-                                                    ,5000);
-      -- 処理結果レポートに出力
-      if_data_disp( in_if_data_tbl, in_if_data_cnt);
-      ln_warning_count := ln_warning_count + 1;
---
-      -- 計画商品対象開始年月日取得を登録のためのデータセットにセット
--- mod start 1.11
---      t_forecast_interface_tab_ins(1).forecast_date := gd_keikaku_start_date;
-      t_forecast_interface_tab_inst(in_if_data_cnt).forecast_date := gd_keikaku_start_date;
-    ELSE
---      t_forecast_interface_tab_ins(1).forecast_date := 
-      t_forecast_interface_tab_ins(in_if_data_cnt).forecast_date := 
--- mod end 1.11
-                                      in_if_data_tbl(in_if_data_cnt).start_date_active;
-    END IF;
-    -- 終了日付の比較
-    IF (TRUNC(in_if_data_tbl(in_if_data_cnt).end_date_active) <> -- インタフェース終了日付
-      TRUNC(gd_keikaku_end_date))                                -- 計画商品終了日
-    THEN
-      -- メッセージセット
-      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv  -- 'XXINV'
-                                                    ,gv_msg_10a_021) -- フォーキャスト日付更新ワーニング
-                                                    ,1
-                                                    ,5000);
-      -- 処理結果レポートに出力
-      if_data_disp( in_if_data_tbl, in_if_data_cnt);
-      ln_warning_count := ln_warning_count + 1;
---
-      -- 計画商品対象終了年月日取得を登録のためのデータセットにセット
--- mod start 1.11
---      t_forecast_interface_tab_ins(1).forecast_end_date := gd_keikaku_end_date;
-      t_forecast_interface_tab_inst(in_if_data_cnt).forecast_end_date := gd_keikaku_end_date;
-    ELSE
---      t_forecast_interface_tab_ins(1).forecast_end_date := 
-      t_forecast_interface_tab_inst(in_if_data_cnt).forecast_end_date := 
--- mod end 1.11
-                                      in_if_data_tbl(in_if_data_cnt).end_date_active;
-    END IF;
---add end 1.9
+-- 2008/11/07 Y.Kawano Del Start
+----add start 1.9
+--    -- 開始日付の比較
+--    IF (TRUNC(in_if_data_tbl(in_if_data_cnt).start_date_active) <> -- インタフェース開始日付
+--      TRUNC(gd_keikaku_start_date))                                -- 計画商品対象開始日付
+--    THEN
+--      -- メッセージセット
+--      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv  -- 'XXINV'
+--                                                    ,gv_msg_10a_021) -- フォーキャスト日付更新ワーニング
+--                                                    ,1
+--                                                    ,5000);
+--      -- 処理結果レポートに出力
+--      if_data_disp( in_if_data_tbl, in_if_data_cnt);
+--      ln_warning_count := ln_warning_count + 1;
+----
+--      -- 計画商品対象開始年月日取得を登録のためのデータセットにセット
+---- mod start 1.11
+----      t_forecast_interface_tab_ins(1).forecast_date := gd_keikaku_start_date;
+----      t_forecast_interface_tab_inst(in_if_data_cnt).forecast_date := gd_keikaku_start_date;
+----    ELSE
+------      t_forecast_interface_tab_ins(1).forecast_date := 
+----      t_forecast_interface_tab_ins(in_if_data_cnt).forecast_date := 
+------ mod end 1.11
+----                                      in_if_data_tbl(in_if_data_cnt).start_date_active;
+--    END IF;
+--    -- 終了日付の比較
+--    IF (TRUNC(in_if_data_tbl(in_if_data_cnt).end_date_active) <> -- インタフェース終了日付
+--      TRUNC(gd_keikaku_end_date))                                -- 計画商品終了日
+--    THEN
+--      -- メッセージセット
+--      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv  -- 'XXINV'
+--                                                    ,gv_msg_10a_021) -- フォーキャスト日付更新ワーニング
+--                                                    ,1
+--                                                    ,5000);
+--      -- 処理結果レポートに出力
+--      if_data_disp( in_if_data_tbl, in_if_data_cnt);
+--      ln_warning_count := ln_warning_count + 1;
+----
+--      -- 計画商品対象終了年月日取得を登録のためのデータセットにセット
+---- mod start 1.11
+----      t_forecast_interface_tab_ins(1).forecast_end_date := gd_keikaku_end_date;
+--      t_forecast_interface_tab_inst(in_if_data_cnt).forecast_end_date := gd_keikaku_end_date;
+--    ELSE
+----      t_forecast_interface_tab_ins(1).forecast_end_date := 
+--      t_forecast_interface_tab_inst(in_if_data_cnt).forecast_end_date := 
+---- mod end 1.11
+--                                      in_if_data_tbl(in_if_data_cnt).end_date_active;
+--    END IF;
+----add end 1.9
+-- 2008/11/07 Y.Kawano Add End
 --
     -- 登録する数量を算出するために品目マスタからケース入数を抽出する
     -- 条件に主キーがあるためNO_DATA_FOUNDにはならない
@@ -9260,6 +9263,10 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
     t_forecast_interface_tab_inst(in_if_data_cnt).organization_id        := gn_3f_organization_id;
     t_forecast_interface_tab_inst(in_if_data_cnt).inventory_item_id      := ln_inventory_item_id;
     t_forecast_interface_tab_inst(in_if_data_cnt).quantity               := ln_quantity;
+-- 2008/11/07 Y.Kawano Add Start
+    t_forecast_interface_tab_inst(in_if_data_cnt).forecast_date          := gd_keikaku_start_date;
+    t_forecast_interface_tab_inst(in_if_data_cnt).forecast_end_date      := gd_keikaku_end_date;
+-- 2008/11/07 Y.Kawano Add End
     t_forecast_interface_tab_inst(in_if_data_cnt).attribute5             :=
                                          in_if_data_tbl(in_if_data_cnt).base_code;
     t_forecast_interface_tab_inst(in_if_data_cnt).attribute6             :=
@@ -12677,9 +12684,11 @@ IS
     --処理件数出力
     IF (gn_error_cnt > 0) THEN
       gn_normal_cnt := 0;
---add start 1.5
-      gn_error_cnt := gn_target_cnt;
---add end 1.5
+-- 2008/11/07 Y.Kawano Del Start
+----add start 1.5
+--      gn_error_cnt := gn_target_cnt;
+----add end 1.5
+-- 2008/11/07 Y.Kawano Del End
     ELSE
       gn_normal_cnt := gn_target_cnt;
 --add start 1.5
