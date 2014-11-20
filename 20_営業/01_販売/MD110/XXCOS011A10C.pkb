@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/02    1.0   K.Kiriu         新規作成
  *  2009/03/13    1.1   N.Maeda         【障害No.T1_0021】Min-Max計画で作成の移動オーダーデータ対応
+ *  2009/03/24    1.2   T.Kitajima      【障害No.T1_0047】保管場所チェック対応
  *
  *****************************************************************************************/
 --
@@ -117,6 +118,9 @@ AS
   cv_msg_ins_err     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00011';  -- データ登録エラー
   cv_msg_del_err     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00012';  -- データ削除エラー
   cv_msg_cust_o_err  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12559';  -- 顧客受注可能品以外エラー
+--******************************* 2009/03/24 1.2 T.Kitajima ADD START ****************************************
+  cv_msg_keep_err    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12560';  -- 搬送先保管場所チェックエラー
+--******************************* 2009/03/24 1.2 T.Kitajima ADD  END  ****************************************
   -- トークンコード
   cv_tkn_pram1       CONSTANT VARCHAR2(6)   := 'PARAM1';            -- パラメーター１
   cv_tkn_pram2       CONSTANT VARCHAR2(6)   := 'PARAM2';            -- パラメーター２
@@ -214,8 +218,31 @@ AS
     ln_err_chk   NUMBER(1);       --プロファイルエラーチェック用
     -- *** ローカル・カーソル ***
 --
+--******************************* 2009/03/24 1.2 T.Kitajima ADD START ****************************************
+    CURSOR req_order_cur
+    IS
+      SELECT mtrh.request_number       request_number,         --移動オーダーヘッダ.移動オーダー番号
+             mtrh.to_subinventory_code h_to_subinventory_code, --移動オーダーヘッダ.搬送先保管場所
+             mtrl.line_number          line_number,            --移動オーダー明細.明細行No
+             mtrl.to_subinventory_code m_to_subinventory_code  --移動オーダー明細.搬送先保管場所
+        FROM mtl_txn_request_headers mtrh,  --移動オーダーヘッダ
+             mtl_txn_request_lines   mtrl   --移動オーダー明細
+       --移動オーダーヘッダ.ヘッダID = 移動オーダー明細.ヘッダID
+       WHERE mtrh.header_id            = mtrl.header_id
+         --移動オーダーヘッダ.移動オーダー番号 =  インパラメータ.移動オーダー番号
+         AND mtrh.request_number       = it_request_number
+         --移動オーダーヘッダ.搬送先保管場所   =  インパラメータ.搬送先保管場所
+         AND mtrh.to_subinventory_code = it_to_s_code
+         --移動オーダーヘッダ.明細ステータス   <> 取消
+         AND mtrl.line_status          <> cn_status_cancel
+         --移動オーダー明細.明細ステータス     <> 取消
+         AND mtrh.header_status        <> cn_status_cancel
+      ;
+--
     -- *** ローカル・レコード ***
 --
+      l_req_order_cur       req_order_cur%ROWTYPE;
+--******************************* 2009/03/24 1.2 T.Kitajima ADD  END  ****************************************
 --
   BEGIN
 --
@@ -390,6 +417,33 @@ AS
                    );
       RAISE global_api_others_expt;
     END IF;
+--
+--******************************* 2009/03/24 1.2 T.Kitajima ADD START ****************************************
+    --==============================================================
+    --搬送先保管場所チェック
+    --==============================================================
+    <<for_loop>>
+    FOR l_req_order_cur IN req_order_cur LOOP
+      --搬送先保管場所チェック
+      IF ( l_req_order_cur.h_to_subinventory_code <> l_req_order_cur.m_to_subinventory_code ) THEN
+        --メッセージ取得
+        lv_err_msg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_application                 --アプリケーション
+                         ,iv_name         => cv_msg_keep_err                --パラメーター出力
+                         ,iv_token_name1  => cv_tkn_pram1                   --トークンコード１
+                         ,iv_token_value1 => l_req_order_cur.request_number --移動オーダー番号
+                         ,iv_token_name2  => cv_tkn_pram2                   --トークンコード２
+                         ,iv_token_value2 => l_req_order_cur.line_number    --明細行No
+                        );
+        --メッセージに出力
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_err_msg
+        );
+        ov_retcode := cv_status_error;
+      END IF;
+--******************************* 2009/03/24 1.2 T.Kitajima ADD  END  ****************************************
+    END LOOP for_loop;
 --
   EXCEPTION
     -- *** 共通関数OTHERS例外ハンドラ ***

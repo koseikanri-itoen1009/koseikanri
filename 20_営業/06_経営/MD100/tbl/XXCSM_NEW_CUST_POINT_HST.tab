@@ -1,9 +1,9 @@
 CREATE TABLE xxcsm.xxcsm_new_cust_point_hst (
-     employee_number                VARCHAR2(30)
-    ,subject_year                   NUMBER(4,0)
-    ,month_no                       NUMBER(2,0)
-    ,account_number                 VARCHAR2(30)
-    ,data_kbn                       NUMBER(1,0)
+     employee_number                VARCHAR2(30)  NOT NULL
+    ,subject_year                   NUMBER(4,0)   NOT NULL
+    ,month_no                       NUMBER(2,0)   NOT NULL
+    ,account_number                 VARCHAR2(30)  NOT NULL
+    ,data_kbn                       NUMBER(1,0)   NOT NULL
     ,year_month                     NUMBER(6)
     ,point                          NUMBER(3)
     ,post_cd                        VARCHAR2(150)
@@ -24,8 +24,7 @@ CREATE TABLE xxcsm.xxcsm_new_cust_point_hst (
     ,program_application_id         NUMBER(15)
     ,program_id                     NUMBER(15)
     ,program_update_date            DATE
-  ,CONSTRAINT xxcsm_new_cust_point_hst_pk PRIMARY KEY (employee_number, subject_year, month_no, account_number, data_kbn)
-  USING INDEX TABLESPACE xxidx2)
+    )
  PCTFREE 10 PCTUSED 40 INITRANS 10 STORAGE ( INITIAL 3M)
 /
 COMMENT ON TABLE  xxcsm.xxcsm_new_cust_point_hst                                       IS '新規獲得ポイント顧客別履歴テーブル'
@@ -79,4 +78,6 @@ COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.program_application_id         
 COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.program_id                            IS 'コンカレント・プログラムID'
 /
 COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.program_update_date                   IS 'プログラム更新日'
+/
+CREATE INDEX xxcsm.xxcsm_new_cust_point_hst_n01 ON xxcsm.xxcsm_new_cust_point_hst (EMPLOYEE_NUMBER ASC, YEAR_MONTH ASC, ACCOUNT_NUMBER ASC, DATA_KBN ASC) NOPARALLEL
 /

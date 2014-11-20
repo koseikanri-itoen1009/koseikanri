@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A06C (body)
  * Description      : 消化ＶＤ掛率作成
  * MD.050           : 消化ＶＤ掛率作成 MD050_COS_004_A06
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/02/04    1.3   K.Kakishita      [COS_018]定期実行の場合、消化計算締め日３の取得ミス
  *  2009/02/06    1.4   K.Kakishita      [COS_037]AR取引タイプマスタの抽出条件に営業単位を追加
  *  2009/02/20    1.5   K.Kakishita      パラメータのログファイル出力対応
+ *  2009/03/19    1.6   T.Kitajima       [T1_0098]保管場所抽出条件修正
  *
  *****************************************************************************************/
 --
@@ -1480,18 +1481,22 @@ AS
                                                                       --  5.納品拠点コード
     it_vd_digestion_hdr_id    IN      xxcos_vd_digestion_hdrs.vd_digestion_hdr_id%TYPE,
                                                                       --  6.消化VD消化計算ヘッダID
-    ov_vdc_uncalculate_type   OUT     VARCHAR2,                       --  7.VDコラム別未計算区分
-    on_vdc_amount             OUT     NUMBER,                         --  8.販売金額合計
+--******************************** 2009/03/19 1.6 T.Kitajima ADD START **************************************************
+    it_sales_base_code        IN      xxcos_vd_digestion_hdrs.sales_base_code%TYPE,
+                                                                      --  7.売上拠点コード
+--******************************** 2009/03/19 1.6 T.Kitajima ADD  END  **************************************************
+    ov_vdc_uncalculate_type   OUT     VARCHAR2,                       --  8.VDコラム別未計算区分
+    on_vdc_amount             OUT     NUMBER,                         --  9.販売金額合計
     ot_delivery_date          OUT     xxcos_vd_column_headers.dlv_date%TYPE,
-                                                                      --  9.納品日（最新データ）
+                                                                      -- 10.納品日（最新データ）
     ot_dlv_time               OUT     xxcos_vd_column_headers.dlv_time%TYPE,
-                                                                      -- 10.納品時間（最新データ）
+                                                                      -- 11.納品時間（最新データ）
     ot_performance_by_code    OUT     xxcos_vd_column_headers.performance_by_code%TYPE,
-                                                                      -- 11.成績者コード（最新データ）
+                                                                      -- 12.成績者コード（最新データ）
     ot_change_out_time_100    OUT     xxcos_vd_column_headers.change_out_time_100%TYPE,
-                                                                      -- 12.つり銭切れ時間100円（最新データ）
+                                                                      -- 13.つり銭切れ時間100円（最新データ）
     ot_change_out_time_10     OUT     xxcos_vd_column_headers.change_out_time_10%TYPE,
-                                                                      -- 13.つり銭切れ時間10円（最新データ）
+                                                                      -- 14.つり銭切れ時間10円（最新データ）
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1595,13 +1600,19 @@ AS
     -- ===================================================
     --1.保管場所情報
     IF ( ( g_chk_subinv_tab.COUNT = 0 )
-      OR ( g_chk_subinv_tab.EXISTS( it_delivery_base_code ) = FALSE ) )
+--******************************** 2009/03/19 1.6 T.Kitajima MOD START **************************************************
+--      OR ( g_chk_subinv_tab.EXISTS( it_delivery_base_code ) = FALSE ) )
+      OR ( g_chk_subinv_tab.EXISTS( it_sales_base_code ) = FALSE ) )
+--******************************** 2009/03/19 1.6 T.Kitajima MOD  END  **************************************************
     THEN
       BEGIN
         SELECT
           msi.secondary_inventory_name        secondary_inventory_name       --保管場所
         INTO
-          g_chk_subinv_tab(it_delivery_base_code)
+--******************************** 2009/03/19 1.6 T.Kitajima MOD START **************************************************
+--          g_chk_subinv_tab(it_delivery_base_code)
+          g_chk_subinv_tab(it_sales_base_code)
+--******************************** 2009/03/19 1.6 T.Kitajima MOD  END  **************************************************
         FROM
           mtl_secondary_inventories           msi                            --保管場所マスタ
         WHERE
@@ -1626,7 +1637,10 @@ AS
               AND flv.language                = USERENV( 'LANG' )
               AND ROWNUM                      = 1
             )
-        AND msi.attribute7                    = it_delivery_base_code
+--******************************** 2009/03/19 1.6 T.Kitajima MOD START **************************************************
+--        AND msi.attribute7                    = it_delivery_base_code
+        AND msi.attribute7                    = it_sales_base_code
+--******************************** 2009/03/19 1.6 T.Kitajima MOD  END  **************************************************
         AND it_digestion_due_date             < NVL( msi.disable_date, gd_max_date )
         ;
       EXCEPTION
@@ -1641,14 +1655,20 @@ AS
                                        iv_application       => ct_xxcos_appl_short_name,
                                        iv_name              => ct_msg_key_info2,
                                        iv_token_name1       => cv_tkn_base_code,
-                                       iv_token_value1      => it_delivery_base_code,
+--******************************** 2009/03/19 1.6 T.Kitajima MOD START **************************************************
+--                                       iv_token_value1      => it_delivery_base_code,
+                                       iv_token_value1      => it_sales_base_code,
+--******************************** 2009/03/19 1.6 T.Kitajima MOD  END  **************************************************
                                        iv_token_name2       => cv_tkn_organization_code,
                                        iv_token_value2      => gt_organization_code
                                      );
           RAISE global_select_data_expt;
       END;
     ELSE
-      IF ( g_chk_subinv_tab(it_delivery_base_code) IS NULL ) THEN
+--******************************** 2009/03/19 1.6 T.Kitajima MOD START **************************************************
+--      IF ( g_chk_subinv_tab(it_delivery_base_code) IS NULL ) THEN
+      IF ( g_chk_subinv_tab(it_sales_base_code) IS NULL ) THEN
+--******************************** 2009/03/19 1.6 T.Kitajima MOD  END  **************************************************
         --保管場所マスタ文字列取得
         lv_str_table_name         := xxccp_common_pkg.get_msg(
                                        iv_application       => ct_xxcos_appl_short_name,
@@ -1659,7 +1679,10 @@ AS
                                        iv_application       => ct_xxcos_appl_short_name,
                                        iv_name              => ct_msg_key_info2,
                                        iv_token_name1       => cv_tkn_base_code,
-                                       iv_token_value1      => it_delivery_base_code,
+--******************************** 2009/03/19 1.6 T.Kitajima MOD START **************************************************
+--                                       iv_token_value1      => it_delivery_base_code,
+                                       iv_token_value1      => it_sales_base_code,
+--******************************** 2009/03/19 1.6 T.Kitajima MOD  END  **************************************************
                                        iv_token_name2       => cv_tkn_organization_code,
                                        iv_token_value2      => gt_organization_code
                                      );
@@ -1783,8 +1806,12 @@ AS
       g_xvdl_tab(gn_xvdl_idx).hot_cold_type           := l_vdc_rec.h_and_c;
       g_xvdl_tab(gn_xvdl_idx).column_no               := l_vdc_rec.column_no;
       g_xvdl_tab(gn_xvdl_idx).delivery_base_code      := it_delivery_base_code;
+--******************************** 2009/03/19 1.6 T.Kitajima MOD START **************************************************
+--      g_xvdl_tab(gn_xvdl_idx).ship_from_subinventory_code
+--                                                      := g_chk_subinv_tab(it_delivery_base_code);
       g_xvdl_tab(gn_xvdl_idx).ship_from_subinventory_code
-                                                      := g_chk_subinv_tab(it_delivery_base_code);
+                                                      := g_chk_subinv_tab(it_sales_base_code);
+--******************************** 2009/03/19 1.6 T.Kitajima MOD  END  **************************************************
       g_xvdl_tab(gn_xvdl_idx).sold_out_class          := l_vdc_rec.sold_out_class;
       g_xvdl_tab(gn_xvdl_idx).sold_out_time           := l_vdc_rec.sold_out_time;
       --WHOカラム
@@ -3669,13 +3696,16 @@ AS
                                                                               --  4.前回消化計算締年月日
           it_delivery_base_code         => l_xvdh_rec.delivery_base_code,     --  5.納品拠点コード
           it_vd_digestion_hdr_id        => lt_vd_digestion_hdr_id,            --  6.消化VD消化計算ヘッダID
-          ov_vdc_uncalculate_type       => lv_vdc_uncalculate_type,           --  7.VDコラム別取引未計算フラグ
-          on_vdc_amount                 => ln_vdc_amount,                     --  8.販売金額合計
-          ot_delivery_date              => lt_delivery_date,                  --  9.納品日（最新データ）
-          ot_dlv_time                   => lt_dlv_time,                       -- 10.納品時間（最新データ）
-          ot_performance_by_code        => lt_performance_by_code,            -- 11.成績者コード（最新データ）
-          ot_change_out_time_100        => lt_change_out_time_100,            -- 12.つり銭切れ時間100円（最新データ）
-          ot_change_out_time_10         => lt_change_out_time_10,             -- 13.つり銭切れ時間10円（最新データ）
+--******************************** 2009/03/19 1.6 T.Kitajima ADD START **************************************************
+          it_sales_base_code            => l_xvdh_rec.sales_base_code,        --  7.売上拠点コード
+--******************************** 2009/03/19 1.6 T.Kitajima ADD  END  **************************************************
+          ov_vdc_uncalculate_type       => lv_vdc_uncalculate_type,           --  8.VDコラム別取引未計算フラグ
+          on_vdc_amount                 => ln_vdc_amount,                     --  9.販売金額合計
+          ot_delivery_date              => lt_delivery_date,                  -- 10.納品日（最新データ）
+          ot_dlv_time                   => lt_dlv_time,                       -- 11.納品時間（最新データ）
+          ot_performance_by_code        => lt_performance_by_code,            -- 12.成績者コード（最新データ）
+          ot_change_out_time_100        => lt_change_out_time_100,            -- 13.つり銭切れ時間100円（最新データ）
+          ot_change_out_time_10         => lt_change_out_time_10,             -- 14.つり銭切れ時間10円（最新データ）
           ov_errbuf                     => lv_errbuf,                 -- エラー・メッセージ
           ov_retcode                    => lv_retcode,                -- リターン・コード
           ov_errmsg                     => lv_errmsg                  -- ユーザー・エラー・メッセージ
@@ -4065,13 +4095,16 @@ AS
                                            END,                           --  4.前回消化計算締年月日
               it_delivery_base_code     => l_cust_rec.delivery_base_code, --  5.納品拠点コード
               it_vd_digestion_hdr_id    => lt_vd_digestion_hdr_id,        --  6.消化VD消化計算ヘッダID
-              ov_vdc_uncalculate_type   => lv_vdc_uncalculate_type,       --  7.VDコラム別取引未計算区分
-              on_vdc_amount             => ln_vdc_amount,                 --  8.販売金額合計
-              ot_delivery_date          => lt_delivery_date,              --  9.納品日（最新データ）
-              ot_dlv_time               => lt_dlv_time,                   -- 10.納品時間（最新データ）
-              ot_performance_by_code    => lt_performance_by_code,        -- 11.成績者コード（最新データ）
-              ot_change_out_time_100    => lt_change_out_time_100,        -- 12.つり銭切れ時間100円（最新データ）
-              ot_change_out_time_10     => lt_change_out_time_10,         -- 13.つり銭切れ時間10円（最新データ）
+--******************************** 2009/03/19 1.6 T.Kitajima ADD START **************************************************
+              it_sales_base_code            => l_cust_rec.sales_base_code,--  7.売上拠点コード
+--******************************** 2009/03/19 1.6 T.Kitajima ADD  END  **************************************************
+              ov_vdc_uncalculate_type   => lv_vdc_uncalculate_type,       --  8.VDコラム別取引未計算区分
+              on_vdc_amount             => ln_vdc_amount,                 --  9.販売金額合計
+              ot_delivery_date          => lt_delivery_date,              -- 10.納品日（最新データ）
+              ot_dlv_time               => lt_dlv_time,                   -- 11.納品時間（最新データ）
+              ot_performance_by_code    => lt_performance_by_code,        -- 12.成績者コード（最新データ）
+              ot_change_out_time_100    => lt_change_out_time_100,        -- 13.つり銭切れ時間100円（最新データ）
+              ot_change_out_time_10     => lt_change_out_time_10,         -- 14.つり銭切れ時間10円（最新データ）
               ov_errbuf                 => lv_errbuf,               -- エラー・メッセージ
               ov_retcode                => lv_retcode,              -- リターン・コード
               ov_errmsg                 => lv_errmsg                -- ユーザー・エラー・メッセージ

@@ -36,6 +36,8 @@ AS
  *  2009/02/20   1.6   T.Miyashita       パラメータのログファイル出力対応
  *  2009/02/23   1.7   T.Miyashita       [COS_116]納品日セット不具合
  *  2009/02/23   1.8   T.Miyashita       [COS_122]営業担当員コードセット不具合
+ *  2009/03/23   1.9   T.Kitajima        [T1_0099]INV会計期による
+ *                                                出荷元保管場所、納品形態、納品拠点取得方法修正
  *
  *****************************************************************************************/
 --
@@ -159,6 +161,12 @@ AS
                                       := 'APP-XXCOS1-11060';               --消化ＶＤ用消化計算データ取得エラー
   cv_msg_select_salesreps_err  CONSTANT  fnd_new_messages.message_name%TYPE
                                       := 'APP-XXCOS1-10911';               --営業担当員コード取得エラー
+--**************************** 2009/03/23 1.9 T.kitajima ADD START ****************************
+  cv_msg_select_for_inv_err    CONSTANT  fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-11065';               --出荷元保管場所取得エラーメッセージ
+  cv_msg_select_ship_err       CONSTANT  fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-11066';               --出荷拠点取得エラーメッセージ
+--**************************** 2009/03/23 1.9 T.kitajima ADD  END  ****************************
   --クイックコードタイプ
   ct_qct_regular_type          CONSTANT  fnd_lookup_types.lookup_type%TYPE
                                       := 'XXCOS1_REGULAR_ANY_CLASS';       --定期随時
@@ -285,7 +293,11 @@ AS
   cv_mm                        CONSTANT  VARCHAR2(2)  := 'MM';             --MM
   --登録区分
   cv_entry_class               CONSTANT  VARCHAR2(2)  := '5';              --消化VD
-  
+--**************************** 2009/03/23 1.9 T.kitajima ADD START ****************************
+  --棚卸対象区分
+  ct_secondary_class_2         CONSTANT   mtl_secondary_inventories.attribute5%TYPE
+                                          := '2';                     --消化
+--**************************** 2009/03/23 1.9 T.kitajima ADD  END  ****************************
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -1323,6 +1335,10 @@ AS
     ln_err_line_flag       NUMBER;        --エラー明細フラグ
     lt_performance_by_code xxcos_shop_digestion_hdrs.performance_by_code%TYPE; --成績者コード
     lt_resource_id         jtf_rs_resource_extns.resource_id%TYPE;             --リソースID
+--**************************** 2009/03/23 1.9 T.kitajima ADD START ****************************
+    lt_ship_from_subinventory_code xxcos_vd_digestion_lns.ship_from_subinventory_code%TYPE; --出荷元保管場所
+    lt_delivery_base_code          xxcos_vd_digestion_lns.delivery_base_code%TYPE;          --納品拠点コード
+--**************************** 2009/03/23 1.9 T.kitajima ADD  END  ****************************
 
 --
     -- *** ローカル・カーソル ***
@@ -1364,119 +1380,346 @@ AS
 --
       --正常時のみ納品形態、単位換算を行う。
       IF ( lv_err_work = cv_status_normal ) THEN
-        --納品形態取得
-        xxcos_common_pkg.get_delivered_from(
-          gt_tab_work_data(ln_i).ship_from_subinventory_code,  --出荷元保管場所(IN)
-          gt_tab_work_data(ln_i).sale_base_code,               --売上拠点(IN)
-          gt_tab_work_data(ln_i).delivery_base_code,           --出荷拠点(IN)
-          lv_organization_code,                                --在庫組織コード(INOUT)
-          lv_organization_id,                                  --在庫組織ＩＤ(INOUT)
-          lv_delivered_from,                                   --納品形態(OUT)
-          lv_errbuf,                                           --エラー･メッセージ(OUT)
-          lv_retcode,                                          --リターンコード(OUT)
-          lv_errmsg                                            --ユーザ･エラー･メッセージ(OUT)
+--**************************** 2009/03/23 1.9 T.kitajima MOD START ****************************
+--        --納品形態取得
+--        xxcos_common_pkg.get_delivered_from(
+--          gt_tab_work_data(ln_i).ship_from_subinventory_code,  --出荷元保管場所(IN)
+--          gt_tab_work_data(ln_i).sale_base_code,               --売上拠点(IN)
+--          gt_tab_work_data(ln_i).delivery_base_code,           --出荷拠点(IN)
+--          lv_organization_code,                                --在庫組織コード(INOUT)
+--          lv_organization_id,                                  --在庫組織ＩＤ(INOUT)
+--          lv_delivered_from,                                   --納品形態(OUT)
+--          lv_errbuf,                                           --エラー･メッセージ(OUT)
+--          lv_retcode,                                          --リターンコード(OUT)
+--          lv_errmsg                                            --ユーザ･エラー･メッセージ(OUT)
+--        );
+--        IF ( lv_retcode = cv_status_error ) THEN
+--          --取得エラー
+--          lv_err_work     := cv_status_warn;
+--          ov_errmsg       := xxccp_common_pkg.get_msg(
+--                               iv_application        => ct_xxcos_appl_short_name,
+--                               iv_name               => cv_msg_deli_err,
+--                               iv_token_name1        => cv_tkn_parm_data1,
+--                               iv_token_value1       => gt_tab_work_data(ln_i).customer_number,
+--                               iv_token_name2        => cv_tkn_parm_data2,
+--                               iv_token_value2       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd'),
+--                               iv_token_name3        => cv_tkn_parm_data3,
+--                               iv_token_value3       => gt_tab_work_data(ln_i).ship_from_subinventory_code,
+--                               iv_token_name4        => cv_tkn_parm_data4,
+--                               iv_token_value4       => gt_tab_work_data(ln_i).sale_base_code,
+--                               iv_token_name5        => cv_tkn_parm_data5,
+--                               iv_token_value5       => gt_tab_work_data(ln_i).delivery_base_code
+--                             );
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT,
+--            buff   => ov_errmsg
+--          );
+--        ELSE
+--          --単位換算より設定
+--          --
+--          lv_after_uom_code := NULL; --必ずNULLを設定しておくこと。
+--          --
+--          xxcos_common_pkg.get_uom_cnv(
+--            gt_tab_work_data(ln_i).uom_code,        --換算前単位コード(IN)
+--            gt_tab_work_data(ln_i).sales_quantity,  --換算前数量(IN)
+--            gt_tab_work_data(ln_i).item_code,       --品目コード(INOUT)
+--            lv_organization_code,                   --在庫組織コード(INOUT)
+--            ln_inventory_item_id,                   --品目ID(INOUT)
+--            lv_organization_id,                     --在庫組織ＩＤ(INOUT)
+--            lv_after_uom_code,                      --換算後単位コード(INOUT)
+--            ln_after_quantity,                      --換算後数量(OUT)
+--            ln_content,                             --入数(OUT)
+--            lv_errbuf,                              --エラー･メッセージ(OUT)
+--            lv_retcode,                             --リターンコード(OUT)
+--            lv_errmsg                               --ユーザ･エラー･メッセージ(OUT)
+--          );
+--          IF ( lv_retcode = cv_status_error ) THEN
+--            --取得エラー
+--            lv_err_work   := cv_status_warn;
+--            ov_errmsg     := xxccp_common_pkg.get_msg(
+--                               iv_application        => ct_xxcos_appl_short_name,
+--                               iv_name               => cv_msg_tan_err,
+--                               iv_token_name1        => cv_tkn_parm_data1,
+--                               iv_token_value1       => gt_tab_work_data(ln_i).customer_number,
+--                               iv_token_name2        => cv_tkn_parm_data2,
+--                               iv_token_value2       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd'),
+--                               iv_token_name3        => cv_tkn_parm_data3,
+--                               iv_token_value3       => gt_tab_work_data(ln_i).uom_code,
+--                               iv_token_name4        => cv_tkn_parm_data4,
+--                               iv_token_value4       => gt_tab_work_data(ln_i).sales_quantity,
+--                               iv_token_name5        => cv_tkn_parm_data5,
+--                               iv_token_value5       => gt_tab_work_data(ln_i).item_code
+--                             );
+--            FND_FILE.PUT_LINE(
+--              which  => FND_FILE.OUTPUT,
+--              buff   => ov_errmsg
+--            );
+--          ELSE
+--            BEGIN
+--              --営業原価を取得
+--              SELECT
+--                xsibh.discrete_cost                     discrete_cost                  --営業原価
+--              INTO
+--                lv_discrete_cost
+--              FROM
+--                (
+--                  SELECT
+--                    xsibh.discrete_cost                 discrete_cost                  --営業原価
+--                  FROM
+--                    xxcmm_system_items_b_hst          xsibh                            --品目営業履歴アドオンマスタ
+--                  WHERE
+--                    xsibh.item_code                    = gt_tab_work_data(ln_i).item_code
+--                  AND xsibh.apply_date                <= gt_tab_work_data(ln_i).digestion_due_date
+--                  AND xsibh.apply_flag                 = ct_apply_flag_yes
+--                  AND xsibh.discrete_cost             IS NOT NULL
+--                  ORDER BY
+--                    xsibh.apply_date                  desc
+--                ) xsibh
+--              WHERE
+--                ROWNUM                                = 1
+--              ;
+--            EXCEPTION
+--              WHEN OTHERS THEN
+--                lv_retcode := cv_status_error;
+--            END;
+--            IF ( lv_retcode = cv_status_error ) THEN
+--              --取得エラー
+--              lv_err_work   := cv_status_warn;
+--              ov_errmsg     := xxccp_common_pkg.get_msg(
+--                                 iv_application        => ct_xxcos_appl_short_name,
+--                                 iv_name               => cv_msg_cost_err,
+--                                 iv_token_name1        => cv_tkn_parm_data1,
+--                                 iv_token_value1       => gt_tab_work_data(ln_i).customer_number,
+--                                 iv_token_name2        => cv_tkn_parm_data2,
+--                                 iv_token_value2       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd'),
+--                                 iv_token_name3        => cv_tkn_parm_data3,
+--                                 iv_token_value3       => gt_tab_work_data(ln_i).item_code,
+--                                 iv_token_name4        => cv_tkn_parm_data4,
+--                                 iv_token_value4       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd')
+--                               );
+--              FND_FILE.PUT_LINE(
+--                which  => FND_FILE.OUTPUT,
+--                buff   => ov_errmsg
+--              );
+--            ELSE
+--              --会計期間情報取得より設定
+--              xxcos_common_pkg.get_account_period(
+--                cv_inv,                                    --会計区分(IN)
+--                gt_tab_work_data(ln_i).digestion_due_date, --基準日(IN)
+--                lv_status,                                 --ステータス(OUT)
+--                ld_from_date,                              --会計(FROM)(OUT)
+--                ld_to_date,                                --会計(TO)(OUT)
+--                lv_errbuf,                                 --エラー･メッセージ(OUT)
+--                lv_retcode,                                --リターンコード(OUT)
+--                lv_errmsg                                  --ユーザ･エラー･メッセージ(OUT)
+--              );
+--              IF ( lv_retcode = cv_status_error ) THEN
+--                --取得エラー
+--                lv_err_work   := cv_status_warn;
+--                ov_errmsg     := xxccp_common_pkg.get_msg(
+--                                   iv_application        => ct_xxcos_appl_short_name,
+--                                   iv_name               => cv_msg_prd_err,
+--                                   iv_token_name1        => cv_tkn_parm_data1,
+--                                   iv_token_value1       => gt_tab_work_data(ln_i).customer_number,
+--                                   iv_token_name2        => cv_tkn_parm_data2,
+--                                   iv_token_value2       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd'),
+--                                   iv_token_name3        => cv_tkn_parm_data3,
+--                                   iv_token_value3       => cv_inv,
+--                                   iv_token_name4        => cv_tkn_parm_data4,
+--                                   iv_token_value4       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd')
+--                                 );
+--                FND_FILE.PUT_LINE(
+--                  which  => FND_FILE.OUTPUT,
+--                  buff   => ov_errmsg
+--                );
+--              ELSE
+--                IF ( lv_status <> cv_open ) THEN
+--                  --会計期間情報取得より設定
+--                  xxcos_common_pkg.get_account_period(
+--                    cv_inv,           --会計区分(IN)
+--                    NULL,             --基準日(IN)
+--                    lv_status,        --ステータス(OUT)
+--                    ld_from_date,     --会計(FROM)(OUT)
+--                    ld_to_date,       --会計(TO)(OUT)
+--                    lv_errbuf,        --エラー･メッセージ(OUT)
+--                    lv_retcode,       --リターンコード(OUT)
+--                    lv_errmsg         --ユーザ･エラー･メッセージ(OUT)
+--                  );
+--                  IF ( lv_retcode = cv_status_error ) THEN
+--                    --取得エラー
+--                    lv_err_work   := cv_status_warn;
+--                    ov_errmsg     := xxccp_common_pkg.get_msg(
+--                                       iv_application        => ct_xxcos_appl_short_name,
+--                                       iv_name               => cv_msg_prd_err,
+--                                       iv_token_name1        => cv_tkn_parm_data1,
+--                                       iv_token_value1       => gt_tab_work_data(ln_i).customer_number,
+--                                       iv_token_name2        => cv_tkn_parm_data2,
+--                                       iv_token_value2       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd'),
+--                                       iv_token_name3        => cv_tkn_parm_data3,
+--                                       iv_token_value3       => cv_inv,
+--                                       iv_token_name4        => cv_tkn_parm_data4,
+--                                       iv_token_value4       => NULL
+--                                     );
+--                    FND_FILE.PUT_LINE(
+--                      which  => FND_FILE.OUTPUT,
+--                      buff   => ov_errmsg
+--                    );
+--                  ELSE
+--                    gt_tab_sales_exp_headers(ln_h).delivery_date := ld_from_date;                              --納品日
+--                  END IF;
+--                ELSE
+--                  gt_tab_sales_exp_headers(ln_h).delivery_date   := gt_tab_work_data(ln_i).digestion_due_date; --納品日
+--                END IF;
+--                IF TRUNC(gt_tab_sales_exp_headers(ln_h).delivery_date, cv_mm ) = TRUNC( gd_business_date, cv_mm ) THEN --当月なら
+--                  gt_tab_sales_exp_headers(ln_h).sales_base_code := gt_tab_work_data(ln_i).sale_base_code;      --当月売上拠点コード
+--                  gt_tab_for_comfunc_inpara(ln_h).cust_status    := gt_tab_work_data(ln_i).duns_number_c;       --当月顧客ステータス(DFF14)
+--                ELSE --前月なら
+--                  gt_tab_sales_exp_headers(ln_h).sales_base_code := gt_tab_work_data(ln_i).past_sale_base_code;  --前月売上拠点コード
+--                  gt_tab_for_comfunc_inpara(ln_h).cust_status    := gt_tab_work_data(ln_i).past_customer_status; --前月顧客ステータス(DFF14)
+--                END IF;
+--                --==================================
+--                -- 営業担当員コード取得
+--                --==================================
+--                BEGIN
+--                  SELECT xsv.employee_number,
+--                         xsv.resource_id
+--                    INTO lt_performance_by_code,
+--                         lt_resource_id
+--                    FROM xxcos_salesreps_v xsv
+--                   WHERE xsv.party_id                                                                 = gt_tab_work_data(ln_i).party_id
+--                     AND xsv.effective_start_date                                                    <= gt_tab_sales_exp_headers(ln_h).delivery_date
+--                     AND NVL( xsv.effective_end_date, gt_tab_sales_exp_headers(ln_h).delivery_date ) >= gt_tab_sales_exp_headers(ln_h).delivery_date
+--                  ;
+--                EXCEPTION
+--                  WHEN OTHERS THEN
+--                    --取得エラー
+--                    lv_err_work   := cv_status_warn;
+--                    ov_errmsg     := xxccp_common_pkg.get_msg(
+--                                       iv_application        => ct_xxcos_appl_short_name,
+--                                       iv_name               => cv_msg_select_salesreps_err,
+--                                       iv_token_name1        => cv_tkn_parm_data1,
+--                                       iv_token_value1       => gt_tab_work_data(ln_i).customer_number
+--                                     );
+--                    FND_FILE.PUT_LINE(
+--                      which  => FND_FILE.OUTPUT,
+--                      buff   => ov_errmsg
+--                    );
+--                END;
+--              END IF;
+--            END IF;
+--          END IF;
+--        END IF;
+        --==================================
+        -- 単位換算より設定
+        --==================================
+        lv_after_uom_code := NULL; --必ずNULLを設定しておくこと。
+        --
+        xxcos_common_pkg.get_uom_cnv(
+          gt_tab_work_data(ln_i).uom_code,        --換算前単位コード(IN)
+          gt_tab_work_data(ln_i).sales_quantity,  --換算前数量(IN)
+          gt_tab_work_data(ln_i).item_code,       --品目コード(INOUT)
+          lv_organization_code,                   --在庫組織コード(INOUT)
+          ln_inventory_item_id,                   --品目ID(INOUT)
+          lv_organization_id,                     --在庫組織ＩＤ(INOUT)
+          lv_after_uom_code,                      --換算後単位コード(INOUT)
+          ln_after_quantity,                      --換算後数量(OUT)
+          ln_content,                             --入数(OUT)
+          lv_errbuf,                              --エラー･メッセージ(OUT)
+          lv_retcode,                             --リターンコード(OUT)
+          lv_errmsg                               --ユーザ･エラー･メッセージ(OUT)
         );
         IF ( lv_retcode = cv_status_error ) THEN
           --取得エラー
-          lv_err_work     := cv_status_warn;
-          ov_errmsg       := xxccp_common_pkg.get_msg(
-                               iv_application        => ct_xxcos_appl_short_name,
-                               iv_name               => cv_msg_deli_err,
-                               iv_token_name1        => cv_tkn_parm_data1,
-                               iv_token_value1       => gt_tab_work_data(ln_i).customer_number,
-                               iv_token_name2        => cv_tkn_parm_data2,
-                               iv_token_value2       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd'),
-                               iv_token_name3        => cv_tkn_parm_data3,
-                               iv_token_value3       => gt_tab_work_data(ln_i).ship_from_subinventory_code,
-                               iv_token_name4        => cv_tkn_parm_data4,
-                               iv_token_value4       => gt_tab_work_data(ln_i).sale_base_code,
-                               iv_token_name5        => cv_tkn_parm_data5,
-                               iv_token_value5       => gt_tab_work_data(ln_i).delivery_base_code
-                             );
+          lv_err_work   := cv_status_warn;
+          ov_errmsg     := xxccp_common_pkg.get_msg(
+                             iv_application        => ct_xxcos_appl_short_name,
+                             iv_name               => cv_msg_tan_err,
+                             iv_token_name1        => cv_tkn_parm_data1,
+                             iv_token_value1       => gt_tab_work_data(ln_i).customer_number,
+                             iv_token_name2        => cv_tkn_parm_data2,
+                             iv_token_value2       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd'),
+                             iv_token_name3        => cv_tkn_parm_data3,
+                             iv_token_value3       => gt_tab_work_data(ln_i).uom_code,
+                             iv_token_name4        => cv_tkn_parm_data4,
+                             iv_token_value4       => gt_tab_work_data(ln_i).sales_quantity,
+                             iv_token_name5        => cv_tkn_parm_data5,
+                             iv_token_value5       => gt_tab_work_data(ln_i).item_code
+                           );
           FND_FILE.PUT_LINE(
             which  => FND_FILE.OUTPUT,
             buff   => ov_errmsg
           );
         ELSE
-          --単位換算より設定
-          --
-          lv_after_uom_code := NULL; --必ずNULLを設定しておくこと。
-          --
-          xxcos_common_pkg.get_uom_cnv(
-            gt_tab_work_data(ln_i).uom_code,        --換算前単位コード(IN)
-            gt_tab_work_data(ln_i).sales_quantity,  --換算前数量(IN)
-            gt_tab_work_data(ln_i).item_code,       --品目コード(INOUT)
-            lv_organization_code,                   --在庫組織コード(INOUT)
-            ln_inventory_item_id,                   --品目ID(INOUT)
-            lv_organization_id,                     --在庫組織ＩＤ(INOUT)
-            lv_after_uom_code,                      --換算後単位コード(INOUT)
-            ln_after_quantity,                      --換算後数量(OUT)
-            ln_content,                             --入数(OUT)
-            lv_errbuf,                              --エラー･メッセージ(OUT)
-            lv_retcode,                             --リターンコード(OUT)
-            lv_errmsg                               --ユーザ･エラー･メッセージ(OUT)
-          );
+          BEGIN
+            --営業原価を取得
+            SELECT
+              xsibh.discrete_cost                     discrete_cost                  --営業原価
+            INTO
+              lv_discrete_cost
+            FROM
+              (
+                SELECT
+                  xsibh.discrete_cost                 discrete_cost                  --営業原価
+                FROM
+                  xxcmm_system_items_b_hst          xsibh                            --品目営業履歴アドオンマスタ
+                WHERE
+                  xsibh.item_code                    = gt_tab_work_data(ln_i).item_code
+                AND xsibh.apply_date                <= gt_tab_work_data(ln_i).digestion_due_date
+                AND xsibh.apply_flag                 = ct_apply_flag_yes
+                AND xsibh.discrete_cost             IS NOT NULL
+                ORDER BY
+                  xsibh.apply_date                  desc
+              ) xsibh
+            WHERE
+              ROWNUM                                = 1
+            ;
+          EXCEPTION
+            WHEN OTHERS THEN
+              lv_retcode := cv_status_error;
+          END;
           IF ( lv_retcode = cv_status_error ) THEN
             --取得エラー
             lv_err_work   := cv_status_warn;
             ov_errmsg     := xxccp_common_pkg.get_msg(
                                iv_application        => ct_xxcos_appl_short_name,
-                               iv_name               => cv_msg_tan_err,
+                               iv_name               => cv_msg_cost_err,
                                iv_token_name1        => cv_tkn_parm_data1,
                                iv_token_value1       => gt_tab_work_data(ln_i).customer_number,
                                iv_token_name2        => cv_tkn_parm_data2,
                                iv_token_value2       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd'),
                                iv_token_name3        => cv_tkn_parm_data3,
-                               iv_token_value3       => gt_tab_work_data(ln_i).uom_code,
+                               iv_token_value3       => gt_tab_work_data(ln_i).item_code,
                                iv_token_name4        => cv_tkn_parm_data4,
-                               iv_token_value4       => gt_tab_work_data(ln_i).sales_quantity,
-                               iv_token_name5        => cv_tkn_parm_data5,
-                               iv_token_value5       => gt_tab_work_data(ln_i).item_code
+                               iv_token_value4       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd')
                              );
             FND_FILE.PUT_LINE(
               which  => FND_FILE.OUTPUT,
               buff   => ov_errmsg
             );
           ELSE
-            BEGIN
-              --営業原価を取得
-              SELECT
-                xsibh.discrete_cost                     discrete_cost                  --営業原価
-              INTO
-                lv_discrete_cost
-              FROM
-                (
-                  SELECT
-                    xsibh.discrete_cost                 discrete_cost                  --営業原価
-                  FROM
-                    xxcmm_system_items_b_hst          xsibh                            --品目営業履歴アドオンマスタ
-                  WHERE
-                    xsibh.item_code                    = gt_tab_work_data(ln_i).item_code
-                  AND xsibh.apply_date                <= gt_tab_work_data(ln_i).digestion_due_date
-                  AND xsibh.apply_flag                 = ct_apply_flag_yes
-                  AND xsibh.discrete_cost             IS NOT NULL
-                  ORDER BY
-                    xsibh.apply_date                  desc
-                ) xsibh
-              WHERE
-                ROWNUM                                = 1
-              ;
-            EXCEPTION
-              WHEN OTHERS THEN
-                lv_retcode := cv_status_error;
-            END;
+            --会計期間情報取得より設定
+            xxcos_common_pkg.get_account_period(
+              cv_inv,                                    --会計区分(IN)
+              gt_tab_work_data(ln_i).digestion_due_date, --基準日(IN)
+              lv_status,                                 --ステータス(OUT)
+              ld_from_date,                              --会計(FROM)(OUT)
+              ld_to_date,                                --会計(TO)(OUT)
+              lv_errbuf,                                 --エラー･メッセージ(OUT)
+              lv_retcode,                                --リターンコード(OUT)
+              lv_errmsg                                  --ユーザ･エラー･メッセージ(OUT)
+            );
             IF ( lv_retcode = cv_status_error ) THEN
               --取得エラー
               lv_err_work   := cv_status_warn;
               ov_errmsg     := xxccp_common_pkg.get_msg(
                                  iv_application        => ct_xxcos_appl_short_name,
-                                 iv_name               => cv_msg_cost_err,
+                                 iv_name               => cv_msg_prd_err,
                                  iv_token_name1        => cv_tkn_parm_data1,
                                  iv_token_value1       => gt_tab_work_data(ln_i).customer_number,
                                  iv_token_name2        => cv_tkn_parm_data2,
                                  iv_token_value2       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd'),
                                  iv_token_name3        => cv_tkn_parm_data3,
-                                 iv_token_value3       => gt_tab_work_data(ln_i).item_code,
+                                 iv_token_value3       => cv_inv,
                                  iv_token_name4        => cv_tkn_parm_data4,
                                  iv_token_value4       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd')
                                );
@@ -1485,93 +1728,56 @@ AS
                 buff   => ov_errmsg
               );
             ELSE
-              --会計期間情報取得より設定
-              xxcos_common_pkg.get_account_period(
-                cv_inv,                                    --会計区分(IN)
-                gt_tab_work_data(ln_i).digestion_due_date, --基準日(IN)
-                lv_status,                                 --ステータス(OUT)
-                ld_from_date,                              --会計(FROM)(OUT)
-                ld_to_date,                                --会計(TO)(OUT)
-                lv_errbuf,                                 --エラー･メッセージ(OUT)
-                lv_retcode,                                --リターンコード(OUT)
-                lv_errmsg                                  --ユーザ･エラー･メッセージ(OUT)
-              );
-              IF ( lv_retcode = cv_status_error ) THEN
-                --取得エラー
-                lv_err_work   := cv_status_warn;
-                ov_errmsg     := xxccp_common_pkg.get_msg(
-                                   iv_application        => ct_xxcos_appl_short_name,
-                                   iv_name               => cv_msg_prd_err,
-                                   iv_token_name1        => cv_tkn_parm_data1,
-                                   iv_token_value1       => gt_tab_work_data(ln_i).customer_number,
-                                   iv_token_name2        => cv_tkn_parm_data2,
-                                   iv_token_value2       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd'),
-                                   iv_token_name3        => cv_tkn_parm_data3,
-                                   iv_token_value3       => cv_inv,
-                                   iv_token_name4        => cv_tkn_parm_data4,
-                                   iv_token_value4       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd')
-                                 );
-                FND_FILE.PUT_LINE(
-                  which  => FND_FILE.OUTPUT,
-                  buff   => ov_errmsg
+              IF ( lv_status <> cv_open ) THEN
+                --会計期間情報取得より設定
+                xxcos_common_pkg.get_account_period(
+                  cv_inv,           --会計区分(IN)
+                  NULL,             --基準日(IN)
+                  lv_status,        --ステータス(OUT)
+                  ld_from_date,     --会計(FROM)(OUT)
+                  ld_to_date,       --会計(TO)(OUT)
+                  lv_errbuf,        --エラー･メッセージ(OUT)
+                  lv_retcode,       --リターンコード(OUT)
+                  lv_errmsg         --ユーザ･エラー･メッセージ(OUT)
                 );
-              ELSE
-                IF ( lv_status <> cv_open ) THEN
-                  --会計期間情報取得より設定
-                  xxcos_common_pkg.get_account_period(
-                    cv_inv,           --会計区分(IN)
-                    NULL,             --基準日(IN)
-                    lv_status,        --ステータス(OUT)
-                    ld_from_date,     --会計(FROM)(OUT)
-                    ld_to_date,       --会計(TO)(OUT)
-                    lv_errbuf,        --エラー･メッセージ(OUT)
-                    lv_retcode,       --リターンコード(OUT)
-                    lv_errmsg         --ユーザ･エラー･メッセージ(OUT)
+                IF ( lv_retcode = cv_status_error ) THEN
+                  --取得エラー
+                  lv_err_work   := cv_status_warn;
+                  ov_errmsg     := xxccp_common_pkg.get_msg(
+                                     iv_application        => ct_xxcos_appl_short_name,
+                                     iv_name               => cv_msg_prd_err,
+                                     iv_token_name1        => cv_tkn_parm_data1,
+                                     iv_token_value1       => gt_tab_work_data(ln_i).customer_number,
+                                     iv_token_name2        => cv_tkn_parm_data2,
+                                     iv_token_value2       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd'),
+                                     iv_token_name3        => cv_tkn_parm_data3,
+                                     iv_token_value3       => cv_inv,
+                                     iv_token_name4        => cv_tkn_parm_data4,
+                                     iv_token_value4       => NULL
+                                   );
+                  FND_FILE.PUT_LINE(
+                    which  => FND_FILE.OUTPUT,
+                    buff   => ov_errmsg
                   );
-                  IF ( lv_retcode = cv_status_error ) THEN
-                    --取得エラー
-                    lv_err_work   := cv_status_warn;
-                    ov_errmsg     := xxccp_common_pkg.get_msg(
-                                       iv_application        => ct_xxcos_appl_short_name,
-                                       iv_name               => cv_msg_prd_err,
-                                       iv_token_name1        => cv_tkn_parm_data1,
-                                       iv_token_value1       => gt_tab_work_data(ln_i).customer_number,
-                                       iv_token_name2        => cv_tkn_parm_data2,
-                                       iv_token_value2       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd'),
-                                       iv_token_name3        => cv_tkn_parm_data3,
-                                       iv_token_value3       => cv_inv,
-                                       iv_token_name4        => cv_tkn_parm_data4,
-                                       iv_token_value4       => NULL
-                                     );
-                    FND_FILE.PUT_LINE(
-                      which  => FND_FILE.OUTPUT,
-                      buff   => ov_errmsg
-                    );
-                  ELSE
-                    gt_tab_sales_exp_headers(ln_h).delivery_date := ld_from_date;                              --納品日
-                  END IF;
                 ELSE
-                  gt_tab_sales_exp_headers(ln_h).delivery_date   := gt_tab_work_data(ln_i).digestion_due_date; --納品日
+                  gt_tab_sales_exp_headers(ln_h).delivery_date := ld_from_date;                              --納品日
                 END IF;
-                IF TRUNC(gt_tab_sales_exp_headers(ln_h).delivery_date, cv_mm ) = TRUNC( gd_business_date, cv_mm ) THEN --当月なら
-                  gt_tab_sales_exp_headers(ln_h).sales_base_code := gt_tab_work_data(ln_i).sale_base_code;      --当月売上拠点コード
-                  gt_tab_for_comfunc_inpara(ln_h).cust_status    := gt_tab_work_data(ln_i).duns_number_c;       --当月顧客ステータス(DFF14)
-                ELSE --前月なら
-                  gt_tab_sales_exp_headers(ln_h).sales_base_code := gt_tab_work_data(ln_i).past_sale_base_code;  --前月売上拠点コード
-                  gt_tab_for_comfunc_inpara(ln_h).cust_status    := gt_tab_work_data(ln_i).past_customer_status; --前月顧客ステータス(DFF14)
-                END IF;
+              ELSE
+                gt_tab_sales_exp_headers(ln_h).delivery_date   := gt_tab_work_data(ln_i).digestion_due_date; --納品日
+              END IF;
+              IF TRUNC(gt_tab_sales_exp_headers(ln_h).delivery_date, cv_mm ) = TRUNC( gd_business_date, cv_mm ) THEN --当月なら
+                gt_tab_sales_exp_headers(ln_h).sales_base_code := gt_tab_work_data(ln_i).sale_base_code;      --当月売上拠点コード
+                gt_tab_for_comfunc_inpara(ln_h).cust_status    := gt_tab_work_data(ln_i).duns_number_c;       --当月顧客ステータス(DFF14)
+--
                 --==================================
-                -- 営業担当員コード取得
+                -- 出荷拠点(納品拠点)取得
                 --==================================
                 BEGIN
-                  SELECT xsv.employee_number,
-                         xsv.resource_id
-                    INTO lt_performance_by_code,
-                         lt_resource_id
-                    FROM xxcos_salesreps_v xsv
-                   WHERE xsv.party_id                                                                 = gt_tab_work_data(ln_i).party_id
-                     AND xsv.effective_start_date                                                    <= gt_tab_sales_exp_headers(ln_h).delivery_date
-                     AND NVL( xsv.effective_end_date, gt_tab_sales_exp_headers(ln_h).delivery_date ) >= gt_tab_sales_exp_headers(ln_h).delivery_date
+                  SELECT xca.delivery_base_code delivery_base_code                --顧客アドオンマスタ.納品拠点コード
+                    INTO lt_delivery_base_code
+                    FROM xxcmm_cust_accounts       xca                            --顧客アドオンマスタ
+                   --顧客アドオン.顧客コード = 顧客コード
+                   WHERE xca.customer_code      =  gt_tab_work_data(ln_i).customer_number
                   ;
                 EXCEPTION
                   WHEN OTHERS THEN
@@ -1579,7 +1785,7 @@ AS
                     lv_err_work   := cv_status_warn;
                     ov_errmsg     := xxccp_common_pkg.get_msg(
                                        iv_application        => ct_xxcos_appl_short_name,
-                                       iv_name               => cv_msg_select_salesreps_err,
+                                       iv_name               => cv_msg_select_ship_err,
                                        iv_token_name1        => cv_tkn_parm_data1,
                                        iv_token_value1       => gt_tab_work_data(ln_i).customer_number
                                      );
@@ -1588,10 +1794,115 @@ AS
                       buff   => ov_errmsg
                     );
                 END;
+--
+                --==================================
+                -- 出荷元保管場所取得
+                --==================================
+                BEGIN
+                  SELECT msi.secondary_inventory_name
+                    INTO lt_ship_from_subinventory_code
+                    FROM mtl_secondary_inventories msi
+                   --保管場所マスタ.[DFF2]棚卸区分   = '2'「消化」 
+                   WHERE msi.attribute5         = ct_secondary_class_2
+                     --保管場所マスタ.[DFF4]顧客コード = 顧客コード
+                     AND msi.attribute4         = gt_tab_work_data(ln_i).customer_number
+                     --保管場所マスタ.[DFF7]拠点コード = 当月売上拠点コード
+                     AND msi.attribute7         = gt_tab_sales_exp_headers(ln_h).sales_base_code
+                  ;
+                EXCEPTION
+                  WHEN OTHERS THEN
+                    --取得エラー
+                    lv_err_work   := cv_status_warn;
+                    ov_errmsg     := xxccp_common_pkg.get_msg(
+                                       iv_application        => ct_xxcos_appl_short_name,
+                                       iv_name               => cv_msg_select_for_inv_err,
+                                       iv_token_name1        => cv_tkn_parm_data1,
+                                       iv_token_value1       => gt_tab_work_data(ln_i).customer_number,
+                                       iv_token_name2        => cv_tkn_parm_data2,
+                                       iv_token_value2       => gt_tab_sales_exp_headers(ln_h).sales_base_code
+                                     );
+                    FND_FILE.PUT_LINE(
+                      which  => FND_FILE.OUTPUT,
+                      buff   => ov_errmsg
+                    );
+                END;
+--
+              ELSE --前月なら
+                gt_tab_sales_exp_headers(ln_h).sales_base_code := gt_tab_work_data(ln_i).past_sale_base_code;        --前月売上拠点コード
+                gt_tab_for_comfunc_inpara(ln_h).cust_status    := gt_tab_work_data(ln_i).past_customer_status;       --前月顧客ステータス(DFF14)
+                lt_ship_from_subinventory_code                 := gt_tab_work_data(ln_i).ship_from_subinventory_code;--出荷元保管場所
+                lt_delivery_base_code                          := gt_tab_work_data(ln_i).delivery_base_code;         --出荷拠点
+              END IF;
+--
+              --==================================
+              -- 営業担当員コード取得
+              --==================================
+              BEGIN
+                SELECT xsv.employee_number,
+                       xsv.resource_id
+                  INTO lt_performance_by_code,
+                       lt_resource_id
+                  FROM xxcos_salesreps_v xsv
+                 WHERE xsv.party_id                                                                 = gt_tab_work_data(ln_i).party_id
+                   AND xsv.effective_start_date                                                    <= gt_tab_sales_exp_headers(ln_h).delivery_date
+                   AND NVL( xsv.effective_end_date, gt_tab_sales_exp_headers(ln_h).delivery_date ) >= gt_tab_sales_exp_headers(ln_h).delivery_date
+                ;
+              EXCEPTION
+                WHEN OTHERS THEN
+                  --取得エラー
+                  lv_err_work   := cv_status_warn;
+                  ov_errmsg     := xxccp_common_pkg.get_msg(
+                                     iv_application        => ct_xxcos_appl_short_name,
+                                     iv_name               => cv_msg_select_salesreps_err,
+                                     iv_token_name1        => cv_tkn_parm_data1,
+                                     iv_token_value1       => gt_tab_work_data(ln_i).customer_number
+                                   );
+                  FND_FILE.PUT_LINE(
+                    which  => FND_FILE.OUTPUT,
+                    buff   => ov_errmsg
+                  );
+              END;
+--
+              --==================================
+              -- 納品形態取得
+              --==================================
+              xxcos_common_pkg.get_delivered_from(
+                lt_ship_from_subinventory_code,                      --出荷元保管場所(IN)
+                gt_tab_sales_exp_headers(ln_h).sales_base_code,      --売上拠点(IN)
+                lt_delivery_base_code,                               --出荷拠点(IN)
+                lv_organization_code,                                --在庫組織コード(INOUT)
+                lv_organization_id,                                  --在庫組織ＩＤ(INOUT)
+                lv_delivered_from,                                   --納品形態(OUT)
+                lv_errbuf,                                           --エラー･メッセージ(OUT)
+                lv_retcode,                                          --リターンコード(OUT)
+                lv_errmsg                                            --ユーザ･エラー･メッセージ(OUT)
+              );
+              IF ( lv_retcode = cv_status_error ) THEN
+                --取得エラー
+                lv_err_work     := cv_status_warn;
+                ov_errmsg       := xxccp_common_pkg.get_msg(
+                                     iv_application        => ct_xxcos_appl_short_name,
+                                     iv_name               => cv_msg_deli_err,
+                                     iv_token_name1        => cv_tkn_parm_data1,
+                                     iv_token_value1       => gt_tab_work_data(ln_i).customer_number,
+                                     iv_token_name2        => cv_tkn_parm_data2,
+                                     iv_token_value2       => TO_CHAR(gt_tab_work_data(ln_i).digestion_due_date,'yyyymmdd'),
+                                     iv_token_name3        => cv_tkn_parm_data3,
+                                     iv_token_value3       => lt_ship_from_subinventory_code,
+                                     iv_token_name4        => cv_tkn_parm_data4,
+                                     iv_token_value4       => gt_tab_sales_exp_headers(ln_h).sales_base_code,
+                                     iv_token_name5        => cv_tkn_parm_data5,
+                                     iv_token_value5       => lt_delivery_base_code
+                                   );
+                FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT,
+                  buff   => ov_errmsg
+                );
               END IF;
             END IF;
           END IF;
         END IF;
+--**************************** 2009/03/23 1.9 T.kitajima MOD  END  ****************************
       END IF;
       --
       --正常時のみ設定する
@@ -1668,8 +1979,12 @@ AS
         END IF;
         --
         gt_tab_sales_exp_lines(ln_m).cash_and_card                := cn_0;                                               --現金/カード併用額
-        gt_tab_sales_exp_lines(ln_m).ship_from_subinventory_code  := gt_tab_work_data(ln_i).ship_from_subinventory_code; --出荷元保管場所
-        gt_tab_sales_exp_lines(ln_m).delivery_base_code           := gt_tab_work_data(ln_i).delivery_base_code;          --納品拠点コード
+--**************************** 2009/03/23 1.9 T.kitajima MOD START ****************************
+--        gt_tab_sales_exp_lines(ln_m).ship_from_subinventory_code  := gt_tab_work_data(ln_i).ship_from_subinventory_code; --出荷元保管場所
+--        gt_tab_sales_exp_lines(ln_m).delivery_base_code           := gt_tab_work_data(ln_i).delivery_base_code;          --納品拠点コード
+        gt_tab_sales_exp_lines(ln_m).ship_from_subinventory_code  := lt_ship_from_subinventory_code;                     --出荷元保管場所
+        gt_tab_sales_exp_lines(ln_m).delivery_base_code           := lt_delivery_base_code;                              --納品拠点コード
+--**************************** 2009/03/23 1.9 T.kitajima MOD  END  ****************************
         gt_tab_sales_exp_lines(ln_m).hot_cold_class               := gt_tab_work_data(ln_i).hot_cold_type;               --Ｈ＆Ｃ
         gt_tab_sales_exp_lines(ln_m).column_no                    := gt_tab_work_data(ln_i).column_no;                   --コラムNo
         gt_tab_sales_exp_lines(ln_m).sold_out_class               := gt_tab_work_data(ln_i).sold_out_class;              --売切区分
