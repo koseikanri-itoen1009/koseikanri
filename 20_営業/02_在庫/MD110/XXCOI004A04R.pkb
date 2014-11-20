@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI004A04R(body)
  * Description      : VD機内在庫表
  * MD.050           : MD050_COI_004_A04
- * Version          : 1.4
+ * Version          : 1.6
  *
  * Program List
  * ------------------------ --------------------------------------------------------
@@ -32,6 +32,9 @@ AS
  *                                       [T1_0991]VD機内在庫表のH/Cに出力する値を変更
  *  2009/06/26    1.3   H.Wada           [0000257]顧客抽出SQLの変更
  *  2009/07/09    1.4   H.Sasaki         [0000500]顧客抽出SQLの変更
+ *  2009/08/13    1.5   N.Abe            [0000891]顧客抽出SQLの変更
+ *                                       [0001033]在庫組織コードをプロファイルから取得するよう変更
+ *  2009/09/08    1.6   N.Abe            [0001266]OPM品目アドオンの取得方法修正
  *
  *****************************************************************************************/
 --
@@ -115,6 +118,10 @@ AS
   cv_msg_coi_10383            CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10383'; -- 出力期間内容取得エラーメッセージ
   cv_log                      CONSTANT VARCHAR2(3)  := 'LOG';              -- コンカレントヘッダ出力先
 -- == 2009/05/19 V1.2 Added END   ==================================================================
+-- == 2009/08/13 V1.5 Added START ==================================================================
+  cv_msg_coi_00005            CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-00005';
+  cv_msg_coi_00006            CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-00006';
+-- == 2009/08/13 V1.5 Added END   ==================================================================
   -- トークン
   cv_tkn_name_p_base          CONSTANT VARCHAR2(6)  := 'P_BASE';
   cv_tkn_name_p_term          CONSTANT VARCHAR2(6)  := 'P_TERM';
@@ -124,6 +131,10 @@ AS
   cv_tkn_name_p_customer      CONSTANT VARCHAR2(10) := 'P_CUSTOMER';
   cv_tkn_api_name             CONSTANT VARCHAR2(8)  := 'API_NAME';
   cv_val_submit_svf_request   CONSTANT VARCHAR2(18) := 'SUBMIT_SVF_REQUEST';
+-- == 2009/08/13 V1.5 Added START ==================================================================
+  cv_tkn_pro                  CONSTANT VARCHAR2(30) := 'PRO_TOK';
+  cv_tkn_org_code             CONSTANT VARCHAR2(30) := 'ORG_CODE_TOK';
+-- == 2009/08/13 V1.5 Added END   ==================================================================
 -- == 2009/05/19 V1.2 Added START ==================================================================
   cv_tkn_lookup_type          CONSTANT VARCHAR2(20) := 'LOOKUP_TYPE';            -- 参照タイプ
   cv_tkn_lookup_code          CONSTANT VARCHAR2(20) := 'LOOKUP_CODE';            -- 参照コード
@@ -132,6 +143,9 @@ AS
   cv_staff_prm_yes      CONSTANT VARCHAR2(1)  := 'Y';                -- 入力パラメータ:営業員 有り
   cv_staff_prm_no       CONSTANT VARCHAR2(1)  := 'N';                -- 入力パラメータ:営業員 無し
 -- == 2009/06/26 V1.3 Added END   ==================================================================
+-- == 2009/08/13 V1.5 Added START ==================================================================
+  cv_prf_name_orgcd     CONSTANT VARCHAR2(30) :=  'XXCOI1_ORGANIZATION_CODE';    -- プロファイル名（在庫組織コード）
+-- == 2009/08/13 V1.5 Added END   ==================================================================
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -171,6 +185,10 @@ AS
 -- == 2009/06/26 V1.3 Added START ==================================================================
   gv_staff_prm_flg            VARCHAR2(1);                           -- 営業員入力有無フラグ
 -- == 2009/06/26 V1.3 Added END   ==================================================================
+-- == 2009/08/13 V1.5 Added START ==================================================================
+  gv_f_organization_code      VARCHAR2(10);                          -- 在庫組織コード
+  gn_f_organization_id        NUMBER;                                -- 在庫組織ID
+-- == 2009/08/13 V1.5 Added END   ==================================================================
 --
   gt_vd_inv_wk_tab   vd_inv_wk_ttype;   -- VD機内在庫表ワークテーブル格納用
 --
@@ -1565,6 +1583,42 @@ AS
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
+-- == 2009/08/13 V1.5 Added START ==================================================================
+    -- ===================================
+    --  在庫組織コード取得
+    -- ===================================
+    gv_f_organization_code  :=  fnd_profile.value(cv_prf_name_orgcd);
+    --
+    IF (gv_f_organization_code IS NULL) THEN
+      -- プロファイル:在庫組織コード( &PRO_TOK )の取得に失敗しました。
+      lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                        iv_application  => cv_msg_kbn_coi
+                       ,iv_name         => cv_msg_coi_00005
+                       ,iv_token_name1  => cv_tkn_pro
+                       ,iv_token_value1 => cv_prf_name_orgcd
+                      );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    --
+    -- ===================================
+    --  在庫組織ID取得
+    -- ===================================
+    gn_f_organization_id  :=  xxcoi_common_pkg.get_organization_id(gv_f_organization_code);
+    --
+    IF (gn_f_organization_id IS NULL) THEN
+      -- 在庫組織コード( &ORG_CODE_TOK )に対する在庫組織IDの取得に失敗しました。
+      lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                        iv_application  => cv_msg_kbn_coi
+                       ,iv_name         => cv_msg_coi_00006
+                       ,iv_token_name1  => cv_tkn_org_code
+                       ,iv_token_value1 => gv_f_organization_code
+                      );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    --
+-- == 2009/08/13 V1.5 Added END   ==================================================================
 --
   EXCEPTION
     -- *** 共通関数例外ハンドラ ***
@@ -1766,8 +1820,12 @@ AS
           ,hca2.account_name                 AS base_name                          --  3.拠点名
           ,hca1.account_number               AS customer_code                      --  4.顧客コード
           ,hca1.account_name                 AS customer_name                      --  5.顧客名
-          ,punv.un_number                    AS model_code                         --  6.機種コード
-          ,TO_NUMBER(punv.attribute8)        AS sele_quantity                      --  7.セレ数
+-- == 2009/08/13 V1.5 Modified START ===============================================================
+--          ,punv.un_number                    AS model_code                         --  6.機種コード
+--          ,TO_NUMBER(punv.attribute8)        AS sele_quantity                      --  7.セレ数
+          ,NULL                              AS model_code                         --  6.機種コード
+          ,NULL                              AS sele_quantity                      --  7.セレ数
+-- == 2009/08/13 V1.5 Modified END   ===============================================================
 -- == 2009/06/26 V1.3 Modified START ==================================================================
 --          ,xmvc1.rack_quantity               AS rack_quantity                      --  8.ラック数
 --          ,jrre.source_number                AS charge_business_member_code        --  9.担当営業員コード
@@ -1783,8 +1841,10 @@ AS
           ,hz_parties                           hp1                           --  4.パーティマスタ
           ,hz_cust_accounts                     hca2                          --  5.顧客アカウント(拠点)
           ,hz_parties                           hp2                           --  6.パーティマスタ(拠点)
-          ,csi_item_instances                   cii                           --  7.物件マスタ
-          ,po_un_numbers_vl                     punv                          --  8.機種マスタ
+-- == 2009/08/13 V1.5 Deleted START ===============================================================
+--          ,csi_item_instances                   cii                           --  7.物件マスタ
+--          ,po_un_numbers_vl                     punv                          --  8.機種マスタ
+-- == 2009/08/13 V1.5 Deleted END   ===============================================================
 -- == 2009/06/26 V1.3 Delete START ==================================================================
 --          ,hz_organization_profiles             hop                           --  9.組織プロファイルマスタ
 --          ,ego_resource_agv                     era                           -- 10.リソースビュー
@@ -1817,11 +1877,13 @@ AS
     AND    hca1.cust_account_id                 = xca1.customer_id
     AND    hp1.duns_number_c                    IN (30, 40, 50, 80)
     AND    hp2.party_id                         = hca2.party_id
-    AND    hca1.cust_account_id                 = cii.owner_party_account_id
-    AND    cii.instance_status_id               <> 1
-    AND    cii.attribute1                       = punv.un_number
-    AND    punv.attribute8                      IS NOT NULL
-    AND    punv.attribute8                      <> 0
+-- == 2009/08/13 V1.5 Deleted START ===============================================================
+--    AND    hca1.cust_account_id                 = cii.owner_party_account_id
+--    AND    cii.instance_status_id               <> 1
+--    AND    cii.attribute1                       = punv.un_number
+--    AND    punv.attribute8                      IS NOT NULL
+--    AND    punv.attribute8                      <> 0
+-- == 2009/08/13 V1.5 Deleted END   ===============================================================
     AND    ((lv_output_period  = cv_0 AND hca2.account_number = xca1.sale_base_code)
            OR(lv_output_period = cv_1 AND hca2.account_number = xca1.past_sale_base_code))
     AND    lv_output_base                       = hca2.account_number
@@ -1945,8 +2007,17 @@ AS
                  ,xxcmn_item_mst_b       ximb           -- 3.OPOM品目マスタ
                  ,xxcmm_system_items_b   xsib           -- 4.DISC品目アドオン
            WHERE  msib.segment1        = iimb.item_no
-           AND    msib.organization_id = xxcoi_common_pkg.get_organization_id('S01')
+-- == 2009/08/13 V1.5 Modified START ===============================================================
+--           AND    msib.organization_id = xxcoi_common_pkg.get_organization_id('S01')
+           AND    msib.organization_id = gn_f_organization_id
+-- == 2009/08/13 V1.5 Modified END   ===============================================================
            AND    iimb.item_id         = ximb.item_id
+-- == 2009/09/08 V1.6 Added START ===============================================================
+           AND    DECODE(lv_output_period
+                   ,'0' ,TRUNC(xxccp_common_pkg2.get_process_date)
+                   ,'1', TRUNC(ADD_MONTHS(xxccp_common_pkg2.get_process_date, -1))) BETWEEN TRUNC(ximb.start_date_active)
+                                                                                    AND     TRUNC(ximb.end_date_active)
+-- == 2009/09/08 V1.6 Added END   ===============================================================
            AND    iimb.item_id         = xsib.item_id 
            AND    iimb.attribute26 = '1')                                           sub_query   -- 2.品目情報サブクエリー
     WHERE  xmvc.customer_id  = lv_customer_id
@@ -2063,6 +2134,28 @@ AS
     LOOP
       FETCH get_customer_info_cur INTO get_customer_info_rec;
       EXIT WHEN get_customer_info_cur%NOTFOUND;
+-- == 2009/08/13 V1.5 Added START ===============================================================
+      --機種コード、セレ数の取得  ※物件マスタが複数ある場合はどれを取得するかは問わない
+      BEGIN
+        SELECT  punv.un_number              --  機種コード
+               ,TO_NUMBER(punv.attribute8)  --  セレ数
+        INTO    get_customer_info_rec.model_code
+               ,get_customer_info_rec.sele_quantity
+        FROM    csi_item_instances  cii     --  物件マスタ
+               ,po_un_numbers_vl    punv    --  機種マスタ
+        WHERE  cii.owner_party_account_id  = get_customer_info_rec.customer_id
+        AND    cii.instance_status_id     <> 1
+        AND    cii.attribute1              = punv.un_number
+        AND    punv.attribute8            IS NOT NULL
+        AND    punv.attribute8            <> 0
+        AND    ROWNUM                      = 1;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          --データが存在しない場合はNULLを設定
+          get_customer_info_rec.model_code     := NULL;
+          get_customer_info_rec.sele_quantity  := NULL;
+      END;
+-- == 2009/08/13 V1.5 Added END   ===============================================================
 -- == 2009/06/26 V1.3 Added START ==================================================================
       -- ラック数の取得
       BEGIN

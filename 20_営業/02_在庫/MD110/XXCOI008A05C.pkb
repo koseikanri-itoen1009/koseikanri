@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI008A05C(body)
  * Description      : 情報系システムへの連携の為、EBSのVDコラムマスタ(アドオン)をCSVファイルに出力
  * MD.050           : VDコラムマスタ情報系連携 <MD050_COI_008_A05>
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2008/12/24    1.0   S.Kanda          新規作成
  *  2009/06/11    1.1   H.Sasaki         [T1_1416]携抽出対象顧客ステータスを変更
  *  2009/07/13    1.2   H.Sasaki         [0000494]VDコラムマスタ情報取得のPT対応
+ *  2009/08/14    1.3   N.Abe            [0000891]VDコラムマスタ情報取得の修正
  *
  *****************************************************************************************/
 --
@@ -481,8 +482,15 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- == 2009/08/14 V1.3 Added START ===============================================================
+   cv_zero_10   CONSTANT VARCHAR2(10) := '0000000000';
+-- == 2009/08/14 V1.3 Added END   ===============================================================
 --
     -- *** ローカル変数 ***
+-- == 2009/08/14 V1.3 Added START ===============================================================
+   ln_column_no          xxcoi_mst_vd_column.column_no%TYPE;
+   lv_account_number     hz_cust_accounts.account_number%TYPE;
+-- == 2009/08/14 V1.3 Added END   ===============================================================
 --
     -- ===============================
     -- ローカル・カーソル
@@ -501,7 +509,10 @@ AS
             , xmvc.hot_cold                       -- HOT/COLD区分
             , hca.account_number                  -- 顧客コード
             , msib.segment1                       -- 品目コード
-            , cii.external_reference              -- 物件コード
+-- == 2009/08/14 V1.3 Modified START ===============================================================
+--            , cii.external_reference              -- 物件コード
+            , NVL(cii.external_reference, cv_zero_10) external_reference  -- 物件コード
+-- == 2009/08/14 V1.3 Modified END   ===============================================================
       FROM    xxcoi_mst_vd_column  xmvc        -- VDコラムマスタ
             , hz_cust_accounts     hca         -- 顧客マスタ
             , mtl_system_items_b   msib        -- 品目マスタ
@@ -519,7 +530,12 @@ AS
       AND    hca.cust_account_id      =   xmvc.customer_id            -- 顧客ID
       AND    msib.inventory_item_id   =   xmvc.item_id                -- 品目ID
       AND    msib.organization_id     =   xmvc.organization_id        -- 組織ID
-      AND    hca.cust_account_id      =   cii.owner_party_account_id; -- 所有者アカウントID
+-- == 2009/08/14 V1.3 Modified START ===============================================================
+--      AND    hca.cust_account_id      =   cii.owner_party_account_id; -- 所有者アカウントID
+      AND    hca.cust_account_id      =   cii.owner_party_account_id(+) -- 所有者アカウントID
+      ORDER BY hca.account_number
+              ,xmvc.column_no;
+-- == 2009/08/14 V1.3 Modified END   ===============================================================
       --
       -- vd_columnレコード型
       vd_column_rec  vd_column_cur%ROWTYPE;
@@ -552,31 +568,47 @@ AS
         --対象件数加算
         gn_target_cnt := gn_target_cnt + 1;
 --
-        -- ===============================
-        -- A-4．VDコラムマスタCSVの作成
-        -- ===============================
-        create_csv_p(
-            in_column_no          => vd_column_rec.column_no                      -- コラムNO.
-          , in_price              => vd_column_rec.price                          -- 単価
-          , in_inventory_quantity => vd_column_rec.inventory_quantity             -- 基準在庫数
-          , in_last_month_inv_q   => vd_column_rec.last_month_inventory_quantity  -- 前月基準在庫数
-          , iv_hot_cold           => vd_column_rec.hot_cold                       -- HOT/COLD区分
-          , iv_account_number     => vd_column_rec.account_number                 -- 顧客コード
-          , iv_segment1           => vd_column_rec.segment1                       -- 商品コード
-          , iv_external_reference => vd_column_rec.external_reference             -- 物件コード
-          , ov_errbuf             => lv_errbuf                             -- エラー・メッセージ           --# 固定 #
-          , ov_retcode            => lv_retcode                            -- リターン・コード             --# 固定 #
-          , ov_errmsg             => lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
-        );
---
-        IF (lv_retcode = cv_status_error) THEN
-          -- エラー処理
-          RAISE global_process_expt;
+-- == 2009/08/14 V1.3 Added START ===============================================================
+        IF    (ln_column_no IS NOT NULL)
+          AND (ln_column_no = vd_column_rec.column_no)
+          AND (lv_account_number IS NOT NULL)
+          AND (lv_account_number = vd_column_rec.account_number)
+        THEN
+          --コラムNoと顧客コードが前レコードの値と一致した場合は次レコードへ進む
+          NULL;
+        ELSE
+-- == 2009/08/14 V1.3 Added END   ===============================================================
+          -- ===============================
+          -- A-4．VDコラムマスタCSVの作成
+          -- ===============================
+          create_csv_p(
+              in_column_no          => vd_column_rec.column_no                      -- コラムNO.
+            , in_price              => vd_column_rec.price                          -- 単価
+            , in_inventory_quantity => vd_column_rec.inventory_quantity             -- 基準在庫数
+            , in_last_month_inv_q   => vd_column_rec.last_month_inventory_quantity  -- 前月基準在庫数
+            , iv_hot_cold           => vd_column_rec.hot_cold                       -- HOT/COLD区分
+            , iv_account_number     => vd_column_rec.account_number                 -- 顧客コード
+            , iv_segment1           => vd_column_rec.segment1                       -- 商品コード
+            , iv_external_reference => vd_column_rec.external_reference             -- 物件コード
+            , ov_errbuf             => lv_errbuf                             -- エラー・メッセージ           --# 固定 #
+            , ov_retcode            => lv_retcode                            -- リターン・コード             --# 固定 #
+            , ov_errmsg             => lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+  --
+          IF (lv_retcode = cv_status_error) THEN
+            -- エラー処理
+            RAISE global_process_expt;
+          END IF;
+  --
+          -- 正常件数に加算
+          gn_normal_cnt := gn_normal_cnt + 1;
+        --
+-- == 2009/08/14 V1.3 Added START ===============================================================
         END IF;
---
-        -- 正常件数に加算
-        gn_normal_cnt := gn_normal_cnt + 1;
-      --
+        --変数に上書き
+        ln_column_no      := vd_column_rec.column_no;
+        lv_account_number := vd_column_rec.account_number;
+-- == 2009/08/14 V1.3 Added END   ===============================================================
       --ループの終了
       END LOOP vd_column_loop;
       --
