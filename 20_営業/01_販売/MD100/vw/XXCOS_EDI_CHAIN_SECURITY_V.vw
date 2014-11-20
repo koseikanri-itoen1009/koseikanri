@@ -3,13 +3,14 @@
  *
  * View Name       : xxcos_edi_chain_security_v
  * Description     : EDIチェーン店セキュリティview
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008/12/25    1.0   S.Nakamura      新規作成
+ *  2009/05/11    1.1   K.Kiriu          [T1_0777]並列処理番号の条件削除
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_edi_chain_security_v(
    account_number     -- 顧客コード
@@ -59,7 +60,9 @@ AS
       FROM     fnd_lookup_values     flv
       WHERE    flv.lookup_type        = 'XXCOS1_EDI_CONTROL_LIST'   -- EDI制御情報
         AND    flv.attribute2         = '21'                        -- データ種コード 納品予定
-        AND    flv.attribute3         = '01'                        -- 並列処理番号
+/* 2009/05/11 Ver1.1 Del Start */
+--        AND    flv.attribute3         = '01'                        -- 並列処理番号
+/* 2009/05/11 Ver1.1 Del End   */
         AND    flv.language           = userenv('LANG')
         AND    flv.source_lang        = userenv('LANG')
         AND    flv.enabled_flag       = 'Y'
