@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A10C(body)
  * Description      : 商品計画リスト（累計）出力
  * MD.050           : 商品計画リスト（累計）出力 MD050_CSM_002_A10
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009-03-09     1.4   M.Ohtsuki      ［障害CT_078］不要なSQLの削除対応
  *  2009-05-07     1.5   M.Ohtsuki      ［障害T1_0858］拠点コード抽出条件の不備の対応
  *  2009-07-15     1.6   M.Ohtsuki      ［0000678］対象データ0件時のステータス不具合の対応
+ *  2011-01-05     1.7   SCS OuKou       [E_本稼動_05803]
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1590,7 +1591,10 @@ AS
             -- 売上金額＞０の場合に登録
 --//+UPD START 2009/02/20   CT053 M.Ohtsuki
 --            IF (lr_sum_rec.sales_budget > 0) THEN
-            IF (lr_sum_rec.sales_budget <> 0) THEN
+-- MODIFY  START  DATE:2011/01/05  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+--            IF (lr_sum_rec.sales_budget <> 0) THEN
+            IF lr_sum_rec.sales_budget <> 0 OR lr_sum_rec.amount <> 0 THEN
+-- MODIFY  END  DATE:2011/01/05  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
 --//+UPD END   2009/02/20   CT053 M.Ohtsuki
               -- =============================================
               -- データの算出（商品群）(A-9)
@@ -1787,7 +1791,10 @@ AS
           -- 売上金額＞０の場合に商品明細を登録
 --//+UPD START 2009/02/20   CT053 M.Ohtsuki
 --          IF (item_plan_rec.sales_budget > 0) THEN
-          IF (item_plan_rec.sales_budget <> 0) THEN
+-- MODIFY  START  DATE:2011/01/05  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+--          IF (item_plan_rec.sales_budget <> 0) THEN
+          IF item_plan_rec.sales_budget <> 0 OR item_plan_rec.amount <> 0 THEN
+-- MODIFY  END  DATE:2011/01/05  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
 --//+UPD END   2009/02/20   CT053 M.Ohtsuki
             -- =============================================
             -- データの算出（商品）(A-6)
@@ -2103,12 +2110,14 @@ AS
       AND
          nmv.base_code = DECODE(iv_p_kyoten_cd, it_allkyoten_cd, nmv.base_code, iv_p_kyoten_cd)
 --// ADD START 2009/05/07 T1_0858 M.Ohtsuki
-      AND EXISTS
-          (SELECT 'X'
-           FROM   xxcsm_item_plan_result   xipr                                                     -- 商品計画用販売実績
-           WHERE  (xipr.subject_year = (TO_NUMBER(iv_p_yyyy) - 1)                                   -- 入力パラメータの1年前のデータ
-                OR xipr.subject_year = (TO_NUMBER(iv_p_yyyy) - 2))                                  -- 入力パラメータの2年前のデータ
-           AND     xipr.location_cd  = nmv.base_code)
+-- DEL  START  DATE:2011/01/06  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+--      AND EXISTS
+--          (SELECT 'X'
+--           FROM   xxcsm_item_plan_result   xipr                                                     -- 商品計画用販売実績
+--           WHERE  (xipr.subject_year = (TO_NUMBER(iv_p_yyyy) - 1)                                   -- 入力パラメータの1年前のデータ
+--                OR xipr.subject_year = (TO_NUMBER(iv_p_yyyy) - 2))                                  -- 入力パラメータの2年前のデータ
+--           AND     xipr.location_cd  = nmv.base_code)
+-- DEL  END  DATE:2010/01/06  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
 --// ADD END   2009/05/07 T1_0858 M.Ohtsuki
       ORDER BY
          nmv.base_code    --部門コード

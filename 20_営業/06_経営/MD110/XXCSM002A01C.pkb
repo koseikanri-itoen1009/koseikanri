@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A01C(body)
  * Description      : 商品計画用過年度販売実績集計
  * MD.050           : 商品計画用過年度販売実績集計 MD050_CSM_002_A01
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2010/02/09    1.9   S.Karikomi      [E_本稼動_01247] 性能改善対応
  *  2010/03/08    1.10  N.Abe           [E_本稼動_01628] 性能改善対応
                                         [E_本稼動_01629] 百貨店、専門店での集計対応
+ *  2010/12/21    1.11  SCS OuKou       [E_本稼動_05803]
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3304,7 +3305,10 @@ AS
                                                                      , 'L6', xlllv.cd_level6) location_id
                                    FROM   xxcsm_loc_level_list_v    xlllv
                                          ,fnd_lookup_values_vl      flvv
-                                   WHERE  xlllv.cd_level3    = flvv.lookup_code
+-- MODIFY  START  DATE:2010/12/21  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+--                                   WHERE  xlllv.cd_level3    = flvv.lookup_code
+                                   WHERE  xlllv.cd_level5    = flvv.lookup_code
+-- MODIFY  END  DATE:2010/12/21  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
                                    AND    flvv.lookup_type   = cv_lookup_sp_sum
                                    AND    flvv.enabled_flag  = cv_flg_y
                                    AND    cd_process_date    BETWEEN NVL(flvv.start_date_active, cd_process_date)
@@ -3320,7 +3324,10 @@ AS
       SELECT   xwipr.subject_year               subject_year             --対象年度
               ,xwipr.month_no                   month_no                 --月
               ,xwipr.year_month                 year_month               --年月
-              ,xlllv.cd_level4                  location_cd              --拠点コード
+-- MODIFY  START  DATE:2010/12/21  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+--              ,xlllv.cd_level4                  location_cd              --拠点コード
+              ,flvv.attribute1                  location_cd              --拠点コード
+-- MODIFY  END  DATE:2010/12/21  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
               ,xwipr.item_no                    item_no                  --商品コード
               ,xwipr.item_group_no              item_group_no            --商品群コード
               ,SUM(xwipr.amount)                amount                   --数量
@@ -3346,7 +3353,10 @@ AS
       AND      flvv.enabled_flag  = cv_flg_y
       AND      cd_process_date    BETWEEN NVL(flvv.start_date_active, cd_process_date)
                                   AND     NVL(flvv.end_date_active, cd_process_date)
-      GROUP BY xlllv.cd_level4
+-- MODIFY  START  DATE:2010/12/21  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+--      GROUP BY xlllv.cd_level4
+      GROUP BY flvv.attribute1
+-- MODIFY  END  DATE:2010/12/21  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
               ,xwipr.subject_year
               ,xwipr.month_no
               ,xwipr.year_month
@@ -3373,7 +3383,10 @@ AS
       FROM     (SELECT   xwipr.subject_year               subject_year             --対象年度
                         ,xwipr.month_no                   month_no                 --月
                         ,xwipr.year_month                 year_month               --年月
-                        ,gt_sp_code                       location_cd              --拠点コード
+-- MODIFY  START  DATE:2010/12/21  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+--                        ,gt_sp_code                       location_cd              --拠点コード
+                        ,flvv.attribute1                  location_cd              --拠点コード
+-- MODIFY  END  DATE:2010/12/21  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
                         ,xwipr.item_no                    item_no                  --商品コード
                         ,xwipr.item_group_no              item_group_no            --商品群コード
                         ,xwipr.amount                     amount                   --数量
@@ -3389,7 +3402,10 @@ AS
                                                                         , 'L4', xlllv.cd_level4
                                                                         , 'L5', xlllv.cd_level5
                                                                         , 'L6', xlllv.cd_level6)
-                AND      xlllv.cd_level3    = flvv.lookup_code
+-- MODIFY  START  DATE:2010/12/21  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+--                AND      xlllv.cd_level3    = flvv.lookup_code
+                AND      xlllv.cd_level5    = flvv.lookup_code
+-- MODIFY  END  DATE:2010/12/21  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
                 AND      flvv.lookup_type   = cv_lookup_sp_sum
                 AND      flvv.enabled_flag  = cv_flg_y
                 AND      cd_process_date    BETWEEN NVL(flvv.start_date_active, cd_process_date)
@@ -3493,7 +3509,10 @@ AS
                                                                      , 'L6', xlllv.cd_level6)
                                    FROM   xxcsm_loc_level_list_v  xlllv
                                          ,fnd_lookup_values_vl    flvv
-                                   WHERE  xlllv.cd_level3    = flvv.lookup_code
+-- MODIFY  START  DATE:2010/12/21  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+--                                   WHERE  xlllv.cd_level3    = flvv.lookup_code
+                                   WHERE  xlllv.cd_level5    = flvv.lookup_code
+-- MODIFY  END  DATE:2010/12/21  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
                                    AND    flvv.lookup_type   = cv_lookup_sp_sum
                                    AND    flvv.enabled_flag  = cv_flg_y
                                    AND    cd_process_date    BETWEEN NVL(flvv.start_date_active, cd_process_date)

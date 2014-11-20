@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
  * Package Name     : XXCSM002A03C(spec)
  * Description      : 商品計画参考資料出力
  * MD.050           : 商品計画参考資料出力 MD050_CSM_002_A03
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------- --------------------------------------------------------
@@ -38,6 +38,7 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
  *  2009/05/25    1.3   SCS M.Ohtsuki    [障害T1_1020]
  *  2009/06/10    1.4   SCS M.Ohtsuki    [障害T1_1399]
  *  2009/07/10    1.5   SCS T.Tsukino    [障害0000637]PT(政策群２ビューへのヒント句追加）
+ *  2010/12/13    1.6   SCS Y.Kanami     [E_本稼動_05803]
  *
  ******************************************************************************/
 --
@@ -2209,9 +2210,14 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
     --  商品コード-商品群コード|商品名の抽出
     SELECT DISTINCT
             cv_msg_duble || 
-            item_cd      || 
-            cv_msg_hafu  || 
+--//+UPD START 2010/12/13 E_本稼動_05803 Y.Kanami
+--            item_cd      || 
+--            cv_msg_hafu  || 
+--            group_cd     || 
             group_cd     || 
+            cv_msg_hafu  || 
+            item_cd      || 
+--//+UPD END 2010/12/13 E_本稼動_05803 Y.Kanami
             cv_msg_duble || 
             cv_msg_comma || 
             cv_msg_duble || 
@@ -2500,10 +2506,18 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
             get_item_cd_cur
         IS
           SELECT
-                  DISTINCT(item_cd)
+--//+UPD START 2010/12/13 E_本稼動_05803 Y.Kanami
+--                  DISTINCT(item_cd)
+                  DISTINCT group_cd
+                         , item_cd
+--//+UPD END 2010/12/13 E_本稼動_05803 Y.Kanami
           FROM     
                   xxcsm_tmp_sales_plan_ref         -- 商品計画参考資料ワークテーブル
-          ORDER BY item_cd ASC;
+--//+UPD START 2010/12/13 E_本稼動_05803 Y.Kanami
+--          ORDER BY item_cd ASC;
+          ORDER BY group_cd ASC
+                 , item_cd ASC;
+--//+UPD END 2010/12/13 E_本稼動_05803 Y.Kanami
 --
 
   BEGIN

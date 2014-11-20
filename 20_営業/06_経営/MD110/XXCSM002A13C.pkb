@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
  * Package Name     : XXCSM002A13C(body)
  * Description      : 商品計画リスト(時系列_本数単位)出力
  * MD.050           : 商品計画リスト(時系列_本数単位)出力 MD050_CSM_002_A13
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -55,6 +55,7 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
  *  2009/05/07    1.7   M.Ohtsuki       [障害T1_0858] 共通関数修正に伴うパラメータの追加
  *  2009/05/27    1.8   M.Ohtsuki       [障害T1_1199] 商品データの年間計の不具合の対応
  *  2010/03/24    1.9   N.Abe           [E_本稼動_01906] PT対応(ヒント句追加)
+ *  2011/01/07    1.10  SCS OuKou       [E_本稼動_05803]
  *
  *****************************************************************************************/
 --
@@ -1590,7 +1591,9 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
       AND   xiph.plan_year                           = gn_taisyoym               -- 対象年度
       AND   xiph.location_cd                         = iv_kyoten_cd              -- 拠点コード
       AND   xipl.item_kbn                            <> '0'                      -- 商品区分(商品群以外)
-      AND   xcgv.unit_of_issue                       = lv_prf_cd_unit_hon_val    -- 単位(本)
+-- START  DELETE  DATE:2010/12/20  AUTHOR:OUKOU  CONTENT:E_本稼動_05803
+--      AND   xcgv.unit_of_issue                       = lv_prf_cd_unit_hon_val    -- 単位(本)
+-- END    DELETE  DATE:2010/12/20  AUTHOR:OUKOU  CONTENT:E_本稼動_05803
       GROUP BY
                xipl.month_no                       -- 月
               ,xcgv.group1_cd                      -- 商品群1桁コード
@@ -1704,7 +1707,10 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
                       item_cd         = lv_item_cd;   -- 商品コード
 --
 --//+ADD START 2009/05/27 T1_1199 M.Ohtsuki
-              IF (rec_item_data.sales = 0) THEN
+-- MODIFY  START  DATE:2011/01/06  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+--              IF (rec_item_data.sales = 0) THEN
+              IF rec_item_data.sales = 0 AND rec_item_data.amount = 0 THEN
+-- MODIFY  END  DATE:2011/01/06  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
                 -- 商品コード
                 lv_item_cd      := rec_item_data.item_id;
                 -- 年間データ変数の初期化
@@ -1732,7 +1738,10 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
               ln_y_bsa        := rec_item_data.amount * rec_item_data.base_price;
             ELSE
 --//+ADD START 2009/05/27 T1_1199 M.Ohtsuki
-              IF (rec_item_data.sales = 0) THEN
+-- MODIFY  START  DATE:2011/01/06  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+--              IF (rec_item_data.sales = 0) THEN
+              IF rec_item_data.sales = 0 AND rec_item_data.amount = 0 THEN
+-- MODIFY  END  DATE:2011/01/06  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
                   -- 商品コード
                   lv_item_cd      := rec_item_data.item_id;
                   RAISE global_skip_expt;

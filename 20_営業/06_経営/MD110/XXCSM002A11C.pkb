@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
  * Package Name     : XXCSM002A11C(spec)
  * Description      : 商品計画リスト(時系列CS単位)出力
  * MD.050           : 商品計画リスト(時系列CS単位)出力 MD050_CSM_002_A11
- * Version          : 1.8
+ * Version          : 1.10
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -54,6 +54,8 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
  *  2009/05/07    1.6   SCS M.Ohtsuki   [障害T1_0858] 共通関数修正に伴うパラメータの追加
  *  2010/03/24    1.7   SCS N.Abe       [E_本稼動_01906] PT対応(ヒント句追加)
  *  2010/04/26    1.8   SCS N.Abe       [E_本稼動_02367] 単位(本)以外も抽出する対応
+ *  2010/12/17    1.9   SCS Y.Kanami    [E_本稼動_05803]
+ *  2011/01/05    1.10  SCS OuKou       [E_本稼動_05803]
  *
  *****************************************************************************************/
 --
@@ -1855,6 +1857,9 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
     -- 固定ローカル定数
     -- ===============================
     cv_prg_name             CONSTANT VARCHAR2(100)  := 'deal_item_data';        -- プログラム名
+--//+ADD START 2010/12/17 E_本稼動_05803 Y.Kanami
+    cn_value_1              CONSTANT NUMBER := 1;                               -- 入数1 
+--//+ADD END 2010/12/17 E_本稼動_05803 Y.Kanami
     
     -- ===============================
     -- 固定ローカル変数
@@ -1877,6 +1882,9 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
 --//+ADD START 2009/02/18 CT028 S.Son
     lb_skip_flg             BOOLEAN := FALSE;           --入数0チェックスキップフラグ
 --//+ADD END 2009/02/18 CT028 S.Son
+--//+ADD START 2010/12/17 E_本稼動_05803 Y.Kanami
+    lv_item_cd_pre          VARCHAR2(10);               -- メッセージ出力用品目コード
+--//+ADD END 2010/12/17 E_本稼動_05803 Y.Kanami
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -2001,6 +2009,9 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
     --ローカル変数初期化
     lv_item_cd := NULL;
 --//+ADD END 2009/02/18 CT028 S.Son
+--//+ADD START 2010/12/17 E_本稼動_05803 Y.Kanami
+    lv_item_cd_pre := NULL;   -- メッセージ出力用
+--//+ADD END 2010/12/17 E_本稼動_05803 Y.Kanami    
     -- =======================================
     -- データの処理【商品】
     -- =======================================
@@ -2008,26 +2019,65 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
     FOR rec_item_data IN get_item_data_cur(iv_kyoten_cd) LOOP   
         BEGIN
 --//+UPD START 2009/02/18 CT028 S.Son
+--//+MOD START 2010/12/17 E_本稼動_05803 Y.Kanami
             -- ======================================================
-            -- 入数が0の場合【スキップ処理】
+            -- 入数が0の場合、1を設定し処理を続行する
             -- ======================================================
+--//+MOD END 2010/12/17 E_本稼動_05803 Y.Kanami
           --IF ((rec_item_data.sales = 0) OR (rec_item_data.conversion = 0)) THEN
             IF (lv_item_cd IS NULL) OR (lv_item_cd <> rec_item_data.item_id) THEN
               lb_skip_flg := TRUE;
             END IF;
-            --入数0の場合スキップして、メッセージ出す
-            IF (rec_item_data.conversion = 0) THEN
-                -- 商品コード
-                lv_item_cd      := rec_item_data.item_id;
---//+DEL START 2009/02/18 CT028 S.Son
-                -- 月
-              --lv_month_no     := rec_item_data.month;
---//+DEL END 2009/02/18 CT028 S.Son
-                -- 次のデータに移動します
-                RAISE global_skip_expt;
+--//+UPD START 2010/12/17 E_本稼動_05803 Y.Kanami
+--            --入数0の場合スキップして、メッセージ出す
+--            IF (rec_item_data.conversion = 0) THEN
+--                -- 商品コード
+--                lv_item_cd      := rec_item_data.item_id;
+----//+DEL START 2009/02/18 CT028 S.Son
+--                -- 月
+--              --lv_month_no     := rec_item_data.month;
+----//+DEL END 2009/02/18 CT028 S.Son
+--                -- 次のデータに移動します
+--                RAISE global_skip_expt;
+--            END IF;
+            -- 入数がNULLまたは0の場合は入数を1として処理を続行する
+            IF ( rec_item_data.conversion = 0 ) THEN
+              -- 入数に「1」を設定する
+              rec_item_data.conversion := cn_value_1;
+--
+              -- 商品コード
+              lv_item_cd      := rec_item_data.item_id;
+--
+
+              IF (lv_item_cd_pre IS NULL 
+                OR lv_item_cd_pre <> lv_item_cd) THEN
+                -- メッセージ出力
+                lv_warnmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_xxcsm                              -- アプリケーション短縮名
+                          ,iv_name         => cv_csm1_msg_10122                     -- メッセージコード
+                          ,iv_token_name1  => cv_tkn_kyotencd                       -- トークンコード1（拠点コード）
+                          ,iv_token_value1 => iv_kyoten_cd                          -- トークン値1
+                          ,iv_token_name2  => cv_tkn_item_cd                        -- トークンコード2（商品コード）
+                          ,iv_token_value2 => lv_item_cd                            -- トークン値2
+                             );
+              
+                -- LOGに出力
+                fnd_file.put_line(
+                                which  => FND_FILE.LOG
+                               ,buff   => lv_warnmsg  || CHR(10)
+                               );
+              END IF;
+--
+              -- メッセージ出力用変数に品目コードを設定する
+              lv_item_cd_pre := lv_item_cd;
+--
             END IF;
+--//+UPD END 2010/12/17 E_本稼動_05803 Y.Kanami
             --売上0の場合スキップ
-            IF (rec_item_data.sales = 0) THEN 
+-- MODIFY  START  DATE:2011/01/05  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+--            IF (rec_item_data.sales = 0) THEN 
+            IF rec_item_data.sales = 0 AND rec_item_data.amount = 0 THEN 
+-- MODIFY  END  DATE:2011/01/05  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
               RAISE sales_skip_expt;
             END IF;
 --//+UPD END 2009/02/18 CT028 S.Son

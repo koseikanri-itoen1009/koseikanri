@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A08C(body)
  * Description      : 月別商品計画(営業原価)チェックリスト出力
  * MD.050           : 月別商品計画(営業原価)チェックリスト出力 MD050_CSM_002_A08
- * Version          : 1.8
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,8 @@ AS
  *  2009/05/07    1.6   SCS M.Ohtsuki   [障害T1_0858] 共通関数修正に伴うパラメータの追加
  *  2009/05/21    1.7   SCS M.Ohtsuki   [障害T1_1101] 売上金額不正(値引額含む)
  *  2009/07/13    1.8   SCS M.Ohtsuki   [SCS障害管理番号0000657] ヘッダ出力時不具合
+ *  2011/01/05    1.9   SCS OuKou       [E_本稼動_05803]
+ *  2011/01/13    1.10  SCS Y.Kanami    [E_本稼動_05803]PT対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -92,7 +94,6 @@ AS
   cv_language_ja            CONSTANT VARCHAR2(2)   := USERENV('LANG');           --言語(日本語)
   cv_flg_y                  CONSTANT VARCHAR2(1)   := 'Y';                       --フラグY
   cv_whick_log              CONSTANT VARCHAR2(3)   := 'LOG';                       --ログ
-
 --
 --################################  固定部 END   ##################################
 --
@@ -147,6 +148,20 @@ AS
   cv_group_d                     CONSTANT VARCHAR2(1)   := 'D';                           --商品コード1桁D(その他)
   cv_location_1                  CONSTANT VARCHAR2(1)   := '1';                            --入力パラメータ拠点コード’1’
   cv_location_1_nm               CONSTANT VARCHAR2(100)   := '全拠点';                     --入力パラメータ拠点コード’1’
+--//+ADD START 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami
+  cv_sgun_code                  CONSTANT VARCHAR2(15)  := 'XXCMN_SGUN_CODE';          
+  cv_item_group                 CONSTANT VARCHAR2(17)  := 'XXCSM1_ITEM_GROUP';
+  cv_mcat                       CONSTANT VARCHAR2(4)   := 'MCAT';
+  cn_appl_id                    CONSTANT NUMBER        := 401;
+  cv_ja                         CONSTANT VARCHAR2(4)   := 'JA';
+  cv_item_status_30             CONSTANT VARCHAR2(4)   := '30';
+  cv_item_kbn                   CONSTANT VARCHAR2(4)   := '0';
+  cv_percent                    CONSTANT VARCHAR2(1)   := '%';
+  cv_whse_code                  CONSTANT VARCHAR2(3)   := '000';
+  cv_group_3                    CONSTANT VARCHAR2(1)   := '*';
+  cv_group_1                    CONSTANT VARCHAR2(3)   := '***';
+  cv_bar                        CONSTANT VARCHAR2(1)   := '_';
+--//+ADD END 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -163,6 +178,9 @@ AS
   gn_subject_year        NUMBER;               --入力パラメータ．対象年度
   gv_location_cd         VARCHAR2(4);          --入力パラメータ．拠点コード
   gv_hierarchy_level     VARCHAR2(2);          --入力パラメータ．階層
+--//+ADD START 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami  
+  gd_process_date        DATE := xxccp_common_pkg2.get_process_date;                      -- 業務日付を変数に格納-
+--//+ADD END 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami  
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -618,26 +636,125 @@ AS
     --商品群月別データ抽出
     CURSOR   group3_month_cur
     IS
-      SELECT  SUM(xipl.sales_budget)  sales_budget_sum                 --売上金額
-             ,SUM(xipl.amount)        amount_sum                       --数量
-             ,SUM(xipl.amount * xcgv.now_business_cost) sub_margin     --粗利益減数
-             ,SUM(xipl.amount * xcgv.now_unit_price)    credit_bunbo   --掛率分母
-             ,xipl.year_month                                          --年月
-      FROM    xxcsm_item_plan_lines       xipl                         -- 商品計画明細テーブル
-             ,xxcsm_item_plan_headers     xiph                         -- 商品計画ヘッダテーブル
-             ,xxcsm_commodity_group3_v    xcgv                         -- 政策群コード３ビュー
-      WHERE   xiph.plan_year = gn_subject_year                         --対象年度
-      AND     xiph.location_cd = iv_kyoten_cd                          --拠点コード
-      AND     xiph.item_plan_header_id = xipl.item_plan_header_id
-      AND     xipl.item_group_no LIKE REPLACE(iv_group3_cd,'*','_')    --政策群コード3桁     
---//+UPD START 2009/02/13 CT015 S.Son
-    --AND     xipl.item_kbn = '1'                                      --商品区分(1：商品単品)
-      AND     xipl.item_kbn <> '0'                                     --商品区分(1：商品単品、2：新商品)
---//+UPD END 2009/02/13 CT015 S.Son
-      AND     xipl.item_no = xcgv.item_cd
-      GROUP BY xipl.year_month
-      ORDER BY xipl.year_month
-    ;
+--//+UPD START 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami
+--      SELECT  SUM(xipl.sales_budget)  sales_budget_sum                 --売上金額
+--             ,SUM(xipl.amount)        amount_sum                       --数量
+--             ,SUM(xipl.amount * xcgv.now_business_cost) sub_margin     --粗利益減数
+--             ,SUM(xipl.amount * xcgv.now_unit_price)    credit_bunbo   --掛率分母
+--             ,xipl.year_month                                          --年月
+--      FROM    xxcsm_item_plan_lines       xipl                         -- 商品計画明細テーブル
+--             ,xxcsm_item_plan_headers     xiph                         -- 商品計画ヘッダテーブル
+--             ,xxcsm_commodity_group3_v    xcgv                         -- 政策群コード３ビュー
+--      WHERE   xiph.plan_year = gn_subject_year                         --対象年度
+--      AND     xiph.location_cd = iv_kyoten_cd                          --拠点コード
+--      AND     xiph.item_plan_header_id = xipl.item_plan_header_id
+--      AND     xipl.item_group_no LIKE REPLACE(iv_group3_cd,'*','_')    --政策群コード3桁     
+----//+UPD START 2009/02/13 CT015 S.Son
+--    --AND     xipl.item_kbn = '1'                                      --商品区分(1：商品単品)
+--      AND     xipl.item_kbn <> '0'                                     --商品区分(1：商品単品、2：新商品)
+----//+UPD END 2009/02/13 CT015 S.Son
+--      AND     xipl.item_no = xcgv.item_cd
+--      GROUP BY xipl.year_month
+--      ORDER BY xipl.year_month
+--    ;
+      SELECT  sub.year_month                          year_month       --年月
+             ,SUM(sub.sales_budget)                   sales_budget_sum --売上金額
+             ,SUM(sub.amount)                         amount_sum       --数量
+             ,SUM(sub.amount * sub.now_business_cost) sub_margin       --粗利益減数
+             ,SUM(sub.amount * sub.now_unit_price)    credit_bunbo     --掛率分母
+      FROM   (
+              SELECT 
+                  xipl.year_month                     year_month
+                , NVL(iimb.attribute8, 0)             now_business_cost
+                , NVL(iimb.attribute5, 0)             now_unit_price
+                , xipl.amount                         amount
+                , xipl.sales_budget                   sales_budget
+              FROM    mtl_categories_b            mcb2
+                    , mtl_category_sets_b         mcsb2
+                    , fnd_id_flex_structures      fifs2
+                    , mtl_categories_tl           mct
+                    , gmi_item_categories         gic
+                    , ic_item_mst_b               iimb
+                    , xxcmm_system_items_b        xsib
+                    , xxcsm_item_plan_lines       xipl
+                    , xxcsm_item_plan_headers     xiph
+              WHERE   mcsb2.structure_id                        =   mcb2.structure_id
+              AND     mcb2.enabled_flag                         =   cv_flg_y
+              AND     NVL(mcb2.disable_date, gd_process_date)   <=  gd_process_date
+              AND     fifs2.id_flex_structure_code              =   cv_sgun_code
+              AND     fifs2.application_id                      =   cn_appl_id
+              AND     fifs2.id_flex_code                        =   cv_mcat
+              AND     fifs2.id_flex_num                         =   mcsb2.structure_id
+              AND     gic.category_id                           =   mcb2.category_id
+              AND     gic.category_set_id                       =   mcsb2.category_set_id
+              AND     gic.item_id                               =   iimb.item_id
+              AND     iimb.item_id                              =   xsib.item_id
+              AND     xsib.item_status                          =   cv_item_status_30
+              AND     mcb2.category_id                          =   mct.category_id
+              AND     mct.language                              =   cv_ja
+              AND     xiph.plan_year                            =   gn_subject_year           --対象年度
+              AND     xiph.location_cd                          =   iv_kyoten_cd              --拠点コード
+              AND     xiph.item_plan_header_id                  =   xipl.item_plan_header_id
+              AND     xipl.item_group_no LIKE REPLACE(iv_group3_cd, cv_group_3, cv_bar)     --政策群コード3桁     
+              AND     xipl.item_kbn <> cv_item_kbn                                          --商品区分(1：商品単品、2：新商品)
+              AND     xipl.item_no = iimb.item_no
+              AND EXISTS(
+                        SELECT  /*+ LEADING(fifs mcsb mcb) */
+                                1
+                        FROM    mtl_categories_b            mcb
+                              , mtl_category_sets_b         mcsb
+                              , fnd_id_flex_structures      fifs
+                        WHERE   mcsb.structure_id                       =   mcb.structure_id
+                        AND     mcb.enabled_flag                        =   cv_flg_y
+                        AND     NVL(mcb.disable_date, gd_process_date)  <=  gd_process_date
+                        AND     fifs.id_flex_structure_code             =   cv_sgun_code
+                        AND     fifs.application_id                     =   cn_appl_id
+                        AND     fifs.id_flex_code                       =   cv_mcat
+                        AND     fifs.id_flex_num                        =   mcsb.structure_id
+                        AND     INSTR(mcb.segment1, '*', 1, 1)          =   2
+                        AND     SUBSTRB(mcb.segment1, 1, 1)             =   SUBSTRB(mcb2.segment1, 1, 1)
+                        UNION ALL
+                        SELECT  1
+                        FROM    fnd_lookup_values       flv
+                        WHERE   flv.lookup_type                         =   cv_item_group
+                        AND     flv.language                            =   cv_ja
+                        AND     flv.enabled_flag                        =   cv_flg_y
+                        AND     INSTR(flv.lookup_code, '*', 1, 1)       =   2
+                        AND     SUBSTRB(flv.lookup_code, 1, 1)          =   SUBSTRB(mcb2.segment1, 1, 1)
+                        AND     gd_process_date  BETWEEN NVL(TRUNC(flv.start_date_active), gd_process_date)
+                                                 AND     NVL(TRUNC(flv.end_date_active),   gd_process_date)
+                    )
+              AND EXISTS(
+                        SELECT  /*+ LEADING(fifs mcsb mcb) */
+                                1
+                        FROM    mtl_categories_b            mcb
+                              , mtl_category_sets_b         mcsb
+                              , fnd_id_flex_structures      fifs
+                        WHERE   mcsb.structure_id                       =   mcb.structure_id
+                        AND     mcb.enabled_flag                        =   cv_flg_y
+                        AND     NVL(mcb.disable_date, gd_process_date)  <=  gd_process_date
+                        AND     fifs.id_flex_structure_code             =   cv_sgun_code
+                        AND     fifs.application_id                     =   cn_appl_id
+                        AND     fifs.id_flex_code                       =   cv_mcat
+                        AND     fifs.id_flex_num                        =   mcsb.structure_id
+                        AND     INSTR(mcb.segment1, cv_group_3, 1, 1)   =   4
+                        AND     SUBSTRB(mcb.segment1, 1, 3)             =   SUBSTRB(mcb2.segment1, 1, 3)
+                        UNION ALL
+                        SELECT  1
+                        FROM    fnd_lookup_values       flv
+                        WHERE   flv.lookup_type                           =   cv_item_group
+                        AND     flv.language                              =   cv_ja
+                        AND     flv.enabled_flag                          =   cv_flg_y
+                        AND     INSTR(flv.lookup_code, cv_group_3, 1, 1)  =   4
+                        AND     SUBSTRB(flv.lookup_code, 1, 3)            =   SUBSTRB(mcb2.segment1, 1, 3)
+                        AND     gd_process_date  BETWEEN NVL(TRUNC(flv.start_date_active), gd_process_date)
+                                                 AND     NVL(TRUNC(flv.end_date_active),   gd_process_date)
+                   )
+        ) sub
+      GROUP BY year_month
+      ORDER BY year_month
+      ;
+--//+UPD END 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami    
     group3_month_cur_rec group3_month_cur%ROWTYPE;
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -757,7 +874,10 @@ AS
     CLOSE group3_month_cur;
 --
 --//+ADD START 2009/02/19 CT038 K.Yamada
-    IF ln_year_sale_budget <> 0 THEN
+-- MODIFY  START  DATE:2011/01/05  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+--    IF ln_year_sale_budget <> 0 THEN
+   IF ln_year_sale_budget <> 0 OR ln_year_amount <> 0 THEN
+-- MODIFY  END  DATE:2011/01/05  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
 --//+ADD END   2009/02/19 CT038 K.Yamada
       --月別商品群データ登録
       --1行目：数量
@@ -998,7 +1118,6 @@ AS
 --  固定ローカル定数
 --  ===============================
     cv_prg_name         CONSTANT VARCHAR2(100)   := 'group1_month_count'; -- プログラム名
-    
 --  ===============================
 --  固定ローカル変数
 --  ===============================
@@ -1070,26 +1189,125 @@ AS
     --商品区分月別データ抽出
     CURSOR   group1_month_cur
     IS
-      SELECT  SUM(xipl.sales_budget)  sales_budget_sum               --売上金額
-             ,SUM(xipl.amount)        amount_sum                     --数量
-             ,SUM(xipl.amount * xcgv.now_business_cost) sub_margin   --
-             ,SUM(xipl.amount * xcgv.now_unit_price)    credit_bunbo --
-             ,xipl.year_month                                        --年月
-      FROM    xxcsm_item_plan_lines       xipl                       -- 商品計画明細テーブル
-             ,xxcsm_item_plan_headers     xiph                       -- 商品計画ヘッダテーブル
-             ,xxcsm_commodity_group3_v    xcgv                       -- 政策群コード３ビュー
-      WHERE   xiph.plan_year = gn_subject_year                       --対象年度
-      AND     xiph.location_cd = iv_kyoten_cd                        --拠点コード
-      AND     xiph.item_plan_header_id = xipl.item_plan_header_id
-      AND     xipl.item_group_no LIKE iv_group1_cd||'%'              --政策群コード1桁
---//+UPD START 2009/02/13 CT015 S.Son
-    --AND     xipl.item_kbn = '1'                                    --商品区分(1：商品単品)
-      AND     xipl.item_kbn <> '0'                                   --商品区分(1：商品単品、2：新商品)
---//+UPD END 2009/02/13 CT015 S.Son
-      AND     xipl.item_no = xcgv.item_cd                           
-      GROUP BY xipl.year_month
-      ORDER BY xipl.year_month
-    ;
+--//+UPD START 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami
+--      SELECT  SUM(xipl.sales_budget)  sales_budget_sum               --売上金額
+--             ,SUM(xipl.amount)        amount_sum                     --数量
+--             ,SUM(xipl.amount * xcgv.now_business_cost) sub_margin   --
+--             ,SUM(xipl.amount * xcgv.now_unit_price)    credit_bunbo --
+--             ,xipl.year_month                                        --年月
+--      FROM    xxcsm_item_plan_lines       xipl                       -- 商品計画明細テーブル
+--             ,xxcsm_item_plan_headers     xiph                       -- 商品計画ヘッダテーブル
+--             ,xxcsm_commodity_group3_v    xcgv                       -- 政策群コード３ビュー
+--      WHERE   xiph.plan_year = gn_subject_year                       --対象年度
+--      AND     xiph.location_cd = iv_kyoten_cd                        --拠点コード
+--      AND     xiph.item_plan_header_id = xipl.item_plan_header_id
+--      AND     xipl.item_group_no LIKE iv_group1_cd||'%'              --政策群コード1桁
+----//+UPD START 2009/02/13 CT015 S.Son
+--    --AND     xipl.item_kbn = '1'                                    --商品区分(1：商品単品)
+--      AND     xipl.item_kbn <> '0'                                   --商品区分(1：商品単品、2：新商品)
+----//+UPD END 2009/02/13 CT015 S.Son
+--      AND     xipl.item_no = xcgv.item_cd                           
+--      GROUP BY xipl.year_month
+--      ORDER BY xipl.year_month
+--    ;
+      SELECT  sub.year_month                          year_month       --年月
+             ,SUM(sub.sales_budget)                   sales_budget_sum --売上金額
+             ,SUM(sub.amount)                         amount_sum       --数量
+             ,SUM(sub.amount * sub.now_business_cost) sub_margin       --粗利益減数
+             ,SUM(sub.amount * sub.now_unit_price)    credit_bunbo     --掛率分母
+      FROM   (
+              SELECT 
+                  xipl.year_month                     year_month
+                , NVL(iimb.attribute8, 0)             now_business_cost
+                , NVL(iimb.attribute5, 0)             now_unit_price
+                , xipl.amount                         amount
+                , xipl.sales_budget                   sales_budget
+              FROM    mtl_categories_b            mcb2
+                    , mtl_category_sets_b         mcsb2
+                    , fnd_id_flex_structures      fifs2
+                    , mtl_categories_tl           mct
+                    , gmi_item_categories         gic
+                    , ic_item_mst_b               iimb
+                    , xxcmm_system_items_b        xsib
+                    , xxcsm_item_plan_lines       xipl
+                    , xxcsm_item_plan_headers     xiph
+              WHERE   mcsb2.structure_id                        =   mcb2.structure_id
+              AND     mcb2.enabled_flag                         =   cv_flg_y
+              AND     NVL(mcb2.disable_date, gd_process_date)   <=  gd_process_date
+              AND     fifs2.id_flex_structure_code              =   cv_sgun_code
+              AND     fifs2.application_id                      =   cn_appl_id
+              AND     fifs2.id_flex_code                        =   cv_mcat
+              AND     fifs2.id_flex_num                         =   mcsb2.structure_id
+              AND     gic.category_id                           =   mcb2.category_id
+              AND     gic.category_set_id                       =   mcsb2.category_set_id
+              AND     gic.item_id                               =   iimb.item_id
+              AND     iimb.item_id                              =   xsib.item_id
+              AND     xsib.item_status                          =   cv_item_status_30
+              AND     mcb2.category_id                          =   mct.category_id
+              AND     mct.language                              =   cv_ja
+              AND     xiph.plan_year = gn_subject_year                         --対象年度
+              AND     xiph.location_cd = iv_kyoten_cd                          --拠点コード
+              AND     xiph.item_plan_header_id = xipl.item_plan_header_id
+              AND     xipl.item_group_no LIKE iv_group1_cd || cv_percent     
+              AND     xipl.item_kbn <> cv_item_kbn                             --商品区分(1：商品単品、2：新商品)
+              AND     xipl.item_no = iimb.item_no
+              AND EXISTS(
+                        SELECT  /*+ LEADING(fifs mcsb mcb) */
+                                1
+                        FROM    mtl_categories_b            mcb
+                              , mtl_category_sets_b         mcsb
+                              , fnd_id_flex_structures      fifs
+                        WHERE   mcsb.structure_id                       =   mcb.structure_id
+                        AND     mcb.enabled_flag                        =   cv_flg_y
+                        AND     NVL(mcb.disable_date, gd_process_date)  <=  gd_process_date
+                        AND     fifs.id_flex_structure_code             =   cv_sgun_code
+                        AND     fifs.application_id                     =   cn_appl_id
+                        AND     fifs.id_flex_code                       =   cv_mcat
+                        AND     fifs.id_flex_num                        =   mcsb.structure_id
+                        AND     INSTR(mcb.segment1, cv_group_3, 1, 1)   =   2
+                        AND     SUBSTRB(mcb.segment1, 1, 1)             =   SUBSTRB(mcb2.segment1, 1, 1)
+                        UNION ALL
+                        SELECT  1
+                        FROM    fnd_lookup_values       flv
+                        WHERE   flv.lookup_type                           =   cv_item_group
+                        AND     flv.language                              =   cv_ja
+                        AND     flv.enabled_flag                          =   cv_flg_y
+                        AND     INSTR(flv.lookup_code, cv_group_3, 1, 1)  =   2
+                        AND     SUBSTRB(flv.lookup_code, 1, 1)            =   SUBSTRB(mcb2.segment1, 1, 1)
+                        AND     gd_process_date  BETWEEN NVL(TRUNC(flv.start_date_active), gd_process_date)
+                                                 AND     NVL(TRUNC(flv.end_date_active),   gd_process_date)
+                    )
+              AND EXISTS(
+                        SELECT  /*+ LEADING(fifs mcsb mcb) */
+                                1
+                        FROM    mtl_categories_b            mcb
+                              , mtl_category_sets_b         mcsb
+                              , fnd_id_flex_structures      fifs
+                        WHERE   mcsb.structure_id                       =   mcb.structure_id
+                        AND     mcb.enabled_flag                        =   cv_flg_y
+                        AND     NVL(mcb.disable_date, gd_process_date)  <=  gd_process_date
+                        AND     fifs.id_flex_structure_code             =   cv_sgun_code
+                        AND     fifs.application_id                     =   cn_appl_id
+                        AND     fifs.id_flex_code                       =   cv_mcat
+                        AND     fifs.id_flex_num                        =   mcsb.structure_id
+                        AND     INSTR(mcb.segment1, cv_group_3, 1, 1)   =   4
+                        AND     SUBSTRB(mcb.segment1, 1, 3)             =   SUBSTRB(mcb2.segment1, 1, 3)
+                        UNION ALL
+                        SELECT  1
+                        FROM    fnd_lookup_values       flv
+                        WHERE   flv.lookup_type                           =   cv_item_group
+                        AND     flv.language                              =   cv_ja
+                        AND     flv.enabled_flag                          =   cv_flg_y
+                        AND     INSTR(flv.lookup_code, cv_group_3, 1, 1)  =   4
+                        AND     SUBSTRB(flv.lookup_code, 1, 3)            =   SUBSTRB(mcb2.segment1, 1, 3)
+                        AND     gd_process_date  BETWEEN NVL(TRUNC(flv.start_date_active), gd_process_date)
+                                                 AND     NVL(TRUNC(flv.end_date_active),   gd_process_date)
+                    )  
+        ) sub
+      GROUP BY year_month
+      ORDER BY year_month
+      ;
+--//+UPD END 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami
     group1_month_cur_rec group1_month_cur%ROWTYPE;
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -1514,26 +1732,126 @@ AS
     --商品合計月別データ抽出
     CURSOR   all_item_month_cur
     IS
-      SELECT  SUM(xipl.sales_budget)  sales_budget_sum               --売上金額
-             ,SUM(xipl.amount)        amount_sum                     --数量
-             ,SUM(xipl.amount * now_business_cost)  sub_margin       --粗利益減数
-             ,SUM(xipl.amount * now_unit_price)     credit_bunbo     --掛率分母
-             ,xipl.year_month                                        --年月
-      FROM    xxcsm_item_plan_lines       xipl                       -- 商品計画明細テーブル
-             ,xxcsm_item_plan_headers     xiph                       -- 商品計画ヘッダテーブル
-             ,xxcsm_commodity_group3_v    xcgv                       -- 政策群コード３ビュー
-      WHERE   xiph.plan_year = gn_subject_year                       --対象年度
-      AND     xiph.location_cd = iv_kyoten_cd                        --拠点コード
-      AND     xiph.item_plan_header_id = xipl.item_plan_header_id
-      AND     xipl.item_group_no NOT LIKE cv_group_d||'%'            --政策群コード1桁≠D(その他以外)
---//+UPD START 2009/02/13 CT015 S.Son
-    --AND     xipl.item_kbn = '1'                                    --商品区分(1：商品単品)
-      AND     xipl.item_kbn <> '0'                                   --商品区分(1：商品単品、2：新商品)
---//+UPD END 2009/02/13 CT015 S.Son
-      AND     xipl.item_no = xcgv.item_cd
-      GROUP BY xipl.year_month
-      ORDER BY xipl.year_month
-    ;
+--//+UPD START 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami
+--      SELECT  SUM(xipl.sales_budget)  sales_budget_sum               --売上金額
+--             ,SUM(xipl.amount)        amount_sum                     --数量
+--             ,SUM(xipl.amount * now_business_cost)  sub_margin       --粗利益減数
+--             ,SUM(xipl.amount * now_unit_price)     credit_bunbo     --掛率分母
+--             ,xipl.year_month                                        --年月
+--      FROM    xxcsm_item_plan_lines       xipl                       -- 商品計画明細テーブル
+--             ,xxcsm_item_plan_headers     xiph                       -- 商品計画ヘッダテーブル
+--             ,xxcsm_commodity_group3_v    xcgv                       -- 政策群コード３ビュー
+--      WHERE   xiph.plan_year = gn_subject_year                       --対象年度
+--      AND     xiph.location_cd = iv_kyoten_cd                        --拠点コード
+--      AND     xiph.item_plan_header_id = xipl.item_plan_header_id
+--      AND     xipl.item_group_no NOT LIKE cv_group_d||'%'            --政策群コード1桁≠D(その他以外)
+----//+UPD START 2009/02/13 CT015 S.Son
+--    --AND     xipl.item_kbn = '1'                                    --商品区分(1：商品単品)
+--      AND     xipl.item_kbn <> '0'                                   --商品区分(1：商品単品、2：新商品)
+----//+UPD END 2009/02/13 CT015 S.Son
+--      AND     xipl.item_no = xcgv.item_cd
+--      GROUP BY xipl.year_month
+--      ORDER BY xipl.year_month
+--    ;
+--
+      SELECT  sub.year_month                          year_month       --年月
+             ,SUM(sub.sales_budget)                   sales_budget_sum --売上金額
+             ,SUM(sub.amount)                         amount_sum       --数量
+             ,SUM(sub.amount * sub.now_business_cost) sub_margin       --粗利益減数
+             ,SUM(sub.amount * sub.now_unit_price)    credit_bunbo     --掛率分母
+      FROM   (
+              SELECT 
+                  xipl.year_month                     year_month
+                , NVL(iimb.attribute8, 0)             now_business_cost
+                , NVL(iimb.attribute5, 0)             now_unit_price
+                , xipl.amount                         amount
+                , xipl.sales_budget                   sales_budget
+              FROM    mtl_categories_b            mcb2
+                    , mtl_category_sets_b         mcsb2
+                    , fnd_id_flex_structures      fifs2
+                    , mtl_categories_tl           mct
+                    , gmi_item_categories         gic
+                    , ic_item_mst_b               iimb
+                    , xxcmm_system_items_b        xsib
+                    , xxcsm_item_plan_lines       xipl
+                    , xxcsm_item_plan_headers     xiph
+              WHERE   mcsb2.structure_id                        =   mcb2.structure_id
+              AND     mcb2.enabled_flag                         =   cv_flg_y
+              AND     NVL(mcb2.disable_date, gd_process_date)   <=  gd_process_date
+              AND     fifs2.id_flex_structure_code              =   cv_sgun_code
+              AND     fifs2.application_id                      =   cn_appl_id
+              AND     fifs2.id_flex_code                        =   cv_mcat
+              AND     fifs2.id_flex_num                         =   mcsb2.structure_id
+              AND     gic.category_id                           =   mcb2.category_id
+              AND     gic.category_set_id                       =   mcsb2.category_set_id
+              AND     gic.item_id                               =   iimb.item_id
+              AND     iimb.item_id                              =   xsib.item_id
+              AND     xsib.item_status                          =   cv_item_status_30
+              AND     mcb2.category_id                          =   mct.category_id
+              AND     mct.language                              =   cv_ja
+              AND     xiph.plan_year = gn_subject_year                         --対象年度
+              AND     xiph.location_cd = iv_kyoten_cd                          --拠点コード
+              AND     xiph.item_plan_header_id = xipl.item_plan_header_id
+              AND     xipl.item_group_no NOT LIKE cv_group_d || cv_percent     
+              AND     xipl.item_kbn <> cv_item_kbn                             --商品区分(1：商品単品、2：新商品)
+              AND     xipl.item_no = iimb.item_no
+              AND EXISTS(
+                        SELECT  /*+ LEADING(fifs mcsb mcb) */
+                                1
+                        FROM    mtl_categories_b            mcb
+                              , mtl_category_sets_b         mcsb
+                              , fnd_id_flex_structures      fifs
+                        WHERE   mcsb.structure_id                       =   mcb.structure_id
+                        AND     mcb.enabled_flag                        =   cv_flg_y
+                        AND     NVL(mcb.disable_date, gd_process_date)  <=  gd_process_date
+                        AND     fifs.id_flex_structure_code             =   cv_sgun_code
+                        AND     fifs.application_id                     =   cn_appl_id
+                        AND     fifs.id_flex_code                       =   cv_mcat
+                        AND     fifs.id_flex_num                        =   mcsb.structure_id
+                        AND     INSTR(mcb.segment1, cv_group_3, 1, 1)   =   2
+                        AND     SUBSTRB(mcb.segment1, 1, 1)             =   SUBSTRB(mcb2.segment1, 1, 1)
+                        UNION ALL
+                        SELECT  1
+                        FROM    fnd_lookup_values       flv
+                        WHERE   flv.lookup_type                           =   cv_item_group
+                        AND     flv.language                              =   cv_ja
+                        AND     flv.enabled_flag                          =   cv_flg_y
+                        AND     INSTR(flv.lookup_code, cv_group_3, 1, 1)  =   2
+                        AND     SUBSTRB(flv.lookup_code, 1, 1)            =   SUBSTRB(mcb2.segment1, 1, 1)
+                        AND     gd_process_date  BETWEEN NVL(TRUNC(flv.start_date_active), gd_process_date)
+                                                 AND     NVL(TRUNC(flv.end_date_active),   gd_process_date)
+                    )
+              AND EXISTS(
+                        SELECT  /*+ LEADING(fifs mcsb mcb) */
+                                1
+                        FROM    mtl_categories_b            mcb
+                              , mtl_category_sets_b         mcsb
+                              , fnd_id_flex_structures      fifs
+                        WHERE   mcsb.structure_id                       =   mcb.structure_id
+                        AND     mcb.enabled_flag                        =   cv_flg_y
+                        AND     NVL(mcb.disable_date, gd_process_date)  <=  gd_process_date
+                        AND     fifs.id_flex_structure_code             =   cv_sgun_code
+                        AND     fifs.application_id                     =   cn_appl_id
+                        AND     fifs.id_flex_code                       =   cv_mcat
+                        AND     fifs.id_flex_num                        =   mcsb.structure_id
+                        AND     INSTR(mcb.segment1, cv_group_3, 1, 1)   =   4
+                        AND     SUBSTRB(mcb.segment1, 1, 3)             =   SUBSTRB(mcb2.segment1, 1, 3)
+                        UNION ALL
+                        SELECT  1
+                        FROM    fnd_lookup_values       flv
+                        WHERE   flv.lookup_type                           =   cv_item_group
+                        AND     flv.language                              =   cv_ja
+                        AND     flv.enabled_flag                          =   cv_flg_y
+                        AND     INSTR(flv.lookup_code, cv_group_3, 1, 1)  =   4
+                        AND     SUBSTRB(flv.lookup_code, 1, 3)            =   SUBSTRB(mcb2.segment1, 1, 3)
+                        AND     gd_process_date  BETWEEN NVL(TRUNC(flv.start_date_active), gd_process_date)
+                                                 AND     NVL(TRUNC(flv.end_date_active),   gd_process_date)
+                  )
+        ) sub
+      GROUP BY year_month
+      ORDER BY year_month
+      ;
+--//+UPD END 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami
     all_item_month_cur_rec all_item_month_cur%ROWTYPE;
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -2943,32 +3261,149 @@ AS
     --拠点別月別データ抽出
     CURSOR   kyoten_month_cur
     IS
-      SELECT  SUM(xipl.sales_budget)  sales_budget_sum               --売上金額
-             ,SUM(xipl.amount)        amount_sum                     --数量
-             ,SUM(xipl.amount * xcgv.now_business_cost)  sub_margin  --粗利益減数
-             ,SUM(xipl.amount * xcgv.now_unit_price)  credit_bunbo   --掛率分母
-             ,SUM(xipl.amount * xcgv.now_item_cost) h_standard       --H基準算出用減数
-             ,xipl.year_month                                        --年月
---//+ADD START 2009/05/21 T1_1101 M.Ohtsuki
-             ,xiph.item_plan_header_id              haeder_id        --ヘッダID
---//+ADD END   2009/05/21 T1_1101 M.Ohtsuki
-      FROM    xxcsm_item_plan_lines       xipl                       --商品計画明細テーブル
-             ,xxcsm_item_plan_headers     xiph                       --商品計画ヘッダテーブル
-             ,xxcsm_commodity_group3_v    xcgv                       --政策群コード３ビュー
-      WHERE   xiph.plan_year = gn_subject_year                       --対象年度
-      AND     xiph.location_cd = iv_kyoten_cd                        --拠点コード
-      AND     xiph.item_plan_header_id = xipl.item_plan_header_id
---//+UPD START 2009/02/13 CT015 S.Son
-    --AND     xipl.item_kbn = '1'                                    --商品区分(1：商品単品)
-      AND     xipl.item_kbn <> '0'                                   --商品区分(1：商品単品、2：新商品)
---//+UPD END 2009/02/13 CT015 S.Son
-      AND     xipl.item_no = xcgv.item_cd
-      GROUP BY xipl.year_month
---//+ADD START 2009/05/21 T1_1101 M.Ohtsuki
-             ,xiph.item_plan_header_id
---//+ADD END   2009/05/21 T1_1101 M.Ohtsuki
-      ORDER BY xipl.year_month
-    ;
+--//+UPD START 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami
+--      SELECT  SUM(xipl.sales_budget)  sales_budget_sum               --売上金額
+--             ,SUM(xipl.amount)        amount_sum                     --数量
+--             ,SUM(xipl.amount * xcgv.now_business_cost)  sub_margin  --粗利益減数
+--             ,SUM(xipl.amount * xcgv.now_unit_price)  credit_bunbo   --掛率分母
+--             ,SUM(xipl.amount * xcgv.now_item_cost) h_standard       --H基準算出用減数
+--             ,xipl.year_month                                        --年月
+----//+ADD START 2009/05/21 T1_1101 M.Ohtsuki
+--             ,xiph.item_plan_header_id              haeder_id        --ヘッダID
+----//+ADD END   2009/05/21 T1_1101 M.Ohtsuki
+--      FROM    xxcsm_item_plan_lines       xipl                       --商品計画明細テーブル
+--             ,xxcsm_item_plan_headers     xiph                       --商品計画ヘッダテーブル
+--             ,xxcsm_commodity_group3_v    xcgv                       --政策群コード３ビュー
+--      WHERE   xiph.plan_year = gn_subject_year                       --対象年度
+--      AND     xiph.location_cd = iv_kyoten_cd                        --拠点コード
+--      AND     xiph.item_plan_header_id = xipl.item_plan_header_id
+----//+UPD START 2009/02/13 CT015 S.Son
+--    --AND     xipl.item_kbn = '1'                                    --商品区分(1：商品単品)
+--      AND     xipl.item_kbn <> '0'                                   --商品区分(1：商品単品、2：新商品)
+----//+UPD END 2009/02/13 CT015 S.Son
+--      AND     xipl.item_no = xcgv.item_cd
+--      GROUP BY xipl.year_month
+----//+ADD START 2009/05/21 T1_1101 M.Ohtsuki
+--             ,xiph.item_plan_header_id
+----//+ADD END   2009/05/21 T1_1101 M.Ohtsuki
+--      ORDER BY xipl.year_month
+--    ;
+--
+      SELECT  sub.year_month                          year_month       --年月
+             ,SUM(sub.sales_budget)                   sales_budget_sum --売上金額
+             ,SUM(sub.amount)                         amount_sum       --数量
+             ,SUM(sub.amount * sub.now_business_cost) sub_margin       --粗利益減数
+             ,SUM(sub.amount * sub.now_unit_price)    credit_bunbo     --掛率分母
+             ,SUM(sub.amount * sub.now_item_cost)     h_standard       --H基準算出用減数
+             ,sub.item_plan_header_id                 header_id        --ヘッダID
+      FROM   (
+              SELECT 
+                  xipl.year_month                     year_month
+                , NVL( 
+                        ( 
+                          SELECT SUM(ccmd.cmpnt_cost)
+                          FROM   cm_cmpt_dtl     ccmd
+                                ,cm_cldr_dtl     ccld
+                          WHERE  ccmd.calendar_code = ccld.calendar_code
+                          AND    ccmd.whse_code     = cv_whse_code
+                          AND    ccmd.period_code   = ccld.period_code
+                          AND    ccld.start_date   <= gd_process_date
+                          AND    ccld.end_date     >= gd_process_date
+                          AND    ccmd.item_id       = iimb.item_id
+                        )
+                    , 0
+                  )                                   now_item_cost
+                , NVL(iimb.attribute8, 0)             now_business_cost
+                , NVL(iimb.attribute5, 0)             now_unit_price
+                , xipl.amount                         amount
+                , xipl.sales_budget                   sales_budget
+                , xiph.item_plan_header_id            item_plan_header_id
+              FROM    mtl_categories_b            mcb2
+                    , mtl_category_sets_b         mcsb2
+                    , fnd_id_flex_structures      fifs2
+                    , mtl_categories_tl           mct
+                    , gmi_item_categories         gic
+                    , ic_item_mst_b               iimb
+                    , xxcmm_system_items_b        xsib
+                    , xxcsm_item_plan_lines       xipl
+                    , xxcsm_item_plan_headers     xiph
+              WHERE   mcsb2.structure_id                        =   mcb2.structure_id
+              AND     mcb2.enabled_flag                         =   cv_flg_y
+              AND     NVL(mcb2.disable_date, gd_process_date)   <=  gd_process_date
+              AND     fifs2.id_flex_structure_code              =   cv_sgun_code
+              AND     fifs2.application_id                      =   cn_appl_id
+              AND     fifs2.id_flex_code                        =   cv_mcat
+              AND     fifs2.id_flex_num                         =   mcsb2.structure_id
+              AND     gic.category_id                           =   mcb2.category_id
+              AND     gic.category_set_id                       =   mcsb2.category_set_id
+              AND     gic.item_id                               =   iimb.item_id
+              AND     iimb.item_id                              =   xsib.item_id
+              AND     xsib.item_status                          =   cv_item_status_30
+              AND     mcb2.category_id                          =   mct.category_id
+              AND     mct.language                              =   cv_ja
+              AND     xiph.plan_year = gn_subject_year                         --対象年度
+              AND     xiph.location_cd = iv_kyoten_cd                          --拠点コード
+              AND     xiph.item_plan_header_id = xipl.item_plan_header_id
+              AND     xipl.item_kbn <> cv_item_kbn                             --商品区分(1：商品単品、2：新商品)
+              AND     xipl.item_no = iimb.item_no
+              AND EXISTS(
+                        SELECT  /*+ LEADING(fifs mcsb mcb) */
+                                1
+                        FROM    mtl_categories_b            mcb
+                              , mtl_category_sets_b         mcsb
+                              , fnd_id_flex_structures      fifs
+                        WHERE   mcsb.structure_id                       =   mcb.structure_id
+                        AND     mcb.enabled_flag                        =   cv_flg_y
+                        AND     NVL(mcb.disable_date, gd_process_date)  <=  gd_process_date
+                        AND     fifs.id_flex_structure_code             =   cv_sgun_code
+                        AND     fifs.application_id                     =   cn_appl_id
+                        AND     fifs.id_flex_code                       =   cv_mcat
+                        AND     fifs.id_flex_num                        =   mcsb.structure_id
+                        AND     INSTR(mcb.segment1, cv_group_3, 1, 1)   =   2
+                        AND     SUBSTRB(mcb.segment1, 1, 1)             =   SUBSTRB(mcb2.segment1, 1, 1)
+                        UNION ALL
+                        SELECT  1
+                        FROM    fnd_lookup_values       flv
+                        WHERE   flv.lookup_type                           =   cv_item_group
+                        AND     flv.language                              =   cv_ja
+                        AND     flv.enabled_flag                          =   cv_flg_y
+                        AND     INSTR(flv.lookup_code, cv_group_3, 1, 1)  =   2
+                        AND     SUBSTRB(flv.lookup_code, 1, 1)            =   SUBSTRB(mcb2.segment1, 1, 1)
+                        AND     gd_process_date  BETWEEN NVL(TRUNC(flv.start_date_active), gd_process_date)
+                                                 AND     NVL(TRUNC(flv.end_date_active),   gd_process_date)
+                    )
+              AND EXISTS(
+                        SELECT  /*+ LEADING(fifs mcsb mcb) */
+                                1
+                        FROM    mtl_categories_b            mcb
+                              , mtl_category_sets_b         mcsb
+                              , fnd_id_flex_structures      fifs
+                        WHERE   mcsb.structure_id                       =   mcb.structure_id
+                        AND     mcb.enabled_flag                        =   cv_flg_y
+                        AND     NVL(mcb.disable_date, gd_process_date)  <=  gd_process_date
+                        AND     fifs.id_flex_structure_code             =   cv_sgun_code
+                        AND     fifs.application_id                     =   cn_appl_id
+                        AND     fifs.id_flex_code                       =   cv_mcat
+                        AND     fifs.id_flex_num                        =   mcsb.structure_id
+                        AND     INSTR(mcb.segment1, cv_group_3, 1, 1)   =   4
+                        AND     SUBSTRB(mcb.segment1, 1, 3)             =   SUBSTRB(mcb2.segment1, 1, 3)
+                        UNION ALL
+                        SELECT  1
+                        FROM    fnd_lookup_values       flv
+                        WHERE   flv.lookup_type                           =   cv_item_group
+                        AND     flv.language                              =   cv_ja
+                        AND     flv.enabled_flag                          =   cv_flg_y
+                        AND     INSTR(flv.lookup_code, cv_group_3, 1, 1)  =   4
+                        AND     SUBSTRB(flv.lookup_code, 1, 3)            =   SUBSTRB(mcb2.segment1, 1, 3)
+                        AND     gd_process_date  BETWEEN NVL(TRUNC(flv.start_date_active), gd_process_date)
+                                                 AND     NVL(TRUNC(flv.end_date_active),   gd_process_date)
+                  )
+        ) sub
+      GROUP BY year_month
+              ,item_plan_header_id
+      ORDER BY year_month
+      ;
+--//+UPD END 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami
     kyoten_month_cur_rec kyoten_month_cur%ROWTYPE;
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -3005,7 +3440,10 @@ AS
         SELECT (xiplb.sales_discount + xiplb.receipt_discount)  discount                            --(売上値引 + 入金値引)
         INTO   ln_discount
         FROM   xxcsm_item_plan_loc_bdgt    xiplb                                                    -- 商品計画拠点別予算テーブル
-        WHERE  xiplb.item_plan_header_id  = kyoten_month_cur_rec.haeder_id                          -- ヘッダID
+--//+UPD START 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami
+--        WHERE  xiplb.item_plan_header_id  = kyoten_month_cur_rec.haeder_id                          -- ヘッダID
+        WHERE  xiplb.item_plan_header_id  = kyoten_month_cur_rec.header_id                          -- ヘッダID
+--//+UPD START 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami
         AND    xiplb.year_month           = kyoten_month_cur_rec.year_month;                        -- 年月
 --//+ADD END   2009/05/21 T1_1101 M.Ohtsuki
 --//+UPD START 2009/05/21 T1_1101 M.Ohtsuki
@@ -3414,41 +3852,208 @@ AS
 --  ===============================
     CURSOR   item_plan_select_cur
     IS
-      SELECT  xcgv.group1_cd                             --政策群コード1
-             ,xcgv.group1_nm                             --政策群名称1
-             ,xcgv.group3_cd                             --政策群コード3
-             ,xcgv.group3_nm                             --政策群名称3
-             ,xcgv.item_cd                               --品目コード
-             ,xcgv.item_nm                               --品目名称
-             ,xcgv.now_item_cost                         --標準原価
-             ,xcgv.now_business_cost                     --営業原価
-             ,xcgv.now_unit_price                        --定価
-             ,SUM(xipl.sales_budget)  sales_budget_sum   --売上金額
-             ,SUM(xipl.amount)        amount_sum         --数量
-      FROM    xxcsm_commodity_group3_v    xcgv           --政策群3ビュー
-             ,xxcsm_item_plan_lines       xipl           -- 商品計画明細テーブル
-             ,xxcsm_item_plan_headers     xiph           -- 商品計画ヘッダテーブル
-      WHERE   xiph.plan_year = gn_subject_year           --対象年度
-      AND     xiph.location_cd = iv_kyoten_cd            --拠点コード
-      AND     xiph.item_plan_header_id = xipl.item_plan_header_id
---//+UPD START 2009/02/13 CT015 S.Son
-    --AND     xipl.item_kbn = '1'                        --商品区分(1：商品単品)
-      AND     xipl.item_kbn <> '0'                       --商品区分(1：商品単品、2：新商品)
---//+UPD END 2009/02/13 CT015 S.Son
-      AND     xipl.item_no = xcgv.item_cd
-      GROUP BY   xcgv.group1_cd 
-                ,xcgv.group1_nm 
-                ,xcgv.group3_cd 
-                ,xcgv.group3_nm 
-                ,xcgv.item_cd   
-                ,xcgv.item_nm   
-                ,xcgv.now_item_cost
-                ,xcgv.now_business_cost 
-                ,xcgv.now_unit_price 
-      ORDER BY   xcgv.group1_cd
-                ,xcgv.group3_cd
-                ,xcgv.item_cd
-    ;
+--//+UPD START 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami
+--      SELECT  xcgv.group1_cd                             --政策群コード1
+--             ,xcgv.group1_nm                             --政策群名称1
+--             ,xcgv.group3_cd                             --政策群コード3
+--             ,xcgv.group3_nm                             --政策群名称3
+--             ,xcgv.item_cd                               --品目コード
+--             ,xcgv.item_nm                               --品目名称
+--             ,xcgv.now_item_cost                         --標準原価
+--             ,xcgv.now_business_cost                     --営業原価
+--             ,xcgv.now_unit_price                        --定価
+--             ,SUM(xipl.sales_budget)  sales_budget_sum   --売上金額
+--             ,SUM(xipl.amount)        amount_sum         --数量
+--      FROM    xxcsm_commodity_group3_v    xcgv           --政策群3ビュー
+--             ,xxcsm_item_plan_lines       xipl           -- 商品計画明細テーブル
+--             ,xxcsm_item_plan_headers     xiph           -- 商品計画ヘッダテーブル
+--      WHERE   xiph.plan_year = gn_subject_year           --対象年度
+--      AND     xiph.location_cd = iv_kyoten_cd            --拠点コード
+--      AND     xiph.item_plan_header_id = xipl.item_plan_header_id
+----//+UPD START 2009/02/13 CT015 S.Son
+--    --AND     xipl.item_kbn = '1'                        --商品区分(1：商品単品)
+--      AND     xipl.item_kbn <> '0'                       --商品区分(1：商品単品、2：新商品)
+----//+UPD END 2009/02/13 CT015 S.Son
+--      AND     xipl.item_no = xcgv.item_cd
+--      GROUP BY   xcgv.group1_cd 
+--                ,xcgv.group1_nm 
+--                ,xcgv.group3_cd 
+--                ,xcgv.group3_nm 
+--                ,xcgv.item_cd   
+--                ,xcgv.item_nm   
+--                ,xcgv.now_item_cost
+--                ,xcgv.now_business_cost 
+--                ,xcgv.now_unit_price 
+--      ORDER BY   xcgv.group1_cd
+--                ,xcgv.group3_cd
+--                ,xcgv.item_cd
+--    ;
+--
+      SELECT  sub.group1_cd          group1_cd            -- 政策群コード1
+             ,sub.group1_nm          group1_nm            -- 政策群名称1
+             ,sub.group3_cd          group3_cd            -- 政策群コード3
+             ,sub.group3_nm          group3_nm            -- 政策群名称3
+             ,sub.item_cd            item_cd              -- 品目コード
+             ,sub.item_nm            item_nm              -- 品目名称
+             ,sub.now_item_cost      now_item_cost        -- 標準原価
+             ,sub.now_business_cost  now_business_cost    -- 営業原価
+             ,sub.now_unit_price     now_unit_price       -- 定価
+             ,SUM(sub.sales_budget)  sales_budget_sum     -- 売上金額
+             ,SUM(sub.amount)        amount_sum           -- 数量
+      FROM (
+              SELECT
+                      iimb.item_no                    AS  item_cd  -- "品目コード"
+                    , iimb.item_desc1                 AS  item_nm  -- "品名"
+                    , SUBSTRB(mcb2.segment1, 1, 1)    AS  group1_cd -- "１桁群"
+                    , ( SELECT  mct_g1.description    description
+                        FROM    mtl_categories_b      mcb_g1
+                              , mtl_categories_tl     mct_g1
+                        WHERE   mcb_g1.category_id    = mct_g1.category_id
+                        AND     mct_g1.language       = cv_ja
+                        AND     mcb_g1.segment1       = SUBSTRB(mcb2.segment1, 1, 1)  ||  cv_group_1
+                        UNION
+                        SELECT  flv.meaning           description
+                        FROM    fnd_lookup_values     flv
+                        WHERE   flv.lookup_type       =   cv_item_group
+                        AND     flv.language          =   cv_ja
+                        AND     flv.enabled_flag      =   cv_flg_y
+                        AND     flv.lookup_code       =   SUBSTRB(mcb2.segment1, 1, 1)  ||  cv_group_1
+                        AND     gd_process_date  BETWEEN NVL(TRUNC(flv.start_date_active), gd_process_date)
+                                                 AND     NVL(TRUNC(flv.end_date_active),   gd_process_date)
+                      )                                             AS  group1_nm -- １桁群（名称）
+                    , SUBSTRB(mcb2.segment1, 1, 3)  ||  cv_group_3  AS  group3_cd -- "３桁群"
+                    , ( SELECT  mct_g3.description    description
+                        FROM    mtl_categories_b      mcb_g3
+                              , mtl_categories_tl     mct_g3
+                        WHERE   mcb_g3.category_id    = mct_g3.category_id
+                        AND     mct_g3.language       = cv_ja
+                        AND     mcb_g3.segment1       = SUBSTRB(mcb2.segment1, 1, 3)  ||  cv_group_3
+                        UNION
+                        SELECT  flv.meaning           description
+                        FROM    fnd_lookup_values     flv
+                        WHERE   flv.lookup_type       =   cv_item_group
+                        AND     flv.language          =   cv_ja
+                        AND     flv.enabled_flag      =   cv_flg_y
+                        AND     flv.lookup_code       =   SUBSTRB(mcb2.segment1, 1, 3)  ||  cv_group_3
+                        AND     gd_process_date  BETWEEN NVL(TRUNC(flv.start_date_active), gd_process_date)
+                                                 AND     NVL(TRUNC(flv.end_date_active),   gd_process_date)
+                      )                                             AS  group3_nm  --"３桁群（名称）"
+                    , NVL( 
+                            ( 
+                              SELECT SUM(ccmd.cmpnt_cost)
+                              FROM   cm_cmpt_dtl     ccmd
+                                    ,cm_cldr_dtl     ccld
+                              WHERE  ccmd.calendar_code = ccld.calendar_code
+                              AND    ccmd.whse_code     = cv_whse_code
+                              AND    ccmd.period_code   = ccld.period_code
+                              AND    ccld.start_date   <= gd_process_date
+                              AND    ccld.end_date     >= gd_process_date
+                              AND    ccmd.item_id       = iimb.item_id
+                            )
+                        , NVL(iimb.attribute8, 0)
+                      )                                             now_item_cost     -- 標準原価
+                    , NVL(iimb.attribute8, 0)                       now_business_cost -- 営業原価
+                    , NVL(iimb.attribute5, 0)                       now_unit_price    -- 定価
+                    , xipl.amount                                   amount            -- 数量
+                    , xipl.sales_budget                             sales_budget      -- 売上原価
+                    , mcb2.segment1                                 AS  "４桁群"
+                    , mct.description                               AS  "４桁群（名称）"
+              FROM    mtl_categories_b            mcb2
+                    , mtl_category_sets_b         mcsb2
+                    , fnd_id_flex_structures      fifs2
+                    , mtl_categories_tl           mct
+                    , gmi_item_categories         gic
+                    , ic_item_mst_b               iimb
+                    , xxcmm_system_items_b        xsib
+                    , xxcsm_item_plan_lines       xipl           -- 商品計画明細テーブル
+                    , xxcsm_item_plan_headers     xiph           -- 商品計画ヘッダテーブル
+              WHERE   mcsb2.structure_id                        =   mcb2.structure_id
+              AND     mcb2.enabled_flag                         =   cv_flg_y
+              AND     NVL(mcb2.disable_date, gd_process_date)   <=  gd_process_date
+              AND     fifs2.id_flex_structure_code              =   cv_sgun_code
+              AND     fifs2.application_id                      =   cn_appl_id
+              AND     fifs2.id_flex_code                        =   cv_mcat
+              AND     fifs2.id_flex_num                         =   mcsb2.structure_id
+              AND     gic.category_id                           =   mcb2.category_id
+              AND     gic.category_set_id                       =   mcsb2.category_set_id
+              AND     gic.item_id                               =   iimb.item_id
+              AND     iimb.item_id                              =   xsib.item_id
+              AND     xsib.item_status                          =   cv_item_status_30
+              AND     mcb2.category_id                          =   mct.category_id
+              AND     mct.language                              =   cv_ja
+              AND     xiph.plan_year                            =   gn_subject_year       --対象年度
+              AND     xiph.location_cd                          = iv_kyoten_cd            --拠点コード
+              AND     xiph.item_plan_header_id = xipl.item_plan_header_id
+              AND     xipl.item_kbn <> cv_item_kbn                       --商品区分(1：商品単品、2：新商品)
+              AND     xipl.item_no = iimb.item_no
+              AND EXISTS(
+                        SELECT  /*+ LEADING(fifs mcsb mcb) */
+                                1
+                        FROM    mtl_categories_b            mcb
+                              , mtl_category_sets_b         mcsb
+                              , fnd_id_flex_structures      fifs
+                        WHERE   mcsb.structure_id                       =   mcb.structure_id
+                        AND     mcb.enabled_flag                        =   cv_flg_y
+                        AND     NVL(mcb.disable_date, gd_process_date)  <=  gd_process_date
+                        AND     fifs.id_flex_structure_code             =   cv_sgun_code
+                        AND     fifs.application_id                     =   cn_appl_id
+                        AND     fifs.id_flex_code                       =   cv_mcat
+                        AND     fifs.id_flex_num                        =   mcsb.structure_id
+                        AND     INSTR(mcb.segment1, cv_group_3, 1, 1)   =   2
+                        AND     SUBSTRB(mcb.segment1, 1, 1)             =   SUBSTRB(mcb2.segment1, 1, 1)
+                        UNION ALL
+                        SELECT  1
+                        FROM    fnd_lookup_values       flv
+                        WHERE   flv.lookup_type                           =   cv_item_group
+                        AND     flv.language                              =   cv_ja
+                        AND     flv.enabled_flag                          =   cv_flg_y
+                        AND     INSTR(flv.lookup_code, cv_group_3, 1, 1)  =   2
+                        AND     SUBSTRB(flv.lookup_code, 1, 1)            =   SUBSTRB(mcb2.segment1, 1, 1)
+                        AND     gd_process_date  BETWEEN NVL(TRUNC(flv.start_date_active), gd_process_date)
+                                                 AND     NVL(TRUNC(flv.end_date_active),   gd_process_date)
+                    )
+              AND EXISTS(
+                        SELECT  /*+ LEADING(fifs mcsb mcb) */
+                                1
+                        FROM    mtl_categories_b            mcb
+                              , mtl_category_sets_b         mcsb
+                              , fnd_id_flex_structures      fifs
+                        WHERE   mcsb.structure_id                       =   mcb.structure_id
+                        AND     mcb.enabled_flag                        =   cv_flg_y
+                        AND     NVL(mcb.disable_date, gd_process_date)  <=  gd_process_date
+                        AND     fifs.id_flex_structure_code             =   cv_sgun_code
+                        AND     fifs.application_id                     =   cn_appl_id
+                        AND     fifs.id_flex_code                       =   cv_mcat
+                        AND     fifs.id_flex_num                        =   mcsb.structure_id
+                        AND     INSTR(mcb.segment1, cv_group_3, 1, 1)   =   4
+                        AND     SUBSTRB(mcb.segment1, 1, 3)             =   SUBSTRB(mcb2.segment1, 1, 3)
+                        UNION ALL
+                        SELECT  1
+                        FROM    fnd_lookup_values       flv
+                        WHERE   flv.lookup_type                           =   cv_item_group
+                        AND     flv.language                              =   cv_ja
+                        AND     flv.enabled_flag                          =   cv_flg_y
+                        AND     INSTR(flv.lookup_code, cv_group_3, 1, 1)  =   4
+                        AND     SUBSTRB(flv.lookup_code, 1, 3)            =   SUBSTRB(mcb2.segment1, 1, 3)
+                        AND     gd_process_date  BETWEEN NVL(TRUNC(flv.start_date_active), gd_process_date)
+                                                 AND     NVL(TRUNC(flv.end_date_active),   gd_process_date)
+                    )
+          ) sub
+     GROUP BY   group1_cd 
+               ,group1_nm 
+               ,group3_cd 
+               ,group3_nm 
+               ,item_cd   
+               ,item_nm   
+               ,now_item_cost
+               ,now_business_cost 
+               ,now_unit_price 
+     ORDER BY   group1_cd
+               ,group3_cd
+               ,item_cd
+     ;
+
+--//+UPD START 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami
     item_plan_select_cur_rec item_plan_select_cur%ROWTYPE;
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -3565,7 +4170,10 @@ AS
         --  月別商品別データ登録(A-13)
         --  ===============================
 --//+ADD START 2009/02/19 CT038 K.Yamada
-        IF ln_sales_budget_sum <> 0 THEN
+-- MODIFY  START  DATE:2011/01/05  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+--        IF ln_sales_budget_sum <> 0 THEN
+        IF ln_sales_budget_sum <> 0 OR ln_amount_sum <> 0 THEN
+-- MODIFY  END  DATE:2011/01/05  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
 --//+ADD END   2009/02/19 CT038 K.Yamada
           item_month_count (
                             lv_kyoten_cd                --A-2で取得した拠点コード

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A12C(body)
  * Description      : 商品計画リスト(時系列)出力
  * MD.050           : 商品計画リスト(時系列)出力 MD050_CSM_002_A12
- * Version          : 1.7
+ * Version          : 1.10
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -37,6 +37,9 @@ AS
  *  2009/02/20    1.5   T.Tsukino        [障害CT_052] CSV出力の日付フォーマット不正対応
  *  2009/05/07    1.6   M.Ohtsuki        [障害T1_0858] 共通関数修正に伴うパラメータの追加
  *  2009/05/25    1.7   A.Sakawa         [障害T1_1169] 商品群名称同一時の出力レイアウト不正対応
+ *  2010/12/14    1.8   Y.Kanami         [E_本稼動_05803]
+ *  2011/01/06    1.9   OuKou            [E_本稼動_05803]
+ *  2011/01/17    1.10  Y.Kanami         [E_本稼動_05803]PT対応
  *
  *****************************************************************************************/
 --
@@ -138,6 +141,19 @@ AS
   cv_group_kbn              CONSTANT VARCHAR2(1)   := '0';                                          -- 商品群
 --//+ADD END 2009/02/13 CT016 S.Son
   cn_year_total             CONSTANT NUMBER(10)    := 999999;                                       -- 年間計
+--//+ADD START 2011/01/17 E_本稼動_05803 PT対応 Y.Kanami
+  cv_whse_code                  CONSTANT VARCHAR2(3)   := '000';
+  cv_sgun_code                  CONSTANT VARCHAR2(15)  := 'XXCMN_SGUN_CODE';          
+  cv_item_group                 CONSTANT VARCHAR2(17)  := 'XXCSM1_ITEM_GROUP';
+  cv_mcat                       CONSTANT VARCHAR2(4)   := 'MCAT';
+  cn_appl_id                    CONSTANT NUMBER        := 401;
+  cv_ja                         CONSTANT VARCHAR2(4)   := 'JA';
+  cv_item_status_30             CONSTANT VARCHAR2(4)   := '30';
+  cv_item_kbn                   CONSTANT VARCHAR2(4)   := '0';
+  cv_percent                    CONSTANT VARCHAR2(1)   := '%';
+  cv_flg_y                      CONSTANT VARCHAR2(1)   := 'Y';                       --フラグY
+
+--//+ADD END 2011/01/17 E_本稼動_05803 PT対応 Y.Kanami
 --
   -- ===============================
   -- ユーザー定義グローバル変数 
@@ -207,6 +223,9 @@ AS
   gv_prf_item_sum           VARCHAR2(100);                                                          -- XXCSM:商品合計
   gv_prf_item_discount      VARCHAR2(100);                                                          -- XXCSM:売上値引
   gv_prf_foothold_sum       VARCHAR2(100);                                                          -- XXCSM:拠点計
+-- //+ADD START 2010/12/14 E_本稼動_05803 Y.Kanami
+  gv_prf_down_pay           VARCHAR2(100);                                                          -- XXCSM:入金値引
+-- //+ADD END 2010/12/14 E_本稼動_05803 Y.Kanami
 --
   gv_kyoten_cd              VARCHAR2(10);                                                           -- 拠点コード
   gv_kyoten_nm              VARCHAR2(200);                                                          -- 拠点名称
@@ -248,6 +267,9 @@ AS
     cv_prf_item_sum         CONSTANT VARCHAR2(100) := 'XXCSM1_CHECKLIST_ITEM_1';                    -- XXCSM:商品合計
     cv_prf_item_discount    CONSTANT VARCHAR2(100) := 'XXCSM1_CHECKLIST_ITEM_2';                    -- XXCSM:売上値引
     cv_prf_foothold_sum     CONSTANT VARCHAR2(100) := 'XXCSM1_PLANLIST_ITEM_5';                     -- XXCSM:拠点計
+-- //+ADD START 2010/12/14 E_本稼動_05803 Y.Kanami
+    cv_pref_down_pay        CONSTANT VARCHAR2(100) := 'XXCSM1_CHECKLIST_ITEM_3';                    -- XXCSM:入金値引
+-- //+ADD END 2010/12/14 E_本稼動_05803 Y.Kanami
     -- パラメータメッセージ出力用
     lv_pram_op_1            VARCHAR2(100);
     lv_pram_op_2            VARCHAR2(100);
@@ -335,6 +357,9 @@ AS
     gv_prf_item_sum      := FND_PROFILE.VALUE(cv_prf_item_sum);                                     -- XXCSM:商品合計
     gv_prf_item_discount := FND_PROFILE.VALUE(cv_prf_item_discount);                                -- XXCSM:売上値引
     gv_prf_foothold_sum  := FND_PROFILE.VALUE(cv_prf_foothold_sum);                                 -- XXCSM:拠点計
+-- //+ADD START 2010/12/14 E_本稼動_05803 Y.Kanami
+    gv_prf_down_pay      := FND_PROFILE.VALUE(cv_pref_down_pay);                                    -- XXCSM:入金値引
+-- //+ADD END 2010/12/14 E_本稼動_05803 Y.Kanami
     -- ===================================
     -- プロファイル値取得に失敗した場合
     -- ===================================
@@ -356,6 +381,10 @@ AS
       lv_tkn_value := cv_prf_item_discount;
     ELSIF (gv_prf_foothold_sum IS NULL) THEN                                                        -- XXCSM:拠点計
       lv_tkn_value := cv_prf_foothold_sum;
+-- //+ADD START 2010/12/14 E_本稼動_05803 Y.Kanami
+    ELSIF (gv_prf_down_pay IS NULL) THEN                                                            -- XXCSM:入金値引
+      lv_tkn_value := cv_pref_down_pay;
+-- //+ADD END 2010/12/14 E_本稼動_05803 Y.Kanami
     END IF;
     -- エラーメッセージ取得
     IF (lv_tkn_value IS NOT NULL) THEN
@@ -560,32 +589,122 @@ AS
 -- ============================================
     CURSOR count_item_kbn_cur(iv_group_cd  VARCHAR2)
     IS
-      SELECT    DECODE(gv_genkacd,cv_normal,SUM(xcg4.now_item_cost * xipl.amount)
-                      ,SUM(xcg4.now_business_cost * xipl.amount)) cost                              -- 商品区分別月別原価
-               ,SUM(xcg4.now_unit_price * xipl.amount)      unit_price                              -- 商品区分別月別計定価
-               ,SUM(xipl.sales_budget)                      sales_budget                            -- 商品区分別月別計売上金額
-               ,SUM(xipl.amount)                            amount                                  -- 商品区分別月別数量
-               ,xipl.year_month                                                                     -- 年月
-      FROM      xxcsm_item_plan_lines                       xipl                                    -- 商品計画明細テーブル
-               ,xxcsm_item_plan_headers                     xiph                                    -- 商品計画ヘッダテーブル
-               ,xxcsm_commodity_group4_v                    xcg4                                    -- 政策群４ビュー
-      WHERE     xiph.item_plan_header_id  = xipl.item_plan_header_id                                -- ヘッダID
-        AND     xiph.plan_year            = gn_taisyoyear                                           -- 予算年度
-        AND     xiph.location_cd          = gv_kyoten_cd                                            -- 拠点コード
-        AND     xipl.item_group_no        LIKE  iv_group_cd                                         -- 商品群コード
---//+UPD START 2009/02/13 CT016 S.Son
-      --AND   xipl.item_kbn            = cv_single_item                                             -- 商品区分(1 = 商品単品)
-        AND   xipl.item_kbn            <> cv_group_kbn                                              -- 商品区分(1 = 商品単品、2 = 新商品)
---//+UPD END 2009/02/13 CT016 S.Son
-        AND     xipl.item_no              = xcg4.item_cd                                            -- 商品コード
-      GROUP BY  xipl.year_month                                                                     -- 年月
-      ORDER BY  xipl.year_month;                                                                    -- 年月
+--//+UPD START 2011/01/17 E_本稼動_05803 PT対応 Y.Kanami
+--      SELECT    DECODE(gv_genkacd,cv_normal,SUM(xcg4.now_item_cost * xipl.amount)
+--                      ,SUM(xcg4.now_business_cost * xipl.amount)) cost                              -- 商品区分別月別原価
+--               ,SUM(xcg4.now_unit_price * xipl.amount)      unit_price                              -- 商品区分別月別計定価
+--               ,SUM(xipl.sales_budget)                      sales_budget                            -- 商品区分別月別計売上金額
+--               ,SUM(xipl.amount)                            amount                                  -- 商品区分別月別数量
+--               ,xipl.year_month                                                                     -- 年月
+--      FROM      xxcsm_item_plan_lines                       xipl                                    -- 商品計画明細テーブル
+--               ,xxcsm_item_plan_headers                     xiph                                    -- 商品計画ヘッダテーブル
+--               ,xxcsm_commodity_group4_v                    xcg4                                    -- 政策群４ビュー
+--      WHERE     xiph.item_plan_header_id  = xipl.item_plan_header_id                                -- ヘッダID
+--        AND     xiph.plan_year            = gn_taisyoyear                                           -- 予算年度
+--        AND     xiph.location_cd          = gv_kyoten_cd                                            -- 拠点コード
+--        AND     xipl.item_group_no        LIKE  iv_group_cd                                         -- 商品群コード
+----//+UPD START 2009/02/13 CT016 S.Son
+--      --AND   xipl.item_kbn            = cv_single_item                                             -- 商品区分(1 = 商品単品)
+--        AND   xipl.item_kbn            <> cv_group_kbn                                              -- 商品区分(1 = 商品単品、2 = 新商品)
+----//+UPD END 2009/02/13 CT016 S.Son
+--        AND     xipl.item_no              = xcg4.item_cd                                            -- 商品コード
+--      GROUP BY  xipl.year_month                                                                     -- 年月
+--      ORDER BY  xipl.year_month;                                                                    -- 年月
+--
+      SELECT
+            sub.year_month                                                          year_month    -- 年月
+          , DECODE(gv_genkacd, cv_normal, SUM(sub.now_item_cost * sub.amount)       
+                                        , SUM(sub.now_business_cost * sub.amount)
+                  )                                                                 cost          -- 商品区分別月別原価
+          , SUM(sub.now_unit_price * sub.amount)                                    unit_price    -- 商品区分別月別計定価
+          , SUM(sub.sales_budget)                                                   sales_budget  -- 商品区分別月別計売上金額
+          , SUM(sub.amount)                                                         amount        -- 商品区分別月別数量
+      FROM  (
+              SELECT
+                      xipl.year_month                                           year_month
+                    , NVL(  (
+                              SELECT SUM(ccmd.cmpnt_cost)  cmpnt_cost
+                              FROM   cm_cmpt_dtl     ccmd
+                                    ,cm_cldr_dtl     ccld
+                              WHERE  ccmd.calendar_code = ccld.calendar_code
+                              AND    ccmd.whse_code     = cv_whse_code
+                              AND    ccmd.period_code   = ccld.period_code
+                              AND    ccld.start_date   <= gd_process_date
+                              AND    ccld.end_date     >= gd_process_date
+                              AND    ccmd.item_id       = iimb.item_id
+                            )
+                          , NVL(iimb.attribute8, 0)
+                      )                                                         now_item_cost
+                    , NVL(iimb.attribute8, 0)                                   now_business_cost
+                    , NVL(iimb.attribute5, 0)                                   now_unit_price
+                    , xipl.amount                                               amount
+                    , xipl.sales_budget                                         sales_budget
+              FROM    mtl_categories_b            mcb2
+                    , mtl_category_sets_b         mcsb2
+                    , fnd_id_flex_structures      fifs2
+                    , gmi_item_categories         gic
+                    , ic_item_mst_b               iimb
+                    , xxcmm_system_items_b        xsib
+                    , xxcsm_item_plan_headers     xiph    -- 商品計画ヘッダテーブル
+                    , xxcsm_item_plan_lines       xipl    -- 商品計画明細テーブル
+              WHERE   mcsb2.structure_id              =   mcb2.structure_id
+              AND     mcb2.enabled_flag               =   cv_flg_y
+              AND     NVL(mcb2.disable_date, gd_process_date) <=  gd_process_date
+              AND     fifs2.id_flex_structure_code    =   cv_sgun_code
+              AND     fifs2.application_id            =   cn_appl_id 
+              AND     fifs2.id_flex_code              =   cv_mcat
+              AND     fifs2.id_flex_num               =   mcsb2.structure_id
+              AND     gic.category_id                 =   mcb2.category_id
+              AND     gic.category_set_id             =   mcsb2.category_set_id
+              AND     gic.item_id                     =   iimb.item_id
+              AND     iimb.item_id                    =   xsib.item_id
+              AND     xsib.item_status                =   cv_item_status_30
+              AND     xiph.item_plan_header_id        =   xipl.item_plan_header_id
+              AND     xiph.plan_year                  =   gn_taisyoyear
+              AND     xiph.location_cd                =   gv_kyoten_cd
+              AND     xipl.item_kbn                   <>  cv_group_kbn
+              AND     xipl.item_no                    =   iimb.item_no
+              AND     SUBSTRB(mcb2.segment1, 1, 1)    =   iv_group_cd
+              AND     EXISTS(
+                            SELECT  /*+ LEADING(fifs mcsb mcb) */
+                                    1
+                            FROM    mtl_categories_b            mcb
+                                  , mtl_category_sets_b         mcsb
+                                  , fnd_id_flex_structures      fifs
+                            WHERE   mcsb.structure_id             =   mcb.structure_id
+                            AND     mcb.enabled_flag              =   cv_flg_y
+                            AND     NVL(mcb.disable_date, gd_process_date) <=  gd_process_date
+                            AND     fifs.id_flex_structure_code   =   cv_sgun_code
+                            AND     fifs.application_id           =   cn_appl_id 
+                            AND     fifs.id_flex_code             =   cv_mcat
+                            AND     fifs.id_flex_num              =   mcsb.structure_id
+                            AND     INSTR(mcb.segment1, '*', 1, 1)  =   2
+                            AND SUBSTRB(mcb.segment1, 1, 1) = SUBSTRB(mcb2.segment1, 1, 1)
+                          UNION ALL
+                            SELECT  1
+                            FROM    fnd_lookup_values       flv
+                            WHERE   flv.lookup_type         =   cv_item_group
+                            AND     flv.language            =   cv_ja
+                            AND     flv.enabled_flag        =   cv_flg_y
+                            AND     gd_process_date  BETWEEN NVL(flv.start_date_active, gd_process_date)
+                            AND     NVL(flv.end_date_active, gd_process_date)
+                            AND     INSTR(flv.lookup_code, '*', 1, 1) = 2
+                            AND     SUBSTRB(flv.lookup_code, 1, 1)  = SUBSTRB(mcb2.segment1, 1, 1)
+                        )
+      ) sub
+      GROUP BY  sub.year_month
+      ORDER BY  sub.year_month
+      ;
+--//+UPD END 2011/01/17 E_本稼動_05803 PT対応 Y.Kanami
 --
     count_item_kbn_rec    count_item_kbn_cur%ROWTYPE;
 --
   BEGIN
 --
-    lv_group1_cd     := iv_group1_cd || cv_percent;
+--//UPD START 2011/01/17 E_本稼動_05803 PT対応 Y.Kanami
+--    lv_group1_cd     := iv_group1_cd || cv_percent;
+      lv_group1_cd     := iv_group1_cd;
+--//UPD END 2011/01/17 E_本稼動_05803 PT対応 Y.Kanami
       -- ===============================
       -- 変数の初期化
       -- ===============================
@@ -820,27 +939,111 @@ AS
 -- ============================================
     CURSOR count_sum_item_cur
     IS
-      SELECT    DECODE(gv_genkacd,cv_normal,SUM(xcg4.now_item_cost * xipl.amount)
-                      ,SUM(xcg4.now_business_cost * xipl.amount)) cost                              -- 合計商品月別原価
-               ,SUM(xcg4.now_unit_price * xipl.amount)      unit_price                              -- 合計商品月別計定価
-               ,SUM(xipl.sales_budget)                      sales_budget                            -- 合計商品月別計売上金額
-               ,SUM(xipl.amount)                            amount                                  -- 合計商品月別数量
-               ,xipl.year_month                                                                     -- 年月
-      FROM      xxcsm_item_plan_lines                       xipl                                    -- 商品計画明細テーブル
-               ,xxcsm_item_plan_headers                     xiph                                    -- 商品計画ヘッダテーブル
-               ,xxcsm_commodity_group4_v                    xcg4                                    -- 政策群４ビュー
-      WHERE     xiph.item_plan_header_id  = xipl.item_plan_header_id                                -- ヘッダID
-        AND     xiph.plan_year            = gn_taisyoyear                                           -- 予算年度
-        AND     xiph.location_cd          = gv_kyoten_cd                                            -- 拠点コード
-        AND     xipl.item_group_no        NOT LIKE  cv_not_d                                        -- 商品群コード
---//+UPD START 2009/02/13 CT016 S.Son
-      --AND   xipl.item_kbn            = cv_single_item                                             -- 商品区分(1 = 商品単品)
-        AND   xipl.item_kbn            <> cv_group_kbn                                              -- 商品区分(1 = 商品単品、2 = 新商品)
---//+UPD END 2009/02/13 CT016 S.Son
-        AND     xipl.item_no              = xcg4.item_cd                                            -- 商品コード
-      GROUP BY  xipl.year_month                                                                     -- 年月
-      ORDER BY  xipl.year_month;                                                                    -- 年月
+--//+UPD SATRT 2011/01/17 E_本稼動_05803 PT対応 Y.Kanami
+--      SELECT    DECODE(gv_genkacd,cv_normal,SUM(xcg4.now_item_cost * xipl.amount)
+--                      ,SUM(xcg4.now_business_cost * xipl.amount)) cost                              -- 合計商品月別原価
+--               ,SUM(xcg4.now_unit_price * xipl.amount)      unit_price                              -- 合計商品月別計定価
+--               ,SUM(xipl.sales_budget)                      sales_budget                            -- 合計商品月別計売上金額
+--               ,SUM(xipl.amount)                            amount                                  -- 合計商品月別数量
+--               ,xipl.year_month                                                                     -- 年月
+--      FROM      xxcsm_item_plan_lines                       xipl                                    -- 商品計画明細テーブル
+--               ,xxcsm_item_plan_headers                     xiph                                    -- 商品計画ヘッダテーブル
+--               ,xxcsm_commodity_group4_v                    xcg4                                    -- 政策群４ビュー
+--      WHERE     xiph.item_plan_header_id  = xipl.item_plan_header_id                                -- ヘッダID
+--        AND     xiph.plan_year            = gn_taisyoyear                                           -- 予算年度
+--        AND     xiph.location_cd          = gv_kyoten_cd                                            -- 拠点コード
+--        AND     xipl.item_group_no        NOT LIKE  cv_not_d                                        -- 商品群コード
+----//+UPD START 2009/02/13 CT016 S.Son
+--      --AND   xipl.item_kbn            = cv_single_item                                             -- 商品区分(1 = 商品単品)
+--        AND   xipl.item_kbn            <> cv_group_kbn                                              -- 商品区分(1 = 商品単品、2 = 新商品)
+----//+UPD END 2009/02/13 CT016 S.Son
+--        AND     xipl.item_no              = xcg4.item_cd                                            -- 商品コード
+--      GROUP BY  xipl.year_month                                                                     -- 年月
+--      ORDER BY  xipl.year_month;                                                                    -- 年月
 --
+      SELECT  sub.year_month                                                          year_month    -- 年月
+            , DECODE(gv_genkacd, cv_normal, SUM(sub.now_item_cost * sub.amount)                     
+                                          , SUM(sub.now_business_cost * sub.amount))  cost          -- 合計商品月別原価
+            , SUM(sub.now_unit_price * sub.amount)                                    unit_price    -- 合計商品月別計定価
+            , SUM(sub.sales_budget)                                                   sales_budget  -- 合計商品月別計売上金額
+            , SUM(sub.amount)                                                         amount        -- 合計商品月別数量
+      FROM (
+              SELECT  /*+ LEADING(fifs mcsb mcb) */
+                      xipl.year_month                                           year_month
+                    , NVL(  (
+                              SELECT SUM(ccmd.cmpnt_cost)  cmpnt_cost
+                              FROM   cm_cmpt_dtl     ccmd
+                                    ,cm_cldr_dtl     ccld
+                              WHERE  ccmd.calendar_code = ccld.calendar_code
+                              AND    ccmd.whse_code     = cv_whse_code
+                              AND    ccmd.period_code   = ccld.period_code
+                              AND    ccld.start_date   <= gd_process_date
+                              AND    ccld.end_date     >= gd_process_date
+                              AND    ccmd.item_id       = iimb.item_id
+                            )
+                          , NVL(iimb.attribute8, 0)
+                      )                                                         now_item_cost
+                    , NVL(iimb.attribute8, 0)                                   now_business_cost
+                    , NVL(iimb.attribute5, 0)                                   now_unit_price
+                    , xipl.amount                                               amount
+                    , xipl.sales_budget                                         sales_budget
+                FROM    mtl_categories_b          mcb2
+                    , mtl_category_sets_b         mcsb2
+                    , fnd_id_flex_structures      fifs2
+                    , gmi_item_categories         gic
+                    , ic_item_mst_b               iimb
+                    , xxcmm_system_items_b        xsib
+                    , xxcsm_item_plan_headers     xiph
+                    , xxcsm_item_plan_lines       xipl
+              WHERE   mcsb2.structure_id              =   mcb2.structure_id
+              AND     mcb2.enabled_flag               =   cv_flg_y
+              AND     NVL(mcb2.disable_date,gd_process_date)  <=  gd_process_date
+              AND     fifs2.id_flex_structure_code    =   cv_sgun_code
+              AND     fifs2.application_id            =   cn_appl_id 
+              AND     fifs2.id_flex_code              =   cv_mcat
+              AND     fifs2.id_flex_num               =   mcsb2.structure_id
+              AND     gic.category_id                 =   mcb2.category_id
+              AND     gic.category_set_id             =   mcsb2.category_set_id
+              AND     gic.item_id                     =   iimb.item_id
+              AND     iimb.item_id                    =   xsib.item_id
+              AND     xsib.item_status                =   cv_item_status_30
+              AND     xiph.item_plan_header_id        =   xipl.item_plan_header_id  -- ヘッダID
+              AND     xiph.plan_year                  =   gn_taisyoyear             -- 予算年度
+              AND     xiph.location_cd                =   gv_kyoten_cd              -- 拠点コード
+              AND     xipl.item_group_no NOT LIKE cv_not_d                          -- 商品群コード
+              AND     xipl.item_kbn                   <>  cv_group_kbn              -- 商品区分(1 = 商品単品、2 = 新商品)
+              AND     xipl.item_no                    = iimb.item_no                -- 商品コード
+              AND EXISTS(
+                        SELECT  /*+ LEADING(fifs mcsb mcb) */
+                                1
+                        FROM    mtl_categories_b            mcb
+                              , mtl_category_sets_b         mcsb
+                              , fnd_id_flex_structures      fifs
+                        WHERE   mcsb.structure_id             =   mcb.structure_id
+                        AND     mcb.enabled_flag              =   cv_flg_y
+                        AND     NVL(mcb.disable_date,gd_process_date) <=  gd_process_date
+                        AND     fifs.id_flex_structure_code   =   cv_sgun_code
+                        AND     fifs.application_id           =   cn_appl_id 
+                        AND     fifs.id_flex_code             =   cv_mcat
+                        AND     fifs.id_flex_num              =   mcsb.structure_id
+                        AND     INSTR(mcb.segment1, '*', 1, 1)  =   2
+                        AND     SUBSTRB(mcb.segment1, 1, 1)     =   SUBSTRB(mcb2.segment1, 1, 1)
+                      UNION ALL
+                        SELECT  1
+                        FROM    fnd_lookup_values       flv
+                        WHERE   flv.lookup_type         =   cv_item_group
+                        AND     flv.language            =   cv_ja
+                        AND     flv.enabled_flag        =   cv_flg_y
+                        AND     gd_process_date  BETWEEN NVL(flv.start_date_active, gd_process_date)
+                                                 AND     NVL(flv.end_date_active, gd_process_date)
+                        AND     INSTR(flv.lookup_code, '*', 1, 1) =   2
+                        AND     SUBSTRB(flv.lookup_code, 1, 1)    =   SUBSTRB(mcb2.segment1, 1, 1)
+                    )
+          ) sub
+      GROUP BY  year_month                                                     -- 年月
+      ORDER BY  year_month                                                     -- 年月
+      ;
+--//+UPD END 2011/01/17 E_本稼動_05803 PT対応 Y.Kanami
     count_sum_item_rec   count_sum_item_cur%ROWTYPE;
 --
   BEGIN
@@ -1079,27 +1282,111 @@ AS
 -- ============================================
     CURSOR count_item_group_cur
     IS
-      SELECT    DECODE(gv_genkacd,cv_normal,SUM(xcg4.now_item_cost * xipl.amount)
-                      ,SUM(xcg4.now_business_cost * xipl.amount)) cost                              -- 商品群別月別原価
-               ,SUM(xcg4.now_unit_price * xipl.amount)      unit_price                              -- 商品群別月別計定価
-               ,SUM(xipl.sales_budget)                      sales_budget                            -- 商品群別月別計売上金額
-               ,SUM(xipl.amount)                            amount                                  -- 商品群別月別数量
-               ,xipl.year_month                                                                     -- 年月
-      FROM      xxcsm_item_plan_lines                       xipl                                    -- 商品計画明細テーブル
-               ,xxcsm_item_plan_headers                     xiph                                    -- 商品計画ヘッダテーブル
-               ,xxcsm_commodity_group4_v                    xcg4                                    -- 政策群４ビュー
-      WHERE     xiph.item_plan_header_id  = xipl.item_plan_header_id                                -- ヘッダID
-        AND     xiph.plan_year            = gn_taisyoyear                                           -- 予算年度
-        AND     xiph.location_cd          = gv_kyoten_cd                                            -- 拠点コード
-        AND     xcg4.group4_cd            = iv_item_cd                                              -- 商品群コード
---//+UPD START 2009/02/13 CT016 S.Son
-      --AND   xipl.item_kbn            = cv_single_item                                             -- 商品区分(1 = 商品単品)
-        AND   xipl.item_kbn            <> cv_group_kbn                                              -- 商品区分(1 = 商品単品、2 = 新商品)
---//+UPD END 2009/02/13 CT016 S.Son
-        AND     xipl.item_no              = xcg4.item_cd                                            -- 商品コード
-      GROUP BY  xipl.year_month                                                                     -- 年月
-      ORDER BY  xipl.year_month;                                                                    -- 年月
+--//+UPD START 2011/01/17 E_本稼動_05803 PT対応 Y.Kanami
+--      SELECT    DECODE(gv_genkacd,cv_normal,SUM(xcg4.now_item_cost * xipl.amount)
+--                      ,SUM(xcg4.now_business_cost * xipl.amount)) cost                              -- 商品群別月別原価
+--               ,SUM(xcg4.now_unit_price * xipl.amount)      unit_price                              -- 商品群別月別計定価
+--               ,SUM(xipl.sales_budget)                      sales_budget                            -- 商品群別月別計売上金額
+--               ,SUM(xipl.amount)                            amount                                  -- 商品群別月別数量
+--               ,xipl.year_month                                                                     -- 年月
+--      FROM      xxcsm_item_plan_lines                       xipl                                    -- 商品計画明細テーブル
+--               ,xxcsm_item_plan_headers                     xiph                                    -- 商品計画ヘッダテーブル
+--               ,xxcsm_commodity_group4_v                    xcg4                                    -- 政策群４ビュー
+--      WHERE     xiph.item_plan_header_id  = xipl.item_plan_header_id                                -- ヘッダID
+--        AND     xiph.plan_year            = gn_taisyoyear                                           -- 予算年度
+--        AND     xiph.location_cd          = gv_kyoten_cd                                            -- 拠点コード
+--        AND     xcg4.group4_cd            = iv_item_cd                                              -- 商品群コード
+----//+UPD START 2009/02/13 CT016 S.Son
+--      --AND   xipl.item_kbn            = cv_single_item                                             -- 商品区分(1 = 商品単品)
+--        AND   xipl.item_kbn            <> cv_group_kbn                                              -- 商品区分(1 = 商品単品、2 = 新商品)
+----//+UPD END 2009/02/13 CT016 S.Son
+--        AND     xipl.item_no              = xcg4.item_cd                                            -- 商品コード
+--      GROUP BY  xipl.year_month                                                                     -- 年月
+--      ORDER BY  xipl.year_month;                                                                    -- 年月
 --
+      SELECT    sub.year_month                                                                    -- 年月
+               ,DECODE(gv_genkacd, cv_normal, SUM(sub.now_item_cost * sub.amount)
+                      ,SUM(sub.now_business_cost * sub.amount)) cost                              -- 商品群別月別原価
+               ,SUM(sub.now_unit_price * sub.amount)        unit_price                            -- 商品群別月別計定価
+               ,SUM(sub.sales_budget)                       sales_budget                          -- 商品群別月別計売上金額
+               ,SUM(sub.amount)                             amount                                -- 商品群別月別数量
+      FROM (
+              SELECT  /*+ LEADING(fifs mcsb mcb) */
+                      xipl.year_month                                           year_month
+                    , NVL(  (
+                              SELECT SUM(ccmd.cmpnt_cost)  cmpnt_cost
+                              FROM   cm_cmpt_dtl     ccmd
+                                    ,cm_cldr_dtl     ccld
+                              WHERE  ccmd.calendar_code = ccld.calendar_code
+                              AND    ccmd.whse_code     = cv_whse_code
+                              AND    ccmd.period_code   = ccld.period_code
+                              AND    ccld.start_date   <= gd_process_date
+                              AND    ccld.end_date     >= gd_process_date
+                              AND    ccmd.item_id       = iimb.item_id
+                            )
+                          , NVL(iimb.attribute8, 0)
+                      )                                                         now_item_cost
+                    , NVL(iimb.attribute8, 0)                                   now_business_cost
+                    , NVL(iimb.attribute5, 0)                                   now_unit_price
+                    , xipl.amount                                               amount
+                    , xipl.sales_budget                                         sales_budget
+                FROM    mtl_categories_b          mcb2
+                    , mtl_category_sets_b         mcsb2
+                    , fnd_id_flex_structures      fifs2
+                    , gmi_item_categories         gic
+                    , ic_item_mst_b               iimb
+                    , xxcmm_system_items_b        xsib
+                    , xxcsm_item_plan_headers     xiph
+                    , xxcsm_item_plan_lines       xipl
+              WHERE   mcsb2.structure_id              =   mcb2.structure_id
+              AND     mcb2.enabled_flag               =   cv_flg_y
+              AND     NVL(mcb2.disable_date,gd_process_date)  <=  gd_process_date
+              AND     fifs2.id_flex_structure_code    =   cv_sgun_code
+              AND     fifs2.application_id            =   cn_appl_id 
+              AND     fifs2.id_flex_code              =   cv_mcat
+              AND     fifs2.id_flex_num               =   mcsb2.structure_id
+              AND     gic.category_id                 =   mcb2.category_id
+              AND     gic.category_set_id             =   mcsb2.category_set_id
+              AND     gic.item_id                     =   iimb.item_id
+              AND     iimb.item_id                    =   xsib.item_id
+              AND     xsib.item_status                =   cv_item_status_30
+              AND     xiph.item_plan_header_id        =   xipl.item_plan_header_id  -- ヘッダID
+              AND     xiph.plan_year                  =   gn_taisyoyear             -- 予算年度
+              AND     xiph.location_cd                =   gv_kyoten_cd              -- 拠点コード
+              AND     mcb2.segment1                   =   iv_item_cd                -- 商品群コード
+              AND     xipl.item_kbn                   <>  cv_group_kbn              -- 商品区分(1 = 商品単品、2 = 新商品)
+              AND     xipl.item_no                    =   iimb.item_no              -- 商品コード
+              AND EXISTS(
+                        SELECT  /*+ LEADING(fifs mcsb mcb) */
+                                1
+                        FROM    mtl_categories_b            mcb
+                              , mtl_category_sets_b         mcsb
+                              , fnd_id_flex_structures      fifs
+                        WHERE   mcsb.structure_id               =   mcb.structure_id
+                        AND     mcb.enabled_flag                =   cv_flg_y
+                        AND     NVL(mcb.disable_date,gd_process_date) <=  gd_process_date
+                        AND     fifs.id_flex_structure_code     =   cv_sgun_code
+                        AND     fifs.application_id             =   cn_appl_id 
+                        AND     fifs.id_flex_code               =   cv_mcat
+                        AND     fifs.id_flex_num                =   mcsb.structure_id
+                        AND     INSTR(mcb.segment1, '*', 1, 1)  =   2
+                        AND     SUBSTRB(mcb.segment1, 1, 1)     =   SUBSTRB(mcb2.segment1, 1, 1)
+                      UNION ALL
+                        SELECT  1
+                        FROM    fnd_lookup_values       flv
+                        WHERE   flv.lookup_type         =   cv_item_group
+                        AND     flv.language            =   cv_ja
+                        AND     flv.enabled_flag        =   cv_flg_y
+                        AND     gd_process_date  BETWEEN NVL(flv.start_date_active, gd_process_date)
+                                                 AND     NVL(flv.end_date_active, gd_process_date)
+                        AND     INSTR(flv.lookup_code, '*', 1, 1) =   2
+                        AND     SUBSTRB(flv.lookup_code, 1, 1)    =   SUBSTRB(mcb2.segment1, 1, 1)
+                    )
+          ) sub
+      GROUP BY  year_month                                                     -- 年月
+      ORDER BY  year_month                                                     -- 年月
+      ;
+--//+UPD END 2011/01/17 E_本稼動_05803 PT対応 Y.Kanami
     count_item_group_rec   count_item_group_cur%ROWTYPE;
 --
   BEGIN
@@ -1312,6 +1599,9 @@ AS
 -- ===============================
     -- データ存在チェック用
     ln_discount_total         NUMBER;                                                               -- 年間値引額取得用
+-- //+ADD START 2010/12/14 E_本稼動_05803 Y.Kanami
+    ln_down_pay_total         NUMBER;                                                               -- 年間入金値引額取得用
+-- //+ADD END 2010/12/14 E_本稼動_05803 Y.Kanami
     ln_cnt                    NUMBER;
     ln_discount_cnt           NUMBER;
 -- ============================================
@@ -1320,6 +1610,9 @@ AS
     CURSOR count_discount_cur
     IS
       SELECT    xipb.sales_discount                sales_discount                                   -- 売上値引
+-- //+ADD START 2010/12/14 E_本稼動_05803 Y.Kanami
+               ,xipb.receipt_discount              receipt_discount                                 -- 入金値引
+-- //+ADD END 2010/12/14 E_本稼動_05803 Y.Kanami
                ,xipb.year_month                    year_month                                       -- 年月
       FROM      xxcsm_item_plan_headers            xiph                                             -- 商品計画ヘッダテーブル
                ,xxcsm_item_plan_loc_bdgt           xipb                                             -- 商品計画拠点別予算テーブル
@@ -1335,6 +1628,9 @@ AS
   -- 変数の初期化
   -- ===============================
     ln_discount_total := 0;
+-- //+ADD START 2010/12/14 E_本稼動_05803 Y.Kanami
+    ln_down_pay_total := 0;   -- 入金値引
+-- //+ADD END 2010/12/14 E_本稼動_05803 Y.Kanami
 --
     SELECT    COUNT(1)
     INTO      ln_discount_cnt
@@ -1344,130 +1640,178 @@ AS
       AND     xiph.plan_year            = gn_taisyoyear                                             -- 予算年度
       AND     xiph.location_cd          = gv_kyoten_cd;                                             -- 拠点コード
 --
-    IF (ln_discount_cnt = 12) THEN                                                                  -- データ件数が正常の場合
-      OPEN count_discount_cur;
-      <<count_discount_loop>>                                                                       -- 値引月別データ集計
-      LOOP
-        FETCH count_discount_cur INTO count_discount_rec;
-        EXIT WHEN count_discount_cur%NOTFOUND;                                                      -- 対象データ件数処理を繰り返す
-    -- =============================================================================================
-    -- (A-12) 値引集計
-    -- =============================================================================================
-        ln_discount_total := (ln_discount_total + count_discount_rec.sales_discount);               -- 値引額を加算
-    -- =============================================================================================
-    -- (A-13) 値引データ登録
-    -- =============================================================================================
+--//+ADD START 2010/12/14 E_本稼動_05803 Y.Kanami
+    FOR i IN 1..2 LOOP
+--//+ADD END 2010/12/14 E_本稼動_05803 Y.Kanami
+      IF (ln_discount_cnt = 12) THEN                                                                  -- データ件数が正常の場合
+        OPEN count_discount_cur;
+        <<count_discount_loop>>                                                                       -- 値引月別データ集計
+        LOOP
+          FETCH count_discount_cur INTO count_discount_rec;
+          EXIT WHEN count_discount_cur%NOTFOUND;                                                      -- 対象データ件数処理を繰り返す
+      -- =============================================================================================
+      -- (A-12) 値引集計
+      -- =============================================================================================
+--//+ADD START 2010/12/14 E_本稼動_05803 Y.Kanami
+          IF i = 1 THEN
+--//+ADD END 2010/12/14 E_本稼動_05803 Y.Kanami
+            ln_discount_total := (ln_discount_total + count_discount_rec.sales_discount);               -- 値引額を加算
+--//+ADD START 2010/12/14 E_本稼動_05803 Y.Kanami
+          ELSE
+            ln_down_pay_total := (ln_down_pay_total + count_discount_rec.receipt_discount);             -- 入金値引額を加算
+          END IF;
+--//+ADD END 2010/12/14 E_本稼動_05803 Y.Kanami
+      -- =============================================================================================
+      -- (A-13) 値引データ登録
+      -- =============================================================================================
+          INSERT INTO
+            xxcsm_tmp_sales_plan_time(                                                                -- 商品計画リスト_時系列ワークテーブル
+              output_order                                                                            -- 出力順
+             ,location_cd                                                                             -- 拠点コード
+             ,location_nm                                                                             -- 拠点名
+             ,item_cd                                                                                 -- コード
+             ,item_nm                                                                                 -- 名称
+             ,year_month                                                                              -- 年月
+             ,amount                                                                                  -- 数量
+             ,sales                                                                                   -- 売上
+             ,cost                                                                                    -- 原価
+             ,margin                                                                                  -- 粗利益額
+             ,margin_rate                                                                             -- 粗利益率
+             ,rate                                                                                    -- 掛率
+             ,discount                                                                                -- 値引
+             )
+          VALUES(
+              gn_index                                                                                -- 出力順
+             ,gv_kyoten_cd                                                                            -- 拠点コード
+             ,gv_kyoten_nm                                                                            -- 拠点名
+             ,NULL                                                                                    -- コード
+-- //+UPD START 2010/12/14 E_本稼動_05803 Y.Kanami
+--             ,gv_prf_item_discount                                                                    -- 名称
+             ,CASE WHEN i = 1 
+                   THEN gv_prf_item_discount
+                   ELSE gv_prf_down_pay
+              END
+-- //+UPD END 2010/12/14 E_本稼動_05803 Y.Kanami
+             ,count_discount_rec.year_month                                                           -- 年月
+             ,NULL                                                                                    -- 数量
+             ,NULL                                                                                    -- 売上
+             ,NULL                                                                                    -- 原価
+             ,NULL                                                                                    -- 粗利益額
+             ,NULL                                                                                    -- 粗利益率
+             ,NULL                                                                                    -- 掛率
+-- //+UPD START 2010/12/14 E_本稼動_05803 Y.Kanami
+--             ,ROUND((count_discount_rec.sales_discount / 1000),0)                                     -- 値引
+             ,CASE WHEN i = 1
+                   THEN ROUND((count_discount_rec.sales_discount / 1000),0)
+                   ELSE ROUND((count_discount_rec.receipt_discount / 1000),0)
+              END
+-- //+UPD END 2010/12/14 E_本稼動_05803 Y.Kanami
+             );
+--
+          gn_index := gn_index + 1;                                                                   -- 登録順をインクリメント
+--
+        END LOOP count_discount_loop;
+--
+-- //+ADD START 2010/12/14 E_本稼動_05803 Y.Kanami
+        CLOSE count_discount_cur;
+-- //+ADD END 2010/12/14 E_本稼動_05803 Y.Kanami
+--
         INSERT INTO
-          xxcsm_tmp_sales_plan_time(                                                                -- 商品計画リスト_時系列ワークテーブル
-            output_order                                                                            -- 出力順
-           ,location_cd                                                                             -- 拠点コード
-           ,location_nm                                                                             -- 拠点名
-           ,item_cd                                                                                 -- コード
-           ,item_nm                                                                                 -- 名称
-           ,year_month                                                                              -- 年月
-           ,amount                                                                                  -- 数量
-           ,sales                                                                                   -- 売上
-           ,cost                                                                                    -- 原価
-           ,margin                                                                                  -- 粗利益額
-           ,margin_rate                                                                             -- 粗利益率
-           ,rate                                                                                    -- 掛率
-           ,discount                                                                                -- 値引
+          xxcsm_tmp_sales_plan_time(                                                                  -- 商品計画リスト_時系列ワークテーブル
+            output_order                                                                              -- 出力順
+           ,location_cd                                                                               -- 拠点コード
+           ,location_nm                                                                               -- 拠点名
+           ,item_cd                                                                                   -- コード
+           ,item_nm                                                                                   -- 名称
+           ,year_month                                                                                -- 年月
+           ,amount                                                                                    -- 数量
+           ,sales                                                                                     -- 売上
+           ,cost                                                                                      -- 原価
+           ,margin                                                                                    -- 粗利益額
+           ,margin_rate                                                                               -- 粗利益率
+           ,rate                                                                                      -- 掛率
+           ,discount                                                                                  -- 値引
            )
         VALUES(
-            gn_index                                                                                -- 出力順
-           ,gv_kyoten_cd                                                                            -- 拠点コード
-           ,gv_kyoten_nm                                                                            -- 拠点名
-           ,NULL                                                                                    -- コード
-           ,gv_prf_item_discount                                                                    -- 名称
-           ,count_discount_rec.year_month                                                           -- 年月
-           ,NULL                                                                                    -- 数量
-           ,NULL                                                                                    -- 売上
-           ,NULL                                                                                    -- 原価
-           ,NULL                                                                                    -- 粗利益額
-           ,NULL                                                                                    -- 粗利益率
-           ,NULL                                                                                    -- 掛率
-           ,ROUND((count_discount_rec.sales_discount / 1000),0)                                     -- 値引
+            gn_index                                                                                  -- 出力順
+           ,gv_kyoten_cd                                                                              -- 拠点コード
+           ,gv_kyoten_nm                                                                              -- 拠点名
+           ,NULL                                                                                      -- コード
+--//+UPD START 2010/12/14 E_本稼動_05803 Y.Kanami
+--           ,gv_prf_item_discount                                                                      -- 名称
+           ,CASE WHEN i = 1 
+                 THEN gv_prf_item_discount
+                 ELSE gv_prf_down_pay
+            END
+--//+UPD END 2010/12/14 E_本稼動_05803 Y.Kanami
+           ,cn_year_total                                                                             -- 年月
+           ,NULL                                                                                      -- 数量
+           ,NULL                                                                                      -- 売上
+           ,NULL                                                                                      -- 原価
+           ,NULL                                                                                      -- 粗利益額
+           ,NULL                                                                                      -- 粗利益率
+           ,NULL                                                                                      -- 掛率
+--//+UPD START 2010/12/14 E_本稼動_05803 Y.Kanami
+--           ,ROUND((ln_discount_total / 1000),0)                                                       -- 値引
+           ,CASE WHEN i = 1 
+                 THEN ROUND((ln_discount_total / 1000),0)
+                 ELSE ROUND((ln_down_pay_total / 1000),0)
+            END
+--//+UPD END 2010/12/14 E_本稼動_05803 Y.Kanami
            );
 --
-        gn_index := gn_index + 1;                                                                   -- 登録順をインクリメント
+          gn_index := gn_index + 1;                                                                   -- 登録順をインクリメント
 --
-      END LOOP count_discount_loop;
+     ELSE                                                                                             -- データ件数が不正な場合
+       ln_cnt := 1;
+       <<no_data_loop>>                                                                               -- (値引 = 0)のデータを登録
+       LOOP
+       EXIT WHEN ln_cnt > 13;
+         INSERT INTO
+           xxcsm_tmp_sales_plan_time(                                                                 -- 商品計画リスト_時系列ワークテーブル
+           output_order                                                                               -- 出力順
+          ,location_cd                                                                                -- 拠点コード
+          ,location_nm                                                                                -- 拠点名
+          ,item_cd                                                                                    -- コード
+          ,item_nm                                                                                    -- 名称
+          ,year_month                                                                                 -- 年月
+          ,amount                                                                                     -- 数量
+          ,sales                                                                                      -- 売上
+          ,cost                                                                                       -- 原価
+          ,margin                                                                                     -- 粗利益額
+          ,margin_rate                                                                                -- 粗利益率
+          ,rate                                                                                       -- 掛率
+          ,discount                                                                                   -- 値引
+          )
+         VALUES(
+           gn_index                                                                                   -- 出力順
+          ,gv_kyoten_cd                                                                               -- 拠点コード
+          ,gv_kyoten_nm                                                                               -- 拠点名
+          ,NULL                                                                                       -- コード
+--//+UPD START 2010/12/14 E_本稼動_05803 Y.Kanami
+--           ,gv_prf_item_discount                                                                      -- 名称
+           ,CASE WHEN i = 1 
+                 THEN gv_prf_item_discount
+                 ELSE gv_prf_down_pay
+            END
+--//+UPD END 2010/12/14 E_本稼動_05803 Y.Kanami
+          ,gn_index                                                                                   -- 年月
+          ,NULL                                                                                       -- 数量
+          ,NULL                                                                                       -- 売上
+          ,NULL                                                                                       -- 原価
+          ,NULL                                                                                       -- 粗利益額
+          ,NULL                                                                                       -- 粗利益率
+          ,NULL                                                                                       -- 掛率
+          ,0                                                                                          -- 値引
+          );
 --
-      INSERT INTO
-        xxcsm_tmp_sales_plan_time(                                                                  -- 商品計画リスト_時系列ワークテーブル
-          output_order                                                                              -- 出力順
-         ,location_cd                                                                               -- 拠点コード
-         ,location_nm                                                                               -- 拠点名
-         ,item_cd                                                                                   -- コード
-         ,item_nm                                                                                   -- 名称
-         ,year_month                                                                                -- 年月
-         ,amount                                                                                    -- 数量
-         ,sales                                                                                     -- 売上
-         ,cost                                                                                      -- 原価
-         ,margin                                                                                    -- 粗利益額
-         ,margin_rate                                                                               -- 粗利益率
-         ,rate                                                                                      -- 掛率
-         ,discount                                                                                  -- 値引
-         )
-      VALUES(
-          gn_index                                                                                  -- 出力順
-         ,gv_kyoten_cd                                                                              -- 拠点コード
-         ,gv_kyoten_nm                                                                              -- 拠点名
-         ,NULL                                                                                      -- コード
-         ,gv_prf_item_discount                                                                      -- 名称
-         ,cn_year_total                                                                             -- 年月
-         ,NULL                                                                                      -- 数量
-         ,NULL                                                                                      -- 売上
-         ,NULL                                                                                      -- 原価
-         ,NULL                                                                                      -- 粗利益額
-         ,NULL                                                                                      -- 粗利益率
-         ,NULL                                                                                      -- 掛率
-         ,ROUND((ln_discount_total / 1000),0)                                                       -- 値引
-         );
---
-        gn_index := gn_index + 1;                                                                   -- 登録順をインクリメント
---
-   ELSE                                                                                             -- データ件数が不正な場合
-     ln_cnt := 1;
-     <<no_data_loop>>                                                                               -- (値引 = 0)のデータを登録
-     LOOP
-     EXIT WHEN ln_cnt > 13;
-       INSERT INTO
-         xxcsm_tmp_sales_plan_time(                                                                 -- 商品計画リスト_時系列ワークテーブル
-         output_order                                                                               -- 出力順
-        ,location_cd                                                                                -- 拠点コード
-        ,location_nm                                                                                -- 拠点名
-        ,item_cd                                                                                    -- コード
-        ,item_nm                                                                                    -- 名称
-        ,year_month                                                                                 -- 年月
-        ,amount                                                                                     -- 数量
-        ,sales                                                                                      -- 売上
-        ,cost                                                                                       -- 原価
-        ,margin                                                                                     -- 粗利益額
-        ,margin_rate                                                                                -- 粗利益率
-        ,rate                                                                                       -- 掛率
-        ,discount                                                                                   -- 値引
-        )
-       VALUES(
-         gn_index                                                                                   -- 出力順
-        ,gv_kyoten_cd                                                                               -- 拠点コード
-        ,gv_kyoten_nm                                                                               -- 拠点名
-        ,NULL                                                                                       -- コード
-        ,gv_prf_item_discount                                                                       -- 名称
-        ,gn_index                                                                                   -- 年月
-        ,NULL                                                                                       -- 数量
-        ,NULL                                                                                       -- 売上
-        ,NULL                                                                                       -- 原価
-        ,NULL                                                                                       -- 粗利益額
-        ,NULL                                                                                       -- 粗利益率
-        ,NULL                                                                                       -- 掛率
-        ,0                                                                                          -- 値引
-        );
---
-       gn_index := gn_index + 1;                                                                    -- 登録順をインクリメント
-       ln_cnt   := ln_cnt   + 1;
-      END LOOP no_data_loop;
-    END IF;
+         gn_index := gn_index + 1;                                                                    -- 登録順をインクリメント
+         ln_cnt   := ln_cnt   + 1;
+        END LOOP no_data_loop;
+      END IF;
+--//+ADD START 2010/12/14 E_本稼動_05803 Y.Kanami
+    END LOOP;
+--//+ADD END 2010/12/14 E_本稼動_05803 Y.Kanami
 --#################################  固定例外処理部  #############################
 --
   EXCEPTION
@@ -1543,26 +1887,134 @@ AS
 -- ============================================
     CURSOR count_location_cur
     IS
-      SELECT    DECODE(gv_genkacd,cv_normal,SUM(xcg4.now_item_cost * xipl.amount)
-                      ,SUM(xcg4.now_business_cost * xipl.amount)) cost                              -- 拠点別月別原価
-               ,SUM(xcg4.now_unit_price * xipl.amount)      unit_price                              -- 拠点別月別計定価
-               ,SUM(xipl.sales_budget)                      sales_budget                            -- 拠点別月別計売上金額
-               ,SUM(xipl.amount)                            amount                                  -- 拠点別月別数量
-               ,xipl.year_month                                                                     -- 年月
-      FROM      xxcsm_item_plan_lines                       xipl                                    -- 商品計画明細テーブル
-               ,xxcsm_item_plan_headers                     xiph                                    -- 商品計画ヘッダテーブル
-               ,xxcsm_commodity_group4_v                    xcg4                                    -- 政策群４ビュー
-      WHERE     xiph.item_plan_header_id  = xipl.item_plan_header_id                                -- ヘッダID
-        AND     xiph.plan_year            = gn_taisyoyear                                           -- 予算年度
-        AND     xiph.location_cd          = gv_kyoten_cd                                            -- 拠点コード
---//+UPD START 2009/02/13 CT016 S.Son
-      --AND   xipl.item_kbn            = cv_single_item                                             -- 商品区分(1 = 商品単品)
-        AND   xipl.item_kbn            <> cv_group_kbn                                              -- 商品区分(1 = 商品単品、2 = 新商品)
---//+UPD END 2009/02/13 CT016 S.Son
-        AND     xipl.item_no              = xcg4.item_cd                                            -- 商品コード
-      GROUP BY  xipl.year_month                                                                     -- 年月
-      ORDER BY  xipl.year_month;                                                                    -- 年月
+--//+UPD START 2011/01/17 E_本稼動_05803 PT対応 Y.Kanami
+--      SELECT    DECODE(gv_genkacd,cv_normal,SUM(xcg4.now_item_cost * xipl.amount)
+--                      ,SUM(xcg4.now_business_cost * xipl.amount)) cost                              -- 拠点別月別原価
+--               ,SUM(xcg4.now_unit_price * xipl.amount)      unit_price                              -- 拠点別月別計定価
+--               ,SUM(xipl.sales_budget)                      sales_budget                            -- 拠点別月別計売上金額
+--               ,SUM(xipl.amount)                            amount                                  -- 拠点別月別数量
+--               ,xipl.year_month                                                                     -- 年月
+---- //+ADD START 2010/12/14 E_本稼動_05803 Y.Kanami
+--               ,xipb.sales_discount                         sales_discount                          -- 売上値引
+--               ,xipb.receipt_discount                       receipt_discount                        -- 入金値引
+---- //+ADD END 2010/12/14 E_本稼動_05803 Y.Kanami
+--      FROM      xxcsm_item_plan_lines                       xipl                                    -- 商品計画明細テーブル
+--               ,xxcsm_item_plan_headers                     xiph                                    -- 商品計画ヘッダテーブル
+--               ,xxcsm_commodity_group4_v                    xcg4                                    -- 政策群４ビュー
+---- //+ADD START 2010/12/14 E_本稼動_05803 Y.Kanami
+--               ,xxcsm_item_plan_loc_bdgt                    xipb                                    -- 商品計画拠点別予算
+---- //+ADD END 2010/12/14 E_本稼動_05803 Y.Kanami
+--      WHERE     xiph.item_plan_header_id  = xipl.item_plan_header_id                                -- ヘッダID
+--        AND     xiph.plan_year            = gn_taisyoyear                                           -- 予算年度
+--        AND     xiph.location_cd          = gv_kyoten_cd                                            -- 拠点コード
+----//+UPD START 2009/02/13 CT016 S.Son
+--      --AND   xipl.item_kbn            = cv_single_item                                             -- 商品区分(1 = 商品単品)
+--        AND   xipl.item_kbn            <> cv_group_kbn                                              -- 商品区分(1 = 商品単品、2 = 新商品)
+----//+UPD END 2009/02/13 CT016 S.Son
+--        AND     xipl.item_no              = xcg4.item_cd                                            -- 商品コード
+---- //+ADD START 2010/12/14 E_本稼動_05803 Y.Kanami
+--        AND     xiph.item_plan_header_id = xipb.item_plan_header_id                                 -- ヘッダID
+--        AND     xipl.month_no = xipb.month_no                                                       -- 月
+---- //+ADD END 2010/12/14 E_本稼動_05803 Y.Kanami
+--      GROUP BY  xipl.year_month                                                                     -- 年月
+---- //+ADD START 2010/12/14 E_本稼動_05803 Y.Kanami
+--               ,xipb.sales_discount                                                                 -- 売上値引
+--               ,xipb.receipt_discount                                                               -- 入金値引
+---- //+ADD END 2010/12/14 E_本稼動_05803 Y.Kanami
+--      ORDER BY  xipl.year_month;                                                                    -- 年月
 --
+      SELECT    sub.year_month                                                                    -- 年月
+               ,DECODE(gv_genkacd,cv_normal,SUM(sub.now_item_cost * sub.amount)
+                      ,SUM(sub.now_business_cost * sub.amount)) cost                              -- 拠点別月別原価
+               ,SUM(sub.now_unit_price * sub.amount)            unit_price                        -- 拠点別月別計定価
+               ,SUM(sub.sales_budget)                           sales_budget                      -- 拠点別月別計売上金額
+               ,SUM(sub.amount)                                 amount                            -- 拠点別月別数量
+               ,sub.sales_discount                              sales_discount                    -- 売上値引
+               ,sub.receipt_discount                            receipt_discount                  -- 入金値引
+      FROM (
+              SELECT  /*+ LEADING(fifs mcsb mcb) */
+                      xipl.year_month                                           year_month
+                    , NVL(  (
+                              SELECT SUM(ccmd.cmpnt_cost)  cmpnt_cost
+                              FROM   cm_cmpt_dtl     ccmd
+                                    ,cm_cldr_dtl     ccld
+                              WHERE  ccmd.calendar_code = ccld.calendar_code
+                              AND    ccmd.whse_code     = cv_whse_code
+                              AND    ccmd.period_code   = ccld.period_code
+                              AND    ccld.start_date   <= gd_process_date
+                              AND    ccld.end_date     >= gd_process_date
+                              AND    ccmd.item_id       = iimb.item_id
+                            )
+                          , NVL(iimb.attribute8, 0)
+                      )                                                         now_item_cost
+                    , NVL(iimb.attribute8, 0)                                   now_business_cost
+                    , NVL(iimb.attribute5, 0)                                   now_unit_price
+                    , xipl.amount                                               amount
+                    , xipl.sales_budget                                         sales_budget
+                    , xipb.sales_discount                                       sales_discount
+                    , xipb.receipt_discount                                     receipt_discount
+                FROM  mtl_categories_b            mcb2
+                    , mtl_category_sets_b         mcsb2
+                    , fnd_id_flex_structures      fifs2
+                    , gmi_item_categories         gic
+                    , ic_item_mst_b               iimb
+                    , xxcmm_system_items_b        xsib
+                    , xxcsm_item_plan_headers     xiph
+                    , xxcsm_item_plan_lines       xipl
+                    , xxcsm_item_plan_loc_bdgt    xipb
+              WHERE   mcsb2.structure_id              =   mcb2.structure_id
+              AND     mcb2.enabled_flag               =   cv_flg_y
+              AND     NVL(mcb2.disable_date,gd_process_date)  <=  gd_process_date
+              AND     fifs2.id_flex_structure_code    =   cv_sgun_code
+              AND     fifs2.application_id            =   cn_appl_id 
+              AND     fifs2.id_flex_code              =   cv_mcat
+              AND     fifs2.id_flex_num               =   mcsb2.structure_id
+              AND     gic.category_id                 =   mcb2.category_id
+              AND     gic.category_set_id             =   mcsb2.category_set_id
+              AND     gic.item_id                     =   iimb.item_id
+              AND     iimb.item_id                    =   xsib.item_id
+              AND     xsib.item_status                =   cv_item_status_30
+              AND     xiph.item_plan_header_id        =   xipl.item_plan_header_id  -- ヘッダID
+              AND     xiph.item_plan_header_id        =   xipb.item_plan_header_id
+              AND     xiph.plan_year                  =   gn_taisyoyear             -- 予算年度
+              AND     xiph.location_cd                =   gv_kyoten_cd              -- 拠点コード
+              AND     xipl.item_kbn                   <>  cv_group_kbn              -- 商品区分(1 = 商品単品、2 = 新商品)
+              AND     xipl.item_no                    =   iimb.item_no              -- 商品コード
+              AND     xipl.month_no                   =   xipb.month_no
+              AND EXISTS(
+                        SELECT  /*+ LEADING(fifs mcsb mcb) */
+                                1
+                        FROM    mtl_categories_b            mcb
+                              , mtl_category_sets_b         mcsb
+                              , fnd_id_flex_structures      fifs
+                        WHERE   mcsb.structure_id               =   mcb.structure_id
+                        AND     mcb.enabled_flag                =   cv_flg_y
+                        AND     NVL(mcb.disable_date, gd_process_date) <=  gd_process_date
+                        AND     fifs.id_flex_structure_code     =   cv_sgun_code
+                        AND     fifs.application_id             =   cn_appl_id 
+                        AND     fifs.id_flex_code               =   cv_mcat
+                        AND     fifs.id_flex_num                =   mcsb.structure_id
+                        AND     INSTR(mcb.segment1, '*', 1, 1)  =   2
+                        AND     SUBSTRB(mcb.segment1, 1, 1)     =   SUBSTRB(mcb2.segment1, 1, 1)
+                      UNION ALL
+                        SELECT  1
+                        FROM    fnd_lookup_values       flv
+                        WHERE   flv.lookup_type         =   cv_item_group
+                        AND     flv.language            =   cv_ja
+                        AND     flv.enabled_flag        =   cv_flg_y
+                        AND     gd_process_date  BETWEEN NVL(flv.start_date_active, gd_process_date)
+                                                 AND     NVL(flv.end_date_active, gd_process_date)
+                        AND     INSTR(flv.lookup_code, '*', 1, 1) =   2
+                        AND     SUBSTRB(flv.lookup_code, 1, 1)    =   SUBSTRB(mcb2.segment1, 1, 1)
+                    )
+          ) sub
+      GROUP BY  year_month          -- 年月
+              , sales_discount      -- 売上値引
+              , receipt_discount    -- 入金値引
+      ORDER BY  year_month          -- 年月
+      ;
+
+--//+UPD END 2011/01/17 E_本稼動_05803 PT対応 Y.Kanami
     count_location_rec   count_location_cur%ROWTYPE;
 --
   BEGIN
@@ -1601,7 +2053,11 @@ AS
       --月別商品区分数量
       ln_m_amount        := count_location_rec.amount;                                              -- 数量
       --月別商品区分売上
-      ln_m_sales         := count_location_rec.sales_budget;                                        -- 売上金額 
+-- //+UPD START 2010/12/14 E_本稼動_05803 Y.Kanami
+--      ln_m_sales         := count_location_rec.sales_budget;                                        -- 売上金額 
+      ln_m_sales         := count_location_rec.sales_budget + count_location_rec.sales_discount + count_location_rec.receipt_discount;
+                                                                                                      -- 売上金額+売上値引+入金値引
+-- //+UPD END 2010/12/14 E_本稼動_05803 Y.Kanami
       --月別商品区分原価
       ln_m_cost          := count_location_rec.cost;                                                -- 原価
       --月別商品区分粗利益額
@@ -1782,38 +2238,149 @@ AS
     CURSOR
         get_item_data_cur
     IS
-      SELECT    xcg4.group1_cd                              group1_cd                               -- 商品群コード1
-               ,xcg4.group1_nm                              group1_nm                               -- 商品群名称1
-               ,xcg4.group4_cd                              item_cd                                 -- 商品群コード
-               ,xcg4.group4_nm                              item_nm                                 -- 商品群名称
-               ,DECODE(gv_genkacd,cv_normal,SUM(xcg4.now_item_cost * xipl.amount)
-                      ,SUM(xcg4.now_business_cost * xipl.amount)) cost                              -- 商品群年間計画原価
-               ,SUM(xcg4.now_unit_price * xipl.amount)      unit_price                              -- 商品群別年間計定価
-               ,SUM(xipl.sales_budget)                      sales_budget                            -- 商品群別年間計売上金額
-               ,SUM(xipl.amount)                            amount                                  -- 商品群別年間計数量
-      FROM      xxcsm_item_plan_lines                       xipl                                    -- 商品計画明細テーブル
-               ,xxcsm_item_plan_headers                     xiph                                    -- 商品計画ヘッダテーブル
-               ,xxcsm_commodity_group4_v                    xcg4                                    -- 政策群４ビュー
-      WHERE     xiph.item_plan_header_id = xipl.item_plan_header_id                                 -- ヘッダID
-        AND     xiph.plan_year           = gn_taisyoyear                                            -- 予算年度
-        AND     xiph.location_cd         = gv_kyoten_cd                                             -- 拠点コード
---//+UPD START 2009/02/13 CT016 S.Son
-      --AND   xipl.item_kbn            = cv_single_item                                             -- 商品区分(1 = 商品単品)
-        AND   xipl.item_kbn            <> cv_group_kbn                                              -- 商品区分(1 = 商品単品、2 = 新商品)
---//+UPD END 2009/02/13 CT016 S.Son
-        AND     xipl.item_no             = xcg4.item_cd                                             -- 商品コード
-      GROUP BY  xcg4.group1_cd                                                                      -- 商品群コード1
-               ,xcg4.group1_nm                                                                      -- 商品群名称1
-               ,xcg4.group4_cd                                                                      -- 商品群コード
-               ,xcg4.group4_nm                                                                      -- 商品群名称
---//+DEL START 2009/02/17 CT025 M.Ohtsuki
---             ,xcg4.now_item_cost                                                                  -- 標準原価(現時点)
---             ,xcg4.now_business_cost                                                              -- 営業原価(現時点)
---             ,xcg4.now_unit_price                                                                 -- 定価(現時点)
---//+DEL END   2009/02/17 CT025 M.Ohtsuki
-      ORDER BY  xcg4.group1_cd                                                                      -- 商品群コード1
-               ,xcg4.group1_nm;                                                                     -- 商品群名称1
+--//+UPD START 2011/01/17 E_本稼動_05803 PT対応 Y.Kanami
+--      SELECT    xcg4.group1_cd                              group1_cd                               -- 商品群コード1
+--               ,xcg4.group1_nm                              group1_nm                               -- 商品群名称1
+--               ,xcg4.group4_cd                              item_cd                                 -- 商品群コード
+--               ,xcg4.group4_nm                              item_nm                                 -- 商品群名称
+--               ,DECODE(gv_genkacd,cv_normal,SUM(xcg4.now_item_cost * xipl.amount)
+--                      ,SUM(xcg4.now_business_cost * xipl.amount)) cost                              -- 商品群年間計画原価
+--               ,SUM(xcg4.now_unit_price * xipl.amount)      unit_price                              -- 商品群別年間計定価
+--               ,SUM(xipl.sales_budget)                      sales_budget                            -- 商品群別年間計売上金額
+--               ,SUM(xipl.amount)                            amount                                  -- 商品群別年間計数量
+--      FROM      xxcsm_item_plan_lines                       xipl                                    -- 商品計画明細テーブル
+--               ,xxcsm_item_plan_headers                     xiph                                    -- 商品計画ヘッダテーブル
+--               ,xxcsm_commodity_group4_v                    xcg4                                    -- 政策群４ビュー
+--      WHERE     xiph.item_plan_header_id = xipl.item_plan_header_id                                 -- ヘッダID
+--        AND     xiph.plan_year           = gn_taisyoyear                                            -- 予算年度
+--        AND     xiph.location_cd         = gv_kyoten_cd                                             -- 拠点コード
+----//+UPD START 2009/02/13 CT016 S.Son
+--      --AND   xipl.item_kbn            = cv_single_item                                             -- 商品区分(1 = 商品単品)
+--        AND   xipl.item_kbn            <> cv_group_kbn                                              -- 商品区分(1 = 商品単品、2 = 新商品)
+----//+UPD END 2009/02/13 CT016 S.Son
+--        AND     xipl.item_no             = xcg4.item_cd                                             -- 商品コード
+--      GROUP BY  xcg4.group1_cd                                                                      -- 商品群コード1
+--               ,xcg4.group1_nm                                                                      -- 商品群名称1
+--               ,xcg4.group4_cd                                                                      -- 商品群コード
+--               ,xcg4.group4_nm                                                                      -- 商品群名称
+----//+DEL START 2009/02/17 CT025 M.Ohtsuki
+----             ,xcg4.now_item_cost                                                                  -- 標準原価(現時点)
+----             ,xcg4.now_business_cost                                                              -- 営業原価(現時点)
+----             ,xcg4.now_unit_price                                                                 -- 定価(現時点)
+----//+DEL END   2009/02/17 CT025 M.Ohtsuki
+--      ORDER BY  xcg4.group1_cd                                                                      -- 商品群コード1
+--               ,xcg4.group1_nm;                                                                     -- 商品群名称1
 --
+      SELECT    sub.group1_cd                                   group1_cd                           -- 商品群コード1
+               ,sub.group1_nm                                   group1_nm                           -- 商品群名称1
+               ,sub.group4_cd                                   item_cd                             -- 商品群コード
+               ,sub.group4_nm                                   item_nm                             -- 商品群名称
+               ,DECODE(gv_genkacd,cv_normal,SUM(sub.now_item_cost * sub.amount)
+                      ,SUM(sub.now_business_cost * sub.amount)) cost                                -- 商品群年間計画原価
+               ,SUM(sub.now_unit_price * sub.amount)            unit_price                          -- 商品群別年間計定価
+               ,SUM(sub.sales_budget)                           sales_budget                        -- 商品群別年間計売上金額
+               ,SUM(sub.amount)                                 amount                              -- 商品群別年間計数量
+      FROM (
+              SELECT  /*+ LEADING(fifs mcsb mcb) */
+                      SUBSTRB(mcb2.segment1, 1, 1)              group1_cd -- "１桁群"
+                    , ( SELECT  mct_g1.description    description
+                        FROM    mtl_categories_b      mcb_g1
+                              , mtl_categories_tl     mct_g1
+                        WHERE   mcb_g1.category_id    = mct_g1.category_id
+                        AND     mct_g1.language       = cv_ja
+                        AND     mcb_g1.segment1       = SUBSTRB(mcb2.segment1, 1, 1)  ||  '***'
+                        UNION
+                        SELECT  flv.meaning           description
+                        FROM    fnd_lookup_values     flv
+                        WHERE   flv.lookup_type       =   cv_item_group
+                        AND     flv.language          =   cv_ja
+                        AND     flv.enabled_flag      =   cv_flg_y
+                        AND     flv.lookup_code       =   SUBSTRB(mcb2.segment1, 1, 1)  ||  '***'
+                        AND     gd_process_date  BETWEEN NVL(TRUNC(flv.start_date_active), gd_process_date)
+                                                 AND     NVL(TRUNC(flv.end_date_active),   gd_process_date)
+                      )                                         group1_nm -- １桁群（名称）
+                    , mcb2.segment1                             group4_cd
+                    , mct.description                           group4_nm
+                    , NVL(  (
+                              SELECT SUM(ccmd.cmpnt_cost)  cmpnt_cost
+                              FROM   cm_cmpt_dtl     ccmd
+                                    ,cm_cldr_dtl     ccld
+                              WHERE  ccmd.calendar_code = ccld.calendar_code
+                              AND    ccmd.whse_code     = cv_whse_code
+                              AND    ccmd.period_code   = ccld.period_code
+                              AND    ccld.start_date   <= gd_process_date
+                              AND    ccld.end_date     >= gd_process_date
+                              AND    ccmd.item_id       = iimb.item_id
+                            )
+                          , NVL(iimb.attribute8, 0)
+                      )                                                         now_item_cost
+                    , NVL(iimb.attribute8, 0)                                   now_business_cost
+                    , NVL(iimb.attribute5, 0)                                   now_unit_price
+                    , xipl.amount                                               amount
+                    , xipl.sales_budget                                         sales_budget
+              FROM    mtl_categories_b            mcb2
+                    , mtl_category_sets_b         mcsb2
+                    , mtl_categories_tl           mct
+                    , fnd_id_flex_structures      fifs2
+                    , gmi_item_categories         gic
+                    , ic_item_mst_b               iimb
+                    , xxcmm_system_items_b        xsib
+                    , xxcsm_item_plan_headers     xiph
+                    , xxcsm_item_plan_lines       xipl
+              WHERE   mcsb2.structure_id              =   mcb2.structure_id
+              AND     mcb2.enabled_flag               =   cv_flg_y
+              AND     NVL(mcb2.disable_date,gd_process_date)  <=  gd_process_date
+              AND     fifs2.id_flex_structure_code    =   cv_sgun_code
+              AND     fifs2.application_id            =   cn_appl_id 
+              AND     fifs2.id_flex_code              =   cv_mcat
+              AND     fifs2.id_flex_num               =   mcsb2.structure_id
+              AND     gic.category_id                 =   mcb2.category_id
+              AND     gic.category_set_id             =   mcsb2.category_set_id
+              AND     gic.item_id                     =   iimb.item_id
+              AND     iimb.item_id                    =   xsib.item_id
+              AND     xsib.item_status                =   cv_item_status_30
+              AND     xiph.item_plan_header_id        =   xipl.item_plan_header_id  -- ヘッダID
+              AND     xiph.plan_year                  =   gn_taisyoyear             -- 予算年度
+              AND     xiph.location_cd                =   gv_kyoten_cd              -- 拠点コード
+              AND     mcb2.category_id                =   mct.category_id
+              AND     mct.language                    =   cv_ja
+              AND     xipl.item_kbn                   <>  cv_group_kbn              -- 商品区分(1 = 商品単品、2 = 新商品)
+              AND     xipl.item_no                    =   iimb.item_no                -- 商品コード
+              AND EXISTS(
+                        SELECT  /*+ LEADING(fifs mcsb mcb) */
+                                1
+                        FROM    mtl_categories_b            mcb
+                              , mtl_category_sets_b         mcsb
+                              , fnd_id_flex_structures      fifs
+                        WHERE   mcsb.structure_id               =   mcb.structure_id
+                        AND     mcb.enabled_flag                =   cv_flg_y
+                        AND     NVL(mcb.disable_date,gd_process_date) <=  gd_process_date
+                        AND     fifs.id_flex_structure_code     =   cv_sgun_code
+                        AND     fifs.application_id             =   cn_appl_id 
+                        AND     fifs.id_flex_code               =   cv_mcat
+                        AND     fifs.id_flex_num                =   mcsb.structure_id
+                        AND     INSTR(mcb.segment1, '*', 1, 1)  =   2
+                        AND     SUBSTRB(mcb.segment1, 1, 1)     =   SUBSTRB(mcb2.segment1, 1, 1)
+                      UNION ALL
+                        SELECT  1
+                        FROM    fnd_lookup_values       flv
+                        WHERE   flv.lookup_type         =   cv_item_group
+                        AND     flv.language            =   cv_ja
+                        AND     flv.enabled_flag        =   cv_flg_y
+                        AND     gd_process_date  BETWEEN NVL(flv.start_date_active, gd_process_date)
+                                                 AND     NVL(flv.end_date_active, gd_process_date)
+                        AND     INSTR(flv.lookup_code, '*', 1, 1) =   2
+                        AND     SUBSTRB(flv.lookup_code, 1, 1)    =   SUBSTRB(mcb2.segment1, 1, 1)
+                    )
+          ) sub
+      GROUP BY  group1_cd                                                                      -- 商品群コード1
+               ,group1_nm                                                                      -- 商品群名称1
+               ,group4_cd                                                                      -- 商品群コード
+               ,group4_nm                                                                      -- 商品群名称
+      ORDER BY  group1_cd                                                                      -- 商品群コード1
+               ,group1_nm                                                                      -- 商品群名称1
+      ;
+--//+UPD END 2011/01/17 E_本稼動_05803 PT対応 Y.Kanami
     get_item_data_rec   get_item_data_cur%ROWTYPE;
 --
 --
@@ -1851,7 +2418,10 @@ AS
     -- =============================================================================================
     -- (A-10) 商品群月別集計  (A-11) 月別商品群区分データ登録処理
     -- =============================================================================================
-      IF (get_item_data_rec.sales_budget <> 0) THEN                                                 -- (売上金額 = 0)の場合処理はしない
+-- MODIFY  START  DATE:2011/01/06  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+--      IF (get_item_data_rec.sales_budget <> 0) THEN                                                 -- (売上金額 = 0)の場合処理はしない
+      IF get_item_data_rec.sales_budget <> 0 OR get_item_data_rec.amount <> 0 THEN                  -- (売上金額 = 0且つ数量 = 0)の場合処理はしない
+-- MODIFY  END  DATE:2011/01/06  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
         count_item_group(
                         iv_item_cd       => get_item_data_rec.item_cd                               -- 商品群コード
                        ,iv_item_nm       => get_item_data_rec.item_nm                               -- 商品群名称
@@ -2269,10 +2839,16 @@ AS
         --IF (lv_item_nm <> get_output_data_rec.item_nm) THEN                                         -- 名称ブレイク時
         IF (lv_item_cd <> get_output_data_rec.item_cd)
           OR (get_output_data_rec.item_cd IS NULL AND get_output_data_rec.item_nm = gv_prf_item_discount AND lv_item_nm <> get_output_data_rec.item_nm )
+--//+ADD START 2010/12/14 E_本稼動_05803 Y.Kanami 
+          OR (get_output_data_rec.item_cd IS NULL AND get_output_data_rec.item_nm = gv_prf_down_pay AND lv_item_nm <> get_output_data_rec.item_nm )
+--//+ADD END 2010/12/14 E_本稼動_05803 Y.Kanami
           OR (get_output_data_rec.item_cd IS NULL AND get_output_data_rec.item_nm = gv_prf_item_sum AND lv_item_nm <> get_output_data_rec.item_nm ) 
           OR (get_output_data_rec.item_cd IS NULL AND get_output_data_rec.item_nm = gv_prf_foothold_sum AND lv_item_nm <> get_output_data_rec.item_nm) THEN                                         -- 商品群コードブレイク時
         --//+UPD END 2009/05/25 T1_1169 A.Sakawa
-          IF (lv_item_nm = gv_prf_item_discount) THEN  
+--//+UPD START 2010/12/14 E_本稼動_05803 Y.Kanami 
+--          IF (lv_item_nm = gv_prf_item_discount) THEN  
+          IF (lv_item_nm IN (gv_prf_item_discount, gv_prf_down_pay)) THEN  
+--//+UPD END 2010/12/14 E_本稼動_05803 Y.Kanami
             fnd_file.put_line(
                               which  => FND_FILE.OUTPUT
                              ,buff   => lv_out_discount
@@ -2342,10 +2918,12 @@ AS
                            || cv_msg_duble || get_output_data_rec.item_nm || cv_msg_duble
                            || cv_msg_comma
                            || cv_msg_duble || gv_prf_amount               || cv_msg_duble;
-
 --
           ELSE                                                                                      -- コードがNULL
-            IF (get_output_data_rec.item_nm = gv_prf_item_discount) THEN
+--//+UPD START 2010/12/14 E_本稼動_05803 Y.Kanami 
+--            IF (get_output_data_rec.item_nm = gv_prf_item_discount) THEN
+            IF (get_output_data_rec.item_nm IN (gv_prf_item_discount, gv_prf_down_pay)) THEN
+--//+UPD END 2010/12/14 E_本稼動_05803 Y.Kanami 
              --ヘッダーデータ作成(ブランク，ブランク，ブランク，売上値引，ブランク)
             lv_out_discount := cv_msg_duble || cv_msg_space                || cv_msg_duble
                             || cv_msg_comma

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A07C(body)
  * Description      : 商品計画群別チェックリスト出力
  * MD.050           : 商品計画群別チェックリスト出力 MD050_CSM_002_A07
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009-02-10    1.1   M.Ohtsuki       ［障害CT_005］類似機能動作統一修正
  *  2009-02-16    1.2   M.Ohtsuki       ［障害CT_019］分母0の不具合の対応
  *  2009-02-23    1.3   K.Yamada        ［障害CT_058］粗利益率不具合の対応
+ *  2011-01-18    1.4   Y.Kanami        ［E_本稼動_05803］
  *
  *****************************************************************************************/
 --
@@ -706,12 +707,19 @@ AS
     FROM
        xxcsm_item_plan_headers  iph   --商品計画ヘッダテーブル
       ,xxcsm_item_plan_lines    ipl   --商品計画明細テーブル
-      ,xxcsm_item_plan_result   ipr   --商品計画用販売実績テーブル
+--//+DEL START E_本稼動_05803 Y.Kanami
+--      ,xxcsm_item_plan_result   ipr   --商品計画用販売実績テーブル
+--//+DEL END E_本稼動_05803 Y.Kanami
     WHERE
         iph.item_plan_header_id = ipl.item_plan_header_id
     AND iph.plan_year           = TO_NUMBER(iv_yyyy)
-    AND iph.location_cd         = ipr.location_cd
-    AND ipr.location_cd         = DECODE(iv_kyoten_cd, gt_allkyoten_cd, ipr.location_cd, iv_kyoten_cd)
+--//+DEL START E_本稼動_05803 Y.Kanami
+--    AND iph.location_cd         = ipr.location_cd
+--//+DEL END E_本稼動_05803 Y.Kanami
+--//+UPD START E_本稼動_05803 Y.Kanami
+--    AND ipr.location_cd         = DECODE(iv_kyoten_cd, gt_allkyoten_cd, ipr.location_cd, iv_kyoten_cd)
+    AND iph.location_cd         = DECODE(iv_kyoten_cd, gt_allkyoten_cd, iph.location_cd, iv_kyoten_cd)
+--//+UPD END E_本稼動_05803 Y.Kanami
     AND ipl.item_kbn            = cv_item_gun
     AND ROWNUM = 1;
 
