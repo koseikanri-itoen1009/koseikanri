@@ -7,7 +7,7 @@ AS
  * Description      : 仕入（帳票）
  * MD.050/070       : 仕入（帳票）Issue1.0  (T_MD050_BPO_360)
  *                    代行請求書            (T_MD070_BPO_36F)
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2009/03/30    1.14  A.Shiina         本番障害#1346
  *  2009/05/26    1.15  T.Yoshimoto      本番障害#1478
  *  2009/06/02    1.16  T.Yoshimoto      本番障害#1516
+ *  2009/06/22    1.17  T.Yoshimoto      本番障害#1516(再)※v1.15対応時の障害
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2342,21 +2343,27 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- 2009/06/22 v1.17 T.Yoshimoto Add Start 本番障害#1516(再)※v1.15対応時の障害
+    IF ( lt_main_data_before.COUNT > 0 ) THEN
+-- 2009/06/22 v1.17 T.Yoshimoto Add End 本番障害#1516(再)※v1.15対応時の障害
 -- 2009/05/26 v1.15 T.Yoshimoto Add Start
-    -- =====================================================
-    -- 取得レコードを編集処理
-    -- =====================================================
-    prc_edit_data(
-        ov_errbuf     => lv_errbuf             -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode    => lv_retcode            -- リターン・コード             --# 固定 #
-       ,ov_errmsg     => lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
-       ,it_data_rec   => lt_main_data_before   -- 入力パラメータ群
-       ,ot_data_rec   => lt_main_data   -- 取得レコード群
+      -- =====================================================
+      -- 取得レコードを編集処理
+      -- =====================================================
+      prc_edit_data(
+          ov_errbuf     => lv_errbuf             -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode    => lv_retcode            -- リターン・コード             --# 固定 #
+         ,ov_errmsg     => lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+         ,it_data_rec   => lt_main_data_before   -- 入力パラメータ群
+         ,ot_data_rec   => lt_main_data   -- 取得レコード群
       ) ;
-    IF (lv_retcode = gv_status_error) THEN
-      RAISE global_process_expt;
-    END IF;
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
 -- 2009/05/26 v1.15 T.Yoshimoto Add End
+-- 2009/06/22 v1.17 T.Yoshimoto Add Start 本番障害#1516(再)※v1.15対応時の障害
+    END IF;
+-- 2009/06/22 v1.17 T.Yoshimoto Add End 本番障害#1516(再)※v1.15対応時の障害
 --
     -- =====================================================
     -- 帳票データ出力
