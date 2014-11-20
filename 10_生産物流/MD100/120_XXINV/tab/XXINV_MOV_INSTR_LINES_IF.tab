@@ -3,19 +3,23 @@
  *
  * Sequence Name   : XXINV_MOV_INSTR_LINES_IF
  * Description     : 移動指示明細インタフェース
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2011/03/02    1.0   Y.Kanami         新規作成
+ *  2011/04/27    1.1   Y.Kanami         指定製造日の必須を削除
  ************************************************************************/
 CREATE TABLE xxinv.xxinv_mov_instr_lines_if(
     mov_line_if_id              NUMBER        NOT NULL
   , mov_hdr_if_id               NUMBER        NOT NULL
   , item_code                   VARCHAR2(7)   NOT NULL
-  , designated_production_date  DATE          NOT NULL
+-- 2011/04/27 MOD Start Y.Kanami
+  , designated_production_date  DATE
+--  , designated_production_date  DATE          NOT NULL
+-- 2011/04/27 MOD End Y.Kanami
   , first_instruct_qty          NUMBER        NOT NULL
   , created_by                  NUMBER(15,0)  NOT NULL
   , creation_date               DATE          NOT NULL
@@ -46,5 +50,3 @@ COMMENT ON COLUMN xxinv.xxinv_mov_instr_lines_if.request_id                  IS 
 COMMENT ON COLUMN xxinv.xxinv_mov_instr_lines_if.program_application_id      IS 'コンカレント・プログラム・アプリケーションID';
 COMMENT ON COLUMN xxinv.xxinv_mov_instr_lines_if.program_id                  IS 'コンカレント・プログラムID';
 COMMENT ON COLUMN xxinv.xxinv_mov_instr_lines_if.program_update_date         IS 'プログラム更新日';
-
-                              

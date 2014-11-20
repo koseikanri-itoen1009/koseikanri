@@ -6,7 +6,7 @@ AS
  * Package Name     : XXINV990010C(body)
  * Description      : 移動指示のアップロード
  * MD.050           : ファイルアップロード   T_MD050_BPO_990
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2011/02/24    1.0   SCS Y.Kanami     新規作成
+ *  2011/04/27    1.1   SCS Y.Kanami     指定製造日の任意化対応
  *
  *****************************************************************************************/
 --
@@ -1452,7 +1453,10 @@ AS
                                               , g_file_data_tab(ln_index).designated_production_date  -- CSVデータ
                                               , NULL                                                  -- 項目の長さ
                                               , NULL                                                  -- 項目の長さ(小数点)
-                                              , xxcmn_common3_pkg.gv_null_ng                          -- 必須(ng:必須、ok:任意)
+-- 2011/04/27 MOD Start Y.Kanami
+                                              , xxcmn_common3_pkg.gv_null_ok                          -- 必須(ng:必須、ok:任意)
+--                                              , xxcmn_common3_pkg.gv_null_ng                          -- 必須(ng:必須、ok:任意)
+-- 2011/04/27 MOD End Y.Kanami
                                               , xxcmn_common3_pkg.gv_attr_dat                         -- 属性
                                               , lv_errbuf
                                               , lv_retcode
