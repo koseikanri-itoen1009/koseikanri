@@ -7,7 +7,7 @@ AS
  * Description      : d“üæˆø–¾×•\
  * MD.050           : —Lx‹‹’ •[Issue1.0(T_MD050_BPO_360)
  * MD.070           : —Lx‹‹’ •[Issue1.0(T_MD070_BPO_36G)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2008/06/24    1.14  T.Ikehara        “Á’è•¶š—ñ‚ğo—Í‚µ‚æ‚¤‚Æ‚·‚é‚ÆAƒGƒ‰[‚Æ‚È‚è’ •[‚ªo—Í
  *                                       ‚³‚ê‚È‚¢Œ»Û‚Ö‚Ì‘Î‰
  *  2008/07/23    1.15  Y.Ishikawa       XXCMN_ITEM_CATEGORIES3_V¨XXCMN_ITEM_CATEGORIES6_V•ÏX
+ *  2008/11/06    1.16  Y.Yamamoto       “‡w“E#471‘Î‰AT_S_430‘Î‰
  *
  *****************************************************************************************/
 --
@@ -1710,8 +1711,12 @@ AS
                                , gt_main_data(ln_loop_index).kobikigo);
 --
       --d“ü‹àŠz
-      ln_siire :=  NVL(gt_main_data(ln_loop_index).quantity, 0)
-                 * NVL(gt_main_data(ln_loop_index).kobikigo, 0);
+-- 2008/11/06 v1.16 Y.Yamamoto update start
+--      ln_siire :=  NVL(gt_main_data(ln_loop_index).quantity, 0)
+--                 * NVL(gt_main_data(ln_loop_index).kobikigo, 0);
+      ln_siire :=  TRUNC( NVL(gt_main_data(ln_loop_index).quantity, 0)
+                        * NVL(gt_main_data(ln_loop_index).kobikigo, 0) );
+-- 2008/11/06 v1.16 Y.Yamamoto update start
       lb_ret := fnc_set_xml('Z', 'purchase_amount', ln_siire);
 --
       --Œû‘K‹àŠz
@@ -1743,7 +1748,10 @@ AS
       lb_ret := fnc_set_xml('N', 'commission', gt_main_data(ln_loop_index).kousen);
 --
       --Á”ïÅ(d“ü‹àŠz)
-      ln_tax_siire := ln_siire * NVL(gt_main_data(ln_loop_index).zeiritu, 0) / 100;
+-- 2008/11/06 v1.16 Y.Yamamoto update start
+--      ln_tax_siire := ln_siire * NVL(gt_main_data(ln_loop_index).zeiritu, 0) / 100;
+      ln_tax_siire := ROUND((ln_siire * NVL(gt_main_data(ln_loop_index).zeiritu, 0) / 100),0);
+-- 2008/11/06 v1.16 Y.Yamamoto update start
       lb_ret := fnc_set_xml('Z', 'purchase_amount_tax', ln_tax_siire);
 --
       --Á”ïÅ(Œû‘K‹àŠz)
