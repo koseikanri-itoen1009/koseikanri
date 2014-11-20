@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM001A01C(spec)
  * Description      : 仕入先マスタIF出力（情報系）
  * MD.050           : 仕入先マスタIF出力（情報系）MD050_CMM_001_A01
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  *  2008/12/16    1.0   SCS 工藤 真純    初回作成
  *  2009/03/09    1.1   SCS 瀧川 倫太郎  仕入先の銀行口座登録チェックをコメントアウト
  *  2009/05/13    1.2   SCS 吉川 博章    T1_0978対応
+ *  2009/12/04    1.3   SCS 仁木 重人    E_本稼動_00307対応
  *
  *****************************************************************************************/
 --
@@ -581,7 +582,10 @@ AS
 --             SUBSTRB(pvs.vendor_site_code,1,9)  vendor_site_code,   --仕入先サイトコード
              TO_CHAR( pvs.vendor_site_id )      vendor_site_code,   --仕入先サイトコード(仕入先サイトID)
 -- End
-             SUBSTRB(pv.vendor_name,1,100)      vendor_nm,          --仕入先名
+-- Ver1.3 Mod 2009/12/04 E_本稼動_00307対応
+--             SUBSTRB(pv.vendor_name,1,100)      vendor_nm,          --仕入先名
+             SUBSTRB(xxcso_util_common_pkg.conv_multi_byte(pv.vendor_name),1,100)      vendor_nm,          --仕入先名
+-- End
              DECODE(SUBSTRB(pvs.zip,4,1), '-', SUBSTRB(pvs.zip,1,3)||SUBSTRB(pvs.zip,5,4), SUBSTRB(pvs.zip,1,7))
                                                 zip,                --郵便番号
              SUBSTRB(pvs.state,1,100)           state,              --都道府県
@@ -625,7 +629,10 @@ AS
 --             SUBSTRB(pvs.vendor_site_code,1,9)  vendor_site_code,   --仕入先サイトコード
              TO_CHAR( pvs.vendor_site_id )      vendor_site_code,   --仕入先サイトコード(仕入先サイトID)
 -- End
-             SUBSTRB(pv.vendor_name,1,100)      vendor_nm,          --仕入先名
+-- Ver1.3 Mod 2009/12/04 E_本稼動_00307対応
+--             SUBSTRB(pv.vendor_name,1,100)      vendor_nm,          --仕入先名
+             SUBSTRB(xxcso_util_common_pkg.conv_multi_byte(pv.vendor_name),1,100)      vendor_nm,          --仕入先名
+-- End
              DECODE(SUBSTRB(pvs.zip,4,1), '-', SUBSTRB(pvs.zip,1,3)||SUBSTRB(pvs.zip,5,4), SUBSTRB(pvs.zip,1,7))
                                                 zip,                --郵便番号
              SUBSTRB(pvs.state,1,100)           state,              --都道府県
