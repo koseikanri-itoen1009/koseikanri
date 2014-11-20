@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/04/03    1.5   T.Kitajima       [T1_0247]HHTエラーリスト登録データ不正対応
  *                                       [T1_0256]保管場所取得方法修正対応
  *  2009/04/06    1.6   T.Kitajima       [T1_0329]TASK登録エラー対応
+ *  2009/04/09    1.7   N.Maeda          [T1_0465]顧客名称、拠点名称の桁数制御追加
  *
  *****************************************************************************************/
 --
@@ -1755,7 +1756,7 @@ AS
         --== 顧客マスタデータ抽出 ==--
         -- 既に取得済みの値であるかを確認する。
         IF ( gt_select_cus.EXISTS(lt_customer_number) ) THEN
-          lt_customer_name  := gt_select_cus(lt_customer_number).customer_name;   -- 顧客名称
+          lt_customer_name  := SUBSTRB( gt_select_cus(lt_customer_number).customer_name, 1, 40 );   -- 顧客名称
           lt_customer_id    := gt_select_cus(lt_customer_number).customer_id;     -- 顧客ID
           lt_party_id       := gt_select_cus(lt_customer_number).party_id;        -- パーティID
           lt_sale_base      := gt_select_cus(lt_customer_number).sale_base;       -- 売上拠点コード
@@ -1766,12 +1767,12 @@ AS
           lt_resource_id    := gt_select_cus(lt_customer_number).resource_id;     -- リソースID
 --****************************** 2009/04/06 1.6 T.Kitajima ADD  END  ******************************--
           lt_bus_low_type   := gt_select_cus(lt_customer_number).bus_low_type;    -- 業態（小分類）
-          lt_base_name      := gt_select_cus(lt_customer_number).base_name;       -- 拠点名称
+          lt_base_name      := SUBSTRB( gt_select_cus(lt_customer_number).base_name, 1, 30 );       -- 拠点名称
           lt_hht_class      := gt_select_cus(lt_customer_number).dept_hht_div;    -- 百貨店用HHT区分
           lt_base_perf      := gt_select_cus(lt_customer_number).base_perf;       -- 拠点コード（成績者）
           lt_base_dlv       := gt_select_cus(lt_customer_number).base_dlv;        -- 拠点コード（納品者）
         ELSE
-          SELECT parties.party_name           party_name,                         -- 顧客名称
+          SELECT SUBSTRB(parties.party_name,1,40)  party_name,                    -- 顧客名称
                  cust.cust_account_id         cust_account_id,                    -- 顧客ID
                  cust.party_id                party_id,                           -- パーティID
                  custadd.sale_base_code       sale_base_code,                     -- 売上拠点コード
@@ -1780,7 +1781,7 @@ AS
                  salesreps.employee_number    employee_number,                    -- 担当営業員
                  salesreps.resource_id        resource_id,                        -- リソースID
                  custadd.business_low_type    business_low_type,                  -- 業態（小分類）
-                 base.account_name            account_name,                       -- 拠点名称
+                 SUBSTRB(base.account_name,1,30)  account_name,                   -- 拠点名称
                  baseadd.dept_hht_div         dept_hht_div,                       -- 百貨店用HHT区分
                  rivp.base_code               base_code,                          -- 拠点コード（成績者）
                  rivd.base_code               base_code                           -- 拠点コード（納品者）
