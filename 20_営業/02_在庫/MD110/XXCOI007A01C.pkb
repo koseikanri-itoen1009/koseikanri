@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI007A01C(body)
  * Description      : 資材配賦情報の差額仕訳※の生成。※原価差額(標準原価-営業原価)
  * MD.050           : 調整仕訳自動生成 MD050_COI_007_A01
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *                                      取引日が前月の場合は前月末日を記帳日とする
  *  2009/08/17    1.5   N.Abe           [0001089]PT対応
  *  2009/08/25    1.6   H.Sasaki        [0001159]PT対応
+ *  2009/09/04    1.7   H.Sasaki        [0001241]勘定科目名の設定内容変更
  *
  *****************************************************************************************/
 --
@@ -226,6 +227,10 @@ AS
   gt_period_name_tm              gl_periods.period_name%TYPE;                         --会計期間名(当月)
   gt_period_name_lm              gl_periods.period_name%TYPE;                         --会計期間名(前月)
 -- == 2009/08/17 V1.5 Added END   ===============================================================
+-- == 2009/09/04 V1.7 Added START ===============================================================
+  gt_aff3_seihin                gl_interface.segment3%TYPE;                          -- 勘定科目_製品
+  gt_aff3_shouhin               gl_interface.segment3%TYPE;                          -- 勘定科目_商品
+-- == 2009/09/04 V1.7 Added END   ===============================================================
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -257,22 +262,26 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     -- プロファイル
-    cv_prf_gl_set_of_bks_id            CONSTANT VARCHAR2(50) := 'GL_SET_OF_BKS_ID';                 -- 会計帳簿ID
-    cv_prf_gl_set_of_bks_name          CONSTANT VARCHAR2(50) := 'GL_SET_OF_BKS_NAME';               -- 会計帳簿名
-    cv_prf_company_code                CONSTANT VARCHAR2(50) := 'XXCOI1_COMPANY_CODE';              -- XXCOI:会社コード
-    cv_prf_aff2_adj_dept_code          CONSTANT VARCHAR2(50) := 'XXCOI1_AFF2_ADJUSTMENT_DEPT_CODE'; -- XXCOI:調整部門コード
-    cv_prf_aff3_shizuoka_factory       CONSTANT VARCHAR2(50) := 'XXCOI1_AFF3_SHIZUOKA_FACTORY';     -- XXCOI:勘定科目_静岡工場勘定
-    cv_prf_aff4_subacct_dummy          CONSTANT VARCHAR2(50) := 'XXCOK1_AFF4_SUBACCT_DUMMY';        -- XXCOK:補助科目_ダミー値
-    cv_prf_aff5_customer_dummy         CONSTANT VARCHAR2(50) := 'XXCOK1_AFF5_CUSTOMER_DUMMY';       -- XXCOK:顧客コード_ダミー値
-    cv_prf_aff6_company_dummy          CONSTANT VARCHAR2(50) := 'XXCOK1_AFF6_COMPANY_DUMMY';        -- XXCOK:企業コード_ダミー値
-    cv_prf_aff7_preliminary1_dummy     CONSTANT VARCHAR2(50) := 'XXCOK1_AFF7_PRELIMINARY1_DUMMY';   -- XXCOK:予備１_ダミー値
-    cv_prf_aff8_preliminary2_dummy     CONSTANT VARCHAR2(50) := 'XXCOK1_AFF8_PRELIMINARY2_DUMMY';   -- XXCOK:予備２_ダミー値
-    cv_prf_gl_category_inv_cost        CONSTANT VARCHAR2(50) := 'XXCOI1_GL_CATEGORY_INV_COST';      -- XXCOI:仕訳カテゴリ_在庫原価振替
-    cv_prf_gl_source_inv_cost          CONSTANT VARCHAR2(50) := 'XXCOI1_GL_SOURCE_INV_COST';        -- XXCOI:仕訳ソース_在庫原価振替
-    cv_prf_sales_calendar              CONSTANT VARCHAR2(50) := 'XXCOI1_SALES_CALENDAR';            -- XXCOI:会計カレンダ
+    cv_prf_gl_set_of_bks_id           CONSTANT VARCHAR2(50) := 'GL_SET_OF_BKS_ID';                  -- 会計帳簿ID
+    cv_prf_gl_set_of_bks_name         CONSTANT VARCHAR2(50) := 'GL_SET_OF_BKS_NAME';                -- 会計帳簿名
+    cv_prf_company_code               CONSTANT VARCHAR2(50) := 'XXCOI1_COMPANY_CODE';               -- XXCOI:会社コード
+    cv_prf_aff2_adj_dept_code         CONSTANT VARCHAR2(50) := 'XXCOI1_AFF2_ADJUSTMENT_DEPT_CODE';  -- XXCOI:調整部門コード
+    cv_prf_aff3_shizuoka_factory      CONSTANT VARCHAR2(50) := 'XXCOI1_AFF3_SHIZUOKA_FACTORY';      -- XXCOI:勘定科目_静岡工場勘定
+    cv_prf_aff4_subacct_dummy         CONSTANT VARCHAR2(50) := 'XXCOK1_AFF4_SUBACCT_DUMMY';         -- XXCOK:補助科目_ダミー値
+    cv_prf_aff5_customer_dummy        CONSTANT VARCHAR2(50) := 'XXCOK1_AFF5_CUSTOMER_DUMMY';        -- XXCOK:顧客コード_ダミー値
+    cv_prf_aff6_company_dummy         CONSTANT VARCHAR2(50) := 'XXCOK1_AFF6_COMPANY_DUMMY';         -- XXCOK:企業コード_ダミー値
+    cv_prf_aff7_preliminary1_dummy    CONSTANT VARCHAR2(50) := 'XXCOK1_AFF7_PRELIMINARY1_DUMMY';    -- XXCOK:予備１_ダミー値
+    cv_prf_aff8_preliminary2_dummy    CONSTANT VARCHAR2(50) := 'XXCOK1_AFF8_PRELIMINARY2_DUMMY';    -- XXCOK:予備２_ダミー値
+    cv_prf_gl_category_inv_cost       CONSTANT VARCHAR2(50) := 'XXCOI1_GL_CATEGORY_INV_COST';       -- XXCOI:仕訳カテゴリ_在庫原価振替
+    cv_prf_gl_source_inv_cost         CONSTANT VARCHAR2(50) := 'XXCOI1_GL_SOURCE_INV_COST';         -- XXCOI:仕訳ソース_在庫原価振替
+    cv_prf_sales_calendar             CONSTANT VARCHAR2(50) := 'XXCOI1_SALES_CALENDAR';             -- XXCOI:会計カレンダ
 -- == 2009/06/04 V1.3 Added START ===============================================================
-    cv_prf_trans_type_std_cost_upd     CONSTANT VARCHAR2(50) := 'XXCOI1_TRANS_TYPE_STD_COST_UPD';   -- XXCOI:取引タイプ名_標準原価更新
+    cv_prf_trans_type_std_cost_upd    CONSTANT VARCHAR2(50) := 'XXCOI1_TRANS_TYPE_STD_COST_UPD';    -- XXCOI:取引タイプ名_標準原価更新
 -- == 2009/06/04 V1.3 Added END   ===============================================================
+-- == 2009/09/04 V1.7 Added START ===============================================================
+    cv_prf_aff3_seihin                CONSTANT VARCHAR2(30) :=  'XXCOI1_AFF3_SEIHIN';               -- XXCOI:勘定科目_製品
+    cv_prf_aff3_shouhin               CONSTANT VARCHAR2(30) :=  'XXCOI1_AFF3_SHOUHIN';              -- XXCOI:勘定科目_商品
+-- == 2009/09/04 V1.7 Added END   ===============================================================
 -- == 2009/08/17 V1.5 Added START ===============================================================
     cv_flag_n                          CONSTANT VARCHAR2(1)  := 'N';                                -- フラグ値：N
 -- == 2009/08/17 V1.5 Added END   ===============================================================
@@ -425,6 +434,21 @@ AS
       RAISE profile_expt;
     END IF;
 --
+-- == 2009/09/04 V1.7 Added START ===============================================================
+    -- 勘定科目_製品
+    gt_aff3_seihin := fnd_profile.value( cv_prf_aff3_seihin );
+    IF( gt_aff3_seihin IS NULL ) THEN
+      lv_tkn_profile := cv_prf_aff3_seihin;
+      RAISE profile_expt;
+    END IF;
+--
+    -- 勘定科目_商品
+    gt_aff3_shouhin := fnd_profile.value(cv_prf_aff3_shouhin  );
+    IF( gt_aff3_shouhin IS NULL ) THEN
+      lv_tkn_profile := cv_prf_aff3_shouhin;
+      RAISE profile_expt;
+    END IF;
+-- == 2009/09/04 V1.7 Added END   ===============================================================
     -- ==============================================================
     -- 仕訳バッチ名取得
     -- ==============================================================
@@ -700,7 +724,10 @@ AS
       SELECT /*+ LEADING(MTA) USE_NL(MTA MMT GCC MSIB) */
              mta.transaction_id          AS mta_transaction_id           --  1.在庫取引ID
            , gcc.segment2                AS gcc_dept_code                --  2.部門コード
-           , CASE WHEN gcc.segment3      = gt_aff3_shizuoka_factory THEN --   5.勘定科目コードが静岡工場勘定の場合
+-- == 2009/09/04 V1.7 Added START ===============================================================
+--           , CASE WHEN gcc.segment3      = gt_aff3_shizuoka_factory THEN --   5.勘定科目コードが静岡工場勘定の場合
+           , CASE WHEN gcc.segment3 IN(gt_aff3_shizuoka_factory, gt_aff3_seihin, gt_aff3_shouhin) THEN --   5.勘定科目コードが静岡工場勘定の場合
+-- == 2009/09/04 V1.7 Added END   ===============================================================
                     gcc.segment2                                         --     2.部門コード
                   ELSE                                                   --   それ以外の場合
                     gt_aff2_adj_dept_code                                --     A-1.で取得した調整部門コード
