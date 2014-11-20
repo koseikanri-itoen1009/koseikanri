@@ -6,7 +6,7 @@ AS
  * Package Name           : xxccp_common_pkg(spec)
  * Description            : 
  * MD.070                 : MD070_IPO_CCP_共通関数
- * Version                : 1.1
+ * Version                : 1.2
  *
  * Program List
  *  --------------------          ---- ----- --------------------------------------------------
@@ -39,6 +39,7 @@ AS
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008-10-01    1.0  Naoki.Watanabe   新規作成
  *  2009-05-01    1.1  Masayuki.Sano    障害番号T1_0910対応(スキーマ名付加)
+ *  2009-06-15    1.2  Masayuki.Sano    [T1_1440]不要コメント分削除
  *****************************************************************************************/
 --
   --正常ステータス・セット関数
@@ -98,53 +99,41 @@ AS
               ,ov_errmsg   OUT VARCHAR2 --ユーザー・エラーメッセージ
               );
   --
---スタブ★↓(暫定的に作成したもので、正式成果物ではありません)
   --半角英数字チェック
   FUNCTION chk_alphabet_number(
               iv_check_char IN VARCHAR2 --チェック対象文字列
            )
     RETURN BOOLEAN;
---スタブ★↑(暫定的に作成したもので、正式成果物ではありません)
   --
---スタブ★↓(暫定的に作成したもので、正式成果物ではありません)
   --半角数字およびハイフンチェック
   FUNCTION chk_tel_format(
               iv_check_char IN VARCHAR2 --チェック対象文字列
            )
     RETURN BOOLEAN;
---スタブ★↑(暫定的に作成したもので、正式成果物ではありません)
   --
---スタブ★↓(暫定的に作成したもので、正式成果物ではありません)
   --全角カタカナ英数字半角変換
   FUNCTION chg_double_to_single_byte(
               iv_check_char IN VARCHAR2 --チェック対象文字列
            )
     RETURN VARCHAR2;
---スタブ★↑(暫定的に作成したもので、正式成果物ではありません)
   --
---スタブ★↓(暫定的に作成したもので、正式成果物ではありません)
   --全角カタカナ英数字半角変換（サブ）
   FUNCTION chg_double_to_single_byte_sub(
               iv_check_char IN VARCHAR2 --チェック対象文字列
            )
     RETURN VARCHAR2;
---スタブ★↑(暫定的に作成したもので、正式成果物ではありません)
   --
---スタブ★↓(暫定的に作成したもので、正式成果物ではありません)
   --全角カタカナチェック
   FUNCTION chk_double_byte_kana(
               iv_check_char IN VARCHAR2 --チェック対象文字列
            )
     RETURN BOOLEAN;
---スタブ★↑(暫定的に作成したもので、正式成果物ではありません)
   --
---スタブ★↓(暫定的に作成したもので、正式成果物ではありません)
   --半角カタカナチェック
   FUNCTION chk_single_byte_kana(
               iv_check_char IN VARCHAR2 --チェック対象文字列
            )
     RETURN BOOLEAN;
---スタブ★↑(暫定的に作成したもので、正式成果物ではありません)
   --
   --メッセージ取得
   FUNCTION get_msg(
@@ -173,7 +162,6 @@ AS
                  )
     RETURN VARCHAR2;
   --
---スタブ★↓(暫定的に作成したもので、正式成果物ではありません)
   --デリミタ文字分割関数
   FUNCTION char_delim_partition(iv_char     IN VARCHAR2
                                ,iv_delim    IN VARCHAR2
@@ -181,7 +169,6 @@ AS
                                )
     RETURN VARCHAR2;
   --
---スタブ★↑(暫定的に作成したもので、正式成果物ではありません)
 --
   -- 半角チェック
   FUNCTION chk_single_byte(
