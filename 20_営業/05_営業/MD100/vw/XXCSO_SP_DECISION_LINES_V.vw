@@ -3,13 +3,14 @@
  * VIEW Name       : xxcso_sp_decision_lines_v
  * Description     : 画面用：SP専決登録画面用ビュー
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2014/01/31    1.1  K.Kiriu       [E_本稼動_11397]売価1円対応
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcso_sp_decision_lines_v
 (
@@ -17,6 +18,9 @@ CREATE OR REPLACE VIEW apps.xxcso_sp_decision_lines_v
 ,SP_DECISION_HEADER_ID
 ,SP_CONTAINER_TYPE
 ,FIXED_PRICE
+-- 2014/01/31 Ver.1.1 Add Start
+,CARD_SALE_CLASS
+-- 2014/01/31 Ver.1.1 Add End
 ,SALES_PRICE
 ,DISCOUNT_AMT
 ,BM_RATE_PER_SALES_PRICE
@@ -44,6 +48,7 @@ SELECT
 ,xsdl.SP_DECISION_HEADER_ID
 ,xsdl.SP_CONTAINER_TYPE
 ,TO_CHAR(xsdl.FIXED_PRICE)
+,xsdl.card_sale_class
 ,TO_CHAR(xsdl.SALES_PRICE, 'FM999G999G999G999G990')
 ,TO_CHAR(xsdl.DISCOUNT_AMT, 'FM999G999G999G999G990')
 ,TO_CHAR(xsdl.BM_RATE_PER_SALES_PRICE, 'FM999G999G999G999G990D90')
