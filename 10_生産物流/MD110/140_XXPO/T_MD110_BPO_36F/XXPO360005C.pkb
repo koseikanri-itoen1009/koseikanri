@@ -7,7 +7,7 @@ AS
  * Description      : 仕入（帳票）
  * MD.050/070       : 仕入（帳票）Issue1.0  (T_MD050_BPO_360)
  *                    代行請求書            (T_MD070_BPO_36F)
- * Version          : 1.13
+ * Version          : 1.15
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  prc_out_xml               PROCEDURE : XML出力処理
  *  prc_initialize            PROCEDURE : 前処理(F-2)
  *  prc_get_report_data       PROCEDURE : 明細データ取得(F-3)
+ *  prc_edit_data             PROCEDURE : 取得データ編集(-)
  *  prc_create_xml_data       PROCEDURE : ＸＭＬデータ作成
  *  prc_set_param             PROCEDURE : パラメータの取得
  *  submain                   PROCEDURE : メイン処理プロシージャ
@@ -47,6 +48,8 @@ AS
  *  2008/11/04    1.11  Y.Yamamoto       統合障害#471
  *  2008/11/28    1.12  T.Yoshimoto      本番障害#204
  *  2009/01/08    1.13  N.Yoshida        本番障害#970
+ *  2009/03/30    1.14  A.Shiina         本番障害#1346
+ *  2009/05/26    1.15  T.Yoshimoto      本番障害#1478
  *
  *****************************************************************************************/
 --
@@ -140,6 +143,37 @@ AS
      ,dept_code          dept_code_type -- 担当部署１～５
      ,security_flg       VARCHAR2(1)    -- セキュリティ区分
     ) ;
+--
+-- 2009/05/26 v1.15 T.Yoshimoto Add Start
+  -- 代行請求書データ格納用レコード変数(編集前)
+  TYPE rec_data_type_dtl2  IS RECORD(
+      segment1_s           xxcmn_vendors2_v.segment1%TYPE         -- 仕入先コード
+     ,segment1_a           xxcmn_vendors2_v.segment1%TYPE         -- 斡旋者コード
+     ,vendor_name          xxcmn_vendors2_v.vendor_name%TYPE      -- 仕入先名
+     ,zip                  xxcmn_vendors2_v.zip%TYPE              -- 郵便番号
+     ,address_line1        xxcmn_vendors2_v.address_line1%TYPE    -- 取引先住所１
+     ,address_line2        xxcmn_vendors2_v.address_line2%TYPE    -- 取引先住所２
+     ,phone                xxcmn_vendors2_v.phone%TYPE            -- 取引先電話
+     ,fax                  xxcmn_vendors2_v.fax%TYPE              -- 取引先FAX
+     ,vendor_full_name     xxcmn_vendors2_v.vendor_full_name%TYPE -- 斡旋者名１
+     ,attribute10          po_headers_all.attribute10%TYPE        -- 部署コード(発注)
+     ,quantity             xxpo_rcv_and_rtn_txns.quantity%TYPE    -- 数量
+     ,purchase_amount      NUMBER                                 -- 仕入金額
+     ,attribute5           po_line_locations_all.attribute5%TYPE  -- 預かり口銭金額
+     ,attribute8           po_line_locations_all.attribute8%TYPE  -- 賦課金額
+     ,purchase_amount_tax  NUMBER                                 -- 仕入金額(消費税)
+     ,attribute5_tax       po_line_locations_all.attribute5%TYPE  -- 預かり口銭金額(消費税)
+     ,txns_type            xxpo_rcv_and_rtn_txns.txns_type%TYPE   -- 実績区分
+     ,kobiki_mae           po_lines_all.attribute8%TYPE           -- 単価(粉引前単価)
+     ,unit_price           po_line_locations_all.attribute2%TYPE  -- 単価(粉引後単価)
+     ,kobiki_rate          po_line_locations_all.attribute1%TYPE  -- 粉引率
+     ,kousen_k             po_line_locations_all.attribute3%TYPE  -- 口銭区分
+     ,kousen               po_line_locations_all.attribute4%TYPE  -- 口銭
+     ,fukakin_k            po_line_locations_all.attribute6%TYPE  -- 賦課金区分
+     ,fukakin              po_line_locations_all.attribute7%TYPE  -- 賦課金
+    ) ;
+  TYPE tab_data_type_dtl2 IS TABLE OF rec_data_type_dtl2 INDEX BY BINARY_INTEGER ;
+-- 2009/05/26 v1.15 T.Yoshimoto Add End
 --
   -- 代行請求書データ格納用レコード変数
   TYPE rec_data_type_dtl  IS RECORD(
@@ -545,7 +579,10 @@ AS
      ,ov_retcode    OUT VARCHAR2                  -- リターン・コード             --# 固定 #
      ,ov_errmsg     OUT VARCHAR2                  -- ユーザー・エラー・メッセージ --# 固定 #
      ,ir_param      IN  rec_param_data            -- 入力パラメータ群
-     ,ot_data_rec   OUT NOCOPY tab_data_type_dtl  -- 取得レコード群
+-- 2009/05/26 v1.15 T.Yoshimoto Mod Start
+--     ,ot_data_rec   OUT NOCOPY tab_data_type_dtl  -- 取得レコード群
+     ,ot_data_rec   OUT NOCOPY tab_data_type_dtl2  -- 取得レコード群
+-- 2009/05/26 v1.15 T.Yoshimoto Mod End
     )
   IS
     -- ===============================
@@ -617,12 +654,27 @@ AS
       || '  ,comm.purchase_amount_tax  AS purchase_amount_tax ' -- 仕入金額(消費税)
       || '  ,comm.attribute5_tax       AS attribute5_tax      ' -- 預かり口銭金額(消費税)
 -- 2009/01/08 v1.13 N.Yoshida Mod End 本番#970
+-- 2009/05/26 v1.15 T.Yoshimoto Add Start
+      || '  ,comm.txns_type            AS txns_type           ' -- 実績区分
+      || '  ,comm.kobiki_mae           AS kobiki_mae          ' -- 単価(粉引前単価)
+      || '  ,comm.unit_price           AS unit_price          ' -- 粉引後単価
+      || '  ,comm.kobiki_rate          AS kobiki_rate         ' -- 粉引率
+      || '  ,comm.kousen_k             AS kousen_k            ' -- 口銭区分
+      || '  ,comm.kousen               AS kousen              ' -- 口銭
+      || '  ,comm.fukakin_k            AS fukakin_k           ' -- 賦課金区分
+      || '  ,comm.fukakin              AS fukakin             ' -- 賦課金
+-- 2009/05/26 v1.15 T.Yoshimoto Add End
       || ' FROM'
       || '   ('
       || '    SELECT'
-      || '      com.vendor_id     AS vendor_id'
+-- 2009/05/26 v1.15 T.Yoshimoto Add Start
+      || '      com.txns_type     AS txns_type '                -- 実績区分
+-- 2009/05/26 v1.15 T.Yoshimoto Add End
+      || '     ,com.vendor_id     AS vendor_id'
       || '     ,com.attribute3    AS attribute3'
       || '     ,com.attribute10   AS attribute10'
+-- 2009/05/26 v1.15 T.Yoshimoto Mod Start
+/*
       || '     ,SUM(com.sum_quantity) AS quantity'
 -- 2009/01/08 v1.13 N.Yoshida Mod Start 本番#970
 --      || '     ,SUM(NVL(com.sum_quantity,0) * com.unit_price) AS purchase_amount'
@@ -632,12 +684,33 @@ AS
       || '     ,SUM(ROUND(com.attribute5 * ' || gn_tax || ')) AS attribute5_tax'
 -- 2009/01/08 v1.13 N.Yoshida Mod End 本番#970
       || '     ,SUM(com.attribute8) AS attribute8'
+*/
+      || '      ,com.sum_quantity AS quantity '
+      || '      ,ROUND(NVL(com.sum_quantity,0) * com.unit_price) AS purchase_amount '
+      || '      ,com.attribute5 AS attribute5 '
+      || '      ,ROUND(ROUND(NVL(com.sum_quantity,0) * com.unit_price ) * .05) AS purchase_amount_tax '
+      || '      ,ROUND(com.attribute5 * .05) AS attribute5_tax '
+      || '      ,com.attribute8              AS attribute8 '
+      || '      ,com.kobiki_mae              AS kobiki_mae '     -- 単価(粉引前単価)  -- Add T.Yoshimoto
+      || '      ,com.unit_price              AS unit_price '     -- 粉引後単価        -- Add T.Yoshimoto
+      || '      ,com.kobiki_rate             AS kobiki_rate '    -- 粉引率            -- Add T.Yoshimoto
+      || '      ,com.kousen_k                AS kousen_k '       -- 口銭区分          -- Add T.Yoshimoto
+      || '      ,com.kousen                  AS kousen '         -- 口銭              -- Add T.Yoshimoto
+      || '      ,com.fukakin_k               AS fukakin_k '      -- 賦課金区分        -- Add T.Yoshimoto
+      || '      ,com.fukakin                 AS fukakin '        -- 賦課金            -- Add T.Yoshimoto
+-- 2009/05/26 v1.15 T.Yoshimoto Mod End
       || '   FROM'
       || '     ('
+                --受入実績
       || '      SELECT'
-      || '        poh.vendor_id   AS vendor_id '  -- 仕入先番号(取引先)
+-- 2009/05/26 v1.15 T.Yoshimoto Add Start
+      || '        xrart2.txns_type AS txns_type ' -- 実績区分
+-- 2009/05/26 v1.15 T.Yoshimoto Add End
+      || '       ,poh.vendor_id   AS vendor_id '  -- 仕入先番号(取引先)
       || '       ,poh.attribute3  AS attribute3'  -- 仕入先番号(斡旋者)
       || '       ,poh.attribute10 AS attribute10' -- 部署コード
+-- 2009/05/26 v1.15 T.Yoshimoto Mod Start
+/*
 -- 2008/11/28 v1.12 T.Yoshimoto Mod Start 本番#204
 --      || '       ,pla.unit_price  AS unit_price'  -- 単価(粉引後単価)
       || '       ,('
@@ -657,6 +730,19 @@ AS
       || '         WHERE  plla.po_line_id = pla.po_line_id'
       || '        ) AS attribute8'
       || '       ,xrart.sum_quantity AS sum_quantity'; -- 受入返品
+*/
+      || '       ,TO_NUMBER(NVL(pla.attribute8,0))  AS kobiki_mae '   -- 単価(粉引前単価)
+      || '       ,TO_NUMBER(NVL(plla.attribute2,0)) AS unit_price '   -- 単価(粉引後単価)
+      || '       ,TO_NUMBER(NVL(plla.attribute5,0)) AS attribute5 '   -- 預かり口銭金額
+      || '       ,TO_NUMBER(NVL(plla.attribute8,0)) AS attribute8 '   -- 賦課金額
+      || '       ,NVL(plla.ATTRIBUTE1,0)            AS kobiki_rate '  -- 粉引率
+      || '       ,NVL(plla.ATTRIBUTE3,3)            AS kousen_k '     -- 口銭区分
+      || '       ,NVL(plla.ATTRIBUTE4,0)            AS kousen '       -- 口銭
+      || '       ,NVL(plla.ATTRIBUTE6,3)            AS fukakin_k '    -- 賦課金区分
+      || '       ,NVL(plla.ATTRIBUTE7,0)            AS fukakin '      -- 賦課金
+      || '       ,xrart2.quantity                   AS sum_quantity ' -- 受入返品
+      ;
+-- 2009/05/26 v1.15 T.Yoshimoto Mod End
 --
     -- ----------------------------------------------------
     -- ＦＲＯＭ句生成
@@ -667,12 +753,18 @@ AS
       || '       ,po_lines_all          pla'   -- 発注明細
       || '       ,xxpo_headers_all      xha'   -- 発注ヘッダ（アドオン）
       || '       ,xxcmn_locations2_v    xlv'   -- 事業所情報VIEW2
+-- 2009/05/26 v1.15 T.Yoshimoto Add Start
+      || '       ,po_line_locations_all plla'   -- 発注納入明細
+      || '       ,xxpo_rcv_and_rtn_txns xrart2' -- 受入返品実績(アドオン)
+-- 2009/05/26 v1.15 T.Yoshimoto Add End
       || '      ,('
       || '        SELECT'
       || '          xrart.source_document_number   AS source_document_number'
       || '         ,xrart.source_document_line_num AS source_document_line_num'
       || '         ,MAX(xrart.txns_date)           AS txns_date'
-      || '         ,SUM(xrart.quantity)            AS sum_quantity'
+-- 2009/05/26 v1.15 T.Yoshimoto Del Start
+--      || '         ,SUM(xrart.quantity)            AS sum_quantity'
+-- 2009/05/26 v1.15 T.Yoshimoto Del End
       || '        FROM'
       || '          xxpo_rcv_and_rtn_txns xrart' -- 受入返品実績(アドオン)
       || '        WHERE'
@@ -691,6 +783,9 @@ AS
       || '            poh.org_id        = ''' || gn_sales_class || ''''
       || '        AND poh.segment1      = xha.po_header_number'
       || '        AND poh.po_header_id  = pla.po_header_id'
+-- 2009/05/26 v1.15 T.Yoshimoto Add Start
+      || '        AND plla.po_line_id = pla.po_line_id '
+-- 2009/05/26 v1.15 T.Yoshimoto Add End
       || '        AND poh.authorization_status =  ''' || cv_poh_approved || ''''
       || '        AND poh.attribute1           >= ''' || cv_poh_decision || '''' -- 金額確定
       || '        AND poh.attribute1           <  ''' || cv_poh_cancel   || '''' -- 取消
@@ -698,7 +793,15 @@ AS
       || '             (pla.cancel_flag = ''' || gv_n || ''') '
       || '          OR (pla.cancel_flag IS NULL) '     -- キャンセルフラグ
       || '            ) '
+-- 2009/03/30 v1.14 ADD START
+      || '        AND poh.org_id        = FND_PROFILE.VALUE(''ORG_ID'') '
+-- 2009/03/30 v1.14 ADD END
            -- 受入返品実績アドオン
+-- 2009/05/26 v1.15 T.Yoshimoto Add Start
+      || '        AND xrart2.txns_type = ''' || cv_txn_type_acc || ''''
+      || '        AND xrart2.source_document_number   = poh.segment1'
+      || '        AND xrart2.source_document_line_num = pla.line_num'
+-- 2009/05/26 v1.15 T.Yoshimoto Add End
       || '        AND xrart.source_document_number   = poh.segment1'
       || '        AND xrart.source_document_line_num = pla.line_num'
       || '        AND xrart.txns_date '
@@ -752,12 +855,25 @@ AS
     lv_sql := lv_sql
       || '      UNION ALL'
       || '      SELECT'
-      || '        poh.vendor_id      AS vendor_id '    -- 仕入先番号(取引先)
+-- 2009/05/26 v1.15 T.Yoshimoto Add Start
+      || '        xrart.txns_type    AS txns_type '    -- 実績区分
+-- 2009/05/26 v1.15 T.Yoshimoto Add End
+      || '       ,poh.vendor_id      AS vendor_id '    -- 仕入先番号(取引先)
       || '       ,poh.attribute3     AS attribute3'    -- 仕入先番号(斡旋者)
       || '       ,poh.attribute10    AS attribute10'   -- 部署コード
+-- 2009/05/26 v1.15 T.Yoshimoto Add Start
+      || '       ,xrart.kobiki_mae   AS kobiki_mae'    -- 単価(粉引前単価)
+-- 2009/05/26 v1.15 T.Yoshimoto Add End
       || '       ,xrart.unit_price   AS unit_price'    -- 単価(粉引後単価)
       || '       ,xrart.attribute5   AS attribute5'    -- 預かり口銭金額
       || '       ,xrart.attribute8   AS attribute8'    -- 賦課金額
+-- 2009/05/26 v1.15 T.Yoshimoto Add Start
+      || '       ,NULL               AS kobiki_rate '  -- 粉引率
+      || '       ,NULL               AS kousen_k '     -- 口銭区分
+      || '       ,NULL               AS kousen '       -- 口銭
+      || '       ,NULL               AS fukakin_k '    -- 賦課金区分
+      || '       ,NULL               AS fukakin '      -- 賦課金
+-- 2009/05/26 v1.15 T.Yoshimoto Add End
       || '       ,xrart.sum_quantity AS sum_quantity'; -- 受入返品
 --
     -- ----------------------------------------------------
@@ -771,10 +887,16 @@ AS
       || '       ,xxcmn_locations2_v    xlv'   -- 事業所情報VIEW2
       || '       ,('
       || '         SELECT'
-      || '          xrart.source_document_number    AS source_document_number'
+-- 2009/05/26 v1.15 T.Yoshimoto Add Start
+      || '          xrart.txns_type                 AS txns_type '       -- 実績区分
+-- 2009/05/26 v1.15 T.Yoshimoto Add End
+      || '         ,xrart.source_document_number    AS source_document_number'
       || '         ,xrart.source_document_line_num  AS source_document_line_num'
       || '         ,MAX(xrart.txns_date)            AS txns_date'
       || '         ,SUM(xrart.quantity * -1)        AS sum_quantity'     -- マイナス
+-- 2009/05/26 v1.15 T.Yoshimoto Add Start
+      || '         ,NULL                            AS kobiki_mae'       -- 単価(粉引前単価)
+-- 2009/05/26 v1.15 T.Yoshimoto Add End
       || '         ,AVG(xrart.kobki_converted_unit_price) AS unit_price' -- 粉引後単価
       || '         ,SUM(xrart.kousen_price * -1)    AS attribute5'       -- 預かり口銭金額
       || '         ,SUM(xrart.fukakin_price * -1)   AS attribute8'       -- 賦課金額
@@ -789,7 +911,10 @@ AS
                                                  || gc_char_d_format || ''')'
       || '           AND xrart.quantity > ' || gn_zero || ''
       || '         GROUP BY'
-      || '           xrart.source_document_number'
+-- 2009/05/26 v1.15 T.Yoshimoto Add Start
+      || '           xrart.txns_type '               -- 実績区分
+-- 2009/05/26 v1.15 T.Yoshimoto Add End
+      || '          ,xrart.source_document_number'
       || '          ,xrart.source_document_line_num'
       || '        ) xrart';
 --
@@ -809,6 +934,9 @@ AS
       || '             (pla.cancel_flag = ''' || gv_n || ''') '
       || '          OR (pla.cancel_flag IS NULL) '     -- キャンセルフラグ
       || '            ) '
+-- 2009/03/30 v1.14 ADD START
+      || '        AND poh.org_id        = FND_PROFILE.VALUE(''ORG_ID'') '
+-- 2009/03/30 v1.14 ADD END
            -- 受入返品実績アドオン
       || '        AND xrart.source_document_number   = poh.segment1'
       || '        AND xrart.source_document_line_num = pla.line_num'
@@ -863,12 +991,25 @@ AS
     lv_sql :=  lv_sql
       || ' UNION ALL'
       || '      SELECT'
-      || '        xrart.vendor_id                    AS vendor_id '  -- 仕入先番号(取引先)
+-- 2009/05/26 v1.15 T.Yoshimoto Add Start
+      || '        xrart.txns_type                    AS txns_type '    -- 実績区分
+-- 2009/05/26 v1.15 T.Yoshimoto Add End
+      || '       ,xrart.vendor_id                    AS vendor_id '  -- 仕入先番号(取引先)
       || '       ,TO_CHAR(xrart.assen_vendor_id)     AS attribute3'  -- 仕入先番号(斡旋者)
       || '       ,xrart.department_code              AS attribute10' -- 部署コード
+-- 2009/05/26 v1.15 T.Yoshimoto Add Start
+      || '       ,NULL                               AS kobiki_mae'    -- 単価(粉引前単価)
+-- 2009/05/26 v1.15 T.Yoshimoto Add End
       || '       ,xrart.kobki_converted_unit_price   AS unit_price'  -- 単価
       || '       ,xrart.kousen_price * -1            AS attribute5'  -- 預かり口銭金額
       || '       ,xrart.fukakin_price * -1           AS attribute8'  -- 賦課金額
+-- 2009/05/26 v1.15 T.Yoshimoto Add Start
+      || '       ,NULL                               AS kobiki_rate '  -- 粉引率
+      || '       ,NULL                               AS kousen_k '     -- 口銭区分
+      || '       ,NULL                               AS kousen '       -- 口銭
+      || '       ,NULL                               AS fukakin_k '    -- 賦課金区分
+      || '       ,NULL                               AS fukakin '      -- 賦課金
+-- 2009/05/26 v1.15 T.Yoshimoto Add End
       || '       ,xrart.quantity * -1                AS sum_quantity'; -- 数量
 --
     -- ----------------------------------------------------
@@ -936,12 +1077,16 @@ AS
 --
     lv_sql := lv_sql
       || '     ) com '
-      || '   GROUP BY '
-      || '     com.vendor_id '
-      || '    ,com.attribute3 '
-      || '    ,com.attribute10 '
+-- 2009/05/26 v1.15 T.Yoshimoto Del Start
+--      || '   GROUP BY '
+--      || '     com.vendor_id '
+--      || '    ,com.attribute3 '
+--      || '    ,com.attribute10 '
+-- 2009/05/26 v1.15 T.Yoshimoto Del End
       || '   ) comm '
       || '  ,xxcmn_vendors2_v xvv_s ' -- 仕入先情報VIEW2 取引先
+-- 2009/05/26 v1.15 T.Yoshimoto Mod Start
+/*
       || '  ,('
       || '    SELECT'
       || '      xvv_a.vendor_id        AS vendor_id'
@@ -957,9 +1102,21 @@ AS
                                             || gc_char_d_format || '''))'
       || '      OR (xvv_a.end_date_active IS NULL)) '
       || '   ) xvv_a' -- 仕入先情報VIEW2 斡旋
+*/
+      || '  ,xxcmn_vendors2_v xvv_a '
+-- 2009/05/26 v1.15 T.Yoshimoto Mod End
       || ' WHERE '
       -- 斡旋者
       || '   xvv_a.vendor_id(+) = comm.attribute3 '
+-- 2009/05/26 v1.15 T.Yoshimoto Mod Start
+      || '   AND NVL(xvv_a.start_date_active, FND_DATE.STRING_TO_DATE(''1900/01/01'',''YYYY/MM/DD'')) <= '
+      || '        FND_DATE.STRING_TO_DATE(''' || ir_param.deliver_from || ''','''
+                                                || gc_char_d_format || ''')'
+      || '   AND ((NVL(xvv_a.end_date_active, FND_DATE.STRING_TO_DATE(''9999/12/31'',''YYYY/MM/DD'')) >= '
+      || '     FND_DATE.STRING_TO_DATE(''' || ir_param.deliver_to || ''','''
+                                            || gc_char_d_format || '''))'
+      || '      OR (xvv_a.end_date_active IS NULL)) '
+-- 2009/05/26 v1.15 T.Yoshimoto Mod End
       -- 取引先
       || '   AND xvv_s.start_date_active <= '
       || '     FND_DATE.STRING_TO_DATE(''' || ir_param.deliver_from || ''','''
@@ -1001,6 +1158,8 @@ AS
       || '  segment1_s' -- 仕入先コード
       || ' ,segment1_a' -- 斡旋者コード
       ;
+--
+--      FND_FILE.PUT_LINE(FND_FILE.LOG,lv_sql) ;
 --
     -- ====================================================
     -- データ抽出
@@ -1049,6 +1208,302 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END prc_get_report_data ;
+--
+-- 2009/05/26 v1.15 T.Yoshimoto Add Start
+  /**********************************************************************************
+   * Procedure Name   : prc_edit_data
+   * Description      : ＸＭＬデータ作成
+   ***********************************************************************************/
+  PROCEDURE prc_edit_data(
+      ov_errbuf         OUT VARCHAR2           -- エラー・メッセージ           --# 固定 #
+     ,ov_retcode        OUT VARCHAR2           -- リターン・コード             --# 固定 #
+     ,ov_errmsg         OUT VARCHAR2           -- ユーザー・エラー・メッセージ --# 固定 #
+     ,it_data_rec       IN  tab_data_type_dtl2 -- 取得レコード群
+     ,ot_data_rec       OUT tab_data_type_dtl  -- 取得レコード群(編集後)
+    )
+  IS
+--
+    -- =====================================================
+    -- 固定ローカル定数
+    -- =====================================================
+    cv_prg_name    CONSTANT VARCHAR2(100) := 'prc_edit_data' ; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000) ;  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1) ;     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000) ;  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- =====================================================
+    -- ユーザー宣言部
+    -- =====================================================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_count      NUMBER DEFAULT 1;
+    ln_loop_index NUMBER DEFAULT 0;
+--
+    lv_dept_code     VARCHAR2(4);
+    lv_assen_no      VARCHAR2(4);
+    lv_siire_no      VARCHAR2(4);
+--
+    -- 金額計算用
+    ln_siire                NUMBER DEFAULT 0;         -- 仕入金額
+    ln_kousen               NUMBER DEFAULT 0;         -- 口銭金額
+    ln_kobiki_gaku          NUMBER DEFAULT 0;         -- 粉引額
+    ln_fuka                 NUMBER DEFAULT 0;         -- 賦課金額
+--
+    ln_sum_qty              NUMBER DEFAULT 0;         -- 入庫総数
+    ln_sum_conv_qty         NUMBER DEFAULT 0;         -- 入庫総数(換算後)
+    ln_kobikigo_tanka       NUMBER DEFAULT 0;         -- 粉引後単価
+    ln_sum_siire            NUMBER DEFAULT 0;         -- 仕入金額
+    ln_sum_kosen            NUMBER DEFAULT 0;         -- 口銭金額
+    ln_sum_fuka             NUMBER DEFAULT 0;         -- 賦課金額
+    ln_sum_sasihiki         NUMBER DEFAULT 0;         -- 差引金額
+    ln_sum_tax_siire        NUMBER DEFAULT 0;         -- 消費税(仕入金額)
+    ln_sum_tax_kousen       NUMBER DEFAULT 0;         -- 消費税(口銭金額)
+    ln_sum_tax_sasihiki     NUMBER DEFAULT 0;         -- 消費税(差引金額)
+    ln_sum_jun_siire        NUMBER DEFAULT 0;         -- 純仕入金額
+    ln_sum_jun_kosen        NUMBER DEFAULT 0;         -- 純口銭金額
+    ln_sum_jun_sasihiki     NUMBER DEFAULT 0;         -- 純差引金額
+--
+    -- *** ローカル・例外処理 ***
+--
+  BEGIN
+--
+    -- =====================================================
+    -- 項目データ抽出・出力処理
+    -- =====================================================
+    -- ==========================
+    --  ブレイク用変数初期化
+    -- ==========================
+    lv_dept_code   := it_data_rec(1).attribute10;               -- 部署コード
+    lv_assen_no    := NVL(it_data_rec(1).segment1_a, 'NULL');   -- 斡旋者コード
+    lv_siire_no    := it_data_rec(1).segment1_s;                -- 仕入先コード
+--
+    <<main_data_loop>>
+    FOR ln_loop_index IN 1..it_data_rec.COUNT LOOP
+--
+      -- ==========================
+      --  レコードをブレイク
+      -- ==========================
+      -- 部署コード/仕入先/斡旋者が変更した場合
+      IF ( ( lv_dept_code <> it_data_rec(ln_loop_index).attribute10 )
+        OR ( lv_assen_no <> NVL(it_data_rec(ln_loop_index).segment1_a, 'NULL') )
+        OR ( lv_siire_no <> it_data_rec(ln_loop_index).segment1_s ) ) THEN
+--
+--
+        --差引金額
+        ln_sum_sasihiki     := ln_sum_siire - ln_sum_kosen - ln_sum_fuka;
+--
+        --消費税(仕入金額)
+        ln_sum_tax_siire    := ROUND(NVL(ln_sum_siire, 0) * NVL(gn_tax , 0) ,0);
+        --消費税(口銭金額)
+        ln_sum_tax_kousen   := ROUND(NVL(ln_sum_kosen, 0) * NVL(gn_tax , 0) ,0);
+        --消費税(差引金額)
+        ln_sum_tax_sasihiki := ln_sum_tax_siire - ln_sum_tax_kousen;
+--
+        --純仕入金額
+        ln_sum_jun_siire    := ln_sum_siire + ln_sum_tax_siire;
+        --純口銭金額
+        ln_sum_jun_kosen    := ln_sum_kosen + ln_sum_tax_kousen;
+        --純差引金額
+        ln_sum_jun_sasihiki := ln_sum_sasihiki + ln_sum_tax_sasihiki;
+--
+        -- ==========================
+        --  編集後レコードとして格納
+        -- ==========================
+        ot_data_rec(ln_count).segment1_s           := it_data_rec(ln_loop_index-1).segment1_s;       --仕入先番号
+        ot_data_rec(ln_count).vendor_name          := it_data_rec(ln_loop_index-1).vendor_name;      --仕入先名称
+        ot_data_rec(ln_count).zip                  := it_data_rec(ln_loop_index-1).zip;              --郵便番号
+        ot_data_rec(ln_count).address_line1        := it_data_rec(ln_loop_index-1).address_line1;    --取引先住所１
+        ot_data_rec(ln_count).address_line2        := it_data_rec(ln_loop_index-1).address_line2;    --取引先住所２
+        ot_data_rec(ln_count).phone                := it_data_rec(ln_loop_index-1).phone;            --取引先電話
+        ot_data_rec(ln_count).fax                  := it_data_rec(ln_loop_index-1).fax;              --取引先FAX
+--
+        ot_data_rec(ln_count).segment1_a           := it_data_rec(ln_loop_index-1).segment1_a;       --斡旋者仕入先番号
+        ot_data_rec(ln_count).vendor_full_name     := it_data_rec(ln_loop_index-1).vendor_full_name; --斡旋者名１
+--
+        ot_data_rec(ln_count).attribute10          := it_data_rec(ln_loop_index-1).attribute10;      --部署コード
+--
+        ot_data_rec(ln_count).quantity             := ln_sum_qty;                                    --数量
+        ot_data_rec(ln_count).purchase_amount      := ln_sum_siire;                                  --仕入金額
+        ot_data_rec(ln_count).attribute5           := ln_sum_kosen;                                  --預り口銭金額
+        ot_data_rec(ln_count).attribute8           := ln_sum_fuka;                                   --賦課金額
+        ot_data_rec(ln_count).purchase_amount_tax  := ln_sum_tax_siire;                              --仕入金額(消費税)
+        ot_data_rec(ln_count).attribute5_tax       := ln_sum_tax_kousen;                             --預かり口銭金額(消費税)
+--
+        -- ブレイク用変数へ代入
+        lv_dept_code   := it_data_rec(ln_loop_index).attribute10;
+        lv_assen_no    := NVL(it_data_rec(ln_loop_index).segment1_a, 'NULL');
+        lv_siire_no    := it_data_rec(ln_loop_index).segment1_s;
+--
+        -- 金額計算用変数の初期化
+        ln_siire             := 0;  -- 仕入金額
+        ln_kousen            := 0;  -- 口銭金額
+        ln_kobiki_gaku       := 0;  -- 粉引額
+        ln_fuka              := 0;  -- 賦課金額
+        ln_sum_qty           := 0;  -- 入庫総数(換算後)
+        ln_kobikigo_tanka    := 0;  -- 粉引後単価
+        ln_sum_siire         := 0;  -- 仕入金額
+        ln_sum_kosen         := 0;  -- 口銭金額
+        ln_sum_fuka          := 0;  -- 賦課金額
+        ln_sum_sasihiki      := 0;  -- 差引金額
+        ln_sum_tax_siire     := 0;  -- 消費税(仕入金額)
+        ln_sum_tax_kousen    := 0;  -- 消費税(口銭金額)
+        ln_sum_tax_sasihiki  := 0;  -- 消費税(差引金額)
+        ln_sum_jun_siire     := 0;  -- 純仕入金額
+        ln_sum_jun_kosen     := 0;  -- 純口銭金額
+        ln_sum_jun_sasihiki  := 0;  -- 純差引金額
+--
+        -- カウントアップ
+        ln_count := ln_count + 1;
+      END IF;
+--
+      -- ==========================
+      --  出力項目を計算
+      -- ==========================
+      -- 受入実績の場合
+      IF (it_data_rec(ln_loop_index).txns_type = '1') THEN
+        -- 仕入金額
+        ln_siire :=  TRUNC( NVL(it_data_rec(ln_loop_index).quantity, 0) *
+                            NVL(it_data_rec(ln_loop_index).unit_price, 0) );
+--
+        -- 口銭金額
+        -- 口銭区分が「率」の場合
+        IF ( it_data_rec(ln_loop_index).kousen_k = '2' ) THEN
+          -- 預かり口銭金額＝単価*数量*口銭/100
+          ln_kousen := TRUNC( it_data_rec(ln_loop_index).kobiki_mae * 
+                              NVL(it_data_rec(ln_loop_index).quantity, 0) * NVL(it_data_rec(ln_loop_index).kousen, 0) / 100 );
+        -- 口銭区分が「円」の場合
+        ELSIF ( it_data_rec(ln_loop_index).kousen_k = '1' ) THEN
+          -- 預り口銭金額＝口銭*数量
+          ln_kousen := TRUNC( NVL(it_data_rec(ln_loop_index).kousen, 0) * 
+                              NVL(it_data_rec(ln_loop_index).quantity, 0));
+        ELSE
+          ln_kousen := 0;
+        END IF;
+--
+        -- 賦課金額
+        -- 賦課金区分が「率」の場合
+        IF ( it_data_rec(ln_loop_index).fukakin_k = '2' ) THEN
+--
+          -- 粉引額＝単価 * 数量 * 粉引率 / 100
+          ln_kobiki_gaku := it_data_rec(ln_loop_index).kobiki_mae * NVL(it_data_rec(ln_loop_index).quantity, 0) * 
+                              NVL(it_data_rec(ln_loop_index).kobiki_rate,0) / 100;
+          -- 賦課金額＝（単価 * 数量 - 粉引額）* 賦課率 / 100
+          ln_fuka := TRUNC(( it_data_rec(ln_loop_index).kobiki_mae * 
+                             NVL(it_data_rec(ln_loop_index).quantity, 0) - ln_kobiki_gaku) * 
+                             NVL(it_data_rec(ln_loop_index).fukakin,0) / 100);
+--
+        -- 賦課金区分が「円」の場合
+        ELSIF ( it_data_rec(ln_loop_index).fukakin_k = '1' ) THEN
+          -- 賦課金額＝賦課金*数量
+          ln_fuka := TRUNC( NVL(it_data_rec(ln_loop_index).fukakin,0) * NVL(it_data_rec(ln_loop_index).quantity, 0) );
+        ELSE
+          ln_fuka := 0;
+        END IF;
+--
+      -- 発注あり返品/発注なし返品の場合
+      ELSE
+--
+        --仕入金額
+        ln_siire  :=  TRUNC( NVL(it_data_rec(ln_loop_index).purchase_amount, 0));
+--
+        --口銭金額
+        ln_kousen := it_data_rec(ln_loop_index).attribute5;
+--
+        --賦課金額
+        ln_fuka   := it_data_rec(ln_loop_index).attribute8;
+--
+      END IF;
+--
+      -- ==========================
+      --  必要項目をサマリー
+      -- ==========================
+      --消費税(仕入金額)
+      ln_sum_tax_siire    := ln_sum_tax_siire + (ROUND(NVL(ln_siire, 0) * gn_tax ,0));
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_siire=' || ln_siire || ':::ln_sum_tax_siire=' || ln_sum_tax_siire) ; -- test_yoshimoto
+      --消費税(口銭金額)
+      ln_sum_tax_kousen   := ln_sum_tax_kousen + (ROUND(NVL(ln_kousen, 0) * gn_tax ,0));
+      -- 入庫総数を加算
+      ln_sum_qty          := ln_sum_qty + it_data_rec(ln_loop_index).quantity;
+      -- 仕入金額を加算
+      ln_sum_siire        := ln_sum_siire + ln_siire;
+      -- 口銭金額を加算
+      ln_sum_kosen        := ln_sum_kosen + ln_kousen;
+      -- 賦課金額を加算
+      ln_sum_fuka         := ln_sum_fuka + ln_fuka;
+--
+    END LOOP main_data_loop ;
+--
+--
+    IF ( it_data_rec.COUNT > 0 ) THEN
+--
+      ln_loop_index := it_data_rec.COUNT;
+--
+      --差引金額
+      ln_sum_sasihiki     := ln_sum_siire - ln_sum_kosen - ln_sum_fuka;
+--
+      --消費税(差引金額)
+      ln_sum_tax_sasihiki := ln_sum_tax_siire - ln_sum_tax_kousen;
+--
+      --純仕入金額
+      ln_sum_jun_siire    := ln_sum_siire + ln_sum_tax_siire;
+      --純口銭金額
+      ln_sum_jun_kosen    := ln_sum_kosen + ln_sum_tax_kousen;
+      --純差引金額
+      ln_sum_jun_sasihiki := ln_sum_sasihiki + ln_sum_tax_sasihiki;
+--
+      -- ==========================
+      --  編集後レコードとして格納
+      -- ==========================
+      ot_data_rec(ln_count).segment1_s           := it_data_rec(ln_loop_index).segment1_s;       --仕入先番号
+      ot_data_rec(ln_count).vendor_name          := it_data_rec(ln_loop_index).vendor_name;      --仕入先名称
+      ot_data_rec(ln_count).zip                  := it_data_rec(ln_loop_index).zip;              --郵便番号
+      ot_data_rec(ln_count).address_line1        := it_data_rec(ln_loop_index).address_line1;    --取引先住所１
+      ot_data_rec(ln_count).address_line2        := it_data_rec(ln_loop_index).address_line2;    --取引先住所２
+      ot_data_rec(ln_count).phone                := it_data_rec(ln_loop_index).phone;            --取引先電話
+      ot_data_rec(ln_count).fax                  := it_data_rec(ln_loop_index).fax;              --取引先FAX
+--
+      ot_data_rec(ln_count).segment1_a           := it_data_rec(ln_loop_index).segment1_a;       --斡旋者仕入先番号
+      ot_data_rec(ln_count).vendor_full_name     := it_data_rec(ln_loop_index).vendor_full_name; --斡旋者名１
+--
+      ot_data_rec(ln_count).attribute10          := it_data_rec(ln_loop_index).attribute10;      --部署コード
+--
+      ot_data_rec(ln_count).quantity             := ln_sum_qty;                                    --数量
+      ot_data_rec(ln_count).purchase_amount      := ln_sum_siire;                                  --仕入金額
+      ot_data_rec(ln_count).attribute5           := ln_sum_kosen;                                  --預り口銭金額
+      ot_data_rec(ln_count).attribute8           := ln_sum_fuka;                                   --賦課金額
+      ot_data_rec(ln_count).purchase_amount_tax  := ln_sum_tax_siire;                              --仕入金額(消費税)
+      ot_data_rec(ln_count).attribute5_tax       := ln_sum_tax_kousen;                             --預かり口銭金額(消費税)
+--
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END prc_edit_data;
+-- 2009/05/26 v1.15 T.Yoshimoto Add End
 --
   /**********************************************************************************
    * Procedure Name   : prc_create_xml_data
@@ -1806,6 +2261,9 @@ AS
     ------------------------------
     -- ＸＭＬ用
     ------------------------------
+-- 2009/05/26 v1.15 T.Yoshimoto Add Start
+    lt_main_data_before       tab_data_type_dtl2; -- 取得レコード表(編集前)
+-- 2009/05/26 v1.15 T.Yoshimoto Add End
     lt_main_data              tab_data_type_dtl; -- 取得レコード表
     lt_xml_data_table         XML_DATA;          -- ＸＭＬデータタグ表
 --
@@ -1870,11 +2328,30 @@ AS
        ,ov_retcode    => lv_retcode     -- リターン・コード             --# 固定 #
        ,ov_errmsg     => lv_errmsg      -- ユーザー・エラー・メッセージ --# 固定 #
        ,ir_param      => lr_param_rec   -- 入力パラメータ群
+-- 2009/05/26 v1.15 T.Yoshimoto Mod Start
+--       ,ot_data_rec   => lt_main_data   -- 取得レコード群
+       ,ot_data_rec   => lt_main_data_before   -- 取得レコード群
+-- 2009/05/26 v1.15 T.Yoshimoto Mod End
+      ) ;
+    IF (lv_retcode = gv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+-- 2009/05/26 v1.15 T.Yoshimoto Add Start
+    -- =====================================================
+    -- 取得レコードを編集処理
+    -- =====================================================
+    prc_edit_data(
+        ov_errbuf     => lv_errbuf             -- エラー・メッセージ           --# 固定 #
+       ,ov_retcode    => lv_retcode            -- リターン・コード             --# 固定 #
+       ,ov_errmsg     => lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+       ,it_data_rec   => lt_main_data_before   -- 入力パラメータ群
        ,ot_data_rec   => lt_main_data   -- 取得レコード群
       ) ;
     IF (lv_retcode = gv_status_error) THEN
       RAISE global_process_expt;
     END IF;
+-- 2009/05/26 v1.15 T.Yoshimoto Add End
 --
     -- =====================================================
     -- 帳票データ出力
