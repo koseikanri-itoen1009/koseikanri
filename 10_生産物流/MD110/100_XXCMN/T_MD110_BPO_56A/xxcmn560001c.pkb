@@ -7,7 +7,7 @@ AS
  * Description      : トレーサビリティ
  * MD.050           : トレーサビリティ T_MD050_BPO_560
  * MD.070           : トレーサビリティ(56A) T_MD070_BPO_56A
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *                                       PT不具合修正
  *  2008/09/03    1.6   ORACLE 丸下博宣  PT不具合修正 TYPE定義をVIEWのTYPEに修正
  *  2008/09/10    1.7   ORACLE 椎名昭圭  PT 6-1_26 対応
+ *  2008/09/26    1.8   ORACLE 椎名昭圭  PT 6-1_26 修正
  *
  *****************************************************************************************/
 --
@@ -1169,6 +1170,10 @@ AS
               ||         'AND   itp.doc_id        = gmd.batch_id '
               ||         'AND   itp.item_id       = gmd.item_id '
               ||         'AND   gmd.batch_id      = gbh.batch_id '
+-- 2008/09/26 v1.8 ADD START
+              ||         'AND   itp.item_id       = :para_item_id '
+              ||         'AND   itp.lot_id        = :para_lot_id '
+-- 2008/09/26 v1.8 ADD END
               ||         'GROUP BY itp.item_id '
               ||                 ',itp.lot_id '
               ||                 ',gbh.batch_id '
@@ -1306,6 +1311,10 @@ AS
               ||         'AND   itp.doc_id        = gmd.batch_id '
               ||         'AND   itp.item_id       = gmd.item_id '
               ||         'AND   gmd.batch_id      = gbh.batch_id '
+-- 2008/09/26 v1.8 ADD START
+              ||         'AND   itp.item_id       = :para_item_id '
+              ||         'AND   itp.lot_id        = :para_lot_id '
+-- 2008/09/26 v1.8 ADD END
               ||         'GROUP BY itp.item_id '
               ||                 ',itp.lot_id '
               ||                 ',gbh.batch_id '
@@ -1577,6 +1586,10 @@ AS
       EXECUTE IMMEDIATE lv_sql_sel BULK COLLECT INTO ot_itp_tbl USING cv_doc_type
                                                                      ,cv_comp_ind
                                                                      ,cv_line_type_03
+-- 2008/09/26 v1.8 ADD START
+                                                                     ,iv_item_id
+                                                                     ,iv_lot_id
+-- 2008/09/26 v1.8 ADD END
                                                                      ,cv_doc_type
                                                                      ,cv_comp_ind
                                                                      ,cv_line_type_01
@@ -1841,6 +1854,10 @@ AS
                                                                      ,cv_comp_ind
                                                                      ,cv_line_type_01
                                                                      ,cv_line_type_02
+-- 2008/09/26 v1.8 ADD START
+                                                                     ,iv_item_id
+                                                                     ,iv_lot_id
+-- 2008/09/26 v1.8 ADD END
                                                                      ,cv_doc_type
                                                                      ,cv_comp_ind
                                                                      ,cv_line_type_03
