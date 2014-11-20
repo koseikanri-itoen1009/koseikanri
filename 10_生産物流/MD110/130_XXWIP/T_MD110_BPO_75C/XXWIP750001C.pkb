@@ -7,7 +7,7 @@ AS
  * Description      : 振替運賃情報更新
  * MD.050           : 運賃計算（振替） T_MD050_BPO_750
  * MD.070           : 振替運賃情報更新 T_MD070_BPO_75C
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,13 +56,13 @@ AS
  *  2008/11/28    1.10 Oracle 野村 正幸  本番#222対応
  *  2008/12/06    1.11 Oracle 野村 正幸  本番#532対応
  *  2008/12/13    1.12 Oracle 野村 正幸  本番#721対応
- *  2008/12/15    1.13 野村 正幸         本番#712対応
- *  2009/01/08    1.14 野村 正幸         本番#961対応
- *  2009/01/19    1.15 椎名 昭圭         本番#1003対応
- *  2009/01/27    1.16 野村 正幸         本番#1078対応
- *  2009/04/06    1.17 野村 正幸         年度切替対応
- *  2009/06/03    1.18 野村 正幸         本番#1505対応
- *
+ *  2008/12/15    1.13 SCS    野村 正幸  本番#712対応
+ *  2009/01/08    1.14 SCS    野村 正幸  本番#961対応
+ *  2009/01/19    1.15 SCS    椎名 昭圭  本番#1003対応
+ *  2009/01/27    1.16 SCS    野村 正幸  本番#1078対応
+ *  2009/04/06    1.17 SCS    野村 正幸  年度切替対応
+ *  2009/06/03    1.18 SCS    野村 正幸  本番#1505対応
+ *  2009/12/09    1.19 SCS    吉元 強樹  E_本稼動_00346対応,内部気づき
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1084,11 +1084,19 @@ AS
         AND NVL(xsmv.end_date_active(+), FND_DATE.STRING_TO_DATE('99991231','YYYYMMDD'))
 -- *----------* 2009/06/03 Ver.1.18 本番#1505対応 end   *----------*
     AND    (((gv_closed_day = gv_ktg_no)          -- 関連データ取得.前月運賃締日後の場合
-      AND (TO_CHAR(xoha.arrival_date, 'YYYYMM') = TO_CHAR(gd_sysdate, 'YYYYMM')))
+      AND ((TO_CHAR(xoha.arrival_date, 'YYYYMM') = TO_CHAR(gd_sysdate, 'YYYYMM'))
+-- 2009/12/09 v1.19 T.Yoshimoto Add Start E_本稼動_00346
+       -- 関連データ取得.システム日付の年月の翌月
+       OR (TO_CHAR(xoha.arrival_date, 'YYYYMM') = TO_CHAR(ADD_MONTHS(gd_sysdate, 1), 'YYYYMM'))))
+-- 2009/12/09 v1.19 T.Yoshimoto Add End E_本稼動_00346
         OR (((gv_closed_day = gv_ktg_yes)       -- 関連データ取得.前月運賃締日前の場合
           AND ((TO_CHAR(xoha.arrival_date, 'YYYYMM') = TO_CHAR(gd_sysdate, 'YYYYMM'))
-            OR (TO_CHAR(xoha.arrival_date, 'YYYYMM') =
-              TO_CHAR(ADD_MONTHS(gd_sysdate, -1), 'YYYYMM'))))))
+            OR (TO_CHAR(xoha.arrival_date, 'YYYYMM') = TO_CHAR(ADD_MONTHS(gd_sysdate, -1), 'YYYYMM'))
+-- 2009/12/09 v1.19 T.Yoshimoto Add Start E_本稼動_00346
+            -- 関連データ取得.システム日付の年月の翌月
+            OR (TO_CHAR(xoha.arrival_date, 'YYYYMM') = TO_CHAR(ADD_MONTHS(gd_sysdate, 1), 'YYYYMM')))))
+-- 2009/12/09 v1.19 T.Yoshimoto Add End E_本稼動_00346
+           )
     AND    (((iv_exchange_type = gv_ktg_no)        -- 入力パラメータ.洗い替え区分 = 「NO」の場合
       AND (((xoha.last_update_date >  gd_last_process_date)
         AND (gd_sysdate        >= xoha.last_update_date))
@@ -1985,8 +1993,13 @@ AS
     WHERE  (((gv_closed_day = gv_ktg_no)
              AND (xtfi.target_date = TO_CHAR(gd_sysdate, 'YYYYMM')))
            OR ((gv_closed_day = gv_ktg_yes)   -- 前月運賃締日前の場合
-             AND (xtfi.target_date  = TO_CHAR(gd_sysdate, 'YYYYMM'))
-             OR  (xtfi.target_date  = TO_CHAR(ADD_MONTHS(gd_sysdate, -1), 'YYYYMM'))))
+-- 2009/12/10 v1.19 T.Yoshimoto Mod Start 内部気づき
+--             AND (xtfi.target_date  = TO_CHAR(gd_sysdate, 'YYYYMM'))
+--             OR  (xtfi.target_date  = TO_CHAR(ADD_MONTHS(gd_sysdate, -1), 'YYYYMM'))))
+--
+             AND ((xtfi.target_date  = TO_CHAR(gd_sysdate, 'YYYYMM'))
+             OR  (xtfi.target_date  = TO_CHAR(ADD_MONTHS(gd_sysdate, -1), 'YYYYMM')))))
+-- 2009/12/10 v1.19 T.Yoshimoto Mod End 内部気づき
 -- ##### 20081017 Ver.1.8 T_S_465対応 start #####
     AND    xtfi.goods_classe  = gv_prod_div   -- 商品区分
 -- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
@@ -2458,8 +2471,13 @@ AS
     WHERE  (((gv_closed_day = gv_ktg_no) -- 前月運賃締日後の場合
              AND (xtfs.target_date = TO_CHAR(gd_sysdate, 'YYYYMM')))
            OR ((gv_closed_day = gv_ktg_yes)  -- 前月運賃締日前の場合
-             AND (xtfs.target_date = TO_CHAR(gd_sysdate, 'YYYYMM'))
-             OR  (xtfs.target_date = TO_CHAR(ADD_MONTHS(gd_sysdate, -1), 'YYYYMM'))))
+-- 2009/12/10 v1.19 T.Yoshimoto Mod Start 内部気づき
+--             AND (xtfs.target_date = TO_CHAR(gd_sysdate, 'YYYYMM'))
+--             OR  (xtfs.target_date = TO_CHAR(ADD_MONTHS(gd_sysdate, -1), 'YYYYMM'))))
+--
+             AND ((xtfs.target_date = TO_CHAR(gd_sysdate, 'YYYYMM'))
+             OR  (xtfs.target_date = TO_CHAR(ADD_MONTHS(gd_sysdate, -1), 'YYYYMM')))))
+-- 2009/12/10 v1.19 T.Yoshimoto Mod End 内部気づき
 -- ##### 20081017 Ver.1.8 T_S_465対応 start #####
     AND   xtfs.goods_classe = gv_prod_div   -- 商品区分
 -- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
