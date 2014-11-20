@@ -8,7 +8,7 @@ AS
  *
  * MD.050           : MD050_CSO_016_A05_情報系-EBSインターフェース：(OUT)什器マスタ
  *
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2009-05-01    1.5   Tomoko.Mori      T1_0897対応
  *  2009-05-18    1.6   K.Satomura       ＳＴ障害対応(T1_1049)
  *  2009-05-25    1.7   M.Maruyama       ＳＴ障害対応(T1_1154)
+ *  2009-06-09    1.8   K.Hosoi          ＳＴ障害対応(T1_1154) 再修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -119,7 +120,10 @@ AS
   cv_category_kbn_new_rplc  CONSTANT VARCHAR2(10)  := '20';            -- 発注依頼明細情報ビューの新台代替情報(新台代替情報:20)
   cv_category_kbn_old_rplc  CONSTANT VARCHAR2(10)  := '40';            -- 発注依頼明細情報ビューの旧台代替情報(旧台代替情報:40)
 /*20090327_yabuki_T1_0193 END*/
-  cv_withdrawal_type     CONSTANT VARCHAR2(10)  := '1:引揚';        -- 発注依頼明細情報ビューの引揚(引揚:1)
+/* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
+  cv_withdrawal_type_1   CONSTANT VARCHAR2(10)  := '1:引揚';        -- 発注依頼明細情報ビューの引揚(引揚:1)
+  cv_withdrawal_type_2   CONSTANT VARCHAR2(10)  := '2:一時引揚';    -- 発注依頼明細情報ビューの引揚(一時引揚:2)
+/* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 END */
   cv_instance_status     CONSTANT VARCHAR2(50)  := 'XXCSO1_INSTANCE_STATUS';  -- クイックコードのルックアップタイプ
   cv_enabled_flag        CONSTANT VARCHAR2(50)  := 'Y';             -- クイックコードの有効フラグ
   cv_jotai_kbn1_1        CONSTANT VARCHAR2(1)   := '1';             -- 機器状態１（1:稼働中）
@@ -155,6 +159,9 @@ AS
   /* 2009.04.09 K.Satomura T1_0441対応 START */
   cv_tkn_number_17    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00560';     -- 値未設定メッセージ
   /* 2009.04.09 K.Satomura T1_0441対応 END */
+  /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
+  cv_tkn_number_18    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00104';     -- 値未設定メッセージ
+  /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 END */
   -- トークンコード
   cv_tkn_err_msg         CONSTANT VARCHAR2(20) := 'ERR_MSG';            -- SQLエラーメッセージ
   cv_tkn_err_msg2        CONSTANT VARCHAR2(20) := 'ERR_MESSAGE';        -- SQLエラーメッセージ2
@@ -183,6 +190,9 @@ AS
   cv_tkn_tsk_nm          CONSTANT VARCHAR2(20) := 'TASK_NAME';         -- 値
   cv_tkn_vl              CONSTANT VARCHAR2(20) := 'VALUE';         -- 値
   /* 2009.05.25 M.Maruyama T1_1154対応 END */
+  /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
+  cv_tkn_bukken          CONSTANT VARCHAR2(20) := 'BUKKEN';             -- 値
+  /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 END */
 --
   cb_true                CONSTANT BOOLEAN := TRUE;
   cb_false               CONSTANT BOOLEAN := FALSE;
@@ -857,6 +867,9 @@ AS
     /* 2009.04.09 K.Satomura T1_0441対応 END */
     cv_clm_nm                  CONSTANT VARCHAR2(100)  := '物件コード';
     /* 2009.05.25 M.Maruyama T1_1154対応 END */
+    /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
+    cv_actual_work_date_2      CONSTANT VARCHAR2(100)  := '作業データテーブルの実作業日(滞留開始日)が';
+    /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 END */
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -892,8 +905,54 @@ AS
     lv_last_month_base_cd VARCHAR2(2000);     -- 先月末拠点(部門)コード
     ln_actual_work_date   NUMBER;             -- 滞留開始日
     ld_sysdate            DATE;               -- システム日付
+    /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
+    ln_target_cnt         NUMBER;             -- カーソル抽出件数格納
+    -- *** ローカル・カーソル ***
+    CURSOR get_act_wk_dt_cur(
+             it_instll_cd IN xxcso_install_base_v.install_code%TYPE
+           )
+    IS
+      SELECT xiw.actual_work_date  actual_work_date -- 滞留開始日
+            ,xrl.category_kbn      category_kbn     -- カテゴリ区分
+            ,xiw.job_kbn           job_kbn          -- 作業区分
+            ,xrl.withdrawal_type   withdrawal_type  -- 引揚区分
+      FROM   xxcso_in_work_data        xiw -- 作業データテーブル
+            ,po_requisition_headers    prh -- 発注依頼ヘッダビュー
+            ,xxcso_requisition_lines_v xrl -- 発注依頼明細情報ビュー
+      WHERE  xiw.install2_processed_flag = cv_flag_yes
+        AND  xiw.install_code2           = it_instll_cd
+        AND  xiw.completion_kbn          = cn_completion_kbn
+        AND  TO_CHAR(xiw.po_req_number)  = prh.segment1
+        AND  prh.requisition_header_id   = xrl.requisition_header_id
+        AND  xiw.line_num                = xrl.line_num
+        AND  (
+               (
+                     xrl.category_kbn    = cv_category_kbn
+                 AND xiw.job_kbn         = cn_job_kbn
+                 AND ( 
+                          xrl.withdrawal_type = cv_withdrawal_type_1
+                       OR xrl.withdrawal_type = cv_withdrawal_type_2
+                     )
+               )
+             OR
+               (
+                     xrl.category_kbn = cv_category_kbn_new_rplc
+                 AND xiw.job_kbn      = cn_job_kbn_new_replace
+               )
+             OR
+               (
+                     xrl.category_kbn = cv_category_kbn_old_rplc
+                 AND xiw.job_kbn      = cn_job_kbn_old_replace
+               )
+             )
+      ORDER BY xiw.actual_work_date  DESC
+     ;
+    /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 END */
     -- *** ローカル・レコード ***
     l_get_rec       g_value_rtype;            -- 訪問予定情報データ
+    /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
+    l_get_act_wk_dt_rec   get_act_wk_dt_cur%ROWTYPE;
+    /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 END */
     -- *** ローカル例外 ***
     select_error_expt     EXCEPTION;          -- データ出力処理例外
     /* 2009.05.25 M.Maruyama T1_1154対応 START */
@@ -919,6 +978,10 @@ AS
     lv_last_month_base_cd := NULL;
     lv_company_cd     := gv_company_cd;
     ld_sysdate        := TO_DATE(l_get_rec.sysdate_now,'YYYYMMDDHH24MISS');
+    /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
+    ln_actual_work_date   := NULL;
+    ln_target_cnt         := 0;
+    /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 END */
     -- ===============================
     -- ステータスコードを抽出
     -- ===============================
@@ -1004,7 +1067,9 @@ AS
     /* 2009.04.08 K.Satomura T1_0365対応 END */
     /* 2009.05.25 M.Maruyama T1_1154対応 END */
       IF (l_get_rec.jotai_kbn1 = cv_jotai_kbn1_2) THEN
-        BEGIN
+        /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
+        --BEGIN
+        /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 END */
         /* 2009.04.09 K.Satomura T1_0441対応 START */
         --  SELECT MAX(xiwd.actual_work_date) max_actual_work_date
         --  INTO   ln_actual_work_date                       -- 滞留開始日
@@ -1062,85 +1127,87 @@ AS
           --       )
           --  ;
           /* 2009.04.09 K.Satomura T1_0441対応 END */
-          SELECT MAX(xiw.actual_work_date) max_actual_work_date -- 滞留開始日
-          INTO   ln_actual_work_date
-          FROM   xxcso_in_work_data        xiw -- 作業データテーブル
-                ,po_requisition_headers    prh -- 発注依頼ヘッダビュー
-                ,xxcso_requisition_lines_v xrl -- 発注依頼明細情報ビュー
-          WHERE  xiw.install2_processed_flag = cv_flag_yes
-            AND  xiw.install_code2           = l_get_rec.install_code
-            AND  xiw.completion_kbn          = cn_completion_kbn
-            AND  TO_CHAR(xiw.po_req_number)  = prh.segment1
-            AND  prh.requisition_header_id   = xrl.requisition_header_id
-            AND  xiw.line_num                = xrl.line_num
-            AND  (
-                   (
-                         xrl.category_kbn    = cv_category_kbn
-                     AND xiw.job_kbn         = cn_job_kbn
-                     AND xrl.withdrawal_type = cv_withdrawal_type
-                   )
-                 OR
-                   (
-                         xrl.category_kbn = cv_category_kbn_new_rplc
-                     AND xiw.job_kbn      = cn_job_kbn_new_replace
-                   )
-                 OR
-                   (
-                         xrl.category_kbn = cv_category_kbn_old_rplc
-                     AND xiw.job_kbn      = cn_job_kbn_old_replace
-                   )
-                 )
-            ;
-
-        -- 検索結果がない場合
-        IF (ln_actual_work_date IS NULL) THEN
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                               iv_application  => cv_app_name                   -- アプリケーション短縮名
-                              ,iv_name         => cv_tkn_number_17              -- メッセージコード
-                              ,iv_token_name1  => cv_tkn_item                   -- トークンコード1
-                              ,iv_token_value1 => cv_actual_work_date           -- トークン値1抽出処理名
-                              ,iv_token_name2  => cv_tkn_object_cd              -- トークンコード2
-                              ,iv_token_value2 => l_get_rec.install_code        -- トークン値2外部参照(物件コード)
-                );
-            lv_errbuf  := lv_errmsg;
-            RAISE select_warn_expt;
-        END IF;
-
-        EXCEPTION
-          -- 検索結果がない場合、警告終了例外へ
-          WHEN select_warn_expt THEN
-            RAISE status_warn_expt;
-          -- 抽出失敗した場合
-          WHEN OTHERS THEN
-            lv_errmsg := xxccp_common_pkg.get_msg(
-                               iv_application  => cv_app_name                   -- アプリケーション短縮名
-                              ,iv_name         => cv_tkn_number_10              -- メッセージコード
-                              -- ,iv_token_name1  => cv_tkn_proc_name              -- トークンコード1
-                              -- ,iv_token_value1 => cv_work_data                  -- トークン値1抽出処理名
-                              -- ,iv_token_name2  => cv_tkn_object_cd              -- トークンコード2
-                              -- ,iv_token_value2 => l_get_rec.install_code        -- トークン値2外部参照(物件コード)
-                              -- /* 2009.04.09 K.Satomura T1_0441対応 START */
-                              -- --,iv_token_name3  => cv_tkn_work_date              -- トークンコード3
-                              -- --,iv_token_value3 => ln_actual_work_date           -- トークン値3実作業日
-                              -- --,iv_token_name4  => cv_tkn_location_cd            -- トークンコード4
-                              -- --,iv_token_value4 => lv_base_code                  -- トークン値4拠点(部門)コード
-                              -- --,iv_token_name5  => cv_tkn_err_msg                -- トークンコード5
-                              -- --,iv_token_value5 => SQLERRM                       -- トークン値5
-                              -- ,iv_token_name3  => cv_tkn_err_msg                -- トークンコード3
-                              -- ,iv_token_value3 => SQLERRM                       -- トークン値3実作業日
-                              -- /* 2009.04.09 K.Satomura T1_0441対応 END */
-                              ,iv_token_name1  => cv_tkn_tsk_nm                 -- トークンコード1
-                              ,iv_token_value1 => cv_actual_work_date           -- トークン値1抽出処理名
-                              ,iv_token_name2  => cv_tkn_item                   -- トークンコード2
-                              ,iv_token_value2 => cv_clm_nm                     -- トークン値2項目名物件コード
-                              ,iv_token_name3  => cv_tkn_vl                     -- トークンコード3
-                              ,iv_token_value3 => l_get_rec.install_code        -- トークン値3外部参照(物件コード)
-                              ,iv_token_name4  => cv_tkn_err_msg                -- トークンコード4
-                              ,iv_token_value4 => SQLERRM                       -- トークン値4SQLエラーメッセージ
-                );
-            lv_errbuf  := lv_errmsg;
-            RAISE select_error_expt;
-        END;
+        /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
+        --  SELECT MAX(xiw.actual_work_date) max_actual_work_date -- 滞留開始日
+        --  INTO   ln_actual_work_date
+        --  FROM   xxcso_in_work_data        xiw -- 作業データテーブル
+        --        ,po_requisition_headers    prh -- 発注依頼ヘッダビュー
+        --        ,xxcso_requisition_lines_v xrl -- 発注依頼明細情報ビュー
+        --  WHERE  xiw.install2_processed_flag = cv_flag_yes
+        --    AND  xiw.install_code2           = l_get_rec.install_code
+        --    AND  xiw.completion_kbn          = cn_completion_kbn
+        --    AND  TO_CHAR(xiw.po_req_number)  = prh.segment1
+        --    AND  prh.requisition_header_id   = xrl.requisition_header_id
+        --    AND  xiw.line_num                = xrl.line_num
+        --    AND  (
+        --           (
+        --                 xrl.category_kbn    = cv_category_kbn
+        --             AND xiw.job_kbn         = cn_job_kbn
+        --             AND xrl.withdrawal_type = cv_withdrawal_type
+        --           )
+        --         OR
+        --           (
+        --                 xrl.category_kbn = cv_category_kbn_new_rplc
+        --             AND xiw.job_kbn      = cn_job_kbn_new_replace
+        --           )
+        --         OR
+        --           (
+        --                 xrl.category_kbn = cv_category_kbn_old_rplc
+        --             AND xiw.job_kbn      = cn_job_kbn_old_replace
+        --           )
+        --         )
+        --    ;
+        --
+        ---- 検索結果がない場合
+        --IF (ln_actual_work_date IS NULL) THEN
+        --  lv_errmsg := xxccp_common_pkg.get_msg(
+        --                       iv_application  => cv_app_name                   -- アプリケーション短縮名
+        --                      ,iv_name         => cv_tkn_number_17              -- メッセージコード
+        --                      ,iv_token_name1  => cv_tkn_item                   -- トークンコード1
+        --                      ,iv_token_value1 => cv_actual_work_date           -- トークン値1抽出処理名
+        --                      ,iv_token_name2  => cv_tkn_object_cd              -- トークンコード2
+        --                      ,iv_token_value2 => l_get_rec.install_code        -- トークン値2外部参照(物件コード)
+        --        );
+        --    lv_errbuf  := lv_errmsg;
+        --    RAISE select_warn_expt;
+        --END IF;
+        --
+        --EXCEPTION
+        --  -- 検索結果がない場合、警告終了例外へ
+        --  WHEN select_warn_expt THEN
+        --    RAISE status_warn_expt;
+        --  -- 抽出失敗した場合
+        --  WHEN OTHERS THEN
+        --    lv_errmsg := xxccp_common_pkg.get_msg(
+        --                       iv_application  => cv_app_name                   -- アプリケーション短縮名
+        --                      ,iv_name         => cv_tkn_number_10              -- メッセージコード
+        --                      -- ,iv_token_name1  => cv_tkn_proc_name              -- トークンコード1
+        --                      -- ,iv_token_value1 => cv_work_data                  -- トークン値1抽出処理名
+        --                      -- ,iv_token_name2  => cv_tkn_object_cd              -- トークンコード2
+        --                      -- ,iv_token_value2 => l_get_rec.install_code        -- トークン値2外部参照(物件コード)
+        --                      -- /* 2009.04.09 K.Satomura T1_0441対応 START */
+        --                      -- --,iv_token_name3  => cv_tkn_work_date              -- トークンコード3
+        --                      -- --,iv_token_value3 => ln_actual_work_date           -- トークン値3実作業日
+        --                      -- --,iv_token_name4  => cv_tkn_location_cd            -- トークンコード4
+        --                      -- --,iv_token_value4 => lv_base_code                  -- トークン値4拠点(部門)コード
+        --                      -- --,iv_token_name5  => cv_tkn_err_msg                -- トークンコード5
+        --                      -- --,iv_token_value5 => SQLERRM                       -- トークン値5
+        --                      -- ,iv_token_name3  => cv_tkn_err_msg                -- トークンコード3
+        --                      -- ,iv_token_value3 => SQLERRM                       -- トークン値3実作業日
+        --                      -- /* 2009.04.09 K.Satomura T1_0441対応 END */
+        --                      ,iv_token_name1  => cv_tkn_tsk_nm                 -- トークンコード1
+        --                      ,iv_token_value1 => cv_actual_work_date           -- トークン値1抽出処理名
+        --                      ,iv_token_name2  => cv_tkn_item                   -- トークンコード2
+        --                      ,iv_token_value2 => cv_clm_nm                     -- トークン値2項目名物件コード
+        --                      ,iv_token_name3  => cv_tkn_vl                     -- トークンコード3
+        --                      ,iv_token_value3 => l_get_rec.install_code        -- トークン値3外部参照(物件コード)
+        --                      ,iv_token_name4  => cv_tkn_err_msg                -- トークンコード4
+        --                      ,iv_token_value4 => SQLERRM                       -- トークン値4SQLエラーメッセージ
+        --        );
+        --    lv_errbuf  := lv_errmsg;
+        --    RAISE select_error_expt;
+        --END;
+        /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 END */
         -- -- 検索結果がない場合
         -- IF (ln_actual_work_date IS NULL) THEN
         --   lv_errmsg := xxccp_common_pkg.get_msg(
@@ -1168,6 +1235,86 @@ AS
         --     RAISE select_error_expt;
         -- END IF;
         /* 2009.05.25 M.Maruyama T1_1154対応 END */
+        /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
+        -- カーソルオープン
+        OPEN get_act_wk_dt_cur(
+               it_instll_cd  => l_get_rec.install_code -- 外部参照
+             );
+--
+          BEGIN
+            FETCH get_act_wk_dt_cur INTO l_get_act_wk_dt_rec;
+--
+          EXCEPTION
+            WHEN OTHERS THEN
+              lv_errmsg := xxccp_common_pkg.get_msg(
+                                 iv_application  => cv_app_name                   -- アプリケーション短縮名
+                                ,iv_name         => cv_tkn_number_10              -- メッセージコード
+                                ,iv_token_name1  => cv_tkn_tsk_nm                 -- トークンコード1
+                                ,iv_token_value1 => cv_actual_work_date           -- トークン値1抽出処理名
+                                ,iv_token_name2  => cv_tkn_item                   -- トークンコード2
+                                ,iv_token_value2 => cv_clm_nm                     -- トークン値2項目名物件コード
+                                ,iv_token_name3  => cv_tkn_vl                     -- トークンコード3
+                                ,iv_token_value3 => l_get_rec.install_code        -- トークン値3外部参照(物件コード)
+                                ,iv_token_name4  => cv_tkn_err_msg                -- トークンコード4
+                                ,iv_token_value4 => SQLERRM                       -- トークン値4SQLエラーメッセージ
+                  );
+              lv_errbuf  := lv_errmsg;
+              RAISE select_error_expt;
+          END;
+--
+        -- 処理対象件数格納
+        ln_target_cnt := get_act_wk_dt_cur%ROWCOUNT;
+        --抽出件数が０件の場合
+        IF (ln_target_cnt = 0) THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                                 iv_application  => cv_app_name                   -- アプリケーション短縮名
+                                ,iv_name         => cv_tkn_number_18              -- メッセージコード
+                                ,iv_token_name1  => cv_tkn_tsk_nm                 -- トークンコード1
+                                ,iv_token_value1 => cv_actual_work_date_2         -- トークン値1抽出処理名
+                                ,iv_token_name2  => cv_tkn_bukken                 -- トークンコード2
+                                ,iv_token_value2 => l_get_rec.install_code        -- トークン値2外部参照(物件コード)
+                  );
+            lv_errbuf  := lv_errmsg;
+            RAISE status_warn_expt;
+        END IF;
+--
+        -- 取得した実作業日がNULLの場合
+        IF ( l_get_act_wk_dt_rec.actual_work_date IS NULL ) THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_app_name                   -- アプリケーション短縮名
+                              ,iv_name         => cv_tkn_number_17              -- メッセージコード
+                              ,iv_token_name1  => cv_tkn_item                   -- トークンコード1
+                              ,iv_token_value1 => cv_actual_work_date           -- トークン値1抽出処理名
+                              ,iv_token_name2  => cv_tkn_object_cd              -- トークンコード2
+                              ,iv_token_value2 => l_get_rec.install_code        -- トークン値2外部参照(物件コード)
+                );
+          lv_errbuf  := lv_errmsg;
+          RAISE status_warn_expt;
+        END IF;
+--
+        -- カテゴリ区分 = '50'(引揚情報) 且つ 作業区分 = '5'(引揚)の場合
+        IF ( l_get_act_wk_dt_rec.category_kbn = cv_category_kbn
+          AND l_get_act_wk_dt_rec.job_kbn = cn_job_kbn ) THEN
+--
+          -- 引揚区分 = '1: 引揚'の場合
+          IF ( l_get_act_wk_dt_rec.withdrawal_type = cv_withdrawal_type_1) THEN
+            -- 滞留開始日に、取得した実作業日を設定
+            ln_actual_work_date := l_get_act_wk_dt_rec.actual_work_date;
+--
+          -- 引揚区分 = '2: 一時引揚'の場合
+          ELSE
+            -- 滞留開始日にNULLを設定
+            ln_actual_work_date := NULL;
+          END IF;
+        ELSE
+          -- 滞留開始日に、取得した実作業日を設定
+          ln_actual_work_date := l_get_act_wk_dt_rec.actual_work_date;
+        END IF;
+--
+        -- カーソルクローズ
+        CLOSE get_act_wk_dt_cur;
+        /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 END */
+--
       END IF;
     /* 2009.04.08 K.Satomura T1_0365対応 START */
     END IF;
@@ -1357,11 +1504,25 @@ AS
       /* 2009.04.09 K.Satomura T1_0441対応 START */
       gn_error_cnt  := gn_error_cnt + 1;
       /* 2009.04.09 K.Satomura T1_0441対応 END */
+      /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
+      -- カーソルがクローズされていない場合
+      IF (get_act_wk_dt_cur%ISOPEN) THEN
+        -- カーソルクローズ
+        CLOSE get_act_wk_dt_cur;
+      END IF;
+      /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
       /* 2009.05.25 M.Maruyama T1_1154対応 START */
     WHEN status_warn_expt THEN
+      /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
+      -- カーソルがクローズされていない場合
+      IF (get_act_wk_dt_cur%ISOPEN) THEN
+        -- カーソルクローズ
+        CLOSE get_act_wk_dt_cur;
+      END IF;
+      /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_warn;
@@ -1371,17 +1532,38 @@ AS
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
+      /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
+      -- カーソルがクローズされていない場合
+      IF (get_act_wk_dt_cur%ISOPEN) THEN
+        -- カーソルクローズ
+        CLOSE get_act_wk_dt_cur;
+      END IF;
+      /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
 --
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
+      /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
+      -- カーソルがクローズされていない場合
+      IF (get_act_wk_dt_cur%ISOPEN) THEN
+        -- カーソルクローズ
+        CLOSE get_act_wk_dt_cur;
+      END IF;
+      /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
 --
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
+      /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
+      -- カーソルがクローズされていない場合
+      IF (get_act_wk_dt_cur%ISOPEN) THEN
+        -- カーソルクローズ
+        CLOSE get_act_wk_dt_cur;
+      END IF;
+      /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
 --
