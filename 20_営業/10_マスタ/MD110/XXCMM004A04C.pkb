@@ -7,7 +7,7 @@ AS
  * Description      : Disc品目変更履歴アドオンマスタにて変更予約管理されている項目を
  *                  : 適用日が到来したタイミングで各品目情報に反映します。
  * MD.050           : 変更予約適用    MD050_CMM_004_A04
- * Version          : Issue3.12
+ * Version          : Issue3.13
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -75,6 +75,7 @@ AS
  *  2010/02/17    1.16  Y.Kuboshima      障害対応(本稼動_01485) 子品目継承時に重量容積区分を継承しないよう修正
  *  2010/04/07    1.17  Y.Kuboshima      障害対応(本稼動_02018) 標準原価 > 営業原価の場合、警告としないよう修正
  *  2012/04/17    1.18  K.Nakamura       障害対応(本稼動_07669) 品目ステータスDへ変更する場合のチェック追加
+ *  2014/03/27    1.19  K.Nakamura       障害対応(本稼動_11556) 取引存在チェック条件修正
  *
  *****************************************************************************************/
 --
@@ -3377,7 +3378,10 @@ AS
       WHERE  mmt.inventory_item_id   = i_update_item_rec.inventory_item_id                            -- 品目ID
       AND    mmt.organization_id     = gn_bus_org_id                                                  -- 組織ID
       AND    mmt.transaction_date   >= gd_period_start                                                -- 年月
-      AND    mmt.transaction_date   <= i_update_item_rec.apply_date                                   -- 適用日
+-- 2014/03/27 Ver1.19 本稼動_11556 mod start by K.Nakamura
+--      AND    mmt.transaction_date   <= i_update_item_rec.apply_date                                   -- 適用日
+      AND    mmt.transaction_date   <  i_update_item_rec.apply_date + 1                               -- 適用日
+-- 2014/03/27 Ver1.19 本稼動_11556 mod end by K.Nakamura
       AND    ROWNUM = 1;
       -- 取引が存在する場合
       IF ( ln_exists_cnt <> 0 ) THEN
