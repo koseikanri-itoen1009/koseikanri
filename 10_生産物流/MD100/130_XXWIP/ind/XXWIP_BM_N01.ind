@@ -1,0 +1,1 @@
+CREATE INDEX xxwip.xxwip_bm_n01 ON xxwip.xxwip_billing_mst(billing_code,billing_date) TABLESPACE xxidx;
