@@ -40,6 +40,7 @@ AS
  *  2009/03/23    1.1   N.Yanagitaira    [áŠQT1_0163]³”FŽžŒ_–ñæupdateˆ—C³
  *  2009/04/06    1.2   N.Yanagitaira    [áŠQT1_0316]‰ñ‘—æƒŒƒR[ƒhXVˆ—C³
  *  2009/04/09    1.3   K.Satomura       [áŠQT1_0424]³”FŠ®—¹“úEŒˆÙ“úÝ’è’lC³
+ *  2009/04/17    1.4   N.Yanagitaira    [áŠQT1_0536]’Ê’mƒ[ƒNƒtƒ[‘—MŒ³Ý’è’lC³
  *****************************************************************************************/
 --
   -- ===============================
@@ -173,6 +174,9 @@ AS
     lv_application_code          xxcso_sp_decision_headers.application_code%TYPE;
     lv_status                    xxcso_sp_decision_headers.status%TYPE;
     lv_approve_code              xxcso_sp_decision_sends.approve_code%TYPE;
+-- 20090406_N.Yanagitaira T1_0536 Mod START
+    lv_employee_number           per_people_f.employee_number%TYPE;
+-- 20090406_N.Yanagitaira T1_0536 Mod END
     TYPE sp_decision_send_tbl_type IS
       TABLE OF xxcso_sp_decision_sends.sp_decision_send_id%TYPE INDEX BY BINARY_INTEGER;
     TYPE approve_code_tbl_type IS
@@ -210,6 +214,14 @@ AS
            ,xxcso_sp_decision_headers   xsdh
     WHERE   xsdh.sp_decision_header_id = xtsdr.sp_decision_header_id
     ;
+--
+-- 20090417_N.Yanagitaira T1_0536 Add START
+    SELECT   xev.employee_number
+    INTO     lv_employee_number 
+    FROM     xxcso_employees_v2 xev
+    WHERE    xev.user_id = fnd_global.user_id
+    ;
+-- 20090417_N.Yanagitaira T1_0536 Add END
 --
     SELECT  xsds.sp_decision_send_id
            ,xsds.approve_code
@@ -279,7 +291,10 @@ AS
           xxcso020A02C.main(
              iv_notify_type            => lt_work_request_tbl(idx)
             ,it_sp_decision_header_id  => ln_sp_decision_header_id
-            ,iv_send_employee_number   => lv_application_code
+-- 20090417_N.Yanagitaira T1_0536 Mod START
+--            ,iv_send_employee_number   => lv_application_code
+            ,iv_send_employee_number   => lv_employee_number
+-- 20090417_N.Yanagitaira T1_0536 Mod END
             ,iv_dest_employee_number   => lt_approve_code_tbl(idx)
             ,errbuf                    => ov_errbuf
             ,retcode                   => ov_retcode
@@ -357,7 +372,10 @@ AS
           xxcso020A02C.main(
              iv_notify_type            => lt_work_request_tbl(idx)
             ,it_sp_decision_header_id  => ln_sp_decision_header_id
-            ,iv_send_employee_number   => lv_application_code
+-- 20090417_N.Yanagitaira T1_0536 Mod START
+--            ,iv_send_employee_number   => lv_application_code
+            ,iv_send_employee_number   => lv_employee_number
+-- 20090417_N.Yanagitaira T1_0536 Mod END
             ,iv_dest_employee_number   => lt_approve_code_tbl(idx)
             ,errbuf                    => ov_errbuf
             ,retcode                   => ov_retcode
@@ -435,7 +453,10 @@ AS
           xxcso020A02C.main(
              iv_notify_type            => lt_work_request_tbl(idx)
             ,it_sp_decision_header_id  => ln_sp_decision_header_id
-            ,iv_send_employee_number   => lv_application_code
+-- 20090417_N.Yanagitaira T1_0536 Mod START
+--            ,iv_send_employee_number   => lv_application_code
+            ,iv_send_employee_number   => lv_employee_number
+-- 20090417_N.Yanagitaira T1_0536 Mod END
             ,iv_dest_employee_number   => lt_approve_code_tbl(idx)
             ,errbuf                    => ov_errbuf
             ,retcode                   => ov_retcode
