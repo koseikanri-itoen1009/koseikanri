@@ -22,10 +22,10 @@ SELECT ximv.item_id         item_id
       ,ximv.test_code       qt_type  -- 試験有無区分
 -- 2008/06/25 H.Itou ADD END
 FROM   xxcmn_item_mst_v         ximv -- OPM品目マスタ情報ビュー
-      ,xxcmn_item_categories4_v xicv -- 品目カテゴリ情報VIEW4
+      ,xxcmn_item_categories5_v xicv -- 品目カテゴリ情報VIEW
 WHERE  ximv.cost_manage_code = '1'
 AND    xicv.item_id          = ximv.item_id
-AND    xicv.item_class_code <> '2'
+AND    xicv.item_class_code  IN( '1', '4')
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />

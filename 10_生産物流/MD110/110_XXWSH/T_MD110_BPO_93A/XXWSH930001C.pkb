@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.43
+ * Version          : 1.44
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -136,6 +136,8 @@ AS
  *  2009/01/05    1.41 Oracle 北寒寺正夫 本番障害対応#840 移動ロット詳細にロット実績数量をインサート、更新する際にNULLの場合0を設定するように修正
  *  2009/01/22    1.42 Oracle 佐久間尚豊 本番障害対応#917 移動データのステータス更新、データ作成を正常にするため、移動入庫確定報告情報の倉庫の検索条件を出荷元に修正
  *  2009/02/03    1.43 Oracle 佐久間尚豊 本番障害対応#1101 顧客情報の検索キーを出荷先→管轄拠点に変更
+ *  2009/02/05    1.44 Oracle 佐久間尚豊 本番障害対応#1095 妥当チェックでロットステータス未設定を確認した場合、警告終了とする。
+ *                                                         各プロシージャでエラー終了した場合、サブメインの例外処理で制御できるようにする。
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -300,6 +302,8 @@ AS
   gv_msg_93a_156                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13156';  -- 2008/10/30 統合指摘#390 Add
   -- 出庫倉庫・入庫倉庫同一エラーメッセージ                                   -- 2008/12/16 本番障害#758 Add
   gv_msg_93a_157                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13157';  -- 2008/12/16 本番障害#758 Add
+  -- 妥当チェックエラーメッセージ(ロットステータス未設定警告)                 -- 2009/02/05 本番障害#1095 ADD
+  gv_msg_93a_158                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13158';  -- 2009/02/05 本番障害#1095 ADD
   -- 重量容積小口個数更新関数エラーメッセージ
   gv_msg_93a_308                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13308';
   -- ＰＧでのコンカレント呼び出しエラー
@@ -8548,74 +8552,173 @@ AS
                   FETCH cur_lots_status_check INTO lt_expiration_day, lt_original_sign, lt_lot_status;
                   EXIT WHEN cur_lots_status_check%NOTFOUND;
 --
-                  IF (ln_errflg = 0) THEN
+-- 2009/02/05 本番障害#1095 ADD START ロットステータス未設定を確認した場合、警告終了とする。
+                  -- ロットステータス未設定である
+                  IF ((ln_errflg = 0)         AND 
+                      (lt_lot_status IS NULL))
+                  THEN
 --
-                    -- 賞味期限=抽出項目:賞味期限
-                    IF (lt_expiration_day = TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD')) THEN
+                    ln_errflg := 1;
 --
-                      -- ステータス初期化
-                      lt_pay_provision_rel := NULL;
-                      lt_move_inst_rel     := NULL;
-                      lt_ship_req_rel      := NULL;
+                    -- (ロットステータス未設定警告)
+                    lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                   gv_msg_kbn          -- 'XXWSH'
+                                  ,gv_msg_93a_158  -- 妥当チェックエラーメッセージ(ロットステータス未設定警告)
+                                  ,gv_param1_token
+                                  ,gr_interface_info_rec(i).delivery_no      --配送No
+                                  ,gv_param2_token
+                                  ,gr_interface_info_rec(i).order_source_ref --受注ソース参照
+                                  ,gv_param3_token
+                                  ,gr_interface_info_rec(i).prod_kbn_cd      --商品区分
+                                  ,gv_param4_token
+                                  ,gr_interface_info_rec(i).item_kbn_cd      --品目区分
+                                  ,gv_param5_token
+                                  ,gr_interface_info_rec(i).orderd_item_code --IF_L.受注品目
+                                  ,gv_param6_token
+                                  ,gr_interface_info_rec(i).lot_no           --IF_L.ロットNo
+                                  ,gv_param7_token
+                                  ,TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD')  --製造年月日
+                                  ,gv_param8_token
+                                  ,TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD')                 --賞味期限
+                                  ,gv_param9_token
+                                  ,gr_interface_info_rec(i).original_character                                --固有記号
+                                  )
+                                  ,1
+                                  ,5000);
+
 --
-                      -- ロットステータス情報取得
-                      SELECT xlsv.pay_provision_rel                                       -- 有償支給(実績)
-                            ,xlsv.move_inst_rel                                           -- 移動指示(実績)
-                            ,xlsv.ship_req_rel                                            -- 出荷依頼(実績)
-                      INTO  lt_pay_provision_rel
-                           ,lt_move_inst_rel
-                           ,lt_ship_req_rel
-                      FROM  xxcmn_lot_status_v xlsv
-                      WHERE xlsv.prod_class_code = gr_interface_info_rec(i).prod_kbn_cd   -- 商品区分
-                      AND   xlsv.lot_status      = lt_lot_status;                         -- ロットステータス
+                    -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
+                    set_header_unit_reserveflg(
+                      lt_delivery_no,       -- 配送No
+                      lt_order_source_ref,  -- 移動No/依頼No
+                      lt_eos_data_type,     -- EOSデータ種別
+                      gv_reserved_class,    -- エラー種別：保留
+                      lv_msg_buff,          -- エラー・メッセージ(出力用)
+                      lv_errbuf,            -- エラー・メッセージ           --# 固定 #
+                      lv_retcode,           -- リターン・コード             --# 固定 #
+                      lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+                    );
 --
-                      ln_lot_err_flg := 0;    -- 初期化
+                    -- 処理ステータス：警告
+                    ov_retcode := gv_status_warn;
 --
-                      -- ロットステータス判定
-                      -- 売上有拠点の場合のみチェックを行う                                -- 2008/12/11 本番障害#644 Add
-                      IF (gr_interface_info_rec(i).location_rel_code = gv_flg_on ) THEN    -- 2008/12/11 本番障害#644 Add
+                  -- ロットステータス設定済みである（ロット警告(賞味期限=抽出項目:賞味期限)、品質警告チェック開始）
+                  ELSE
+-- 2009/02/05 本番障害#1095 ADD END   ロットステータス未設定を確認した場合、警告終了とする。
 --
-                        -- 有償出荷報告の場合
-                        IF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) THEN
+                    IF (ln_errflg = 0) THEN
 --
-                          -- 保留設定
-                          IF (lt_pay_provision_rel = gv_yesno_n) THEN
-                            ln_lot_err_flg := 1;
+                      -- 賞味期限=抽出項目:賞味期限
+                      IF (lt_expiration_day = TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD')) THEN
+--
+                        -- ステータス初期化
+                        lt_pay_provision_rel := NULL;
+                        lt_move_inst_rel     := NULL;
+                        lt_ship_req_rel      := NULL;
+--
+                        -- ロットステータス情報取得
+                        SELECT xlsv.pay_provision_rel                                       -- 有償支給(実績)
+                              ,xlsv.move_inst_rel                                           -- 移動指示(実績)
+                              ,xlsv.ship_req_rel                                            -- 出荷依頼(実績)
+                        INTO  lt_pay_provision_rel
+                             ,lt_move_inst_rel
+                             ,lt_ship_req_rel
+                        FROM  xxcmn_lot_status_v xlsv
+                        WHERE xlsv.prod_class_code = gr_interface_info_rec(i).prod_kbn_cd   -- 商品区分
+                        AND   xlsv.lot_status      = lt_lot_status;                         -- ロットステータス
+--
+                        ln_lot_err_flg := 0;    -- 初期化
+--
+                        -- ロットステータス判定
+                        -- 売上有拠点の場合のみチェックを行う                                -- 2008/12/11 本番障害#644 Add
+                        IF (gr_interface_info_rec(i).location_rel_code = gv_flg_on ) THEN    -- 2008/12/11 本番障害#644 Add
+--
+                          -- 有償出荷報告の場合
+                          IF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) THEN
+--
+                            -- 保留設定
+                            IF (lt_pay_provision_rel = gv_yesno_n) THEN
+                              ln_lot_err_flg := 1;
+                            END IF;
+--
+                          -- 拠点出荷確定報告/庭先出荷確定報告の場合
+                          ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210)  OR
+                                 (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215))
+                          THEN
+--
+                            -- 保留設定
+                            IF (lt_ship_req_rel = gv_yesno_n) THEN
+                              ln_lot_err_flg := 1;
+                            END IF;
+--
+                          -- 2008/08/13 Del Start 移動の場合は品質チェックを行わない --------------
+                          ---- 移動出庫確定報告/移動入庫確定報告の場合
+                          --ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220)  OR
+                          --       (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230))
+                          --THEN
+                          --
+                          --  -- 保留設定
+                          --  IF (lt_move_inst_rel = gv_yesno_n) THEN
+                          --    ln_lot_err_flg := 1;
+                          --  END IF;
+                          -- 2008/08/13 Del End ---------------------------------------------------
+--
                           END IF;
+                        END IF;        -- 2008/12/11 本番障害#644 Add
 --
-                        -- 拠点出荷確定報告/庭先出荷確定報告の場合
-                        ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210)  OR
-                               (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215))
-                        THEN
+                        IF (ln_lot_err_flg = 1) THEN
 --
-                          -- 保留設定
-                          IF (lt_ship_req_rel = gv_yesno_n) THEN
-                            ln_lot_err_flg := 1;
-                          END IF;
+                          ln_errflg := 1;
 --
-                        -- 2008/08/13 Del Start 移動の場合は品質チェックを行わない --------------
-                        ---- 移動出庫確定報告/移動入庫確定報告の場合
-                        --ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220)  OR
-                        --       (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230))
-                        --THEN
-                        --
-                        --  -- 保留設定
-                        --  IF (lt_move_inst_rel = gv_yesno_n) THEN
-                        --    ln_lot_err_flg := 1;
-                        --  END IF;
-                        -- 2008/08/13 Del End ---------------------------------------------------
+                          -- (品質警告)
+                          lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                         gv_msg_kbn          -- 'XXWSH'
+                                        ,gv_msg_93a_021  -- 妥当チェックエラーメッセージ(品質警告)
+                                        ,gv_param7_token
+                                        ,gr_interface_info_rec(i).delivery_no      --配送No
+                                        ,gv_param8_token
+                                        ,gr_interface_info_rec(i).order_source_ref --受注ソース参照
+                                        ,gv_param1_token
+                                        ,gr_interface_info_rec(i).prod_kbn_cd  --商品区分
+                                        ,gv_param2_token
+                                        ,gr_interface_info_rec(i).item_kbn_cd  --品目区分
+                                        ,gv_param3_token
+                                        ,gr_interface_info_rec(i).orderd_item_code      --IF_L.受注品目
+                                        ,gv_param4_token
+                                        ,TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD')  --製造年月日
+                                        ,gv_param5_token
+                                        ,TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD')                 --賞味期限
+                                        ,gv_param6_token
+                                        ,gr_interface_info_rec(i).original_character          --固有記号
+                                        )
+                                        ,1
+                                        ,5000);
+--
+                          -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
+                          set_header_unit_reserveflg(
+                            lt_delivery_no,       -- 配送No
+                            lt_order_source_ref,  -- 移動No/依頼No
+                            lt_eos_data_type,     -- EOSデータ種別
+                            gv_reserved_class,    -- エラー種別：保留
+                            lv_msg_buff,          -- エラー・メッセージ(出力用)
+                            lv_errbuf,            -- エラー・メッセージ           --# 固定 #
+                            lv_retcode,           -- リターン・コード             --# 固定 #
+                            lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+                          );
+--
+                          -- 処理ステータス：警告
+                          ov_retcode := gv_status_warn;
 --
                         END IF;
-                      END IF;        -- 2008/12/11 本番障害#644 Add
 --
-                      IF (ln_lot_err_flg = 1) THEN
+                      ELSE
 --
                         ln_errflg := 1;
 --
-                        -- (品質警告)
+                        -- (ロット警告)
                         lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                        gv_msg_kbn          -- 'XXWSH'
-                                      ,gv_msg_93a_021  -- 妥当チェックエラーメッセージ(品質警告)
+                                      ,gv_msg_93a_020  -- 妥当チェックエラーメッセージ(ロット警告)
                                       ,gv_param7_token
                                       ,gr_interface_info_rec(i).delivery_no      --配送No
                                       ,gv_param8_token
@@ -8653,52 +8756,11 @@ AS
 --
                       END IF;
 --
-                    ELSE
---
-                      ln_errflg := 1;
---
-                      -- (ロット警告)
-                      lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
-                                     gv_msg_kbn          -- 'XXWSH'
-                                    ,gv_msg_93a_020  -- 妥当チェックエラーメッセージ(ロット警告)
-                                    ,gv_param7_token
-                                    ,gr_interface_info_rec(i).delivery_no      --配送No
-                                    ,gv_param8_token
-                                    ,gr_interface_info_rec(i).order_source_ref --受注ソース参照
-                                    ,gv_param1_token
-                                    ,gr_interface_info_rec(i).prod_kbn_cd  --商品区分
-                                    ,gv_param2_token
-                                    ,gr_interface_info_rec(i).item_kbn_cd  --品目区分
-                                    ,gv_param3_token
-                                    ,gr_interface_info_rec(i).orderd_item_code      --IF_L.受注品目
-                                    ,gv_param4_token
-                                    ,TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD')  --製造年月日
-                                    ,gv_param5_token
-                                    ,TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD')                 --賞味期限
-                                    ,gv_param6_token
-                                    ,gr_interface_info_rec(i).original_character          --固有記号
-                                    )
-                                    ,1
-                                    ,5000);
---
-                      -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
-                      set_header_unit_reserveflg(
-                        lt_delivery_no,       -- 配送No
-                        lt_order_source_ref,  -- 移動No/依頼No
-                        lt_eos_data_type,     -- EOSデータ種別
-                        gv_reserved_class,    -- エラー種別：保留
-                        lv_msg_buff,          -- エラー・メッセージ(出力用)
-                        lv_errbuf,            -- エラー・メッセージ           --# 固定 #
-                        lv_retcode,           -- リターン・コード             --# 固定 #
-                        lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
---
-                      -- 処理ステータス：警告
-                      ov_retcode := gv_status_warn;
---
                     END IF;
 --
+-- 2009/02/05 本番障害#1095 ADD START ロットステータス未設定を確認した場合、警告終了とする。
                   END IF;
+-- 2009/02/05 本番障害#1095 ADD END   ロットステータス未設定を確認した場合、警告終了とする。
 --
                 END LOOP cur_lots_status_loop;
 --
@@ -8981,72 +9043,169 @@ AS
                       FETCH cur_lots_status_check INTO lt_expiration_day, lt_original_sign, lt_lot_status;
                       EXIT WHEN cur_lots_status_check%NOTFOUND;
 --
-                      -- 賞味期限=抽出項目:賞味期限
-                      IF (lt_expiration_day = TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD')) THEN  --*Y
+-- 2009/02/05 本番障害#1095 ADD START ロットステータス未設定を確認した場合、警告終了とする。
+                      -- ロットステータス未設定である
+                      IF (lt_lot_status IS NULL) THEN
 --
-                        -- ステータス初期化
-                        lt_pay_provision_rel := NULL;
-                        lt_move_inst_rel     := NULL;
-                        lt_ship_req_rel      := NULL;
+                        ln_errflg := 1;
 --
-                        -- ロットステータス情報取得
-                        SELECT xlsv.pay_provision_rel                                       -- 有償支給(実績)
-                              ,xlsv.move_inst_rel                                           -- 移動指示(実績)
-                              ,xlsv.ship_req_rel                                            -- 出荷依頼(実績)
-                        INTO  lt_pay_provision_rel
-                             ,lt_move_inst_rel
-                             ,lt_ship_req_rel
-                        FROM  xxcmn_lot_status_v xlsv
-                        WHERE xlsv.prod_class_code = gr_interface_info_rec(i).prod_kbn_cd   -- 商品区分
-                        AND   xlsv.lot_status      = lt_lot_status;                         -- ロットステータス
+                        -- (ロットステータス未設定警告)
+                        lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                       gv_msg_kbn          -- 'XXWSH'
+                                      ,gv_msg_93a_158  -- 妥当チェックエラーメッセージ(ロットステータス未設定警告)
+                                      ,gv_param1_token
+                                      ,gr_interface_info_rec(i).delivery_no      --配送No
+                                      ,gv_param2_token
+                                      ,gr_interface_info_rec(i).order_source_ref --受注ソース参照
+                                      ,gv_param3_token
+                                      ,gr_interface_info_rec(i).prod_kbn_cd      --商品区分
+                                      ,gv_param4_token
+                                      ,gr_interface_info_rec(i).item_kbn_cd      --品目区分
+                                      ,gv_param5_token
+                                      ,gr_interface_info_rec(i).orderd_item_code --IF_L.受注品目
+                                      ,gv_param6_token
+                                      ,gr_interface_info_rec(i).lot_no           --IF_L.ロットNo
+                                      ,gv_param7_token
+                                      ,TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD')  --製造年月日
+                                      ,gv_param8_token
+                                      ,TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD')                 --賞味期限
+                                      ,gv_param9_token
+                                      ,gr_interface_info_rec(i).original_character                                --固有記号
+                                      )
+                                      ,1
+                                      ,5000);
 --
-                        ln_lot_err_flg := 0;    -- 初期化
+                        -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
+                        set_header_unit_reserveflg(
+                          lt_delivery_no,       -- 配送No
+                          lt_order_source_ref,  -- 移動No/依頼No
+                          lt_eos_data_type,     -- EOSデータ種別
+                          gv_reserved_class,    -- エラー種別：保留
+                          lv_msg_buff,          -- エラー・メッセージ(出力用)
+                          lv_errbuf,            -- エラー・メッセージ           --# 固定 #
+                          lv_retcode,           -- リターン・コード             --# 固定 #
+                          lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
 --
-                        -- ロットステータス判定
-                        -- 売上有拠点の場合のみチェックを行う                                -- 2008/12/11 本番障害#644 Add
-                        IF (gr_interface_info_rec(i).location_rel_code = gv_flg_on ) THEN    -- 2008/12/11 本番障害#644 Add
+                        -- 処理ステータス：警告
+                        ov_retcode := gv_status_warn;
 --
-                          -- 有償出荷報告の場合
-                          IF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) THEN
+                      -- ロットステータス設定済みである（ロット警告(賞味期限=抽出項目:賞味期限)、品質警告チェック開始）
+                      ELSE
+-- 2009/02/05 本番障害#1095 ADD END   ロットステータス未設定を確認した場合、警告終了とする。
 --
-                            -- 保留設定
-                            IF (lt_pay_provision_rel = gv_yesno_n) THEN
-                              ln_lot_err_flg := 1;
+                        -- 賞味期限=抽出項目:賞味期限
+                        IF (lt_expiration_day = TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD')) THEN  --*Y                         -- ステータス初期化
+--
+                          -- ステータス初期化
+                          lt_pay_provision_rel := NULL;
+                          lt_move_inst_rel     := NULL;
+                          lt_ship_req_rel      := NULL;
+--
+                          -- ロットステータス情報取得
+                          SELECT xlsv.pay_provision_rel                                       -- 有償支給(実績)
+                                ,xlsv.move_inst_rel                                           -- 移動指示(実績)
+                                ,xlsv.ship_req_rel                                            -- 出荷依頼(実績)
+                          INTO  lt_pay_provision_rel
+                               ,lt_move_inst_rel
+                               ,lt_ship_req_rel
+                          FROM  xxcmn_lot_status_v xlsv
+                          WHERE xlsv.prod_class_code = gr_interface_info_rec(i).prod_kbn_cd   -- 商品区分
+                          AND   xlsv.lot_status      = lt_lot_status;                         -- ロットステータス
+--
+                          ln_lot_err_flg := 0;    -- 初期化
+--
+                          -- ロットステータス判定
+                          -- 売上有拠点の場合のみチェックを行う                                -- 2008/12/11 本番障害#644 Add
+                          IF (gr_interface_info_rec(i).location_rel_code = gv_flg_on ) THEN    -- 2008/12/11 本番障害#644 Add
+--
+                            -- 有償出荷報告の場合
+                            IF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) THEN
+--
+                              -- 保留設定
+                              IF (lt_pay_provision_rel = gv_yesno_n) THEN
+                                ln_lot_err_flg := 1;
+                              END IF;
+--
+                            -- 拠点出荷確定報告/庭先出荷確定報告の場合
+                            ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210)  OR
+                                   (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215))
+                            THEN
+--
+                              -- 保留設定
+                              IF (lt_ship_req_rel = gv_yesno_n) THEN
+                                ln_lot_err_flg := 1;
+                              END IF;
+--
+                            -- 2008/08/13 Del Start 移動の場合は品質チェックを行わない ---------------
+                            ---- 移動出庫確定報告/移動入庫確定報告の場合
+                            --ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220)  OR
+                            --       (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230))
+                            --THEN
+                            --
+                            --  -- 保留設定
+                            --  IF (lt_move_inst_rel = gv_yesno_n) THEN
+                            --    ln_lot_err_flg := 1;
+                            --  END IF;
+                            -- 2008/08/13 Del End ----------------------------------------------------
+--
                             END IF;
+                          END IF;      -- 2008/12/11 本番障害#644 Add
 --
-                          -- 拠点出荷確定報告/庭先出荷確定報告の場合
-                          ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210)  OR
-                                 (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215))
-                          THEN
+                          IF (ln_lot_err_flg = 1) THEN
 --
-                            -- 保留設定
-                            IF (lt_ship_req_rel = gv_yesno_n) THEN
-                              ln_lot_err_flg := 1;
-                            END IF;
+                            ln_errflg := 1;
 --
-                          -- 2008/08/13 Del Start 移動の場合は品質チェックを行わない ---------------
-                          ---- 移動出庫確定報告/移動入庫確定報告の場合
-                          --ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220)  OR
-                          --       (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230))
-                          --THEN
-                          --
-                          --  -- 保留設定
-                          --  IF (lt_move_inst_rel = gv_yesno_n) THEN
-                          --    ln_lot_err_flg := 1;
-                          --  END IF;
-                          -- 2008/08/13 Del End ----------------------------------------------------
+                            -- (品質警告)
+                            lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                           gv_msg_kbn          -- 'XXWSH'
+                                          ,gv_msg_93a_021  -- 妥当チェックエラーメッセージ(品質警告)
+                                          ,gv_param7_token
+                                          ,gr_interface_info_rec(i).delivery_no      --配送No
+                                          ,gv_param8_token
+                                          ,gr_interface_info_rec(i).order_source_ref --受注ソース参照
+                                          ,gv_param1_token
+                                          ,gr_interface_info_rec(i).prod_kbn_cd  --商品区分
+                                          ,gv_param2_token
+                                          ,gr_interface_info_rec(i).item_kbn_cd  --品目区分
+                                          ,gv_param3_token
+                                          ,gr_interface_info_rec(i).orderd_item_code      --IF_L.受注品目
+                                          ,gv_param4_token
+                                          ,TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD') --製造年月日
+                                          ,gv_param5_token
+                                          ,TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD')                --賞味期限
+                                          ,gv_param6_token
+                                          ,gr_interface_info_rec(i).original_character         --固有記号
+                                          )
+                                          ,1
+                                          ,5000);
+--
+                            -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
+                            set_header_unit_reserveflg(
+                              lt_delivery_no,       -- 配送No
+                              lt_order_source_ref,  -- 移動No/依頼No
+                              lt_eos_data_type,     -- EOSデータ種別
+                              gv_reserved_class,    -- エラー種別：保留
+                              lv_msg_buff,          -- エラー・メッセージ(出力用)
+                              lv_errbuf,            -- エラー・メッセージ           --# 固定 #
+                              lv_retcode,           -- リターン・コード             --# 固定 #
+                              lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+                            );
+--
+                            -- 処理ステータス：警告
+                            ov_retcode := gv_status_warn;
 --
                           END IF;
-                        END IF;      -- 2008/12/11 本番障害#644 Add
 --
-                        IF (ln_lot_err_flg = 1) THEN
+                        -- 賞味期限<>抽出項目:賞味期限
+                        ELSE  --*Y
 --
                           ln_errflg := 1;
 --
-                          -- (品質警告)
+                          -- (ロット警告)
                           lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                          gv_msg_kbn          -- 'XXWSH'
-                                        ,gv_msg_93a_021  -- 妥当チェックエラーメッセージ(品質警告)
+                                        ,gv_msg_93a_020  -- 妥当チェックエラーメッセージ(ロット警告)
                                         ,gv_param7_token
                                         ,gr_interface_info_rec(i).delivery_no      --配送No
                                         ,gv_param8_token
@@ -9084,51 +9243,9 @@ AS
 --
                         END IF;
 --
-                      -- 賞味期限<>抽出項目:賞味期限
-                      ELSE  --*Y
---
-                        ln_errflg := 1;
---
-                        -- (ロット警告)
-                        lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
-                                       gv_msg_kbn          -- 'XXWSH'
-                                      ,gv_msg_93a_020  -- 妥当チェックエラーメッセージ(ロット警告)
-                                      ,gv_param7_token
-                                      ,gr_interface_info_rec(i).delivery_no      --配送No
-                                      ,gv_param8_token
-                                      ,gr_interface_info_rec(i).order_source_ref --受注ソース参照
-                                      ,gv_param1_token
-                                      ,gr_interface_info_rec(i).prod_kbn_cd  --商品区分
-                                      ,gv_param2_token
-                                      ,gr_interface_info_rec(i).item_kbn_cd  --品目区分
-                                      ,gv_param3_token
-                                      ,gr_interface_info_rec(i).orderd_item_code      --IF_L.受注品目
-                                      ,gv_param4_token
-                                      ,TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD') --製造年月日
-                                      ,gv_param5_token
-                                      ,TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD')                --賞味期限
-                                      ,gv_param6_token
-                                      ,gr_interface_info_rec(i).original_character         --固有記号
-                                      )
-                                      ,1
-                                      ,5000);
---
-                        -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
-                        set_header_unit_reserveflg(
-                          lt_delivery_no,       -- 配送No
-                          lt_order_source_ref,  -- 移動No/依頼No
-                          lt_eos_data_type,     -- EOSデータ種別
-                          gv_reserved_class,    -- エラー種別：保留
-                          lv_msg_buff,          -- エラー・メッセージ(出力用)
-                          lv_errbuf,            -- エラー・メッセージ           --# 固定 #
-                          lv_retcode,           -- リターン・コード             --# 固定 #
-                          lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
-                        );
---
-                        -- 処理ステータス：警告
-                        ov_retcode := gv_status_warn;
---
+-- 2009/02/05 本番障害#1095 ADD START ロットステータス未設定を確認した場合、警告終了とする。
                       END IF;
+-- 2009/02/05 本番障害#1095 ADD END   ロットステータス未設定を確認した場合、警告終了とする。
 --
                     END LOOP cur_lots_status_r_loop;
 --
@@ -9220,72 +9337,214 @@ AS
 --
                     END IF;
 --
-                    -- 3.2.3.2.1 １件ヒット
-                    IF (ln_cnt2 = 1) THEN
+-- 2009/02/05 本番障害#1095 ADD START ロットステータス未設定を確認した場合、警告終了とする。
+                    -- ロットステータス未設定である
+                    IF ((ln_cnt2 = 1)            AND 
+                        (lt_lot_status IS NULL))
+                    THEN
 --
-                      -- ステータス初期化
-                      lt_pay_provision_rel := NULL;
-                      lt_move_inst_rel     := NULL;
-                      lt_ship_req_rel      := NULL;
+                      ln_errflg := 1;
 --
-                      -- ロットステータス情報取得
-                      SELECT xlsv.pay_provision_rel                                       -- 有償支給(実績)
-                            ,xlsv.move_inst_rel                                           -- 移動指示(実績)
-                            ,xlsv.ship_req_rel                                            -- 出荷依頼(実績)
-                      INTO  lt_pay_provision_rel
-                           ,lt_move_inst_rel
-                           ,lt_ship_req_rel
-                      FROM  xxcmn_lot_status_v xlsv
-                      WHERE xlsv.prod_class_code = gr_interface_info_rec(i).prod_kbn_cd   -- 商品区分
-                      AND   xlsv.lot_status      = lt_lot_status;                         -- ロットステータス
+                      -- (ロットステータス未設定警告)
+                      lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                     gv_msg_kbn          -- 'XXWSH'
+                                    ,gv_msg_93a_158  -- 妥当チェックエラーメッセージ(ロットステータス未設定警告)
+                                    ,gv_param1_token
+                                    ,gr_interface_info_rec(i).delivery_no      --配送No
+                                    ,gv_param2_token
+                                    ,gr_interface_info_rec(i).order_source_ref --受注ソース参照
+                                    ,gv_param3_token
+                                    ,gr_interface_info_rec(i).prod_kbn_cd      --商品区分
+                                    ,gv_param4_token
+                                    ,gr_interface_info_rec(i).item_kbn_cd      --品目区分
+                                    ,gv_param5_token
+                                    ,gr_interface_info_rec(i).orderd_item_code --IF_L.受注品目
+                                    ,gv_param6_token
+                                    ,gr_interface_info_rec(i).lot_no           --IF_L.ロットNo
+                                    ,gv_param7_token
+                                    ,TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD')  --製造年月日
+                                    ,gv_param8_token
+                                    ,TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD')                 --賞味期限
+                                    ,gv_param9_token
+                                    ,gr_interface_info_rec(i).original_character                                --固有記号
+                                    )
+                                    ,1
+                                    ,5000);
 --
-                      ln_lot_err_flg := 0;    -- 初期化
+                      -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
+                      set_header_unit_reserveflg(
+                        lt_delivery_no,       -- 配送No
+                        lt_order_source_ref,  -- 移動No/依頼No
+                        lt_eos_data_type,     -- EOSデータ種別
+                        gv_reserved_class,    -- エラー種別：保留
+                        lv_msg_buff,          -- エラー・メッセージ(出力用)
+                        lv_errbuf,            -- エラー・メッセージ           --# 固定 #
+                        lv_retcode,           -- リターン・コード             --# 固定 #
+                        lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+                      );
 --
-                      -- ロットステータス判定
-                      -- 売上有拠点の場合のみチェックを行う                                -- 2008/12/11 本番障害#644 Add
-                      IF (gr_interface_info_rec(i).location_rel_code = gv_flg_on ) THEN    -- 2008/12/11 本番障害#644 Add
+                      -- 処理ステータス：警告
+                      ov_retcode := gv_status_warn;
 --
-                        -- 有償出荷報告の場合
-                        IF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) THEN
+                    -- ロットステータス設定済みである（ロット警告、品質警告チェック開始）
+                    ELSE
+-- 2009/02/05 本番障害#1095 ADD END   ロットステータス未設定を確認した場合、警告終了とする。
+                      -- 3.2.3.2.1 １件ヒット
+                      IF (ln_cnt2 = 1) THEN
 --
-                          -- 保留設定
-                          IF (lt_pay_provision_rel = gv_yesno_n) THEN
-                            ln_lot_err_flg := 1;
+                        -- ステータス初期化
+                        lt_pay_provision_rel := NULL;
+                        lt_move_inst_rel     := NULL;
+                        lt_ship_req_rel      := NULL;
+--
+                        -- ロットステータス情報取得
+                        SELECT xlsv.pay_provision_rel                                       -- 有償支給(実績)
+                              ,xlsv.move_inst_rel                                           -- 移動指示(実績)
+                              ,xlsv.ship_req_rel                                            -- 出荷依頼(実績)
+                        INTO  lt_pay_provision_rel
+                             ,lt_move_inst_rel
+                             ,lt_ship_req_rel
+                        FROM  xxcmn_lot_status_v xlsv
+                        WHERE xlsv.prod_class_code = gr_interface_info_rec(i).prod_kbn_cd   -- 商品区分
+                        AND   xlsv.lot_status      = lt_lot_status;                         -- ロットステータス
+--
+                        ln_lot_err_flg := 0;    -- 初期化
+--
+                        -- ロットステータス判定
+                        -- 売上有拠点の場合のみチェックを行う                                -- 2008/12/11 本番障害#644 Add
+                        IF (gr_interface_info_rec(i).location_rel_code = gv_flg_on ) THEN    -- 2008/12/11 本番障害#644 Add
+--
+                          -- 有償出荷報告の場合
+                          IF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) THEN
+--
+                            -- 保留設定
+                            IF (lt_pay_provision_rel = gv_yesno_n) THEN
+                              ln_lot_err_flg := 1;
+                            END IF;
+--
+                          -- 拠点出荷確定報告/庭先出荷確定報告の場合
+                          ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210)  OR
+                                 (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215))
+                          THEN
+--
+                            -- 保留設定
+                            IF (lt_ship_req_rel = gv_yesno_n) THEN
+                              ln_lot_err_flg := 1;
+                            END IF;
+--
+                          -- 2008/08/13 Del Start 移動の場合は品質チェックを行わない --------------
+                          ---- 移動出庫確定報告/移動入庫確定報告の場合
+                          --ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220)  OR
+                          --       (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230))
+                          --THEN
+                          --
+                          --  -- 保留設定
+                          --  IF (lt_move_inst_rel = gv_yesno_n) THEN
+                          --    ln_lot_err_flg := 1;
+                          --  END IF;
+                          -- 2008/08/13 Del End ---------------------------------------------------
+--
                           END IF;
+                        END IF;       -- 2008/12/11 本番障害#644 Add
 --
-                        -- 拠点出荷確定報告/庭先出荷確定報告の場合
-                        ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210)  OR
-                               (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215))
-                        THEN
+                        IF (ln_lot_err_flg = 1) THEN
 --
-                          -- 保留設定
-                          IF (lt_ship_req_rel = gv_yesno_n) THEN
-                            ln_lot_err_flg := 1;
-                          END IF;
+                          ln_errflg := 1;
 --
-                        -- 2008/08/13 Del Start 移動の場合は品質チェックを行わない --------------
-                        ---- 移動出庫確定報告/移動入庫確定報告の場合
-                        --ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220)  OR
-                        --       (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230))
-                        --THEN
-                        --
-                        --  -- 保留設定
-                        --  IF (lt_move_inst_rel = gv_yesno_n) THEN
-                        --    ln_lot_err_flg := 1;
-                        --  END IF;
-                        -- 2008/08/13 Del End ---------------------------------------------------
+                          -- (品質警告)
+                          lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                         gv_msg_kbn          -- 'XXWSH'
+                                        ,gv_msg_93a_021  -- 妥当チェックエラーメッセージ(品質警告)
+                                        ,gv_param7_token
+                                        ,gr_interface_info_rec(i).delivery_no      --配送No
+                                        ,gv_param8_token
+                                        ,gr_interface_info_rec(i).order_source_ref --受注ソース参照
+                                        ,gv_param1_token
+                                        ,gr_interface_info_rec(i).prod_kbn_cd  --商品区分
+                                        ,gv_param2_token
+                                        ,gr_interface_info_rec(i).item_kbn_cd  --品目区分
+                                        ,gv_param3_token
+                                        ,gr_interface_info_rec(i).orderd_item_code      --IF_L.受注品目
+                                        ,gv_param4_token
+                                        ,TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD')  --製造年月日
+                                        ,gv_param5_token
+                                        ,TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD')                 --賞味期限
+                                        ,gv_param6_token
+                                        ,gr_interface_info_rec(i).original_character          --固有記号
+                                        )
+                                        ,1
+                                        ,5000);
+--
+                          -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
+                          set_header_unit_reserveflg(
+                            lt_delivery_no,       -- 配送No
+                            lt_order_source_ref,  -- 移動No/依頼No
+                            lt_eos_data_type,     -- EOSデータ種別
+                            gv_reserved_class,    -- エラー種別：保留
+                            lv_msg_buff,          -- エラー・メッセージ(出力用)
+                            lv_errbuf,            -- エラー・メッセージ           --# 固定 #
+                            lv_retcode,           -- リターン・コード             --# 固定 #
+                            lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+                          );
+--
+                          -- 処理ステータス：警告
+                          ov_retcode := gv_status_warn;
 --
                         END IF;
-                      END IF;       -- 2008/12/11 本番障害#644 Add
 --
-                      IF (ln_lot_err_flg = 1) THEN
+                      -- 3.2.3.2.2 複数件ヒット
+                      ELSIF (ln_cnt2 > 1) THEN
 --
                         ln_errflg := 1;
 --
-                        -- (品質警告)
+                        -- (ロット警告)
                         lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                                        gv_msg_kbn          -- 'XXWSH'
-                                      ,gv_msg_93a_021  -- 妥当チェックエラーメッセージ(品質警告)
+                                      ,gv_msg_93a_020  -- 妥当チェックエラーメッセージ(ロット警告)
+                                      ,gv_param7_token
+                                      ,gr_interface_info_rec(i).delivery_no      --配送No
+                                      ,gv_param8_token
+                                      ,gr_interface_info_rec(i).order_source_ref --受注ソース参照
+                                      ,gv_param1_token
+                                      ,gr_interface_info_rec(i).prod_kbn_cd  --商品区分
+                                      ,gv_param2_token
+                                      ,gr_interface_info_rec(i).item_kbn_cd  --品目区分
+                                      ,gv_param3_token
+                                      ,gr_interface_info_rec(i).orderd_item_code      --IF_L.受注品目
+                                      ,gv_param4_token
+                                      ,TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD')  --製造年月日
+                                      ,gv_param5_token
+                                      ,TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD')                 --賞味期限
+                                      ,gv_param6_token
+                                      ,gr_interface_info_rec(i).original_character          --固有記号
+                                      )
+                                      ,1
+                                      ,5000);
+--
+                        -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
+                        set_header_unit_reserveflg(
+                          lt_delivery_no,       -- 配送No
+                          lt_order_source_ref,  -- 移動No/依頼No
+                          lt_eos_data_type,     -- EOSデータ種別
+                          gv_reserved_class,    -- エラー種別：保留
+                          lv_msg_buff,          -- エラー・メッセージ(出力用)
+                          lv_errbuf,            -- エラー・メッセージ           --# 固定 #
+                          lv_retcode,           -- リターン・コード             --# 固定 #
+                          lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+--
+                        -- 処理ステータス：警告
+                        ov_retcode := gv_status_warn;
+--
+                      -- 3.2.3.2.3 ヒットなし
+                      ELSIF (ln_cnt2 = 0) THEN
+--
+                       ln_errflg := 1;
+--
+                        -- (ロット警告)
+                        lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                       gv_msg_kbn          -- 'XXWSH'
+                                      ,gv_msg_93a_020  -- 妥当チェックエラーメッセージ(ロット警告)
                                       ,gv_param7_token
                                       ,gr_interface_info_rec(i).delivery_no      --配送No
                                       ,gv_param8_token
@@ -9323,95 +9582,9 @@ AS
 --
                       END IF;
 --
-                    -- 3.2.3.2.2 複数件ヒット
-                    ELSIF (ln_cnt2 > 1) THEN
---
-                      ln_errflg := 1;
---
-                      -- (ロット警告)
-                      lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
-                                     gv_msg_kbn          -- 'XXWSH'
-                                    ,gv_msg_93a_020  -- 妥当チェックエラーメッセージ(ロット警告)
-                                    ,gv_param7_token
-                                    ,gr_interface_info_rec(i).delivery_no      --配送No
-                                    ,gv_param8_token
-                                    ,gr_interface_info_rec(i).order_source_ref --受注ソース参照
-                                    ,gv_param1_token
-                                    ,gr_interface_info_rec(i).prod_kbn_cd  --商品区分
-                                    ,gv_param2_token
-                                    ,gr_interface_info_rec(i).item_kbn_cd  --品目区分
-                                    ,gv_param3_token
-                                    ,gr_interface_info_rec(i).orderd_item_code      --IF_L.受注品目
-                                    ,gv_param4_token
-                                    ,TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD')  --製造年月日
-                                    ,gv_param5_token
-                                    ,TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD')                 --賞味期限
-                                    ,gv_param6_token
-                                    ,gr_interface_info_rec(i).original_character          --固有記号
-                                    )
-                                    ,1
-                                    ,5000);
---
-                      -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
-                      set_header_unit_reserveflg(
-                        lt_delivery_no,       -- 配送No
-                        lt_order_source_ref,  -- 移動No/依頼No
-                        lt_eos_data_type,     -- EOSデータ種別
-                        gv_reserved_class,    -- エラー種別：保留
-                        lv_msg_buff,          -- エラー・メッセージ(出力用)
-                        lv_errbuf,            -- エラー・メッセージ           --# 固定 #
-                        lv_retcode,           -- リターン・コード             --# 固定 #
-                        lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
---
-                      -- 処理ステータス：警告
-                      ov_retcode := gv_status_warn;
---
-                    -- 3.2.3.2.3 ヒットなし
-                    ELSIF (ln_cnt2 = 0) THEN
---
-                     ln_errflg := 1;
---
-                      -- (ロット警告)
-                      lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
-                                     gv_msg_kbn          -- 'XXWSH'
-                                    ,gv_msg_93a_020  -- 妥当チェックエラーメッセージ(ロット警告)
-                                    ,gv_param7_token
-                                    ,gr_interface_info_rec(i).delivery_no      --配送No
-                                    ,gv_param8_token
-                                    ,gr_interface_info_rec(i).order_source_ref --受注ソース参照
-                                    ,gv_param1_token
-                                    ,gr_interface_info_rec(i).prod_kbn_cd  --商品区分
-                                    ,gv_param2_token
-                                    ,gr_interface_info_rec(i).item_kbn_cd  --品目区分
-                                    ,gv_param3_token
-                                    ,gr_interface_info_rec(i).orderd_item_code      --IF_L.受注品目
-                                    ,gv_param4_token
-                                    ,TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD')  --製造年月日
-                                    ,gv_param5_token
-                                    ,TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD')                 --賞味期限
-                                    ,gv_param6_token
-                                    ,gr_interface_info_rec(i).original_character          --固有記号
-                                    )
-                                    ,1
-                                    ,5000);
---
-                      -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
-                      set_header_unit_reserveflg(
-                        lt_delivery_no,       -- 配送No
-                        lt_order_source_ref,  -- 移動No/依頼No
-                        lt_eos_data_type,     -- EOSデータ種別
-                        gv_reserved_class,    -- エラー種別：保留
-                        lv_msg_buff,          -- エラー・メッセージ(出力用)
-                        lv_errbuf,            -- エラー・メッセージ           --# 固定 #
-                        lv_retcode,           -- リターン・コード             --# 固定 #
-                        lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
---
-                      -- 処理ステータス：警告
-                      ov_retcode := gv_status_warn;
---
+-- 2009/02/05 本番障害#1095 ADD START ロットステータス未設定を確認した場合、警告終了とする。
                     END IF;
+-- 2009/02/05 本番障害#1095 ADD END   ロットステータス未設定を確認した場合、警告終了とする。
 --
                   END IF;
 --
@@ -18454,8 +18627,12 @@ debug_log(FND_FILE.LOG,'      実績数量:' || ln_shiped_quantity);
 --
 --#################################  固定例外処理部 START   ###################################
 --
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
+-- 2009/02/05 本番障害#1095 MOD START 各プロシージャでエラー終了した場合、サブメインの例外処理で制御できるようにする
+--    -- *** 共通関数例外ハンドラ ***
+--    WHEN global_api_expt THEN
+    -- *** 各プロシージャ例外ハンドラ ***
+    WHEN global_process_expt THEN
+-- 2009/02/05 本番障害#1095 MOD END   各プロシージャでエラー終了した場合、サブメインの例外処理で制御できるようにする
       ov_errmsg  := lv_errmsg;
       --ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000); -- 2008/12/26 Del 異常終了時に原因となった依頼Noがわかるようにする
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_abend_1||gv_abend_order_source_ref||gv_msg_abend_2||gv_msg_part||lv_errbuf,1,5000); -- 2008/12/26 Add 異常終了時に原因となった依頼Noがわかるようにする

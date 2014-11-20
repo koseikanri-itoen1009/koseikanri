@@ -313,7 +313,7 @@
                   <oa:messageStyledText id="Rank3Prompt" prompt="R3"/>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="cell88">
+            <oa:cellFormat id="cell88" styleClass="OraTableCellText">
                <ui:contents>
                   <oa:messageStyledText id="Rank3" viewName="XxwipBatchHeaderVO1" viewAttr="Rank3" shortDesc="R3" styleClass="LegendText"/>
                </ui:contents>

@@ -7,7 +7,7 @@ AS
  * Description      : 入庫依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 入庫依頼表 T_MD070_BPO_62D
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/11/06    1.10  Y.Yamamoto       統合指摘#143対応(数量0のデータを対象外とする)
  *  2008/11/20    1.11  Y.Yamamoto       統合指摘#463、#686対応
  *  2009/01/27    1.12  H.Sakuma         本番#1079対応
+ *  2009/01/29    1.13  Akiyoshi Shiina  本番#30対応
  *
  *****************************************************************************************/
 --
@@ -372,6 +373,8 @@ AS
     -- ====================================================
     -- パラメータチェック
     -- ====================================================
+-- 2009/01/29 v1.13 DELETE START
+/*
     -- 予定/確定区分チェック
 -- 2008/07/11 M.Uehara v1.5 Mod start
 --    IF (gt_param.plan_decide_kbn = gc_plan_decide_d) THEN
@@ -387,6 +390,8 @@ AS
         RAISE prm_check_expt ;
       END IF ;
     END IF ;
+*/
+-- 2009/01/29 v1.13 DELETE END
 --
     -- 確定通知実施日、確定通知実施時間チェック
     IF ((gt_param.notif_date IS NULL)
@@ -774,11 +779,22 @@ AS
         -- 確定通知実施日
         -- MOD START 2008/06/04 NAKADA   パラメータ実施日未入力で実施日時が未設定の場合も出力
         --                               その他の場合には、パラメータの入力条件に従って抽出。
-        AND  ((gt_param.notif_date IS NULL AND
-               xmrih.notif_date IS NULL)
+-- 2009/01/29 v1.13 UPDATE START
+--        AND  ((gt_param.notif_date IS NULL AND
+--               xmrih.notif_date IS NULL)
+        AND  (
+              -- 予定／依頼区分＝確定の場合のみ、確定日時を条件としてみる
+              (gt_param.plan_decide_kbn = gc_plan_decide_p) -- 予定の場合
+               OR
+              -- パラメータ実施日未入力の場合も出力
+              (gt_param.notif_date IS NULL)
+-- 2009/01/29 v1.13 UPDATE END
                OR
               (xmrih.notif_date >= gd_notif_date_from AND
-               xmrih.notif_date >= gd_notif_date_from)
+-- 2009/01/29 v1.13 UPDATE START
+--               xmrih.notif_date >= gd_notif_date_from)
+               xmrih.notif_date <= gd_notif_date_to)
+-- 2009/01/29 v1.13 UPDATE ENS
         )
         -- MOD END   2008/06/04 NAKADA
         ----------------------------------------------------------------------------------
@@ -1509,7 +1525,10 @@ AS
     gt_param.plan_decide_kbn      := iv_plan_decide_kbn ;                 -- 02:予定/確定区分
     gt_param.ship_from            := FND_DATE.CANONICAL_TO_DATE(iv_ship_from) ; -- 03:出庫日From
     gt_param.ship_to              := FND_DATE.CANONICAL_TO_DATE(iv_ship_to) ;   -- 04:出庫日To
-    gt_param.notif_date           := FND_DATE.CANONICAL_TO_DATE(iv_notif_date) ;-- 05:確定通知実施日
+-- 2009/01/29 v1.13 UPDATE START
+--    gt_param.notif_date           := FND_DATE.CANONICAL_TO_DATE(iv_notif_date) ;-- 05:確定通知実施日
+    gt_param.notif_date           := iv_notif_date ;                      -- 05:確定通知実施日
+-- 2009/01/29 v1.13 UPDATE END
     gt_param.notif_time_from      := iv_notif_time_from ;                 -- 06:確定通知実施時間From
     gt_param.notif_time_to        := iv_notif_time_to ;                   -- 07:確定通知実施時間To
     gt_param.block1               := iv_block1 ;                          -- 08:ブロック1

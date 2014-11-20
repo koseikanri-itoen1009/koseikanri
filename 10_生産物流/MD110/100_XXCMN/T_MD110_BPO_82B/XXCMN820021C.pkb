@@ -7,7 +7,7 @@ AS
  * Description      : 原価差異表作成
  * MD.050/070       : 標準原価マスタIssue1.0(T_MD050_BPO_820)
  *                    原価差異表作成Issue1.0(T_MD070_BPO_82B/T_MD070_BPO_82C)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2008/12/12    1.9   H.Itou           本番#681対応
  *  2008/12/14    1.10  H.Marushita      加重平均計算の割る数値を修正
  *  2009/01/15    1.11  T.Ohashi         本番#897対応
+ *  2009/02/06    1.12  A.Shiina         本番#1154対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -174,6 +175,10 @@ AS
   gv_amount_dpt         NUMBER := 0 ;         -- 金額（部署計）
   gv_amount_dpt1        NUMBER := 0 ;         -- 金額（部署計）
 -- add end 1.11
+-- 2009/02/06 v1.12 ADD START
+  gv_amount_ven         NUMBER := 0 ;         -- 金額
+  gv_amount_sum         NUMBER := 0 ;         -- 金額（合計）
+-- 2009/02/06 v1.12 ADD END
 --add start 1.4.1
   gv_save_case_quant    NUMBER := 0;
 --add end 1.4.1
@@ -938,6 +943,15 @@ AS
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
       gt_xml_data_table(gl_xml_idx).tag_value := gv_amount;
 -- add end 1.11
+-- 2009/02/06 v1.12 ADD START
+      -- ----------------------------------------------------
+      -- 取引先計
+      -- ----------------------------------------------------
+      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+      gt_xml_data_table(gl_xml_idx).tag_name  := 'amount_ven' ;
+      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+      gt_xml_data_table(gl_xml_idx).tag_value := gv_amount_ven;
+-- 2009/02/06 v1.12 ADD END
       -- 取引数量
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'quant' ;
@@ -1040,6 +1054,9 @@ AS
       gv_type_code   := NULL ;    -- 費目コード
       gv_type_name   := NULL ;    -- 費目名称
       gv_quant_disp  := NULL ;    -- 数量（表示用）
+-- 2009/02/06 ADD START
+      gv_amount_ven  := '0' ;     -- 金額
+-- 2009/02/06 ADD END
 --
     END LOOP main_data_loop ;
 --
@@ -1588,6 +1605,9 @@ AS
        ,vendor_name     po_vendors.vendor_name%TYPE           -- 取引先名称
        ,uom             xxpo_rcv_and_rtn_txns.uom%TYPE        -- 単位
        ,quant           xxpo_rcv_and_rtn_txns.quantity%TYPE   -- 取引数量
+-- 2009/02/06 v1.12 ADD START
+       ,amount          NUMBER   -- 取引数量
+-- 2009/02/06 v1.12 ADD END
       ) ;
     lc_ref    ref_cursor ;
     lr_ref    ret_value ;
@@ -1615,11 +1635,21 @@ AS
       || '          ELSE xrart.quantity * -1 '                       -- 実績区分が返品の場合、マイナス
       || '        END) AS quant '
 -- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
+-- 2009/02/06 v1.12 ADD START
+      || '  ,SUM(ROUND(CASE '
+      || '          WHEN (xrart.txns_type = ''' || gc_txns_type_uke || ''') THEN ' -- 実績区分が受入の場合
+      || '               xrart.quantity * xsupv.stnd_unit_price'
+      || '          ELSE xrart.quantity * -1 * xsupv.stnd_unit_price'               -- 実績区分が返品の場合、マイナス
+      || '        END)) AS amount '
+-- 2009/02/06 v1.12 ADD END
       ;
     lv_sql_from
       := ' FROM'
       || '   po_vendors    pv'    -- 仕入先マスタ
       || '  ,xxcmn_vendors xv'    -- 仕入先アドオンマスタ
+-- 2009/02/06 v1.12 ADD START
+      || '  ,xxcmn_stnd_unit_price_v xsupv'    -- 標準原価情報VIEW
+-- 2009/02/06 v1.12 ADD END
       || gv_sql_cmn_from
       ;
     lv_sql_where
@@ -1630,6 +1660,10 @@ AS
       || ' AND xrart.vendor_id          = pv.vendor_id'
       || ' AND xrart.department_code    = NVL( :v3, xrart.department_code )'
       || ' AND xrart.item_id            = :v4'
+-- 2009/02/06 v1.12 ADD START
+      || ' AND   xsupv.item_id(+)       = xrart.item_id'
+      || ' AND   :v5 BETWEEN xsupv.start_date_active(+) AND xsupv.end_date_active(+)'
+-- 2009/02/06 v1.12 ADD END
       || gv_sql_cmn_where
       ;
     lv_sql_other
@@ -1649,6 +1683,9 @@ AS
     OPEN lc_ref FOR lv_sql
     USING iv_dept_code
          ,iv_item_id
+-- 2009/02/06 v1.12 ADD START
+         ,gd_fiscal_date_from
+-- 2009/02/06 v1.12 ADD END
          ,gd_fiscal_date_from
          ,gd_fiscal_date_to
     ;
@@ -1681,6 +1718,9 @@ AS
       gv_uom         := lr_ref.uom ;              -- 単位
       gv_quant       := lr_ref.quant ;            -- 数量
       gv_quant_disp  := lr_ref.quant ;            -- 数量（表示用）
+-- 2009/02/06 v1.12 ADD START
+      gv_amount_ven  := lr_ref.amount ;           -- 金額（表示用）
+-- 2009/02/06 v1.12 ADD END
 --
       -- ====================================================
       -- 費目情報出力
@@ -1708,6 +1748,9 @@ AS
       gt_xml_data_table(gl_xml_idx).tag_name  := '/g_vnd' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
 --
+-- 2009/02/06 v1.12 ADD START
+      gv_amount_dpt := gv_amount_dpt + gv_amount_ven ; -- 金額（部署計）
+-- 2009/02/06 v1.12 ADD END
     END LOOP main_data_loop ;
 --
     -- ====================================================
@@ -2472,10 +2515,17 @@ AS
       lr_amount_rcv.d_amount     := lr_amount_rcv.s_amount     - lr_amount_rcv.r_amount ;
 --
       gv_quant_dpt  := gv_quant_dpt + lr_ref.quant ;  -- 数量（部署計）
+-- 2009/02/06 v1.12 DELETE START
+/*
 -- add start 1.11
       gv_amount_dpt1 := gv_amount_dpt1 + lr_ref.amount ; -- 金額（部署計）
 -- add end 1.11
+*/
+-- 2009/02/06 v1.12 DELETE END
 --
+-- 2009/02/06 v1.12 ADD START
+      gv_amount_sum := gv_amount_sum + lr_ref.amount ; -- 金額（合計）
+-- 2009/02/06 v1.12 ADD END
       -- ----------------------------------------------------
       -- 品目計項目を出力
       -- ----------------------------------------------------
@@ -2577,6 +2627,17 @@ AS
       gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_rcv.d_amount,0) ;
 --mod end 1.2
 --
+-- 2009/02/06 v1.12 ADD START
+      -- 合計：標準金額
+      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+      gt_xml_data_table(gl_xml_idx).tag_name  := 'amount_sum' ;
+      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+      gt_xml_data_table(gl_xml_idx).tag_value := gv_amount_sum;
+--
+      -- グローバル変数の初期化
+      gv_amount_sum := 0 ;
+--
+-- 2009/02/06 v1.12 ADD END
       -- ====================================================
       -- 項目計出力
       -- ====================================================
@@ -2761,6 +2822,15 @@ AS
       END IF;
 --add end 1.3.2
 --
+-- 2009/02/06 v1.12 ADD START
+      IF ( gr_param.output_type IN( xxcmn820011c.program_id_01            -- 明細：部門別品目別
+                                   ,xxcmn820011c.program_id_03 ) ) THEN   -- 明細：品目別
+        gv_amount_dpt1 := gv_amount_dpt1 + gv_amount_dpt ; -- 金額（部署計）
+        gv_amount_dpt := 0;
+      ELSIF ( gr_param.output_type = xxcmn820011c.program_id_02) THEN     -- 合計：部門別品目別
+        gv_amount_dpt1 := gv_amount_dpt1 + lr_ref.amount ; -- 金額（部署計）
+      END IF;
+-- 2009/02/06 v1.12 ADD END
     END LOOP main_data_loop ;
 --
 --mod start 1.3.2
@@ -3597,6 +3667,10 @@ AS
 --
       gv_quant_dpt  := gv_quant_dpt + lr_ref.quant ;  -- 数量（部署計）
 --
+-- 2009/02/06 v1.12 ADD START
+      gv_amount_sum := gv_amount_sum + lr_ref.amount ; -- 金額（合計）
+--
+-- 2009/02/06 v1.12 ADD END
       -- 原価差異合計：標準原価
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'dif_s_unit_price' ;
@@ -3695,6 +3769,17 @@ AS
       gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_rcv.d_amount,0) ;
 --mod end 1.2
 --
+-- 2009/02/06 v1.12 ADD START
+      -- 合計：標準金額
+      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+      gt_xml_data_table(gl_xml_idx).tag_name  := 'amount_sum' ;
+      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+      gt_xml_data_table(gl_xml_idx).tag_value := gv_amount_sum;
+--
+      -- グローバル変数の初期化
+      gv_amount_sum := 0 ;
+--
+-- 2009/02/06 v1.12 ADD END
       -- ====================================================
       -- 項目計出力
       -- ====================================================
