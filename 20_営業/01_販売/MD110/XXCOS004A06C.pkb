@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A06C (body)
  * Description      : Á‰»‚u‚cŠ|—¦ì¬
  * MD.050           : Á‰»‚u‚cŠ|—¦ì¬ MD050_COS_004_A06
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * -------------------------  ----------------------------------------------------------
@@ -63,6 +63,8 @@ AS
  *  2010/05/02    1.16  T.Ishiwata       [E_–{‰Ò“®_02552]‚o‚s‘Î‰
  *  2010/05/06    1.17  M.Sano           [E_–{‰Ò“®_02565]‘O‰ñÁ‰»ŒvZ’÷”NŒ“ú‚ªæ“¾‚Å‚«‚È‚¢ê‡‚Ì
  *                                                       l—¶˜R‚ê‘Î‰
+ *  2010/05/07    1.18  M.Sano           [E_–{‰Ò“®_02575]VDƒRƒ‰ƒ€•Êæˆøî•ñ‚Ì•Ê–¾×‚Åd•¡íœ‚³‚ê‚é
+ *                                                       Œ»Û‚ÌC³
  *
  *****************************************************************************************/
 --
@@ -2293,6 +2295,9 @@ AS
                 xvcl.column_no                      column_no,                      --  ƒRƒ‰ƒ€No.
                 xvch.order_no_hht                   order_no_hht,                   --  ó’No.(HHT)
                 xvch.digestion_ln_number            digestion_ln_number,            --  }”Ô
+-- 2010/05/07 Ver1.18 Add Start
+                xvcl.line_no_hht                    line_no_hht,                    --  sNo.(HHT)
+-- 2010/05/07 Ver1.18 Add End
                 xvch.digestion_vd_rate_maked_date   digestion_vd_rate_maked_date,   --  Á‰»VDŠ|—¦ì¬Ï”NŒ“ú
                 xvch.change_out_time_100            change_out_time_100,            --  ‚Â‚è‘KØ‚êŠÔ100‰~
                 xvch.change_out_time_10             change_out_time_10,             --  ‚Â‚è‘KØ‚êŠÔ10‰~
@@ -2325,6 +2330,9 @@ AS
                 , xvcl.column_no                      column_no                       --  ƒRƒ‰ƒ€No.
                 , xvch.order_no_hht                   order_no_hht                    --  ó’No.(HHT)
                 , xvch.digestion_ln_number            digestion_ln_number             --  }”Ô
+-- 2010/05/07 Ver1.18 Add Start
+                , xvcl.line_no_hht                    line_no_hht                     --  sNo.(HHT)
+-- 2010/05/07 Ver1.18 Add End
                 , xvch.digestion_vd_rate_maked_date   digestion_vd_rate_maked_date    --  Á‰»VDŠ|—¦ì¬Ï”NŒ“ú
                 , xvch.change_out_time_100            change_out_time_100             --  ‚Â‚è‘KØ‚êŠÔ100‰~
                 , xvch.change_out_time_10             change_out_time_10              --  ‚Â‚è‘KØ‚êŠÔ10‰~
