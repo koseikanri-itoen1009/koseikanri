@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.6
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *                                       [T1_0078] 金額の端数計算が正しく行われていない
  *  2009/03/23    1.6   N.Maeda          [T1_0078] 金額の端数発生時処理の修正
  *  2009/04/03    1.7   N.Maeda          [T1_0256] HHT百貨店保管場所抽出条件を修正
+ *  2009/04/07    1.8   N.Maeda          [T1_0248] HHt百貨店入力区分がnullでない時の判定内容を変更
  *
  *****************************************************************************************/
 --
@@ -209,9 +210,11 @@ AS
   cv_customer_type_u          CONSTANT VARCHAR2(10)  := '12';                   -- 顧客区分(上様)
 --  cv_consum_code_out_tax      CONSTANT VARCHAR2(10)  := '0';                    -- 税コード(外税)
 --  cv_consum_code_no_tax       CONSTANT VARCHAR2(10)  := '3';                    -- 税コード(非課税)
+  cv_depart_screen_class_base CONSTANT VARCHAR2(10)  := '0';                    -- HHT百貨店画面種別(拠点)
+  cv_depart_screen_class_dep  CONSTANT VARCHAR2(10)  := '2';                    -- HHT百貨店画面種別(百貨店)
   cv_bace_branch              CONSTANT VARCHAR2(10)  := '1';                    -- 顧客区分(拠点)
---  cv_depart_type              CONSTANT VARCHAR2(10)  := '1';                    -- HHT百貨店入力区分(百貨店)
---  cv_depart_car               CONSTANT VARCHAR2(10)  := '2';                    -- HHT百貨店入力区分(拠点)
+  cv_depart_type              CONSTANT VARCHAR2(10)  := '1';                    -- HHT百貨店入力区分(百貨店)
+  cv_depart_type_k            CONSTANT VARCHAR2(10)  := '2';                    -- HHT百貨店入力区分(百貨店_拠点)
   cv_input_class_eos          CONSTANT VARCHAR2(10)  := '1';                    -- 納品入力・EOS伝票入力
   cv_input_class_rt           CONSTANT VARCHAR2(10)  := '2';                    -- 返品入力
   cv_input_class_vd           CONSTANT VARCHAR2(10)  := '3';                    -- 自販機売上
@@ -2329,7 +2332,8 @@ AS
 --
 /*--==============2009/2/3-START=========================--*/
 --      IF ( lv_depart_code = cv_depart_car ) THEN
-      IF ( lv_depart_code IS NULL ) THEN
+      IF ( lv_depart_code IS NULL )
+        OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
 /*--==============2009/2/3-end==========================--*/
         --参照コードマスタ：営業車の保管場所分類コード取得
         BEGIN
@@ -2389,7 +2393,9 @@ AS
 --
 /*--==============2009/2/3-START=========================--*/
 --      ELSIF ( lv_depart_code = cv_depart_type ) THEN
-      ELSIF ( lv_depart_code IS NOT NULL ) THEN
+--      ELSIF ( lv_depart_code IS NOT NULL ) THEN
+      ELSIF ( lv_depart_code = cv_depart_type ) 
+        OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
 /*--==============2009/2/3-END==========================--*/
         --参照コードマスタ：百貨店の保管場所分類コード取得
         BEGIN
@@ -2988,7 +2994,8 @@ AS
 --
 /*--==============2009/2/3-START=========================--*/
 --        IF ( lv_depart_code = cv_depart_car ) THEN
-        IF ( lv_depart_code IS NULL ) THEN
+        IF ( lv_depart_code IS NULL ) 
+          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
 /*--==============2009/2/3-END==========================--*/
           --保管場所マスタデータ取得
           BEGIN
@@ -3012,7 +3019,9 @@ AS
 --
 /*--==============2009/2/3-START=========================--*/
 --        ELSIF ( lv_depart_code = cv_depart_type ) THEN
-        ELSIF ( lv_depart_code IS NOT NULL ) THEN
+--        ELSIF ( lv_depart_code IS NOT NULL ) THEN
+        ELSIF ( lv_depart_code = cv_depart_type ) 
+          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
 /*--==============2009/2/3-END==========================--*/
           --参照コードマスタ：百貨店の保管場所分類コード取得
 --
@@ -4072,7 +4081,8 @@ AS
 --
 /*--==============2009/2/3-START=========================--*/
 --      IF ( lv_depart_code = cv_depart_car ) THEN
-      IF ( lv_depart_code IS NULL ) THEN
+      IF ( lv_depart_code IS NULL )
+        OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
 /*--==============2009/2/3-END==========================--*/
         --参照コードマスタ：営業車の保管場所分類コード取得
         BEGIN
@@ -4132,7 +4142,9 @@ AS
 --
 /*--==============2009/2/3-START=========================--*/
 --      ELSIF ( lv_depart_code = cv_depart_type ) THEN
-      ELSIF ( lv_depart_code IS NOT NULL ) THEN
+--      ELSIF ( lv_depart_code IS NOT NULL ) THEN
+      ELSIF ( lv_depart_code = cv_depart_type ) 
+        OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
 /*--==============2009/2/3-END==========================--*/
         --参照コードマスタ：百貨店の保管場所分類コード取得
         BEGIN
@@ -4696,7 +4708,8 @@ AS
 --
 /*--==============2009/2/3-START=========================--*/
 --        IF ( lv_depart_code = cv_depart_car ) THEN
-        IF ( lv_depart_code IS NULL ) THEN
+        IF ( lv_depart_code IS NULL )
+          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
 /*--==============2009/2/3-END==========================--*/
 --
           --保管場所マスタデータ取得
@@ -4720,7 +4733,9 @@ AS
 --
 /*--==============2009/2/3-START=========================--*/
 --        ELSIF ( lv_depart_code = cv_depart_type ) THEN
-        ELSIF ( lv_depart_code IS NOT NULL ) THEN
+--        ELSIF ( lv_depart_code IS NOT NULL ) THEN
+        ELSIF ( lv_depart_code = cv_depart_type ) 
+          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
 /*--==============2009/2/3-END==========================--*/
 --
           --保管場所マスタデータ取得
@@ -5709,7 +5724,8 @@ AS
 --
 /*--==============2009/2/3-START=========================--*/
 --      IF ( lv_depart_code = cv_depart_car ) THEN
-      IF ( lv_depart_code IS NULL ) THEN
+      IF ( lv_depart_code IS NULL )
+        OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
 /*--==============2009/2/3-END==========================--*/
         --参照コードマスタ：営業車の保管場所分類コード取得
         BEGIN
@@ -5768,8 +5784,9 @@ AS
         END;
 --
 /*--==============2009/2/3-START=========================--*/
---      ELSIF ( lv_depart_code = cv_depart_type ) THEN
-      ELSIF ( lv_depart_code IS NOT NULL ) THEN
+      ELSIF ( lv_depart_code = cv_depart_type ) 
+        OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
+--      ELSIF ( lv_depart_code IS NOT NULL ) THEN
 /*--==============2009/2/3-END==========================--*/
         --参照コードマスタ：百貨店の保管場所分類コード取得
         BEGIN
@@ -5808,7 +5825,6 @@ AS
           RAISE no_data_extract;
         END;
 --
-
         --保管場所マスタデータ取得
         BEGIN
           SELECT msi.secondary_inventory_name     -- 保管場所コード
@@ -6334,7 +6350,8 @@ AS
 --
 /*--==============2009/2/3-START=========================--*/
 --        IF ( lv_depart_code = cv_depart_car ) THEN
-        IF ( lv_depart_code IS NULL ) THEN
+        IF ( lv_depart_code IS NULL )
+          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
 /*--==============2009/2/3-END==========================--*/
 --
           --保管場所マスタデータ取得
@@ -6358,7 +6375,9 @@ AS
 --
 /*--==============2009/2/3-START=========================--*/
 --        ELSIF ( lv_depart_code = cv_depart_type ) THEN
-        ELSIF ( lv_depart_code IS NOT NULL ) THEN
+--        ELSIF ( lv_depart_code IS NOT NULL ) THEN
+        ELSIF ( lv_depart_code = cv_depart_type ) 
+          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
 /*--==============2009/2/3-END==========================--*/
 --
           --保管場所マスタデータ取得
