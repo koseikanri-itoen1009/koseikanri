@@ -7,7 +7,7 @@ AS
  * Description      : 納品予定日の到来した拠点出荷の受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 出荷確認（納品予定日）  MD050_COS_007_A01
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2009/10/16    1.12  N.Maeda          [0001381] 受注明細取得条件追加(販売実績連携フラグ)
  *                                                 (A-10) 受注明細更新処理の追加
  *  2010/02/01    1.13  S.Karikomi       [E_T4_00195] カレンダのクローズの確認をINVカレンダに変更
+ *  2010/03/08    1.14  N.Maeda          [E_本稼動_01725] 販売実績連携用売上拠点の判定条件修正
  *
  *****************************************************************************************/
 --
@@ -374,6 +375,9 @@ AS
   -- 顧客区分
   cv_cust_class_base            CONSTANT VARCHAR2(1)  := '1';     --顧客区分.拠点
 -- 2009/09/24 Ver.1.11 M.Sano Add End
+-- ********** 2010/03/08 N.Maeda 1.14 ADD START ********** --
+  cv_trunc_mm                   CONSTANT VARCHAR2(2)  := 'MM';    --日付切捨用
+-- ********** 2010/03/08 N.Maeda 1.14 ADD START ********** --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -391,6 +395,10 @@ AS
   gd_business_date        DATE;
   -- 業務日付
   gd_process_date         DATE;
+-- ********** 2010/03/08 N.Maeda 1.14 ADD START ********** --
+  -- 売上拠点設定基準月
+  gd_salse_base_comp_day  DATE;
+-- ********** 2010/03/08 N.Maeda 1.14 ADD START ********** --
 /* 2009/07/24 Ver1.9 Add Start */
   -- 業務日付(日時)
   gd_process_date_time    DATE;
@@ -661,6 +669,11 @@ AS
     IF  ( gd_business_date IS NULL ) THEN
       RAISE global_proc_date_err_expt;
     END IF;
+--
+-- ********** 2010/03/08 N.Maeda 1.14 ADD START ********** --
+    -- 売上拠点判定用日付の設定
+    gd_salse_base_comp_day := TRUNC( gd_business_date, cv_trunc_mm );
+-- ********** 2010/03/08 N.Maeda 1.14 ADD START ********** --
 --
     --==================================
     -- 1.パラメータ
@@ -2103,7 +2116,10 @@ AS
     --==================================
     -- 13.売上拠点コード
     --==================================
-    IF ( TRUNC(io_order_rec.dlv_date) < TRUNC(io_order_rec.rsv_sale_base_act_date) ) THEN
+-- ********** 2010/03/08 N.Maeda 1.14 MOD START ********** --
+--    IF ( TRUNC(io_order_rec.dlv_date) < TRUNC(io_order_rec.rsv_sale_base_act_date) ) THEN
+    IF ( TRUNC( io_order_rec.dlv_date , cv_trunc_mm) < gd_salse_base_comp_day ) THEN
+-- ********** 2010/03/08 N.Maeda 1.14 MOD START ********** --
       -- 売上拠点コードを前月売上拠点コードに設定する
       io_order_rec.sale_base_code := io_order_rec.last_month_sale_base_code;
     END IF;
