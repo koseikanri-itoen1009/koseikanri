@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE xxwip_common2_pkg
  * Package Name           : xxwip_common2_pkg(SPEC)
  * Description            : 生産バッチ一覧画面用関数
  * MD.070(CMD.050)        : なし
- * Version                : 1.0
+ * Version                : 1.1
  *
  * Program List
  * ---------------------- ---- ----- --------------------------------------------------
@@ -27,7 +27,7 @@ CREATE OR REPLACE PACKAGE xxwip_common2_pkg
  *  Date         Ver.  Editor           Description
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008/01/08   1.0   T.Oikawa         新規作成
- *
+ *  2008/12/22   1.1   Oracle 二瓶 大輔 本番障害#743対応(ロット追加・更新関数)
  *****************************************************************************************/
 AS
 --

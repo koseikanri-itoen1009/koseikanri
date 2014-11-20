@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.15
+ * Version                : 1.16
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2008/10/09   1.13  Oracle 二瓶 大輔   統合障害#169対応(手持在庫数量算出API(投入実績用))
  *  2008/11/14   1.14  Oracle 二瓶 大輔   統合障害#649対応(委託加工費更新関数)
  *  2008/11/17   1.15  Oracle 二瓶 大輔   統合障害#678対応(処理日付更新関数)
+ *  2008/12/22   1.16  Oracle 二瓶 大輔   本番障害#743対応(ロット追加・更新関数)
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -1560,6 +1561,10 @@ AS
         lr_create_lot.attribute24      := '5'; -- 生産出来高
         lr_create_lot.user_name        := FND_GLOBAL.USER_NAME;
         lr_create_lot.lot_created      := SYSDATE;
+-- 2008/12/22 D.Nihei ADD START
+        lr_create_lot.expaction_date   := TO_DATE('2099/12/31', 'YYYY/MM/DD');
+        lr_create_lot.expire_date      := TO_DATE('2099/12/31', 'YYYY/MM/DD');
+-- 2008/12/22 D.Nihei ADD END
 --
         --ロット作成API
         GMIPAPI.CREATE_LOT(
@@ -1656,6 +1661,10 @@ AS
         lr_create_lot.attribute24      := '5'; -- 生産出来高
         lr_create_lot.user_name        := FND_GLOBAL.USER_NAME;
         lr_create_lot.lot_created      := SYSDATE;
+-- 2008/12/22 D.Nihei ADD START
+        lr_create_lot.expaction_date   := TO_DATE('2099/12/31', 'YYYY/MM/DD');
+        lr_create_lot.expire_date      := TO_DATE('2099/12/31', 'YYYY/MM/DD');
+-- 2008/12/22 D.Nihei ADD END
 --
         --ロット作成API
         GMIPAPI.CREATE_LOT(

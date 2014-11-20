@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY xxwip_common2_pkg
  * Package Name           : xxwip_common2_pkg(BODY)
  * Description            : 生産バッチ一覧画面用関数
  * MD.070(CMD.050)        : なし
- * Version                : 1.0
+ * Version                : 1.1
  *
  * Program List
  * --------------------   ---- ----- --------------------------------------------------
@@ -27,7 +27,7 @@ CREATE OR REPLACE PACKAGE BODY xxwip_common2_pkg
  *  Date         Ver.  Editor           Description
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008/01/08   1.0   T.Oikawa         新規作成
- *
+ *  2008/12/22   1.1   Oracle 二瓶 大輔 本番障害#743対応(ロット追加・更新関数)
  *****************************************************************************************/
 AS
 --
@@ -357,6 +357,10 @@ AS
     lr_create_lot.attribute24      := '5'; -- 生産出来高
     lr_create_lot.user_name        := FND_GLOBAL.USER_NAME;
     lr_create_lot.lot_created      := SYSDATE;
+-- 2008/12/22 D.Nihei ADD START
+    lr_create_lot.expaction_date   := TO_DATE('2099/12/31', 'YYYY/MM/DD');
+    lr_create_lot.expire_date      := TO_DATE('2099/12/31', 'YYYY/MM/DD');
+-- 2008/12/22 D.Nihei ADD END
 --
     -- ロット作成API
     GMIPAPI.CREATE_LOT(
