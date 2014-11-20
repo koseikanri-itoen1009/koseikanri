@@ -7,21 +7,21 @@ AS
  * Description      : 請求更新処理
  * MD.050           : 運賃計算（月次）   T_MD050_BPO_740
  * MD.070           : 請求更新           T_MD070_BPO_74B
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
- *  get_related_date       関連データ取得(B-1)
- *  get_deliverys          運賃ヘッダーアドオンデータ取得(B-2、B-8)
- *  get_adj_charges        運賃調整アドオンデータ取得(B-3、B-9)
- *  get_billing            請求先アドオンマスタデータ取得(B-4、B-10)
- *  get_before             前々月、前月データ取得(B-5、B-11)
- *  set_ins_date           登録データ設定(B-6、B-12)
- *  init_plsql             PL/SQL表初期化(B-7)
- *  ins_billing            請求先アドオンマスタ一括登録処理(B-13)
- *  upd_billing            請求先アドオンマスタ一括更新処理(B-14)
+ *  get_related_date       関連データ取得(A-1)
+ *  get_deliverys          運賃ヘッダーアドオンデータ取得(A-2、A-8)
+ *  get_adj_charges        運賃調整アドオンデータ取得(A-3、A-9)
+ *  get_billing            請求先アドオンマスタデータ取得(A-4、A-10)
+ *  get_before             前々月、前月データ取得(A-5、A-11)
+ *  set_ins_date           登録データ設定(A-6、A-12)
+ *  init_plsql             PL/SQL表初期化(A-7)
+ *  ins_billing            請求先アドオンマスタ一括登録処理(A-13)
+ *  upd_billing            請求先アドオンマスタ一括更新処理(A-14)
  *  sub_submain            サブメイン処理プロシージャ
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
@@ -38,6 +38,7 @@ AS
  *  2009/01/08    1.5  野村 正幸         本番#960対応
  *  2009/01/13    1.6  野村 正幸         本番#XXX対応（繰越金額計算対応）
  *  2011/02/07    1.7  桐生 和幸         E_本稼動_06520 (同一金額のデータが1行となってしまう障害対応)
+ *  2013/07/17    1.8  仁木 重人         E_本稼動_10839（消費税増税対応）
  *
  *****************************************************************************************/
 --
@@ -134,6 +135,14 @@ AS
   gv_tax_free_bil_off      CONSTANT VARCHAR2(1) := '0';    -- OFF
   gv_tax_free_bil_on       CONSTANT VARCHAR2(1) := '1';    -- ON
 --
+-- v1.8 ADD START
+  gv_yes                   CONSTANT VARCHAR2(1)  := 'Y';           -- YES
+  gv_month                 CONSTANT VARCHAR2(2)  := 'MM';          -- 日付型(MM)
+  gv_std_yyyymmdd          CONSTANT VARCHAR2(10) := 'YYYY/MM/DD' ; -- 日付型(YYYY/MM/DD) 
+  gv_msg_comma             CONSTANT VARCHAR2(2)  := '、';          -- カンマ
+  -- テーブル名
+  gv_tbl_lookup_v2         CONSTANT VARCHAR2(22) := 'xxcmn_lookup_values2_v';  -- クイックコード情報VIEW2
+-- v1.8 ADD END
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -349,6 +358,9 @@ AS
   -- ===============================
 --
   gd_sysdate               DATE;            -- システム日付
+-- v1.8 ADD START
+  gd_target_date           DATE;            -- 基準日
+-- v1.8 ADD END
   gn_user_id               NUMBER;          -- ユーザID
   gn_login_id              NUMBER;          -- ログインID
   gn_conc_request_id       NUMBER;          -- コンカレント要求ID
@@ -357,14 +369,17 @@ AS
 --
   gv_close_type            VARCHAR2(1);     -- 締め区分
   gv_charge_dmy_key        VARCHAR2(6);     -- 請求年月ダミーキー
-  gv_consumption_tax       VARCHAR2(2);     -- 消費税率（単位 %）
+-- v1.8 MOD START
+--  gv_consumption_tax       VARCHAR2(2);     -- 消費税率（単位 %）
+  gt_consumption_tax       fnd_lookup_values.lookup_code%TYPE;  -- 消費税率（単位 %）
+-- v1.8 MOD END
 --
   gn_i_bil_tab_cnt         NUMBER;          -- 請求先アドオンマスタ 登録PL/SQL表カウンター
   gn_u_bil_tab_cnt         NUMBER;          -- 請求先アドオンマスタ 更新PL/SQL表カウンター
 --
   /**********************************************************************************
    * Procedure Name   : get_related_date
-   * Description      : 関連データ取得(B-1)
+   * Description      : 関連データ取得(A-1)
    ***********************************************************************************/
   PROCEDURE get_related_date(
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
@@ -448,23 +463,52 @@ AS
 --
     gv_close_type := lv_close_type;   -- グローバル変数に設定
 --
+-- v1.8 ADD START
+    -- 締日前の場合
+    IF (gv_close_type = gv_yes) THEN
+      -- 基準日にSYSDATEの前月1日を設定
+      gd_target_date := TRUNC(ADD_MONTHS(gd_sysdate ,-1) ,gv_month);
+    ELSE
+      -- 基準日にSYSDATEの当月1日を設定
+      gd_target_date := TRUNC(gd_sysdate ,gv_month);
+    END IF;
+-- v1.8 ADD END
     -- ***********************************************
     -- 消費税率を取得（単位は%）
     -- ***********************************************
     BEGIN 
-      SELECT  xlvv.lookup_code
-      INTO    gv_consumption_tax
-      FROM    xxcmn_lookup_values_v  xlvv      -- ルックアップ（消費税率用）
-      WHERE   xlvv.lookup_type  = gv_cons_tax_rate_type;
+-- v1.8 MOD START
+--      SELECT  xlvv.lookup_code
+--      INTO    gv_consumption_tax
+--      FROM    xxcmn_lookup_values_v  xlvv      -- ルックアップ（消費税率用）
+--      WHERE   xlvv.lookup_type  = gv_cons_tax_rate_type;
+--
+      -- 基準日時点で有効な税率を取得
+      SELECT  xlv2v.lookup_code  AS consumption_tax
+      INTO    gt_consumption_tax
+      FROM    xxcmn_lookup_values2_v  xlv2v    -- ルックアップ（消費税率用）
+      WHERE   xlv2v.lookup_type         = gv_cons_tax_rate_type
+      AND     xlv2v.start_date_active  <= gd_target_date
+      AND     xlv2v.end_date_active    >= gd_target_date
+      ;
+-- v1.8 MOD END
 --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN   --*** データ取得エラー ***
         lv_errmsg := xxcmn_common_pkg.get_msg(gv_cmn_msg_kbn,
                                               gv_cmn_msg_notfnd,
                                               gv_tkn_table,
-                                              'xxcmn_lookup_values_v',
+-- v1.8 MOD START
+--                                              'xxcmn_lookup_values_v',
+--                                              gv_tkn_key,
+--                                              gv_cons_tax_rate_type);
+                                              gv_tbl_lookup_v2,
                                               gv_tkn_key,
-                                              gv_cons_tax_rate_type);
+                                              gv_cons_tax_rate_type ||
+                                              gv_msg_comma          ||
+                                              TO_CHAR(gd_target_date ,gv_std_yyyymmdd)
+                                             );
+-- v1.8 MOD END
         lv_errbuf := lv_errmsg;
         RAISE global_api_expt;
 --
@@ -472,9 +516,17 @@ AS
         lv_errmsg := xxcmn_common_pkg.get_msg(gv_cmn_msg_kbn,
                                               gv_cmn_msg_toomny,
                                               gv_tkn_table,
-                                              'xxcmn_lookup_values_v',
+-- v1.8 MOD START
+--                                              'xxcmn_lookup_values_v',
+--                                              gv_tkn_key,
+--                                              gv_cons_tax_rate_type);
+                                              gv_tbl_lookup_v2,
                                               gv_tkn_key,
-                                              gv_cons_tax_rate_type);
+                                              gv_cons_tax_rate_type ||
+                                              gv_msg_comma          ||
+                                              TO_CHAR(gd_target_date ,gv_std_yyyymmdd)
+                                             );
+-- v1.8 MOD END
         lv_errbuf := lv_errmsg;
         RAISE global_api_expt;
 --
@@ -504,7 +556,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : get_deliverys
-   * Description      : 運賃ヘッダーアドオンデータ取得(B-2、B-8)
+   * Description      : 運賃ヘッダーアドオンデータ取得(A-2、A-8)
    ***********************************************************************************/
   PROCEDURE get_deliverys(
     id_sysdate    IN  DATE,         --   日付
@@ -707,7 +759,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : get_adj_charges
-   * Description      : 運賃調整アドオンデータ取得(B-3、B-9)
+   * Description      : 運賃調整アドオンデータ取得(A-3、A-9)
    ***********************************************************************************/
   PROCEDURE get_adj_charges(
     id_sysdate    IN  DATE,         --   日付
@@ -1060,7 +1112,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : get_billing
-   * Description      : 請求先アドオンマスタデータ取得(B-4、B-10)
+   * Description      : 請求先アドオンマスタデータ取得(A-4、A-10)
    ***********************************************************************************/
   PROCEDURE get_billing(
     id_sysdate    IN  DATE,         --   日付
@@ -1112,7 +1164,6 @@ AS
 --
     <<gt_masters_tbl_loop>>
     FOR ln_index IN gt_masters_tbl.FIRST .. gt_masters_tbl.LAST LOOP
-
       SELECT xbm1.billing_name,                   -- 請求先名
              xbm1.post_no,                        -- 郵便番号
              xbm1.address,                        -- 住所
@@ -1203,7 +1254,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : get_before
-   * Description      : 前々月、前月データ取得(B-5、B-11)
+   * Description      : 前々月、前月データ取得(A-5、A-11)
    ***********************************************************************************/
   PROCEDURE get_before(
     id_sysdate    IN  DATE,         --   日付
@@ -1287,7 +1338,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : set_ins_date
-   * Description      : 登録データ設定(B-6、B-12)
+   * Description      : 登録データ設定(A-6、A-12)
    ***********************************************************************************/
   PROCEDURE set_ins_date(
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
@@ -1359,7 +1410,10 @@ AS
       -- 消費税の計算：((今月売上額(運賃ヘッダ分)＋課税調整合計)×消費税率×0.01)＋消費税調整合計
       ln_consumption_tax := TRUNC((NVL(gt_masters_tbl(ln_index).charged_amt_sum, 0) + 
                                      NVL(gt_masters_tbl(ln_index).tax_bil_sum, 0)) * 
-                                       (TO_NUMBER(gv_consumption_tax) * 0.01))      +
+-- v1.8 MOD START
+--                                       (TO_NUMBER(gv_consumption_tax) * 0.01))      +
+                                       (TO_NUMBER(gt_consumption_tax) * 0.01))      +
+-- v1.8 MOD END
                             NVL(gt_masters_tbl(ln_index).adj_tax_extra_sum, 0);
 -- 2008/09/29 1.1 N.Yoshida end
 --
@@ -1538,7 +1592,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : ins_billing
-   * Description      : 請求先アドオンマスタ一括登録処理(B-13)
+   * Description      : 請求先アドオンマスタ一括登録処理(A-13)
    ***********************************************************************************/
   PROCEDURE ins_billing(
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
@@ -1599,7 +1653,7 @@ AS
        condition_setting_date,                         -- 10.支払条件設定日
        last_month_charge_amount,                       -- 11.前月請求額
        amount_receipt_money,                           -- 12.今回入金額
-       amount_adjustment,                              -- 13.調整費
+       amount_adjustment,                              -- 13.調整額
        balance_carried_forward,                        -- 14.繰越額
        charged_amount,                                 -- 15.今回請求金額
        charged_amount_total,                           -- 16.請求金額合計
@@ -1631,7 +1685,7 @@ AS
 --       NULL,                                           -- 12.今回入金額
 --       NULL,                                           -- 13.調整費
        0,                                              -- 12.今回入金額（初期設定０）
-       0,                                              -- 13.調整費    （初期設定０）
+       0,                                              -- 13.調整額    （初期設定０）
 -- ##### 20081107 Ver.1.12 統合#552、553対応 END   #####
        i_bil_blc_crd_fw_tab(ln_index),                 -- 14.繰越額
        i_bil_chrg_amt_tab(ln_index),                   -- 15.今回請求金額
@@ -1673,7 +1727,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : upd_billing
-   * Description      : 請求先アドオンマスタ一括更新処理(B-14)
+   * Description      : 請求先アドオンマスタ一括更新処理(A-14)
    ***********************************************************************************/
   PROCEDURE upd_billing(
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
@@ -1770,7 +1824,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : init_plsql
-   * Description      : PL/SQL表初期化(B-7)
+   * Description      : PL/SQL表初期化(A-7)
    ***********************************************************************************/
   PROCEDURE init_plsql(
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
@@ -1936,7 +1990,7 @@ AS
     gn_u_bil_tab_cnt   := 0;
 --
     -- ===========================================
-    -- 運賃ヘッダーアドオンデータ取得(B-2、B-8)
+    -- 運賃ヘッダーアドオンデータ取得(A-2、A-8)
     -- ===========================================
     get_deliverys(
       id_param_date,     -- 日付
@@ -1954,7 +2008,7 @@ AS
     END IF;
 --
     -- ===========================================
-    -- 運賃調整アドオンデータ取得(B-3、B-9)
+    -- 運賃調整アドオンデータ取得(A-3、A-9)
     -- ===========================================
     get_adj_charges(
       id_param_date,     -- 日付
@@ -1966,7 +2020,7 @@ AS
     END IF;
 --
     -- ===========================================
-    -- 請求先アドオンマスタデータ取得(B-4、B-10)
+    -- 請求先アドオンマスタデータ取得(A-4、A-10)
     -- ===========================================
     get_billing(
       id_param_date,     -- 日付
@@ -1978,7 +2032,7 @@ AS
     END IF;
 --
     -- ===========================================
-    -- 前々月、前月データ取得(B-5、B-11)
+    -- 前々月、前月データ取得(A-5、A-11)
     -- ===========================================
     get_before(
       id_param_date,     -- 日付
@@ -1990,7 +2044,7 @@ AS
     END IF;
 --
     -- ===========================================
-    -- 登録データ設定(B-6、B-12)
+    -- 登録データ設定(A-6、A-12)
     -- ===========================================
     set_ins_date(
       lv_errbuf,         -- エラー・メッセージ           --# 固定 #
@@ -2001,7 +2055,7 @@ AS
     END IF;
 --
     -- ===========================================
-    -- 請求先アドオンマスタ一括登録処理(B-13)
+    -- 請求先アドオンマスタ一括登録処理(A-13)
     -- ===========================================
     ins_billing(
       lv_errbuf,         -- エラー・メッセージ           --# 固定 #
@@ -2012,7 +2066,7 @@ AS
     END IF;
 --
     -- ===========================================
-    -- 請求先アドオンマスタ一括更新処理(B-14)
+    -- 請求先アドオンマスタ一括更新処理(A-14)
     -- ===========================================
     upd_billing(
       lv_errbuf,         -- エラー・メッセージ           --# 固定 #
@@ -2101,7 +2155,7 @@ AS
     --*********************************************
 --
     -- ===========================================
-    -- 関連データ取得(B-1)
+    -- 関連データ取得(A-1)
     -- ===========================================
     get_related_date(
       lv_errbuf,         -- エラー・メッセージ           --# 固定 #
@@ -2126,7 +2180,7 @@ AS
       END IF;
 --
       -- ===========================================
-      -- PL/SQL表初期化(B-7)
+      -- PL/SQL表初期化(A-7)
       -- ===========================================
       init_plsql(
         lv_errbuf,         -- エラー・メッセージ           --# 固定 #
