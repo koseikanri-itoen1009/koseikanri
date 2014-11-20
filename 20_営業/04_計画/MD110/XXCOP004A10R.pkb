@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A10R(body)
  * Description      : 引取計画実績対比表
  * MD.050           : MD050_COP_004_A10_引取計画実績対比表
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2013/12/10    1.0   S.Niki           新規作成
+ *  2014/03/10    1.1   K.Nakamura       E_本稼動_10958対応
  *
  *****************************************************************************************/
 --
@@ -102,6 +103,9 @@ AS
   cv_sales_org_code           CONSTANT VARCHAR2(30)   := 'XXCOP1_SALES_ORG_CODE';    -- 営業組織コード
   cv_item_div_h               CONSTANT VARCHAR2(30)   := 'XXCOS1_ITEM_DIV_H';        -- カテゴリセット名(本社商品区分)
   cv_policy_group_code        CONSTANT VARCHAR2(30)   := 'XXCOS1_POLICY_GROUP_CODE'; -- カテゴリセット名(政策群コード)
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+  cv_div_tea_code             CONSTANT VARCHAR2(30)   := 'XXCMN_DIV_TEA_CODE';       -- バラ茶区分
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
   -- メッセージ
   cv_msg_xxcop_00065          CONSTANT VARCHAR2(16)   := 'APP-XXCOP1-00065';   -- 業務日付取得エラーメッセージ
   cv_msg_xxcop_00002          CONSTANT VARCHAR2(16)   := 'APP-XXCOP1-00002';   -- プロファイル値取得失敗エラー
@@ -157,6 +161,10 @@ AS
   -- 商品区分
   cv_ctg_leaf                 CONSTANT VARCHAR2(1)    := '1';                  -- リーフ
   cv_ctg_drink                CONSTANT VARCHAR2(1)    := '2';                  -- ドリンク
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+  -- バラ茶区分
+  cv_div_tea_code_bara        CONSTANT VARCHAR2(1)    := '1';                  -- バラ茶
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
   -- 入庫確認フラグ
   cv_store_check_y            CONSTANT VARCHAR2(1)    := 'Y';                  -- 入庫確認済
   cv_store_check_n            CONSTANT VARCHAR2(1)    := 'N';                  -- 入庫未確認
@@ -216,6 +224,9 @@ AS
   gt_sales_org_id             mtl_parameters.organization_id%TYPE;             -- 営業組織ID
   gt_item_div_h               mtl_category_sets_vl.category_set_name%TYPE;     -- カテゴリセット名(本社商品区分)
   gt_policy_group_code        mtl_category_sets_vl.category_set_name%TYPE;     -- カテゴリセット名(政策群コード)
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+  gt_div_tea_code             mtl_category_sets_vl.category_set_name%TYPE;     -- カテゴリセット名(バラ茶区分)
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
   -- 入力パラメータ格納用
   gv_target_month             VARCHAR2(6);                                     -- 対象年月
   gv_prod_class_code          VARCHAR2(1);                                     -- 商品区分
@@ -444,6 +455,28 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+    ----------------------------------
+    -- カテゴリセット名(バラ茶区分)
+    ----------------------------------
+    BEGIN
+      gt_div_tea_code := fnd_profile.value(cv_div_tea_code);
+    EXCEPTION
+      WHEN OTHERS THEN
+        gt_div_tea_code := NULL;
+    END;
+    -- カテゴリセット名(バラ茶区分)が取得出来ない場合
+    IF ( gt_div_tea_code IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_application       -- アプリケーション短縮名
+                     ,iv_name         => cv_msg_xxcop_00002   -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_profile       -- トークンコード1
+                     ,iv_token_value1 => cv_div_tea_code      -- トークン値1
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
 --
     --==============================================================
     -- 6．生産組織ID取得
@@ -833,8 +866,12 @@ AS
     -- 入庫確認数(拠点入庫)取得カーソル
     CURSOR get_stock_comp_info_cur
     IS
-      SELECT /*
-              + LEADING(xsi)
+-- ********** Ver.1.1 K.Nakamura MOD Start ************ --
+--      SELECT /*
+--              + LEADING(xsi)
+      SELECT /*+
+               LEADING(xsi)
+-- ********** Ver.1.1 K.Nakamura MOD End ************ --
              */
              TO_CHAR(xsi.slip_date ,cv_format_yyyymm)    AS target_month
            , xsi.base_code                               AS base_code
@@ -845,13 +882,21 @@ AS
            , xacv2.segment1                              AS crowd_class_code
            , SUBSTRB(xacv2.segment1 ,cn_1 ,cn_3)         AS crowd_class_code3
            , CASE
-               -- リーフの場合、確認数量総バラ数を小数点以下1位で切り捨て
-               WHEN xacv1.segment1 = cv_ctg_leaf
+-- ********** Ver.1.1 K.Nakamura MOD Start ************ --
+--               -- リーフの場合、確認数量総バラ数を小数点以下1位で切り捨て
+--               WHEN xacv1.segment1 = cv_ctg_leaf
+               -- リーフかつバラ茶の場合、確認数量総バラ数を小数点以下1位で切り捨て
+               WHEN (xacv1.segment1 = cv_ctg_leaf) AND (xacv3.segment1 = cv_div_tea_code_bara)
+-- ********** Ver.1.1 K.Nakamura MOD End ************ --
                  THEN
                    TRUNC(SUM(xsi.check_summary_qty), cn_0)
-               -- ドリンクの場合、確認数量ケース数を小数点以下1位で切り捨て
-               WHEN xacv1.segment1 = cv_ctg_drink
-                 THEN
+-- ********** Ver.1.1 K.Nakamura MOD Start ************ --
+--               -- ドリンクの場合、確認数量ケース数を小数点以下1位で切り捨て
+--               WHEN xacv1.segment1 = cv_ctg_drink
+--                 THEN
+               -- 上記以外の場合、確認数量ケース数を小数点以下1位で切り捨て
+               ELSE
+-- ********** Ver.1.1 K.Nakamura MOD End ************ --
                    TRUNC(SUM(xsi.check_case_qty), cn_0)
              END                                         AS stock_comp_qty
       FROM   xxcoi_storage_information xsi   -- 入庫情報一時表
@@ -862,6 +907,10 @@ AS
            , xxcop_all_categories_v    xacv1 -- 全品目カテゴリビュー
            , mtl_item_categories       mic2  -- カテゴリ割当
            , xxcop_all_categories_v    xacv2 -- 全品目カテゴリビュー
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+           , mtl_item_categories       mic3  -- カテゴリ割当
+           , xxcop_all_categories_v    xacv3 -- 全品目カテゴリビュー
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
       WHERE  msib.segment1           = xsi.item_code
       AND    msib.organization_id    = gt_sales_org_id        -- 営業組織
       AND    msib.segment1           = iimb.item_no
@@ -878,6 +927,13 @@ AS
       AND    mic2.category_set_id    = xacv2.category_set_id
       AND    mic2.category_id        = xacv2.category_id
       AND    xacv2.category_set_name = gt_policy_group_code   -- 政策群コード
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+      AND    mic3.inventory_item_id  = msib.inventory_item_id
+      AND    mic3.organization_id    = msib.organization_id
+      AND    mic3.category_set_id    = xacv3.category_set_id
+      AND    mic3.category_id        = xacv3.category_id
+      AND    xacv3.category_set_name = gt_div_tea_code        -- バラ茶区分
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
       AND    xsi.store_check_flag    = cv_store_check_y       -- 入庫確認済
       AND    xsi.summary_data_flag   = cv_summary_data_y      -- サマリーデータ
       AND    xsi.slip_date          >= TO_DATE(gv_target_month, cv_format_yyyymm)           -- 入力パラメータ.対象年月
@@ -894,6 +950,9 @@ AS
              , xacv1.description
              , xacv2.segment1
              , SUBSTRB(xacv2.segment1 ,cn_1 ,cn_3)
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+             , xacv3.segment1
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
       ;
     -- レコード定義
     get_stock_comp_info_rec   get_stock_comp_info_cur%ROWTYPE;
@@ -1111,13 +1170,21 @@ AS
            , xacv2.segment1                              AS crowd_class_code
            , SUBSTRB(xacv2.segment1 ,cn_1 ,cn_3)         AS crowd_class_code3
            , CASE
-               -- リーフの場合、出庫数量総バラ数を小数点以下1位で切り捨て
-               WHEN xacv1.segment1 = cv_ctg_leaf
+-- ********** Ver.1.1 K.Nakamura MOD Start ************ --
+--               -- リーフの場合、出庫数量総バラ数を小数点以下1位で切り捨て
+--               WHEN xacv1.segment1 = cv_ctg_leaf
+               -- リーフかつバラ茶の場合、出庫数量総バラ数を小数点以下1位で切り捨て
+               WHEN (xacv1.segment1 = cv_ctg_leaf) AND (xacv3.segment1 = cv_div_tea_code_bara)
+-- ********** Ver.1.1 K.Nakamura MOD End ************ --
                  THEN
                    TRUNC(SUM(xsi.ship_summary_qty), cn_0)
-               -- ドリンクの場合、出庫数量ケース数を小数点以下1位で切り捨て
-               WHEN xacv1.segment1 = cv_ctg_drink
-                 THEN
+-- ********** Ver.1.1 K.Nakamura MOD Start ************ --
+--               -- ドリンクの場合、出庫数量ケース数を小数点以下1位で切り捨て
+--               WHEN xacv1.segment1 = cv_ctg_drink
+--                 THEN
+               -- 上記以外の場合、出庫数量ケース数を小数点以下1位で切り捨て
+               ELSE
+-- ********** Ver.1.1 K.Nakamura MOD End ************ --
                    TRUNC(SUM(xsi.ship_case_qty), cn_0)
              END                                         AS stock_order_comp_qty
       FROM   xxcoi_storage_information xsi   -- 入庫情報一時表
@@ -1128,6 +1195,10 @@ AS
            , xxcop_all_categories_v    xacv1 -- 全品目カテゴリビュー
            , mtl_item_categories       mic2  -- カテゴリ割当
            , xxcop_all_categories_v    xacv2 -- 全品目カテゴリビュー
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+           , mtl_item_categories       mic3  -- カテゴリ割当
+           , xxcop_all_categories_v    xacv3 -- 全品目カテゴリビュー
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
       WHERE  msib.segment1           = xsi.item_code
       AND    msib.organization_id    = gt_sales_org_id        -- 営業組織
       AND    msib.segment1           = iimb.item_no
@@ -1144,6 +1215,13 @@ AS
       AND    mic2.category_set_id    = xacv2.category_set_id
       AND    mic2.category_id        = xacv2.category_id
       AND    xacv2.category_set_name = gt_policy_group_code   -- 政策群コード
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+      AND    mic3.inventory_item_id  = msib.inventory_item_id
+      AND    mic3.organization_id    = msib.organization_id
+      AND    mic3.category_set_id    = xacv3.category_set_id
+      AND    mic3.category_id        = xacv3.category_id
+      AND    xacv3.category_set_name = gt_div_tea_code        -- バラ茶区分
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
       AND    xsi.store_check_flag    = cv_store_check_n       -- 入庫未確認
       AND    xsi.summary_data_flag   = cv_summary_data_y      -- サマリーデータ
       AND    xsi.req_status          = cv_req_status_04       -- 出荷実績計上済
@@ -1161,6 +1239,9 @@ AS
              , xacv1.description
              , xacv2.segment1
              , SUBSTRB(xacv2.segment1 ,cn_1 ,cn_3)
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+             , xacv3.segment1
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
       ;
     -- レコード定義
     get_stock_order_comp_info_rec   get_stock_order_comp_info_cur%ROWTYPE;
@@ -1378,8 +1459,12 @@ AS
            , xacv2.segment1                                         AS crowd_class_code
            , SUBSTRB(xacv2.segment1 ,cn_1 ,cn_3)                    AS crowd_class_code3
            , CASE
-               -- リーフの場合、数量を小数点以下1位で切り捨て
-               WHEN xacv1.segment1 = cv_ctg_leaf
+-- ********** Ver.1.1 K.Nakamura MOD Start ************ --
+--               -- リーフの場合、数量を小数点以下1位で切り捨て
+--               WHEN xacv1.segment1 = cv_ctg_leaf
+               -- リーフかつバラ茶の場合、数量を小数点以下1位で切り捨て
+               WHEN (xacv1.segment1 = cv_ctg_leaf) AND (xacv3.segment1 = cv_div_tea_code_bara)
+-- ********** Ver.1.1 K.Nakamura MOD End ************ --
                  THEN
                    TRUNC(SUM(NVL(xola.quantity, cn_0)
                              -- 受注カテゴリコードで正符号を設定
@@ -1391,9 +1476,13 @@ AS
                          )
                    , cn_0
                    )
-               -- ドリンクの場合、数量をケース換算し小数点以下1位で切り捨て
-               WHEN xacv1.segment1 = cv_ctg_drink
-                 THEN
+-- ********** Ver.1.1 K.Nakamura MOD Start ************ --
+--               -- ドリンクの場合、数量をケース換算し小数点以下1位で切り捨て
+--               WHEN xacv1.segment1 = cv_ctg_drink
+--                 THEN
+               -- 上記以外の場合、数量をケース換算し小数点以下1位で切り捨て
+               ELSE
+-- ********** Ver.1.1 K.Nakamura MOD End ************ --
                    TRUNC(SUM(NVL(xola.quantity, cn_0) / NVL(TO_NUMBER(iimb.attribute11) ,cn_1)
                              -- 受注カテゴリコードで正符号を設定
                              * DECODE(otta.order_category_code
@@ -1414,6 +1503,10 @@ AS
            , xxcop_all_categories_v    xacv1 -- 全品目カテゴリビュー
            , mtl_item_categories       mic2  -- カテゴリ割当
            , xxcop_all_categories_v    xacv2 -- 全品目カテゴリビュー
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+           , mtl_item_categories       mic3  -- カテゴリ割当
+           , xxcop_all_categories_v    xacv3 -- 全品目カテゴリビュー
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
            , oe_transaction_types_all  otta  -- 取引タイプ
            , oe_transaction_types_tl   ottt  -- 取引タイプ詳細
            , hz_party_sites            hps   -- パーティサイト
@@ -1439,6 +1532,13 @@ AS
       AND    mic2.category_set_id        = xacv2.category_set_id
       AND    mic2.category_id            = xacv2.category_id
       AND    xacv2.category_set_name     = gt_policy_group_code   -- 政策群コード
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+      AND    mic3.inventory_item_id      = msib.inventory_item_id
+      AND    mic3.organization_id        = msib.organization_id
+      AND    mic3.category_set_id        = xacv3.category_set_id
+      AND    mic3.category_id            = xacv3.category_id
+      AND    xacv3.category_set_name     = gt_div_tea_code        -- バラ茶区分
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
       AND    otta.org_id                 = gt_itou_ou_id          -- 生産組織ID
       AND    otta.attribute1             = cv_ship_order          -- 出荷依頼
       AND    NVL(otta.attribute4 ,cv_stock_etc)
@@ -1481,6 +1581,9 @@ AS
              , xacv1.description
              , xacv2.segment1
              , SUBSTRB(xacv2.segment1 ,cn_1 ,cn_3)
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+             , xacv3.segment1
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
              , otta.order_category_code
       ;
     -- レコード定義
@@ -1699,8 +1802,12 @@ AS
            , xacv2.segment1                                AS crowd_class_code
            , SUBSTRB(xacv2.segment1 ,cn_1 ,cn_3)           AS crowd_class_code3
            , CASE
-               -- リーフの場合、出荷実績数量を小数点以下1位で切り捨て
-               WHEN xacv1.segment1 = cv_ctg_leaf
+-- ********** Ver.1.1 K.Nakamura MOD Start ************ --
+--               -- リーフの場合、出荷実績数量を小数点以下1位で切り捨て
+--               WHEN xacv1.segment1 = cv_ctg_leaf
+               -- リーフかつバラ茶の場合、出荷実績数量を小数点以下1位で切り捨て
+               WHEN (xacv1.segment1 = cv_ctg_leaf) AND (xacv3.segment1 = cv_div_tea_code_bara)
+-- ********** Ver.1.1 K.Nakamura MOD End ************ --
                  THEN
                    TRUNC(SUM(NVL(xola.shipped_quantity, cn_0)
                              -- 受注カテゴリコードで正符号を設定
@@ -1712,9 +1819,13 @@ AS
                          )
                    , cn_0
                    )
-               -- ドリンクの場合、出荷実績数量をケース換算し小数点以下1位で切り捨て
-               WHEN xacv1.segment1 = cv_ctg_drink
-                 THEN
+-- ********** Ver.1.1 K.Nakamura MOD Start ************ --
+--               -- ドリンクの場合、出荷実績数量をケース換算し小数点以下1位で切り捨て
+--               WHEN xacv1.segment1 = cv_ctg_drink
+--                 THEN
+               -- 上記以外の場合、出荷実績数量をケース換算し小数点以下1位で切り捨て
+               ELSE
+-- ********** Ver.1.1 K.Nakamura MOD End ************ --
                    TRUNC(SUM(NVL(xola.shipped_quantity, cn_0) / NVL(TO_NUMBER(iimb.attribute11) ,cn_1)
                              -- 受注カテゴリコードで正符号を設定
                              * DECODE(otta.order_category_code
@@ -1735,6 +1846,10 @@ AS
            , xxcop_all_categories_v    xacv1 -- 全品目カテゴリビュー
            , mtl_item_categories       mic2  -- カテゴリ割当
            , xxcop_all_categories_v    xacv2 -- 全品目カテゴリビュー
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+           , mtl_item_categories       mic3  -- カテゴリ割当
+           , xxcop_all_categories_v    xacv3 -- 全品目カテゴリビュー
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
            , oe_transaction_types_all  otta  -- 取引タイプ
            , oe_transaction_types_tl   ottt  -- 取引タイプ詳細
            , hz_party_sites            hps   -- パーティサイト
@@ -1759,6 +1874,13 @@ AS
       AND    mic2.category_set_id        = xacv2.category_set_id
       AND    mic2.category_id            = xacv2.category_id
       AND    xacv2.category_set_name     = gt_policy_group_code    -- 政策群コード
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+      AND    mic3.inventory_item_id      = msib.inventory_item_id
+      AND    mic3.organization_id        = msib.organization_id
+      AND    mic3.category_set_id        = xacv3.category_set_id
+      AND    mic3.category_id            = xacv3.category_id
+      AND    xacv3.category_set_name     = gt_div_tea_code         -- バラ茶区分
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
       AND    otta.org_id                 = gt_itou_ou_id           -- 生産組織ID
       AND    otta.attribute1             = cv_ship_order           -- 出荷依頼
       AND    NVL(otta.attribute4 ,cv_stock_etc)
@@ -1798,6 +1920,9 @@ AS
              , xacv1.description
              , xacv2.segment1
              , SUBSTRB(xacv2.segment1 ,cn_1 ,cn_3)
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+             , xacv3.segment1
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
              , otta.order_category_code
       ;
     -- レコード定義
@@ -2016,8 +2141,12 @@ AS
            , xacv2.segment1                                         AS crowd_class_code
            , SUBSTRB(xacv2.segment1 ,cn_1 ,cn_3)                    AS crowd_class_code3
            , CASE
-               -- リーフの場合、数量を小数点以下1位で切り捨て
-               WHEN xacv1.segment1 = cv_ctg_leaf
+-- ********** Ver.1.1 K.Nakamura MOD Start ************ --
+--               -- リーフの場合、数量を小数点以下1位で切り捨て
+--               WHEN xacv1.segment1 = cv_ctg_leaf
+               -- リーフかつバラ茶の場合、数量を小数点以下1位で切り捨て
+               WHEN (xacv1.segment1 = cv_ctg_leaf) AND (xacv3.segment1 = cv_div_tea_code_bara)
+-- ********** Ver.1.1 K.Nakamura MOD End ************ --
                  THEN
                    TRUNC(SUM(NVL(xola.quantity, cn_0)
                              -- 受注カテゴリコードで正符号を設定
@@ -2029,9 +2158,13 @@ AS
                          )
                    , cn_0
                    )
-               -- ドリンクの場合、数量をケース換算し小数点以下1位で切り捨て
-               WHEN xacv1.segment1 = cv_ctg_drink
-                 THEN
+-- ********** Ver.1.1 K.Nakamura MOD Start ************ --
+--               -- ドリンクの場合、数量をケース換算し小数点以下1位で切り捨て
+--               WHEN xacv1.segment1 = cv_ctg_drink
+--                 THEN
+               -- 上記以外の場合、数量をケース換算し小数点以下1位で切り捨て
+               ELSE
+-- ********** Ver.1.1 K.Nakamura MOD End ************ --
                    TRUNC(SUM(NVL(xola.quantity, cn_0) / NVL(TO_NUMBER(iimb.attribute11) ,cn_1)
                              -- 受注カテゴリコードで正符号を設定
                              * DECODE(otta.order_category_code
@@ -2052,6 +2185,10 @@ AS
            , xxcop_all_categories_v    xacv1 -- 全品目カテゴリビュー
            , mtl_item_categories       mic2  -- カテゴリ割当
            , xxcop_all_categories_v    xacv2 -- 全品目カテゴリビュー
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+           , mtl_item_categories       mic3  -- カテゴリ割当
+           , xxcop_all_categories_v    xacv3 -- 全品目カテゴリビュー
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
            , oe_transaction_types_all  otta  -- 取引タイプ
            , oe_transaction_types_tl   ottt  -- 取引タイプ詳細
            , hz_party_sites            hps   -- パーティサイト
@@ -2076,6 +2213,13 @@ AS
       AND    mic2.category_set_id        = xacv2.category_set_id
       AND    mic2.category_id            = xacv2.category_id
       AND    xacv2.category_set_name     = gt_policy_group_code    -- 政策群コード
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+      AND    mic3.inventory_item_id      = msib.inventory_item_id
+      AND    mic3.organization_id        = msib.organization_id
+      AND    mic3.category_set_id        = xacv3.category_set_id
+      AND    mic3.category_id            = xacv3.category_id
+      AND    xacv3.category_set_name     = gt_div_tea_code         -- バラ茶区分
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
       AND    otta.org_id                 = gt_itou_ou_id           -- 生産組織ID
       AND    otta.attribute1             = cv_ship_order           -- 出荷依頼
       AND    NVL(otta.attribute4 ,cv_stock_etc)
@@ -2116,6 +2260,9 @@ AS
              , xacv1.description
              , xacv2.segment1
              , SUBSTRB(xacv2.segment1 ,cn_1 ,cn_3)
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+             , xacv3.segment1
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
              , otta.order_category_code
       ;
     -- レコード定義
