@@ -12,6 +12,7 @@
 * 2009-02-23 1.1  SCS柳平直人  [CT1-021]送付先コード取得不正対応
 *                              [CT1-022]口座情報取得不正対応
 * 2009-02-25 1.1  SCS柳平直人  [CT1-029]コピー時送付先テーブルデータ不正対応
+* 2009-05-25 1.2  SCS柳平直人  [ST障害T1_1136]LOVPK項目設定対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -558,6 +559,9 @@ public class XxcsoContractRegistInitUtils
     mngRow.setContractEffectDate(     mngRow2.getContractEffectDate()         );
     mngRow.setInstallDate(            mngRow2.getInstallDate()                );
     mngRow.setInstallCode(            mngRow2.getInstallCode()                );
+// 2009-05-25 [ST障害T1_1136] Add Start
+    mngRow.setInstanceId(             mngRow2.getInstanceId()                 );
+// 2009-05-25 [ST障害T1_1136] Add End
     mngRow.setPublishDeptCode(        mngRow2.getPublishDeptCode()            );
     mngRow.setPublishDeptName(        mngRow2.getPublishDeptName()            );
     mngRow.setLocationAddress(        mngRow2.getLocationAddress()            );

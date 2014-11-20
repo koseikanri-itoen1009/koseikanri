@@ -7,6 +7,7 @@
 * “ú•t       Ver. ’S“–Ò       C³“à—e
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-02-02 1.0  SCS–ö•½’¼l  V‹Kì¬
+* 2009-05-25 1.1  SCS–ö•½’¼l  [STáŠQT1_1136]LOVPK€–Úİ’è‘Î‰
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -56,6 +57,9 @@ public class XxcsoContractRegistReflectUtils
     )
     {
       mngVoRow.setInstallCode(null);
+// 2009-05-25 [STáŠQT1_1136] Add Start
+      mngVoRow.setInstanceId(null);
+// 2009-05-25 [STáŠQT1_1136] Add End
     }
   }
 

@@ -21,7 +21,8 @@ Regist CONTRACT_MANAGEMENT information page.
 
 HISTORY
 2009/01/27  H.Ogawa        Initialcode drop.
-2009/05/15  N.Yanagitaira  T1_0230.-->
+2009/05/15  N.Yanagitaira  T1_0230
+2009/05/25  N.Yanagitaira  T1_1136-->
       <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM" controllerClass="itoen.oracle.apps.xxcso.xxcso010003j.webui.XxcsoContractRegistCO" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PageLayoutRN">
          <ui:corporateBranding>
             <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
@@ -1104,7 +1105,7 @@ HISTORY
                                           <lovMap id="InstanceIdMap" lovItem="InstanceId" resultTo="InstanceId"/>
                                        </lovMappings>
                                     </oa:messageLovInput>
-                                    <oa:formValue id="InstanceId" dataType="NUMBER"/>
+                                    <oa:formValue id="InstanceId" dataType="NUMBER" viewName="XxcsoContractManagementFullVO1" viewAttr="InstanceId"/>
                                  </ui:contents>
                               </oa:messageLayout>
                            </ui:contents>
