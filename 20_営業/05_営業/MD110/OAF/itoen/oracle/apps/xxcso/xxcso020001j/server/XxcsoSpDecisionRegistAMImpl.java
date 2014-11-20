@@ -9,6 +9,7 @@
 * 2008-12-16 1.0  SCS¬ì_     V‹Kì¬
 * 2009-03-04 1.1  SCS¬ì_     ‰Û‘èˆê——No.73‘Î‰
 * 2009-03-23 1.2  SCS–ö•½’¼l   [STáŠQT1_0163]‰Û‘èNo.115æ‚è‚İ
+* 2009-04-14 1.3  SCS–ö•½’¼l   [STáŠQT1_0225]Œ_–ñævalidateC³
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -3075,17 +3076,27 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     /////////////////////////////////////
     // ŒŸØˆ—FŒ_–ñæ
     /////////////////////////////////////
-    if ( ! "Y".equals(cntrctRow.getSameInstallAccountFlag()) )
-    {
-      errorList.addAll(
-        XxcsoSpDecisionValidateUtils.validateCntrctCust(
-          txn
-         ,headerVo
-         ,cntrctVo
-         ,submitFlag
-        )
-      );
-    }
+// 2009-04-14 [STáŠQT1_0225] Mod Start
+//    if ( ! "Y".equals(cntrctRow.getSameInstallAccountFlag()) )
+//    {
+//      errorList.addAll(
+//        XxcsoSpDecisionValidateUtils.validateCntrctCust(
+//          txn
+//         ,headerVo
+//         ,cntrctVo
+//         ,submitFlag
+//        )
+//      );
+//    }
+    errorList.addAll(
+      XxcsoSpDecisionValidateUtils.validateCntrctCust(
+        txn
+       ,headerVo
+       ,cntrctVo
+       ,submitFlag
+      )
+    );
+// 2009-04-14 [STáŠQT1_0225] Mod End
     /////////////////////////////////////
     // ŒŸØˆ—FVDî•ñ
     /////////////////////////////////////

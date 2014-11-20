@@ -9,6 +9,7 @@
 * 2008-12-27 1.0  SCS¬ì_     V‹Kì¬
 * 2009-03-04 1.1  SCS¬ì_     ‰Û‘èˆê——No.73‘Î‰
 * 2009-03-23 1.2  SCS–ö•½’¼l   [STáŠQT1_0163]‰Û‘èNo.115æ‚è‚İ
+* 2009-04-13 1.3  SCS–ö•½’¼l   [STáŠQT1_0225]Œ_–ñævalidateC³
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -460,12 +461,65 @@ public class XxcsoSpDecisionValidateUtils
 
     XxcsoValidateUtils utils = XxcsoValidateUtils.getInstance(txn);
 
+// 2009-04-03 [STáŠQT1_0225] Add Start
+    // Œ_–ñæ‚Ì•ÒW‰ÂE•s‰Âó‘Ô‚Ì”»’èİ’è
+    boolean contractNameEditFlag        = false;
+    boolean contractNameAltEditFlag     = false;
+    boolean contractPostCdEditFlag      = false;
+    boolean contractStateEditFlag       = false;
+    boolean contractCityEditFlag        = false;
+    boolean contractAddress1EditFlag    = false;
+    boolean contractAddress2EditFlag    = false;
+    boolean contractAddressLineEditFlag = false;
+    boolean delegateNameEditFlag        = false;
+    String sameInstAcctFlag    = cntrctRow.getSameInstallAccountFlag();
+    String contractNumber      = cntrctRow.getContractNumber();
+    String applicationType     = headerRow.getApplicationType();
+    if ( "Y".equals(sameInstAcctFlag) )
+    {
+      // İ’uæ‚Æ“¯‚¶‚Éƒ`ƒFƒbƒN‚ª“ü‚Á‚Ä‚¢‚éê‡‚ÍA“ü—Í•s‰Â
+      // \¿‹æ•ª=V‹K‚Ìê‡A‘ã•\Ò–¼‚Í“ü—Í‰Â”\
+      // \¿‹æ•ª=ğŒ•ÏX‚Ìê‡AŒ_–ñæ–¼AŒ_–ñæ–¼ƒJƒiA‘ã•\Ò–¼‚Í“ü—Í‰Â”\
+      if ( XxcsoSpDecisionConstants.APP_TYPE_NEW.equals(applicationType) )
+      {
+        delegateNameEditFlag        = true;
+      }
+      else
+      {
+        contractNameEditFlag        = true;
+        contractNameAltEditFlag     = true;
+        delegateNameEditFlag        = true;
+      }
+    }
+    else
+    {
+      // Œ_–ñæ”Ô†‚ª“ü—Í‚³‚ê‚Ä‚¢‚È‚¢ê‡
+      if ( contractNumber == null || "".equals(contractNumber) )
+      {
+        // ‘S€–Ú“ü—Í‰Â”\
+        contractNameEditFlag        = true;
+        contractNameAltEditFlag     = true;
+        contractPostCdEditFlag      = true;
+        contractStateEditFlag       = true;
+        contractCityEditFlag        = true;
+        contractAddress1EditFlag    = true;
+        contractAddress2EditFlag    = true;
+        contractAddressLineEditFlag = true;
+        delegateNameEditFlag        = true;
+      }
+    }
+// 2009-04-03 [STáŠQT1_0225] Add End
+
     /////////////////////////////////////
     // Œ_–ñæFŒ_–ñæ–¼
     /////////////////////////////////////
     token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_REGION
             + XxcsoConstants.TOKEN_VALUE_DELIMITER1
             + XxcsoSpDecisionConstants.TOKEN_VALUE_CNTR_PARTY_NAME;
+// 2009-04-03 [STáŠQT1_0225] Add Start
+    if ( contractNameEditFlag )
+    {
+// 2009-04-03 [STáŠQT1_0225] Add End
     if ( submitFlag )
     {
       errorList
@@ -483,13 +537,20 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
-    
+// 2009-04-03 [STáŠQT1_0225] Add Start
+    }
+// 2009-04-03 [STáŠQT1_0225] Add End
+
     /////////////////////////////////////
     // Œ_–ñæFŒ_–ñæ–¼ƒJƒi
     /////////////////////////////////////
     token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_REGION
             + XxcsoConstants.TOKEN_VALUE_DELIMITER1
             + XxcsoSpDecisionConstants.TOKEN_VALUE_CNTR_PARTY_NAME_ALT;
+// 2009-04-03 [STáŠQT1_0225] Add Start
+    if ( contractNameAltEditFlag )
+    {
+// 2009-04-03 [STáŠQT1_0225] Add End
     errorList
       = utils.checkIllegalString(
           errorList
@@ -513,13 +574,19 @@ public class XxcsoSpDecisionValidateUtils
           );
       errorList.add(error);
     }
-    
+// 2009-04-03 [STáŠQT1_0225] Add Start
+    }
+// 2009-04-03 [STáŠQT1_0225] Add End
     /////////////////////////////////////
     // Œ_–ñæF—X•Ö”Ô†
     /////////////////////////////////////
     token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_REGION
             + XxcsoConstants.TOKEN_VALUE_DELIMITER1
             + XxcsoSpDecisionConstants.TOKEN_VALUE_POSTAL_CODE;
+// 2009-04-03 [STáŠQT1_0225] Add Start
+    if ( contractPostCdEditFlag )
+    {
+// 2009-04-03 [STáŠQT1_0225] Add End
     if ( submitFlag )
     {
       if ( cntrctRow.getPostalCodeFirst() == null             ||
@@ -554,6 +621,9 @@ public class XxcsoSpDecisionValidateUtils
         errorList.add(error);
       }
     }
+// 2009-04-03 [STáŠQT1_0225] Add Start
+    }
+// 2009-04-03 [STáŠQT1_0225] Add End
 
     /////////////////////////////////////
     // Œ_–ñæF“s“¹•{Œ§
@@ -561,6 +631,10 @@ public class XxcsoSpDecisionValidateUtils
     token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_REGION
             + XxcsoConstants.TOKEN_VALUE_DELIMITER1
             + XxcsoSpDecisionConstants.TOKEN_VALUE_STATE;
+// 2009-04-03 [STáŠQT1_0225] Add Start
+    if ( contractStateEditFlag )
+    {
+// 2009-04-03 [STáŠQT1_0225] Add End
     if ( submitFlag )
     {
       errorList
@@ -578,6 +652,9 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-03 [STáŠQT1_0225] Add Start
+    }
+// 2009-04-03 [STáŠQT1_0225] Add End
 
     /////////////////////////////////////
     // Œ_–ñæFsE‹æ
@@ -585,6 +662,10 @@ public class XxcsoSpDecisionValidateUtils
     token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_REGION
             + XxcsoConstants.TOKEN_VALUE_DELIMITER1
             + XxcsoSpDecisionConstants.TOKEN_VALUE_CITY;
+// 2009-04-03 [STáŠQT1_0225] Add Start
+    if ( contractCityEditFlag )
+    {
+// 2009-04-03 [STáŠQT1_0225] Add End
     if ( submitFlag )
     {
       errorList
@@ -602,6 +683,9 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-03 [STáŠQT1_0225] Add Start
+    }
+// 2009-04-03 [STáŠQT1_0225] Add End
 
     /////////////////////////////////////
     // Œ_–ñæFZŠ1
@@ -609,6 +693,10 @@ public class XxcsoSpDecisionValidateUtils
     token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_REGION
             + XxcsoConstants.TOKEN_VALUE_DELIMITER1
             + XxcsoSpDecisionConstants.TOKEN_VALUE_ADDRESS1;
+// 2009-04-03 [STáŠQT1_0225] Add Start
+    if ( contractAddress1EditFlag )
+    {
+// 2009-04-03 [STáŠQT1_0225] Add End
     if ( submitFlag )
     {
       errorList
@@ -626,6 +714,9 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-03 [STáŠQT1_0225] Add Start
+    }
+// 2009-04-03 [STáŠQT1_0225] Add End
 
     /////////////////////////////////////
     // Œ_–ñæFZŠ2
@@ -633,6 +724,10 @@ public class XxcsoSpDecisionValidateUtils
     token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_REGION
             + XxcsoConstants.TOKEN_VALUE_DELIMITER1
             + XxcsoSpDecisionConstants.TOKEN_VALUE_ADDRESS2;
+// 2009-04-03 [STáŠQT1_0225] Add Start
+    if ( contractAddress2EditFlag )
+    {
+// 2009-04-03 [STáŠQT1_0225] Add End
     errorList
       = utils.checkIllegalString(
           errorList
@@ -640,10 +735,17 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-03 [STáŠQT1_0225] Add Start
+    }
+// 2009-04-03 [STáŠQT1_0225] Add End
 
     /////////////////////////////////////
     // Œ_–ñæF“d˜b”Ô†
     /////////////////////////////////////
+// 2009-04-03 [STáŠQT1_0225] Add Start
+    if ( contractAddressLineEditFlag )
+    {
+// 2009-04-03 [STáŠQT1_0225] Add End
     if ( ! utils.isTelNumber(cntrctRow.getAddressLinesPhonetic()) )
     {
       OAException error
@@ -654,6 +756,9 @@ public class XxcsoSpDecisionValidateUtils
           );
       errorList.add(error);
     }
+// 2009-04-03 [STáŠQT1_0225] Add Start
+    }
+// 2009-04-03 [STáŠQT1_0225] Add End
 
     /////////////////////////////////////
     // Œ_–ñæF‘ã•\Ò–¼
@@ -661,6 +766,10 @@ public class XxcsoSpDecisionValidateUtils
     token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_REGION
             + XxcsoConstants.TOKEN_VALUE_DELIMITER1
             + XxcsoSpDecisionConstants.TOKEN_VALUE_DELEGATE;
+// 2009-04-03 [STáŠQT1_0225] Add Start
+    if ( delegateNameEditFlag )
+    {
+// 2009-04-03 [STáŠQT1_0225] Add End
     errorList
       = utils.checkIllegalString(
           errorList
@@ -668,6 +777,9 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-03 [STáŠQT1_0225] Add Start
+    }
+// 2009-04-03 [STáŠQT1_0225] Add End
 
     XxcsoUtils.debug(txn, "[END]");
 
