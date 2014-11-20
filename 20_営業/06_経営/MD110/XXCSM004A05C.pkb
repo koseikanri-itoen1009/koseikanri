@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM004A05C(body)
  * Description      : 資格ポイント・新規獲得ポイント情報系システムI/F
  * MD.050           : 資格ポイント・新規獲得ポイント情報系システムI/F MD050_CSM_004_A05
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2009/07/01    1.1   T.Tsukino        ［SCS障害管理番号0000256］対応
  *  2009/12/22    1.2   T.Nakano         E_本番稼動_00589 対応
  *  2010/01/13    1.3   S.Karikomi       E_本稼働_1039 対応
+ *  2011/01/13    1.4   T.Ishiwata       E_本稼動_02764 対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -73,6 +74,9 @@ AS
   cv_mode_w                 CONSTANT VARCHAR2(1)   := 'W';                       --書込
   cn_max_size               CONSTANT NUMBER        := 2047;                      -- 2047バイト
   cv_status_open            CONSTANT VARCHAR2(1)   := 'O';                       --ステータス(オープン)
+--//+ADD START 2011/01/13 E_本稼動_02764 対応 T.Ishiwata
+  cv_status_close           CONSTANT VARCHAR2(1)   := 'C';                       --ステータス(クローズ)
+--//+ADD END   2011/01/13 E_本稼動_02764 対応 T.Ishiwata
 --
 --################################  固定部 END   ##################################
 --
@@ -128,6 +132,9 @@ AS
   gv_app_id            VARCHAR2(100);            --アプリケーションID
   gf_file_hand         UTL_FILE.FILE_TYPE;
   gd_sysdate           DATE;                     --システム日付
+--//+ADD START 2011/01/13 E_本稼動_02764 対応 T.Ishiwata
+  gd_process_date      DATE;                     --業務日付
+--//+ADD END   2011/01/13 E_本稼動_02764 対応 T.Ishiwata
 
 --
   /**********************************************************************************
@@ -266,6 +273,12 @@ AS
 --⑤ アプリケーションIDを取得
     gv_app_id := xxccp_common_pkg.get_application(cv_app_short_name);
 --
+--//+ADD START 2011/01/13 E_本稼動_02764 対応 T.Ishiwata
+--⑥ 業務日付取得
+    gd_process_date := xxccp_common_pkg2.get_process_date();
+    --
+--
+--//+ADD END   2011/01/13 E_本稼動_02764 対応 T.Ishiwata
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -464,7 +477,14 @@ AS
                FROM    gl_period_statuses  gps                          --会計期間ステータステーブル
                WHERE   gps.set_of_books_id = gv_bks_id                  --会計帳簿ID
                AND     gps.application_id = gv_app_id                   --アプリケーションID
-               AND     gps.closing_status = cv_status_open              --ステータス
+--//+UPD START 2011/01/13 E_本稼動_02764 対応 T.Ishiwata
+--               AND     gps.closing_status = cv_status_open              --ステータス
+               -- 会計期間CLOSE日対応
+               AND     (  (  gps.closing_status            = cv_status_open  )  --ステータスOPEN
+                       OR (  TRUNC( gps.last_update_date ) = gd_process_date
+                         AND gps.closing_status            = cv_status_close )  --ステータスCLOSEの場合、当日クローズしたもののみ
+                       )
+--//+UPD END   2011/01/13 E_本稼動_02764 対応 T.Ishiwata
               ) status_view                                             --会計期間ステータスビュー
       WHERE   xncph.subject_year = status_view.period_year
       ORDER BY  xncph.data_kbn                                          --データ区分
