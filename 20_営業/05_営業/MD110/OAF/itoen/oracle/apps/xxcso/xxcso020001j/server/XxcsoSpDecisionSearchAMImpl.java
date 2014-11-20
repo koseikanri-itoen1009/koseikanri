@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionSearchAMImpl
 * 概要説明   : SP専決書検索画面アプリケーション・モジュールクラス
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-12-16 1.0  SCS小川浩     新規作成
 * 2009-04-20 1.1  SCS柳平直人   [ST障害T1_0619]消去ボタン初期化不正対応
 * 2009-08-04 1.2  SCS小川浩     [SCS障害0000821]承認用画面のコピーボタン表示対応
+* 2009-09-02 1.3  SCS阿部大輔   [SCS障害0001265]検索条件の修正対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -126,6 +127,10 @@ public class XxcsoSpDecisionSearchAMImpl extends OAApplicationModuleImpl
       initRow.getSearchClass()
     );
 
+/* 20090902_abe_0001265 START*/
+    Boolean btnFlag = initRow.getCopyButtonRender();
+/* 20090902_abe_0001265 END*/
+
     initRow = (XxcsoSpDecisionSearchInitVORowImpl)initVo.first();
     initRow.setEmployeeNumber(null);
     initRow.setFullName(null);
@@ -135,14 +140,31 @@ public class XxcsoSpDecisionSearchAMImpl extends OAApplicationModuleImpl
     )
     {
       initRow.setApplyBaseUserRender(Boolean.FALSE);
-      initRow.setCopyButtonRender(Boolean.FALSE);
+/* 20090902_abe_0001265 START*/
+//      initRow.setCopyButtonRender(Boolean.FALSE);
+/* 20090902_abe_0001265 END*/
     }
     else
     {
       initRow.setApplyBaseUserRender(Boolean.TRUE);
-      initRow.setCopyButtonRender(Boolean.TRUE);
+/* 20090902_abe_0001265 START*/
+//      initRow.setCopyButtonRender(Boolean.TRUE);
+/* 20090902_abe_0001265 END*/
     }
-    initRow.setDetailButtonRender(Boolean.TRUE);
+/* 20090902_abe_0001265 START*/
+    if ( Boolean.TRUE.equals(btnFlag) )
+    {
+      initRow.setCopyButtonRender(Boolean.TRUE);
+/* 20090902_abe_0001265 END*/
+      initRow.setDetailButtonRender(Boolean.TRUE);
+/* 20090902_abe_0001265 START*/
+    }
+    else
+    {
+      initRow.setCopyButtonRender(Boolean.FALSE);
+      initRow.setDetailButtonRender(Boolean.FALSE);
+    }
+/* 20090902_abe_0001265 END*/
 // 2009-04-20 [ST障害T1_0302] Add End
 
     XxcsoUtils.debug(txn, "[END]");

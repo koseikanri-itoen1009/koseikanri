@@ -16,10 +16,21 @@ SELECT  DECODE(:1
                 ,xev.work_base_code_old, xev.issue_date
                 ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
                )
+         ,'2', xxcso_util_common_pkg.get_emp_parameter(
+                 xev.work_base_code_new
+                ,xev.work_base_code_old, xev.issue_date
+                ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+               )
          ,NULL
         ) apply_base_code
        ,DECODE(:2
          ,'1', xxcso_util_common_pkg.get_emp_parameter(
+                 xev.work_base_name_new
+                ,xev.work_base_name_old
+                ,xev.issue_date
+                ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+               )
+         ,'2', xxcso_util_common_pkg.get_emp_parameter(
                  xev.work_base_name_new
                 ,xev.work_base_name_old
                 ,xev.issue_date
