@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI008A04C(body)
  * Description      : 情報系システムへの連携の為、EBSの保管場所(標準)をCSVファイルに出力
  * MD.050           : 保管場所情報系連携 <MD050_COI_008_A04>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/16    1.0   S.Kanda          新規作成
+ *  2009/03/30    1.1   T.Nakamura       [障害T1_0121]保管場所情報の抽出条件を追加
  *
  *****************************************************************************************/
 --
@@ -106,6 +107,9 @@ AS
   cv_tkn_dir                CONSTANT VARCHAR2(10)  := 'DIR_TOK';       -- プロファイル名用
   cv_cnt_token              CONSTANT VARCHAR2(10)  := 'COUNT';         -- 件数メッセージ用
   cv_tkn_file_name          CONSTANT VARCHAR2(10)  := 'FILE_NAME';     -- ファイル名用
+-- == 2009/03/30 V1.1 Added START ===============================================================
+  cv_tkn_org_code           CONSTANT VARCHAR2(15)  := 'ORG_CODE_TOK';  -- 在庫組織コード用
+-- == 2009/03/30 V1.1 Added END   ===============================================================
   --
   --ファイルオープンモード
   cv_file_mode              CONSTANT VARCHAR2(2)   := 'W';             -- オープンモード
@@ -123,6 +127,10 @@ AS
   gv_company_code       VARCHAR2(50);                          -- 会社コード取得用
   gv_file_name          VARCHAR2(150);                         -- ファイルパス名取得用
   gv_activ_file_h       UTL_FILE.FILE_TYPE;                    -- ファイルハンドル取得用
+-- == 2009/03/30 V1.1 Added START ===============================================================
+  gv_organization_code  VARCHAR2(50);                          -- 在庫組織コード取得用
+  gn_organization_id    mtl_parameters.organization_id%TYPE;   -- 在庫組織ID取得用
+-- == 2009/03/30 V1.1 Added END   ===============================================================
 --
 --
   /**********************************************************************************
@@ -155,6 +163,9 @@ AS
     cv_pro_dire_out_info    CONSTANT VARCHAR2(30)  := 'XXCOI1_DIRE_OUT_INFO';
     cv_pro_file_sec_inv     CONSTANT VARCHAR2(30)  := 'XXCOI1_FILE_SEC_INV';
     cv_pro_company_code     CONSTANT VARCHAR2(30)  := 'XXCOI1_COMPANY_CODE';
+-- == 2009/03/30 V1.1 Added START ===============================================================
+    cv_pro_org_code         CONSTANT VARCHAR2(30)  := 'XXCOI1_ORGANIZATION_CODE';
+-- == 2009/03/30 V1.1 Added END   ===============================================================
 --
     -- *** ローカル変数 ***
     lv_directory_path       VARCHAR2(100);
@@ -256,6 +267,48 @@ AS
       RAISE global_process_expt;
     END IF;
     --
+-- == 2009/03/30 V1.1 Added START ===============================================================
+    -- =====================================
+    -- 4.在庫組織コードを取得
+    -- =====================================
+    gv_organization_code := fnd_profile.value( cv_pro_org_code );
+    --
+    -- 在庫組織コードが取得できなかった場合
+    IF  ( gv_organization_code  IS NULL ) THEN
+      -- 在庫組織コード取得エラーメッセージ
+      -- 「プロファイル:在庫組織コード( PRO_TOK )の取得に失敗しました。」
+      lv_errmsg   := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_short_name
+                       , iv_name         => cv_msg_xxcoi_00005
+                       , iv_token_name1  => cv_tkn_pro
+                       , iv_token_value1 => cv_pro_org_code
+                     );
+      lv_errbuf   := lv_errmsg;
+      --
+      RAISE global_process_expt;
+    END IF;
+    --
+    -- =====================================
+    -- 在庫組織ID取得
+    -- =====================================
+    gn_organization_id := xxcoi_common_pkg.get_organization_id( gv_organization_code );
+    --
+    -- 共通関数のリターンコードが取得できなかった場合
+    IF ( gn_organization_id IS NULL ) THEN
+      -- 在庫組織ID取得エラーメッセージ
+      -- 「在庫組織コード( ORG_CODE_TOK )に対する在庫組織IDの取得に失敗しました。」
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_short_name
+                     , iv_name         => cv_msg_xxcoi_00006
+                     , iv_token_name1  => cv_tkn_org_code
+                     , iv_token_value1 => gv_organization_code
+                   );
+      lv_errbuf := lv_errmsg;
+      --
+      RAISE global_process_expt;
+    END IF;
+    --
+-- == 2009/03/30 V1.1 Added END   ===============================================================
     -- =====================================
     -- 5.メッセージの出力①
     -- =====================================
@@ -489,7 +542,11 @@ AS
             , msi.attribute3                  -- 従業員コード(DFF3)
             , msi.attribute4                  -- 顧客コード(DFF4)
             , msi.attribute7                  -- 拠点コード(DFF7)
-      FROM    mtl_secondary_inventories msi;  -- 保管場所マスタ
+-- == 2009/03/30 V1.1 Moded START ===============================================================
+--      FROM    mtl_secondary_inventories msi;  -- 保管場所マスタ
+      FROM    mtl_secondary_inventories   msi                 -- 保管場所マスタ
+      WHERE   msi.organization_id       = gn_organization_id; -- A-1.で取得した在庫組織ID
+-- == 2009/03/30 V1.1 Moded END   ===============================================================
       --
       -- sec_invレコード型
       sec_inv_rec  sec_inv_cur%ROWTYPE;
