@@ -7,7 +7,7 @@ AS
  * Description      : 引取計画からのリーフ出荷依頼自動作成
  * MD.050/070       : 出荷依頼                              (T_MD050_BPO_400)
  *                    引取計画からのリーフ出荷依頼自動作成  (T_MD070_BPO_40A)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2008/10/09    1.14  Oracle 伊藤ひとみ  統合テスト指摘118 1依頼に重複品目がある場合はエラー終了とする。
  *                                         統合テスト指摘240 積載効率チェック(合計値算出)のINパラメータに基準日を追加。
  *  2008/10/16    1.15  Oracle 丸下        管轄拠点をCSVファイルのコード値を使用するように修正
+ *  2008/11/19    1.16  Oracle 伊藤ひとみ  統合テスト指摘683対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3700,6 +3701,9 @@ AS
 --###########################  固定部 END   ####################################
 --
     ln_plan_cnt NUMBER;
+-- 2008/11/19 H.Itou Add Start 統合テスト指摘683
+    lv_header_create_flag  VARCHAR2(1);  -- ヘッダ作成フラグ
+-- 2008/11/19 H.Itou Add End
 --
   BEGIN
 --
@@ -3808,24 +3812,31 @@ AS
          )
       THEN
 --
-        ln_plan_cnt := gn_i - 1;
-        -- =====================================================
-        -- 受注ヘッダアドオンレコード生成 (A-11)
-        -- =====================================================
-        pro_headers_create
-          (
-            in_plan_cnt       => ln_plan_cnt        -- 対象としているForecastの件数
-           ,ov_errbuf         => lv_errbuf          -- エラー・メッセージ           --# 固定 #
-           ,ov_retcode        => lv_retcode         -- リターン・コード             --# 固定 #
-           ,ov_errmsg         => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
-          );
-        IF (lv_retcode = gv_status_error) THEN
-          RAISE global_process_expt;
-        END IF;
+-- 2008/11/19 H.Itou Add Start 統合テスト指摘683
+        -- ヘッダにエラーがある場合、受注ヘッダアドオンレコード生成は行わない。
+        IF (lv_header_create_flag = gv_0) THEN
+-- 2008/11/19 H.Itou Add End
+          ln_plan_cnt := gn_i - 1;
+          -- =====================================================
+          -- 受注ヘッダアドオンレコード生成 (A-11)
+          -- =====================================================
+          pro_headers_create
+            (
+              in_plan_cnt       => ln_plan_cnt        -- 対象としているForecastの件数
+             ,ov_errbuf         => lv_errbuf          -- エラー・メッセージ           --# 固定 #
+             ,ov_retcode        => lv_retcode         -- リターン・コード             --# 固定 #
+             ,ov_errmsg         => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+          IF (lv_retcode = gv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
 -- 2008/10/09 H.Itou Add Start A-11内で発生したエラーの初期化を行う。
-        -- エラー確認用フラグ初期化
-        gv_err_flg := gv_0;
+          -- エラー確認用フラグ初期化
+          gv_err_flg := gv_0;
 -- 2008/10/09 H.Itou Add End
+-- 2008/11/19 H.Itou Add Start 統合テスト指摘683
+        END IF;
+-- 2008/11/19 H.Itou Add End
 --
       END IF;
 --
@@ -3842,6 +3853,9 @@ AS
           )
       THEN
 --
+-- 2008/11/19 H.Itou Add Start 統合テスト指摘683
+        lv_header_create_flag := gv_0;   -- ヘッダ作成フラグ ON
+-- 2008/11/19 H.Itou Add End
         ---------------------------------------------
         -- 受注ヘッダアドオンID シーケンス取得     --
         ---------------------------------------------
@@ -3901,6 +3915,12 @@ AS
         RAISE global_process_expt;
       END IF;
 --
+-- 2008/11/19 H.Itou Add Start 統合テスト指摘683
+      IF (gv_err_flg = gv_1) THEN
+        -- ヘッダにエラーがあるので、受注ヘッダアドオンレコード生成は行わない。
+        lv_header_create_flag := gv_1;  -- ヘッダ作成フラグ OFF
+      END IF;
+-- 2008/11/19 H.Itou Add End
       -- エラー確認用フラグ (A-4にてエラーの場合は、下記処理実施しない)
       IF (gv_err_flg <> gv_1) THEN
         ---------------------------------------------
@@ -4012,6 +4032,10 @@ AS
     END LOOP headers_data_loop;
 --
     IF (gt_to_plan.COUNT <> 0) THEN
+-- 2008/11/19 H.Itou Add Start 統合テスト指摘683
+      -- ヘッダにエラーがある場合、受注ヘッダアドオンレコード生成は行わない。
+      IF (lv_header_create_flag = gv_0) THEN
+-- 2008/11/19 H.Itou Add End
         -- =====================================================
         -- 受注ヘッダアドオンレコード生成 (A-11)
         -- =====================================================
@@ -4025,6 +4049,9 @@ AS
         IF (lv_retcode = gv_status_error) THEN
           RAISE global_process_expt;
         END IF;
+-- 2008/11/19 H.Itou Add Start 統合テスト指摘683
+      END IF;
+-- 2008/11/19 H.Itou Add End
 --
       -- =====================================================
       -- 出荷依頼登録処理 (A-12)
