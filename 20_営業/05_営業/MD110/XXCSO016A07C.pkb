@@ -8,7 +8,7 @@ AS
  *                    ＣＳＶファイルを作成します。
  * MD.050           : MD050_CSO_016_A07_情報系-EBSインターフェース：
  *                    (OUT)拠点別営業人員
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008-03-02    1.0   Mio.Maruyama     新規作成
  *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
+ *  2009-07-21    1.2   Mio.Maruyama     統合テスト障害(0000783)対応
  *
  *****************************************************************************************/
 --
@@ -99,8 +100,9 @@ AS
   cv_tkn_number_08    CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90008';  -- コンカレント入力パラメータなし
   cv_tkn_number_09    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00152';  -- インターフェースファイル名
   cv_tkn_number_10    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00148';  -- パラメータ（年度）
-  cv_tkn_number_11    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00224';  -- CSVファイル出力0件エラーメッセージ
-  
+  /* 2009.07.21 Mio.Maruyama 0000783 対応 START */  
+  -- cv_tkn_number_11    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00224';  -- CSVファイル出力0件エラーメッセージ
+  /* 2009.07.21 Mio.Maruyama 0000783 対応 END */  
   -- トークンコード
   cv_tkn_errmsg       CONSTANT VARCHAR2(20) := 'ERR_MSG';
   cv_tkn_prof_nm      CONSTANT VARCHAR2(20) := 'PROF_NAME';
@@ -1243,16 +1245,18 @@ AS
                  ''
     );
 --
-    -- 処理対象件数が0件の場合
-    IF (gn_target_cnt = 0) THEN
-      -- エラーメッセージ取得
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_app_name                  --アプリケーション短縮名
-                    ,iv_name         => cv_tkn_number_11             --メッセージコード
-                   );
-      lv_errbuf := lv_errmsg || SQLERRM;
-      RAISE no_data_expt;
-    END IF;
+  /* 2009.07.21 Mio.Maruyama 0000783 対応 START */  
+  --  -- 処理対象件数が0件の場合
+  --  IF (gn_target_cnt = 0) THEN
+  --    -- エラーメッセージ取得
+  --    lv_errmsg := xxccp_common_pkg.get_msg(
+  --                 iv_application  => cv_app_name                  --アプリケーション短縮名
+  --                ,iv_name         => cv_tkn_number_11             --メッセージコード
+  --               );
+  --    lv_errbuf := lv_errmsg || SQLERRM;
+  --    RAISE no_data_expt;
+  --  END IF;
+  /* 2009.07.21 Mio.Maruyama 0000783 対応 END */  
 --
     -- ========================================
     -- CSVファイルクローズ (A-7) 
@@ -1270,50 +1274,52 @@ AS
     END IF;
 --
   EXCEPTION
-    -- *** 処理対象データ0件例外ハンドラ ***
-    WHEN no_data_expt THEN
-      -- エラー件数カウント
-      gn_error_cnt := gn_error_cnt + 1;
+  /* 2009.07.21 Mio.Maruyama 0000783 対応 START */  
+  --  -- *** 処理対象データ0件例外ハンドラ ***
+  --  WHEN no_data_expt THEN
+  --    -- エラー件数カウント
+  --    gn_error_cnt := gn_error_cnt + 1;
 --
-      lb_fopn_retcd := UTL_FILE.IS_OPEN (
-                         file =>gf_file_hand
-                       );
-      -- ファイルがクローズされていない場合
-      IF (lb_fopn_retcd = cb_true) THEN
-        -- ファイルクローズ
-        UTL_FILE.FCLOSE(
-          file =>gf_file_hand
-        );
-      -- *** DEBUG_LOG ***
-      -- ファイルクローズしたことをログ出力
-      fnd_file.put_line(
-         which  => FND_FILE.LOG
-        ,buff   => cv_debug_msg_fcls || CHR(10) ||
-                   cv_prg_name       || cv_msg_part ||
-                   cv_debug_msg_err5 || cv_msg_part ||
-                   cv_debug_msg_fnm  || lv_csv_nm   || CHR(10) ||
-                   ''
-      );
-      END IF;
+  --    lb_fopn_retcd := UTL_FILE.IS_OPEN (
+  --                       file =>gf_file_hand
+  --                     );
+  --    -- ファイルがクローズされていない場合
+  --    IF (lb_fopn_retcd = cb_true) THEN
+  --      -- ファイルクローズ
+  --      UTL_FILE.FCLOSE(
+  --        file =>gf_file_hand
+  --      );
+  --    -- *** DEBUG_LOG ***
+  --    -- ファイルクローズしたことをログ出力
+  --    fnd_file.put_line(
+  --       which  => FND_FILE.LOG
+  --      ,buff   => cv_debug_msg_fcls || CHR(10) ||
+  --                 cv_prg_name       || cv_msg_part ||
+  --                 cv_debug_msg_err5 || cv_msg_part ||
+  --                 cv_debug_msg_fnm  || lv_csv_nm   || CHR(10) ||
+  --                 ''
+  --    );
+  --    END IF;
 --
-      -- カーソルがクローズされていない場合
-      IF (xdss_data_cur%ISOPEN) THEN
-        -- カーソルクローズ
-        CLOSE xdss_data_cur;
-      -- *** DEBUG_LOG ***
-      -- カーソルクローズしたことをログ出力
-      fnd_file.put_line(
-         which  => FND_FILE.LOG
-        ,buff   => cv_debug_msg_ccls2|| CHR(10) ||
-                   cv_prg_name       || cv_msg_part ||
-                   cv_debug_msg_err5 || CHR(10) ||
-                   ''
-      );
-      END IF;
+  --    -- カーソルがクローズされていない場合
+  --    IF (xdss_data_cur%ISOPEN) THEN
+  --      -- カーソルクローズ
+  --      CLOSE xdss_data_cur;
+  --    -- *** DEBUG_LOG ***
+  --    -- カーソルクローズしたことをログ出力
+  --    fnd_file.put_line(
+  --       which  => FND_FILE.LOG
+  --      ,buff   => cv_debug_msg_ccls2|| CHR(10) ||
+  --                 cv_prg_name       || cv_msg_part ||
+  --                 cv_debug_msg_err5 || CHR(10) ||
+  --                 ''
+  --    );
+  --    END IF;
 --
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
-      ov_retcode := cv_status_error;
+  --    ov_errmsg  := lv_errmsg;
+  --    ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
+  --    ov_retcode := cv_status_error;
+  /* 2009.07.21 Mio.Maruyama 0000783 対応 END */  
 --
 --#################################  固定例外処理部 START   ####################################
 --
