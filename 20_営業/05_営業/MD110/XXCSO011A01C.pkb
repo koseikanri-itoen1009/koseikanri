@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -79,6 +79,10 @@ AS
  *  2009-12-16    1.23  D.Abe            【E_本稼動_00354】廃棄決済でリース物件存在チェック対応
  *                                       【E_本稼動_00498】リース物件ステータスの「再リース待ち」対応
  *  2009-12-24    1.24  D.Abe            【E_本稼動_00563】暫定対応（機種コード、メーカーコードの日付条件を削除）
+ *  2009-12-24    1.25  K.Hosoi          【E_本稼動_00563】設置先顧客名、設置先_郵便番号、設置先都道府県、設置先市区、
+ *                                        設置先住所１、設置先住所２、設置先電話番号、設置先担当者名が入力されている場合
+ *                                        書式等のチェックを行うよう処理を追加。
+ *                                        発注可能チェックの追加。
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -336,6 +340,9 @@ AS
   cv_input_chk_kbn_11  CONSTANT VARCHAR2(2) := '11';  -- 作業会社メーカーチェック
   cv_input_chk_kbn_12  CONSTANT VARCHAR2(2) := '12';  -- 引揚先入力不可チェック
 /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
+/* 2009.12.24 K.Hosoi E_本稼動_00563対応 START */
+  cv_input_chk_kbn_13  CONSTANT VARCHAR2(2) := '13';  -- 顧客関連情報入力チェック
+/* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
   --
   -- リース物件ステータスチェック処理内のチェック区分番号
   cv_obj_sts_chk_kbn_01  CONSTANT VARCHAR2(2) := '01';  -- チェック対象：設置用物件
@@ -1031,11 +1038,11 @@ AS
            , ( SELECT punv.un_number
                FROM   po_un_numbers_vl  punv
                WHERE  punv.un_number_id = xrlv.un_number_id
-/* 20091224_abe_E_本稼動_00563 START*/
---               AND    TRUNC( NVL( punv.inactive_date, id_process_date + 1 ) ) 
---                       > TRUNC( id_process_date ) )  un_number    -- 機種コード
-             )  un_number    -- 機種コード
-/* 20091224_abe_E_本稼動_00563 END*/
+           /* 2009.12.24 K.Hosoi E_本稼動_00563対応 START */
+           --    AND    TRUNC( NVL( punv.inactive_date, id_process_date + 1 ) ) 
+           --            > TRUNC( id_process_date ) )  un_number    -- 機種コード
+              )  un_number    -- 機種コード
+           /* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
            , xrlv.install_code              install_code              -- 設置用物件コード
            , xrlv.withdraw_install_code     withdraw_install_code     -- 引揚用物件コード
            , xrlv.install_at_customer_code  install_at_customer_code  -- 設置先_顧客コード
@@ -1067,11 +1074,11 @@ AS
            , ( SELECT punv.attribute2
                FROM   po_un_numbers_vl  punv
                WHERE  punv.un_number_id = xrlv.un_number_id
-/* 20091224_abe_E_本稼動_00563 START*/
---               AND    TRUNC( NVL( punv.inactive_date, id_process_date + 1 ) ) 
---                       > TRUNC( id_process_date ) )  maker_code       -- メーカーコード
-             )  maker_code       -- メーカーコード
-/* 20091224_abe_E_本稼動_00563 END*/
+           /* 2009.12.24 K.Hosoi E_本稼動_00563対応 START */
+           --    AND    TRUNC( NVL( punv.inactive_date, id_process_date + 1 ) ) 
+           --            > TRUNC( id_process_date ) )  maker_code       -- メーカーコード
+              )  maker_code     -- メーカーコード
+           /* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
 /* 20090708_abe_0000464 END*/
       INTO   o_requisition_rec.requisition_header_id     -- 発注依頼ヘッダID
            , o_requisition_rec.requisition_line_id       -- 発注依頼明細ID
@@ -1243,6 +1250,35 @@ AS
     cv_tkn_val_hankaku_3_fmt     CONSTANT VARCHAR2(100) := '半角英数3文字以内';
     cv_tkn_val_num_3_fmt         CONSTANT VARCHAR2(100) := '半角数字3文字以内';    
     /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
+    /* 2009.12.24 K.Hosoi E_本稼動_00563対応 START */
+    cv_hyphen                    CONSTANT VARCHAR2(1)   := '-';
+    cv_tkn_val_cust_name         CONSTANT VARCHAR2(100) := '設置先_顧客名';
+    cv_tkn_val_zip               CONSTANT VARCHAR2(100) := '設置先_郵便番号';
+    cv_tkn_val_prfcts            CONSTANT VARCHAR2(100) := '設置先_都道府県';
+    cv_tkn_val_city              CONSTANT VARCHAR2(100) := '設置先_市・区';
+    cv_tkn_val_addr1             CONSTANT VARCHAR2(100) := '設置先_住所１';
+    cv_tkn_val_addr2             CONSTANT VARCHAR2(100) := '設置先_住所２';
+    cv_tkn_val_phone             CONSTANT VARCHAR2(100) := '設置先_電話番号';
+    cv_tkn_val_emp_nm            CONSTANT VARCHAR2(100) := '設置先_担当者名';
+    cv_tkn_val_cust_name_fmt     CONSTANT VARCHAR2(100) := '全角20文字以内';
+    cv_tkn_val_zip_fmt           CONSTANT VARCHAR2(100) := '半角数字7文字以内';
+    cv_tkn_val_prfcts_fmt        CONSTANT VARCHAR2(100) := '全角4文字以内';
+    cv_tkn_val_city_fmt          CONSTANT VARCHAR2(100) := '全角10文字以内';
+    cv_tkn_val_addr1_fmt         CONSTANT VARCHAR2(100) := '全角10文字以内';
+    cv_tkn_val_addr2_fmt         CONSTANT VARCHAR2(100) := '全角20文字以内';
+    cv_tkn_val_phone_fmt         CONSTANT VARCHAR2(100) := '半角数字、「XX-XXXX-XXXX」の形式（各6桁以内）';
+    cv_tkn_val_emp_nm_fmt        CONSTANT VARCHAR2(100) := '全角10文字以内';
+    cv_temp_info                 CONSTANT VARCHAR2(100) := '情報テンプレート';
+    -- 情報テンプレート取得用パラメータ
+    cv_inst_at_cstmr_nm          CONSTANT VARCHAR2(100) :=  'INSTALL_AT_CUSTOMER_NAME';   -- 設置先顧客名
+    cv_inst_at_zp                CONSTANT VARCHAR2(100) :=  'INSTALL_AT_ZIP';             -- 設置先_郵便番号
+    cv_inst_at_prfcturs          CONSTANT VARCHAR2(100) :=  'INSTALL_AT_PREFECTURES';     -- 設置先都道府県
+    cv_inst_at_cty               CONSTANT VARCHAR2(100) :=  'INSTALL_AT_CITY';            -- 設置先市区
+    cv_inst_at_addr1             CONSTANT VARCHAR2(100) :=  'INSTALL_AT_ADDR1';           -- 設置先住所１
+    cv_inst_at_addr2             CONSTANT VARCHAR2(100) :=  'INSTALL_AT_ADDR2';           -- 設置先住所２
+    cv_inst_at_phn               CONSTANT VARCHAR2(100) :=  'INSTALL_AT_PHONE';           -- 設置先電話番号
+    cv_inst_at_emply_nm          CONSTANT VARCHAR2(100) :=  'INSTALL_AT_EMPLOYEE_NAME';   -- 設置先担当者名
+    /* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
     --
     -- *** ローカル変数 ***
     lv_errbuf2     VARCHAR2(5000);  -- エラー・メッセージ
@@ -1250,6 +1286,22 @@ AS
     /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
     ld_wk_date     DATE;
     /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
+    /* 2009.12.24 K.Hosoi E_本稼動_00563対応 START */
+    ln_num1                      NUMBER;            -- 1回目のハイフンの位置
+    ln_num2                      NUMBER;            -- 2回目のハイフンの位置
+    lv_inst_at_phone1            VARCHAR2(100);     -- 分割後 設置先電話番号1
+    lv_inst_at_phone2            VARCHAR2(100);     -- 分割後 設置先電話番号2
+    lv_inst_at_phone3            VARCHAR2(100);     -- 分割後 設置先電話番号3
+    --
+    lv_inst_at_cust_name         VARCHAR2(4000);    -- 設置先顧客名
+    lv_inst_at_zip               VARCHAR2(4000);    -- 設置先_郵便番号
+    lv_inst_at_prfcturs          VARCHAR2(4000);    -- 設置先都道府県
+    lv_inst_at_city              VARCHAR2(4000);    -- 設置先市区
+    lv_inst_at_addr1             VARCHAR2(4000);    -- 設置先住所１
+    lv_inst_at_addr2             VARCHAR2(4000);    -- 設置先住所２
+    lv_inst_at_phone             VARCHAR2(4000);    -- 設置先電話番号
+    lv_inst_at_emp_name          VARCHAR2(4000);    -- 設置先担当者名
+    /* 2009.12.24 K.Hosoi E_本稼動_00563対応 START */
     --
     -- *** ローカル例外 ***
     --
@@ -2073,6 +2125,317 @@ AS
         --
       END IF;
     /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
+    /* 2009.12.24 K.Hosoi E_本稼動_00563対応 START */
+    -- チェック区分が「顧客関連情報入力チェック」の場合
+    ELSIF ( iv_chk_kbn = cv_input_chk_kbn_13 ) THEN
+      -- =================
+      -- 顧客関連情報抽出
+      -- =================
+      --発注依頼明細情報ビューの不備により、設置先住所２が取得できないが、ビューの改修による他への影響が大きい為、
+      --ビューは修正せず関数により直接情報テンプレートの値を取得する。
+      BEGIN
+        SELECT xxcso_ipro_common_pkg.get_temp_info(i_requisition_rec.requisition_line_id,cv_inst_at_cstmr_nm)   -- 設置先顧客名
+              ,xxcso_ipro_common_pkg.get_temp_info(i_requisition_rec.requisition_line_id,cv_inst_at_zp)         -- 設置先_郵便番号
+              ,xxcso_ipro_common_pkg.get_temp_info(i_requisition_rec.requisition_line_id,cv_inst_at_prfcturs)   -- 設置先都道府県
+              ,xxcso_ipro_common_pkg.get_temp_info(i_requisition_rec.requisition_line_id,cv_inst_at_cty)        -- 設置先市区
+              ,xxcso_ipro_common_pkg.get_temp_info(i_requisition_rec.requisition_line_id,cv_inst_at_addr1)      -- 設置先住所１
+              ,xxcso_ipro_common_pkg.get_temp_info(i_requisition_rec.requisition_line_id,cv_inst_at_addr2)      -- 設置先住所２
+              ,xxcso_ipro_common_pkg.get_temp_info(i_requisition_rec.requisition_line_id,cv_inst_at_phn)        -- 設置先電話番号
+              ,xxcso_ipro_common_pkg.get_temp_info(i_requisition_rec.requisition_line_id,cv_inst_at_emply_nm)   -- 設置先担当者名
+        INTO   lv_inst_at_cust_name
+              ,lv_inst_at_zip
+              ,lv_inst_at_prfcturs
+              ,lv_inst_at_city
+              ,lv_inst_at_addr1
+              ,lv_inst_at_addr2
+              ,lv_inst_at_phone
+              ,lv_inst_at_emp_name
+        FROM  DUAL
+        ;
+      EXCEPTION
+        -- 抽出に失敗した場合
+        WHEN OTHERS THEN
+          lv_errbuf := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name                 -- アプリケーション短縮名
+                       , iv_name         => cv_tkn_number_08                         -- メッセージコード
+                       , iv_token_name1  => cv_tkn_table                             -- トークンコード1
+                       , iv_token_value1 => cv_temp_info                             -- トークン値1
+                       , iv_token_name2  => cv_tkn_req_header_num                    -- トークンコード2
+                       , iv_token_value2 => i_requisition_rec.requisition_number     -- トークン値2
+                       , iv_token_name3  => cv_tkn_err_msg                           -- トークンコード3
+                       , iv_token_value3 => SQLERRM                                  -- トークン値3
+                    );
+          RAISE global_api_others_expt;
+      END;
+      -- 設置先顧客名書式チェック(全角文字・40バイト)
+      IF (lv_inst_at_cust_name IS NOT NULL)
+        AND (
+              (xxccp_common_pkg.chk_double_byte(lv_inst_at_cust_name) = FALSE)
+            OR
+              (LENGTHB(lv_inst_at_cust_name) > 40)
+            )
+      THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_57         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_colname           -- トークンコード1
+                        ,iv_token_value1 => cv_tkn_val_cust_name     -- トークン値1
+                        ,iv_token_name2  => cv_tkn_format            -- トークンコード2
+                        ,iv_token_value2 => cv_tkn_val_cust_name_fmt -- トークン値2
+                      );
+        --
+        lv_errbuf  := CASE
+                        WHEN (lv_errbuf IS NULL) THEN
+                          lv_errbuf2
+                        ELSE
+                          SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                      END;
+        --
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      --
+      -- 設置先_郵便番号書式チェック(半角数値・7バイト)
+      IF (lv_inst_at_zip IS NOT NULL)
+        AND (
+              (xxccp_common_pkg.chk_number(lv_inst_at_zip) = FALSE)
+            OR
+              (LENGTHB(lv_inst_at_zip) > 7)
+            )
+      THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_57         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_colname           -- トークンコード1
+                        ,iv_token_value1 => cv_tkn_val_zip           -- トークン値1
+                        ,iv_token_name2  => cv_tkn_format            -- トークンコード2
+                        ,iv_token_value2 => cv_tkn_val_zip_fmt       -- トークン値2
+                      );
+        --
+        lv_errbuf  := CASE
+                        WHEN (lv_errbuf IS NULL) THEN
+                          lv_errbuf2
+                        ELSE
+                          SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                      END;
+        --
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      --
+      -- 設置先都道府県書式チェック(全角文字・8バイト)
+      IF (lv_inst_at_prfcturs IS NOT NULL)
+        AND (
+              (xxccp_common_pkg.chk_double_byte(lv_inst_at_prfcturs) = FALSE)
+            OR
+              (LENGTHB(lv_inst_at_prfcturs) > 8)
+            )
+      THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_57         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_colname           -- トークンコード1
+                        ,iv_token_value1 => cv_tkn_val_prfcts        -- トークン値1
+                        ,iv_token_name2  => cv_tkn_format            -- トークンコード2
+                        ,iv_token_value2 => cv_tkn_val_prfcts_fmt    -- トークン値2
+                      );
+        --
+        lv_errbuf  := CASE
+                        WHEN (lv_errbuf IS NULL) THEN
+                          lv_errbuf2
+                        ELSE
+                          SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                      END;
+        --
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      --
+      -- 設置先市区書式チェック(全角文字・20バイト)
+      IF (lv_inst_at_city IS NOT NULL)
+        AND (
+              (xxccp_common_pkg.chk_double_byte(lv_inst_at_city) = FALSE)
+            OR
+              (LENGTHB(lv_inst_at_city) > 20)
+            )
+      THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_57         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_colname           -- トークンコード1
+                        ,iv_token_value1 => cv_tkn_val_city          -- トークン値1
+                        ,iv_token_name2  => cv_tkn_format            -- トークンコード2
+                        ,iv_token_value2 => cv_tkn_val_city_fmt      -- トークン値2
+                      );
+        --
+        lv_errbuf  := CASE
+                        WHEN (lv_errbuf IS NULL) THEN
+                          lv_errbuf2
+                        ELSE
+                          SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                      END;
+        --
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      --
+      -- 設置先住所１書式チェック(全角文字・20バイト)
+      IF (lv_inst_at_addr1 IS NOT NULL)
+        AND (
+              (xxccp_common_pkg.chk_double_byte(lv_inst_at_addr1) = FALSE)
+            OR
+              (LENGTHB(lv_inst_at_addr1) > 20)
+            )
+      THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_57         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_colname           -- トークンコード1
+                        ,iv_token_value1 => cv_tkn_val_addr1         -- トークン値1
+                        ,iv_token_name2  => cv_tkn_format            -- トークンコード2
+                        ,iv_token_value2 => cv_tkn_val_addr1_fmt     -- トークン値2
+                      );
+        --
+        lv_errbuf  := CASE
+                        WHEN (lv_errbuf IS NULL) THEN
+                          lv_errbuf2
+                        ELSE
+                          SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                      END;
+        --
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      --
+      -- 設置先住所２書式チェック(全角文字・40バイト)
+      IF (lv_inst_at_addr2 IS NOT NULL)
+        AND (
+              (xxccp_common_pkg.chk_double_byte(lv_inst_at_addr2) = FALSE)
+            OR
+              (LENGTHB(lv_inst_at_addr2) > 40)
+            )
+      THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_57         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_colname           -- トークンコード1
+                        ,iv_token_value1 => cv_tkn_val_addr2         -- トークン値1
+                        ,iv_token_name2  => cv_tkn_format            -- トークンコード2
+                        ,iv_token_value2 => cv_tkn_val_addr2_fmt     -- トークン値2
+                      );
+        --
+        lv_errbuf  := CASE
+                        WHEN (lv_errbuf IS NULL) THEN
+                          lv_errbuf2
+                        ELSE
+                          SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                      END;
+        --
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      --
+      -- 設置先電話番号書式チェック(半角数値・ハイフンを除いて18バイト)
+      IF (lv_inst_at_phone IS NOT NULL)
+        AND (
+              (xxccp_common_pkg.chk_tel_format(lv_inst_at_phone) = FALSE)
+            OR
+              (LENGTHB(REPLACE(lv_inst_at_phone,cv_hyphen,'')) > 18)
+            )
+      THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_57         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_colname           -- トークンコード1
+                        ,iv_token_value1 => cv_tkn_val_phone         -- トークン値1
+                        ,iv_token_name2  => cv_tkn_format            -- トークンコード2
+                        ,iv_token_value2 => cv_tkn_val_phone_fmt     -- トークン値2
+                      );
+        --
+        lv_errbuf  := CASE
+                        WHEN (lv_errbuf IS NULL) THEN
+                          lv_errbuf2
+                        ELSE
+                          SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                      END;
+        --
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      --
+      -- 設置先電話番号分割後桁数チェック
+      IF (lv_inst_at_phone IS NOT NULL) THEN
+        -- 電話番号のハイフンの位置を取得
+        ln_num1    := INSTR(lv_inst_at_phone, cv_hyphen);
+        ln_num2    := INSTR(lv_inst_at_phone, cv_hyphen, 1, 2);
+        --
+        -- ハイフンが存在する場合、ハイフンの位置で電話番号を分割
+        IF (ln_num1 > 0) THEN
+          lv_inst_at_phone1 := SUBSTR(lv_inst_at_phone, 1
+                                                          , (ln_num1-1));
+        END IF;
+        IF (ln_num2 > 0) THEN
+          lv_inst_at_phone2 := SUBSTR(lv_inst_at_phone, ln_num1 + 1
+                                                          , (ln_num2 - ln_num1 - 1));
+          lv_inst_at_phone3 := SUBSTR(lv_inst_at_phone, ln_num2 + 1);
+        END IF;
+        --
+        -- 分割後の設置先電話番号が6桁を超える場合はエラー
+        IF (NVL(LENGTHB(lv_inst_at_phone1), 0) > 6)
+          OR
+           (NVL(LENGTHB(lv_inst_at_phone2), 0) > 6)
+          OR
+           (NVL(LENGTHB(lv_inst_at_phone3), 0) > 6)
+        THEN
+          lv_errbuf2 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                          ,iv_name         => cv_tkn_number_57         -- メッセージコード
+                          ,iv_token_name1  => cv_tkn_colname           -- トークンコード1
+                          ,iv_token_value1 => cv_tkn_val_phone         -- トークン値1
+                          ,iv_token_name2  => cv_tkn_format            -- トークンコード2
+                          ,iv_token_value2 => cv_tkn_val_phone_fmt     -- トークン値2
+                        );
+         --
+          lv_errbuf  := CASE
+                          WHEN (lv_errbuf IS NULL) THEN
+                            lv_errbuf2
+                          ELSE
+                            SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                        END;
+          --
+          ov_retcode := cv_status_warn;
+          --
+        END IF;
+      END IF;
+      --
+      -- 設置先担当者名書式チェック(全角文字・20バイト)
+      IF (lv_inst_at_emp_name IS NOT NULL)
+        AND (
+              (xxccp_common_pkg.chk_double_byte(lv_inst_at_emp_name) = FALSE)
+            OR
+              (LENGTHB(lv_inst_at_emp_name) > 20)
+            )
+      THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_57         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_colname           -- トークンコード1
+                        ,iv_token_value1 => cv_tkn_val_emp_nm        -- トークン値1
+                        ,iv_token_name2  => cv_tkn_format            -- トークンコード2
+                        ,iv_token_value2 => cv_tkn_val_emp_nm_fmt    -- トークン値2
+                      );
+        --
+        lv_errbuf  := CASE
+                        WHEN (lv_errbuf IS NULL) THEN
+                          lv_errbuf2
+                        ELSE
+                          SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                      END;
+        --
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+    /* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
     END IF;
     --
     ov_errbuf := lv_errbuf;
@@ -5962,6 +6325,32 @@ AS
           --
         END IF;
         /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
+        /* 2009.12.24 K.Hosoi E_本稼動_00563対応 START */
+        ------------------------------
+        -- 顧客関連情報入力チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_13 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
           -- リターンコードに「異常」を設定
@@ -6145,6 +6534,32 @@ AS
           END IF;
           --
         END IF;
+        /* 2009.12.24 K.Hosoi E_本稼動_00563対応 START */
+        ------------------------------
+        -- 顧客関連情報入力チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_13 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
         --
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
@@ -6404,6 +6819,32 @@ AS
           --
         END IF;
         /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
+        /* 2009.12.24 K.Hosoi E_本稼動_00563対応 START */
+        ------------------------------
+        -- 顧客関連情報入力チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_13 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
         --
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
@@ -6623,6 +7064,32 @@ AS
           END IF;
           --
         END IF;
+        /* 2009.12.24 K.Hosoi E_本稼動_00563対応 START */
+        ------------------------------
+        -- 顧客関連情報入力チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_13 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
         --
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
@@ -6897,6 +7364,32 @@ AS
           END IF;
           --
         END IF;
+        /* 2009.12.24 K.Hosoi E_本稼動_00563対応 START */
+        ------------------------------
+        -- 顧客関連情報入力チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_13 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
         --
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
@@ -7413,6 +7906,32 @@ AS
           --
         END IF;
         /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
+        /* 2009.12.24 K.Hosoi E_本稼動_00563対応 START */
+        ------------------------------
+        -- 顧客関連情報入力チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_13 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
         --
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
