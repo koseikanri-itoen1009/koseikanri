@@ -1,0 +1,1 @@
+CREATE INDEX ar.ar_hcasa_n01 ON ar.hz_cust_acct_sites_all( attribute18 ) TABLESPACE apps_ts_tx_data;

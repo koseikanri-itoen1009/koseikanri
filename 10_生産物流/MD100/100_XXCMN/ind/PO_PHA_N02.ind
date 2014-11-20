@@ -1,0 +1,1 @@
+CREATE INDEX po.po_pha_n02 ON po.po_headers_all( attribute5,attribute1 ) TABLESPACE apps_ts_tx_data;

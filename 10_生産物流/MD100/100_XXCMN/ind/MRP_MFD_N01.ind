@@ -1,0 +1,1 @@
+CREATE INDEX mrp.mrp_mfd_n01 ON mrp.mrp_forecast_designators( attribute1,attribute2 ) TABLESPACE apps_ts_tx_data;

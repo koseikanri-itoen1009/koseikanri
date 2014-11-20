@@ -1,0 +1,1 @@
+CREATE INDEX gmi.gmi_iimb_n01 ON gmi.ic_item_mst_b( whse_item_id ) TABLESPACE apps_ts_tx_data;
