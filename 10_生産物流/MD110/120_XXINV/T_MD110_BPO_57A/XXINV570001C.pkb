@@ -7,7 +7,7 @@ AS
  * Description      : 移動入出庫実績登録
  * MD.050           : 移動入出庫実績登録(T_MD050_BPO_570)
  * MD.070           : 移動入出庫実績登録(T_MD070_BPO_57A)
- * Version          : 1.18
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,8 @@ AS
  *  2009/01/16    1.16  Yuko  Kawano     本番障害#988(実績訂正(新規明細追加時の不具合対応))
  *  2009/01/28    1.17  Yuko  Kawano     本番障害#1093(実績ロット不一致対応)
  *  2009/02/04    1.18  Yuko  Kawano     本番障害#1142(実績訂正(標準未反映の不具合対応))
+ *  2009/02/19    1.19  Akiyoshi Shiina  本番障害#1179(ロット実績数量0が存在する移動実績情報の処理)
+ *  2009/02/19    1.20  Akiyoshi Shiina  本番障害#1194(ロックエラーを警告にする)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -389,6 +391,10 @@ AS
 --
 -- 移動情報抽出対象データなし
    gn_no_data_flg           NUMBER := 0;
+-- 2009/02/19 v1.20 ADD START
+--
+  gb_lock_expt_flg          BOOLEAN := FALSE; -- ロックエラーフラグ
+-- 2009/02/19 v1.20 ADD END
 --
   /**********************************************************************************
   * Procedure Name   : init_proc
@@ -1402,7 +1408,11 @@ AS
         CLOSE xxinv_move_cur;
       END IF;
       -- エラーメッセージ取得
-      lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
+-- 2009/02/19 v1.20 UPDATE START
+--      lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
+      lv_errmsg := '警告：'
+                   || xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
+-- 2009/02/19 v1.20 UPDATE END
                                             gv_c_msg_57a_002,   -- ロックエラー
                                             gv_c_tkn_table,     -- トークンTABLE
                                             gv_c_tkn_table_val  -- トークン値
@@ -1412,6 +1422,10 @@ AS
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_error;
 --
+-- 2009/02/19 v1.20 ADD START
+      gb_lock_expt_flg := TRUE; -- ロックエラーフラグ
+--
+-- 2009/02/19 v1.20 ADD END
     WHEN NO_DATA_FOUND THEN                             --*** データなし ***
       IF (xxinv_move_cur%ISOPEN) THEN
         CLOSE xxinv_move_cur;
@@ -1560,10 +1574,16 @@ AS
       IF (
            ( move_data_rec_tbl(gn_rec_idx).lot_out_actual_quantity
              <> move_data_rec_tbl(gn_rec_idx).lot_in_actual_quantity )
-        OR (  ( move_data_rec_tbl(gn_rec_idx).lot_out_actual_quantity IS NOT NULL )
+-- 2009/02/19 v1.19 UPDATE START
+--        OR (  ( move_data_rec_tbl(gn_rec_idx).lot_out_actual_quantity IS NOT NULL )
+        OR (  ( move_data_rec_tbl(gn_rec_idx).lot_out_actual_quantity > 0 )
+-- 2009/02/19 v1.19 UPDATE END
           AND ( move_data_rec_tbl(gn_rec_idx).lot_in_actual_quantity  IS NULL ) )
         OR (  ( move_data_rec_tbl(gn_rec_idx).lot_out_actual_quantity IS NULL )
-          AND ( move_data_rec_tbl(gn_rec_idx).lot_in_actual_quantity  IS NOT NULL ) )
+-- 2009/02/19 v1.19 UPDATE START
+--          AND ( move_data_rec_tbl(gn_rec_idx).lot_in_actual_quantity  IS NOT NULL ) )
+          AND ( move_data_rec_tbl(gn_rec_idx).lot_in_actual_quantity  > 0 ) )
+-- 2009/02/19 v1.19 UPDATE END
          )
       THEN
 --2009/01/28 Y.Kawano Mod End   #1093
@@ -6848,6 +6868,12 @@ AS
     gv_out_msg := xxcmn_common_pkg.get_msg('XXCMN','APP-XXCMN-00011','CNT',TO_CHAR(gn_warn_cnt));
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
 --
+-- 2009/02/19 v1.20 ADD START
+    IF (gb_lock_expt_flg) THEN
+      lv_retcode := gv_status_warn;
+    END IF;
+--
+-- 2009/02/19 v1.20 ADD END
     --ステータス出力
     SELECT flv.meaning
     INTO   gv_conc_status
@@ -6869,8 +6895,20 @@ AS
 --
     --ステータスセット
     retcode := lv_retcode;
+-- 2009/02/19 v1.20 UPDATE START
+/*
     --終了ステータスがエラーの場合はROLLBACKする
     IF (retcode = gv_status_error) AND (gv_check_proc_retcode = gv_status_normal) THEN
+*/
+    --終了ステータスがエラーか、ロックエラーの場合はROLLBACKする
+    IF (
+         (
+           (retcode = gv_status_error) AND (gv_check_proc_retcode = gv_status_normal)
+         )
+         OR
+         (gb_lock_expt_flg)
+       ) THEN
+-- 2009/02/19 v1.20 UPDATE END
       ROLLBACK;
     END IF;
 --
