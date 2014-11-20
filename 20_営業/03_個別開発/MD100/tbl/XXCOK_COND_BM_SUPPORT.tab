@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_COND_BM_SUPPORT
  * Description : 条件別販手販協テーブル
- * Version     : 1.0
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   T.Osada          新規作成
  *  2009/01/23    1.1   K.Iwabuchi       割戻率、割戻額桁数変更
+ *  2009/06/11    1.2   K.Yamaguchi      [障害T1_1422]項目追加
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_COND_BM_SUPPORT
@@ -55,6 +56,9 @@ CREATE TABLE XXCOK.XXCOK_COND_BM_SUPPORT
    BM_INTERFACE_DATE         DATE,
    AR_INTERFACE_STATUS       VARCHAR2(1),
    AR_INTERFACE_DATE         DATE,
+-- 2009/06/11 Ver.1.2 [障害T1_1422] SCS K.Yamaguchi ADD START
+   AMT_FIX_STATUS            VARCHAR2(1)    NOT NULL,
+-- 2009/06/11 Ver.1.2 [障害T1_1422] SCS K.Yamaguchi ADD END
    CREATED_BY                NUMBER(15,0)   NOT NULL,
    CREATION_DATE             DATE           NOT NULL,
    LAST_UPDATED_BY           NUMBER(15,0)   NOT NULL,
@@ -150,6 +154,10 @@ COMMENT ON COLUMN XXCOK.XXCOK_COND_BM_SUPPORT.AR_INTERFACE_STATUS       IS '連携
 /
 COMMENT ON COLUMN XXCOK.XXCOK_COND_BM_SUPPORT.AR_INTERFACE_DATE         IS '連携日(AR)'
 /
+-- 2009/06/11 Ver.1.2 [障害T1_1422] SCS K.Yamaguchi ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_COND_BM_SUPPORT.AMT_FIX_STATUS            IS '金額確定ステータス'
+/
+-- 2009/06/11 Ver.1.2 [障害T1_1422] SCS K.Yamaguchi ADD END
 COMMENT ON COLUMN XXCOK.XXCOK_COND_BM_SUPPORT.CREATED_BY                IS '作成者'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_COND_BM_SUPPORT.CREATION_DATE             IS '作成日'
