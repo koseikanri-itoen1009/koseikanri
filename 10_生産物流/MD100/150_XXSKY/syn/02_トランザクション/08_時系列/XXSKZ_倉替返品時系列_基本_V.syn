@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_倉替返品時系列_基本_V FOR APPS.XXSKZ_倉替返品時系列_基本_V
+/

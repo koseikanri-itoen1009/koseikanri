@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_解体ヘッダ_基本_V FOR APPS.XXSKZ_解体ヘッダ_基本_V
+/

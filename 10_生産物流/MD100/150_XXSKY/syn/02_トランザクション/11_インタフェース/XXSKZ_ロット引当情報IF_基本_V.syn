@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_ロット引当情報IF_基本_V FOR APPS.XXSKZ_ロット引当情報IF_基本_V
+/

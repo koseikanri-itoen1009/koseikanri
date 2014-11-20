@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_仕分入荷_基本_V FOR APPS.XXSKZ_仕分入荷_基本_V
+/

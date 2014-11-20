@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_外注出来高実績_V FOR APPS.XXSKZ_外注出来高実績_V
+/

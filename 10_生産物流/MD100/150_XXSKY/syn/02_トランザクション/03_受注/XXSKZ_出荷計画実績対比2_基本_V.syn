@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_出荷計画実績対比2_基本_V FOR APPS.XXSKZ_出荷計画実績対比2_基本_V
+/

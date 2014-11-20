@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_入出庫配送品目別_数量_V FOR APPS.XXSKZ_入出庫配送品目別_数量_V
+/

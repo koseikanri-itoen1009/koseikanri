@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_配車配送_基本_V FOR APPS.XXSKZ_配車配送_基本_V
+/

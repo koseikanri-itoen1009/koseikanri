@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_品質検査依頼情報_基本_V FOR APPS.XXSKZ_品質検査依頼情報_基本_V
+/

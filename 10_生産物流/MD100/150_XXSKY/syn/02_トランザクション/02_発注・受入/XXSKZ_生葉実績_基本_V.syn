@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_生葉実績_基本_V FOR APPS.XXSKZ_生葉実績_基本_V
+/

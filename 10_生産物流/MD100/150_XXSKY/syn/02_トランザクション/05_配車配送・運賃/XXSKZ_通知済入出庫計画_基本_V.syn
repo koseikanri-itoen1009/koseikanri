@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_通知済入出庫計画_基本_V FOR APPS.XXSKZ_通知済入出庫計画_基本_V
+/

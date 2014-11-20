@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_ファイルUpload_IF_基本_V FOR APPS.XXSKZ_ファイルUpload_IF_基本_V
+/

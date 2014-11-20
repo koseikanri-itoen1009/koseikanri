@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_計画商品_基本_V FOR APPS.XXSKZ_計画商品_基本_V
+/
