@@ -7,7 +7,7 @@ AS
  * Description      : EDI請求書データ作成
  * MD.050           : MD050_CFR_003_A04_EDI請求書データ作成
  * MD.070           : MD050_CFR_003_A04_EDI請求書データ作成
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
                                                        税差額レコード出力処理修正
  *  2009/06/23    1.6   SCS 萱原 伸哉    [障害T1_1379] EDI請求書の伝票番号チェック処理対応
  *  2009/10/15    1.7   SCS 萱原 伸哉     AR仕様変更IE558対応
+ *  2009/11/02    1.8   SCS 廣瀬 真佐人   AR仕様変更IE601,603対応  
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -931,7 +932,10 @@ AS
             ,xih.tax_gap_amount                       tax_gap_amount         -- 税差額
             ,SUBSTRB(xih.itoen_name,1,30)             itoen_name             -- 仕入先名称／取引先名称（漢字）
             ,gv_comp_kana_name                        itoen_kana_name        -- 仕入先名称／取引先名称（カナ）
-            ,NULL                                     co_code                -- 社コード
+-- Modify 2009.11.02 Ver1.8 Start
+--            ,NULL                                     co_code                -- 社コード
+            ,xih.bill_shop_code                       co_code                -- 社コード(請求先店舗コードを設定)
+-- Modify 2009.11.02 Ver1.8 End
             ,TO_CHAR(xih.object_date_from
                     ,cv_format_date_ymd)              object_date_from       -- 対象期間・自
             ,TO_CHAR(xih.object_date_to
@@ -971,7 +975,22 @@ AS
             ,xih.month_remit                          month_remit            -- 月限
             ,NVL(xil.slip_num,cv_nul_slip_num)        slip_num               -- 伝票番号
             ,xil.note_line_id                         note_line_id           -- 行No
-            ,xil.slip_type                            slip_type              -- 伝票区分
+-- Modify 2009.11.02 Ver1.8 Start
+/* 修正における影響を少なくするために複雑になっている。
+ * 先頭から○○文字取得していたものを末尾から○○文字取得することとなった。
+ * 使用している関数は、先頭から○○文字取得するという仕様になっている為、末尾から○○文字という取得は出来ない。
+ * よって、DBから取得する際に末尾○○文字を先頭に付け替えることで対応。
+ *   EX.) '1234567890' ⇒ ・・末尾2文字を取得・・ ⇒ '9012345678'としてDBより取得
+ */
+--            ,xil.slip_type                            slip_type              -- 伝票区分
+            ,SUBSTRB(xil.slip_type         -- 末尾○○文字
+                   , -1 * gt_edi_item_tab(41).edi_length
+             )
+          || SUBSTRB(xil.slip_type         -- 末尾○○文字以外
+                   , 1
+                   , LENGTHB( gt_edi_item_tab(41).edi_length - gt_edi_item_tab(41).edi_length )
+             )                                        slip_type              -- 伝票区分
+-- Modify 2009.11.02 Ver1.8 End
             ,xil.classify_type                        classify_type          -- 分類コード
             ,xil.customer_dept_code                   customer_dept_code     -- 相手先部門コード
             ,xil.customer_division_code               customer_division_code -- 課コード
@@ -1013,6 +1032,10 @@ AS
            ,xil.num_of_cases                          num_of_cases           -- ケース入数
            ,xil.medium_class                          medium_class           -- 受注ソース
 -- Modify 2009.10.15 Ver1.7 End
+-- Modify 2009.11.02 Ver1.8 Start
+           ,xil.delivery_chain_code                   delivery_chain_code    -- 納品先チェーンコード
+           ,xil.ship_cust_code                        ship_cust_code         -- 納品先顧客コード
+-- Modify 2009.11.02 Ver1.8 End
       FROM xxcfr_invoice_headers          xih    -- 請求ヘッダ
           ,xxcfr_invoice_lines            xil    -- 請求明細
       WHERE xih.invoice_id = xil.invoice_id      -- 一括請求書ID
@@ -1561,6 +1584,12 @@ AS
         lt_set_edi_data_tbl1(ln_data_cnt).medium_class           
           := lt_get_edi_data_tbl1(i).medium_class           ; -- 受注ソース
 -- Modify 2009.10.15 Ver1.7 End
+-- Modify 2009.11.02 Ver1.8 Start
+        lt_set_edi_data_tbl1(ln_data_cnt).delivery_chain_code           
+          := lt_get_edi_data_tbl1(i).delivery_chain_code    ; -- 納品先チェーンコード
+        lt_set_edi_data_tbl1(ln_data_cnt).ship_cust_code           
+          := lt_get_edi_data_tbl1(i).ship_cust_code         ; -- 納品先顧客コード
+-- Modify 2009.11.02 Ver1.8 End
 --
         -- 変数加算
         ln_data_cnt := ln_data_cnt + 1; -- 集計結果格納先レコードカウンタ
@@ -2375,6 +2404,36 @@ AS
             ov_retcode := cv_status_warn;
           END IF;
 -- Modify 2009.10.15 Ver1.7 End
+-- Modify 2009.11.02 Ver1.8 Start
+          -- 納品先チェーンコード
+          set_edi_char(65                                               -- 項目順
+                      ,lt_set_edi_data_tbl1(ln_loop_cnt).delivery_chain_code  -- 変換対象文字列
+                      ,ln_loop_cnt                                      -- レコード通番
+                      ,lt_set_edi_data_tbl1(ln_loop_cnt).slip_num       -- 伝票番号
+                      ,lt_set_edi_data_tbl1(ln_loop_cnt).note_line_id   -- 伝票行No
+                      ,lv_output_str                                    -- 戻り値
+                      ,lv_overflow_msg
+                      ,lv_retcode
+                      ,lv_errmsg);
+           lt_set_edi_data_tbl1(ln_loop_cnt).delivery_chain_code := lv_output_str;
+          IF lv_retcode = cv_status_warn THEN
+            ov_retcode := cv_status_warn;
+          END IF;
+          -- 納品先顧客コード
+          set_edi_char(66                                               -- 項目順
+                      ,lt_set_edi_data_tbl1(ln_loop_cnt).ship_cust_code  -- 変換対象文字列
+                      ,ln_loop_cnt                                      -- レコード通番
+                      ,lt_set_edi_data_tbl1(ln_loop_cnt).slip_num       -- 伝票番号
+                      ,lt_set_edi_data_tbl1(ln_loop_cnt).note_line_id   -- 伝票行No
+                      ,lv_output_str                                    -- 戻り値
+                      ,lv_overflow_msg
+                      ,lv_retcode
+                      ,lv_errmsg);
+           lt_set_edi_data_tbl1(ln_loop_cnt).ship_cust_code := lv_output_str;
+          IF lv_retcode = cv_status_warn THEN
+            ov_retcode := cv_status_warn;
+          END IF;
+-- Modify 2009.11.02 Ver1.8 End
 --
           -- 出力文字列作成
           lv_edi_text := pad_edi_char(lt_set_edi_data_tbl1(ln_loop_cnt).file_rec_type
@@ -2580,9 +2639,20 @@ AS
                       || pad_edi_char(lt_set_edi_data_tbl1(ln_loop_cnt).medium_class
                                      ,gt_edi_item_tab(64).data_type
                                      ,gt_edi_item_tab(64).edi_length)                                                      -- 受注ソース
-                      || pad_edi_char(null
+-- Modify 2009.11.02 Ver1.8 Start
+--                      || pad_edi_char(null
+--                                     ,gt_edi_item_tab(65).data_type
+--                                     ,gt_edi_item_tab(65).edi_length)                                                      -- 予備エリア
+                      || pad_edi_char(lt_set_edi_data_tbl1(ln_loop_cnt).delivery_chain_code
                                      ,gt_edi_item_tab(65).data_type
-                                     ,gt_edi_item_tab(65).edi_length)                                                      -- 予備エリア
+                                     ,gt_edi_item_tab(65).edi_length)                                                      -- 納品先チェーンコード
+                      || pad_edi_char(lt_set_edi_data_tbl1(ln_loop_cnt).ship_cust_code
+                                     ,gt_edi_item_tab(66).data_type
+                                     ,gt_edi_item_tab(66).edi_length)                                                      -- 納品先顧客コード
+                      || pad_edi_char(null
+                                     ,gt_edi_item_tab(67).data_type
+                                     ,gt_edi_item_tab(67).edi_length)                                                      -- 予備エリア
+-- Modify 2009.11.02 Ver1.8 End
 -- Modify 2009.10.15 Ver1.7 End
                       ;
 --

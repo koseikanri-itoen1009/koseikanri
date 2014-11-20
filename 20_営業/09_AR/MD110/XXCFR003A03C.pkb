@@ -7,7 +7,7 @@ AS
  * Description      : 請求明細データ作成
  * MD.050           : MD050_CFR_003_A03_請求明細データ作成
  * MD.070           : MD050_CFR_003_A03_請求明細データ作成
- * Version          : 1.50
+ * Version          : 1.60
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/07/22    1.30 SCS 廣瀬 真佐人  [障害0000763]パフォーマンス改善
  *  2009/08/03    1.40 SCS 廣瀬 真佐人  [障害0000914]パフォーマンス改善
  *  2009/09/29    1.50 SCS 廣瀬 真佐人  [共通課題IE535] 請求書問題
+ *  2009/11/02    1.60 SCS 廣瀬 真佐人  [共通課題IE603] EDI用に出力項目を追加(納品先チェーンコード)
  *
  *****************************************************************************************/
 --
@@ -1096,7 +1097,11 @@ AS
            inlv.program_update_date          program_update_date,           -- プログラム更新日
            inlv.cutoff_date                  cutoff_date,                   -- 締日
            inlv.num_of_cases                 num_of_cases,                  -- ケース入数
-           inlv.medium_class                 medium_class                   -- 受注ソース
+-- Modify 2009.11.02 Ver1.6 Start
+--           inlv.medium_class                 medium_class                   -- 受注ソース
+           inlv.medium_class                 medium_class,                  -- 受注ソース
+           inlv.delivery_chain_code          delivery_chain_code            -- 納品先チェーンコード
+-- Modify 2009.11.02 Ver1.6 End
 -- Modify 2009.09.29 Ver1.5 End
     FROM   (--請求明細データ(AR部門入力) 
             SELECT /*+ FIRST_ROWS
@@ -1198,7 +1203,11 @@ AS
                    cd_program_update_date                         program_update_date,    -- プログラム更新日
                    xih.cutoff_date                                cutoff_date,            -- 締日
                    NULL                                           num_of_cases,           -- ケース入数
-                   NULL                                           medium_class            -- 受注ソース
+-- Modify 2009.11.02 Ver1.6 Start
+--                   NULL                                           medium_class            -- 受注ソース
+                   NULL                                           medium_class,           -- 受注ソース
+                   xxca.delivery_chain_code                       delivery_chain_code     -- 納品先チェーンコード
+-- Modify 2009.11.02 Ver1.6 End
 -- Modify 2009.09.29 Ver1.5 End
             FROM   
                    xxcfr_invoice_headers         xih,               -- アドオン請求書ヘッダ
@@ -1345,7 +1354,11 @@ AS
                    cd_program_update_date                          program_update_date,     -- プログラム更新日
                    xih.cutoff_date                                 cutoff_date,             -- 締日
                    icmb.attribute11                                num_of_cases,            -- ケース入数
-                   NVL( xedh.medium_class , cv_medium_class_mnl)   medium_class             -- 受注ソース
+-- Modify 2009.11.02 Ver1.6 Start
+--                   NVL( xedh.medium_class , cv_medium_class_mnl)   medium_class             -- 受注ソース
+                   NVL( xedh.medium_class , cv_medium_class_mnl)   medium_class,            -- 受注ソース
+                   xxca.delivery_chain_code                        delivery_chain_code      -- 納品先チェーンコード
+-- Modify 2009.11.02 Ver1.6 End
 -- Modify 2009.09.29 Ver1.5 End
             FROM   
                    xxcfr_invoice_headers         xih,            -- アドオン請求書ヘッダ
