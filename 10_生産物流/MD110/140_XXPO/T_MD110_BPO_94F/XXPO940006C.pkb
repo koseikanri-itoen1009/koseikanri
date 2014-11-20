@@ -7,7 +7,7 @@ AS
  * Description      : 支給依頼取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : 支給依頼取込処理 T_MD070_BPO_94F
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2008/07/24    1.4   Oracle 椎名      内部課題#32,内部変更#166･#173対応
  *  2008/07/29    1.5   Oracle 椎名      ST不具合対応
  *  2008/07/30    1.6   Oracle 椎名      ST不具合対応
+ *  2008/08/28    1.7   Oracle 山根一浩  T_TE080_BPO_940 指摘16対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -217,6 +218,8 @@ AS
   gv_msg_h_normal_cnt CONSTANT VARCHAR2(20) := 'APP-XXPO-10241';
   -- 成功件数(明細)
   gv_msg_l_normal_cnt CONSTANT VARCHAR2(20) := 'APP-XXPO-10242';
+-- 2008/08/28 Add
+  gv_msg_item_no      CONSTANT VARCHAR2(20) := 'APP-XXPO-10266';
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -2317,6 +2320,41 @@ AS
         RAISE global_api_expt;
 --
       END IF;
+-- 2008/08/28 Add ↓
+      ---------------------------------------------
+      -- 商品区分チェック                        --
+      ---------------------------------------------
+      BEGIN
+        ln_cnt := 0;
+--
+        SELECT COUNT(ximv.item_id)
+        INTO   ln_cnt
+        FROM   xxcmn_item_mst2_v        ximv,
+               xxcmn_item_categories5_v xicv
+        WHERE  ximv.item_id = xicv.item_id
+        AND    ximv.item_no = gt_item_code_tbl(gn_j)
+        AND    xicv.prod_class_code = gv_item_div_prf             -- プロファイル「商品区分(セキュリティ)」
+        AND    ximv.start_date_active  <= gd_standard_date
+        AND    ximv.end_date_active    >= gd_standard_date;
+--
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          ln_cnt := 0;
+--
+        WHEN OTHERS THEN
+          RAISE global_api_others_expt;
+      END;
+--
+      -- 対象データが存在しない
+      IF (ln_cnt = 0) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_xxpo,
+                                              gv_msg_item_no,
+                                              gv_tkn_item_no,
+                                              gt_item_code_tbl(gn_j));
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+-- 2008/08/28 Add ↑
 --
     END IF;
 --
@@ -4015,6 +4053,8 @@ AS
     -- グローバル変数の初期化
     gn_h_target_cnt := 0;
     gn_l_target_cnt := 0;
+    gn_h_normal_cnt := 0;       -- 2008/08/28 Add
+    gn_l_normal_cnt := 0;       -- 2008/08/28 Add
     gn_h_cnt        := 0;
     gn_l_cnt        := 0;
 --

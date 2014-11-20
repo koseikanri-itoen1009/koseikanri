@@ -7,7 +7,7 @@ AS
  * Description      : 仕入・有償・移動情報抽出処理
  * MD.050           : 生産物流共通                  T_MD050_BPO_940
  * MD.070           : 仕入・有償・移動情報抽出処理  T_MD070_BPO_94D
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/06/10    1.0   Oracle 山根 一浩 初回作成
  *  2008/08/20    1.1   Oracle 山根 一浩 T_S_593,T_TE080_BPO_940 指摘6,指摘7,指摘8,指摘9対応
+ *  2008/09/02    1.2   Oracle 山根 一浩 T_S_626,T_TE080_BPO_940 指摘10対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -186,6 +187,7 @@ AS
     ship_no              VARCHAR2(12), -- 配送No.
     request_no           VARCHAR2(12), -- 依頼No.
     relation_no          VARCHAR2(12), -- 関連No.
+    base_request_no      VARCHAR2(12), -- コピー元No.   2008/09/02 Add
     base_ship_no         VARCHAR2(12), -- 元配送No.
     vendor_code          VARCHAR2(4),  -- 取引先コード
     vendor_name          VARCHAR2(60), -- 取引先名
@@ -1212,12 +1214,16 @@ AS
     -- *** ローカル・カーソル ***
     CURSOR mst_data_cur
     IS
+/* 2008/09/02 Mod ↓
       SELECT pha.po_header_id as sel_tbl_id                 -- テーブルID
+2008/09/02 Mod ↑ */
+      SELECT TO_CHAR(pha.po_header_id) || '1' as sel_tbl_id -- テーブルID
             ,gv_company_name as company_name                -- 会社名
             ,gv_data_class_pha as data_class                -- データ種別
             ,NULL as ship_no                                -- 配送No.
             ,pha.segment1 as request_no                     -- 依頼No.
             ,pha.attribute9 as relation_no                  -- 関連No.
+            ,NULL as base_request_no                        -- コピー元No.    2008/09/02 Add
             ,NULL as base_ship_no                           -- 元配送No.
             ,xvv1.segment1 as vendor_code                   -- 取引先コード
             ,xvv1.vendor_full_name as vendor_name           -- 取引先名
@@ -1491,6 +1497,8 @@ AS
                       )
               )
              )
+-- 2008/09/02 Mod ↓
+/*
 -- ソート順
       ORDER BY pha.attribute4                                      -- 入庫日
               ,xvv1.segment1                                       -- 取引先コード
@@ -1506,6 +1514,265 @@ AS
               ,ilm.attribute1                                      -- 製造日
               ,ilm.attribute3                                      -- 賞味期限
               ,ilm.attribute2                                      -- 固有記号
+*/
+      UNION ALL
+      SELECT xrart.rcv_rtn_number || '2' as sel_tbl_id      -- テーブルID
+            ,gv_company_name as company_name                -- 会社名
+            ,gv_data_class_pha as data_class                -- データ種別
+            ,NULL as ship_no                                -- 配送No.
+            ,xrart.supply_requested_number as request_no    -- 依頼No.
+            ,xrart.source_document_number as relation_no    -- 関連No.
+            ,NULL as base_request_no                        -- コピー元No.
+            ,NULL as base_ship_no                           -- 元配送No.
+            ,xvv.segment1 as vendor_code                    -- 取引先コード
+            ,xvv.vendor_full_name as vendor_name            -- 取引先名
+            ,xvv.vendor_short_name as vendor_s_name         -- 取引先略名
+            ,DECODE(xrart.assen_vendor_id,NULL,
+                    NULL,
+                    xvv.segment1) as mediation_code         -- 斡旋者コード
+            ,DECODE(xrart.assen_vendor_id,NULL,
+                    NULL,
+                    xvv.vendor_full_name) as mediation_name -- 斡旋者名
+            ,DECODE(xrart.assen_vendor_id,NULL,
+                    NULL,
+                    xvv.segment1) as mediation_s_name       -- 斡旋者略名
+            ,xrart.location_code as whse_code               -- 倉庫コード
+            ,xilv.description as whse_name                  -- 倉庫名
+            ,xilv.short_name as whse_s_name                 -- 倉庫略名
+            ,DECODE(xrart.drop_ship_type,gv_drop_ship_type_ship,
+                    xrart.delivery_code,
+                    NULL) as vendor_site_code               -- 配送先コード
+            ,DECODE(xrart.drop_ship_type,gv_drop_ship_type_ship,
+                    xpsv.party_site_full_name,
+                    NULL) as vendor_site_name               -- 配送先名
+            ,DECODE(xrart.drop_ship_type,gv_drop_ship_type_ship,
+                    xpsv.party_site_short_name,
+                    NULL) as vendor_site_s_name             -- 配送先略名
+            ,DECODE(xrart.drop_ship_type,gv_drop_ship_type_ship,
+                    xpsv.zip,
+                    NULL) as zip                            -- 郵便番号
+            ,DECODE(xrart.drop_ship_type,gv_drop_ship_type_ship,
+                    xpsv.address_line1||xpsv.address_line2,
+                    NULL) as address                        -- 住所
+            ,DECODE(xrart.drop_ship_type,gv_drop_ship_type_ship,
+                    xpsv.phone,
+                    NULL) as phone                          -- 電話番号
+            ,NULL as carrier_code                           -- 運送業者コード
+            ,NULL as carrier_name                           -- 運送業者名
+            ,NULL as carrier_s_name                         -- 運送業者略名
+            ,TO_CHAR(xrart.txns_date,'YYYY/MM/DD') as ship_date                   -- 出庫日
+            ,TO_CHAR(xrart.txns_date,'YYYY/MM/DD') as arrival_dat                 -- 入庫日
+            ,NULL as arrival_time_from                      -- 着荷時間FROM
+            ,NULL as arrival_time_to                        -- 着荷時間TO
+            ,NULL as method_code                            -- 配送区分
+            ,NULL as div_a                                  -- 区分Ａ
+            ,xrart.drop_ship_type as div_b                  -- 区分Ｂ
+            ,NULL as div_c                                  -- 区分Ｃ
+            ,xrart.department_code as instruction_dept      -- 指示部署コード
+            ,NULL as request_dept                           -- 依頼部署コード
+            ,NULL as status                                 -- ステータス
+            ,NULL as notif_status                           -- 通知ステータス
+            ,xrart.txns_type as div_d                       -- 区分Ｄ
+            ,NULL as div_e                                  -- 区分Ｅ
+            ,NULL as div_f                                  -- 区分Ｆ
+            ,NULL as div_g                                  -- 区分Ｇ
+            ,NULL as div_h                                  -- 区分Ｈ
+            ,NULL as info_a                                 -- 情報Ａ
+            ,NULL as info_b                                 -- 情報Ｂ
+            ,NULL as info_c                                 -- 情報Ｃ
+            ,NULL as info_d                                 -- 情報Ｄ
+            ,NULL as info_e                                 -- 情報Ｅ
+            ,xrart.header_description as head_description   -- 摘要(ヘッダ)
+            ,xrart.line_description as line_description     -- 摘要(明細)
+            ,xrart.rcv_rtn_line_number as line_num          -- 明細No.
+            ,ximv.item_no                                   -- 品目コード
+            ,ximv.item_name                                 -- 品目名
+            ,ximv.item_short_name as item_s_name            -- 品目略称
+            ,xrart.futai_code                               -- 付帯
+            ,DECODE(ximv.lot_ctl,gv_lot_ctl_on, 
+                    xrart.lot_number,
+                    NULL) as lot_no                         -- ロットNo.
+            ,ilm.attribute1 as lot_date                     -- 製造日
+            ,ilm.attribute3 as best_bfr_date                -- 賞味期限
+            ,ilm.attribute2 as lot_sign                     -- 固有記号
+            ,TO_CHAR(xrart.rcv_rtn_quantity) as request_qty          -- 依頼数
+            ,TO_CHAR(xrart.rcv_rtn_quantity) as instruct_qty         -- 指示数
+            ,TO_CHAR(xrart.rcv_rtn_quantity) as num_of_deliver       -- 出庫数
+            ,TO_CHAR(xrart.rcv_rtn_quantity) as ship_to_qty          -- 入庫数
+            ,TO_CHAR(xrart.rcv_rtn_quantity) as fix_qty              -- 確定数
+            ,xrart.rcv_rtn_uom as item_um                   -- 単位
+            ,NULL as weight_capacity                        -- 重量容積
+            ,TO_CHAR(xrart.conversion_factor) as frequent_qty        -- 入数
+            ,xrart.factory_code as frequent_factory         -- 工場コード
+            ,NULL as div_i                                  -- 区分Ｉ
+            ,NULL as div_j                                  -- 区分Ｊ
+            ,NULL as div_k                                  -- 区分Ｋ
+            ,NULL as designate_date                         -- 日付指定
+            ,ilm.attribute11 as info_f                      -- 情報Ｆ
+            ,ilm.attribute12 as info_g                      -- 情報Ｇ
+            ,ilm.attribute14 as info_h                      -- 情報Ｈ
+            ,ilm.attribute15 as info_i                      -- 情報Ｉ
+            ,ilm.attribute19 as info_j                      -- 情報Ｊ
+            ,ilm.attribute20 as info_k                      -- 情報Ｋ
+            ,ilm.attribute21 as info_l                      -- 情報Ｌ
+            ,NULL as info_m                                 -- 情報Ｍ
+            ,NULL as info_n                                 -- 情報Ｎ
+            ,ilm.attribute9 as info_o                       -- 情報Ｏ
+            ,ilm.attribute10 as info_p                      -- 情報Ｐ
+            ,ilm.attribute13 as info_q                      -- 情報Ｑ
+            ,xrart.unit_price as amt_a                      -- お金Ａ
+            ,TO_CHAR(xrart.kobiki_rate) as amt_b                     -- お金Ｂ
+            ,TO_CHAR(xrart.kobki_converted_unit_price) as amt_c      -- お金Ｃ
+            ,xrart.kousen_type as amt_d                     -- お金Ｄ
+            ,TO_CHAR(xrart.kousen_rate_or_unit_price) as amt_e       -- お金Ｅ
+            ,TO_CHAR(xrart.kousen_price) as amt_f                    -- お金Ｆ
+            ,xrart.fukakin_type as amt_g                    -- お金Ｇ
+            ,TO_CHAR(xrart.fukakin_rate_or_unit_price) as amt_h      -- お金Ｈ
+            ,TO_CHAR(xrart.fukakin_price) as amt_i                   -- お金Ｉ
+            ,TO_CHAR(xrart.kobki_converted_price) as amt_j           -- お金Ｊ
+            ,xrart.last_update_date as update_date_h        -- 最終更新日(ヘッダ)
+            ,xrart.last_update_date as update_date_l        -- 最終更新日(明細)
+      FROM   xxpo_rcv_and_rtn_txns    xrart  -- 受入返品実績(アドオン)
+            ,xxcmn_vendors2_v         xvv    -- 仕入先情報VIEW
+            ,xxcmn_item_locations2_v  xilv   -- OPM保管場所情報VIEW
+            ,xxcmn_party_sites2_v     xpsv   -- パーティサイト情報VIEW
+            ,xxcmn_item_mst2_v        ximv   -- OPM品目情報VIEW
+            ,xxcmn_item_categories4_v xicv   -- OPM品目カテゴリ割当情報VIEW4
+            ,ic_lots_mst              ilm    -- OPMロットマスタ
+      WHERE  xrart.vendor_id       = xvv.vendor_id             -- 取引先ID
+      AND    xrart.vendor_code     = xvv.segment1              -- 取引先コード
+      AND    xrart.assen_vendor_id = xvv.vendor_id(+)          -- 仕入先ID
+      AND    xrart.location_code   = xilv.segment1             -- 入出庫先コード
+      AND    xrart.delivery_code   = xpsv.ship_to_no(+)        -- 配送先コード
+      AND    xrart.item_id         = ximv.item_id              -- 品目ID
+      AND    xrart.lot_id          = ilm.lot_id                -- ロットID
+      AND    xrart.item_id         = ilm.item_id               -- 品目ID
+      AND    ximv.item_id          = xicv.item_id
+-- 依頼No
+      AND    ((gv_req_no_from IS NULL) OR (xrart.supply_requested_number >= gv_req_no_from))
+      AND    ((gv_req_no_to IS NULL)   OR (xrart.supply_requested_number <= gv_req_no_to))
+-- 取引先
+      AND    ((gv_vendor_code IS NULL) OR (xvv.segment1 = gv_vendor_code))
+-- 斡旋者
+      AND    ((gv_mediation IS NULL) OR (xrart.assen_vendor_code = gv_mediation))
+-- 入庫倉庫
+      AND    ((gv_arvl_code IS NULL) OR (xrart.location_code = gv_arvl_code))
+-- 納入日(必須)
+      AND    xrart.txns_date >= FND_DATE.STRING_TO_DATE(gv_ship_date_from,'YYYY/MM/DD')
+      AND    xrart.txns_date <= FND_DATE.STRING_TO_DATE(gv_ship_date_to,'YYYY/MM/DD')
+-- 指示部署
+      AND    ((gv_instruction_dept IS NULL) OR (xrart.department_code = gv_instruction_dept))
+-- 品目
+      AND    ((gv_item_no IS NULL) OR (xrart.item_code = gv_item_no))
+-- 更新日時
+      AND    ((gd_update_time_from IS NULL) OR (xrart.last_update_date >= gd_update_time_from))
+      AND    ((gd_update_time_to IS NULL)   OR (xrart.last_update_date <= gd_update_time_to))
+      AND    ((gd_update_time_from IS NULL) OR (xrart.last_update_date >= gd_update_time_from))
+      AND    ((gd_update_time_to IS NULL)   OR (xrart.last_update_date <= gd_update_time_to))
+-- 商品区分
+      AND    ((gv_prod_class IS NULL) OR (xicv.prod_class_code   = gv_prod_class))
+-- 品目区分
+      AND    ((gv_item_class IS NULL) OR (xicv.item_class_code   = gv_item_class))
+-- OPM品目情報VIEW2
+      AND     xrart.txns_date BETWEEN ximv.start_date_active AND ximv.end_date_active
+-- OPM保管場所情報VIEW2
+      AND     xilv.date_from <= xrart.txns_date
+      AND     (xilv.date_to >= xrart.txns_date OR xilv.date_to IS NULL)
+      AND     xilv.disable_date IS NULL
+-- 仕入先情報VIEW2
+      AND     xvv.inactive_date IS NULL
+      AND     xrart.txns_date 
+      BETWEEN NVL(xvv.start_date_active,FND_DATE.STRING_TO_DATE(gv_min_date,'YYYY/MM/DD'))
+      AND     NVL(xvv.end_date_active,FND_DATE.STRING_TO_DATE(gv_max_date,'YYYY/MM/DD'))
+-- パーティサイト情報VIEW2
+      AND     NVL(xpsv.party_site_status,gv_status_on) = gv_status_on
+      AND     NVL(xpsv.cust_acct_site_status,gv_status_on) = gv_status_on
+      AND     NVL(xpsv.cust_site_uses_status,gv_status_on) = gv_status_on
+      AND     xrart.txns_date 
+      BETWEEN NVL(xpsv.start_date_active,FND_DATE.STRING_TO_DATE(gv_min_date,'YYYY/MM/DD'))
+      AND     NVL(xpsv.end_date_active,FND_DATE.STRING_TO_DATE(gv_max_date,'YYYY/MM/DD'))
+-- セキュリティ区分
+      AND    (
+-- 伊藤園ユーザータイプ
+              (gv_sec_class = gv_sec_class_home)
+-- 取引先ユーザータイプ
+       OR     (gv_sec_class = gv_sec_class_vend
+               AND    xvv.segment1 IN
+                 (SELECT papf.attribute4           -- 取引先コード(仕入先コード)
+                  FROM   fnd_user           fu              -- ユーザーマスタ
+                        ,per_all_people_f   papf            -- 従業員マスタ
+                  WHERE  fu.employee_id   = papf.person_id                   -- 従業員ID
+                  AND    papf.effective_start_date <= TRUNC(gd_sys_date)     -- 適用開始日
+                  AND    papf.effective_end_date   >= TRUNC(gd_sys_date)     -- 適用終了日
+                  AND    fu.start_date             <= TRUNC(gd_sys_date)     -- 適用開始日
+                  AND  ((fu.end_date               IS NULL)                  -- 適用終了日
+                    OR  (fu.end_date               >= TRUNC(gd_sys_date)))
+                  AND    fu.user_id                 = gn_user_id)            -- ユーザーID
+              )
+-- 外部倉庫ユーザータイプ
+       OR     (gv_sec_class = gv_sec_class_extn
+               AND    xrart.location_code IN
+                 (SELECT xilv.segment1                -- 保管倉庫コード
+                  FROM   fnd_user               fu          -- ユーザーマスタ
+                        ,per_all_people_f       papf        -- 従業員マスタ
+                        ,xxcmn_item_locations_v xilv        -- OPM保管場所情報VIEW
+                  WHERE  fu.employee_id             = papf.person_id         -- 従業員ID
+                  AND    papf.effective_start_date <= TRUNC(gd_sys_date)     -- 適用開始日
+                  AND    papf.effective_end_date   >= TRUNC(gd_sys_date)     -- 適用終了日
+                  AND    fu.start_date             <= TRUNC(gd_sys_date)     -- 適用開始日
+                  AND  ((fu.end_date               IS NULL)                  -- 適用終了日
+                    OR  (fu.end_date               >= TRUNC(gd_sys_date)))
+                  AND    xilv.purchase_code         = papf.attribute4        -- 仕入先コード
+                  AND    fu.user_id                 = gn_user_id)            -- ユーザーID
+              )
+-- 東洋埠頭ユーザータイプ
+       OR     (gv_sec_class = gv_sec_class_quay
+               AND    (
+                       xrart.location_code IN (
+                          SELECT xilv.segment1                -- 保管倉庫コード
+                          FROM   fnd_user               fu          -- ユーザーマスタ
+                                ,per_all_people_f       papf        -- 従業員マスタ
+                                ,xxcmn_item_locations_v xilv        -- OPM保管場所情報VIEW
+                          WHERE  fu.employee_id             = papf.person_id        -- 従業員ID
+                          AND    papf.effective_start_date <= TRUNC(gd_sys_date)    -- 適用開始日
+                          AND    papf.effective_end_date   >= TRUNC(gd_sys_date)    -- 適用終了日
+                          AND    fu.start_date             <= TRUNC(gd_sys_date)    -- 適用開始日
+                          AND  ((fu.end_date               IS NULL)                 -- 適用終了日
+                            OR  (fu.end_date               >= TRUNC(gd_sys_date)))
+                          AND    xilv.purchase_code         = papf.attribute4       -- 仕入先コード
+                          AND    fu.user_id                 = gn_user_id            -- ユーザーID
+                          )
+               OR      xrart.location_code IN (
+                          SELECT xilv.frequent_whse_code      -- 主管倉庫
+                          FROM   fnd_user               fu          -- ユーザーマスタ
+                                ,per_all_people_f       papf        -- 従業員マスタ
+                                ,xxcmn_item_locations_v xilv        -- OPM保管場所情報VIEW
+                          WHERE  fu.employee_id             = papf.person_id        -- 従業員ID
+                          AND    papf.effective_start_date <= TRUNC(gd_sys_date)    -- 適用開始日
+                          AND    papf.effective_end_date   >= TRUNC(gd_sys_date)    -- 適用終了日
+                          AND    fu.start_date             <= TRUNC(gd_sys_date)    -- 適用開始日
+                          AND  ((fu.end_date               IS NULL)                 -- 適用終了日
+                            OR  (fu.end_date               >= TRUNC(gd_sys_date)))
+                          AND    xilv.purchase_code         = papf.attribute4       -- 仕入先コード
+                          AND    fu.user_id                 = gn_user_id            -- ユーザーID
+                          )
+                      )
+              )
+             )
+-- ソート順
+      ORDER BY 27,                   -- 入庫日
+               9,                    -- 取引先コード
+               15,                   -- 倉庫コード
+               18,                   -- 配送先コード
+               5,                    -- 依頼No.
+               51,                   -- 明細No.
+               52,                   -- 品目コード
+               55,                   -- 付帯コード
+               56,                   -- ロット
+               57,                   -- 製造日
+               58,                   -- 賞味期限
+               59                    -- 固有記号
+-- 2008/09/02 Mod ↑
       ;
 --
     -- *** ローカル・レコード ***
@@ -1539,6 +1806,7 @@ AS
       mst_rec.ship_no            := lr_mst_data_rec.ship_no;            -- 配送No.
       mst_rec.request_no         := lr_mst_data_rec.request_no;         -- 依頼No.
       mst_rec.relation_no        := lr_mst_data_rec.relation_no;        -- 関連No.
+      mst_rec.base_request_no    := lr_mst_data_rec.base_request_no;    -- コピー元No.   2008/09/02 Add
       mst_rec.base_ship_no       := lr_mst_data_rec.base_ship_no;       -- 元配送No.
       mst_rec.vendor_code        := lr_mst_data_rec.vendor_code;        -- 取引先コード
       mst_rec.vendor_name        := lr_mst_data_rec.vendor_name;        -- 取引先名
@@ -1750,6 +2018,7 @@ AS
             ,DECODE(xotv.transaction_type_name,gv_transaction_type_name,
                     xoha.po_no,
                     NULL) as relation_no                       -- 関連No.
+            ,xoha.base_request_no                              -- コピー元No.    2008/09/02 Add
             ,xoha.prev_delivery_no as base_ship_no             -- 元配送No.
             ,xoha.vendor_code                                  -- 取引先コード
             ,xvv.vendor_full_name as vendor_name               -- 取引先名
@@ -2180,6 +2449,7 @@ AS
       mst_rec.ship_no            := lr_mst_data_rec.ship_no;            -- 配送No.
       mst_rec.request_no         := lr_mst_data_rec.request_no;         -- 依頼No.
       mst_rec.relation_no        := lr_mst_data_rec.relation_no;        -- 関連No.
+      mst_rec.base_request_no    := lr_mst_data_rec.base_request_no;    -- コピー元No.   2008/09/02 Add
       mst_rec.base_ship_no       := lr_mst_data_rec.base_ship_no;       -- 元配送No.
       mst_rec.vendor_code        := lr_mst_data_rec.vendor_code;        -- 取引先コード
       mst_rec.vendor_name        := lr_mst_data_rec.vendor_name;        -- 取引先名
@@ -2349,6 +2619,7 @@ AS
             ,xmrh.delivery_no as ship_no                        -- 配送No.
             ,xmrh.mov_num as request_no                         -- 依頼No.
             ,NULL as relation_no                                -- 関連No.
+            ,NULL as base_request_no                            -- コピー元No.    2008/09/02 Add
             ,xmrh.prev_delivery_no as base_ship_no              -- 元配送No.
             ,NULL as vendor_code                                -- 取引先コード
             ,NULL as vendor_name                                -- 取引先名
@@ -2810,6 +3081,7 @@ AS
       mst_rec.ship_no            := lr_mst_data_rec.ship_no;            -- 配送No.
       mst_rec.request_no         := lr_mst_data_rec.request_no;         -- 依頼No.
       mst_rec.relation_no        := lr_mst_data_rec.relation_no;        -- 関連No.
+      mst_rec.base_request_no    := lr_mst_data_rec.base_request_no;    -- コピー元No.   2008/09/02 Add
       mst_rec.base_ship_no       := lr_mst_data_rec.base_ship_no;       -- 元配送No.
       mst_rec.vendor_code        := lr_mst_data_rec.vendor_code;        -- 取引先コード
       mst_rec.vendor_name        := lr_mst_data_rec.vendor_name;        -- 取引先名
@@ -2994,6 +3266,7 @@ AS
                ir_mst_rec.ship_no           || cv_sep_com ||                    -- 配送No.
                ir_mst_rec.request_no        || cv_sep_com ||                    -- 依頼No.
                ir_mst_rec.relation_no       || cv_sep_com ||                    -- 関連No.
+               ir_mst_rec.base_request_no   || cv_sep_com ||                    -- コピー元No.   2008/09/02 Add
                ir_mst_rec.base_ship_no      || cv_sep_com ||                    -- 元配送No.
                ir_mst_rec.vendor_code       || cv_sep_com ||                    -- 取引先コード
                replace_sep(ir_mst_rec.vendor_name       ) || cv_sep_com ||      -- 取引先名
@@ -3305,6 +3578,7 @@ AS
         -- 明細部出力
         IF (mst_rec.v_seq_no = lv_line_seq) THEN
           mst_rec.relation_no          := NULL; -- 関連No.
+          mst_rec.base_request_no      := NULL; -- コピー元No.   2008/09/02 Add
           mst_rec.base_ship_no         := NULL; -- 元配送No.
           mst_rec.vendor_code          := NULL; -- 取引先コード
           mst_rec.vendor_name          := NULL; -- 取引先名
