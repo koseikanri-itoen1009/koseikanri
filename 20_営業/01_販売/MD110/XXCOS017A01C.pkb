@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS017A01C(spec)
  * Description      : 補填・実卸単価チェック情報集計
  * MD.050           : 補填・実卸単価チェック情報集計 MD050_COS_017_A01
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -22,6 +22,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/03/17    1.0   T.Nakabayashi    新規作成
+ *  2009/05/14    1.1   T.Miyata         T1_0994対応
  *
  *****************************************************************************************/
 --
@@ -157,7 +158,7 @@ AS
   --＠固定値
   --  検索用（match any）
   cv_match_any                  CONSTANT  VARCHAR2(1) := '%';
-  ct_max_unit_price             CONSTANT  xxcos_sales_exp_lines.standard_unit_price%TYPE := 99999999999.99;
+  ct_max_unit_price             CONSTANT  xxcos_sales_exp_lines.standard_unit_price%TYPE := 9999999999.99;
   cv_tab                        CONSTANT  VARCHAR2(1) := CHR(9);
 --
   --＠Yes/No
