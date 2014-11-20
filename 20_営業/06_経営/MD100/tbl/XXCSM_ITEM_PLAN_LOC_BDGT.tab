@@ -1,0 +1,55 @@
+CREATE TABLE xxcsm.xxcsm_item_plan_loc_bdgt (
+     item_plan_header_id            NUMBER(15,0)  NOT NULL
+    ,item_plan_loc_bdgt_id          NUMBER(15,0)  NOT NULL
+    ,year_month                     NUMBER(6,0)
+    ,month_no                       NUMBER(2,0)   NOT NULL
+    ,sales_discount                 NUMBER(15,0)  DEFAULT 0
+    ,receipt_discount               NUMBER(15,0)  DEFAULT 0
+    ,sales_budget                   NUMBER(15,0)  DEFAULT 0
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcsm_item_plan_loc_bdgt_pk PRIMARY KEY (item_plan_loc_bdgt_id)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 40 INITRANS 10 STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE  xxcsm.xxcsm_item_plan_loc_bdgt                                       IS '商品計画拠点別予算テーブル'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_loc_bdgt.item_plan_header_id                   IS '商品計画ヘッダID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_loc_bdgt.item_plan_loc_bdgt_id                 IS '商品計画拠点別ID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_loc_bdgt.year_month                            IS '年月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_loc_bdgt.month_no                              IS '月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_loc_bdgt.sales_discount                        IS '売上値引'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_loc_bdgt.receipt_discount                      IS '入金値引'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_loc_bdgt.sales_budget                          IS '売上予算'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_loc_bdgt.created_by                            IS '作成者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_loc_bdgt.creation_date                         IS '作成日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_loc_bdgt.last_updated_by                       IS '最終更新者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_loc_bdgt.last_update_date                      IS '最終更新日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_loc_bdgt.last_update_login                     IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_loc_bdgt.request_id                            IS '要求ID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_loc_bdgt.program_application_id                IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_loc_bdgt.program_id                            IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_loc_bdgt.program_update_date                   IS 'プログラム更新日'
+/

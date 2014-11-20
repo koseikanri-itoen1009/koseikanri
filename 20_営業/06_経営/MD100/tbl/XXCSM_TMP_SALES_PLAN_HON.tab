@@ -1,0 +1,60 @@
+CREATE GLOBAL TEMPORARY TABLE xxcsm.xxcsm_tmp_sales_plan_hon (
+     toroku_no                      NUMBER
+    ,group_cd_1                     VARCHAR2(10)
+    ,group_nm_1                     VARCHAR2(240)
+    ,group_cd_4                     VARCHAR2(10)
+    ,group_nm_4                     VARCHAR2(240)
+    ,item_cd                        VARCHAR2(10)
+    ,item_nm                        VARCHAR2(240)
+    ,month_no                       NUMBER(2,0)
+    ,m_sales                        NUMBER
+    ,m_margin                       NUMBER
+    ,m_rate                         NUMBER
+    ,m_amount                       NUMBER
+    ,y_sales                        NUMBER
+    ,y_margin                       NUMBER
+    ,y_rate                         NUMBER
+    ,y_amount                       NUMBER
+    ,t_price                        NUMBER
+    ,g_price                        NUMBER)
+ON COMMIT DELETE ROWS
+NOCACHE
+/
+COMMENT ON TABLE  xxcsm.xxcsm_tmp_sales_plan_hon                                        IS '商品計画リスト本数単位用ワークテーブル'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_hon.toroku_no                              IS '出力順力順'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_hon.group_cd_1                             IS '商品群コード(1桁)'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_hon.group_nm_1                             IS '商品群名称(1桁)'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_hon.group_cd_4                             IS '商品群コード(4桁)'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_hon.group_nm_4                             IS '商品群名称(4桁)'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_hon.item_cd                                IS '商品コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_hon.item_nm                                IS '商品名称'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_hon.month_no                               IS '月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_hon.m_sales                                IS '月間売上金額'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_hon.m_margin                               IS '月間粗利益額'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_hon.m_rate                                 IS '月間掛率'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_hon.m_amount                               IS '月間本数量'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_hon.y_sales                                IS '年間売上金額'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_hon.y_margin                               IS '年間粗利益額'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_hon.y_rate                                 IS '年間掛率'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_hon.y_amount                               IS '年間本数量'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_hon.t_price                                IS '定価*数量'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_hon.g_price                                IS '原価*数量'
+/

@@ -1,0 +1,57 @@
+CREATE GLOBAL TEMPORARY TABLE xxcsm.xxcsm_tmp_item_plan_gun (
+     toroku_no                      NUMBER
+    ,code                           VARCHAR2(10)
+    ,code_nm                        VARCHAR2(240)
+    ,item_nm                        VARCHAR2(20)
+    ,data_05                        NUMBER
+    ,data_06                        NUMBER
+    ,data_07                        NUMBER
+    ,data_08                        NUMBER
+    ,data_09                        NUMBER
+    ,data_10                        NUMBER
+    ,data_11                        NUMBER
+    ,data_12                        NUMBER
+    ,data_01                        NUMBER
+    ,data_02                        NUMBER
+    ,data_03                        NUMBER
+    ,data_04                        NUMBER
+    ,total                          NUMBER)
+ON COMMIT DELETE ROWS
+NOCACHE
+/
+COMMENT ON TABLE  xxcsm.xxcsm_tmp_item_plan_gun                                        IS 'è§ïiåvâÊåQï ÉèÅ[ÉNÉeÅ[ÉuÉã'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_gun.toroku_no                              IS 'èoóÕèá'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_gun.code                                   IS 'ÉRÅ[Éh'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_gun.code_nm                                IS 'ÉRÅ[ÉhñºèÃ'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_gun.item_nm                                IS 'çÄñ⁄ñº'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_gun.data_05                                IS 'ÇTåé'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_gun.data_06                                IS 'ÇUåé'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_gun.data_07                                IS 'ÇVåé'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_gun.data_08                                IS 'ÇWåé'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_gun.data_09                                IS 'ÇXåé'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_gun.data_10                                IS 'ÇPÇOåé'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_gun.data_11                                IS 'ÇPÇPåé'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_gun.data_12                                IS 'ÇPÇQåé'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_gun.data_01                                IS 'ÇPåé'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_gun.data_02                                IS 'ÇQåé'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_gun.data_03                                IS 'ÇRåé'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_gun.data_04                                IS 'ÇSåé'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_gun.total                                  IS 'îNä‘åv'
+/

@@ -1,0 +1,14 @@
+CREATE GLOBAL TEMPORARY TABLE xxcsm.xxcsm_tmp_cust_accounts
+(
+  cust_account_id                       NUMBER
+ ,account_number                        VARCHAR2(100)
+  )
+ON COMMIT DELETE ROWS
+NOCACHE
+/
+COMMENT ON TABLE  xxcsm.xxcsm_tmp_cust_accounts                            IS  '顧客情報ワークテーブル'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_cust_accounts.cust_account_id            IS  '顧客ID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_cust_accounts.account_number             IS  '顧客コード'
+/

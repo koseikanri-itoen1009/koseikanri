@@ -1,0 +1,82 @@
+CREATE TABLE xxcsm.xxcsm_new_cust_point_hst (
+     employee_number                VARCHAR2(30)
+    ,subject_year                   NUMBER(4,0)
+    ,month_no                       NUMBER(2,0)
+    ,account_number                 VARCHAR2(30)
+    ,data_kbn                       NUMBER(1,0)
+    ,year_month                     NUMBER(6)
+    ,point                          NUMBER(3)
+    ,post_cd                        VARCHAR2(150)
+    ,duties_cd                      VARCHAR2(150)
+    ,qualificate_cd                 VARCHAR2(150)
+    ,location_cd                    VARCHAR2(150)
+    ,get_intro_kbn                  VARCHAR2(1)
+    ,get_custom_date                DATE
+    ,custom_condition_cd            VARCHAR2(2)
+    ,business_low_type              VARCHAR2(2)
+    ,evaluration_kbn                VARCHAR2(1)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcsm_new_cust_point_hst_pk PRIMARY KEY (employee_number, subject_year, month_no, account_number, data_kbn)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 40 INITRANS 10 STORAGE ( INITIAL 3M)
+/
+COMMENT ON TABLE  xxcsm.xxcsm_new_cust_point_hst                                       IS '新規獲得ポイント顧客別履歴テーブル'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.employee_number                       IS '従業員コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.subject_year                          IS '対象年度'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.month_no                              IS '月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.account_number                        IS '顧客コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.data_kbn                              IS 'データ区分'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.year_month                            IS '年月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.point                                 IS 'ポイント'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.post_cd                               IS '部署コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.duties_cd                             IS '職務コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.qualificate_cd                        IS '資格コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.location_cd                           IS '拠点コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.get_intro_kbn                         IS '獲得・紹介区分'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.get_custom_date                       IS '顧客獲得日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.custom_condition_cd                   IS '顧客業態コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.business_low_type                     IS '業態（小分類）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.evaluration_kbn                       IS '新規評価対象区分'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.created_by                            IS '作成者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.creation_date                         IS '作成日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.last_updated_by                       IS '最終更新者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.last_update_date                      IS '最終更新日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.last_update_login                     IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.request_id                            IS '要求ID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.program_application_id                IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.program_id                            IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.program_update_date                   IS 'プログラム更新日'
+/

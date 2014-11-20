@@ -1,0 +1,52 @@
+CREATE TABLE xxcsm.xxcsm_news_item_headers_all (
+     news_item_header_id            NUMBER
+    ,subject_year                   NUMBER(4)
+    ,year_month                     NUMBER(6)
+    ,indication_order               NUMBER(2)
+    ,indication_name                VARCHAR2(32)
+    ,news_division_code             VARCHAR2(1)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcsm_news_item_headers_all_pk PRIMARY KEY (news_item_header_id)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 40 INITRANS 10 STORAGE ( INITIAL 1M)
+/
+COMMENT ON TABLE  xxcsm.xxcsm_news_item_headers_all                                    IS '速報出力商品ヘッダテーブル'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_headers_all.news_item_header_id                IS '速報出力商品ヘッダID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_headers_all.subject_year                       IS '対象年度'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_headers_all.year_month                         IS '年月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_headers_all.indication_order                   IS '表示順'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_headers_all.indication_name                    IS '表示名称'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_headers_all.news_division_code                 IS '速報区分コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_headers_all.created_by                         IS '作成者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_headers_all.creation_date                      IS '作成日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_headers_all.last_updated_by                    IS '最終更新者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_headers_all.last_update_date                   IS '最終更新日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_headers_all.last_update_login                  IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_headers_all.request_id                         IS '要求ID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_headers_all.program_application_id             IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_headers_all.program_id                         IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_headers_all.program_update_date                IS 'プログラム更新日'
+/

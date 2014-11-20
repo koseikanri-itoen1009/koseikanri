@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcsm_tmp_item_plan_salsum_s01 FOR xxcsm.xxcsm_tmp_item_plan_salsum_s01;

@@ -1,0 +1,51 @@
+CREATE GLOBAL TEMPORARY TABLE xxcsm.xxcsm_tmp_item_plan_sales (
+     toroku_no                      NUMBER
+    ,group1_cd                      VARCHAR2(1)
+    ,group1_nm                      VARCHAR2(240)
+    ,group3_cd                      VARCHAR2(3)
+    ,group3_nm                      VARCHAR2(240)
+    ,item_cd                        VARCHAR2(32)
+    ,item_nm                        VARCHAR2(240)
+    ,con_price                      NUMBER
+    ,amount                         NUMBER
+    ,sales_budget                   NUMBER
+    ,cost                           NUMBER
+    ,margin                         NUMBER
+    ,margin_rate                    NUMBER(7,2)
+    ,credit_rate                    NUMBER(7,2)
+    ,base_margin                    NUMBER)
+ON COMMIT DELETE ROWS
+NOCACHE
+/
+COMMENT ON TABLE  xxcsm.xxcsm_tmp_item_plan_sales                                      IS 'è§ïiåvâÊâcã∆å¥âøÉèÅ[ÉNÉeÅ[ÉuÉã'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales.toroku_no                            IS 'èoóÕèá'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales.group1_cd                            IS 'è§ïiåQÉRÅ[ÉhÇP'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales.group1_nm                            IS 'è§ïiåQñºèÃÇP'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales.group3_cd                            IS 'è§ïiåQÉRÅ[ÉhÇR'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales.group3_nm                            IS 'è§ïiåQñºèÃÇR'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales.item_cd                              IS 'ÉRÅ[Éh'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales.item_nm                              IS 'ñºèÃ'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales.con_price                            IS 'íËâø'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales.amount                               IS 'êîó '
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales.sales_budget                         IS 'îÑè„'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales.cost                                 IS 'å¥âø'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales.margin                               IS 'ëeóòâväz'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales.margin_rate                          IS 'ëeóòâvó¶'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales.credit_rate                          IS 'ä|ó¶'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales.base_margin                          IS 'ïWèÄå¥âøëeóòâväz'
+/

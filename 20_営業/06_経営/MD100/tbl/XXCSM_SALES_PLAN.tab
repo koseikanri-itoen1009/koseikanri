@@ -1,0 +1,305 @@
+CREATE TABLE xxcsm.xxcsm_sales_plan (
+     plan_year                      VARCHAR2(4)   NOT NULL
+    ,plan_ym                        VARCHAR2(6)   NOT NULL
+    ,location_cd                    VARCHAR2(4)   NOT NULL
+    ,act_work_date                  NUMBER(3)
+    ,plan_staff                     NUMBER(3)
+    ,sale_plan_depart               NUMBER(12)
+    ,sale_plan_cvs                  NUMBER(12)
+    ,sale_plan_dealer               NUMBER(12)
+    ,sale_plan_vendor               NUMBER(12)
+    ,sale_plan_others               NUMBER(12)
+    ,sale_plan_total                NUMBER(12)
+    ,sale_plan_spare_1              NUMBER(12)
+    ,sale_plan_spare_2              NUMBER(12)
+    ,sale_plan_spare_3              NUMBER(12)
+    ,ly_revision_depart             NUMBER(12)
+    ,ly_revision_cvs                NUMBER(12)
+    ,ly_revision_dealer             NUMBER(12)
+    ,ly_revision_others             NUMBER(12)
+    ,ly_revision_vendor             NUMBER(12)
+    ,ly_revision_spare_1            NUMBER(12)
+    ,ly_revision_spare_2            NUMBER(12)
+    ,ly_revision_spare_3            NUMBER(12)
+    ,ly_exist_total                 NUMBER(12)
+    ,ly_newly_total                 NUMBER(12)
+    ,ty_first_total                 NUMBER(12)
+    ,ty_turn_total                  NUMBER(12)
+    ,discount_total                 NUMBER(12)
+    ,ly_exist_vd_charge             NUMBER(12)
+    ,ly_newly_vd_charge             NUMBER(12)
+    ,ty_first_vd_charge             NUMBER(12)
+    ,ty_turn_vd_charge              NUMBER(12)
+    ,ty_first_vd_get                NUMBER(12)
+    ,ty_turn_vd_get                 NUMBER(12)
+    ,st_mon_get_total               NUMBER(12)
+    ,newly_get_total                NUMBER(12)
+    ,cancel_get_total               NUMBER(12)
+    ,newly_charge_total             NUMBER(12)
+    ,st_mon_get_vd                  NUMBER(12)
+    ,newly_get_vd                   NUMBER(12)
+    ,cancel_get_vd                  NUMBER(12)
+    ,newly_charge_vd_own            NUMBER(12)
+    ,newly_charge_vd_help           NUMBER(12)
+    ,cancel_charge_vd               NUMBER(12)
+    ,patrol_visit_cnt               NUMBER(12)
+    ,patrol_def_visit_cnt           NUMBER(12)
+    ,vendor_visit_cnt               NUMBER(12)
+    ,vendor_def_visit_cnt           NUMBER(12)
+    ,public_visit_cnt               NUMBER(12)
+    ,public_def_visit_cnt           NUMBER(12)
+    ,def_cnt_total                  NUMBER(12)
+    ,vend_machine_sales_plan        NUMBER(12)
+    ,vend_machine_margin            NUMBER(12)
+    ,vend_machine_bm                NUMBER(12)
+    ,vend_machine_elect             NUMBER(12)
+    ,vend_machine_lease             NUMBER(12)
+    ,vend_machine_manage            NUMBER(12)
+    ,vend_machine_sup_money         NUMBER(12)
+    ,vend_machine_total             NUMBER(12)
+    ,vend_machine_profit            NUMBER(12)
+    ,deficit_num                    NUMBER(12)
+    ,par_machine                    NUMBER(12)
+    ,possession_num                 NUMBER(12)
+    ,stock_num                      NUMBER(12)
+    ,operation_num                  NUMBER(12)
+    ,increase                       NUMBER(12)
+    ,new_setting_own                NUMBER(12)
+    ,new_setting_help               NUMBER(12)
+    ,new_setting_total              NUMBER(12)
+    ,withdraw_num                   NUMBER(12)
+    ,new_num_newly                  NUMBER(12)
+    ,new_num_replace                NUMBER(12)
+    ,new_num_total                  NUMBER(12)
+    ,old_num_newly                  NUMBER(12)
+    ,old_num_replace                NUMBER(12)
+    ,disposal_num                   NUMBER(12)
+    ,enter_num                      NUMBER(12)
+    ,appear_num                     NUMBER(12)
+    ,vend_machine_plan_spare_1      NUMBER(12)
+    ,vend_machine_plan_spare_2      NUMBER(12)
+    ,vend_machine_plan_spare_3      NUMBER(12)
+    ,spare_1                        NUMBER(12)
+    ,spare_2                        NUMBER(12)
+    ,spare_3                        NUMBER(12)
+    ,spare_4                        NUMBER(12)
+    ,spare_5                        NUMBER(12)
+    ,spare_6                        NUMBER(12)
+    ,spare_7                        NUMBER(12)
+    ,spare_8                        NUMBER(12)
+    ,spare_9                        NUMBER(12)
+    ,spare_10                       NUMBER(12)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcsm_sales_plan_pk PRIMARY KEY (plan_year,plan_ym,location_cd)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 40 INITRANS 10 STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE  xxcsm.xxcsm_sales_plan                                               IS '販売計画テーブル'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.plan_year                                     IS '予算年度'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.plan_ym                                       IS '年月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.location_cd                                   IS '拠点コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.act_work_date                                 IS '実働日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.plan_staff                                    IS '計画人員'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.sale_plan_depart                              IS '量販店売上計画'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.sale_plan_cvs                                 IS 'CVS売上計画'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.sale_plan_dealer                              IS '問屋売上計画'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.sale_plan_vendor                              IS 'ベンダー売上計画'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.sale_plan_others                              IS 'その他売上計画'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.sale_plan_total                               IS '売上計画合計'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.sale_plan_spare_1                             IS '業態別売上計画（予備１）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.sale_plan_spare_2                             IS '業態別売上計画（予備２）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.sale_plan_spare_3                             IS '業態別売上計画（予備３）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.ly_revision_depart                            IS '前年実績修正（量販店）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.ly_revision_cvs                               IS '前年実績修正（CVS）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.ly_revision_dealer                            IS '前年実績修正（問屋）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.ly_revision_others                            IS '前年実績修正（その他）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.ly_revision_vendor                            IS '前年実績修正（ベンダー）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.ly_revision_spare_1                           IS '前年実績修正（予備１）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.ly_revision_spare_2                           IS '前年実績修正（予備２）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.ly_revision_spare_3                           IS '前年実績修正（予備３）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.ly_exist_total                                IS '昨年売上計画_既存客（全体）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.ly_newly_total                                IS '昨年売上計画_新規客（全体）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.ty_first_total                                IS '本年売上計画_新規初回（全体）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.ty_turn_total                                 IS '本年売上計画_新規回転（全体）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.discount_total                                IS '入金値引（全体）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.ly_exist_vd_charge                            IS '昨年売上計画_既存客（VD）担当ベース'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.ly_newly_vd_charge                            IS '昨年売上計画_新規客（VD）担当ベース'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.ty_first_vd_charge                            IS '本年売上計画_新規初回（VD）担当ベース'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.ty_turn_vd_charge                             IS '本年売上計画_新規回転（VD）担当ベース'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.ty_first_vd_get                               IS '本年売上計画_新規初回（VD）獲得ベース'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.ty_turn_vd_get                                IS '本年売上計画_新規回転（VD）獲得ベース'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.st_mon_get_total                              IS '月初顧客数（全体）獲得ベース'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.newly_get_total                               IS '新規軒数（全体）獲得ベース'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.cancel_get_total                              IS '中止軒数（全体）獲得ベース'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.newly_charge_total                            IS '新規軒数（全体）担当ベース'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.st_mon_get_vd                                 IS '月初顧客数（VD）獲得ベース'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.newly_get_vd                                  IS '新規軒数（VD）獲得ベース'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.cancel_get_vd                                 IS '中止軒数（VD）獲得ベース'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.newly_charge_vd_own                           IS '自力新規軒数（VD）担当ベース'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.newly_charge_vd_help                          IS '他力新規軒数（VD）担当ベース'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.cancel_charge_vd                              IS '中止軒数（VD）担当ベース'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.patrol_visit_cnt                              IS '巡回訪問顧客数'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.patrol_def_visit_cnt                          IS '巡回延訪問軒数'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.vendor_visit_cnt                              IS 'ベンダー訪問顧客数'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.vendor_def_visit_cnt                          IS 'ベンダー延訪問軒数'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.public_visit_cnt                              IS '一般訪問顧客数'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.public_def_visit_cnt                          IS '一般延訪問軒数'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.def_cnt_total                                 IS '延訪問軒数合計'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.vend_machine_sales_plan                       IS '自販機売上計画'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.vend_machine_margin                           IS '自販機計画粗利益'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.vend_machine_bm                               IS '自販機手数料（BM）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.vend_machine_elect                            IS '自販機手数料（電気代）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.vend_machine_lease                            IS '自販機リース料'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.vend_machine_manage                           IS '自販機維持管理料'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.vend_machine_sup_money                        IS '自販機計画協賛金'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.vend_machine_total                            IS '自販機計画費用合計'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.vend_machine_profit                           IS '拠点自販機利益'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.deficit_num                                   IS '赤字台数'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.par_machine                                   IS 'パーマシン'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.possession_num                                IS '保有台数'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.stock_num                                     IS '在庫台数'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.operation_num                                 IS '稼働台数'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.increase                                      IS '純増'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.new_setting_own                               IS '新規設置台数（自力）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.new_setting_help                              IS '新規設置台数（他力）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.new_setting_total                             IS '新規設置台数合計'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.withdraw_num                                  IS '単独引揚台数'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.new_num_newly                                 IS '新台台数（新規）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.new_num_replace                               IS '新台台数（台替）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.new_num_total                                 IS '新台台数合計'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.old_num_newly                                 IS '旧台台数（新規）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.old_num_replace                               IS '旧台台数（台替・移設）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.disposal_num                                  IS '廃棄台数'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.enter_num                                     IS '拠点間移入台数'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.appear_num                                    IS '拠点間移出台数'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.vend_machine_plan_spare_1                     IS '自動販売機計画（予備１）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.vend_machine_plan_spare_2                     IS '自動販売機計画（予備２）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.vend_machine_plan_spare_3                     IS '自動販売機計画（予備３）'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.spare_1                                       IS '予備１'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.spare_2                                       IS '予備２'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.spare_3                                       IS '予備３'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.spare_4                                       IS '予備４'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.spare_5                                       IS '予備５'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.spare_6                                       IS '予備６'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.spare_7                                       IS '予備７'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.spare_8                                       IS '予備８'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.spare_9                                       IS '予備９'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.spare_10                                      IS '予備１０'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.created_by                                    IS '作成者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.creation_date                                 IS '作成日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.last_updated_by                               IS '最終更新者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.last_update_date                              IS '最終更新日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.last_update_login                             IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.request_id                                    IS '要求ID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.program_application_id                        IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.program_id                                    IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_sales_plan.program_update_date                           IS 'プログラム更新日'
+/
+

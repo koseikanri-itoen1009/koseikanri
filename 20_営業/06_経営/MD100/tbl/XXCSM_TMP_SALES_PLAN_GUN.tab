@@ -1,0 +1,45 @@
+CREATE GLOBAL TEMPORARY TABLE xxcsm.xxcsm_tmp_sales_plan_gun (
+     toroku_no                      NUMBER
+    ,group_cd_4                     VARCHAR2(10)
+    ,group_nm_4                     VARCHAR2(240)
+    ,group_cd_3                     VARCHAR2(10)
+    ,group_nm_3                     VARCHAR2(240)
+    ,year                           NUMBER(4,0)
+    ,month_no                       NUMBER(2,0)
+    ,m_sales                        NUMBER
+    ,m_margin                       NUMBER
+    ,m_margin_rate                  NUMBER
+    ,y_sales                        NUMBER
+    ,y_margin                       NUMBER
+    ,y_margin_rate                  NUMBER)
+ON COMMIT DELETE ROWS
+NOCACHE
+/
+COMMENT ON TABLE  xxcsm.xxcsm_tmp_sales_plan_gun                                        IS '商品計画群別計画資料ワークテーブル'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_gun.toroku_no                              IS '出力順力順'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_gun.group_cd_4                             IS '商品群コード(4桁)'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_gun.group_nm_4                             IS '商品群名称(4桁)'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_gun.group_cd_3                             IS '商品群コード(3桁)'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_gun.group_nm_3                             IS '商品群名称(3桁)'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_gun.year                                   IS '年度'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_gun.month_no                               IS '月間売上'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_gun.m_sales                                IS '月間売上金額'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_gun.m_margin                               IS '月間粗利益額'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_gun.m_margin_rate                          IS '月間粗利益率'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_gun.y_sales                                IS '年間売上金額'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_gun.y_margin                               IS '年間粗利益額'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_gun.y_margin_rate                          IS '年間粗利益率'
+/

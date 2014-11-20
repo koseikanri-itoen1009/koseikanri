@@ -1,0 +1,65 @@
+CREATE GLOBAL TEMPORARY TABLE xxcsm.xxcsm_tmp_month_item_plan
+(
+  seq_no                       NUMBER
+ ,location_cd                  VARCHAR2(100)
+ ,location_nm                  VARCHAR2(100)
+ ,code                         VARCHAR2(100)
+ ,name                         VARCHAR2(100)
+ ,kbn_nm                       VARCHAR2(100)
+ ,plan_data5                   NUMBER
+ ,plan_data6                   NUMBER
+ ,plan_data7                   NUMBER
+ ,plan_data8                   NUMBER
+ ,plan_data9                   NUMBER
+ ,plan_data10                  NUMBER
+ ,plan_data11                  NUMBER
+ ,plan_data12                  NUMBER
+ ,plan_data1                   NUMBER
+ ,plan_data2                   NUMBER
+ ,plan_data3                   NUMBER
+ ,plan_data4                   NUMBER
+ ,plan_year                    NUMBER
+  )
+ON COMMIT DELETE ROWS
+NOCACHE
+/
+COMMENT ON TABLE  xxcsm.xxcsm_tmp_month_item_plan                                IS  '月別商品計画ワークテーブル'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_month_item_plan.seq_no                         IS  '出力順'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_month_item_plan.location_cd                    IS  '拠点コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_month_item_plan.location_nm                    IS  '拠点名'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_month_item_plan.code                           IS  'コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_month_item_plan.name                           IS  '名称'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_month_item_plan.kbn_nm                         IS  '出力区分名'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_month_item_plan.plan_data5                     IS  '5月データ'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_month_item_plan.plan_data6                     IS  '6月データ'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_month_item_plan.plan_data7                     IS  '7月データ'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_month_item_plan.plan_data8                     IS  '8月データ'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_month_item_plan.plan_data9                     IS  '9月データ'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_month_item_plan.plan_data10                    IS  '10月データ'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_month_item_plan.plan_data11                    IS  '11月データ'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_month_item_plan.plan_data12                    IS  '12月データ'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_month_item_plan.plan_data1                     IS  '1月データ'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_month_item_plan.plan_data2                     IS  '2月データ'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_month_item_plan.plan_data3                     IS  '3月データ'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_month_item_plan.plan_data4                     IS  '4月データ'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_month_item_plan.plan_year                      IS  '合計'
+/

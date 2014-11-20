@@ -1,0 +1,64 @@
+CREATE TABLE xxcsm.xxcsm_item_plan_result (
+     subject_year                   NUMBER(4,0)   NOT NULL
+    ,month_no                       NUMBER(2,0)   NOT NULL
+    ,year_month                     NUMBER(6,0)
+    ,location_cd                    VARCHAR2(4)   NOT NULL
+    ,item_no                        VARCHAR2(32)  NOT NULL
+    ,item_group_no                  VARCHAR2(10)
+    ,amount                         NUMBER(16,1)  DEFAULT 0
+    ,sales_budget                   NUMBER(15,0)  DEFAULT 0
+    ,amount_gross_margin            NUMBER(15,0)  DEFAULT 0
+    ,discrete_cost                  NUMBER        DEFAULT 0
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcsm_item_plan_result_pk PRIMARY KEY (subject_year,month_no,location_cd,item_no)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 40 INITRANS 10 STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE  xxcsm.xxcsm_item_plan_result                                         IS '商品計画用販売実績テーブル'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_result.subject_year                            IS '対象年度'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_result.month_no                                IS '月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_result.year_month                              IS '年月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_result.location_cd                             IS '拠点コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_result.item_no                                 IS '商品コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_result.item_group_no                           IS '商品群コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_result.amount                                  IS '数量'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_result.sales_budget                            IS '売上金額'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_result.amount_gross_margin                     IS '粗利益'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_result.discrete_cost                           IS '営業原価'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_result.created_by                              IS '作成者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_result.creation_date                           IS '作成日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_result.last_updated_by                         IS '最終更新者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_result.last_update_date                        IS '最終更新日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_result.last_update_login                       IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_result.request_id                              IS '要求ID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_result.program_application_id                  IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_result.program_id                              IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_result.program_update_date                     IS 'プログラム更新日'
+/

@@ -1,0 +1,54 @@
+CREATE GLOBAL TEMPORARY TABLE xxcsm.xxcsm_tmp_item_plan_sales_sum (
+     toroku_no                      NUMBER
+    ,location_cd                    VARCHAR2(100)
+    ,location_nm                    VARCHAR2(240)
+    ,group1_cd                      VARCHAR2(1)
+    ,group1_nm                      VARCHAR2(240)
+    ,group4_cd                      VARCHAR2(4)
+    ,group4_nm                      VARCHAR2(240)
+    ,item_cd                        VARCHAR2(32)
+    ,item_nm                        VARCHAR2(240)
+    ,con_price                      NUMBER
+    ,amount                         NUMBER
+    ,sales_budget                   NUMBER
+    ,cost                           NUMBER
+    ,margin                         NUMBER
+    ,margin_rate                    NUMBER
+    ,credit_rate                    NUMBER)
+ON COMMIT DELETE ROWS
+NOCACHE
+/
+COMMENT ON TABLE  xxcsm.xxcsm_tmp_item_plan_sales_sum                                  IS '商品計画累計営業原価ワークテーブル'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales_sum.toroku_no                        IS '出力順'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales_sum.location_cd                      IS '拠点コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales_sum.location_nm                      IS '拠点名称'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales_sum.group1_cd                        IS '商品群コード１'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales_sum.group1_nm                        IS '商品群名称１'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales_sum.group4_cd                        IS '商品群コード４'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales_sum.group4_nm                        IS '商品群名称４'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales_sum.item_cd                          IS 'コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales_sum.item_nm                          IS '名称'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales_sum.con_price                        IS '定価'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales_sum.amount                           IS '数量'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales_sum.sales_budget                     IS '売上'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales_sum.cost                             IS '原価'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales_sum.margin                           IS '粗利益額'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales_sum.margin_rate                      IS '粗利益率'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_item_plan_sales_sum.credit_rate                      IS '掛率'
+/

@@ -1,0 +1,73 @@
+CREATE TABLE xxcsm.xxcsm_wk_new_cust_get_emp (
+     subject_year                   NUMBER(4,0)   NOT NULL
+    ,account_number                 VARCHAR2(30)  NOT NULL
+    ,custom_condition_cd            VARCHAR2(2)
+    ,employee_number                VARCHAR2(30)  NOT NULL
+    ,post_cd                        VARCHAR2(150)
+    ,qualificate_cd                 VARCHAR2(150)
+    ,duties_cd                      VARCHAR2(150)
+    ,job_type_cd                    VARCHAR2(150)
+    ,location_cd                    VARCHAR2(150)
+    ,get_custom_date                DATE          NOT NULL
+    ,decision_flg                   VARCHAR2(1)
+    ,get_intro_kbn                  VARCHAR2(1)
+    ,evaluration_kbn                VARCHAR2(1)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcsm_wk_new_cust_get_emp_pk PRIMARY KEY (subject_year, account_number, employee_number)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 40 INITRANS 10 STORAGE ( INITIAL 3M)
+/
+COMMENT ON TABLE  xxcsm.xxcsm_wk_new_cust_get_emp                                      IS '顧客獲得時従業員ワークテーブル'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.subject_year                         IS '対象年度'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.account_number                       IS '顧客コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.custom_condition_cd                  IS '顧客業態コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.employee_number                      IS '従業員コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.post_cd                              IS '部署コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.qualificate_cd                       IS '資格コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.duties_cd                            IS '職務コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.job_type_cd                          IS '職種コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.location_cd                          IS '拠点コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.get_custom_date                      IS '顧客獲得日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.decision_flg                         IS '確定フラグ'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.get_intro_kbn                        IS '獲得・紹介区分'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.evaluration_kbn                      IS '新規評価対象区分'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.created_by                           IS '作成者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.creation_date                        IS '作成日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.last_updated_by                      IS '最終更新者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.last_update_date                     IS '最終更新日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.last_update_login                    IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.request_id                           IS '要求ID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.program_application_id               IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.program_id                           IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_new_cust_get_emp.program_update_date                  IS 'プログラム更新日'
+/

@@ -1,0 +1,45 @@
+CREATE GLOBAL TEMPORARY TABLE xxcsm.xxcsm_tmp_sales_plan_time (
+     output_order                   NUMBER
+    ,location_cd                    VARCHAR2(4)
+    ,location_nm                    VARCHAR2(240)
+    ,item_cd                        VARCHAR2(4)
+    ,item_nm                        VARCHAR2(240)
+    ,year_month                     NUMBER
+    ,amount                         NUMBER
+    ,sales                          NUMBER
+    ,cost                           NUMBER
+    ,margin                         NUMBER
+    ,margin_rate                    NUMBER
+    ,rate                           NUMBER
+    ,discount                       NUMBER)
+ON COMMIT DELETE ROWS
+NOCACHE
+/
+COMMENT ON TABLE  xxcsm.xxcsm_tmp_sales_plan_time                                       IS '商品計画リスト(時系列)用ワークテーブル'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_time.output_order                          IS '出力順'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_time.location_cd                           IS '拠点コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_time.location_nm                           IS '拠点名'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_time.item_cd                               IS 'コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_time.item_nm                               IS '名称'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_time.year_month                            IS '年月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_time.amount                                IS '数量'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_time.sales                                 IS '売上'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_time.cost                                  IS '原価'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_time.margin                                IS '粗利益額'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_time.margin_rate                           IS '粗利益率'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_time.rate                                  IS '掛率'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_time.discount                              IS '値引'
+/

@@ -1,0 +1,2 @@
+CREATE SYNONYM apps.xxcsm_tmp_sales_plan_hon FOR xxcsm.xxcsm_tmp_sales_plan_hon
+/

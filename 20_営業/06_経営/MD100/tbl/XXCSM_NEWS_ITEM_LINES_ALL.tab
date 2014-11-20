@@ -1,0 +1,46 @@
+CREATE TABLE xxcsm.xxcsm_news_item_lines_all (
+     news_item_line_id              NUMBER
+    ,news_item_header_id            NUMBER
+    ,item_group_kbn                 VARCHAR2(1)   NOT NULL
+    ,item_group_cd                  VARCHAR2(7)   NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcsm_news_item_lines_all_pk PRIMARY KEY (news_item_line_id)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 40 INITRANS 10 STORAGE ( INITIAL 1M)
+/
+COMMENT ON TABLE  xxcsm.xxcsm_news_item_lines_all                                      IS '速報出力商品明細テーブル'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_lines_all.news_item_line_id                    IS '速報出力商品明細ID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_lines_all.news_item_header_id                  IS '速報出力商品ヘッダID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_lines_all.item_group_kbn                       IS '商品(群)区分'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_lines_all.item_group_cd                        IS '商品(群)コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_lines_all.created_by                           IS '作成者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_lines_all.creation_date                        IS '作成日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_lines_all.last_updated_by                      IS '最終更新者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_lines_all.last_update_date                     IS '最終更新日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_lines_all.last_update_login                    IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_lines_all.request_id                           IS '要求ID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_lines_all.program_application_id               IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_lines_all.program_id                           IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_news_item_lines_all.program_update_date                  IS 'プログラム更新日'
+/

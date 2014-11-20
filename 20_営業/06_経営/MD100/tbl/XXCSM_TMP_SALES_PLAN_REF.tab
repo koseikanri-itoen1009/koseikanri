@@ -1,0 +1,99 @@
+CREATE GLOBAL TEMPORARY TABLE xxcsm.xxcsm_tmp_sales_plan_ref (
+     toroku_no                      NUMBER
+    ,group_cd                       VARCHAR2(10)
+    ,item_cd                        VARCHAR2(32)
+    ,item_nm                        VARCHAR2(240)
+    ,year                           NUMBER(4,0)
+    ,month_no                       NUMBER(2,0)
+    ,m_sales                        NUMBER
+    ,m_amount                       NUMBER
+    ,m_rate                         NUMBER
+    ,m_margin_rate                  NUMBER
+    ,m_margin                       NUMBER
+    ,m_make                         NUMBER
+    ,y_sales                        NUMBER
+    ,y_amount                       NUMBER
+    ,y_rate                         NUMBER
+    ,y_margin_rate                  NUMBER
+    ,y_margin                       NUMBER
+    ,y_make                         NUMBER
+    ,h_sales                        NUMBER
+    ,h_amount                       NUMBER
+    ,h_rate                         NUMBER
+    ,h_margin_rate                  NUMBER
+    ,h_margin                       NUMBER
+    ,h_make                         NUMBER
+    ,yg_make                        NUMBER
+    ,yk_make                        NUMBER
+    ,hg_make                        NUMBER
+    ,hk_make                        NUMBER
+    ,k_sum                          NUMBER
+    ,g_sum                          NUMBER
+    ,flag                           NUMBER(1))
+ON COMMIT DELETE ROWS
+NOCACHE
+/
+COMMENT ON TABLE xxcsm.xxcsm_tmp_sales_plan_ref                                         IS '商品計画参考資料用ワークテーブル'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.toroku_no                              IS '出力順'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.group_cd                               IS '商品群コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.item_cd                                IS '商品コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.item_nm                                IS '商品名称'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.year                                   IS '年度'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.month_no                               IS '月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.m_sales                                IS '月間売上'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.m_amount                               IS '月間数量'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.m_rate                                 IS '月間掛率'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.m_margin_rate                          IS '月間粗利益率'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.m_margin                               IS '月間粗利益額'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.m_make                                 IS '月間構成比'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.y_sales                                IS '年間売上'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.y_amount                               IS '年間数量'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.y_rate                                 IS '年間掛率'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.y_margin_rate                          IS '年間粗利益率'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.y_margin                               IS '年間粗利益額'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.y_make                                 IS '年間構成比'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.h_sales                                IS '会計締年間売上'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.h_amount                               IS '会計締年間数量'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.h_rate                                 IS '会計締年間掛率'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.h_margin_rate                          IS '会計締年間粗利益率'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.h_margin                               IS '会計締年間粗利益額'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.h_make                                 IS '会計締年間構成比'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.yg_make                                IS '年間構成比_群別'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.yk_make                                IS '年間構成比_拠点別'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.hg_make                                IS '会計締年間構成比_群別'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.hk_make                                IS '会計締年間構成比_拠点別'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.k_sum                                  IS '拠点計売上'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.g_sum                                  IS '群計売上'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_tmp_sales_plan_ref.flag                                   IS 'データ区分'
+/

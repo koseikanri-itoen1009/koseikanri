@@ -1,0 +1,61 @@
+CREATE TABLE xxcsm.xxcsm_mst_grant_point (
+     subject_year                   NUMBER(4,0)   NOT NULL
+    ,post_cd                        VARCHAR2(15)  NOT NULL
+    ,duties_cd                      VARCHAR2(15)  NOT NULL
+    ,custom_condition_cd            VARCHAR2(2)   NOT NULL
+    ,grant_condition_point          VARCHAR2(1)
+    ,grant_point_target_1st_month   VARCHAR2(1)
+    ,grant_point_target_2nd_month   VARCHAR2(1)
+    ,grant_point_target_3rd_month   VARCHAR2(1)
+    ,grant_point_condition_price    NUMBER(15,0)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcsm_mst_grant_point_pk PRIMARY KEY (subject_year, post_cd, duties_cd, custom_condition_cd)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 5 PCTUSED 60 INITRANS 10 STORAGE ( INITIAL 1M)
+/
+COMMENT ON TABLE  xxcsm.xxcsm_mst_grant_point                                          IS 'ポイント付与条件マスタ'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_grant_point.subject_year                             IS '対象年度'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_grant_point.post_cd                                  IS '部署コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_grant_point.duties_cd                                IS '職務コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_grant_point.custom_condition_cd                      IS '顧客業態コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_grant_point.grant_condition_point                    IS 'ポイント付与条件'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_grant_point.grant_point_target_1st_month             IS 'ポイント付与条件対象月_当月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_grant_point.grant_point_target_2nd_month             IS 'ポイント付与条件対象月_翌月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_grant_point.grant_point_target_3rd_month             IS 'ポイント付与条件対象月_翌々月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_grant_point.grant_point_condition_price              IS 'ポイント付与条件金額'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_grant_point.created_by                               IS '作成者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_grant_point.creation_date                            IS '作成日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_grant_point.last_updated_by                          IS '最終更新者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_grant_point.last_update_date                         IS '最終更新日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_grant_point.last_update_login                        IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_grant_point.request_id                               IS '要求ID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_grant_point.program_application_id                   IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_grant_point.program_id                               IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_grant_point.program_update_date                      IS 'プログラム更新日'
+/

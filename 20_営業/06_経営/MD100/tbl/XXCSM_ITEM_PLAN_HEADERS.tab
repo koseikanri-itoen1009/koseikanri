@@ -1,0 +1,43 @@
+CREATE TABLE xxcsm.xxcsm_item_plan_headers (
+     item_plan_header_id            NUMBER(15,0)  NOT NULL
+    ,plan_year                      NUMBER(4,0)   NOT NULL
+    ,location_cd                    VARCHAR2(4)   NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcsm_item_plan_headers_pk PRIMARY KEY (item_plan_header_id)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 60 INITRANS 10 STORAGE ( INITIAL 1M)
+/
+COMMENT ON TABLE  xxcsm.xxcsm_item_plan_headers                                        IS '商品計画ヘッダテーブル'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_headers.item_plan_header_id                    IS '商品計画ヘッダID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_headers.plan_year                              IS '予算年度'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_headers.location_cd                            IS '拠点コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_headers.created_by                             IS '作成者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_headers.creation_date                          IS '作成日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_headers.last_updated_by                        IS '最終更新者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_headers.last_update_date                       IS '最終更新日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_headers.last_update_login                      IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_headers.request_id                             IS '要求ID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_headers.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_headers.program_id                             IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_headers.program_update_date                    IS 'プログラム更新日'
+/

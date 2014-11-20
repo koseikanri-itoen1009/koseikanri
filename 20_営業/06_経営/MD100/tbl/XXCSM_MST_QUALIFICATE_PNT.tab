@@ -1,0 +1,49 @@
+CREATE TABLE xxcsm.xxcsm_mst_qualificate_pnt (
+     subject_year                   NUMBER(4)
+    ,post_cd                        VARCHAR2(15)
+    ,duties_cd                      VARCHAR2(15)
+    ,qualificate_cd                 VARCHAR2(10)
+    ,qualificate_point              NUMBER
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcsm_mst_qualificate_pnt_pk PRIMARY KEY (subject_year, post_cd, duties_cd, qualificate_cd)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 5 PCTUSED 60 INITRANS 10 STORAGE ( INITIAL 1M)
+/
+COMMENT ON TABLE  xxcsm.xxcsm_mst_qualificate_pnt                                      IS '資格ポイントマスタ'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_qualificate_pnt.subject_year                         IS '対象年度'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_qualificate_pnt.post_cd                              IS '部署コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_qualificate_pnt.duties_cd                            IS '職務コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_qualificate_pnt.qualificate_cd                       IS '資格コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_qualificate_pnt.qualificate_point                    IS '資格ポイント'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_qualificate_pnt.created_by                           IS '作成者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_qualificate_pnt.creation_date                        IS '作成日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_qualificate_pnt.last_updated_by                      IS '最終更新者'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_qualificate_pnt.last_update_date                     IS '最終更新日'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_qualificate_pnt.last_update_login                    IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_qualificate_pnt.request_id                           IS '要求ID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_qualificate_pnt.program_application_id               IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_qualificate_pnt.program_id                           IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_mst_qualificate_pnt.program_update_date                  IS 'プログラム更新日'
+/
