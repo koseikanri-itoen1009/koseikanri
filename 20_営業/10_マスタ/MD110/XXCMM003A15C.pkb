@@ -11,7 +11,7 @@ AS
  *                    発生していない顧客を判断します。
  *                    （未取引客チェックリストに出力されます。）
  * MD.050           : 最終取引日更新 MD050_CMM_003_A15
- * Version          : Issue3.5
+ * Version          : Issue3.6
  *
  * Program List
  * -------------------- -----------------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/08/31    1.3   Yutaka.Kuboshima 障害0001229の対応
  *  2009/12/18    1.4   Yutaka.Kuboshima 障害E_本稼動_00540の対応
  *  2009/12/21    1.5   Yutaka.Kuboshima 障害E_本稼動_00416の対応
+ *  2009/12/30    1.6   Yutaka.Kuboshima 障害E_本稼動_00778の対応
  *
  *****************************************************************************************/
 --
@@ -240,6 +241,10 @@ AS
      ,fidt.month_old_tran_date    AS  month_old_tran_date     -- 当月最前取引日
      ,fidt.past_old_tran_date     AS  past_old_tran_date      -- 前月最前取引日
 -- 2009/12/21 Ver1.5 E_本稼動_00416 add end by Yutaka.Kuboshima
+--
+-- 2009/12/30 Ver1.6 E_本稼動_00778 add start by Yutaka.Kuboshima
+     ,xcac.past_customer_status   AS  past_customer_status    -- 前月顧客ステータス
+-- 2009/12/30 Ver1.6 E_本稼動_00778 add end by Yutaka.Kuboshima
 --
     FROM
       (
@@ -556,6 +561,10 @@ AS
     ld_old_tran_date          DATE;                                           -- 最前取引日
 -- 2009/12/21 Ver1.5 E_本稼動_00416 add end by Yutaka.Kuboshima
 --
+-- 2009/12/30 Ver1.6 E_本稼動_00778 add start by Yutaka.Kuboshima
+    lv_past_customer_status   xxcmm_cust_accounts.past_customer_status%TYPE;  -- 前月顧客ステータス
+-- 2009/12/30 Ver1.6 E_本稼動_00778 add end by Yutaka.Kuboshima
+--
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -695,9 +704,38 @@ AS
 -- 2009/12/21 Ver1.5 E_本稼動_00416 modify end by Yutaka.Kuboshima
     END IF;
     --
+-- 2009/12/30 Ver1.6 E_本稼動_00778 add start by Yutaka.Kuboshima
+    -- 前月顧客ステータス
+    lv_step := 'A-4.5';
+    --
+    -- 業態小分類が'24','25','27'以外の場合
+    IF (iv_rec.business_low_type NOT IN (cv_gyotai_sho_vd24, cv_gyotai_sho_vd25, cv_gyotai_sho_vd27)) THEN
+      -- 会計期間がクローズしている場合
+      IF (gv_prev_month_cls_status = cv_cal_status_close) THEN
+        -- 前月顧客ステータスをセット(変更無し)
+        lv_past_customer_status :=  iv_rec.past_customer_status;
+      ELSE
+        -- 前月最前取引日が前月の場合
+        IF (TRUNC(iv_rec.past_old_tran_date, 'MM') = gd_pre_first_month_day ) THEN
+          -- '40'(顧客)をセット
+          lv_past_customer_status :=  cv_cust_status_cust;
+        ELSE
+          -- 前月顧客ステータスをセット(変更無し)
+          lv_past_customer_status :=  iv_rec.past_customer_status;
+        END IF;
+      END IF;
+    ELSE
+      -- 前月顧客ステータスをセット(変更無し)
+      lv_past_customer_status :=  iv_rec.past_customer_status;
+    END IF;
+-- 2009/12/30 Ver1.6 E_本稼動_00778 add end by Yutaka.Kuboshima
+    --
     -- 最終取引日更新SQL文
     --
-    lv_step := 'A-4.5';
+-- 2009/12/30 Ver1.5 E_本稼動_00778 modify start by Yutaka.Kuboshima
+--    lv_step := 'A-4.5';
+    lv_step := 'A-4.6';
+-- 2009/12/30 Ver1.5 E_本稼動_00778 modify end by Yutaka.Kuboshima
     --
     UPDATE
       -- 顧客追加情報
@@ -713,6 +751,9 @@ AS
 -- 2009/05/27 Ver1.2 delete start by Yutaka.Kuboshima
       xcac.cnvs_date              = ld_cnvs_date,                 -- 顧客獲得日
       xcac.start_tran_date        = ld_start_tran_date,           -- 初回取引日
+-- 2009/12/30 Ver1.6 E_本稼動_00778 add start by Yutaka.Kuboshima
+      xcac.past_customer_status   = lv_past_customer_status,      -- 前月顧客ステータス
+-- 2009/12/30 Ver1.6 E_本稼動_00778 add end by Yutaka.Kuboshima
       -- WHO
       xcac.last_updated_by        = cn_last_updated_by,           -- 最終更新者
       xcac.last_update_date       = cd_last_update_date,          -- 最終更新日

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  2009/01/20    1.0   中村 祐基        新規作成
  *  2009/03/24    1.1   Yutaka.Kuboshima 全角半角チェック処理を追加
  *  2009/10/23    1.2   Yutaka.Kuboshima 障害0001350の対応
+ *  2010/01/04    1.3   Yutaka.Kuboshima 障害E_本稼動_00778の対応
  *
  *****************************************************************************************/
 --
@@ -139,6 +140,12 @@ AS
   cv_flex_value_err_msg       CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00352';                --値セット存在チェックエラー時メッセージ
   cv_set_item_err_msg         CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00353';                --項目設定チェックエラー時メッセージ
 -- 2009/10/23 Ver1.2 add end by Yutaka.Kuboshima
+--
+-- 2010/01/04 Ver1.3 E_本稼動_00778 add start by Yutaka.Kuboshima
+  cv_profile_err_msg          CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00002';                --プロファイル取得エラー
+  cv_stop_date_val_err_msg    CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00354';                --中止決裁日妥当性チェックエラー
+  cv_stop_date_future_err_msg CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00355';                --中止決裁日未来日チェックエラー
+-- 2010/01/04 Ver1.3 E_本稼動_00778 add start by Yutaka.Kuboshima
 --
   cv_param                    CONSTANT VARCHAR2(5)   := 'PARAM';                           --パラメータトークン
   cv_value                    CONSTANT VARCHAR2(5)   := 'VALUE';                           --パラメータ値トークン
@@ -256,6 +263,17 @@ AS
   cv_tonya_code               CONSTANT VARCHAR2(30)  := 'XXCMM_TONYA_CODE';                --参照コード・問屋管理コード
   cv_qp_list_headers_table    CONSTANT VARCHAR2(30)  := 'QP_LIST_HEADERS_B';               --価格表マスタ
 -- 2009/10/23 Ver1.2 add end by Yutaka.Kuboshima
+--
+-- 2010/01/04v Ver1.3 E_本稼動_00778 add start by Yutaka.Kuboshima
+  cv_profile_gl_cal           CONSTANT VARCHAR2(30)  := 'XXCMM1_003A00_GL_PERIOD_MN';      --会計カレンダ名定義ﾌﾟﾛﾌｧｲﾙ
+  cv_profile_ar_bks           CONSTANT VARCHAR2(30)  := 'XXCMM1_003A15_AR_BOOKS_NM';       --営業帳簿定義名ﾌﾟﾛﾌｧｲﾙ
+  cv_tkn_ng_profile           CONSTANT VARCHAR2(10)  := 'NG_PROFILE';                      --プロファイル名トークン
+  cv_gl_cal_name              CONSTANT VARCHAR2(30)  := '会計カレンダ名';                  --会計カレンダ名
+  cv_set_of_books_name        CONSTANT VARCHAR2(30)  := '営業帳簿定義名';                  --営業帳簿定義名
+  cv_close_status             CONSTANT VARCHAR2(1)   := 'C';                               --会計期間：クローズ
+  cv_apl_short_nm_ar          CONSTANT VARCHAR2(2)   := 'AR';                              --アプリケーション：AR
+-- 2010/01/04v Ver1.3 E_本稼動_00778 add end by Yutaka.Kuboshima
+--
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -266,6 +284,11 @@ AS
 -- 2009/10/23 Ver1.2 add start by Yutaka.Kuboshima
   gd_process_date             DATE;                                                        --業務日付
 -- 2009/10/23 Ver1.2 add end by Yutaka.Kuboshima
+--
+-- 2010/01/04 Ver1.3 E_本稼動_00778 add start by Yutaka.Kuboshima
+  gv_gl_cal_code              VARCHAR2(30);                                                --会計カレンダコード値
+  gv_ar_set_of_books          VARCHAR2(30);                                                --営業システム会計帳簿定義名
+-- 2010/01/04 Ver1.3 E_本稼動_00778 add end by Yutaka.Kuboshima
 --
   /**********************************************************************************
    * Procedure Name   : cust_data_make_wk
@@ -393,6 +416,11 @@ AS
     lv_price_list               VARCHAR2(500)   := NULL;                  --ローカル変数・価格表
     lv_price_list_mst           qp_list_headers_b.list_header_id%TYPE;    --価格表確認用変数
 -- 2009/10/23 Ver1.2 add end by Yutaka.Kuboshima
+--
+-- 2010/01/04 Ver1.3 E_本稼動_00778 add start by Yutaka.Kuboshima
+    lv_period_status            VARCHAR2(1)     := NULL;                  --ローカル変数・会計期間クローズステータス
+-- 2010/01/04 Ver1.3 E_本稼動_00778 add end by Yutaka.Kuboshima
+--
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -695,6 +723,36 @@ AS
     -- 価格表チェックレコード型
     check_price_list_rec  check_price_list_cur%ROWTYPE;
 -- 2009/10/23 Ver1.2 add end by Yutaka.Kuboshima
+--
+-- 2010/01/04 Ver1.3 E_本稼動_00778 add start by Yutaka.Kuboshima
+    -- 会計期間クローズステータス取得カーソル
+    CURSOR get_period_status_cur(
+      id_stop_approval_date IN DATE)
+    IS
+      SELECT gps.closing_status period_status
+      FROM   gl_periods         gp      -- 会計カレンダ
+            ,gl_period_statuses gps     -- 会計カレンダステータス
+      WHERE  EXISTS( -- ARアプリケーションのカレンダを抽出
+                     SELECT 'X'
+                     FROM   fnd_application   fa
+                     WHERE  fa.application_id         = gps.application_id
+                       AND  fa.application_short_name = cv_apl_short_nm_ar
+             )
+      AND    EXISTS( -- 営業システム会計帳簿IDのカレンダを抽出
+                     SELECT 'X'
+                     FROM   gl_sets_of_books  gsob
+                     WHERE  gsob.set_of_books_id  = gps.set_of_books_id
+                       AND  gsob.name             = gv_ar_set_of_books
+             )
+      AND    gp.period_name              = gps.period_name
+      AND    gp.period_set_name          = gv_gl_cal_code
+      AND    gp.adjustment_period_flag   = cv_no
+      AND    gps.adjustment_period_flag  = cv_no
+      AND    id_stop_approval_date BETWEEN gps.start_date AND gps.end_date
+      ;
+    -- 会計期間クローズステータス取得レコード型
+    get_period_status_rec  get_period_status_cur%ROWTYPE;
+-- 2010/01/04 Ver1.3 E_本稼動_00778 add end by Yutaka.Kuboshima
 --
   BEGIN
 --
@@ -1497,6 +1555,68 @@ AS
               ,buff   => lv_item_errmsg
             );
           END IF;
+-- 2010/01/04 Ver1.3 E_本稼動_00778 add start by Yutaka.Kuboshima
+          --顧客ステータスを'90'(中止決裁済)に変更する初回のみ
+          --未来日チェック、会計期間チェックを実施
+          IF (lv_customer_status = cv_stop_approved)
+            AND (lv_get_cust_status <> lv_customer_status)
+            AND (lv_item_retcode = cv_status_normal)
+          THEN
+            --未来日チェック
+            --業務日付より未来日の場合はエラー
+            IF (TO_DATE(lv_approval_date, cv_date_format) > gd_process_date) THEN
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --中止決済日未来日メッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_stop_date_future_err_msg
+                              ,iv_token_name1  => cv_cust_code
+                              ,iv_token_value1 => lv_customer_code
+                              ,iv_token_name2  => cv_input_val
+                              ,iv_token_value2 => lv_approval_date
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_item_errmsg
+              );
+            ELSE
+              --会計期間クローズステータス取得
+              << get_period_status_loop >>
+              FOR get_period_status_rec IN get_period_status_cur(TO_DATE(lv_approval_date, cv_date_format))
+              LOOP
+                lv_period_status := get_period_status_rec.period_status;
+              END LOOP get_period_status_loop;
+              --
+              --会計期間がクローズしている日付を指定している場合
+              IF (lv_period_status = cv_close_status) THEN
+                lv_check_status := cv_status_error;
+                lv_retcode      := cv_status_error;
+                --中止決済日妥当性メッセージ取得
+                gv_out_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => gv_xxcmm_msg_kbn
+                                ,iv_name         => cv_stop_date_val_err_msg
+                                ,iv_token_name1  => cv_cust_code
+                                ,iv_token_value1 => lv_customer_code
+                                ,iv_token_name2  => cv_input_val
+                                ,iv_token_value2 => lv_approval_date
+                               );
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => gv_out_msg
+                );
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => lv_item_errmsg
+                );
+              END IF;
+            END IF;
+          END IF;
+-- 2010/01/04 Ver1.3 E_本稼動_00778 add end by Yutaka.Kuboshima
         END IF;
 --
         --売掛コード１（請求書）取得
@@ -4330,6 +4450,11 @@ AS
 --              xwcbr.customer_class_code   customer_class_code         --顧客区分
               hca.customer_class_code     customer_class_code         --顧客区分
 -- 2009/10/23 Ver1.2 modify end by Yutaka.Kuboshima
+--
+-- 2010/01/04 Ver1.3 E_本稼動_00778 add start by Yutaka.Kuboshima
+             ,xca.past_customer_status    addon_past_customer_status  --顧客追加情報・前月顧客ステータス
+-- 2010/01/04 Ver1.3 E_本稼動_00778 add end by Yutaka.Kuboshima
+--
       FROM    hz_cust_accounts     hca,
               hz_cust_acct_sites   hcas,
               hz_cust_site_uses    hcsu,
@@ -5125,6 +5250,21 @@ AS
       l_xxcmm_cust_accounts.wholesale_ctrl_code := cust_data_rec.wholesale_ctrl_code;
     END IF;
     --
+-- 2010/01/04 Ver1.3 E_本稼動_00778 add start by Yutaka.Kuboshima
+    -- ===============================
+    -- 前月顧客ステータス
+    -- ===============================
+    -- 中止決裁日が前月の場合
+    IF (TRUNC(TO_DATE(cust_data_rec.approval_date, cv_date_format), 'MM') = ADD_MONTHS(TRUNC(gd_process_date, 'MM'), -1)) THEN
+      -- '90'(中止決裁済)をセット
+      l_xxcmm_cust_accounts.past_customer_status := cv_stop_approved;
+    ELSE
+      -- 更新前の値をセット
+      l_xxcmm_cust_accounts.past_customer_status := cust_data_rec.addon_past_customer_status;
+    END IF;
+    --
+-- 2010/01/04 Ver1.3 E_本稼動_00778 add end by Yutaka.Kuboshima
+    --
     -- ===============================
     -- 顧客追加情報マスタ更新
     -- ===============================
@@ -5146,6 +5286,9 @@ AS
           ,xca.selling_transfer_div   = l_xxcmm_cust_accounts.selling_transfer_div       --売上実績振替
           ,xca.card_company           = l_xxcmm_cust_accounts.card_company               --カード会社
           ,xca.wholesale_ctrl_code    = l_xxcmm_cust_accounts.wholesale_ctrl_code        --問屋管理コード
+-- 2010/01/04 Ver1.3 E_本稼動_00778 add start by Yutaka.Kuboshima
+          ,xca.past_customer_status   = l_xxcmm_cust_accounts.past_customer_status       --前月顧客ステータス
+-- 2010/01/04 Ver1.3 E_本稼動_00778 add end by Yutaka.Kuboshima
           ,xca.last_updated_by        = cn_last_updated_by                               --最終更新者
           ,xca.last_update_date       = cd_last_update_date                              --最終更新日
           ,xca.request_id             = cn_request_id                                    --要求ID
@@ -5414,6 +5557,36 @@ AS
     -- 業務日付取得
     gd_process_date := xxccp_common_pkg2.get_process_date;
 -- 2009/10/23 Ver1.2 add end by Yutaka.Kuboshima
+--
+-- 2010/01/04 Ver1.3 E_本稼動_00778 add start by Yutaka.Kuboshima
+    -- 会計カレンダコード取得
+    gv_gl_cal_code := fnd_profile.value(cv_profile_gl_cal);
+    IF (gv_gl_cal_code IS NULL) THEN
+      lv_errmsg :=  xxccp_common_pkg.get_msg(
+                      iv_application    =>  gv_xxcmm_msg_kbn,     -- アプリケーション短縮名
+                      iv_name           =>  cv_profile_err_msg,   -- プロファイル取得エラー
+                      iv_token_name1    =>  cv_tkn_ng_profile,    -- トークン(NG_PROFILE)
+                      iv_token_value1   =>  cv_gl_cal_name        -- プロファイル定義名
+                     );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+    --
+    -- 営業システム会計帳簿定義名取得
+    gv_ar_set_of_books := fnd_profile.value(cv_profile_ar_bks);
+    IF (gv_ar_set_of_books IS NULL) THEN
+      lv_errmsg :=  xxccp_common_pkg.get_msg(
+                      iv_application    =>  gv_xxcmm_msg_kbn,     -- アプリケーション短縮名
+                      iv_name           =>  cv_profile_err_msg,   -- プロファイル取得エラー
+                      iv_token_name1    =>  cv_tkn_ng_profile,    -- トークン(NG_PROFILE)
+                      iv_token_value1   =>  cv_set_of_books_name  -- プロファイル定義名
+                     );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+    --
+-- 2010/01/04 Ver1.3 E_本稼動_00778 add end by Yutaka.Kuboshima
+    --
     -- ===============================
     -- ファイルアップロードI/Fテーブル取得処理(A-1)・顧客一括更新用ワークテーブル登録処理(A-2)
     -- ===============================
