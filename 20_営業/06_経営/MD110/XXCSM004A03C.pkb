@@ -7,7 +7,7 @@ AS
  * Description      : 従業員マスタと資格ポイントマスタから各営業員の資格ポイントを算出し、
  *                  : 新規獲得ポイント顧客別履歴テーブルに登録します。
  * MD.050           : MD050_CSM_004_A03_新規獲得ポイント集計（資格ポイント集計処理）
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -37,6 +37,8 @@ AS
  *  2009/09/03    1.7   K.Kubo          ［SCS障害管理番号0001286］発令日の判定方法の不備(営業員以外から営業員への異動)
  *  2009/10/22    1.8   T.Tsukino       ［障害管理番号E-T4-00065］抽出対象営業員の資格コード判定の追加対応
  *  2009/10/30    1.9   T.Tsukino       ［障害管理番号E-T4-00064］パフォーマンス障害（部署コード取得処理変更）
+ *  2009/11/26    1.10  T.Tsukino       ［障害管理番号E-本稼動-00110］資格カウント対象外コードを持つ従業員データの排除処理
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -150,6 +152,9 @@ AS
   gt_loc_lv_tab             gt_loc_lv_ttype;                                                        -- テーブル型変数の宣言
   ln_loc_lv_cnt             NUMBER;                                                                 -- カウンタ
 --//+ADD END     2009/07/07 0000254 M.Ohtsuki
+--//+ADD START 2009/11/26 E-本稼動-00110 T.Tsukino
+  gn_shikaku_exptcount    NUMBER := 0;                                          -- 資格カウント対象外レコード件数
+--//+ADD END 2009/11/26 E-本稼動-00110 T.Tsukino
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -940,6 +945,70 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END insert_rireki_tbl_data;
+--//+ADD START 2009/11/26 E-本稼動-00110 T.Tsukino
+  /**********************************************************************************
+   * Procedure Name   : point_countcd_chk
+   * Description      : 資格ポイントカウント対象コードチェック機能 (A-8)
+   ***********************************************************************************/
+  PROCEDURE point_countcd_chk(
+     iv_shikaku_cd     IN  VARCHAR2
+    ,on_shikaku_count  OUT NUMBER
+    ,ov_errbuf         OUT NOCOPY VARCHAR2                                      -- エラー・メッセージ
+    ,ov_retcode        OUT NOCOPY VARCHAR2                                      -- リターン・コード
+    ,ov_errmsg         OUT NOCOPY VARCHAR2                                      -- ユーザー・エラー・メッセージ
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name       CONSTANT VARCHAR2(100) := 'point_countcd_chk';                      -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf         VARCHAR2(4000);                                           -- エラー・メッセージ
+    lv_retcode        VARCHAR2(1);                                              -- リターン・コード
+    lv_errmsg         VARCHAR2(4000);                                           -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_point_countcd           CONSTANT VARCHAR2(20) := 'XXCSM1_POINT_COUNTCD'; --参照タイプ：資格カウント対象コード
+    cv_flv_language            CONSTANT VARCHAR2(2)  := 'JA';
+--
+  BEGIN
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --参照タイプ：資格カウント対象コードに対象の資格コードが存在するかチェックする
+    SELECT count(1)
+    INTO   on_shikaku_count
+    FROM   fnd_lookup_values  flv                      --クイックコード値
+    WHERE  flv.lookup_type = cv_point_countcd          --参照タイプ：資格カウント対象コード
+    AND    flv.language    = cv_flv_language           --言語
+    AND    NVL(flv.start_date_active,gd_process_date) <= gd_process_date    --有効開始日<=業務日付
+    AND    NVL(flv.end_date_active,gd_process_date) >= gd_process_date      --有効終了日>=業務日付
+    AND    flv.enabled_flag = 'Y'
+    AND    flv.lookup_code = iv_shikaku_cd
+    ;
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,4000);
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END point_countcd_chk;
+--//+ADD END 2009/11/26 E-本稼動-00110 T.Tsukino
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -994,6 +1063,9 @@ AS
     ln_shikaku_point           NUMBER;                                                --  資格ポイント
     ln_new_shikaku_point       NUMBER;                                                -- （新）資格ポイント
     ln_old_shikaku_point       NUMBER;                                                -- （旧）資格ポイント
+--//+ADD START 2009/11/26 E-本稼動-00110 T.Tsukino
+    ln_shikaku_count           NUMBER;                                                -- 資格カウント対象チェック
+--//+ADD END 2009/11/26 E-本稼動-00110 T.Tsukino
     -- *** ローカル・カーソル ***
     CURSOR get_eigyo_date_cur(
       gd_process_date  DATE
@@ -1062,8 +1134,13 @@ AS
                       AND    NVL(flv.start_date_active,gd_process_date) <= gd_process_date    --有効開始日<=業務日付
                       AND    NVL(flv.end_date_active,gd_process_date) >= gd_process_date      --有効終了日>=業務日付
                       AND    flv.enabled_flag = 'Y'
-                      AND    (flv.lookup_code =  ppf.attribute7          --資格コード（新）が資格カウント対象コード
-                              OR flv.lookup_code = ppf.attribute9))        --資格コード（旧）が資格カウント対象コード
+--//+DEL START 2009/11/26 E-本稼動-00110 T.Tsukino
+--                      AND    (flv.lookup_code =  ppf.attribute7          --資格コード（新）が資格カウント対象コード
+--                              OR flv.lookup_code = ppf.attribute9))        --資格コード（旧）が資格カウント対象コード
+--//+DEL END 2009/11/26 E-本稼動-00110 T.Tsukino
+--//+ADD START 2009/11/26 E-本稼動-00110 T.Tsukino
+                      AND    flv.lookup_code = ppf.attribute9)            --資格コード（旧）が資格カウント対象コード
+--//+ADD END 2009/11/26 E-本稼動-00110 T.Tsukino
 --//+ADD END 2009/10/22 E-T4-00065 T.Tsukino
       UNION ALL
       --従業員の職種が新部署のみで営業員のケース
@@ -1133,8 +1210,13 @@ AS
                       AND    NVL(flv.start_date_active,gd_process_date) <= gd_process_date    --有効開始日<=業務日付
                       AND    NVL(flv.end_date_active,gd_process_date) >= gd_process_date      --有効終了日>=業務日付
                       AND    flv.enabled_flag = 'Y'
-                      AND    (flv.lookup_code =  ppf.attribute7          --資格コード（新）が資格カウント対象コード
-                              OR flv.lookup_code = ppf.attribute9))        --資格コード（旧）が資格カウント対象コード
+--//+DEL START 2009/11/26 E-本稼動-00110 T.Tsukino
+--                      AND    (flv.lookup_code =  ppf.attribute7          --資格コード（新）が資格カウント対象コード
+--                              OR flv.lookup_code = ppf.attribute9))        --資格コード（旧）が資格カウント対象コード
+--//+DEL END 2009/11/26 E-本稼動-00110 T.Tsukino
+--//+ADD START 2009/11/26 E-本稼動-00110 T.Tsukino
+                      AND    flv.lookup_code =  ppf.attribute7)          --資格コード（新）が資格カウント対象コード
+--//+ADD END 2009/11/26 E-本稼動-00110 T.Tsukino
 --//+ADD END 2009/10/22 E-T4-00065 T.Tsukino
       UNION ALL
       --従業員の職種が新・旧部署ともに営業員のケース
@@ -1203,6 +1285,9 @@ AS
     no_data_expt      EXCEPTION;                                                  -- 営業員データ取得エラーメッセージ
     global_skip_expt  EXCEPTION;                                                  -- 例外処理
     no_data_hatsurei  EXCEPTION;                                                  -- 発令日取得エラーメッセージ
+--//+ADD START 2009/11/26 E-本稼動-00110 T.Tsukino
+    shikaku_count_expt  EXCEPTION;                                                -- 資格カウント対象外エラーメッセージ
+--//+ADD END 2009/11/26 E-本稼動-00110 T.Tsukino
 --
   BEGIN
 --##################  固定ステータス初期化部 START   ###################
@@ -1266,6 +1351,26 @@ AS
         --  ③レコードの新規追加を行う
         -- ◇================================◇
             --新データの代入
+--//+ADD START 2009/11/26 E-本稼動-00110 T.Tsukino
+         -- ================================================
+         -- 資格ポイントカウント対象コードチェック
+         -- ================================================
+            -- 新の資格コードがカウント対象コードがチェック
+              point_countcd_chk(
+                 iv_shikaku_cd     =>     get_eigyo_date_rec.new_shikaku_cd
+                ,on_shikaku_count  =>     ln_shikaku_count
+                ,ov_errbuf         =>     lv_errbuf
+                ,ov_retcode        =>     lv_retcode
+                ,ov_errmsg         =>     lv_errmsg
+                );
+                -- カウントが0値を返した場合、従業員コードを処理対象から外す
+                IF (ln_shikaku_count = 0) THEN
+                  RAISE shikaku_count_expt;
+                END IF;
+                IF (lv_retcode <> cv_status_normal) THEN
+                  RAISE global_process_expt;
+                END IF;
+--//+ADD END 2009/11/26 E-本稼動-00110 T.Tsukino
          -- ================================================
          -- （新データ)部署データの抽出処理
          -- ================================================
@@ -1304,9 +1409,9 @@ AS
                 IF (lv_retcode = cv_status_warn) THEN
                   RAISE global_skip_expt;
                 END IF;
-        -- ======================================
-        -- レコード削除処理
-        -- ======================================
+         -- ======================================
+         -- レコード削除処理
+         -- ======================================
               del_rireki_tbl_data(
                  iv_employee_num      => get_eigyo_date_rec.employee_number              -- 従業員№
                 ,ov_errbuf            => lv_errbuf                                       -- エラー・メッセージ
@@ -1320,9 +1425,9 @@ AS
                 IF (lv_retcode = cv_status_warn) THEN
                   RAISE global_skip_expt;
                 END IF;
-        -- ======================================
-        -- レコード新規追加処理
-        -- ======================================
+         -- ======================================
+         -- レコード新規追加処理
+         -- ======================================
               insert_rireki_tbl_data (
                  iv_employee_num      => get_eigyo_date_rec.employee_number              -- 従業員№
                 ,in_shikaku_point     => ln_shikaku_point                                -- 資格ポイント
@@ -1342,6 +1447,26 @@ AS
                   RAISE global_skip_expt;
                 END IF;
             ELSE
+--//+ADD START 2009/11/26 E-本稼動-00110 T.Tsukino
+         -- ================================================
+         -- 資格ポイントカウント対象コードチェック
+         -- ================================================
+          -- 新の資格コードがカウント対象コードがチェック
+            point_countcd_chk(
+               iv_shikaku_cd     =>     get_eigyo_date_rec.new_shikaku_cd
+              ,on_shikaku_count  =>     ln_shikaku_count
+              ,ov_errbuf         =>     lv_errbuf
+              ,ov_retcode        =>     lv_retcode
+              ,ov_errmsg         =>     lv_errmsg
+              );
+              -- カウントが0値を返した場合、従業員コードを処理対象から外す
+              IF (ln_shikaku_count = 0) THEN
+                RAISE shikaku_count_expt;
+              END IF;
+              IF (lv_retcode <> cv_status_normal) THEN
+                RAISE global_process_expt;
+              END IF;
+--//+ADD END 2009/11/26 E-本稼動-00110 T.Tsukino
 --//+ADD END 2009/08/24 0001150 T.Tsukino
             -- ================================================
             -- (新データ)部署データの抽出処理
@@ -1393,6 +1518,26 @@ AS
 --//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
+--//+ADD START 2009/11/26 E-本稼動-00110 T.Tsukino
+         -- ================================================
+         -- 資格ポイントカウント対象コードチェック
+         -- ================================================
+         -- 旧の資格コードがカウント対象コードかチェック
+            point_countcd_chk(
+               iv_shikaku_cd     =>     get_eigyo_date_rec.old_shikaku_cd
+              ,on_shikaku_count  =>     ln_shikaku_count
+              ,ov_errbuf         =>     lv_errbuf
+              ,ov_retcode        =>     lv_retcode
+              ,ov_errmsg         =>     lv_errmsg
+              );
+              -- カウントが0値を返した場合、従業員コードを処理対象から外す
+              IF (ln_shikaku_count = 0) THEN
+                RAISE shikaku_count_expt;
+              END IF;
+              IF (lv_retcode <> cv_status_normal) THEN
+                RAISE global_process_expt;
+              END IF;
+--//+ADD END2009/11/26 E-本稼動-00110 T.Tsukino
             --旧のデータ取得
             -- ================================================
             -- (旧データ)部署データの抽出処理
@@ -1726,6 +1871,26 @@ AS
         --  ③レコードの新規追加を行う
         -- ◇================================◇
          --旧データの代入
+--//+ADD START 2009/11/26 E-本稼動-00110 T.Tsukino
+         -- ================================================
+         -- 資格ポイントカウント対象コードチェック
+         -- ================================================
+        -- 旧の資格コードがカウント対象コードかチェック
+          point_countcd_chk(
+             iv_shikaku_cd     =>     get_eigyo_date_rec.old_shikaku_cd
+            ,on_shikaku_count  =>     ln_shikaku_count
+            ,ov_errbuf         =>     lv_errbuf
+            ,ov_retcode        =>     lv_retcode
+            ,ov_errmsg         =>     lv_errmsg
+            );
+          -- カウントが0値を返した場合、従業員コードを処理対象から外す
+            IF (ln_shikaku_count = 0) THEN
+              RAISE shikaku_count_expt;
+            END IF;
+            IF (lv_retcode <> cv_status_normal) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END 2009/11/26 E-本稼動-00110 T.Tsukino
          -- ================================================
          -- (旧データ)部署データの抽出処理
          -- ================================================
@@ -1837,6 +2002,26 @@ AS
         --  ③レコードの新規追加を行う
         -- ◇================================◇
             --新データの代入
+--//+ADD START 2009/11/26 E-本稼動-00110 T.Tsukino
+         -- ================================================
+         -- 資格ポイントカウント対象コードチェック
+         -- ================================================
+       -- 新の資格コードがカウント対象コードかチェック
+          point_countcd_chk(
+             iv_shikaku_cd     =>     get_eigyo_date_rec.new_shikaku_cd
+            ,on_shikaku_count  =>     ln_shikaku_count
+            ,ov_errbuf         =>     lv_errbuf
+            ,ov_retcode        =>     lv_retcode
+            ,ov_errmsg         =>     lv_errmsg
+            );
+          -- カウントが0値を返した場合、従業員コードを処理対象から外す
+            IF (ln_shikaku_count = 0) THEN
+              RAISE shikaku_count_expt;
+            END IF;
+            IF (lv_retcode <> cv_status_normal) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END 2009/11/26 E-本稼動-00110 T.Tsukino
          -- ================================================
          -- （新データ)部署データの抽出処理
          -- ================================================
@@ -1979,8 +2164,18 @@ AS
           gn_error_cnt := gn_error_cnt + 1;
           -- ロールバック
           ROLLBACK TO eigyo_date_sv;
+--//+ADD START 2009/11/26 E-本稼動-00110 T.Tsukino
+        WHEN shikaku_count_expt THEN
+          gn_shikaku_exptcount := gn_shikaku_exptcount + 1;
+          -- ロールバック
+          ROLLBACK TO eigyo_date_sv;
+--//+ADD END 2009/11/26 E-本稼動-00110 T.Tsukino
       END;
-    END LOOP get_eigyo_date_loop;
+     END LOOP get_eigyo_date_loop;
+--//+ADD START 2009/11/26 E-本稼動-00110 T.Tsukino
+  --処理対象外となった件数を対象件数から引く
+    gn_target_cnt := gn_target_cnt - gn_shikaku_exptcount;
+--//+ADD END 2009/11/26 E-本稼動-00110 T.Tsukino
 --
     -- カーソルクローズ
     CLOSE get_eigyo_date_cur;
