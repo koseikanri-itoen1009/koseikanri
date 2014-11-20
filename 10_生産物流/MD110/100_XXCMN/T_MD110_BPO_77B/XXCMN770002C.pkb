@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）製品
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77B)
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -46,7 +46,7 @@ AS
  *  2008/08/28    1.10  A.Shiina         取引数量は取得時に受払区分を掛ける。
  *  2008/08/28    1.11  A.Shiina         振替項目の+-表示修正。
  *  2008/10/08    1.12  N.Yoshida        T_S_492、T_S_524対応(PT対応)
- *
+ *  2008/10/24    1.13  H.Itou           T_S_492、T_S_524対応(PT対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4536,7 +4536,10 @@ AS
     -- ----------------------------------------------------
     -- OMSO2 :経理受払区分受注関連 (振替有償)
     -- ----------------------------------------------------
-      SELECT /*+ use_hash(itp) leading (xoha ooha otta oola wdd xrpm itp) */
+-- 2008/10/24 H.Itou Mod Start
+--      SELECT /*+ use_hash(itp) leading (xoha ooha otta oola wdd xrpm itp) */
+      SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+-- 2008/10/24 H.Itou Mod End
              iwm.whse_code                    h_whse_code
             ,iwm.whse_name                    h_whse_name
             ,itp.item_id                      item_id
@@ -4563,7 +4566,9 @@ AS
             ,ximb.item_short_name             item_name
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_lines_all               oola
+-- 2008/10/24 H.Itou Del Start
+--            ,oe_order_lines_all               oola
+-- 2008/10/24 H.Itou Del End
             ,oe_order_headers_all             ooha
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
@@ -4582,7 +4587,10 @@ AS
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
             ,ic_whse_mst                      iwm
-      WHERE  itp.doc_type            = gv_doc_type_omso
+-- 2008/10/24 H.Itou Mod Start
+--      WHERE  itp.doc_type            = gv_doc_type_omso
+      WHERE  xrpm.doc_type           = gv_doc_type_omso
+-- 2008/10/24 H.Itou Mod End
       AND    itp.completed_ind       = 1
       AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itp.trans_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
@@ -4611,17 +4619,24 @@ AS
       AND    gic4.category_id        = mcb4.category_id
       AND    mcb4.segment1           <> '5'
       AND    wdd.delivery_detail_id  = itp.line_detail_id
-      AND    oola.org_id             = wdd.org_id
-      AND    oola.header_id          = wdd.source_header_id
-      AND    oola.line_id            = wdd.source_line_id
-      AND    ooha.header_id          = oola.header_id
+-- 2008/10/24 H.Itou Mod Start
+--      AND    oola.org_id             = wdd.org_id
+--      AND    oola.header_id          = wdd.source_header_id
+--      AND    oola.line_id            = wdd.source_line_id
+--      AND    ooha.header_id          = oola.header_id
+      AND    xoha.header_id          = wdd.source_header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    xola.order_header_id    = xoha.order_header_id
+-- 2008/10/24 H.Itou Mod End
       AND    otta.transaction_type_id = ooha.order_type_id
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    xoha.header_id          = ooha.header_id
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
-      AND    xola.line_id            = oola.line_id
+-- 2008/10/24 H.Itou Del Start
+--      AND    xola.line_id            = oola.line_id
+-- 2008/10/24 H.Itou Del End
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       IN ('104','105')
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
@@ -9145,7 +9160,10 @@ AS
     -- ----------------------------------------------------
     -- OMSO2 :経理受払区分受注関連 (振替有償)
     -- ----------------------------------------------------
-      SELECT /*+ use_hash(itp) leading (xoha ooha otta oola wdd xrpm itp) */
+-- 2008/10/24 H.Itou Mod Start
+--      SELECT /*+ use_hash(itp) leading (xoha ooha otta oola wdd xrpm itp) */
+      SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+-- 2008/10/24 H.Itou Mod End
              iwm.whse_code                    h_whse_code
             ,iwm.whse_name                    h_whse_name
             ,itp.item_id                      item_id
@@ -9172,7 +9190,9 @@ AS
             ,ximb.item_short_name             item_name
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_lines_all               oola
+-- 2008/10/24 H.Itou Del Start
+--            ,oe_order_lines_all               oola
+-- 2008/10/24 H.Itou Del End
             ,oe_order_headers_all             ooha
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
@@ -9191,7 +9211,10 @@ AS
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
             ,ic_whse_mst                      iwm
-      WHERE  itp.doc_type            = gv_doc_type_omso
+-- 2008/10/24 H.Itou Mod Start
+--      WHERE  itp.doc_type            = gv_doc_type_omso
+      WHERE  xrpm.doc_type           = gv_doc_type_omso
+-- 2008/10/24 H.Itou Mod End
       AND    itp.completed_ind       = 1
       AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itp.trans_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
@@ -9220,17 +9243,24 @@ AS
       AND    gic4.category_id        = mcb4.category_id
       AND    mcb4.segment1           <> '5'
       AND    wdd.delivery_detail_id  = itp.line_detail_id
-      AND    oola.org_id             = wdd.org_id
-      AND    oola.header_id          = wdd.source_header_id
-      AND    oola.line_id            = wdd.source_line_id
-      AND    ooha.header_id          = oola.header_id
+-- 2008/10/24 H.Itou Mod Start
+--      AND    oola.org_id             = wdd.org_id
+--      AND    oola.header_id          = wdd.source_header_id
+--      AND    oola.line_id            = wdd.source_line_id
+--      AND    ooha.header_id          = oola.header_id
+      AND    xoha.header_id          = wdd.source_header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    xola.order_header_id    = xoha.order_header_id
+-- 2008/10/24 H.Itou Mod End
       AND    otta.transaction_type_id = ooha.order_type_id
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    xoha.header_id          = ooha.header_id
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
-      AND    xola.line_id            = oola.line_id
+-- 2008/10/24 H.Itou Del Start
+--      AND    xola.line_id            = oola.line_id
+-- 2008/10/24 H.Itou Del End
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       IN ('104','105')
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
@@ -11460,7 +11490,10 @@ AS
     -- ----------------------------------------------------
     -- OMSO2 :経理受払区分受注関連 (振替有償)
     -- ----------------------------------------------------
-      SELECT /*+ use_hash(itp) leading (xoha ooha otta oola wdd xrpm itp) */
+-- 2008/10/24 H.Itou Mod Start
+--      SELECT /*+ use_hash(itp) leading (xoha ooha otta oola wdd xrpm itp) */
+      SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+-- 2008/10/24 H.Itou Mod End
              iwm.whse_code                    h_whse_code
             ,iwm.whse_name                    h_whse_name
             ,itp.item_id                      item_id
@@ -11487,7 +11520,9 @@ AS
             ,ximb.item_short_name             item_name
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_lines_all               oola
+-- 2008/10/24 H.Itou Del Start
+--            ,oe_order_lines_all               oola
+-- 2008/10/24 H.Itou Del End
             ,oe_order_headers_all             ooha
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
@@ -11506,7 +11541,10 @@ AS
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
             ,ic_whse_mst                      iwm
-      WHERE  itp.doc_type            = gv_doc_type_omso
+-- 2008/10/24 H.Itou Mod Start
+--      WHERE  itp.doc_type            = gv_doc_type_omso
+      WHERE  xrpm.doc_type           = gv_doc_type_omso
+-- 2008/10/24 H.Itou Mod End
       AND    itp.completed_ind       = 1
       AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itp.trans_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
@@ -11535,17 +11573,24 @@ AS
       AND    gic4.category_id        = mcb4.category_id
       AND    mcb4.segment1           <> '5'
       AND    wdd.delivery_detail_id  = itp.line_detail_id
-      AND    oola.org_id             = wdd.org_id
-      AND    oola.header_id          = wdd.source_header_id
-      AND    oola.line_id            = wdd.source_line_id
-      AND    ooha.header_id          = oola.header_id
+-- 2008/10/24 H.Itou Mod Start
+--      AND    oola.org_id             = wdd.org_id
+--      AND    oola.header_id          = wdd.source_header_id
+--      AND    oola.line_id            = wdd.source_line_id
+--      AND    ooha.header_id          = oola.header_id
+      AND    xoha.header_id          = wdd.source_header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    xola.order_header_id    = xoha.order_header_id
+-- 2008/10/24 H.Itou Mod End
       AND    otta.transaction_type_id = ooha.order_type_id
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    xoha.header_id          = ooha.header_id
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
-      AND    xola.line_id            = oola.line_id
+-- 2008/10/24 H.Itou Del Start
+--      AND    xola.line_id            = oola.line_id
+-- 2008/10/24 H.Itou Del End
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       IN ('104','105')
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
@@ -13793,7 +13838,10 @@ AS
     -- ----------------------------------------------------
     -- OMSO2 :経理受払区分受注関連 (振替有償)
     -- ----------------------------------------------------
-      SELECT /*+ use_hash(itp) leading (xoha ooha otta oola wdd xrpm itp) */
+-- 2008/10/24 H.Itou Mod Start
+--      SELECT /*+ use_hash(itp) leading (xoha ooha otta oola wdd xrpm itp) */
+      SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+-- 2008/10/24 H.Itou Mod End
              iwm.whse_code                    h_whse_code
             ,iwm.whse_name                    h_whse_name
             ,itp.item_id                      item_id
@@ -13820,7 +13868,9 @@ AS
             ,ximb.item_short_name             item_name
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_lines_all               oola
+-- 2008/10/24 H.Itou Del Start
+--            ,oe_order_lines_all               oola
+-- 2008/10/24 H.Itou Del End
             ,oe_order_headers_all             ooha
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
@@ -13839,7 +13889,10 @@ AS
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
             ,ic_whse_mst                      iwm
-      WHERE  itp.doc_type            = gv_doc_type_omso
+-- 2008/10/24 H.Itou Mod Start
+--      WHERE  itp.doc_type            = gv_doc_type_omso
+      WHERE  xrpm.doc_type           = gv_doc_type_omso
+-- 2008/10/24 H.Itou Mod End
       AND    itp.completed_ind       = 1
       AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itp.trans_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
@@ -13868,17 +13921,24 @@ AS
       AND    gic4.category_id        = mcb4.category_id
       AND    mcb4.segment1           <> '5'
       AND    wdd.delivery_detail_id  = itp.line_detail_id
-      AND    oola.org_id             = wdd.org_id
-      AND    oola.header_id          = wdd.source_header_id
-      AND    oola.line_id            = wdd.source_line_id
-      AND    ooha.header_id          = oola.header_id
+-- 2008/10/24 H.Itou Mod Start
+--      AND    oola.org_id             = wdd.org_id
+--      AND    oola.header_id          = wdd.source_header_id
+--      AND    oola.line_id            = wdd.source_line_id
+--      AND    ooha.header_id          = oola.header_id
+      AND    xoha.header_id          = wdd.source_header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    xola.order_header_id    = xoha.order_header_id
+-- 2008/10/24 H.Itou Mod End
       AND    otta.transaction_type_id = ooha.order_type_id
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    xoha.header_id          = ooha.header_id
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
-      AND    xola.line_id            = oola.line_id
+-- 2008/10/24 H.Itou Del Start
+--      AND    xola.line_id            = oola.line_id
+-- 2008/10/24 H.Itou Del End
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       IN ('104','105')
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
@@ -18287,7 +18347,10 @@ AS
     -- ----------------------------------------------------
     -- OMSO2 :経理受払区分受注関連 (振替有償)
     -- ----------------------------------------------------
-      SELECT /*+ use_hash(itp) leading (xoha ooha otta oola wdd xrpm itp) */
+-- 2008/10/24 H.Itou Mod Start
+--      SELECT /*+ use_hash(itp) leading (xoha ooha otta oola wdd xrpm itp) */
+      SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+-- 2008/10/24 H.Itou Mod End
              NULL                             h_whse_code
             ,NULL                             h_whse_name
             ,itp.item_id                      item_id
@@ -18314,7 +18377,9 @@ AS
             ,ximb.item_short_name             item_name
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_lines_all               oola
+-- 2008/10/24 H.Itou Del Start
+--            ,oe_order_lines_all               oola
+-- 2008/10/24 H.Itou Del End
             ,oe_order_headers_all             ooha
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
@@ -18332,7 +18397,10 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-      WHERE  itp.doc_type            = gv_doc_type_omso
+-- 2008/10/24 H.Itou Mod Start
+--      WHERE  itp.doc_type            = gv_doc_type_omso
+      WHERE  xrpm.doc_type           = gv_doc_type_omso
+-- 2008/10/24 H.Itou Mod End
       AND    itp.completed_ind       = 1
       AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itp.trans_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
@@ -18361,17 +18429,24 @@ AS
       AND    gic4.category_id        = mcb4.category_id
       AND    mcb4.segment1           <> '5'
       AND    wdd.delivery_detail_id  = itp.line_detail_id
-      AND    oola.org_id             = wdd.org_id
-      AND    oola.header_id          = wdd.source_header_id
-      AND    oola.line_id            = wdd.source_line_id
-      AND    ooha.header_id          = oola.header_id
+-- 2008/10/24 H.Itou Mod Start
+--      AND    oola.org_id             = wdd.org_id
+--      AND    oola.header_id          = wdd.source_header_id
+--      AND    oola.line_id            = wdd.source_line_id
+--      AND    ooha.header_id          = oola.header_id
+      AND    xoha.header_id          = wdd.source_header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    xola.order_header_id    = xoha.order_header_id
+-- 2008/10/24 H.Itou Mod End
       AND    otta.transaction_type_id = ooha.order_type_id
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    xoha.header_id          = ooha.header_id
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
-      AND    xola.line_id            = oola.line_id
+-- 2008/10/24 H.Itou Del Start
+--      AND    xola.line_id            = oola.line_id
+-- 2008/10/24 H.Itou Del End
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       IN ('104','105')
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
@@ -20543,7 +20618,10 @@ AS
     -- ----------------------------------------------------
     -- OMSO2 :経理受払区分受注関連 (振替有償)
     -- ----------------------------------------------------
-      SELECT /*+ use_hash(itp) leading (xoha ooha otta oola wdd xrpm itp) */
+-- 2008/10/24 H.Itou Mod Start
+--      SELECT /*+ use_hash(itp) leading (xoha ooha otta oola wdd xrpm itp) */
+      SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+-- 2008/10/24 H.Itou Mod End
              NULL                             h_whse_code
             ,NULL                             h_whse_name
             ,itp.item_id                      item_id
@@ -20570,7 +20648,9 @@ AS
             ,ximb.item_short_name             item_name
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_lines_all               oola
+-- 2008/10/24 H.Itou Del Start
+--            ,oe_order_lines_all               oola
+-- 2008/10/24 H.Itou Del End
             ,oe_order_headers_all             ooha
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
@@ -20588,7 +20668,10 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-      WHERE  itp.doc_type            = gv_doc_type_omso
+-- 2008/10/24 H.Itou Mod Start
+--      WHERE  itp.doc_type            = gv_doc_type_omso
+      WHERE  xrpm.doc_type           = gv_doc_type_omso
+-- 2008/10/24 H.Itou Mod End
       AND    itp.completed_ind       = 1
       AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itp.trans_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
@@ -20617,17 +20700,24 @@ AS
       AND    gic4.category_id        = mcb4.category_id
       AND    mcb4.segment1           <> '5'
       AND    wdd.delivery_detail_id  = itp.line_detail_id
-      AND    oola.org_id             = wdd.org_id
-      AND    oola.header_id          = wdd.source_header_id
-      AND    oola.line_id            = wdd.source_line_id
-      AND    ooha.header_id          = oola.header_id
+-- 2008/10/24 H.Itou Mod Start
+--      AND    oola.org_id             = wdd.org_id
+--      AND    oola.header_id          = wdd.source_header_id
+--      AND    oola.line_id            = wdd.source_line_id
+--      AND    ooha.header_id          = oola.header_id
+      AND    xoha.header_id          = wdd.source_header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    xola.order_header_id    = xoha.order_header_id
+-- 2008/10/24 H.Itou Mod End
       AND    otta.transaction_type_id = ooha.order_type_id
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    xoha.header_id          = ooha.header_id
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
-      AND    xola.line_id            = oola.line_id
+-- 2008/10/24 H.Itou Del Start
+--      AND    xola.line_id            = oola.line_id
+-- 2008/10/24 H.Itou Del End
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       IN ('104','105')
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
@@ -22825,7 +22915,10 @@ AS
     -- ----------------------------------------------------
     -- OMSO2 :経理受払区分受注関連 (振替有償)
     -- ----------------------------------------------------
-      SELECT /*+ use_hash(itp) leading (xoha ooha otta oola wdd xrpm itp) */
+-- 2008/10/24 H.Itou Mod Start
+--      SELECT /*+ use_hash(itp) leading (xoha ooha otta oola wdd xrpm itp) */
+      SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+-- 2008/10/24 H.Itou Mod End
              iwm.whse_code                    h_whse_code
             ,iwm.whse_name                    h_whse_name
             ,itp.item_id                      item_id
@@ -22852,7 +22945,9 @@ AS
             ,ximb.item_short_name             item_name
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_lines_all               oola
+-- 2008/10/24 H.Itou Del Start
+--            ,oe_order_lines_all               oola
+-- 2008/10/24 H.Itou Del End
             ,oe_order_headers_all             ooha
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
@@ -22871,7 +22966,10 @@ AS
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
             ,ic_whse_mst                      iwm
-      WHERE  itp.doc_type            = gv_doc_type_omso
+-- 2008/10/24 H.Itou Mod Start
+--      WHERE  itp.doc_type            = gv_doc_type_omso
+      WHERE  xrpm.doc_type           = gv_doc_type_omso
+-- 2008/10/24 H.Itou Mod End
       AND    itp.completed_ind       = 1
       AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itp.trans_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
@@ -22900,17 +22998,24 @@ AS
       AND    gic4.category_id        = mcb4.category_id
       AND    mcb4.segment1           <> '5'
       AND    wdd.delivery_detail_id  = itp.line_detail_id
-      AND    oola.org_id             = wdd.org_id
-      AND    oola.header_id          = wdd.source_header_id
-      AND    oola.line_id            = wdd.source_line_id
-      AND    ooha.header_id          = oola.header_id
+-- 2008/10/24 H.Itou Mod Start
+--      AND    oola.org_id             = wdd.org_id
+--      AND    oola.header_id          = wdd.source_header_id
+--      AND    oola.line_id            = wdd.source_line_id
+--      AND    ooha.header_id          = oola.header_id
+      AND    xoha.header_id          = wdd.source_header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    xola.order_header_id    = xoha.order_header_id
+-- 2008/10/24 H.Itou Mod End
       AND    otta.transaction_type_id = ooha.order_type_id
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    xoha.header_id          = ooha.header_id
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
-      AND    xola.line_id            = oola.line_id
+-- 2008/10/24 H.Itou Del Start
+--      AND    xola.line_id            = oola.line_id
+-- 2008/10/24 H.Itou Del End
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       IN ('104','105')
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
@@ -25133,7 +25238,10 @@ AS
     -- ----------------------------------------------------
     -- OMSO2 :経理受払区分受注関連 (振替有償)
     -- ----------------------------------------------------
-      SELECT /*+ use_hash(itp) leading (xoha ooha otta oola wdd xrpm itp) */
+-- 2008/10/24 H.Itou Mod Start
+--      SELECT /*+ use_hash(itp) leading (xoha ooha otta oola wdd xrpm itp) */
+      SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+-- 2008/10/24 H.Itou Mod End
              iwm.whse_code                    h_whse_code
             ,iwm.whse_name                    h_whse_name
             ,itp.item_id                      item_id
@@ -25160,7 +25268,9 @@ AS
             ,ximb.item_short_name             item_name
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_lines_all               oola
+-- 2008/10/24 H.Itou Del Start
+--            ,oe_order_lines_all               oola
+-- 2008/10/24 H.Itou Del End
             ,oe_order_headers_all             ooha
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
@@ -25179,7 +25289,10 @@ AS
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
             ,ic_whse_mst                      iwm
-      WHERE  itp.doc_type            = gv_doc_type_omso
+-- 2008/10/24 H.Itou Mod Start
+--      WHERE  itp.doc_type            = gv_doc_type_omso
+      WHERE  xrpm.doc_type           = gv_doc_type_omso
+-- 2008/10/24 H.Itou Mod End
       AND    itp.completed_ind       = 1
       AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itp.trans_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
@@ -25208,17 +25321,24 @@ AS
       AND    gic4.category_id        = mcb4.category_id
       AND    mcb4.segment1           <> '5'
       AND    wdd.delivery_detail_id  = itp.line_detail_id
-      AND    oola.org_id             = wdd.org_id
-      AND    oola.header_id          = wdd.source_header_id
-      AND    oola.line_id            = wdd.source_line_id
-      AND    ooha.header_id          = oola.header_id
+-- 2008/10/24 H.Itou Mod Start
+--      AND    oola.org_id             = wdd.org_id
+--      AND    oola.header_id          = wdd.source_header_id
+--      AND    oola.line_id            = wdd.source_line_id
+--      AND    ooha.header_id          = oola.header_id
+      AND    xoha.header_id          = wdd.source_header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    xola.order_header_id    = xoha.order_header_id
+-- 2008/10/24 H.Itou Mod End
       AND    otta.transaction_type_id = ooha.order_type_id
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    xoha.header_id          = ooha.header_id
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
-      AND    xola.line_id            = oola.line_id
+-- 2008/10/24 H.Itou Del Start
+--      AND    xola.line_id            = oola.line_id
+-- 2008/10/24 H.Itou Del End
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       IN ('104','105')
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
@@ -27394,7 +27514,10 @@ AS
     -- ----------------------------------------------------
     -- OMSO2 :経理受払区分受注関連 (振替有償)
     -- ----------------------------------------------------
-      SELECT /*+ use_hash(itp) leading (xoha ooha otta oola wdd xrpm itp) */
+-- 2008/10/24 H.Itou Mod Start
+--      SELECT /*+ use_hash(itp) leading (xoha ooha otta oola wdd xrpm itp) */
+      SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+-- 2008/10/24 H.Itou Mod End
              NULL                             h_whse_code
             ,NULL                             h_whse_name
             ,itp.item_id                      item_id
@@ -27421,7 +27544,9 @@ AS
             ,ximb.item_short_name             item_name
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_lines_all               oola
+-- 2008/10/24 H.Itou Del Start
+--            ,oe_order_lines_all               oola
+-- 2008/10/24 H.Itou Del End
             ,oe_order_headers_all             ooha
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
@@ -27439,7 +27564,10 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-      WHERE  itp.doc_type            = gv_doc_type_omso
+-- 2008/10/24 H.Itou Mod Start
+--      WHERE  itp.doc_type            = gv_doc_type_omso
+      WHERE  xrpm.doc_type           = gv_doc_type_omso
+-- 2008/10/24 H.Itou Mod End
       AND    itp.completed_ind       = 1
       AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itp.trans_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
@@ -27468,17 +27596,24 @@ AS
       AND    gic4.category_id        = mcb4.category_id
       AND    mcb4.segment1           <> '5'
       AND    wdd.delivery_detail_id  = itp.line_detail_id
-      AND    oola.org_id             = wdd.org_id
-      AND    oola.header_id          = wdd.source_header_id
-      AND    oola.line_id            = wdd.source_line_id
-      AND    ooha.header_id          = oola.header_id
+-- 2008/10/24 H.Itou Mod Start
+--      AND    oola.org_id             = wdd.org_id
+--      AND    oola.header_id          = wdd.source_header_id
+--      AND    oola.line_id            = wdd.source_line_id
+--      AND    ooha.header_id          = oola.header_id
+      AND    xoha.header_id          = wdd.source_header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    xola.order_header_id    = xoha.order_header_id
+-- 2008/10/24 H.Itou Mod End
       AND    otta.transaction_type_id = ooha.order_type_id
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    xoha.header_id          = ooha.header_id
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
-      AND    xola.line_id            = oola.line_id
+-- 2008/10/24 H.Itou Del Start
+--      AND    xola.line_id            = oola.line_id
+-- 2008/10/24 H.Itou Del End
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       IN ('104','105')
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')

@@ -3,11 +3,11 @@ AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
  *
- * Package Name     : XXCMN770004C(body)
+ * Package Name     : xxcmn770004c_stest(body)
  * Description      : 受払その他実績リスト
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77D)
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -44,7 +44,8 @@ AS
  *  2008/08/07    1.8   R.Tomoyose       参照ビューの変更「xxcmn_rcv_pay_mst_porc_rma_v」→
  *                                                       「xxcmn_rcv_pay_mst_porc_rma04_v」
  *  2008/08/20    1.9   A.Shiina         結合指摘#14対応
- *
+ *  2008/10/27    1.10  A.Shiina         T_S_524対応
+ *77D_受払その他実績リスト_TS524対応.xls
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -307,12 +308,26 @@ AS
     -- 商品区分取得
     -- ====================================================
     BEGIN
-      SELECT cat.description
+-- 2008/10/27 v1.10 UPDATE START
+--      SELECT cat.description
+--      INTO   gv_goods_class_name
+--      FROM   xxcmn_categories_v cat
+--      WHERE  cat.category_set_name = gc_cat_set_goods_class
+--      AND    cat.segment1          = ir_param.goods_class
+--      ;
+--
+      SELECT mct.description
       INTO   gv_goods_class_name
-      FROM   xxcmn_categories_v cat
-      WHERE  cat.category_set_name = gc_cat_set_goods_class
-      AND    cat.segment1          = ir_param.goods_class
+      FROM   mtl_category_sets_b mcsb
+            ,mtl_categories_b mcb
+            ,mtl_categories_tl mct
+      WHERE  mcsb.structure_id    = mcb.structure_id
+      AND    mcsb.category_set_id = TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS'))
+      AND    mcb.segment1         = ir_param.goods_class
+      AND    mcb.category_id      = mct.category_id
+      AND    mct.language         = 'JA'
       ;
+-- 2008/10/27 v1.10 UPDATE END
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         NULL;
@@ -322,12 +337,26 @@ AS
     -- 品目区分取得
     -- ====================================================
     BEGIN
-      SELECT cat.description
+-- 2008/10/27 v1.10 UPDATE START
+--      SELECT cat.description
+--      INTO   gv_item_class_name
+--      FROM   xxcmn_categories_v cat
+--      WHERE  cat.category_set_name = gc_cat_set_item_class
+--      AND    cat.segment1          = ir_param.item_class
+--      ;
+--
+      SELECT mct.description
       INTO   gv_item_class_name
-      FROM   xxcmn_categories_v cat
-      WHERE  cat.category_set_name = gc_cat_set_item_class
-      AND    cat.segment1          = ir_param.item_class
+      FROM   mtl_category_sets_b mcsb
+            ,mtl_categories_b mcb
+            ,mtl_categories_tl mct
+      WHERE  mcsb.structure_id    = mcb.structure_id
+      AND    mcsb.category_set_id = TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS'))
+      AND    mcb.segment1         = ir_param.item_class
+      AND    mcb.category_id      = mct.category_id
+      AND    mct.language         = 'JA'
       ;
+-- 2008/10/27 v1.10 UPDATE END
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         NULL;
@@ -426,6 +455,17 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル・定数 ***
+    cn_prod_class_id          CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS'));
+    cn_item_class_id          CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS'));
+    cn_crowd_code_id          CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_CROWD_CODE'));
+    cv_reason_911             CONSTANT VARCHAR2(5) := 'X911';
+    cv_reason_912             CONSTANT VARCHAR2(5) := 'X912';
+    cv_reason_921             CONSTANT VARCHAR2(5) := 'X921';
+    cv_reason_922             CONSTANT VARCHAR2(5) := 'X922';
+    cv_reason_941             CONSTANT VARCHAR2(5) := 'X941';
+    cv_reason_931             CONSTANT VARCHAR2(5) := 'X931';
+    cv_reason_932             CONSTANT VARCHAR2(5) := 'X932';
+--
     cv_div_type    CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCMN_NEW_ACCOUNT_DIV';
     cv_out_flag    CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCMN_MONTH_TRANS_OUTPUT_FLAG';
     cv_line_type   CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCMN_LINE_TYPE';
@@ -442,6 +482,10 @@ AS
     cv_pay_type             CONSTANT VARCHAR2( 2) := '2' ;
     cv_comp_flg             CONSTANT VARCHAR2( 2) := '1' ;
     cv_ovlook_pay           CONSTANT VARCHAR2(10) := 'X942' ; -- 黙視品目払出
+-- 2008/10/27 v1.10 ADD START
+    cv_ovlook_rcv           CONSTANT VARCHAR2(10) := 'X943' ; -- 黙視品目受入
+    cv_sonota_rcv           CONSTANT VARCHAR2(10) := 'X950' ; -- その他受入
+-- 2008/10/27 v1.10 ADD END
     cv_sonota_pay           CONSTANT VARCHAR2(10) := 'X951' ; -- その他払出
     cv_move_result          CONSTANT VARCHAR2(10) := 'X122' ; -- 移動実績
     cv_vendor_rma           CONSTANT VARCHAR2( 5) := 'X201' ; -- 仕入先返品
@@ -457,6 +501,10 @@ AS
     cv_div_item_transfer    CONSTANT VARCHAR2(10) := '品目振替';   -- 取引区分：品目振替
     cv_line_type_material   CONSTANT VARCHAR2( 2) := '1';     -- ラインタイプ：原料
     cv_line_type_product    CONSTANT VARCHAR2( 2) := '-1';    -- ラインタイプ：製品
+-- 2008/10/24 v1.10 ADD START
+    cv_start_date           CONSTANT VARCHAR2(20) := '1900/01/01';
+    cv_end_date             CONSTANT VARCHAR2(20) := '9999/12/31';
+-- 2008/10/24 v1.10 ADD END
 --
     -- *** ローカル・変数 ***
     lv_sql1        VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
@@ -509,10 +557,8581 @@ AS
     lv_start_date      VARCHAR2(20);
     lv_end_date        VARCHAR2(20);
 --
+    lt_work_rec        tab_data_type_dtl;
+    li_cnt             INTEGER;
+--
     -- *** ローカル・カーソル ***
     TYPE   ref_cursor IS REF CURSOR ;
     lc_ref ref_cursor ;
 --
+-- 2008/10/27 v1.10 ADD START
+      --対象受払区分取得カーソル
+      CURSOR get_div_type_cur IS
+        SELECT ir_param.div_type1 div_type
+        FROM   DUAL
+        WHERE  ir_param.div_type1 IS NOT NULL
+        UNION
+        SELECT ir_param.div_type2 div_type
+        FROM   DUAL
+        WHERE  ir_param.div_type2 IS NOT NULL
+        UNION
+        SELECT ir_param.div_type3 div_type
+        FROM   DUAL
+        WHERE  ir_param.div_type3 IS NOT NULL
+        UNION
+        SELECT ir_param.div_type4 div_type
+        FROM   DUAL
+        WHERE  ir_param.div_type4 IS NOT NULL
+        UNION
+        SELECT ir_param.div_type5 div_type
+        FROM   DUAL
+        WHERE  ir_param.div_type5 IS NOT NULL
+        ORDER BY div_type
+      ;
+--
+    -------------------------------------------------
+    -- 事由コード指定なし
+    -------------------------------------------------
+    --品目区分:製品
+    --NDA:101(製品)
+    --DD :102/112(OMSO/PORC)
+    CURSOR get_data101p_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2) */
+             hca.account_number             div_tocode
+            ,xp.party_short_name            div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+            ,hz_parties                 hp
+            ,hz_cust_accounts           hca
+            ,xxcmn_parties              xp
+            ,hz_party_sites             hps
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('102','103')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.item_div_ahead    IS NOT NULL
+      AND    xrpm.item_div_origin   IS NOT NULL
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    hp.party_id             = hca.party_id (+)
+      AND    hp.party_id             = xp.party_id (+)
+      AND    hp.party_id (+)         = hps.party_id
+      AND    hps.party_site_id (+)   = xoha.deliver_to_id
+      AND    NVL(xp.start_date_active, FND_DATE.STRING_TO_DATE(cv_start_date, gc_char_d_format))
+             <= TRUNC(trn.trans_date)
+      AND    NVL(xp.end_date_active, FND_DATE.STRING_TO_DATE(cv_end_date, gc_char_d_format))
+             >= TRUNC(trn.trans_date)
+      UNION ALL
+      SELECT /*+ leading (trn wdd ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           IN ('1','2','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       = '112'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('102','103')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.item_div_ahead    IS NOT NULL
+      AND    xrpm.item_div_origin   IS NOT NULL
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+--            ,trn.item_id                    item_id
+            ,iimb.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           IN ('1','2','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       = '112'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:102(製品)
+    --DD :105/108(OMSO/PORC)
+    CURSOR get_data102p_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           IN ('1','2','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('104','105')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      UNION ALL
+      SELECT /*+ leading (trn wdd ooha otta xrpm gic3 mcb3 gic4 mcb4 xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm gic3 mcb3 gic4 mcb4 xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gmi_item_categories        gic4
+            ,mtl_categories_b           mcb4
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    mcb1.segment1           = '1'
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    gic4.item_id            = trn.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    gic4.category_id        = mcb4.category_id
+      AND    mcb4.segment1           = '2'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('107','108')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           IN ('1','2','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('104','105')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm gic3 mcb3 gic4 mcb4 xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm gic3 mcb3 gic4 mcb4 xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gmi_item_categories        gic4
+            ,mtl_categories_b           mcb4
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    mcb1.segment1           = '1'
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    gic4.item_id            = trn.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    gic4.category_id        = mcb4.category_id
+      AND    mcb4.segment1           = '2'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('107','108')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:103(製品)
+    --DD :103(OMSO/PORC)
+    CURSOR get_data103p_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('102','103')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.item_div_ahead    IS NOT NULL
+      AND    xrpm.item_div_origin   IS NOT NULL
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst  xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('102','103')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.item_div_ahead    IS NOT NULL
+      AND    xrpm.item_div_origin   IS NOT NULL
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:104(製品)
+    --対象なし
+--
+    --NDA:105(製品)
+    --DD :107(OMSO/PORC)
+    CURSOR get_data105p_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm gic3 mcb3 gic4 mcb4 xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm gic3 mcb3 gic4 mcb4 xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gmi_item_categories        gic4
+            ,mtl_categories_b           mcb4
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    mcb1.segment1           = '1'
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    gic4.item_id            = trn.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    gic4.category_id        = mcb4.category_id
+      AND    mcb4.segment1           = '2'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('107','108')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm gic3 mcb3 gic4 mcb4 xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm gic3 mcb3 gic4 mcb4 xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gmi_item_categories        gic4
+            ,mtl_categories_b           mcb4
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    mcb1.segment1           = '1'
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    gic4.item_id            = trn.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    gic4.category_id        = mcb4.category_id
+      AND    mcb4.segment1           = '2'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('107','108')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:106(製品)
+    --DD :109(OMSO/PORC)
+    CURSOR get_data106p_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3 gic4 mcb4) use_nl (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3 gic4 mcb4) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                   item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,ic_item_mst_b              iimb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gmi_item_categories        gic4
+            ,mtl_categories_b           mcb4
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    mcb1.segment1           = '2'
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic3.item_id            = iimb2.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    gic4.item_id            = iimb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    gic4.category_id        = mcb4.category_id
+      AND    mcb4.segment1           = '1'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       = '109'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3 gic4 mcb4) use_nl (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3 gic4 mcb4) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                   item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,ic_item_mst_b              iimb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gmi_item_categories        gic4
+            ,mtl_categories_b           mcb4
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    mcb1.segment1           = '2'
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic3.item_id            = iimb2.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    gic4.item_id            = iimb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    gic4.category_id        = mcb4.category_id
+      AND    mcb4.segment1           = '1'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       = '109'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:107(製品)
+    --DD :104(OMSO/PORC)
+    CURSOR get_data107p_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                   item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           IN ('1','2','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('104','105')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                   item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           IN ('1','2','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('104','105')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:108(製品)
+    --対象なし
+--
+    --NDA:109/111(製品)
+    --DD :110/111(OMSO/PORC)
+    CURSOR get_data109111p_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) */
+             hca.account_number             div_tocode
+            ,xp.party_short_name            div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                   item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+            ,hz_parties                 hp
+            ,hz_cust_accounts           hca
+            ,xxcmn_parties              xp
+            ,hz_party_sites             hps
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           IN ('1','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.item_div_origin    = mcb3.segment1
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    hp.party_id             = hca.party_id (+)
+      AND    hp.party_id             = xp.party_id (+)
+      AND    hp.party_id (+)         = hps.party_id
+      AND    hps.party_site_id (+)   = xoha.deliver_to_id
+      AND    NVL(xp.start_date_active, FND_DATE.STRING_TO_DATE(cv_start_date, gc_char_d_format))
+             <= TRUNC(trn.trans_date)
+      AND    NVL(xp.end_date_active, FND_DATE.STRING_TO_DATE(cv_end_date, gc_char_d_format))
+             >= TRUNC(trn.trans_date)
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                   item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           IN ('1','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.item_div_origin    = mcb3.segment1
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --品目区分:原料資材半製品
+    --NDA:101/103(原料資材半製品)
+    --DD :101/103(OMSO/PORC)
+    CURSOR get_data1013m_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           IN ('1','2','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('101','103')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.item_div_ahead    IS NULL
+      AND    xrpm.item_div_origin   IS NULL
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           IN ('1','2','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('101','103')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.item_div_ahead    IS NULL
+      AND    xrpm.item_div_origin   IS NULL
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:102(原料資材半製品)
+    --対象なし
+--
+    --NDA:104(原料資材半製品)
+    --DD :113(OMSO/PORC)
+    CURSOR get_data104m_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3) use_nl (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3) */
+             hca.account_number             div_tocode
+            ,xp.party_short_name            div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,ic_item_mst_b              iimb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+            ,hz_parties                 hp
+            ,hz_cust_accounts           hca
+            ,xxcmn_parties              xp
+            ,hz_party_sites             hps
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           IN ('1','2','4')
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic3.item_id            = iimb2.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    hp.party_id             = hca.party_id (+)
+      AND    hp.party_id             = xp.party_id (+)
+      AND    hp.party_id (+)         = hps.party_id
+      AND    hps.party_site_id (+)   = xoha.deliver_to_id
+      AND    NVL(xp.start_date_active, FND_DATE.STRING_TO_DATE(cv_start_date, gc_char_d_format))
+             <= TRUNC(trn.trans_date)
+      AND    NVL(xp.end_date_active, FND_DATE.STRING_TO_DATE(cv_end_date, gc_char_d_format))
+             >= TRUNC(trn.trans_date)
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3) use_nl (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,ic_item_mst_b              iimb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           IN ('1','2','4')
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic3.item_id            = iimb2.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:105(原料資材半製品)
+    --対象なし
+--
+    --NDA:106(原料資材半製品)
+    --対象なし
+--
+    --NDA:107(原料資材半製品)
+    --対象なし
+--
+    --NDA:108(原料資材半製品)
+    --DD :106(OMSO/PORC)
+    CURSOR get_data108m_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3) use_nl (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,ic_item_mst_b              iimb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           IN ('1','2','4')
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic3.item_id            = iimb2.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       = '106'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3) use_nl (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,ic_item_mst_b              iimb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           IN ('1','2','4')
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic3.item_id            = iimb2.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       = '106'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:109(原料資材半製品)
+    --対象なし
+--
+    --NDA:111(原料資材半製品)
+    --対象なし
+--
+    --品目区分:全般
+    --NDA:201
+    --DD :202(ADJI_PO/PORC_PO)
+    CURSOR get_data201_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/28 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,DECODE(xrpm.use_div_invent_dis
+                   ,cv_yes, ijm.attribute2
+                   ,NULL)               lot_desc
+-- 2008/10/28 v1.11 UPDATE END
+      FROM   ic_tran_cmp                trn
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxpo_rcv_and_rtn_txns      xrrt
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    iaj.trans_type          = trn.doc_type
+      AND    iaj.doc_id              = trn.doc_id
+      AND    iaj.doc_line            = trn.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xrrt.txns_id            = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_adji
+      AND    xrpm.reason_code        = cv_vendor_rma
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      UNION ALL
+      SELECT /*+ leading (trn rsl rt xrpm gic1 mcb1 gic2 mcb2) use_nl (trn rsl rt xrpm gic1 mcb1 gic2 mcb2) */
+             pv.segment1                div_tocode
+            ,xv.vendor_short_name       div_toname
+            ,NULL                       reason_code
+            ,NULL                       reason_name
+            ,pha.attribute10            post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = pha.attribute10
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                          post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,rcv_transactions           rt
+            ,po_headers_all             pha
+            ,po_vendors                 pv
+            ,xxcmn_vendors              xv
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,ic_whse_mst                iwm
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    rsl.source_document_code = 'PO'
+      AND    rt.transaction_id       = trn.line_id
+      AND    rt.shipment_line_id     = rsl.shipment_line_id
+      AND    pha.po_header_id        = rsl.po_header_id
+      AND    pv.vendor_id            = pha.vendor_id
+      AND    xv.vendor_id            = pv.vendor_id
+      AND    xv.start_date_active   <= TRUNC(trn.trans_date)
+      AND    xv.end_date_active     >= TRUNC(trn.trans_date)
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = rsl.source_document_code
+      AND    xrpm.transaction_type   = rt.transaction_type
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:202/203
+    --DD :201/203(OMSO/PORC)
+    CURSOR get_data2023_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,ic_item_mst_b              iimb2
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,ic_item_mst_b              iimb2
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:301/302/303/304/305/306/307/308/309/310/311/312/317/318/319
+    --DD :3nn(PROD)
+    CURSOR get_data3nn_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn gmd gbh grb xrpm gic1 mcb1 gic2 mcb2) use_nl (trn gmd gbh grb xrpm gic1 mcb1 gic2 mcb2) */
+             TO_CHAR(xrpm.line_type)    div_tocode
+            ,xlv.meaning                div_toname
+            ,NULL                       reason_code
+            ,NULL                       reason_name
+            ,grb.attribute14            post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = grb.attribute14
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                          post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,gme_material_details       gmd
+            ,gme_batch_header           gbh
+            ,gmd_routings_b             grb
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,ic_whse_mst                iwm
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,xxcmn_lookup_values2_v     xlv
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_prod
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.reverse_id          IS NULL
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    gmd.batch_id            = trn.doc_id
+      AND    gmd.line_no             = trn.doc_line
+      AND    gbh.batch_id            = gmd.batch_id
+      AND    grb.routing_id          = gbh.routing_id
+      AND    grb.routing_class      <> '70'
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.line_type          = trn.line_type
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.routing_class      = grb.routing_class
+      AND    xrpm.line_type          = gmd.line_type
+      AND    (((gmd.attribute5 IS NULL) AND (xrpm.hit_in_div IS NULL))
+             OR (xrpm.hit_in_div = gmd.attribute5))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xlv.lookup_type         = cv_line_type
+      AND    xrpm.line_type          = xlv.lookup_code
+      AND    (xlv.start_date_active IS NULL OR xlv.start_date_active  <= TRUNC(trn.trans_date))
+      AND    (xlv.end_date_active   IS NULL OR xlv.end_date_active    >= TRUNC(trn.trans_date))
+      AND    xlv.language            = gc_ja
+      AND    xlv.source_lang         = gc_ja
+      AND    xlv.enabled_flag        = cv_yes
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:313/314/315/316
+    --DD :3nn70(PROD_70)
+    CURSOR get_data3nn70_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn gmd gbh grb xrpm gic1 mcb1 gic2 mcb2) use_nl (trn gmd gbh grb xrpm gic1 mcb1 gic2 mcb2) */
+             TO_CHAR(xrpm.line_type)    div_tocode
+            ,xlv.meaning                div_toname
+            ,NULL                       reason_code
+            ,NULL                       reason_name
+            ,grb.attribute14            post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = grb.attribute14
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                          post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,gme_material_details       gmd
+            ,gme_batch_header           gbh
+            ,gmd_routings_b             grb
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,ic_whse_mst                iwm
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,xxcmn_lookup_values2_v     xlv
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_prod
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.reverse_id          IS NULL
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    gmd.batch_id            = trn.doc_id
+      AND    gmd.line_no             = trn.doc_line
+      AND    gbh.batch_id            = gmd.batch_id
+      AND    grb.routing_id          = gbh.routing_id
+      AND    grb.routing_class       = '70'
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.line_type          = trn.line_type
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.routing_class      = grb.routing_class
+      AND    xrpm.line_type          = gmd.line_type
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    (((gmd.attribute5 IS NULL) AND (xrpm.hit_in_div IS NULL))
+             OR (xrpm.hit_in_div = gmd.attribute5))
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd2
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd2.batch_id   = gmd.batch_id
+                      AND    gmd2.line_no    = gmd.line_no
+                      AND    gmd2.line_type  = -1
+                      AND    gic.item_id     = gmd2.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_origin))
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd3
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd3.batch_id   = gmd.batch_id
+                      AND    gmd3.line_no    = gmd.line_no
+                      AND    gmd3.line_type  = 1
+                      AND    gic.item_id     = gmd3.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_ahead))
+      AND    xlv.lookup_type         = cv_line_type
+      AND    xrpm.line_type          = xlv.lookup_code
+      AND    (xlv.start_date_active IS NULL OR xlv.start_date_active  <= TRUNC(trn.trans_date))
+      AND    (xlv.end_date_active   IS NULL OR xlv.end_date_active    >= TRUNC(trn.trans_date))
+      AND    xlv.language            = gc_ja
+      AND    xlv.source_lang         = gc_ja
+      AND    xlv.enabled_flag        = cv_yes
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:401/402
+    --DD :401/402(ADJI_MV/TRNI/XFER)
+    CURSOR get_data4nn_cur (iv_div_type IN VARCHAR2) IS --ADJI_MV
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/28 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,DECODE(xrpm.use_div_invent_dis
+                   ,cv_yes, ijm.attribute2
+                   ,NULL)               lot_desc
+-- 2008/10/28 v1.11 UPDATE END
+      FROM   ic_tran_cmp                trn
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmrl
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    iaj.trans_type          = trn.doc_type
+      AND    iaj.doc_id              = trn.doc_id
+      AND    iaj.doc_line            = trn.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmrl.mov_line_id        = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_adji
+      AND    xrpm.reason_code        = cv_move_correct
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN trn.trans_qty >= 0 THEN cv_div_pay
+                                         WHEN trn.trans_qty < 0 THEN cv_div_rcv
+                                         ELSE xrpm.rcv_pay_div
+                                       END
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      UNION ALL --XFER
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,ic_xfer_mst                ixm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    ixm.transfer_id         = trn.doc_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ixm.attribute1)
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_xfer
+      AND    xrpm.reason_code        = cv_move_result
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN trn.trans_qty >= 0 THEN cv_div_rcv
+                                         ELSE cv_div_pay
+                                       END
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      UNION ALL --TRNI
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_cmp                trn
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    iaj.trans_type          = trn.doc_type
+      AND    iaj.doc_id              = trn.doc_id
+      AND    iaj.doc_line            = trn.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_trni
+      AND    xrpm.reason_code        = cv_move_result
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN trn.trans_qty >= 0 THEN cv_div_rcv
+                                         ELSE cv_div_pay
+                                       END
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:501/504/506/507/508
+    --DD :5nn(ADJI)
+    CURSOR get_data5nn_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/28 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,DECODE(xrpm.use_div_invent_dis
+                   ,cv_yes, ijm.attribute2
+                   ,NULL)               lot_desc
+-- 2008/10/28 v1.11 UPDATE END
+      FROM   ic_tran_cmp                trn
+-- 2008/10/28 v1.11 ADD START
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+-- 2008/10/28 v1.11 ADD END
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+-- 2008/10/28 v1.11 ADD START
+      AND    iaj.trans_type          = trn.doc_type
+      AND    iaj.doc_id              = trn.doc_id
+      AND    iaj.doc_line            = trn.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+-- 2008/10/28 v1.11 ADD END
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_adji
+      AND    xrpm.reason_code      IN (cv_reason_911
+                                      ,cv_reason_912
+                                      ,cv_reason_921
+                                      ,cv_reason_922
+                                      ,cv_reason_941
+                                      ,cv_reason_931
+                                      ,cv_reason_932)
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:502/503
+    --DD :5nn(ADJI/ADJI_SNT)
+    CURSOR get_data5023_cur (iv_div_type IN VARCHAR2) IS --ADJI
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/28 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,DECODE(xrpm.use_div_invent_dis
+                   ,cv_yes, ijm.attribute2
+                   ,NULL)               lot_desc
+-- 2008/10/28 v1.11 UPDATE END
+      FROM   ic_tran_cmp                trn
+-- 2008/10/28 v1.11 ADD START
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+-- 2008/10/28 v1.11 ADD END
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+-- 2008/10/28 v1.11 ADD START
+      AND    iaj.trans_type          = trn.doc_type
+      AND    iaj.doc_id              = trn.doc_id
+      AND    iaj.doc_line            = trn.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+-- 2008/10/28 v1.11 ADD END
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_adji
+      AND    xrpm.reason_code      IN (cv_reason_911
+                                      ,cv_reason_912
+                                      ,cv_reason_921
+                                      ,cv_reason_922
+                                      ,cv_reason_941
+                                      ,cv_reason_931
+                                      ,cv_reason_932)
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      UNION ALL --ADJI_SNT
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/28 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,DECODE(xrpm.use_div_invent_dis
+                   ,cv_yes, ijm.attribute2
+                   ,NULL)               lot_desc
+-- 2008/10/28 v1.11 UPDATE END
+      FROM   ic_tran_cmp                trn
+-- 2008/10/28 v1.11 ADD START
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+-- 2008/10/28 v1.11 ADD END
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+-- 2008/10/28 v1.11 ADD START
+      AND    iaj.trans_type          = trn.doc_type
+      AND    iaj.doc_id              = trn.doc_id
+      AND    iaj.doc_line            = trn.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+-- 2008/10/28 v1.11 ADD END
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_adji
+      AND    xrpm.reason_code      IN (cv_ovlook_pay
+-- 2008/10/27 v1.10 ADD START
+                                      ,cv_ovlook_rcv
+                                      ,cv_sonota_rcv
+-- 2008/10/27 v1.10 ADD END
+                                      ,cv_sonota_pay)
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN trn.trans_qty >= 0 THEN cv_div_rcv
+                                         ELSE cv_div_pay
+                                       END
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:505/509
+    --DD :504/509(ADJI/OMSO/PORC)
+    CURSOR get_data5059_cur (iv_div_type IN VARCHAR2) IS --ADJI
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/28 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,DECODE(xrpm.use_div_invent_dis
+                   ,cv_yes, ijm.attribute2
+                   ,NULL)               lot_desc
+-- 2008/10/28 v1.11 UPDATE END
+      FROM   ic_tran_cmp                trn
+-- 2008/10/28 v1.11 ADD START
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+-- 2008/10/28 v1.11 ADD END
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+-- 2008/10/28 v1.11 ADD START
+      AND    iaj.trans_type          = trn.doc_type
+      AND    iaj.doc_id              = trn.doc_id
+      AND    iaj.doc_line            = trn.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+-- 2008/10/28 v1.11 ADD END
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_adji
+      AND    xrpm.reason_code      IN (cv_reason_911
+                                      ,cv_reason_912
+                                      ,cv_reason_921
+                                      ,cv_reason_922
+                                      ,cv_reason_941
+                                      ,cv_reason_931
+                                      ,cv_reason_932)
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      UNION ALL --OMSO
+      SELECT /*+ leading (trn wdd ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,ic_item_mst_b              iimb2
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      UNION ALL --PORC
+      SELECT /*+ leading (trn rsl ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,ic_item_mst_b              iimb2
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:511
+    --DD :511(ADJI_HM)
+    CURSOR get_data511_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/28 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,DECODE(xrpm.use_div_invent_dis
+                   ,cv_yes, ijm.attribute2
+                   ,NULL)               lot_desc
+-- 2008/10/28 v1.11 UPDATE END
+      FROM   ic_tran_cmp                trn
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxpo_namaha_prod_txns      xnpt
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    iaj.trans_type          = trn.doc_type
+      AND    iaj.doc_id              = trn.doc_id
+      AND    iaj.doc_line            = trn.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xnpt.entry_number       = ijm.attribute1
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_adji
+      AND    xrpm.reason_code        = cv_hamaoka_rcv
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    -------------------------------------------------
+    -- 事由コード指定あり
+    -------------------------------------------------
+    --品目区分:製品
+    --NDA:101(製品)
+    --DD :102/112(OMSO/PORC)
+    CURSOR get_data101p_r_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2) */
+             hca.account_number             div_tocode
+            ,xp.party_short_name            div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+            ,hz_parties                 hp
+            ,hz_cust_accounts           hca
+            ,xxcmn_parties              xp
+            ,hz_party_sites             hps
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('102','103')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.item_div_ahead    IS NOT NULL
+      AND    xrpm.item_div_origin   IS NOT NULL
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    hp.party_id             = hca.party_id (+)
+      AND    hp.party_id             = xp.party_id (+)
+      AND    hp.party_id (+)         = hps.party_id
+      AND    hps.party_site_id (+)   = xoha.deliver_to_id
+      AND    NVL(xp.start_date_active, FND_DATE.STRING_TO_DATE(cv_start_date, gc_char_d_format))
+             <= TRUNC(trn.trans_date)
+      AND    NVL(xp.end_date_active, FND_DATE.STRING_TO_DATE(cv_end_date, gc_char_d_format))
+             >= TRUNC(trn.trans_date)
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL
+      SELECT /*+ leading (trn wdd ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           IN ('1','2','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       = '112'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('102','103')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.item_div_ahead    IS NOT NULL
+      AND    xrpm.item_div_origin   IS NOT NULL
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+--            ,trn.item_id                    item_id
+            ,iimb.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           IN ('1','2','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       = '112'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:102(製品)
+    --DD :105/108(OMSO/PORC)
+    CURSOR get_data102p_r_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           IN ('1','2','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('104','105')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL
+      SELECT /*+ leading (trn wdd ooha otta xrpm gic3 mcb3 gic4 mcb4 xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm gic3 mcb3 gic4 mcb4 xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gmi_item_categories        gic4
+            ,mtl_categories_b           mcb4
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    mcb1.segment1           = '1'
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    gic4.item_id            = trn.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    gic4.category_id        = mcb4.category_id
+      AND    mcb4.segment1           = '2'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('107','108')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           IN ('1','2','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('104','105')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm gic3 mcb3 gic4 mcb4 xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm gic3 mcb3 gic4 mcb4 xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gmi_item_categories        gic4
+            ,mtl_categories_b           mcb4
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    mcb1.segment1           = '1'
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    gic4.item_id            = trn.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    gic4.category_id        = mcb4.category_id
+      AND    mcb4.segment1           = '2'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('107','108')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:103(製品)
+    --DD :103(OMSO/PORC)
+    CURSOR get_data103p_r_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('102','103')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.item_div_ahead    IS NOT NULL
+      AND    xrpm.item_div_origin   IS NOT NULL
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst  xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('102','103')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.item_div_ahead    IS NOT NULL
+      AND    xrpm.item_div_origin   IS NOT NULL
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:104(製品)
+    --対象なし
+--
+    --NDA:105(製品)
+    --DD :107(OMSO/PORC)
+    CURSOR get_data105p_r_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm gic3 mcb3 gic4 mcb4 xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm gic3 mcb3 gic4 mcb4 xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gmi_item_categories        gic4
+            ,mtl_categories_b           mcb4
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    mcb1.segment1           = '1'
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    gic4.item_id            = trn.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    gic4.category_id        = mcb4.category_id
+      AND    mcb4.segment1           = '2'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('107','108')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm gic3 mcb3 gic4 mcb4 xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm gic3 mcb3 gic4 mcb4 xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gmi_item_categories        gic4
+            ,mtl_categories_b           mcb4
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    mcb1.segment1           = '1'
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    gic4.item_id            = trn.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    gic4.category_id        = mcb4.category_id
+      AND    mcb4.segment1           = '2'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('107','108')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:106(製品)
+    --DD :109(OMSO/PORC)
+    CURSOR get_data106p_r_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3 gic4 mcb4) use_nl (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3 gic4 mcb4) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                   item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,ic_item_mst_b              iimb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gmi_item_categories        gic4
+            ,mtl_categories_b           mcb4
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    mcb1.segment1           = '2'
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic3.item_id            = iimb2.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    gic4.item_id            = iimb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    gic4.category_id        = mcb4.category_id
+      AND    mcb4.segment1           = '1'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       = '109'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3 gic4 mcb4) use_nl (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3 gic4 mcb4) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                   item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,ic_item_mst_b              iimb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gmi_item_categories        gic4
+            ,mtl_categories_b           mcb4
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    mcb1.segment1           = '2'
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic3.item_id            = iimb2.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    gic4.item_id            = iimb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    gic4.category_id        = mcb4.category_id
+      AND    mcb4.segment1           = '1'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       = '109'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:107(製品)
+    --DD :104(OMSO/PORC)
+    CURSOR get_data107p_r_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                   item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           IN ('1','2','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('104','105')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                   item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           IN ('1','2','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('104','105')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:108(製品)
+    --対象なし
+--
+    --NDA:109/111(製品)
+    --DD :110/111(OMSO/PORC)
+    CURSOR get_data109111p_r_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) */
+             hca.account_number             div_tocode
+            ,xp.party_short_name            div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                   item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+            ,hz_parties                 hp
+            ,hz_cust_accounts           hca
+            ,xxcmn_parties              xp
+            ,hz_party_sites             hps
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           IN ('1','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.item_div_origin    = mcb3.segment1
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    hp.party_id             = hca.party_id (+)
+      AND    hp.party_id             = xp.party_id (+)
+      AND    hp.party_id (+)         = hps.party_id
+      AND    hps.party_site_id (+)   = xoha.deliver_to_id
+      AND    NVL(xp.start_date_active, FND_DATE.STRING_TO_DATE(cv_start_date, gc_char_d_format))
+             <= TRUNC(trn.trans_date)
+      AND    NVL(xp.end_date_active, FND_DATE.STRING_TO_DATE(cv_end_date, gc_char_d_format))
+             >= TRUNC(trn.trans_date)
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,iimb.item_id                   item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_no            = xola.request_item_code
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = iimb.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           = '5'
+      AND    gic3.item_id            = trn.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           IN ('1','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.item_div_origin    = mcb3.segment1
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --品目区分:原料資材半製品
+    --NDA:101/103(原料資材半製品)
+    --DD :101/103(OMSO/PORC)
+    CURSOR get_data1013m_r_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           IN ('1','2','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('101','103')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.item_div_ahead    IS NULL
+      AND    xrpm.item_div_origin   IS NULL
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           IN ('1','2','4')
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('101','103')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.item_div_ahead    IS NULL
+      AND    xrpm.item_div_origin   IS NULL
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:102(原料資材半製品)
+    --対象なし
+--
+    --NDA:104(原料資材半製品)
+    --DD :113(OMSO/PORC)
+    CURSOR get_data104m_r_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3) use_nl (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3) */
+             hca.account_number             div_tocode
+            ,xp.party_short_name            div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,ic_item_mst_b              iimb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+            ,hz_parties                 hp
+            ,hz_cust_accounts           hca
+            ,xxcmn_parties              xp
+            ,hz_party_sites             hps
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           IN ('1','2','4')
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic3.item_id            = iimb2.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    hp.party_id             = hca.party_id (+)
+      AND    hp.party_id             = xp.party_id (+)
+      AND    hp.party_id (+)         = hps.party_id
+      AND    hps.party_site_id (+)   = xoha.deliver_to_id
+      AND    NVL(xp.start_date_active, FND_DATE.STRING_TO_DATE(cv_start_date, gc_char_d_format))
+             <= TRUNC(trn.trans_date)
+      AND    NVL(xp.end_date_active, FND_DATE.STRING_TO_DATE(cv_end_date, gc_char_d_format))
+             >= TRUNC(trn.trans_date)
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3) use_nl (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,ic_item_mst_b              iimb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           IN ('1','2','4')
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic3.item_id            = iimb2.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:105(原料資材半製品)
+    --対象なし
+--
+    --NDA:106(原料資材半製品)
+    --対象なし
+--
+    --NDA:107(原料資材半製品)
+    --対象なし
+--
+    --NDA:108(原料資材半製品)
+    --DD :106(OMSO/PORC)
+    CURSOR get_data108m_r_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3) use_nl (trn wdd ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,ic_item_mst_b              iimb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           IN ('1','2','4')
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic3.item_id            = iimb2.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       = '106'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3) use_nl (trn rsl ooha otta xrpm gic1 mcb1 gic2 mcb2 xola iimb2 gic3 mcb3) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_headers_all    xoha
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,ic_item_mst_b              iimb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    mcb2.segment1           IN ('1','2','4')
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic3.item_id            = iimb2.item_id
+      AND    gic3.category_set_id    = cn_item_class_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = '5'
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       = '106'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
+             OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:109(原料資材半製品)
+    --対象なし
+--
+    --NDA:111(原料資材半製品)
+    --対象なし
+--
+    --品目区分:全般
+    --NDA:201
+    --DD :202(ADJI_PO/PORC_PO)
+    CURSOR get_data201_r_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/28 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,DECODE(xrpm.use_div_invent_dis
+                   ,cv_yes, ijm.attribute2
+                   ,NULL)               lot_desc
+-- 2008/10/28 v1.11 UPDATE END
+      FROM   ic_tran_cmp                trn
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxpo_rcv_and_rtn_txns      xrrt
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    iaj.trans_type          = trn.doc_type
+      AND    iaj.doc_id              = trn.doc_id
+      AND    iaj.doc_line            = trn.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xrrt.txns_id            = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_adji
+      AND    xrpm.reason_code        = cv_vendor_rma
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL
+      SELECT /*+ leading (trn rsl rt xrpm gic1 mcb1 gic2 mcb2) use_nl (trn rsl rt xrpm gic1 mcb1 gic2 mcb2) */
+             pv.segment1                div_tocode
+            ,xv.vendor_short_name       div_toname
+            ,NULL                       reason_code
+            ,NULL                       reason_name
+            ,pha.attribute10            post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = pha.attribute10
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                          post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,rcv_transactions           rt
+            ,po_headers_all             pha
+            ,po_vendors                 pv
+            ,xxcmn_vendors              xv
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,ic_whse_mst                iwm
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    rsl.source_document_code = 'PO'
+      AND    rt.transaction_id       = trn.line_id
+      AND    rt.shipment_line_id     = rsl.shipment_line_id
+      AND    pha.po_header_id        = rsl.po_header_id
+      AND    pv.vendor_id            = pha.vendor_id
+      AND    xv.vendor_id            = pv.vendor_id
+      AND    xv.start_date_active   <= TRUNC(trn.trans_date)
+      AND    xv.end_date_active     >= TRUNC(trn.trans_date)
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = rsl.source_document_code
+      AND    xrpm.transaction_type   = rt.transaction_type
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:202/203
+    --DD :201/203(OMSO/PORC)
+    CURSOR get_data2023_r_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn wdd ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,ic_item_mst_b              iimb2
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL
+      SELECT /*+ leading (trn rsl ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,ic_item_mst_b              iimb2
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:301/302/303/304/305/306/307/308/309/310/311/312/317/318/319
+    --DD :3nn(PROD)
+    CURSOR get_data3nn_r_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn gmd gbh grb xrpm gic1 mcb1 gic2 mcb2) use_nl (trn gmd gbh grb xrpm gic1 mcb1 gic2 mcb2) */
+             TO_CHAR(xrpm.line_type)    div_tocode
+            ,xlv.meaning                div_toname
+            ,NULL                       reason_code
+            ,NULL                       reason_name
+            ,grb.attribute14            post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = grb.attribute14
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                          post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,gme_material_details       gmd
+            ,gme_batch_header           gbh
+            ,gmd_routings_b             grb
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,ic_whse_mst                iwm
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,xxcmn_lookup_values2_v     xlv
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_prod
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.reverse_id          IS NULL
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    gmd.batch_id            = trn.doc_id
+      AND    gmd.line_no             = trn.doc_line
+      AND    gbh.batch_id            = gmd.batch_id
+      AND    grb.routing_id          = gbh.routing_id
+      AND    grb.routing_class      <> '70'
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.line_type          = trn.line_type
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.routing_class      = grb.routing_class
+      AND    xrpm.line_type          = gmd.line_type
+      AND    (((gmd.attribute5 IS NULL) AND (xrpm.hit_in_div IS NULL))
+             OR (xrpm.hit_in_div = gmd.attribute5))
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xlv.lookup_type         = cv_line_type
+      AND    xrpm.line_type          = xlv.lookup_code
+      AND    (xlv.start_date_active IS NULL OR xlv.start_date_active  <= TRUNC(trn.trans_date))
+      AND    (xlv.end_date_active   IS NULL OR xlv.end_date_active    >= TRUNC(trn.trans_date))
+      AND    xlv.language            = gc_ja
+      AND    xlv.source_lang         = gc_ja
+      AND    xlv.enabled_flag        = cv_yes
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:313/314/315/316
+    --DD :3nn70(PROD_70)
+    CURSOR get_data3nn70_r_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (trn gmd gbh grb xrpm gic1 mcb1 gic2 mcb2) use_nl (trn gmd gbh grb xrpm gic1 mcb1 gic2 mcb2) */
+             TO_CHAR(xrpm.line_type)    div_tocode
+            ,xlv.meaning                div_toname
+            ,NULL                       reason_code
+            ,NULL                       reason_name
+            ,grb.attribute14            post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = grb.attribute14
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                          post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,gme_material_details       gmd
+            ,gme_batch_header           gbh
+            ,gmd_routings_b             grb
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,ic_whse_mst                iwm
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,xxcmn_lookup_values2_v     xlv
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_prod
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.reverse_id          IS NULL
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    gmd.batch_id            = trn.doc_id
+      AND    gmd.line_no             = trn.doc_line
+      AND    gbh.batch_id            = gmd.batch_id
+      AND    grb.routing_id          = gbh.routing_id
+      AND    grb.routing_class       = '70'
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.line_type          = trn.line_type
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.routing_class      = grb.routing_class
+      AND    xrpm.line_type          = gmd.line_type
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    (((gmd.attribute5 IS NULL) AND (xrpm.hit_in_div IS NULL))
+             OR (xrpm.hit_in_div = gmd.attribute5))
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd2
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd2.batch_id   = gmd.batch_id
+                      AND    gmd2.line_no    = gmd.line_no
+                      AND    gmd2.line_type  = -1
+                      AND    gic.item_id     = gmd2.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_origin))
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd3
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd3.batch_id   = gmd.batch_id
+                      AND    gmd3.line_no    = gmd.line_no
+                      AND    gmd3.line_type  = 1
+                      AND    gic.item_id     = gmd3.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_ahead))
+      AND    xlv.lookup_type         = cv_line_type
+      AND    xrpm.line_type          = xlv.lookup_code
+      AND    (xlv.start_date_active IS NULL OR xlv.start_date_active  <= TRUNC(trn.trans_date))
+      AND    (xlv.end_date_active   IS NULL OR xlv.end_date_active    >= TRUNC(trn.trans_date))
+      AND    xlv.language            = gc_ja
+      AND    xlv.source_lang         = gc_ja
+      AND    xlv.enabled_flag        = cv_yes
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:401/402
+    --DD :401/402(ADJI_MV/TRNI/XFER)
+    CURSOR get_data4nn_r_cur (iv_div_type IN VARCHAR2) IS --ADJI_MV
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/28 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,DECODE(xrpm.use_div_invent_dis
+                   ,cv_yes, ijm.attribute2
+                   ,NULL)               lot_desc
+-- 2008/10/28 v1.11 UPDATE END
+      FROM   ic_tran_cmp                trn
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmrl
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    iaj.trans_type          = trn.doc_type
+      AND    iaj.doc_id              = trn.doc_id
+      AND    iaj.doc_line            = trn.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmrl.mov_line_id        = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_adji
+      AND    xrpm.reason_code        = cv_move_correct
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN trn.trans_qty >= 0 THEN cv_div_pay
+                                         WHEN trn.trans_qty < 0 THEN cv_div_rcv
+                                         ELSE xrpm.rcv_pay_div
+                                       END
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL --XFER
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,ic_xfer_mst                ixm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    ixm.transfer_id         = trn.doc_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ixm.attribute1)
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_xfer
+      AND    xrpm.reason_code        = cv_move_result
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN trn.trans_qty >= 0 THEN cv_div_rcv
+                                         ELSE cv_div_pay
+                                       END
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL --TRNI
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_cmp                trn
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    iaj.trans_type          = trn.doc_type
+      AND    iaj.doc_id              = trn.doc_id
+      AND    iaj.doc_line            = trn.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_trni
+      AND    xrpm.reason_code        = cv_move_result
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN trn.trans_qty >= 0 THEN cv_div_rcv
+                                         ELSE cv_div_pay
+                                       END
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:501/504/506/507/508
+    --DD :5nn(ADJI)
+    CURSOR get_data5nn_r_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/28 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,DECODE(xrpm.use_div_invent_dis
+                   ,cv_yes, ijm.attribute2
+                   ,NULL)               lot_desc
+-- 2008/10/28 v1.11 UPDATE END
+      FROM   ic_tran_cmp                trn
+-- 2008/10/28 v1.11 ADD START
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+-- 2008/10/28 v1.11 ADD END
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+-- 2008/10/28 v1.11 ADD START
+      AND    iaj.trans_type          = trn.doc_type
+      AND    iaj.doc_id              = trn.doc_id
+      AND    iaj.doc_line            = trn.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+-- 2008/10/28 v1.11 ADD END
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_adji
+      AND    xrpm.reason_code      IN (cv_reason_911
+                                      ,cv_reason_912
+                                      ,cv_reason_921
+                                      ,cv_reason_922
+                                      ,cv_reason_941
+                                      ,cv_reason_931
+                                      ,cv_reason_932)
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:502/503
+    --DD :5nn(ADJI/ADJI_SNT)
+    CURSOR get_data5023_r_cur (iv_div_type IN VARCHAR2) IS --ADJI
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/28 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,DECODE(xrpm.use_div_invent_dis
+                   ,cv_yes, ijm.attribute2
+                   ,NULL)               lot_desc
+-- 2008/10/28 v1.11 UPDATE END
+      FROM   ic_tran_cmp                trn
+-- 2008/10/28 v1.11 ADD START
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+-- 2008/10/28 v1.11 ADD END
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+-- 2008/10/28 v1.11 ADD START
+      AND    iaj.trans_type          = trn.doc_type
+      AND    iaj.doc_id              = trn.doc_id
+      AND    iaj.doc_line            = trn.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+-- 2008/10/28 v1.11 ADD END
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_adji
+      AND    xrpm.reason_code      IN (cv_reason_911
+                                      ,cv_reason_912
+                                      ,cv_reason_921
+                                      ,cv_reason_922
+                                      ,cv_reason_941
+                                      ,cv_reason_931
+                                      ,cv_reason_932)
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL --ADJI_SNT
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/28 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,DECODE(xrpm.use_div_invent_dis
+                   ,cv_yes, ijm.attribute2
+                   ,NULL)               lot_desc
+-- 2008/10/28 v1.11 UPDATE END
+      FROM   ic_tran_cmp                trn
+-- 2008/10/28 v1.11 ADD START
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+-- 2008/10/28 v1.11 ADD END
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+-- 2008/10/28 v1.11 ADD START
+      AND    iaj.trans_type          = trn.doc_type
+      AND    iaj.doc_id              = trn.doc_id
+      AND    iaj.doc_line            = trn.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+-- 2008/10/28 v1.11 ADD END
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_adji
+      AND    xrpm.reason_code      IN (cv_ovlook_pay
+-- 2008/10/27 v1.10 ADD START
+                                      ,cv_ovlook_rcv
+                                      ,cv_sonota_rcv
+-- 2008/10/27 v1.10 ADD END
+                                      ,cv_sonota_pay)
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN trn.trans_qty >= 0 THEN cv_div_rcv
+                                         ELSE cv_div_pay
+                                       END
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:505/509
+    --DD :504/509(ADJI/OMSO/PORC)
+    CURSOR get_data5059_r_cur (iv_div_type IN VARCHAR2) IS --ADJI
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/28 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,DECODE(xrpm.use_div_invent_dis
+                   ,cv_yes, ijm.attribute2
+                   ,NULL)               lot_desc
+-- 2008/10/28 v1.11 UPDATE END
+      FROM   ic_tran_cmp                trn
+-- 2008/10/28 v1.11 ADD START
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+-- 2008/10/28 v1.11 ADD END
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+-- 2008/10/28 v1.11 ADD START
+      AND    iaj.trans_type          = trn.doc_type
+      AND    iaj.doc_id              = trn.doc_id
+      AND    iaj.doc_line            = trn.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+-- 2008/10/28 v1.11 ADD END
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_adji
+      AND    xrpm.reason_code      IN (cv_reason_911
+                                      ,cv_reason_912
+                                      ,cv_reason_921
+                                      ,cv_reason_922
+                                      ,cv_reason_941
+                                      ,cv_reason_931
+                                      ,cv_reason_932)
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL --OMSO
+      SELECT /*+ leading (trn wdd ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2) use_nl (trn wdd ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,wsh_delivery_details       wdd
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,ic_item_mst_b              iimb2
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_omso
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = trn.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      UNION ALL --PORC
+      SELECT /*+ leading (trn rsl ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2) use_nl (trn rsl ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2) */
+             NULL                           div_tocode
+            ,NULL                           div_toname
+            ,NULL                           reason_code
+            ,NULL                           reason_name
+            ,ooha.attribute11               post_code
+            ,(SELECT loca.location_short_name
+              FROM   xxcmn_locations2_v loca
+              WHERE  loca.location_code = ooha.attribute11
+              AND    loca.start_date_active <= TRUNC(trn.trans_date)
+              AND    loca.end_date_active   >= TRUNC(trn.trans_date)
+             )                              post_name
+            ,trn.trans_date                 trans_date
+            ,xrpm.new_div_account           new_div_account
+            ,xlv1.meaning                   div_name
+            ,trn.item_id                    item_id
+            ,iimb.item_no                   item_code
+            ,ximb.item_short_name           item_name
+            ,trn.whse_code                  whse_code
+            ,iwm.whse_name                  whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,DECODE(xrpm.dealings_div_name
+                   ,gv_haiki,trn.trans_qty
+                   ,gv_mihon,trn.trans_qty
+                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/10/27 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,NULL                           lot_desc
+-- 2008/10/27 v1.11 UPDATE END
+      FROM   ic_tran_pnd                trn
+            ,rcv_shipment_lines         rsl
+            ,oe_order_headers_all       ooha
+            ,oe_transaction_types_all   otta
+            ,xxwsh_order_lines_all      xola
+            ,ic_item_mst_b              iimb
+            ,ic_item_mst_b              iimb2
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = cv_doc_type_porc
+      AND    trn.completed_ind       = cv_comp_flg
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = trn.doc_id
+      AND    rsl.line_num            = trn.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = trn.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.doc_type           = trn.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+    --NDA:511
+    --DD :511(ADJI_HM)
+    CURSOR get_data511_r_cur (iv_div_type IN VARCHAR2) IS
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,xlc.unit_ploce             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/10/28 v1.11 UPDATE START
+--            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
+            ,DECODE(xrpm.use_div_invent_dis
+                   ,cv_yes, ijm.attribute2
+                   ,NULL)               lot_desc
+-- 2008/10/28 v1.11 UPDATE END
+      FROM   ic_tran_cmp                trn
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxpo_namaha_prod_txns      xnpt
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    iaj.trans_type          = trn.doc_type
+      AND    iaj.doc_id              = trn.doc_id
+      AND    iaj.doc_line            = trn.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xnpt.entry_number       = ijm.attribute1
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_adji
+      AND    xrpm.reason_code        = cv_hamaoka_rcv
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+      ORDER BY reason_code,item_code,whse_code,lot_no
+      ;
+--
+-- 2008/10/27 v1.10 ADD END
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -528,1087 +9147,325 @@ AS
     ld_end_date   := LAST_DAY(ld_start_date);
     lv_end_date   := TO_CHAR(ld_end_date, gc_char_d_format) || lc_e_time ;
 --
-    -- 受払区分(新経理受払区分)ﾊﾟﾗﾒｰﾀ値設定
-    lv_sql_para :=
-           '   AND rpmv.new_div_account in (''' || ir_param.div_type1 || ''''     -- 受払区分１
-      ;
-    -- 受払区分２が入力されている場合
-    IF ( ir_param.div_type2 IS NOT NULL ) THEN
-      lv_sql_para := lv_sql_para
-             || ' , ''' || ir_param.div_type2 || ''' '
-             ;
+-- 2008/10/27 v1.10 ADD START
+--
+    -- 事由コード指定なしの場合
+    IF ( ir_param.reason_code IS NULL ) THEN
+--
+      <<div_type_loop>>
+      FOR get_div_type_rec IN get_div_type_cur LOOP
+--
+        --製品の場合
+        IF ( ir_param.item_class = '5' ) THEN
+          --受払区分:101
+          IF (get_div_type_rec.div_type = '101') THEN
+            OPEN  get_data101p_cur(get_div_type_rec.div_type);
+            FETCH get_data101p_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data101p_cur;
+          --受払区分:102
+          ELSIF (get_div_type_rec.div_type = '102') THEN
+            OPEN  get_data102p_cur(get_div_type_rec.div_type);
+            FETCH get_data102p_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data102p_cur;
+          --受払区分:103
+          ELSIF (get_div_type_rec.div_type = '103') THEN
+            OPEN  get_data103p_cur(get_div_type_rec.div_type);
+            FETCH get_data103p_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data103p_cur;
+          --受払区分:104
+          ELSIF (get_div_type_rec.div_type = '104') THEN
+            NULL; --対象外
+          --受払区分:105
+          ELSIF (get_div_type_rec.div_type = '105') THEN
+            OPEN  get_data105p_cur(get_div_type_rec.div_type);
+            FETCH get_data105p_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data105p_cur;
+          --受払区分:106
+          ELSIF (get_div_type_rec.div_type = '106') THEN
+            OPEN  get_data106p_cur(get_div_type_rec.div_type);
+            FETCH get_data106p_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data106p_cur;
+          --受払区分:107
+          ELSIF (get_div_type_rec.div_type = '107') THEN
+            OPEN  get_data107p_cur(get_div_type_rec.div_type);
+            FETCH get_data107p_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data107p_cur;
+          --受払区分:108
+          ELSIF (get_div_type_rec.div_type = '108') THEN
+            NULL; --対象外
+          --受払区分:109/111
+          ELSIF (get_div_type_rec.div_type IN ('109','111')) THEN
+            OPEN  get_data109111p_cur(get_div_type_rec.div_type);
+            FETCH get_data109111p_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data109111p_cur;
+          END IF;
+        --原料資材半製品の場合
+        ELSE
+          --受払区分:101/103
+          IF (get_div_type_rec.div_type IN ('101','103')) THEN
+            OPEN  get_data1013m_cur(get_div_type_rec.div_type);
+            FETCH get_data1013m_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data1013m_cur;
+          --受払区分:102
+          ELSIF (get_div_type_rec.div_type = '102') THEN
+            NULL; --対象外
+          --受払区分:104
+          ELSIF (get_div_type_rec.div_type = '104') THEN
+            OPEN  get_data104m_cur(get_div_type_rec.div_type);
+            FETCH get_data104m_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data104m_cur;
+          --受払区分:105
+          ELSIF (get_div_type_rec.div_type = '105') THEN
+            NULL; --対象外
+          --受払区分:106
+          ELSIF (get_div_type_rec.div_type = '106') THEN
+            NULL; --対象外
+          --受払区分:107
+          ELSIF (get_div_type_rec.div_type = '107') THEN
+            NULL; --対象外
+          --受払区分:108
+          ELSIF (get_div_type_rec.div_type = '108') THEN
+            OPEN  get_data108m_cur(get_div_type_rec.div_type);
+            FETCH get_data108m_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data108m_cur;
+          --受払区分:109
+          ELSIF (get_div_type_rec.div_type = '109') THEN
+            NULL; --対象外
+          --受払区分:111
+          ELSIF (get_div_type_rec.div_type = '111') THEN
+            NULL; --対象外
+          END IF;
+        END IF;
+--
+        --共通
+        --受払区分:201
+        IF (get_div_type_rec.div_type = '201') THEN
+          OPEN  get_data201_cur(get_div_type_rec.div_type);
+          FETCH get_data201_cur BULK COLLECT INTO lt_work_rec;
+          CLOSE get_data201_cur;
+        --受払区分:202/203
+        ELSIF (get_div_type_rec.div_type IN ('202','203')) THEN
+          OPEN  get_data2023_cur(get_div_type_rec.div_type);
+          FETCH get_data2023_cur BULK COLLECT INTO lt_work_rec;
+          CLOSE get_data2023_cur;
+        --受払区分:301/302/303/304/305/306/307/308/309/310/311/312/317/318/319
+        ELSIF (get_div_type_rec.div_type IN ('301','302','303'
+                                            ,'304','305','306'
+                                            ,'307','308','309'
+                                            ,'310','311','312'
+                                            ,'317','318','319')) THEN
+          OPEN  get_data3nn_cur(get_div_type_rec.div_type);
+          FETCH get_data3nn_cur BULK COLLECT INTO lt_work_rec;
+          CLOSE get_data3nn_cur;
+        --受払区分:313/314/315/316
+        ELSIF (get_div_type_rec.div_type IN ('313','314','315','316')) THEN
+          OPEN  get_data3nn70_cur(get_div_type_rec.div_type);
+          FETCH get_data3nn70_cur BULK COLLECT INTO lt_work_rec;
+          CLOSE get_data3nn70_cur;
+        --受払区分:401/402
+        ELSIF (get_div_type_rec.div_type IN ('401','402')) THEN
+          OPEN  get_data4nn_cur(get_div_type_rec.div_type);
+          FETCH get_data4nn_cur BULK COLLECT INTO lt_work_rec;
+          CLOSE get_data4nn_cur;
+        --受払区分:501/504/506/507/508
+        ELSIF (get_div_type_rec.div_type IN ('501','504','506','507','508')) THEN
+          OPEN  get_data5nn_cur(get_div_type_rec.div_type);
+          FETCH get_data5nn_cur BULK COLLECT INTO lt_work_rec;
+          CLOSE get_data5nn_cur;
+        --受払区分:502/503
+        ELSIF (get_div_type_rec.div_type IN ('502','503')) THEN
+          OPEN  get_data5023_cur(get_div_type_rec.div_type);
+          FETCH get_data5023_cur BULK COLLECT INTO lt_work_rec;
+          CLOSE get_data5023_cur;
+        --受払区分:505/509
+        ELSIF (get_div_type_rec.div_type IN ('505','509')) THEN
+          OPEN  get_data5059_cur(get_div_type_rec.div_type);
+          FETCH get_data5059_cur BULK COLLECT INTO lt_work_rec;
+          CLOSE get_data5059_cur;
+        --受払区分:511
+        ELSIF (get_div_type_rec.div_type = '511') THEN
+          OPEN  get_data511_cur(get_div_type_rec.div_type);
+          FETCH get_data511_cur BULK COLLECT INTO lt_work_rec;
+          CLOSE get_data511_cur;
+        END IF;
+--
+        li_cnt := ot_data_rec.COUNT;
+--
+        IF  (li_cnt = 0)
+        AND (lt_work_rec.COUNT > 0) THEN
+          ot_data_rec := lt_work_rec;
+        ELSIF (li_cnt > 0)
+        AND   (lt_work_rec.COUNT > 0) THEN
+          <<set_data_loop>>
+          FOR i IN 1..lt_work_rec.COUNT LOOP
+            ot_data_rec(li_cnt + i) := lt_work_rec(i);
+          END LOOP set_data_loop;
+        END IF;
+--
+        lt_work_rec.DELETE;
+--
+      END LOOP div_type_loop;
+--
+    -- 事由コード指定ありの場合
+    ELSE
+--
+      <<div_type_r_loop>>
+      FOR get_div_type_rec IN get_div_type_cur LOOP
+--
+        --製品の場合
+        IF ( ir_param.item_class = '5' ) THEN
+          --受払区分:101
+          IF (get_div_type_rec.div_type = '101') THEN
+            OPEN  get_data101p_r_cur(get_div_type_rec.div_type);
+            FETCH get_data101p_r_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data101p_r_cur;
+          --受払区分:102
+          ELSIF (get_div_type_rec.div_type = '102') THEN
+            OPEN  get_data102p_r_cur(get_div_type_rec.div_type);
+            FETCH get_data102p_r_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data102p_r_cur;
+          --受払区分:103
+          ELSIF (get_div_type_rec.div_type = '103') THEN
+            OPEN  get_data103p_r_cur(get_div_type_rec.div_type);
+            FETCH get_data103p_r_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data103p_r_cur;
+          --受払区分:104
+          ELSIF (get_div_type_rec.div_type = '104') THEN
+            NULL; --対象外
+          --受払区分:105
+          ELSIF (get_div_type_rec.div_type = '105') THEN
+            OPEN  get_data105p_r_cur(get_div_type_rec.div_type);
+            FETCH get_data105p_r_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data105p_r_cur;
+          --受払区分:106
+          ELSIF (get_div_type_rec.div_type = '106') THEN
+            OPEN  get_data106p_r_cur(get_div_type_rec.div_type);
+            FETCH get_data106p_r_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data106p_r_cur;
+          --受払区分:107
+          ELSIF (get_div_type_rec.div_type = '107') THEN
+            OPEN  get_data107p_r_cur(get_div_type_rec.div_type);
+            FETCH get_data107p_r_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data107p_r_cur;
+          --受払区分:108
+          ELSIF (get_div_type_rec.div_type = '108') THEN
+            NULL; --対象外
+          --受払区分:109/111
+          ELSIF (get_div_type_rec.div_type IN ('109','111')) THEN
+            OPEN  get_data109111p_r_cur(get_div_type_rec.div_type);
+            FETCH get_data109111p_r_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data109111p_r_cur;
+          END IF;
+        --原料資材半製品の場合
+        ELSE
+          --受払区分:101/103
+          IF (get_div_type_rec.div_type IN ('101','103')) THEN
+            OPEN  get_data1013m_r_cur(get_div_type_rec.div_type);
+            FETCH get_data1013m_r_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data1013m_r_cur;
+          --受払区分:102
+          ELSIF (get_div_type_rec.div_type = '102') THEN
+            NULL; --対象外
+          --受払区分:104
+          ELSIF (get_div_type_rec.div_type = '104') THEN
+            OPEN  get_data104m_r_cur(get_div_type_rec.div_type);
+            FETCH get_data104m_r_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data104m_r_cur;
+          --受払区分:105
+          ELSIF (get_div_type_rec.div_type = '105') THEN
+            NULL; --対象外
+          --受払区分:106
+          ELSIF (get_div_type_rec.div_type = '106') THEN
+            NULL; --対象外
+          --受払区分:107
+          ELSIF (get_div_type_rec.div_type = '107') THEN
+            NULL; --対象外
+          --受払区分:108
+          ELSIF (get_div_type_rec.div_type = '108') THEN
+            OPEN  get_data108m_r_cur(get_div_type_rec.div_type);
+            FETCH get_data108m_r_cur BULK COLLECT INTO lt_work_rec;
+            CLOSE get_data108m_r_cur;
+          --受払区分:109
+          ELSIF (get_div_type_rec.div_type = '109') THEN
+            NULL; --対象外
+          --受払区分:111
+          ELSIF (get_div_type_rec.div_type = '111') THEN
+            NULL; --対象外
+          END IF;
+        END IF;
+--
+        --共通
+        --受払区分:201
+        IF (get_div_type_rec.div_type = '201') THEN
+          OPEN  get_data201_r_cur(get_div_type_rec.div_type);
+          FETCH get_data201_r_cur BULK COLLECT INTO lt_work_rec;
+          CLOSE get_data201_r_cur;
+        --受払区分:202/203
+        ELSIF (get_div_type_rec.div_type IN ('202','203')) THEN
+          OPEN  get_data2023_r_cur(get_div_type_rec.div_type);
+          FETCH get_data2023_r_cur BULK COLLECT INTO lt_work_rec;
+          CLOSE get_data2023_r_cur;
+        --受払区分:301/302/303/304/305/306/307/308/309/310/311/312/317/318/319
+        ELSIF (get_div_type_rec.div_type IN ('301','302','303'
+                                            ,'304','305','306'
+                                            ,'307','308','309'
+                                            ,'310','311','312'
+                                            ,'317','318','319')) THEN
+          OPEN  get_data3nn_r_cur(get_div_type_rec.div_type);
+          FETCH get_data3nn_r_cur BULK COLLECT INTO lt_work_rec;
+          CLOSE get_data3nn_r_cur;
+        --受払区分:313/314/315/316
+        ELSIF (get_div_type_rec.div_type IN ('313','314','315','316')) THEN
+          OPEN  get_data3nn70_r_cur(get_div_type_rec.div_type);
+          FETCH get_data3nn70_r_cur BULK COLLECT INTO lt_work_rec;
+          CLOSE get_data3nn70_r_cur;
+        --受払区分:401/402
+        ELSIF (get_div_type_rec.div_type IN ('401','402')) THEN
+          OPEN  get_data4nn_r_cur(get_div_type_rec.div_type);
+          FETCH get_data4nn_r_cur BULK COLLECT INTO lt_work_rec;
+          CLOSE get_data4nn_r_cur;
+        --受払区分:501/504/506/507/508
+        ELSIF (get_div_type_rec.div_type IN ('501','504','506','507','508')) THEN
+          OPEN  get_data5nn_r_cur(get_div_type_rec.div_type);
+          FETCH get_data5nn_r_cur BULK COLLECT INTO lt_work_rec;
+          CLOSE get_data5nn_r_cur;
+        --受払区分:502/503
+        ELSIF (get_div_type_rec.div_type IN ('502','503')) THEN
+          OPEN  get_data5023_r_cur(get_div_type_rec.div_type);
+          FETCH get_data5023_r_cur BULK COLLECT INTO lt_work_rec;
+          CLOSE get_data5023_r_cur;
+        --受払区分:505/509
+        ELSIF (get_div_type_rec.div_type IN ('505','509')) THEN
+          OPEN  get_data5059_r_cur(get_div_type_rec.div_type);
+          FETCH get_data5059_r_cur BULK COLLECT INTO lt_work_rec;
+          CLOSE get_data5059_r_cur;
+        --受払区分:511
+        ELSIF (get_div_type_rec.div_type = '511') THEN
+          OPEN  get_data511_r_cur(get_div_type_rec.div_type);
+          FETCH get_data511_r_cur BULK COLLECT INTO lt_work_rec;
+          CLOSE get_data511_r_cur;
+        END IF;
+--
+        li_cnt := ot_data_rec.COUNT;
+--
+        IF  (li_cnt = 0)
+        AND (lt_work_rec.COUNT > 0) THEN
+          ot_data_rec := lt_work_rec;
+        ELSIF (li_cnt > 0)
+        AND   (lt_work_rec.COUNT > 0) THEN
+          <<set_data_loop>>
+          FOR i IN 1..lt_work_rec.COUNT LOOP
+            ot_data_rec(li_cnt + i) := lt_work_rec(i);
+          END LOOP set_data_loop;
+        END IF;
+--
+        lt_work_rec.DELETE;
+--
+      END LOOP div_type_r_loop;
+--
     END IF;
-    -- 受払区分３が入力されている場合
-    IF ( ir_param.div_type3 IS NOT NULL ) THEN
-      lv_sql_para := lv_sql_para
-             || ' , ''' || ir_param.div_type3 || ''' '
-             ;
-    END IF;
-    -- 受払区分４が入力されている場合
-    IF ( ir_param.div_type4 IS NOT NULL ) THEN
-      lv_sql_para := lv_sql_para
-             || ' , ''' || ir_param.div_type4 || ''' '
-             ;
-    END IF;
-    -- 受払区分５が入力されている場合
-    IF ( ir_param.div_type5 IS NOT NULL ) THEN
-      lv_sql_para := lv_sql_para
-             || ' , ''' || ir_param.div_type5 || ''' '
-             ;
-    END IF;
-    lv_sql_para := lv_sql_para
-           || ')'
-           ;
-    -- 事由コードが入力されている場合
-    IF ( ir_param.reason_code IS NOT NULL ) THEN
-      lv_sql_para := lv_sql_para
-             || ' AND rpmv.reason_code  = ''' || ir_param.reason_code || ''''
-             ;
-    END IF;
-    -- ====================================================
-    -- 共通SELECT句
-    -- ====================================================
-    lv_select := '  ,trn.trans_date           AS trans_date'        -- 取引日
-              || '  ,rpmv.new_div_account     AS new_div_account'   -- 受払区分
-              || '  ,xlv1.meaning             AS div_name'          -- 受払区分名
-              || '  ,trn.item_id              AS item_id'           -- 品目ＩＤ
-              || '  ,xlei.item_code           AS item_code'         -- 品目コード
-              || '  ,xlei.item_short_name     AS item_name'         -- 品目名称
-              || '  ,trn.whse_code            AS whse_code'         -- 倉庫コード
-              || '  ,iwm.whse_name            AS whse_name'         -- 倉庫名称
-              || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-              || '  ,xlei.lot_attribute1)     AS wip_date'          -- 製造日
-              || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-              || '  ,xlei.lot_no)             AS lot_no'            -- ロット
-              || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-              || '  ,xlei.lot_attribute2)     AS original_char'     -- 固有記号
-              || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-              || '  ,xlei.lot_attribute3)     AS use_by_date'       -- 賞味期限
-              || '  ,xlei.item_attribute15    AS cost_mng_clss'     -- 原価管理区分
-              || '  ,xlei.lot_ctl             AS lot_ctl'           -- ロット管理区分
-              || '  ,xlei.actual_unit_price   AS actual_unit_price' -- 実際単価
--- 2008/08/20 v1.9 UPDATE START
---              || '  ,trn.trans_qty            AS trans_qty'         -- 数量
-              || '  ,trn.trans_qty * TO_NUMBER(rpmv.rcv_pay_div) AS trans_qty' -- 数量
--- 2008/08/20 v1.9 UPDATE END
-              || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-              || '  ,xlei.lot_attribute18)    AS lot_desc'          -- 摘要
-              ;
-    -- ====================================================
-    -- 共通FROM句
-    -- ====================================================
-    lv_from := ',xxcmn_lot_each_item_v     xlei'    -- ロット別品目情報
-            || ',ic_whse_mst               iwm'     -- OPM倉庫マスタ
-            || ',xxcmn_lookup_values2_v    xlv1'    -- クイックコード(受払区分)
-            || ',xxcmn_lookup_values2_v    xlv2'    -- クイックコード(帳票別)
-            ;
-    -- ====================================================
-    -- 共通WHERE句
-    -- ====================================================
-    lv_where := ' AND trn.trans_date >= FND_DATE.STRING_TO_DATE(''' || lv_start_date || ''',  '''
-      ||                                               gc_char_dt_format || ''')'--取引日
-      || '   AND trn.trans_date <= FND_DATE.STRING_TO_DATE(''' || lv_end_date || ''',  '''
-      ||                                                   gc_char_dt_format || ''')'--取引日
-      || '   AND xlei.prod_div   = ''' || ir_param.goods_class || ''''  -- ﾊﾟﾗﾒｰﾀ：商品区分
-      || '   AND xlei.item_div   = ''' || ir_param.item_class || ''''   -- ﾊﾟﾗﾒｰﾀ：品目区分
-      || lv_sql_para   -- ﾊﾟﾗﾒｰﾀ設定
-    --マスタ関連
-    ---------------------------------------------------------------------------------------------
-    -- ロット別品目情報VIEWの絞込み条件
-      || ' AND trn.item_id             = xlei.item_id'
-      || ' AND trn.lot_id              = xlei.lot_id'
-      || ' AND (xlei.start_date_active IS NULL OR'
-      || ' xlei.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (xlei.end_date_active   IS NULL OR'
-      || ' xlei.end_date_active    >= TRUNC(trn.trans_date))'
-    ---------------------------------------------------------------------------------------------
-    -- OPM倉庫マスタの絞込み条件
-      || ' AND trn.whse_code           = iwm.whse_code'
-    ---------------------------------------------------------------------------------------------
-    -- クイックコードIEWの絞込み条件
-      -- 受払区分
-      || ' AND xlv1.lookup_type         = ''' || cv_div_type || ''''
-      || ' AND rpmv.new_div_account     = xlv1.lookup_code'
-      || ' AND (xlv1.start_date_active IS NULL OR'
-      || ' xlv1.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (xlv1.end_date_active   IS NULL OR'
-      || ' xlv1.end_date_active    >= TRUNC(trn.trans_date))'
-      || ' AND xlv1.language           = ''' || gc_ja || ''''
-      || ' AND xlv1.source_lang        = ''' || gc_ja || ''''
-      || ' AND xlv1.enabled_flag       = ''' || cv_yes || ''''
-      -- 帳票別
-      || ' AND xlv2.lookup_type        = ''' || cv_out_flag || ''''
-      || ' AND rpmv.dealings_div       = xlv2.meaning'
-      || ' AND (xlv2.start_date_active IS NULL OR'
-      || ' xlv2.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (xlv2.end_date_active   IS NULL OR'
-      || ' xlv2.end_date_active    >= TRUNC(trn.trans_date))'
-      || ' AND xlv2.language           = ''' || gc_ja || ''''
-      || ' AND xlv2.source_lang        = ''' || gc_ja || ''''
-      || ' AND xlv2.enabled_flag       = ''' || cv_yes || ''''
-      || ' AND xlv2.attribute4         IS NOT NULL'   -- 帳票フラグ（770Dの場合）
-      ;
-    -- ----------------------------------------------------
-    -- ＸＦＥＲ部分_生成
-    -- ----------------------------------------------------
 --
-    lv_select_xfer := ' SELECT '
-      || '   NULL                     AS div_tocode'        -- 受払先コード
-      || '  ,NULL                     AS div_toname'        -- 受払先名称
-      || '  ,rpmv.reason_code         AS reason_code'       -- 事由コード
-      || '  ,srct.reason_desc1        AS reason_name'       -- 事由名称
-      || '  ,NULL                     AS post_code'         -- 部署コード
-      || '  ,NULL                     AS post_name'         -- 部署名
-      ;
---
-    lv_from_xfer := ' FROM'
-      || ' xxcmn_rcv_pay_mst_xfer_v  rpmv'    -- 受払View_XFER
-      || ',ic_tran_pnd               trn'     -- OPM保留在庫トラン
-      || ',(SELECT    reason_code'            -- 事由コード
-      || '           ,reason_desc1'
-      || '    FROM   sy_reas_cds_tl'
-      || '    WHERE  language = ''' || gc_ja || ''') srct'
-      || ',ic_xfer_mst               ixm'     -- ＯＰＭ在庫転送マスタ
-      || ',xxinv_mov_req_instr_lines xmril'   -- 移動依頼／指示明細（アドオン）
-      ;
---
-    lv_where_xfer := ' WHERE'
-      || '       trn.doc_type            = ''' || cv_doc_type_xfer || ''''
-      || '   AND trn.reason_code         = ''' || cv_move_result || ''''
-      || '   AND trn.completed_ind       = ''' || cv_comp_flg || ''''
-      || '   AND trn.doc_type            = rpmv.doc_type'
-      || '   AND trn.reason_code         = rpmv.reason_code'
-      || '   AND rpmv.rcv_pay_div        = CASE'
-                                     || '    WHEN trn.trans_qty >= 0 THEN ''' || cv_div_rcv || ''''
-                                     || '    ELSE ''' || cv_div_pay || ''''
-                                     || '  END'
-      || '   AND trn.doc_id              = ixm.transfer_id'
-      || '   AND ixm.attribute1          = xmril.mov_line_id'
-    ---------------------------------------------------------------------------------------------
-    -- 事由コードの絞込み条件
-      || ' AND rpmv.reason_code = srct.reason_code(+)'
-      ;
---
-    -- ＳＱＬ生成
-    lv_sql_xfer := lv_select_xfer || lv_select ||
-                   lv_from_xfer   || lv_from   ||
-                   lv_where_xfer  || lv_where;
---
-    -- ----------------------------------------------------
-    -- ＴＲＮＩ部分_生成
-    -- ----------------------------------------------------
---
-    lv_select_trni := ' SELECT '
-      || '   NULL                     AS div_tocode'        -- 受払先コード
-      || '  ,NULL                     AS div_toname'        -- 受払先名称
-      || '  ,rpmv.reason_code         AS reason_code'       -- 事由コード
-      || '  ,srct.reason_desc1        AS reason_name'       -- 事由名称
-      || '  ,NULL                     AS post_code'         -- 部署コード
-      || '  ,NULL                     AS post_name'         -- 部署名
-      ;
---
-    lv_from_trni := ' FROM'
-      || ' xxcmn_rcv_pay_mst_trni_v    rpmv'  -- 受払View_TRNI
-      || ',ic_tran_cmp                 trn'   -- OPM在庫トラン
-      || ',(SELECT    reason_code'            -- 事由コード
-      || '           ,reason_desc1'
-      || '    FROM   sy_reas_cds_tl'
-      || '    WHERE  language = ''' || gc_ja || ''') srct'
-      || ',ic_adjs_jnl                 iaj'   -- ＯＰＭ在庫調整ジャーナル
-      || ',ic_jrnl_mst                 ijm'   -- ＯＰＭジャーナルマスタ
-      || ',xxinv_mov_req_instr_lines   xmril' -- 移動依頼／指示明細（アドオン）
-      ;
---
-    lv_where_trni := ' WHERE'
-      || '       trn.doc_type            = ''' || cv_doc_type_trni || ''''
-      || '   AND trn.reason_code         = ''' || cv_move_result || ''''
-      || '   AND trn.doc_type            = rpmv.doc_type'
-      || '   AND trn.line_type           = rpmv.rcv_pay_div'
-      || '   AND trn.reason_code         = rpmv.reason_code'
-      || '   AND rpmv.rcv_pay_div        = CASE'
-                                     || '    WHEN trn.trans_qty >= 0 THEN ''' || cv_div_rcv || ''''
-                                     || '    ELSE ''' || cv_div_pay || ''''
-                                     || '  END'
-      || '   AND trn.doc_type            = iaj.trans_type'
-      || '   AND trn.doc_id              = iaj.doc_id'
-      || '   AND trn.doc_line            = iaj.doc_line'
-      || '   AND iaj.journal_id          = ijm.journal_id'
-      || '   AND ijm.attribute1          = xmril.mov_line_id'
-    ---------------------------------------------------------------------------------------------
-    -- 事由コードの絞込み条件
-      || ' AND rpmv.reason_code = srct.reason_code(+)'
-      ;
---
-    -- ＳＱＬ生成
-    lv_sql_trni := lv_select_trni || lv_select ||
-                   lv_from_trni   || lv_from   ||
-                   lv_where_trni  || lv_where;
---
-    -- ------------------------------------------------------------------------
-    -- ＡＤＪＩ部分_生成(黙視品目払出、その他払出、仕入先返品、浜岡受入、
-    --                   相手先在庫、移動実績訂正以外)
-    -- ------------------------------------------------------------------------
---
-    lv_select_adji := ' SELECT '
-      || '   NULL                     AS div_tocode'        -- 受払先コード
-      || '  ,NULL                     AS div_toname'        -- 受払先名称
-      || '  ,rpmv.reason_code         AS reason_code'       -- 事由コード
-      || '  ,srct.reason_desc1        AS reason_name'       -- 事由名称
-      || '  ,NULL                     AS post_code'         -- 部署コード
-      || '  ,NULL                     AS post_name'         -- 部署名
-      ;
---
-    lv_from_adji := ' FROM'
-      || ' xxcmn_rcv_pay_mst_adji_v    rpmv'  -- 受払View_ADJI
-      || ',ic_tran_cmp                 trn'   -- OPM在庫トラン
-      || ',(SELECT    reason_code'            -- 事由コード
-      || '           ,reason_desc1'
-      || '    FROM   sy_reas_cds_tl'
-      || '    WHERE  language = ''' || gc_ja || ''') srct'
-      ;
---
-    lv_where_adji := ' WHERE'
-      || '       trn.doc_type            = ''' || cv_doc_type_adji || ''''
-      || '   AND trn.doc_type            = rpmv.doc_type'
-      || '   AND trn.reason_code         <> ''' || cv_ovlook_pay || ''''   -- 黙視品目払出
-      || '   AND trn.reason_code         <> ''' || cv_sonota_pay || ''''   -- その他払出
-      || '   AND trn.reason_code         <> ''' || cv_vendor_rma || ''''   -- 仕入先返品
-      || '   AND trn.reason_code         <> ''' || cv_hamaoka_rcv || ''''  -- 浜岡受入
-      || '   AND trn.reason_code         <> ''' || cv_party_inv || ''''    -- 相手先在庫
-      || '   AND trn.reason_code         <> ''' || cv_move_correct || '''' -- 移動実績訂正
-      || '   AND trn.reason_code         = rpmv.reason_code'
-    ---------------------------------------------------------------------------------------------
-    -- 事由コードの絞込み条件
-      || ' AND rpmv.reason_code = srct.reason_code(+)'
-      ;
---
-    -- ＳＱＬ生成
-    lv_sql_adji1 := lv_select_adji || lv_select ||
-                    lv_from_adji   || lv_from   ||
-                    lv_where_adji  || lv_where;
---
-    -- ------------------------------------------------------------------------
-    -- ＡＤＪＩ部分_生成(黙視品目払出、その他払出)
-    -- ------------------------------------------------------------------------
---
-    lv_select_adji := ' SELECT '
-      || '   NULL                     AS div_tocode'        -- 受払先コード
-      || '  ,NULL                     AS div_toname'        -- 受払先名称
-      || '  ,rpmv.reason_code         AS reason_code'       -- 事由コード
-      || '  ,srct.reason_desc1        AS reason_name'       -- 事由名称
-      || '  ,NULL                     AS post_code'         -- 部署コード
-      || '  ,NULL                     AS post_name'         -- 部署名
-      ;
---
-    lv_from_adji := ' FROM'
-      || ' xxcmn_rcv_pay_mst_adji_v    rpmv'  -- 受払View_ADJI
-      || ',ic_tran_cmp                 trn'   -- OPM在庫トラン
-      || ',(SELECT    reason_code'            -- 事由コード
-      || '           ,reason_desc1'
-      || '    FROM   sy_reas_cds_tl'
-      || '    WHERE  language = ''' || gc_ja || ''') srct'
-      ;
---
-    lv_where_adji := ' WHERE'
-      || '       trn.doc_type            = ''' || cv_doc_type_adji || ''''
-      || '   AND trn.doc_type            = rpmv.doc_type'
-      || '   AND (trn.reason_code         = ''' || cv_ovlook_pay || ''''   -- 黙視品目払出
-      || '    OR trn.reason_code         = ''' || cv_sonota_pay || ''')'   -- その他払出
-      || '   AND trn.reason_code         = rpmv.reason_code'
-      || '   AND rpmv.rcv_pay_div        = CASE'
-                                     || '    WHEN trn.trans_qty >= 0 THEN ''' || cv_div_rcv || ''''
-                                     || '    ELSE ''' || cv_div_pay || ''''
-                                     || '  END'
-    ---------------------------------------------------------------------------------------------
-    -- 事由コードの絞込み条件
-      || ' AND rpmv.reason_code = srct.reason_code(+)'
-      ;
---
-    -- ＳＱＬ生成
-    lv_sql_adji2 := lv_select_adji || lv_select ||
-                    lv_from_adji   || lv_from   ||
-                    lv_where_adji  || lv_where;
---
-    -- ------------------------------------------------------------------------
-    -- ＡＤＪＩ部分_生成(仕入先返品)
-    -- ------------------------------------------------------------------------
---
-    lv_select_adji := ' SELECT '
-      || '   NULL                     AS div_tocode'        -- 受払先コード
-      || '  ,NULL                     AS div_toname'        -- 受払先名称
-      || '  ,rpmv.reason_code         AS reason_code'       -- 事由コード
-      || '  ,srct.reason_desc1        AS reason_name'       -- 事由名称
-      || '  ,NULL                     AS post_code'         -- 部署コード
-      || '  ,NULL                     AS post_name'         -- 部署名
-      ;
---
-    lv_from_adji := ' FROM'
-      || ' xxcmn_rcv_pay_mst_adji_v    rpmv'  -- 受払View_ADJI
-      || ',ic_tran_cmp                 trn'   -- OPM在庫トラン
-      || ',(SELECT    reason_code'            -- 事由コード
-      || '           ,reason_desc1'
-      || '    FROM   sy_reas_cds_tl'
-      || '    WHERE  language = ''' || gc_ja || ''') srct'
-      || ',ic_adjs_jnl                 iaj'   -- OPM在庫調整ジャーナル
-      || ',ic_jrnl_mst                 ijm'   -- OPMジャーナルマスタ
-      || ',xxpo_rcv_and_rtn_txns       xrrt'  -- 受入返品実績アドオン
-      ;
---
-    lv_where_adji := ' WHERE'
-      || '       trn.doc_type            = ''' || cv_doc_type_adji || ''''
-      || '   AND trn.doc_type            = rpmv.doc_type'
-      || '   AND trn.reason_code         = ''' || cv_vendor_rma || ''''   -- 仕入先返品
-      || '   AND trn.reason_code         = rpmv.reason_code'
-      || '   AND iaj.trans_type          = trn.doc_type'
-      || '   AND iaj.doc_id              = trn.doc_id'
-      || '   AND iaj.doc_line            = trn.doc_line'
-      || '   AND ijm.journal_id          = iaj.journal_id'
-      || '   AND xrrt.txns_id            = ijm.attribute1'
-    ---------------------------------------------------------------------------------------------
-    -- 事由コードの絞込み条件
-      || ' AND rpmv.reason_code = srct.reason_code(+)'
-      ;
---
-    -- ＳＱＬ生成
-    lv_sql_adji_x201 := lv_select_adji || lv_select ||
-                        lv_from_adji   || lv_from   ||
-                        lv_where_adji  || lv_where;
---
-    -- 初期化
-    lv_select_adji   := '';
-    lv_from_adji     := '';
-    lv_where_adji    := '';
-    -- ------------------------------------------------------------------------
-    -- ＡＤＪＩ部分_生成(浜岡受入)
-    -- ------------------------------------------------------------------------
---
-    lv_select_adji := ' SELECT '
-      || '   NULL                     AS div_tocode'        -- 受払先コード
-      || '  ,NULL                     AS div_toname'        -- 受払先名称
-      || '  ,rpmv.reason_code         AS reason_code'       -- 事由コード
-      || '  ,srct.reason_desc1        AS reason_name'       -- 事由名称
-      || '  ,NULL                     AS post_code'         -- 部署コード
-      || '  ,NULL                     AS post_name'         -- 部署名
-      ;
---
-    lv_from_adji := ' FROM'
-      || ' xxcmn_rcv_pay_mst_adji_v    rpmv'  -- 受払View_ADJI
-      || ',ic_tran_cmp                 trn'   -- OPM在庫トラン
-      || ',(SELECT    reason_code'            -- 事由コード
-      || '           ,reason_desc1'
-      || '    FROM   sy_reas_cds_tl'
-      || '    WHERE  language = ''' || gc_ja || ''') srct'
-      || ',ic_adjs_jnl                 iaj'   -- OPM在庫調整ジャーナル
-      || ',ic_jrnl_mst                 ijm'   -- OPMジャーナルマスタ
-      || ',xxpo_namaha_prod_txns       xnpt'  -- 生葉実績アドオン
-      ;
---
-    lv_where_adji := ' WHERE'
-      || '       trn.doc_type            = ''' || cv_doc_type_adji || ''''
-      || '   AND trn.doc_type            = rpmv.doc_type'
-      || '   AND trn.reason_code         = ''' || cv_hamaoka_rcv || ''''   -- 浜岡受入
-      || '   AND trn.reason_code         = rpmv.reason_code'
-      || '   AND iaj.trans_type          = trn.doc_type'
-      || '   AND iaj.doc_id              = trn.doc_id'
-      || '   AND iaj.doc_line            = trn.doc_line'
-      || '   AND ijm.journal_id          = iaj.journal_id'
-      || '   AND xnpt.entry_number       = ijm.attribute1'
-    ---------------------------------------------------------------------------------------------
-    -- 事由コードの絞込み条件
-      || ' AND rpmv.reason_code = srct.reason_code(+)'
-      ;
---
-    -- ＳＱＬ生成
-    lv_sql_adji_x988 := lv_select_adji || lv_select ||
-                        lv_from_adji   || lv_from   ||
-                        lv_where_adji  || lv_where;
---
-    -- 初期化
-    lv_select_adji   := '';
-    lv_from_adji     := '';
-    lv_where_adji    := '';
-    -- ------------------------------------------------------------------------
-    -- ＡＤＪＩ部分_生成(移動実績訂正)
-    -- ------------------------------------------------------------------------
---
-    lv_select_adji := ' SELECT '
-      || '   NULL                     AS div_tocode'        -- 受払先コード
-      || '  ,NULL                     AS div_toname'        -- 受払先名称
-      || '  ,rpmv.reason_code         AS reason_code'       -- 事由コード
-      || '  ,srct.reason_desc1        AS reason_name'       -- 事由名称
-      || '  ,NULL                     AS post_code'         -- 部署コード
-      || '  ,NULL                     AS post_name'         -- 部署名
-      ;
---
-    lv_from_adji := ' FROM'
-      || ' xxcmn_rcv_pay_mst_adji_v    rpmv'  -- 受払View_ADJI
-      || ',ic_tran_cmp                 trn'   -- OPM在庫トラン
-      || ',(SELECT    reason_code'            -- 事由コード
-      || '           ,reason_desc1'
-      || '    FROM   sy_reas_cds_tl'
-      || '    WHERE  language = ''' || gc_ja || ''') srct'
-      || ',ic_adjs_jnl                 iaj'   -- OPM在庫調整ジャーナル
-      || ',ic_jrnl_mst                 ijm'   -- OPMジャーナルマスタ
-      || ',xxinv_mov_req_instr_lines   xmrl'  -- 移動依頼/支持明細
-      ;
---
-    lv_where_adji := ' WHERE'
-      || '       trn.doc_type            = ''' || cv_doc_type_adji || ''''
-      || '   AND trn.doc_type            = rpmv.doc_type'
-      || '   AND trn.reason_code         = ''' || cv_move_correct || ''''   -- 移動実績訂正
-      || '   AND trn.reason_code         = rpmv.reason_code'
-      || '   AND rpmv.rcv_pay_div        = CASE'
-                                     || '    WHEN trn.trans_qty >= 0 THEN ''' || cv_div_pay || ''''
-                                     || '    WHEN trn.trans_qty < 0 THEN ''' || cv_div_rcv || ''''
-                                     || '    ELSE rpmv.rcv_pay_div'
-                                     || '  END'
-      || '   AND iaj.trans_type          = trn.doc_type'
-      || '   AND iaj.doc_id              = trn.doc_id'
-      || '   AND iaj.doc_line            = trn.doc_line'
-      || '   AND ijm.journal_id          = iaj.journal_id'
-      || '   AND xmrl.mov_line_id        = ijm.attribute1'
-    ---------------------------------------------------------------------------------------------
-    -- 事由コードの絞込み条件
-      || ' AND rpmv.reason_code = srct.reason_code(+)'
-      ;
---
-    -- ＳＱＬ生成
-    lv_sql_adji_x123 := lv_select_adji || lv_select ||
-                        lv_from_adji   || lv_from   ||
-                        lv_where_adji  || lv_where;
---
-    -- ----------------------------------------------------
-    -- ＰＲＯＤ部分_生成(ＮＵＬＬ)_品種・品目振替以外
-    -- ----------------------------------------------------
---
-    lv_select_prod := ' SELECT '
-      || '   TO_CHAR(rpmv.line_type)  AS div_tocode'        -- 受払先コード
-      || '  ,xlv3.meaning             AS div_toname'        -- 受払先名称
-      || '  ,NULL                     AS reason_code'       -- 事由コード
-      || '  ,NULL                     AS reason_name'       -- 事由名称
-      || '  ,rpmv.result_post         AS post_code'         -- 部署コード
-      || '  ,loca.location_short_name AS post_name'         -- 部署名
-      ;
---
-    lv_from_prod := ' FROM'
-      || ' xxcmn_rcv_pay_mst_prod_v    rpmv'  -- 受払View_PROD
-      || ',ic_tran_pnd                 trn'   -- OPM保留在庫トラン
-      -- マスタ情報
-      || ',xxcmn_locations2_v        loca'    -- 事業所情報VIEW
-      || ',xxcmn_lookup_values2_v    xlv3'    -- クイックコード(ラインタイプ)
-      || ',xxcmn_lookup_values2_v    xlv4'    -- クイックコード(取引区分)
-      ;
---
-    lv_where_prod := ' WHERE'
-      || '       trn.doc_type            = ''' || cv_doc_type_prod || ''''
-      || '   AND trn.completed_ind       = ''' || cv_comp_flg || ''''
-      || '   AND trn.reverse_id          IS NULL'
-      || '   AND trn.doc_type            = rpmv.doc_type'
-      || '   AND trn.line_type           = rpmv.line_type'
-      || '   AND trn.doc_id              = rpmv.doc_id'
-      || '   AND trn.doc_line            = rpmv.doc_line'
-    --マスタ関連
-    ---------------------------------------------------------------------------------------------
-    -- 事業所情報VIEWの絞込み条件
-      || ' AND rpmv.result_post     = loca.location_code(+)'
-      || ' AND (loca.start_date_active IS NULL OR'
-      || ' loca.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (loca.end_date_active   IS NULL OR'
-      || ' loca.end_date_active    >= TRUNC(trn.trans_date))'
-    ---------------------------------------------------------------------------------------------
-    -- クイックコードIEWの絞込み条件
-      -- ラインタイプ
-      || ' AND xlv3.lookup_type(+)     = ''' || cv_line_type || ''''
-      || ' AND rpmv.line_type          = xlv3.lookup_code(+)'
-      || ' AND (xlv3.start_date_active IS NULL OR'
-      || ' xlv3.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (xlv3.end_date_active   IS NULL OR'
-      || ' xlv3.end_date_active    >= TRUNC(trn.trans_date))'
-      || ' AND xlv3.language(+)        = ''' || gc_ja || ''''
-      || ' AND xlv3.source_lang(+)     = ''' || gc_ja || ''''
-      || ' AND xlv3.enabled_flag(+)    = ''' || cv_yes || ''''
-      -- 取引区分
-      || ' AND xlv4.lookup_type     = ''' || cv_deal_div || ''''
-      || ' AND rpmv.dealings_div    = xlv4.lookup_code'
-      || ' AND (xlv4.start_date_active IS NULL OR'
-      || ' xlv4.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (xlv4.end_date_active   IS NULL OR'
-      || ' xlv4.end_date_active    >= TRUNC(trn.trans_date))'
-      || ' AND xlv4.language        = ''' || gc_ja || ''''
-      || ' AND xlv4.source_lang     = ''' || gc_ja || ''''
-      || ' AND xlv4.enabled_flag    = ''' || cv_yes || ''''
-      || ' AND xlv4.meaning        <> ''' || cv_div_kind_transfer || ''''   -- 品種振替
-      || ' AND xlv4.meaning        <> ''' || cv_div_item_transfer || ''''   -- 品目振替
-      ;
---
-    -- ＳＱＬ生成
-    lv_sql_prod1 := lv_select_prod || lv_select ||
-                    lv_from_prod   || lv_from   ||
-                    lv_where_prod  || lv_where;
---
-    -- 初期化
-    lv_select_prod := '';
-    lv_from_prod   := '';
-    lv_where_prod  := '';
---
-    -- ----------------------------------------------------
-    -- ＰＲＯＤ部分_生成(ＮＵＬＬ)_品種・品目振替
-    -- ----------------------------------------------------
---
-    lv_select_prod := ' SELECT '
-      || '   TO_CHAR(rpmv.line_type)  AS div_tocode'        -- 受払先コード
-      || '  ,xlv3.meaning             AS div_toname'        -- 受払先名称
-      || '  ,NULL                     AS reason_code'       -- 事由コード
-      || '  ,NULL                     AS reason_name'       -- 事由名称
-      || '  ,rpmv.result_post         AS post_code'         -- 部署コード
-      || '  ,loca.location_short_name AS post_name'         -- 部署名
-      || '  ,trn.trans_date           AS trans_date'        -- 取引日
-      || '  ,rpmv.new_div_account     AS new_div_account'   -- 受払区分
-      || '  ,xlv1.meaning             AS div_name'          -- 受払区分名
-      || '  ,trn.item_id              AS item_id'           -- 品目ＩＤ
-      || '  ,xlei.item_code           AS item_code'         -- 品目コード
-      || '  ,xlei.item_short_name     AS item_name'         -- 品目名称
-      || '  ,trn.whse_code            AS whse_code'         -- 倉庫コード
-      || '  ,iwm.whse_name            AS whse_name'         -- 倉庫名称
-      || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-      || '  ,xlei.lot_attribute1)     AS wip_date'          -- 製造日
-      || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-      || '  ,xlei.lot_no)             AS lot_no'            -- ロット
-      || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-      || '  ,xlei.lot_attribute2)     AS original_char'     -- 固有記号
-      || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-      || '  ,xlei.lot_attribute3)     AS use_by_date'       -- 賞味期限
-      || '  ,xlei.item_attribute15    AS cost_mng_clss'     -- 原価管理区分
-      || '  ,xlei.lot_ctl             AS lot_ctl'           -- ロット管理区分
-      || '  ,xlei.actual_unit_price   AS actual_unit_price' -- 実際単価
-      || '  ,trn.trans_qty            AS trans_qty'         -- 数量
-      || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-      || '  ,xlei.lot_attribute18)    AS lot_desc'          -- 摘要
-      ;
---
-    lv_from_prod := ' FROM'
-      || ' xxcmn_rcv_pay_mst_prod_v    rpmv'  -- 受払View_PROD
-      || ',ic_tran_pnd                 trn'   -- OPM保留在庫トラン
-      || ',ic_tran_pnd                 trn2'  -- OPM保留在庫トラン
-      || ',xxcmn_lot_each_item_v       xlei'  -- ロット別品目情報
-      || ',xxcmn_lot_each_item_v       xlei2' -- ロット別品目情報
-      -- マスタ情報
-      || ',ic_whse_mst               iwm'     -- OPM倉庫マスタ
-      || ',xxcmn_locations2_v        loca'    -- 事業所情報VIEW
-      || ',xxcmn_lookup_values2_v    xlv1'    -- クイックコード(受払区分)
-      || ',xxcmn_lookup_values2_v    xlv2'    -- クイックコード(帳票別)
-      || ',xxcmn_lookup_values2_v    xlv3'    -- クイックコード(ラインタイプ)
-      || ',xxcmn_lookup_values2_v    xlv4'    -- クイックコード(取引区分)
-      ;
---
-    lv_where_prod := ' WHERE'
-      || '       trn.doc_type            = ''' || cv_doc_type_prod || ''''
-      || '   AND trn.completed_ind       = ''' || cv_comp_flg || ''''
-      || '   AND trn.reverse_id          IS NULL'
-      || '   AND trn.doc_type            = rpmv.doc_type'
-      || '   AND trn.line_type           = rpmv.line_type'
-      || '   AND trn.doc_id              = rpmv.doc_id'
-      || '   AND trn.doc_line            = rpmv.doc_line'
-      || '   AND trn2.line_type  = CASE'
-                        || '   WHEN trn.line_type = ''' || cv_line_type_product || ''''
-                        || '        THEN ''' || cv_line_type_material || ''''
-                        || '   WHEN trn.line_type = ''' || cv_line_type_material || ''''
-                        || '        THEN ''' || cv_line_type_product || ''''
-                        || '   END'
-      || '   AND trn2.completed_ind       = ''' || cv_comp_flg || ''''
-      || '   AND trn2.reverse_id          IS NULL'
-      || '   AND trn.doc_id               = trn2.doc_id'
-      || '   AND trn.doc_line             = trn2.doc_line'
-    -- パラメータ
-      || '   AND trn.trans_date >= FND_DATE.STRING_TO_DATE(''' || lv_start_date || ''',  '''
-      ||                                               gc_char_dt_format || ''')'--取引日
-      || '   AND trn.trans_date <= FND_DATE.STRING_TO_DATE(''' || lv_end_date || ''',  '''
-      ||                                                   gc_char_dt_format || ''')'--取引日
-      || '   AND trn2.trans_date >= FND_DATE.STRING_TO_DATE(''' || lv_start_date || ''',  '''
-      ||                                               gc_char_dt_format || ''')'--取引日
-      || '   AND trn2.trans_date <= FND_DATE.STRING_TO_DATE(''' || lv_end_date || ''',  '''
-      ||                                                   gc_char_dt_format || ''')'--取引日
-      || '   AND xlei.prod_div = ''' || ir_param.goods_class || ''''
-      || '   AND xlei.item_div = ''' || ir_param.item_class || ''''
-      || lv_sql_para   -- ﾊﾟﾗﾒｰﾀ設定
-    --マスタ関連
-    ---------------------------------------------------------------------------------------------
-    -- ロット別品目情報VIEWの絞込み条件
-      || ' AND trn.item_id             = xlei.item_id'
-      || ' AND trn.lot_id              = xlei.lot_id'
-      || ' AND (xlei.start_date_active IS NULL OR'
-      || ' xlei.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (xlei.end_date_active   IS NULL OR'
-      || ' xlei.end_date_active    >= TRUNC(trn.trans_date))'
-      || ' AND trn2.item_id             = xlei2.item_id'
-      || ' AND trn2.lot_id              = xlei2.lot_id'
-      || ' AND (xlei2.start_date_active IS NULL OR'
-      || ' xlei2.start_date_active  <= TRUNC(trn2.trans_date))'
-      || ' AND (xlei2.end_date_active   IS NULL OR'
-      || ' xlei2.end_date_active    >= TRUNC(trn2.trans_date))'
-      || ' AND xlei.item_div = CASE'
-                            || '   WHEN trn.line_type = ''' || cv_line_type_product || ''' THEN '
-                            || '        rpmv.item_div_origin '
-                            || '   WHEN trn.line_type = ''' || cv_line_type_material || '''  THEN'
-                            || '        rpmv.item_div_ahead '
-                            || ' END'
-      || ' AND xlei2.item_div = CASE'
-                            || '   WHEN trn.line_type = ''' || cv_line_type_material || ''' THEN'
-                            || '        rpmv.item_div_origin'
-                            || '   WHEN trn.line_type = ''' || cv_line_type_product || ''' THEN'
-                            || '        rpmv.item_div_ahead'
-                            || ' END'
-      || ' AND rpmv.item_id  = trn.item_id'
-    ---------------------------------------------------------------------------------------------
-    -- OPM倉庫マスタの絞込み条件
-      || ' AND trn.whse_code           = iwm.whse_code'
-    ---------------------------------------------------------------------------------------------
-    -- 事業所情報VIEWの絞込み条件
-      || ' AND rpmv.result_post     = loca.location_code(+)'
-      || ' AND (loca.start_date_active IS NULL OR'
-      || ' loca.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (loca.end_date_active   IS NULL OR'
-      || ' loca.end_date_active    >= TRUNC(trn.trans_date))'
-    ---------------------------------------------------------------------------------------------
-    -- クイックコードIEWの絞込み条件
-      -- 受払区分
-      || ' AND xlv1.lookup_type         = ''' || cv_div_type || ''''
-      || ' AND rpmv.new_div_account     = xlv1.lookup_code'
-      || ' AND (xlv1.start_date_active IS NULL OR'
-      || ' xlv1.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (xlv1.end_date_active   IS NULL OR'
-      || ' xlv1.end_date_active    >= TRUNC(trn.trans_date))'
-      || ' AND xlv1.language           = ''' || gc_ja || ''''
-      || ' AND xlv1.source_lang        = ''' || gc_ja || ''''
-      || ' AND xlv1.enabled_flag       = ''' || cv_yes || ''''
-      -- 帳票別
-      || ' AND xlv2.lookup_type        = ''' || cv_out_flag || ''''
-      || ' AND rpmv.dealings_div       = xlv2.meaning'
-      || ' AND (xlv2.start_date_active IS NULL OR'
-      || ' xlv2.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (xlv2.end_date_active   IS NULL OR'
-      || ' xlv2.end_date_active    >= TRUNC(trn.trans_date))'
-      || ' AND xlv2.language           = ''' || gc_ja || ''''
-      || ' AND xlv2.source_lang        = ''' || gc_ja || ''''
-      || ' AND xlv2.enabled_flag       = ''' || cv_yes || ''''
-      || ' AND xlv2.attribute4         IS NOT NULL'   -- 帳票フラグ（770Dの場合）
-      -- ラインタイプ
-      || ' AND xlv3.lookup_type(+)     = ''' || cv_line_type || ''''
-      || ' AND rpmv.line_type          = xlv3.lookup_code(+)'
-      || ' AND (xlv3.start_date_active IS NULL OR'
-      || ' xlv3.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (xlv3.end_date_active   IS NULL OR'
-      || ' xlv3.end_date_active    >= TRUNC(trn.trans_date))'
-      || ' AND xlv3.language(+)        = ''' || gc_ja || ''''
-      || ' AND xlv3.source_lang(+)     = ''' || gc_ja || ''''
-      || ' AND xlv3.enabled_flag(+)    = ''' || cv_yes || ''''
-      -- 取引区分
-      || ' AND xlv4.lookup_type     = ''' || cv_deal_div || ''''
-      || ' AND rpmv.dealings_div    = xlv4.lookup_code'
-      || ' AND (xlv4.start_date_active IS NULL OR'
-      || ' xlv4.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (xlv4.end_date_active   IS NULL OR'
-      || ' xlv4.end_date_active    >= TRUNC(trn.trans_date))'
-      || ' AND xlv4.language        = ''' || gc_ja || ''''
-      || ' AND xlv4.source_lang     = ''' || gc_ja || ''''
-      || ' AND xlv4.enabled_flag    = ''' || cv_yes || ''''
-      || ' AND xlv4.meaning      in (''' || cv_div_kind_transfer || ''','
-                                 || '''' || cv_div_item_transfer || ''')'   -- 品種振替,品目振替
-      ;
---
-    -- ＳＱＬ生成
-    lv_sql_prod2 := lv_select_prod ||
-                    lv_from_prod   ||
-                    lv_where_prod;
---
-    -- ----------------------------------------------------
-    -- ＰＯＲＣ部分_生成(PO)
-    -- ----------------------------------------------------
---
-    lv_select_porc := ' SELECT '
-      || '   CASE'
-      || '    WHEN rpmv.source_document_code = ''' || cv_po || ''' THEN xvv1.segment1'
-      || '    ELSE NULL'
-      || '   END AS div_tocode'    -- 受払先コード
-      || '  ,CASE'
-      || '    WHEN rpmv.source_document_code = ''' || cv_po || ''' THEN xvv1.vendor_short_name'
-      || '    ELSE NULL'
-      || '   END AS div_toname'    -- 受払先名称
-      || '  ,NULL                     AS reason_code'       -- 事由コード
-      || '  ,NULL                     AS reason_name'       -- 事由名称
-      || '  ,rpmv.result_post         AS post_code'         -- 部署コード
-      || '  ,loca.location_short_name AS post_name'         -- 部署名
-      ;
---
-    lv_from_porc := ' FROM'
-      || ' xxcmn_rcv_pay_mst_porc_po_v rpmv'  -- 受払View_PORC
-      || ',ic_tran_pnd                 trn'   -- OPM保留在庫トラン
-      -- マスタ情報
-      || ',xxcmn_vendors2_v          xvv1'    -- 仕入先情報view2
-      || ',xxcmn_locations2_v        loca'    -- 事業所情報VIEW
-      ;
---
-    lv_where_porc := ' WHERE'
-      || '       trn.doc_type            = ''' || cv_doc_type_porc || ''''
-      || '   AND trn.completed_ind       = ''' || cv_comp_flg || ''''
-      || '   AND trn.doc_type            = rpmv.doc_type'
-      || '   AND trn.doc_id              = rpmv.doc_id'
-      || '   AND trn.doc_line            = rpmv.doc_line'
-      || '   AND trn.line_id             = rpmv.line_id '
-    --マスタ関連
-    ---------------------------------------------------------------------------------------------
-    -- 事業所情報VIEWの絞込み条件
-      || ' AND rpmv.result_post     = loca.location_code(+)'
-      || ' AND (loca.start_date_active IS NULL OR'
-      || ' loca.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (loca.end_date_active   IS NULL OR'
-      || ' loca.end_date_active    >= TRUNC(trn.trans_date))'
-    ---------------------------------------------------------------------------------------------
-    -- 仕入先情報VIEWの絞込み条件
-      || ' AND rpmv.vendor_id          = xvv1.vendor_id(+)'
-      || ' AND (xvv1.start_date_active IS NULL OR'
-      || ' xvv1.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (xvv1.end_date_active   IS NULL OR'
-      || ' xvv1.end_date_active    >= TRUNC(trn.trans_date))'
-      ;
---
-    -- ＳＱＬ生成
-    lv_sql_porc1 := lv_select_porc || lv_select ||
-                    lv_from_porc   || lv_from   ||
-                    lv_where_porc  || lv_where;
---
-    -- 初期化
-    lv_select_porc := '';
-    lv_from_porc   := '';
-    lv_where_porc  := '';
-    -- ----------------------------------------------------
-    -- ＰＯＲＣ部分_生成(RMA)
-    -- ----------------------------------------------------
---
-    lv_select_porc := ' SELECT '
-      || '   NULL                     AS div_tocode'        -- 受払先コード
-      || '  ,NULL                     AS div_toname'        -- 受払先名称
-      || '  ,NULL                     AS reason_code'       -- 事由コード
-      || '  ,NULL                     AS reason_name'       -- 事由名称
-      || '  ,rpmv.result_post         AS post_code'         -- 部署コード
-      || '  ,loca.location_short_name AS post_name'         -- 部署名
-      || '  ,trn.trans_date           AS trans_date'        -- 取引日
-      || '  ,rpmv.new_div_account     AS new_div_account'   -- 受払区分
-      || '  ,xlv1.meaning             AS div_name'          -- 受払区分名
-      || '  ,NVL(rpmv.item_id,trn.item_id) AS item_id'      -- 品目ＩＤ
-      || '  ,ximv.item_no             AS item_code'         -- 品目コード
-      || '  ,ximv.item_short_name     AS item_name'         -- 品目名称
-      || '  ,trn.whse_code            AS whse_code'         -- 倉庫コード
-      || '  ,iwm.whse_name            AS whse_name'         -- 倉庫名称
-      || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-      || '  ,xlei.lot_attribute1)     AS wip_date'          -- 製造日
-      || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-      || '  ,xlei.lot_no)             AS lot_no'            -- ロット
-      || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-      || '  ,xlei.lot_attribute2)     AS original_char'     -- 固有記号
-      || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-      || '  ,xlei.lot_attribute3)     AS use_by_date'       -- 賞味期限
-      || '  ,xlei.item_attribute15    AS cost_mng_clss'     -- 原価管理区分
-      || '  ,xlei.lot_ctl             AS lot_ctl'           -- ロット管理区分
-      || '  ,xlei.actual_unit_price   AS actual_unit_price' -- 実際単価
--- 2008/08/20 v1.9 UPDATE START
-/*
-      || '  ,NVL2(rpmv.item_id, '
-      ||      ' trn.trans_qty, '
-      ||      ' DECODE(rpmv.dealings_div_name,''' || gv_haiki || ''' '
-      ||      '       ,trn.trans_qty '
-      ||      '       , ''' || gv_mihon || ''' '
-      ||      '       ,trn.trans_qty '
-      ||      ',trn.trans_qty * TO_NUMBER(rpmv.rcv_pay_div))) trans_qty ' -- 数量
-*/
-      ||      ',DECODE(rpmv.dealings_div_name,''' || gv_haiki || ''' '
-      ||      '       ,trn.trans_qty '
-      ||      '       , ''' || gv_mihon || ''' '
-      ||      '       ,trn.trans_qty '
-      ||      ',trn.trans_qty * TO_NUMBER(rpmv.rcv_pay_div)) trans_qty ' -- 数量
--- 2008/08/20 v1.9 UPDATE END
-      || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-      || '  ,xlei.lot_attribute18)    AS lot_desc'          -- 摘要
-      ;
---
-    lv_from_porc := ' FROM'
-      || ' xxcmn_rcv_pay_mst_porc_rma04_v rpmv'  -- 受払View_PORC
-      || ',ic_tran_pnd                  trn'   -- OPM保留在庫トラン
-      || ',xxcmn_item_mst2_v            ximv'  -- 品目マスタVIEW
-      || ',xxcmn_locations2_v           loca'  -- 事業所情報VIEW
-      ;
---
-    lv_where_porc := ' WHERE'
-      || '       trn.doc_type            = ''' || cv_doc_type_porc || ''''
-      || '   AND trn.completed_ind       = ''' || cv_comp_flg || ''''
-      || '   AND trn.doc_type            = rpmv.doc_type'
-      || '   AND trn.doc_id              = rpmv.doc_id'
-      || '   AND trn.doc_line            = rpmv.doc_line'
-      || '   AND trn.trans_date >= FND_DATE.STRING_TO_DATE(''' || lv_start_date || ''',  '''
-      ||                                               gc_char_dt_format || ''')'--取引日
-      || '   AND trn.trans_date <= FND_DATE.STRING_TO_DATE(''' || lv_end_date || ''',  '''
-      ||                                                   gc_char_dt_format || ''')'--取引日
-      || '   AND rpmv.prod_div   = ''' || ir_param.goods_class || ''''  -- ﾊﾟﾗﾒｰﾀ：商品区分
-      || '   AND rpmv.item_div   = ''' || ir_param.item_class || ''''   -- ﾊﾟﾗﾒｰﾀ：品目区分
-      || lv_sql_para   -- ﾊﾟﾗﾒｰﾀ設定
-    --マスタ関連
-    ---------------------------------------------------------------------------------------------
-    -- ロット別品目情報VIEWの絞込み条件
-      || ' AND trn.item_id             = xlei.item_id'
-      || ' AND trn.lot_id              = xlei.lot_id'
-      || ' AND (xlei.start_date_active IS NULL OR'
-      || ' xlei.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (xlei.end_date_active   IS NULL OR'
-      || ' xlei.end_date_active    >= TRUNC(trn.trans_date))'
-    ---------------------------------------------------------------------------------------------
-    -- 品目マスタ情報VIEWの絞込み条件
-      || ' AND ximv.item_id           = NVL(rpmv.item_id, trn.item_id)'
-      || ' AND (ximv.start_date_active IS NULL OR'
-      || ' ximv.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (ximv.end_date_active   IS NULL OR'
-      || ' ximv.end_date_active    >= TRUNC(trn.trans_date))'
-    ---------------------------------------------------------------------------------------------
-    -- OPM倉庫マスタの絞込み条件
-      || ' AND trn.whse_code           = iwm.whse_code'
-    ---------------------------------------------------------------------------------------------
-    -- 事業所情報VIEWの絞込み条件
-      || ' AND rpmv.result_post     = loca.location_code(+)'
-      || ' AND (loca.start_date_active IS NULL OR'
-      || ' loca.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (loca.end_date_active   IS NULL OR'
-      || ' loca.end_date_active    >= TRUNC(trn.trans_date))'
-    ---------------------------------------------------------------------------------------------
-    -- クイックコードIEWの絞込み条件
-      -- 受払区分
-      || ' AND xlv1.lookup_type         = ''' || cv_div_type || ''''
-      || ' AND rpmv.new_div_account     = xlv1.lookup_code'
-      || ' AND (xlv1.start_date_active IS NULL OR'
-      || ' xlv1.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (xlv1.end_date_active   IS NULL OR'
-      || ' xlv1.end_date_active    >= TRUNC(trn.trans_date))'
-      || ' AND xlv1.language           = ''' || gc_ja || ''''
-      || ' AND xlv1.source_lang        = ''' || gc_ja || ''''
-      || ' AND xlv1.enabled_flag       = ''' || cv_yes || ''''
-      -- 帳票別
-      || ' AND xlv2.lookup_type        = ''' || cv_out_flag || ''''
-      || ' AND rpmv.dealings_div       = xlv2.meaning'
-      || ' AND (xlv2.start_date_active IS NULL OR'
-      || ' xlv2.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (xlv2.end_date_active   IS NULL OR'
-      || ' xlv2.end_date_active    >= TRUNC(trn.trans_date))'
-      || ' AND xlv2.language           = ''' || gc_ja || ''''
-      || ' AND xlv2.source_lang        = ''' || gc_ja || ''''
-      || ' AND xlv2.enabled_flag       = ''' || cv_yes || ''''
-      || ' AND xlv2.attribute4         IS NOT NULL'   -- 帳票フラグ（770Dの場合）
-      ;
---
-    -- ＳＱＬ生成
-    lv_sql_porc2 := lv_select_porc ||
-                    lv_from_porc   || lv_from   ||
-                    lv_where_porc  ;
---
-    -- ----------------------------------------------------
-    -- ＯＭＳＯ部分_生成
-    -- ----------------------------------------------------
---
-    lv_select_omso := ' SELECT '
-      || '   CASE'
-      || '    WHEN rpmv.shipment_provision_div = ''' || cv_ship_type || ''''
-      || '      OR rpmv.shipment_provision_div = ''' || cv_pay_type  || ''''
-      || '    THEN xpv.party_number'
-      || '    ELSE NULL'
-      || '   END AS div_tocode'    -- 受払先コード
-      || '  ,CASE'
-      || '    WHEN rpmv.shipment_provision_div = ''' || cv_ship_type || ''''
-      || '      OR rpmv.shipment_provision_div = ''' || cv_pay_type || ''''
-      || '    THEN xpv.party_short_name'
-      || '    ELSE NULL'
-      || '   END AS div_toname'    -- 受払先名称
-      || '  ,NULL                     AS reason_code'       -- 事由コード
-      || '  ,NULL                     AS reason_name'       -- 事由名称
-      || '  ,rpmv.result_post         AS post_code'         -- 部署コード
-      || '  ,loca.location_short_name AS post_name'         -- 部署名
-      || '  ,trn.trans_date           AS trans_date'        -- 取引日
-      || '  ,rpmv.new_div_account     AS new_div_account'   -- 受払区分
-      || '  ,xlv1.meaning             AS div_name'          -- 受払区分名
-      || '  ,NVL(rpmv.item_id,trn.item_id) AS item_id'      -- 品目ＩＤ
-      || '  ,ximv.item_no             AS item_code'         -- 品目コード
-      || '  ,ximv.item_short_name     AS item_name'         -- 品目名称
-      || '  ,trn.whse_code            AS whse_code'         -- 倉庫コード
-      || '  ,iwm.whse_name            AS whse_name'         -- 倉庫名称
-      || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-      || '  ,xlei.lot_attribute1)     AS wip_date'          -- 製造日
-      || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-      || '  ,xlei.lot_no)             AS lot_no'            -- ロット
-      || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-      || '  ,xlei.lot_attribute2)     AS original_char'     -- 固有記号
-      || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-      || '  ,xlei.lot_attribute3)     AS use_by_date'       -- 賞味期限
-      || '  ,xlei.item_attribute15    AS cost_mng_clss'     -- 原価管理区分
-      || '  ,xlei.lot_ctl             AS lot_ctl'           -- ロット管理区分
-      || '  ,xlei.actual_unit_price   AS actual_unit_price' -- 実際単価
--- 2008/08/20 v1.9 UPDATE START
-/*
-      || '  ,NVL2(rpmv.item_id, '
-      ||      ' trn.trans_qty, '
-      ||      ' DECODE(rpmv.dealings_div_name,''' || gv_haiki || ''' '
-      ||      '       ,trn.trans_qty '
-      ||      '       , ''' || gv_mihon || ''' '
-      ||      '       ,trn.trans_qty '
-      ||      ',trn.trans_qty * TO_NUMBER(rpmv.rcv_pay_div))) trans_qty ' -- 数量
-*/
-      ||      ',DECODE(rpmv.dealings_div_name,''' || gv_haiki || ''' '
-      ||      '       ,trn.trans_qty '
-      ||      '       , ''' || gv_mihon || ''' '
-      ||      '       ,trn.trans_qty '
-      ||      ',trn.trans_qty * TO_NUMBER(rpmv.rcv_pay_div)) trans_qty ' -- 数量
--- 2008/08/20 v1.9 UPDATE END
-      || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
-      || '  ,xlei.lot_attribute18)    AS lot_desc'          -- 摘要
-      ;
---
-    lv_from_omso := ' FROM'
-      || ' xxcmn_rcv_pay_mst_omso_v    rpmv'  -- 受払View_OMSO
-      || ',ic_tran_pnd                 trn'   -- OPM保留在庫トラン
-      -- マスタ情報
-      || ',xxcmn_party_sites2_v      xpsv'    -- パーティサイト情報View
-      || ',xxcmn_parties2_v          xpv'     -- パーティ情報View
-      || ',xxcmn_locations2_v        loca'    -- 事業所情報VIEW
-      || ',xxcmn_item_mst2_v         ximv'  -- 品目マスタVIEW
-      ;
---
-    lv_where_omso := ' WHERE'
-      || '       trn.doc_type            = ''' || cv_doc_type_omso || ''''
-      || '   AND trn.completed_ind       = ''' || cv_comp_flg || ''''
-      || '   AND trn.doc_type            = rpmv.doc_type'
-      || '   AND trn.line_detail_id      = rpmv.doc_line'
-      || '   AND trn.trans_date >= FND_DATE.STRING_TO_DATE(''' || lv_start_date || ''',  '''
-      ||                                               gc_char_dt_format || ''')'--取引日
-      || '   AND trn.trans_date <= FND_DATE.STRING_TO_DATE(''' || lv_end_date || ''',  '''
-      ||                                                   gc_char_dt_format || ''')'--取引日
-      || '   AND rpmv.prod_div   = ''' || ir_param.goods_class || ''''  -- ﾊﾟﾗﾒｰﾀ：商品区分
-      || '   AND rpmv.item_div   = ''' || ir_param.item_class || ''''   -- ﾊﾟﾗﾒｰﾀ：品目区分
-      || '   AND DECODE(rpmv.arrival_date,NULL,rpmv.schedule_arrival_date,rpmv.arrival_date)'
-      || '     >= FND_DATE.STRING_TO_DATE(''' || lv_start_date || ''',  '''
-      ||                                               gc_char_dt_format || ''')'--着荷日
-      || '   AND DECODE(rpmv.arrival_date,NULL,rpmv.schedule_arrival_date,rpmv.arrival_date)'
-      || '   <= FND_DATE.STRING_TO_DATE(''' || lv_end_date || ''',  '''
-      ||                                                   gc_char_dt_format || ''')'--着荷日
-      || lv_sql_para   -- ﾊﾟﾗﾒｰﾀ設定
-    --マスタ関連
-    ---------------------------------------------------------------------------------------------
-    -- ロット別品目情報VIEWの絞込み条件
-      || ' AND trn.item_id             = xlei.item_id'
-      || ' AND trn.lot_id              = xlei.lot_id'
-      || ' AND (xlei.start_date_active IS NULL OR'
-      || ' xlei.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (xlei.end_date_active   IS NULL OR'
-      || ' xlei.end_date_active    >= TRUNC(trn.trans_date))'
-    ---------------------------------------------------------------------------------------------
-    -- 品目マスタ情報VIEWの絞込み条件
-      || ' AND ximv.item_id           = NVL(rpmv.item_id, trn.item_id)'
-      || ' AND (ximv.start_date_active IS NULL OR'
-      || ' ximv.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (ximv.end_date_active   IS NULL OR'
-      || ' ximv.end_date_active    >= TRUNC(trn.trans_date))'
-    ---------------------------------------------------------------------------------------------
-    -- OPM倉庫マスタの絞込み条件
-      || ' AND trn.whse_code           = iwm.whse_code'
-    ---------------------------------------------------------------------------------------------
-    -- 事業所情報VIEWの絞込み条件
-      || ' AND rpmv.result_post     = loca.location_code(+)'
-      || ' AND (loca.start_date_active IS NULL OR'
-      || ' loca.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (loca.end_date_active   IS NULL OR'
-      || ' loca.end_date_active    >= TRUNC(trn.trans_date))'
-    ---------------------------------------------------------------------------------------------
-    -- クイックコードIEWの絞込み条件
-      -- 受払区分
-      || ' AND xlv1.lookup_type         = ''' || cv_div_type || ''''
-      || ' AND rpmv.new_div_account     = xlv1.lookup_code'
-      || ' AND (xlv1.start_date_active IS NULL OR'
-      || ' xlv1.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (xlv1.end_date_active   IS NULL OR'
-      || ' xlv1.end_date_active    >= TRUNC(trn.trans_date))'
-      || ' AND xlv1.language           = ''' || gc_ja || ''''
-      || ' AND xlv1.source_lang        = ''' || gc_ja || ''''
-      || ' AND xlv1.enabled_flag       = ''' || cv_yes || ''''
-      -- 帳票別
-      || ' AND xlv2.lookup_type        = ''' || cv_out_flag || ''''
-      || ' AND rpmv.dealings_div       = xlv2.meaning'
-      || ' AND (xlv2.start_date_active IS NULL OR'
-      || ' xlv2.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (xlv2.end_date_active   IS NULL OR'
-      || ' xlv2.end_date_active    >= TRUNC(trn.trans_date))'
-      || ' AND xlv2.language           = ''' || gc_ja || ''''
-      || ' AND xlv2.source_lang        = ''' || gc_ja || ''''
-      || ' AND xlv2.enabled_flag       = ''' || cv_yes || ''''
-      || ' AND xlv2.attribute4         IS NOT NULL'   -- 帳票フラグ（770Dの場合）
-    ---------------------------------------------------------------------------------------------
-    -- パーティ情報VIEWの絞込み条件
-      || ' AND xpsv.party_site_id(+) = rpmv.deliver_to_id'
-      || ' AND xpsv.party_id = xpv.party_id(+)'
-      || ' AND (xpsv.start_date_active IS NULL OR'
-      || ' xpsv.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (xpsv.end_date_active   IS NULL OR'
-      || ' xpsv.end_date_active    >= TRUNC(trn.trans_date))'
-      || ' AND (xpv.start_date_active IS NULL OR'
-      || ' xpv.start_date_active  <= TRUNC(trn.trans_date))'
-      || ' AND (xpv.end_date_active   IS NULL OR'
-      || ' xpv.end_date_active    >= TRUNC(trn.trans_date))'
-      ;
---
-    -- ＳＱＬ生成
-    lv_sql_omso := lv_select_omso ||
-                   lv_from_omso   || lv_from   ||
-                   lv_where_omso  ;
---
-    -- ====================================================
-    -- ＳＱＬ生成
-    -- ====================================================
-    lv_order_by := ' ORDER BY'
-                || ' new_div_account'   -- 受払区分
-                || ',reason_code'       -- 事由コード
-                || ',item_code'         -- 品目コード
-                || ',whse_code'         -- 倉庫コード
-                || ',lot_no'            -- ロットNo
-                ;
-    lv_sql1 :=  lv_sql_xfer
-            ||  ' UNION ALL '
-            ||  lv_sql_trni
-            ||  ' UNION ALL '
-            ||  lv_sql_adji1
-            ||  ' UNION ALL '
-            ||  lv_sql_adji2
-            ||  ' UNION ALL '
-            ||  lv_sql_adji_x201
-            ||  ' UNION ALL '
-            ||  lv_sql_adji_x988
-            ||  ' UNION ALL '
-            ;
-    lv_sql2 :=  lv_sql_adji_x123
-            ||  ' UNION ALL '
-            ||  lv_sql_prod1
-            ||  ' UNION ALL '
-            ||  lv_sql_prod2
-            ||  ' UNION ALL '
-            ||  lv_sql_porc1
-            ||  ' UNION ALL '
-            ||  lv_sql_porc2
-            ||  ' UNION ALL '
-            ||  lv_sql_omso
-            ||  lv_order_by
-            ;
---
-    -- ====================================================
-    -- データ抽出
-    -- ====================================================
-    -- オープン
-    OPEN lc_ref FOR lv_sql1 || lv_sql2 ;
-    -- バルクフェッチ
-    FETCH lc_ref BULK COLLECT INTO ot_data_rec ;
-    -- カーソルクローズ
-    CLOSE lc_ref ;
+-- 2008/10/27 v1.10 ADD END
 --
   EXCEPTION
 --#################################  固定例外処理部 START   ####################################

@@ -7,7 +7,7 @@ AS
  * Description      : ëºä®íËêUë÷å¥âøç∑àŸï\
  * MD.050/070       : åééüÅYêÿèàóùí†ï[Issue1.0(T_MD050_BPO_770)
  *                  : åééüÅYêÿèàóùí†ï[Issue1.0(T_MD070_BPO_77I)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *                                                       Åuxxcmn_rcv_pay_mst_porc_rma09_vÅv
  *  2008/08/27    1.7   A.Shiina         T_TE080_BPO_770 éwìE18ëŒâû
  *  2008/10/14    1.8   N.Yoshida        T_S_524ëŒâû(PTëŒâû)
+ *  2008/10/28    1.9   T.Ohashi         T_S_524ëŒâû(PTëŒâû)çƒëŒâû
  *
  *****************************************************************************************/
 --
@@ -445,7 +446,10 @@ AS
       -- ----------------------------------------------------
       -- PORC1 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷óLèû)
       -- ----------------------------------------------------
-      SELECT /*+ leading (itp rsl oola ooha otta) */
+-- 2008/10/28 v1.9 MOD START
+--      SELECT /*+ leading (itp rsl oola ooha otta) */
+      SELECT /*+ leading (itp rsl oola iimb2 gic4 mcb4 gic5 mcb5 ooha otta xoha xrpm) use_nl (itp rsl oola iimb2 gic4 mcb4 gic5 mcb5 ooha otta xoha xrpm) */
+-- 2008/10/28 v1.9 MOD END
              iimb.item_no               item_code_from
             ,ximb.item_short_name       item_name_from
             ,oola.attribute3            item_code_to
@@ -472,7 +476,9 @@ AS
             ,oe_order_headers_all     ooha
             ,oe_transaction_types_all otta
             ,xxwsh_order_headers_all  xoha
-            ,xxwsh_order_lines_all    xola
+-- 2008/10/28 v1.9 DEL START
+--            ,xxwsh_order_lines_all    xola
+-- 2008/10/28 v1.9 DEL END
             ,gmi_item_categories      gic1
             ,mtl_categories_b         mcb1
             ,gmi_item_categories      gic2
@@ -501,6 +507,9 @@ AS
       AND    gic2.item_id            = itp.item_id
       AND    gic2.category_set_id    = cn_item_class_id
       AND    mcb2.category_id        = gic2.category_id
+-- 2008/10/28 v1.9 ADD START
+      AND    mcb2.segment1           IN ('1','2','4')
+-- 2008/10/28 v1.9 ADD END
       AND    gic3.item_id            = ximb2.item_id
       AND    gic3.category_set_id    = cn_crowd_code_id
       AND    mcb3.category_id        = gic3.category_id
@@ -510,35 +519,56 @@ AS
       AND    xlc.item_id(+)          = itp.item_id
       AND    xlc.lot_id(+)           = itp.lot_id
       AND    xsup_m.item_id          = itp.item_id
+-- 2008/10/28 v1.9 ADD START
+      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2008/10/28 v1.9 ADD END
       AND    rsl.shipment_header_id  = itp.doc_id
       AND    rsl.line_num            = itp.doc_line
       AND    oola.header_id          = rsl.oe_order_header_id
       AND    oola.line_id            = rsl.oe_order_line_id
-      AND    ooha.header_id          = oola.header_id
+-- 2008/10/28 v1.9 MOD START
+--      AND    ooha.header_id          = oola.header_id
+      AND    ooha.header_id          = rsl.oe_order_header_id
+-- 2008/10/28 v1.9 MOD END
       AND    otta.transaction_type_id = ooha.order_type_id
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    xoha.header_id          = ooha.header_id
-      AND    xola.line_id            = oola.line_id
+-- 2008/10/28 v1.9 DEL START
+--      AND    xola.line_id            = oola.line_id
+-- 2008/10/28 v1.9 DEL END
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.source_document_code = 'RMA'
-      AND    mcb2.segment1          <> '5'
+      --AND    mcb2.segment1          <> '5'
       AND    xrpm.dealings_div       IN ('104','106')
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_09       IS NOT NULL
-      AND    iimb2.item_no(+)        = oola.attribute3
+-- 2008/10/28 v1.9 MOD START
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+--      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    iimb2.item_no           = oola.attribute3
+-- 2008/10/28 v1.9 MOD END
       AND    ximb2.item_id           = iimb2.item_id
       AND    xsup.item_id            = iimb2.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
-      AND    gic4.item_id            = ximb2.item_id
+-- 2008/10/28 v1.9 MOD START
+--      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.item_id            = iimb2.item_id
+-- 2008/10/28 v1.9 MOD END
       AND    gic4.category_set_id    = cn_prod_class_id
       AND    mcb4.category_id        = gic4.category_id
       AND    mcb4.segment1           = gr_param.prod_div
-      AND    gic5.item_id            = ximb2.item_id
+-- 2008/10/28 v1.9 MOD START
+--      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.item_id            = iimb2.item_id
+-- 2008/10/28 v1.9 MOD END
       AND    gic5.category_set_id    = cn_item_class_id
       AND    mcb5.category_id        = gic5.category_id
+-- 2008/10/28 v1.9 ADD START
+      AND    mcb5.segment1           = '5'
+-- 2008/10/28 v1.9 ADD END
       AND    mcb5.segment1           = gr_param.item_div
       GROUP BY iimb.item_no
               ,ximb.item_short_name
@@ -550,7 +580,10 @@ AS
       -- ----------------------------------------------------
       -- PORC2 :åoóùéÛï•ãÊï™çwîÉä÷òA (è§ïiêUë÷óLèû)
       -- ----------------------------------------------------
-      SELECT /*+ leading (itp rsl oola ooha otta) */
+-- 2008/10/28 v1.9 MOD START
+--      SELECT /*+ leading (itp rsl oola ooha otta) */
+      SELECT /*+ leading (itp rsl oola iimb2 gic4 mcb4 gic5 mcb5 ooha otta xoha xrpm) use_nl (itp rsl oola iimb2 gic4 mcb4 gic5 mcb5 ooha otta xoha xrpm) */
+-- 2008/10/28 v1.9 MOD END
              iimb.item_no               item_code_from
             ,ximb.item_short_name       item_name_from
             ,oola.attribute3            item_code_to
@@ -577,7 +610,9 @@ AS
             ,oe_order_headers_all     ooha
             ,oe_transaction_types_all otta
             ,xxwsh_order_headers_all  xoha
-            ,xxwsh_order_lines_all    xola
+-- 2008/10/28 v1.9 DEL START
+--            ,xxwsh_order_lines_all    xola
+-- 2008/10/28 v1.9 DEL END
             ,gmi_item_categories      gic1
             ,mtl_categories_b         mcb1
             ,gmi_item_categories      gic2
@@ -603,9 +638,15 @@ AS
       AND    gic1.item_id            = itp.item_id
       AND    gic1.category_set_id    = cn_prod_class_id
       AND    mcb1.category_id        = gic1.category_id
+-- 2008/10/28 v1.9 ADD START
+      AND    mcb1.segment1           = '2'
+-- 2008/10/28 v1.9 ADD END
       AND    gic2.item_id            = itp.item_id
       AND    gic2.category_set_id    = cn_item_class_id
       AND    mcb2.category_id        = gic2.category_id
+-- 2008/10/28 v1.9 ADD START
+      AND    mcb2.segment1           = '5'
+-- 2008/10/28 v1.9 ADD END
       AND    gic3.item_id            = ximb2.item_id
       AND    gic3.category_set_id    = cn_crowd_code_id
       AND    mcb3.category_id        = gic3.category_id
@@ -615,35 +656,61 @@ AS
       AND    xlc.item_id(+)          = itp.item_id
       AND    xlc.lot_id(+)           = itp.lot_id
       AND    xsup_m.item_id          = itp.item_id
+-- 2008/10/28 v1.9 ADD START
+      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2008/10/28 v1.9 ADD END
       AND    rsl.shipment_header_id  = itp.doc_id
       AND    rsl.line_num            = itp.doc_line
       AND    oola.header_id          = rsl.oe_order_header_id
       AND    oola.line_id            = rsl.oe_order_line_id
-      AND    ooha.header_id          = oola.header_id
+-- 2008/10/28 v1.9 MOD START
+--      AND    ooha.header_id          = oola.header_id
+      AND    ooha.header_id          = rsl.oe_order_header_id
+-- 2008/10/28 v1.9 MOD END
       AND    otta.transaction_type_id = ooha.order_type_id
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    xoha.header_id          = ooha.header_id
-      AND    xola.line_id            = oola.line_id
+-- 2008/10/28 v1.9 DEL START
+--      AND    xola.line_id            = oola.line_id
+-- 2008/10/28 v1.9 DEL END
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.source_document_code = 'RMA'
       AND    xrpm.dealings_div       IN ('107','109')
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
-      AND    xrpm.prod_div_origin    = mcb1.segment1
+-- 2008/10/28 v1.9 MOD START
+--      AND    xrpm.prod_div_origin    = mcb1.segment1
       AND    xrpm.break_col_09       IS NOT NULL
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+      AND    xrpm.prod_div_ahead     = mcb4.segment1
+      AND    xrpm.prod_div_origin    = mcb1.segment1
+-- 2008/10/28 v1.9 MOD END
       AND    iimb2.item_no(+)        = oola.attribute3
       AND    ximb2.item_id           = iimb2.item_id
       AND    xsup.item_id            = iimb2.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
-      AND    gic4.item_id            = ximb2.item_id
+-- 2008/10/28 v1.9 MOD START
+--      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.item_id            = iimb2.item_id
+-- 2008/10/28 v1.9 MOD END
       AND    gic4.category_set_id    = cn_prod_class_id
       AND    mcb4.category_id        = gic4.category_id
+-- 2008/10/28 v1.9 ADD START
+      AND    mcb4.segment1           = '1'
+-- 2008/10/28 v1.9 ADD END
       AND    mcb4.segment1           = gr_param.prod_div
-      AND    gic5.item_id            = ximb2.item_id
+-- 2008/10/28 v1.9 MOD START
+--      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.item_id            = iimb2.item_id
+-- 2008/10/28 v1.9 MOD END
       AND    gic5.category_set_id    = cn_item_class_id
       AND    mcb5.category_id        = gic5.category_id
+-- 2008/10/28 v1.9 ADD START
+      AND    mcb5.segment1           = '5'
+-- 2008/10/28 v1.9 ADD END
       AND    mcb5.segment1           = gr_param.item_div
       GROUP BY iimb.item_no
               ,ximb.item_short_name
@@ -655,7 +722,10 @@ AS
       -- ----------------------------------------------------
       -- PORC3 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
       -- ----------------------------------------------------
-      SELECT /*+ leading (itp rsl oola ooha otta) */
+-- 2008/10/28 v1.9 MOD START
+--      SELECT /*+ leading (itp rsl oola ooha otta) */
+      SELECT /*+ leading (itp rsl oola iimb2 gic4 mcb4 gic5 mcb5 ooha otta xoha xrpm) use_nl (itp rsl oola iimb2 gic4 mcb4 gic5 mcb5 ooha otta xoha xrpm) */
+-- 2008/10/28 v1.9 MOD END
              iimb.item_no               item_code_from
             ,ximb.item_short_name       item_name_from
             ,oola.attribute3            item_code_to
@@ -682,7 +752,9 @@ AS
             ,oe_order_headers_all     ooha
             ,oe_transaction_types_all otta
             ,xxwsh_order_headers_all  xoha
-            ,xxwsh_order_lines_all    xola
+-- 2008/10/28 v1.9 DEL START
+--            ,xxwsh_order_lines_all    xola
+-- 2008/10/28 v1.9 DEL END
             ,gmi_item_categories      gic1
             ,mtl_categories_b         mcb1
             ,gmi_item_categories      gic2
@@ -711,6 +783,9 @@ AS
       AND    gic2.item_id            = itp.item_id
       AND    gic2.category_set_id    = cn_item_class_id
       AND    mcb2.category_id        = gic2.category_id
+-- 2008/10/28 v1.9 ADD START
+      AND    mcb2.segment1          IN ('1','4')
+-- 2008/10/28 v1.9 ADD END
       AND    gic3.item_id            = ximb2.item_id
       AND    gic3.category_set_id    = cn_crowd_code_id
       AND    mcb3.category_id        = gic3.category_id
@@ -720,35 +795,56 @@ AS
       AND    xlc.item_id(+)          = itp.item_id
       AND    xlc.lot_id(+)           = itp.lot_id
       AND    xsup_m.item_id          = itp.item_id
+-- 2008/10/28 v1.9 ADD START
+      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2008/10/28 v1.9 ADD END
       AND    rsl.shipment_header_id  = itp.doc_id
       AND    rsl.line_num            = itp.doc_line
       AND    oola.header_id          = rsl.oe_order_header_id
       AND    oola.line_id            = rsl.oe_order_line_id
-      AND    ooha.header_id          = oola.header_id
+-- 2008/10/28 v1.9 MOD START
+--      AND    ooha.header_id          = oola.header_id
+      AND    ooha.header_id          = rsl.oe_order_header_id
+-- 2008/10/28 v1.9 MOD END
       AND    otta.transaction_type_id = ooha.order_type_id
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    xoha.header_id          = ooha.header_id
-      AND    xola.line_id            = oola.line_id
+-- 2008/10/28 v1.9 DEL START
+--      AND    xola.line_id            = oola.line_id
+-- 2008/10/28 v1.9 DEL END
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.source_document_code = 'RMA'
-      AND    xrpm.item_div_ahead     = mcb5.segment1
-      AND    xrpm.item_div_origin    = mcb2.segment1
+-- 2008/10/28 v1.9 MOD START
+--      AND    xrpm.item_div_ahead     = mcb5.segment1
+--      AND    xrpm.item_div_origin    = mcb2.segment1
       AND    xrpm.dealings_div       IN ('110','111')
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_09       IS NOT NULL
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+-- 2008/10/28 v1.9 MOD END
       AND    iimb2.item_no(+)        = oola.attribute3
       AND    ximb2.item_id           = iimb2.item_id
       AND    xsup.item_id            = iimb2.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
-      AND    gic4.item_id            = ximb2.item_id
+-- 2008/10/28 v1.9 MOD START
+--      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.item_id            = iimb2.item_id
+-- 2008/10/28 v1.9 MOD END
       AND    gic4.category_set_id    = cn_prod_class_id
       AND    mcb4.category_id        = gic4.category_id
       AND    mcb4.segment1           = gr_param.prod_div
-      AND    gic5.item_id            = ximb2.item_id
+-- 2008/10/28 v1.9 MOD START
+--      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.item_id            = iimb2.item_id
+-- 2008/10/28 v1.9 MOD END
       AND    gic5.category_set_id    = cn_item_class_id
       AND    mcb5.category_id        = gic5.category_id
+-- 2008/10/28 v1.9 ADD START
+      AND    mcb5.segment1           = '5'
+-- 2008/10/28 v1.9 ADD END
       AND    mcb5.segment1           = gr_param.item_div
       GROUP BY iimb.item_no
               ,ximb.item_short_name
@@ -760,7 +856,10 @@ AS
       -- ----------------------------------------------------
       -- PORC3 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷èoâ◊)
       -- ----------------------------------------------------
-      SELECT /*+ leading (itp rsl oola ooha otta) */
+-- 2008/10/28 v1.9 MOD START
+--      SELECT /*+ leading (itp rsl oola ooha otta) */
+      SELECT /*+ leading (itp rsl oola iimb2 gic4 mcb4 gic5 mcb5 ooha otta xoha xrpm) use_nl (itp rsl oola iimb2 gic4 mcb4 gic5 mcb5 ooha otta xoha xrpm) */
+-- 2008/10/28 v1.9 MOD END
              iimb.item_no               item_code_from
             ,ximb.item_short_name       item_name_from
             ,oola.attribute3            item_code_to
@@ -787,7 +886,9 @@ AS
             ,oe_order_headers_all     ooha
             ,oe_transaction_types_all otta
             ,xxwsh_order_headers_all  xoha
-            ,xxwsh_order_lines_all    xola
+-- 2008/10/28 v1.9 DEL START
+--            ,xxwsh_order_lines_all    xola
+-- 2008/10/28 v1.9 DEL END
             ,gmi_item_categories      gic1
             ,mtl_categories_b         mcb1
             ,gmi_item_categories      gic2
@@ -816,6 +917,9 @@ AS
       AND    gic2.item_id            = itp.item_id
       AND    gic2.category_set_id    = cn_item_class_id
       AND    mcb2.category_id        = gic2.category_id
+-- 2008/10/28 v1.9 ADD START
+      AND    mcb2.segment1          IN ('1','2','4')
+-- 2008/10/28 v1.9 ADD END
       AND    gic3.item_id            = ximb2.item_id
       AND    gic3.category_set_id    = cn_crowd_code_id
       AND    mcb3.category_id        = gic3.category_id
@@ -825,35 +929,55 @@ AS
       AND    xlc.item_id(+)          = itp.item_id
       AND    xlc.lot_id(+)           = itp.lot_id
       AND    xsup_m.item_id          = itp.item_id
+-- 2008/10/28 v1.9 ADD START
+      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2008/10/28 v1.9 ADD END
       AND    rsl.shipment_header_id  = itp.doc_id
       AND    rsl.line_num            = itp.doc_line
       AND    oola.header_id          = rsl.oe_order_header_id
       AND    oola.line_id            = rsl.oe_order_line_id
-      AND    ooha.header_id          = oola.header_id
+-- 2008/10/28 v1.9 MOD START
+--      AND    ooha.header_id          = oola.header_id
+      AND    ooha.header_id          = rsl.oe_order_header_id
+-- 2008/10/28 v1.9 MOD END
       AND    otta.transaction_type_id = ooha.order_type_id
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    xoha.header_id          = ooha.header_id
-      AND    xola.line_id            = oola.line_id
+-- 2008/10/28 v1.9 DEL START
+--      AND    xola.line_id            = oola.line_id
+-- 2008/10/28 v1.9 DEL END
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.source_document_code = 'RMA'
       AND    xrpm.item_div_ahead     = mcb5.segment1
-      AND    mcb2.segment1          <> '5'
+-- 2008/10/28 v1.9 DEL START
+--      AND    mcb2.segment1          <> '5'
+-- 2008/10/28 v1.9 DEL END
       AND    xrpm.dealings_div       = '113'
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_09       IS NOT NULL
+-- 2008/10/28 v1.9 ADD START
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+-- 2008/10/28 v1.9 ADD END
       AND    iimb2.item_no(+)        = oola.attribute3
       AND    ximb2.item_id           = iimb2.item_id
       AND    xsup.item_id            = iimb2.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
-      AND    gic4.item_id            = ximb2.item_id
+-- 2008/10/28 v1.9 MOD START
+--      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.item_id            = iimb2.item_id
       AND    gic4.category_set_id    = cn_prod_class_id
       AND    mcb4.category_id        = gic4.category_id
       AND    mcb4.segment1           = gr_param.prod_div
-      AND    gic5.item_id            = ximb2.item_id
+--      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.item_id            = iimb2.item_id
+-- 2008/10/28 v1.9 MOD END
       AND    gic5.category_set_id    = cn_item_class_id
       AND    mcb5.category_id        = gic5.category_id
+-- 2008/10/28 v1.9 ADD START
+      AND    mcb5.segment1           = '5'
+-- 2008/10/28 v1.9 ADD END
       AND    mcb5.segment1           = gr_param.item_div
       GROUP BY iimb.item_no
               ,ximb.item_short_name
@@ -865,8 +989,9 @@ AS
       -- ----------------------------------------------------
       -- PORC4 :åoóùéÛï•ãÊï™çwîÉä÷òA (ëqë÷ÅAï‘ïi)
       -- ----------------------------------------------------
-      SELECT /*+ leading (itp rsl oola ooha otta) */
-             iimb.item_no               item_code_from
+-- 2008/10/28 v1.9 DEL START
+--      SELECT /*+ leading (itp rsl oola ooha otta) */
+/*             iimb.item_no               item_code_from
             ,ximb.item_short_name       item_name_from
             ,oola.attribute3            item_code_to
             ,ximb2.item_short_name      item_name_to
@@ -964,12 +1089,12 @@ AS
               ,ximb2.item_short_name
               ,mcb3.segment1
               ,xrpm.new_div_account
-      UNION ALL
+      UNION ALL*/
       -- ----------------------------------------------------
       -- PORC5 :åoóùéÛï•ãÊï™çwîÉä÷òA (å©ñ{ÅAîpãp)
       -- ----------------------------------------------------
-      SELECT /*+ leading (itp rsl oola ooha otta) */
-             iimb.item_no               item_code_from
+--      SELECT /*+ leading (itp rsl oola ooha otta) */
+/*             iimb.item_no               item_code_from
             ,ximb.item_short_name       item_name_from
             ,oola.attribute3            item_code_to
             ,ximb2.item_short_name      item_name_to
@@ -1065,11 +1190,15 @@ AS
               ,ximb2.item_short_name
               ,mcb3.segment1
               ,xrpm.new_div_account
-      UNION ALL
+      UNION ALL*/
+-- 2008/10/28 v1.9 DEL END
       -- ----------------------------------------------------
       -- OMSO1 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷óLèû)
       -- ----------------------------------------------------
-      SELECT /*+ leading (itp wdd oola ooha otta) use_nl (itp wdd oola ooha otta) */
+-- 2008/10/28 v1.9 MOD START
+--      SELECT /*+ leading (itp wdd oola ooha otta) use_nl (itp wdd oola ooha otta) */
+      SELECT /*+ leading (itp wdd oola iimb2 gic4 mcb4 gic5 mcb5 ooha otta xoha xrpm) use_nl (itp wdd oola iimb2 gic4 mcb4 gic5 mcb5 ooha otta xoha xrpm) */
+-- 2008/10/28 v1.9 MOD END
              iimb.item_no               item_code_from
             ,ximb.item_short_name       item_name_from
             ,oola.attribute3            item_code_to
@@ -1096,7 +1225,9 @@ AS
             ,oe_order_headers_all     ooha
             ,oe_transaction_types_all otta
             ,xxwsh_order_headers_all  xoha
-            ,xxwsh_order_lines_all    xola
+-- 2008/10/28 v1.9 DEL START
+          --  ,xxwsh_order_lines_all    xola
+-- 2008/10/28 v1.9 DEL END
             ,gmi_item_categories      gic1
             ,mtl_categories_b         mcb1
             ,gmi_item_categories      gic2
@@ -1125,6 +1256,9 @@ AS
       AND    gic2.item_id            = itp.item_id
       AND    gic2.category_set_id    = cn_item_class_id
       AND    mcb2.category_id        = gic2.category_id
+-- 2008/10/28 v1.9 ADD START
+      AND    mcb2.segment1           IN ('1','2','4')
+-- 2008/10/28 v1.9 ADD END
       AND    gic3.item_id            = ximb2.item_id
       AND    gic3.category_set_id    = cn_crowd_code_id
       AND    mcb3.category_id        = gic3.category_id
@@ -1134,35 +1268,52 @@ AS
       AND    xlc.item_id(+)          = itp.item_id
       AND    xlc.lot_id(+)           = itp.lot_id
       AND    xsup_m.item_id          = itp.item_id
+-- 2008/10/28 v1.9 ADD START
+      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2008/10/28 v1.9 ADD END
       AND    wdd.delivery_detail_id  = itp.line_detail_id
       AND    oola.org_id             = wdd.org_id
       AND    oola.header_id          = wdd.source_header_id
       AND    oola.line_id            = wdd.source_line_id
-      AND    ooha.header_id          = oola.header_id
+-- 2008/10/28 v1.9 DEL START
+      --AND    ooha.header_id          = oola.header_id
+      AND    ooha.header_id          = wdd.source_header_id
       AND    otta.transaction_type_id = ooha.order_type_id
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    xoha.header_id          = ooha.header_id
-      AND    xola.line_id            = oola.line_id
-      AND    xola.request_item_code  = xola.shipping_item_code
+     -- AND    xola.line_id            = oola.line_id
+     -- AND    xola.request_item_code  = xola.shipping_item_code
       AND    xrpm.doc_type           = itp.doc_type
-      AND    mcb2.segment1          <> '5'
+      --AND    mcb2.segment1          <> '5'
+-- 2008/10/28 v1.9 DEL END
       AND    xrpm.dealings_div       IN ('104','106')
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_09       IS NOT NULL
-      AND    iimb2.item_no(+)        = oola.attribute3
+-- 2008/10/28 v1.9 MOD START
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+--      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    iimb2.item_no           = oola.attribute3
+-- 2008/10/28 v1.9 MOD END
       AND    ximb2.item_id           = iimb2.item_id
       AND    xsup.item_id            = iimb2.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
-      AND    gic4.item_id            = ximb2.item_id
+-- 2008/10/28 v1.9 MOD START
+--      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.item_id            = iimb2.item_id
       AND    gic4.category_set_id    = cn_prod_class_id
       AND    mcb4.category_id        = gic4.category_id
       AND    mcb4.segment1           = gr_param.prod_div
-      AND    gic5.item_id            = ximb2.item_id
+--      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.item_id            = iimb2.item_id
+-- 2008/10/28 v1.9 MOD END
       AND    gic5.category_set_id    = cn_item_class_id
       AND    mcb5.category_id        = gic5.category_id
+-- 2008/10/28 v1.9 ADD START
+      AND    mcb5.segment1           = '5'
+-- 2008/10/28 v1.9 ADD END
       AND    mcb5.segment1           = gr_param.item_div
       GROUP BY iimb.item_no
               ,ximb.item_short_name
@@ -1174,7 +1325,10 @@ AS
       -- ----------------------------------------------------
       -- OMSO2 :åoóùéÛï•ãÊï™çwîÉä÷òA (è§ïiêUë÷óLèû)
       -- ----------------------------------------------------
-      SELECT /*+ leading (itp wdd oola ooha otta) */
+-- 2008/10/28 v1.9 MOD START
+--      SELECT /*+ leading (itp wdd oola ooha otta) */
+      SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2 wdd oola iimb2 gic4 mcb4 gic5 mcb5 ooha otta xoha xrpm) use_nl (itp gic1 mcb1 gic2 mcb2 wdd oola iimb2 gic4 mcb4 gic5 mcb5 ooha otta xoha xrpm) */
+-- 2008/10/28 v1.9 MOD END
              iimb.item_no               item_code_from
             ,ximb.item_short_name       item_name_from
             ,oola.attribute3            item_code_to
@@ -1201,7 +1355,9 @@ AS
             ,oe_order_headers_all     ooha
             ,oe_transaction_types_all otta
             ,xxwsh_order_headers_all  xoha
-            ,xxwsh_order_lines_all    xola
+-- 2008/10/28 v1.9 DEL START
+--            ,xxwsh_order_lines_all    xola
+-- 2008/10/28 v1.9 DEL END
             ,gmi_item_categories      gic1
             ,mtl_categories_b         mcb1
             ,gmi_item_categories      gic2
@@ -1227,9 +1383,15 @@ AS
       AND    gic1.item_id            = itp.item_id
       AND    gic1.category_set_id    = cn_prod_class_id
       AND    mcb1.category_id        = gic1.category_id
+-- 2008/10/28 v1.9 ADD START
+      AND    mcb1.segment1           = '2'
+-- 2008/10/28 v1.9 ADD END
       AND    gic2.item_id            = itp.item_id
       AND    gic2.category_set_id    = cn_item_class_id
       AND    mcb2.category_id        = gic2.category_id
+-- 2008/10/28 v1.9 ADD START
+      AND    mcb2.segment1           = '5'
+-- 2008/10/28 v1.9 ADD END
       AND    gic3.item_id            = ximb2.item_id
       AND    gic3.category_set_id    = cn_crowd_code_id
       AND    mcb3.category_id        = gic3.category_id
@@ -1239,34 +1401,51 @@ AS
       AND    xlc.item_id(+)          = itp.item_id
       AND    xlc.lot_id(+)           = itp.lot_id
       AND    xsup_m.item_id          = itp.item_id
+-- 2008/10/28 v1.9 ADD START
+      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2008/10/28 v1.9 ADD END
       AND    wdd.delivery_detail_id  = itp.line_detail_id
       AND    oola.org_id             = wdd.org_id
       AND    oola.header_id          = wdd.source_header_id
       AND    oola.line_id            = wdd.source_line_id
-      AND    ooha.header_id          = oola.header_id
+-- 2008/10/28 v1.9 MOD START
+--      AND    ooha.header_id          = oola.header_id
+      AND    ooha.header_id          = wdd.source_header_id
       AND    otta.transaction_type_id = ooha.order_type_id
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    xoha.header_id          = ooha.header_id
-      AND    xola.line_id            = oola.line_id
+--      AND    xola.line_id            = oola.line_id
+-- 2008/10/28 v1.9 MOD END
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       IN ('107','109')
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
-      AND    xrpm.prod_div_origin    = mcb1.segment1
+-- 2008/10/28 v1.9 MOD START
+--      AND    xrpm.prod_div_origin    = mcb1.segment1
       AND    xrpm.break_col_09       IS NOT NULL
-      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+      AND    xrpm.prod_div_ahead     = mcb4.segment1
+      AND    xrpm.prod_div_origin    = mcb1.segment1
+--      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    iimb2.item_no           = oola.attribute3
       AND    ximb2.item_id           = iimb2.item_id
       AND    xsup.item_id            = iimb2.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
-      AND    gic4.item_id            = ximb2.item_id
+--      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.item_id            = iimb2.item_id
       AND    gic4.category_set_id    = cn_prod_class_id
       AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = '1'
       AND    mcb4.segment1           = gr_param.prod_div
-      AND    gic5.item_id            = ximb2.item_id
+--      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.item_id            = iimb2.item_id
       AND    gic5.category_set_id    = cn_item_class_id
       AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = '5'
+-- 2008/10/28 v1.9 MOD END
       AND    mcb5.segment1           = gr_param.item_div
       GROUP BY iimb.item_no
               ,ximb.item_short_name
@@ -1278,7 +1457,10 @@ AS
       -- ----------------------------------------------------
       -- OMSO3 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
       -- ----------------------------------------------------
-      SELECT /*+ leading (itp wdd oola ooha otta) */
+-- 2008/10/28 v1.9 MOD START
+--      SELECT /*+ leading (itp wdd oola ooha otta) */
+      SELECT /*+ leading (itp gic2 mcb2 wdd oola iimb2 gic4 mcb4 gic5 mcb5 ooha otta xoha xrpm) use_nl (itp gic2 mcb2 wdd oola iimb2 gic4 mcb4 gic5 mcb5 ooha otta xoha xrpm) */
+-- 2008/10/28 v1.9 MOD END
              iimb.item_no               item_code_from
             ,ximb.item_short_name       item_name_from
             ,oola.attribute3            item_code_to
@@ -1305,7 +1487,9 @@ AS
             ,oe_order_headers_all     ooha
             ,oe_transaction_types_all otta
             ,xxwsh_order_headers_all  xoha
-            ,xxwsh_order_lines_all    xola
+-- 2008/10/28 v1.9 DEL START
+--            ,xxwsh_order_lines_all    xola
+-- 2008/10/28 v1.9 DEL END
             ,gmi_item_categories      gic1
             ,mtl_categories_b         mcb1
             ,gmi_item_categories      gic2
@@ -1334,6 +1518,9 @@ AS
       AND    gic2.item_id            = itp.item_id
       AND    gic2.category_set_id    = cn_item_class_id
       AND    mcb2.category_id        = gic2.category_id
+-- 2008/10/28 v1.9 ADD START
+      AND    mcb2.segment1           IN ('1','4')
+-- 2008/10/28 v1.9 ADD END
       AND    gic3.item_id            = ximb2.item_id
       AND    gic3.category_set_id    = cn_crowd_code_id
       AND    mcb3.category_id        = gic3.category_id
@@ -1343,34 +1530,49 @@ AS
       AND    xlc.item_id(+)          = itp.item_id
       AND    xlc.lot_id(+)           = itp.lot_id
       AND    xsup_m.item_id          = itp.item_id
+-- 2008/10/28 v1.9 ADD START
+      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2008/10/28 v1.9 ADD END
       AND    wdd.delivery_detail_id  = itp.line_detail_id
       AND    oola.org_id             = wdd.org_id
       AND    oola.header_id          = wdd.source_header_id
       AND    oola.line_id            = wdd.source_line_id
-      AND    ooha.header_id          = oola.header_id
+-- 2008/10/28 v1.9 MOD START
+--      AND    ooha.header_id          = oola.header_id
+      AND    ooha.header_id          = wdd.source_header_id
       AND    otta.transaction_type_id = ooha.order_type_id
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    xoha.header_id          = ooha.header_id
-      AND    xola.line_id            = oola.line_id
+--      AND    xola.line_id            = oola.line_id
+
       AND    xrpm.doc_type           = itp.doc_type
-      AND    xrpm.item_div_ahead     = mcb5.segment1
-      AND    xrpm.item_div_origin    = mcb2.segment1
+--      AND    xrpm.item_div_ahead     = mcb5.segment1
+--      AND    xrpm.item_div_origin    = mcb2.segment1
       AND    xrpm.dealings_div       IN ('110','111')
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_09       IS NOT NULL
-      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+--      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    iimb2.item_no           = oola.attribute3
+-- 2008/10/28 v1.9 MOD END
       AND    ximb2.item_id           = iimb2.item_id
       AND    xsup.item_id            = iimb2.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
-      AND    gic4.item_id            = ximb2.item_id
+-- 2008/10/28 v1.9 MOD START
+--      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.item_id            = iimb2.item_id
       AND    gic4.category_set_id    = cn_prod_class_id
       AND    mcb4.category_id        = gic4.category_id
       AND    mcb4.segment1           = gr_param.prod_div
-      AND    gic5.item_id            = ximb2.item_id
+--      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.item_id            = iimb2.item_id
       AND    gic5.category_set_id    = cn_item_class_id
       AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = '5'
+-- 2008/10/28 v1.9 MOD END
       AND    mcb5.segment1           = gr_param.item_div
       GROUP BY iimb.item_no
               ,ximb.item_short_name
@@ -1382,7 +1584,10 @@ AS
       -- ----------------------------------------------------
       -- OMSO3 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷èoâ◊)
       -- ----------------------------------------------------
-      SELECT /*+ leading (itp wdd oola ooha otta) */
+-- 2008/10/28 v1.9 MOD START
+--      SELECT /*+ leading (itp wdd oola ooha otta) */
+      SELECT /*+ leading (itp wdd oola iimb2 gic4 mcb4 gic5 mcb5 ooha otta xoha xrpm) use_nl (itp wdd oola iimb2 gic4 mcb4 gic5 mcb5 ooha otta xoha xrpm) */
+-- 2008/10/28 v1.9 MOD END
              iimb.item_no               item_code_from
             ,ximb.item_short_name       item_name_from
             ,oola.attribute3            item_code_to
@@ -1409,7 +1614,9 @@ AS
             ,oe_order_headers_all     ooha
             ,oe_transaction_types_all otta
             ,xxwsh_order_headers_all  xoha
-            ,xxwsh_order_lines_all    xola
+-- 2008/10/28 v1.9 DEL START
+--            ,xxwsh_order_lines_all    xola
+-- 2008/10/28 v1.9 DEL END
             ,gmi_item_categories      gic1
             ,mtl_categories_b         mcb1
             ,gmi_item_categories      gic2
@@ -1438,6 +1645,10 @@ AS
       AND    gic2.item_id            = itp.item_id
       AND    gic2.category_set_id    = cn_item_class_id
       AND    mcb2.category_id        = gic2.category_id
+      AND    xsup_m.item_id          = itp.item_id
+-- 2008/10/28 v1.9 ADD START
+      AND    mcb2.segment1           IN ('1','2','4')
+-- 2008/10/28 v1.9 ADD END
       AND    gic3.item_id            = ximb2.item_id
       AND    gic3.category_set_id    = cn_crowd_code_id
       AND    mcb3.category_id        = gic3.category_id
@@ -1447,16 +1658,22 @@ AS
       AND    xlc.item_id(+)          = itp.item_id
       AND    xlc.lot_id(+)           = itp.lot_id
       AND    xsup_m.item_id          = itp.item_id
+-- 2008/10/28 v1.9 ADD START
+      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2008/10/28 v1.9 ADD END
       AND    wdd.delivery_detail_id  = itp.line_detail_id
       AND    oola.org_id             = wdd.org_id
       AND    oola.header_id          = wdd.source_header_id
       AND    oola.line_id            = wdd.source_line_id
-      AND    ooha.header_id          = oola.header_id
+-- 2008/10/28 v1.9 MOD START
+--      AND    ooha.header_id          = oola.header_id
+      AND    ooha.header_id          = wdd.source_header_id
       AND    otta.transaction_type_id = ooha.order_type_id
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    xoha.header_id          = ooha.header_id
-      AND    xola.line_id            = oola.line_id
+--      AND    xola.line_id            = oola.line_id
+-- 2008/10/28 v1.9 MOD END
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.item_div_ahead     = mcb5.segment1
       AND    mcb2.segment1          <> '5'
@@ -1464,17 +1681,24 @@ AS
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_09       IS NOT NULL
-      AND    iimb2.item_no(+)        = oola.attribute3
+-- 2008/10/28 v1.9 MOD START
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+--      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    iimb2.item_no           = oola.attribute3
       AND    ximb2.item_id           = iimb2.item_id
       AND    xsup.item_id            = iimb2.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
-      AND    gic4.item_id            = ximb2.item_id
+--      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.item_id            = iimb2.item_id
       AND    gic4.category_set_id    = cn_prod_class_id
       AND    mcb4.category_id        = gic4.category_id
       AND    mcb4.segment1           = gr_param.prod_div
-      AND    gic5.item_id            = ximb2.item_id
+--      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.item_id            = iimb2.item_id
       AND    gic5.category_set_id    = cn_item_class_id
       AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = '5'
+-- 2008/10/28 v1.9 MOD END
       AND    mcb5.segment1           = gr_param.item_div
       GROUP BY iimb.item_no
               ,ximb.item_short_name
@@ -1482,12 +1706,13 @@ AS
               ,ximb2.item_short_name
               ,mcb3.segment1
               ,xrpm.new_div_account
-      UNION ALL
+-- 2008/10/28 v1.9 DEL START
+--      UNION ALL
       -- ----------------------------------------------------
       -- OMSO4 :åoóùéÛï•ãÊï™çwîÉä÷òA (ëqë÷ÅAï‘ïi)
       -- ----------------------------------------------------
-      SELECT /*+ leading (itp wdd oola ooha otta) */
-             iimb.item_no               item_code_from
+--      SELECT /*+ leading (itp wdd oola ooha otta) */
+/*             iimb.item_no               item_code_from
             ,ximb.item_short_name       item_name_from
             ,oola.attribute3            item_code_to
             ,ximb2.item_short_name      item_name_to
@@ -1584,12 +1809,12 @@ AS
               ,ximb2.item_short_name
               ,mcb3.segment1
               ,xrpm.new_div_account
-      UNION ALL
+      UNION ALL*/
       -- ----------------------------------------------------
       -- OMSO5 :åoóùéÛï•ãÊï™çwîÉä÷òA (å©ñ{ÅAîpãp)
       -- ----------------------------------------------------
-      SELECT /*+ leading (itp wdd oola ooha otta) */
-             iimb.item_no               item_code_from
+--      SELECT /*+ leading (itp wdd oola ooha otta) */
+/*             iimb.item_no               item_code_from
             ,ximb.item_short_name       item_name_from
             ,oola.attribute3            item_code_to
             ,ximb2.item_short_name      item_name_to
@@ -1683,7 +1908,8 @@ AS
               ,oola.attribute3
               ,ximb2.item_short_name
               ,mcb3.segment1
-              ,xrpm.new_div_account
+              ,xrpm.new_div_account*/
+-- 2008/10/28 v1.9 DEL END
       ORDER BY rcv_pay_div
               ,gun_code
               ,item_code_to

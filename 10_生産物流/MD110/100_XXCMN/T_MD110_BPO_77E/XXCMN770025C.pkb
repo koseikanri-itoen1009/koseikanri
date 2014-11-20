@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績表作成
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77E)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -37,7 +37,7 @@ AS
  *                                       されない現象への対応
  *  2008/07/22    1.5   T.Endou          改ページ時、ヘッダが出ないパターン対応
  *  2008/10/14    1.6   A.Shiina         T_S_524対応
- *
+ *  2008/10/28    1.7   H.Itou           T_S_524対応(再対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -67,6 +67,10 @@ AS
   gv_xxcmn_ctr              CONSTANT VARCHAR2(26) := 'XXCMN_CONSUMPTION_TAX_RATE'; -- 消費税
   gv_cat_set_name_prod_div  CONSTANT VARCHAR2(8)  := '商品区分';
   gv_cat_set_name_item_div  CONSTANT VARCHAR2(8)  := '品目区分';
+-- 2008/10/28 H.Itou Add Start T_S_524対応(再対応)
+  gv_min_date               CONSTANT VARCHAR2(20) := '1900/01/01 00:00:00';
+  gv_max_date               CONSTANT VARCHAR2(20) := '9999/12/31 23:59:59';
+-- 2008/10/28 H.Itou Add End
 --
   ------------------------------
   -- エラーメッセージ関連
@@ -1389,12 +1393,20 @@ AS
       || '      ,mst.item_atr15            AS item_atr15 '
       || '      ,mst.lot_ctl               AS lot_ctl '
       || '      ,SUM(mst.trans_qty)        AS trans_qty '
-      || '      ,SUM(mst.purchases_price)   / SUM(mst.trans_qty) AS purchases_price '
-      || '      ,SUM(mst.powder_price)      / SUM(mst.trans_qty) AS powder_price '
-      || '      ,SUM(mst.commission_price)  / SUM(mst.trans_qty) AS commission_price '
+-- 2008/10/28 H.Itou Mod Start T_S_524対応(再対応)
+--      || '      ,SUM(mst.purchases_price)   / SUM(mst.trans_qty) AS purchases_price '
+--      || '      ,SUM(mst.powder_price)      / SUM(mst.trans_qty) AS powder_price '
+--      || '      ,SUM(mst.commission_price)  / SUM(mst.trans_qty) AS commission_price '
+      || '      ,SUM(mst.purchases_price)  / DECODE(SUM(mst.trans_qty),0,1,SUM(mst.trans_qty)) AS purchases_price '
+      || '      ,SUM(mst.powder_price)     / DECODE(SUM(mst.trans_qty),0,1,SUM(mst.trans_qty)) AS powder_price '
+      || '      ,SUM(mst.commission_price) / DECODE(SUM(mst.trans_qty),0,1,SUM(mst.trans_qty)) AS commission_price '
+-- 2008/10/28 H.Itou Mod End
       || '      ,SUM(mst.commission_price * mst.trans_qty) AS c_amt '
       || '      ,SUM(mst.assessment)       AS assessment '
-      || '      ,SUM(mst.stnd_unit_price)   / SUM(mst.trans_qty) AS stnd_unit_price '
+-- 2008/10/28 H.Itou Mod Start T_S_524対応(再対応)
+--      || '      ,SUM(mst.stnd_unit_price)   / SUM(mst.trans_qty) AS stnd_unit_price '
+      || '      ,SUM(mst.stnd_unit_price) / DECODE(SUM(mst.trans_qty),0,1,SUM(mst.trans_qty)) AS stnd_unit_price '
+-- 2008/10/28 H.Itou Mod End
       || '      ,SUM(mst.stnd_unit_price * mst.trans_qty) AS j_amt '
       || '      ,SUM(mst.purchases_price * mst.trans_qty) AS s_amt '
       || '      ,:para_lkup_code              AS c_tax ';
@@ -1422,12 +1434,15 @@ AS
       || '             ,NVL(plla.attribute2, :para_zero) AS powder_price '
       || '             ,NVL(plla.attribute4, :para_zero) AS commission_price '
       || '             ,NVL(plla.attribute7, :para_zero) AS assessment '
-      || '             ,(NVL((SELECT xsupv.stnd_unit_price '
-      || '                    FROM   xxcmn_stnd_unit_price_v xsupv '
-      || '                    WHERE  xsupv.start_date_active < (TRUNC(itp.trans_date) + 1) '
-      || '                    AND    ((xsupv.end_date_active >= TRUNC(itp.trans_date)) '
-      || '                             OR (xsupv.end_date_active IS NULL)) '
-      || '                    AND    xsupv.item_id = itp.item_id), 0)) AS stnd_unit_price '
+-- 2008/10/28 H.Itou Mod Start T_S_524対応(再対応)
+--      || '             ,(NVL((SELECT xsupv.stnd_unit_price '
+--      || '                    FROM   xxcmn_stnd_unit_price_v xsupv '
+--      || '                    WHERE  xsupv.start_date_active < (TRUNC(itp.trans_date) + 1) '
+--      || '                    AND    ((xsupv.end_date_active >= TRUNC(itp.trans_date)) '
+--      || '                             OR (xsupv.end_date_active IS NULL)) '
+--      || '                    AND    xsupv.item_id = itp.item_id), 0)) AS stnd_unit_price '
+      || '             ,NVL(xsupv.stnd_unit_price,0) AS stnd_unit_price '
+-- 2008/10/28 H.Itou Mod End
       || '             ,xvv.segment1            AS segment1 '
       || '             ,xvv.vendor_short_name   AS vendor_name '
       || '             ,xl.location_short_name  AS location_name '
@@ -1451,6 +1466,9 @@ AS
       || '             ,xxcmn_vendors2_v         xvv '
       || '             ,hr_locations_all         hl '
       || '             ,xxcmn_locations_all      xl '
+-- 2008/10/28 H.Itou Add Start T_S_524対応(再対応)
+      || '             ,xxcmn_stnd_unit_price_v  xsupv '
+-- 2008/10/28 H.Itou Add End
       || '       WHERE  itp.doc_type                = :para_porc '
       || '       AND    itp.completed_ind           = :para_one '
       || '       AND    itp.trans_date '
@@ -1493,14 +1511,24 @@ AS
       || '       AND    ((xvv.end_date_active >= TRUNC(itp.trans_date)) '
       || '              OR (xvv.end_date_active IS NULL)) '
       || '       AND    xvv.vendor_id               = pha.vendor_id '
-      || '       AND    hl.location_code            = pha.attribute10 '
-      || '       AND    hl.location_id              = xl.location_id '
-      || '       AND    xl.start_date_active  < (TRUNC(itp.trans_date) + 1) '
-      || '       AND ( '
-      || '             (xl.end_date_active >= TRUNC(itp.trans_date)) '
-      || '             OR '
-      || '             (xl.end_date_active IS NULL) '
-      || '           ) ';
+-- 2008/10/28 H.Itou Mod Start T_S_524対応(再対応)
+--      || '       AND    hl.location_code            = pha.attribute10 '
+--      || '       AND    hl.location_id              = xl.location_id '
+--      || '       AND    xl.start_date_active  < (TRUNC(itp.trans_date) + 1) '
+--      || '       AND ( '
+--      || '             (xl.end_date_active >= TRUNC(itp.trans_date)) '
+--      || '             OR '
+--      || '             (xl.end_date_active IS NULL) '
+--      || '           ) '
+      || '       AND hl.location_code(+) = pha.attribute10 '
+      || '       AND hl.location_id      = xl.location_id(+) '
+      || '       AND NVL(xl.start_date_active, FND_DATE.STRING_TO_DATE(''' || gv_min_date || ''', ''' || gc_char_dt_format || ''')) < (TRUNC(itp.trans_date) + 1) '
+      || '       AND NVL(xl.end_date_active,   FND_DATE.STRING_TO_DATE(''' || gv_max_date || ''', ''' || gc_char_dt_format || ''')) >= TRUNC(itp.trans_date) '
+      || '       AND xsupv.item_id(+)    = itp.item_id '
+      || '       AND NVL(xsupv.start_date_active, FND_DATE.STRING_TO_DATE(''' || gv_min_date || ''', ''' || gc_char_dt_format || ''')) < (TRUNC(itp.trans_date) + 1) '
+      || '       AND NVL(xsupv.end_date_active,   FND_DATE.STRING_TO_DATE(''' || gv_max_date || ''', ''' || gc_char_dt_format || ''')) >= TRUNC(itp.trans_date) '
+-- 2008/10/28 H.Itou Mod End
+      ;
 --
     -- 品目区分
     IF ( ir_param.item_div IS NOT NULL ) THEN
@@ -1558,12 +1586,15 @@ AS
       || '             ,TO_CHAR(NVL(xrrt.kobki_converted_unit_price, :para_zero)) AS powder_price '
       || '           ,TO_CHAR(NVL(xrrt.kousen_rate_or_unit_price, :para_zero)) AS commission_price '
       || '             ,TO_CHAR(NVL(xrrt.fukakin_price, :para_zero)) AS assessment '
-      || '             ,(NVL((SELECT xsupv.stnd_unit_price '
-      || '                    FROM   xxcmn_stnd_unit_price_v xsupv '
-      || '                    WHERE  xsupv.start_date_active < (TRUNC(itc.trans_date) + 1) '
-      || '                    AND    ((xsupv.end_date_active >= TRUNC(itc.trans_date)) '
-      || '                             OR (xsupv.end_date_active IS NULL)) '
-      || '                    AND    xsupv.item_id = itc.item_id), 0)) AS stnd_unit_price '
+-- 2008/10/28 H.Itou Mod Start T_S_524対応(再対応)
+--      || '             ,(NVL((SELECT xsupv.stnd_unit_price '
+--      || '                    FROM   xxcmn_stnd_unit_price_v xsupv '
+--      || '                    WHERE  xsupv.start_date_active < (TRUNC(itc.trans_date) + 1) '
+--      || '                    AND    ((xsupv.end_date_active >= TRUNC(itc.trans_date)) '
+--      || '                             OR (xsupv.end_date_active IS NULL)) '
+--      || '                    AND    xsupv.item_id = itc.item_id), 0)) AS stnd_unit_price '
+      || '             ,NVL(xsupv.stnd_unit_price,0) AS stnd_unit_price '
+-- 2008/10/28 H.Itou Mod End
       || '             ,xvv.segment1            AS segment1 '
       || '             ,xvv.vendor_short_name   AS vendor_name '
       || '             ,xl.location_short_name  AS location_name '
@@ -1585,6 +1616,9 @@ AS
       || '             ,xxcmn_vendors2_v          xvv '
       || '             ,hr_locations_all          hl '
       || '             ,xxcmn_locations_all       xl '
+-- 2008/10/28 H.Itou Add Start T_S_524対応(再対応)
+      || '             ,xxcmn_stnd_unit_price_v  xsupv '
+-- 2008/10/28 H.Itou Add End
       || '       WHERE  itc.doc_type        = :para_adji '
       || '       AND    itc.reason_code     = :para_x201 '
       || '       AND    itc.trans_date '
@@ -1622,14 +1656,24 @@ AS
       || '       AND    ((xvv.end_date_active >= TRUNC(itc.trans_date)) '
       || '              OR (xvv.end_date_active IS NULL)) '
       || '       AND    xvv.vendor_id     = xrrt.vendor_id '
-      || '       AND    hl.location_code         = xrrt.department_code '
-      || '       AND    hl.location_id           = xl.location_id '
-      || '       and    xl.start_date_active  < (TRUNC(itc.trans_date) + 1) '
-      || '       AND ( '
-      || '             (xl.end_date_active >= TRUNC(itc.trans_date)) '
-      || '             OR '
-      || '             (xl.end_date_active IS NULL) '
-      || '           ) ';
+-- 2008/10/28 H.Itou Mod Start T_S_524対応(再対応)
+--      || '       AND    hl.location_code         = xrrt.department_code '
+--      || '       AND    hl.location_id           = xl.location_id '
+--      || '       and    xl.start_date_active  < (TRUNC(itc.trans_date) + 1) '
+--      || '       AND ( '
+--      || '             (xl.end_date_active >= TRUNC(itc.trans_date)) '
+--      || '             OR '
+--      || '             (xl.end_date_active IS NULL) '
+--      || '           ) '
+      || '       AND hl.location_code(+) = xrrt.department_code '
+      || '       AND hl.location_id      = xl.location_id(+) '
+      || '       AND NVL(xl.start_date_active, FND_DATE.STRING_TO_DATE(''' || gv_min_date || ''', ''' || gc_char_dt_format || ''')) < (TRUNC(itc.trans_date) + 1) '
+      || '       AND NVL(xl.end_date_active,   FND_DATE.STRING_TO_DATE(''' || gv_max_date || ''', ''' || gc_char_dt_format || ''')) >= TRUNC(itc.trans_date) '
+      || '       AND xsupv.item_id(+)    = itc.item_id '
+      || '       AND NVL(xsupv.start_date_active, FND_DATE.STRING_TO_DATE(''' || gv_min_date || ''', ''' || gc_char_dt_format || ''')) < (TRUNC(itc.trans_date) + 1) '
+      || '       AND NVL(xsupv.end_date_active,   FND_DATE.STRING_TO_DATE(''' || gv_max_date || ''', ''' || gc_char_dt_format || ''')) >= TRUNC(itc.trans_date) '
+-- 2008/10/28 H.Itou Mod End
+      ;
 --
     -- 品目区分
     IF ( ir_param.item_div IS NOT NULL ) THEN
