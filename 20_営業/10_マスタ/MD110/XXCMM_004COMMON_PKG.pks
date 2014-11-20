@@ -28,6 +28,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/07    1.0   H.Yoshikawa      新規作成
+ *  2009/04/10    1.2   H.Yoshikawa      障害T1_0215 対応(chk_single_byte を削除)
  *
  *****************************************************************************************/
 --
@@ -255,18 +256,21 @@ AS
     ov_errmsg           OUT NOCOPY VARCHAR2                -- ユーザー・エラー・メッセージ --# 固定 #
   );
   --
-  /**********************************************************************************
-   * Function Name    : chk_single_byte
-   * Description      : 半角チェック
-   **********************************************************************************/
-  FUNCTION chk_single_byte(
-    iv_chk_char IN VARCHAR2             --チェック対象文字列
-  )
-  RETURN BOOLEAN;
-  --
---ito->20090202 TEST
-  --業務日付取得関数
-  FUNCTION get_process_date
-    RETURN DATE;
+-- Ver1.2  2009/04/10  Del  H.Yoshikawa  障害T1_0215 対応
+--  /**********************************************************************************
+--   * Function Name    : chk_single_byte
+--   * Description      : 半角チェック
+--   **********************************************************************************/
+--  FUNCTION chk_single_byte(
+--    iv_chk_char IN VARCHAR2             --チェック対象文字列
+--  )
+--  RETURN BOOLEAN;
+--  --
+----ito->20090202 TEST
+--  --業務日付取得関数
+--  FUNCTION get_process_date
+--    RETURN DATE;
+-- End
+--
 END XXCMM_004COMMON_PKG;
 /

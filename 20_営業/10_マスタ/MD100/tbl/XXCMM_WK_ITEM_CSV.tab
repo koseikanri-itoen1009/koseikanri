@@ -19,9 +19,15 @@ CREATE TABLE XXCMM.XXCMM_WK_ITEM_CSV
     NET                            NUMBER,
     UNIT                           NUMBER,
     JAN_CODE                       VARCHAR2(50),
-    NETS                           NUMBER(4,1),
+-- Ver1.1  2009/04/10  MOD T1_0214‘Î‰ž
+--    NETS                           NUMBER(4,1),
+    NETS                           NUMBER(5,1),
+-- End
     NETS_UOM_CODE_NAME             VARCHAR2(10),
-    INC_NUM                        NUMBER(4,1),
+-- Ver1.1  2009/04/10  MOD T1_0214‘Î‰ž
+--    INC_NUM                        NUMBER(4,1),
+    INC_NUM                        NUMBER(5,1),
+-- End
     CASE_JAN_CODE                  VARCHAR2(13),
     HON_PRODUCT_CLASS              VARCHAR2(10),
     HON_PRODUCT_CLASS_NAME         VARCHAR2(100),

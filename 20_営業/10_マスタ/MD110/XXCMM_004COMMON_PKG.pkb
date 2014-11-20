@@ -32,6 +32,7 @@ AS
  *  2009/02/02          K.Ito            メッセージトークン変更(ERRMSG -> ERR_MSG)
  *  2009/02/13          K.Ito            proc_conc_request:例外処理追加(コンカレント待機、処理)
  *  2009/02/27    1.1   R.Takigawa       Disc品目カテゴリ割当削除処理にパラメータチェックの追加
+ *  2009/04/10    1.2   H.Yoshikawa      障害T1_0215 対応(chk_single_byte を削除)
  *
  *****************************************************************************************/
 --
@@ -1838,81 +1839,81 @@ AS
 --
   END upd_opm_item;
 --
---
-  /**********************************************************************************
-   * Procedure Name   : chk_single_byte
-   * Description      : 半角チェック
-   **********************************************************************************/
-  --
-  FUNCTION chk_single_byte(
-    iv_chk_char IN VARCHAR2             --チェック対象文字列
-  )
-  RETURN BOOLEAN
-  IS
-    -- ===============================
-    -- ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_single_byte'; -- プログラム名
---
-  BEGIN
-    --NULLチェック
-    IF (iv_chk_char IS NULL) THEN
-      RETURN NULL;
-    --半角チェック
-    ELSIF (LENGTH(iv_chk_char) <> LENGTHB(iv_chk_char)) THEN
-      RETURN FALSE;
-    ELSE
-      RETURN TRUE;
-    END IF;
-  EXCEPTION
---
---###############################  固定例外処理部 START   ###################################
---
-    WHEN OTHERS THEN
-      RAISE_APPLICATION_ERROR
-        (-20000,SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000),TRUE);
---
---###################################  固定部 END   #########################################
---
-      RETURN FALSE;
-  END chk_single_byte;
---
-   /**********************************************************************************
-   * Function Name    : get_process_date
-   * Description      : 業務日付取得関数
-   ***********************************************************************************/
-  FUNCTION get_process_date
-    RETURN DATE
-  IS
-    -- ===============================
-    -- ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_process_date'; -- プログラム名
---
-  ld_prdate DATE;
-  BEGIN
-    --
-    SELECT process_date
-    INTO   ld_prdate
-    FROM   xxccp_process_dates
-    ;
-    RETURN TRUNC(ld_prdate,'DD');
-    --
-  EXCEPTION
-    WHEN NO_DATA_FOUND THEN
-      RETURN NULL;
---
---###############################  固定例外処理部 START   ###################################
---
-    WHEN OTHERS THEN
-      RAISE_APPLICATION_ERROR
-        (-20000,SUBSTRB('XXCMM_004COMMON_PKG'||'.'||cv_prg_name||' : '||SQLERRM,1,5000),TRUE);
---
---###################################  固定部 END   #########################################
---
-      RETURN NULL;
-  END get_process_date;
-
+-- Ver1.2  2009/04/10  Del  H.Yoshikawa  障害T1_0215 対応
+--  /**********************************************************************************
+--   * Procedure Name   : chk_single_byte
+--   * Description      : 半角チェック
+--   **********************************************************************************/
+--  --
+--  FUNCTION chk_single_byte(
+--    iv_chk_char IN VARCHAR2             --チェック対象文字列
+--  )
+--  RETURN BOOLEAN
+--  IS
+--    -- ===============================
+--    -- ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_single_byte'; -- プログラム名
+----
+--  BEGIN
+--    --NULLチェック
+--    IF (iv_chk_char IS NULL) THEN
+--      RETURN NULL;
+--    --半角チェック
+--    ELSIF (LENGTH(iv_chk_char) <> LENGTHB(iv_chk_char)) THEN
+--      RETURN FALSE;
+--    ELSE
+--      RETURN TRUE;
+--    END IF;
+--  EXCEPTION
+----
+----###############################  固定例外処理部 START   ###################################
+----
+--    WHEN OTHERS THEN
+--      RAISE_APPLICATION_ERROR
+--        (-20000,SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000),TRUE);
+----
+----###################################  固定部 END   #########################################
+----
+--      RETURN FALSE;
+--  END chk_single_byte;
+----
+--   /**********************************************************************************
+--   * Function Name    : get_process_date
+--   * Description      : 業務日付取得関数
+--   ***********************************************************************************/
+--  FUNCTION get_process_date
+--    RETURN DATE
+--  IS
+--    -- ===============================
+--    -- ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_process_date'; -- プログラム名
+----
+--  ld_prdate DATE;
+--  BEGIN
+--    --
+--    SELECT process_date
+--    INTO   ld_prdate
+--    FROM   xxccp_process_dates
+--    ;
+--    RETURN TRUNC(ld_prdate,'DD');
+--    --
+--  EXCEPTION
+--    WHEN NO_DATA_FOUND THEN
+--      RETURN NULL;
+----
+----###############################  固定例外処理部 START   ###################################
+----
+--    WHEN OTHERS THEN
+--      RAISE_APPLICATION_ERROR
+--        (-20000,SUBSTRB('XXCMM_004COMMON_PKG'||'.'||cv_prg_name||' : '||SQLERRM,1,5000),TRUE);
+----
+----###################################  固定部 END   #########################################
+----
+--      RETURN NULL;
+--  END get_process_date;
+-- End
 --
 END XXCMM_004COMMON_PKG;
 /
