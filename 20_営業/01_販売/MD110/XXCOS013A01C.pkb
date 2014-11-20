@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS013A01C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS013A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.21
+ * Version          : 1.23
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -52,6 +52,11 @@ AS
  *  2009/07/27    1.21  K.Kiriu          [0000829]PT対応
  *  2009/07/30    1.21  M.Sano           [0000829]PT追加対応
  *                                       [0000899]伝票入力者取得SQL条件追加
+ *  2009/08/20    1.22  K.Kiriu          [0000884]PT対応
+ *  2009/08/24    1.22  K.Kiriu          [0001165]伝票入力者取得条件不正対応
+ *  2009/08/28    1.23  K.Kiriu          [0001166]勘定科目取得条件不正対応
+ *                                       [0001211]税金マスタテーブル結合削除
+ *                                       [0001215]取得されないCCIDがNULLで設定される不正対応
  *
  *****************************************************************************************/
 --
@@ -1235,6 +1240,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     lt_bill_pay_id3              xxcos_cust_hierarchy_v.bill_payment_term3%TYPE;      -- 支払条件3
     lv_heiyou_card_flag          VARCHAR2(1);                                         -- フラグ
     lv_heiyou_cash_flag          VARCHAR2(1);                                         -- フラグ
+/* 2009/08/20 Ver1.22 Add Start */
+    lt_break_header_id           xxcos_sales_exp_headers.sales_exp_header_id%TYPE;    -- ヘッダブレーク用
+    lv_break_flag                VARCHAR2(1);                                         -- ヘッダブレークフラグ
+/* 2009/08/20 Ver1.22 Add End   */
 --
     -- *** ローカル・カーソル (販売実績データ抽出)***
     CURSOR sales_data_cur
@@ -1678,7 +1687,9 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
              )                                 xsehv                   -- 販売実績ヘッダテーブル(顧客階層込み)
 /* 2009/07/27 Ver1.21 Add End   */
            , xxcos_sales_exp_lines             xsel                    -- 販売実績明細テーブル
-           , ar_vat_tax_all_b                  avta                    -- 税金マスタ
+/* 2009/08/28 Ver1.23 Del Start */
+--           , ar_vat_tax_all_b                  avta                    -- 税金マスタ
+/* 2009/08/28 Ver1.23 Del End   */
 /* 2009/07/27 Ver1.21 Del Start */
 --           , hz_cust_accounts                  hcas                    -- 顧客マスタ（出荷先）
 --           , hz_cust_accounts                  hcab                    -- 顧客マスタ（請求先）
@@ -1755,12 +1766,14 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                                 = gt_cash_sale_cls
            AND NVL( xsel.cash_and_card, 0 )    <> 0 )
           )
-      AND avta.tax_code                         = xsehv.tax_code
+/* 2009/08/28 Ver1.23 Del Start */
+--      AND avta.tax_code                         = xsehv.tax_code
 /* 2009/07/27 Ver1.21 Mod End   */
-      AND avta.set_of_books_id                  = TO_NUMBER( gv_set_bks_id )
-      AND avta.enabled_flag                     = cv_enabled_yes
-      AND gd_process_date BETWEEN               NVL( avta.start_date, gd_process_date )
-                          AND                   NVL( avta.end_date,   gd_process_date )
+--      AND avta.set_of_books_id                  = TO_NUMBER( gv_set_bks_id )
+--      AND avta.enabled_flag                     = cv_enabled_yes
+--      AND gd_process_date BETWEEN               NVL( avta.start_date, gd_process_date )
+--                          AND                   NVL( avta.end_date,   gd_process_date )
+/* 2009/08/28 Ver1.23 Del End   */
 /* 2009/07/27 Ver1.21 Del Start */
 --        AND xgpc.segment1( + )                = xsel.item_code
 /* 2009/07/27 Ver1.21 Del End   */
@@ -1864,60 +1877,95 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     <<gt_sales_exp_tbl2_loop>>
     FOR sale_idx IN 1 .. gt_sales_exp_tbl2.COUNT LOOP
 --
+/* 2009/08/20 Ver1.22 Add Start */
+      --ブレーク用変数初期化
+      lv_break_flag := cv_n_flag;
+      --ヘッダ単位の処理の為のブレーク処理
+      IF ( lt_break_header_id IS NULL )
+        OR
+         ( lt_break_header_id <> gt_sales_exp_tbl2( sale_idx ).sales_exp_header_id )
+      THEN
+        --ブレーク処理用変数初期化
+        lv_break_flag       := cv_y_flag;                                          --ブレーク処理実行
+        lt_break_header_id  := gt_sales_exp_tbl2( sale_idx ).sales_exp_header_id;  --ブレーク判定値の設定
+        lv_sale_flag        := cv_y_flag;                                          --作成対象判定用のフラグ
+        --SQL取得用変数初期化
+        lv_card_company     := NULL;  --カード会社
+        lt_xchv_cust_id     := NULL;  --カード会社(顧客追加情報)
+        lt_receiv_base_code := NULL;  --カード会社(入金拠点)
+        lt_hcsc_org_sys_id  := NULL;  --カード会社(顧客所在地参照)
+        lt_receipt_id       := NULL;  --カード会社(顧客支払方法)
+        lt_bill_pay_id      := NULL;  --カード会社(支払条件)
+        lt_bill_pay_id2     := NULL;  --カード会社(支払条件2)
+        lt_bill_pay_id3     := NULL;  --カード会社(支払条件3)
+      END IF;
+--
+/* 2009/08/20 Ver1.22 Add End   */
       IF ( gt_sales_exp_tbl2( sale_idx ).rcrm_receipt_id IS NULL ) THEN
         --スキップ処理
         ln_skip_idx := ln_skip_idx + 1;
         gt_sales_skip_tbl( ln_skip_idx ).sales_exp_header_id
                                                            := gt_sales_exp_tbl2( sale_idx ).sales_exp_header_id;
-        --支払方法が設定させて未設定
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application   => cv_xxcos_short_nm
-                      , iv_name          => cv_receipt_id_msg
-                      , iv_token_name1   => cv_tkn_header_id
-                      , iv_token_value1  => gt_sales_exp_tbl2( sale_idx ).sales_exp_header_id
-                      , iv_token_name2   => cv_tkn_order_no
-                      , iv_token_value2  => gt_sales_exp_tbl2( sale_idx ).dlv_invoice_number
-                      , iv_token_name3   => cv_tkn_cust_code
-                      , iv_token_value3  => gt_sales_exp_tbl2( sale_idx ).ship_to_customer_code
-                    );
-        gn_warn_flag := cv_y_flag;
-        -- 空行出力
-        FND_FILE.PUT_LINE(
-           which  => FND_FILE.LOG
-          ,buff   => cv_blank
-        );
+/* 2009/08/20 Ver1.22 Add Start */
+        --ヘッダ単位でチェックする
+        IF ( lv_break_flag = cv_y_flag ) THEN
+/* 2009/08/20 Ver1.22 Add End   */
 --
-        -- メッセージ出力
-        FND_FILE.PUT_LINE(
-           which  => FND_FILE.LOG
-          ,buff   => lv_errmsg
-        );
+          --支払方法が未設定
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application   => cv_xxcos_short_nm
+                        , iv_name          => cv_receipt_id_msg
+                        , iv_token_name1   => cv_tkn_header_id
+                        , iv_token_value1  => gt_sales_exp_tbl2( sale_idx ).sales_exp_header_id
+                        , iv_token_name2   => cv_tkn_order_no
+                        , iv_token_value2  => gt_sales_exp_tbl2( sale_idx ).dlv_invoice_number
+                        , iv_token_name3   => cv_tkn_cust_code
+                        , iv_token_value3  => gt_sales_exp_tbl2( sale_idx ).ship_to_customer_code
+                      );
+          gn_warn_flag := cv_y_flag;
+          -- 空行出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => cv_blank
+          );
 --
-        -- 空行出力
-        FND_FILE.PUT_LINE(
-           which  => FND_FILE.LOG
-          ,buff   => cv_blank
-        );
+          -- メッセージ出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => lv_errmsg
+          );
+--
+          -- 空行出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => cv_blank
+          );
 --
 --
-        -- 空行出力
-        FND_FILE.PUT_LINE(
-           which  => FND_FILE.OUTPUT
-          ,buff   => cv_blank
-        );
+          -- 空行出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => cv_blank
+          );
 --
-        -- メッセージ出力
-        FND_FILE.PUT_LINE(
-           which  => FND_FILE.OUTPUT
-          ,buff   => lv_errmsg
-        );
+          -- メッセージ出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_errmsg
+          );
 --
-        -- 空行出力
-        FND_FILE.PUT_LINE(
-           which  => FND_FILE.OUTPUT
-          ,buff   => cv_blank
-        );
+          -- 空行出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => cv_blank
+          );
+/* 2009/08/20 Ver1.22 Add Start */
+--
+        END IF;  --ヘッダ単位チェックEND
+--
+/* 2009/08/20 Ver1.22 Add End   */
       END IF;
+--
       --カードVDフラグ
       lv_heiyou_card_flag := cv_n_flag;
       --現金・カード併用
@@ -1943,8 +1991,13 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
       IF ( lv_heiyou_cash_flag = cv_y_flag
         OR lv_heiyou_card_flag = cv_y_flag ) THEN
 --
-        lv_sale_flag := cv_y_flag;
-        BEGIN
+/* 2009/08/20 Ver1.22 Mod Start */
+--        lv_sale_flag := cv_y_flag;
+--        BEGIN
+        --ヘッダ単位でチェックする
+        IF ( lv_break_flag = cv_y_flag ) THEN
+--
+/* 2009/08/20 Ver1.22 Mod End   */
           BEGIN
             SELECT xcab.card_company                -- 顧客追加情報カード会社
                  , cst.customer_id                  -- 顧客追加情報顧客ID
@@ -2042,7 +2095,11 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
             gn_warn_flag := cv_y_flag;
 --
           END IF;
-        END;
+/* 2009/08/20 Ver1.22 Mod Start */
+--        END;
+        END IF;  --ヘッダ単位の処理END
+--
+/* 2009/08/20 Ver1.22 Mod End   */
         IF ( lv_sale_flag = cv_y_flag ) THEN
 --
           -- *** カードレコード全カラムの設定 ***
@@ -2106,42 +2163,51 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
           ln_skip_idx := ln_skip_idx + 1;
           gt_sales_skip_tbl( ln_skip_idx ).sales_exp_header_id
                                                            := gt_sales_exp_tbl2( sale_idx ).sales_exp_header_id;
-          -- 空行出力
-          FND_FILE.PUT_LINE(
-             which  => FND_FILE.LOG
-            ,buff   => cv_blank
-          );
+/* 2009/08/20 Ver1.22 Add Start */
+          --カード会社情報のチェックでエラーの場合、ヘッダ単位でメッセージを出力する
+          IF ( lv_break_flag = cv_y_flag ) THEN
+/* 2009/08/20 Ver1.22 Add End   */
 --
-          -- メッセージ出力
-          FND_FILE.PUT_LINE(
-             which  => FND_FILE.LOG
-            ,buff   => lv_errmsg
-          );
+            -- 空行出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => cv_blank
+            );
 --
-          -- 空行出力
-          FND_FILE.PUT_LINE(
-             which  => FND_FILE.LOG
-            ,buff   => cv_blank
-          );
+            -- メッセージ出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_errmsg
+            );
+--
+            -- 空行出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => cv_blank
+            );
 --
 --
-          -- 空行出力
-          FND_FILE.PUT_LINE(
-             which  => FND_FILE.OUTPUT
-            ,buff   => cv_blank
-          );
+            -- 空行出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => cv_blank
+            );
 --
-          -- メッセージ出力
-          FND_FILE.PUT_LINE(
-             which  => FND_FILE.OUTPUT
-            ,buff   => lv_errmsg
-          );
+            -- メッセージ出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => lv_errmsg
+            );
 --
-          -- 空行出力
-          FND_FILE.PUT_LINE(
-             which  => FND_FILE.OUTPUT
-            ,buff   => cv_blank
-          );
+            -- 空行出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => cv_blank
+            );
+--
+/* 2009/08/20 Ver1.22 Add Start */
+          END IF;
+/* 2009/08/20 Ver1.22 Add End   */
         END IF;
       ELSE
         -- 対象外データセット
@@ -3870,7 +3936,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
             ELSE
                   -- CCID取得共通関数よりCCIDを取得する
               lt_ccid := xxcok_common_pkg.get_code_combination_id_f (
-                             gd_process_date
+/* 2009/08/28 Ver1.23 Mod Start */
+--                             gd_process_date
+                             gt_sales_norm_tbl2( ln_dis_idx ).inspect_date
+/* 2009/08/28 Ver1.23 Mod End   */
                            , gv_company_code
                            , NVL( gt_jour_cls_tbl( jcls_idx ).segment2,
                                   gt_sales_norm_tbl2( ln_dis_idx ).sales_base_code )
@@ -3950,10 +4019,17 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                  ,buff   => cv_blank
                );
 --
-              END IF;
+/* 2009/08/28 Ver1.23 Mod Start */
+--              END IF;
+----
+--              -- 取得したCCIDをワークテーブルに設定する
+--              gt_sel_ccid_tbl( lv_ccid_idx ).code_combination_id := lt_ccid;
+              ELSE
+                -- 共通関数より取得できた場合、取得したCCIDをワークテーブルに設定する
+                gt_sel_ccid_tbl( lv_ccid_idx ).code_combination_id := lt_ccid;
 --
-              -- 取得したCCIDをワークテーブルに設定する
-              gt_sel_ccid_tbl( lv_ccid_idx ).code_combination_id := lt_ccid;
+              END IF;
+/* 2009/08/28 Ver1.23 Mod End   */
 --
             END IF;                                       -- CCID編集終了
 --
@@ -5014,7 +5090,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                 ,per_all_people_f     papf
           WHERE  fu.employee_id       = papf.person_id
 /* 2009/07/30 Ver1.21 ADD START */
-            AND  gt_sales_norm_tbl2( ln_trx_idx ).inspect_date
+/* 2009/08/24 Ver1.23 Mod START */
+--            AND  gt_sales_norm_tbl2( ln_trx_idx ).inspect_date
+            AND  gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date
+/* 2009/08/24 Ver1.23 Mod End   */
                    BETWEEN papf.effective_start_date AND papf.effective_end_date
 /* 2009/07/30 Ver1.21 ADD End   */
             AND  papf.employee_number = gv_busi_emp_cd;
@@ -5743,7 +5822,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
             ELSE
                   -- CCID取得共通関数よりCCIDを取得する
               lt_ccid := xxcok_common_pkg.get_code_combination_id_f (
-                             gd_process_date
+/* 2009/08/28 Ver1.23 Mod Start */
+--                             gd_process_date
+                             gt_sales_bulk_tbl2( ln_dis_idx ).inspect_date
+/* 2009/08/28 Ver1.23 Mod End   */
                            , gv_company_code
                            , NVL( gt_jour_cls_tbl( jcls_idx ).segment2,
                                   gt_sales_bulk_tbl2( ln_dis_idx ).sales_base_code )
@@ -5823,6 +5905,11 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                  ,buff   => cv_blank
                );
 --
+/* 2009/08/28 Ver1.23 Add Start */
+              ELSE
+                -- 共通関数から取得できた場合、取得したCCIDをワークテーブルに設定する
+                gt_sel_ccid_tbl( lv_ccid_idx ).code_combination_id := lt_ccid;
+/* 2009/08/28 Ver1.23 Add End   */
               END IF;
 --
               --スキップ処理
@@ -5830,8 +5917,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                  ln_skip_idx := ln_skip_idx + 1;
                  gt_sales_skip_tbl( ln_skip_idx ).sales_exp_header_id := gt_sales_bulk_tbl2( ln_dis_idx ).sales_exp_header_id;
               END IF;
-              -- 取得したCCIDをワークテーブルに設定する
-              gt_sel_ccid_tbl( lv_ccid_idx ).code_combination_id := lt_ccid;
+/* 2009/08/28 Ver1.23 Del Start */
+--              -- 取得したCCIDをワークテーブルに設定する
+--              gt_sel_ccid_tbl( lv_ccid_idx ).code_combination_id := lt_ccid;
+/* 2009/08/28 Ver1.23 Del End   */
 --
             END IF;                                       -- CCID編集終了
 --
