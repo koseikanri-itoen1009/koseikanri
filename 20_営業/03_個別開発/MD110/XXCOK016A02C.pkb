@@ -13,7 +13,7 @@ AS
  *                    自販機販売手数料を振り込むためのFBデータを作成します。
  *
  * MD.050           : FBデータファイル作成（FBデータ作成） MD050_COK_016_A02
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -52,8 +52,11 @@ AS
  *  2009/05/29    1.4   K.Yamaguchi      [障害T1_1147対応]販手残高テーブル更新項目追加
  *  2009/07/02    1.5   K.Yamaguchi      [障害0000291対応]パフォーマンス障害対応
  *  2009/08/03    1.6   M.Hiruta         [障害0000843対応]振込元口座情報の取得条件の取得条件を修正
- *  2009/12/16    1.7   S.Moriyama       [E_本稼動_xxxxx対応]振手相手負担時に振込額から振手を減額して出力するように修正
- *  2009/12/16    1.8   S.Moriyama       [E_本稼動_xxxxx対応]FBトレーラレコードに設定している出力件数を対象件数から出力件数へ修正
+ *  2009/12/16    1.7   S.Moriyama       [E_本稼動_00512対応]振手相手負担時に振込額から振手を減額して出力するように修正
+ *  2009/12/16    1.8   S.Moriyama       [E_本稼動_00512対応]FBトレーラレコードに設定している出力件数を対象件数から出力件数へ修正
+ *  2009/12/17    1.9   S.Moriyama       [E_本稼動_00511対応]FB明細レコードの振込金額の次項目として
+ *                                                           91byte目に半角数値0を設定するように修正
+ *                                                           顧客コード1、顧客コード2については10byte前0埋めを行うように修正
  *
  *****************************************************************************************/
 --
@@ -200,6 +203,9 @@ AS
          ,abaa.bank_account_type       AS bank_account_type         -- 預金種別
          ,abaa.bank_account_num        AS bank_account_num          -- 銀行口座番号
          ,abaa.account_holder_name_alt AS account_holder_name_alt   -- 口座名義人カナ
+-- 2009/12/17 Ver.1.9 [E_本稼動_00511] SCS S.Moriyama UPD START
+         ,pvsa.attribute5              AS base_code                 -- 問合せ担当拠点コード
+-- 2009/12/17 Ver.1.9 [E_本稼動_00511] SCS S.Moriyama UPD END
   FROM    po_vendors                      pv                        -- 仕入先マスタ
          ,po_vendor_sites_all             pvsa                      -- 仕入先サイトマスタ
          ,ap_bank_account_uses_all        abaua                     -- 銀行口座使用情報
@@ -1010,8 +1016,12 @@ AS
     lv_bank_account_num         VARCHAR2(7)    DEFAULT NULL;         -- 口座番号
     lv_account_holder_name_alt  VARCHAR2(30)   DEFAULT NULL;         -- 受取人名
     lv_transfer_amount          VARCHAR2(17)   DEFAULT NULL;         -- 振込金額
-    lv_base_code                VARCHAR2(4)    DEFAULT NULL;         -- 拠点コード
-    lv_supplier_code            VARCHAR2(9)    DEFAULT NULL;         -- 仕入先コード
+-- 2009/12/17 Ver.1.9 [E_本稼動_00511] SCS S.Moriyama UPD START
+--    lv_base_code                VARCHAR2(4)    DEFAULT NULL;         -- 拠点コード
+--    lv_supplier_code            VARCHAR2(9)    DEFAULT NULL;         -- 仕入先コード
+    lv_base_code                VARCHAR2(10)   DEFAULT NULL;         -- 拠点コード
+    lv_supplier_code            VARCHAR2(10)   DEFAULT NULL;         -- 仕入先コード
+-- 2009/12/17 Ver.1.9 [E_本稼動_00511] SCS S.Moriyama UPD END
     lv_dummy                    VARCHAR2(17)   DEFAULT NULL;         -- ダミー
 --
   BEGIN
@@ -1042,9 +1052,14 @@ AS
     lv_bank_account_num        := LPAD( NVL( i_bac_fb_line_rec.bank_account_num, cv_zero ), 7, cv_zero ); -- 口座番号
     lv_account_holder_name_alt := RPAD( NVL( i_bac_fb_line_rec.account_holder_name_alt, cv_space ), 30 ); -- 受取人名
     lv_transfer_amount         := LPAD( cv_zero, 10, cv_zero );                                                      -- 振込金額
-    lv_base_code               := LPAD( cv_space, 4, cv_space );                                                     -- 拠点コード
-    lv_supplier_code           := LPAD( NVL( i_bac_fb_line_rec.segment1, cv_space ), 9 );                 -- 仕入先コード
-    lv_dummy                   := LPAD( cv_space, 17, cv_space );                                                    -- ダミー
+-- 2009/12/17 Ver.1.9 [E_本稼動_00511] SCS S.Moriyama UPD START
+--    lv_base_code               := LPAD( cv_space, 4, cv_space );                                                     -- 拠点コード
+--    lv_supplier_code           := LPAD( NVL( i_bac_fb_line_rec.segment1, cv_space ), 9 );                 -- 仕入先コード
+--    lv_dummy                   := LPAD( cv_space, 17, cv_space );                                                    -- ダミー
+    lv_base_code               := LPAD( NVL( i_bac_fb_line_rec.base_code, cv_space ), 10 , cv_zero );     -- 拠点コード
+    lv_supplier_code           := LPAD( NVL( i_bac_fb_line_rec.segment1, cv_space ), 10 , cv_zero );      -- 仕入先コード
+    lv_dummy                   := LPAD( cv_space, 9, cv_space );                                          -- ダミー
+-- 2009/12/17 Ver.1.9 [E_本稼動_00511] SCS S.Moriyama UPD END
 -- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR END
 --
     ov_fb_line_data            := lv_data_type               ||          -- データ区分
@@ -1057,6 +1072,9 @@ AS
                                   lv_bank_account_num        ||          -- 口座番号
                                   lv_account_holder_name_alt ||          -- 受取人名
                                   lv_transfer_amount         ||          -- 振込金額
+-- 2009/12/17 Ver.1.9 [E_本稼動_00511] SCS S.Moriyama UPD START
+                                  cv_zero                    ||          -- 新規レコード
+-- 2009/12/17 Ver.1.9 [E_本稼動_00511] SCS S.Moriyama UPD END
                                   lv_base_code               ||          -- 拠点コード
                                   lv_supplier_code           ||          -- 仕入先コード
                                   lv_dummy;                              -- ダミー
@@ -1167,7 +1185,7 @@ AS
       ln_fee        := ln_fee_no_tax * ( ln_bm_tax / 100 + 1 );
     END IF;
 --
--- 2009/12/16 Ver.1.7 [E_本稼動_xxxxx] SCS S.Moriyama UPD START
+-- 2009/12/16 Ver.1.7 [E_本稼動_00512] SCS S.Moriyama UPD START
 --    -- 本振用FB作成明細情報.銀行手数料負担者が当方の場合、振込金額に銀行手数料を加算する
 ---- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR START
 ----    IF( gt_fb_line_tab( in_cnt ).bank_charge_bearer = cv_i AND ln_transfer_amount > 0 ) THEN
@@ -1184,7 +1202,7 @@ AS
     ELSE
       on_transfer_amount := ln_transfer_amount;
     END IF;
--- 2009/12/16 Ver.1.7 [E_本稼動_xxxxx] SCS S.Moriyama UPD END
+-- 2009/12/16 Ver.1.7 [E_本稼動_00512] SCS S.Moriyama UPD END
 --
     -- 銀行手数料（振込手数料）をアウトパラメータに格納
     on_fee := ln_fee;
@@ -1246,8 +1264,12 @@ AS
     lv_bank_account_num         VARCHAR2(7)    DEFAULT NULL;      -- 口座番号
     lv_account_holder_name_alt  VARCHAR2(30)   DEFAULT NULL;      -- 受取人名
     lv_transfer_amount          VARCHAR2(10)   DEFAULT NULL;      -- 振込金額
-    lv_base_code                VARCHAR2(4)    DEFAULT NULL;      -- 拠点コード
-    lv_supplier_code            VARCHAR2(9)    DEFAULT NULL;      -- 仕入先コード
+-- 2009/12/17 Ver.1.9 [E_本稼動_00511] SCS S.Moriyama UPD START
+--    lv_base_code                VARCHAR2(1)    DEFAULT NULL;      -- 拠点コード
+--    lv_supplier_code            VARCHAR2(9)    DEFAULT NULL;      -- 仕入先コード
+    lv_base_code                VARCHAR2(10)   DEFAULT NULL;      -- 拠点コード
+    lv_supplier_code            VARCHAR2(10)   DEFAULT NULL;      -- 仕入先コード
+-- 2009/12/17 Ver.1.9 [E_本稼動_00511] SCS S.Moriyama UPD END
     lv_dummy                    VARCHAR2(17)   DEFAULT NULL;      -- ダミー
 --
   BEGIN
@@ -1278,9 +1300,14 @@ AS
     lv_bank_account_num        := LPAD( NVL( i_fb_line_rec.bank_account_num, cv_zero ), 7, cv_zero ); -- 口座番号
     lv_account_holder_name_alt := RPAD( NVL( i_fb_line_rec.account_holder_name_alt, cv_space ), 30 ); -- 受取人名
     lv_transfer_amount         := TO_CHAR( NVL( in_transfer_amount, cn_zero ), 'FM0000000000');                  -- 振込金額
-    lv_base_code               := LPAD( NVL( i_fb_line_rec.base_code, cv_space ), 4 );                -- 拠点コード
-    lv_supplier_code           := LPAD( NVL( i_fb_line_rec.supplier_code, cv_space ), 9 );            -- 仕入先コード
-    lv_dummy                   := LPAD( cv_space, 17, cv_space );                                                -- ダミー
+-- 2009/12/17 Ver.1.9 [E_本稼動_00511] SCS S.Moriyama UPD START
+--    lv_base_code               := LPAD( NVL( i_fb_line_rec.base_code, cv_space ), 4 );                -- 拠点コード
+--    lv_supplier_code           := LPAD( NVL( i_fb_line_rec.supplier_code, cv_space ), 9 );            -- 仕入先コード
+--    lv_dummy                   := LPAD( cv_space, 17, cv_space );                                                    -- ダミー
+    lv_base_code               := LPAD( NVL( i_fb_line_rec.base_code, cv_space ), 10 , cv_zero );     -- 拠点コード
+    lv_supplier_code           := LPAD( NVL( i_fb_line_rec.supplier_code, cv_space ), 10 , cv_zero ); -- 仕入先コード
+    lv_dummy                   := LPAD( cv_space, 9, cv_space );                                      -- ダミー
+-- 2009/12/17 Ver.1.9 [E_本稼動_00511] SCS S.Moriyama UPD END
 -- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR END
 --
     ov_fb_line_data            := lv_data_type               ||         -- データ区分
@@ -1293,6 +1320,9 @@ AS
                                   lv_bank_account_num        ||         -- 口座番号
                                   lv_account_holder_name_alt ||         -- 受取人名
                                   lv_transfer_amount         ||         -- 振込金額
+-- 2009/12/17 Ver.1.9 [E_本稼動_00511] SCS S.Moriyama UPD START
+                                  cv_zero                    ||         -- 新規レコード
+-- 2009/12/17 Ver.1.9 [E_本稼動_00511] SCS S.Moriyama UPD END
                                   lv_base_code               ||         -- 拠点コード
                                   lv_supplier_code           ||         -- 仕入先コード
                                   lv_dummy;                             -- ダミー
@@ -1485,10 +1515,10 @@ AS
     END IF;
 --
     lv_data_type := cv_data_type;                                -- データ区分
--- 2009/12/16 Ver.1.8 [E_本稼動_xxxxx] SCS S.Moriyama UPD START
+-- 2009/12/16 Ver.1.8 [E_本稼動_00512] SCS S.Moriyama UPD START
 --    lv_total_cnt := LPAD( gn_target_cnt, 6, cv_zero );           -- 合計件数
     lv_total_cnt := LPAD( gn_out_cnt, 6, cv_zero );           -- 合計件数
--- 2009/12/16 Ver.1.8 [E_本稼動_xxxxx] SCS S.Moriyama UPD END
+-- 2009/12/16 Ver.1.8 [E_本稼動_00512] SCS S.Moriyama UPD END
     lv_dummy     := LPAD( cv_space, 101, cv_space );             -- ダミー
 --
     ov_fb_trailer_data := lv_data_type ||            -- データ区分
