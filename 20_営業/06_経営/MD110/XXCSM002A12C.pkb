@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY      XXCSM002A12C
+CREATE OR REPLACE PACKAGE BODY XXCSM002A12C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A12C(body)
  * Description      : 商品計画リスト(時系列)出力
  * MD.050           : 商品計画リスト(時系列)出力 MD050_CSM_002_A12
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2010/12/14    1.8   Y.Kanami         [E_本稼動_05803]
  *  2011/01/06    1.9   OuKou            [E_本稼動_05803]
  *  2011/01/17    1.10  Y.Kanami         [E_本稼動_05803]PT対応
+ *  2011/12/14    1.11  SCSK K.Nakamura  [E_本稼動_08817]数量の出力判定修正
  *
  *****************************************************************************************/
 --
@@ -1276,6 +1277,10 @@ AS
     ln_y_margin_rate        NUMBER;                                                                 -- 年間商品群別粗利益率
     ln_y_rate               NUMBER;                                                                 -- 年間商品群別掛率
     ln_y_price              NUMBER;                                                                 -- 年間商品群別定価
+--//+ADD START 2011/12/14 E_本稼動_08817 K.Nakamura
+    ln_chk_amount           NUMBER;                                                                 -- 数量(判定用)
+    ln_chk_sales            NUMBER;                                                                 -- 売上(判定用)
+--//+ADD END   2011/12/14 E_本稼動_08817 K.Nakamura
 --
 -- ============================================
 --  商品群月別集計・カーソル
@@ -1400,148 +1405,169 @@ AS
     ln_y_margin_rate := 0;
     ln_y_rate        := 0;
     ln_y_price       := 0;
+--//+ADD START 2011/12/14 E_本稼動_08817 K.Nakamura
+    ln_chk_amount    := 0;
+    ln_chk_sales     := 0;
 --
     OPEN count_item_group_cur;
-    <<count_item_group_loop>>                                                                       -- 商品群月別データ集計
+    <<chk_amount_loop>>
     LOOP
       FETCH count_item_group_cur INTO count_item_group_rec;
-      EXIT WHEN count_item_group_cur%NOTFOUND;                                                      -- 対象データ件数処理を繰り返す
-    -- =============================================================================================
-    -- (A-10) 商品群集計
-    -- =============================================================================================
-      -- ===============================
-      -- 変数の初期化
-      -- ===============================
-      ln_m_amount      := 0;
-      ln_m_sales       := 0;
-      ln_m_cost        := 0;
-      ln_m_margin      := 0;
-      ln_m_margin_rate := 0;
-      ln_m_rate        := 0;
-      ln_m_price       := 0;
-      -- ===============================
-      -- 月別データの取得
-      -- ===============================
-      --月別商品群別数量
-      ln_m_amount        := count_item_group_rec.amount;                                            -- 数量
-      --月別商品群別売上
-      ln_m_sales         := count_item_group_rec.sales_budget;                                      -- 売上金額 
-      --月別商品群別原価
-      ln_m_cost          := count_item_group_rec.cost;                                              -- 原価
-      --月別商品群別粗利益額
-      ln_m_margin        := (ln_m_sales - ln_m_cost );                                              -- (売上金額 - 原価)
-      --月別商品群別粗利益率
-      IF (ln_m_sales = 0) THEN
-        ln_m_margin_rate := 0;
-      ELSE
-        ln_m_margin_rate := ROUND((ln_m_margin / ln_m_sales * 100),2);                              -- (粗利益額 / 売上金額 * 100)
-      END IF;
-      --月別商品群別掛率分母
-      ln_m_price         := count_item_group_rec.unit_price;                                        -- 定価
-      --月別商品群別掛率
-      IF (ln_m_price = 0) THEN
-        ln_m_rate        := 0;
-      ELSE
-        ln_m_rate        := ROUND((ln_m_sales / ln_m_price * 100),2);                               -- (売上金額 / 定価 * 100)
-      END IF;
-    -- =============================================================================================
-    -- (A-11) 商品群データ登録処理(月別) 
-    -- =============================================================================================
-      INSERT INTO
-        xxcsm_tmp_sales_plan_time(                                                                  -- 商品計画リスト_時系列ワークテーブル
-          output_order                                                                              -- 出力順
-         ,location_cd                                                                               -- 拠点コード
-         ,location_nm                                                                               -- 拠点名
-         ,item_cd                                                                                   -- コード
-         ,item_nm                                                                                   -- 名称
-         ,year_month                                                                                -- 年月
-         ,amount                                                                                    -- 数量
-         ,sales                                                                                     -- 売上
-         ,cost                                                                                      -- 原価
-         ,margin                                                                                    -- 粗利益額
-         ,margin_rate                                                                               -- 粗利益率
-         ,rate                                                                                      -- 掛率
-         ,discount                                                                                  -- 値引
-         )
-      VALUES(
-          gn_index                                                                                  -- 出力順
-         ,gv_kyoten_cd                                                                              -- 拠点コード
-         ,gv_kyoten_nm                                                                              -- 拠点名
-         ,iv_item_cd                                                                                -- コード
-         ,iv_item_nm                                                                                -- 名称
-         ,count_item_group_rec.year_month                                                           -- 年月
-         ,ln_m_amount                                                                               -- 数量
-         ,ROUND((ln_m_sales / 1000),0)                                                              -- 売上
-         ,ROUND((ln_m_cost / 1000),0)                                                               -- 原価
-         ,ROUND((ln_m_margin / 1000),0)                                                             -- 粗利益額
-         ,ln_m_margin_rate                                                                          -- 粗利益率
-         ,ln_m_rate                                                                                 -- 掛率
-         ,NULL                                                                                      -- 値引
-         );
---
-      gn_index := gn_index + 1;                                                                     -- 登録順をインクリメント
---
-    END LOOP count_item_group_loop;
+      EXIT WHEN count_item_group_cur%NOTFOUND;
+      ln_chk_amount := ln_chk_amount + ABS(count_item_group_rec.amount);       -- 数量(判定用)
+      ln_chk_sales  := ln_chk_sales  + ABS(count_item_group_rec.sales_budget); -- 売上(判定用)
+    END LOOP chk_amount_loop;
     CLOSE count_item_group_cur;
+    --
+    -- 売上(判定用)および数量(判定用)のどちらかが0以外の場合、登録処理
+    IF (ln_chk_sales <> 0) OR (ln_chk_amount <> 0) THEN
+--//+ADD END   2011/12/14 E_本稼動_08817 K.Nakamura
+--
+      OPEN count_item_group_cur;
+      <<count_item_group_loop>>                                                                       -- 商品群月別データ集計
+      LOOP
+        FETCH count_item_group_cur INTO count_item_group_rec;
+        EXIT WHEN count_item_group_cur%NOTFOUND;                                                      -- 対象データ件数処理を繰り返す
+      -- =============================================================================================
+      -- (A-10) 商品群集計
+      -- =============================================================================================
+        -- ===============================
+        -- 変数の初期化
+        -- ===============================
+        ln_m_amount      := 0;
+        ln_m_sales       := 0;
+        ln_m_cost        := 0;
+        ln_m_margin      := 0;
+        ln_m_margin_rate := 0;
+        ln_m_rate        := 0;
+        ln_m_price       := 0;
+        -- ===============================
+        -- 月別データの取得
+        -- ===============================
+        --月別商品群別数量
+        ln_m_amount        := count_item_group_rec.amount;                                            -- 数量
+        --月別商品群別売上
+        ln_m_sales         := count_item_group_rec.sales_budget;                                      -- 売上金額 
+        --月別商品群別原価
+        ln_m_cost          := count_item_group_rec.cost;                                              -- 原価
+        --月別商品群別粗利益額
+        ln_m_margin        := (ln_m_sales - ln_m_cost );                                              -- (売上金額 - 原価)
+        --月別商品群別粗利益率
+        IF (ln_m_sales = 0) THEN
+          ln_m_margin_rate := 0;
+        ELSE
+          ln_m_margin_rate := ROUND((ln_m_margin / ln_m_sales * 100),2);                              -- (粗利益額 / 売上金額 * 100)
+        END IF;
+        --月別商品群別掛率分母
+        ln_m_price         := count_item_group_rec.unit_price;                                        -- 定価
+        --月別商品群別掛率
+        IF (ln_m_price = 0) THEN
+          ln_m_rate        := 0;
+        ELSE
+          ln_m_rate        := ROUND((ln_m_sales / ln_m_price * 100),2);                               -- (売上金額 / 定価 * 100)
+        END IF;
+      -- =============================================================================================
+      -- (A-11) 商品群データ登録処理(月別) 
+      -- =============================================================================================
+        INSERT INTO
+          xxcsm_tmp_sales_plan_time(                                                                  -- 商品計画リスト_時系列ワークテーブル
+            output_order                                                                              -- 出力順
+           ,location_cd                                                                               -- 拠点コード
+           ,location_nm                                                                               -- 拠点名
+           ,item_cd                                                                                   -- コード
+           ,item_nm                                                                                   -- 名称
+           ,year_month                                                                                -- 年月
+           ,amount                                                                                    -- 数量
+           ,sales                                                                                     -- 売上
+           ,cost                                                                                      -- 原価
+           ,margin                                                                                    -- 粗利益額
+           ,margin_rate                                                                               -- 粗利益率
+           ,rate                                                                                      -- 掛率
+           ,discount                                                                                  -- 値引
+           )
+        VALUES(
+            gn_index                                                                                  -- 出力順
+           ,gv_kyoten_cd                                                                              -- 拠点コード
+           ,gv_kyoten_nm                                                                              -- 拠点名
+           ,iv_item_cd                                                                                -- コード
+           ,iv_item_nm                                                                                -- 名称
+           ,count_item_group_rec.year_month                                                           -- 年月
+           ,ln_m_amount                                                                               -- 数量
+           ,ROUND((ln_m_sales / 1000),0)                                                              -- 売上
+           ,ROUND((ln_m_cost / 1000),0)                                                               -- 原価
+           ,ROUND((ln_m_margin / 1000),0)                                                             -- 粗利益額
+           ,ln_m_margin_rate                                                                          -- 粗利益率
+           ,ln_m_rate                                                                                 -- 掛率
+           ,NULL                                                                                      -- 値引
+           );
+--
+        gn_index := gn_index + 1;                                                                     -- 登録順をインクリメント
+--
+      END LOOP count_item_group_loop;
+      CLOSE count_item_group_cur;
       -- ===============================
       -- 年間データの取得
       -- ===============================
       --年間商品群別数量
-    ln_y_amount        := in_amount;                                                                -- 数量
-    --年間商品群別売上
-    ln_y_sales         := in_sales_budget;                                                          -- 売上金額 
-    --年間商品群別原価
-    ln_y_cost          := in_cost;                                                                  -- 原価
-    --年間商品群別粗利益額
-    ln_y_margin        := (ln_y_sales - ln_y_cost );                                                -- (売上金額 - 原価)
-    --年間商品群別粗利益率
-    IF (ln_y_sales = 0) THEN
-      ln_y_margin_rate := 0;
-    ELSE
-      ln_y_margin_rate := ROUND((ln_y_margin / ln_y_sales * 100),2);                                -- (粗利益額 / 売上金額 * 100)
-    END IF;
-    --年間商品群別掛率
-    IF (in_unit_price = 0) THEN
-      ln_y_rate        := 0;
-    ELSE
-      ln_y_rate        := ROUND((ln_y_sales / in_unit_price * 100),2);                              -- (売上金額 / 定価 * 100)
-    END IF;
-    -- =============================================================================================
-    -- (A-11) 商品群データ登録処理(年間計)
-    -- =============================================================================================
-    INSERT INTO
-      xxcsm_tmp_sales_plan_time(                                                                    -- 商品計画リスト_時系列ワークテーブル
-        output_order                                                                                -- 出力順
-       ,location_cd                                                                                 -- 拠点コード
-       ,location_nm                                                                                 -- 拠点名
-       ,item_cd                                                                                     -- コード
-       ,item_nm                                                                                     -- 名称
-       ,year_month                                                                                  -- 年月
-       ,amount                                                                                      -- 数量
-       ,sales                                                                                       -- 売上
-       ,cost                                                                                        -- 原価
-       ,margin                                                                                      -- 粗利益額
-       ,margin_rate                                                                                 -- 粗利益率
-       ,rate                                                                                        -- 掛率
-       ,discount                                                                                    -- 値引
-       )
-    VALUES(
-        gn_index                                                                                    -- 出力順
-       ,gv_kyoten_cd                                                                                -- 拠点コード
-       ,gv_kyoten_nm                                                                                -- 拠点名
-       ,iv_item_cd                                                                                  -- コード
-       ,iv_item_nm                                                                                  -- 名称
-       ,cn_year_total                                                                               -- 年月
-       ,ln_y_amount                                                                                 -- 数量
-       ,ROUND((ln_y_sales / 1000),0)                                                                -- 売上
-       ,ROUND((ln_y_cost / 1000),0)                                                                 -- 原価
-       ,ROUND((ln_y_margin / 1000),0)                                                               -- 粗利益額
-       ,ln_y_margin_rate                                                                            -- 粗利益率
-       ,ln_y_rate                                                                                   -- 掛率
-       ,NULL                                                                                        -- 値引
-       );
+      ln_y_amount        := in_amount;                                                                -- 数量
+      --年間商品群別売上
+      ln_y_sales         := in_sales_budget;                                                          -- 売上金額 
+      --年間商品群別原価
+      ln_y_cost          := in_cost;                                                                  -- 原価
+      --年間商品群別粗利益額
+      ln_y_margin        := (ln_y_sales - ln_y_cost );                                                -- (売上金額 - 原価)
+      --年間商品群別粗利益率
+      IF (ln_y_sales = 0) THEN
+        ln_y_margin_rate := 0;
+      ELSE
+        ln_y_margin_rate := ROUND((ln_y_margin / ln_y_sales * 100),2);                                -- (粗利益額 / 売上金額 * 100)
+      END IF;
+      --年間商品群別掛率
+      IF (in_unit_price = 0) THEN
+        ln_y_rate        := 0;
+      ELSE
+        ln_y_rate        := ROUND((ln_y_sales / in_unit_price * 100),2);                              -- (売上金額 / 定価 * 100)
+      END IF;
+      -- =============================================================================================
+      -- (A-11) 商品群データ登録処理(年間計)
+      -- =============================================================================================
+      INSERT INTO
+        xxcsm_tmp_sales_plan_time(                                                                    -- 商品計画リスト_時系列ワークテーブル
+          output_order                                                                                -- 出力順
+         ,location_cd                                                                                 -- 拠点コード
+         ,location_nm                                                                                 -- 拠点名
+         ,item_cd                                                                                     -- コード
+         ,item_nm                                                                                     -- 名称
+         ,year_month                                                                                  -- 年月
+         ,amount                                                                                      -- 数量
+         ,sales                                                                                       -- 売上
+         ,cost                                                                                        -- 原価
+         ,margin                                                                                      -- 粗利益額
+         ,margin_rate                                                                                 -- 粗利益率
+         ,rate                                                                                        -- 掛率
+         ,discount                                                                                    -- 値引
+         )
+      VALUES(
+          gn_index                                                                                    -- 出力順
+         ,gv_kyoten_cd                                                                                -- 拠点コード
+         ,gv_kyoten_nm                                                                                -- 拠点名
+         ,iv_item_cd                                                                                  -- コード
+         ,iv_item_nm                                                                                  -- 名称
+         ,cn_year_total                                                                               -- 年月
+         ,ln_y_amount                                                                                 -- 数量
+         ,ROUND((ln_y_sales / 1000),0)                                                                -- 売上
+         ,ROUND((ln_y_cost / 1000),0)                                                                 -- 原価
+         ,ROUND((ln_y_margin / 1000),0)                                                               -- 粗利益額
+         ,ln_y_margin_rate                                                                            -- 粗利益率
+         ,ln_y_rate                                                                                   -- 掛率
+         ,NULL                                                                                        -- 値引
+         );
 --
-      gn_index := gn_index + 1;                                                                     -- 登録順をインクリメント
+      gn_index := gn_index + 1;                                                                       -- 登録順をインクリメント
+--
+--//+ADD START 2011/12/14 E_本稼動_08817 K.Nakamura
+    END IF;
+--//+ADD END   2011/12/14 E_本稼動_08817 K.Nakamura
 --
 --#################################  固定例外処理部  #############################
 --
@@ -2418,22 +2444,26 @@ AS
     -- =============================================================================================
     -- (A-10) 商品群月別集計  (A-11) 月別商品群区分データ登録処理
     -- =============================================================================================
--- MODIFY  START  DATE:2011/01/06  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
---      IF (get_item_data_rec.sales_budget <> 0) THEN                                                 -- (売上金額 = 0)の場合処理はしない
-      IF get_item_data_rec.sales_budget <> 0 OR get_item_data_rec.amount <> 0 THEN                  -- (売上金額 = 0且つ数量 = 0)の場合処理はしない
--- MODIFY  END  DATE:2011/01/06  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
-        count_item_group(
-                        iv_item_cd       => get_item_data_rec.item_cd                               -- 商品群コード
-                       ,iv_item_nm       => get_item_data_rec.item_nm                               -- 商品群名称
-                       ,in_cost          => get_item_data_rec.cost                                  -- 商品群別年間計原価
-                       ,in_unit_price    => get_item_data_rec.unit_price                            -- 商品群別年間計定価
-                       ,in_sales_budget  => get_item_data_rec.sales_budget                          -- 商品群別年間計売上金額
-                       ,in_amount        => get_item_data_rec.amount                                -- 商品群別年間計数量
-                       ,ov_errbuf        => lv_errbuf                                               -- エラー・メッセージ
-                       ,ov_retcode       => lv_retcode                                              -- リターン・コード
-                       ,ov_errmsg        => lv_errmsg                                               -- ユーザー・エラー・メッセージ
-                       );
-      END IF;
+-- DEL START 2011/12/14 E_本稼動_08817 K.Nakamura
+---- MODIFY  START  DATE:2011/01/06  AUTHOR:OUKOU  CONTENT:E-本稼動_0580300
+----      IF (get_item_data_rec.sales_budget <> 0) THEN                                                 -- (売上金額 = 0)の場合処理はしない
+--      IF get_item_data_rec.sales_budget <> 0 OR get_item_data_rec.amount <> 0 THEN                  -- (売上金額 = 0且つ数量 = 0)の場合処理はしない
+---- MODIFY  END  DATE:2011/01/06  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+-- DEL END   2011/12/14 E_本稼動_08817 K.Nakamura
+      count_item_group(
+                      iv_item_cd       => get_item_data_rec.item_cd                               -- 商品群コード
+                     ,iv_item_nm       => get_item_data_rec.item_nm                               -- 商品群名称
+                     ,in_cost          => get_item_data_rec.cost                                  -- 商品群別年間計原価
+                     ,in_unit_price    => get_item_data_rec.unit_price                            -- 商品群別年間計定価
+                     ,in_sales_budget  => get_item_data_rec.sales_budget                          -- 商品群別年間計売上金額
+                     ,in_amount        => get_item_data_rec.amount                                -- 商品群別年間計数量
+                     ,ov_errbuf        => lv_errbuf                                               -- エラー・メッセージ
+                     ,ov_retcode       => lv_retcode                                              -- リターン・コード
+                     ,ov_errmsg        => lv_errmsg                                               -- ユーザー・エラー・メッセージ
+                     );
+-- DEL START 2011/12/14 E_本稼動_08817 K.Nakamura
+--      END IF;
+-- DEL END   2011/12/14 E_本稼動_08817 K.Nakamura
       IF (lv_retcode <> cv_status_normal) THEN
         RAISE global_process_expt;
       END IF;

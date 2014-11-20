@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A08C(body)
  * Description      : 月別商品計画(営業原価)チェックリスト出力
  * MD.050           : 月別商品計画(営業原価)チェックリスト出力 MD050_CSM_002_A08
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,8 @@ AS
  *  2009/07/13    1.8   SCS M.Ohtsuki   [SCS障害管理番号0000657] ヘッダ出力時不具合
  *  2011/01/05    1.9   SCS OuKou       [E_本稼動_05803]
  *  2011/01/13    1.10  SCS Y.Kanami    [E_本稼動_05803]PT対応
+ *  2011/12/14    1.11  SCSK K.Nakamura [E_本稼動_08817]出力判定修正
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -93,6 +95,9 @@ AS
   --
   cv_language_ja            CONSTANT VARCHAR2(2)   := USERENV('LANG');           --言語(日本語)
   cv_flg_y                  CONSTANT VARCHAR2(1)   := 'Y';                       --フラグY
+--//+ADD START 2011/12/14 E_本稼動_08817 K.Nakamura
+  cv_flg_n                  CONSTANT VARCHAR2(1)   := 'N';                       --フラグN
+--//+ADD END   2011/12/14 E_本稼動_08817 K.Nakamura
   cv_whick_log              CONSTANT VARCHAR2(3)   := 'LOG';                       --ログ
 --
 --################################  固定部 END   ##################################
@@ -181,6 +186,9 @@ AS
 --//+ADD START 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami  
   gd_process_date        DATE := xxccp_common_pkg2.get_process_date;                      -- 業務日付を変数に格納-
 --//+ADD END 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami  
+--//+ADD START 2011/12/14 E_本稼動_08817 K.Nakamura
+  gv_group_flag          VARCHAR2(1);          --群出力フラグ
+--//+ADD END   2011/12/14 E_本稼動_08817 K.Nakamura
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -776,7 +784,6 @@ AS
     ln_year_margin          := 0;              --年間商品群別粗利益額
     ln_year_credit_bunbo    := 0;              --年間商品群別掛率分母
     ln_year_credit          := 0;              --年間商品群別掛率
-    
     OPEN group3_month_cur;
     <<group3_month_loop>>
     LOOP
@@ -873,12 +880,16 @@ AS
     END LOOP group3_month_loop;
     CLOSE group3_month_cur;
 --
---//+ADD START 2009/02/19 CT038 K.Yamada
--- MODIFY  START  DATE:2011/01/05  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
---    IF ln_year_sale_budget <> 0 THEN
-   IF ln_year_sale_budget <> 0 OR ln_year_amount <> 0 THEN
--- MODIFY  END  DATE:2011/01/05  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
---//+ADD END   2009/02/19 CT038 K.Yamada
+-- MODIFY START 2011/12/14 E_本稼動_08817 K.Nakamura
+----//+ADD START 2009/02/19 CT038 K.Yamada
+---- MODIFY  START  DATE:2011/01/05  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+----    IF ln_year_sale_budget <> 0 THEN
+----   IF ln_year_sale_budget <> 0 OR ln_year_amount <> 0 THEN
+---- MODIFY  END  DATE:2011/01/05  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+----//+ADD END   2009/02/19 CT038 K.Yamada
+    -- 群出力フラグがONの場合
+    IF (gv_group_flag = cv_flg_y) THEN
+-- MODIFY  END  2011/12/14 E_本稼動_08817 K.Nakamura
       --月別商品群データ登録
       --1行目：数量
       gn_seq_no := gn_seq_no + 1;
@@ -1066,6 +1077,8 @@ AS
       );
 --//+ADD START 2009/02/19 CT038 K.Yamada
     END IF;
+    -- 群出力フラグをOFFにする
+    gv_group_flag := cv_flg_n;
 --//+ADD END   2009/02/19 CT038 K.Yamada
 --
 --#################################  固定例外処理部  #############################
@@ -2276,6 +2289,10 @@ AS
     ln_credit_3                NUMBER;         --3月掛率
     ln_credit_4                NUMBER;         --4月掛率
     ln_month_no                NUMBER;         --月
+--//+ADD START 2011/12/14 E_本稼動_08817 K.Nakamura
+    ln_chk_budget              NUMBER;         --売上(判定用)
+    ln_chk_amount              NUMBER;         --数量(判定用)
+--//+ADD END   2011/12/14 E_本稼動_08817 K.Nakamura
 --
 --  ===============================
 --  ローカル・カーソル
@@ -2320,6 +2337,10 @@ AS
     ln_year_credit          := 0;               --年間商品別掛率
     ln_cost                 := in_cost;         --営業原価
     ln_price                := in_price;        --定価
+--//+ADD START 2011/12/14 E_本稼動_08817 K.Nakamura
+    ln_chk_budget           := 0;               --売上(判定用)
+    ln_chk_amount           := 0;               --数量(判定用)
+--//+ADD END   2011/12/14 E_本稼動_08817 K.Nakamura
 --
     OPEN item_month_cur;
     <<item_month_loop>>
@@ -2338,6 +2359,10 @@ AS
         ELSE
           ln_month_credit       := ROUND((ln_month_sale_budget / ln_month_credit_bunbo) * 100,2);   --月別商品別掛率
         END IF;
+--//+ADD START 2011/12/14 E_本稼動_08817 K.Nakamura
+        ln_chk_budget           := ln_chk_budget + ABS(ln_month_sale_budget);                       --売上(判定用)
+        ln_chk_amount           := ln_chk_amount + ABS(ln_month_amount);                            --数量(判定用)
+--//+ADD END   2011/12/14 E_本稼動_08817 K.Nakamura
 --//+ADD END 2009/02/16 CT021 S.Son
         ln_year_margin          := ln_year_margin + ln_month_margin;                                --年間商品別粗利益額
         ln_year_credit_bunbo    := ln_year_credit_bunbo + ln_month_credit_bunbo;                    --年間商品別掛率分母
@@ -2414,192 +2439,207 @@ AS
     END LOOP item_month_loop;
     CLOSE item_month_cur;
 --
-    --月別商品別データ登録
-    --1行目：数量
-    gn_seq_no := gn_seq_no + 1;
-    INSERT INTO xxcsm_tmp_month_item_plan
-    (
-      seq_no
-     ,location_cd
-     ,location_nm
-     ,code
-     ,name
-     ,kbn_nm
-     ,plan_data5
-     ,plan_data6
-     ,plan_data7
-     ,plan_data8
-     ,plan_data9
-     ,plan_data10
-     ,plan_data11
-     ,plan_data12
-     ,plan_data1
-     ,plan_data2
-     ,plan_data3
-     ,plan_data4
-     ,plan_year
-    )
-    VALUES
-    (
-     gn_seq_no
-    ,iv_kyoten_cd
-    ,iv_kyoten_nm
-    ,iv_item_cd
-    ,iv_item_nm
-    ,gv_amount_name
-    ,NVL(ln_amount_5,0)
-    ,NVL(ln_amount_6,0)
-    ,NVL(ln_amount_7,0)
-    ,NVL(ln_amount_8,0)
-    ,NVL(ln_amount_9,0)
-    ,NVL(ln_amount_10,0)
-    ,NVL(ln_amount_11,0)
-    ,NVL(ln_amount_12,0)
-    ,NVL(ln_amount_1,0)
-    ,NVL(ln_amount_2,0)
-    ,NVL(ln_amount_3,0)
-    ,NVL(ln_amount_4,0)
-    ,NVL(ln_year_amount,0)
-    );
-    --2行目：売上
-    gn_seq_no := gn_seq_no + 1;
-    INSERT INTO xxcsm_tmp_month_item_plan
-    (
-      seq_no
-     ,location_cd
-     ,location_nm
-     ,code
-     ,name
-     ,kbn_nm
-     ,plan_data5
-     ,plan_data6
-     ,plan_data7
-     ,plan_data8
-     ,plan_data9
-     ,plan_data10
-     ,plan_data11
-     ,plan_data12
-     ,plan_data1
-     ,plan_data2
-     ,plan_data3
-     ,plan_data4
-     ,plan_year
-    )
-    VALUES
-    (
-     gn_seq_no
-    ,iv_kyoten_cd
-    ,iv_kyoten_nm
-    ,''
-    ,''
-    ,gv_budget_name
-    ,NVL(ROUND(ln_sale_budget_5/1000),0)
-    ,NVL(ROUND(ln_sale_budget_6/1000),0)
-    ,NVL(ROUND(ln_sale_budget_7/1000),0)
-    ,NVL(ROUND(ln_sale_budget_8/1000),0)
-    ,NVL(ROUND(ln_sale_budget_9/1000),0)
-    ,NVL(ROUND(ln_sale_budget_10/1000),0)
-    ,NVL(ROUND(ln_sale_budget_11/1000),0)
-    ,NVL(ROUND(ln_sale_budget_12/1000),0)
-    ,NVL(ROUND(ln_sale_budget_1/1000),0)
-    ,NVL(ROUND(ln_sale_budget_2/1000),0)
-    ,NVL(ROUND(ln_sale_budget_3/1000),0)
-    ,NVL(ROUND(ln_sale_budget_4/1000),0)
-    ,NVL(ROUND(ln_year_sale_budget/1000),0)
-    );
-    --3行目：粗利益額
-    gn_seq_no := gn_seq_no + 1;
-    INSERT INTO xxcsm_tmp_month_item_plan
-    (
-      seq_no
-     ,location_cd
-     ,location_nm
-     ,code
-     ,name
-     ,kbn_nm
-     ,plan_data5
-     ,plan_data6
-     ,plan_data7
-     ,plan_data8
-     ,plan_data9
-     ,plan_data10
-     ,plan_data11
-     ,plan_data12
-     ,plan_data1
-     ,plan_data2
-     ,plan_data3
-     ,plan_data4
-     ,plan_year
-    )
-    VALUES
-    (
-     gn_seq_no
-    ,iv_kyoten_cd
-    ,iv_kyoten_nm
-    ,''
-    ,''
-    ,gv_margin_name
-    ,NVL(ROUND(ln_margin_5/1000),0)
-    ,NVL(ROUND(ln_margin_6/1000),0)
-    ,NVL(ROUND(ln_margin_7/1000),0)
-    ,NVL(ROUND(ln_margin_8/1000),0)
-    ,NVL(ROUND(ln_margin_9/1000),0)
-    ,NVL(ROUND(ln_margin_10/1000),0)
-    ,NVL(ROUND(ln_margin_11/1000),0)
-    ,NVL(ROUND(ln_margin_12/1000),0)
-    ,NVL(ROUND(ln_margin_1/1000),0)
-    ,NVL(ROUND(ln_margin_2/1000),0)
-    ,NVL(ROUND(ln_margin_3/1000),0)
-    ,NVL(ROUND(ln_margin_4/1000),0)
-    ,NVL(ROUND(ln_year_margin/1000),0)
-    );
-    --4行目：掛率
-    gn_seq_no := gn_seq_no + 1;
-    INSERT INTO xxcsm_tmp_month_item_plan
-    (
-      seq_no
-     ,location_cd
-     ,location_nm
-     ,code
-     ,name
-     ,kbn_nm
-     ,plan_data5
-     ,plan_data6
-     ,plan_data7
-     ,plan_data8
-     ,plan_data9
-     ,plan_data10
-     ,plan_data11
-     ,plan_data12
-     ,plan_data1
-     ,plan_data2
-     ,plan_data3
-     ,plan_data4
-     ,plan_year
-    )
-    VALUES
-    (
-     gn_seq_no
-    ,iv_kyoten_cd
-    ,iv_kyoten_nm
-    ,''
-    ,''
-    ,gv_credit_name
-    ,NVL(ln_credit_5,0)
-    ,NVL(ln_credit_6,0)
-    ,NVL(ln_credit_7,0)
-    ,NVL(ln_credit_8,0)
-    ,NVL(ln_credit_9,0)
-    ,NVL(ln_credit_10,0)
-    ,NVL(ln_credit_11,0)
-    ,NVL(ln_credit_12,0)
-    ,NVL(ln_credit_1,0)
-    ,NVL(ln_credit_2,0)
-    ,NVL(ln_credit_3,0)
-    ,NVL(ln_credit_4,0)
-    ,NVL(ln_year_credit,0)
-    );
-    
+--//+ADD START 2011/12/14 E_本稼動_08817 K.Nakamura
+    -- 12ヶ月の売上および数量が0の場合
+    IF (ln_chk_budget = 0) AND (ln_chk_amount = 0) THEN
+      -- 群出力フラグがOFF(または初回設定時)の場合
+      IF (gv_group_flag = cv_flg_n) THEN
+        -- 群出力フラグをOFF
+        gv_group_flag := cv_flg_n;
+      END IF;
+    -- 12ヶ月の売上または数量が0以外の場合
+    ELSE
+      -- 群出力フラグをON
+      gv_group_flag := cv_flg_y;
+--//+ADD END   2011/12/14 E_本稼動_08817 K.Nakamura
+      --月別商品別データ登録
+      --1行目：数量
+      gn_seq_no := gn_seq_no + 1;
+      INSERT INTO xxcsm_tmp_month_item_plan
+      (
+        seq_no
+       ,location_cd
+       ,location_nm
+       ,code
+       ,name
+       ,kbn_nm
+       ,plan_data5
+       ,plan_data6
+       ,plan_data7
+       ,plan_data8
+       ,plan_data9
+       ,plan_data10
+       ,plan_data11
+       ,plan_data12
+       ,plan_data1
+       ,plan_data2
+       ,plan_data3
+       ,plan_data4
+       ,plan_year
+      )
+      VALUES
+      (
+       gn_seq_no
+      ,iv_kyoten_cd
+      ,iv_kyoten_nm
+      ,iv_item_cd
+      ,iv_item_nm
+      ,gv_amount_name
+      ,NVL(ln_amount_5,0)
+      ,NVL(ln_amount_6,0)
+      ,NVL(ln_amount_7,0)
+      ,NVL(ln_amount_8,0)
+      ,NVL(ln_amount_9,0)
+      ,NVL(ln_amount_10,0)
+      ,NVL(ln_amount_11,0)
+      ,NVL(ln_amount_12,0)
+      ,NVL(ln_amount_1,0)
+      ,NVL(ln_amount_2,0)
+      ,NVL(ln_amount_3,0)
+      ,NVL(ln_amount_4,0)
+      ,NVL(ln_year_amount,0)
+      );
+      --2行目：売上
+      gn_seq_no := gn_seq_no + 1;
+      INSERT INTO xxcsm_tmp_month_item_plan
+      (
+        seq_no
+       ,location_cd
+       ,location_nm
+       ,code
+       ,name
+       ,kbn_nm
+       ,plan_data5
+       ,plan_data6
+       ,plan_data7
+       ,plan_data8
+       ,plan_data9
+       ,plan_data10
+       ,plan_data11
+       ,plan_data12
+       ,plan_data1
+       ,plan_data2
+       ,plan_data3
+       ,plan_data4
+       ,plan_year
+      )
+      VALUES
+      (
+       gn_seq_no
+      ,iv_kyoten_cd
+      ,iv_kyoten_nm
+      ,''
+      ,''
+      ,gv_budget_name
+      ,NVL(ROUND(ln_sale_budget_5/1000),0)
+      ,NVL(ROUND(ln_sale_budget_6/1000),0)
+      ,NVL(ROUND(ln_sale_budget_7/1000),0)
+      ,NVL(ROUND(ln_sale_budget_8/1000),0)
+      ,NVL(ROUND(ln_sale_budget_9/1000),0)
+      ,NVL(ROUND(ln_sale_budget_10/1000),0)
+      ,NVL(ROUND(ln_sale_budget_11/1000),0)
+      ,NVL(ROUND(ln_sale_budget_12/1000),0)
+      ,NVL(ROUND(ln_sale_budget_1/1000),0)
+      ,NVL(ROUND(ln_sale_budget_2/1000),0)
+      ,NVL(ROUND(ln_sale_budget_3/1000),0)
+      ,NVL(ROUND(ln_sale_budget_4/1000),0)
+      ,NVL(ROUND(ln_year_sale_budget/1000),0)
+      );
+      --3行目：粗利益額
+      gn_seq_no := gn_seq_no + 1;
+      INSERT INTO xxcsm_tmp_month_item_plan
+      (
+        seq_no
+       ,location_cd
+       ,location_nm
+       ,code
+       ,name
+       ,kbn_nm
+       ,plan_data5
+       ,plan_data6
+       ,plan_data7
+       ,plan_data8
+       ,plan_data9
+       ,plan_data10
+       ,plan_data11
+       ,plan_data12
+       ,plan_data1
+       ,plan_data2
+       ,plan_data3
+       ,plan_data4
+       ,plan_year
+      )
+      VALUES
+      (
+       gn_seq_no
+      ,iv_kyoten_cd
+      ,iv_kyoten_nm
+      ,''
+      ,''
+      ,gv_margin_name
+      ,NVL(ROUND(ln_margin_5/1000),0)
+      ,NVL(ROUND(ln_margin_6/1000),0)
+      ,NVL(ROUND(ln_margin_7/1000),0)
+      ,NVL(ROUND(ln_margin_8/1000),0)
+      ,NVL(ROUND(ln_margin_9/1000),0)
+      ,NVL(ROUND(ln_margin_10/1000),0)
+      ,NVL(ROUND(ln_margin_11/1000),0)
+      ,NVL(ROUND(ln_margin_12/1000),0)
+      ,NVL(ROUND(ln_margin_1/1000),0)
+      ,NVL(ROUND(ln_margin_2/1000),0)
+      ,NVL(ROUND(ln_margin_3/1000),0)
+      ,NVL(ROUND(ln_margin_4/1000),0)
+      ,NVL(ROUND(ln_year_margin/1000),0)
+      );
+      --4行目：掛率
+      gn_seq_no := gn_seq_no + 1;
+      INSERT INTO xxcsm_tmp_month_item_plan
+      (
+        seq_no
+       ,location_cd
+       ,location_nm
+       ,code
+       ,name
+       ,kbn_nm
+       ,plan_data5
+       ,plan_data6
+       ,plan_data7
+       ,plan_data8
+       ,plan_data9
+       ,plan_data10
+       ,plan_data11
+       ,plan_data12
+       ,plan_data1
+       ,plan_data2
+       ,plan_data3
+       ,plan_data4
+       ,plan_year
+      )
+      VALUES
+      (
+       gn_seq_no
+      ,iv_kyoten_cd
+      ,iv_kyoten_nm
+      ,''
+      ,''
+      ,gv_credit_name
+      ,NVL(ln_credit_5,0)
+      ,NVL(ln_credit_6,0)
+      ,NVL(ln_credit_7,0)
+      ,NVL(ln_credit_8,0)
+      ,NVL(ln_credit_9,0)
+      ,NVL(ln_credit_10,0)
+      ,NVL(ln_credit_11,0)
+      ,NVL(ln_credit_12,0)
+      ,NVL(ln_credit_1,0)
+      ,NVL(ln_credit_2,0)
+      ,NVL(ln_credit_3,0)
+      ,NVL(ln_credit_4,0)
+      ,NVL(ln_year_credit,0)
+      );
+--//+ADD START 2011/12/14 E_本稼動_08817 K.Nakamura
+    END IF;
+--//+ADD END   2011/12/14 E_本稼動_08817 K.Nakamura
 --
 --#################################  固定例外処理部  #############################
   EXCEPTION
@@ -4169,32 +4209,36 @@ AS
         --  商品別月別集計(A-12)
         --  月別商品別データ登録(A-13)
         --  ===============================
---//+ADD START 2009/02/19 CT038 K.Yamada
--- MODIFY  START  DATE:2011/01/05  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
---        IF ln_sales_budget_sum <> 0 THEN
-        IF ln_sales_budget_sum <> 0 OR ln_amount_sum <> 0 THEN
--- MODIFY  END  DATE:2011/01/05  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
---//+ADD END   2009/02/19 CT038 K.Yamada
-          item_month_count (
-                            lv_kyoten_cd                --A-2で取得した拠点コード
-                           ,lv_kyoten_nm                --A-2で取得した拠点名称
-                           ,lv_item_cd                  --A-5で取得した品目コード
-                           ,lv_item_nm                  --A-5で取得した品目名
-                           ,ln_amount_sum               --A-5で取得した数量
-                           ,ln_sales_budget_sum         --A-5で取得した売上
-                           ,ln_bus_price                --A-5で取得した営業原価
-                           ,ln_con_price                --A-5で取得した定価
-                           ,lv_errbuf                   --共通・エラー・メッセージ
-                           ,lv_retcode                  --リターン・コード
-                           ,lv_errmsg);                 --ユーザー・エラー・メッセージ
-          -- 例外処理
-          IF (lv_retcode <> cv_status_normal) THEN
-            --(エラー処理)
-            RAISE global_api_expt;
-          END IF;
---//+ADD START 2009/02/19 CT038 K.Yamada
+-- DEL START 2011/12/14 E_本稼動_08817 K.Nakamura
+----//+ADD START 2009/02/19 CT038 K.Yamada
+---- MODIFY  START  DATE:2011/01/05  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+----        IF ln_sales_budget_sum <> 0 THEN
+----        IF ln_sales_budget_sum <> 0 OR ln_amount_sum <> 0 THEN
+---- MODIFY  END  DATE:2011/01/05  AUTHOR:OUKOU  CONTENT:E-本稼動_05803
+----//+ADD END   2009/02/19 CT038 K.Yamada
+-- DEL  END  2011/12/14 E_本稼動_08817 K.Nakamura
+        item_month_count (
+                          lv_kyoten_cd                --A-2で取得した拠点コード
+                         ,lv_kyoten_nm                --A-2で取得した拠点名称
+                         ,lv_item_cd                  --A-5で取得した品目コード
+                         ,lv_item_nm                  --A-5で取得した品目名
+                         ,ln_amount_sum               --A-5で取得した数量
+                         ,ln_sales_budget_sum         --A-5で取得した売上
+                         ,ln_bus_price                --A-5で取得した営業原価
+                         ,ln_con_price                --A-5で取得した定価
+                         ,lv_errbuf                   --共通・エラー・メッセージ
+                         ,lv_retcode                  --リターン・コード
+                         ,lv_errmsg);                 --ユーザー・エラー・メッセージ
+        -- 例外処理
+        IF (lv_retcode <> cv_status_normal) THEN
+          --(エラー処理)
+          RAISE global_api_expt;
         END IF;
---//+ADD END   2009/02/19 CT038 K.Yamada
+-- DEL START 2011/12/14 E_本稼動_08817 K.Nakamura
+----//+ADD START 2009/02/19 CT038 K.Yamada
+--        END IF;
+----//+ADD END   2009/02/19 CT038 K.Yamada
+-- DEL  END  2011/12/14 E_本稼動_08817 K.Nakamura
         lv_group3_cd_pre := lv_group3_cd;
         lv_group3_nm_pre := lv_group3_nm;
         lv_group1_cd_pre := lv_group1_cd;
@@ -4639,6 +4683,9 @@ AS
     gn_error_cnt   := 0;
     gn_warn_cnt    := 0;
     gn_seq_no      := 0;                --シーケンス番号
+--//+ADD START 2011/12/14 E_本稼動_08817 K.Nakamura
+    gv_group_flag  := cv_flg_n;         --群出力フラグ
+--//+ADD END   2011/12/14 E_本稼動_08817 K.Nakamura
     -- ローカル変数初期化
     --*********************************************
     --***      MD.050のフロー図を表す           ***
