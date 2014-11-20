@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A01C(body)
  * Description      : 問屋販売条件請求書Excelアップロード
  * MD.050           : 問屋販売条件請求書Excelアップロード MD050_COK_021_A01
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -34,6 +34,9 @@ AS
  *  2009/04/10    1.3   M.Hiruta         [障害T1_0400]数値チェックでマイナス値をチェックできるよう変更
  *                                       [障害T1_0493]妥当性チェックのNULLチェック時に正確な項目を参照するよう修正
  *  2009/08/27    1.4   T.Taniguchi      [障害0001176]問屋請求書明細テーブル削除条件追加
+ *  2009/09/30    1.5   S.Moriyama       [障害0001392]E_T3_00592対応：請求数量、請求単価に0以外が設定されている場合に
+ *                                                                    請求金額の必須チェックを行うよう修正
+ *                                                                    勘定科目支払時に支払数量が1以外の場合エラーとする
  *
  *****************************************************************************************/
 --
@@ -81,6 +84,10 @@ AS
   cv_err_msg_10167           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10167';   --勘定科目コードチェックエラー
   cv_err_msg_10168           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10168';   --補助科目コードチェックエラー
   cv_err_msg_10169           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10169';   --支払予定日チェックエラー
+-- 2009/09/30 Ver.1.5 [障害E_T3_00592] SCS S.Moriyama ADD START
+  cv_err_msg_10464           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10464';   --請求金額条件必須メッセージー
+  cv_err_msg_10465           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10465';   --請求、支払数量チェックエラー
+-- 2009/09/30 Ver.1.5 [障害E_T3_00592] SCS S.Moriyama ADD END
   cv_err_msg_00061           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00061';   --IF表ロック取得エラー
   cv_err_msg_00041           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00041';   --BLOBデータ変換エラー
   cv_err_msg_00039           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00039';   --空ファイルエラー
@@ -551,23 +558,42 @@ AS
     -- =======================
     -- ローカルカーソル
     -- =======================
+-- 2009/09/30 Ver.1.5 [障害E_T3_00592] SCS S.Moriyama UPD START
+--    CURSOR get_xwbl_lock_cur
+--    IS
+--      SELECT 'X'
+--      FROM xxcok_wholesale_bill_line     xwbl
+--      WHERE EXISTS ( SELECT 'X'
+--                     FROM xxcok_wholesale_bill_head     xwbh
+--                        , xxcok_tmp_wholesale_bill      xtwb
+--                     WHERE xwbl.wholesale_bill_header_id = xwbh.wholesale_bill_header_id
+--                       AND xtwb.cust_code                = xwbh.cust_code
+--                       AND xtwb.expect_payment_date      = TO_CHAR( xwbh.expect_payment_date, cv_date_format1 )
+--                       AND xtwb.bill_no                  = xwbl.bill_no
+---- 2009/08/26 Ver.1.4 [障害0001176] SCS T.Taniguchi START
+--                       AND xwbl.status IS NULL
+---- 2009/08/26 Ver.1.4 [障害0001176] SCS T.Taniguchi END
+--                   )
+--      FOR UPDATE OF xwbl.wholesale_bill_detail_id NOWAIT
+--    ;
     CURSOR get_xwbl_lock_cur
     IS
       SELECT 'X'
-      FROM xxcok_wholesale_bill_line     xwbl
-      WHERE EXISTS ( SELECT 'X'
-                     FROM xxcok_wholesale_bill_head     xwbh
-                        , xxcok_tmp_wholesale_bill      xtwb
-                     WHERE xwbl.wholesale_bill_header_id = xwbh.wholesale_bill_header_id
-                       AND xtwb.cust_code                = xwbh.cust_code
-                       AND xtwb.expect_payment_date      = TO_CHAR( xwbh.expect_payment_date, cv_date_format1 )
-                       AND xtwb.bill_no                  = xwbl.bill_no
--- 2009/08/26 Ver.1.4 [障害0001176] SCS T.Taniguchi START
-                       AND xwbl.status IS NULL
--- 2009/08/26 Ver.1.4 [障害0001176] SCS T.Taniguchi END
-                   )
+        FROM xxcok_wholesale_bill_line     xwbl
+       WHERE xwbl.status IS NULL
+         AND EXISTS ( SELECT /*+ LEADING(xtwb) INDEX(xwbh, xxcok_wholesale_bill_head_n01) */
+                             'X'
+                        FROM xxcok_wholesale_bill_head     xwbh
+                           , xxcok_tmp_wholesale_bill      xtwb
+                       WHERE xwbh.cust_code                = xtwb.cust_code
+                         AND xwbh.expect_payment_date      = TO_DATE( xtwb.expect_payment_date, cv_date_format1 )
+                         AND xwbh.wholesale_bill_header_id = xwbl.wholesale_bill_header_id
+                         AND xtwb.bill_no                  = xwbl.bill_no
+                         AND ROWNUM = 1
+                    )
       FOR UPDATE OF xwbl.wholesale_bill_detail_id NOWAIT
     ;
+-- 2009/09/30 Ver.1.5 [障害E_T3_00592] SCS S.Moriyama UPD END
 --
   BEGIN
     ov_retcode := cv_status_normal;
@@ -580,20 +606,35 @@ AS
     -- 2.問屋請求書明細テーブルの削除処理
     -- =============================================================================
     BEGIN
-      DELETE
-      FROM xxcok_wholesale_bill_line     xwbl
-      WHERE EXISTS ( SELECT 'X'
-                     FROM xxcok_wholesale_bill_head     xwbh
-                        , xxcok_tmp_wholesale_bill      xtwb
-                     WHERE xwbl.wholesale_bill_header_id = xwbh.wholesale_bill_header_id
-                       AND xtwb.cust_code                = xwbh.cust_code
-                       AND xtwb.expect_payment_date      = TO_CHAR( xwbh.expect_payment_date, cv_date_format1 )
-                       AND xtwb.bill_no                  = xwbl.bill_no
--- 2009/08/26 Ver.1.4 [障害0001176] SCS T.Taniguchi START
-                       AND xwbl.status IS NULL
--- 2009/08/26 Ver.1.4 [障害0001176] SCS T.Taniguchi END
-                   )
+-- 2009/09/30 Ver.1.5 [障害E_T3_00592] SCS S.Moriyama UPD START
+--      DELETE
+--      FROM xxcok_wholesale_bill_line     xwbl
+--      WHERE EXISTS ( SELECT 'X'
+--                     FROM xxcok_wholesale_bill_head     xwbh
+--                        , xxcok_tmp_wholesale_bill      xtwb
+--                     WHERE xwbl.wholesale_bill_header_id = xwbh.wholesale_bill_header_id
+--                       AND xtwb.cust_code                = xwbh.cust_code
+--                       AND xtwb.expect_payment_date      = TO_CHAR( xwbh.expect_payment_date, cv_date_format1 )
+--                       AND xtwb.bill_no                  = xwbl.bill_no
+---- 2009/08/26 Ver.1.4 [障害0001176] SCS T.Taniguchi START
+--                       AND xwbl.status IS NULL
+---- 2009/08/26 Ver.1.4 [障害0001176] SCS T.Taniguchi END
+--                   )
+--      ;
+      DELETE FROM xxcok_wholesale_bill_line     xwbl
+       WHERE xwbl.status IS NULL
+         AND EXISTS ( SELECT /*+ LEADING(xtwb) INDEX(xwbh, xxcok_wholesale_bill_head_n01) */
+                             'X'
+                        FROM xxcok_wholesale_bill_head     xwbh
+                           , xxcok_tmp_wholesale_bill      xtwb
+                       WHERE xwbh.cust_code                = xtwb.cust_code
+                         AND xwbh.expect_payment_date      = TO_DATE( xtwb.expect_payment_date, cv_date_format1 )
+                         AND xwbh.wholesale_bill_header_id = xwbl.wholesale_bill_header_id
+                         AND xtwb.bill_no                  = xwbl.bill_no
+                         AND ROWNUM = 1
+                    )
       ;
+-- 2009/09/30 Ver.1.5 [障害E_T3_00592] SCS S.Moriyama UPD END
     EXCEPTION
       -- *** 削除処理に失敗 ***
       WHEN OTHERS THEN
@@ -715,6 +756,44 @@ AS
                     , in_new_line => 0                 --改行
                     );
       ov_retcode := cv_status_continue;
+-- 2009/09/30 Ver.1.5 [障害E_T3_00592] SCS S.Moriyama ADD START
+    ELSIF ( ( iv_demand_qty <> 0
+              OR iv_demand_unit_price <> 0
+            )
+           AND iv_demand_amt IS NULL
+          ) THEN
+      -- *** 項目がNULLの場合、例外処理 ***
+      lv_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcok_appl_name
+                , iv_name         => cv_err_msg_10464
+                , iv_token_name1  => cv_token_row_num
+                , iv_token_value1 => TO_CHAR( in_loop_cnt )
+                );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT   --出力区分
+                    , iv_message  => lv_msg            --メッセージ
+                    , in_new_line => 0                 --改行
+                    );
+      ov_retcode := cv_status_continue;
+    ELSIF ( iv_acct_code IS NOT NULL
+           AND ( ( iv_payment_qty != 1 AND iv_payment_qty IS NOT NULL )
+              OR iv_demand_qty != 1
+               )
+          ) THEN
+      -- *** 勘定科目支払時に請求数量もしくは支払数量が1以外の場合、例外処理 ***
+      lv_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcok_appl_name
+                , iv_name         => cv_err_msg_10465
+                , iv_token_name1  => cv_token_row_num
+                , iv_token_value1 => TO_CHAR( in_loop_cnt )
+                );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT   --出力区分
+                    , iv_message  => lv_msg            --メッセージ
+                    , in_new_line => 0                 --改行
+                    );
+      ov_retcode := cv_status_continue;
+-- 2009/09/30 Ver.1.5 [障害E_T3_00592] SCS S.Moriyama ADD END
     END IF;
     -- =============================================================================
     -- 2.①請求数量のデータ型チェック(半角数字チェック)
