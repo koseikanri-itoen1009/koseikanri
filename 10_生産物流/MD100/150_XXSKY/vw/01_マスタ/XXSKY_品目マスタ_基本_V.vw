@@ -235,8 +235,12 @@ SELECT  IIMB.item_no                  item_no                     --品目コード
  WHERE  IIMB.item_id = XIMB.item_id
    AND  IIMB.whse_item_id = IIMB2.item_id(+)                      --倉庫品目
    AND  IIMB.whse_item_id = XIMB2.item_id(+)                      --倉庫品目
+   AND  XIMB2.start_date_active <= TRUNC(SYSDATE)                 --適用開始日
+   AND  XIMB2.end_date_active   >= TRUNC(SYSDATE)                 --適用終了日
    AND  XIMB.parent_item_id = IIMB3.item_id(+)                    --親品目
    AND  XIMB.parent_item_id = XIMB3.item_id(+)                    --親品目
+   AND  XIMB3.start_date_active <= TRUNC(SYSDATE)                 --適用開始日
+   AND  XIMB3.end_date_active   >= TRUNC(SYSDATE)                 --適用終了日
    --クイックコード：売上対象区分名取得
    AND  FLV01.language(+) = 'JA'                                  --言語
    AND  FLV01.lookup_type(+) = 'XXCMN_SALES_TARGET_CLASS'         --クイックコードタイプ
