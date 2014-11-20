@@ -7,7 +7,7 @@ AS
  * Description      : 加重平均計算処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 加重平均計算処理 T_MD070_BPO_79C
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/2/6      1.0   R.Matusita       新規作成
+ *  2008/12/02    1.1   H.Marushita      数量ゼロの取引別ロット原価を抽出対象外とする。
  *
  *****************************************************************************************/
 --
@@ -307,6 +308,9 @@ AS
        WHERE xtlc.item_id   = xlc.item_id
        AND   xtlc.lot_id    = xlc.lot_id
       )
+-- 2008/12/02 ADD START
+      AND   xtlc.trans_qty > 0
+-- 2008/12/02 ADD END
       GROUP BY xtlc.item_id, xtlc.item_code ,xtlc.lot_id ,xtlc.lot_num
       ;
 --
@@ -323,6 +327,9 @@ AS
             , xxcmn_lot_cost xlc                   -- ロット別原価（アドオン）
       WHERE xtlc.item_id   = xlc.item_id
       AND   xtlc.lot_id    = xlc.lot_id
+-- 2008/12/02 ADD START
+      AND   xtlc.trans_qty > 0
+-- 2008/12/02 ADD END
       GROUP BY xtlc.item_id, xtlc.item_code ,xtlc.lot_id ,xtlc.lot_num
       ;
     -- *** ローカル・レコード ***

@@ -42,8 +42,10 @@ SELECT gmd.batch_id batch_id
       ,TO_CHAR(
          SUM(
            CASE
-             WHEN ((gmd.line_type = 1) AND (xic.item_class_code = 5))
+             WHEN ((gmd.line_type = 1) AND (xic.item_class_code = 5) AND (ximv.item_um = '–{'))
              THEN ROUND(ximv.net * gmd.actual_qty /1000, 3)
+             WHEN ((gmd.line_type = 1) AND (xic.item_class_code = 5) AND (ximv.item_um <> '–{'))
+             THEN gmd.actual_qty
              WHEN ((gmd.line_type = 1) AND (xic.item_class_code <> 5))
              THEN gmd.actual_qty
            ELSE 0

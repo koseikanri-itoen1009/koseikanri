@@ -7,7 +7,7 @@ AS
  * Description      : 原料費原価計算処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 原料費原価計算処理 T_MD070_BPO_79A
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2008/01/31    1.0   Y.Kanami         新規作成
  *  2008/10/27    1.1   H.Itou           T_S_500,T_S_631対応
  *  2008/11/28    1.2   H.Marushita      本番245対応
+ *  2008/12/02    1.3   H.Marushita      数量合計0の取引別ロット原価作成
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -535,8 +536,13 @@ AS
     << get_data_cur >>
     FOR loop_cnt IN ins_data_cur LOOP
 --
-      -- 数量が0の場合は取り込まない
-      IF (loop_cnt.trans_qty > 0) THEN
+-- 2008/12/02 MOD START
+-- 経理帳票ではトランザクション単位の積み上げ計算をするため合計数量0も作成が必要
+--      -- 数量が0の場合は取り込まない
+--      IF (loop_cnt.trans_qty > 0) THEN
+      -- 数量がマイナスの場合は取り込まない
+      IF (loop_cnt.trans_qty >= 0) THEN
+-- 2008/12/02 MOD END
 --
         -- データカウント
         ln_data_cnt :=  ln_data_cnt + 1;
@@ -645,6 +651,17 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+    -- =====================================
+    -- 一括削除処理
+    -- =====================================
+    FORALL ln_cnt IN 1..gt_doc_type_ins_tab.COUNT
+      DELETE 
+      FROM   xxcmn_txn_lot_cost xtlc -- 取引別ロット別原価（アドオン）
+      WHERE  xtlc.doc_type =  gt_doc_type_ins_tab(ln_cnt)  -- 文書タイプ
+      AND    xtlc.doc_id   =  gt_doc_id_ins_tab(ln_cnt)    -- 文書ID
+      AND    xtlc.item_id  =  gt_item_id_ins_tab(ln_cnt)   -- 品目ID
+      AND    xtlc.lot_id   =  gt_lot_id_ins_tab(ln_cnt)    -- ロットID
+      ;
     -- =====================================
     -- 一括登録処理
     -- =====================================
