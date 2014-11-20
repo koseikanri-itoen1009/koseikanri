@@ -8,7 +8,7 @@ AS
  * Description      : 計画・移動・在庫：在庫(帳票)
  * MD.050/070       : T_MD050_BPO_550_在庫(帳票)Issue1.0 (T_MD050_BPO_550)
  *                  : 振替明細表                         (T_MD070_BPO_55C)
- * Version          : 1.22
+ * Version          : 1.23
  * Program List
  * ---------------------------    ----------------------------------------------------------
  *  Name                           Description
@@ -58,6 +58,7 @@ AS
  *  2009/03/12    1.20 Akiyoshi Shiina  本番#1296対応
  *  2009/03/17    1.21 Akiyoshi Shiina  本番#1325対応
  *  2009/05/12    1.22 M.Nomura         本番#1468対応
+ *  2009/06/25    1.23 Marushita        本番#1346対応
  *
  *****************************************************************************************/
 --
@@ -2416,6 +2417,10 @@ AS
     lv_sql_body := lv_sql_body || ' AND papf.person_id             = paaf.person_id' ;
     lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN papf.effective_start_date' ;
     lv_sql_body := lv_sql_body || '                                    AND papf.effective_end_date' ;
+-- 2009/06/25 ADD START
+    -- 従業員区分1,2のみ抽出
+    lv_sql_body := lv_sql_body || ' AND papf.attribute3 IN (''1'', ''2'')' ;  
+-- 2009/06/25 ADD END
     -- 事業所情報VIEW結合
     lv_sql_body := lv_sql_body || ' AND xlv.location_id            = paaf.location_id' ;
     lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ' ;
@@ -2766,6 +2771,10 @@ FND_FILE.PUT_LINE( FND_FILE.LOG, gc_date_mask );
     lv_sql_body := lv_sql_body || ' AND papf.person_id             = paaf.person_id' ;
     lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN papf.effective_start_date' ;
     lv_sql_body := lv_sql_body || '                                    AND papf.effective_end_date' ;
+-- 2009/06/25 ADD START
+    -- 従業員区分1,2のみ抽出
+    lv_sql_body := lv_sql_body || ' AND papf.attribute3 IN (''1'', ''2'')' ;  
+-- 2009/06/25 ADD END
     -- 事業所情報VIEW結合
     lv_sql_body := lv_sql_body || ' AND xlv.location_id            = paaf.location_id' ;
     lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ' ;
