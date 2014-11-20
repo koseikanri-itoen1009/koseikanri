@@ -1,0 +1,676 @@
+# $Header$
+
+# dbdrv: exec fnd bin FNDLOAD bin &phase=daa+64 checkfile:~PROD:~PATH:~FILE &ui_apps 0 Y UPLOAD @FND:patch/115/import/afcprset.lct @~PROD:~PATH/~FILE
+LANGUAGE = "US"
+LDRCONFIG = "afcprset.lct 115.28"
+
+#Source Database ebsd02
+
+#RELEASE_NAME 11.5.10.2
+
+# -- Begin Entity Definitions -- 
+
+DEFINE REQ_SET
+  KEY   APPLICATION_SHORT_NAME          VARCHAR2(50)
+  KEY   REQUEST_SET_NAME                VARCHAR2(30)
+  CTX   OWNER                           VARCHAR2(4000)
+  BASE  ALLOW_CONSTRAINTS_FLAG          VARCHAR2(1)
+  BASE  PRINT_TOGETHER_FLAG             VARCHAR2(1)
+  BASE  START_DATE_ACTIVE               VARCHAR2(11)
+  BASE  START_STAGE_NAME                VARCHAR2(30)
+  BASE  END_DATE_ACTIVE                 VARCHAR2(11)
+  BASE  CONCURRENT_PROGRAM_NAME         VARCHAR2(30)
+  BASE  OWNER_USER_NAME                 VARCHAR2(100)
+  BASE  PRINTER                         VARCHAR2(30)
+  BASE  PRINT_STYLE                     VARCHAR2(30)
+  TRANS USER_REQUEST_SET_NAME           VARCHAR2(240)
+  TRANS DESCRIPTION                     VARCHAR2(240)
+  BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+
+  DEFINE STAGE
+    KEY   STAGE_NAME                      VARCHAR2(30)
+    CTX   OWNER                           VARCHAR2(4000)
+    BASE  CRITICAL                        VARCHAR2(1)
+    BASE  OUTCOME                         VARCHAR2(1)
+    BASE  ALLOW_CONSTRAINTS_FLAG          VARCHAR2(1)
+    BASE  DISPLAY_SEQUENCE                VARCHAR2(50)
+    BASE  FUNCTION_APPLICATION            VARCHAR2(50)
+    BASE  FUNCTION                        VARCHAR2(30)
+    BASE  SUCCESS_LINK                    VARCHAR2(30)
+    BASE  WARNING_LINK                    VARCHAR2(30)
+    BASE  ERROR_LINK                      VARCHAR2(30)
+    BASE  CONCURRENT_PROGRAM_NAME         VARCHAR2(30)
+    TRANS USER_STAGE_NAME                 VARCHAR2(240)
+    TRANS DESCRIPTION                     VARCHAR2(240)
+    BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+
+    DEFINE STAGE_PROG
+      KEY   SEQUENCE                        VARCHAR2(50)
+      CTX   OWNER                           VARCHAR2(4000)
+      BASE  PROGRAM_APPLICATION             VARCHAR2(50)
+      BASE  PROGRAM_NAME                    VARCHAR2(30)
+      BASE  NLS_LANGUAGE                    VARCHAR2(30)
+      BASE  NLS_TERRITORY                   VARCHAR2(30)
+      BASE  CRITICAL                        VARCHAR2(1)
+      BASE  NUMBER_OF_COPIES                VARCHAR2(50)
+      BASE  PRINTER                         VARCHAR2(30)
+      BASE  PRINT_STYLE                     VARCHAR2(30)
+      BASE  SAVE_OUTPUT_FLAG                VARCHAR2(1)
+      BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+
+      DEFINE PROG_ARGS
+        KEY   DESC_FLEX_APPL                  VARCHAR2(50)
+        KEY   DESC_FLEX_NAME                  VARCHAR2(50)
+        KEY   COL_NAME                        VARCHAR2(30)
+        CTX   OWNER                           VARCHAR2(4000)
+        BASE  DISPLAY_FLAG                    VARCHAR2(1)
+        BASE  INSERT_FLAG                     VARCHAR2(1)
+        BASE  UPDATE_FLAG                     VARCHAR2(1)
+        BASE  DEFAULT_TYPE                    VARCHAR2(1)
+        BASE  DEFAULT_VALUE                   VARCHAR2(2000)
+        BASE  SHARED_PARAMETER_NAME           VARCHAR2(30)
+        BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+      END PROG_ARGS
+    END STAGE_PROG
+  END STAGE
+END REQ_SET
+
+# -- End Entity Definitions -- 
+
+
+BEGIN REQ_SET "XXWSH" "XXWSH920001Q"
+  OWNER = "XX_SETUP_USER01"
+  ALLOW_CONSTRAINTS_FLAG = "N"
+  PRINT_TOGETHER_FLAG = "N"
+  START_DATE_ACTIVE = "1900/01/01"
+  START_STAGE_NAME = "STAGE10"
+  USER_REQUEST_SET_NAME = "自動引当処理要求セット"
+  DESCRIPTION = "引当解除->自動引当の連続処理"
+  LAST_UPDATE_DATE = "2008/05/16"
+
+  BEGIN STAGE "STAGE10"
+    OWNER = "XX_SETUP_USER01"
+    CRITICAL = "Y"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "10"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "STAGE20"
+    USER_STAGE_NAME = "引当解除処理"
+    DESCRIPTION = "引当解除処理"
+    LAST_UPDATE_DATE = "2008/05/16"
+  
+    BEGIN STAGE_PROG "10"
+      OWNER = "XX_SETUP_USER01"
+      PROGRAM_APPLICATION = "XXWSH"
+      PROGRAM_NAME = "XXWSH920002C"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2008/05/16"
+    
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920002C" "ATTRIBUTE1"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "P"
+        DEFAULT_VALUE = "XXCMN_ITEM_DIV_SECURITY"
+        SHARED_PARAMETER_NAME = "商品区分"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920002C" "ATTRIBUTE2"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "処理種別"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920002C" "ATTRIBUTE3"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "ブロック１"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920002C" "ATTRIBUTE4"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "ブロック２"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920002C" "ATTRIBUTE5"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "ブロック３"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920002C" "ATTRIBUTE6"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "出庫元"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920002C" "ATTRIBUTE7"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "出庫形態"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920002C" "ATTRIBUTE8"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        DEFAULT_TYPE = "S"
+        DEFAULT_VALUE = "select to_char(sysdate,'YYYY/MM/DD') from dual"
+        SHARED_PARAMETER_NAME = "出庫日From"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920002C" "ATTRIBUTE9"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        DEFAULT_TYPE = "A"
+        DEFAULT_VALUE = "iv_deliver_date_from"
+        SHARED_PARAMETER_NAME = "出庫日To"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "STAGE20"
+    OWNER = "XX_SETUP_USER01"
+    CRITICAL = "Y"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "20"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    USER_STAGE_NAME = "自動仮引当処理"
+    DESCRIPTION = "自動仮引当処理"
+    LAST_UPDATE_DATE = "2008/05/16"
+  
+    BEGIN STAGE_PROG "10"
+      OWNER = "XX_SETUP_USER01"
+      PROGRAM_APPLICATION = "XXWSH"
+      PROGRAM_NAME = "XXWSH920001C"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2008/05/16"
+    
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920001C" "ATTRIBUTE1"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "P"
+        DEFAULT_VALUE = "XXCMN_ITEM_DIV_SECURITY"
+        SHARED_PARAMETER_NAME = "商品区分"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920001C" "ATTRIBUTE2"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "処理区分"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920001C" "ATTRIBUTE3"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "ブロック１"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920001C" "ATTRIBUTE4"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "ブロック２"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920001C" "ATTRIBUTE5"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "ブロック３"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920001C" "ATTRIBUTE6"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "出庫元"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920001C" "ATTRIBUTE7"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "出庫形態"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920001C" "ATTRIBUTE8"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        DEFAULT_TYPE = "S"
+        DEFAULT_VALUE = "select to_char(sysdate,'YYYY/MM/DD') from dual"
+        SHARED_PARAMETER_NAME = "出庫日From"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920001C" "ATTRIBUTE9"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        DEFAULT_TYPE = "A"
+        DEFAULT_VALUE = "iv_deliver_date_from"
+        SHARED_PARAMETER_NAME = "出庫日To"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+    END STAGE_PROG
+    
+  END STAGE
+  
+END REQ_SET
+
+BEGIN REQ_SET "XXWSH" "XXWSH600001Q"
+  OWNER = "XX_SETUP_USER01"
+  ALLOW_CONSTRAINTS_FLAG = "N"
+  PRINT_TOGETHER_FLAG = "N"
+  START_DATE_ACTIVE = "1900/01/01"
+  START_STAGE_NAME = "STAGE10"
+  USER_REQUEST_SET_NAME = "自動配車引当処理要求セット"
+  DESCRIPTION = "自動配車->引当解除->自動引当の連続処理"
+  LAST_UPDATE_DATE = "2008/05/16"
+
+  BEGIN STAGE "STAGE10"
+    OWNER = "XX_SETUP_USER01"
+    CRITICAL = "Y"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "10"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "STAGE20"
+    USER_STAGE_NAME = "自動配車配送計画作成処理"
+    DESCRIPTION = "自動配車配送計画作成処理"
+    LAST_UPDATE_DATE = "2008/05/16"
+  
+    BEGIN STAGE_PROG "10"
+      OWNER = "XX_SETUP_USER01"
+      PROGRAM_APPLICATION = "XXWSH"
+      PROGRAM_NAME = "XXWSH600001C"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2008/05/16"
+    
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH600001C" "ATTRIBUTE1"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "P"
+        DEFAULT_VALUE = "XXCMN_ITEM_DIV_SECURITY"
+        SHARED_PARAMETER_NAME = "商品区分"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH600001C" "ATTRIBUTE2"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "処理種別"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH600001C" "ATTRIBUTE3"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "ブロック１"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH600001C" "ATTRIBUTE4"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "ブロック２"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH600001C" "ATTRIBUTE5"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "ブロック３"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH600001C" "ATTRIBUTE6"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "出庫元"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH600001C" "ATTRIBUTE7"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "出庫形態"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH600001C" "ATTRIBUTE8"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        DEFAULT_TYPE = "S"
+        DEFAULT_VALUE = "select to_char(sysdate,'YYYY/MM/DD') from dual"
+        SHARED_PARAMETER_NAME = "出庫日FROM"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH600001C" "ATTRIBUTE9"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        DEFAULT_TYPE = "A"
+        DEFAULT_VALUE = "iv_date_from"
+        SHARED_PARAMETER_NAME = "出庫日To"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH600001C" "ATTRIBUTE10"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "運動業者ID"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "STAGE20"
+    OWNER = "XX_SETUP_USER01"
+    CRITICAL = "Y"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "20"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "STAGE30"
+    USER_STAGE_NAME = "引当解除処理"
+    DESCRIPTION = "引当解除処理"
+    LAST_UPDATE_DATE = "2008/05/16"
+  
+    BEGIN STAGE_PROG "10"
+      OWNER = "XX_SETUP_USER01"
+      PROGRAM_APPLICATION = "XXWSH"
+      PROGRAM_NAME = "XXWSH920002C"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2008/05/16"
+    
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920002C" "ATTRIBUTE1"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "P"
+        DEFAULT_VALUE = "XXCMN_ITEM_DIV_SECURITY"
+        SHARED_PARAMETER_NAME = "商品区分"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920002C" "ATTRIBUTE2"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "処理種別"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920002C" "ATTRIBUTE3"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "ブロック１"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920002C" "ATTRIBUTE4"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "ブロック２"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920002C" "ATTRIBUTE5"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "ブロック３"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920002C" "ATTRIBUTE6"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "出庫元"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920002C" "ATTRIBUTE7"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "出庫形態"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920002C" "ATTRIBUTE8"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        DEFAULT_TYPE = "S"
+        DEFAULT_VALUE = "select to_char(sysdate,'YYYY/MM/DD') from dual"
+        SHARED_PARAMETER_NAME = "出庫日From"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920002C" "ATTRIBUTE9"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        DEFAULT_TYPE = "A"
+        DEFAULT_VALUE = "iv_deliver_date_from"
+        SHARED_PARAMETER_NAME = "出庫日To"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "STAGE30"
+    OWNER = "XX_SETUP_USER01"
+    CRITICAL = "Y"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "30"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    USER_STAGE_NAME = "自動仮引当処理"
+    DESCRIPTION = "自動仮引当処理"
+    LAST_UPDATE_DATE = "2008/05/16"
+  
+    BEGIN STAGE_PROG "10"
+      OWNER = "XX_SETUP_USER01"
+      PROGRAM_APPLICATION = "XXWSH"
+      PROGRAM_NAME = "XXWSH920001C"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2008/05/16"
+    
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920001C" "ATTRIBUTE1"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "P"
+        DEFAULT_VALUE = "XXCMN_ITEM_DIV_SECURITY"
+        SHARED_PARAMETER_NAME = "商品区分"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920001C" "ATTRIBUTE2"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "処理種別"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920001C" "ATTRIBUTE3"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "ブロック１"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920001C" "ATTRIBUTE4"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "ブロック２"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920001C" "ATTRIBUTE5"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "ブロック３"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920001C" "ATTRIBUTE6"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "出庫元"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920001C" "ATTRIBUTE7"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        SHARED_PARAMETER_NAME = "出庫形態"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920001C" "ATTRIBUTE8"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        DEFAULT_TYPE = "S"
+        DEFAULT_VALUE = "select to_char(sysdate,'YYYY/MM/DD') from dual"
+        SHARED_PARAMETER_NAME = "出庫日From"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XXWSH" "$SRS$.XXWSH920001C" "ATTRIBUTE9"
+        OWNER = "XX_SETUP_USER01"
+        DISPLAY_FLAG = "Y"
+        INSERT_FLAG = "Y"
+        UPDATE_FLAG = "Y"
+        DEFAULT_TYPE = "A"
+        DEFAULT_VALUE = "iv_deliver_date_from"
+        SHARED_PARAMETER_NAME = "出庫日To"
+        LAST_UPDATE_DATE = "2008/05/16"
+      END PROG_ARGS
+      
+    END STAGE_PROG
+    
+  END STAGE
+  
+END REQ_SET
+
