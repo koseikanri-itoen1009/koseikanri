@@ -7,7 +7,7 @@ AS
  * Description      : 出荷購入依頼一覧
  * MD.050/070       : 生産物流共通（出荷・移動仮引当）Issue1.0 (T_MD050_BPO_921)
  *                    生産物流共通（出荷・移動仮引当）Issue1.0 (T_MD070_BPO_92F)
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2008/03/25    1.0   Yoshitomo Kawasaki 新規作成
  *  2008/06/11    1.1   Kazuo Kumamoto     内部変更要求#131対応
  *  2008/07/08    1.2   Satoshi Yunba      禁則文字対応
+ *  2008/11/19    1.3   Takao Ohashi       指摘623,663,665対応
  *
  *****************************************************************************************/
 --
@@ -1016,7 +1017,12 @@ AS
 --
       -- ヘッダー部の改ページ条件が変更になったら改ページを行う。
       ELSIF ( lv_location_code          <>  gt_main_data(i).location_code         )
-        OR  ( lv_transaction_type_name  <>  gt_main_data(i).transaction_type_name ) THEN
+-- mod start ver1.3
+--        OR  ( lv_transaction_type_name  <>  gt_main_data(i).transaction_type_name ) THEN
+        OR  ( lv_transaction_type_name  <>  gt_main_data(i).transaction_type_name )
+        OR  ( lv_transaction_type_name IS NULL  AND  gt_main_data(i).transaction_type_name IS NOT NULL)
+        OR  ( lv_transaction_type_name IS NOT NULL  AND  gt_main_data(i).transaction_type_name IS NULL) THEN
+-- mod end ver1.3
 --
         -- 変数を更新する。
         lv_location_code          :=  gt_main_data(i).location_code;
@@ -1260,7 +1266,11 @@ AS
 --
       -- 親のブレイクキーいずれかが変更になった場合、親と子と孫を出力する。
       ELSIF ( lv_location_code          =   gt_main_data(i).location_code         )
-        AND ( lv_transaction_type_name  =   gt_main_data(i).transaction_type_name )
+-- mod start ver1.3
+--        AND ( lv_transaction_type_name  =   gt_main_data(i).transaction_type_name )
+        AND (( lv_transaction_type_name  =   gt_main_data(i).transaction_type_name )
+          OR (lv_transaction_type_name IS NULL AND gt_main_data(i).transaction_type_name IS NULL))
+-- mod end ver1.3
         AND ( lv_po_header_number       <>  gt_main_data(i).po_header_number      )
         OR  ( lv_meaning                <>  gt_main_data(i).meaning               )
         OR  ( lv_segment1               <>  gt_main_data(i).segment1              )
@@ -1411,7 +1421,11 @@ AS
 --
       -- 子のブレイクキーが変更になった場合、子と孫を出力する。
       ELSIF ( lv_location_code          =   gt_main_data(i).location_code         )
-        AND ( lv_transaction_type_name  =   gt_main_data(i).transaction_type_name )
+-- mod start ver1.3
+--        AND ( lv_transaction_type_name  =   gt_main_data(i).transaction_type_name )
+        AND (( lv_transaction_type_name  =   gt_main_data(i).transaction_type_name )
+          OR (lv_transaction_type_name IS NULL AND gt_main_data(i).transaction_type_name IS NULL))
+-- mod end ver1.3
         AND ( lv_po_header_number       =   gt_main_data(i).po_header_number      )
         AND ( lv_meaning                =   gt_main_data(i).meaning               )
         AND ( lv_segment1               =   gt_main_data(i).segment1              )
@@ -1505,7 +1519,11 @@ AS
 --
       -- 何もブレイクキーに変更が無かった場合、孫を出力する。
       ELSIF ( lv_location_code          =   gt_main_data(i).location_code         )
-        AND ( lv_transaction_type_name  =   gt_main_data(i).transaction_type_name )
+-- mod start ver1.3
+--        AND ( lv_transaction_type_name  =   gt_main_data(i).transaction_type_name )
+        AND (( lv_transaction_type_name  =   gt_main_data(i).transaction_type_name )
+          OR (lv_transaction_type_name IS NULL AND gt_main_data(i).transaction_type_name IS NULL))
+-- mod end ver1.3
         AND ( lv_po_header_number       =   gt_main_data(i).po_header_number      )
         AND ( lv_meaning                =   gt_main_data(i).meaning               )
         AND ( lv_segment1               =   gt_main_data(i).segment1              )

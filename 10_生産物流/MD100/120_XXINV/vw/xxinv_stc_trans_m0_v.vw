@@ -242,7 +242,10 @@ AS
         ,gbh_in_pr.batch_no                            AS voucher_no
         ,grt_in_pr.routing_desc                        AS ukebaraisaki_name
         ,NULL                                          AS deliver_to_name
-        ,gmd_in_pr.plan_qty                            AS stock_quantity
+-- 2008/11/19 Y.Yamamoto v1.2 update start
+--        ,gmd_in_pr.plan_qty                            AS stock_quantity
+        ,TO_NUMBER(NVL(gbh_in_pr.attribute23,'0'))     AS stock_quantity
+-- 2008/11/19 Y.Yamamoto v1.2 update end
         ,0                                             AS leaving_quantity
   FROM   gme_batch_header             gbh_in_pr                  -- 生産バッチ
         ,gme_material_details         gmd_in_pr                  -- 生産原料詳細
@@ -293,12 +296,16 @@ AS
   AND    xmld_in_pr.record_type_code        = '10'    -- 指示
   AND    xmld_in_pr.lot_id                  = 0
 -- 2008/10/28 Y.Yamamoto v1.1 update start
-  AND    NOT EXISTS( SELECT 1
-                     FROM   gme_batch_header gbh_in_pr_ex
-                     WHERE  gbh_in_pr_ex.batch_id      = gbh_in_pr.batch_id
-                     AND    gbh_in_pr_ex.batch_status IN ( 7     -- 完了
-                                                          ,8     -- クローズ
-                                                          ,-1 )) -- 取消
+-- 2008/11/19 Y.Yamamoto v1.2 update start
+--  AND    NOT EXISTS( SELECT 1
+--                     FROM   gme_batch_header gbh_in_pr_ex
+--                     WHERE  gbh_in_pr_ex.batch_id      = gbh_in_pr.batch_id
+--                     AND    gbh_in_pr_ex.batch_status IN ( 7     -- 完了
+--                                                          ,8     -- クローズ
+--                                                          ,-1 )) -- 取消
+  AND    gbh_in_pr.batch_status            IN ( 1                  -- 保留
+                                               ,2 )                -- WIP
+-- 2008/11/19 Y.Yamamoto v1.2 update end
   AND    gbh_in_pr.plan_start_date         <= TRUNC( SYSDATE )
   AND    grb_in_pr.routing_id               = gbh_in_pr.routing_id
   AND    xrpm.routing_class                 = grb_in_pr.routing_class
@@ -771,6 +778,9 @@ AS
         ,xxinv_mov_lot_details        xmld_out_pr                 -- 移動ロット詳細(アドオン)
         ,gmd_routings_b               grb_out_pr                  -- 工順マスタ
         ,gmd_routings_tl              grt_out_pr                  -- 工順マスタ日本語
+-- 2008/11/19 Y.Yamamoto v1.2 add start
+        ,ic_tran_pnd                  itp_out_pr                  -- OPM保留在庫トランザクション
+-- 2008/11/19 Y.Yamamoto v1.2 add end
         ,ic_whse_mst                  iwm_out_pr                  -- OPM倉庫マスタ
         ,mtl_item_locations           mil_out_pr                  -- OPM保管場所マスタ
         ,(SELECT xrpm_out_pr.new_div_invent
@@ -778,6 +788,9 @@ AS
                 ,xrpm_out_pr.routing_class
                 ,xrpm_out_pr.line_type
                 ,xrpm_out_pr.hit_in_div
+-- 2008/11/19 Y.Yamamoto v1.2 add start
+                ,xrpm_out_pr.doc_type
+-- 2008/11/19 Y.Yamamoto v1.2 add end
           FROM   fnd_lookup_values flv_out_pr                      -- クイックコード
                 ,xxcmn_rcv_pay_mst xrpm_out_pr                    -- 受払区分アドオンマスタ
           WHERE  flv_out_pr.lookup_type              = 'XXCMN_NEW_DIVISION'
@@ -789,17 +802,31 @@ AS
   WHERE  gbh_out_pr.batch_id                 = gmd_out_pr.batch_id
   AND    gmd_out_pr.material_detail_id       = xmld_out_pr.mov_line_id
   AND    gmd_out_pr.line_type                = -1                 -- 投入品
+-- 2008/11/19 Y.Yamamoto v1.2 add start
+  AND    itp_out_pr.doc_type                 = xrpm.doc_type
+  AND    itp_out_pr.doc_id                   = gmd_out_pr.batch_id
+  AND    itp_out_pr.line_id                  = gmd_out_pr.material_detail_id
+  AND    itp_out_pr.doc_line                 = gmd_out_pr.line_no
+  AND    itp_out_pr.line_type                = gmd_out_pr.line_type
+  AND    itp_out_pr.item_id                  = gmd_out_pr.item_id
+  AND    itp_out_pr.completed_ind            = 0
+  AND    itp_out_pr.delete_mark              = 0                  -- 有効チェック(OPM保留在庫)
+-- 2008/11/19 Y.Yamamoto v1.2 add end
   AND    xmld_out_pr.document_type_code      = '40'
   AND    xmld_out_pr.record_type_code        = '10'
   AND    xmld_out_pr.lot_id                  = 0
   AND    grb_out_pr.attribute9               = mil_out_pr.segment1
   AND    iwm_out_pr.mtl_organization_id      = mil_out_pr.organization_id
-  AND    NOT EXISTS( SELECT 1
-                     FROM   gme_batch_header gbh_out_pr_ex
-                     WHERE  gbh_out_pr_ex.batch_id      = gbh_out_pr.batch_id
-                     AND    gbh_out_pr_ex.batch_status IN ( 7     -- 完了
-                                                           ,8     -- クローズ
-                                                           ,-1 )) -- 取消
+-- 2008/11/19 Y.Yamamoto v1.2 update start
+--  AND    NOT EXISTS( SELECT 1
+--                     FROM   gme_batch_header gbh_out_pr_ex
+--                     WHERE  gbh_out_pr_ex.batch_id      = gbh_out_pr.batch_id
+--                     AND    gbh_out_pr_ex.batch_status IN ( 7     -- 完了
+--                                                           ,8     -- クローズ
+--                                                           ,-1 )) -- 取消
+  AND    gbh_out_pr.batch_status            IN ( 1                  -- 保留
+                                                ,2 )                -- WIP
+-- 2008/11/19 Y.Yamamoto v1.2 update end
   AND    gbh_out_pr.plan_start_date         <= TRUNC( SYSDATE )
   AND    grb_out_pr.routing_id               = gbh_out_pr.routing_id
   AND    xrpm.routing_class                  = grb_out_pr.routing_class
