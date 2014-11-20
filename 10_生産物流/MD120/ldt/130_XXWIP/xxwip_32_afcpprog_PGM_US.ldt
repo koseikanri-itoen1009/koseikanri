@@ -5234,7 +5234,7 @@ BEGIN DESC_FLEX "XXWIP" "$SRS$.XXWIP730005C"
       LAST_UPDATE_DATE = "2008/05/14 11:42:59"
       COLUMN_SEQ_NUM = "230"
       ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
+      DISPLAY_FLAG = "N"
       REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
       FLEX_VALUE_SET_NAME = "XXCMN_YES_NO"
@@ -5341,7 +5341,7 @@ BEGIN PROGRAM "XXWIP730005C" "XXWIP"
   * @param iv_outside_contract å_ñÒäO\n\
   * @rep:paraminfo {@rep:type XXWIP_OUTSIDE_CONTRACT} {@rep:displayed Y}\n\
   * @param iv_return_flag ämíËå„ïœçX\n\
-  * @rep:paraminfo {@rep:type XXCMN_YES_NO} {@rep:displayed Y} {@rep:required}\n\
+  * @rep:paraminfo {@rep:type XXCMN_YES_NO} {@rep:displayed N} {@rep:required}\n\
   * @param iv_output_flag ç∑àŸ\n\
   * @rep:paraminfo {@rep:type XXCMN_YES_NO} {@rep:displayed N} {@rep:required}\n\
   */"
