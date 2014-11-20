@@ -130,9 +130,14 @@ AS
      AND  TO_DATE( pha_in_po.attribute4, 'YYYY/MM/DD' ) >= xvv_in_po.start_date_active
      AND  TO_DATE( pha_in_po.attribute4, 'YYYY/MM/DD' ) <= xvv_in_po.end_date_active
      -- 部署名取得(外部結合とする)
-     AND  pha_in_po.attribute10                         = xlc_in_po.location_code(+)
-     AND  TO_DATE( pha_in_po.attribute4, 'YYYY/MM/DD' ) >= xlc_in_po.start_date_active(+)
-     AND  TO_DATE( pha_in_po.attribute4, 'YYYY/MM/DD' ) <= xlc_in_po.end_date_active(+)
+-- 2010/01/05 T.Yoshimoto Mod Start E_本稼動#831
+--     AND  pha_in_po.attribute10                         = xlc_in_po.location_code(+)
+--     AND  TO_DATE( pha_in_po.attribute4, 'YYYY/MM/DD' ) >= xlc_in_po.start_date_active(+)
+--     AND  TO_DATE( pha_in_po.attribute4, 'YYYY/MM/DD' ) <= xlc_in_po.end_date_active(+)
+     AND  pha_in_po.attribute10                         = xlc_in_po.location_code
+     AND  TO_DATE( pha_in_po.attribute4, 'YYYY/MM/DD' ) >= xlc_in_po.start_date_active
+     AND  TO_DATE( pha_in_po.attribute4, 'YYYY/MM/DD' ) <= xlc_in_po.end_date_active
+-- 2010/01/05 T.Yoshimoto Mod End E_本稼動#831
   -- [ １．発注受入予定  END ]
 UNION ALL
   -------------------------------------------------------------
@@ -215,9 +220,14 @@ UNION ALL
      --OPM保管場所情報2取得
      AND  xmrih_in_xf.shipped_locat_id                  = xilv_in_xf2.inventory_location_id
      -- 部署名取得(外部結合とする)
-     AND  xmrih_in_xf.instruction_post_code             = xlc_in_xf.location_code(+)
-     AND  xmrih_in_xf.schedule_arrival_date            >= xlc_in_xf.start_date_active(+)
-     AND  xmrih_in_xf.schedule_arrival_date            <= xlc_in_xf.end_date_active(+)
+-- 2010/01/05 T.Yoshimoto Mod Start E_本稼動#831
+--     AND  xmrih_in_xf.instruction_post_code             = xlc_in_xf.location_code(+)
+--     AND  xmrih_in_xf.schedule_arrival_date            >= xlc_in_xf.start_date_active(+)
+--     AND  xmrih_in_xf.schedule_arrival_date            <= xlc_in_xf.end_date_active(+)
+     AND  xmrih_in_xf.instruction_post_code             = xlc_in_xf.location_code
+     AND  xmrih_in_xf.schedule_arrival_date            >= xlc_in_xf.start_date_active
+     AND  xmrih_in_xf.schedule_arrival_date            <= xlc_in_xf.end_date_active
+-- 2010/01/05 T.Yoshimoto Mod End E_本稼動#831
   -- [ ２．移動入庫予定(指示 積送あり)  END ]
 UNION ALL
   -------------------------------------------------------------
@@ -300,9 +310,14 @@ UNION ALL
      --OPM保管場所情報2取得
      AND  xmrih_in_tr.shipped_locat_id                  = xilv_in_tr2.inventory_location_id
      -- 部署名取得(外部結合とする)
-     AND  xmrih_in_tr.instruction_post_code             = xlc_in_tr.location_code(+)
-     AND  xmrih_in_tr.schedule_arrival_date            >= xlc_in_tr.start_date_active(+)
-     AND  xmrih_in_tr.schedule_arrival_date            <= xlc_in_tr.end_date_active(+)
+-- 2010/01/05 T.Yoshimoto Mod Start E_本稼動#831
+--     AND  xmrih_in_tr.instruction_post_code             = xlc_in_tr.location_code(+)
+--     AND  xmrih_in_tr.schedule_arrival_date            >= xlc_in_tr.start_date_active(+)
+--     AND  xmrih_in_tr.schedule_arrival_date            <= xlc_in_tr.end_date_active(+)
+     AND  xmrih_in_tr.instruction_post_code             = xlc_in_tr.location_code
+     AND  xmrih_in_tr.schedule_arrival_date            >= xlc_in_tr.start_date_active
+     AND  xmrih_in_tr.schedule_arrival_date            <= xlc_in_tr.end_date_active
+-- 2010/01/05 T.Yoshimoto Mod End E_本稼動#831
   -- [ ３．移動入庫予定(指示 積送なし)  END ]
 UNION ALL
   -------------------------------------------------------------
@@ -384,9 +399,14 @@ UNION ALL
      --OPM保管場所情報2取得
      AND  xmrih_in_xf20.shipped_locat_id                = xilv_in_xf202.inventory_location_id
      --部署名取得(外部結合とする)
-     AND  xmrih_in_xf20.instruction_post_code           = xlc_in_xf20.location_code(+)
-     AND  xmrih_in_xf20.schedule_arrival_date          >= xlc_in_xf20.start_date_active(+)
-     AND  xmrih_in_xf20.schedule_arrival_date          <= xlc_in_xf20.end_date_active(+)
+-- 2010/01/05 T.Yoshimoto Mod Start E_本稼動#831
+--     AND  xmrih_in_xf20.instruction_post_code           = xlc_in_xf20.location_code(+)
+--     AND  xmrih_in_xf20.schedule_arrival_date          >= xlc_in_xf20.start_date_active(+)
+--     AND  xmrih_in_xf20.schedule_arrival_date          <= xlc_in_xf20.end_date_active(+)
+     AND  xmrih_in_xf20.instruction_post_code           = xlc_in_xf20.location_code
+     AND  xmrih_in_xf20.schedule_arrival_date          >= xlc_in_xf20.start_date_active
+     AND  xmrih_in_xf20.schedule_arrival_date          <= xlc_in_xf20.end_date_active
+-- 2010/01/05 T.Yoshimoto Mod End E_本稼動#831
   -- [ ４．移動入庫予定(出庫報告有 積送あり)  END ]
 UNION ALL
   -------------------------------------------------------------
@@ -667,9 +687,14 @@ UNION ALL
      --受払先情報取得
      AND  xmrih_out_xf.ship_to_locat_id                = xilv_out_xf2.inventory_location_id
      --部署名取得
-     AND  xmrih_out_xf.instruction_post_code           = xlc_out_xf.location_code(+)
-     AND  xmrih_out_xf.schedule_ship_date             >= xlc_out_xf.start_date_active(+)
-     AND  xmrih_out_xf.schedule_ship_date             <= xlc_out_xf.end_date_active(+)
+-- 2010/01/05 T.Yoshimoto Mod Start E_本稼動#831
+--     AND  xmrih_out_xf.instruction_post_code           = xlc_out_xf.location_code(+)
+--     AND  xmrih_out_xf.schedule_ship_date             >= xlc_out_xf.start_date_active(+)
+--     AND  xmrih_out_xf.schedule_ship_date             <= xlc_out_xf.end_date_active(+)
+     AND  xmrih_out_xf.instruction_post_code           = xlc_out_xf.location_code
+     AND  xmrih_out_xf.schedule_ship_date             >= xlc_out_xf.start_date_active
+     AND  xmrih_out_xf.schedule_ship_date             <= xlc_out_xf.end_date_active
+-- 2010/01/05 T.Yoshimoto Mod End E_本稼動#831
   -- [ １．移動出庫予定(指示 積送あり)  END ] --
 UNION ALL
   -------------------------------------------------------------
@@ -752,9 +777,14 @@ UNION ALL
      --受払先情報取得
      AND  xmrih_out_tr.ship_to_locat_id                 = xilv_out_tr2.inventory_location_id
      --部署名取得
-     AND  xmrih_out_tr.instruction_post_code            = xlc_out_tr.location_code(+)
-     AND  xmrih_out_tr.schedule_ship_date              >= xlc_out_tr.start_date_active(+)
-     AND  xmrih_out_tr.schedule_ship_date              <= xlc_out_tr.end_date_active(+)
+-- 2010/01/05 T.Yoshimoto Mod Start E_本稼動#831
+--     AND  xmrih_out_tr.instruction_post_code            = xlc_out_tr.location_code(+)
+--     AND  xmrih_out_tr.schedule_ship_date              >= xlc_out_tr.start_date_active(+)
+--     AND  xmrih_out_tr.schedule_ship_date              <= xlc_out_tr.end_date_active(+)
+     AND  xmrih_out_tr.instruction_post_code            = xlc_out_tr.location_code
+     AND  xmrih_out_tr.schedule_ship_date              = xlc_out_tr.start_date_active
+     AND  xmrih_out_tr.schedule_ship_date              = xlc_out_tr.end_date_active
+-- 2010/01/05 T.Yoshimoto Mod End E_本稼動#831
   -- [ ２．移動出庫予定(指示 積送なし)  END ] --
 UNION ALL
   -------------------------------------------------------------
@@ -836,9 +866,14 @@ UNION ALL
      --受払先情報取得
      AND  xmrih_out_xf20.ship_to_locat_id               = xilv_out_xf202.inventory_location_id
      --部署名取得
-     AND  xmrih_out_xf20.instruction_post_code          = xlc_out_xf20.location_code(+)
-     AND  xmrih_out_xf20.schedule_ship_date            >= xlc_out_xf20.start_date_active(+)
-     AND  xmrih_out_xf20.schedule_ship_date            <= xlc_out_xf20.end_date_active(+)
+-- 2010/01/05 T.Yoshimoto Mod Start E_本稼動#831
+--     AND  xmrih_out_xf20.instruction_post_code          = xlc_out_xf20.location_code(+)
+--     AND  xmrih_out_xf20.schedule_ship_date            >= xlc_out_xf20.start_date_active(+)
+--     AND  xmrih_out_xf20.schedule_ship_date            <= xlc_out_xf20.end_date_active(+)
+     AND  xmrih_out_xf20.instruction_post_code          = xlc_out_xf20.location_code
+     AND  xmrih_out_xf20.schedule_ship_date            >= xlc_out_xf20.start_date_active
+     AND  xmrih_out_xf20.schedule_ship_date            <= xlc_out_xf20.end_date_active
+-- 2010/01/05 T.Yoshimoto Mod End E_本稼動#831
   -- [ ３．移動出庫予定(入庫報告有 積送あり)  END ] --
 UNION ALL
   -------------------------------------------------------------
@@ -1069,9 +1104,14 @@ UNION ALL
      AND  xoha_out_om2.schedule_ship_date              >= xvsv_out_om2.start_date_active --適用開始日
      AND  xoha_out_om2.schedule_ship_date              <= xvsv_out_om2.end_date_active   --適用終了日
      --部署名取得
-     AND  xoha_out_om2.performance_management_dept      = xlc_out_om2.location_code(+)
-     AND  xoha_out_om2.schedule_ship_date              >= xlc_out_om2.start_date_active(+)
-     AND  xoha_out_om2.schedule_ship_date              <= xlc_out_om2.end_date_active(+)
+-- 2010/01/05 T.Yoshimoto Mod Start E_本稼動#831
+--     AND  xoha_out_om2.performance_management_dept      = xlc_out_om2.location_code(+)
+--     AND  xoha_out_om2.schedule_ship_date              >= xlc_out_om2.start_date_active(+)
+--     AND  xoha_out_om2.schedule_ship_date              <= xlc_out_om2.end_date_active(+)
+     AND  xoha_out_om2.performance_management_dept      = xlc_out_om2.location_code
+     AND  xoha_out_om2.schedule_ship_date              >= xlc_out_om2.start_date_active
+     AND  xoha_out_om2.schedule_ship_date              <= xlc_out_om2.end_date_active
+-- 2010/01/05 T.Yoshimoto Mod End E_本稼動#831
   -- [ ５．有償出荷予定  END ] --
 UNION ALL
   -------------------------------------------------------------
@@ -1339,9 +1379,14 @@ UNION ALL
      AND  TO_DATE( pha_out_ad.attribute4, 'YYYY/MM/DD' ) >= xvv_out_ad.start_date_active --適用開始日
      AND  TO_DATE( pha_out_ad.attribute4, 'YYYY/MM/DD' ) <= xvv_out_ad.end_date_active   --適用終了日
      --部署名取得
-     AND  pha_out_ad.attribute10                        = xlc_out_ad.location_code(+)
-     AND  TO_DATE( pha_out_ad.attribute4, 'YYYY/MM/DD' ) >= xlc_out_ad.start_date_active(+)
-     AND  TO_DATE( pha_out_ad.attribute4, 'YYYY/MM/DD' ) <= xlc_out_ad.end_date_active(+)
+-- 2010/01/05 T.Yoshimoto Mod Start E_本稼動#831
+--     AND  pha_out_ad.attribute10                        = xlc_out_ad.location_code(+)
+--     AND  TO_DATE( pha_out_ad.attribute4, 'YYYY/MM/DD' ) >= xlc_out_ad.start_date_active(+)
+--     AND  TO_DATE( pha_out_ad.attribute4, 'YYYY/MM/DD' ) <= xlc_out_ad.end_date_active(+)
+     AND  pha_out_ad.attribute10                        = xlc_out_ad.location_code
+     AND  TO_DATE( pha_out_ad.attribute4, 'YYYY/MM/DD' ) >= xlc_out_ad.start_date_active
+     AND  TO_DATE( pha_out_ad.attribute4, 'YYYY/MM/DD' ) <= xlc_out_ad.end_date_active
+-- 2010/01/05 T.Yoshimoto Mod End E_本稼動#831
   -- [ ８．相手先在庫出庫予定  END ] --
 -- << 出庫予定 END >>
 UNION ALL
@@ -1441,9 +1486,14 @@ UNION ALL
      AND  xrart_in_po_e.txns_date                      >= xvv_in_po_e.start_date_active
      AND  xrart_in_po_e.txns_date                      <= xvv_in_po_e.end_date_active
      -- 部署名取得
-     AND  xrart_in_po_e.department_code                 = xlc_in_po_e.location_code(+)
-     AND  xrart_in_po_e.txns_date                      >= xlc_in_po_e.start_date_active(+)
-     AND  xrart_in_po_e.txns_date                      <= xlc_in_po_e.end_date_active(+)
+-- 2010/01/05 T.Yoshimoto Mod Start E_本稼動#831
+--     AND  xrart_in_po_e.department_code                 = xlc_in_po_e.location_code(+)
+--     AND  xrart_in_po_e.txns_date                      >= xlc_in_po_e.start_date_active(+)
+--     AND  xrart_in_po_e.txns_date                      <= xlc_in_po_e.end_date_active(+)
+     AND  xrart_in_po_e.department_code                 = xlc_in_po_e.location_code
+     AND  xrart_in_po_e.txns_date                      >= xlc_in_po_e.start_date_active
+     AND  xrart_in_po_e.txns_date                      <= xlc_in_po_e.end_date_active
+-- 2010/01/05 T.Yoshimoto Mod End E_本稼動#831
   -- [ １．発注受入実績  END ] --
 UNION ALL
   -------------------------------------------------------------
@@ -1520,9 +1570,14 @@ UNION ALL
      -- OPM保管場所情報取得2
      AND  xmrih_in_xf_e.shipped_locat_id                = xilv_in_xf_e2.inventory_location_id
      -- 部署名取得
-     AND  xmrih_in_xf_e.instruction_post_code           = xlc_in_xf_e.location_code(+)
-     AND  xmrih_in_xf_e.actual_arrival_date            >= xlc_in_xf_e.start_date_active(+)
-     AND  xmrih_in_xf_e.actual_arrival_date            <= xlc_in_xf_e.end_date_active(+)
+-- 2010/01/05 T.Yoshimoto Mod Start E_本稼動#831
+--     AND  xmrih_in_xf_e.instruction_post_code           = xlc_in_xf_e.location_code(+)
+--     AND  xmrih_in_xf_e.actual_arrival_date            >= xlc_in_xf_e.start_date_active(+)
+--     AND  xmrih_in_xf_e.actual_arrival_date            <= xlc_in_xf_e.end_date_active(+)
+     AND  xmrih_in_xf_e.instruction_post_code           = xlc_in_xf_e.location_code
+     AND  xmrih_in_xf_e.actual_arrival_date            >= xlc_in_xf_e.start_date_active
+     AND  xmrih_in_xf_e.actual_arrival_date            <= xlc_in_xf_e.end_date_active
+-- 2010/01/05 T.Yoshimoto Mod End E_本稼動#831
   -- [ ２．移動入庫実績(積送あり)  END ] --
 UNION ALL
   -------------------------------------------------------------
@@ -1599,9 +1654,14 @@ UNION ALL
      -- OPM保管場所情報取得2
      AND  xmrih_in_tr_e.shipped_locat_id                = xilv_in_tr_e2.inventory_location_id
      -- 部署名取得
-     AND  xmrih_in_tr_e.instruction_post_code           = xlc_in_tr_e.location_code(+)
-     AND  xmrih_in_tr_e.actual_arrival_date            >= xlc_in_tr_e.start_date_active(+)
-     AND  xmrih_in_tr_e.actual_arrival_date            <= xlc_in_tr_e.end_date_active(+)
+-- 2010/01/05 T.Yoshimoto Mod Start E_本稼動#831
+--     AND  xmrih_in_tr_e.instruction_post_code           = xlc_in_tr_e.location_code(+)
+--     AND  xmrih_in_tr_e.actual_arrival_date            >= xlc_in_tr_e.start_date_active(+)
+--     AND  xmrih_in_tr_e.actual_arrival_date            <= xlc_in_tr_e.end_date_active(+)
+     AND  xmrih_in_tr_e.instruction_post_code           = xlc_in_tr_e.location_code
+     AND  xmrih_in_tr_e.actual_arrival_date            >= xlc_in_tr_e.start_date_active
+     AND  xmrih_in_tr_e.actual_arrival_date            <= xlc_in_tr_e.end_date_active
+-- 2010/01/05 T.Yoshimoto Mod End E_本稼動#831
   -- [ ３．移動入庫実績(積送なし)  END ] --
 UNION ALL
   -------------------------------------------------------------
@@ -2574,9 +2634,14 @@ UNION ALL
      --受払先情報取得
      AND  xmrih_out_xf_e.ship_to_locat_id               = xilv_out_xf_e2.inventory_location_id
      --部署名取得
-     AND  xmrih_out_xf_e.instruction_post_code          = xlc_out_xf_e.location_code(+)
-     AND  xmrih_out_xf_e.actual_ship_date              >= xlc_out_xf_e.start_date_active(+)
-     AND  xmrih_out_xf_e.actual_ship_date              <= xlc_out_xf_e.end_date_active(+)
+-- 2010/01/05 T.Yoshimoto Mod Start E_本稼動#831
+--     AND  xmrih_out_xf_e.instruction_post_code          = xlc_out_xf_e.location_code(+)
+--     AND  xmrih_out_xf_e.actual_ship_date              >= xlc_out_xf_e.start_date_active(+)
+--     AND  xmrih_out_xf_e.actual_ship_date              <= xlc_out_xf_e.end_date_active(+)
+     AND  xmrih_out_xf_e.instruction_post_code          = xlc_out_xf_e.location_code
+     AND  xmrih_out_xf_e.actual_ship_date              >= xlc_out_xf_e.start_date_active
+     AND  xmrih_out_xf_e.actual_ship_date              <= xlc_out_xf_e.end_date_active
+-- 2010/01/05 T.Yoshimoto Mod End E_本稼動#831
   -- [ １．移動出庫実績(積送あり)  END ] --
 UNION ALL
   -------------------------------------------------------------
@@ -2653,9 +2718,14 @@ UNION ALL
      --受払先情報取得
      AND  xmrih_out_tr_e.ship_to_locat_id               = xilv_out_tr_e2.inventory_location_id
      --部署名取得
-     AND  xmrih_out_tr_e.instruction_post_code          = xlc_out_tr_e.location_code(+)
-     AND  xmrih_out_tr_e.actual_ship_date              >= xlc_out_tr_e.start_date_active(+)
-     AND  xmrih_out_tr_e.actual_ship_date              <= xlc_out_tr_e.end_date_active(+)
+-- 2010/01/05 T.Yoshimoto Mod Start E_本稼動#831
+--     AND  xmrih_out_tr_e.instruction_post_code          = xlc_out_tr_e.location_code(+)
+--     AND  xmrih_out_tr_e.actual_ship_date              >= xlc_out_tr_e.start_date_active(+)
+--     AND  xmrih_out_tr_e.actual_ship_date              <= xlc_out_tr_e.end_date_active(+)
+     AND  xmrih_out_tr_e.instruction_post_code          = xlc_out_tr_e.location_code
+     AND  xmrih_out_tr_e.actual_ship_date              >= xlc_out_tr_e.start_date_active
+     AND  xmrih_out_tr_e.actual_ship_date              <= xlc_out_tr_e.end_date_active
+-- 2010/01/05 T.Yoshimoto Mod End E_本稼動#831
   -- [ ２．移動出庫実績(積送なし)  END ] --
 UNION ALL
   -------------------------------------------------------------
@@ -3156,9 +3226,14 @@ UNION ALL
      AND  xoha_out_om2_e.shipped_date                  >= xvsv_out_om2_e.start_date_active --適用開始日
      AND  xoha_out_om2_e.shipped_date                  <= xvsv_out_om2_e.end_date_active   --適用終了日
      --部署名取得
-     AND  xoha_out_om2_e.performance_management_dept    = xlc_out_om2_e.location_code(+)
-     AND  xoha_out_om2_e.shipped_date                  >= xlc_out_om2_e.start_date_active(+)
-     AND  xoha_out_om2_e.shipped_date                  <= xlc_out_om2_e.end_date_active(+)
+-- 2010/01/05 T.Yoshimoto Mod Start E_本稼動#831
+--     AND  xoha_out_om2_e.performance_management_dept    = xlc_out_om2_e.location_code(+)
+--     AND  xoha_out_om2_e.shipped_date                  >= xlc_out_om2_e.start_date_active(+)
+--     AND  xoha_out_om2_e.shipped_date                  <= xlc_out_om2_e.end_date_active(+)
+     AND  xoha_out_om2_e.performance_management_dept    = xlc_out_om2_e.location_code
+     AND  xoha_out_om2_e.shipped_date                  >= xlc_out_om2_e.start_date_active
+     AND  xoha_out_om2_e.shipped_date                  <= xlc_out_om2_e.end_date_active
+-- 2010/01/05 T.Yoshimoto Mod End E_本稼動#831
   -- [ ７．有償出荷実績  END ] --
 UNION ALL
   -------------------------------------------------------------
@@ -3428,7 +3503,7 @@ UNION ALL
                 AND  itc_out_ad_e_x97.doc_line          = iaj_out_ad_e_x97.doc_line     -- OPM在庫調整ジャーナル抽出条件
                 --ジャーナルマスタとの結合
                 AND  ijm_out_ad_e_x97.attribute1        IS NOT NULL                     -- OPMジャーナルマスタ.実績IDがNULLでない
-                AND  ijm_out_ad_e_x97.attribute4        IS NULL                         -- ?(入出庫照会より)
+                AND  ijm_out_ad_e_x97.attribute4        IS NULL                         -- (入出庫照会より)
                 AND  iaj_out_ad_e_x97.journal_id        = ijm_out_ad_e_x97.journal_id   -- OPMジャーナルマスタ抽出条件
                 --受入返品実績アドオンとの結合
                 AND  TO_NUMBER(ijm_out_ad_e_x97.attribute1)  = xrart_out_ad_e_x97.txns_id    -- 実績ID
