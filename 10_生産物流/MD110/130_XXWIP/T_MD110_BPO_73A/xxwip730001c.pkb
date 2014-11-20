@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -111,6 +111,7 @@ AS
  *  2008/12/10    1.16 Oracle 野村       本番#401対応
  *  2008/12/24    1.17 Oracle 野村       本番#323対応
  *  2008/12/26    1.18 Oracle 野村       本番#323対応（ログ対応）
+ *  2008/12/29    1.19 Oracle 野村       本番#882対応
  *
  *****************************************************************************************/
 --
@@ -926,12 +927,12 @@ AS
   -- 洗替時 運賃ヘッダアドオン 削除用変数定義
   deh_head_deliv_no_tab           head_deliv_no_type;          -- 配送No
 --
--- ##### 20081261 Ver.1.18 本番#323対応（ログ対応） START #####
+-- ##### 20081226 Ver.1.18 本番#323対応（ログ対応） START #####
   -- 削除データ格納
   TYPE t_delete_data_msg IS TABLE OF VARCHAR2(5000) INDEX BY BINARY_INTEGER ;
   gt_delete_data_msg     t_delete_data_msg ;
   gn_delete_data_idx     NUMBER := 0 ;
--- ##### 20081261 Ver.1.18 本番#323対応（ログ対応） END   #####
+-- ##### 20081226 Ver.1.18 本番#323対応（ログ対応） END   #####
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -6427,11 +6428,16 @@ AS
           -- 配送No
           d_head_deliv_no_tab(ln_delete_cnt)  := gt_deliv_line_tab(ln_index).delivery_no ;
 --
--- ##### 20081261 Ver.1.18 本番#323対応（ログ対応） START #####
+-- ##### 20081226 Ver.1.18 本番#323対応（ログ対応） START #####
           -- 実績変更による削除 ログ出力用領域格納
           gn_delete_data_idx := gn_delete_data_idx + 1;
-          gt_delete_data_msg(gn_delete_data_idx) :=  d_head_deliv_no_tab(ln_delete_cnt);
--- ##### 20081261 Ver.1.18 本番#323対応（ログ対応） END   #####
+-- ##### 20081229 Ver.1.19 本番#882対応 START #####
+--          gt_delete_data_msg(gn_delete_data_idx) :=  d_head_deliv_no_tab(ln_delete_cnt);
+          gt_delete_data_msg(gn_delete_data_idx) :=  u_head_deliv_no_tab(ln_update_cnt)     || '  ' ;  -- 配送No
+          gt_delete_data_msg(gn_delete_data_idx) :=  gt_delete_data_msg(gn_delete_data_idx) || u_head_deliv_cmpny_cd_tab(ln_update_cnt) || '  ' ; -- 運送業者
+          gt_delete_data_msg(gn_delete_data_idx) :=  gt_delete_data_msg(gn_delete_data_idx) || TO_CHAR(u_head_ship_date_tab(ln_update_cnt),'YYYY/MM/DD'); -- 出荷日
+-- ##### 20081229 Ver.1.19 本番#882対応 END   #####
+-- ##### 20081226 Ver.1.18 本番#323対応（ログ対応） END   #####
 --
 -- ##### 20081224 Ver.1.17 本番#323対応 START #####
         END IF;
@@ -7324,11 +7330,16 @@ AS
             -- 配送No
             d_head_deliv_no_tab(ln_delete_cnt)  := gt_carriers_schedule_tab(ln_index).delivery_no ;
 --
--- ##### 20081261 Ver.1.18 本番#323対応（ログ対応） START #####
+-- ##### 20081226 Ver.1.18 本番#323対応（ログ対応） START #####
           -- 実績変更による削除 ログ出力用領域格納
           gn_delete_data_idx := gn_delete_data_idx + 1;
-          gt_delete_data_msg(gn_delete_data_idx) :=  d_head_deliv_no_tab(ln_delete_cnt);
--- ##### 20081261 Ver.1.18 本番#323対応（ログ対応） END   #####
+-- ##### 20081229 Ver.1.19 本番#882対応 START #####
+--          gt_delete_data_msg(gn_delete_data_idx) :=  d_head_deliv_no_tab(ln_delete_cnt);
+          gt_delete_data_msg(gn_delete_data_idx) :=  u_head_deliv_no_tab(ln_update_cnt)     || '  ' ;  -- 配送No
+          gt_delete_data_msg(gn_delete_data_idx) :=  gt_delete_data_msg(gn_delete_data_idx) || u_head_deliv_cmpny_cd_tab(ln_update_cnt) || '  ' ; -- 運送業者
+          gt_delete_data_msg(gn_delete_data_idx) :=  gt_delete_data_msg(gn_delete_data_idx) || TO_CHAR(u_head_ship_date_tab(ln_update_cnt),'YYYY/MM/DD'); -- 出荷日
+-- ##### 20081229 Ver.1.19 本番#882対応 END   #####
+-- ##### 20081226 Ver.1.18 本番#323対応（ログ対応） END   #####
 --
 -- ##### 20081224 Ver.1.17 本番#323対応 START #####
           END IF;
@@ -7871,11 +7882,16 @@ AS
             -- 配送No
             d_head_deliv_no_tab(ln_delete_cnt)  := gt_carriers_schedule_tab(ln_index).delivery_no ;
 --
--- ##### 20081261 Ver.1.18 本番#323対応（ログ対応） START #####
+-- ##### 20081226 Ver.1.18 本番#323対応（ログ対応） START #####
           -- 実績変更による削除 ログ出力用領域格納
           gn_delete_data_idx := gn_delete_data_idx + 1;
-          gt_delete_data_msg(gn_delete_data_idx) :=  d_head_deliv_no_tab(ln_delete_cnt);
--- ##### 20081261 Ver.1.18 本番#323対応（ログ対応） END   #####
+-- ##### 20081229 Ver.1.19 本番#882対応 START #####
+--          gt_delete_data_msg(gn_delete_data_idx) :=  d_head_deliv_no_tab(ln_delete_cnt);
+          gt_delete_data_msg(gn_delete_data_idx) :=  u_head_deliv_no_tab(ln_update_cnt)     || '  ' ;  -- 配送No
+          gt_delete_data_msg(gn_delete_data_idx) :=  gt_delete_data_msg(gn_delete_data_idx) || u_head_deliv_cmpny_cd_tab(ln_update_cnt) || '  ' ; -- 運送業者
+          gt_delete_data_msg(gn_delete_data_idx) :=  gt_delete_data_msg(gn_delete_data_idx) || TO_CHAR(u_head_ship_date_tab(ln_update_cnt),'YYYY/MM/DD'); -- 出荷日
+-- ##### 20081229 Ver.1.19 本番#882対応 END   #####
+-- ##### 20081226 Ver.1.18 本番#323対応（ログ対応） END   #####
 --
 -- ##### 20081224 Ver.1.17 本番#323対応 START #####
           END IF;
@@ -8677,10 +8693,10 @@ AS
       -- **************************************************
       -- 件数設定
       -- **************************************************
--- ##### 20081261 Ver.1.18 本番#323対応（ログ対応） START #####
+-- ##### 20081226 Ver.1.18 本番#323対応（ログ対応） START #####
 -- 件数は追加しない
 --      gn_deliv_del_cnt := gn_deliv_del_cnt + SQL%ROWCOUNT;
--- ##### 20081261 Ver.1.18 本番#323対応（ログ対応） END   #####
+-- ##### 20081226 Ver.1.18 本番#323対応（ログ対応） END   #####
 --
     END IF;
 --
@@ -10347,7 +10363,10 @@ AS
       -- **************************************************
       -- 件数設定
       -- **************************************************
-      gn_deliv_del_cnt := gn_deliv_del_cnt + SQL%ROWCOUNT;
+-- ##### 20081229 Ver.1.19 本番#882対応 START #####
+-- 配車組換による削除件数はカウントしない
+--      gn_deliv_del_cnt := gn_deliv_del_cnt + SQL%ROWCOUNT;
+-- ##### 20081229 Ver.1.19 本番#882対応 END   #####
 --
   EXCEPTION
 --
@@ -11057,14 +11076,18 @@ AS
                                            TO_CHAR(gn_deliv_del_cnt));
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_message);
 --
--- ##### 20081261 Ver.1.18 本番#323対応（ログ対応） START #####
+-- ##### 20081226 Ver.1.18 本番#323対応（ログ対応） START #####
     -- 削除データ ログ出力
     IF ( gn_delete_data_idx <> 0 ) THEN
 --
       -- タイトル表示
       FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '' ) ;          -- 空行
-      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '削除配送No          ') ;
-      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '--------------------') ;
+-- ##### 20081229 Ver.1.19 本番#882対応 START #####
+--      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '削除配送No          ') ;
+--      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '--------------------') ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '配送No        運送  発日       ') ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '-------------------------------') ;
+-- ##### 20081229 Ver.1.19 本番#882対応 END   #####
 --
       FOR i IN 1..gn_delete_data_idx LOOP
         FND_FILE.PUT_LINE( FND_FILE.OUTPUT, gt_delete_data_msg(i)) ;
@@ -11074,7 +11097,7 @@ AS
       FND_FILE.PUT_LINE( FND_FILE.OUTPUT, gv_sep_msg ) ;  -- 区切り文字列出力
 --
     END IF;
--- ##### 20081261 Ver.1.18 本番#323対応（ログ対応） END   #####
+-- ##### 20081226 Ver.1.18 本番#323対応（ログ対応） END   #####
 --
     --ステータス出力
     SELECT flv.meaning
