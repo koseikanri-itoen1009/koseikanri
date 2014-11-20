@@ -1,0 +1,5 @@
+CREATE INDEX xxcmm_cust_accounts_n21
+ON xxcmm_cust_accounts
+(delivery_base_code)
+TABLESPACE xxidx2
+/
