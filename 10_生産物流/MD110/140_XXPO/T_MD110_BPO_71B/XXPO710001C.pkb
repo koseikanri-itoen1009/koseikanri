@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（仕入）
  * MD.050/070       : 生産物流（仕入）Issue1.0  (T_MD050_BPO_710)
  *                    荒茶製造表                (T_MD070_BPO_71B)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2008/05/02    1.1   Yasuhisa Yamamoto  結合テスト障害対応(710_10)
  *  2008/05/19    1.2   Masayuki Ikeda     内部変更要求#62対応
  *  2008/05/20    1.3   Yohei    Takayama  結合テスト障害対応(710_11)
+ *  2008/07/02    1.4   Satoshi Yunba      禁則文字「'」「"」「<」「>」「&」対応
  *
  *****************************************************************************************/
 --
@@ -201,7 +202,7 @@ AS
 --
     --データの場合
     IF (ic_type = gc_tag_type_data) THEN
-      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>' ;
+      lv_convert_data := '<'||iv_name||'><![CDATA['||iv_value||']]></'||iv_name||'>';
     ELSE
       lv_convert_data := '<'||iv_name||'>' ;
     END IF ;

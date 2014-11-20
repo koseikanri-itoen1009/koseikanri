@@ -7,7 +7,7 @@ AS
  * Description      : 有償明細表
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_444)
  *                    有償支給帳票Issue1.0(T_MD070_BPO_44M)
- * Version          : 1.2
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2008/06/03    1.2   Yohei  Takayama 結合テスト不具合#440_46対応
  *  2008/06/04    1.3 Yasuhisa Yamamoto 結合テスト不具合ログ#440_54
  *  2008/06/19    1.4   Kazuo Kumamoto  結合テストレビュー指摘事項#18対応
+ *  2008/07/02    1.5   Satoshi Yunba   禁則文字「'」「"」「<」「>」「&」対応
  *
  *****************************************************************************************/
 --
@@ -1443,7 +1444,7 @@ AS
 --
     --データの場合
     IF ( ic_type = 'D' ) THEN
-      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>' ;
+      lv_convert_data := '<'||iv_name||'><![CDATA['||iv_value||']]></'||iv_name||'>';
     ELSE
       lv_convert_data := '<'||iv_name||'>' ;
     END IF ;
