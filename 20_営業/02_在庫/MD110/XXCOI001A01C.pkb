@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,7 +54,8 @@ AS
  *  2009/11/06    1.10  H.Sasaki         [E_T4_00143]PT対応
  *  2009/11/13    1.11  N.Abe            [E_T4_00189]品目1桁目が5,6を資材として処理
  *  2009/12/08    1.12  N.Abe            [E_本稼動_00308,E_本稼動_00312]削除データ処理順序の修正
-                                         [E_本稼動_00374]削除データ登録方法の修正
+ *                                       [E_本稼動_00374]削除データ登録方法の修正
+ *  2009/12/14    1.13  H.Sasaki         [E_本稼動_00428]在庫会計期間CLOSE時の処理を修正
  *
  *****************************************************************************************/
 --
@@ -3758,6 +3759,17 @@ AS
     lb_fnc_status             BOOLEAN;
 --
     -- *** ローカル・カーソル ***
+-- == 2009/12/14 V1.13 Added START ===============================================================
+    CURSOR  cur_upd_lines
+    IS
+      SELECT  1
+      FROM    xxwsh_order_headers_all   xoh
+             ,xxwsh_order_lines_all     xol
+      WHERE   xoh.order_header_id       =   xol.order_header_id
+      AND     xoh.latest_external_flag  =   cv_y_flag
+      AND     xoh.request_no            =   g_summary_tab ( in_slip_cnt ) .req_move_no
+      FOR UPDATE NOWAIT;
+-- == 2009/12/14 V1.13 Added END   ===============================================================
 --
     -- *** ローカル・レコード ***
 --
@@ -3788,6 +3800,21 @@ AS
         , ov_errmsg          => lv_errmsg
       );
       IF ( lb_fnc_status = FALSE ) THEN
+-- == 2009/12/14 V1.13 Added START ===============================================================
+        -- 受注明細ロック取得
+        OPEN    cur_upd_lines;
+        CLOSE   cur_upd_lines;
+        --
+        -- 受注明細「出荷実績連携済フラグ」更新
+        UPDATE xxwsh_order_lines_all xol
+        SET    xol.shipping_result_if_flg   =   cv_y_flag
+        WHERE  xol.order_header_id          =   ( SELECT    xoh.order_header_id
+                                                  FROM      xxwsh_order_headers_all   xoh
+                                                  WHERE     xoh.request_no            =   g_summary_tab ( in_slip_cnt ) .req_move_no
+                                                  AND       xoh.latest_external_flag  =   cv_y_flag
+                                                )
+        ;
+-- == 2009/12/14 V1.13 Added END   ===============================================================
         RAISE period_status_close_expt;
       ELSIF ( lv_retcode != cv_status_normal ) THEN
         RAISE period_status_common_expt;
@@ -3799,6 +3826,24 @@ AS
     --==============================================================
 --
   EXCEPTION
+-- == 2009/12/14 V1.13 Added START ===============================================================
+    WHEN lock_expt THEN
+      IF ( cur_upd_lines%ISOPEN ) THEN
+        CLOSE cur_upd_lines;
+      END IF;
+      --
+      lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                          iv_application  => cv_application
+                        , iv_name         => cv_lines_lock_expt_msg
+                        , iv_token_name1  => cv_tkn_den_no
+                        , iv_token_value1 => g_summary_tab ( in_slip_cnt ) .req_move_no
+                      );
+      lv_errbuf   :=  lv_errmsg;
+      ov_errmsg   :=  lv_errmsg;
+      ov_errbuf   :=  SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode  :=  cv_status_warn;
+      --
+-- == 2009/12/14 V1.13 Added END   ===============================================================
     WHEN period_status_close_expt THEN
       lv_errmsg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_application
