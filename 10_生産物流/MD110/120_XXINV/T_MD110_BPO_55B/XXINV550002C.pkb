@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.28
+ * Version          : 1.29
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2008/12/02    1.26  Takao Ohashi     本番障害#327対応
  *  2008/12/03    1.27  Natsuki Yoshida  本番障害#371対応
  *  2008/12/04    1.28  Hitomi Itou      本番障害#362対応
+ *  2008/12/18    1.29 Yasuhisa Yamamoto 本番障害#732,#772対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -187,6 +188,9 @@ AS
   gv_dctype_shipped    CONSTANT VARCHAR2(2) := '10'; --出荷
 --add end 1.22
   gv_dctype_move       CONSTANT VARCHAR2(2) := '20'; --移動
+--add start 1.29
+  gv_dctype_shikyu     CONSTANT VARCHAR2(2) := '30'; --支給
+--add end 1.29
 --
   --受払区分
   gv_rcvdiv_rcv        CONSTANT VARCHAR2(1) := '1'; --受入
@@ -248,6 +252,9 @@ AS
   gv_item_class_prod   CONSTANT VARCHAR2(1) := '5'; --製品
 --
   --在庫調整区分
+--add start 1.29
+  gv_stock_etc         CONSTANT VARCHAR2(2) := '1'; --在庫調整以外
+--add end 1.29
   gv_stock_adjm        CONSTANT VARCHAR2(1) := '2'; --在庫調整
 --
   --在庫タイプ
@@ -3371,13 +3378,18 @@ AS
         ------------------------------
         -- 1.発注実績情報
         ------------------------------
+-- mod start 1.29
 -- mod start 1.25
         --SELECT /*+ leading(pha pla rsl itp iimb gic1 mcb1 gic2 mcb2 rt xrart xrpm pv xv mil iwm) use_nl(pha pla rsl itp iimb gic1 mcb1 gic2 mcb2 rt xrart xrpm pv xv mil iwm) */
-        SELECT /*+ leading(pha pla rsl rt itp gic1 mcb1 gic2 mcb2) use_nl(pha pla rsl rt itp gic1 mcb1 gic2 mcb2) */
+--        SELECT /*+ leading(pha pla rsl rt itp gic1 mcb1 gic2 mcb2) use_nl(pha pla rsl rt itp gic1 mcb1 gic2 mcb2) */
+        SELECT /*+ leading(pha pla rsl xrart gic1 mcb1 gic2 mcb2) use_nl(pha pla rsl xrart gic1 mcb1 gic2 mcb2) */
 -- mod end 1.25
-          gv_trtry_po                                         territory           --領域(発注)
+--          gv_trtry_po                                         territory           --領域(発注)
+          DISTINCT gv_trtry_po                                territory           --領域(発注)
+         ,xrart.txns_id                                       txns_id             --トランザクションID
          ,iimb.item_id                                        item_id             --品目ID
-         ,itp.lot_id                                          lot_id              --ロットID
+--         ,itp.lot_id                                          lot_id              --ロットID
+         ,NVL(xrart.lot_id,0)                                 lot_id              --ロットID
          ,pha.attribute4                                      standard_date       --日付
          ,xrpm.new_div_invent                                 reason_code         --新区分
          ,pha.segment1                                        slip_no             --伝票No
@@ -3387,11 +3399,14 @@ AS
          ,''                                                  jrsd_name           --管轄拠点名
          ,pv.segment1                                         other_code          --相手先コード
          ,pv.vendor_name                                      other_name          --相手先名称
-         ,SUM(NVL(pla.quantity,0))                            in_qty              --入庫数
+--         ,SUM(NVL(pla.quantity,0))                            in_qty              --入庫数
+         ,NVL(xrart.quantity,0)                               in_qty              --入庫数
          ,0                                                   out_qty             --出庫数
-         ,itp.whse_code                                       whse_code           --倉庫コード
+--         ,itp.whse_code                                       whse_code           --倉庫コード
+         ,iwm.whse_code                                       whse_code           --倉庫コード
          ,iwm.whse_name                                       whse_name           --倉庫名
-         ,itp.location                                        location            --保管倉庫コード
+--         ,itp.location                                        location            --保管倉庫コード
+         ,xrart.location_code                                 location            --保管倉庫コード
          ,mil.description                                     description         --保管倉庫名
          ,mil.attribute6                                      distribution_block  --ブロック
          ,xrpm.rcv_pay_div                                    rcv_pay_div         --受払区分
@@ -3400,7 +3415,7 @@ AS
           po_headers_all                                      pha                 --発注ヘッダ
          ,po_lines_all                                        pla                 --発注明細
          ,rcv_shipment_lines                                  rsl                 --受入明細
-         ,rcv_transactions                                    rt                  --受入取引
+--         ,rcv_transactions                                    rt                  --受入取引
          ,ic_lots_mst                                         ilm                 --OPMロットマスタ(結合用)
          ,xxpo_rcv_and_rtn_txns                               xrart               --受入返品実績
          ,po_vendors                                          pv
@@ -3408,7 +3423,7 @@ AS
          ,ic_whse_mst                                         iwm
          ,mtl_item_locations                                  mil
          ,ic_item_mst_b                                       iimb
-         ,ic_tran_pnd                                         itp                 --OPM保留在庫トランザクション
+--         ,ic_tran_pnd                                         itp                 --OPM保留在庫トランザクション
          ,xxcmn_rcv_pay_mst                                   xrpm                --受入区分アドオンマスタ
          ,mtl_categories_b                                    mcb1
          ,gmi_item_categories                                 gic1
@@ -3425,7 +3440,7 @@ AS
         AND rsl.po_header_id = pha.po_header_id                                   --発注ヘッダID
         AND rsl.po_line_id = pla.po_line_id                                       --発注明細ID
         --受入取引抽出条件
-        AND rsl.shipment_line_id = rt.shipment_line_id                            --受入明細ID
+--        AND rsl.shipment_line_id = rt.shipment_line_id                            --受入明細ID
         --受入返品実績抽出条件
         AND pha.segment1 = xrart.source_document_number                           --元文書番号
         AND pla.line_num = xrart.source_document_line_num                         --元文書明細番号
@@ -3434,18 +3449,21 @@ AS
         AND pha.vendor_id = pv.vendor_id                                         --仕入先ID
         AND xv.start_date_active <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
         AND xv.end_date_active >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-        AND itp.doc_type = 'PORC'                                                 --文書タイプ
-        AND rsl.shipment_header_id = itp.doc_id                                   --文書ID
-        AND rsl.line_num = itp.doc_line                                           --取引明細番号
-        AND rt.transaction_id = itp.line_id                                       --ラインID
-        AND iimb.item_id = itp.item_id                                            --品目ID
-        AND ilm.lot_id = itp.lot_id                                               --ロットID
-        AND mil.segment1 = itp.location                                          --保管倉庫コード
-        AND itp.completed_ind = gv_tran_cmp                                       --完了フラグ
+--        AND itp.doc_type = 'PORC'                                                 --文書タイプ
+--        AND rsl.shipment_header_id = itp.doc_id                                   --文書ID
+--        AND rsl.line_num = itp.doc_line                                           --取引明細番号
+--        AND rt.transaction_id = itp.line_id                                       --ラインID
+--        AND iimb.item_id = itp.item_id                                            --品目ID
+        AND iimb.item_id = xrart.item_id                                          --品目ID
+--        AND ilm.lot_id = itp.lot_id                                               --ロットID
+        AND ilm.lot_id = NVL(xrart.lot_id,0)                                             --ロットID
+--        AND mil.segment1 = itp.location                                          --保管倉庫コード
+        AND mil.segment1 = xrart.location_code                                    --保管倉庫コード
+--        AND itp.completed_ind = gv_tran_cmp                                       --完了フラグ
         --受払区分マスタアドオン抽出条件
         AND xrpm.doc_type = 'PORC'                                                --文書タイプ
         AND xrpm.source_document_code = 'PO'                                      --ソース文書
-        AND xrpm.transaction_type = rt.transaction_type                           --PO取引タイプ
+--        AND xrpm.transaction_type = rt.transaction_type                           --PO取引タイプ
         AND xrpm.use_div_invent = gv_inventory                                    --在庫使用区分
         AND iwm.mtl_organization_id = mil.organization_id
         AND pv.vendor_id = xv.vendor_id
@@ -3457,39 +3475,44 @@ AS
         --カテゴリセットが商品区分である品目
 -- mod start 1.25
         --AND iimb.item_id = gic1.item_id
-        AND itp.item_id = gic1.item_id
+--        AND itp.item_id = gic1.item_id
+        AND xrart.item_id = gic1.item_id
         AND gic1.category_set_id    = cn_prod_class_id
         --カテゴリセットが品目区分である品目
         --AND iimb.item_id = gic2.item_id
-        AND itp.item_id = gic2.item_id
+--        AND itp.item_id = gic2.item_id
+        AND xrart.item_id = gic2.item_id
 -- mod end 1.25
         AND gic2.category_set_id   = cn_item_class_id
         AND mcb1.category_id       = gic1.category_id
         AND mcb2.category_id       = gic2.category_id
-        AND ilm.item_id            = itp.item_id
+--        AND ilm.item_id            = itp.item_id
+        AND ilm.item_id            = xrart.item_id
         ----------------------------------------------------------------------------------------
-        GROUP BY
-          iimb.item_id                                                            --品目ID
-         ,itp.lot_id                                                              --ロットID
-         ,pha.attribute4                                                          --日付
-         ,xrpm.new_div_invent                                                     --新区分
-         ,pha.segment1                                                            --伝票No
-         ,pha.attribute4                                                          --出庫日/着日
-         ,pv.segment1
-         ,pv.vendor_name
-         ,itp.whse_code                                                           --倉庫コード
-         ,iwm.whse_name
-         ,itp.location                                                            --保管倉庫コード
-         ,mil.description
-         ,mil.attribute6
-         ,xrpm.rcv_pay_div                                                        --受払区分
-         ,xrpm.transaction_type                                                   --PO取引タイプ
+--        GROUP BY
+--          iimb.item_id                                                            --品目ID
+--         ,itp.lot_id                                                              --ロットID
+--         ,pha.attribute4                                                          --日付
+--         ,xrpm.new_div_invent                                                     --新区分
+--         ,pha.segment1                                                            --伝票No
+--         ,pha.attribute4                                                          --出庫日/着日
+--         ,pv.segment1
+--         ,pv.vendor_name
+--         ,itp.whse_code                                                           --倉庫コード
+--         ,iwm.whse_name
+--         ,itp.location                                                            --保管倉庫コード
+--         ,mil.description
+--         ,mil.attribute6
+--         ,xrpm.rcv_pay_div                                                        --受払区分
+--         ,xrpm.transaction_type                                                   --PO取引タイプ
+-- mod end 1.29
         UNION ALL
         ------------------------------
         -- 2.移動実績情報
         ------------------------------
         SELECT
           gv_trtry_mv                                         territory           --領域(移動)
+         ,1                                                   txns_id
          ,iimb.item_id                                        item_id             --品目ID
          ,xm.lot_id                                           lot_id              --ロットID
          ,TO_CHAR(xm.actual_arrival_date,gv_fmt_ymd)          standard_date       --日付
@@ -4147,6 +4170,7 @@ AS
        ------------------------------
        SELECT
           gv_trtry_sh                                         territory           --領域(出荷)
+         ,1                                                   txns_id
          ,sh_info.item_id                                     item_id             --品目ID
          ,sh_info.lot_id                                      lot_id              --ロットID
          ,TO_CHAR(sh_info.arrival_date,gv_fmt_ymd)          standard_date       --日付
@@ -4188,136 +4212,137 @@ AS
 -- 2008/11/28 H.Itou add Start 本番障害#227
 --          SELECT
 --          SELECT /*+ leading(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
-          SELECT /*+ leading(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
+-- 2008/12/18 Y.Yamamoto update Start 本番障害#732
+--          SELECT /*+ leading(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
 -- 2008/11/28 H.Itou add End
 -- mod end 1.25
-            itp.doc_type                                  doc_type            --文書タイプ
-           ,itp.item_id                                   item_id             --品目ID
-           ,itp.whse_code                                 whse_code           --倉庫コード
-           ,iwm.whse_name                                 whse_name           --倉庫名
-           ,itp.location                                  location            --保管倉庫コード
-           ,mil.description                               description         --保管倉庫名
-           ,mil.inventory_location_id                     inventory_location_id   --保管倉庫ID
-           ,itp.lot_id                                    lot_id              --ロットID
-           ,itp.doc_id                                    doc_id              --文書ID
-           ,itp.doc_line                                  doc_line            --取引明細番号
-           ,ooha.header_id                                header_id           --受注ヘッダID
-           ,ooha.order_type_id                            order_type_id       --受注タイプID
-           ,xrpm.rcv_pay_div                              rcv_pay_div         --受払区分
-           ,xrpm.new_div_invent                           new_div_invent      --新区分
-           ,SUM(itp.trans_qty)                            trans_qty_sum       --数量合計
-           ,mil.attribute6                                distribution_block  --ブロック
-           ,xoha.head_sales_branch                        head_sales_branch
-           ,xoha.deliver_to_id                            deliver_to_id
-           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
-                                  ,gv_recsts_shipped2,xoha.vendor_site_code
-            ) deliver_to
-           ,xoha.arrival_date                             arrival_date
-           ,xoha.shipped_date                             shipped_date
-           ,xoha.request_no                               request_no
-           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
-                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
-            ) party_site_full_name
-           ,otta.order_category_code                      order_category_code
-          FROM
-           xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
-           ,hz_party_sites                                hps
-           ,xxcmn_vendor_sites_all                        xvsa
-           ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
-           ,oe_transaction_types_all                      otta                --受注タイプ
-           ,xxcmn_rcv_pay_mst                             xrpm                --受入区分アドオンマスタ
-           ,ic_item_mst_b                                 iimb
-           ,xxcmn_item_mst_b                              ximb
-           ,ic_item_mst_b                                 iimb2
-           ,xxcmn_item_mst_b                              ximb2
-           ,gmi_item_categories                           gic1
-           ,mtl_categories_b                              mcb1
-           ,gmi_item_categories                           gic2
-           ,mtl_categories_b                              mcb2
-           ,gmi_item_categories                           gic3
-           ,mtl_categories_b                              mcb3
-           ,ic_whse_mst                                   iwm
-           ,mtl_item_locations                            mil
-           ,ic_tran_pnd                                   itp                 --OPM保留在庫トランザクション
-           ,wsh_delivery_details                          wdd                 --出荷搬送明細
-           ,oe_order_headers_all                          ooha                --受注ヘッダ
+--            itp.doc_type                                  doc_type            --文書タイプ
+--           ,itp.item_id                                   item_id             --品目ID
+--           ,itp.whse_code                                 whse_code           --倉庫コード
+--           ,iwm.whse_name                                 whse_name           --倉庫名
+--           ,itp.location                                  location            --保管倉庫コード
+--           ,mil.description                               description         --保管倉庫名
+--           ,mil.inventory_location_id                     inventory_location_id   --保管倉庫ID
+--           ,itp.lot_id                                    lot_id              --ロットID
+--           ,itp.doc_id                                    doc_id              --文書ID
+--           ,itp.doc_line                                  doc_line            --取引明細番号
+--           ,ooha.header_id                                header_id           --受注ヘッダID
+--           ,ooha.order_type_id                            order_type_id       --受注タイプID
+--           ,xrpm.rcv_pay_div                              rcv_pay_div         --受払区分
+--           ,xrpm.new_div_invent                           new_div_invent      --新区分
+--           ,SUM(itp.trans_qty)                            trans_qty_sum       --数量合計
+--           ,mil.attribute6                                distribution_block  --ブロック
+--           ,xoha.head_sales_branch                        head_sales_branch
+--           ,xoha.deliver_to_id                            deliver_to_id
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+--                                  ,gv_recsts_shipped2,xoha.vendor_site_code
+--            ) deliver_to
+--           ,xoha.arrival_date                             arrival_date
+--           ,xoha.shipped_date                             shipped_date
+--           ,xoha.request_no                               request_no
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+--                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
+--            ) party_site_full_name
+--           ,otta.order_category_code                      order_category_code
+--          FROM
+--           xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
+--           ,hz_party_sites                                hps
+--           ,xxcmn_vendor_sites_all                        xvsa
+--           ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
+--           ,oe_transaction_types_all                      otta                --受注タイプ
+--           ,xxcmn_rcv_pay_mst                             xrpm                --受入区分アドオンマスタ
+--           ,ic_item_mst_b                                 iimb
+--           ,xxcmn_item_mst_b                              ximb
+--           ,ic_item_mst_b                                 iimb2
+--           ,xxcmn_item_mst_b                              ximb2
+--           ,gmi_item_categories                           gic1
+--           ,mtl_categories_b                              mcb1
+--           ,gmi_item_categories                           gic2
+--           ,mtl_categories_b                              mcb2
+--           ,gmi_item_categories                           gic3
+--           ,mtl_categories_b                              mcb3
+--           ,ic_whse_mst                                   iwm
+--           ,mtl_item_locations                            mil
+--           ,ic_tran_pnd                                   itp                 --OPM保留在庫トランザクション
+--           ,wsh_delivery_details                          wdd                 --出荷搬送明細
+--           ,oe_order_headers_all                          ooha                --受注ヘッダ
 -- 2008/11/28 H.Itou del Start 本番障害#227
 --          WHERE ooha.header_id = xoha.header_id                                --受注ヘッダID
-          WHERE 
+--          WHERE 
 -- 2008/11/28 H.Itou del End
 -- 2008/11/28 H.Itou add Start 本番障害#227
-                 wdd.delivery_detail_id  = itp.line_detail_id
-          AND    wdd.source_header_id    = xoha.header_id
-          AND    wdd.source_line_id      = xola.line_id
-          AND    xoha.header_id          = ooha.header_id
-          AND    xola.order_header_id    = xoha.order_header_id
+--                 wdd.delivery_detail_id  = itp.line_detail_id
+--          AND    wdd.source_header_id    = xoha.header_id
+--          AND    wdd.source_line_id      = xola.line_id
+--          AND    xoha.header_id          = ooha.header_id
+--          AND    xola.order_header_id    = xoha.order_header_id
 -- 2008/11/28 H.Itou add End
-          AND itp.doc_type = 'OMSO'
-          AND itp.completed_ind = gv_tran_cmp                                 --完了フラグ
+--          AND itp.doc_type = 'OMSO'
+--          AND itp.completed_ind = gv_tran_cmp                                 --完了フラグ
 -- 2008/11/28 H.Itou del Start 本番障害#227
 --          AND itp.line_id = wdd.source_line_id                                --ソース明細ID
 --          AND wdd.org_id = ooha.org_id                                        --組織ID
 --          AND wdd.source_header_id = ooha.header_id                           --受注ヘッダID
 -- 2008/11/28 H.Itou del End
-          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)             --ステータス
-          AND xoha.actual_confirm_class = gv_confirm_yes                            --実績計上区分
-          AND xoha.latest_external_flag = gv_latest_yes                             --最新フラグ
+--          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)             --ステータス
+--          AND xoha.actual_confirm_class = gv_confirm_yes                            --実績計上区分
+--          AND xoha.latest_external_flag = gv_latest_yes                             --最新フラグ
 -- 2008/11/28 H.Itou del Start 本番障害#227
 --          AND xoha.order_header_id = xola.order_header_id                         --受注アドオンヘッダID
 -- 2008/11/28 H.Itou del End
-          AND ooha.order_type_id = otta.transaction_type_id                    --受注タイプID
-          AND xola.shipping_item_code = iimb.item_no                            --品目コード
-          AND itp.item_id         = iimb.item_id                            --品目ID
-          AND ximb.item_id        = iimb.item_id                            --品目ID
-          AND itp.trans_date
-            BETWEEN ximb.start_date_active
-            AND ximb.end_date_active
+--          AND ooha.order_type_id = otta.transaction_type_id                    --受注タイプID
+--          AND xola.shipping_item_code = iimb.item_no                            --品目コード
+--          AND itp.item_id         = iimb.item_id                            --品目ID
+--          AND ximb.item_id        = iimb.item_id                            --品目ID
+--          AND itp.trans_date
+--            BETWEEN ximb.start_date_active
+--            AND ximb.end_date_active
           --  AND NVL(ximb.end_date_active,itp.trans_date)                    --適用開始日・終了日
 -- 2008/11/28 H.Itou del Start 本番障害#227
 --          AND iimb.item_id = gic1.item_id                                     --品目ID
 -- 2008/11/28 H.Itou del End
 -- 2008/11/28 H.Itou Mod Start 本番障害#227
 --          AND gic1.item_id = iimb.item_id
-          AND gic1.item_id = itp.item_id
+--          AND gic1.item_id = itp.item_id
 -- 2008/11/28 H.Itou Mod End
-          AND gic1.category_set_id = cn_item_class_id
-          AND gic1.category_id = mcb1.category_id
-          AND mcb1.segment1 = civ_item_div
+--          AND gic1.category_set_id = cn_item_class_id
+--          AND gic1.category_id = mcb1.category_id
+--          AND mcb1.segment1 = civ_item_div
 -- 2008/11/28 H.Itou del Start 本番障害#227
 --          AND iimb.item_id = gic3.item_id                                     --品目ID
 -- 2008/11/28 H.Itou del End
 -- 2008/11/28 H.Itou Mod Start 本番障害#227
 --          AND gic3.item_id = iimb.item_id
-          AND gic3.item_id = itp.item_id
+--          AND gic3.item_id = itp.item_id
 -- 2008/11/28 H.Itou Mod End
-          AND gic3.category_set_id = cn_prod_class_id
-          AND gic3.category_id = mcb3.category_id
-          AND mcb3.segment1 = civ_prod_div
-          AND xola.request_item_code = iimb2.item_no                             --品目コード
-          AND ximb2.item_id = iimb2.item_id                            --品目ID
-          AND gic2.item_id = iimb2.item_id
-          AND gic2.category_set_id = cn_item_class_id
-          AND gic2.category_id = mcb2.category_id
-          AND itp.trans_date
-            BETWEEN ximb2.start_date_active
-            AND ximb2.end_date_active
+--          AND gic3.category_set_id = cn_prod_class_id
+--          AND gic3.category_id = mcb3.category_id
+--          AND mcb3.segment1 = civ_prod_div
+--          AND xola.request_item_code = iimb2.item_no                             --品目コード
+--          AND ximb2.item_id = iimb2.item_id                            --品目ID
+--          AND gic2.item_id = iimb2.item_id
+--          AND gic2.category_set_id = cn_item_class_id
+--          AND gic2.category_id = mcb2.category_id
+--          AND itp.trans_date
+--            BETWEEN ximb2.start_date_active
+--            AND ximb2.end_date_active
 -- 2008/11/28 H.Itou del Start 本番障害#227
 --          AND gic2.item_id = iimb2.item_id                                     --品目ID
 -- 2008/11/28 H.Itou del End
-          AND xoha.result_deliver_to_id = hps.party_site_id(+)
-          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
-          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND itp.doc_type = xrpm.doc_type                                    --文書タイプ
-          AND xrpm.doc_type = 'OMSO'
+--          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+--          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+--          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND itp.doc_type = xrpm.doc_type                                    --文書タイプ
+--          AND xrpm.doc_type = 'OMSO'
 -- 2008/12/03 N.Yoshida update Start 本番障害#371
-          AND  (otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
-              OR xrpm.shipment_provision_div IS NULL)
+--          AND  (otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
+--              OR xrpm.shipment_provision_div IS NULL)
           --AND  otta.attribute1 IN (gv_spdiv_ship,gv_spdiv_prov)
           --AND xrpm.shipment_provision_div IN (gv_spdiv_ship,gv_spdiv_prov)
 -- 2008/12/03 N.Yoshida update End 本番障害#371
-          AND (otta.attribute11 = xrpm.ship_prov_rcv_pay_category                 --出荷支給受払カテゴリ
-            OR   xrpm.ship_prov_rcv_pay_category IS NULL)
+--          AND (otta.attribute11 = xrpm.ship_prov_rcv_pay_category                 --出荷支給受払カテゴリ
+--            OR   xrpm.ship_prov_rcv_pay_category IS NULL)
 -- 2008/12/03 N.Yoshida update Start 本番障害#371
           /*  AND NVL(DECODE(mcb1.segment1
                           ,gv_item_class_prod,gv_item_class_prod,NULL),gv_dummy)
@@ -4326,220 +4351,220 @@ AS
                           ,gv_item_class_prod,gv_item_class_prod
                                              ,NULL),gv_dummy)
                 = NVL(xrpm.item_div_ahead,gv_dummy)*/
-          AND NVL(DECODE(otta.attribute4
-                        ,gv_stock_adjm
-                        ,gv_stock_adjm
-                        ,NULL),gv_dummy
-              ) = NVL(DECODE(xrpm.stock_adjustment_div                            --在庫調整区分
-                            ,gv_stock_adjm
-                            ,gv_stock_adjm
-                            ,NULL),gv_dummy
-              )
-            AND (
+--          AND NVL(DECODE(otta.attribute4
+--                        ,gv_stock_adjm
+--                        ,gv_stock_adjm
+--                        ,NULL),gv_dummy
+--              ) = NVL(DECODE(xrpm.stock_adjustment_div                            --在庫調整区分
+--                            ,gv_stock_adjm
+--                            ,gv_stock_adjm
+--                            ,NULL),gv_dummy
+--              )
+--            AND (
                 --出荷依頼・支給依頼
-                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
-            AND NVL(DECODE(mcb1.segment1
-                          ,gv_item_class_prod,gv_item_class_prod
-                                             ,NULL),gv_dummy)
-                = NVL(xrpm.item_div_origin,gv_dummy)
+--                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
+--            AND NVL(DECODE(mcb1.segment1
+--                          ,gv_item_class_prod,gv_item_class_prod
+--                                             ,NULL),gv_dummy)
+--                = NVL(xrpm.item_div_origin,gv_dummy)
                 --出荷依頼・支給依頼以外
-          OR
-                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
-          )
+--          OR
+--                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
+--          )
           --依頼品目区分=振替先品目区分
-          AND (
+--          AND (
                 --出荷依頼・支給依頼
-                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
-            AND NVL(DECODE(mcb2.segment1
-                          ,gv_item_class_prod,gv_item_class_prod
-                                             ,NULL),gv_dummy)
-                = NVL(xrpm.item_div_ahead,gv_dummy)
+--                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
+--            AND NVL(DECODE(mcb2.segment1
+--                          ,gv_item_class_prod,gv_item_class_prod
+--                                             ,NULL),gv_dummy)
+--                = NVL(xrpm.item_div_ahead,gv_dummy)
                 --出荷依頼・支給依頼以外
-          OR
-                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
-          )
+--          OR
+--                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
+--          )
 -- 2008/12/03 N.Yoshida update End 本番障害#371
-          AND xrpm.use_div_invent = gv_inventory                                  --在庫使用区分
-          AND (mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod
-            AND ( (iimb.item_id = iimb2.item_id
-              AND xrpm.prod_div_origin IS NULL
-              AND xrpm.prod_div_ahead IS NULL)
-            OR    (iimb.item_id != iimb2.item_id
-              AND xrpm.prod_div_origin IS NOT NULL
-              AND xrpm.prod_div_ahead IS NOT NULL)
-            )
-          OR NOT( mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod)
-          )
-          AND itp.location = mil.segment1                                    --保管場所コード
-          AND iwm.mtl_organization_id = mil.organization_id
-          AND xoha.arrival_date                                                 --着荷日
-              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
-          GROUP BY 
-            itp.doc_type                                                      --文書タイプ
-           ,itp.item_id                                                       --品目ID
-           ,itp.whse_code                                                     --倉庫コード
-           ,iwm.whse_name                                                        --倉庫名
-           ,itp.location                                                      --保管倉庫コード
-           ,mil.description                                                      --保管倉庫名
-           ,mil.inventory_location_id                                            --保管倉庫ID
-           ,itp.lot_id                                                        --ロットID
-           ,itp.doc_id                                                        --文書ID
-           ,itp.doc_line                                                      --取引明細番号
-           ,ooha.header_id                                                     --受注ヘッダID
-           ,ooha.order_type_id                                                 --受注タイプID
-           ,xrpm.rcv_pay_div                                                      --受払区分
-           ,xrpm.new_div_invent                                                   --新区分
-           ,mil.attribute6                                               --ブロック
-           ,xoha.head_sales_branch
-           ,xoha.deliver_to_id
-           ,xoha.result_deliver_to
-           ,xoha.vendor_site_code
-           ,xoha.arrival_date
-           ,xoha.shipped_date
-           ,xoha.request_no
-           ,xoha.req_status
-           ,hps.party_site_name
-           ,xvsa.vendor_site_name
-           ,otta.order_category_code
-          UNION ALL
+--          AND xrpm.use_div_invent = gv_inventory                                  --在庫使用区分
+--          AND (mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod
+--            AND ( (iimb.item_id = iimb2.item_id
+--              AND xrpm.prod_div_origin IS NULL
+--              AND xrpm.prod_div_ahead IS NULL)
+--            OR    (iimb.item_id != iimb2.item_id
+--              AND xrpm.prod_div_origin IS NOT NULL
+--              AND xrpm.prod_div_ahead IS NOT NULL)
+--            )
+--          OR NOT( mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod)
+--          )
+--          AND itp.location = mil.segment1                                    --保管場所コード
+--          AND iwm.mtl_organization_id = mil.organization_id
+--          AND xoha.arrival_date                                                 --着荷日
+--              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+--          GROUP BY 
+--            itp.doc_type                                                      --文書タイプ
+--           ,itp.item_id                                                       --品目ID
+--           ,itp.whse_code                                                     --倉庫コード
+--           ,iwm.whse_name                                                        --倉庫名
+--           ,itp.location                                                      --保管倉庫コード
+--           ,mil.description                                                      --保管倉庫名
+--           ,mil.inventory_location_id                                            --保管倉庫ID
+--           ,itp.lot_id                                                        --ロットID
+--           ,itp.doc_id                                                        --文書ID
+--           ,itp.doc_line                                                      --取引明細番号
+--           ,ooha.header_id                                                     --受注ヘッダID
+--           ,ooha.order_type_id                                                 --受注タイプID
+--           ,xrpm.rcv_pay_div                                                      --受払区分
+--           ,xrpm.new_div_invent                                                   --新区分
+--           ,mil.attribute6                                               --ブロック
+--           ,xoha.head_sales_branch
+--           ,xoha.deliver_to_id
+--           ,xoha.result_deliver_to
+--           ,xoha.vendor_site_code
+--           ,xoha.arrival_date
+--           ,xoha.shipped_date
+--           ,xoha.request_no
+--           ,xoha.req_status
+--           ,hps.party_site_name
+--           ,xvsa.vendor_site_name
+--           ,otta.order_category_code
+--          UNION ALL
            -- PORC関連
 -- mod start 1.25
 -- 2008/11/28 H.Itou Mod Start 本番障害#227
 --          SELECT
 --          SELECT /*+ leading(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
-          SELECT /*+ leading(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
+--          SELECT /*+ leading(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
 -- 2008/11/28 H.Itou Mod End
 -- mod end 1.25
-            itp.doc_type                                  doc_type            --文書タイプ
-           ,itp.item_id                                   item_id             --品目ID
-           ,itp.whse_code                                 whse_code           --倉庫コード
-           ,iwm.whse_name                                 whse_name           --倉庫名
-           ,itp.location                                  location            --保管倉庫コード
-           ,mil.description                               description         --保管倉庫名
-           ,mil.inventory_location_id                     inventory_location_id   --保管倉庫ID
-           ,itp.lot_id                                    lot_id              --ロットID
-           ,itp.doc_id                                    doc_id              --文書ID
-           ,itp.doc_line                                  doc_line            --取引明細番号
-           ,ooha.header_id                                header_id           --受注ヘッダID
-           ,ooha.order_type_id                            order_type_id       --受注タイプID
-           ,xrpm.rcv_pay_div                              rcv_pay_div         --受払区分
-           ,xrpm.new_div_invent                           new_div_invent      --新区分
-           ,SUM(itp.trans_qty)                            trans_qty_sum       --数量合計
-           ,mil.attribute6                                distribution_block  --ブロック
-           ,xoha.head_sales_branch                        head_sales_branch
-           ,xoha.deliver_to_id                            deliver_to_id
-           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
-                                  ,gv_recsts_shipped2,xoha.vendor_site_code
-            ) deliver_to
-           ,xoha.arrival_date                             arrival_date
-           ,xoha.shipped_date                             shipped_date
-           ,xoha.request_no                               request_no
+--            itp.doc_type                                  doc_type            --文書タイプ
+--           ,itp.item_id                                   item_id             --品目ID
+--           ,itp.whse_code                                 whse_code           --倉庫コード
+--           ,iwm.whse_name                                 whse_name           --倉庫名
+--           ,itp.location                                  location            --保管倉庫コード
+--           ,mil.description                               description         --保管倉庫名
+--           ,mil.inventory_location_id                     inventory_location_id   --保管倉庫ID
+--           ,itp.lot_id                                    lot_id              --ロットID
+--           ,itp.doc_id                                    doc_id              --文書ID
+--           ,itp.doc_line                                  doc_line            --取引明細番号
+--           ,ooha.header_id                                header_id           --受注ヘッダID
+--           ,ooha.order_type_id                            order_type_id       --受注タイプID
+--           ,xrpm.rcv_pay_div                              rcv_pay_div         --受払区分
+--           ,xrpm.new_div_invent                           new_div_invent      --新区分
+--           ,SUM(itp.trans_qty)                            trans_qty_sum       --数量合計
+--           ,mil.attribute6                                distribution_block  --ブロック
+--           ,xoha.head_sales_branch                        head_sales_branch
+--           ,xoha.deliver_to_id                            deliver_to_id
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+--                                  ,gv_recsts_shipped2,xoha.vendor_site_code
+--            ) deliver_to
+--           ,xoha.arrival_date                             arrival_date
+--           ,xoha.shipped_date                             shipped_date
+--           ,xoha.request_no                               request_no
            --,DECODE(xoha.req_status,'04',xpsv.party_site_full_name
-           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
            --                       ,'08',xvsv.vendor_site_name
-                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
-            ) party_site_full_name
-           ,otta.order_category_code                      order_category_code
-          FROM
-           xxwsh_order_headers_all                            xoha                --受注ヘッダ(アドオン)
-           ,hz_party_sites                                    hps
-           ,xxcmn_vendor_sites_all                            xvsa
-           ,xxwsh_order_lines_all                             xola                --受注明細(アドオン)
-           ,oe_transaction_types_all                          otta                --受注タイプ
-           ,xxcmn_rcv_pay_mst                                 xrpm                --受入区分アドオンマスタ
-           ,ic_item_mst_b                                     iimb
-           ,xxcmn_item_mst_b                                  ximb
-           ,ic_item_mst_b                                     iimb2
-           ,xxcmn_item_mst_b                                  ximb2
-           ,gmi_item_categories                               gic1
-           ,mtl_categories_b                                  mcb1
-           ,gmi_item_categories                               gic2
-           ,mtl_categories_b                                  mcb2
-           ,gmi_item_categories                               gic3
-           ,mtl_categories_b                                  mcb3
-           ,ic_whse_mst                                       iwm
-           ,mtl_item_locations                                mil
-           ,ic_tran_pnd                                       itp                 --OPM保留在庫トランザクション
-           ,rcv_shipment_lines                                rsl             --受入明細
-           ,oe_order_headers_all                              ooha                --受注ヘッダ
+--                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
+--            ) party_site_full_name
+--           ,otta.order_category_code                      order_category_code
+--          FROM
+--           xxwsh_order_headers_all                            xoha                --受注ヘッダ(アドオン)
+--           ,hz_party_sites                                    hps
+--           ,xxcmn_vendor_sites_all                            xvsa
+--           ,xxwsh_order_lines_all                             xola                --受注明細(アドオン)
+--           ,oe_transaction_types_all                          otta                --受注タイプ
+--           ,xxcmn_rcv_pay_mst                                 xrpm                --受入区分アドオンマスタ
+--           ,ic_item_mst_b                                     iimb
+--           ,xxcmn_item_mst_b                                  ximb
+--           ,ic_item_mst_b                                     iimb2
+--           ,xxcmn_item_mst_b                                  ximb2
+--           ,gmi_item_categories                               gic1
+--           ,mtl_categories_b                                  mcb1
+--           ,gmi_item_categories                               gic2
+--           ,mtl_categories_b                                  mcb2
+--           ,gmi_item_categories                               gic3
+--           ,mtl_categories_b                                  mcb3
+--           ,ic_whse_mst                                       iwm
+--           ,mtl_item_locations                                mil
+--           ,ic_tran_pnd                                       itp                 --OPM保留在庫トランザクション
+--           ,rcv_shipment_lines                                rsl             --受入明細
+--           ,oe_order_headers_all                              ooha                --受注ヘッダ
 -- 2008/11/28 H.Itou add End
 --          WHERE ooha.header_id = xoha.header_id                                --受注ヘッダID
-          WHERE
+--          WHERE
 -- 2008/11/28 H.Itou del End
 -- 2008/11/28 H.Itou add start
-              rsl.shipment_header_id  = itp.doc_id
-          AND rsl.line_num            = itp.doc_line
-          AND rsl.oe_order_header_id  = xola.header_id
-          AND rsl.oe_order_line_id    = xola.line_id
-          AND xoha.header_id          = ooha.header_id
-          AND xola.order_header_id    = xoha.order_header_id
+--              rsl.shipment_header_id  = itp.doc_id
+--          AND rsl.line_num            = itp.doc_line
+--          AND rsl.oe_order_header_id  = xola.header_id
+--          AND rsl.oe_order_line_id    = xola.line_id
+--          AND xoha.header_id          = ooha.header_id
+--          AND xola.order_header_id    = xoha.order_header_id
 -- 2008/11/28 H.Itou add end
-          AND itp.doc_type = 'PORC'
-          AND rsl.source_document_code = 'RMA'                                --ソース文書
-          AND itp.completed_ind = gv_tran_cmp                                         --完了フラグ
+--          AND itp.doc_type = 'PORC'
+--          AND rsl.source_document_code = 'RMA'                                --ソース文書
+--          AND itp.completed_ind = gv_tran_cmp                                         --完了フラグ
 -- 2008/11/28 H.Itou del Start 本番障害#227
 --          AND itp.doc_id = rsl.shipment_header_id                             --受入ヘッダID
 --          AND itp.doc_line = rsl.line_num                                     --明細番号
 --          AND rsl.oe_order_header_id = ooha.header_id                         --受注ヘッダID
 -- 2008/11/28 H.Itou del End
-          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)             --ステータス
-          AND xoha.actual_confirm_class = gv_confirm_yes                            --実績計上区分
-          AND xoha.latest_external_flag = gv_latest_yes                             --最新フラグ
+--          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)             --ステータス
+--          AND xoha.actual_confirm_class = gv_confirm_yes                            --実績計上区分
+--          AND xoha.latest_external_flag = gv_latest_yes                             --最新フラグ
 -- 2008/11/28 H.Itou del Start 本番障害#227
 --          AND xoha.order_header_id = xola.order_header_id                         --受注アドオンヘッダID
 -- 2008/11/28 H.Itou del End
-          AND ooha.order_type_id = otta.transaction_type_id                    --受注タイプID
-          AND xola.shipping_item_code = iimb.item_no                            --品目コード
-          AND itp.item_id         = iimb.item_id                            --品目ID
-          AND ximb.item_id            = iimb.item_id                            --品目ID
-          AND itp.trans_date
-            BETWEEN ximb.start_date_active
-            AND ximb.end_date_active
+--          AND ooha.order_type_id = otta.transaction_type_id                    --受注タイプID
+--          AND xola.shipping_item_code = iimb.item_no                            --品目コード
+--          AND itp.item_id         = iimb.item_id                            --品目ID
+--          AND ximb.item_id            = iimb.item_id                            --品目ID
+--          AND itp.trans_date
+--            BETWEEN ximb.start_date_active
+--            AND ximb.end_date_active
 -- 2008/11/28 H.Itou del Start 本番障害#227
 --          AND iimb.item_id = gic1.item_id                                     --品目ID
 -- 2008/11/28 H.Itou del End
 -- 2008/11/28 H.Itou mod Start 本番障害#227
 --          AND gic1.item_id = iimb.item_id
-          AND gic1.item_id = itp.item_id
+--          AND gic1.item_id = itp.item_id
 -- 2008/11/28 H.Itou del End
-          AND gic1.category_set_id = cn_item_class_id
-          AND gic1.category_id = mcb1.category_id
-          AND mcb1.segment1 = civ_item_div
+--          AND gic1.category_set_id = cn_item_class_id
+--          AND gic1.category_id = mcb1.category_id
+--          AND mcb1.segment1 = civ_item_div
 -- 2008/11/28 H.Itou del Start 本番障害#227
 --          AND iimb.item_id = gic3.item_id                                     --品目ID
 -- 2008/11/28 H.Itou del End
 -- 2008/11/28 H.Itou mod Start 本番障害#227
 --          AND gic3.item_id = iimb.item_id
-          AND gic3.item_id = itp.item_id
+--          AND gic3.item_id = itp.item_id
 -- 2008/11/28 H.Itou mod end
-          AND gic3.category_set_id = cn_prod_class_id
-          AND gic3.category_id = mcb3.category_id
-          AND mcb3.segment1 = civ_prod_div
-          AND xola.request_item_code = iimb2.item_no                             --品目コード
-          AND ximb2.item_id = iimb2.item_id                            --品目ID
-          AND gic2.item_id = iimb2.item_id
-          AND gic2.category_set_id = cn_item_class_id
-          AND gic2.category_id = mcb2.category_id
-          AND itp.trans_date
-            BETWEEN ximb2.start_date_active
-            AND ximb2.end_date_active
+--          AND gic3.category_set_id = cn_prod_class_id
+--          AND gic3.category_id = mcb3.category_id
+--          AND mcb3.segment1 = civ_prod_div
+--          AND xola.request_item_code = iimb2.item_no                             --品目コード
+--          AND ximb2.item_id = iimb2.item_id                            --品目ID
+--          AND gic2.item_id = iimb2.item_id
+--          AND gic2.category_set_id = cn_item_class_id
+--          AND gic2.category_id = mcb2.category_id
+--          AND itp.trans_date
+--            BETWEEN ximb2.start_date_active
+--            AND ximb2.end_date_active
 -- 2008/11/28 H.Itou del Start 本番障害#227
 --          AND gic2.item_id = iimb2.item_id                                     --品目ID
 -- 2008/11/28 H.Itou del End
-          AND xoha.result_deliver_to_id = hps.party_site_id(+)
-          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
-          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31', gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND itp.doc_type = xrpm.doc_type                                    --文書タイプ
-          AND xrpm.doc_type = 'PORC'
+--          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+--          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+--          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31', gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND itp.doc_type = xrpm.doc_type                                    --文書タイプ
+--          AND xrpm.doc_type = 'PORC'
 -- 2008/12/03 N.Yoshida update Start 本番障害#371
-          AND ( otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
-             OR xrpm.shipment_provision_div IS NULL)
+--          AND ( otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
+--             OR xrpm.shipment_provision_div IS NULL)
           --AND  otta.attribute1 IN (gv_spdiv_ship,gv_spdiv_prov)
           --AND xrpm.shipment_provision_div IN (gv_spdiv_ship,gv_spdiv_prov)
 -- 2008/12/03 N.Yoshida update End 本番障害#371
-          AND (otta.attribute11 = xrpm.ship_prov_rcv_pay_category                 --出荷支給受払カテゴリ
-            OR   xrpm.ship_prov_rcv_pay_category IS NULL)
+--          AND (otta.attribute11 = xrpm.ship_prov_rcv_pay_category                 --出荷支給受払カテゴリ
+--            OR   xrpm.ship_prov_rcv_pay_category IS NULL)
 -- 2008/12/03 N.Yoshida update Start 本番障害#371
           /*  AND NVL(DECODE(mcb1.segment1
                           ,gv_item_class_prod,gv_item_class_prod
@@ -4549,81 +4574,455 @@ AS
                           ,gv_item_class_prod,gv_item_class_prod
                                              ,NULL),gv_dummy)
                 = NVL(xrpm.item_div_ahead,gv_dummy)*/
-          AND NVL(DECODE(otta.attribute4
-                        ,gv_stock_adjm
-                        ,gv_stock_adjm
-                        ,NULL),gv_dummy
-              ) = NVL(DECODE(xrpm.stock_adjustment_div                            --在庫調整区分
-                            ,gv_stock_adjm
-                            ,gv_stock_adjm
-                            ,NULL),gv_dummy
-              )
-            AND (
+--          AND NVL(DECODE(otta.attribute4
+--                        ,gv_stock_adjm
+--                        ,gv_stock_adjm
+--                        ,NULL),gv_dummy
+--              ) = NVL(DECODE(xrpm.stock_adjustment_div                            --在庫調整区分
+--                            ,gv_stock_adjm
+--                            ,gv_stock_adjm
+--                            ,NULL),gv_dummy
+--              )
+--            AND (
                 --出荷依頼・支給依頼
-                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
-            AND NVL(DECODE(mcb1.segment1
-                          ,gv_item_class_prod,gv_item_class_prod
-                                             ,NULL),gv_dummy)
-                = NVL(xrpm.item_div_origin,gv_dummy)
+--                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
+--            AND NVL(DECODE(mcb1.segment1
+--                          ,gv_item_class_prod,gv_item_class_prod
+--                                             ,NULL),gv_dummy)
+--                = NVL(xrpm.item_div_origin,gv_dummy)
                 --出荷依頼・支給依頼以外
-          OR
-                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
-          )
+--          OR
+--                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
+--          )
           --依頼品目区分=振替先品目区分
-          AND (
+--          AND (
                 --出荷依頼・支給依頼
-                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
-            AND NVL(DECODE(mcb2.segment1
-                          ,gv_item_class_prod,gv_item_class_prod
-                                             ,NULL),gv_dummy)
-                = NVL(xrpm.item_div_ahead,gv_dummy)
+--                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
+--            AND NVL(DECODE(mcb2.segment1
+--                          ,gv_item_class_prod,gv_item_class_prod
+--                                             ,NULL),gv_dummy)
+--                = NVL(xrpm.item_div_ahead,gv_dummy)
                 --出荷依頼・支給依頼以外
-          OR
-                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
-          )
+--          OR
+--                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
+--          )
 -- 2008/12/03 N.Yoshida update End 本番障害#371
-          AND xrpm.use_div_invent = gv_inventory                                  --在庫使用区分
-          AND (mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod
-            AND ( (iimb.item_id = iimb2.item_id
-              AND xrpm.prod_div_origin IS NULL
-              AND xrpm.prod_div_ahead IS NULL)
-            OR    (iimb.item_id != iimb2.item_id
-              AND xrpm.prod_div_origin IS NOT NULL
-              AND xrpm.prod_div_ahead IS NOT NULL)
-            )
-          OR NOT( mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod)
-          )
-          AND itp.location = mil.segment1                                    --保管場所コード
-          AND iwm.mtl_organization_id = mil.organization_id
-          AND xoha.arrival_date                                                 --着荷日
-              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
-          GROUP BY 
-            itp.doc_type                                                      --文書タイプ
-           ,itp.item_id                                                       --品目ID
-           ,itp.whse_code                                                     --倉庫コード
-           ,iwm.whse_name                                                        --倉庫名
-           ,itp.location                                                      --保管倉庫コード
-           ,mil.description                                                      --保管倉庫名
-           ,mil.inventory_location_id                                            --保管倉庫ID
-           ,itp.lot_id                                                        --ロットID
-           ,itp.doc_id                                                        --文書ID
-           ,itp.doc_line                                                      --取引明細番号
-           ,ooha.header_id                                                     --受注ヘッダID
-           ,ooha.order_type_id                                                 --受注タイプID
-           ,xrpm.rcv_pay_div                                                      --受払区分
-           ,xrpm.new_div_invent                                                   --新区分
-           ,mil.attribute6                                               --ブロック
-           ,xoha.head_sales_branch
-           ,xoha.deliver_to_id
-           ,xoha.result_deliver_to
-           ,xoha.vendor_site_code
-           ,xoha.arrival_date
-           ,xoha.shipped_date
-           ,xoha.request_no
-           ,xoha.req_status
-           ,hps.party_site_name
-           ,xvsa.vendor_site_name
-           ,otta.order_category_code
+--          AND xrpm.use_div_invent = gv_inventory                                  --在庫使用区分
+--          AND (mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod
+--            AND ( (iimb.item_id = iimb2.item_id
+--              AND xrpm.prod_div_origin IS NULL
+--              AND xrpm.prod_div_ahead IS NULL)
+--            OR    (iimb.item_id != iimb2.item_id
+--              AND xrpm.prod_div_origin IS NOT NULL
+--              AND xrpm.prod_div_ahead IS NOT NULL)
+--            )
+--          OR NOT( mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod)
+--          )
+--          AND itp.location = mil.segment1                                    --保管場所コード
+--          AND iwm.mtl_organization_id = mil.organization_id
+--          AND xoha.arrival_date                                                 --着荷日
+--              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+--          GROUP BY 
+--            itp.doc_type                                                      --文書タイプ
+--           ,itp.item_id                                                       --品目ID
+--           ,itp.whse_code                                                     --倉庫コード
+--           ,iwm.whse_name                                                        --倉庫名
+--           ,itp.location                                                      --保管倉庫コード
+--           ,mil.description                                                      --保管倉庫名
+--           ,mil.inventory_location_id                                            --保管倉庫ID
+--           ,itp.lot_id                                                        --ロットID
+--           ,itp.doc_id                                                        --文書ID
+--           ,itp.doc_line                                                      --取引明細番号
+--           ,ooha.header_id                                                     --受注ヘッダID
+--           ,ooha.order_type_id                                                 --受注タイプID
+--           ,xrpm.rcv_pay_div                                                      --受払区分
+--           ,xrpm.new_div_invent                                                   --新区分
+--           ,mil.attribute6                                               --ブロック
+--           ,xoha.head_sales_branch
+--           ,xoha.deliver_to_id
+--           ,xoha.result_deliver_to
+--           ,xoha.vendor_site_code
+--           ,xoha.arrival_date
+--           ,xoha.shipped_date
+--           ,xoha.request_no
+--           ,xoha.req_status
+--           ,hps.party_site_name
+--           ,xvsa.vendor_site_name
+--           ,otta.order_category_code
+            SELECT
+            -- 出荷依頼
+              xrpm.doc_type                                 doc_type               --文書タイプ
+             ,xmld.item_id                                  item_id                --品目ID
+             ,iwm.whse_code                                 whse_code              --倉庫コード
+             ,iwm.whse_name                                 whse_name              --倉庫名
+             ,xoha.deliver_from                             location               --保管倉庫コード
+             ,mil.description                               description            --保管倉庫名
+             ,mil.inventory_location_id                     inventory_location_id  --保管倉庫ID
+             ,xmld.lot_id                                   lot_id                 --ロットID
+             ,xoha.header_id                                header_id              --受注ヘッダID
+             ,xoha.order_type_id                            order_type_id          --受注タイプID
+             ,xrpm.rcv_pay_div                              rcv_pay_div            --受払区分
+             ,xrpm.new_div_invent                           new_div_invent         --新区分
+             ,SUM(xmld.actual_quantity)                     trans_qty_sum          --数量合計
+             ,mil.attribute6                                distribution_block     --ブロック
+             ,xoha.head_sales_branch                        head_sales_branch
+             ,xoha.deliver_to_id                            deliver_to_id
+             ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+                                    ,gv_recsts_shipped2,xoha.vendor_site_code
+              ) deliver_to
+             ,xoha.arrival_date                             arrival_date
+             ,xoha.shipped_date                             shipped_date
+             ,xoha.request_no                               request_no
+             ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+                                    ,gv_recsts_shipped2,xvsa.vendor_site_name
+              ) party_site_full_name
+             ,otta.order_category_code                      order_category_code
+            FROM
+             xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
+             ,hz_party_sites                                hps
+             ,xxcmn_vendor_sites_all                        xvsa
+             ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
+             ,xxinv_mov_lot_details                         xmld                --移動ロット詳細(アドオン)
+             ,oe_transaction_types_all                      otta                --受注タイプ
+             ,xxcmn_rcv_pay_mst                             xrpm                --受入区分アドオンマスタ
+             ,ic_item_mst_b                                 iimb
+             ,xxcmn_item_mst_b                              ximb
+             ,ic_item_mst_b                                 iimb2
+             ,xxcmn_item_mst_b                              ximb2
+             ,gmi_item_categories                           gic1
+             ,mtl_categories_b                              mcb1
+             ,gmi_item_categories                           gic2
+             ,mtl_categories_b                              mcb2
+             ,gmi_item_categories                           gic3
+             ,mtl_categories_b                              mcb3
+             ,ic_whse_mst                                   iwm
+             ,mtl_item_locations                            mil
+            WHERE
+                xola.order_header_id    = xoha.order_header_id
+            AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)       --ステータス
+--            AND xoha.actual_confirm_class = gv_cmp_actl_yes                     --実績計上区分
+            AND xoha.latest_external_flag = gv_latest_yes                       --最新フラグ
+            and xmld.mov_line_id = xola.order_line_id
+            and xmld.document_type_code in (gv_dctype_shipped,gv_dctype_shikyu)
+            and xmld.record_type_code = gv_rectype_out
+            AND xoha.order_type_id = otta.transaction_type_id                   --受注タイプID
+            AND xola.shipping_item_code = iimb.item_no                          --品目コード
+            AND xmld.item_id         = iimb.item_id                             --品目ID
+            AND ximb.item_id        = iimb.item_id                              --品目ID
+            AND xoha.arrival_date
+              BETWEEN ximb.start_date_active
+              AND ximb.end_date_active
+            AND gic1.item_id = xmld.item_id
+            AND gic1.category_set_id = cn_item_class_id
+            AND gic1.category_id = mcb1.category_id
+            AND mcb1.segment1 = civ_item_div
+            AND gic3.item_id = xmld.item_id
+            AND gic3.category_set_id = cn_prod_class_id
+            AND gic3.category_id = mcb3.category_id
+            AND mcb3.segment1 = civ_prod_div
+            AND xola.request_item_code = iimb2.item_no                          --品目コード
+            AND ximb2.item_id = iimb2.item_id                                   --品目ID
+            AND gic2.item_id = iimb2.item_id
+            AND gic2.category_set_id = cn_item_class_id
+            AND gic2.category_id = mcb2.category_id
+            AND xoha.arrival_date
+              BETWEEN ximb2.start_date_active
+              AND ximb2.end_date_active
+            AND xoha.result_deliver_to_id = hps.party_site_id(+)
+            AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+            AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND xrpm.doc_type = 'OMSO'
+            AND xrpm.shipment_provision_div = gv_spdiv_ship
+            and otta.attribute1 = xrpm.shipment_provision_div                   --出荷支給区分
+            AND xrpm.stock_adjustment_div = gv_stock_etc
+            and otta.attribute4 = xrpm.stock_adjustment_div                     --在庫調整区分
+--            AND DECODE(xrpm.item_div_origin,gv_item_class_prod,gv_item_class_prod,gv_dummy) = NVL(mcb1.segment1,gv_dummy)
+--            AND DECODE(xrpm.item_div_ahead,gv_item_class_prod,gv_item_class_prod,gv_dummy) = NVL(mcb2.segment1,gv_dummy)
+            AND DECODE(mcb1.segment1,gv_item_class_prod,gv_item_class_prod,gv_dummy) = NVL(xrpm.item_div_origin,gv_dummy)
+            AND DECODE(mcb2.segment1,gv_item_class_prod,gv_item_class_prod,gv_dummy) = NVL(xrpm.item_div_ahead,gv_dummy)
+            AND xrpm.use_div_invent = gv_inventory                              --在庫使用区分
+            AND xoha.deliver_from = mil.segment1                                --保管場所コード
+            AND iwm.mtl_organization_id = mil.organization_id
+            AND xoha.arrival_date                                               --着荷日
+                BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+            GROUP BY 
+              xrpm.doc_type                                                     --文書タイプ
+             ,xmld.item_id                                                      --品目ID
+             ,iwm.whse_code                                                     --倉庫コード
+             ,iwm.whse_name                                                     --倉庫名
+             ,xoha.deliver_from                                                 --保管倉庫コード
+             ,mil.description                                                   --保管倉庫名
+             ,mil.inventory_location_id                                         --保管倉庫ID
+             ,xmld.lot_id                                                       --ロットID
+             ,xoha.header_id                                                    --受注ヘッダID
+             ,xoha.order_type_id                                                --受注タイプID
+             ,xrpm.rcv_pay_div                                                  --受払区分
+             ,xrpm.new_div_invent                                               --新区分
+             ,mil.attribute6                                                    --ブロック
+             ,xoha.head_sales_branch
+             ,xoha.deliver_to_id
+             ,xoha.result_deliver_to
+             ,xoha.vendor_site_code
+             ,xoha.arrival_date
+             ,xoha.shipped_date
+             ,xoha.request_no
+             ,xoha.req_status
+             ,hps.party_site_name
+             ,xvsa.vendor_site_name
+             ,otta.order_category_code
+            UNION ALL
+            SELECT
+            -- 支給依頼
+              xrpm.doc_type                                 doc_type                --文書タイプ
+             ,xmld.item_id                                  item_id                 --品目ID
+             ,iwm.whse_code                                 whse_code               --倉庫コード
+             ,iwm.whse_name                                 whse_name               --倉庫名
+             ,xoha.deliver_from                             location                --保管倉庫コード
+             ,mil.description                               description             --保管倉庫名
+             ,mil.inventory_location_id                     inventory_location_id   --保管倉庫ID
+             ,xmld.lot_id                                    lot_id                 --ロットID
+             ,xoha.header_id                                header_id               --受注ヘッダID
+             ,xoha.order_type_id                            order_type_id           --受注タイプID
+             ,xrpm.rcv_pay_div                              rcv_pay_div             --受払区分
+             ,xrpm.new_div_invent                           new_div_invent          --新区分
+             ,SUM(xmld.actual_quantity)                     trans_qty_sum           --数量合計
+             ,mil.attribute6                                distribution_block      --ブロック
+             ,xoha.head_sales_branch                        head_sales_branch
+             ,xoha.deliver_to_id                            deliver_to_id
+             ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+                                    ,gv_recsts_shipped2,xoha.vendor_site_code
+              ) deliver_to
+             ,xoha.arrival_date                             arrival_date
+             ,xoha.shipped_date                             shipped_date
+             ,xoha.request_no                               request_no
+             ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+                                    ,gv_recsts_shipped2,xvsa.vendor_site_name
+              ) party_site_full_name
+             ,otta.order_category_code                      order_category_code
+            FROM
+             xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
+             ,hz_party_sites                                hps
+             ,xxcmn_vendor_sites_all                        xvsa
+             ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
+               ,xxinv_mov_lot_details                       xmld                --移動ロット詳細(アドオン)
+             ,oe_transaction_types_all                      otta                --受注タイプ
+             ,xxcmn_rcv_pay_mst                             xrpm                --受入区分アドオンマスタ
+             ,ic_item_mst_b                                 iimb
+             ,xxcmn_item_mst_b                              ximb
+             ,ic_item_mst_b                                 iimb2
+             ,xxcmn_item_mst_b                              ximb2
+             ,gmi_item_categories                           gic1
+             ,mtl_categories_b                              mcb1
+             ,gmi_item_categories                           gic2
+             ,mtl_categories_b                              mcb2
+             ,gmi_item_categories                           gic3
+             ,mtl_categories_b                              mcb3
+             ,ic_whse_mst                                   iwm
+             ,mtl_item_locations                            mil
+            WHERE
+                xola.order_header_id    = xoha.order_header_id
+            AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)       --ステータス
+--            AND xoha.actual_confirm_class = gv_cmp_actl_yes                     --実績計上区分
+            AND xoha.latest_external_flag = gv_latest_yes                       --最新フラグ
+            AND xmld.mov_line_id = xola.order_line_id
+            AND xmld.document_type_code in (gv_dctype_shipped,gv_dctype_shikyu)
+            AND xmld.record_type_code = gv_rectype_out
+            AND xoha.order_type_id = otta.transaction_type_id                   --受注タイプID
+            AND xola.shipping_item_code = iimb.item_no                          --品目コード
+            AND xmld.item_id         = iimb.item_id                             --品目ID
+            AND ximb.item_id        = iimb.item_id                              --品目ID
+            AND xoha.arrival_date
+              BETWEEN ximb.start_date_active
+              AND ximb.end_date_active
+            AND gic1.item_id = xmld.item_id
+            AND gic1.category_set_id = cn_item_class_id
+            AND gic1.category_id = mcb1.category_id
+            AND mcb1.segment1 = civ_item_div
+            AND gic3.item_id = xmld.item_id
+            AND gic3.category_set_id = cn_prod_class_id
+            AND gic3.category_id = mcb3.category_id
+            AND mcb3.segment1 = civ_prod_div
+            AND xola.request_item_code = iimb2.item_no                          --品目コード
+            AND ximb2.item_id = iimb2.item_id                                   --品目ID
+            AND gic2.item_id = iimb2.item_id
+            AND gic2.category_set_id = cn_item_class_id
+            AND gic2.category_id = mcb2.category_id
+            AND xoha.arrival_date
+              BETWEEN ximb2.start_date_active
+              AND ximb2.end_date_active
+            AND xoha.result_deliver_to_id = hps.party_site_id(+)
+            AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+            AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND xrpm.doc_type = 'OMSO'
+            AND xrpm.shipment_provision_div = gv_spdiv_prov
+            AND otta.attribute1 = xrpm.shipment_provision_div                   --出荷支給区分
+            AND xrpm.stock_adjustment_div = gv_stock_etc
+            AND otta.attribute4 = xrpm.stock_adjustment_div                     --在庫調整区分
+            AND otta.attribute11 = xrpm.ship_prov_rcv_pay_category
+            AND DECODE(mcb1.segment1,gv_item_class_prod,gv_item_class_prod,gv_dummy) = NVL(xrpm.item_div_origin,gv_dummy)
+            AND DECODE(mcb2.segment1,gv_item_class_prod,gv_item_class_prod,gv_dummy) = NVL(xrpm.item_div_ahead,gv_dummy)
+            AND xrpm.use_div_invent = gv_inventory                              --在庫使用区分
+            AND (mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod
+              AND ( (iimb.item_id = iimb2.item_id
+                AND xrpm.prod_div_origin IS NULL
+                AND xrpm.prod_div_ahead IS NULL)
+              OR    (iimb.item_id != iimb2.item_id
+                AND xrpm.prod_div_origin IS NOT NULL
+                AND xrpm.prod_div_ahead IS NOT NULL)
+              )
+             OR NOT( mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod)
+             )
+            AND xoha.deliver_from = mil.segment1                                --保管場所コード
+            AND iwm.mtl_organization_id = mil.organization_id
+            AND xoha.arrival_date                                               --着荷日
+                BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+            GROUP BY 
+              xrpm.doc_type                                                     --文書タイプ
+             ,xmld.item_id                                                      --品目ID
+             ,iwm.whse_code                                                     --倉庫コード
+             ,iwm.whse_name                                                     --倉庫名
+             ,xoha.deliver_from                                                 --保管倉庫コード
+             ,mil.description                                                   --保管倉庫名
+             ,mil.inventory_location_id                                         --保管倉庫ID
+             ,xmld.lot_id                                                       --ロットID
+             ,xoha.header_id                                                    --受注ヘッダID
+             ,xoha.order_type_id                                                --受注タイプID
+             ,xrpm.rcv_pay_div                                                  --受払区分
+             ,xrpm.new_div_invent                                               --新区分
+             ,mil.attribute6                                                    --ブロック
+             ,xoha.head_sales_branch
+             ,xoha.deliver_to_id
+             ,xoha.result_deliver_to
+             ,xoha.vendor_site_code
+             ,xoha.arrival_date
+             ,xoha.shipped_date
+             ,xoha.request_no
+             ,xoha.req_status
+             ,hps.party_site_name
+             ,xvsa.vendor_site_name
+             ,otta.order_category_code
+            UNION ALL
+            SELECT
+            -- 廃棄・見本
+              xrpm.doc_type                                 doc_type               --文書タイプ
+             ,xmld.item_id                                  item_id                --品目ID
+             ,iwm.whse_code                                 whse_code              --倉庫コード
+             ,iwm.whse_name                                 whse_name              --倉庫名
+             ,xoha.deliver_from                             location               --保管倉庫コード
+             ,mil.description                               description            --保管倉庫名
+             ,mil.inventory_location_id                     inventory_location_id  --保管倉庫ID
+             ,xmld.lot_id                                    lot_id                --ロットID
+             ,xoha.header_id                                header_id              --受注ヘッダID
+             ,xoha.order_type_id                            order_type_id          --受注タイプID
+             ,xrpm.rcv_pay_div                              rcv_pay_div            --受払区分
+             ,xrpm.new_div_invent                           new_div_invent         --新区分
+             ,SUM(xmld.actual_quantity)                     trans_qty_sum          --数量合計
+             ,mil.attribute6                                distribution_block     --ブロック
+             ,xoha.head_sales_branch                        head_sales_branch
+             ,xoha.deliver_to_id                            deliver_to_id
+             ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+                                    ,gv_recsts_shipped2,xoha.vendor_site_code
+              ) deliver_to
+             ,xoha.arrival_date                             arrival_date
+             ,xoha.shipped_date                             shipped_date
+             ,xoha.request_no                               request_no
+             ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+                                    ,gv_recsts_shipped2,xvsa.vendor_site_name
+              ) party_site_full_name
+             ,otta.order_category_code                      order_category_code
+            FROM
+             xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
+             ,hz_party_sites                                hps
+             ,xxcmn_vendor_sites_all                        xvsa
+             ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
+               ,xxinv_mov_lot_details                       xmld                --移動ロット詳細(アドオン)
+             ,oe_transaction_types_all                      otta                --受注タイプ
+             ,xxcmn_rcv_pay_mst                             xrpm                --受入区分アドオンマスタ
+             ,ic_item_mst_b                                 iimb
+             ,xxcmn_item_mst_b                              ximb
+             ,ic_item_mst_b                                 iimb2
+             ,xxcmn_item_mst_b                              ximb2
+             ,gmi_item_categories                           gic1
+             ,mtl_categories_b                              mcb1
+             ,gmi_item_categories                           gic2
+             ,mtl_categories_b                              mcb2
+             ,gmi_item_categories                           gic3
+             ,mtl_categories_b                              mcb3
+             ,ic_whse_mst                                   iwm
+             ,mtl_item_locations                            mil
+            WHERE
+                xola.order_header_id    = xoha.order_header_id
+            AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)       --ステータス
+            AND xoha.actual_confirm_class = gv_cmp_actl_yes                     --実績計上区分
+            AND xoha.latest_external_flag = gv_latest_yes                       --最新フラグ
+            AND xmld.mov_line_id = xola.order_line_id
+            AND xmld.document_type_code in (gv_dctype_shipped,gv_dctype_shikyu)
+            AND xmld.record_type_code = gv_rectype_out
+            AND xoha.order_type_id = otta.transaction_type_id                   --受注タイプID
+            AND xola.shipping_item_code = iimb.item_no                          --品目コード
+            AND xmld.item_id         = iimb.item_id                             --品目ID
+            AND ximb.item_id        = iimb.item_id                              --品目ID
+            AND xoha.arrival_date
+              BETWEEN ximb.start_date_active
+              AND ximb.end_date_active
+            AND gic1.item_id = xmld.item_id
+            AND gic1.category_set_id = cn_item_class_id
+            AND gic1.category_id = mcb1.category_id
+            AND mcb1.segment1 = civ_item_div
+            AND gic3.item_id = xmld.item_id
+            AND gic3.category_set_id = cn_prod_class_id
+            AND gic3.category_id = mcb3.category_id
+            AND mcb3.segment1 = civ_prod_div
+            AND xola.request_item_code = iimb2.item_no                          --品目コード
+            AND ximb2.item_id = iimb2.item_id                                   --品目ID
+            AND gic2.item_id = iimb2.item_id
+            AND gic2.category_set_id = cn_item_class_id
+            AND gic2.category_id = mcb2.category_id
+            AND xoha.arrival_date
+              BETWEEN ximb2.start_date_active
+              AND ximb2.end_date_active
+            AND xoha.result_deliver_to_id = hps.party_site_id(+)
+            AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+            AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND xrpm.doc_type = 'OMSO'
+            AND xrpm.shipment_provision_div IS NULL                             --出荷支給区分
+            AND xrpm.stock_adjustment_div = gv_stock_adjm                       --在庫調整区分
+            AND otta.attribute4 = xrpm.stock_adjustment_div                     --在庫調整区分
+            AND otta.attribute11 = xrpm.ship_prov_rcv_pay_category
+            AND xrpm.use_div_invent = gv_inventory                              --在庫使用区分
+            AND xoha.deliver_from = mil.segment1                                --保管場所コード
+            AND iwm.mtl_organization_id = mil.organization_id
+            AND xoha.arrival_date                                               --着荷日
+                BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+            GROUP BY
+              xrpm.doc_type                                                     --文書タイプ
+             ,xmld.item_id                                                      --品目ID
+             ,iwm.whse_code                                                     --倉庫コード
+             ,iwm.whse_name                                                     --倉庫名
+             ,xoha.deliver_from                                                 --保管倉庫コード
+             ,mil.description                                                   --保管倉庫名
+             ,mil.inventory_location_id                                         --保管倉庫ID
+             ,xmld.lot_id                                                       --ロットID
+             ,xoha.header_id                                                    --受注ヘッダID
+             ,xoha.order_type_id                                                --受注タイプID
+             ,xrpm.rcv_pay_div                                                  --受払区分
+             ,xrpm.new_div_invent                                               --新区分
+             ,mil.attribute6                                                    --ブロック
+             ,xoha.head_sales_branch
+             ,xoha.deliver_to_id
+             ,xoha.result_deliver_to
+             ,xoha.vendor_site_code
+             ,xoha.arrival_date
+             ,xoha.shipped_date
+             ,xoha.request_no
+             ,xoha.req_status
+             ,hps.party_site_name
+             ,xvsa.vendor_site_name
+             ,otta.order_category_code
+-- 2008/12/18 Y.Yamamoto update End 本番障害#732
         )                                                     sh_info             --出荷関連情報
          ,xxcmn_parties                                       xp
          ,hz_cust_accounts                                    hca
@@ -4636,6 +5035,7 @@ AS
         ------------------------------
         SELECT
           gv_trtry_rt                                         territory           --領域(倉替返品)
+         ,1                                                   txns_id
          ,rt_info.item_id                                     item_id             --品目ID
          ,rt_info.lot_id                                      lot_id              --ロットID
 --         ,TO_CHAR(xoha.shipped_date,gv_fmt_ymd)               standard_date       --日付
@@ -4770,6 +5170,7 @@ AS
         -- 品目振替
         SELECT
            gv_trtry_mf                                         territory           -- 領域(生産)
+         ,1                                                   txns_id
          , gmd.item_id                                         item_id             -- 品目ID
          , itp.lot_id                                          lot_id              -- ロットID
          , TO_CHAR( itp.trans_date, gv_fmt_ymd )                                   -- 品目振替
@@ -4913,6 +5314,7 @@ AS
         -- 返品原料、解体半製品
         SELECT
            gv_trtry_mf                                         territory           -- 領域(生産)
+         ,1                                                   txns_id
          , gmd.item_id                                         item_id             -- 品目ID
          , itp.lot_id                                          lot_id              -- ロットID
          , TO_CHAR( itp.trans_date, gv_fmt_ymd )
@@ -5054,6 +5456,7 @@ AS
         -- その他
         SELECT /*+ leading(gmd_d gbh gmd itp gmd_t gic1 mcb1 gic2 mcb2 xrpm grb grct mil iwm) use_nl(gmd_d gbh gmd itp gmd_t gic1 mcb1 gic2 mcb2 xrpm grb grct mil iwm) */
            gv_trtry_mf                                         territory           -- 領域(生産)
+         ,1                                                   txns_id
          , gmd.item_id                                         item_id             -- 品目ID
          , itp.lot_id                                          lot_id              -- ロットID
          , SUBSTRB( gmd_d.attribute11, 1, 10 )
@@ -5199,6 +5602,7 @@ AS
         ------------------------------
         SELECT
           gv_trtry_ad                                         territory           --領域(在庫調整)
+         ,1                                                   txns_id
          ,itc.item_id                                         item_id             --品目ID
          ,itc.lot_id                                          lot_id              --ロットID
          ,TO_CHAR(itc.trans_date,gv_fmt_ymd)                  standard_date       --日付
@@ -5650,13 +6054,18 @@ AS
         ------------------------------
         -- 1.発注実績情報
         ------------------------------
+-- mod start 1.29
 -- mod start 1.25
         --SELECT /*+ leading(pha pla rsl itp iimb gic1 mcb1 gic2 mcb2 rt xrart xrpm pv xv mil iwm) use_nl(pha pla rsl itp iimb gic1 mcb1 gic2 mcb2 rt xrart xrpm pv xv mil iwm) */
-        SELECT /*+ leading(pha pla rsl rt itp gic1 mcb1 gic2 mcb2) use_nl(pha pla rsl rt itp gic1 mcb1 gic2 mcb2) */
+--        SELECT /*+ leading(pha pla rsl rt itp gic1 mcb1 gic2 mcb2) use_nl(pha pla rsl rt itp gic1 mcb1 gic2 mcb2) */
+        SELECT /*+ leading(pha pla rsl xrart gic1 mcb1 gic2 mcb2) use_nl(pha pla rsl xrart gic1 mcb1 gic2 mcb2) */
 -- mod end 1.25
-          gv_trtry_po                                         territory           --領域(発注)
+--          gv_trtry_po                                         territory           --領域(発注)
+          DISTINCT gv_trtry_po                                territory           --領域(発注)
+         ,xrart.txns_id                                       txns_id             --トランザクションID
          ,iimb.item_id                                        item_id             --品目ID
-         ,itp.lot_id                                          lot_id              --ロットID
+--         ,itp.lot_id                                          lot_id              --ロットID
+         ,NVL(xrart.lot_id,0)                                 lot_id              --ロットID
          ,pha.attribute4                                      standard_date       --日付
          ,xrpm.new_div_invent                                 reason_code         --新区分
          ,pha.segment1                                        slip_no             --伝票No
@@ -5666,11 +6075,14 @@ AS
          ,''                                                  jrsd_name           --管轄拠点名
          ,pv.segment1                                         other_code          --相手先コード
          ,pv.vendor_name                                      other_name          --相手先名称
-         ,SUM(NVL(pla.quantity,0))                            in_qty              --入庫数
+--         ,SUM(NVL(pla.quantity,0))                            in_qty              --入庫数
+         ,NVL(xrart.quantity,0)                               in_qty              --入庫数
          ,0                                                   out_qty             --出庫数
-         ,itp.whse_code                                       whse_code           --倉庫コード
+--         ,itp.whse_code                                       whse_code           --倉庫コード
+         ,iwm.whse_code                                       whse_code           --倉庫コード
          ,iwm.whse_name                                       whse_name           --倉庫名
-         ,itp.location                                        location            --保管倉庫コード
+--         ,itp.location                                        location            --保管倉庫コード
+         ,xrart.location_code                                 location            --保管倉庫コード
          ,mil.description                                     description         --保管倉庫名
          ,mil.attribute6                                      distribution_block  --ブロック
          ,xrpm.rcv_pay_div                                    rcv_pay_div         --受払区分
@@ -5679,7 +6091,7 @@ AS
           po_headers_all                                      pha                 --発注ヘッダ
          ,po_lines_all                                        pla                 --発注明細
          ,rcv_shipment_lines                                  rsl                 --受入明細
-         ,rcv_transactions                                    rt                  --受入取引
+ --        ,rcv_transactions                                    rt                  --受入取引
          ,ic_lots_mst                                         ilm                 --OPMロットマスタ(結合用)
          ,xxpo_rcv_and_rtn_txns                               xrart               --受入返品実績
          ,po_vendors                                          pv
@@ -5687,7 +6099,7 @@ AS
          ,ic_whse_mst                                         iwm
          ,mtl_item_locations                                  mil
          ,ic_item_mst_b                                       iimb
-         ,ic_tran_pnd                                         itp                 --OPM保留在庫トランザクション
+ --        ,ic_tran_pnd                                         itp                 --OPM保留在庫トランザクション
          ,xxcmn_rcv_pay_mst                                   xrpm                --受入区分アドオンマスタ
          ,mtl_categories_b                                    mcb1
          ,gmi_item_categories                                 gic1
@@ -5704,7 +6116,7 @@ AS
         AND rsl.po_header_id = pha.po_header_id                                   --発注ヘッダID
         AND rsl.po_line_id = pla.po_line_id                                       --発注明細ID
         --受入取引抽出条件
-        AND rsl.shipment_line_id = rt.shipment_line_id                            --受入明細ID
+--        AND rsl.shipment_line_id = rt.shipment_line_id                            --受入明細ID
         --受入返品実績抽出条件
         AND pha.segment1 = xrart.source_document_number                           --元文書番号
         AND pla.line_num = xrart.source_document_line_num                         --元文書明細番号
@@ -5713,18 +6125,21 @@ AS
         AND pha.vendor_id = pv.vendor_id                                         --仕入先ID
         AND xv.start_date_active <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
         AND xv.end_date_active >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-        AND itp.doc_type = 'PORC'                                                 --文書タイプ
-        AND rsl.shipment_header_id = itp.doc_id                                   --文書ID
-        AND rsl.line_num = itp.doc_line                                           --取引明細番号
-        AND rt.transaction_id = itp.line_id                                       --ラインID
-        AND iimb.item_id = itp.item_id                                            --品目ID
-        AND ilm.lot_id = itp.lot_id                                               --ロットID
-        AND mil.segment1 = itp.location                                          --保管倉庫コード
-        AND itp.completed_ind = gv_tran_cmp                                       --完了フラグ
+--        AND itp.doc_type = 'PORC'                                                 --文書タイプ
+--        AND rsl.shipment_header_id = itp.doc_id                                   --文書ID
+--        AND rsl.line_num = itp.doc_line                                           --取引明細番号
+--        AND rt.transaction_id = itp.line_id                                       --ラインID
+--        AND iimb.item_id = itp.item_id                                            --品目ID
+        AND iimb.item_id = xrart.item_id                                          --品目ID
+--        AND ilm.lot_id = itp.lot_id                                               --ロットID
+        AND ilm.lot_id = NVL(xrart.lot_id,0)                                        --ロットID
+--        AND mil.segment1 = itp.location                                          --保管倉庫コード
+        AND mil.segment1 = xrart.location_code                                    --保管倉庫コード
+--        AND itp.completed_ind = gv_tran_cmp                                       --完了フラグ
         --受払区分マスタアドオン抽出条件
         AND xrpm.doc_type = 'PORC'                                                --文書タイプ
         AND xrpm.source_document_code = 'PO'                                      --ソース文書
-        AND xrpm.transaction_type = rt.transaction_type                           --PO取引タイプ
+--        AND xrpm.transaction_type = rt.transaction_type                           --PO取引タイプ
         AND xrpm.use_div_invent = gv_inventory                                    --在庫使用区分
         AND iwm.mtl_organization_id = mil.organization_id
         AND pv.vendor_id = xv.vendor_id
@@ -5736,39 +6151,44 @@ AS
         --カテゴリセットが商品区分である品目
 -- mod start 1.26
 --        AND iimb.item_id = gic1.item_id
-        AND itp.item_id = gic1.item_id
+--        AND itp.item_id = gic1.item_id
+        AND xrart.item_id = gic1.item_id
         AND gic1.category_set_id    = cn_prod_class_id
         --カテゴリセットが品目区分である品目
 --        AND iimb.item_id = gic2.item_id
-        AND itp.item_id = gic2.item_id
+--        AND itp.item_id = gic2.item_id
+        AND xrart.item_id = gic2.item_id
 -- mod end 1.26
         AND gic2.category_set_id   = cn_item_class_id
         AND mcb1.category_id       = gic1.category_id
         AND mcb2.category_id       = gic2.category_id
-        AND ilm.item_id            = itp.item_id
+--        AND ilm.item_id            = itp.item_id
+        AND ilm.item_id            = xrart.item_id
         ----------------------------------------------------------------------------------------
-        GROUP BY
-          iimb.item_id                                                            --品目ID
-         ,itp.lot_id                                                              --ロットID
-         ,pha.attribute4                                                          --日付
-         ,xrpm.new_div_invent                                                     --新区分
-         ,pha.segment1                                                            --伝票No
-         ,pha.attribute4                                                          --出庫日/着日
-         ,pv.segment1
-         ,pv.vendor_name
-         ,itp.whse_code                                                           --倉庫コード
-         ,iwm.whse_name
-         ,itp.location                                                            --保管倉庫コード
-         ,mil.description
-         ,mil.attribute6
-         ,xrpm.rcv_pay_div                                                        --受払区分
-         ,xrpm.transaction_type                                                   --PO取引タイプ
+--        GROUP BY
+--          iimb.item_id                                                            --品目ID
+--         ,itp.lot_id                                                              --ロットID
+--         ,pha.attribute4                                                          --日付
+--         ,xrpm.new_div_invent                                                     --新区分
+--         ,pha.segment1                                                            --伝票No
+--         ,pha.attribute4                                                          --出庫日/着日
+--         ,pv.segment1
+--         ,pv.vendor_name
+--         ,itp.whse_code                                                           --倉庫コード
+--         ,iwm.whse_name
+--         ,itp.location                                                            --保管倉庫コード
+--         ,mil.description
+--         ,mil.attribute6
+--         ,xrpm.rcv_pay_div                                                        --受払区分
+--         ,xrpm.transaction_type                                                   --PO取引タイプ
+-- mod end 1.29
         UNION ALL
         ------------------------------
         -- 2.移動実績情報
         ------------------------------
         SELECT
           gv_trtry_mv                                         territory           --領域(移動)
+         ,1                                                   txns_id
          ,iimb.item_id                                        item_id             --品目ID
          ,xm.lot_id                                           lot_id              --ロットID
          ,TO_CHAR(xm.actual_ship_date,gv_fmt_ymd)             standard_date       --日付
@@ -6426,6 +6846,7 @@ AS
        ------------------------------
        SELECT
           gv_trtry_sh                                         territory           --領域(出荷)
+         ,1                                                   txns_id
          ,sh_info.item_id                                     item_id             --品目ID
          ,sh_info.lot_id                                      lot_id              --ロットID
          ,TO_CHAR(sh_info.shipped_date,gv_fmt_ymd)          standard_date       --日付
@@ -6465,116 +6886,117 @@ AS
         FROM ( --OMSO関連情報
 -- mod start 1.25
           --SELECT
-          SELECT /*+ leading(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
+-- 2008/12/18 Y.Yamamoto update Start 本番障害#732
+--          SELECT /*+ leading(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
 -- mod end 1.25
-            itp.doc_type                                  doc_type            --文書タイプ
-           ,itp.item_id                                   item_id             --品目ID
-           ,itp.whse_code                                 whse_code           --倉庫コード
-           ,iwm.whse_name                                 whse_name           --倉庫名
-           ,itp.location                                  location            --保管倉庫コード
-           ,mil.description                               description         --保管倉庫名
-           ,mil.inventory_location_id                     inventory_location_id   --保管倉庫ID
-           ,itp.lot_id                                    lot_id              --ロットID
-           ,itp.doc_id                                    doc_id              --文書ID
-           ,itp.doc_line                                  doc_line            --取引明細番号
-           ,ooha.header_id                                header_id           --受注ヘッダID
-           ,ooha.order_type_id                            order_type_id       --受注タイプID
-           ,xrpm.rcv_pay_div                              rcv_pay_div         --受払区分
-           ,xrpm.new_div_invent                           new_div_invent      --新区分
-           ,SUM(itp.trans_qty)                            trans_qty_sum       --数量合計
-           ,mil.attribute6                                distribution_block  --ブロック
-           ,xoha.head_sales_branch                        head_sales_branch
-           ,xoha.deliver_to_id                            deliver_to_id
-           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
-                                  ,gv_recsts_shipped2,xoha.vendor_site_code
-            ) deliver_to
-           ,xoha.arrival_date                             arrival_date
-           ,xoha.shipped_date                             shipped_date
-           ,xoha.request_no                               request_no
-           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
-                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
-            ) party_site_full_name
-           ,otta.order_category_code                      order_category_code
-          FROM
-           xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
-           ,hz_party_sites                                hps
-           ,xxcmn_vendor_sites_all                        xvsa
-           ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
-           ,oe_transaction_types_all                      otta                --受注タイプ
-           ,xxcmn_rcv_pay_mst                             xrpm                --受入区分アドオンマスタ
-           ,ic_item_mst_b                                 iimb
-           ,xxcmn_item_mst_b                              ximb
-           ,ic_item_mst_b                                 iimb2
-           ,xxcmn_item_mst_b                              ximb2
-           ,gmi_item_categories                           gic1
-           ,mtl_categories_b                              mcb1
-           ,gmi_item_categories                           gic2
-           ,mtl_categories_b                              mcb2
-           ,gmi_item_categories                           gic3
-           ,mtl_categories_b                              mcb3
-           ,ic_whse_mst                                   iwm
-           ,mtl_item_locations                            mil
-           ,ic_tran_pnd                                   itp                 --OPM保留在庫トランザクション
-           ,wsh_delivery_details                          wdd                 --出荷搬送明細
-           ,oe_order_headers_all                          ooha                --受注ヘッダ
+--            itp.doc_type                                  doc_type            --文書タイプ
+--           ,itp.item_id                                   item_id             --品目ID
+--           ,itp.whse_code                                 whse_code           --倉庫コード
+--           ,iwm.whse_name                                 whse_name           --倉庫名
+--           ,itp.location                                  location            --保管倉庫コード
+--           ,mil.description                               description         --保管倉庫名
+--           ,mil.inventory_location_id                     inventory_location_id   --保管倉庫ID
+--           ,itp.lot_id                                    lot_id              --ロットID
+--           ,itp.doc_id                                    doc_id              --文書ID
+--           ,itp.doc_line                                  doc_line            --取引明細番号
+--           ,ooha.header_id                                header_id           --受注ヘッダID
+--           ,ooha.order_type_id                            order_type_id       --受注タイプID
+--           ,xrpm.rcv_pay_div                              rcv_pay_div         --受払区分
+--           ,xrpm.new_div_invent                           new_div_invent      --新区分
+--           ,SUM(itp.trans_qty)                            trans_qty_sum       --数量合計
+--           ,mil.attribute6                                distribution_block  --ブロック
+--           ,xoha.head_sales_branch                        head_sales_branch
+--           ,xoha.deliver_to_id                            deliver_to_id
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+--                                  ,gv_recsts_shipped2,xoha.vendor_site_code
+--            ) deliver_to
+--           ,xoha.arrival_date                             arrival_date
+--           ,xoha.shipped_date                             shipped_date
+--           ,xoha.request_no                               request_no
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+--                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
+--            ) party_site_full_name
+--           ,otta.order_category_code                      order_category_code
+--          FROM
+--           xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
+--           ,hz_party_sites                                hps
+--           ,xxcmn_vendor_sites_all                        xvsa
+--           ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
+--           ,oe_transaction_types_all                      otta                --受注タイプ
+--           ,xxcmn_rcv_pay_mst                             xrpm                --受入区分アドオンマスタ
+--           ,ic_item_mst_b                                 iimb
+--           ,xxcmn_item_mst_b                              ximb
+--           ,ic_item_mst_b                                 iimb2
+--           ,xxcmn_item_mst_b                              ximb2
+--           ,gmi_item_categories                           gic1
+--           ,mtl_categories_b                              mcb1
+--           ,gmi_item_categories                           gic2
+--           ,mtl_categories_b                              mcb2
+--           ,gmi_item_categories                           gic3
+--           ,mtl_categories_b                              mcb3
+--           ,ic_whse_mst                                   iwm
+--           ,mtl_item_locations                            mil
+--           ,ic_tran_pnd                                   itp                 --OPM保留在庫トランザクション
+--           ,wsh_delivery_details                          wdd                 --出荷搬送明細
+--           ,oe_order_headers_all                          ooha                --受注ヘッダ
 -- mod start 1.25
           --WHERE ooha.header_id = xoha.header_id                                --受注ヘッダID
-          WHERE  wdd.delivery_detail_id  = itp.line_detail_id
-          AND wdd.source_header_id    = xoha.header_id
-          AND wdd.source_line_id      = xola.line_id
-          AND xoha.header_id          = ooha.header_id
-          AND xola.order_header_id    = xoha.order_header_id
-          AND itp.doc_type = 'OMSO'
-          AND itp.completed_ind = gv_tran_cmp                                 --完了フラグ
+--          WHERE  wdd.delivery_detail_id  = itp.line_detail_id
+--          AND wdd.source_header_id    = xoha.header_id
+--          AND wdd.source_line_id      = xola.line_id
+--          AND xoha.header_id          = ooha.header_id
+--          AND xola.order_header_id    = xoha.order_header_id
+--          AND itp.doc_type = 'OMSO'
+--          AND itp.completed_ind = gv_tran_cmp                                 --完了フラグ
           --AND itp.line_id = wdd.source_line_id                                --ソース明細ID
           --AND wdd.org_id = ooha.org_id                                        --組織ID
           --AND wdd.source_header_id = ooha.header_id                           --受注ヘッダID
-          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)             --ステータス
-          AND xoha.actual_confirm_class = gv_confirm_yes                            --実績計上区分
-          AND xoha.latest_external_flag = gv_latest_yes                             --最新フラグ
+--          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)             --ステータス
+--          AND xoha.actual_confirm_class = gv_confirm_yes                            --実績計上区分
+--          AND xoha.latest_external_flag = gv_latest_yes                             --最新フラグ
           --AND xoha.order_header_id = xola.order_header_id                         --受注アドオンヘッダID
 -- mod end 1.25
-          AND ooha.order_type_id = otta.transaction_type_id                    --受注タイプID
-          AND xola.shipping_item_code = iimb.item_no                            --品目コード
-          AND itp.item_id         = iimb.item_id                            --品目ID
-          AND ximb.item_id        = iimb.item_id                            --品目ID
-          AND itp.trans_date
-            BETWEEN ximb.start_date_active
-            AND ximb.end_date_active
+--          AND ooha.order_type_id = otta.transaction_type_id                    --受注タイプID
+--          AND xola.shipping_item_code = iimb.item_no                            --品目コード
+--          AND itp.item_id         = iimb.item_id                            --品目ID
+--          AND ximb.item_id        = iimb.item_id                            --品目ID
+--          AND itp.trans_date
+--            BETWEEN ximb.start_date_active
+--            AND ximb.end_date_active
           --  AND NVL(ximb.end_date_active,itp.trans_date)                    --適用開始日・終了日
           --AND iimb.item_id = gic1.item_id                                     --品目ID
-          AND gic1.item_id = itp.item_id
-          AND gic1.category_set_id = cn_item_class_id
-          AND gic1.category_id = mcb1.category_id
-          AND mcb1.segment1 = civ_item_div
+--          AND gic1.item_id = itp.item_id
+--          AND gic1.category_set_id = cn_item_class_id
+--          AND gic1.category_id = mcb1.category_id
+--          AND mcb1.segment1 = civ_item_div
           --AND iimb.item_id = gic3.item_id                                     --品目ID
-          AND gic3.item_id = itp.item_id
-          AND gic3.category_set_id = cn_prod_class_id
-          AND gic3.category_id = mcb3.category_id
-          AND mcb3.segment1 = civ_prod_div
-          AND xola.request_item_code = iimb2.item_no                             --品目コード
-          AND ximb2.item_id = iimb2.item_id                            --品目ID
-          AND gic2.item_id = iimb2.item_id
-          AND gic2.category_set_id = cn_item_class_id
-          AND gic2.category_id = mcb2.category_id
-          AND itp.trans_date
-            BETWEEN ximb2.start_date_active
-            AND ximb2.end_date_active
+--          AND gic3.item_id = itp.item_id
+--          AND gic3.category_set_id = cn_prod_class_id
+--          AND gic3.category_id = mcb3.category_id
+--          AND mcb3.segment1 = civ_prod_div
+--          AND xola.request_item_code = iimb2.item_no                             --品目コード
+--          AND ximb2.item_id = iimb2.item_id                            --品目ID
+--          AND gic2.item_id = iimb2.item_id
+--          AND gic2.category_set_id = cn_item_class_id
+--          AND gic2.category_id = mcb2.category_id
+--          AND itp.trans_date
+--            BETWEEN ximb2.start_date_active
+--            AND ximb2.end_date_active
           --AND gic2.item_id = iimb2.item_id                                     --品目ID
-          AND xoha.result_deliver_to_id = hps.party_site_id(+)
-          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
-          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND itp.doc_type = xrpm.doc_type                                    --文書タイプ
-          AND xrpm.doc_type = 'OMSO'
+--          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+--          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+--          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND itp.doc_type = xrpm.doc_type                                    --文書タイプ
+--          AND xrpm.doc_type = 'OMSO'
 -- 2008/12/03 N.Yoshida update Start 本番障害#371
-          AND  (otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
-            OR xrpm.shipment_provision_div IS NULL)
+--          AND  (otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
+--            OR xrpm.shipment_provision_div IS NULL)
           --AND  otta.attribute1 IN (gv_spdiv_ship,gv_spdiv_prov)
           --AND xrpm.shipment_provision_div IN (gv_spdiv_ship,gv_spdiv_prov)
 -- 2008/12/03 N.Yoshida update End 本番障害#371
-          AND (otta.attribute11 = xrpm.ship_prov_rcv_pay_category                 --出荷支給受払カテゴリ
-            OR   xrpm.ship_prov_rcv_pay_category IS NULL)
+--          AND (otta.attribute11 = xrpm.ship_prov_rcv_pay_category                 --出荷支給受払カテゴリ
+--            OR   xrpm.ship_prov_rcv_pay_category IS NULL)
 -- 2008/12/03 N.Yoshida update Start 本番障害#371
             /*AND NVL(DECODE(mcb1.segment1
                           ,gv_item_class_prod,gv_item_class_prod,NULL),gv_dummy)
@@ -6583,198 +7005,198 @@ AS
                           ,gv_item_class_prod,gv_item_class_prod
                                              ,NULL),gv_dummy)
                 = NVL(xrpm.item_div_ahead,gv_dummy)*/
-          AND NVL(DECODE(otta.attribute4
-                        ,gv_stock_adjm
-                        ,gv_stock_adjm
-                        ,NULL),gv_dummy
-              ) = NVL(DECODE(xrpm.stock_adjustment_div                            --在庫調整区分
-                            ,gv_stock_adjm
-                            ,gv_stock_adjm
-                            ,NULL),gv_dummy
-              )
-            AND (
+--          AND NVL(DECODE(otta.attribute4
+--                        ,gv_stock_adjm
+--                        ,gv_stock_adjm
+--                        ,NULL),gv_dummy
+--              ) = NVL(DECODE(xrpm.stock_adjustment_div                            --在庫調整区分
+--                            ,gv_stock_adjm
+--                            ,gv_stock_adjm
+--                            ,NULL),gv_dummy
+--              )
+--            AND (
                 --出荷依頼・支給依頼
-                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
-            AND NVL(DECODE(mcb1.segment1
-                          ,gv_item_class_prod,gv_item_class_prod
-                                             ,NULL),gv_dummy)
-                = NVL(xrpm.item_div_origin,gv_dummy)
+--                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
+--            AND NVL(DECODE(mcb1.segment1
+--                          ,gv_item_class_prod,gv_item_class_prod
+--                                             ,NULL),gv_dummy)
+--                = NVL(xrpm.item_div_origin,gv_dummy)
                 --出荷依頼・支給依頼以外
-          OR
-                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
-          )
+--          OR
+--                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
+--          )
           --依頼品目区分=振替先品目区分
-          AND (
+--          AND (
                 --出荷依頼・支給依頼
-                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
-            AND NVL(DECODE(mcb2.segment1
-                          ,gv_item_class_prod,gv_item_class_prod
-                                             ,NULL),gv_dummy)
-                = NVL(xrpm.item_div_ahead,gv_dummy)
+--                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
+--            AND NVL(DECODE(mcb2.segment1
+--                          ,gv_item_class_prod,gv_item_class_prod
+--                                             ,NULL),gv_dummy)
+--                = NVL(xrpm.item_div_ahead,gv_dummy)
                 --出荷依頼・支給依頼以外
-          OR
-                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
-          )
+--          OR
+--                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
+--          )
 -- 2008/12/03 N.Yoshida update End 本番障害#371
-          AND xrpm.use_div_invent = gv_inventory                                  --在庫使用区分
-          AND (mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod
-            AND ( (iimb.item_id = iimb2.item_id
-              AND xrpm.prod_div_origin IS NULL
-              AND xrpm.prod_div_ahead IS NULL)
-            OR    (iimb.item_id != iimb2.item_id
-              AND xrpm.prod_div_origin IS NOT NULL
-              AND xrpm.prod_div_ahead IS NOT NULL)
-            )
-          OR NOT( mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod)
-          )
-          AND itp.location = mil.segment1                                    --保管場所コード
-          AND iwm.mtl_organization_id = mil.organization_id
-          AND xoha.shipped_date                                                 --着荷日
-              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
-          GROUP BY 
-            itp.doc_type                                                      --文書タイプ
-           ,itp.item_id                                                       --品目ID
-           ,itp.whse_code                                                     --倉庫コード
-           ,iwm.whse_name                                                        --倉庫名
-           ,itp.location                                                      --保管倉庫コード
-           ,mil.description                                                      --保管倉庫名
-           ,mil.inventory_location_id                                            --保管倉庫ID
-           ,itp.lot_id                                                        --ロットID
-           ,itp.doc_id                                                        --文書ID
-           ,itp.doc_line                                                      --取引明細番号
-           ,ooha.header_id                                                     --受注ヘッダID
-           ,ooha.order_type_id                                                 --受注タイプID
-           ,xrpm.rcv_pay_div                                                      --受払区分
-           ,xrpm.new_div_invent                                                   --新区分
-           ,mil.attribute6                                               --ブロック
-           ,xoha.head_sales_branch
-           ,xoha.deliver_to_id
-           ,xoha.result_deliver_to
-           ,xoha.vendor_site_code
-           ,xoha.arrival_date
-           ,xoha.shipped_date
-           ,xoha.request_no
-           ,xoha.req_status
-           ,hps.party_site_name
-           ,xvsa.vendor_site_name
-           ,otta.order_category_code
-          UNION ALL
+--          AND xrpm.use_div_invent = gv_inventory                                  --在庫使用区分
+--          AND (mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod
+--            AND ( (iimb.item_id = iimb2.item_id
+--              AND xrpm.prod_div_origin IS NULL
+--              AND xrpm.prod_div_ahead IS NULL)
+--            OR    (iimb.item_id != iimb2.item_id
+--              AND xrpm.prod_div_origin IS NOT NULL
+--              AND xrpm.prod_div_ahead IS NOT NULL)
+--            )
+--          OR NOT( mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod)
+--          )
+--          AND itp.location = mil.segment1                                    --保管場所コード
+--          AND iwm.mtl_organization_id = mil.organization_id
+--          AND xoha.shipped_date                                                 --着荷日
+--              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+--          GROUP BY 
+--            itp.doc_type                                                      --文書タイプ
+--           ,itp.item_id                                                       --品目ID
+--           ,itp.whse_code                                                     --倉庫コード
+--           ,iwm.whse_name                                                        --倉庫名
+--           ,itp.location                                                      --保管倉庫コード
+--           ,mil.description                                                      --保管倉庫名
+--           ,mil.inventory_location_id                                            --保管倉庫ID
+--           ,itp.lot_id                                                        --ロットID
+--           ,itp.doc_id                                                        --文書ID
+--           ,itp.doc_line                                                      --取引明細番号
+--           ,ooha.header_id                                                     --受注ヘッダID
+--           ,ooha.order_type_id                                                 --受注タイプID
+--           ,xrpm.rcv_pay_div                                                      --受払区分
+--           ,xrpm.new_div_invent                                                   --新区分
+--           ,mil.attribute6                                               --ブロック
+--           ,xoha.head_sales_branch
+--           ,xoha.deliver_to_id
+--           ,xoha.result_deliver_to
+--           ,xoha.vendor_site_code
+--           ,xoha.arrival_date
+--           ,xoha.shipped_date
+--           ,xoha.request_no
+--           ,xoha.req_status
+--           ,hps.party_site_name
+--           ,xvsa.vendor_site_name
+--           ,otta.order_category_code
+--          UNION ALL
            -- PORC関連
 -- mod start 1.25
           --SELECT
-          SELECT /*+ leading(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
+--          SELECT /*+ leading(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
 -- mod end 1.25
-            itp.doc_type                                  doc_type            --文書タイプ
-           ,itp.item_id                                   item_id             --品目ID
-           ,itp.whse_code                                 whse_code           --倉庫コード
-           ,iwm.whse_name                                 whse_name           --倉庫名
-           ,itp.location                                  location            --保管倉庫コード
-           ,mil.description                               description         --保管倉庫名
-           ,mil.inventory_location_id                     inventory_location_id   --保管倉庫ID
-           ,itp.lot_id                                    lot_id              --ロットID
-           ,itp.doc_id                                    doc_id              --文書ID
-           ,itp.doc_line                                  doc_line            --取引明細番号
-           ,ooha.header_id                                header_id           --受注ヘッダID
-           ,ooha.order_type_id                            order_type_id       --受注タイプID
-           ,xrpm.rcv_pay_div                              rcv_pay_div         --受払区分
-           ,xrpm.new_div_invent                           new_div_invent      --新区分
-           ,SUM(itp.trans_qty)                            trans_qty_sum       --数量合計
-           ,mil.attribute6                                distribution_block  --ブロック
-           ,xoha.head_sales_branch                        head_sales_branch
-           ,xoha.deliver_to_id                            deliver_to_id
-           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
-                                  ,gv_recsts_shipped2,xoha.vendor_site_code
-            ) deliver_to
-           ,xoha.arrival_date                             arrival_date
-           ,xoha.shipped_date                             shipped_date
-           ,xoha.request_no                               request_no
+--            itp.doc_type                                  doc_type            --文書タイプ
+--           ,itp.item_id                                   item_id             --品目ID
+--           ,itp.whse_code                                 whse_code           --倉庫コード
+--           ,iwm.whse_name                                 whse_name           --倉庫名
+--           ,itp.location                                  location            --保管倉庫コード
+--           ,mil.description                               description         --保管倉庫名
+--           ,mil.inventory_location_id                     inventory_location_id   --保管倉庫ID
+--           ,itp.lot_id                                    lot_id              --ロットID
+--           ,itp.doc_id                                    doc_id              --文書ID
+--           ,itp.doc_line                                  doc_line            --取引明細番号
+--           ,ooha.header_id                                header_id           --受注ヘッダID
+--           ,ooha.order_type_id                            order_type_id       --受注タイプID
+--           ,xrpm.rcv_pay_div                              rcv_pay_div         --受払区分
+--           ,xrpm.new_div_invent                           new_div_invent      --新区分
+--           ,SUM(itp.trans_qty)                            trans_qty_sum       --数量合計
+--           ,mil.attribute6                                distribution_block  --ブロック
+--           ,xoha.head_sales_branch                        head_sales_branch
+--           ,xoha.deliver_to_id                            deliver_to_id
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+--                                  ,gv_recsts_shipped2,xoha.vendor_site_code
+--            ) deliver_to
+--           ,xoha.arrival_date                             arrival_date
+--           ,xoha.shipped_date                             shipped_date
+--           ,xoha.request_no                               request_no
            --,DECODE(xoha.req_status,'04',xpsv.party_site_full_name
-           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
            --                       ,'08',xvsv.vendor_site_name
-                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
-            ) party_site_full_name
-           ,otta.order_category_code                      order_category_code
-          FROM
-           xxwsh_order_headers_all                            xoha                --受注ヘッダ(アドオン)
-           ,hz_party_sites                                    hps
-           ,xxcmn_vendor_sites_all                            xvsa
-           ,xxwsh_order_lines_all                             xola                --受注明細(アドオン)
-           ,oe_transaction_types_all                          otta                --受注タイプ
-           ,xxcmn_rcv_pay_mst                                 xrpm                --受入区分アドオンマスタ
-           ,ic_item_mst_b                                     iimb
-           ,xxcmn_item_mst_b                                  ximb
-           ,ic_item_mst_b                                     iimb2
-           ,xxcmn_item_mst_b                                  ximb2
-           ,gmi_item_categories                               gic1
-           ,mtl_categories_b                                  mcb1
-           ,gmi_item_categories                               gic2
-           ,mtl_categories_b                                  mcb2
-           ,gmi_item_categories                               gic3
-           ,mtl_categories_b                                  mcb3
-           ,ic_whse_mst                                       iwm
-           ,mtl_item_locations                                mil
-           ,ic_tran_pnd                                       itp                 --OPM保留在庫トランザクション
-           ,rcv_shipment_lines                                rsl             --受入明細
-           ,oe_order_headers_all                              ooha                --受注ヘッダ
+--                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
+--            ) party_site_full_name
+--           ,otta.order_category_code                      order_category_code
+--          FROM
+--           xxwsh_order_headers_all                            xoha                --受注ヘッダ(アドオン)
+--           ,hz_party_sites                                    hps
+--           ,xxcmn_vendor_sites_all                            xvsa
+--           ,xxwsh_order_lines_all                             xola                --受注明細(アドオン)
+--           ,oe_transaction_types_all                          otta                --受注タイプ
+--           ,xxcmn_rcv_pay_mst                                 xrpm                --受入区分アドオンマスタ
+--           ,ic_item_mst_b                                     iimb
+--           ,xxcmn_item_mst_b                                  ximb
+--           ,ic_item_mst_b                                     iimb2
+--           ,xxcmn_item_mst_b                                  ximb2
+--           ,gmi_item_categories                               gic1
+--           ,mtl_categories_b                                  mcb1
+--           ,gmi_item_categories                               gic2
+--           ,mtl_categories_b                                  mcb2
+--           ,gmi_item_categories                               gic3
+--           ,mtl_categories_b                                  mcb3
+--           ,ic_whse_mst                                       iwm
+--           ,mtl_item_locations                                mil
+--           ,ic_tran_pnd                                       itp                 --OPM保留在庫トランザクション
+--           ,rcv_shipment_lines                                rsl             --受入明細
+--           ,oe_order_headers_all                              ooha                --受注ヘッダ
 -- mod start 1.25
           --WHERE ooha.header_id = xoha.header_id                                --受注ヘッダID
-          WHERE rsl.shipment_header_id  = itp.doc_id
-          AND rsl.line_num            = itp.doc_line
-          AND rsl.oe_order_header_id  = xola.header_id
-          AND rsl.oe_order_line_id    = xola.line_id
-          AND xoha.header_id          = ooha.header_id
-          AND xola.order_header_id    = xoha.order_header_id
-          AND itp.doc_type = 'PORC'
-          AND rsl.source_document_code = 'RMA'                                --ソース文書
-          AND itp.completed_ind = gv_tran_cmp                                         --完了フラグ
+--          WHERE rsl.shipment_header_id  = itp.doc_id
+--          AND rsl.line_num            = itp.doc_line
+--          AND rsl.oe_order_header_id  = xola.header_id
+--          AND rsl.oe_order_line_id    = xola.line_id
+--          AND xoha.header_id          = ooha.header_id
+--          AND xola.order_header_id    = xoha.order_header_id
+--          AND itp.doc_type = 'PORC'
+--          AND rsl.source_document_code = 'RMA'                                --ソース文書
+--          AND itp.completed_ind = gv_tran_cmp                                         --完了フラグ
           --AND itp.doc_id = rsl.shipment_header_id                             --受入ヘッダID
           --AND itp.doc_line = rsl.line_num                                     --明細番号
           --AND rsl.oe_order_header_id = ooha.header_id                         --受注ヘッダID
-          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)             --ステータス
-          AND xoha.actual_confirm_class = gv_confirm_yes                            --実績計上区分
-          AND xoha.latest_external_flag = gv_latest_yes                             --最新フラグ
+--          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)             --ステータス
+--          AND xoha.actual_confirm_class = gv_confirm_yes                            --実績計上区分
+--          AND xoha.latest_external_flag = gv_latest_yes                             --最新フラグ
           --AND xoha.order_header_id = xola.order_header_id                         --受注アドオンヘッダID
 -- mod end 1.25
-          AND ooha.order_type_id = otta.transaction_type_id                    --受注タイプID
-          AND xola.shipping_item_code = iimb.item_no                            --品目コード
-          AND itp.item_id         = iimb.item_id                            --品目ID
-          AND ximb.item_id            = iimb.item_id                            --品目ID
-          AND itp.trans_date
-            BETWEEN ximb.start_date_active
-            AND ximb.end_date_active
+--          AND ooha.order_type_id = otta.transaction_type_id                    --受注タイプID
+--          AND xola.shipping_item_code = iimb.item_no                            --品目コード
+--          AND itp.item_id         = iimb.item_id                            --品目ID
+--          AND ximb.item_id            = iimb.item_id                            --品目ID
+--          AND itp.trans_date
+--            BETWEEN ximb.start_date_active
+--            AND ximb.end_date_active
           --AND iimb.item_id = gic1.item_id                                     --品目ID
-          AND gic1.item_id = itp.item_id
-          AND gic1.category_set_id = cn_item_class_id
-          AND gic1.category_id = mcb1.category_id
-          AND mcb1.segment1 = civ_item_div
+--          AND gic1.item_id = itp.item_id
+--          AND gic1.category_set_id = cn_item_class_id
+--          AND gic1.category_id = mcb1.category_id
+--          AND mcb1.segment1 = civ_item_div
           --AND iimb.item_id = gic3.item_id                                     --品目ID
-          AND gic3.item_id = itp.item_id
-          AND gic3.category_set_id = cn_prod_class_id
-          AND gic3.category_id = mcb3.category_id
-          AND mcb3.segment1 = civ_prod_div
-          AND xola.request_item_code = iimb2.item_no                             --品目コード
-          AND ximb2.item_id = iimb2.item_id                            --品目ID
-          AND gic2.item_id = iimb2.item_id
-          AND gic2.category_set_id = cn_item_class_id
-          AND gic2.category_id = mcb2.category_id
-          AND itp.trans_date
-            BETWEEN ximb2.start_date_active
-            AND ximb2.end_date_active
+--          AND gic3.item_id = itp.item_id
+--          AND gic3.category_set_id = cn_prod_class_id
+--          AND gic3.category_id = mcb3.category_id
+--          AND mcb3.segment1 = civ_prod_div
+--          AND xola.request_item_code = iimb2.item_no                             --品目コード
+--          AND ximb2.item_id = iimb2.item_id                            --品目ID
+--          AND gic2.item_id = iimb2.item_id
+--          AND gic2.category_set_id = cn_item_class_id
+--          AND gic2.category_id = mcb2.category_id
+--          AND itp.trans_date
+--            BETWEEN ximb2.start_date_active
+--            AND ximb2.end_date_active
           --AND gic2.item_id = iimb2.item_id                                     --品目ID
-          AND xoha.result_deliver_to_id = hps.party_site_id(+)
-          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
-          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31', gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND itp.doc_type = xrpm.doc_type                                    --文書タイプ
-          AND xrpm.doc_type = 'PORC'
+--          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+--          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+--          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31', gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND itp.doc_type = xrpm.doc_type                                    --文書タイプ
+--          AND xrpm.doc_type = 'PORC'
 -- 2008/12/03 N.Yoshida update Start 本番障害#371
-          AND (otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
-             OR xrpm.shipment_provision_div IS NULL)
+--          AND (otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
+--             OR xrpm.shipment_provision_div IS NULL)
           --AND  otta.attribute1 IN (gv_spdiv_ship,gv_spdiv_prov)
           --AND xrpm.shipment_provision_div IN (gv_spdiv_ship,gv_spdiv_prov)
 -- 2008/12/03 N.Yoshida update Start 本番障害#371
-          AND (otta.attribute11 = xrpm.ship_prov_rcv_pay_category                 --出荷支給受払カテゴリ
-            OR   xrpm.ship_prov_rcv_pay_category IS NULL)
+--          AND (otta.attribute11 = xrpm.ship_prov_rcv_pay_category                 --出荷支給受払カテゴリ
+--            OR   xrpm.ship_prov_rcv_pay_category IS NULL)
 -- 2008/12/03 N.Yoshida update Start 本番障害#371
            /* AND NVL(DECODE(mcb1.segment1
                           ,gv_item_class_prod,gv_item_class_prod
@@ -6784,81 +7206,455 @@ AS
                           ,gv_item_class_prod,gv_item_class_prod
                                              ,NULL),gv_dummy)
                 = NVL(xrpm.item_div_ahead,gv_dummy)*/
-          AND NVL(DECODE(otta.attribute4
-                        ,gv_stock_adjm
-                        ,gv_stock_adjm
-                        ,NULL),gv_dummy
-              ) = NVL(DECODE(xrpm.stock_adjustment_div                            --在庫調整区分
-                            ,gv_stock_adjm
-                            ,gv_stock_adjm
-                            ,NULL),gv_dummy
-              )
-            AND (
+--          AND NVL(DECODE(otta.attribute4
+--                        ,gv_stock_adjm
+--                        ,gv_stock_adjm
+--                        ,NULL),gv_dummy
+--              ) = NVL(DECODE(xrpm.stock_adjustment_div                            --在庫調整区分
+--                            ,gv_stock_adjm
+--                            ,gv_stock_adjm
+--                            ,NULL),gv_dummy
+--              )
+--            AND (
                 --出荷依頼・支給依頼
-                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
-            AND NVL(DECODE(mcb1.segment1
-                          ,gv_item_class_prod,gv_item_class_prod
-                                             ,NULL),gv_dummy)
-                = NVL(xrpm.item_div_origin,gv_dummy)
+--                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
+--            AND NVL(DECODE(mcb1.segment1
+--                          ,gv_item_class_prod,gv_item_class_prod
+--                                             ,NULL),gv_dummy)
+--                = NVL(xrpm.item_div_origin,gv_dummy)
                 --出荷依頼・支給依頼以外
-          OR
-                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
-          )
+--          OR
+--                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
+--          )
           --依頼品目区分=振替先品目区分
-          AND (
+--          AND (
                 --出荷依頼・支給依頼
-                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
-            AND NVL(DECODE(mcb2.segment1
-                          ,gv_item_class_prod,gv_item_class_prod
-                                             ,NULL),gv_dummy)
-                = NVL(xrpm.item_div_ahead,gv_dummy)
+--                xrpm.shipment_provision_div in (gv_spdiv_ship,gv_spdiv_prov)
+--            AND NVL(DECODE(mcb2.segment1
+--                          ,gv_item_class_prod,gv_item_class_prod
+--                                             ,NULL),gv_dummy)
+--                = NVL(xrpm.item_div_ahead,gv_dummy)
                 --出荷依頼・支給依頼以外
-          OR
-                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
-          )
+--          OR
+--                NVL(xrpm.shipment_provision_div,gv_dummy) NOT IN (gv_spdiv_ship,gv_spdiv_prov)
+--          )
 -- 2008/12/03 N.Yoshida update Start 本番障害#371
-          AND xrpm.use_div_invent = gv_inventory                                  --在庫使用区分
-          AND (mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod
-            AND ( (iimb.item_id = iimb2.item_id
-              AND xrpm.prod_div_origin IS NULL
-              AND xrpm.prod_div_ahead IS NULL)
-            OR    (iimb.item_id != iimb2.item_id
-              AND xrpm.prod_div_origin IS NOT NULL
-              AND xrpm.prod_div_ahead IS NOT NULL)
-            )
-          OR NOT( mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod)
-          )
-          AND itp.location = mil.segment1                                    --保管場所コード
-          AND iwm.mtl_organization_id = mil.organization_id
-          AND xoha.shipped_date                                                 --着荷日
-              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
-          GROUP BY 
-            itp.doc_type                                                      --文書タイプ
-           ,itp.item_id                                                       --品目ID
-           ,itp.whse_code                                                     --倉庫コード
-           ,iwm.whse_name                                                        --倉庫名
-           ,itp.location                                                      --保管倉庫コード
-           ,mil.description                                                      --保管倉庫名
-           ,mil.inventory_location_id                                            --保管倉庫ID
-           ,itp.lot_id                                                        --ロットID
-           ,itp.doc_id                                                        --文書ID
-           ,itp.doc_line                                                      --取引明細番号
-           ,ooha.header_id                                                     --受注ヘッダID
-           ,ooha.order_type_id                                                 --受注タイプID
-           ,xrpm.rcv_pay_div                                                      --受払区分
-           ,xrpm.new_div_invent                                                   --新区分
-           ,mil.attribute6                                               --ブロック
-           ,xoha.head_sales_branch
-           ,xoha.deliver_to_id
-           ,xoha.result_deliver_to
-           ,xoha.vendor_site_code
-           ,xoha.arrival_date
-           ,xoha.shipped_date
-           ,xoha.request_no
-           ,xoha.req_status
-           ,hps.party_site_name
-           ,xvsa.vendor_site_name
-           ,otta.order_category_code
+--          AND xrpm.use_div_invent = gv_inventory                                  --在庫使用区分
+--          AND (mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod
+--            AND ( (iimb.item_id = iimb2.item_id
+--              AND xrpm.prod_div_origin IS NULL
+--              AND xrpm.prod_div_ahead IS NULL)
+--            OR    (iimb.item_id != iimb2.item_id
+--              AND xrpm.prod_div_origin IS NOT NULL
+--              AND xrpm.prod_div_ahead IS NOT NULL)
+--            )
+--          OR NOT( mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod)
+--          )
+--          AND itp.location = mil.segment1                                    --保管場所コード
+--          AND iwm.mtl_organization_id = mil.organization_id
+--          AND xoha.shipped_date                                                 --着荷日
+--              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+--          GROUP BY 
+--            itp.doc_type                                                      --文書タイプ
+--           ,itp.item_id                                                       --品目ID
+--           ,itp.whse_code                                                     --倉庫コード
+--           ,iwm.whse_name                                                        --倉庫名
+--           ,itp.location                                                      --保管倉庫コード
+--           ,mil.description                                                      --保管倉庫名
+--           ,mil.inventory_location_id                                            --保管倉庫ID
+--           ,itp.lot_id                                                        --ロットID
+--           ,itp.doc_id                                                        --文書ID
+--           ,itp.doc_line                                                      --取引明細番号
+--           ,ooha.header_id                                                     --受注ヘッダID
+--           ,ooha.order_type_id                                                 --受注タイプID
+--           ,xrpm.rcv_pay_div                                                      --受払区分
+--           ,xrpm.new_div_invent                                                   --新区分
+--           ,mil.attribute6                                               --ブロック
+--           ,xoha.head_sales_branch
+--           ,xoha.deliver_to_id
+--           ,xoha.result_deliver_to
+--           ,xoha.vendor_site_code
+--           ,xoha.arrival_date
+--           ,xoha.shipped_date
+--           ,xoha.request_no
+--           ,xoha.req_status
+--           ,hps.party_site_name
+--           ,xvsa.vendor_site_name
+--           ,otta.order_category_code
+            SELECT
+            -- 出荷依頼
+              xrpm.doc_type                                 doc_type               --文書タイプ
+             ,xmld.item_id                                  item_id                --品目ID
+             ,iwm.whse_code                                 whse_code              --倉庫コード
+             ,iwm.whse_name                                 whse_name              --倉庫名
+             ,xoha.deliver_from                             location               --保管倉庫コード
+             ,mil.description                               description            --保管倉庫名
+             ,mil.inventory_location_id                     inventory_location_id  --保管倉庫ID
+             ,xmld.lot_id                                   lot_id                 --ロットID
+             ,xoha.header_id                                header_id              --受注ヘッダID
+             ,xoha.order_type_id                            order_type_id          --受注タイプID
+             ,xrpm.rcv_pay_div                              rcv_pay_div            --受払区分
+             ,xrpm.new_div_invent                           new_div_invent         --新区分
+             ,SUM(xmld.actual_quantity)                     trans_qty_sum          --数量合計
+             ,mil.attribute6                                distribution_block     --ブロック
+             ,xoha.head_sales_branch                        head_sales_branch
+             ,xoha.deliver_to_id                            deliver_to_id
+             ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+                                    ,gv_recsts_shipped2,xoha.vendor_site_code
+              ) deliver_to
+             ,xoha.arrival_date                             arrival_date
+             ,xoha.shipped_date                             shipped_date
+             ,xoha.request_no                               request_no
+             ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+                                    ,gv_recsts_shipped2,xvsa.vendor_site_name
+              ) party_site_full_name
+             ,otta.order_category_code                      order_category_code
+            FROM
+             xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
+             ,hz_party_sites                                hps
+             ,xxcmn_vendor_sites_all                        xvsa
+             ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
+             ,xxinv_mov_lot_details                         xmld                --移動ロット詳細(アドオン)
+             ,oe_transaction_types_all                      otta                --受注タイプ
+             ,xxcmn_rcv_pay_mst                             xrpm                --受入区分アドオンマスタ
+             ,ic_item_mst_b                                 iimb
+             ,xxcmn_item_mst_b                              ximb
+             ,ic_item_mst_b                                 iimb2
+             ,xxcmn_item_mst_b                              ximb2
+             ,gmi_item_categories                           gic1
+             ,mtl_categories_b                              mcb1
+             ,gmi_item_categories                           gic2
+             ,mtl_categories_b                              mcb2
+             ,gmi_item_categories                           gic3
+             ,mtl_categories_b                              mcb3
+             ,ic_whse_mst                                   iwm
+             ,mtl_item_locations                            mil
+            WHERE
+                xola.order_header_id    = xoha.order_header_id
+            AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)       --ステータス
+            AND xoha.actual_confirm_class = gv_cmp_actl_yes                     --実績計上区分
+            AND xoha.latest_external_flag = gv_latest_yes                       --最新フラグ
+            and xmld.mov_line_id = xola.order_line_id
+            and xmld.document_type_code in (gv_dctype_shipped,gv_dctype_shikyu)
+            and xmld.record_type_code = gv_rectype_out
+            AND xoha.order_type_id = otta.transaction_type_id                   --受注タイプID
+            AND xola.shipping_item_code = iimb.item_no                          --品目コード
+            AND xmld.item_id         = iimb.item_id                             --品目ID
+            AND ximb.item_id        = iimb.item_id                              --品目ID
+            AND xoha.arrival_date
+              BETWEEN ximb.start_date_active
+              AND ximb.end_date_active
+            AND gic1.item_id = xmld.item_id
+            AND gic1.category_set_id = cn_item_class_id
+            AND gic1.category_id = mcb1.category_id
+            AND mcb1.segment1 = civ_item_div
+            AND gic3.item_id = xmld.item_id
+            AND gic3.category_set_id = cn_prod_class_id
+            AND gic3.category_id = mcb3.category_id
+            AND mcb3.segment1 = civ_prod_div
+            AND xola.request_item_code = iimb2.item_no                          --品目コード
+            AND ximb2.item_id = iimb2.item_id                                   --品目ID
+            AND gic2.item_id = iimb2.item_id
+            AND gic2.category_set_id = cn_item_class_id
+            AND gic2.category_id = mcb2.category_id
+            AND xoha.arrival_date
+              BETWEEN ximb2.start_date_active
+              AND ximb2.end_date_active
+            AND xoha.result_deliver_to_id = hps.party_site_id(+)
+            AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+            AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND xrpm.doc_type = 'OMSO'
+            AND xrpm.shipment_provision_div = gv_spdiv_ship
+            and otta.attribute1 = xrpm.shipment_provision_div                   --出荷支給区分
+            AND xrpm.stock_adjustment_div = gv_stock_etc
+            and otta.attribute4 = xrpm.stock_adjustment_div                     --在庫調整区分
+--            AND DECODE(xrpm.item_div_origin,gv_item_class_prod,gv_item_class_prod,gv_dummy) = NVL(mcb1.segment1,gv_dummy)
+--            AND DECODE(xrpm.item_div_ahead,gv_item_class_prod,gv_item_class_prod,gv_dummy) = NVL(mcb2.segment1,gv_dummy)
+            AND DECODE(mcb1.segment1,gv_item_class_prod,gv_item_class_prod,gv_dummy) = NVL(xrpm.item_div_origin,gv_dummy)
+            AND DECODE(mcb2.segment1,gv_item_class_prod,gv_item_class_prod,gv_dummy) = NVL(xrpm.item_div_ahead,gv_dummy)
+            AND xrpm.use_div_invent = gv_inventory                              --在庫使用区分
+            AND xoha.deliver_from = mil.segment1                                --保管場所コード
+            AND iwm.mtl_organization_id = mil.organization_id
+            AND xoha.arrival_date                                               --着荷日
+                BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+            GROUP BY 
+              xrpm.doc_type                                                     --文書タイプ
+             ,xmld.item_id                                                      --品目ID
+             ,iwm.whse_code                                                     --倉庫コード
+             ,iwm.whse_name                                                     --倉庫名
+             ,xoha.deliver_from                                                 --保管倉庫コード
+             ,mil.description                                                   --保管倉庫名
+             ,mil.inventory_location_id                                         --保管倉庫ID
+             ,xmld.lot_id                                                       --ロットID
+             ,xoha.header_id                                                    --受注ヘッダID
+             ,xoha.order_type_id                                                --受注タイプID
+             ,xrpm.rcv_pay_div                                                  --受払区分
+             ,xrpm.new_div_invent                                               --新区分
+             ,mil.attribute6                                                    --ブロック
+             ,xoha.head_sales_branch
+             ,xoha.deliver_to_id
+             ,xoha.result_deliver_to
+             ,xoha.vendor_site_code
+             ,xoha.arrival_date
+             ,xoha.shipped_date
+             ,xoha.request_no
+             ,xoha.req_status
+             ,hps.party_site_name
+             ,xvsa.vendor_site_name
+             ,otta.order_category_code
+            UNION ALL
+            SELECT
+            -- 支給依頼
+              xrpm.doc_type                                 doc_type                --文書タイプ
+             ,xmld.item_id                                  item_id                 --品目ID
+             ,iwm.whse_code                                 whse_code               --倉庫コード
+             ,iwm.whse_name                                 whse_name               --倉庫名
+             ,xoha.deliver_from                             location                --保管倉庫コード
+             ,mil.description                               description             --保管倉庫名
+             ,mil.inventory_location_id                     inventory_location_id   --保管倉庫ID
+             ,xmld.lot_id                                    lot_id                 --ロットID
+             ,xoha.header_id                                header_id               --受注ヘッダID
+             ,xoha.order_type_id                            order_type_id           --受注タイプID
+             ,xrpm.rcv_pay_div                              rcv_pay_div             --受払区分
+             ,xrpm.new_div_invent                           new_div_invent          --新区分
+             ,SUM(xmld.actual_quantity)                     trans_qty_sum           --数量合計
+             ,mil.attribute6                                distribution_block      --ブロック
+             ,xoha.head_sales_branch                        head_sales_branch
+             ,xoha.deliver_to_id                            deliver_to_id
+             ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+                                    ,gv_recsts_shipped2,xoha.vendor_site_code
+              ) deliver_to
+             ,xoha.arrival_date                             arrival_date
+             ,xoha.shipped_date                             shipped_date
+             ,xoha.request_no                               request_no
+             ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+                                    ,gv_recsts_shipped2,xvsa.vendor_site_name
+              ) party_site_full_name
+             ,otta.order_category_code                      order_category_code
+            FROM
+             xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
+             ,hz_party_sites                                hps
+             ,xxcmn_vendor_sites_all                        xvsa
+             ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
+               ,xxinv_mov_lot_details                       xmld                --移動ロット詳細(アドオン)
+             ,oe_transaction_types_all                      otta                --受注タイプ
+             ,xxcmn_rcv_pay_mst                             xrpm                --受入区分アドオンマスタ
+             ,ic_item_mst_b                                 iimb
+             ,xxcmn_item_mst_b                              ximb
+             ,ic_item_mst_b                                 iimb2
+             ,xxcmn_item_mst_b                              ximb2
+             ,gmi_item_categories                           gic1
+             ,mtl_categories_b                              mcb1
+             ,gmi_item_categories                           gic2
+             ,mtl_categories_b                              mcb2
+             ,gmi_item_categories                           gic3
+             ,mtl_categories_b                              mcb3
+             ,ic_whse_mst                                   iwm
+             ,mtl_item_locations                            mil
+            WHERE
+                xola.order_header_id    = xoha.order_header_id
+            AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)       --ステータス
+            AND xoha.actual_confirm_class = gv_cmp_actl_yes                     --実績計上区分
+            AND xoha.latest_external_flag = gv_latest_yes                       --最新フラグ
+            AND xmld.mov_line_id = xola.order_line_id
+            AND xmld.document_type_code in (gv_dctype_shipped,gv_dctype_shikyu)
+            AND xmld.record_type_code = gv_rectype_out
+            AND xoha.order_type_id = otta.transaction_type_id                   --受注タイプID
+            AND xola.shipping_item_code = iimb.item_no                          --品目コード
+            AND xmld.item_id         = iimb.item_id                             --品目ID
+            AND ximb.item_id        = iimb.item_id                              --品目ID
+            AND xoha.arrival_date
+              BETWEEN ximb.start_date_active
+              AND ximb.end_date_active
+            AND gic1.item_id = xmld.item_id
+            AND gic1.category_set_id = cn_item_class_id
+            AND gic1.category_id = mcb1.category_id
+            AND mcb1.segment1 = civ_item_div
+            AND gic3.item_id = xmld.item_id
+            AND gic3.category_set_id = cn_prod_class_id
+            AND gic3.category_id = mcb3.category_id
+            AND mcb3.segment1 = civ_prod_div
+            AND xola.request_item_code = iimb2.item_no                          --品目コード
+            AND ximb2.item_id = iimb2.item_id                                   --品目ID
+            AND gic2.item_id = iimb2.item_id
+            AND gic2.category_set_id = cn_item_class_id
+            AND gic2.category_id = mcb2.category_id
+            AND xoha.arrival_date
+              BETWEEN ximb2.start_date_active
+              AND ximb2.end_date_active
+            AND xoha.result_deliver_to_id = hps.party_site_id(+)
+            AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+            AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND xrpm.doc_type = 'OMSO'
+            AND xrpm.shipment_provision_div = gv_spdiv_prov
+            AND otta.attribute1 = xrpm.shipment_provision_div                   --出荷支給区分
+            AND xrpm.stock_adjustment_div = gv_stock_etc
+            AND otta.attribute4 = xrpm.stock_adjustment_div                     --在庫調整区分
+            AND otta.attribute11 = xrpm.ship_prov_rcv_pay_category
+            AND DECODE(mcb1.segment1,gv_item_class_prod,gv_item_class_prod,gv_dummy) = NVL(xrpm.item_div_origin,gv_dummy)
+            AND DECODE(mcb2.segment1,gv_item_class_prod,gv_item_class_prod,gv_dummy) = NVL(xrpm.item_div_ahead,gv_dummy)
+            AND xrpm.use_div_invent = gv_inventory                              --在庫使用区分
+            AND (mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod
+              AND ( (iimb.item_id = iimb2.item_id
+                AND xrpm.prod_div_origin IS NULL
+                AND xrpm.prod_div_ahead IS NULL)
+              OR    (iimb.item_id != iimb2.item_id
+                AND xrpm.prod_div_origin IS NOT NULL
+                AND xrpm.prod_div_ahead IS NOT NULL)
+              )
+             OR NOT( mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod)
+             )
+            AND xoha.deliver_from = mil.segment1                                --保管場所コード
+            AND iwm.mtl_organization_id = mil.organization_id
+            AND xoha.arrival_date                                               --着荷日
+                BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+            GROUP BY 
+              xrpm.doc_type                                                     --文書タイプ
+             ,xmld.item_id                                                      --品目ID
+             ,iwm.whse_code                                                     --倉庫コード
+             ,iwm.whse_name                                                     --倉庫名
+             ,xoha.deliver_from                                                 --保管倉庫コード
+             ,mil.description                                                   --保管倉庫名
+             ,mil.inventory_location_id                                         --保管倉庫ID
+             ,xmld.lot_id                                                       --ロットID
+             ,xoha.header_id                                                    --受注ヘッダID
+             ,xoha.order_type_id                                                --受注タイプID
+             ,xrpm.rcv_pay_div                                                  --受払区分
+             ,xrpm.new_div_invent                                               --新区分
+             ,mil.attribute6                                                    --ブロック
+             ,xoha.head_sales_branch
+             ,xoha.deliver_to_id
+             ,xoha.result_deliver_to
+             ,xoha.vendor_site_code
+             ,xoha.arrival_date
+             ,xoha.shipped_date
+             ,xoha.request_no
+             ,xoha.req_status
+             ,hps.party_site_name
+             ,xvsa.vendor_site_name
+             ,otta.order_category_code
+            UNION ALL
+            SELECT
+            -- 廃棄・見本
+              xrpm.doc_type                                 doc_type               --文書タイプ
+             ,xmld.item_id                                  item_id                --品目ID
+             ,iwm.whse_code                                 whse_code              --倉庫コード
+             ,iwm.whse_name                                 whse_name              --倉庫名
+             ,xoha.deliver_from                             location               --保管倉庫コード
+             ,mil.description                               description            --保管倉庫名
+             ,mil.inventory_location_id                     inventory_location_id  --保管倉庫ID
+             ,xmld.lot_id                                    lot_id                --ロットID
+             ,xoha.header_id                                header_id              --受注ヘッダID
+             ,xoha.order_type_id                            order_type_id          --受注タイプID
+             ,xrpm.rcv_pay_div                              rcv_pay_div            --受払区分
+             ,xrpm.new_div_invent                           new_div_invent         --新区分
+             ,SUM(xmld.actual_quantity)                     trans_qty_sum          --数量合計
+             ,mil.attribute6                                distribution_block     --ブロック
+             ,xoha.head_sales_branch                        head_sales_branch
+             ,xoha.deliver_to_id                            deliver_to_id
+             ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+                                    ,gv_recsts_shipped2,xoha.vendor_site_code
+              ) deliver_to
+             ,xoha.arrival_date                             arrival_date
+             ,xoha.shipped_date                             shipped_date
+             ,xoha.request_no                               request_no
+             ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+                                    ,gv_recsts_shipped2,xvsa.vendor_site_name
+              ) party_site_full_name
+             ,otta.order_category_code                      order_category_code
+            FROM
+             xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
+             ,hz_party_sites                                hps
+             ,xxcmn_vendor_sites_all                        xvsa
+             ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
+               ,xxinv_mov_lot_details                       xmld                --移動ロット詳細(アドオン)
+             ,oe_transaction_types_all                      otta                --受注タイプ
+             ,xxcmn_rcv_pay_mst                             xrpm                --受入区分アドオンマスタ
+             ,ic_item_mst_b                                 iimb
+             ,xxcmn_item_mst_b                              ximb
+             ,ic_item_mst_b                                 iimb2
+             ,xxcmn_item_mst_b                              ximb2
+             ,gmi_item_categories                           gic1
+             ,mtl_categories_b                              mcb1
+             ,gmi_item_categories                           gic2
+             ,mtl_categories_b                              mcb2
+             ,gmi_item_categories                           gic3
+             ,mtl_categories_b                              mcb3
+             ,ic_whse_mst                                   iwm
+             ,mtl_item_locations                            mil
+            WHERE
+                xola.order_header_id    = xoha.order_header_id
+            AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)       --ステータス
+            AND xoha.actual_confirm_class = gv_cmp_actl_yes                     --実績計上区分
+            AND xoha.latest_external_flag = gv_latest_yes                       --最新フラグ
+            AND xmld.mov_line_id = xola.order_line_id
+            AND xmld.document_type_code in (gv_dctype_shipped,gv_dctype_shikyu)
+            AND xmld.record_type_code = gv_rectype_out
+            AND xoha.order_type_id = otta.transaction_type_id                   --受注タイプID
+            AND xola.shipping_item_code = iimb.item_no                          --品目コード
+            AND xmld.item_id         = iimb.item_id                             --品目ID
+            AND ximb.item_id        = iimb.item_id                              --品目ID
+            AND xoha.arrival_date
+              BETWEEN ximb.start_date_active
+              AND ximb.end_date_active
+            AND gic1.item_id = xmld.item_id
+            AND gic1.category_set_id = cn_item_class_id
+            AND gic1.category_id = mcb1.category_id
+            AND mcb1.segment1 = civ_item_div
+            AND gic3.item_id = xmld.item_id
+            AND gic3.category_set_id = cn_prod_class_id
+            AND gic3.category_id = mcb3.category_id
+            AND mcb3.segment1 = civ_prod_div
+            AND xola.request_item_code = iimb2.item_no                          --品目コード
+            AND ximb2.item_id = iimb2.item_id                                   --品目ID
+            AND gic2.item_id = iimb2.item_id
+            AND gic2.category_set_id = cn_item_class_id
+            AND gic2.category_id = mcb2.category_id
+            AND xoha.arrival_date
+              BETWEEN ximb2.start_date_active
+              AND ximb2.end_date_active
+            AND xoha.result_deliver_to_id = hps.party_site_id(+)
+            AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+            AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND xrpm.doc_type = 'OMSO'
+            AND xrpm.shipment_provision_div IS NULL                             --出荷支給区分
+            AND xrpm.stock_adjustment_div = gv_stock_adjm                       --在庫調整区分
+            AND otta.attribute4 = xrpm.stock_adjustment_div                     --在庫調整区分
+            AND otta.attribute11 = xrpm.ship_prov_rcv_pay_category
+            AND xrpm.use_div_invent = gv_inventory                              --在庫使用区分
+            AND xoha.deliver_from = mil.segment1                                --保管場所コード
+            AND iwm.mtl_organization_id = mil.organization_id
+            AND xoha.arrival_date                                               --着荷日
+                BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+            GROUP BY
+              xrpm.doc_type                                                     --文書タイプ
+             ,xmld.item_id                                                      --品目ID
+             ,iwm.whse_code                                                     --倉庫コード
+             ,iwm.whse_name                                                     --倉庫名
+             ,xoha.deliver_from                                                 --保管倉庫コード
+             ,mil.description                                                   --保管倉庫名
+             ,mil.inventory_location_id                                         --保管倉庫ID
+             ,xmld.lot_id                                                       --ロットID
+             ,xoha.header_id                                                    --受注ヘッダID
+             ,xoha.order_type_id                                                --受注タイプID
+             ,xrpm.rcv_pay_div                                                  --受払区分
+             ,xrpm.new_div_invent                                               --新区分
+             ,mil.attribute6                                                    --ブロック
+             ,xoha.head_sales_branch
+             ,xoha.deliver_to_id
+             ,xoha.result_deliver_to
+             ,xoha.vendor_site_code
+             ,xoha.arrival_date
+             ,xoha.shipped_date
+             ,xoha.request_no
+             ,xoha.req_status
+             ,hps.party_site_name
+             ,xvsa.vendor_site_name
+             ,otta.order_category_code
+-- 2008/12/18 Y.Yamamoto update End 本番障害#732
         )                                                     sh_info             --出荷関連情報
          ,xxcmn_parties                                       xp
          ,hz_cust_accounts                                    hca
@@ -6871,6 +7667,7 @@ AS
         ------------------------------
         SELECT
           gv_trtry_rt                                         territory           --領域(倉替返品)
+         ,1                                                   txns_id
          ,rt_info.item_id                                     item_id             --品目ID
          ,rt_info.lot_id                                      lot_id              --ロットID
          ,TO_CHAR(xoha.shipped_date,gv_fmt_ymd)               standard_date       --日付
@@ -7000,6 +7797,7 @@ AS
         -- 品目振替
         SELECT
            gv_trtry_mf                                         territory           -- 領域(生産)
+         ,1                                                   txns_id
          , gmd.item_id                                         item_id             -- 品目ID
          , itp.lot_id                                          lot_id              -- ロットID
          , TO_CHAR( itp.trans_date, gv_fmt_ymd )                                   -- 品目振替
@@ -7143,6 +7941,7 @@ AS
         -- 返品原料、解体半製品
         SELECT
            gv_trtry_mf                                         territory           -- 領域(生産)
+         ,1                                                   txns_id
          , gmd.item_id                                         item_id             -- 品目ID
          , itp.lot_id                                          lot_id              -- ロットID
          , TO_CHAR( itp.trans_date, gv_fmt_ymd )
@@ -7284,6 +8083,7 @@ AS
         -- その他
         SELECT /*+ leading(gmd_d gbh gmd itp gmd_t gic1 mcb1 gic2 mcb2 xrpm grb grct mil iwm) use_nl(gmd_d gbh gmd itp gmd_t gic1 mcb1 gic2 mcb2 xrpm grb grct mil iwm) */
            gv_trtry_mf                                         territory           -- 領域(生産)
+         ,1                                                   txns_id
          , gmd.item_id                                         item_id             -- 品目ID
          , itp.lot_id                                          lot_id              -- ロットID
          , SUBSTRB( gmd_d.attribute11, 1, 10 )
@@ -7429,6 +8229,7 @@ AS
         ------------------------------
         SELECT
           gv_trtry_ad                                         territory           --領域(在庫調整)
+         ,1                                                   txns_id
          ,itc.item_id                                         item_id             --品目ID
          ,itc.lot_id                                          lot_id              --ロットID
          ,TO_CHAR(itc.trans_date,gv_fmt_ymd)                  standard_date       --日付

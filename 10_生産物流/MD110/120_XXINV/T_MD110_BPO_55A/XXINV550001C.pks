@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.33
+ * Version          : 1.34
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2008/12/09    1.31  Yasuhisa Yamamoto  統合指摘 #472対応
  *  2008/12/10    1.32  Yasuhisa Yamamoto  統合指摘 #627対応
  *  2008/12/16    1.33  Akiyoshi Shiina    統合指摘 #742対応
+ *  2008/12/19    1.34  Yasuhisa Yamamoto  統合指摘 #732対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル変数宣言部 START   #######################
@@ -93,9 +94,7 @@ AS
      ,iv_lot_no2            IN     VARCHAR2         -- 21 : ロットNo2
      ,iv_lot_no3            IN     VARCHAR2         -- 22 : ロットNo3
      ,iv_output_ctl         IN     VARCHAR2         -- 23 : 差異データ区分
--- 08/09/19 Y.Yamamoto ADD v1.18 Start
      ,iv_inv_ctrl           IN     VARCHAR2         -- 24 : 名義
--- 08/09/19 Y.Yamamoto ADD v1.18 End
     ) ;
 END xxinv550001c;
 /
