@@ -1,0 +1,15 @@
+/*************************************************************************
+ * 
+ * INDEX Name      : XXCMM_HZ_LOCATIONS_N10
+ * Description     : 顧客検索画面（HZ_CUSTOMER_PARTY_SITE_FIND_V）上の「市・区」検索用
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/06/30    1.0  H.Oshida     初回作成
+ ************************************************************************/
+CREATE INDEX ar.xxcmm_hz_locations_n10 ON ar.hz_locations (UPPER(city)) TABLESPACE apps_ts_tx_idx;
+/
