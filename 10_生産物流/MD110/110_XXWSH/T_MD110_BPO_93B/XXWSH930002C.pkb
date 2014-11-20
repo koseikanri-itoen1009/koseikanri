@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.39
+ * Version          : 1.40
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -136,6 +136,7 @@ AS
  *  2008/12/26    1.38 Oracle 福田 直樹  出荷依頼IFのヘッダ・明細間の紐付きがなくなったデータを削除する
  *  2008/12/26    1.38 Oracle 福田 直樹  本番障害対応#688(引当なし指示品目に対する実績がなかった場合、実績0ロットが作成されない)
  *  2009/01/06    1.39 Oracle 北寒寺正夫 本番障害対応#840 移動ロット詳細にロット実績数量をインサート、更新する際にNULLの場合0を設定するように修正
+ *  2009/01/29    1.40 Oracle 佐久間尚豊 本番障害対応#917,1045
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2219,20 +2220,34 @@ AS
 --
       -- 実績数量の設定を行う。
       IF ((gr_interface_info_rec(in_idx).conv_unit  IS NOT NULL) AND         --入出庫換算単位が設定済み
-          (gr_interface_info_rec(in_idx).item_kbn_cd = gv_item_kbn_cd_5) AND --製品
-          (gr_interface_info_rec(in_idx).prod_kbn_cd = gv_prod_kbn_cd_2))    --ドリンク
+--*HHT* 2009/01/29 本番障害対応#1045 MOD START
+--*HHT*          (gr_interface_info_rec(in_idx).item_kbn_cd = gv_item_kbn_cd_5) AND --製品
+--*HHT*          (gr_interface_info_rec(in_idx).prod_kbn_cd = gv_prod_kbn_cd_2))    --ドリンク
+          (gr_interface_info_rec(in_idx).item_kbn_cd = gv_item_kbn_cd_5)) --製品  --*HHT*
+--*HHT* 2009/01/29 本番障害対応#1045 MOD END
       THEN
 --
         IF (NVL(gr_interface_info_rec(in_idx).num_of_cases,0) > 0)
         THEN
 --
-          --数量 x ケース入数を設定
-          gr_interface_info_rec(in_idx).orderd_quantity
-            := NVL(gr_interface_info_rec(in_idx).orderd_quantity,0) * gr_interface_info_rec(in_idx).num_of_cases;
+--*HHT* 2009/01/29 本番障害対応#1045 ADD START
+          -- 指示ありデータ（受注ソース参照の上2桁<>'96'のデータ）のみ計算対象とする
+          IF (SUBSTRB(gr_interface_info_rec(in_idx).order_source_ref,1,2) <> '96') THEN --*HHT*
+--*HHT* 2009/01/29 本番障害対応#1045 ADD END
 --
-          --内訳数量 x ケース入数を設定
-          gr_interface_info_rec(in_idx).detailed_quantity
-            := NVL(gr_interface_info_rec(in_idx).detailed_quantity,0) * gr_interface_info_rec(in_idx).num_of_cases;
+--
+            --数量 x ケース入数を設定
+            gr_interface_info_rec(in_idx).orderd_quantity
+              := NVL(gr_interface_info_rec(in_idx).orderd_quantity,0) * gr_interface_info_rec(in_idx).num_of_cases;
+--
+            --内訳数量 x ケース入数を設定
+            gr_interface_info_rec(in_idx).detailed_quantity
+              := NVL(gr_interface_info_rec(in_idx).detailed_quantity,0) * gr_interface_info_rec(in_idx).num_of_cases;
+--
+--*HHT* 2009/01/29 本番障害対応#1045 ADD START
+          END IF;                                                                       --*HHT*
+--*HHT* 2009/01/29 本番障害対応#1045 ADD END
+--
 --
         ELSE
 --
@@ -4555,12 +4570,16 @@ AS
 --
       --パラメータ.対象倉庫
       IF TRIM(iv_object_warehouse) IS NOT NULL THEN
-        --wk_sql := wk_sql || '   AND  (xshi.location_code = ''' || iv_object_warehouse || ''')'; --2008/10/08 統合テスト障害#310 Del
-        -- 2008/10/08 統合テスト障害#310 Add Start ----------------------------------
-        -- 230:移動入庫の場合はIF_H.入庫倉庫、それ以外はIF_H.出荷元を抽出条件とする
-        wk_sql := wk_sql || ' AND (DECODE(xshi.eos_data_type, ''' || gv_eos_data_cd_230 || ''', xshi.ship_to_location, ';
-        wk_sql := wk_sql || ' xshi.location_code) = ''' || iv_object_warehouse || ''') ';
-        -- 2008/10/08 統合テスト障害#310 Add End ------------------------------------
+--        --wk_sql := wk_sql || '   AND  (xshi.location_code = ''' || iv_object_warehouse || ''')'; --2008/10/08 統合テスト障害#310 Del
+-- 2009/01/29 本番障害#917,1045 MOD START
+--        -- 2008/10/08 統合テスト障害#310 Add Start ----------------------------------
+--        -- 230:移動入庫の場合はIF_H.入庫倉庫、それ以外はIF_H.出荷元を抽出条件とする
+--        wk_sql := wk_sql || ' AND (DECODE(xshi.eos_data_type, ''' || gv_eos_data_cd_230 || ''', xshi.ship_to_location, ';
+--        wk_sql := wk_sql || ' xshi.location_code) = ''' || iv_object_warehouse || ''') ';
+        -- EOSデータ種別に関わらず、IF_H.出荷元を抽出条件とする
+        wk_sql := wk_sql || '   AND   xshi.location_code = ''' || iv_object_warehouse || '''';  --*HHT*
+--        -- 2008/10/08 統合テスト障害#310 Add End ------------------------------------
+-- 2009/01/29 本番障害#917,1045 MOD END
       END IF;
 --
       wk_sql := wk_sql || '  ORDER BY ';
