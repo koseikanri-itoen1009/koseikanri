@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_xxcos_rs_info_v
  * Description     : 営業員情報ビュー
- * Version         : 1.2
+ * Version         : 1.4
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -20,124 +20,127 @@
  *  2009/07/09    1.2   K.Kakishita     [T3_0000208]パフォーマンス障害  ヒント句追加
  *  2009/07/30    1.3   K.Kakishita     [T3_0000900]パフォーマンス障害  ヒント句削除
  *                                                  『UNION』を『UNION ALL』に変更
+ *  2009/08/28    1.4   T.Miyata        [T3_0001206]①『UNION ALL』を『UNION』に変更
+ *                                                  ②SQL A(新拠点情報抽出)に別名付与
+ *                                                  ③SQL B(旧拠点情報抽出)に別名付与
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_rs_info_v
 AS
 --  SQL A(新拠点情報抽出)
 SELECT
-      jrgb.attribute1                           AS  base_code
-      ,to_date(nvl(paaf.ass_attribute2, '19000101'), 'yyyymmdd')
+      jrgb_n.attribute1                         AS  base_code
+      ,to_date(nvl(paaf_n.ass_attribute2, '19000101'), 'yyyymmdd')
                                                 AS  effective_start_date
       ,to_date('99991231', 'yyyymmdd')          AS  effective_end_date
 --      ,to_date('19000101', 'yyyymmdd')          AS  effective_start_date
 --      ,nvl(to_date(paaf.ass_attribute2, 'yyyymmdd') -1
 --          ,to_date('99991231', 'yyyymmdd'))     AS  effective_end_date
-      ,FIRST_VALUE(jrgm.attribute2)
-        OVER(PARTITION BY jrgm.group_id,  jrgm.resource_id  ORDER BY jrgm.group_member_id DESC
+      ,FIRST_VALUE(jrgm_n.attribute2)
+        OVER(PARTITION BY jrgm_n.group_id,  jrgm_n.resource_id  ORDER BY jrgm_n.group_member_id DESC
             RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
                                                 AS  group_code
-      ,FIRST_VALUE(jrgm.attribute1) 
-        OVER(PARTITION BY jrgm.group_id,  jrgm.resource_id  ORDER BY jrgm.group_member_id DESC
+      ,FIRST_VALUE(jrgm_n.attribute1) 
+        OVER(PARTITION BY jrgm_n.group_id,  jrgm_n.resource_id  ORDER BY jrgm_n.group_member_id DESC
             RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
                                                 AS  group_chief_flag
-      ,FIRST_VALUE(jrgm.attribute3) 
-        OVER(PARTITION BY jrgm.group_id,  jrgm.resource_id  ORDER BY jrgm.group_member_id DESC
+      ,FIRST_VALUE(jrgm_n.attribute3) 
+        OVER(PARTITION BY jrgm_n.group_id,  jrgm_n.resource_id  ORDER BY jrgm_n.group_member_id DESC
             RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
                                                 AS  group_in_sequence
-      ,jrrx.resource_id                         AS  resource_id
-      ,papf.employee_number                     AS  employee_number
-      ,papf.per_information18
+      ,jrrx_n.resource_id                       AS  resource_id
+      ,papf_n.employee_number                   AS  employee_number
+      ,papf_n.per_information18
   ||  ' '
-  ||  papf.per_information19                    AS  employee_name,
-      nvl(papf.effective_start_date, to_date('19000101', 'yyyymmdd'))
+  ||  papf_n.per_information19                  AS  employee_name,
+      nvl(papf_n.effective_start_date, to_date('19000101', 'yyyymmdd'))
                                                 AS  per_effective_start_date,
-      nvl(papf.effective_end_date, to_date('99991231', 'yyyymmdd'))
+      nvl(papf_n.effective_end_date, to_date('99991231', 'yyyymmdd'))
                                                 AS  per_effective_end_date,
-      nvl(paaf.effective_start_date, to_date('19000101', 'yyyymmdd'))
+      nvl(paaf_n.effective_start_date, to_date('19000101', 'yyyymmdd'))
                                                 AS  paa_effective_start_date,
-      nvl(paaf.effective_end_date, to_date('99991231', 'yyyymmdd'))
+      nvl(paaf_n.effective_end_date, to_date('99991231', 'yyyymmdd'))
                                                 AS  paa_effective_end_date
 FROM
-      per_all_assignments_f     paaf
-      ,per_all_people_f         papf
-      ,per_person_types         pept
-      ,jtf_rs_resource_extns    jrrx
-      ,jtf_rs_group_members     jrgm
-      ,jtf_rs_groups_b          jrgb
+      per_all_assignments_f     paaf_n
+      ,per_all_people_f         papf_n
+      ,per_person_types         pept_n
+      ,jtf_rs_resource_extns    jrrx_n
+      ,jtf_rs_group_members     jrgm_n
+      ,jtf_rs_groups_b          jrgb_n
 WHERE
-      jrrx.category             =   'EMPLOYEE'
-AND   jrgm.resource_id          =   jrrx.resource_id
-AND   jrgm.delete_flag          =   'N'
-AND   jrgb.group_id             =   jrgm.group_id
-AND   papf.person_id            =   jrrx.source_id
+      jrrx_n.category           =   'EMPLOYEE'
+AND   jrgm_n.resource_id        =   jrrx_n.resource_id
+AND   jrgm_n.delete_flag        =   'N'
+AND   jrgb_n.group_id           =   jrgm_n.group_id
+AND   papf_n.person_id          =   jrrx_n.source_id
 --view結果目視用にbusiness_group_idを直接指定  開発フェーズ完了後はfnd_globalより取得
-AND   pept.business_group_id    =   fnd_global.per_business_group_id
+AND   pept_n.business_group_id    =   fnd_global.per_business_group_id
 --AND   pept.business_group_id    =   101
-AND   pept.system_person_type   =   'EMP'
-AND   pept.active_flag          =   'Y'
-AND   papf.person_type_id       =   pept.person_type_id
-AND   paaf.person_id            =   papf.person_id
-AND   paaf.ass_attribute5       =   jrgb.attribute1
+AND   pept_n.system_person_type   =   'EMP'
+AND   pept_n.active_flag          =   'Y'
+AND   papf_n.person_type_id       =   pept_n.person_type_id
+AND   paaf_n.person_id            =   papf_n.person_id
+AND   paaf_n.ass_attribute5       =   jrgb_n.attribute1
 --AND   paaf.ass_attribute6       =   jrgb.attribute1
-UNION ALL
+UNION
 --  SQL B(旧拠点情報抽出)
 SELECT
-      jrgb.attribute1                           AS  base_code
+      jrgb_o.attribute1                         AS  base_code
 --      ,to_date(nvl(paaf.ass_attribute2, '19000101'), 'yyyymmdd')
 --                                                AS  effective_start_date
 --      ,to_date('99991231', 'yyyymmdd')          AS  effective_end_date
       ,to_date('19000101', 'yyyymmdd')          AS  effective_start_date
-      ,nvl(to_date(paaf.ass_attribute2, 'yyyymmdd') -1
+      ,nvl(to_date(paaf_o.ass_attribute2, 'yyyymmdd') -1
           ,to_date('99991231', 'yyyymmdd'))     AS  effective_end_date
-      ,FIRST_VALUE(jrgm.attribute2)
-        OVER(PARTITION BY jrgm.group_id,  jrgm.resource_id  ORDER BY jrgm.group_member_id DESC
+      ,FIRST_VALUE(jrgm_o.attribute2)
+        OVER(PARTITION BY jrgm_o.group_id,  jrgm_o.resource_id  ORDER BY jrgm_o.group_member_id DESC
             RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
                                                 AS  group_code
-      ,FIRST_VALUE(jrgm.attribute1) 
-        OVER(PARTITION BY jrgm.group_id,  jrgm.resource_id  ORDER BY jrgm.group_member_id DESC
+      ,FIRST_VALUE(jrgm_o.attribute1) 
+        OVER(PARTITION BY jrgm_o.group_id,  jrgm_o.resource_id  ORDER BY jrgm_o.group_member_id DESC
             RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
                                                 AS  group_chief_flag
-      ,FIRST_VALUE(jrgm.attribute3) 
-        OVER(PARTITION BY jrgm.group_id,  jrgm.resource_id  ORDER BY jrgm.group_member_id DESC
+      ,FIRST_VALUE(jrgm_o.attribute3) 
+        OVER(PARTITION BY jrgm_o.group_id,  jrgm_o.resource_id  ORDER BY jrgm_o.group_member_id DESC
             RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
                                                 AS  group_in_sequence
-      ,jrrx.resource_id                         AS  resource_id
-      ,papf.employee_number                     AS  employee_number
-      ,papf.per_information18
+      ,jrrx_o.resource_id                       AS  resource_id
+      ,papf_o.employee_number                   AS  employee_number
+      ,papf_o.per_information18
   ||  ' '
-  ||  papf.per_information19                    AS  employee_name,
-      nvl(papf.effective_start_date, to_date('19000101', 'yyyymmdd'))
+  ||  papf_o.per_information19                  AS  employee_name,
+      nvl(papf_o.effective_start_date, to_date('19000101', 'yyyymmdd'))
                                                 AS  per_effective_start_date,
-      nvl(papf.effective_end_date, to_date('99991231', 'yyyymmdd'))
+      nvl(papf_o.effective_end_date, to_date('99991231', 'yyyymmdd'))
                                                 AS  per_effective_end_date,
-      nvl(paaf.effective_start_date, to_date('19000101', 'yyyymmdd'))
+      nvl(paaf_o.effective_start_date, to_date('19000101', 'yyyymmdd'))
                                                 AS  paa_effective_start_date,
-      nvl(paaf.effective_end_date, to_date('99991231', 'yyyymmdd'))
+      nvl(paaf_o.effective_end_date, to_date('99991231', 'yyyymmdd'))
                                                 AS  paa_effective_end_date
 FROM
-      per_all_assignments_f     paaf
-      ,per_all_people_f         papf
-      ,per_person_types         pept
-      ,jtf_rs_resource_extns    jrrx
-      ,jtf_rs_group_members     jrgm
-      ,jtf_rs_groups_b          jrgb
+      per_all_assignments_f     paaf_o
+      ,per_all_people_f         papf_o
+      ,per_person_types         pept_o
+      ,jtf_rs_resource_extns    jrrx_o
+      ,jtf_rs_group_members     jrgm_o
+      ,jtf_rs_groups_b          jrgb_o
 WHERE
-      jrrx.category             =   'EMPLOYEE'
-AND   jrgm.resource_id          =   jrrx.resource_id
+      jrrx_o.category           =   'EMPLOYEE'
+AND   jrgm_o.resource_id        =   jrrx_o.resource_id
 --AND   jrgm.delete_flag          =   'N'
-AND   jrgb.group_id             =   jrgm.group_id
-AND   papf.person_id            =   jrrx.source_id
+AND   jrgb_o.group_id           =   jrgm_o.group_id
+AND   papf_o.person_id          =   jrrx_o.source_id
 --view結果目視用にbusiness_group_idを直接指定  開発フェーズ完了後はfnd_globalより取得
-AND   pept.business_group_id    =   fnd_global.per_business_group_id
---AND   pept.business_group_id    =   101
-AND   pept.system_person_type   =   'EMP'
-AND   pept.active_flag          =   'Y'
-AND   papf.person_type_id       =   pept.person_type_id
-AND   paaf.person_id            =   papf.person_id
+AND   pept_o.business_group_id  =   fnd_global.per_business_group_id
+--AND   pept.business_group_id  =   101
+AND   pept_o.system_person_type =   'EMP'
+AND   pept_o.active_flag        =   'Y'
+AND   papf_o.person_type_id     =   pept_o.person_type_id
+AND   paaf_o.person_id          =   papf_o.person_id
 --AND   paaf.ass_attribute5       =   jrgb.attribute1
-AND   paaf.ass_attribute6       =   jrgb.attribute1
+AND   paaf_o.ass_attribute6     =   jrgb_o.attribute1
 --  SQL B固有条件
-AND   paaf.ass_attribute2       IS  NOT NULL
+AND   paaf_o.ass_attribute2     IS  NOT NULL
 /
 COMMENT ON  COLUMN  xxcos_rs_info_v.base_code                 IS  '拠点CD';
 COMMENT ON  COLUMN  xxcos_rs_info_v.effective_start_date      IS  '拠点適用開始日';
