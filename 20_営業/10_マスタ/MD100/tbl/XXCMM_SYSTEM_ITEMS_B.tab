@@ -4,9 +4,15 @@ CREATE TABLE xxcmm.xxcmm_system_items_b
     item_code                      VARCHAR2(40) NOT NULL,
     tax_rate                       NUMBER(2,0),
     baracha_div                    NUMBER(1,0),
-    nets                           NUMBER(4,1),
+-- Ver1.1  2009/04/10  MOD T1_0214対応
+--    nets                           NUMBER(4,1),
+    nets                           NUMBER(5,1),
+-- End
     nets_uom_code                  VARCHAR2(1),
-    inc_num                        NUMBER(4,1),
+-- Ver1.1  2009/04/10  MOD T1_0214対応
+--    inc_num                        NUMBER(4,1),
+    inc_num                        NUMBER(5,1),
+-- End
     vessel_group                   VARCHAR2(4),
     acnt_group                     VARCHAR2(4),
     acnt_vessel_group              VARCHAR2(4),
@@ -31,7 +37,6 @@ CREATE TABLE xxcmm.xxcmm_system_items_b
     CONSTRAINT xxcmm_system_items_b_pk PRIMARY KEY (item_id)
     USING INDEX TABLESPACE xxidx2
 )
-TABLESPACE xxdata2
 /
 COMMENT ON TABLE xxcmm.xxcmm_system_items_b                         IS 'Disc品目アドオン'
 /
