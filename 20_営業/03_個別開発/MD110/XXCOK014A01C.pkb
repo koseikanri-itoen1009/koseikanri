@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 1.3
+ * Version          : 1.8
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -41,7 +41,11 @@ AS
  *  2009/02/26    1.3   K.Ezaki          障害COK_060 一律条件計算結果累積
  *  2009/02/26    1.3   K.Ezaki          障害COK_061 一律条件定額計算
  *  2009/02/25    1.3   K.Ezaki          障害COK_062 定額条件割戻率・割戻額未設定
- *  2009/03/25    1.4   S.Kayahara       最終行にスラッシュ追加
+ *  2009/03/13    1.4   T.Taniguchi      障害T1_0036 販売実績情報カーソル定義の条件追加
+ *  2009/03/25    1.5   S.Kayahara       最終行にスラッシュ追加
+ *  2009/04/14    1.6   K.Yamaguchi      [障害T1_0523] 販売実績の売上金額（税込）取得方法不正対応
+ *  2009/04/20    1.7   K.Yamaguchi      [障害T1_0688] 販手条件マスタの有効日を判定しないように修正
+ *  2009/05/20    1.8   K.Yamaguchi      [障害T1_0686] メッセージ修正
  *****************************************************************************************/
 --
   ------------------------------------------------------------
@@ -151,10 +155,19 @@ AS
   cv_prmmsg_00051   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00051';                 -- 販手販協保持期間外情報ロックエラー
   cv_prmmsg_10398   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10398';                 -- 販手販協保持期間外情報削除エラー
   cv_prmmsg_10399   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10399';                 -- 契約情報取得エラー
-  cv_prmmsg_00036   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00036';                 -- 締め・支払日取得エラー
-  cv_prmmsg_00027   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00027';                 -- 営業日取得エラー
+-- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR START
+--  cv_prmmsg_00036   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00036';                 -- 締め・支払日取得エラー
+  cv_prmmsg_10454   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10454';                 -- 締め・支払日取得エラー
+-- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR END
+-- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR START
+--  cv_prmmsg_00027   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00027';                 -- 営業日取得エラー
+  cv_prmmsg_10455   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10455';                 -- 営業日取得エラー
+-- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR END
   cv_prmmsg_00079   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00079';                 -- 請求先顧客取得エラー
-  cv_prmmsg_00011   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00011';                 -- 会計カレンダ情報取得エラー
+-- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR START
+--  cv_prmmsg_00011   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00011';                 -- 会計カレンダ情報取得エラー
+  cv_prmmsg_10456   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10456';                 -- 会計カレンダ情報取得エラー
+-- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR END
   cv_prmmsg_00080   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00080';                 -- 販手条件エラー情報ロックエラー
   cv_prmmsg_10400   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10400';                 -- 販手条件エラー情報削除エラー
   cv_prmmsg_10401   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10401';                 -- 販手条件エラー情報登録エラー
@@ -995,8 +1008,11 @@ AS
       WHERE  xmb.cust_code        = iv_customer_code
       AND    xmb.calc_target_flag = cv_yes -- Y：計算対象
       AND    xmb.calc_type        = iv_calculat_type
-      AND    id_close_date BETWEEN NVL( xmb.start_date_active,id_close_date )
-                           AND     NVL( xmb.end_date_active,id_close_date );
+-- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR START
+--      AND    id_close_date BETWEEN NVL( xmb.start_date_active,id_close_date )
+--                           AND     NVL( xmb.end_date_active,id_close_date );
+      ;
+-- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR END
     -- 販手条件情報レコード定義
     contract_mst_rec contract_mst_cur%ROWTYPE;
     --===============================
@@ -1122,8 +1138,11 @@ AS
       WHERE  xmb.cust_code        = iv_customer_code
       AND    xmb.calc_target_flag = cv_yes -- Y：計算対象
       AND    xmb.calc_type        = iv_calculat_type
-      AND    id_close_date BETWEEN NVL( xmb.start_date_active,id_close_date )
-                           AND     NVL( xmb.end_date_active,id_close_date );
+-- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR START
+--      AND    id_close_date BETWEEN NVL( xmb.start_date_active,id_close_date )
+--                           AND     NVL( xmb.end_date_active,id_close_date );
+      ;
+-- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR END
     -- 販手条件情報レコード定義
     contract_mst_rec contract_mst_cur%ROWTYPE;
     --===============================
@@ -1273,8 +1292,11 @@ AS
       WHERE  xmb.cust_code        = iv_customer_code
       AND    xmb.calc_target_flag = cv_yes -- Y：計算対象
       AND    xmb.calc_type        = iv_calculat_type
-      AND    id_close_date BETWEEN NVL( xmb.start_date_active,id_close_date )
-                           AND     NVL( xmb.end_date_active,id_close_date );
+-- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR START
+--      AND    id_close_date BETWEEN NVL( xmb.start_date_active,id_close_date )
+--                           AND     NVL( xmb.end_date_active,id_close_date );
+      ;
+-- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR END
     -- 販手条件情報レコード定義
     contract_mst_rec contract_mst_cur%ROWTYPE;
     --===============================
@@ -1465,8 +1487,11 @@ AS
       AND    xmb.calc_target_flag    = cv_yes -- Y：計算対象
       AND    xmb.calc_type           = iv_calculat_type
       AND    xmb.container_type_code = iv_container_type
-      AND    id_close_date BETWEEN NVL( xmb.start_date_active,id_close_date )
-                           AND     NVL( xmb.end_date_active,id_close_date );
+-- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR START
+--      AND    id_close_date BETWEEN NVL( xmb.start_date_active,id_close_date )
+--                           AND     NVL( xmb.end_date_active,id_close_date );
+      ;
+-- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR END
     -- 販手条件情報レコード定義
     contract_mst_rec contract_mst_cur%ROWTYPE;
     --===============================
@@ -1658,8 +1683,11 @@ AS
       AND    xmb.calc_target_flag = cv_yes -- Y：計算対象
       AND    xmb.calc_type        = iv_calculat_type
       AND    xmb.selling_price    = in_retail
-      AND    id_close_date BETWEEN NVL( xmb.start_date_active,id_close_date )
-                           AND     NVL( xmb.end_date_active,id_close_date );
+-- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR START
+--      AND    id_close_date BETWEEN NVL( xmb.start_date_active,id_close_date )
+--                           AND     NVL( xmb.end_date_active,id_close_date );
+      ;
+-- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR END
     -- 販手条件情報レコード定義
     contract_mst_rec contract_mst_cur%ROWTYPE;
     --===============================
@@ -2242,10 +2270,18 @@ AS
     ----------------------------------------------------------
     WHEN work_date_err_expt THEN
       -- メッセージ取得
+-- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR START
+--      lv_out_msg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_ap_type_xxcok
+--                      ,iv_name         => cv_prmmsg_00027
+--                    );    
       lv_out_msg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_prmmsg_00027
+                      ,iv_name         => cv_prmmsg_10455
+                      ,iv_token_name1  => cv_tkn_cust_code
+                      ,iv_token_value1 => iv_customer_code
                     );    
+-- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR END
       -- メッセージ出力
       lb_retcode := xxcok_common_pkg.put_message_f(
                        in_which    => fnd_file.output -- 出力区分
@@ -2260,12 +2296,22 @@ AS
     ----------------------------------------------------------
     WHEN calendar_err_expt THEN
       -- メッセージ取得
+-- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR START
+--      lv_out_msg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_ap_type_xxcok
+--                      ,iv_name         => cv_prmmsg_00011
+--                      ,iv_token_name1  => cv_tkn_proc_date
+--                      ,iv_token_value1 => TO_CHAR( ld_pay_work_date,cv_format1 )
+--                    );    
       lv_out_msg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_prmmsg_00011
-                      ,iv_token_name1  => cv_tkn_proc_date
-                      ,iv_token_value1 => TO_CHAR( ld_pay_work_date,cv_format1 )
-                    );    
+                      ,iv_name         => cv_prmmsg_10456
+                      ,iv_token_name1  => cv_tkn_cust_code
+                      ,iv_token_value1 => iv_customer_code
+                      ,iv_token_name2  => cv_tkn_proc_date
+                      ,iv_token_value2 => TO_CHAR( ld_pay_work_date,cv_format1 )
+                    );
+-- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR END
       -- メッセージ出力
       lb_retcode := xxcok_common_pkg.put_message_f(
                        in_which    => fnd_file.output -- 出力区分
@@ -2805,10 +2851,18 @@ AS
     ----------------------------------------------------------
     WHEN close_date_err_expt THEN
       -- メッセージ取得
+-- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR START
+--      lv_out_msg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_ap_type_xxcok
+--                      ,iv_name         => cv_prmmsg_00036
+--                    );
       lv_out_msg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_prmmsg_00036
+                      ,iv_name         => cv_prmmsg_10454
+                      ,iv_token_name1  => cv_tkn_cust_code
+                      ,iv_token_value1 => iv_customer_code
                     );
+-- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR END
       -- メッセージ出力
       lb_retcode := xxcok_common_pkg.put_message_f(
                        in_which    => fnd_file.output -- 出力区分
@@ -2823,10 +2877,18 @@ AS
     ----------------------------------------------------------
     WHEN work_date_err_expt THEN
       -- メッセージ取得
+-- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR START
+--      lv_out_msg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_ap_type_xxcok
+--                      ,iv_name         => cv_prmmsg_00027
+--                    );
       lv_out_msg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_prmmsg_00027
+                      ,iv_name         => cv_prmmsg_10455
+                      ,iv_token_name1  => cv_tkn_cust_code
+                      ,iv_token_value1 => iv_customer_code
                     );
+-- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR END
       -- メッセージ出力
       lb_retcode := xxcok_common_pkg.put_message_f(
                        in_which    => fnd_file.output -- 出力区分
@@ -3360,7 +3422,11 @@ AS
             ,NVL( xsl.dlv_qty,cn_zero )        AS dlv_quantity     -- 納品数量
             ,xsl.dlv_uom_code                  AS dlv_uom_code     -- 納品単位
             ,NVL( xsl.dlv_unit_price,cn_zero ) AS dlv_unit_price   -- 納品単価
-            ,NVL( xsl.sale_amount,cn_zero )    AS sales_amount     -- 売上金額
+-- 2009/04/14 Ver.1.6 [障害T1_0523] SCS K.Yamaguchi REPAIR START
+--            ,NVL( xsl.sale_amount,cn_zero )    AS sales_amount     -- 売上金額
+            ,NVL( xsl.pure_amount, cn_zero )
+             + NVL( xsl.tax_amount, cn_zero )  AS sales_amount     -- 売上金額
+-- 2009/04/14 Ver.1.6 [障害T1_0523] SCS K.Yamaguchi REPAIR END
             ,NVL( xsl.pure_amount,cn_zero )    AS body_amount      -- 本体金額
             ,NVL( xsl.tax_amount,cn_zero )     AS tax_amount       -- 消費税金額
             ,NVL( fl1.attribute1,cv_ves_dmmy ) AS container_type   -- 容器区分
@@ -3377,6 +3443,7 @@ AS
       AND    xsi.vessel_group           = fl1.lookup_code(+)
       AND    fl1.lookup_type(+)         = cv_lk_itm_yk_type -- 容器群区分
       AND    fl1.language(+)            = iv_language
+      AND    xsh.sales_exp_header_id    = xsl.sales_exp_header_id
       AND    NOT EXISTS ( SELECT 'X'
                           FROM   fnd_lookup_values fl2 -- クイックコード２
                           WHERE  xsl.item_code   = fl2.lookup_code
@@ -3403,7 +3470,11 @@ AS
             ,NVL( xsl.dlv_qty,cn_zero )        AS dlv_quantity     -- 納品数量
             ,xsl.dlv_uom_code                  AS dlv_uom_code     -- 納品単位
             ,NVL( xsl.dlv_unit_price,cn_zero ) AS dlv_unit_price   -- 納品単価
-            ,NVL( xsl.sale_amount,cn_zero )    AS sales_amount     -- 売上金額
+-- 2009/04/14 Ver.1.6 [障害T1_0523] SCS K.Yamaguchi REPAIR START
+--            ,NVL( xsl.sale_amount,cn_zero )    AS sales_amount     -- 売上金額
+            ,NVL( xsl.pure_amount,cn_zero )
+             + NVL( xsl.tax_amount,cn_zero )   AS sales_amount     -- 売上金額
+-- 2009/04/14 Ver.1.6 [障害T1_0523] SCS K.Yamaguchi REPAIR END
             ,NVL( xsl.pure_amount,cn_zero )    AS body_amount      -- 本体金額
             ,NVL( xsl.tax_amount,cn_zero )     AS tax_amount       -- 消費税金額
             ,NVL( fl1.attribute1,cv_ves_dmmy ) AS container_type   -- 容器区分
@@ -3419,6 +3490,7 @@ AS
       AND    xsi.vessel_group           = fl1.lookup_code(+)
       AND    fl1.lookup_type(+)         = cv_lk_itm_yk_type -- 容器群区分
       AND    fl1.language(+)            = iv_language
+      AND    xsh.sales_exp_header_id    = xsl.sales_exp_header_id
       AND    NOT EXISTS ( SELECT 'X'
                           FROM   fnd_lookup_values fl2 -- クイックコード２
                           WHERE  xsh.cust_gyotai_sho = fl2.lookup_code
@@ -3442,8 +3514,10 @@ AS
       FROM   xxcok_mst_bm_contract xmb -- 販手条件マスタ
       WHERE  xmb.cust_code        = iv_customer_code
       AND    xmb.calc_target_flag = cv_yes -- Y：計算対象
-      AND    id_close_date BETWEEN NVL( xmb.start_date_active,id_close_date )
-                           AND     NVL( xmb.end_date_active,id_close_date )
+-- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi DEL START
+--      AND    id_close_date BETWEEN NVL( xmb.start_date_active,id_close_date )
+--                           AND     NVL( xmb.end_date_active,id_close_date )
+-- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi DEL END
       GROUP BY xmb.calc_type;
     -- 販手条件集約情報レコード定義
     contract_mst_grp_rec contract_mst_grp_cur%ROWTYPE;
