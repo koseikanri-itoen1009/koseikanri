@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼締め関数
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_BPO_40E_出荷依頼締め関数
- * Version                : 1.11
+ * Version                : 1.14
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2008/12/07   1.12  SCS    菅原大輔   本番#386
  *  2008/12/17   1.13  SCS    上原/福田  本番#81
  *  2008/12/17   1.13  SCS    福田       APP-XXWSH-11204エラー発生時に即時終了しないようにする
+ *  2008/12/23   1.14  SCS    上原       本番#81 再締め処理時の抽出条件にリードタイムを追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -947,7 +948,6 @@ AS
             ,xxwsh_order_headers_all       xoha     --②受注ヘッダアドオン
             ,xxcmn_cust_accounts2_v        xcav
             ,xxcmn_cust_acct_sites2_v      xcasv
-            ,xxwsh_tightening_control      xtc
             ,(SELECT DISTINCT
                   lt.code_class1                  code_class1,
                                                                 --コード区分1（倉庫・配送先）
@@ -970,15 +970,7 @@ AS
              WHERE lt.code_class1                   = :cv_code_class_4 --コード区分1：倉庫
              AND   lt.code_class2                   = :cv_code_class_9 --コード区分2：配送先
            )                           xdl    --配送L/Tアドオンマスタ（倉庫・配送先）
-         WHERE xottv.order_category_code   =  :cv_order_category_code
-                                  -- 受注タイプ.受注カテゴリ＝「受注」かつ
-         AND   xottv.shipping_shikyu_class =  :cv_shipping_shikyu_class
-                                  -- 受注タイプ.出荷支給区分＝「出荷依頼」かつ
-         AND   xoha.order_type_id          =  xottv.transaction_type_id
-                                  -- 受注ヘッダアドオン.受注タイプID＝受注タイプ.取引タイプIDかつ
-         AND   xoha.req_status             =  :gv_status_02
-                                  -- 受注ヘッダアドオン.ステータス＝「02:拠点確定」かつ
-         ';
+           ';
 /**
     cv_main_sql1                   CONSTANT VARCHAR2(32000) :=
        ' SELECT
@@ -1023,11 +1015,11 @@ AS
 **/
 -- 2008/12/17 mod end ver1.13 M_Uehara
 --
--- 2008/12/17 del start ver1.13 M_Uehara
-/**
     cv_retable                     CONSTANT VARCHAR2(32000) :=
         ' ,xxwsh_tightening_control      xtc';    --出荷依頼締め管理（アドオン）
 --
+-- 2008/12/17 del start ver1.13 M_Uehara
+/**
     cv_main_sql2                   CONSTANT VARCHAR2(32000) :=
      '   ,(SELECT DISTINCT
              lt2.code_class1                  lt2_code_class1,
@@ -1113,7 +1105,15 @@ AS
 -- 2008/12/17 mod end ver1.13 M_Uehara
 --
     cv_rewhere                     CONSTANT VARCHAR2(32000) :=
-     ' AND   (1 = :ln_tightening_prog_id_nullflg -- フラグが0なら締めコンカレントIDを条件に追加する
+     ' WHERE xottv.order_category_code   =  :cv_order_category_code
+                                  -- 受注タイプ.受注カテゴリ＝「受注」かつ
+         AND   xottv.shipping_shikyu_class =  :cv_shipping_shikyu_class
+                                  -- 受注タイプ.出荷支給区分＝「出荷依頼」かつ
+         AND   xoha.order_type_id          =  xottv.transaction_type_id
+                                  -- 受注ヘッダアドオン.受注タイプID＝受注タイプ.取引タイプIDかつ
+         AND   xoha.req_status             =  :gv_status_02
+                                  -- 受注ヘッダアドオン.ステータス＝「02:拠点確定」かつ
+       AND   (1 = :ln_tightening_prog_id_nullflg -- フラグが0なら締めコンカレントIDを条件に追加する
               OR xtc.concurrent_id       = :in_tightening_program_id)
                                 -- 出荷依頼締め管理（アドオン）.コンカレントID
                                 -- ＝パラメータ.締めコンカレントIDかつ
@@ -1147,7 +1147,15 @@ AS
                                 -- ＝顧客マスタ.拠点カテゴリかつ
 --
     cv_where                       CONSTANT VARCHAR2(32000) :=
-     ' AND  ((1 = :ln_order_type_id_nullflg) -- フラグが0なら出荷元を条件に追加する
+     ' WHERE xottv.order_category_code   =  :cv_order_category_code
+                                  -- 受注タイプ.受注カテゴリ＝「受注」かつ
+       AND   xottv.shipping_shikyu_class =  :cv_shipping_shikyu_class
+                                  -- 受注タイプ.出荷支給区分＝「出荷依頼」かつ
+       AND   xoha.order_type_id          =  xottv.transaction_type_id
+                                  -- 受注ヘッダアドオン.受注タイプID＝受注タイプ.取引タイプIDかつ
+       AND   xoha.req_status             =  :gv_status_02
+                                  -- 受注ヘッダアドオン.ステータス＝「02:拠点確定」かつ
+       AND  ((1 = :ln_order_type_id_nullflg) -- フラグが0なら出荷元を条件に追加する
               OR  (xoha.order_type_id     =  :in_order_type_id))
                                 -- 受注ヘッダアドオン.出庫形態ID＝パラメータ.出庫形態IDかつ
        AND  ((1 = :ln_deliver_from_nullflg) -- フラグが0なら出荷元を条件に追加する
@@ -1185,18 +1193,15 @@ AS
                                                            -- 受注ヘッダアドオン.出荷元保管場所
        AND   xdl.entering_despatching_code2  = xoha.deliver_to
                                                            -- 受注ヘッダアドオン.配送先
-       AND   xcav.start_date_active          <= xoha.schedule_ship_date
-                                                           -- 受注ヘッダアドオン.出荷予定日
-       AND  (xcav.end_date_active            IS NULL
-         OR  xcav.end_date_active            >= xoha.schedule_ship_date)
-                                                           -- 受注ヘッダアドオン.出荷予定日
+       AND   xcasv.base_code                  = xcav.party_number
+       AND   xoha.deliver_to_id             =  xcasv.party_site_id
        AND   xcasv.start_date_active         <= xoha.schedule_ship_date
                                                            -- 受注ヘッダアドオン.出荷予定日
        AND  (xcasv.end_date_active           IS NULL
          OR  xcasv.end_date_active           >= xoha.schedule_ship_date)'
        ;                                                   -- 受注ヘッダアドオン.出荷予定日
      cv_lead_time_w1                   CONSTANT VARCHAR2(32000)
-     :=    ' AND  rcpt_cng_lead_time_day =  :in_lead_time_day';
+     :=    ' AND  receipt_change_lead_time_day =  :in_lead_time_day';
                                      -- 引き取り変更LT（倉庫・配送先）
                                      -- 引き取り変更LT（倉庫・拠点）
 --
@@ -1218,7 +1223,7 @@ AS
        OR    xottv.end_date_active          >= NVL(:id_schedule_ship_date,xoha.schedule_ship_date)) '  ;
 --
      cv_union                       CONSTANT VARCHAR2(32000) :=
-     ') UNION'
+     ' UNION '
      ;
     cv_main_sql4                    CONSTANT VARCHAR2(32000) :=
      '   -- 配送LT（倉庫・拠点）で取得
@@ -1256,8 +1261,6 @@ AS
            xxwsh_oe_transaction_types2_v xottv    --①受注タイプ情報VIEW2
           ,xxwsh_order_headers_all       xoha     --②受注ヘッダアドオン
           ,xxcmn_cust_accounts2_v        xcav
-          ,xxcmn_cust_acct_sites2_v      xcasv
-          ,xxwsh_tightening_control      xtc
           ,(SELECT DISTINCT
                 lt.code_class1                  code_class1,
                                                               --コード区分1（倉庫・拠点）
@@ -1280,14 +1283,6 @@ AS
            WHERE lt.code_class1                   = :cv_code_class_4 --コード区分1：倉庫
            AND   lt.code_class2                   = :cv_code_class_1 --コード区分2：拠点
          )                           xdl    --配送L/Tアドオンマスタ（倉庫・拠点）
-       WHERE xottv.order_category_code   =  :cv_order_category_code
-                                -- 受注タイプ.受注カテゴリ＝「受注」かつ
-       AND   xottv.shipping_shikyu_class =  :cv_shipping_shikyu_class
-                                -- 受注タイプ.出荷支給区分＝「出荷依頼」かつ
-       AND   xoha.order_type_id          =  xottv.transaction_type_id
-                                -- 受注ヘッダアドオン.受注タイプID＝受注タイプ.取引タイプIDかつ
-       AND   xoha.req_status             =  :gv_status_02
-                                -- 受注ヘッダアドオン.ステータス＝「02:拠点確定」かつ
        ';
     cv_main_sql5                   CONSTANT VARCHAR2(32000) :=
      ' AND   xcav.party_number            = xoha.head_sales_branch
@@ -1310,20 +1305,9 @@ AS
                                                            -- 受注ヘッダアドオン.出荷元保管場所
        AND   xdl.entering_despatching_code2  = xoha.head_sales_branch
                                                            -- 受注ヘッダアドオン.拠点
-       AND   xcav.start_date_active          <= xoha.schedule_ship_date
-                                                           -- 受注ヘッダアドオン.出荷予定日
-       AND  (xcav.end_date_active            IS NULL
-         OR  xcav.end_date_active            >= xoha.schedule_ship_date)
-                                                           -- 受注ヘッダアドオン.出荷予定日
-       AND   xcasv.start_date_active         <= xoha.schedule_ship_date
-                                                           -- 受注ヘッダアドオン.出荷予定日
-       AND  (xcasv.end_date_active           IS NULL
-         OR  xcasv.end_date_active           >= xoha.schedule_ship_date)'
-       ;                                                   -- 受注ヘッダアドオン.出荷予定日
+       ';
      cv_main_sql6                   CONSTANT VARCHAR2(32000) :=
      ' AND   xcav.account_status            =  :gv_status_A--（有効）
-       AND   xcasv.cust_acct_site_status    =  :gv_status_A--（有効）
-       AND   xcasv.cust_site_uses_status    =  :gv_status_A--（有効）
        AND   xottv.start_date_active        <= NVL(:id_schedule_ship_date,xoha.schedule_ship_date)
        AND  (xottv.end_date_active          IS NULL
        OR    xottv.end_date_active          >= NVL(:id_schedule_ship_date,xoha.schedule_ship_date))
@@ -1339,7 +1323,7 @@ AS
                         AND     NVL(xoha.shipped_date,xoha.schedule_ship_date) BETWEEN xdl2v.lt_start_date_active 
                         AND NVL( xdl2v.lt_end_date_active, NVL(xoha.shipped_date,xoha.schedule_ship_date) )
                      )
-           ';
+        )';
 /** 
            cv_main_sql3                   CONSTANT VARCHAR2(32000) :=
      ' AND   xcav.party_number            = xoha.head_sales_branch
@@ -1898,8 +1882,6 @@ AS
             iv_sales_base_category,
             in_lead_time_day,
             gv_status_A,
-            gv_status_A,
-            gv_status_A,
             id_schedule_ship_date,
             id_schedule_ship_date,
             cv_deliver_from_4,
@@ -1911,13 +1893,21 @@ AS
 --
         -- 動的SQL本文を決める
         lv_sql :=   cv_main_sql1
+                 || cv_retable
                  || cv_rewhere
                  || cv_main_sql2
+-- 2008/12/23 addd start ver1.14 M_Uehara
+                 || lv_lead_time_w
+-- 2008/12/23 addd end ver1.14 M_Uehara
                  || cv_main_sql3
                  || cv_union
                  || cv_main_sql4
+                 || cv_retable
                  || cv_rewhere
                  || cv_main_sql5
+-- 2008/12/23 addd start ver1.14 M_Uehara
+                 || lv_lead_time_w
+-- 2008/12/23 addd end ver1.14 M_Uehara
                  || cv_main_sql6;
 --
         -- SQLの実行
@@ -1948,6 +1938,9 @@ AS
             iv_sales_base_category,
             ln_leaf_base_category_flg,
             iv_sales_base_category,
+-- 2008/12/23 addd start ver1.14 M_Uehara
+            in_lead_time_day,
+-- 2008/12/23 addd end ver1.14 M_Uehara
             gv_status_A,
             gv_status_A,
             gv_status_A,
@@ -1978,8 +1971,9 @@ AS
             iv_sales_base_category,
             ln_leaf_base_category_flg,
             iv_sales_base_category,
-            gv_status_A,
-            gv_status_A,
+-- 2008/12/23 addd start ver1.14 M_Uehara
+            in_lead_time_day,
+-- 2008/12/23 addd end ver1.14 M_Uehara
             gv_status_A,
             id_schedule_ship_date,
             id_schedule_ship_date,

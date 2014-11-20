@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）原料・資材・半製品
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77A)
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *  2008/12/10    1.25  A.Shiina         本番障害617,636対応
  *  2008/12/11    1.26  N.Yoshida        本番障害580対応
  *  2008/12/18    1.27  N.Yoshida        本番障害773対応
+ *  2008/12/22    1.28  N.Yoshida        本番障害838対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -13755,8 +13756,12 @@ NULL;
             prc_xml_add('item_name', 'D', gt_body_data(in_pos).item_name); --品目名称
             ib_print  := TRUE;
           END IF;
-          prc_xml_add('quantity', 'D',      TO_CHAR((ln_end_stock_qty  - ln_stock_qty)));--差異数量
-          prc_xml_add('amount', 'D',        TO_CHAR((ln_end_stock_amt  - ln_stock_amt)));--差異金額
+-- 2008/12/22 v1.28 UPDATE START
+--          prc_xml_add('quantity', 'D',      TO_CHAR((ln_end_stock_qty  - ln_stock_qty)));--差異数量
+--          prc_xml_add('amount', 'D',        TO_CHAR((ln_end_stock_amt  - ln_stock_amt)));--差異金額
+          prc_xml_add('quantity', 'D',      TO_CHAR((NVL(ln_end_stock_qty, 0)  - NVL(ln_stock_qty, 0))));--差異数量
+          prc_xml_add('amount', 'D',        TO_CHAR((NVL(ln_end_stock_amt, 0)  - NVL(ln_stock_amt, 0))));--差異金額
+-- 2008/12/22 v1.28 UPDATE END
         END IF;
       ELSE
         IF  (ib_print = TRUE) THEN
@@ -13765,8 +13770,12 @@ NULL;
 -- 2008/08/20 v1.8 UPDATE START
 --          prc_xml_add('quantity','D',  0);--差異数量
 --          prc_xml_add('amount',  'D',  0);--差異金額
-          prc_xml_add('quantity', 'D',      TO_CHAR((ln_end_stock_qty  - ln_stock_qty)));--差異数量
-          prc_xml_add('amount', 'D',        TO_CHAR((ln_end_stock_amt  - ln_stock_amt)));--差異金額
+-- 2008/12/22 v1.28 UPDATE START
+--          prc_xml_add('quantity', 'D',      TO_CHAR((ln_end_stock_qty  - ln_stock_qty)));--差異数量
+--          prc_xml_add('amount', 'D',        TO_CHAR((ln_end_stock_amt  - ln_stock_amt)));--差異金額
+          prc_xml_add('quantity', 'D',      TO_CHAR((NVL(ln_end_stock_qty, 0)  - NVL(ln_stock_qty, 0))));--差異数量
+          prc_xml_add('amount', 'D',        TO_CHAR((NVL(ln_end_stock_amt, 0)  - NVL(ln_stock_amt, 0))));--差異金額
+-- 2008/12/22 v1.28 UPDATE END
 -- 2008/08/20 v1.8 UPDATE END
         END IF;
       END IF;

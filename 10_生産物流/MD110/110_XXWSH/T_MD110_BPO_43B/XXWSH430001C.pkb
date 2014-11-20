@@ -7,7 +7,7 @@ AS
  * Description      : 倉替返品情報インターフェース
  * MD.050           : 倉替返品 T_MD050_BPO_430
  * MD.070           : 倉替返品情報インターフェース T_MD070_BPO_43B
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------------  ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2008/08/07    1.4   ORACLE山根一浩   課題#32,課題#67変更#174対応
  *  2008/10/10    1.5   ORACLE平福正明   T_S_474対応
  *  2008/11/25    1.6   ORACLE吉元強樹   本番問合せ#243対応
+ *  2008/12/22    1.7   ORACLE椎名昭圭   本番問合せ#743対応
  *
  *****************************************************************************************/
 --
@@ -1507,6 +1508,10 @@ AS
           lr_create_lot.attribute23 := cv_attribute23;       -- ロットステータス
           lr_create_lot.user_name   := FND_GLOBAL.USER_NAME; -- ユーザ
           lr_create_lot.lot_created := SYSDATE;              -- 作成年月日
+-- 2008/12/22 v1.7 ADD START
+          lr_create_lot.expaction_date := TO_DATE('2099/12/31', 'YYYY/MM/DD');
+          lr_create_lot.expire_date    := TO_DATE('2099/12/31', 'YYYY/MM/DD');
+-- 2008/12/22 v1.7 ADD END
 --
           --ロット作成API
           GMIPAPI.CREATE_LOT(

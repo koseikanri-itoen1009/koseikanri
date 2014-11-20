@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理ロック対応
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  Date         Ver.  Editor          Description
  * ------------- ----- --------------- --------------------------------------------------
  *  2008/11/29    1.0  MIYATA.          新規作成
+ *  2008/12/20    1.1  M.Hokkanji       本番障害#738
  *
  *****************************************************************************************/
 --
@@ -82,6 +83,27 @@ AS
 --
   gv_cnst_msg_kbn  CONSTANT VARCHAR2(5)   := 'XXWSH';
   gv_cnst_msg_cmn  CONSTANT VARCHAR2(5)   := 'XXCMN';
+-- Ver1.1 M.Hokkanji Start
+  to_date_expt_m  EXCEPTION;  -- 日付変換エラーm
+  to_date_expt_d  EXCEPTION;  -- 日付変換エラーd
+  to_date_expt_y  EXCEPTION;  -- 日付変換エラーy
+  
+  PRAGMA EXCEPTION_INIT(to_date_expt_m, -1843); -- 日付変換エラーm
+  PRAGMA EXCEPTION_INIT(to_date_expt_d, -1847); -- 日付変換エラーd
+  PRAGMA EXCEPTION_INIT(to_date_expt_y, -1861); -- 日付変換エラーy
+  gv_msg_xxwsh_13151    CONSTANT VARCHAR2(100)  :=  'APP-XXWSH-13151';
+                                                      -- メッセージ：必須パラメータ未入力メッセージ
+  gv_msg_xxwsh_11113    CONSTANT VARCHAR2(100)  :=  'APP-XXWSH-11113';
+                                                      -- メッセージ：日付逆転エラーメッセージ
+  gv_msg_xxwsh_11809    CONSTANT VARCHAR2(100)  :=  'APP-XXWSH-11809';
+                                                      -- メッセージ：入力パラメータ書式エラー
+  gv_msg_xxwsh_13501    CONSTANT VARCHAR2(100)  :=  'APP-XXWSH-13501';
+                                                      -- コンカレント発行エラー
+  gv_tkn_item           CONSTANT VARCHAR2(100)  :=  'ITEM';       -- トークン：ITEM
+  gv_tkn_from           CONSTANT VARCHAR2(100)  :=  'FROM';       -- トークン：FROM
+  gv_tkn_to             CONSTANT VARCHAR2(100)  :=  'TO';         -- トークン：TO
+  gv_tkn_parm_name      CONSTANT VARCHAR2(100)  :=  'PARM_NAME';  -- トークン：PARM_NAME
+-- Ver1.1 M.Hokkanji End
 --
    /**********************************************************************************
    * Procedure Name   : release_lock
@@ -211,6 +233,12 @@ AS
     -- ローカル定数
     -- ===============================
     cv_prg_name   CONSTANT VARCHAR2(100) := 'main';  -- プログラム名
+-- Ver1.1 M.Hokkanji Start
+    cv_date_from  CONSTANT VARCHAR2(100)  :=  '出庫日FROM'; -- 出庫日From
+    cv_date_to    CONSTANT VARCHAR2(100)  :=  '出庫日TO';   -- 出庫日To
+    cv_status_g   CONSTANT VARCHAR2(10)   :=  'G';          -- 警告
+    cv_status_e   CONSTANT VARCHAR2(10)   :=  'E';          -- エラー
+-- Ver1.1 M.Hokkanji End
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -218,59 +246,256 @@ AS
     lv_errbuf  VARCHAR2(5000);   -- エラー・メッセージ（ローカル）
     lv_retcode VARCHAR2(1);     -- リターン・コード（ローカル）
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+-- Ver1.1 M.Hokkanji Start
+    ld_date_from  DATE;                                     -- 出庫日From
+    ld_date_to    DATE;                                     -- 出庫日To
+    ld_loop_date  DATE;                                     -- ループ日付
+    lv_dev_status VARCHAR2(10);                             -- ステータス
+    lv_gen_retcode VARCHAR2(5000);                          -- 実行コンカレントステータス
+-- Ver1.1 M.Hokkanji End
   BEGIN
-    -- ==================
-    -- 子コンカレントの起動
-    -- ==================
-    ln_reqid := fnd_request.submit_request(
-      Application => 'XXWSH',
-      Program     => 'XXWSH600001C',
-      Description => NULL,
-      Start_Time  => SYSDATE,
-      Sub_Request => FALSE,
-      Argument1   => iv_prod_class,
-      Argument2   => iv_shipping_biz_type,
-      Argument3   => iv_block_1,
-      Argument4   => iv_block_2,
-      Argument5   => iv_block_3,
-      Argument6   => iv_storage_code,
-      Argument7   => iv_transaction_type_id,
-      Argument8   => iv_date_from,
-      Argument9  => iv_date_to,
-      Argument10  => iv_forwarder_id
-      );
-    if ln_reqid > 0 then
-      commit;
-    else
-      rollback;
-      retcode := '1';
-      return;
-    end if;
-    -- ==================
-    -- ロックの解除の呼び出し
-    -- ==================
-  	release_lock(
-  	      ln_reqid,
-  	      lv_errbuf,
-  	      lv_retcode,
-  	      lv_errmsg);
-    -- ======================
-    -- エラー・メッセージ出力
-    -- ======================
-    -- ==================================
-    -- リターン・コードのセット、終了処理
-    -- ==================================
-    retcode := lv_retcode;
-    errbuf := lv_errmsg;
+-- Ver1.1 M.hokkanji Start
+    retcode := gv_status_normal;
+    -- 出庫日From未入力
+    IF (iv_date_from IS NULL) THEN
+      -- エラーメッセージ取得
+      lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg(
+                      gv_cnst_msg_kbn     -- モジュール名略称：XXWSH 出荷・引当/配車
+                    , gv_msg_xxwsh_13151  -- メッセージ：APP-XXWSH-13151 必須パラメータ未入力エラー
+                    , gv_tkn_item         -- トークン：ITEM
+                    , cv_date_from        -- パラメータ．出庫日From
+                   ),1,5000);
+      RAISE global_process_expt;
+    ELSE
+      BEGIN
+        -- 書式チェック
+        SELECT FND_DATE.CANONICAL_TO_DATE(iv_date_from)
+        INTO  ld_date_from
+        FROM  DUAL
+        ;
+      EXCEPTION
+        WHEN to_date_expt_m THEN
+          -- 月が無効
+          lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg(
+                          gv_cnst_msg_kbn     -- モジュール名略称：XXWSH 出荷・引当/配車
+                        , gv_msg_xxwsh_11809  -- メッセージ：APP-XXWSH-11809 入力パラメータ書式エラー
+                        , gv_tkn_parm_name    -- トークン：PARM_NAME
+                        , cv_date_from        -- パラメータ．出庫日FROM
+                       ),1,5000);
+          RAISE global_process_expt;
+        WHEN to_date_expt_d THEN
+          -- 日が無効
+          lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg(
+                          gv_cnst_msg_kbn     -- モジュール名略称：XXWSH 出荷・引当/配車
+                        , gv_msg_xxwsh_11809  -- メッセージ：APP-XXWSH-11809 入力パラメータ書式エラー
+                        , gv_tkn_parm_name    -- トークン：PARM_NAME
+                        , cv_date_from        -- パラメータ．出庫日FROM
+                       ),1,5000);
+          RAISE global_process_expt;
+        WHEN to_date_expt_y THEN
+          -- リテラルと不一致
+          lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg(
+                          gv_cnst_msg_kbn     -- モジュール名略称：XXWSH 出荷・引当/配車
+                        , gv_msg_xxwsh_11809  -- メッセージ：APP-XXWSH-11809 入力パラメータ書式エラー
+                        , gv_tkn_parm_name    -- トークン：PARM_NAME
+                        , cv_date_from        -- パラメータ．出庫日FROM
+                       ),1,5000);
+          RAISE global_process_expt;
+        WHEN OTHERS THEN
+          RAISE global_api_others_expt;
+      END;
+    END IF;
+    -- 出庫日To未入力
+    IF (iv_date_to IS NULL) THEN
+      -- エラーメッセージ取得
+      lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg(
+                      gv_cnst_msg_kbn     -- モジュール名略称：XXWSH 出荷・引当/配車
+                    , gv_msg_xxwsh_13151  -- メッセージ：APP-XXWSH-13151 必須パラメータ未入力エラー
+                    , gv_tkn_item         -- トークン：ITEM
+                    , cv_date_to          -- パラメータ．出庫日To
+                   ),1,5000);
+      RAISE global_process_expt;
+    ELSE
+      BEGIN
+        -- 書式チェック
+        SELECT FND_DATE.CANONICAL_TO_DATE(iv_date_to)
+        INTO  ld_date_to
+        FROM  DUAL
+        ;
+      EXCEPTION
+        WHEN to_date_expt_m THEN
+          -- 月が無効
+          lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg(
+                          gv_cnst_msg_kbn     -- モジュール名略称：XXWSH 出荷・引当/配車
+                        , gv_msg_xxwsh_11809  -- メッセージ：APP-XXWSH-11809 入力パラメータ書式エラー
+                        , gv_tkn_parm_name    -- トークン：PARM_NAME
+                        , cv_date_to        -- パラメータ．出庫日TO
+                       ),1,5000);
+          RAISE global_process_expt;
+        WHEN to_date_expt_d THEN
+          -- 日が無効
+          lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg(
+                          gv_cnst_msg_kbn     -- モジュール名略称：XXWSH 出荷・引当/配車
+                        , gv_msg_xxwsh_11809  -- メッセージ：APP-XXWSH-11809 入力パラメータ書式エラー
+                        , gv_tkn_parm_name    -- トークン：PARM_NAME
+                        , cv_date_to          -- パラメータ．出庫日TO
+                       ),1,5000);
+          RAISE global_process_expt;
+        WHEN to_date_expt_y THEN
+          -- リテラルと不一致
+          lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg(
+                          gv_cnst_msg_kbn     -- モジュール名略称：XXWSH 出荷・引当/配車
+                        , gv_msg_xxwsh_11809  -- メッセージ：APP-XXWSH-11809 入力パラメータ書式エラー
+                        , gv_tkn_parm_name    -- トークン：PARM_NAME
+                        , cv_date_to          -- パラメータ．出庫日TO
+                       ),1,5000);
+          RAISE global_process_expt;
+        WHEN OTHERS THEN
+          RAISE global_api_others_expt;
+      END;
+--
+    END IF;
+    -- 日付逆転
+    IF (ld_date_from > ld_date_to) THEN
+      -- エラーメッセージ取得
+      lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg(
+                      gv_cnst_msg_kbn     -- モジュール名略称：XXWSH 出荷・引当/配車
+                    , gv_msg_xxwsh_11113  -- メッセージ：APP-XXWSH-11113 日付逆転エラー
+                   ),1,5000);
+      RAISE global_process_expt;
+    END IF;
+    ld_loop_date := ld_date_from;
+    <<conc_loop>>
+    LOOP
+-- Ver1.1 M.hokkanji End
+      -- ==================
+      -- 子コンカレントの起動
+      -- ==================
+      ln_reqid := fnd_request.submit_request(
+        Application => 'XXWSH',
+        Program     => 'XXWSH600001C',
+        Description => NULL,
+        Start_Time  => SYSDATE,
+        Sub_Request => FALSE,
+        Argument1   => iv_prod_class,
+        Argument2   => iv_shipping_biz_type,
+        Argument3   => iv_block_1,
+        Argument4   => iv_block_2,
+        Argument5   => iv_block_3,
+        Argument6   => iv_storage_code,
+        Argument7   => iv_transaction_type_id,
+-- Ver1.1 M.hokkanji Start
+        Argument8   => TO_CHAR(ld_loop_date,'YYYY/MM/DD'),
+        Argument9   => TO_CHAR(ld_loop_date,'YYYY/MM/DD'),
+--        Argument8   => iv_date_from,
+--        Argument9   => iv_date_to,
+-- Ver1.1 M.hokkanji End
+        Argument10  => iv_forwarder_id
+        );
+      if ln_reqid > 0 then
+        commit;
+      else
+        rollback;
+-- Ver1.1 M.Hokkanji Start
+-- 発行に失敗した場合はエラーにしメッセージを出力するように修正
+--      retcode := '1';
+--        return;
+        -- エラーメッセージ取得
+        lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg(
+                        gv_cnst_msg_kbn     -- モジュール名略称：XXWSH 出荷・引当/配車
+                      , gv_msg_xxwsh_13501  -- メッセージ：APP-XXWSH-13501 日付逆転エラー
+                        , gv_tkn_parm_name    -- トークン：PARM_NAME
+                        , TO_CHAR(ld_loop_date,'YYYY/MM/DD')
+                     ),1,5000);
+        RAISE global_process_expt;
+-- Ver1.1 M.Hokkanji End
+      end if;
+      -- ==================
+      -- ロックの解除の呼び出し
+      -- ==================
+      release_lock(
+            ln_reqid,
+            lv_errbuf,
+            lv_retcode,
+            lv_errmsg);
+-- Ver1.1 M.Hokkanji Start
+      IF (lv_retcode <> gv_status_normal) THEN
+        RAISE global_process_expt;
+      END IF;
+      -- 指定した日付の処理ステータスを取得
+      BEGIN
+        SELECT status_code
+          INTO lv_dev_status
+          FROM FND_CONC_REQ_SUMMARY_V
+         WHERE request_id = ln_reqid;
+      EXCEPTION
+        WHEN OTHERS THEN
+          RAISE global_api_others_expt;
+      END;
+      -- 日付ごとの処理内容を表示
+      lv_gen_retcode := NULL;
+      -- ステータスが警告の場合
+      IF (lv_dev_status = cv_status_g) THEN
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'要求ID:' || TO_CHAR(ln_reqid)
+                                       || '、出荷予定日：' || TO_CHAR(ld_loop_date,'YYYY/MM/DD')
+                                       || '、ステータス：' || '警告終了');
+        lv_gen_retcode := gv_status_warn;
+      ELSIF (lv_dev_status = cv_status_e) THEN
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'要求ID:' || TO_CHAR(ln_reqid)
+                                       || '、出荷予定日：' || TO_CHAR(ld_loop_date,'YYYY/MM/DD')
+                                       || '、ステータス：' || 'エラー終了');
+        lv_gen_retcode := gv_status_error;
+      ELSE
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'要求ID:' || TO_CHAR(ln_reqid)
+                                       || '、出荷予定日：' || TO_CHAR(ld_loop_date,'YYYY/MM/DD')
+                                       || '、ステータス：' || '正常終了');
+        lv_gen_retcode := gv_status_normal;
+      END IF;
+      -- エラーで現在のステータスより取得したステータスが大きい場合は取得ステータスをセット
+      IF  (lv_dev_status = cv_status_e)
+      AND (lv_gen_retcode > retcode) THEN
+        retcode := lv_gen_retcode;
+      END IF;
+      -- LOOP終了するかの判断
+      EXIT WHEN (ld_loop_date >= ld_date_to );
+      -- ループが終了しない場合は日付を一日ずらす
+      ld_loop_date := ld_loop_date + 1;
+    END LOOP conc_loop;
+-- Ver1.1 M.Hokkanji End
+      -- ======================
+      -- エラー・メッセージ出力
+      -- ======================
+      -- ==================================
+      -- リターン・コードのセット、終了処理
+      -- ==================================
+-- Ver1.1 M.Hokkanji Start
+--      retcode := lv_retcode;
+--      errbuf := lv_errmsg;
+-- Ver1.1 M.Hokkanji End
   EXCEPTION
+-- Ver1.1 M.Hokkanji Start
+    -- *** 処理共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      errbuf  := lv_errmsg;
+      retcode := gv_status_error;
+      FND_FILE.PUT_LINE(FND_FILE.LOG,errbuf);
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- Ver1.1 M.Hokkanji End
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       retcode := gv_status_error;
+-- Ver1.1 M.Hokkanji Start
+      FND_FILE.PUT_LINE(FND_FILE.LOG,errbuf);
+-- Ver1.1 M.Hokkanji End
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
       errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       retcode := gv_status_error;
+-- Ver1.1 M.Hokkanji Start
+      FND_FILE.PUT_LINE(FND_FILE.LOG,errbuf);
+-- Ver1.1 M.Hokkanji End
   END main;
 --
 END xxwsh600006c;
+/

@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO92A
- * Version          : 1.01
+ * Version          : 1.03
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/20   1.0  Oracle 北寒寺正夫   新規作成
  *  2008/12/01   1.02 SCS MIYATA.         ロック対応
+ *  2008/12/20   1.03 M.Hokkanji          本番障害#738
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -145,6 +146,9 @@ AS
   gv_request_name_move CONSTANT VARCHAR2(15)  := '移動番号';           -- 移動番号
   gv_ship_name_ship    CONSTANT VARCHAR2(15)  := '配送先';             -- 配送先
   gv_ship_name_move    CONSTANT VARCHAR2(15)  := '入庫先';             -- 入庫先
+-- Ver1.03 M.Hokkanji Start
+  gv_req_nodata        CONSTANT VARCHAR2(15)  := '3';                  -- 対象データ無し
+-- Ver1.03 M.Hokkanji End
   --プロファイル
   gv_action_type_ship  CONSTANT VARCHAR2(2)   := '1';                  -- 出荷
   gv_action_type_move  CONSTANT VARCHAR2(2)   := '3';                  -- 移動
@@ -178,6 +182,16 @@ AS
   );
   TYPE demand_tbl IS TABLE OF demand_rec INDEX BY PLS_INTEGER;
   gr_demand_tbl  demand_tbl;
+-- Ver1.03 M.Hokkanji Start
+  TYPE data_cnt_rec IS RECORD(
+      error_cnt        NUMBER            -- その日のエラー件数
+    , warn_cnt         NUMBER            -- その日の警告件数
+    , nomal_cnt        NUMBER            -- その日の正常件数
+    , ship_date        VARCHAR2(10)      -- 処理対象日付
+  );
+  TYPE data_cnt_tbl IS TABLE OF data_cnt_rec INDEX BY PLS_INTEGER;
+  gr_data_cnt_tbl data_cnt_tbl;
+-- Ver1.03 M.Hokkanji End
 --
   /**********************************************************************************
   * Function Name    : check_sql_pattern
@@ -727,6 +741,9 @@ AS
    ***********************************************************************************/
   PROCEDURE get_demand_inf_fwd(
     iv_action_type IN  VARCHAR2            -- 処理種別
+-- Ver1.03 M.Hokkanji Start
+   ,iv_loop_date   IN  VARCHAR2            -- 対象予定日
+-- Ver1.03 M.Hokkanji End
   , iv_fwd_sql     IN  VARCHAR2            -- SQL文
   , ov_errbuf      OUT NOCOPY VARCHAR2     -- エラー・メッセージ           --# 固定 #
   , ov_retcode     OUT NOCOPY VARCHAR2     -- リターン・コード             --# 固定 #
@@ -774,8 +791,12 @@ AS
 --
     -- カーソルオープン
     IF ( iv_action_type = gv_action_type_ship) THEN
-      OPEN fwd_cur FOR iv_fwd_sql USING gv_yyyymmdd_from
-                                      , gv_yyyymmdd_to
+-- Ver1.03 M.Hokkanji Start
+--      OPEN fwd_cur FOR iv_fwd_sql USING gv_yyyymmdd_from
+--                                      , gv_yyyymmdd_to
+      OPEN fwd_cur FOR iv_fwd_sql USING iv_loop_date
+                                      , iv_loop_date
+-- Ver1.03 M.Hokkanji End
                                       , gv_base
                                       , gv_cons_t_deliv
                                       , gv_cons_status
@@ -792,8 +813,12 @@ AS
       -- Add Start
                                       gv_cons_move_type
       -- Add End
-                                      , gv_yyyymmdd_from
-                                      , gv_yyyymmdd_to
+-- Ver1.03 M.Hokkanji Start
+--                                      , gv_yyyymmdd_from
+--                                      , gv_yyyymmdd_to
+                                      , iv_loop_date
+                                      , iv_loop_date
+-- Ver1.03 M.Hokkanji End
                                       , gv_cons_mov_sts_c
                                       , gv_cons_mov_sts_e
                                       , gv_wzero
@@ -804,8 +829,12 @@ AS
                                       , gv_cons_item_product
                                       , gt_item_class;
     ELSIF (iv_action_type IS NULL) THEN
-      OPEN fwd_cur FOR iv_fwd_sql USING gv_yyyymmdd_from
-                                      , gv_yyyymmdd_to
+-- Ver1.03 M.Hokkanji Start
+--      OPEN fwd_cur FOR iv_fwd_sql USING gv_yyyymmdd_from
+--                                      , gv_yyyymmdd_to
+      OPEN fwd_cur FOR iv_fwd_sql USING iv_loop_date
+                                      , iv_loop_date
+-- Ver1.03 M.Hokkanji End
                                       , gv_base
                                       , gv_cons_t_deliv
                                       , gv_cons_status
@@ -818,8 +847,12 @@ AS
                                       , gv_cons_item_product
                                       , gt_item_class
                                       , gv_cons_move_type
-                                      , gv_yyyymmdd_from
-                                      , gv_yyyymmdd_to
+-- Ver1.03 M.Hokkanji Start
+--                                      , gv_yyyymmdd_from
+--                                      , gv_yyyymmdd_to
+                                      , iv_loop_date
+                                      , iv_loop_date
+-- Ver1.03 M.Hokkanji End
                                       , gv_cons_mov_sts_c
                                       , gv_cons_mov_sts_e
                                       , gv_wzero
@@ -841,6 +874,14 @@ AS
     CLOSE fwd_cur;
 --
   EXCEPTION
+-- Ver1.03 M.Hokkanji Start
+-- 対象データが存在しない場合は取得されない場合でも処理続行させるためret_codeに違う値を返すように変更
+    WHEN NO_DATA_FOUND THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_req_nodata;
+      CLOSE fwd_cur;  -- カーソルクローズ
+-- Ver1.03 M.Hokkanji End
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -1023,6 +1064,10 @@ AS
     lv_lot_biz_class VARCHAR2(1);      -- ロット逆転処理種別
     ln_result        NUMBER;           -- 処理結果(0:正常、1:異常)
     ld_standard_date DATE;             -- 基準日付
+-- Ver1.03 M.Hokkanji Start
+    ld_loop_date     DATE;             -- 処理対象日
+    ln_loop_cnt      NUMBER := 0;      -- ループカウント
+-- Ver1.03 M.Hokkanji End
     i                INTEGER := 0;
     TYPE reqid_tab IS TABLE OF NUMBER INDEX BY BINARY_INTEGER;
     reqid_rec reqid_tab;
@@ -1075,114 +1120,175 @@ AS
                                , iv_block3          -- ブロック３
                                , in_deliver_from_id -- 出庫元
                                , in_deliver_type);  -- 出庫形態
-    
-    -- ===============================================
-    -- A-3  品目コード取得
-    -- ===============================================
-    get_demand_inf_fwd(iv_action_type -- 処理種別
-                     , lv_fwd_sql     -- SQL文
-                     , lv_errbuf      -- エラー・メッセージ           --# 固定 #
-                     , lv_retcode     -- リターン・コード             --# 固定 #
-                     , lv_errmsg);    -- ユーザー・エラー・メッセージ --# 固定 #
-    -- エラー処理
-    IF ( lv_retcode = gv_status_error ) THEN
-        gn_error_cnt := 1;
-        RAISE global_process_expt;
-    END IF;
---
-    -- ===============================================
-    -- A-4  品目コードループ
-    -- ===============================================
-    <<demand_inf_loop>>
-    FOR ln_d_cnt IN 1..gn_total_cnt LOOP
-      i := i + 1;
-      gn_target_cnt := gn_target_cnt + 1;
-      reqid_rec(i) := FND_REQUEST.SUBMIT_REQUEST(
-                         application       => 'XXWSH'                           -- アプリケーション短縮名
-                       , program           => 'XXWSH920008C'                    -- プログラム名
-                       , argument1         => iv_item_class                     -- 商品区分
-                       , argument2         => iv_action_type                    -- 処理種別
-                       , argument3         => iv_block1                         -- ブロック１
-                       , argument4         => iv_block2                         -- ブロック２
-                       , argument5         => iv_block3                         -- ブロック３
-                       , argument6         => in_deliver_from_id                -- 出庫元
-                       , argument7         => in_deliver_type                   -- 出庫形態
-                       , argument8         => iv_deliver_date_from              -- 出庫日From
-                       , argument9         => iv_deliver_date_to                -- 出庫日To
-                       , argument10        => gr_demand_tbl(ln_d_cnt).item_code -- 品目コード
-                         );
-      -- エラーの場合
-      IF ( reqid_rec(i) = 0 ) THEN
-        lv_errmsg := xxcmn_common_pkg.get_msg(
-                       iv_application   => gv_cons_msg_kbn_cmn
-                      ,iv_name          => gv_msg_xxcmn10135);
-        RAISE global_api_others_expt;
-      ELSE
-        COMMIT;
+-- Ver1.03 M.Hokkanji Start
+    ld_loop_date := TO_DATE(iv_deliver_date_from,'YYYY/MM/DD');
+    gr_data_cnt_tbl.delete;
+    ln_loop_cnt := 0;
+    <<ship_date_loop>>
+    LOOP
+      -- 日付ごとに配列と対象件数を初期化
+      gr_demand_tbl.delete;
+      gn_total_cnt := 0;
+      ln_loop_cnt := ln_loop_cnt + 1;
+      gr_data_cnt_tbl(ln_loop_cnt).ship_date := TO_CHAR(ld_loop_date,'YYYY/MM/DD');
+      gr_data_cnt_tbl(ln_loop_cnt).error_cnt := 0;
+      gr_data_cnt_tbl(ln_loop_cnt).warn_cnt  := 0;
+      gr_data_cnt_tbl(ln_loop_cnt).nomal_cnt := 0;
+      i := 0;
+      FND_FILE.PUT_LINE (FND_FILE.OUTPUT,'****************出荷予定日：' || TO_CHAR(ld_loop_date,'YYYY/MM/DD') || '*****************');
+-- Ver1.03 M.Hokkanji End
+      -- ===============================================
+      -- A-3  品目コード取得
+      -- ===============================================
+      get_demand_inf_fwd(iv_action_type -- 処理種別
+-- Ver1.03 M.Hokkanji Start
+                       , TO_CHAR(ld_loop_date,'YYYY/MM/DD')
+-- Ver1.03 M.Hokkanji End
+                       , lv_fwd_sql     -- SQL文
+                       , lv_errbuf      -- エラー・メッセージ           --# 固定 #
+                       , lv_retcode     -- リターン・コード             --# 固定 #
+                       , lv_errmsg);    -- ユーザー・エラー・メッセージ --# 固定 #
+      -- エラー処理
+-- Ver1.03 M.Hokkanji Start
+      IF ( lv_retcode = gv_req_nodata) THEN
+        FND_FILE.PUT_LINE (FND_FILE.OUTPUT,'出荷予定日：' || TO_CHAR(ld_loop_date,'YYYY/MM/DD') || '処理対象データ無し');
+        gn_total_cnt := 0;
+      ELSIF ( lv_retcode = gv_status_error ) THEN
+--      IF ( lv_retcode = gv_status_error ) THEN
+-- Ver1.03 M.Hokkanji End
+          gn_error_cnt := 1;
+          RAISE global_process_expt;
       END IF;
-       -- エラー処理
-       IF ( lv_retcode = gv_status_error ) THEN
-           gn_error_cnt := 1;
-           RAISE global_process_expt;
-       END IF;
 --
-    END LOOP demand_inf_loop; -- 品目コードループ終わり
---
-    -- ===============================================
-    -- ロック暫定対応
-    -- ===============================================
-    <<lock_loop>>
-    FOR k IN 1 .. i LOOP
-            -- 子要求についてロックで止まっているものを進める
-            release_lock(reqid_rec(k)
-                      , lv_errbuf
-                      , lv_retcode
-                      , lv_errmsg);
-    END LOOP lock_loop; -- ロック開放ループ終わり
---
-    -- ===============================================
-    -- A-5  コンカレントステータスのチェック
-    -- ===============================================
-    <<chk_status>>
-    FOR j IN 1 .. i LOOP
-      IF ( FND_CONCURRENT.WAIT_FOR_REQUEST(
-             request_id => reqid_rec(j)
-            ,interval   => 1
-            ,max_wait   => 0
-            ,phase      => lv_phase
-            ,status     => lv_status
-            ,dev_phase  => lv_dev_phase
-            ,dev_status => lv_dev_status
-            ,message    => lv_errbuf
-            ) ) THEN
-        -- ステータス反映
-        -- フェーズ:完了
-        IF ( lv_dev_phase = cv_conc_p_c ) THEN
-          -- ステータス:異常
-          IF ( lv_dev_status = cv_conc_s_e ) THEN
-            ov_retcode := gv_status_error;
-            FND_FILE.PUT_LINE (FND_FILE.OUTPUT,'親品目:' || gr_demand_tbl(j).item_code || '、件数:' || TO_CHAR(gr_demand_tbl(j).total_cnt) || '件、要求ID：' || TO_CHAR(reqid_rec(j)) || '、処理結果：' || gv_msg_part || gv_mst_error);
-            gn_error_cnt := gn_error_cnt + 1;
-          -- ステータス:警告
-          ELSIF ( lv_dev_status = cv_conc_s_w ) THEN
-            IF ( ov_retcode < 1 ) THEN
-              ov_retcode := gv_status_warn;
-            END IF;
-            FND_FILE.PUT_LINE (FND_FILE.OUTPUT,'親品目:' || gr_demand_tbl(j).item_code || '、件数:'  || TO_CHAR(gr_demand_tbl(j).total_cnt) || '件、要求ID：' || TO_CHAR(reqid_rec(j)) || '、処理結果：' || gv_msg_part || gv_mst_warn);
-            gn_warn_cnt := gn_warn_cnt + 1;
-          -- ステータス:正常
-          ELSE
-            FND_FILE.PUT_LINE (FND_FILE.OUTPUT,'親品目:' || gr_demand_tbl(j).item_code || '、件数:'  || TO_CHAR(gr_demand_tbl(j).total_cnt) || '件、要求ID：' || TO_CHAR(reqid_rec(j)) || '、処理結果：' || gv_msg_part || gv_mst_normal);
-            gn_normal_cnt := gn_normal_cnt + 1;
-          END IF;
+      -- ===============================================
+      -- A-4  品目コードループ
+      -- ===============================================
+      <<demand_inf_loop>>
+      FOR ln_d_cnt IN 1..gn_total_cnt LOOP
+        i := i + 1;
+        gn_target_cnt := gn_target_cnt + 1;
+        reqid_rec(i) := FND_REQUEST.SUBMIT_REQUEST(
+                           application       => 'XXWSH'                           -- アプリケーション短縮名
+                         , program           => 'XXWSH920008C'                    -- プログラム名
+                         , argument1         => iv_item_class                     -- 商品区分
+                         , argument2         => iv_action_type                    -- 処理種別
+                         , argument3         => iv_block1                         -- ブロック１
+                         , argument4         => iv_block2                         -- ブロック２
+                         , argument5         => iv_block3                         -- ブロック３
+                         , argument6         => in_deliver_from_id                -- 出庫元
+                         , argument7         => in_deliver_type                   -- 出庫形態
+-- Ver1.03 M.hokkanji Start
+                         , argument8         => TO_CHAR(ld_loop_date,'YYYY/MM/DD') -- 出庫日From
+                         , argument9         => TO_CHAR(ld_loop_date,'YYYY/MM/DD') -- 出庫日To
+--                         , argument8         => iv_deliver_date_from              -- 出庫日From
+--                         , argument9         => iv_deliver_date_to                -- 出庫日To
+-- Ver1.03 M.hokkanji End
+                         , argument10        => gr_demand_tbl(ln_d_cnt).item_code -- 品目コード
+                           );
+        -- エラーの場合
+        IF ( reqid_rec(i) = 0 ) THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(
+                         iv_application   => gv_cons_msg_kbn_cmn
+                        ,iv_name          => gv_msg_xxcmn10135);
+          RAISE global_api_others_expt;
+        ELSE
+          COMMIT;
         END IF;
-      ELSE
-        ov_retcode := gv_status_error;
-        FND_FILE.PUT_LINE (FND_FILE.OUTPUT,TO_CHAR(reqid_rec(j)) || gv_msg_part || gv_mst_error);
-        gn_error_cnt := gn_error_cnt + 1;
-      END IF;
+-- Ver1.03 M.hokkanji Start
+         -- エラー処理
+--         IF ( lv_retcode = gv_status_error ) THEN
+--             gn_error_cnt := 1;
+--             RAISE global_process_expt;
+--         END IF;
+-- Ver1.03 M.hokkanji End
 --
-    END LOOP chk_status;
+      END LOOP demand_inf_loop; -- 品目コードループ終わり
+--
+      -- ===============================================
+      -- ロック暫定対応
+      -- ===============================================
+      <<lock_loop>>
+      FOR k IN 1 .. i LOOP
+              -- 子要求についてロックで止まっているものを進める
+              release_lock(reqid_rec(k)
+                        , lv_errbuf
+                        , lv_retcode
+                        , lv_errmsg);
+      END LOOP lock_loop; -- ロック開放ループ終わり
+--
+      -- ===============================================
+      -- A-5  コンカレントステータスのチェック
+      -- ===============================================
+      <<chk_status>>
+      FOR j IN 1 .. i LOOP
+        IF ( FND_CONCURRENT.WAIT_FOR_REQUEST(
+               request_id => reqid_rec(j)
+              ,interval   => 1
+              ,max_wait   => 0
+              ,phase      => lv_phase
+              ,status     => lv_status
+              ,dev_phase  => lv_dev_phase
+              ,dev_status => lv_dev_status
+              ,message    => lv_errbuf
+              ) ) THEN
+          -- ステータス反映
+          -- フェーズ:完了
+          IF ( lv_dev_phase = cv_conc_p_c ) THEN
+            -- ステータス:異常
+            IF ( lv_dev_status = cv_conc_s_e ) THEN
+              ov_retcode := gv_status_error;
+              FND_FILE.PUT_LINE (FND_FILE.OUTPUT,'親品目:' || gr_demand_tbl(j).item_code || '、件数:' || TO_CHAR(gr_demand_tbl(j).total_cnt) || '件、要求ID：' || TO_CHAR(reqid_rec(j)) || '、処理結果：' || gv_msg_part || gv_mst_error);
+              gn_error_cnt := gn_error_cnt + 1;
+-- Ver1.03 M.Hokkanji Start
+              gr_data_cnt_tbl(ln_loop_cnt).error_cnt := gr_data_cnt_tbl(ln_loop_cnt).error_cnt + 1;
+-- Ver1.03 M.Hokkanji End
+            -- ステータス:警告
+            ELSIF ( lv_dev_status = cv_conc_s_w ) THEN
+              IF ( ov_retcode < 1 ) THEN
+                ov_retcode := gv_status_warn;
+              END IF;
+              FND_FILE.PUT_LINE (FND_FILE.OUTPUT,'親品目:' || gr_demand_tbl(j).item_code || '、件数:'  || TO_CHAR(gr_demand_tbl(j).total_cnt) || '件、要求ID：' || TO_CHAR(reqid_rec(j)) || '、処理結果：' || gv_msg_part || gv_mst_warn);
+              gn_warn_cnt := gn_warn_cnt + 1;
+-- Ver1.03 M.Hokkanji Start
+              gr_data_cnt_tbl(ln_loop_cnt).warn_cnt := gr_data_cnt_tbl(ln_loop_cnt).warn_cnt + 1;
+-- Ver1.03 M.Hokkanji End
+            -- ステータス:正常
+            ELSE
+              FND_FILE.PUT_LINE (FND_FILE.OUTPUT,'親品目:' || gr_demand_tbl(j).item_code || '、件数:'  || TO_CHAR(gr_demand_tbl(j).total_cnt) || '件、要求ID：' || TO_CHAR(reqid_rec(j)) || '、処理結果：' || gv_msg_part || gv_mst_normal);
+              gn_normal_cnt := gn_normal_cnt + 1;
+-- Ver1.03 M.Hokkanji Start
+              gr_data_cnt_tbl(ln_loop_cnt).nomal_cnt := gr_data_cnt_tbl(ln_loop_cnt).nomal_cnt + 1;
+-- Ver1.03 M.Hokkanji End
+            END IF;
+          END IF;
+        ELSE
+          ov_retcode := gv_status_error;
+          FND_FILE.PUT_LINE (FND_FILE.OUTPUT,TO_CHAR(reqid_rec(j)) || gv_msg_part || gv_mst_error);
+          gn_error_cnt := gn_error_cnt + 1;
+        END IF;
+--
+      END LOOP chk_status;
+-- Ver1.03 M.Hokkanji Start
+      -- エラーが発生した場合その日で終了
+      IF (gn_error_cnt > 0) THEN
+        FND_FILE.PUT_LINE (FND_FILE.OUTPUT,'出庫予定日:' || TO_CHAR(ld_loop_date,'YYYY/MM/DD') || 'の引当処理でエラーが発生したため処理を中断します。');
+        EXIT;
+      END IF;
+      -- 処理対象日付が出荷日TO以上の場合ループ終了
+      EXIT WHEN (ld_loop_date >= TO_DATE(iv_deliver_date_to,'YYYY/MM/DD'));
+      -- ループ終了しない場合は処理対象日付+1
+      ld_loop_date := ld_loop_date + 1;
+    END LOOP ship_date_loop;
+    -- 日付ごとの情報を出力
+    FND_FILE.PUT_LINE (FND_FILE.OUTPUT,'****************     日付ごとの処理結果     *****************');
+    <<msg_info_loop>>
+    FOR m IN 1 .. gr_data_cnt_tbl.count LOOP
+      FND_FILE.PUT_LINE (FND_FILE.OUTPUT,'出庫予定日:' || gr_data_cnt_tbl(m).ship_date
+                                      || '、正常  件数：' || TO_CHAR(gr_data_cnt_tbl(m).nomal_cnt)
+                                      || '、警告  件数：' || TO_CHAR(gr_data_cnt_tbl(m).warn_cnt)
+                                      || '、エラー件数：' || TO_CHAR(gr_data_cnt_tbl(m).error_cnt));
+    END LOOP msg_info_loop;
+-- Ver1.03 M.Hokkanji End
 --
   EXCEPTION
       -- *** 任意で例外処理を記述する ****
