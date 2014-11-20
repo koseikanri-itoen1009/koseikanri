@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A03C(body)
  * Description      : 月次在庫受払（日次）を元に、月次在庫受払表を作成します。
  * MD.050           : 月次在庫受払表作成<MD050_COI_006_A03>
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2009/05/14    1.9   H.Sasaki         [T1_0840][T1_0842]倉替数量の集計条件変更
  *  2009/05/21    1.10  H.Sasaki         [T1_1123]棚卸情報検索時に日付条件を追加
  *  2009/06/04    1.11  H.Sasaki         [T1_1324]当日取引データにて消化VDを対象外とする
+ *  2009/07/21    1.12  H.Sasaki         [0000768]PT対応
  *
  *****************************************************************************************/
 --
@@ -323,11 +324,102 @@ AS
             xird.base_code
            ,xird.subinventory_code;
   --
+-- == 2009/07/21 V1.12 Modified START ===============================================================
   -- A-2.月次在庫受払（日次）情報取得(【起動パラメータ】棚卸区分:2)
   CURSOR invrcp_daily_2_cur(
             iv_base_code        IN  VARCHAR2        -- 拠点コード
           )
   IS
+--    SELECT
+--      xird.base_code                      base_code                 -- 拠点コード
+--     ,xird.organization_id                organization_id           -- 組織ID
+--     ,xird.subinventory_code              subinventory_code         -- 保管場所
+--     ,xird.subinventory_type              subinventory_type         -- 保管場所区分
+--     ,xird.inventory_item_id              inventory_item_id         -- 品目ID
+--     ,MAX(xird.operation_cost)            operation_cost            -- 営業原価
+--     ,MAX(xird.standard_cost)             standard_cost             -- 標準原価
+--     ,SUM(xird.sales_shipped)             sales_shipped             -- 売上出庫
+--     ,SUM(xird.sales_shipped_b)           sales_shipped_b           -- 売上出庫振戻
+--     ,SUM(xird.return_goods)              return_goods              -- 返品
+--     ,SUM(xird.return_goods_b)            return_goods_b            -- 返品振戻
+--     ,SUM(xird.warehouse_ship)            warehouse_ship            -- 倉庫へ返庫
+--     ,SUM(xird.truck_ship)                truck_ship                -- 営業車へ出庫
+--     ,SUM(xird.others_ship)               others_ship               -- 入出庫＿その他出庫
+--     ,SUM(xird.warehouse_stock)           warehouse_stock           -- 倉庫より入庫
+--     ,SUM(xird.truck_stock)               truck_stock               -- 営業車より入庫
+--     ,SUM(xird.others_stock)              others_stock              -- 入出庫＿その他入庫
+--     ,SUM(xird.change_stock)              change_stock              -- 倉替入庫
+--     ,SUM(xird.change_ship)               change_ship               -- 倉替出庫
+--     ,SUM(xird.goods_transfer_old)        goods_transfer_old        -- 商品振替（旧商品）
+--     ,SUM(xird.goods_transfer_new)        goods_transfer_new        -- 商品振替（新商品）
+--     ,SUM(xird.sample_quantity)           sample_quantity           -- 見本出庫
+--     ,SUM(xird.sample_quantity_b)         sample_quantity_b         -- 見本出庫振戻
+--     ,SUM(xird.customer_sample_ship)      customer_sample_ship      -- 顧客見本出庫
+--     ,SUM(xird.customer_sample_ship_b)    customer_sample_ship_b    -- 顧客見本出庫振戻
+--     ,SUM(xird.customer_support_ss)       customer_support_ss       -- 顧客協賛見本出庫
+--     ,SUM(xird.customer_support_ss_b)     customer_support_ss_b     -- 顧客協賛見本出庫振戻
+--     ,SUM(xird.vd_supplement_stock)       vd_supplement_stock       -- 消化VD補充入庫
+--     ,SUM(xird.vd_supplement_ship)        vd_supplement_ship        -- 消化VD補充出庫
+--     ,SUM(xird.inventory_change_in)       inventory_change_in       -- 基準在庫変更入庫
+--     ,SUM(xird.inventory_change_out)      inventory_change_out      -- 基準在庫変更出庫
+--     ,SUM(xird.factory_return)            factory_return            -- 工場返品
+--     ,SUM(xird.factory_return_b)          factory_return_b          -- 工場返品振戻
+--     ,SUM(xird.factory_change)            factory_change            -- 工場倉替
+--     ,SUM(xird.factory_change_b)          factory_change_b          -- 工場倉替振戻
+--     ,SUM(xird.removed_goods)             removed_goods             -- 廃却
+--     ,SUM(xird.removed_goods_b)           removed_goods_b           -- 廃却振戻
+--     ,SUM(xird.factory_stock)             factory_stock             -- 工場入庫
+--     ,SUM(xird.factory_stock_b)           factory_stock_b           -- 工場入庫振戻
+--     ,SUM(xird.ccm_sample_ship)           ccm_sample_ship           -- 顧客広告宣伝費A自社商品
+--     ,SUM(xird.ccm_sample_ship_b)         ccm_sample_ship_b         -- 顧客広告宣伝費A自社商品振戻
+--     ,SUM(xird.wear_decrease)             wear_decrease             -- 棚卸減耗増
+--     ,SUM(xird.wear_increase)             wear_increase             -- 棚卸減耗減
+--     ,SUM(xird.selfbase_ship)             selfbase_ship             -- 保管場所移動＿自拠点出庫
+--     ,SUM(xird.selfbase_stock)            selfbase_stock            -- 保管場所移動＿自拠点入庫
+--     ,MAX(xic.inventory_seq)              inventory_seq             -- 棚卸SEQ
+---- == 2009/04/27 V1.7 Added START ===============================================================
+--     ,MAX(xird.practice_date)             practice_date
+--     ,MAX(xic.inventory_date)             inventory_date
+---- == 2009/04/27 V1.7 Added END   ===============================================================
+--    FROM    xxcoi_inv_reception_daily   xird                        -- 月次在庫受払表（日次）
+--           ,(SELECT   sub_msi.attribute7                base_code
+--                     ,sub_xic.subinventory_code         subinventory_code
+--                     ,MAX(sub_xic.inventory_seq)        inventory_seq
+--                     ,MAX(sub_xic.inventory_date)       inventory_date
+--             FROM     xxcoi_inv_control           sub_xic
+--                     ,mtl_secondary_inventories   sub_msi
+--             WHERE    sub_xic.inventory_kbn     =   gv_param_inventory_kbn
+--             AND      sub_xic.subinventory_code =   sub_msi.secondary_inventory_name
+--             AND      ((iv_base_code IS NOT NULL AND sub_msi.attribute7 = iv_base_code)
+--                       OR
+--                       (iv_base_code IS NULL)
+--                      )
+---- == 2009/05/21 V1.10 Added START ===============================================================
+--             AND      sub_xic.inventory_date   >=   TRUNC(TO_DATE(gv_f_inv_acct_period, cv_month))
+--             AND      sub_xic.inventory_date   <=   LAST_DAY(TO_DATE(gv_f_inv_acct_period, cv_month))
+---- == 2009/05/21 V1.10 Added END   ===============================================================
+--             GROUP BY  sub_msi.attribute7
+--                      ,sub_xic.subinventory_code
+--            )                           xic
+--    WHERE   xird.base_code          =   xic.base_code(+)
+--    AND     xird.subinventory_code  =   xic.subinventory_code(+)
+--    AND     xird.organization_id    =   gn_f_organization_id
+--    AND     ((iv_base_code IS NOT NULL AND xird.base_code = iv_base_code)
+--             OR
+--             (iv_base_code IS NULL)
+--            )
+--    AND     xird.practice_date     >=   TRUNC(TO_DATE(gv_f_inv_acct_period, cv_month))
+--    AND     xird.practice_date     <=   LAST_DAY(TO_DATE(gv_f_inv_acct_period, cv_month))
+--    GROUP BY
+--            xird.base_code
+--           ,xird.organization_id
+--           ,xird.subinventory_code
+--           ,xird.inventory_item_id
+--           ,xird.subinventory_type
+--    ORDER BY
+--            xird.base_code
+--           ,xird.subinventory_code;
+    --
     SELECT
       xird.base_code                      base_code                 -- 拠点コード
      ,xird.organization_id                organization_id           -- 組織ID
@@ -374,34 +466,11 @@ AS
      ,SUM(xird.wear_increase)             wear_increase             -- 棚卸減耗減
      ,SUM(xird.selfbase_ship)             selfbase_ship             -- 保管場所移動＿自拠点出庫
      ,SUM(xird.selfbase_stock)            selfbase_stock            -- 保管場所移動＿自拠点入庫
-     ,MAX(xic.inventory_seq)              inventory_seq             -- 棚卸SEQ
--- == 2009/04/27 V1.7 Added START ===============================================================
-     ,MAX(xird.practice_date)             practice_date
-     ,MAX(xic.inventory_date)             inventory_date
--- == 2009/04/27 V1.7 Added END   ===============================================================
+     ,NULL                                inventory_seq             -- 棚卸SEQ
+     ,MAX(xird.practice_date)             practice_date             -- 受払作成日
+     ,NULL                                inventory_date            -- 棚卸日
     FROM    xxcoi_inv_reception_daily   xird                        -- 月次在庫受払表（日次）
-           ,(SELECT   sub_msi.attribute7                base_code
-                     ,sub_xic.subinventory_code         subinventory_code
-                     ,MAX(sub_xic.inventory_seq)        inventory_seq
-                     ,MAX(sub_xic.inventory_date)       inventory_date
-             FROM     xxcoi_inv_control           sub_xic
-                     ,mtl_secondary_inventories   sub_msi
-             WHERE    sub_xic.inventory_kbn     =   gv_param_inventory_kbn
-             AND      sub_xic.subinventory_code =   sub_msi.secondary_inventory_name
-             AND      ((iv_base_code IS NOT NULL AND sub_msi.attribute7 = iv_base_code)
-                       OR
-                       (iv_base_code IS NULL)
-                      )
--- == 2009/05/21 V1.10 Added START ===============================================================
-             AND      sub_xic.inventory_date   >=   TRUNC(TO_DATE(gv_f_inv_acct_period, cv_month))
-             AND      sub_xic.inventory_date   <=   LAST_DAY(TO_DATE(gv_f_inv_acct_period, cv_month))
--- == 2009/05/21 V1.10 Added END   ===============================================================
-             GROUP BY  sub_msi.attribute7
-                      ,sub_xic.subinventory_code
-            )                           xic
-    WHERE   xird.base_code          =   xic.base_code(+)
-    AND     xird.subinventory_code  =   xic.subinventory_code(+)
-    AND     xird.organization_id    =   gn_f_organization_id
+    WHERE   xird.organization_id    =   gn_f_organization_id
     AND     ((iv_base_code IS NOT NULL AND xird.base_code = iv_base_code)
              OR
              (iv_base_code IS NULL)
@@ -417,7 +486,7 @@ AS
     ORDER BY
             xird.base_code
            ,xird.subinventory_code;
-    --
+-- == 2009/07/21 V1.12 Modified END   ===============================================================
   -- A-6.棚卸結果情報抽出(【起動パラメータ】棚卸区分:1)
   CURSOR  inv_result_1_cur(
             iv_base_code          IN  VARCHAR2                -- 拠点コード
@@ -594,40 +663,61 @@ AS
              ,msi1.attribute1
              ,mmt.inventory_item_id;
   --
+-- == 2009/07/21 V1.12 Modified START ===============================================================
   -- A-12.前月棚卸結果抽出
   CURSOR  last_month_cur(
             iv_base_code          IN  VARCHAR2                -- 拠点コード
           )
   IS
-    SELECT  xirm1.inv_seq                               inventory_seq         -- 棚卸SEQ（当月）
-           ,xirm1.base_code                             base_code             -- 拠点コード
-           ,xirm1.organization_id                       organization_id       -- 組織ID
-           ,xirm1.subinventory_type                     subinventory_type     -- 保管場所区分
-           ,xirm1.subinventory_code                     subinventory_code     -- 保管場所コード
-           ,xirm1.practice_date                         practice_date         -- 年月日
-           ,xirm1.inventory_item_id                     inventory_item_id     -- 品目ID
+--    SELECT  xirm1.inv_seq                               inventory_seq         -- 棚卸SEQ（当月）
+--           ,xirm1.base_code                             base_code             -- 拠点コード
+--           ,xirm1.organization_id                       organization_id       -- 組織ID
+--           ,xirm1.subinventory_type                     subinventory_type     -- 保管場所区分
+--           ,xirm1.subinventory_code                     subinventory_code     -- 保管場所コード
+--           ,xirm1.practice_date                         practice_date         -- 年月日
+--           ,xirm1.inventory_item_id                     inventory_item_id     -- 品目ID
+--           ,xirm2.inv_result + xirm2.inv_result_bad     inv_result            -- 棚卸数（前月）
+--           ,xirm2.inv_seq                               last_month_inv_seq    -- 棚卸SEQ（前月）
+--    FROM    xxcoi_inv_reception_monthly   xirm1         -- 月次在庫受払_当月
+--           ,xxcoi_inv_reception_monthly   xirm2         -- 月次在庫受払_前月
+--    WHERE   xirm1.base_code           =   xirm2.base_code(+)
+--    AND     xirm1.subinventory_code   =   xirm2.subinventory_code(+)
+--    AND     xirm1.inventory_item_id   =   xirm2.inventory_item_id(+)
+--    AND     ((iv_base_code IS NOT NULL AND xirm1.base_code  = iv_base_code)
+--             OR
+--             (iv_base_code IS NULL)
+--            )
+--    AND     ((    (xirm2.practice_month IS NOT NULL)
+--              AND (xirm2.practice_month = TO_CHAR(ADD_MONTHS(TO_DATE(gv_f_inv_acct_period,cv_month), -1), cv_month))
+--             )
+--             OR
+--             (xirm2.practice_month IS NULL)
+--            )
+--    AND     xirm1.practice_month      =   gv_f_inv_acct_period
+--    AND     xirm1.inventory_kbn       =   gv_param_inventory_kbn
+--    AND     xirm2.inventory_kbn(+)    =   cv_inv_kbn_2
+--    ORDER BY  xirm1.base_code
+--             ,xirm1.subinventory_code;
+----
+    SELECT  xirm2.base_code                             base_code             -- 拠点コード
+           ,xirm2.subinventory_code                     subinventory_code     -- 保管場所コード
+           ,xirm2.inventory_item_id                     inventory_item_id     -- 品目ID
            ,xirm2.inv_result + xirm2.inv_result_bad     inv_result            -- 棚卸数（前月）
-           ,xirm2.inv_seq                               last_month_inv_seq    -- 棚卸SEQ（前月）
-    FROM    xxcoi_inv_reception_monthly   xirm1         -- 月次在庫受払_当月
-           ,xxcoi_inv_reception_monthly   xirm2         -- 月次在庫受払_前月
-    WHERE   xirm1.base_code           =   xirm2.base_code(+)
-    AND     xirm1.subinventory_code   =   xirm2.subinventory_code(+)
-    AND     xirm1.inventory_item_id   =   xirm2.inventory_item_id(+)
-    AND     ((iv_base_code IS NOT NULL AND xirm1.base_code  = iv_base_code)
-             OR
-             (iv_base_code IS NULL)
+    FROM    xxcoi_inv_reception_monthly   xirm2                               -- 月次在庫受払_前月
+    WHERE   xirm2.practice_month    =   TO_CHAR(ADD_MONTHS(TO_DATE(gv_f_inv_acct_period,cv_month), -1), cv_month)
+    AND     xirm2.inventory_kbn     =   cv_inv_kbn_2
+    AND     xirm2.base_code         =   NVL(iv_base_code, xirm2.base_code)
+    AND     EXISTS( SELECT  1
+                    FROM    xxcoi_inv_reception_monthly   xirm1               -- 月次在庫受払_当月
+                    WHERE   xirm1.practice_month      =   gv_f_inv_acct_period
+                    AND     xirm1.inventory_kbn       =   gv_param_inventory_kbn
+                    AND     xirm1.base_code           =   xirm2.base_code
+                    AND     xirm1.subinventory_code   =   xirm2.subinventory_code
+                    AND     xirm1.inventory_item_id   =   xirm2.inventory_item_id
             )
-    AND     ((    (xirm2.practice_month IS NOT NULL)
-              AND (xirm2.practice_month = TO_CHAR(ADD_MONTHS(TO_DATE(gv_f_inv_acct_period,cv_month), -1), cv_month))
-             )
-             OR
-             (xirm2.practice_month IS NULL)
-            )
-    AND     xirm1.practice_month      =   gv_f_inv_acct_period
-    AND     xirm1.inventory_kbn       =   gv_param_inventory_kbn
-    AND     xirm2.inventory_kbn(+)    =   cv_inv_kbn_2
-    ORDER BY  xirm1.base_code
-             ,xirm1.subinventory_code;
+    ORDER BY  xirm2.base_code
+             ,xirm2.subinventory_code;
+-- == 2009/07/21 V1.12 Modified START ===============================================================
   --
   /**********************************************************************************
    * Procedure Name   : close_process
@@ -777,8 +867,16 @@ AS
            ,program_application_id  =   cn_program_application_id                     -- プログラムアプリケーションID
            ,program_id              =   cn_program_id                                 -- プログラムID
            ,program_update_date     =   SYSDATE                                       -- プログラム更新日
-    WHERE   inv_seq            =   ir_month_balance.inventory_seq
-    AND     inventory_item_id  =   ir_month_balance.inventory_item_id;
+-- == 2009/07/21 V1.12 Modified START ===============================================================
+--    WHERE   inv_seq            =   ir_month_balance.inventory_seq
+--    AND     inventory_item_id  =   ir_month_balance.inventory_item_id;
+--
+    WHERE   base_code           =   ir_month_balance.base_code
+    AND     subinventory_code   =   ir_month_balance.subinventory_code
+    AND     inventory_item_id   =   ir_month_balance.inventory_item_id
+    AND     inventory_kbn       =   gv_param_inventory_kbn
+    AND     practice_month      =   gv_f_inv_acct_period;
+-- == 2009/07/21 V1.12 Modified END   ===============================================================
 --
   EXCEPTION
 --#################################  固定例外処理部 START   ####################################
@@ -2279,6 +2377,10 @@ AS
          ,SYSDATE                               -- 17
         );
       END IF;
+-- == 2009/07/21 V1.12 Added START ===============================================================
+      -- パフォーマンス考慮のため、COMMITを実行しINSERT時の領域を開放（A-4の日時在庫受払表のINSERT）
+      COMMIT;
+-- == 2009/07/21 V1.12 Added END   ===============================================================
     END IF;
 --
   EXCEPTION
@@ -3157,12 +3259,37 @@ AS
         IF (gv_param_inventory_kbn  = cv_inv_kbn_1) THEN
           FETCH invrcp_daily_1_cur  INTO  invrcp_daily_rec;
           EXIT  daily_data_loop   WHEN  invrcp_daily_1_cur%NOTFOUND;
+          --
         ELSE
           FETCH invrcp_daily_2_cur  INTO  invrcp_daily_rec;
           EXIT  daily_data_loop   WHEN  invrcp_daily_2_cur%NOTFOUND;
+          --
+-- == 2009/07/21 V1.12 Added START ===============================================================
+          BEGIN
+            -- 棚卸管理情報を取得
+            SELECT   MAX(xic.inventory_seq)        inventory_seq
+                    ,MAX(xic.inventory_date)       inventory_date
+            INTO     invrcp_daily_rec.inventory_seq
+                    ,invrcp_daily_rec.inventory_date
+            FROM     xxcoi_inv_control           xic
+                    ,mtl_secondary_inventories   msi
+            WHERE    xic.inventory_kbn      =   gv_param_inventory_kbn
+            AND      xic.subinventory_code  =   invrcp_daily_rec.subinventory_code
+            AND      xic.inventory_date    >=   TRUNC(TO_DATE(gv_f_inv_acct_period, cv_month))
+            AND      xic.inventory_date    <=   LAST_DAY(TO_DATE(gv_f_inv_acct_period, cv_month))
+            AND      xic.subinventory_code  =   msi.secondary_inventory_name
+            AND      msi.attribute7         =   invrcp_daily_rec.base_code
+            AND      msi.organization_id    =   gn_f_organization_id
+            GROUP BY  msi.attribute7
+                     ,xic.subinventory_code;
+          EXCEPTION
+            WHEN  NO_DATA_FOUND THEN
+              invrcp_daily_rec.inventory_seq  :=  NULL;
+              invrcp_daily_rec.inventory_date :=  NULL;
+          END;
+-- == 2009/07/21 V1.12 Added END   ===============================================================
         END IF;
         --
-        -- 月末、ユーザ起動で、棚卸管理情報が存在しない場合以外に、以下を実行
         -- ===================================
         --  A-4.月次在庫受払出力（日次データ）
         -- ===================================
@@ -3349,22 +3476,38 @@ AS
         FETCH last_month_cur  INTO  last_month_rec;
         EXIT  month_balance_loop  WHEN  last_month_cur%NOTFOUND;
         --
-        IF (last_month_rec.last_month_inv_seq IS NOT NULL) THEN
-          -- ========================================
-          --  A-13.月首残高出力
-          -- ========================================
-          ins_month_balance(
-            ir_month_balance  =>  last_month_rec    --  月首残高
-           ,ov_errbuf         =>  lv_errbuf         --  エラー・メッセージ           --# 固定 #
-           ,ov_retcode        =>  lv_retcode        --  リターン・コード             --# 固定 #
-           ,ov_errmsg         =>  lv_errmsg         --  ユーザー・エラー・メッセージ --# 固定 #
-          );
-          -- 終了パラメータ判定
-          IF (lv_retcode = cv_status_error) THEN
-            RAISE global_process_expt;
-          END IF;
-          --
+-- == 2009/07/21 V1.12 Modified START ===============================================================
+--        IF (last_month_rec.last_month_inv_seq IS NOT NULL) THEN
+--          -- ========================================
+--          --  A-13.月首残高出力
+--          -- ========================================
+--          ins_month_balance(
+--            ir_month_balance  =>  last_month_rec    --  月首残高
+--           ,ov_errbuf         =>  lv_errbuf         --  エラー・メッセージ           --# 固定 #
+--           ,ov_retcode        =>  lv_retcode        --  リターン・コード             --# 固定 #
+--           ,ov_errmsg         =>  lv_errmsg         --  ユーザー・エラー・メッセージ --# 固定 #
+--          );
+--          -- 終了パラメータ判定
+--          IF (lv_retcode = cv_status_error) THEN
+--            RAISE global_process_expt;
+--          END IF;
+--          --
+--        END IF;
+--
+        -- ========================================
+        --  A-13.月首残高出力
+        -- ========================================
+        ins_month_balance(
+          ir_month_balance  =>  last_month_rec    --  月首残高
+         ,ov_errbuf         =>  lv_errbuf         --  エラー・メッセージ           --# 固定 #
+         ,ov_retcode        =>  lv_retcode        --  リターン・コード             --# 固定 #
+         ,ov_errmsg         =>  lv_errmsg         --  ユーザー・エラー・メッセージ --# 固定 #
+        );
+        -- 終了パラメータ判定
+        IF (lv_retcode = cv_status_error) THEN
+          RAISE global_process_expt;
         END IF;
+-- == 2009/07/21 V1.12 Modified END   ===============================================================
       END LOOP month_balance_loop;
       -- ----------------
       --  CURSORクローズ
