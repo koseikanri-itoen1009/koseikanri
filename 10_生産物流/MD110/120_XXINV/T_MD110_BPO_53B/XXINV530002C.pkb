@@ -7,7 +7,7 @@ AS
  * Description      : HHT棚卸データIFプログラム
  * MD.050/070       : 棚卸Issue1.0(T_MD050_BPO_530)
  *                  : 棚卸Issue1.0(T_MD050_BPO_53B)
- * Version          : 1.5
+ * Version          : 1.7
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -37,6 +37,8 @@ AS
  *  2008/05/08    1.3   T.Endou          修正(ロット管理しない場合はNULL)
  *  2008/05/09    1.4   M.Inamine        修正(2008/05/08 03 不具合対応：日付書式の誤り)
  *  2008/12/06    1.5   T.Miyata         修正(本番障害#510対応：日付は変換して比較)
+ *  2009/02/09    1.6   A.Shiina         修正(本番障害#1117対応：在庫クローズチェック追加)
+ *  2009/02/09    1.7   A.Shiina         修正(本番障害#1129対応：パラメータ追加)
  *
  *****************************************************************************************/
 --
@@ -149,6 +151,13 @@ AS
   gc_char_d_format        CONSTANT VARCHAR2(30) := 'YYYY/MM/DD' ;
 -- 2008/12/06 T.Miyata Add End
 --
+-- 2009/02/09 v1.7 ADD START
+  gv_tkn_param_name       CONSTANT VARCHAR2(15) := 'PARAMETER';
+  gv_inv_whse_section_col CONSTANT VARCHAR2(20) := '倉庫管理部署';
+  gv_inv_whse_code        CONSTANT VARCHAR2(20) := '倉庫コード';
+  gv_item_typ             CONSTANT VARCHAR2(10) := '品目区分';
+--
+-- 2009/02/09 v1.7 ADD END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1709,6 +1718,24 @@ AS
 --
       END IF;
 --
+-- 2009/02/09 v1.6 ADD START
+      -- ==============================================================
+      -- 在庫クローズチェック
+      -- ==============================================================
+      -- 棚卸日が在庫カレンダーのオープンでない場合
+      IF ( TO_CHAR(gtbl_data(ln_cnt_loop).invent_date, 'YYYYMM') <= xxcmn_common_pkg.get_opminv_close_period() ) THEN
+        -- エラーメッセージを取得
+        lv_errbuf_work := xxcmn_common_pkg.get_msg(gv_xxinv
+                                                 , 'APP-XXINV-10003'
+                                                 , 'ERR_MSG'
+                                                 , TO_CHAR(gtbl_data(ln_cnt_loop).invent_date, gc_char_d_format));
+        ln_error_cnt := gtbl_error.COUNT + 1;
+        gtbl_error(ln_error_cnt) := gtbl_data(ln_cnt_loop); -- 入力データ退避
+        gtbl_error(ln_error_cnt).err_msg := lv_errbuf_work; -- エラーメッセージセット
+        lb_err_flag := TRUE;
+      END IF;
+--
+-- 2009/02/09 v1.6 ADD END
       -- 正常データのセット
       IF ((lb_err_flag = FALSE)
         AND (lb_warn_flag = FALSE)) THEN
@@ -1761,6 +1788,11 @@ AS
    * Description      : 対象データ取得(B-2)
    ***********************************************************************************/
   PROCEDURE proc_get_ins_data(
+-- 2009/02/09 v1.7 ADD START
+    iv_report_post_code IN  xxinv_stc_inventory_interface.report_post_code%TYPE,  --報告部署
+    iv_whse_code        IN  ic_whse_mst.whse_code                         %TYPE,  --倉庫コード
+    iv_item_type        IN  xxcmn_categories2_v.segment1                  %TYPE,  --品目区分
+-- 2009/02/09 v1.7 ADD END
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ                  --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード                    --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ        --# 固定 #
@@ -1859,6 +1891,11 @@ AS
        ,NULL                   AS b3_limit_date      -- b3_賞味期限
       BULK COLLECT INTO gtbl_data
       FROM
+-- 2009/02/09 v1.7 ADD START
+        ic_whse_mst                  iwm,
+        xxcmn_item_mst_v             itm,
+        xxcmn_item_categories5_v     ictm,
+-- 2009/02/09 v1.7 ADD END
         -- HHT棚卸ワークテーブル
         xxinv_stc_inventory_hht_work xsihw
         -- HHT棚卸ワークテーブル 製品重複チェック用
@@ -1924,6 +1961,14 @@ AS
       AND xsihw.item_code        = xsihw_c.item_code(+)
       AND xsihw.lot_no           = xsihw_c.lot_no(+)
       AND xsihw.invent_date      = xsihw_c.invent_date(+)
+-- 2009/02/09 v1.7 ADD START
+      AND xsihw.report_post_code = iv_report_post_code
+      AND xsihw.invent_whse_code = iwm.whse_code
+      AND iwm.whse_code          = NVL(iv_whse_code, iwm.whse_code)
+      AND xsihw.item_code        = itm.item_no
+      AND itm.item_id            = ictm.item_id
+      AND ictm.item_class_code   = NVL(iv_item_type, ictm.item_class_code)
+-- 2009/02/09 v1.7 ADD END
       ORDER BY
         xsihw.invent_seq
        ,xsihw.invent_whse_code
@@ -2127,11 +2172,189 @@ AS
 --
 --
 --
+-- 2009/02/09 v1.7 ADD START
+   /**********************************************************************************
+   * Procedure Name   : proc_check_param
+   * Description      : パラメータチェック
+   ***********************************************************************************/
+  PROCEDURE proc_check_param(
+    iv_report_post_code   IN      VARCHAR2,   -- 報告部署
+    iv_whse_code          IN      VARCHAR2,   -- 倉庫コード
+    iv_item_type          IN      VARCHAR2,   -- 品目区分
+    ov_errbuf             OUT     VARCHAR2,   -- エラー・メッセージ
+    ov_retcode            OUT     VARCHAR2,   -- リターン・コード
+    ov_errmsg             OUT     VARCHAR2)   -- ユーザー・エラー・メッセージ
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'proc_check_param'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf   VARCHAR2(5000)   DEFAULT NULL;  -- エラー・メッセージ
+    lv_retcode  VARCHAR2(1)      DEFAULT NULL;  -- リターン・コード
+    lv_errmsg   VARCHAR2(5000)   DEFAULT NULL;  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_xxpo_date_type       CONSTANT  VARCHAR2(30) := 'XXPO_DATE_TYPE';       -- 日付タイプ
+    cv_xxpo_commodity_type  CONSTANT  VARCHAR2(30) := 'XXPO_COMMODITY_TYPE';  -- 商品区分
+    cv_xxpo_item_type       CONSTANT  VARCHAR2(30) := 'XXCMN_C01';            -- 品目区分
+--
+    -- *** ローカル変数 ***
+    lv_lookup_code    xxcmn_lookup_values_v.lookup_code %TYPE  DEFAULT NULL;  -- ルックアップコード
+    lv_location_code  xxcmn_locations_v.LOCATION_CODE   %TYPE  DEFAULT NULL;  --部署コード
+    lv_whse_code      ic_whse_mst.whse_code             %TYPE  DEFAULT NULL;  --倉庫コード
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ==============================================================
+    -- 報告部署が入力されているかチェックします。
+    -- ==============================================================
+    IF (iv_report_post_code IS NULL) THEN
+      lv_errbuf  := xxcmn_common_pkg.get_msg(
+                      iv_application  => gv_xxcmn,
+                      iv_name         => 'APP-XXCMN-10010',
+                      iv_token_name1  => gv_tkn_param_name,
+                      iv_token_value1 => gv_inv_whse_section_col,  -- '倉庫管理部署'
+                      iv_token_name2  => 'VALUE',
+                      iv_token_value2 => NULL
+                    );
+      RAISE global_api_expt;
+    END IF;
+    -- ==============================================================
+    -- 報告部署がが事業所マスタに存在するかチェック
+    -- ==============================================================
+    BEGIN
+      SELECT lc.location_code cd
+      INTO   lv_location_code
+      FROM   xxcmn_locations_v lc
+      WHERE  lc.location_code = iv_report_post_code
+      AND    ROWNUM      = 1;
+    EXCEPTION
+    -- データがない場合はエラー
+      WHEN NO_DATA_FOUND THEN
+      lv_errbuf  := xxcmn_common_pkg.get_msg(
+                      iv_application  => gv_xxcmn,
+                      iv_name         => 'APP-XXCMN-10010',
+                      iv_token_name1  => gv_tkn_param_name,
+                      iv_token_value1 => gv_inv_whse_section_col,  -- '倉庫管理部署'
+                      iv_token_name2  => 'VALUE',
+                      iv_token_value2 => iv_report_post_code
+                    );
+      RAISE global_api_expt;
+      -- その他エラー
+      WHEN OTHERS THEN
+        RAISE;
+    END;
+--
+    -- ==============================================================
+    -- 倉庫コードが入力されている場合、倉庫マスタを存在チェックします。
+    -- ==============================================================
+    IF (iv_whse_code IS NOT NULL) THEN
+      BEGIN
+        SELECT icmt.whse_code
+        INTO   lv_whse_code
+        FROM   ic_whse_mst icmt
+        WHERE  icmt.whse_code = iv_whse_code
+        AND    ROWNUM      = 1;
+      EXCEPTION
+      -- データがない場合はエラー
+        WHEN NO_DATA_FOUND THEN
+        lv_errbuf  := xxcmn_common_pkg.get_msg(
+                        iv_application  => gv_xxcmn,
+                        iv_name         => 'APP-XXCMN-10010',
+                        iv_token_name1  => gv_tkn_param_name,
+                        iv_token_value1 => gv_inv_whse_code,      --倉庫コード
+                        iv_token_name2  => 'VALUE',
+                        iv_token_value2 => iv_whse_code
+                      );
+        RAISE global_api_expt;
+        -- その他エラー
+        WHEN OTHERS THEN
+          RAISE;
+      END;
+    END IF;
+--
+    -- ==============================================================
+    -- 品目区分がカテゴリ情報に存在するかチェック
+    -- ==============================================================
+    IF (iv_item_type IS NOT NULL) THEN
+      BEGIN
+        SELECT xcv.segment1
+        INTO   lv_lookup_code
+        FROM   xxcmn_categories_v xcv             -- 品目カテゴリ情報VIEW
+        WHERE  xcv.category_set_name = gv_item_typ
+        AND    xcv.segment1 = iv_item_type
+        AND    ROWNUM                = 1;
+      EXCEPTION
+      -- データがない場合はエラー
+        WHEN NO_DATA_FOUND THEN
+          lv_errbuf  := xxcmn_common_pkg.get_msg(
+                          iv_application  => gv_xxcmn,
+                          iv_name         => 'APP-XXCMN-10010',
+                          iv_token_name1  => gv_tkn_param_name,
+                          iv_token_value1 => gv_item_typ,  --品目区分
+                          iv_token_name2  => 'VALUE',
+                          iv_token_value2 => iv_item_type
+                        );
+          RAISE global_api_expt;
+        -- その他エラー
+        WHEN OTHERS THEN
+          RAISE;
+      END;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END proc_check_param;
+--
+--
+-- 2009/02/09 v1.7 ADD END
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
+-- 2009/02/09 v1.7 ADD START
+    iv_report_post_code   IN  VARCHAR2,   -- 報告部署
+    iv_whse_code          IN  VARCHAR2,   -- 倉庫コード
+    iv_item_type          IN  VARCHAR2,   -- 品目区分
+-- 2009/02/09 v1.7 ADD END
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2183,6 +2406,24 @@ AS
     gtbl_reserve.DELETE;    -- 保留データ
     gtbl_normal_ins.DELETE; -- 正常データ挿入
 --
+-- 2009/02/09 v1.7 ADD START
+    -- ===============================
+    -- パラメータチェック
+    -- ===============================
+    proc_check_param(
+       iv_report_post_code =>  iv_report_post_code   -- 報告部署
+      ,iv_whse_code        =>  iv_whse_code          -- 倉庫コード
+      ,iv_item_type        =>  iv_item_type          -- 品目区分
+      ,ov_errbuf           =>  lv_errbuf             -- エラー・メッセージ
+      ,ov_retcode          =>  lv_retcode            -- リターン・コード
+      ,ov_errmsg           =>  lv_errmsg);           -- ユーザー・エラー・メッセージ
+--
+    -- エラーの場合
+    IF (lv_retcode = gv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+-- 2009/02/09 v1.7 ADD END
     -- ===============================
     -- B-1.データパージ処理
     -- ===============================
@@ -2200,6 +2441,11 @@ AS
     -- B-2.対象データ取得
     -- ===============================
     proc_get_ins_data(
+-- 2009/02/09 v1.7 ADD START
+      iv_report_post_code =>  iv_report_post_code, --報告部署
+      iv_whse_code        =>  iv_whse_code,        --倉庫コード
+      iv_item_type        =>  iv_item_type,        --品目区分
+-- 2009/02/09 v1.7 ADD END
       ov_errbuf     => lv_errbuf,
       ov_retcode    => lv_retcode,
       ov_errmsg     => lv_errmsg);
@@ -2321,7 +2567,13 @@ AS
 --
   PROCEDURE main(
     errbuf        OUT VARCHAR2,      --   エラー・メッセージ  --# 固定 #
-    retcode       OUT VARCHAR2       --   リターン・コード    --# 固定 #
+-- 2009/02/09 v1.7 UPDATE START
+--    retcode       OUT VARCHAR2       --   リターン・コード    --# 固定 #
+    retcode       OUT VARCHAR2,      --   リターン・コード    --# 固定 #
+    iv_report_post_code   IN  VARCHAR2,   -- 報告部署
+    iv_whse_code          IN  VARCHAR2,   -- 倉庫コード
+    iv_item_type          IN  VARCHAR2    -- 品目区分
+-- 2009/02/09 v1.7 UPDATE END
   )
 --
 --
@@ -2382,6 +2634,11 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
+-- 2009/02/09 v1.7 ADD START
+      iv_report_post_code, -- 報告部署
+      iv_whse_code,        -- 倉庫コード
+      iv_item_type,        -- 品目区分
+-- 2009/02/09 v1.7 ADD END
       lv_errbuf,   -- エラー・メッセージ           --# 固定 #
       lv_retcode,  -- リターン・コード             --# 固定 #
       lv_errmsg);  -- ユーザー・エラー・メッセージ --# 固定 #

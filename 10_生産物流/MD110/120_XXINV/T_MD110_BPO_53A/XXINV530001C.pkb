@@ -7,7 +7,7 @@ AS
  * Description      : 棚卸結果インターフェース
  * MD.050           : 棚卸(T_MD050_BPO_530)
  * MD.070           : 結果インターフェース(T_MD070_BPO_53A)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  *  ----------------------------------------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/12/06    1.9   H.Itou           修正(本番障害#510対応：日付は変換して比較)
  *  2008/12/08    1.10  K.Kumamoto       修正(本番障害#570対応：棚卸連番をTO_NUMBER)
  *  2008/12/11    1.11  H.Itou           修正(本番障害#632対応：#570修正漏れ)
+ *  2009/02/09    1.12  A.Shiina         修正(本番障害#1117対応：在庫クローズチェック追加)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -555,7 +556,6 @@ AS
       ||  ', xsi.invent_date  ';   --棚卸日
     END IF;
 --
-FND_FILE.PUT_LINE(FND_FILE.LOG,lv_sql);
     BEGIN
 -- 2008/09/04 H.Itou Mod Start PT 6-3_39指摘#12 バインド変数に変更
 --      EXECUTE  IMMEDIATE lv_sql INTO  ln_cnt;
@@ -2624,6 +2624,46 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,lv_sql);
 --
         END IF;
 -- 2008/12/06 H.Itou Add End 上から移動
+-- 2009/02/09 v1.12 ADD START
+--
+        -- ===========================================
+        -- 在庫クローズチェック                      =
+        -- ===========================================
+        -- 棚卸日が在庫カレンダーのオープンでない場合
+        IF ( TO_CHAR(inv_if_rec(i).invent_date, 'YYYYMM') <= xxcmn_common_pkg.get_opminv_close_period() ) THEN
+          -- エラーメッセージを取得
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxinv
+                                              , 'APP-XXINV-10003'
+                                              , 'ERR_MSG'
+                                              , TO_CHAR(inv_if_rec(i).invent_date, gc_char_d_format));
+          -- 警告メッセージPL/SQL表投入
+          gn_err_msg_cnt := gn_err_msg_cnt + 1;
+          warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+--
+          inv_if_rec(i).sts  :=  gv_sts_ng;
+--
+          --データダンプ取得
+          IF  (lb_dump_flag  = FALSE)  THEN
+            proc_get_data_dump(
+              if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+             ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+             ,ov_errbuf  => lv_errbuf
+             ,ov_retcode => lv_retcode
+             ,ov_errmsg  => lv_errmsg);
+            -- エラーの場合
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE global_api_expt;
+            ELSE
+              lv_retcode  := gv_status_warn;
+            END IF;
+            -- 警告データダンプPL/SQL表投入
+            gn_err_msg_cnt := gn_err_msg_cnt + 1;
+            warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+            lb_dump_flag :=  TRUE;
+          END IF;
+        END IF;
+--
+-- 2009/02/09 v1.12 ADD END
         --マスタチェックで取得した項目を配列へ退避
         inv_if_rec(i).item_id      := ln_item_id;          --品目ID
         inv_if_rec(i).lot_ctl      := ln_lot_ctl;          --ロット管理区分
