@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼/出荷実績作成処理
  * MD.050           : 出荷実績 T_MD050_BPO_420
  * MD.070           : 出荷依頼出荷実績作成処理 T_MD070_BPO_42A
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2008/06/27    1.5   Oracle 丸下 博宣   受注明細登録時の削除フラグにNを設定
  *  2008/09/01    1.6   Oracle 山根 一浩   課題#64変更#176対応
  *  2008/10/10    1.7   Oracle 伊藤 ひとみ 統合テスト指摘116対応
+ *  2008/12/02    1.8   Oracle 北寒寺正夫  本番障害対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2632,9 +2633,14 @@ AS
         lt_warning_class(ln_line_count)                    := iot_order_tbl(ln_shori_count).warning_class;
         lt_warning_date(ln_line_count)                     := iot_order_tbl(ln_shori_count).warning_date;
         lt_line_description(ln_line_count)                 := iot_order_tbl(ln_shori_count).line_description;
-        lt_rm_if_flg(ln_line_count)                        := iot_order_tbl(ln_shori_count).rm_if_flg;
+-- Ver1.8 M.Hokkanji Start
+        lt_rm_if_flg(ln_line_count)                        := gv_no;
         lt_shipping_request_if_flg(ln_line_count)          := iot_order_tbl(ln_shori_count).shipping_request_if_flg;
-        lt_shipping_result_if_flg(ln_line_count)           := iot_order_tbl(ln_shori_count).shipping_result_if_flg;
+        lt_shipping_result_if_flg(ln_line_count)           := gv_no;
+--        lt_rm_if_flg(ln_line_count)                        := iot_order_tbl(ln_shori_count).rm_if_flg;
+--        lt_shipping_request_if_flg(ln_line_count)          := iot_order_tbl(ln_shori_count).shipping_request_if_flg;
+--        lt_shipping_result_if_flg(ln_line_count)           := iot_order_tbl(ln_shori_count).shipping_result_if_flg;
+-- Ver1.8 M.Hokkanji End
       END IF;
       -- 受注アドオンループ件数を+1
       ln_shori_count := ln_shori_count + 1;
@@ -4252,9 +4258,14 @@ AS
         lt_warning_class(ln_line_count)                    := iot_order_tbl(ln_shori_count).warning_class;
         lt_warning_date(ln_line_count)                     := iot_order_tbl(ln_shori_count).warning_date;
         lt_line_description(ln_line_count)                 := iot_order_tbl(ln_shori_count).line_description;
-        lt_rm_if_flg(ln_line_count)                        := iot_order_tbl(ln_shori_count).rm_if_flg;
+-- Ver1.8 M.Hokkanji Start
+        lt_rm_if_flg(ln_line_count)                        := gv_no;
         lt_shipping_request_if_flg(ln_line_count)          := iot_order_tbl(ln_shori_count).shipping_request_if_flg;
-        lt_shipping_result_if_flg(ln_line_count)           := iot_order_tbl(ln_shori_count).shipping_result_if_flg;
+        lt_shipping_result_if_flg(ln_line_count)           := gv_no;
+        --lt_rm_if_flg(ln_line_count)                        := iot_order_tbl(ln_shori_count).rm_if_flg;
+        --lt_shipping_request_if_flg(ln_line_count)          := iot_order_tbl(ln_shori_count).shipping_request_if_flg;
+        --lt_shipping_result_if_flg(ln_line_count)           := iot_order_tbl(ln_shori_count).shipping_result_if_flg;
+-- Ver1.8 M.Hokkanji End
 --
       END IF;
       -- 受注アドオンループ件数を+1

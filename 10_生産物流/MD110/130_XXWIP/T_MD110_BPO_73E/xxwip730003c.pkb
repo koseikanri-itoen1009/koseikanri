@@ -7,7 +7,7 @@ AS
  * Description      : ‰^’ÀƒAƒhƒIƒ“ƒCƒ“ƒ^ƒtƒF[ƒXæˆ—
  * MD.050           : ‰^’ÀŒvZiƒgƒ‰ƒ“ƒUƒNƒVƒ‡ƒ“j       T_MD050_BPO_732
  * MD.070           : ‰^’ÀƒAƒhƒIƒ“ƒCƒ“ƒ^ƒtƒF[ƒXæˆ— T_MD070_BPO_73E
- * Version          : 1.5
+ * Version          : 1.6
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
@@ -35,6 +35,7 @@ AS
  *  2008/07/10    1.3  Oracle –ì‘º ³K  STáŠQ #432 ‘Î‰
  *  2008/07/25    1.4  Oracle –ì‘º ³K  STáŠQ #473 ‘Î‰
  *  2008/09/16    1.5  Oracle ‹g“c ‰Ä÷  T_S_570 ‘Î‰
+ *  2008/12/01    1.6  Oracle –ì‘º ³K  –{”Ô#303‘Î‰
  *
  *****************************************************************************************/
 --
@@ -1602,7 +1603,6 @@ AS
       IF (ir_deliv_if_rec.total_amount IS NOT NULL) THEN
         u_deliv_head_ttl_amt_tab(gn_upd_deliv_head_cnt) := ir_deliv_if_rec.total_amount;
       ELSE
-        -- Œ_–ñ‹àŠz { ¬ÚŠ„‘‹àŠz { ƒsƒbƒLƒ“ƒO—¿ { ”—¿‹à
 -- ##### 20080725 Ver.1.4 STáŠQ473‘Î‰ START #####
 /*****
         u_deliv_head_ttl_amt_tab(gn_upd_deliv_head_cnt) :=
@@ -1611,11 +1611,27 @@ AS
                       u_deliv_head_pic_chrg_tab(gn_upd_deliv_head_cnt) +
                       u_deliv_head_many_rt_tab(gn_upd_deliv_head_cnt);
 *****/
-        u_deliv_head_ttl_amt_tab(gn_upd_deliv_head_cnt) :=
-                      NVL(u_deliv_head_con_rate_tab(gn_upd_deliv_head_cnt),0) +
-                      NVL(u_deliv_head_cns_srchrg_tab(gn_upd_deliv_head_cnt),0) +
-                      NVL(u_deliv_head_pic_chrg_tab(gn_upd_deliv_head_cnt),0) +
-                      NVL(u_deliv_head_many_rt_tab(gn_upd_deliv_head_cnt),0);
+-- ##### 20081201 Ver.1.6 –{”Ô#303‘Î‰ START #####
+        -- x•¥¿‹‹æ•ª  ux•¥v‚Ìê‡
+        -- Œ_–ñ‹àŠz { ¬ÚŠ„‘‹àŠz { ƒsƒbƒLƒ“ƒO—¿ { ”—¿‹à
+        IF (ir_deliv_if_rec.p_b_classe = gv_p_b_cls_pay) THEN
+-- ##### 20081201 Ver.1.6 –{”Ô#303‘Î‰ END   #####
+          u_deliv_head_ttl_amt_tab(gn_upd_deliv_head_cnt) :=
+                        NVL(u_deliv_head_con_rate_tab(gn_upd_deliv_head_cnt),0) +
+                        NVL(u_deliv_head_cns_srchrg_tab(gn_upd_deliv_head_cnt),0) +
+                        NVL(u_deliv_head_pic_chrg_tab(gn_upd_deliv_head_cnt),0) +
+                        NVL(u_deliv_head_many_rt_tab(gn_upd_deliv_head_cnt),0);
+-- ##### 20081201 Ver.1.6 –{”Ô#303‘Î‰ START #####
+        -- x•¥¿‹‹æ•ª  u¿‹v‚Ìê‡
+        -- ¿‹‹àŠz { ¬ÚŠ„‘‹àŠz { ƒsƒbƒLƒ“ƒO—¿ { ”—¿‹à
+        ELSE
+          u_deliv_head_ttl_amt_tab(gn_upd_deliv_head_cnt) :=
+                        NVL(u_deliv_head_chrg_amt_tab(gn_upd_deliv_head_cnt),0) +
+                        NVL(u_deliv_head_cns_srchrg_tab(gn_upd_deliv_head_cnt),0) +
+                        NVL(u_deliv_head_pic_chrg_tab(gn_upd_deliv_head_cnt),0) +
+                        NVL(u_deliv_head_many_rt_tab(gn_upd_deliv_head_cnt),0);
+        END IF;
+-- ##### 20081201 Ver.1.6 –{”Ô#303‘Î‰ END   #####
 -- ##### 20080725 Ver.1.4 STáŠQ473‘Î‰ END   #####
       END IF;
     END IF;
@@ -1627,9 +1643,29 @@ AS
                 u_deliv_head_chrg_amt_tab(gn_upd_deliv_head_cnt) -
                   u_deliv_head_ttl_amt_tab(gn_upd_deliv_head_cnt);
 *****/
+-- ##### 20081201 Ver.1.6 –{”Ô#303‘Î‰ START #####
+    -- x•¥¿‹‹æ•ª  ux•¥v‚Ìê‡
+    IF (ir_deliv_if_rec.p_b_classe = gv_p_b_cls_pay) THEN
+-- ##### 20081201 Ver.1.6 –{”Ô#303‘Î‰ END   #####
+--  ¿‹‹àŠz | ‡Œv
     u_deliv_head_balance_tab(gn_upd_deliv_head_cnt) :=
                 NVL(u_deliv_head_chrg_amt_tab(gn_upd_deliv_head_cnt),0) -
                   NVL(u_deliv_head_ttl_amt_tab(gn_upd_deliv_head_cnt),0);
+--
+-- ##### 20081201 Ver.1.6 –{”Ô#303‘Î‰ START #####
+--
+    -- x•¥¿‹‹æ•ª  u¿‹v‚Ìê‡
+    ELSE
+      -- ‡Œv - i¿‹‹àŠz { ¬ÚŠ„‘‹àŠz { ƒsƒbƒLƒ“ƒO—¿ { ”—¿‹àj
+      -- ŒvZŒ‹‰Ê‚Í‚O‚É‚È‚é
+      u_deliv_head_balance_tab(gn_upd_deliv_head_cnt) :=
+        u_deliv_head_ttl_amt_tab(gn_upd_deliv_head_cnt) -
+        (NVL(u_deliv_head_chrg_amt_tab(gn_upd_deliv_head_cnt),0) +
+         NVL(u_deliv_head_cns_srchrg_tab(gn_upd_deliv_head_cnt),0) +
+         NVL(u_deliv_head_pic_chrg_tab(gn_upd_deliv_head_cnt),0) +
+         NVL(u_deliv_head_many_rt_tab(gn_upd_deliv_head_cnt),0));
+    END IF;
+-- ##### 20081201 Ver.1.6 –{”Ô#303‘Î‰ END   #####
 -- ##### 20080725 Ver.1.4 STáŠQ473‘Î‰ END   #####
 --
     -- ·ˆÙ‹æ•ª
