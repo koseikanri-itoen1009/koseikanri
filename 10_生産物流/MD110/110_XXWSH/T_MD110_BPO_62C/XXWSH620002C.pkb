@@ -7,7 +7,7 @@ AS
  * Description      : 出庫配送依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 出庫配送依頼表 T_MD070_BPO_62C
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2009/01/23    1.18  N.Yoshida        本番#765対応
  *  2009/02/04    1.19  Y.Kanami         本番#41対応
  *                                       重量容積の計算でパレット重量加算を削除する
+ *  2009/04/24    1.20  H.Itou           本番#1398対応
  *
  *****************************************************************************************/
 --
@@ -197,6 +198,11 @@ AS
   -- ロット管理
   gc_lot_ctl_manage          CONSTANT  VARCHAR2(1)  := '1' ;                -- ロット管理されている
 -- 2009/02/04 Y.Kanami 本番#41対応 End ----
+-- 2009/04/24 H.Itou   本番#1398対応 START --
+  -- マスタステータス
+  gc_status_active        CONSTANT VARCHAR2(1) := 'A' ;     -- 有効
+  gc_status_inactive      CONSTANT VARCHAR2(1) := 'I' ;     -- 無効
+-- 2009/04/24 H.Itou   本番#1398対応 END ----
   ------------------------------
   -- プロファイル関連
   ------------------------------
@@ -1140,7 +1146,11 @@ AS
     ------------------------------------------------
     -- 顧客サイト情報VIEW2
     ------------------------------------------------
-    || ' AND xoha.deliver_to_id = xcas2v.party_site_id' 
+-- 2009/04/24 H.Itou   本番#1398対応 START --
+--    || ' AND xoha.deliver_to_id = xcas2v.party_site_id' 
+    || ' AND xoha.deliver_to = xcas2v.party_site_number' 
+    || ' AND xcas2v.party_site_status = ''' || gc_status_active || ''''
+-- 2009/04/24 H.Itou   本番#1398対応 END   --
     || ' AND xcas2v.start_date_active <= xoha.schedule_ship_date' 
     || ' AND (' 
     || ' xcas2v.end_date_active >= xoha.schedule_ship_date' 
@@ -2393,7 +2403,11 @@ AS
     ------------------------------------------------
     -- 顧客サイト情報VIEW2
     ------------------------------------------------
-    || ' AND xcs.deliver_to_id = xcas2v.party_site_id(+)' 
+-- 2009/04/24 H.Itou   本番#1398対応 START --
+--    || ' AND xcs.deliver_to_id = xcas2v.party_site_id(+)' 
+    || ' AND xcs.deliver_to = xcas2v.party_site_number(+)' 
+    || ' AND xcas2v.party_site_status(+) = ''' || gc_status_active || ''''
+-- 2009/04/24 H.Itou   本番#1398対応 END ----
     || ' AND xcas2v.start_date_active(+) <= xcs.schedule_ship_date' 
     || ' AND xcas2v.end_date_active(+) >= xcs.schedule_ship_date'
     -------------------------------------------------------------------------------

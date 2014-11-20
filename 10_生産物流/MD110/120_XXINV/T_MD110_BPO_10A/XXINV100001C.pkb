@@ -8,7 +8,7 @@ AS
  * Description      : 生産物流(計画)
  * MD.050           : 計画・移動・在庫・販売計画/引取計画 T_MD050_BPO100
  * MD.070           : 計画・移動・在庫・販売計画/引取計画 T_MD070_BPO10A
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -108,6 +108,7 @@ AS
  *  2009/04/08   1.19 Oracle 吉元 強樹   本番#1352,1374対応
  *  2009/04/09   1.20 Oracle 吉元 強樹   本番#1350対応
  *  2009/04/13   1.21 Oracle 吉元 強樹   本番#1350対応,メッセージ出力不具合対応(エラー重複表示)
+ *  2009/04/16   1.22 Oracle 椎名 昭圭   本番#1407対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3750,7 +3751,11 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    ln_select_count    NUMBER;          -- 存在チェックのためのカウンタ
+-- 2009/04/16 v1.22 UPDATE START
+--    ln_select_count    NUMBER;          -- 存在チェックのためのカウンタ
+      lv_min_start_date      xxcmn_item_mst2_v.start_date_active%TYPE;  -- 最小適用開始日
+      lv_max_end_date        xxcmn_item_mst2_v.end_date_active%TYPE;    -- 最大適用終了日
+-- 2009/04/16 v1.22 UPDATE END
 --
     -- *** ローカル・カーソル ***
 --
@@ -3770,6 +3775,8 @@ AS
     -- ***************************************
 --
     -- OPM品目マスタから品目IDを取得する
+-- 2009/04/16 v1.22 UPDATE START
+/*
     SELECT COUNT(imv.item_id)     -- 品目ID
     INTO   ln_select_count
     FROM   xxcmn_item_mst2_v  imv  -- OPM品目情報view
@@ -3777,9 +3784,25 @@ AS
       AND  imv.start_date_active <= id_start_date_active
       AND  imv.end_date_active   >= id_start_date_active
       AND  ROWNUM                 = 1;
+*/
+    SELECT MIN(imv.start_date_active)
+          ,MAX(imv.end_date_active)
+    INTO   lv_min_start_date
+          ,lv_max_end_date
+    FROM   xxcmn_item_mst2_v  imv  -- OPM品目情報view
+    WHERE  imv.item_no            = iv_item_code
+    ;
+-- 2009/04/16 v1.22 UPDATE END
 --
     -- 品目が妥当でない(存在しない)場合(Forecast分類で処理結果に違いはない）
-    IF (ln_select_count = 0) THEN
+-- 2009/04/16 v1.22 UPDATE START
+--    IF (ln_select_count = 0) THEN
+    IF (
+         (lv_min_start_date > id_start_date_active)
+         OR
+         (lv_max_end_date   < id_start_date_active)
+       ) THEN
+-- 2009/04/16 v1.22 UPDATE END
       lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv  -- 'XXINV'
                                                     ,gv_msg_10a_027  -- 品目区分チェックワーニング
                                                     ,gv_tkn_item     -- トークン'ITEM'
@@ -4031,7 +4054,11 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    ln_select_count    NUMBER;          -- 存在チェックのためのカウンタ
+-- 2009/04/16 v1.22 UPDATE START
+--    ln_select_count    NUMBER;          -- 存在チェックのためのカウンタ
+      lv_min_start_date      xxcmn_item_mst2_v.start_date_active%TYPE;  -- 最小適用開始日
+      lv_max_end_date        xxcmn_item_mst2_v.end_date_active%TYPE;    -- 最大適用終了日
+-- 2009/04/16 v1.22 UPDATE END
 --
     -- *** ローカル・カーソル ***
 --
@@ -4051,6 +4078,8 @@ AS
     -- ***************************************
 --
     -- 品目IDを取得する
+-- 2009/04/16 v1.22 UPDATE START
+/*
     SELECT COUNT(imv.item_id)
     INTO   ln_select_count
     FROM   xxcmn_item_mst2_v  imv  -- OPM品目情報View2
@@ -4058,10 +4087,26 @@ AS
       AND  imv.start_date_active  <= gd_start_yyyymmdd
       AND  imv.end_date_active    >= gd_end_yyyymmdd
       AND  ROWNUM                  = 1;
+*/
+    SELECT MIN(imv.start_date_active)
+          ,MAX(imv.end_date_active)
+    INTO   lv_min_start_date
+          ,lv_max_end_date
+    FROM   xxcmn_item_mst2_v  imv  -- OPM品目情報View2
+    WHERE  imv.item_no             = iv_item_code
+    ;
+-- 2009/04/16 v1.22 UPDATE END
 --
     -- 品目が妥当でない(存在しない)場合の後処理（Forecast分類で処理結果に違いはない）
     -- 警告としてリターンする
-    IF (ln_select_count = 0) THEN
+-- 2009/04/16 v1.22 UPDATE START
+--    IF (ln_select_count = 0) THEN
+    IF (
+         (lv_min_start_date > gd_start_yyyymmdd)
+         OR
+         (lv_max_end_date   < gd_end_yyyymmdd)
+       ) THEN
+-- 2009/04/16 v1.22 UPDATE END
       lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv  -- 'XXINV'
                                                     ,gv_msg_10a_030  -- 品目年度チェックワーニング
                                                     ,gv_tkn_item     -- トークン'ITEM'
@@ -4127,7 +4172,11 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    ln_select_count    NUMBER;          -- 存在チェックのためのカウンタ
+-- 2009/04/16 v1.22 UPDATE START
+--    ln_select_count    NUMBER;          -- 存在チェックのためのカウンタ
+      lv_min_start_date      xxcmn_item_mst2_v.start_date_active%TYPE;  -- 最小適用開始日
+      lv_max_end_date        xxcmn_item_mst2_v.end_date_active%TYPE;    -- 最大適用終了日
+-- 2009/04/16 v1.22 UPDATE END
 --
     -- *** ローカル・カーソル ***
 --
@@ -4148,6 +4197,8 @@ AS
 --
     -- 仕入/標準原価ヘッダ(アドオン)から品目IDを取得する
 --
+-- 2009/04/16 v1.22 UPDATE START
+/*
     SELECT COUNT(pph.item_id)           -- 品目ID
     INTO   ln_select_count
     FROM   xxpo_price_headers   pph     -- 仕入/標準原価ヘッダ(アドオン)
@@ -4156,10 +4207,27 @@ AS
       AND  pph.start_date_active  <= gd_start_yyyymmdd
       AND  pph.end_date_active    >= gd_end_yyyymmdd
       AND  ROWNUM                  = 1;
+*/
+    SELECT MIN(pph.start_date_active)
+          ,MAX(pph.end_date_active)
+    INTO   lv_min_start_date
+          ,lv_max_end_date
+    FROM   xxpo_price_headers   pph     -- 仕入/標準原価ヘッダ(アドオン)
+    WHERE  pph.price_type          = gv_cons_p_type_standard   -- '標準'
+      AND  pph.item_code           = iv_item_code
+    ;
+-- 2009/04/16 v1.22 UPDATE END
 --
     -- 品目IDが妥当でない(存在しない)場合の後処理（Forecast分類で処理結果に違いはない）
     -- 警告としてリターンする
-    IF (ln_select_count = 0) THEN
+-- 2009/04/16 v1.22 UPDATE START
+--    IF (ln_select_count = 0) THEN
+    IF (
+         (lv_min_start_date > gd_start_yyyymmdd)
+         OR
+         (lv_max_end_date   < gd_end_yyyymmdd)
+       ) THEN
+-- 2009/04/16 v1.22 UPDATE END
       lv_errmsg := SUBSTRB(xxcmn_common_pkg.get_msg(gv_msg_kbn_inv    -- 'XXINV'
                                                              -- 品目標準原価年度チェックワーニング
                                                    ,gv_msg_10a_031
