@@ -1,0 +1,14 @@
+/*************************************************************************
+ * 
+ * INDEX Name      : xxcso_per_all_people_f_n64
+ * Description     : 
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/06/25    1.0  K.Satomura    èââÒçÏê¨
+ ************************************************************************/
+CREATE INDEX hr.xxcso_per_all_people_f_n64 ON hr.per_all_people_f (attribute14) TABLESPACE apps_ts_tx_idx;
