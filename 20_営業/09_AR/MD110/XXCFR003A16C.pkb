@@ -7,7 +7,7 @@ AS
  * Description      : 標準請求書税抜
  * MD.050           : MD050_CFR_003_A16_標準請求書税抜
  * MD.070           : MD050_CFR_003_A16_標準請求書税抜
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/12/11    1.5  SCS 廣瀬 真佐人  [E_本稼動_00423] 単独店時の出力形式不具合
  *  2010/02/02    1.6  SCS 安川 智博    [E_本稼動_01503] 同一顧客-複数使用目的対応
  *  2010/12/10    1.7  SCS 石渡 賢和    [E_本稼動_05401] パラメータ「請求書発行サイクル」の追加
+ *  2011/01/17    1.8  SCS 廣瀬 真佐人  [E_本稼動_00580] ソート順に店舗コード追加
  *
  *****************************************************************************************/
 --
@@ -765,6 +766,9 @@ AS
     TYPE cursor_rec_type IS RECORD(customer_id           xxcmm_cust_accounts.customer_id%TYPE,           -- 顧客区分10顧客ID
                                    customer_code         xxcmm_cust_accounts.customer_code%TYPE,         -- 顧客区分10顧客コード
                                    invoice_printing_unit xxcmm_cust_accounts.invoice_printing_unit%TYPE, -- 顧客区分10請求書印刷単位
+-- Add 2011.01.17 Ver1.8 Start
+                                   store_code            xxcmm_cust_accounts.store_code%TYPE,            -- 店舗コード
+-- Add 2011.01.17 Ver1.8 End
                                    bill_base_code        xxcmm_cust_accounts.bill_base_code%TYPE);       -- 顧客区分10請求拠点コード
     TYPE cursor_ref_type IS REF CURSOR;
     get_all_account_cur cursor_ref_type;
@@ -779,6 +783,9 @@ AS
     'SELECT xxca.customer_id           AS customer_id, '||            -- 顧客ID
     '       xxca.customer_code         AS customer_code, '||          -- 顧客コード
     '        xxca.invoice_printing_unit AS invoice_printing_unit, '|| -- 請求書印刷単位
+-- Add 2011.01.17 Ver1.8 Start
+    '       xxca.store_code            AS store_code, '||             -- 店舗コード
+-- Add 2011.01.17 Ver1.8 End
     '        xxca.bill_base_code        AS bill_base_code '||         -- 請求拠点コード
     ' FROM xxcmm_cust_accounts xxca, '||                                     -- 顧客追加情報
     '      hz_cust_accounts    hzca '||                                      -- 顧客マスタ
@@ -794,6 +801,9 @@ AS
     'SELECT xxca10.customer_id           AS customer_id, '||           -- 顧客ID
     '       xxca10.customer_code         AS customer_code, '||         -- 顧客コード
     '       xxca10.invoice_printing_unit AS invoice_printing_unit, '|| -- 請求書印刷単位
+-- Add 2011.01.17 Ver1.8 Start
+    '       xxca10.store_code            AS store_code, '||            -- 店舗コード
+-- Add 2011.01.17 Ver1.8 End
     '       xxca10.bill_base_code        AS bill_base_code '||         -- 請求拠点コード
     'FROM xxcmm_cust_accounts xxca10, '||                                     -- 顧客10顧客追加情報
     '     hz_cust_accounts    hzca10, '||                                     -- 顧客10顧客マスタ
@@ -831,6 +841,9 @@ AS
     'SELECT xxca10.customer_id           AS customer_id, '||           -- 顧客ID
     '       xxca10.customer_code         AS customer_code, '||         -- 顧客コード
     '       xxca10.invoice_printing_unit AS invoice_printing_unit, '|| -- 請求書印刷単位
+-- Add 2011.01.17 Ver1.8 Start
+    '       xxca10.store_code            AS store_code, '||            -- 店舗コード
+-- Add 2011.01.17 Ver1.8 End
     '       xxca10.bill_base_code        AS bill_base_code '||         -- 請求拠点コード
     'FROM xxcmm_cust_accounts xxca10, '||                                     -- 顧客10顧客追加情報
     '     xxcmm_cust_accounts xxca20, '||                                     -- 顧客20顧客追加情報
@@ -846,6 +859,9 @@ AS
     'SELECT xxca.customer_id           AS customer_id, '||           -- 顧客ID
     '       xxca.customer_code         AS customer_code, '||         -- 顧客コード
     '       xxca.invoice_printing_unit AS invoice_printing_unit, '|| -- 請求書印刷単位
+-- Add 2011.01.17 Ver1.8 Start
+    '       xxca.store_code            AS store_code, '||            -- 店舗コード
+-- Add 2011.01.17 Ver1.8 End
     '       xxca.bill_base_code        AS bill_base_code '||         -- 請求拠点コード
     'FROM xxcmm_cust_accounts xxca, '||                                     -- 顧客追加情報
     '     hz_cust_accounts    hzca '||                                      -- 顧客マスタ
@@ -1221,6 +1237,10 @@ AS
             bank_account            , -- 振込口座情報
             ship_cust_code          , -- ★納品先顧客コード
             ship_cust_name          , -- ★納品先顧客名
+-- Add 2011.01.17 Ver1.8 Start
+            bill_account_number     , -- 請求顧客コード(ソート用)
+            store_code              , -- 店舗コード(ソート用)
+-- Add 2011.01.17 Ver1.8 End
             slip_date               , -- 伝票日付(ソート順３)
             slip_num                , -- 伝票No(ソート順４)
             slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
@@ -1252,7 +1272,12 @@ AS
                  SUBSTR(xih.object_month,5,2)||lv_format_date_month                 target_date      , -- 対象年月
                  lr_main_data.cash_account_number                              payment_cust_code, -- 入金先顧客コード
                  lr_main_data.cash_account_name                                payment_cust_name, -- 入金先顧客名
-                 get_10address_rec.bill_account_number||' '||xih.term_name          ar_concat_text   , -- 売掛管理コード連結文字列
+-- Add 2011.01.17 Ver1.8 Start
+--                 get_10address_rec.bill_account_number||' '||xih.term_name          ar_concat_text   , -- 売掛管理コード連結文字列
+                 get_10address_rec.bill_account_number   ||' '
+               ||LPAD(NVL(all_account_rec.store_code,'0'),10,'0') ||' '
+               ||xih.term_name                                                      ar_concat_text   , -- 売掛管理コード連結文字列
+-- Add 2011.01.17 Ver1.8 End
                  TO_CHAR(xih.payment_date, lv_format_date_jpymd2)                   payment_due_date , -- 入金予定日
                  CASE
                  WHEN account.bank_account_num IS NULL THEN
@@ -1285,6 +1310,10 @@ AS
                  END                                                                account_data     , -- 振込口座情報
                  xil.ship_cust_code                                                 ship_cust_code   , -- 納品先顧客コード
                  hzp.party_name                                                     ship_cust_name   , -- 納品先顧客名
+-- Add 2011.01.17 Ver1.8 Start
+                 NULL                                                               bill_account_number,  -- 請求顧客コード(ソート用)
+                 LPAD(NVL(all_account_rec.store_code,'0'),10,'0')                   store_code       , -- 店舗コード(ソート用)
+-- Add 2011.01.17 Ver1.8 End
                  TO_CHAR(DECODE(xil.acceptance_date,
                                 NULL,xil.delivery_date,
                                 xil.acceptance_date),
@@ -1361,7 +1390,12 @@ AS
                    xih.object_month,
                    lr_main_data.cash_account_number,
                    lr_main_data.cash_account_name,
-                   get_10address_rec.bill_account_number||' '||xih.term_name,
+-- Add 2011.01.17 Ver1.8 Start
+--                   get_10address_rec.bill_account_number||' '||xih.term_name,
+                 get_10address_rec.bill_account_number   ||' '
+               ||LPAD(NVL(all_account_rec.store_code,'0'),10,'0') ||' '
+               ||xih.term_name,
+-- Add 2011.01.17 Ver1.8 End
                    xih.payment_date,
                    CASE
                    WHEN account.bank_account_num IS NULL THEN
@@ -1432,6 +1466,10 @@ AS
               bank_account            , -- 振込口座情報
               ship_cust_code          , -- ★納品先顧客コード
               ship_cust_name          , -- ★納品先顧客名
+-- Add 2011.01.17 Ver1.8 Start
+              bill_account_number     , -- 請求顧客コード(ソート用)
+              store_code              , -- 店舗コード(ソート用)
+-- Add 2011.01.17 Ver1.8 End
               slip_date               , -- 伝票日付(ソート順３)
               slip_num                , -- 伝票No(ソート順４)
               slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
@@ -1496,6 +1534,14 @@ AS
                    END                                                                account_data     , -- 振込口座情報
                    xil.ship_cust_code                                                 ship_cust_code   , -- 納品先顧客コード
                    hzp.party_name                                                     ship_cust_name   , -- 納品先顧客名
+-- Add 2011.01.17 Ver1.8 Start
+                   DECODE(all_account_rec.invoice_printing_unit
+                         ,cv_invoice_printing_unit_n2  -- 請求先顧客が住所である時は、ソート順に考慮する。
+                         ,lr_main_data.cash_account_number
+                         ,NULL                         -- 単独店である時は、ソート順に考慮しない。(店舗コードが1番目となる)
+                   )                                                                  bill_account_number,  -- 請求顧客コード(ソート順)
+                   LPAD(NVL(all_account_rec.store_code,'0'),10,'0')                   store_code       , -- 店舗コード(ソート用)
+-- Add 2011.01.17 Ver1.8 End
                    TO_CHAR(DECODE(xil.acceptance_date,
                                   NULL,xil.delivery_date,
                                   xil.acceptance_date),
@@ -1664,6 +1710,10 @@ AS
               bank_account            , -- 振込口座情報
               ship_cust_code          , -- ★納品先顧客コード
               ship_cust_name          , -- ★納品先顧客名
+-- Add 2011.01.17 Ver1.8 Start
+              bill_account_number     , -- 請求顧客コード(ソート用)
+              store_code              , -- 店舗コード(ソート用)
+-- Add 2011.01.17 Ver1.8 End
               slip_date               , -- 伝票日付(ソート順３)
               slip_num                , -- 伝票No(ソート順４)
               slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
@@ -1728,6 +1778,10 @@ AS
                    END                                                                account_data     , -- 振込口座情報
                    xil.ship_cust_code                                                 ship_cust_code   , -- 納品先顧客コード
                    hzp.party_name                                                     ship_cust_name   , -- 納品先顧客名
+-- Add 2011.01.17 Ver1.8 Start
+                   get_20account_rec.bill_account_number                              bill_account_number,  -- 請求顧客コード(ソート順)
+                   LPAD(NVL(all_account_rec.store_code,'0'),10,'0')                   store_code       , -- 店舗コード(ソート用)
+-- Add 2011.01.17 Ver1.8 End
                    TO_CHAR(DECODE(xil.acceptance_date,
                                   NULL,xil.delivery_date,
                                   xil.acceptance_date),

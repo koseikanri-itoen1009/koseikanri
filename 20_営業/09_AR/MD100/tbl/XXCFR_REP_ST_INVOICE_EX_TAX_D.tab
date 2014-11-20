@@ -5,13 +5,14 @@ CREATE TABLE xxcfr.xxcfr_rep_st_invoice_ex_tax_d
  * Description     : 標準請求書税抜帳票内訳ワークテーブル
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2009/10/20    1.0  SCS Yasukawa   初回作成
+ *  2011/01/17    1.1  SCS 廣瀬真佐人 障害「E_本稼動_00580」対応
  ************************************************************************/
 ( 
   report_id                VARCHAR2(20)                  ,     -- 帳票ID
@@ -33,6 +34,12 @@ CREATE TABLE xxcfr.xxcfr_rep_st_invoice_ex_tax_d
   bank_account             VARCHAR2(300)                 ,     -- 振込口座
   ship_cust_code           VARCHAR2(30)                  ,     -- 納品先顧客コード
   ship_cust_name           VARCHAR2(360)                 ,     -- 納品先顧客名
+--modify 2011.01.17 Ver1.1 Start
+  store_code               VARCHAR2(10)                  ,     -- 店舗コード
+  store_code_sort          VARCHAR2(10)                  ,     -- 店舗コード(ソート用)
+  ship_account_number      VARCHAR2(30)                  ,     -- 納品先顧客コード(ソート用)
+  invo_account_number      VARCHAR2(30)                  ,     -- 請求用顧客コード(ソート用)
+--modify 2011.01.17 Ver1.1 End
   slip_date                VARCHAR2(12)                  ,     -- 伝票日付
   slip_num                 VARCHAR2(30)                  ,     -- 伝票No
   slip_sum                 NUMBER                        ,     -- 伝票金額
@@ -69,6 +76,12 @@ COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.payment_due_date          
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.bank_account                   IS '振込口座';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.ship_cust_code                 IS '納品先顧客コード';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.ship_cust_name                 IS '納品先顧客名';
+--modify 2011.01.17 Ver1.1 Start
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.store_code                     IS '店舗コード';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.store_code_sort                IS '店舗コード(ソート用)';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.ship_account_number            IS '納品先顧客コード(ソート用)';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.invo_account_number            IS '請求用顧客コード(ソート用)';
+--modify 2011.01.17 Ver1.1 End
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.slip_date                      IS '伝票日付';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.slip_num                       IS '伝票No';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.slip_sum                       IS '伝票金額';
