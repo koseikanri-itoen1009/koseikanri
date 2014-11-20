@@ -1,0 +1,58 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_TMP_RS_INFO
+ * Description : 営業員情報一時表テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2010/05/18    1.0   SCS D.Abe       新規作成
+ *
+ ****************************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE XXCOS.XXCOS_TMP_RS_INFO
+(
+  RESOURCE_ID                      NUMBER(15)
+ ,BASE_CODE                        VARCHAR2(4)
+ ,EMPLOYEE_NUMBER                  VARCHAR2(5)
+ ,EFFECTIVE_START_DATE             DATE
+ ,EFFECTIVE_END_DATE               DATE
+ ,PER_EFFECTIVE_START_DATE         DATE
+ ,PER_EFFECTIVE_END_DATE           DATE
+ ,PAA_EFFECTIVE_START_DATE         DATE
+ ,PAA_EFFECTIVE_END_DATE           DATE
+ ,CREATED_BY                       NUMBER(15)        NOT NULL
+ ,CREATION_DATE                    DATE              NOT NULL
+ ,LAST_UPDATED_BY                  NUMBER(15)        NOT NULL
+ ,LAST_UPDATE_DATE                 DATE              NOT NULL
+ ,LAST_UPDATE_LOGIN                NUMBER(15)
+ ,REQUEST_ID                       NUMBER(15)
+ ,PROGRAM_APPLICATION_ID           NUMBER(15)
+ ,PROGRAM_ID                       NUMBER(15)
+ ,PROGRAM_UPDATE_DATE              DATE
+);
+--
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_RS_INFO.RESOURCE_ID                 IS 'リソースID';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_RS_INFO.BASE_CODE                   IS '拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_RS_INFO.EMPLOYEE_NUMBER             IS '営業員コード';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_RS_INFO.EFFECTIVE_START_DATE        IS '拠点適用開始日';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_RS_INFO.EFFECTIVE_END_DATE          IS '拠点適用終了日';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_RS_INFO.PER_EFFECTIVE_START_DATE    IS '従業員適用開始日';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_RS_INFO.PER_EFFECTIVE_END_DATE      IS '従業員適用終了日';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_RS_INFO.PAA_EFFECTIVE_START_DATE    IS 'アサインメント適用開始日';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_RS_INFO.PAA_EFFECTIVE_END_DATE      IS 'アサインメント適用終了日';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_RS_INFO.CREATED_BY                  IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_RS_INFO.CREATION_DATE               IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_RS_INFO.LAST_UPDATED_BY             IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_RS_INFO.LAST_UPDATE_DATE            IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_RS_INFO.LAST_UPDATE_LOGIN           IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_RS_INFO.REQUEST_ID                  IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_RS_INFO.PROGRAM_APPLICATION_ID      IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_RS_INFO.PROGRAM_ID                  IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_RS_INFO.PROGRAM_UPDATE_DATE         IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_TMP_RS_INFO                             IS '営業員情報一時表テーブル';
+
+

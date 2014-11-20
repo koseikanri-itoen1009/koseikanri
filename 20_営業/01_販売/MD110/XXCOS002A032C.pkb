@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A032C (body)
  * Description      : 営業成績表集計
  * MD.050           : 営業成績表集計 MD050_COS_002_A03
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  bus_s_group_sum_sales  営業員別・政策群別販売実績情報集計＆登録処理(B-5)
  *  bus_s_group_sum_trans  営業員別・政策群別実績振替情報集計＆登録処理(B-6)
  *  count_results_delete   実績件数削除処理(B-8)
+ *  resource_sum           営業員情報登録処理(B-19)
  *  count_customer         顧客軒数情報集計＆登録処理(B-9)
  *  count_no_visit         未訪問客件数情報集計＆登録処理(B-10)
  *  count_no_trade         未取引客件数情報集計＆登録処理(B-11)
@@ -56,6 +57,7 @@ AS
  *  2009/11/24    1.11  K.Atsushiba      [E_本番_00347]PT対応
  *  2010/01/19    1.12  T.Nakano         [E_本稼動_01039]対応 新規ポイント情報追加
  *  2010/04/16    1.13  D.Abe            [E_本稼動_02270]対応 拠点計顧客軒数を追加
+ *  2010/05/18    1.14  D.Abe            [E_本稼動_02767]対応 PT対応（xxcos_rs_info2_vを変更）
  *****************************************************************************************/
 --
 --#######################  固定プライベート定数宣言部 START   #######################
@@ -192,6 +194,10 @@ AS
   ct_msg_s_group_sum_tbl        CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10577';
   --  営業成績表 営業件数集計テーブル
   ct_msg_cust_counter_tbl       CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10578';
+/* 2010/05/18 Ver1.14 Add Start */
+  --  営業成績表 営業員情報一時表テーブル
+  ct_msg_resource_sum_tbl       CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10588';
+/* 2010/05/18 Ver1.14 Add End   */
   --  入力パラメータ
   ct_msg_para_in                CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10579';
   --  実行パラメータ
@@ -2667,6 +2673,150 @@ AS
 --
   END count_results_delete;
 --
+/* 2010/05/18 Ver1.14 Add Start */
+  /**********************************************************************************
+   * Procedure Name   : resource_sum
+   * Description      : 営業員情報登録処理(B-19)
+   ***********************************************************************************/
+  PROCEDURE resource_sum(
+    ov_errbuf           OUT VARCHAR2,             --  エラー・メッセージ           --# 固定 #
+    ov_retcode          OUT VARCHAR2,             --  リターン・コード             --# 固定 #
+    ov_errmsg           OUT VARCHAR2)             --  ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'resource_sum'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    --==================================
+    -- 1.営業員情報登録処理(B-19)
+    --==================================
+    BEGIN
+--
+      INSERT
+      INTO    xxcos_tmp_rs_info
+              (
+              resource_id,
+              base_code,
+              employee_number,
+              effective_start_date,
+              effective_end_date,
+              per_effective_start_date,
+              per_effective_end_date,
+              paa_effective_start_date,
+              paa_effective_end_date,
+              created_by,
+              creation_date,
+              last_updated_by,
+              last_update_date,
+              last_update_login,
+              request_id,
+              program_application_id,
+              program_id,
+              program_update_date
+              )
+      SELECT
+              xrsi.resource_id                          AS  resource_id,
+              xrsi.base_code                            AS  base_code,
+              xrsi.employee_number                      AS  employee_number,
+              xrsi.effective_start_date                 AS  effective_start_date,
+              xrsi.effective_end_date                   AS  effective_end_date,
+              xrsi.per_effective_start_date             AS  per_effective_start_date,
+              xrsi.per_effective_end_date               AS  per_effective_end_date,
+              xrsi.paa_effective_start_date             AS  paa_effective_start_date,
+              xrsi.paa_effective_end_date               AS  paa_effective_end_date,
+              cn_created_by                             AS  created_by,
+              cd_creation_date                          AS  creation_date,
+              cn_last_updated_by                        AS  last_updated_by,
+              cd_last_update_date                       AS  last_update_date,
+              cn_last_update_login                      AS  last_update_login,
+              cn_request_id                             AS  request_id,
+              cn_program_application_id                 AS  program_application_id,
+              cn_program_id                             AS  program_id,
+              cd_program_update_date                    AS  program_update_date
+      FROM    xxcos_rs_info2_v            xrsi
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+          iv_application => ct_xxcos_appl_short_name,
+          iv_name        => ct_msg_resource_sum_tbl
+          );
+        ov_errmsg := xxccp_common_pkg.get_msg(
+          iv_application => ct_xxcos_appl_short_name,
+          iv_name        => ct_msg_insert_data_err,
+          iv_token_name1 => cv_tkn_table_name,
+          iv_token_value1=> lv_errmsg,
+          iv_token_name2 => cv_tkn_key_data,
+          iv_token_value2=> NULL
+          );
+        --  後続データの処理は中止となる為、当箇所でのエラー発生時は常に１件
+        gn_error_cnt := 1;
+        lv_errbuf := SQLERRM;
+        RAISE global_insert_data_expt;
+    END;
+--
+--
+  EXCEPTION
+    --*** データ登録例外ハンドラ ***
+    WHEN global_insert_data_expt THEN
+      ov_errbuf := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END resource_sum;
+--
+/* 2010/05/18 Ver1.14 Add End   */
   /**********************************************************************************
    * Procedure Name   : count_customer
    * Description      : 顧客軒数情報集計＆登録処理(B-9)
@@ -2743,35 +2893,37 @@ AS
               program_update_date
               )
       SELECT
-/* 2009/09/04 Ver1.7 Add Start */
-              /*+
-                 LEADING(work.xrsi.jrrx_n)
-                 INDEX(work.xrsi.jrgm_n jtf_rs_group_members_n2)
-                 INDEX(work.xrsi.jrgb_n jtf_rs_groups_b_u1)
-                 INDEX(work.xrsi.jrrx_n xxcso_jrre_n02)
-                 USE_NL(work.xrsi.papf_n)
-                 USE_NL(work.xrsi.pept_n)
-                 USE_NL(work.xrsi.paaf_n)
-                 USE_NL(work.xrsi.jrgm_n)
-                 USE_NL(work.xrsi.jrgb_n)
-                 LEADING(work.xrsi.jrrx_o)
-                 INDEX(work.xrsi.jrrx_o xxcso_jrre_n02)
-                 INDEX(work.xrsi.jrgm_o jtf_rs_group_members_n2)
-                 INDEX(work.xrsi.jrgb_o jtf_rs_groups_b_u1)
-                 USE_NL(work.xrsi.papf_o)
-                 USE_NL(work.xrsi.pept_o)
-                 USE_NL(work.xrsi.paaf_o)
-                 USE_NL(work.xrsi.jrgm_o)
-                 USE_NL(work.xrsi.jrgb_o)
---Ver1.10 Mod Start
-              --   USE_NL(work.xrsi)
-                 INDEX(work.xsal.hopeb XXCSO_HOPEB_N02)
---Ver1.10 Mod End
---Ver1.8 Add Start
-                 USE_NL(work.xrsi.jrgm_max.jrgm_m)
---Ver1.8 Add End
-              */
-/* 2009/09/04 Ver1.7 Add End   */
+/* 2010/05/18 Ver1.14 Del Start */
+--/* 2009/09/04 Ver1.7 Add Start */
+--              /*+
+--                 LEADING(work.xrsi.jrrx_n)
+--                 INDEX(work.xrsi.jrgm_n jtf_rs_group_members_n2)
+--                 INDEX(work.xrsi.jrgb_n jtf_rs_groups_b_u1)
+--                 INDEX(work.xrsi.jrrx_n xxcso_jrre_n02)
+--                 USE_NL(work.xrsi.papf_n)
+--                 USE_NL(work.xrsi.pept_n)
+--                 USE_NL(work.xrsi.paaf_n)
+--                 USE_NL(work.xrsi.jrgm_n)
+--                 USE_NL(work.xrsi.jrgb_n)
+--                 LEADING(work.xrsi.jrrx_o)
+--                 INDEX(work.xrsi.jrrx_o xxcso_jrre_n02)
+--                 INDEX(work.xrsi.jrgm_o jtf_rs_group_members_n2)
+--                 INDEX(work.xrsi.jrgb_o jtf_rs_groups_b_u1)
+--                 USE_NL(work.xrsi.papf_o)
+--                 USE_NL(work.xrsi.pept_o)
+--                 USE_NL(work.xrsi.paaf_o)
+--                 USE_NL(work.xrsi.jrgm_o)
+--                 USE_NL(work.xrsi.jrgb_o)
+----Ver1.10 Mod Start
+--              --   USE_NL(work.xrsi)
+--                 INDEX(work.xsal.hopeb XXCSO_HOPEB_N02)
+----Ver1.10 Mod End
+----Ver1.8 Add Start
+--                 USE_NL(work.xrsi.jrgm_max.jrgm_m)
+----Ver1.8 Add End
+--              */
+--/* 2009/09/04 Ver1.7 Add End   */
+/* 2010/05/18 Ver1.14 Del End   */
               xxcos_rep_bus_counter_sum_s01.nextval + ct_counter_cls_cuntomer
                                                         AS  record_id,
               it_account_info.base_years                AS  target_date,
@@ -2798,7 +2950,10 @@ AS
                       COUNT(hzca.cust_account_id)               AS  counter_customer
 --Ver1.8 Mod Start
 --              FROM    xxcos_rs_info_v             xrsi,
-              FROM    xxcos_rs_info2_v            xrsi,
+/* 2010/05/18 Ver1.14 Mod Start */
+--              FROM    xxcos_rs_info2_v            xrsi,
+              FROM    xxcos_tmp_rs_info           xrsi,
+/* 2010/05/18 Ver1.14 Mod End   */
 --Ver1.8 Mod End
                       xxcos_salesreps_v           xsal,
                       hz_parties                  hzpt,
@@ -2974,35 +3129,37 @@ AS
               program_update_date
               )
       SELECT
-/* 2009/09/04 Ver1.7 Add Start */
-              /*+
-                LEADING(work.xrsi.jrrx_n)
-                INDEX(work.xrsi.jrgm_n jtf_rs_group_members_n2)
-                INDEX(work.xrsi.jrgb_n jtf_rs_groups_b_u1)
-                INDEX(work.xrsi.jrrx_n xxcso_jrre_n02)
-                USE_NL(work.xrsi.papf_n)
-                USE_NL(work.xrsi.pept_n)
-                USE_NL(work.xrsi.paaf_n)
-                USE_NL(work.xrsi.jrgm_n)
-                USE_NL(work.xrsi.jrgb_n)
-                LEADING(work.xrsi.jrrx_o)
-                INDEX(work.xrsi.jrrx_o xxcso_jrre_n02)
-                INDEX(work.xrsi.jrgm_o jtf_rs_group_members_n2)
-                INDEX(work.xrsi.jrgb_o jtf_rs_groups_b_u1)
-                USE_NL(work.xrsi.papf_o)
-                USE_NL(work.xrsi.pept_o)
-                USE_NL(work.xrsi.paaf_o)
-                USE_NL(work.xrsi.jrgm_o)
-                USE_NL(work.xrsi.jrgb_o)
---Ver1.10 Mod Start
-            --    USE_NL(work.xrsi)
-                INDEX(work.xsal.hopeb XXCSO_HOPEB_N02)
---Ver1.10 Mod End
---Ver1.8 Add Start
-                USE_NL(work.xrsi.jrgm_max.jrgm_m)
---Ver1.8 Add End
-              */
-/* 2009/09/04 Ver1.7 Add   End */
+/* 2010/05/18 Ver1.14 Del Start */
+--/* 2009/09/04 Ver1.7 Add Start */
+--              /*+
+--                LEADING(work.xrsi.jrrx_n)
+--                INDEX(work.xrsi.jrgm_n jtf_rs_group_members_n2)
+--                INDEX(work.xrsi.jrgb_n jtf_rs_groups_b_u1)
+--                INDEX(work.xrsi.jrrx_n xxcso_jrre_n02)
+--                USE_NL(work.xrsi.papf_n)
+--                USE_NL(work.xrsi.pept_n)
+--                USE_NL(work.xrsi.paaf_n)
+--                USE_NL(work.xrsi.jrgm_n)
+--                USE_NL(work.xrsi.jrgb_n)
+--                LEADING(work.xrsi.jrrx_o)
+--                INDEX(work.xrsi.jrrx_o xxcso_jrre_n02)
+--                INDEX(work.xrsi.jrgm_o jtf_rs_group_members_n2)
+--                INDEX(work.xrsi.jrgb_o jtf_rs_groups_b_u1)
+--                USE_NL(work.xrsi.papf_o)
+--                USE_NL(work.xrsi.pept_o)
+--                USE_NL(work.xrsi.paaf_o)
+--                USE_NL(work.xrsi.jrgm_o)
+--                USE_NL(work.xrsi.jrgb_o)
+----Ver1.10 Mod Start
+--            --    USE_NL(work.xrsi)
+--                INDEX(work.xsal.hopeb XXCSO_HOPEB_N02)
+----Ver1.10 Mod End
+----Ver1.8 Add Start
+--                USE_NL(work.xrsi.jrgm_max.jrgm_m)
+----Ver1.8 Add End
+--              */
+--/* 2009/09/04 Ver1.7 Add   End */
+/* 2010/05/18 Ver1.14 Del End   */
               xxcos_rep_bus_counter_sum_s01.nextval + ct_counter_cls_no_visit
                                                         AS  record_id,
               it_account_info.base_years                AS  target_date,
@@ -3028,7 +3185,10 @@ AS
                       COUNT(hzca.cust_account_id)               AS  counter_customer
 --Ver1.8 Mod Start
 --              FROM    xxcos_rs_info_v             xrsi,
-              FROM    xxcos_rs_info2_v             xrsi,
+/* 2010/05/18 Ver1.14 Mod Start */
+--              FROM    xxcos_rs_info2_v             xrsi,
+              FROM    xxcos_tmp_rs_info           xrsi,
+/* 2010/05/18 Ver1.14 Mod End   */
 --Ver1.8 Mod End
                       xxcos_salesreps_v           xsal,
                       hz_parties                  hzpt,
@@ -3216,35 +3376,37 @@ AS
               program_update_date
               )
       SELECT
-/* 2009/09/04 Ver1.7 Add Start */
-              /*+
-                LEADING(work.xrsi.jrrx_n)
-                INDEX(work.xrsi.jrgm_n jtf_rs_group_members_n2)
-                INDEX(work.xrsi.jrgb_n jtf_rs_groups_b_u1)
-                INDEX(work.xrsi.jrrx_n xxcso_jrre_n02)
-                USE_NL(work.xrsi.papf_n)
-                USE_NL(work.xrsi.pept_n)
-                USE_NL(work.xrsi.paaf_n)
-                USE_NL(work.xrsi.jrgm_n)
-                USE_NL(work.xrsi.jrgb_n)
-                LEADING(work.xrsi.jrrx_o)
-                INDEX(work.xrsi.jrrx_o xxcso_jrre_n02)
-                INDEX(work.xrsi.jrgm_o jtf_rs_group_members_n2)
-                INDEX(work.xrsi.jrgb_o jtf_rs_groups_b_u1)
-                USE_NL(work.xrsi.papf_o)
-                USE_NL(work.xrsi.pept_o)
-                USE_NL(work.xrsi.paaf_o)
-                USE_NL(work.xrsi.jrgm_o)
-                USE_NL(work.xrsi.jrgb_o)
---Ver1.10 Mod Start
-            --    USE_NL(work.xrsi)
-                INDEX(work.xsal.hopeb XXCSO_HOPEB_N02)
---Ver1.10 Mod End
---Ver1.8 Add Start
-                USE_NL(work.xrsi.jrgm_max.jrgm_m)
---Ver1.8 Add End
-              */
-/* 2009/09/04 Ver1.7 Add   End */
+/* 2010/05/18 Ver1.14 Del Start */
+--/* 2009/09/04 Ver1.7 Add Start */
+--              /*+
+--                LEADING(work.xrsi.jrrx_n)
+--                INDEX(work.xrsi.jrgm_n jtf_rs_group_members_n2)
+--                INDEX(work.xrsi.jrgb_n jtf_rs_groups_b_u1)
+--                INDEX(work.xrsi.jrrx_n xxcso_jrre_n02)
+--                USE_NL(work.xrsi.papf_n)
+--                USE_NL(work.xrsi.pept_n)
+--                USE_NL(work.xrsi.paaf_n)
+--                USE_NL(work.xrsi.jrgm_n)
+--                USE_NL(work.xrsi.jrgb_n)
+--                LEADING(work.xrsi.jrrx_o)
+--                INDEX(work.xrsi.jrrx_o xxcso_jrre_n02)
+--                INDEX(work.xrsi.jrgm_o jtf_rs_group_members_n2)
+--                INDEX(work.xrsi.jrgb_o jtf_rs_groups_b_u1)
+--                USE_NL(work.xrsi.papf_o)
+--                USE_NL(work.xrsi.pept_o)
+--                USE_NL(work.xrsi.paaf_o)
+--                USE_NL(work.xrsi.jrgm_o)
+--                USE_NL(work.xrsi.jrgb_o)
+----Ver1.10 Mod Start
+--            --    USE_NL(work.xrsi)
+--                INDEX(work.xsal.hopeb XXCSO_HOPEB_N02)
+----Ver1.10 Mod End
+----Ver1.8 Add Start
+--                USE_NL(work.xrsi.jrgm_max.jrgm_m)
+----Ver1.8 Add End
+--              */
+--/* 2009/09/04 Ver1.7 Add   End */
+/* 2010/05/18 Ver1.14 Del End   */
               xxcos_rep_bus_counter_sum_s01.nextval + ct_counter_cls_no_trade
                                                         AS  record_id,
               it_account_info.base_years                AS  target_date,
@@ -3270,7 +3432,10 @@ AS
                       COUNT(hzca.cust_account_id)               AS  counter_customer
 --Ver1.8 Mod Start
 --              FROM    xxcos_rs_info_v             xrsi,
-              FROM    xxcos_rs_info2_v            xrsi,
+/* 2010/05/18 Ver1.14 Mod Start */
+--              FROM    xxcos_rs_info2_v            xrsi,
+              FROM    xxcos_tmp_rs_info           xrsi,
+/* 2010/05/18 Ver1.14 Mod End   */
 --Ver1.8 Mod End
                       xxcos_salesreps_v           xsal,
                       hz_parties                  hzpt,
@@ -3557,36 +3722,43 @@ AS
                 )
 --
       SELECT
-/* 2009/09/04 Ver1.7 Add Start */
+/* 2010/05/18 Ver1.14 Mod Start */
+--/* 2009/09/04 Ver1.7 Add Start */
+--              /*+
+--                LEADING(work.xrsi)
+--                LEADING(work.xrsi.jrrx_n)
+--                INDEX(work.xrsi.jrgm_n jtf_rs_group_members_n2)
+--                INDEX(work.xrsi.jrgb_n jtf_rs_groups_b_u1)
+--                INDEX(work.xrsi.jrrx_n xxcso_jrre_n02)
+--                USE_NL(work.xrsi.papf_n)
+--                USE_NL(work.xrsi.pept_n)
+--                USE_NL(work.xrsi.paaf_n)
+--                USE_NL(work.xrsi.jrgm_n)
+--                USE_NL(work.xrsi.jrgb_n)
+--                LEADING(work.xrsi.jrrx_o)
+--                INDEX(work.xrsi.jrrx_o xxcso_jrre_n02)
+--                INDEX(work.xrsi.jrgm_o jtf_rs_group_members_n2)
+--                INDEX(work.xrsi.jrgb_o jtf_rs_groups_b_u1)
+--                USE_NL(work.xrsi.papf_o)
+--                USE_NL(work.xrsi.pept_o)
+--                USE_NL(work.xrsi.paaf_o)
+--                USE_NL(work.xrsi.jrgm_o)
+--                USE_NL(work.xrsi.jrgb_o)
+--                USE_NL(work.xrsi)
+--                USE_NL(work.task)
+--                INDEX(work.task.jtb xxcso_jtf_tasks_b_n18)
+--                INDEX(work.task.jtb2 xxcso_jtf_tasks_b_n18)
+----Ver1.8 Add Start
+--                USE_NL(work.xrsi.jrgm_max.jrgm_m)
+----Ver1.8 Add End
+--              */
+--/* 2009/09/04 Ver1.7 Add   End */
               /*+
-                LEADING(work.xrsi)
-                LEADING(work.xrsi.jrrx_n)
-                INDEX(work.xrsi.jrgm_n jtf_rs_group_members_n2)
-                INDEX(work.xrsi.jrgb_n jtf_rs_groups_b_u1)
-                INDEX(work.xrsi.jrrx_n xxcso_jrre_n02)
-                USE_NL(work.xrsi.papf_n)
-                USE_NL(work.xrsi.pept_n)
-                USE_NL(work.xrsi.paaf_n)
-                USE_NL(work.xrsi.jrgm_n)
-                USE_NL(work.xrsi.jrgb_n)
-                LEADING(work.xrsi.jrrx_o)
-                INDEX(work.xrsi.jrrx_o xxcso_jrre_n02)
-                INDEX(work.xrsi.jrgm_o jtf_rs_group_members_n2)
-                INDEX(work.xrsi.jrgb_o jtf_rs_groups_b_u1)
-                USE_NL(work.xrsi.papf_o)
-                USE_NL(work.xrsi.pept_o)
-                USE_NL(work.xrsi.paaf_o)
-                USE_NL(work.xrsi.jrgm_o)
-                USE_NL(work.xrsi.jrgb_o)
-                USE_NL(work.xrsi)
-                USE_NL(work.task)
-                INDEX(work.task.jtb xxcso_jtf_tasks_b_n18)
-                INDEX(work.task.jtb2 xxcso_jtf_tasks_b_n18)
---Ver1.8 Add Start
-                USE_NL(work.xrsi.jrgm_max.jrgm_m)
---Ver1.8 Add End
+                LEADING(work.task)
+                INDEX(work.task.jtb xxcso_jtf_tasks_b_n20)
+                INDEX(work.task.jtb2 xxcso_jtf_tasks_b_n20)
               */
-/* 2009/09/04 Ver1.7 Add   End */
+/* 2010/05/18 Ver1.14 Mod End   */
               it_account_info.base_years                AS  target_date,
               gd_process_date                           AS  regist_bus_date,
               work.base_code                            AS  base_code,
@@ -3610,9 +3782,11 @@ AS
       FROM    (
               SELECT
 --Ver1.8 Add Start
-                /*+
-                USE_NL(xrsi.jrgm_max.jrgm_m)
-                */
+/* 2010/05/18 Ver1.14 Del Start */
+--                /*+
+--                USE_NL(xrsi.jrgm_max.jrgm_m)
+--                */
+/* 2010/05/18 Ver1.14 Del End   */
 --Ver1.8 Add End
                       xrsi.base_code                            AS  base_code,
                       xrsi.employee_number                      AS  employee_num,
@@ -3636,7 +3810,10 @@ AS
                           )                                     AS  total_mc_visit
 --Ver1.8 Mod Start
 --              FROM    xxcos_rs_info_v               xrsi,
-              FROM    xxcos_rs_info2_v              xrsi,
+/* 2010/05/18 Ver1.14 Mod Start */
+--              FROM    xxcos_rs_info2_v              xrsi,
+              FROM    xxcos_tmp_rs_info             xrsi,
+/* 2010/05/18 Ver1.14 Mod End   */
 --Ver1.8 Mod End
 /* 2009/08/31 Ver1.6 Del Start */
 --                      xxcos_salesreps_v             xsal,
@@ -3646,8 +3823,12 @@ AS
                       xxcso_visit_actual_v          task,
 /* 2009/04/28 Ver1.4 Mod End   */
                       xxcos_lookup_values_v         xlvm
-              WHERE   task.actual_end_date          >=      it_account_info.from_date
-              AND     task.actual_end_date          <       it_account_info.base_date + 1
+/* 2010/05/18 Ver1.14 Mod Start */
+--              WHERE   task.actual_end_date          >=      it_account_info.from_date
+--              AND     task.actual_end_date          <       it_account_info.base_date + 1
+              WHERE   TRUNC(task.actual_end_date)     >=      it_account_info.from_date
+              AND     TRUNC(task.actual_end_date)     <       it_account_info.base_date + 1
+/* 2010/05/18 Ver1.14 Mod End   */
 /* 2009/04/28 Ver1.4 Del Start */
 --              AND     task.source_object_type_code  =       ct_task_obj_type_party
 --              AND     task.owner_type_code          =       ct_task_own_type_employee
@@ -3809,36 +3990,43 @@ AS
               program_update_date
               )
       SELECT
-/* 2009/09/04 Ver1.7 Add Start */
+/* 2010/05/18 Ver1.14 Mod Start */
+--/* 2009/09/04 Ver1.7 Add Start */
+--              /*+
+--                LEADING(work.xrsi)
+--                LEADING(work.xrsi.jrrx_n)
+--                INDEX(work.xrsi.jrgm_n jtf_rs_group_members_n2)
+--                INDEX(work.xrsi.jrgb_n jtf_rs_groups_b_u1)
+--                INDEX(work.xrsi.jrrx_n xxcso_jrre_n02)
+--                USE_NL(work.xrsi.papf_n)
+--                USE_NL(work.xrsi.pept_n)
+--                USE_NL(work.xrsi.paaf_n)
+--                USE_NL(work.xrsi.jrgm_n)
+--                USE_NL(work.xrsi.jrgb_n)
+--                LEADING(work.xrsi.jrrx_o)
+--                INDEX(work.xrsi.jrrx_o xxcso_jrre_n02)
+--                INDEX(work.xrsi.jrgm_o jtf_rs_group_members_n2)
+--                INDEX(work.xrsi.jrgb_o jtf_rs_groups_b_u1)
+--                USE_NL(work.xrsi.papf_o)
+--                USE_NL(work.xrsi.pept_o)
+--                USE_NL(work.xrsi.paaf_o)
+--                USE_NL(work.xrsi.jrgm_o)
+--                USE_NL(work.xrsi.jrgb_o)
+--                USE_NL(work.xrsi)
+--                USE_NL(work.task)
+--                INDEX(work.task.jtb xxcso_jtf_tasks_b_n18)
+--                INDEX(work.task.jtb2 xxcso_jtf_tasks_b_n18)
+----Ver1.8 Add Start
+--                USE_NL(work.xrsi.jrgm_max.jrgm_m)
+----Ver1.8 Add End
+--              */
+--/* 2009/09/04 Ver1.7 Add   End */
               /*+
-                LEADING(work.xrsi)
-                LEADING(work.xrsi.jrrx_n)
-                INDEX(work.xrsi.jrgm_n jtf_rs_group_members_n2)
-                INDEX(work.xrsi.jrgb_n jtf_rs_groups_b_u1)
-                INDEX(work.xrsi.jrrx_n xxcso_jrre_n02)
-                USE_NL(work.xrsi.papf_n)
-                USE_NL(work.xrsi.pept_n)
-                USE_NL(work.xrsi.paaf_n)
-                USE_NL(work.xrsi.jrgm_n)
-                USE_NL(work.xrsi.jrgb_n)
-                LEADING(work.xrsi.jrrx_o)
-                INDEX(work.xrsi.jrrx_o xxcso_jrre_n02)
-                INDEX(work.xrsi.jrgm_o jtf_rs_group_members_n2)
-                INDEX(work.xrsi.jrgb_o jtf_rs_groups_b_u1)
-                USE_NL(work.xrsi.papf_o)
-                USE_NL(work.xrsi.pept_o)
-                USE_NL(work.xrsi.paaf_o)
-                USE_NL(work.xrsi.jrgm_o)
-                USE_NL(work.xrsi.jrgb_o)
-                USE_NL(work.xrsi)
-                USE_NL(work.task)
-                INDEX(work.task.jtb xxcso_jtf_tasks_b_n18)
-                INDEX(work.task.jtb2 xxcso_jtf_tasks_b_n18)
---Ver1.8 Add Start
-                USE_NL(work.xrsi.jrgm_max.jrgm_m)
---Ver1.8 Add End
+                LEADING(work.task)
+                INDEX(work.task.jtb xxcso_jtf_tasks_b_n20)
+                INDEX(work.task.jtb2 xxcso_jtf_tasks_b_n20)
               */
-/* 2009/09/04 Ver1.7 Add   End */
+/* 2010/05/18 Ver1.14 Mod End   */
               xxcos_rep_bus_counter_sum_s01.nextval + ct_counter_cls_valid
                                                         AS  record_id,
               it_account_info.base_years                AS  target_date,
@@ -3867,7 +4055,10 @@ AS
 /* 2009/04/28 Ver1.4 Mod End   */
 --Ver1.8 Mod Start
 --              FROM    xxcos_rs_info_v               xrsi,
-              FROM    xxcos_rs_info2_v              xrsi,
+/* 2010/05/18 Ver1.14 Mod Start */
+--              FROM    xxcos_rs_info2_v              xrsi,
+              FROM    xxcos_tmp_rs_info             xrsi,
+/* 2010/05/18 Ver1.14 Mod End   */
 --Ver1.8 Mod End
 /* 2009/08/31 Ver1.6 Del Start */
 --                      xxcos_salesreps_v             xsal,
@@ -3876,8 +4067,12 @@ AS
 --                      jtf_tasks_b                   task
                       xxcso_visit_actual_v          task
 /* 2009/04/28 Ver1.4 Mod End   */
-              WHERE   task.actual_end_date          >=      it_account_info.from_date
-              AND     task.actual_end_date          <       it_account_info.base_date + 1
+/* 2010/05/18 Ver1.14 Mod Start */
+--              WHERE   task.actual_end_date          >=      it_account_info.from_date
+--              AND     task.actual_end_date          <       it_account_info.base_date + 1
+              WHERE   TRUNC(task.actual_end_date)     >=      it_account_info.from_date
+              AND     TRUNC(task.actual_end_date)     <       it_account_info.base_date + 1
+/* 2010/05/18 Ver1.14 Mod End   */
 /* 2009/04/28 Ver1.4 Del Start */
 --              AND     task.source_object_type_code  =       ct_task_obj_type_party
 --              AND     task.owner_type_code          =       ct_task_own_type_employee
@@ -4099,32 +4294,38 @@ AS
                 program_update_date
                 )
       SELECT
-/* 2009/09/04 Ver1.7 Add Start */
+/* 2010/05/18 Ver1.14 Mod Start */
+--/* 2009/09/04 Ver1.7 Add Start */
+--              /*+
+--                LEADING(work.xrsi.jrrx_n)
+--                INDEX(work.xrsi.jrgm_n jtf_rs_group_members_n2)
+--                INDEX(work.xrsi.jrgb_n jtf_rs_groups_b_u1)
+--                INDEX(work.xrsi.jrrx_n xxcso_jrre_n02)
+--                USE_NL(work.xrsi.papf_n)
+--                USE_NL(work.xrsi.pept_n)
+--                USE_NL(work.xrsi.paaf_n)
+--                USE_NL(work.xrsi.jrgm_n)
+--                USE_NL(work.xrsi.jrgb_n)
+--                LEADING(work.xrsi.jrrx_o)
+--                INDEX(work.xrsi.jrrx_o xxcso_jrre_n02)
+--                INDEX(work.xrsi.jrgm_o jtf_rs_group_members_n2)
+--                INDEX(work.xrsi.jrgb_o jtf_rs_groups_b_u1)
+--                USE_NL(work.xrsi.papf_o)
+--                USE_NL(work.xrsi.pept_o)
+--                USE_NL(work.xrsi.paaf_o)
+--                USE_NL(work.xrsi.jrgm_o)
+--                USE_NL(work.xrsi.jrgb_o)
+--                USE_NL(work.xrsi)
+----Ver1.8 Add Start
+--                USE_NL(work.xrsi.jrgm_max.jrgm_m)
+----Ver1.8 Add End
+--              */
+--/* 2009/09/04 Ver1.7 Add End   */
               /*+
-                LEADING(work.xrsi.jrrx_n)
-                INDEX(work.xrsi.jrgm_n jtf_rs_group_members_n2)
-                INDEX(work.xrsi.jrgb_n jtf_rs_groups_b_u1)
-                INDEX(work.xrsi.jrrx_n xxcso_jrre_n02)
-                USE_NL(work.xrsi.papf_n)
-                USE_NL(work.xrsi.pept_n)
-                USE_NL(work.xrsi.paaf_n)
-                USE_NL(work.xrsi.jrgm_n)
-                USE_NL(work.xrsi.jrgb_n)
-                LEADING(work.xrsi.jrrx_o)
-                INDEX(work.xrsi.jrrx_o xxcso_jrre_n02)
-                INDEX(work.xrsi.jrgm_o jtf_rs_group_members_n2)
-                INDEX(work.xrsi.jrgb_o jtf_rs_groups_b_u1)
-                USE_NL(work.xrsi.papf_o)
-                USE_NL(work.xrsi.pept_o)
-                USE_NL(work.xrsi.paaf_o)
-                USE_NL(work.xrsi.jrgm_o)
-                USE_NL(work.xrsi.jrgb_o)
-                USE_NL(work.xrsi)
---Ver1.8 Add Start
-                USE_NL(work.xrsi.jrgm_max.jrgm_m)
---Ver1.8 Add End
+              LEADING(work.xcac)
+              INDEX(work.xcac xxcmm_cust_accounts_n12)
               */
-/* 2009/09/04 Ver1.7 Add End   */
+/* 2010/05/18 Ver1.14 Mod End   */
               it_account_info.base_years                AS  target_date,
               gd_process_date                           AS  regist_bus_date,
               work.base_code                            AS  base_code,
@@ -4155,7 +4356,10 @@ AS
                           )                                     AS  new_customer_vd
 --Ver1.8 Mod Start
 --              FROM    xxcos_rs_info_v             xrsi,
-              FROM    xxcos_rs_info2_v            xrsi,
+/* 2010/05/18 Ver1.14 Mod Start */
+--              FROM    xxcos_rs_info2_v            xrsi,
+              FROM    xxcos_tmp_rs_info           xrsi,
+/* 2010/05/18 Ver1.14 Mod End   */
 --Ver1.8 Mod End
                       xxcmm_cust_accounts         xcac,
                       hz_parties                  hzpt,
@@ -5120,6 +5324,21 @@ AS
       RETURN;
     END IF;
 --
+/* 2010/05/18 Ver1.14 Add Start */
+    --==================================
+    -- 19.営業員情報登録処理
+    --==================================
+    resource_sum(
+      lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+      lv_retcode,        -- リターン・コード             --# 固定 #
+      lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      --  処理ステータス判定
+      IF ( lv_retcode = cv_status_error ) THEN
+        --  (エラー処理)
+        RAISE global_process_expt;
+      END IF;
+--
+/* 2010/05/18 Ver1.14 Add End   */
     --==================================
     -- 2.各種件数カウント制御
     --==================================
