@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流システムの工場直送出荷実績データから販売実績を作成し、
  *                    販売実績を作成したＯＭ受注をクローズします。
  * MD.050           : 出荷確認（生産物流出荷）  MD050_COS_008_A02
- * Version          : 1.31
+ * Version          : 1.32
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -77,6 +77,7 @@ AS
  *  2011/02/10    1.30  Y.Nishino        [E_本稼動_01010]単価0円が可能な受注明細タイプを除いた
  *                                                       販売単価0円の受注データをクローズしないように修正
  *  2011/03/25    1.31  K.Kiriu          [E_本稼動_03559]検収日不一致チェックの修正
+ *  2011/05/31    1.32  T.Ishiwata       [E_本稼動_06548]拠点出荷対応
  *
  *****************************************************************************************/
 --
@@ -1784,13 +1785,25 @@ AS
   --        AND NVL( xola.delete_flag, ct_no_flg ) = ct_no_flg  -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
       , xxwsh_order_headers_all   xoha
       , xxwsh_order_lines_all     xola
-      , ( SELECT /*+
-                     USE_NL(ooha)
-                     USE_NL(oola)
-                     USE_NL(xoha)
-                     INDEX(ooha xxcos_oe_order_headers_all_n11)
-                     INDEX(oola xxcos_oe_order_lines_all_n21)
-                  */
+/* 2011/05/31 Ver1.32 T.Ishiwata Mod Start */
+--      , ( SELECT /*+
+--                     USE_NL(ooha)
+--                     USE_NL(oola)
+--                     USE_NL(xoha)
+--                     INDEX(ooha xxcos_oe_order_headers_all_n11)
+--                     INDEX(oola xxcos_oe_order_lines_all_n21)
+--                  */
+      , ( SELECT 
+                /*+
+                   USE_NL(ooha)
+                   USE_NL(oola)
+                   USE_NL(xoha)
+                   USE_NL(xcao)
+                   USE_NL(xcaw)
+                   INDEX(ooha xxcos_oe_order_headers_all_n11)
+                   INDEX(oola xxcos_oe_order_lines_all_n21)
+                 */
+/* 2011/05/31 Ver1.32 T.Ishiwata Mod End   */
                  ooha.header_id           header_id         -- 受注ヘッダID
                , oola.line_id             line_id           -- 受注明細ID
                , oola.attribute6          attribute6        -- 子品目コード
@@ -1799,6 +1812,10 @@ AS
           FROM   oe_order_headers_all     ooha
                , oe_order_lines_all       oola
                , xxwsh_order_headers_all  xoha
+/* 2011/05/31 Ver1.32 T.Ishiwata Add Start */
+               , xxcmm_cust_accounts      xcao              -- 顧客追加情報(OM受注側顧客)
+               , xxcmm_cust_accounts      xcaw              -- 顧客追加情報(生産側顧客)
+/* 2011/05/31 Ver1.32 T.Ishiwata Add End   */
           WHERE
           -- 受注ヘッダ抽出条件
               ooha.flow_status_code = ct_hdr_status_booked            -- ステータス＝記帳済(BOOKED)
@@ -1814,6 +1831,12 @@ AS
           AND xoha.request_no           = oola.packing_instructions   -- 依頼No  ＝受注明細.梱包指示
           AND xoha.latest_external_flag = ct_yes_flg                  -- 最新ﾌﾗｸﾞ＝'Y'
           AND xoha.req_status           = gv_add_status_sum_up        -- ｽﾃｰﾀｽ   ＝出荷実績計上済
+/* 2011/05/31 Ver1.32 T.Ishiwata Add Start */
+          -- 顧客マスタの紐付け
+          AND xcao.customer_id          = ooha.sold_to_org_id
+          AND xcaw.customer_code        = xoha.customer_code
+          AND xcaw.delivery_base_code   = xcao.delivery_base_code     -- 生産顧客.納品拠点 = OM受注顧客.納品拠点
+/* 2011/05/31 Ver1.32 T.Ishiwata Add End   */
         )                         ilv1    -- インラインビュー(受注明細アドオン紐付けビュー)
   -- ********** 2009/10/16 1.16 M.Sano MOD End    ************ --
       , oe_transaction_types_tl   ottth   -- 受注ヘッダ摘要用取引タイプ
@@ -2114,15 +2137,28 @@ AS
 --                     INDEX(oola xxcos_oe_order_lines_all_n21)
 --                  */
       , ( SELECT
-                  /*
-                     LEADING(ooha xca)
+/* 2011/05/31 Ver1.32 T.Ishiwata Mod Start */
+--                  /*
+--                     LEADING(ooha xca)
+--                     USE_NL(ooha)
+--                     USE_NL(xca)
+--                     USE_NL(oola)
+--                     USE_NL(xoha)
+--                     INDEX(ooha xxcos_oe_order_headers_all_n11)
+--                     INDEX(oola xxcos_oe_order_lines_all_n23)
+--                  */
+                  /*+
+                     LEADING(xca ooha)
                      USE_NL(ooha)
                      USE_NL(xca)
                      USE_NL(oola)
                      USE_NL(xoha)
-                     INDEX(ooha xxcos_oe_order_headers_all_n11)
+                     USE_NL(xcaw)
+                     INDEX(xca xxcmm_cust_accounts_n21)
+                     INDEX(ooha oe_order_headers_n2)
                      INDEX(oola xxcos_oe_order_lines_all_n23)
                   */
+/* 2011/05/31 Ver1.32 T.Ishiwata Mod End   */
 -- == 2010/11/22 V1.28 Modified END   ===============================================================
                  ooha.header_id           header_id         -- 受注ヘッダID
                , oola.line_id             line_id           -- 受注明細ID
@@ -2143,6 +2179,9 @@ AS
 -- == 2010/11/22 V1.28 Added START ===============================================================
                , xxcmm_cust_accounts      xca
 -- == 2010/11/22 V1.28 Added END   ===============================================================
+/* 2011/05/31 Ver1.32 T.Ishiwata Add Start */
+               , xxcmm_cust_accounts      xcaw                        -- 顧客追加情報(生産顧客)
+/* 2011/05/31 Ver1.32 T.Ishiwata Add End   */
           WHERE
           -- 受注ヘッダ抽出条件
               ooha.flow_status_code = ct_hdr_status_booked            -- ステータス＝記帳済(BOOKED)
@@ -2173,6 +2212,11 @@ AS
                 ( xca.chain_store_code = gt_prm_edi_chain_code )
               )
 -- == 2010/11/22 V1.28 Added END   ===============================================================
+/* 2011/05/31 Ver1.32 T.Ishiwata Add Start */
+          -- 顧客マスタの紐付け
+          AND xcaw.customer_code        = xoha.customer_code
+          AND xcaw.delivery_base_code   = xca.delivery_base_code      -- 生産顧客.納品拠点 = OM受注顧客.納品拠点
+/* 2011/05/31 Ver1.32 T.Ishiwata Add End   */
         )                         ilv1    -- インラインビュー(受注明細アドオン紐付けビュー)
       , oe_transaction_types_tl   ottth   -- 受注ヘッダ摘要用取引タイプ
       , oe_transaction_types_tl   otttl   -- 受注明細摘要用取引タイプ
