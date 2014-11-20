@@ -12,4 +12,3 @@
  *  2009/08/07    1.0  M.Maruyama    èââÒçÏê¨
  ************************************************************************/
 CREATE INDEX xxcso.xxcso_sp_decision_headers_n03 ON xxcso.xxcso_sp_decision_headers (UPPER(approval_complete_date)) TABLESPACE xxidx2;
-/

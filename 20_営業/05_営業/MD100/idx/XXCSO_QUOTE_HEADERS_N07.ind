@@ -12,4 +12,3 @@
  *  2009/08/07    1.0  M.Maruyama    èââÒçÏê¨
  ************************************************************************/
 CREATE INDEX xxcso.xxcso_quote_headers_n07 ON xxcso.xxcso_quote_headers (UPPER(quote_number)) TABLESPACE xxidx2;
-/

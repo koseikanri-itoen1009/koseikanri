@@ -12,4 +12,3 @@
  *  2009/08/07    1.0  M.Maruyama    èââÒçÏê¨
  ************************************************************************/
 CREATE INDEX xxcso.xxcso_quote_headers_n06 ON xxcso.xxcso_quote_headers (UPPER(account_number)) TABLESPACE xxidx2;
-/

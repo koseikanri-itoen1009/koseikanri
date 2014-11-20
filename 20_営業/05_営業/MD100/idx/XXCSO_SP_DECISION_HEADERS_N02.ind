@@ -12,4 +12,3 @@
  *  2009/08/07    1.0  M.Maruyama    ‰‰ñì¬
  ************************************************************************/
 CREATE INDEX xxcso.xxcso_sp_decision_headers_n02 ON xxcso.xxcso_sp_decision_headers (UPPER(sp_decision_number)) TABLESPACE xxidx2;
-/

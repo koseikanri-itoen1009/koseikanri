@@ -12,4 +12,3 @@
  *  2009/08/03    1.0  M.Maruyama    èââÒçÏê¨
  ************************************************************************/
 CREATE INDEX xxcso.xxcso_contract_customers_n01 ON xxcso.xxcso_contract_customers (UPPER(contract_number)) TABLESPACE xxidx2;
-/
