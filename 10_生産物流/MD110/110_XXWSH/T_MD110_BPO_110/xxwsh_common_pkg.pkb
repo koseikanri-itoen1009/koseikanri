@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.19
+ * Version                : 1.20
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -64,6 +64,11 @@ AS
  *                                                     運賃区分「1」でない時･･･重量積載効率/容積積載効率/基本重量/基本容積/配送区分 NULLに更新
  *                                                     常に更新･･･積載重量合計/積載容積合計/パレット合計枚数/小口個数
  *  2008/08/11   1.19  Oracle 伊藤ひとみ[同一依頼No検索関数]変更要求#174 実績計上済区分Yのデータが1件もない場合は、エラーを返す。
+ *  2008/08/20   1.20  Oracle 北寒寺正夫[配車解除関数】T_3_569対応   運賃区分設定時に各ヘッダに最大配送区分、基本重量、基本容積を設定するように変更
+ *                                                     TE_080_400指摘No77対応 受注ヘッダの混載元Noをクリアしないように変更
+ *                                                     開発気づき対応 拠点配車が正しく解除されない問題を修正
+ *                                                                    領域またいで混載した場合に正しく解除されない問題を修正
+ *                                                                    配車解除時のエラーメッセージが正しく出力されない問題を修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -132,7 +137,23 @@ AS
     notif_status      xxwsh_order_headers_all.notif_status%TYPE,
     prev_notif_status xxwsh_order_headers_all.prev_notif_status%TYPE,
     shipped_quantity  xxwsh_order_lines_all.shipped_quantity%TYPE,
-    ship_to_quantity  xxwsh_order_lines_all.ship_to_quantity%TYPE
+    ship_to_quantity  xxwsh_order_lines_all.ship_to_quantity%TYPE,
+-- Ver1.20 M.Hokkanji START
+    shipping_method_code        xxwsh_order_headers_all.shipping_method_code%TYPE,
+    prod_class                  xxwsh_order_headers_all.prod_class%TYPE,
+    based_weight                xxwsh_order_headers_all.based_weight%TYPE,
+    based_capacity              xxwsh_order_headers_all.based_capacity%TYPE,
+    weight_capacity_class       xxwsh_order_headers_all.weight_capacity_class%TYPE,
+    deliver_from                xxwsh_order_headers_all.deliver_from%TYPE,
+    deliver_to                  xxwsh_order_headers_all.deliver_to%TYPE,
+    schedule_ship_date          xxwsh_order_headers_all.schedule_ship_date%TYPE,
+    sum_weight                  xxwsh_order_headers_all.sum_weight%TYPE,
+    sum_capacity                xxwsh_order_headers_all.sum_capacity%TYPE,
+    sum_pallet_weight           xxwsh_order_headers_all.sum_pallet_weight%TYPE,
+    freight_charge_class        xxwsh_order_headers_all.freight_charge_class%TYPE,
+    loading_efficiency_weight   xxwsh_order_headers_all.loading_efficiency_weight%TYPE,
+    loading_efficiency_capacity xxwsh_order_headers_all.loading_efficiency_capacity%TYPE
+-- Ver1.20 M.Hokkanji END
   );
   -- 配車解除可否チェック(支給)のレコード型
   TYPE chk_supply_rec IS RECORD(
@@ -142,7 +163,22 @@ AS
     notif_status      xxwsh_order_headers_all.notif_status%TYPE,
     prev_notif_status xxwsh_order_headers_all.prev_notif_status%TYPE,
     shipped_quantity  xxwsh_order_lines_all.shipped_quantity%TYPE,
-    ship_to_quantity  xxwsh_order_lines_all.ship_to_quantity%TYPE
+    ship_to_quantity  xxwsh_order_lines_all.ship_to_quantity%TYPE,
+-- Ver1.20 M.Hokkanji START
+    shipping_method_code        xxwsh_order_headers_all.shipping_method_code%TYPE,
+    prod_class                  xxwsh_order_headers_all.prod_class%TYPE,
+    based_weight                xxwsh_order_headers_all.based_weight%TYPE,
+    based_capacity              xxwsh_order_headers_all.based_capacity%TYPE,
+    weight_capacity_class       xxwsh_order_headers_all.weight_capacity_class%TYPE,
+    deliver_from                xxwsh_order_headers_all.deliver_from%TYPE,
+    vendor_site_code            xxwsh_order_headers_all.vendor_site_code%TYPE,
+    schedule_ship_date          xxwsh_order_headers_all.schedule_ship_date%TYPE,
+    sum_weight                  xxwsh_order_headers_all.sum_weight%TYPE,
+    sum_capacity                xxwsh_order_headers_all.sum_capacity%TYPE,
+    freight_charge_class        xxwsh_order_headers_all.freight_charge_class%TYPE,
+    loading_efficiency_weight   xxwsh_order_headers_all.loading_efficiency_weight%TYPE,
+    loading_efficiency_capacity xxwsh_order_headers_all.loading_efficiency_capacity%TYPE
+-- Ver1.20 M.Hokkanji END
   );
   -- 配車解除可否チェック(移動)のレコード型
   TYPE chk_move_rec IS RECORD(
@@ -152,7 +188,23 @@ AS
     notif_status                  xxinv_mov_req_instr_headers.notif_status%TYPE,
     prev_notif_status             xxinv_mov_req_instr_headers.prev_notif_status%TYPE,
     shipped_quantity              xxinv_mov_req_instr_lines.shipped_quantity%TYPE,
-    ship_to_quantity              xxinv_mov_req_instr_lines.ship_to_quantity%TYPE
+    ship_to_quantity              xxinv_mov_req_instr_lines.ship_to_quantity%TYPE,
+-- Ver1.20 M.Hokkanji START
+    shipping_method_code          xxinv_mov_req_instr_headers.shipping_method_code%TYPE,
+    item_class                    xxinv_mov_req_instr_headers.item_class%TYPE,
+    based_weight                  xxinv_mov_req_instr_headers.based_weight%TYPE,
+    based_capacity                xxinv_mov_req_instr_headers.based_capacity%TYPE,
+    weight_capacity_class         xxinv_mov_req_instr_headers.weight_capacity_class%TYPE,
+    shipped_locat_code            xxinv_mov_req_instr_headers.shipped_locat_code%TYPE,
+    ship_to_locat_code            xxinv_mov_req_instr_headers.ship_to_locat_code%TYPE,
+    schedule_ship_date            xxinv_mov_req_instr_headers.schedule_ship_date%TYPE,
+    sum_weight                    xxinv_mov_req_instr_headers.sum_weight%TYPE,
+    sum_capacity                  xxinv_mov_req_instr_headers.sum_capacity%TYPE,
+    sum_pallet_weight             xxinv_mov_req_instr_headers.sum_pallet_weight%TYPE,
+    freight_charge_class          xxinv_mov_req_instr_headers.freight_charge_class%TYPE,
+    loading_efficiency_weight     xxinv_mov_req_instr_headers.loading_efficiency_weight%TYPE,
+    loading_efficiency_capacity   xxinv_mov_req_instr_headers.loading_efficiency_capacity%TYPE
+-- Ver1.20 M.Hokkanji END
   );
   -- 重量容積小口個数更新(出荷)のレコード型
   TYPE ship_rec IS RECORD(
@@ -4752,7 +4804,8 @@ AS
   END cancel_reserve;
 --
   /**********************************************************************************
-   * Function Name    : cancel_careers_schedule
+   * Function Name    : 
+   
    * Description      : 配車解除関数
    ***********************************************************************************/
   FUNCTION cancel_careers_schedule(
@@ -4793,6 +4846,12 @@ AS
     cv_msg_supply_err      CONSTANT VARCHAR2(15)  := 'APP-XXWSH-10010';  -- 支給依頼エラー
     cv_msg_move_err        CONSTANT VARCHAR2(15)  := 'APP-XXWSH-10011';  -- 移動指示エラー
     cv_msg_new_modify_err  CONSTANT VARCHAR2(15)  := 'APP-XXWSH-10019';  -- 新規修正区分エラー
+-- Ver1.20 M.Hokkanji START
+    cv_msg_ship_max_err    CONSTANT VARCHAR2(15)  := 'APP-XXWSH-10020';  -- 出荷依頼エラー(共通関数)
+    cv_msg_supply_max_err  CONSTANT VARCHAR2(15)  := 'APP-XXWSH-10021';  -- 支給依頼エラー(共通関数)
+    cv_msg_move_max_err    CONSTANT VARCHAR2(15)  := 'APP-XXWSH-10022';  -- 移動指示エラー(共通関数)
+    cv_tkn_program         CONSTANT VARCHAR2(15)  := 'PROGRAM';          -- トークン名
+-- Ver1.20 M.Hokkanji END
     cv_tightening          CONSTANT VARCHAR2(2)   := '03';               -- 締め済み
     cv_adjustment          CONSTANT VARCHAR2(2)   := '03';               -- 調整中
     cv_received            CONSTANT VARCHAR2(2)   := '07';               -- 受領済み
@@ -4805,6 +4864,18 @@ AS
     cv_tkn_ship_char       CONSTANT VARCHAR2(30)  := '出荷依頼No';       -- 出荷依頼No
     cv_tkn_supl_char       CONSTANT VARCHAR2(30)  := '支給依頼No';       -- 支給依頼No
     cv_tkn_move_char       CONSTANT VARCHAR2(30)  := '移動番号';         -- 移動番号
+-- Ver1.20 M.Hokkanji START
+    cv_code_kbn_mov        CONSTANT VARCHAR2(1)   := '4';                -- 移動
+    cv_code_kbn_ship       CONSTANT VARCHAR2(1)   := '9';                -- 出荷
+    cv_code_kbn_supply     CONSTANT VARCHAR2(2)   := '11';               -- 支給
+    cv_prod_class_1        CONSTANT VARCHAR2(1)   := '1';                -- 商品区分：1
+    cv_prod_class_2        CONSTANT VARCHAR2(1)   := '2';                -- 商品区分：2
+    cv_tkn_max_char        CONSTANT VARCHAR2(30)  := '最大配送区分の取得';     -- トークン「最大配送区分」
+    cv_tkn_small_char      CONSTANT VARCHAR2(30)  := '小口区分の取得';         -- トークン「小口区分」
+    cv_tkn_weight_char     CONSTANT VARCHAR2(30)  := '積載効率(重量)の取得';   -- トークン「積載効率(重量)」
+    cv_tkn_cap_char        CONSTANT VARCHAR2(30)  := '積載効率(容積)の取得';   -- トークン「積載効率(容積)」
+    cv_include             CONSTANT VARCHAR2(1)   := '1';                -- 小口区分(対象)
+-- Ver1.20 M.Hokkanji END
 --
     cv_tkn_req_mov_no      CONSTANT VARCHAR2(30)  := 'REQ_MOV';          -- 依頼No/移動番号
 --
@@ -4818,6 +4889,20 @@ AS
     lv_msg_ship_err         VARCHAR2(500);            -- ユーザーエラーメッセージ(出荷)
     lv_msg_supply_err       VARCHAR2(500);            -- ユーザーエラーメッセージ(支給)
     lv_msg_move_err         VARCHAR2(500);            -- ユーザーエラーメッセージ(移動)
+-- Ver1.20 M.Hokkanji START
+    lv_msg_ship_max_err     VARCHAR2(500);            -- ユーザーエラーメッセージ(出荷)(最大配送区分)
+    lv_msg_supply_max_err   VARCHAR2(500);            -- ユーザーエラーメッセージ(支給)(最大配送区分)
+    lv_msg_move_max_err     VARCHAR2(500);            -- ユーザーエラーメッセージ(移動)(最大配送区分)
+    lv_msg_ship_small_err   VARCHAR2(500);            -- ユーザーエラーメッセージ(出荷)(小口区分)
+    lv_msg_move_small_err   VARCHAR2(500);            -- ユーザーエラーメッセージ(移動)(小口区分)
+    lv_msg_ship_wei_err     VARCHAR2(500);            -- ユーザーエラーメッセージ(出荷)(積載効率(重量))
+    lv_msg_supply_wei_err   VARCHAR2(500);            -- ユーザーエラーメッセージ(支給)(積載効率(重量))
+    lv_msg_move_wei_err     VARCHAR2(500);            -- ユーザーエラーメッセージ(移動)(積載効率(重量))
+    lv_msg_ship_cap_err     VARCHAR2(500);            -- ユーザーエラーメッセージ(出荷)(積載効率(容積))
+    lv_msg_supply_cap_err   VARCHAR2(500);            -- ユーザーエラーメッセージ(支給)(積載効率(容積))
+    lv_msg_move_cap_err     VARCHAR2(500);            -- ユーザーエラーメッセージ(移動)(積載効率(容積))
+    lv_err_chek             VARCHAR2(1);              -- エラー継続チェック用のフラグ
+-- Ver1.20 M.Hokkanji END
     ln_user_id              NUMBER;                   -- ログインしているユーザーのID取得
     ln_login_id             NUMBER;                   -- 最終更新ログイン
     ln_conc_request_id      NUMBER;                   -- 要求ID
@@ -4827,6 +4912,28 @@ AS
     ln_dummy                NUMBER;                   -- ロック用ダミー変数
     --
     lv_new_modify_flg       VARCHAR2(1);              -- 新規修正フラグ
+-- Ver1.20 M.Hokkanji START
+    lt_max_ship_methods             xxcmn_ship_methods.ship_method%TYPE;            -- 最大配送区分
+    lt_drink_deadweight             xxcmn_ship_methods.drink_deadweight%TYPE;       -- ドリンク積載重量
+    lt_leaf_deadweight              xxcmn_ship_methods.leaf_deadweight%TYPE;        -- リーフ積載重量
+    lt_drink_loading_capacity       xxcmn_ship_methods.drink_loading_capacity%TYPE; -- ドリンク積載容積
+    lt_leaf_loading_capacity        xxcmn_ship_methods.leaf_loading_capacity%TYPE;  -- リーフ積載容積
+    lt_palette_max_qty              xxcmn_ship_methods.palette_max_qty%TYPE;        -- パレット最大枚数
+    ln_ret_code                     NUMBER;                                         -- リターンコード
+    -- 小口区分取得用変数
+    lv_small_sum_class              VARCHAR2(1);                                    -- 小口区分
+    -- 共通関数｢積載効率チェック｣OUTパラメータ
+    lv_retcode                      VARCHAR2(1);                                    -- リターンコード
+    lv_errmsg_code                  VARCHAR2(100);                                  -- エラーメッセージコード
+    lv_errmsg                       VARCHAR2(100);                                  -- エラーメッセージ
+    lv_loading_over_class           VARCHAR2(100);                                  -- 積載オーバー区分
+    lv_ship_methods                 VARCHAR2(100);                                  -- 出荷方法
+    ln_load_efficiency_weight       NUMBER;                                         -- 重量積載効率
+    ln_load_efficiency_capacity     NUMBER;                                         -- 容積積載効率
+    lv_mixed_ship_method            VARCHAR2(100);                                  -- 混載配送区分
+    ln_sum_weight                   NUMBER;                                         -- 合計重量
+    ln_sum_capacity                 NUMBER;                                         -- 合計容積
+-- Ver1.20 M.Hokkanji END
 --
     -- *** ローカル・カーソル ***
 --
@@ -4874,7 +4981,10 @@ AS
     -- 検索処理を行い、ロックを取得します。
     IF (iv_biz_type = cv_ship) THEN
       SELECT xoha.req_status,                               -- ステータス
-             xoha.delivery_no                               -- 配送No
+-- Ver1.20 M.Hokkanji Start
+--             xoha.delivery_no                               -- 配送No
+             NVL(xoha.delivery_no,xoha.mixed_no)              -- 配送No/混載元No
+-- Ver1.20 M.Hokkanji End
       INTO   lv_status,
              lv_delivery_no
       FROM   xxwsh_order_headers_all            xoha,       -- 受注ヘッダアドオン
@@ -4930,7 +5040,23 @@ AS
            xoha.notif_status,
            xoha.prev_notif_status,
            xola.shipped_quantity,                         -- 出荷実績数量
-           xola.ship_to_quantity                          -- 入庫実績実績数量
+           xola.ship_to_quantity,                         -- 入庫実績実績数量
+-- Ver1.20 M.Hokkanji START
+           xoha.shipping_method_code,                     -- 配送区分
+           xoha.prod_class,                               -- 商品区分
+           xoha.based_weight,                             -- 基本重量
+           xoha.based_capacity,                           -- 基本容積
+           xoha.weight_capacity_class,                    -- 重量容積区分
+           xoha.deliver_from,                             -- 出荷元
+           xoha.deliver_to,                               -- 配送先
+           xoha.schedule_ship_date,                       -- 出庫予定日
+           xoha.sum_weight,                               -- 積載重量合計
+           xoha.sum_capacity,                             -- 積載容積合計
+           xoha.sum_pallet_weight,                        -- 合計パレット重量
+           xoha.freight_charge_class,                     -- 運賃区分
+           xoha.loading_efficiency_weight,                -- 積載率(重量)
+           xoha.loading_efficiency_capacity               -- 積載率(容積)
+-- Ver1.20 M.Hokkanji END
     BULK COLLECT INTO
            gt_chk_ship_tbl
     FROM   xxwsh_order_headers_all            xoha,       -- 受注ヘッダアドオン
@@ -4940,7 +5066,10 @@ AS
              (xoha.request_no = iv_request_no))
     OR     (((iv_biz_type <> cv_ship) OR
            ((iv_biz_type = cv_ship) AND (lv_delivery_no IS NOT NULL))) AND
-             (xoha.delivery_no = lv_delivery_no)))
+-- Ver1.20 M.Hokkanji START
+             (NVL(xoha.delivery_no,xoha.mixed_no) = lv_delivery_no)))
+--             (xoha.delivery_no = lv_delivery_no)))
+-- Ver1.20 M.Hokkanji End
     AND    xoha.order_type_id                         =  xott.transaction_type_id
     AND    xoha.order_header_id                       =  xola.order_header_id
     AND    NVL(xola.delete_flag, cv_flag_no)          =  cv_flag_no
@@ -4951,7 +5080,6 @@ AS
                                                       >= trunc( xoha.schedule_ship_date )
     AND    NVL(xoha.latest_external_flag, cv_flag_no) =  cv_flag_yes
     ORDER BY xoha.order_header_id;
-
     IF (gt_chk_ship_tbl.COUNT > 0) THEN
       -- データが存在する場合はカウント
       ln_data_count := ln_data_count + 1;
@@ -4963,18 +5091,190 @@ AS
         IF ((gt_chk_ship_tbl(i).req_status <= cv_tightening) AND
              (gt_chk_ship_tbl(i).shipped_quantity IS NOT NULL)) THEN
           ln_no_count := ln_no_count + 1;
+-- Ver1.20 M.Hokkanji START
+          IF (lv_msg_ship_err IS NULL) THEN
+            lv_msg_ship_err := gt_chk_ship_tbl(i).request_no;
+          ELSE
+            lv_msg_ship_err := lv_msg_ship_err
+                               || cv_msg_com
+                               || gt_chk_ship_tbl(i).request_no;
+-- Ver1.20 M.Hokkanji END
+          END IF;
+
 --
         -- ステータスが｢出荷実績計上済｣｢取消｣のデータは配車解除不可
         ELSIF (gt_chk_ship_tbl(i).req_status > cv_tightening) THEN
           IF (lv_msg_ship_err IS NULL) THEN
-            lv_msg_ship_err := iv_request_no;
+-- Ver1.20 M.Hokkanji START
+--            lv_msg_ship_err := iv_request_no;
+            lv_msg_ship_err := gt_chk_ship_tbl(i).request_no;
+-- Ver1.20 M.Hokkanji END
           ELSE
+-- Ver1.20 M.Hokkanji START
             lv_msg_ship_err := lv_msg_ship_err
                                || cv_msg_com
-                               || iv_request_no;
+                               || gt_chk_ship_tbl(i).request_no;
+--                               || iv_request_no;
+-- Ver1.20 M.Hokkanji END
           END IF;
           ln_no_count     := ln_no_count + 1;
 --
+-- Ver1.20 M.Hokkanji START
+        ELSE
+          -- 運賃区分が1の場合のみ取得した配送区分、基本重量、基本容積、積載率(重量)、積載率(容積)を更新
+          IF (gt_chk_ship_tbl(i).freight_charge_class = gv_freight_charge_yes) THEN
+            lv_err_chek := '0'; -- エラーチェックフラグを初期値に戻す
+            -- 最大配送区分取得
+            ln_ret_code := get_max_ship_method(
+                             iv_code_class1                => cv_code_kbn_mov,
+                             iv_entering_despatching_code1 => gt_chk_ship_tbl(i).deliver_from,
+                             iv_code_class2                => cv_code_kbn_ship,
+                             iv_entering_despatching_code2 => gt_chk_ship_tbl(i).deliver_to,
+                             iv_prod_class                 => gt_chk_ship_tbl(i).prod_class,
+                             iv_weight_capacity_class      => gt_chk_ship_tbl(i).weight_capacity_class,
+                             iv_auto_process_type          => NULL,
+                             id_standard_date              => gt_chk_ship_tbl(i).schedule_ship_date,
+                             ov_max_ship_methods           => lt_max_ship_methods,
+                             on_drink_deadweight           => lt_drink_deadweight,
+                             on_leaf_deadweight            => lt_leaf_deadweight,
+                             on_drink_loading_capacity     => lt_drink_loading_capacity,
+                             on_leaf_loading_capacity      => lt_leaf_loading_capacity,
+                             on_palette_max_qty            => lt_palette_max_qty);
+            IF (ln_ret_code <> gn_status_normal) THEN
+              IF (lv_msg_ship_max_err IS NULL) THEN
+                lv_msg_ship_max_err := gt_chk_ship_tbl(i).request_no;
+              ELSE
+                lv_msg_ship_max_err := lv_msg_ship_max_err
+                                   || cv_msg_com
+                                   || gt_chk_ship_tbl(i).request_no;
+              END IF;
+              ln_no_count     := ln_no_count + 1;
+              lv_err_chek     := '1';
+            ELSE
+              -- 商品区分がドリンクの場合
+              IF (gt_chk_ship_tbl(i).prod_class = cv_prod_class_2) THEN
+                gt_chk_ship_tbl(i).based_weight       := lt_drink_deadweight;
+                gt_chk_ship_tbl(i).based_capacity     := lt_drink_loading_capacity;
+              ELSE
+                gt_chk_ship_tbl(i).based_weight       := lt_drink_deadweight;
+                gt_chk_ship_tbl(i).based_capacity     := lt_drink_loading_capacity;
+              END IF;
+              gt_chk_ship_tbl(i).shipping_method_code := lt_max_ship_methods;
+            END IF;
+--
+            -- 最大配送区分の取得に成功している場合
+            IF (lv_err_chek = '0') THEN
+              BEGIN
+--
+                -- 取得した配送区分をもとにクイックコード｢XXCMN_SHIP_METHOD｣から小口区分を取得
+                SELECT  xsm2.small_amount_class
+                  INTO  lv_small_sum_class
+                  FROM  xxwsh_ship_method2_v    xsm2
+                 WHERE  xsm2.ship_method_code   =  gt_chk_ship_tbl(i).shipping_method_code
+                   AND  xsm2.start_date_active  <= gt_chk_ship_tbl(i).schedule_ship_date
+                   AND  gt_chk_ship_tbl(i).schedule_ship_date <= NVL(xsm2.end_date_active,
+                                                                     gt_chk_ship_tbl(i).schedule_ship_date);
+--
+              EXCEPTION
+                WHEN OTHERS THEN
+                  IF (lv_msg_ship_small_err IS NULL) THEN
+                    lv_msg_ship_small_err := gt_chk_ship_tbl(i).request_no;
+                  ELSE
+                    lv_msg_ship_small_err := lv_msg_ship_small_err
+                                           || cv_msg_com
+                                           || gt_chk_ship_tbl(i).request_no;
+                  END IF;
+                  ln_no_count     := ln_no_count + 1;
+                  lv_err_chek     := '1';
+              END;
+            END IF;
+--
+            -- 最大配送区分、小口区分の取得に成功している場合
+            IF (lv_err_chek = '0') THEN
+              IF (lv_small_sum_class = cv_include) THEN
+                ln_sum_weight := gt_chk_ship_tbl(i).sum_weight;
+              ELSE
+                ln_sum_weight := gt_chk_ship_tbl(i).sum_weight + NVL(gt_chk_ship_tbl(i).sum_pallet_weight,0);
+              END IF;
+              --積載効率(重量)を取得
+              xxwsh_common910_pkg.calc_load_efficiency(
+                in_sum_weight                 => ln_sum_weight,                             -- 1.合計重量
+                in_sum_capacity               =>  NULL,                                     -- 2.合計容積
+                iv_code_class1                =>  cv_code_kbn_mov,                          -- 3.コード区分１
+                iv_entering_despatching_code1 =>  gt_chk_ship_tbl(i).deliver_from,          -- 4.入出庫場所コード１
+                iv_code_class2                =>  cv_code_kbn_ship,                         -- 5.コード区分２
+                iv_entering_despatching_code2 =>  gt_chk_ship_tbl(i).deliver_to,            -- 6.入出庫場所コード２
+                iv_ship_method                =>  gt_chk_ship_tbl(i).shipping_method_code,  -- 7.出荷方法
+                iv_prod_class                 =>  gt_chk_ship_tbl(i).prod_class,            -- 8.商品区分
+                iv_auto_process_type          =>  NULL,                                     -- 9.自動配車対象区分
+                id_standard_date              =>  gt_chk_ship_tbl(i).schedule_ship_date,    -- 10.基準日(適用日基準日)
+                ov_retcode                    =>  lv_retcode,                               -- 11.リターンコード
+                ov_errmsg_code                =>  lv_errmsg_code,                           -- 12.エラーメッセージコード
+                ov_errmsg                     =>  lv_errmsg,                                -- 13.エラーメッセージ
+                ov_loading_over_class         =>  lv_loading_over_class,                    -- 14.積載オーバー区分
+                ov_ship_methods               =>  lv_ship_methods,                          -- 15.出荷方法
+                on_load_efficiency_weight     =>  ln_load_efficiency_weight,                -- 16.重量積載効率
+                on_load_efficiency_capacity   =>  ln_load_efficiency_capacity,              -- 17.容積積載効率
+                ov_mixed_ship_method          =>  lv_mixed_ship_method);                    -- 18.混載配送区分
+--
+              -- リターンコードが'1'(異常)の場合はエラーをセット
+              IF (lv_retcode = gn_status_error) THEN
+                IF (lv_msg_ship_wei_err IS NULL) THEN
+                  lv_msg_ship_wei_err := gt_chk_ship_tbl(i).request_no;
+                ELSE
+                  lv_msg_ship_wei_err := lv_msg_ship_wei_err
+                                           || cv_msg_com
+                                           || gt_chk_ship_tbl(i).request_no;
+                END IF;
+                ln_no_count     := ln_no_count + 1;
+                lv_err_chek     := '1';
+              ELSE
+                -- 異常ではない場合積載率(重量)をセット
+                gt_chk_ship_tbl(i).loading_efficiency_weight := ln_load_efficiency_weight;
+--
+              END IF;
+              --積載効率(容積)を取得
+              xxwsh_common910_pkg.calc_load_efficiency(
+                in_sum_weight                 =>  NULL,                                     -- 1.合計重量
+                in_sum_capacity               =>  gt_chk_ship_tbl(i).sum_capacity,          -- 2.合計容積
+                iv_code_class1                =>  cv_code_kbn_mov,                          -- 3.コード区分１
+                iv_entering_despatching_code1 =>  gt_chk_ship_tbl(i).deliver_from,          -- 4.入出庫場所コード１
+                iv_code_class2                =>  cv_code_kbn_ship,                         -- 5.コード区分２
+                iv_entering_despatching_code2 =>  gt_chk_ship_tbl(i).deliver_to,            -- 6.入出庫場所コード２
+                iv_ship_method                =>  gt_chk_ship_tbl(i).shipping_method_code,  -- 7.出荷方法
+                iv_prod_class                 =>  gt_chk_ship_tbl(i).prod_class,            -- 8.商品区分
+                iv_auto_process_type          =>  NULL,                                     -- 9.自動配車対象区分
+                id_standard_date              =>  gt_chk_ship_tbl(i).schedule_ship_date,    -- 10.基準日(適用日基準日)
+                ov_retcode                    =>  lv_retcode,                               -- 11.リターンコード
+                ov_errmsg_code                =>  lv_errmsg_code,                           -- 12.エラーメッセージコード
+                ov_errmsg                     =>  lv_errmsg,                                -- 13.エラーメッセージ
+                ov_loading_over_class         =>  lv_loading_over_class,                    -- 14.積載オーバー区分
+                ov_ship_methods               =>  lv_ship_methods,                          -- 15.出荷方法
+                on_load_efficiency_weight     =>  ln_load_efficiency_weight,                -- 16.重量積載効率
+                on_load_efficiency_capacity   =>  ln_load_efficiency_capacity,              -- 17.容積積載効率
+                ov_mixed_ship_method          =>  lv_mixed_ship_method);                    -- 18.混載配送区分
+--
+              -- リターンコードが'1'(異常)の場合はエラーをセット
+              IF (lv_retcode = gn_status_error) THEN
+                IF (lv_msg_ship_cap_err IS NULL) THEN
+                  lv_msg_ship_cap_err := gt_chk_ship_tbl(i).request_no;
+                ELSE
+                  lv_msg_ship_cap_err := lv_msg_ship_cap_err
+                                           || cv_msg_com
+                                           || gt_chk_ship_tbl(i).request_no;
+                END IF;
+                ln_no_count     := ln_no_count + 1;
+                lv_err_chek     := '1';
+              ELSE
+                -- 異常ではない場合積載率(容積)をセット
+                gt_chk_ship_tbl(i).loading_efficiency_capacity := ln_load_efficiency_capacity;
+--
+              END IF;
+--
+            END IF;
+--
+          END IF;
+-- Ver1.20 M.Hokkanji END
         END IF;
 --
       END LOOP gt_chk_ship_tbl_loop;
@@ -4990,7 +5290,23 @@ AS
            mrih.notif_status,
            mrih.prev_notif_status,
            mril.shipped_quantity,                         -- 出庫実績数量
-           mril.ship_to_quantity                          -- 入庫実績数量
+           mril.ship_to_quantity,                         -- 入庫実績数量
+-- Ver1.20 M.Hokkanji START
+           mrih.shipping_method_code,                     -- 配送区分
+           mrih.item_class,                               -- 商品区分
+           mrih.based_weight,                             -- 基本重量
+           mrih.based_capacity,                           -- 基本容積
+           mrih.weight_capacity_class,                    -- 重量容積区分
+           mrih.shipped_locat_code,                       -- 出庫元
+           mrih.ship_to_locat_code,                       -- 入庫先
+           mrih.schedule_ship_date,                       -- 出庫予定日
+           mrih.sum_weight,                               -- 積載重量合計
+           mrih.sum_capacity,                             -- 積載容積合計
+           mrih.sum_pallet_weight,                        -- 合計パレット重量
+           mrih.freight_charge_class,                     -- 運賃区分
+           mrih.loading_efficiency_weight,                -- 積載率(重量)
+           mrih.loading_efficiency_capacity               -- 積載率(容積)
+-- Ver1.20 M.Hokkanji END
     BULK COLLECT INTO
            gt_chk_move_tbl
     FROM   xxinv_mov_req_instr_headers        mrih,       -- 移動依頼/指示ヘッダ(アドオン)
@@ -5016,18 +5332,188 @@ AS
              ((gt_chk_move_tbl(i).shipped_quantity IS NOT NULL) OR
              (gt_chk_move_tbl(i).ship_to_quantity IS NOT NULL))) THEN
           ln_no_count := ln_no_count + 1;
+-- Ver1.20 M.Hokkanji START
+          IF (lv_msg_move_err IS NULL) THEN
+            lv_msg_move_err := gt_chk_move_tbl(i).mov_num;
+          ELSE
+            lv_msg_move_err := lv_msg_move_err
+                               || cv_msg_com
+                               || gt_chk_move_tbl(i).mov_num;
+          END IF;
+-- Ver1.20 M.Hokkanji END
 --
         -- ステータスが｢出荷実績計上済｣｢取消｣のデータは配車解除不可
         ELSIF (gt_chk_move_tbl(i).status > cv_adjustment) THEN
           IF (lv_msg_move_err IS NULL) THEN
-            lv_msg_move_err := iv_request_no;
+-- Ver1.20 M.Hokkanji START
+            lv_msg_move_err := gt_chk_move_tbl(i).mov_num;
+--            lv_msg_move_err := iv_request_no;
+-- Ver1.20 M.Hokkanji END
           ELSE
+-- Ver1.20 M.Hokkanji START
             lv_msg_move_err := lv_msg_move_err
                                || cv_msg_com
-                               || iv_request_no;
+                               || gt_chk_move_tbl(i).mov_num;
+--                               || iv_request_no;
+-- Ver1.20 M.Hokkanji END
           END IF;
           ln_no_count     := ln_no_count + 1;
+-- Ver1.20 M.Hokkanji START
+        ELSE
+          -- 運賃区分が1の場合のみ取得した配送区分、基本重量、基本容積、積載率(重量)、積載率(容積)を更新
+          IF (gt_chk_move_tbl(i).freight_charge_class = gv_freight_charge_yes) THEN
+            lv_err_chek := '0'; -- エラーチェックフラグを初期値に戻す
+            -- 最大配送区分取得
+            ln_ret_code := get_max_ship_method(
+                             iv_code_class1                => cv_code_kbn_mov,
+                             iv_entering_despatching_code1 => gt_chk_move_tbl(i).shipped_locat_code,
+                             iv_code_class2                => cv_code_kbn_mov,
+                             iv_entering_despatching_code2 => gt_chk_move_tbl(i).ship_to_locat_code,
+                             iv_prod_class                 => gt_chk_move_tbl(i).item_class,
+                             iv_weight_capacity_class      => gt_chk_move_tbl(i).weight_capacity_class,
+                             iv_auto_process_type          => NULL,
+                             id_standard_date              => gt_chk_move_tbl(i).schedule_ship_date,
+                             ov_max_ship_methods           => lt_max_ship_methods,
+                             on_drink_deadweight           => lt_drink_deadweight,
+                             on_leaf_deadweight            => lt_leaf_deadweight,
+                             on_drink_loading_capacity     => lt_drink_loading_capacity,
+                             on_leaf_loading_capacity      => lt_leaf_loading_capacity,
+                             on_palette_max_qty            => lt_palette_max_qty);
+            IF (ln_ret_code <> gn_status_normal) THEN
+              IF (lv_msg_move_max_err IS NULL) THEN
+                lv_msg_move_max_err := gt_chk_move_tbl(i).mov_num;
+              ELSE
+                lv_msg_move_max_err := lv_msg_move_max_err
+                                   || cv_msg_com
+                                   || gt_chk_move_tbl(i).mov_num;
+              END IF;
+              ln_no_count     := ln_no_count + 1;
+              lv_err_chek     := '1';
+            ELSE
+              -- 商品区分がドリンクの場合
+              IF (gt_chk_move_tbl(i).item_class = cv_prod_class_2) THEN
+                gt_chk_move_tbl(i).based_weight       := lt_drink_deadweight;
+                gt_chk_move_tbl(i).based_capacity     := lt_drink_loading_capacity;
+              ELSE
+                gt_chk_move_tbl(i).based_weight       := lt_drink_deadweight;
+                gt_chk_move_tbl(i).based_capacity     := lt_drink_loading_capacity;
+              END IF;
+              gt_chk_move_tbl(i).shipping_method_code := lt_max_ship_methods;
+            END IF;
 --
+            -- 最大配送区分の取得に成功している場合
+            IF (lv_err_chek = '0') THEN
+              BEGIN
+--
+                -- 取得した配送区分をもとにクイックコード｢XXCMN_SHIP_METHOD｣から小口区分を取得
+                SELECT  xsm2.small_amount_class
+                  INTO  lv_small_sum_class
+                  FROM  xxwsh_ship_method2_v    xsm2
+                 WHERE  xsm2.ship_method_code   =  gt_chk_move_tbl(i).shipping_method_code
+                   AND  xsm2.start_date_active  <= gt_chk_move_tbl(i).schedule_ship_date
+                   AND  gt_chk_move_tbl(i).schedule_ship_date <= NVL(xsm2.end_date_active,
+                                                                     gt_chk_move_tbl(i).schedule_ship_date);
+--
+              EXCEPTION
+                WHEN OTHERS THEN
+                  IF (lv_msg_move_small_err IS NULL) THEN
+                    lv_msg_move_small_err := gt_chk_move_tbl(i).mov_num;
+                  ELSE
+                    lv_msg_move_small_err := lv_msg_move_small_err
+                                           || cv_msg_com
+                                           || gt_chk_move_tbl(i).mov_num;
+                  END IF;
+                  ln_no_count     := ln_no_count + 1;
+                  lv_err_chek     := '1';
+              END;
+            END IF;
+--
+            -- 最大配送区分、小口区分の取得に成功している場合
+            IF (lv_err_chek = '0') THEN
+              IF (lv_small_sum_class = cv_include) THEN
+                ln_sum_weight := gt_chk_ship_tbl(i).sum_weight;
+              ELSE
+                ln_sum_weight := gt_chk_ship_tbl(i).sum_weight + NVL(gt_chk_ship_tbl(i).sum_pallet_weight,0);
+              END IF;
+              --積載効率(重量)を取得
+              xxwsh_common910_pkg.calc_load_efficiency(
+                in_sum_weight                 =>  ln_sum_weight,                            -- 1.合計重量
+                in_sum_capacity               =>  NULL,                                     -- 2.合計容積
+                iv_code_class1                =>  cv_code_kbn_mov,                          -- 3.コード区分１
+                iv_entering_despatching_code1 =>  gt_chk_move_tbl(i).shipped_locat_code,    -- 4.入出庫場所コード１
+                iv_code_class2                =>  cv_code_kbn_mov,                          -- 5.コード区分２
+                iv_entering_despatching_code2 =>  gt_chk_move_tbl(i).ship_to_locat_code,    -- 6.入出庫場所コード２
+                iv_ship_method                =>  gt_chk_move_tbl(i).shipping_method_code,  -- 7.出荷方法
+                iv_prod_class                 =>  gt_chk_move_tbl(i).item_class,            -- 8.商品区分
+                iv_auto_process_type          =>  NULL,                                     -- 9.自動配車対象区分
+                id_standard_date              =>  gt_chk_move_tbl(i).schedule_ship_date,    -- 10.基準日(適用日基準日)
+                ov_retcode                    =>  lv_retcode,                               -- 11.リターンコード
+                ov_errmsg_code                =>  lv_errmsg_code,                           -- 12.エラーメッセージコード
+                ov_errmsg                     =>  lv_errmsg,                                -- 13.エラーメッセージ
+                ov_loading_over_class         =>  lv_loading_over_class,                    -- 14.積載オーバー区分
+                ov_ship_methods               =>  lv_ship_methods,                          -- 15.出荷方法
+                on_load_efficiency_weight     =>  ln_load_efficiency_weight,                -- 16.重量積載効率
+                on_load_efficiency_capacity   =>  ln_load_efficiency_capacity,              -- 17.容積積載効率
+                ov_mixed_ship_method          =>  lv_mixed_ship_method);                    -- 18.混載配送区分
+--
+              -- リターンコードが'1'(異常)の場合はエラーをセット
+              IF (lv_retcode = gn_status_error) THEN
+                IF (lv_msg_move_wei_err IS NULL) THEN
+                  lv_msg_move_wei_err := gt_chk_move_tbl(i).mov_num;
+                ELSE
+                  lv_msg_move_wei_err := lv_msg_move_wei_err
+                                           || cv_msg_com
+                                           || gt_chk_move_tbl(i).mov_num;
+                END IF;
+                ln_no_count     := ln_no_count + 1;
+                lv_err_chek     := '1';
+              ELSE
+                -- 異常ではない場合積載率(重量)をセット
+                gt_chk_move_tbl(i).loading_efficiency_weight := ln_load_efficiency_weight;
+--
+              END IF;
+              --積載効率(容積)を取得
+              xxwsh_common910_pkg.calc_load_efficiency(
+                in_sum_weight                 =>  NULL,                                     -- 1.合計重量
+                in_sum_capacity               =>  gt_chk_move_tbl(i).sum_capacity,          -- 2.合計容積
+                iv_code_class1                =>  cv_code_kbn_mov,                          -- 3.コード区分１
+                iv_entering_despatching_code1 =>  gt_chk_move_tbl(i).shipped_locat_code,    -- 4.入出庫場所コード１
+                iv_code_class2                =>  cv_code_kbn_mov,                          -- 5.コード区分２
+                iv_entering_despatching_code2 =>  gt_chk_move_tbl(i).ship_to_locat_code,    -- 6.入出庫場所コード２
+                iv_ship_method                =>  gt_chk_move_tbl(i).shipping_method_code,  -- 7.出荷方法
+                iv_prod_class                 =>  gt_chk_move_tbl(i).item_class,            -- 8.商品区分
+                iv_auto_process_type          =>  NULL,                                     -- 9.自動配車対象区分
+                id_standard_date              =>  gt_chk_move_tbl(i).schedule_ship_date,    -- 10.基準日(適用日基準日)
+                ov_retcode                    =>  lv_retcode,                               -- 11.リターンコード
+                ov_errmsg_code                =>  lv_errmsg_code,                           -- 12.エラーメッセージコード
+                ov_errmsg                     =>  lv_errmsg,                                -- 13.エラーメッセージ
+                ov_loading_over_class         =>  lv_loading_over_class,                    -- 14.積載オーバー区分
+                ov_ship_methods               =>  lv_ship_methods,                          -- 15.出荷方法
+                on_load_efficiency_weight     =>  ln_load_efficiency_weight,                -- 16.重量積載効率
+                on_load_efficiency_capacity   =>  ln_load_efficiency_capacity,              -- 17.容積積載効率
+                ov_mixed_ship_method          =>  lv_mixed_ship_method);                    -- 18.混載配送区分
+--
+              -- リターンコードが'1'(異常)の場合はエラーをセット
+              IF (lv_retcode = gn_status_error) THEN
+                IF (lv_msg_move_cap_err IS NULL) THEN
+                  lv_msg_move_cap_err := gt_chk_move_tbl(i).mov_num;
+                ELSE
+                  lv_msg_move_cap_err := lv_msg_move_cap_err
+                                           || cv_msg_com
+                                           || gt_chk_move_tbl(i).mov_num;
+                END IF;
+                ln_no_count     := ln_no_count + 1;
+                lv_err_chek     := '1';
+              ELSE
+                -- 異常ではない場合積載率(容積)をセット
+                gt_chk_move_tbl(i).loading_efficiency_capacity := ln_load_efficiency_capacity;
+--
+              END IF;
+--
+            END IF;
+--
+          END IF;
+-- Ver1.20 M.Hokkanji END
         END IF;
 --
       END LOOP gt_chk_move_tbl_loop;
@@ -5043,7 +5529,22 @@ AS
            xoha.notif_status,
            xoha.prev_notif_status,
            xola.shipped_quantity,                         -- 出荷実績数量
-           xola.ship_to_quantity                          -- 入庫実績実績数量
+           xola.ship_to_quantity,                         -- 入庫実績実績数量
+-- Ver1.20 M.Hokkanji START
+           xoha.shipping_method_code,                     -- 配送区分
+           xoha.prod_class,                               -- 商品区分
+           xoha.based_weight,                             -- 基本重量
+           xoha.based_capacity,                           -- 基本容積
+           xoha.weight_capacity_class,                    -- 重量容積区分
+           xoha.deliver_from,                             -- 出荷元
+           xoha.vendor_site_code,                         -- 取引先サイト
+           xoha.schedule_ship_date,                       -- 出庫予定日
+           xoha.sum_weight,                               -- 積載重量合計
+           xoha.sum_capacity,                             -- 積載容積合計
+           xoha.freight_charge_class,                     -- 運賃区分
+           xoha.loading_efficiency_weight,                -- 積載率(重量)
+           xoha.loading_efficiency_capacity               -- 積載率(容積)
+-- Ver1.20 M.Hokkanji END
     BULK COLLECT INTO
            gt_chk_supply_tbl
     FROM   xxwsh_order_headers_all            xoha,       -- 受注ヘッダアドオン
@@ -5078,18 +5579,157 @@ AS
              ((gt_chk_supply_tbl(i).shipped_quantity IS NOT NULL) OR
              (gt_chk_supply_tbl(i).ship_to_quantity IS NOT NULL))) THEN
           ln_no_count := ln_no_count + 1;
+-- Ver1.20 M.Hokkanji START
+          IF (lv_msg_supply_err IS NULL) THEN
+            lv_msg_supply_err := gt_chk_supply_tbl(i).request_no;
+          ELSE
+            lv_msg_supply_err := lv_msg_supply_err
+                                 || cv_msg_com
+                                 || gt_chk_supply_tbl(i).request_no;
+          END IF;
+-- Ver1.20 M.Hokkanji END
 --
         -- ステータスが｢出荷実績計上済｣｢取消｣のデータは配車解除不可
         ELSIF (gt_chk_supply_tbl(i).req_status > cv_received) THEN
           IF (lv_msg_supply_err IS NULL) THEN
-            lv_msg_supply_err := iv_request_no;
+-- Ver1.20 M.Hokkanji START
+--            lv_msg_supply_err := iv_request_no;
+            lv_msg_supply_err := gt_chk_supply_tbl(i).request_no;
+-- Ver1.20 M.Hokkanji END
           ELSE
+-- Ver1.20 M.Hokkanji START
             lv_msg_supply_err := lv_msg_supply_err
                                  || cv_msg_com
-                                 || iv_request_no;
+                                 || gt_chk_supply_tbl(i).request_no;
+--                                 || iv_request_no;
           END IF;
+-- Ver1.20 M.Hokkanji END
           ln_no_count       := ln_no_count + 1;
 --
+-- Ver1.20 M.Hokkanji START
+        ELSE
+          -- 運賃区分が1の場合のみ取得した配送区分、基本重量、基本容積、積載率(重量)、積載率(容積)を更新
+          IF (gt_chk_supply_tbl(i).freight_charge_class = gv_freight_charge_yes) THEN
+            lv_err_chek := '0'; -- エラーチェックフラグを初期値に戻す
+            -- 最大配送区分取得
+            ln_ret_code := get_max_ship_method(
+                             iv_code_class1                => cv_code_kbn_mov,
+                             iv_entering_despatching_code1 => gt_chk_supply_tbl(i).deliver_from,
+                             iv_code_class2                => cv_code_kbn_supply,
+                             iv_entering_despatching_code2 => gt_chk_supply_tbl(i).vendor_site_code,
+                             iv_prod_class                 => gt_chk_supply_tbl(i).prod_class,
+                             iv_weight_capacity_class      => gt_chk_supply_tbl(i).weight_capacity_class,
+                             iv_auto_process_type          => NULL,
+                             id_standard_date              => gt_chk_supply_tbl(i).schedule_ship_date,
+                             ov_max_ship_methods           => lt_max_ship_methods,
+                             on_drink_deadweight           => lt_drink_deadweight,
+                             on_leaf_deadweight            => lt_leaf_deadweight,
+                             on_drink_loading_capacity     => lt_drink_loading_capacity,
+                             on_leaf_loading_capacity      => lt_leaf_loading_capacity,
+                             on_palette_max_qty            => lt_palette_max_qty);
+            IF (ln_ret_code <> gn_status_normal) THEN
+              IF (lv_msg_supply_max_err IS NULL) THEN
+                lv_msg_supply_max_err := gt_chk_supply_tbl(i).request_no;
+              ELSE
+                lv_msg_supply_max_err := lv_msg_supply_max_err
+                                   || cv_msg_com
+                                   || gt_chk_supply_tbl(i).request_no;
+              END IF;
+              ln_no_count     := ln_no_count + 1;
+              lv_err_chek     := '1';
+            ELSE
+              -- 商品区分がドリンクの場合
+              IF (gt_chk_supply_tbl(i).prod_class = cv_prod_class_2) THEN
+                gt_chk_supply_tbl(i).based_weight       := lt_drink_deadweight;
+                gt_chk_supply_tbl(i).based_capacity     := lt_drink_loading_capacity;
+              ELSE
+                gt_chk_supply_tbl(i).based_weight       := lt_drink_deadweight;
+                gt_chk_supply_tbl(i).based_capacity     := lt_drink_loading_capacity;
+              END IF;
+              gt_chk_supply_tbl(i).shipping_method_code := lt_max_ship_methods;
+            END IF;
+--
+            -- 最大配送区分の取得に成功している場合
+            IF (lv_err_chek = '0') THEN
+              --積載効率(重量)を取得
+              xxwsh_common910_pkg.calc_load_efficiency(
+                in_sum_weight                 =>  gt_chk_supply_tbl(i).sum_weight,          -- 1.合計重量
+                in_sum_capacity               =>  NULL,                                     -- 2.合計容積
+                iv_code_class1                =>  cv_code_kbn_mov,                          -- 3.コード区分１
+                iv_entering_despatching_code1 =>  gt_chk_supply_tbl(i).deliver_from,        -- 4.入出庫場所コード１
+                iv_code_class2                =>  cv_code_kbn_supply,                       -- 5.コード区分２
+                iv_entering_despatching_code2 =>  gt_chk_supply_tbl(i).vendor_site_code,    -- 6.入出庫場所コード２
+                iv_ship_method                =>  gt_chk_supply_tbl(i).shipping_method_code, -- 7.出荷方法
+                iv_prod_class                 =>  gt_chk_supply_tbl(i).prod_class,          -- 8.商品区分
+                iv_auto_process_type          =>  NULL,                                     -- 9.自動配車対象区分
+                id_standard_date              =>  gt_chk_supply_tbl(i).schedule_ship_date,    -- 10.基準日(適用日基準日)
+                ov_retcode                    =>  lv_retcode,                               -- 11.リターンコード
+                ov_errmsg_code                =>  lv_errmsg_code,                           -- 12.エラーメッセージコード
+                ov_errmsg                     =>  lv_errmsg,                                -- 13.エラーメッセージ
+                ov_loading_over_class         =>  lv_loading_over_class,                    -- 14.積載オーバー区分
+                ov_ship_methods               =>  lv_ship_methods,                          -- 15.出荷方法
+                on_load_efficiency_weight     =>  ln_load_efficiency_weight,                -- 16.重量積載効率
+                on_load_efficiency_capacity   =>  ln_load_efficiency_capacity,              -- 17.容積積載効率
+                ov_mixed_ship_method          =>  lv_mixed_ship_method);                    -- 18.混載配送区分
+--
+              -- リターンコードが'1'(異常)の場合はエラーをセット
+              IF (lv_retcode = gn_status_error) THEN
+                IF (lv_msg_supply_wei_err IS NULL) THEN
+                  lv_msg_supply_wei_err := gt_chk_supply_tbl(i).request_no;
+                ELSE
+                  lv_msg_supply_wei_err := lv_msg_supply_wei_err
+                                           || cv_msg_com
+                                           || gt_chk_supply_tbl(i).request_no;
+                END IF;
+                ln_no_count     := ln_no_count + 1;
+                lv_err_chek     := '1';
+              ELSE
+                -- 異常ではない場合積載率(重量)をセット
+                gt_chk_supply_tbl(i).loading_efficiency_weight := ln_load_efficiency_weight;
+--
+              END IF;
+              --積載効率(容積)を取得
+              xxwsh_common910_pkg.calc_load_efficiency(
+                in_sum_weight                 =>  NULL,                                     -- 1.合計重量
+                in_sum_capacity               =>  gt_chk_supply_tbl(i).sum_capacity,        -- 2.合計容積
+                iv_code_class1                =>  cv_code_kbn_mov,                          -- 3.コード区分１
+                iv_entering_despatching_code1 =>  gt_chk_supply_tbl(i).deliver_from,        -- 4.入出庫場所コード１
+                iv_code_class2                =>  cv_code_kbn_supply,                       -- 5.コード区分２
+                iv_entering_despatching_code2 =>  gt_chk_supply_tbl(i).vendor_site_code,    -- 6.入出庫場所コード２
+                iv_ship_method                =>  gt_chk_supply_tbl(i).shipping_method_code,  -- 7.出荷方法
+                iv_prod_class                 =>  gt_chk_supply_tbl(i).prod_class,          -- 8.商品区分
+                iv_auto_process_type          =>  NULL,                                     -- 9.自動配車対象区分
+                id_standard_date              =>  gt_chk_supply_tbl(i).schedule_ship_date,    -- 10.基準日(適用日基準日)
+                ov_retcode                    =>  lv_retcode,                               -- 11.リターンコード
+                ov_errmsg_code                =>  lv_errmsg_code,                           -- 12.エラーメッセージコード
+                ov_errmsg                     =>  lv_errmsg,                                -- 13.エラーメッセージ
+                ov_loading_over_class         =>  lv_loading_over_class,                    -- 14.積載オーバー区分
+                ov_ship_methods               =>  lv_ship_methods,                          -- 15.出荷方法
+                on_load_efficiency_weight     =>  ln_load_efficiency_weight,                -- 16.重量積載効率
+                on_load_efficiency_capacity   =>  ln_load_efficiency_capacity,              -- 17.容積積載効率
+                ov_mixed_ship_method          =>  lv_mixed_ship_method);                    -- 18.混載配送区分
+--
+              -- リターンコードが'1'(異常)の場合はエラーをセット
+              IF (lv_retcode = gn_status_error) THEN
+                IF (lv_msg_supply_cap_err IS NULL) THEN
+                  lv_msg_supply_cap_err := gt_chk_supply_tbl(i).request_no;
+                ELSE
+                  lv_msg_supply_cap_err := lv_msg_supply_cap_err
+                                           || cv_msg_com
+                                           || gt_chk_supply_tbl(i).request_no;
+                END IF;
+                ln_no_count     := ln_no_count + 1;
+                lv_err_chek     := '1';
+              ELSE
+                -- 異常ではない場合積載率(容積)をセット
+                gt_chk_supply_tbl(i).loading_efficiency_capacity := ln_load_efficiency_capacity;
+--
+              END IF;
+--
+            END IF;
+--
+          END IF;
+-- Ver1.20 M.Hokkanji END
         END IF;
 --
       END LOOP gt_chk_supply_tbl_loop;
@@ -5142,6 +5782,217 @@ AS
                                                    cv_tkn_request_no,
                                                    lv_msg_supply_err);
         END IF;
+-- Ver1.20 M.Hokkanji START
+        -- 出荷最大配送区分エラー
+        IF ((lv_msg_ship_max_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+          ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_ship_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_max_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_ship_max_err);
+--
+        ELSIF ((lv_msg_ship_max_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+          ov_errmsg := ov_errmsg
+                       || CHR(10)
+                       || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_ship_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_max_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_ship_max_err);
+        END IF;
+        -- 出荷小口区分エラー
+        IF ((lv_msg_ship_small_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+          ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_ship_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_small_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_ship_small_err);
+--
+        ELSIF ((lv_msg_ship_small_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+          ov_errmsg := ov_errmsg
+                       || CHR(10)
+                       || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_ship_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_small_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_ship_small_err);
+        END IF;
+        -- 出荷積載効率(重量)エラー
+        IF ((lv_msg_ship_wei_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+          ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_ship_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_weight_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_ship_wei_err);
+--
+        ELSIF ((lv_msg_ship_wei_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+          ov_errmsg := ov_errmsg
+                       || CHR(10)
+                       || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_ship_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_weight_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_ship_wei_err);
+        END IF;
+        -- 出荷積載効率(容積)エラー
+        IF ((lv_msg_ship_cap_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+          ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_ship_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_cap_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_ship_cap_err);
+--
+        ELSIF ((lv_msg_ship_cap_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+          ov_errmsg := ov_errmsg
+                       || CHR(10)
+                       || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_ship_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_cap_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_ship_cap_err);
+        END IF;
+        -- 支給最大配送区分エラー
+        IF ((lv_msg_supply_max_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+          ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_supply_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_max_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_supply_max_err);
+--
+        ELSIF ((lv_msg_supply_max_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+          ov_errmsg := ov_errmsg
+                       || CHR(10)
+                       || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_supply_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_max_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_supply_max_err);
+        END IF;
+        -- 支給積載効率(重量)エラー
+        IF ((lv_msg_supply_wei_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+          ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_supply_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_weight_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_supply_wei_err);
+--
+        ELSIF ((lv_msg_supply_wei_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+          ov_errmsg := ov_errmsg
+                       || CHR(10)
+                       || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_supply_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_weight_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_supply_wei_err);
+        END IF;
+        -- 支給積載効率(容積)エラー
+        IF ((lv_msg_supply_cap_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+          ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_supply_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_cap_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_supply_cap_err);
+--
+        ELSIF ((lv_msg_supply_cap_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+          ov_errmsg := ov_errmsg
+                       || CHR(10)
+                       || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_supply_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_cap_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_supply_cap_err);
+        END IF;
+        -- 移動最大配送区分エラー
+        IF ((lv_msg_move_max_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+          ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_move_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_max_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_move_max_err);
+--
+        ELSIF ((lv_msg_move_max_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+          ov_errmsg := ov_errmsg
+                       || CHR(10)
+                       || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_move_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_max_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_move_max_err);
+        END IF;
+        -- 移動小口区分エラー
+        IF ((lv_msg_move_small_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+          ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_move_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_small_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_move_small_err);
+--
+        ELSIF ((lv_msg_move_small_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+          ov_errmsg := ov_errmsg
+                       || CHR(10)
+                       || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_move_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_small_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_move_small_err);
+        END IF;
+        -- 移動積載効率(重量)エラー
+        IF ((lv_msg_move_wei_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+          ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_move_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_weight_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_move_wei_err);
+--
+        ELSIF ((lv_msg_move_wei_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+          ov_errmsg := ov_errmsg
+                       || CHR(10)
+                       || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_move_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_weight_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_move_wei_err);
+        END IF;
+        -- 移動積載効率(容積)エラー
+        IF ((lv_msg_move_cap_err IS NOT NULL) AND (ov_errmsg IS NULL))THEN
+          ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_move_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_cap_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_move_cap_err);
+--
+        ELSIF ((lv_msg_move_cap_err IS NOT NULL) AND (ov_errmsg IS NOT NULL))THEN
+          ov_errmsg := ov_errmsg
+                       || CHR(10)
+                       || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                   cv_msg_move_max_err,
+                                                   cv_tkn_program,
+                                                   cv_tkn_cap_char,
+                                                   cv_tkn_request_no,
+                                                   lv_msg_move_cap_err);
+        END IF;
+-- Ver1.20 M.Hokkanji END
 --
         RETURN cv_career_cancel_err;
 --
@@ -5172,7 +6023,14 @@ AS
                    END),
                    xoha.delivery_no                   =  NULL,              -- 配送No
                    xoha.mixed_ratio                   =  NULL,              -- 混載率
-                   xoha.mixed_no                      =  NULL,              -- 混載元No
+-- Ver1.20 M.Hokkanji START
+                   xoha.shipping_method_code          =  gt_chk_ship_tbl(i).shipping_method_code, -- 配送区分
+                   xoha.based_weight                  =  gt_chk_ship_tbl(i).based_weight, -- 基本重量
+                   xoha.based_capacity                =  gt_chk_ship_tbl(i).based_capacity, -- 基本容積
+                   xoha.loading_efficiency_weight     =  gt_chk_ship_tbl(i).loading_efficiency_weight, -- 積載効率(重量)
+                   xoha.loading_efficiency_capacity   =  gt_chk_ship_tbl(i).loading_efficiency_capacity, -- 積載効率(容積)
+--                   xoha.mixed_no                      =  NULL,              -- 混載元No
+-- Ver1.20 M.Hokkanji END
                    xoha.last_updated_by               =  ln_user_id,
                    xoha.last_update_date              =  ld_sysdate,
                    xoha.last_update_login             =  ln_login_id,
@@ -5186,7 +6044,11 @@ AS
 --
         END LOOP gt_chk_ship_tbl_loop;
 --
-      ELSIF (gt_chk_supply_tbl.COUNT > 0) THEN
+-- Ver1.20 M.Hokkanji START
+--      ELSIF (gt_chk_supply_tbl.COUNT > 0) THEN
+      END IF;
+      IF (gt_chk_supply_tbl.COUNT > 0) THEN
+-- Ver1.20 M.Hokkanji END
         -- 取得したレコードの分だけループ
         <<gt_chk_supply_tbl_loop>>
         FOR i IN gt_chk_supply_tbl.FIRST .. gt_chk_supply_tbl.LAST LOOP
@@ -5206,7 +6068,14 @@ AS
                    END),
                    xoha.delivery_no                   =  NULL,              -- 配送No
                    xoha.mixed_ratio                   =  NULL,              -- 混載率
-                   xoha.mixed_no                      =  NULL,              -- 混載元No
+-- Ver1.20 M.Hokkanji START
+                   xoha.shipping_method_code          =  gt_chk_supply_tbl(i).shipping_method_code, -- 配送区分
+                   xoha.based_weight                  =  gt_chk_supply_tbl(i).based_weight, -- 基本重量
+                   xoha.based_capacity                =  gt_chk_supply_tbl(i).based_capacity, -- 基本容積
+                   xoha.loading_efficiency_weight     =  gt_chk_supply_tbl(i).loading_efficiency_weight, -- 積載効率(重量)
+                   xoha.loading_efficiency_capacity   =  gt_chk_supply_tbl(i).loading_efficiency_capacity, -- 積載効率(容積)
+--                   xoha.mixed_no                      =  NULL,              -- 混載元No
+-- Ver1.20 M.Hokkanji END
                    xoha.last_updated_by               =  ln_user_id,
                    xoha.last_update_date              =  ld_sysdate,
                    xoha.last_update_login             =  ln_login_id,
@@ -5220,7 +6089,11 @@ AS
 --
         END LOOP gt_chk_supply_tbl_loop;
 --
-      ELSIF (gt_chk_move_tbl.COUNT > 0) THEN
+-- Ver1.20 M.Hokkanji START
+        END IF;
+        IF (gt_chk_move_tbl.COUNT > 0) THEN
+--      ELSIF (gt_chk_move_tbl.COUNT > 0) THEN
+-- Ver1.20 M.Hokkanji END
         -- 取得したレコードの分だけループ
         <<gt_chk_move_tbl_loop>>
         FOR i IN gt_chk_move_tbl.FIRST .. gt_chk_move_tbl.LAST LOOP
@@ -5240,6 +6113,14 @@ AS
                    END),
                    mrih.delivery_no                   =  NULL,              -- 配送No
                    mrih.mixed_ratio                   =  NULL,              -- 混載率
+-- Ver1.20 M.Hokkanji START
+                   mrih.shipping_method_code          =  gt_chk_move_tbl(i).shipping_method_code, -- 配送区分
+                   mrih.based_weight                  =  gt_chk_move_tbl(i).based_weight, -- 基本重量
+                   mrih.based_capacity                =  gt_chk_move_tbl(i).based_capacity, -- 基本容積
+                   mrih.loading_efficiency_weight     =  gt_chk_move_tbl(i).loading_efficiency_weight, -- 積載効率(重量)
+                   mrih.loading_efficiency_capacity   =  gt_chk_move_tbl(i).loading_efficiency_capacity, -- 積載効率(容積)
+--                   xoha.mixed_no                      =  NULL,              -- 混載元No
+-- Ver1.20 M.Hokkanji END
                    mrih.last_updated_by               =  ln_user_id,
                    mrih.last_update_date              =  ld_sysdate,
                    mrih.last_update_login             =  ln_login_id,
@@ -5360,7 +6241,11 @@ AS
 --
       END LOOP gt_chk_ship_tbl_loop;
 --
-    ELSIF (gt_chk_supply_tbl.COUNT > 0) THEN
+-- Ver1.20 M.Hokkanji START
+      END IF;
+      IF (gt_chk_supply_tbl.COUNT > 0) THEN
+--    ELSIF (gt_chk_supply_tbl.COUNT > 0) THEN
+-- Ver1.20 M.Hokkanji END
       -- 取得したレコードの分だけループ
       <<gt_chk_supply_tbl_loop>>
       FOR i IN gt_chk_supply_tbl.FIRST .. gt_chk_supply_tbl.LAST LOOP
@@ -5435,7 +6320,11 @@ AS
 --
       END LOOP gt_chk_supply_tbl_loop;
 --
-    ELSIF (gt_chk_move_tbl.COUNT > 0) THEN
+-- Ver1.20 M.Hokkanji START
+      END IF;
+      IF (gt_chk_move_tbl.COUNT > 0) THEN
+--    ELSIF (gt_chk_move_tbl.COUNT > 0) THEN
+-- Ver1.20 M.Hokkanji END
       -- 取得したレコードの分だけループ
       <<gt_chk_move_tbl_loop>>
       FOR i IN gt_chk_move_tbl.FIRST .. gt_chk_move_tbl.LAST LOOP
