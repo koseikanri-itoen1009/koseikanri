@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK009A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：売上・売上原価振替仕訳の作成 販売物流 MD050_COK_009_A01
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *                                                       仕訳集約単位に振替元顧客を追加
  * 2009/12/21     1.5   SCS K.NAKAMURA   [障害E_本稼動_00562]担当営業員取得の判定条件修正
  * 2010/01/28     1.6   SCS Y.KUBOSHIMA  [障害E_本稼動_01297]売上金額,営業原価がマイナスの場合、仕訳金額の符号反転するよう変更
+ * 2010/02/18     1.7   SCS K.YAMAGUCHI  [障害E_本稼動_01600]非在庫品目の場合、原価の振替を行わないよう変更
  *
  *****************************************************************************************/
   --===============================
@@ -74,6 +75,12 @@ AS
   cv_aff7_preliminary1_dummy  CONSTANT VARCHAR2(100) := 'XXCOK1_AFF7_PRELIMINARY1_DUMMY';   -- 予備1のダミー値
   cv_aff8_preliminary2_dummy  CONSTANT VARCHAR2(100) := 'XXCOK1_AFF8_PRELIMINARY2_DUMMY';   -- 予備2のダミー値
   cv_selling_without_tax_code CONSTANT VARCHAR2(100) := 'XXCOK1_SELLING_WITHOUT_TAX_CODE';  -- 課税売上外税消費税コード
+-- 2010/02/18 Ver.1.7 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
+  --参照タイプ
+  cv_lookup_type_01           CONSTANT VARCHAR2(30)  := 'XXCOS1_NO_INV_ITEM_CODE';          -- 非在庫品目
+  --参照タイプ・有効フラグ
+  cv_enable                   CONSTANT VARCHAR2(1)   := 'Y'; -- 有効
+-- 2010/02/18 Ver.1.7 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
   --メッセージ
   cv_lock_err_msg             CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-10049';                 -- ロックエラーメッセージ
   cv_concurrent_msg           CONSTANT VARCHAR2(50)  := 'APP-XXCCP1-90008';                 -- パラメータなしメッセージ
@@ -108,6 +115,9 @@ AS
   cv_report_decision_flag     CONSTANT VARCHAR2(1)  := '1';                                 -- 速報確定フラグ1(確定)
   cv_flash_report_flag        CONSTANT VARCHAR2(1)  := '0';                                 -- 速報確定フラグ0(速報)
   cv_info_interface_flag      CONSTANT VARCHAR2(1)  := '1';                                 -- 情報系I/Fフラグ1(I/F済)
+-- 2010/02/18 Ver.1.7 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
+  cv_info_interface_flag_off  CONSTANT VARCHAR2(1)  := '2';                                 -- 情報系I/Fフラグ2(対象外)
+-- 2010/02/18 Ver.1.7 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
   cv_unsettled_interface_flag CONSTANT VARCHAR2(1)  := '0';                                 -- 仕訳作成フラグ0(未済)
   cv_finish_interface_flag    CONSTANT VARCHAR2(1)  := '1';                                 -- 仕訳作成フラグ1(済)
   cv_result_flag              CONSTANT VARCHAR2(1)  := 'A';                                 -- 実績フラグ
@@ -194,12 +204,35 @@ AS
            , xsti.base_code               AS base_code                   -- 売上振替先拠点コード
            , xsti.delivery_base_code      AS delivery_base_code          -- 売上振替元拠点コード
            , SUM(xsti.selling_amt_no_tax) AS selling_amt                 -- 売上金額
-           , SUM(xsti.trading_cost)       AS trading_cost                -- 営業原価
+-- 2010/02/18 Ver.1.7 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR START
+--           , SUM(xsti.trading_cost)       AS trading_cost                -- 営業原価
+           , SUM(
+               CASE
+                 WHEN EXISTS( SELECT 'X'
+                              FROM fnd_lookup_values_vl     flvv
+                              WHERE flvv.lookup_type        = cv_lookup_type_01 -- 非在庫品目
+                                AND flvv.lookup_code        = xsti.item_code
+                                AND flvv.enabled_flag       = cv_enable
+                                AND gd_operation_date BETWEEN NVL( flvv.start_date_active, gd_operation_date )
+                                                          AND NVL( flvv.end_date_active  , gd_operation_date )
+                      )
+                 THEN
+                   0
+                 ELSE
+                   xsti.trading_cost
+               END
+             )                          AS trading_cost                  -- 売上原価
+-- 2010/02/18 Ver.1.7 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR END
     FROM     xxcok_selling_trns_info         xsti                        -- 売上実績振替情報テーブル
     WHERE    xsti.selling_date           >=              TRUNC( gd_selling_date,'MM' )      -- A-2で取得した売上計上日
     AND      xsti.selling_date            <  ADD_MONTHS( TRUNC( gd_selling_date,'MM' ), 1 ) -- A-2で取得した売上計上日+1ヶ月
     AND      xsti.report_decision_flag    =  cv_report_decision_flag     -- 速報確定フラグ1(確定)
-    AND      xsti.info_interface_flag     =  cv_info_interface_flag      -- 情報系I/Fフラグ1(I/F済)
+-- 2010/02/18 Ver.1.7 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR START
+--    AND      xsti.info_interface_flag     =  cv_info_interface_flag      -- 情報系I/Fフラグ1(I/F済)
+    AND      xsti.info_interface_flag    IN  (   cv_info_interface_flag     -- 情報系I/Fフラグ1(I/F済)
+                                               , cv_info_interface_flag_off -- 情報系I/Fフラグ2(対象外)
+                                             )
+-- 2010/02/18 Ver.1.7 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR END
     AND      xsti.gl_interface_flag       =  cv_unsettled_interface_flag -- 仕訳作成フラグ0(仕訳作成未済)
     GROUP BY xsti.selling_date
            , xsti.selling_from_cust_code
@@ -409,7 +442,12 @@ AS
       AND   xsti.selling_date         >= TRUNC( ADD_MONTHS( gd_selling_date, -1 ), 'MM' ) -- 売上計上日の前月月初
 -- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi ADD END
       AND   xsti.report_decision_flag  = cv_flash_report_flag       -- 速報確定フラグ0(速報)
-      AND   xsti.info_interface_flag   = cv_info_interface_flag     -- 情報系I/Fフラグ1(I/F済)
+-- 2010/02/18 Ver.1.7 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR START
+--      AND   xsti.info_interface_flag   = cv_info_interface_flag     -- 情報系I/Fフラグ1(I/F済)
+      AND   xsti.info_interface_flag  IN  (   cv_info_interface_flag     -- 情報系I/Fフラグ1(I/F済)
+                                            , cv_info_interface_flag_off -- 情報系I/Fフラグ2(対象外)
+                                          )
+-- 2010/02/18 Ver.1.7 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR END
       FOR UPDATE OF xsti.selling_trns_info_id NOWAIT;
 --
   BEGIN
@@ -564,7 +602,12 @@ AS
              xsti.selling_trns_info_id  AS selling_trns_info_id
       FROM   xxcok_selling_trns_info     xsti                         -- 売上実績振替情報テーブル
       WHERE  xsti.report_decision_flag = cv_report_decision_flag      -- 速報確定フラグ1(確定)
-      AND    xsti.info_interface_flag  = cv_info_interface_flag       -- 情報系I/Fフラグ1(I/F済)
+-- 2010/02/18 Ver.1.7 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR START
+--      AND    xsti.info_interface_flag  = cv_info_interface_flag       -- 情報系I/Fフラグ1(I/F済)
+      AND      xsti.info_interface_flag    IN  (   cv_info_interface_flag     -- 情報系I/Fフラグ1(I/F済)
+                                                 , cv_info_interface_flag_off -- 情報系I/Fフラグ2(対象外)
+                                               )
+-- 2010/02/18 Ver.1.7 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR END
       AND    xsti.gl_interface_flag    = cv_unsettled_interface_flag  -- 仕訳作成フラグ0(仕訳作成未済)
       AND    xsti.selling_date         = i_get_rec.xsti_selling_date  -- 売上計上日
       AND    xsti.base_code            = i_get_rec.base_code          -- 売上振替先拠点コード

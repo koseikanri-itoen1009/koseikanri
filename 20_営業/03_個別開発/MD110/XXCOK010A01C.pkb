@@ -7,7 +7,7 @@ AS
  * Description      : 売上実績振替情報テーブルのデータから、
                       情報系システムへI/Fする「実績振替」を作成します。
  * MD.050           : 売上実績振替情報のI/Fファイル作成 (MD050_COK_010_A01)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -34,6 +34,8 @@ AS
  *                                       【消費税額】売上金額(税込) - 売上金額(税抜)           -> 「0」固定
  *                                       【売上数量】数量                                      -> 基準単位数量
  *                                       【納品単価】納品単価÷納品単位１あたりの基準単位数量  -> 基準単位単価
+ *  2010/02/18    1.5   K.Yamaguchi      [障害E_本稼動_01600]非在庫品目の場合納品数量を０とする
+ *                                                           変動電気料を連携対象外とする
  *
  *****************************************************************************************/
 --
@@ -90,6 +92,9 @@ AS
   cv_msg_ccp1_90000          CONSTANT VARCHAR2(50)   := 'APP-XXCCP1-90000';                  -- 対象件数出力
   cv_msg_ccp1_90001          CONSTANT VARCHAR2(50)   := 'APP-XXCCP1-90001';                  -- 成功件数出力
   cv_msg_ccp1_90002          CONSTANT VARCHAR2(50)   := 'APP-XXCCP1-90002';                  -- エラー件数出力
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
+  cv_msg_ccp1_90003          CONSTANT VARCHAR2(50)   := 'APP-XXCCP1-90003';                  -- スキップ件数出力
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
   cv_msg_ccp1_90004          CONSTANT VARCHAR2(50)   := 'APP-XXCCP1-90004';                  -- 正常終了メッセージ
   cv_msg_ccp1_90005          CONSTANT VARCHAR2(50)   := 'APP-XXCCP1-90005';                  -- 警告終了メッセージ
   cv_msg_ccp1_90006          CONSTANT VARCHAR2(50)   := 'APP-XXCCP1-90006';                  -- エラー終了メッセージ
@@ -100,6 +105,9 @@ AS
   cv_msg_cok1_00067          CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-00067';                  -- ディレクトリ出力
   cv_msg_cok1_00006          CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-00006';                  -- ファイル名出力
   cv_msg_cok1_00009          CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-00009';                  -- ファイル存在チェックエラー
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
+  cv_msg_cok1_00028          CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-00028';                  -- 業務日付取得エラー
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
   cv_msg_cok1_10070          CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-10070';                  -- ロック取得エラー
   cv_msg_cok1_10071          CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-10071';                  -- 更新エラー
 --
@@ -107,6 +115,9 @@ AS
   cv_prof_company_code       CONSTANT VARCHAR2(50)   := 'XXCOK1_AFF1_COMPANY_CODE';          -- 会社コード
   cv_prof_dire_path          CONSTANT VARCHAR2(50)   := 'XXCOK1_SELLING_DIRE_PATH';          -- 売上実績データディレクトリパス
   cv_prof_file_name          CONSTANT VARCHAR2(50)   := 'XXCOK1_SELLING_FILE_NAME';          -- 売上実績データファイル名
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
+  cv_prof_elec_change        CONSTANT VARCHAR2(50)   := 'XXCOK1_ELEC_CHANGE_ITEM_CODE';      -- 電気料（変動）品目コード
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
 --
   -- *** 定数(CSVファイルオープン) ***
   cv_fopen_open_mode         CONSTANT VARCHAR2(1)    := 'w';
@@ -115,7 +126,16 @@ AS
   -- *** 定数(情報系I/Fフラグ) ***
   cv_info_if_flag_yet        CONSTANT VARCHAR2(1)    := '0';                                 -- 未済
   cv_info_if_flag_over       CONSTANT VARCHAR2(1)    := '1';                                 -- 済
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
+  cv_info_if_flag_off        CONSTANT VARCHAR2(1)    := '2';                                 -- 対象外
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
 --
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
+  -- *** 定数(参照タイプ) ***
+  cv_lookup_type_01          CONSTANT VARCHAR2(30)   := 'XXCOS1_NO_INV_ITEM_CODE';           -- 非在庫品目
+  -- *** 定数(参照タイプ・有効フラグ) ***
+  cv_enable                  CONSTANT VARCHAR2(1)   := 'Y'; -- 有効
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
 -- ==============
 -- 共通例外宣言部
 -- ==============
@@ -127,6 +147,13 @@ AS
   global_api_others_expt    EXCEPTION;
 --
   PRAGMA EXCEPTION_INIT(global_api_others_expt,-20000);
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
+  --==================================================
+  -- グローバル例外
+  --==================================================
+  --*** エラー終了 ***
+  error_proc_expt           EXCEPTION;
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
 --
   -- ==============
   -- グローバル変数
@@ -134,12 +161,21 @@ AS
   gn_target_cnt         NUMBER              DEFAULT NULL;   -- 対象件数
   gn_normal_cnt         NUMBER              DEFAULT NULL;   -- 正常件数
   gn_error_cnt          NUMBER              DEFAULT NULL;   -- エラー件数
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
+  gn_skip_cnt           NUMBER              DEFAULT 0;      -- スキップ件数
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
 --
   gd_sysdate            DATE                DEFAULT NULL;   -- システム日付
   gv_prof_company_code  VARCHAR2(100)       DEFAULT NULL;   -- 会社コード
   gv_prof_dire_path     VARCHAR2(100)       DEFAULT NULL;   -- 売上実績データディレクトリパス
   gv_prof_file_name     VARCHAR2(100)       DEFAULT NULL;   -- 売上実績データファイル名
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
+  gv_prof_elec_change   VARCHAR2(100)       DEFAULT NULL;   -- 電気料（変動）品目コード
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
   g_file_handle         UTL_FILE.FILE_TYPE  DEFAULT NULL;   -- ファイルハンドル
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
+  gd_process_date       DATE                DEFAULT NULL;   -- 業務処理日付
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
 --
   -- =================================
   -- ユーザー定義グローバルカーソル
@@ -164,7 +200,23 @@ AS
          , xsti.h_c                   AS xsti_h_c                  -- H＆C
          , xsti.column_no             AS xsti_column_no            -- コラムNo.
          , xsti.item_code             AS xsti_item_code            -- 品目コード
-         , xsti.qty                   AS xsti_qty                  -- 数量
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR START
+--         , xsti.qty                   AS xsti_qty                  -- 数量
+         , CASE
+             WHEN EXISTS( SELECT 'X'
+                          FROM fnd_lookup_values_vl     flvv
+                          WHERE flvv.lookup_type        = cv_lookup_type_01 -- 非在庫品目
+                            AND flvv.lookup_code        = xsti.item_code
+                            AND flvv.enabled_flag       = cv_enable
+                            AND gd_process_date   BETWEEN NVL( flvv.start_date_active, gd_process_date )
+                                                      AND NVL( flvv.end_date_active  , gd_process_date )
+                  )
+             THEN
+               0
+             ELSE
+               xsti.qty
+           END                        AS xsti_qty                  -- 数量
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR END
          , xsti.delivery_unit_price   AS xsti_delivery_unit_price  -- 納品単価
          , xsti.selling_amt           AS xsti_selling_amt          -- 売上金額
          , xsti.selling_amt_no_tax    AS xsti_selling_amt_notax    -- 売上金額(税抜き)
@@ -202,7 +254,12 @@ AS
     ov_errbuf   OUT VARCHAR2          -- エラー・メッセージ
   , ov_retcode  OUT VARCHAR2          -- リターン・コード
   , ov_errmsg   OUT VARCHAR2          -- ユーザー・エラー・メッセージ
-  , in_idx      IN  BINARY_INTEGER )  -- カーソル取得値格納レコード
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR START
+--  , in_idx      IN  BINARY_INTEGER )  -- カーソル取得値格納レコード
+  , in_idx      IN  BINARY_INTEGER    -- カーソル取得値格納レコード
+  , iv_if_flag  IN  VARCHAR2          -- 情報系連携フラグ
+  )
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR END
   IS
     -- ============
     -- ローカル定数
@@ -251,7 +308,10 @@ AS
       --売上実績振替情報テーブルを更新
       -- =============================
       UPDATE xxcok_selling_trns_info xsti                               -- 売上実績振替情報テーブル
-         SET xsti.info_interface_flag     =  cv_info_if_flag_over       -- 情報系I/Fフラグ='1'(I/F済)
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR START
+--         SET xsti.info_interface_flag     =  cv_info_if_flag_over       -- 情報系I/Fフラグ='1'(I/F済)
+         SET xsti.info_interface_flag     =  iv_if_flag                 -- 情報系I/Fフラグ
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR END
            , xsti.last_updated_by         =  cn_last_updated_by         -- 最終更新者
            , xsti.last_update_date        =  SYSDATE                    -- 最終更新日
            , xsti.last_update_login       =  cn_last_update_login       -- 最終更新ログインID
@@ -321,7 +381,10 @@ AS
       ov_retcode := cv_status_error;
     --*** 売上実績振替情報更新エラー ***
     WHEN update_err_expt THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_out_msg, 1, 5000 );
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR START
+--      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_out_msg, 1, 5000 );
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR END
       ov_retcode := cv_status_error;
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
@@ -553,6 +616,9 @@ AS
     gn_target_cnt := 0;  -- 対象件数
     gn_normal_cnt := 0;  -- 正常件数
     gn_error_cnt  := 0;  -- エラー件数
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
+    gn_skip_cnt   := 0;  -- スキップ件数
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
 --
     -- ========================================
     -- 売上実績振替情報テーブルからデータを抽出
@@ -576,44 +642,101 @@ AS
       gn_target_cnt := g_xsti_tab.COUNT;
     END IF;
 --
-    -- ======
-    -- ループ
-    -- ======
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR START
+--    -- ======
+--    -- ループ
+--    -- ======
+--    <<get_selling_trns_info_loop>>
+--    FOR ln_idx IN g_xsti_tab.FIRST .. g_xsti_tab.LAST LOOP
+----
+--      -- ==============================
+--      -- 売上実績データ（実績振替）出力
+--      -- ==============================
+--      output_csvfile(
+--        ov_errbuf   =>  lv_errbuf   -- エラー・メッセージ
+--      , ov_retcode  =>  lv_retcode  -- リターン・コード
+--      , ov_errmsg   =>  lv_errmsg   -- ユーザー・エラー・メッセージ
+--      , in_idx      =>  ln_idx      -- カーソル取得値格納レコード
+--      );
+--      IF( lv_retcode = cv_status_error ) THEN
+--        RAISE loop_expt;
+--      END IF;
+----
+--      -- =====================
+--      --成功処理件数のカウント
+--      -- =====================
+--      gn_normal_cnt := gn_normal_cnt + cn_count_1;
+----
+--      -- ====================
+--      -- 売上実績振替情報更新
+--      -- ====================
+--      update_selling_trns_info(
+--        ov_errbuf   =>  lv_errbuf   -- エラー・メッセージ
+--      , ov_retcode  =>  lv_retcode  -- リターン・コード
+--      , ov_errmsg   =>  lv_errmsg   -- ユーザー・エラー・メッセージ
+--      , in_idx      =>  ln_idx      -- カーソル取得値格納レコード
+--      );
+--      IF( lv_retcode = cv_status_error ) THEN
+--        RAISE loop_expt;
+--      END IF;
+----
+--    END LOOP get_selling_trns_info_loop;
+    --==================================================
+    -- 実績振替情報ループ
+    --==================================================
     <<get_selling_trns_info_loop>>
-    FOR ln_idx IN g_xsti_tab.FIRST .. g_xsti_tab.LAST LOOP
---
-      -- ==============================
-      -- 売上実績データ（実績振替）出力
-      -- ==============================
-      output_csvfile(
-        ov_errbuf   =>  lv_errbuf   -- エラー・メッセージ
-      , ov_retcode  =>  lv_retcode  -- リターン・コード
-      , ov_errmsg   =>  lv_errmsg   -- ユーザー・エラー・メッセージ
-      , in_idx      =>  ln_idx      -- カーソル取得値格納レコード
-      );
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE loop_expt;
+    FOR i IN 1 .. g_xsti_tab.COUNT LOOP
+      --==================================================
+      -- 処理対象外（変動電気料）
+      --==================================================
+      IF( g_xsti_tab( i ).xsti_item_code = gv_prof_elec_change ) THEN
+        --==================================================
+        -- 売上実績振替情報更新
+        --==================================================
+        update_selling_trns_info(
+          ov_errbuf   =>  lv_errbuf               -- エラー・メッセージ
+        , ov_retcode  =>  lv_retcode              -- リターン・コード
+        , ov_errmsg   =>  lv_errmsg               -- ユーザー・エラー・メッセージ
+        , in_idx      =>  i                       -- カーソル取得値格納レコード
+        , iv_if_flag  =>  cv_info_if_flag_off     -- 対象外
+        );
+        IF( lv_retcode = cv_status_error ) THEN
+          RAISE loop_expt;
+        END IF;
+        gn_skip_cnt := gn_skip_cnt + 1;
+      --==================================================
+      -- 処理対象
+      --==================================================
+      ELSE
+        --==================================================
+        -- 売上実績データ（実績振替）出力
+        --==================================================
+        output_csvfile(
+          ov_errbuf   =>  lv_errbuf   -- エラー・メッセージ
+        , ov_retcode  =>  lv_retcode  -- リターン・コード
+        , ov_errmsg   =>  lv_errmsg   -- ユーザー・エラー・メッセージ
+        , in_idx      =>  i           -- カーソル取得値格納レコード
+        );
+        IF( lv_retcode = cv_status_error ) THEN
+          RAISE loop_expt;
+        END IF;
+        --==================================================
+        -- 売上実績振替情報更新
+        --==================================================
+        update_selling_trns_info(
+          ov_errbuf   =>  lv_errbuf               -- エラー・メッセージ
+        , ov_retcode  =>  lv_retcode              -- リターン・コード
+        , ov_errmsg   =>  lv_errmsg               -- ユーザー・エラー・メッセージ
+        , in_idx      =>  i                       -- カーソル取得値格納レコード
+        , iv_if_flag  =>  cv_info_if_flag_over    -- 済
+        );
+        IF( lv_retcode = cv_status_error ) THEN
+          RAISE loop_expt;
+        END IF;
+        gn_normal_cnt := gn_normal_cnt + 1;
       END IF;
---
-      -- =====================
-      --成功処理件数のカウント
-      -- =====================
-      gn_normal_cnt := gn_normal_cnt + cn_count_1;
---
-      -- ====================
-      -- 売上実績振替情報更新
-      -- ====================
-      update_selling_trns_info(
-        ov_errbuf   =>  lv_errbuf   -- エラー・メッセージ
-      , ov_retcode  =>  lv_retcode  -- リターン・コード
-      , ov_errmsg   =>  lv_errmsg   -- ユーザー・エラー・メッセージ
-      , in_idx      =>  ln_idx      -- カーソル取得値格納レコード
-      );
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE loop_expt;
-      END IF;
---
     END LOOP get_selling_trns_info_loop;
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR END
 --
     -- ====================
     -- 出力パラメータの設定
@@ -700,6 +823,24 @@ AS
     -- 2.システム日付を取得
     -- ====================
     gd_sysdate := SYSDATE;
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
+    --==================================================
+    -- 業務日付取得
+    --==================================================
+    gd_process_date := TRUNC( xxccp_common_pkg2.get_process_date );
+    IF( gd_process_date IS NULL ) THEN
+      lv_out_msg := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appli_name_xxcok
+                    , iv_name                 => cv_msg_cok1_00028
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_out_msg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
+    END IF;
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
 --
     -- ====================
     -- 3.プロファイルの取得
@@ -725,6 +866,13 @@ AS
       RAISE prof_err_expt;
     END IF;
 --
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
+    gv_prof_elec_change := FND_PROFILE.VALUE( cv_prof_elec_change );  -- 電気料（変動）品目コード
+    IF( gv_prof_elec_change IS NULL ) THEN
+      lv_null_prof := cv_prof_elec_change;
+      RAISE prof_err_expt;
+    END IF;
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
     -- =============================================================
     --4.プロファイル取得後、ディレクトリとファイル名をメッセージ出力
     --  空行を出力
@@ -785,6 +933,13 @@ AS
     ov_retcode := lv_retcode;
 --
   EXCEPTION
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
+    -- *** エラー終了 ***
+    WHEN error_proc_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_out_msg, 1, 5000 );
+      ov_retcode := cv_status_error;
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
     --*** プロファイル取得エラー ***
     WHEN prof_err_expt THEN
       lv_out_msg := xxccp_common_pkg.get_msg(
@@ -1037,6 +1192,20 @@ AS
                   , in_new_line  =>  cn_number_0
                   );
 --
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
+    -- スキップ件数出力
+    lv_out_msg := xxccp_common_pkg.get_msg(
+                    iv_application           => cv_appli_name_xxccp
+                  , iv_name                  => cv_msg_ccp1_90003
+                  , iv_token_name1           => cv_tkn_count
+                  , iv_token_value1          => TO_CHAR( gn_skip_cnt )
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f(
+                    in_which                 => FND_FILE.OUTPUT
+                  , iv_message               => lv_out_msg
+                  , in_new_line              => 0
+                  );
+-- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
     --エラー件数出力
     lv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application   =>  cv_appli_name_xxccp
