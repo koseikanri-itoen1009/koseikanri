@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A06C (body)
  * Description      : 消化ＶＤ掛率作成
  * MD.050           : 消化ＶＤ掛率作成 MD050_COS_004_A06
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009/03/19    1.6   T.Kitajima       [T1_0098]保管場所抽出条件修正
  *  2009/04/13    1.7   N.Maeda          [T1_0496]VDコラム別取引情報明細の数量使用部
  *                                                  ⇒VDコラム別取引情報明細の補充数へ変更
+ *  2009/05/01    1.8   N.Maeda          [T1_0496]リカバリ用パラメータ追加
  *
  *****************************************************************************************/
 --
@@ -215,6 +216,9 @@ AS
   cv_tkn_param1                 CONSTANT VARCHAR2(100) := 'PARAM1';               --第１入力パラメータ
   cv_tkn_param2                 CONSTANT VARCHAR2(100) := 'PARAM2';               --第２入力パラメータ
   cv_tkn_param3                 CONSTANT VARCHAR2(100) := 'PARAM3';               --第３入力パラメータ
+--******************************** 2009/04/01 1.8 N.Maeda ADD START **************************************************
+  cv_tkn_param4                 CONSTANT VARCHAR2(100) := 'PARAM4';               --第４入力パラメータ
+--******************************** 2009/05/01 1.8 N.Maeda ADD END   **************************************************
   cv_tkn_count1                 CONSTANT VARCHAR2(100) := 'COUNT1';               --件数１
   cv_tkn_count2                 CONSTANT VARCHAR2(100) := 'COUNT2';               --件数２
   cv_tkn_count3                 CONSTANT VARCHAR2(100) := 'COUNT3';               --件数３
@@ -426,6 +430,9 @@ AS
     iv_regular_any_class      IN      VARCHAR2,         -- 1.定期随時区分
     iv_base_code              IN      VARCHAR2,         -- 2.拠点コード
     iv_customer_number        IN      VARCHAR2,         -- 3.顧客コード
+--******************************** 2009/04/01 1.8 N.Maeda ADD START **************************************************
+    iv_process_date           IN      VARCHAR2,         -- 4.業務日付
+--******************************** 2009/05/01 1.8 N.Maeda ADD END   **************************************************
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -474,7 +481,11 @@ AS
                                    iv_token_name2        => cv_tkn_param2,
                                    iv_token_value2       => iv_base_code,
                                    iv_token_name3        => cv_tkn_param3,
-                                   iv_token_value3       => iv_customer_number
+                                   iv_token_value3       => iv_customer_number,
+--******************************** 2009/04/01 1.8 N.Maeda ADD START **************************************************
+                                   iv_token_name4        => cv_tkn_param4,
+                                   iv_token_value4       => iv_process_date
+--******************************** 2009/05/01 1.8 N.Maeda ADD END   **************************************************
                                  );
     --
     FND_FILE.PUT_LINE(
@@ -511,6 +522,11 @@ AS
     gt_regular_any_class      := iv_regular_any_class;
     gt_base_code              := iv_base_code;
     gt_customer_number        := iv_customer_number;
+--******************************** 2009/04/01 1.8 N.Maeda ADD START **************************************************
+    IF ( iv_process_date IS NOT NULL ) THEN
+      gd_process_date           := TRUNC ( TO_DATE ( iv_process_date , cv_fmt_date ) );
+    END IF;
+--******************************** 2009/05/01 1.8 N.Maeda ADD END   **************************************************
 --
   EXCEPTION
 --
@@ -592,8 +608,13 @@ AS
     --============================================
     -- 1.業務日付取得
     --============================================
-    gd_process_date           := TRUNC( xxccp_common_pkg2.get_process_date );
-    --gd_process_date           := TO_DATE( '2009/03/03', 'YYYY/MM/DD' ); --debug
+--******************************** 2009/05/01 1.8 N.Maeda MOD START **************************************************
+--    gd_process_date           := TRUNC( xxccp_common_pkg2.get_process_date );
+--    --gd_process_date           := TO_DATE( '2009/03/03', 'YYYY/MM/DD' ); --debug
+    IF ( gd_process_date IS NULL ) THEN
+      gd_process_date           := TRUNC( xxccp_common_pkg2.get_process_date );
+    END IF;
+--******************************** 2009/05/01 1.8 N.Maeda MOD END   **************************************************
 --
     IF ( gd_process_date IS NULL ) THEN
       RAISE global_proc_date_err_expt;
@@ -1556,14 +1577,20 @@ AS
         xvch.change_out_time_100            change_out_time_100,           --つり銭切れ時間100円
         xvch.change_out_time_10             change_out_time_10,            --つり銭切れ時間10円
         xvcl.sold_out_class                 sold_out_class,                --売切区分
-        xvcl.sold_out_time                  sold_out_time                  --売切時間
+        xvcl.sold_out_time                  sold_out_time,                 --売切時間
+--******************************** 2009/05/01 1.8 N.Maeda ADD START **************************************************
+        xvch.customer_number                customer_number                --顧客コード
+--******************************** 2009/05/01 1.8 N.Maeda ADD END   **************************************************
       FROM
         xxcos_vd_column_headers             xvch,                          --VDコラム別取引ヘッダテーブル
         xxcos_vd_column_lines               xvcl                           --VDコラム別取引ヘッダ明細テーブル
       WHERE
         xvch.order_no_hht                   = xvcl.order_no_hht
       AND xvch.digestion_ln_number          = xvcl.digestion_ln_number
-      AND xvch.customer_number              = it_customer_number
+--******************************** 2009/05/01 1.8 N.Maeda MOD START **************************************************
+--      AND xvch.customer_number              = it_customer_number
+      AND xvch.customer_number              = NVL( it_customer_number , xvch.customer_number )
+--******************************** 2009/05/01 1.8 N.Maeda MOD END   **************************************************
       AND ( ( ( xvch.digestion_vd_rate_maked_date IS NULL)
         AND ( xvch.dlv_date <= it_digestion_due_date) )
         OR ( ( xvch.digestion_vd_rate_maked_date >= it_pre_digestion_due_date )
@@ -1797,7 +1824,10 @@ AS
       --
       g_xvdl_tab(gn_xvdl_idx).vd_digestion_ln_id      := lt_vd_digestion_ln_id;
       g_xvdl_tab(gn_xvdl_idx).vd_digestion_hdr_id     := it_vd_digestion_hdr_id;
-      g_xvdl_tab(gn_xvdl_idx).customer_number         := it_customer_number;
+--******************************** 2009/05/01 1.8 N.Maeda ADD START **************************************************
+--      g_xvdl_tab(gn_xvdl_idx).customer_number         := it_customer_number;
+      g_xvdl_tab(gn_xvdl_idx).customer_number         := l_vdc_rec.customer_number;
+--******************************** 2009/05/01 1.8 N.Maeda ADD END   **************************************************
       g_xvdl_tab(gn_xvdl_idx).digestion_due_date      := it_digestion_due_date;
       g_xvdl_tab(gn_xvdl_idx).digestion_ln_number     := ln_idx1;
       g_xvdl_tab(gn_xvdl_idx).item_code               := l_vdc_rec.item_code_self;
@@ -3089,6 +3119,9 @@ AS
     iv_regular_any_class      IN      VARCHAR2,         -- 1.定期随時区分
     iv_base_code              IN      VARCHAR2,         -- 2.拠点コード
     iv_customer_number        IN      VARCHAR2,         -- 3.顧客コード
+--******************************** 2009/04/01 1.8 N.Maeda ADD START **************************************************
+    iv_process_date           IN      VARCHAR2,        -- 4.業務日付
+--******************************** 2009/05/01 1.8 N.Maeda ADD END   **************************************************
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -3574,6 +3607,9 @@ AS
       iv_regular_any_class    => iv_regular_any_class,       -- 1.定期随時区分
       iv_base_code            => iv_base_code,               -- 2.拠点コード
       iv_customer_number      => iv_customer_number,         -- 3.顧客コード
+--******************************** 2009/04/01 1.8 N.Maeda ADD START **************************************************
+      iv_process_date         => iv_process_date,            -- 4.業務日付
+--******************************** 2009/05/01 1.8 N.Maeda ADD END   **************************************************
       ov_errbuf               => lv_errbuf,                  -- エラー・メッセージ
       ov_retcode              => lv_retcode,                 -- リターン・コード
       ov_errmsg               => lv_errmsg                   -- ユーザー・エラー・メッセージ
@@ -4332,7 +4368,10 @@ AS
     retcode       OUT VARCHAR2,      --   リターン・コード    --# 固定 #
     iv_regular_any_class      IN      VARCHAR2,         -- 1.定期随時区分
     iv_base_code              IN      VARCHAR2,         -- 1.拠点コード
-    iv_customer_number        IN      VARCHAR2          -- 2.顧客コード
+    iv_customer_number        IN      VARCHAR2,          -- 2.顧客コード
+--******************************** 2009/04/01 1.8 N.Maeda ADD START **************************************************
+    iv_process_date           IN      VARCHAR2
+--******************************** 2009/05/01 1.8 N.Maeda ADD END   **************************************************
   )
 --
 --
@@ -4390,6 +4429,9 @@ AS
        iv_regular_any_class                -- 1.定期随時区分
       ,iv_base_code                        -- 2.拠点コード
       ,iv_customer_number                  -- 3.顧客コード
+--******************************** 2009/04/01 1.8 N.Maeda ADD START **************************************************
+      ,iv_process_date                     -- 4.業務日付
+--******************************** 2009/05/01 1.8 N.Maeda ADD END   **************************************************
       ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
