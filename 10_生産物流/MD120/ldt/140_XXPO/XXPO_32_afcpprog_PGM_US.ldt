@@ -3894,13 +3894,13 @@ BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO360004C1"
     
     BEGIN DFF_SEGMENT "iv_art1" "ATTRIBUTE14"
       OWNER = "SCS_YTAKAYAMA1"
-      LAST_UPDATE_DATE = "2008/06/18 15:24:17"
+      LAST_UPDATE_DATE = "2008/06/18 17:45:14"
       COLUMN_SEQ_NUM = "140"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO_SECURITY"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
       DISPLAY_SIZE = "7"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -3911,13 +3911,13 @@ BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO360004C1"
     
     BEGIN DFF_SEGMENT "iv_art2" "ATTRIBUTE15"
       OWNER = "SCS_YTAKAYAMA1"
-      LAST_UPDATE_DATE = "2008/06/18 15:24:18"
+      LAST_UPDATE_DATE = "2008/06/18 17:45:14"
       COLUMN_SEQ_NUM = "150"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO_SECURITY"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
       DISPLAY_SIZE = "7"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -3928,13 +3928,13 @@ BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO360004C1"
     
     BEGIN DFF_SEGMENT "iv_art3" "ATTRIBUTE16"
       OWNER = "SCS_YTAKAYAMA1"
-      LAST_UPDATE_DATE = "2008/06/18 15:24:18"
+      LAST_UPDATE_DATE = "2008/06/18 17:45:14"
       COLUMN_SEQ_NUM = "160"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO_SECURITY"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
       DISPLAY_SIZE = "7"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -4018,11 +4018,11 @@ BEGIN PROGRAM "XXPO360004C1" "XXPO"
   * @param iv_crowd3 ŒQ‚R\n\
   * @rep:paraminfo {@rep:type XXCMN_S_4_CHAR} {@rep:displayed Y}\n\
   * @param iv_art1 •i–Ú‚P\n\
-  * @rep:paraminfo {@rep:type XXPO_ITEM_NO_SECURITY} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
   * @param iv_art2 •i–Ú‚Q\n\
-  * @rep:paraminfo {@rep:type XXPO_ITEM_NO_SECURITY} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
   * @param iv_art3 •i–Ú‚R\n\
-  * @rep:paraminfo {@rep:type XXPO_ITEM_NO_SECURITY} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
   * @param iv_security_flg ƒZƒLƒ…ƒŠƒeƒB‹æ•ª\n\
   * @rep:paraminfo {@rep:type XXCMN_S_1_CHAR} {@rep:displayed N} {@rep:required}\n\
   */"
@@ -4283,13 +4283,13 @@ BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO360004C2"
     
     BEGIN DFF_SEGMENT "iv_art1" "ATTRIBUTE14"
       OWNER = "SCS_YTAKAYAMA1"
-      LAST_UPDATE_DATE = "2008/06/18 15:25:42"
+      LAST_UPDATE_DATE = "2008/06/18 17:45:58"
       COLUMN_SEQ_NUM = "140"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO_SECURITY"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
       DISPLAY_SIZE = "7"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -4300,13 +4300,13 @@ BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO360004C2"
     
     BEGIN DFF_SEGMENT "iv_art2" "ATTRIBUTE15"
       OWNER = "SCS_YTAKAYAMA1"
-      LAST_UPDATE_DATE = "2008/06/18 15:25:42"
+      LAST_UPDATE_DATE = "2008/06/18 17:45:58"
       COLUMN_SEQ_NUM = "150"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO_SECURITY"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
       DISPLAY_SIZE = "7"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -4317,13 +4317,13 @@ BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO360004C2"
     
     BEGIN DFF_SEGMENT "iv_art3" "ATTRIBUTE16"
       OWNER = "SCS_YTAKAYAMA1"
-      LAST_UPDATE_DATE = "2008/06/18 15:25:42"
+      LAST_UPDATE_DATE = "2008/06/18 17:45:58"
       COLUMN_SEQ_NUM = "160"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO_SECURITY"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
       DISPLAY_SIZE = "7"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -4407,11 +4407,11 @@ BEGIN PROGRAM "XXPO360004C2" "XXPO"
   * @param iv_crowd3 ŒQ‚R\n\
   * @rep:paraminfo {@rep:type XXCMN_S_4_CHAR} {@rep:displayed Y}\n\
   * @param iv_art1 •i–Ú‚P\n\
-  * @rep:paraminfo {@rep:type XXPO_ITEM_NO_SECURITY} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
   * @param iv_art2 •i–Ú‚Q\n\
-  * @rep:paraminfo {@rep:type XXPO_ITEM_NO_SECURITY} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
   * @param iv_art3 •i–Ú‚R\n\
-  * @rep:paraminfo {@rep:type XXPO_ITEM_NO_SECURITY} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
   * @param iv_security_flg ƒZƒLƒ…ƒŠƒeƒB‹æ•ª\n\
   * @rep:paraminfo {@rep:type XXCMN_S_1_CHAR} {@rep:displayed N} {@rep:required}\n\
   */"
