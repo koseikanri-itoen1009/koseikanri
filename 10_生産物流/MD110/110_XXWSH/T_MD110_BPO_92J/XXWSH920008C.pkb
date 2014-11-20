@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXWSH920008C
+create or replace PACKAGE BODY XXWSH920008C
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO92J
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/20   1.0   SCS北寒寺         初回作成
+ *  2008/11/28   1.1   Oracle 北寒寺正夫 本番障害246対応
+ *  2008/11/29   1.2   SCS宮田           ロック対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -288,10 +290,19 @@ AS
     lot_no         ic_lots_mst.lot_no%TYPE,     -- ロットNo
     p_date         ic_lots_mst.attribute1%TYPE, -- 製造年月日
     fix_no         ic_lots_mst.attribute2%TYPE, -- 固有番号
-    use_by_date    ic_lots_mst.attribute3%TYPE  -- 賞味期限
+    use_by_date    ic_lots_mst.attribute3%TYPE, -- 賞味期限
+-- Ver1.01 M.Hokkanji Start
+    max_rev_qty    NUMBER,                      -- 最大引当可能数
+    max_lot_no     ic_lots_mst.lot_no%TYPE,     -- ロットNo
+    rev_qty        NUMBER                       -- 初期引当数量
+-- Ver1.01 M.Hokkanji End
   );
   TYPE check_tbl IS TABLE OF check_rec INDEX BY PLS_INTEGER;
   gr_check_tbl  check_tbl;
+-- Ver1.01 M.Hokkanji Start
+   gv_ship_sql VARCHAR2(8000); --出荷SQL
+   gv_move_sql VARCHAR2(8000); --移動SQL
+-- Ver1.01 M.Hokkanji End
 --
   -- 移動ロット詳細データを格納するレコード
   TYPE move_rec IS RECORD(
@@ -584,6 +595,9 @@ AS
     gn_target_cnt := gn_target_cnt + 1;
 --
     -- 配列に存在しないので格納して添え字を返す
+-- Ver1.01 M.Hokkanji Start
+   FND_FILE.PUT_LINE(FND_FILE.LOG,'処理依頼NO：' || iv_request_no);
+-- Ver1.01 M.Hokkanji End
     gr_number_tbl(NVL(gr_number_tbl.LAST,0) + 1).request_no := iv_request_no;
     RETURN ln_cnt;
 --
@@ -1713,7 +1727,10 @@ AS
                                 ' p.reserve_order, oh.head_sales_branch, oh.deliver_to,oh.arrival_time_from, ' ||
                                 ' oh.request_no ';
     -- FOR句の合体4
-    lv_fwd_sql := lv_fwd_sql || ' FOR UPDATE OF ol.order_line_id NOWAIT';
+-- 2008/11/29 v1.2 mod start
+--    lv_fwd_sql := lv_fwd_sql || ' FOR UPDATE OF ol.order_line_id NOWAIT';
+    lv_fwd_sql := lv_fwd_sql || ' FOR UPDATE OF ol.order_line_id ';
+-- 2008/11/29 v1.2 mod end
 --
     -- 作成したSQL文を返す
     RETURN lv_fwd_sql;
@@ -1862,7 +1879,10 @@ AS
                                 ' ih.shipped_locat_code, NVL(ml.designated_production_date,TO_DATE(''' || gv_min_default_date || ''',''YYYY/MM/DD'')) DESC, ' ||
                                 ' ih.arrival_time_from, ih.mov_num ';
     -- FOR句の合体4
-    lv_mov_sql := lv_mov_sql || ' FOR UPDATE OF ml.mov_line_id NOWAIT';
+-- 2008/11/29 v1.2 mod start
+--    lv_mov_sql := lv_mov_sql || ' FOR UPDATE OF ml.mov_line_id NOWAIT';
+    lv_mov_sql := lv_mov_sql || ' FOR UPDATE OF ml.mov_line_id ';
+-- 2008/11/29 v1.2 mod end
 --
     -- 作成したSQL文を返す
     RETURN lv_mov_sql;
@@ -2203,6 +2223,9 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
+-- Ver1.01 M.Hokkanji Start
+    FND_FILE.PUT_LINE(FND_FILE.LOG,iv_fwd_sql);
+-- Ver1.01 M.Hokkanji End
     -- カーソルオープン
     OPEN fwd_cur FOR iv_fwd_sql USING gv_cons_biz_t_deliv
                                     , gv_yyyymmdd_from
@@ -2315,6 +2338,9 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
+-- Ver1.01 M.Hokkanji Start
+    FND_FILE.PUT_LINE(FND_FILE.LOG,iv_mov_sql);
+-- Ver1.01 M.Hokkanji End
     -- カーソルオープン
     OPEN mov_cur FOR iv_mov_sql USING gv_cons_biz_t_move
                                     , gv_cons_move_type
@@ -2508,6 +2534,13 @@ AS
 --
   BEGIN
 --
+-- Ver1.01 M.Hokkanji Start
+    -- 指示数量が0の場合
+    IF (gr_demand_tbl(in_d_cnt).ordered_quantity = 0)THEN
+      -- 引当はおこなわない
+      RETURN 1;
+    END IF;
+-- Ver1.01 M.Hokkanji End
     BEGIN
       -- 出荷指示(自動)、移動指示(自動)を検索する
       SELECT ls.ship_req_a_reserve
@@ -2556,6 +2589,13 @@ AS
                                                            , gr_supply_tbl(in_s_cnt).lot_id               -- ロットID
                                                            , gr_demand_tbl(in_d_cnt).schedule_ship_date); -- 有効日
     END IF;
+-- Ver1.01 M.Hokkanji Start
+   -- 暫定今保持している引当数量より大きい場合に最大引当可能数を渡す
+   IF (NVL(gr_check_tbl(1).max_rev_qty,0) < NVL(gr_supply_tbl(in_s_cnt).r_quantity,0)) THEN
+     gr_check_tbl(1).max_rev_qty := gr_supply_tbl(in_s_cnt).r_quantity;
+     gr_check_tbl(1).max_lot_no  :=  gr_supply_tbl(in_s_cnt).lot_no;
+   END IF;
+-- Ver1.01 M.Hokkanji End
     -- 引当可能数が０以下の場合
     IF ( gr_supply_tbl(in_s_cnt).r_quantity <= 0 ) THEN
       -- 引当はおこなわない
@@ -2960,10 +3000,14 @@ AS
     -- ***************************************
 --
     -- 1.「ロット逆転」エラーメッセージ、「鮮度不備」エラーメッセージ表示
-    -- 引当数量が０で警告がある場合
-    IF ( ( gr_demand_tbl(in_d_cnt).reserved_quantity = 0 )
-     AND ( gr_check_tbl(1).warnning_class IS NOT NULL    ) )
-    THEN
+    -- 引当数量が指示数量と一致しないで警告がある場合
+-- Ver1.01 M.Hokkanji Start
+--    IF ( ( gr_demand_tbl(in_d_cnt).reserved_quantity = 0 )
+--     AND ( gr_check_tbl(1).warnning_class IS NOT NULL    ) )
+     IF  ( NVL(gr_demand_tbl(in_d_cnt).reserved_quantity,0) <> NVL(gr_demand_tbl(in_d_cnt).ordered_quantity,0))
+     AND (NVL(gr_demand_tbl(in_d_cnt).ordered_quantity,0) > 0)
+     THEN
+-- Ver1.01 M.Hokkanji End
 --
       -- 警告区分が「ロット逆転」の場合
       IF ( gr_check_tbl(1).warnning_class = gv_cons_wrn_reversal ) THEN
@@ -3025,6 +3069,16 @@ AS
                                                      , 1
                                                      , 5000);
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_msgbuf);
+-- Ver1.01 M.Hokkanji Start
+      ELSE
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'引当数量を引当できませんでした'
+                                       || ' 依頼No:' || gr_demand_tbl(in_d_cnt).request_no
+                                       || ' 出荷品目:' || gr_demand_tbl(in_d_cnt).shipping_item_code
+                                       || ' 引当数量：' || TO_CHAR(NVL(gr_demand_tbl(in_d_cnt).reserved_quantity,0))
+                                       || ' 1ロット最大引当可能数:' || NVL(TO_CHAR(gr_check_tbl(1).max_rev_qty),0)
+                                       || ' 1ロット最大引当ロットNo:' || gr_check_tbl(1).max_lot_no
+                                       || ' 必要指示数量:' ||  gr_demand_tbl(in_d_cnt).ordered_quantity);
+-- Ver1.01 M.Hokkanji End
       END IF;
 -- 2008/11/13 M.Hokkanji START
       ov_retcode := gv_status_warn;
@@ -3042,7 +3096,7 @@ AS
       gr_order_tbl(gn_odr_cnt).reserved_quantity        :=
                             gr_demand_tbl(in_d_cnt).reserved_quantity;   -- 引当数
       -- 需要情報の引当数量が０より大きい
-      IF ( gr_demand_tbl(in_d_cnt).reserved_quantity > 0 ) THEN
+      IF  ( gr_demand_tbl(in_d_cnt).reserved_quantity > 0 ) THEN
         gr_order_tbl(gn_odr_cnt).warning_class            :=
                             NULL;                                        -- 警告区分
         gr_order_tbl(gn_odr_cnt).warning_date             :=
@@ -3050,7 +3104,9 @@ AS
         gr_order_tbl(gn_odr_cnt).automanual_reserve_class :=
                             gv_cons_am_auto;                             -- 自動手動引当区分
       -- 需要情報の引当数量が０
-      ELSIF ( gr_demand_tbl(in_d_cnt).reserved_quantity = 0 ) THEN
+-- Ver1.01 M.Hokkanji Start
+      ELSIF ( NVL(gr_demand_tbl(in_d_cnt).reserved_quantity,0) = 0 ) THEN
+-- Ver1.01 M.Hokkanji End
         gr_order_tbl(gn_odr_cnt).warning_class            :=
                             gr_check_tbl(1).warnning_class;                 -- 警告区分
         gr_order_tbl(gn_odr_cnt).warning_date             :=
@@ -3082,7 +3138,10 @@ AS
         gr_req_tbl(gn_mov_cnt).warning_date             := NULL;                -- 警告日付
         gr_req_tbl(gn_mov_cnt).automanual_reserve_class := gv_cons_am_auto;     -- 自動手動引当区分
       -- 需要情報の引当数量が０
-      ELSIF ( gr_demand_tbl(in_d_cnt).reserved_quantity = 0 ) THEN
+-- Ver1.01 M.Hokkanji Start
+      ELSIF ( NVL(gr_demand_tbl(in_d_cnt).reserved_quantity,0) = 0 ) THEN
+--      ELSIF ( gr_demand_tbl(in_d_cnt).reserved_quantity = 0 ) THEN
+-- Ver1.01 M.Hokkanji End
         gr_req_tbl(gn_mov_cnt).warning_class := gr_check_tbl(1).warnning_class; -- 警告区分
         gr_req_tbl(gn_mov_cnt).warning_date  := gr_check_tbl(1).warnning_date;  -- 警告日付
         gr_req_tbl(gn_mov_cnt).automanual_reserve_class := NULL;                -- 自動手動引当区分
@@ -3603,6 +3662,10 @@ AS
       gr_check_tbl(1).warnning_class := NULL;
       gr_check_tbl(1).warnning_date  := NULL;
       gr_check_tbl(1).lot_no         := NULL;
+-- Ver1.01 M.Hokkanji Start
+      gr_check_tbl(1).max_rev_qty    := NULL;
+      gr_check_tbl(1).max_lot_no     := NULL;
+-- Ver1.01 M.Hokkanji End
       lv_no_meisai_flg               := gv_cons_flg_yes;
       -- 供給情報ループ
       <<supply_inf_loop>>
@@ -4136,3 +4199,4 @@ AS
 --
 END XXWSH920008C;
 /
+

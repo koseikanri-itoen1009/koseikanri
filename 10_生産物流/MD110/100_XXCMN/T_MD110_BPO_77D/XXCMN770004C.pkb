@@ -7,7 +7,7 @@ AS
  * Description      : 受払その他実績リスト
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77D)
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2008/10/27    1.10  A.Shiina         T_S_524対応
  *  2008/11/11    1.11  A.Shiina         移行不具合修正
  *  2008/11/19    1.12  N.Yoshida        I_S_684対応、移行データ検証不具合対応
+ *  2008/11/29    1.13  N.Yoshida        本番#210対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -10915,8 +10916,11 @@ AS
           OPEN  get_data5023_cur(get_div_type_rec.div_type);
           FETCH get_data5023_cur BULK COLLECT INTO lt_work_rec;
           CLOSE get_data5023_cur;
-        --受払区分:505/509
-        ELSIF (get_div_type_rec.div_type IN ('505','509')) THEN
+        --受払区分:505/510
+-- 2008/11/29 v1.13 yoshida UPDATE start
+        --ELSIF (get_div_type_rec.div_type IN ('505','509')) THEN
+        ELSIF (get_div_type_rec.div_type IN ('505','510')) THEN
+-- 2008/11/29 v1.13 yoshida UPDATE end
           OPEN  get_data5059_cur(get_div_type_rec.div_type);
           FETCH get_data5059_cur BULK COLLECT INTO lt_work_rec;
           CLOSE get_data5059_cur;
@@ -11072,8 +11076,11 @@ AS
           OPEN  get_data5023_r_cur(get_div_type_rec.div_type);
           FETCH get_data5023_r_cur BULK COLLECT INTO lt_work_rec;
           CLOSE get_data5023_r_cur;
-        --受払区分:505/509
-        ELSIF (get_div_type_rec.div_type IN ('505','509')) THEN
+        --受払区分:505/510
+-- 2008/11/29 v1.13 yoshida UPDATE start
+        --ELSIF (get_div_type_rec.div_type IN ('505','509')) THEN
+        ELSIF (get_div_type_rec.div_type IN ('505','510')) THEN
+-- 2008/11/29 v1.13 yoshida UPDATE end
           OPEN  get_data5059_r_cur(get_div_type_rec.div_type);
           FETCH get_data5059_r_cur BULK COLLECT INTO lt_work_rec;
           CLOSE get_data5059_r_cur;

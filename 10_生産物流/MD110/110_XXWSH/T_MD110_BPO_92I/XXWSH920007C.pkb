@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO92A
- * Version          : 1.0
+ * Version          : 1.01
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -17,6 +17,7 @@ AS
  *  fwd_sql_create         A-2 SQL文作成
  *  get_demand_inf_fwd     A-3 移動用SQL文作成
  *  check_parameter        A-1  入力パラメータチェック
+ *  release_lock           ロック解除処理
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -25,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/20   1.0  Oracle 北寒寺正夫   新規作成
+ *  2008/11/29   1.01 SCS MIYATA.         ロック対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -786,7 +788,11 @@ AS
                                       , gv_cons_item_product
                                       , gt_item_class;
     ELSIF ( iv_action_type = gv_action_type_move) THEN
-      OPEN fwd_cur FOR iv_fwd_sql USING gv_yyyymmdd_from
+      OPEN fwd_cur FOR iv_fwd_sql USING
+      -- Add Start
+                                      gv_cons_move_type
+      -- Add End
+                                      , gv_yyyymmdd_from
                                       , gv_yyyymmdd_to
                                       , gv_cons_mov_sts_c
                                       , gv_cons_mov_sts_e
@@ -859,6 +865,101 @@ AS
 --
   END get_demand_inf_fwd;
 --
+  /**********************************************************************************
+  * Procedure Name   : release_lock
+  * Description      : ロック解除
+  ***********************************************************************************/
+  PROCEDURE release_lock(
+    in_reqid              IN NUMBER,                     -- 要求ID
+    ov_errbuf             OUT NOCOPY VARCHAR2,           -- エラー・メッセージ           --# 固定 #
+    ov_retcode            OUT NOCOPY VARCHAR2,           -- リターン・コード             --# 固定 #
+    ov_errmsg             OUT NOCOPY VARCHAR2            -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name             CONSTANT VARCHAR2(30) := 'release_lock';       -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル変数 ***
+    lv_strsql VARCHAR2(1000);
+    lv_phase  VARCHAR2(5);
+    lv_staus  VARCHAR2(1);
+    -- *** ローカル・カーソル ***
+    CURSOR lock_cur
+    IS
+        SELECT
+            b.id1,
+            a.sid,
+            a.serial#,
+            b.type,
+            DECODE(b.lmode,1,'null', 2,'row share', 3,'row exclusive'
+             ,4,'share', 5,'share row exclusive', 6,'exclusive') LMODE
+        FROM
+            v$session a,
+            v$lock b
+        WHERE
+            a.sid = b.sid
+            AND (b.id1, b.id2) in 
+                (SELECT d.id1, d.id2 FROM v$lock d 
+                 WHERE d.id1=b.id1
+                 AND d.id2=b.id2 AND d.request > 0) 
+            AND b.id1 = (SELECT bb.id1
+                         FROM v$session aa, v$lock bb
+                         WHERE aa.lockwait = bb.kaddr 
+                         AND aa.module = 'XXWSH920008C')
+            AND b.lmode = 6;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+  LOOP
+        EXIT WHEN (lv_phase = 'Y' OR lv_staus = '1');
+        BEGIN
+            SELECT DECODE(fcr.phase_code,'C','Y','I','Y','N')
+            INTO   lv_phase
+            FROM   fnd_concurrent_requests fcr 
+            WHERE  fcr.request_id = in_reqid;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                lv_phase := 'Y';
+                NULL;
+        END;
+        FOR lock_rec IN lock_cur LOOP
+          lv_strsql := 'ALTER SYSTEM KILL SESSION ''' || lock_rec.sid || ',' || lock_rec.serial# || ''' IMMEDIATE';
+          EXECUTE IMMEDIATE lv_strsql;
+          lv_staus := '1';
+        END LOOP;
+  END LOOP;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END release_lock;
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -1019,6 +1120,15 @@ AS
       ELSE
         COMMIT;
       END IF;
+      release_lock(reqid_rec(i)
+                  , lv_errbuf
+                  , lv_retcode
+                  , lv_errmsg);
+       -- エラー処理
+       IF ( lv_retcode = gv_status_error ) THEN
+           gn_error_cnt := 1;
+           RAISE global_process_expt;
+       END IF;
 --
     END LOOP demand_inf_loop; -- 品目コードループ終わり
 --

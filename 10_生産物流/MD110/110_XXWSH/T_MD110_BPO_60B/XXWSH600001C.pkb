@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2008/10/24    1.11 Oracle H.Itou     T_TE080_BPO_600指摘26
  *  2008/10/30    1.12 Oracle H.Itou     統合テスト指摘526
  *  2008/11/19    1.13 Oracle H.Itou     統合テスト指摘666
+ *  2008/11/29    1.14 Oracle MIYATA     ロック対応 NO WAIT　を削除してWAITにする
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1043,7 +1044,9 @@ debug_log(FND_FILE.LOG,'処理種別：'|| iv_shipping_biz_type);
                                                                 -- 顧客情報VIEW2：適用終了日
     lv_sql_4 := lv_sql_4 || ' AND xoha.latest_external_flag = '''|| cv_yes ||'''';
                                                                                 -- 最新フラグ
-    lv_sql_4 := lv_sql_4 || ' FOR UPDATE OF xoha.delivery_no NOWAIT';
+-- Ver1.14 MIYATA Start
+    lv_sql_4 := lv_sql_4 || ' FOR UPDATE OF xoha.delivery_no ';
+-- Ver1.14 MIYATA End
 --
     -- SQL文連結(出荷依頼)
     lv_sql_buff_ship := lv_sql_0 || lv_sql_1 || lv_sql_2 || lv_sql_3 || lv_sql_4;
@@ -1133,7 +1136,9 @@ debug_log(FND_FILE.LOG,'出荷依頼SQL: '||lv_sql_buff_ship);
                                                                 -- クイックコード：適用終了日
     lv_sql_m4 := lv_sql_m4 || ' AND xlv.enabled_flag = '''|| cv_yes ||'''';
                                                                 -- クイックコード：有効フラグ
-    lv_sql_m4 := lv_sql_m4 || ' FOR UPDATE OF xmrh.delivery_no NOWAIT';
+-- Ver1.14 MIYATA Start
+    lv_sql_m4 := lv_sql_m4 || ' FOR UPDATE OF xmrh.delivery_no ';
+-- Ver1.14 MIYATA End
 --
     -- SQL文連結(移動指示)
     lv_sql_buff_move := lv_sql_m0 || lv_sql_m1 || lv_sql_m2 || lv_sql_m3 || lv_sql_m4;

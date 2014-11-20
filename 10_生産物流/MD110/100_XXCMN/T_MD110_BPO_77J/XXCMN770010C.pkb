@@ -7,7 +7,7 @@ AS
  * Description      : 標準原価内訳表
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77J)
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2008/10/23    1.10  N.Yoshida        T_S_524対応(PT対応)
  *  2008/11/14    1.11  N.Yoshida        移行データ検証不具合対応
  *  2008/11/19    1.12  N.Yoshida        I_S_684対応、移行データ検証不具合対応
+ *  2008/11/29    1.13  N.Yoshida        本番#215対応
  *
  *****************************************************************************************/
 --
@@ -515,6 +516,7 @@ AS
     lv_select202_03_1 VARCHAR2(32000) ;
     lv_select202_03_2 VARCHAR2(32000) ;
     lv_select3xx_1    VARCHAR2(32000) ;
+    lv_select31x_1    VARCHAR2(32000) ;
     lv_select4xx_1    VARCHAR2(32000) ;
     lv_select4xx_2    VARCHAR2(32000) ;
     lv_select4xx_3    VARCHAR2(32000) ;
@@ -547,6 +549,7 @@ AS
     get_data_cur201    ref_cursor;
     get_data_cur202_03 ref_cursor;
     get_data_cur3xx    ref_cursor;
+    get_data_cur31x    ref_cursor;
     get_data_cur4xx    ref_cursor;
     get_data_cur5xx    ref_cursor;
     get_data_cur504_09 ref_cursor;
@@ -2184,11 +2187,14 @@ AS
     --                            ⇒ 305
     --                            ⇒ 311
     --                            ⇒ 312
+    --                            ⇒ 313
+    --                            ⇒ 314
     --                            ⇒ 318
     --                            ⇒ 319
     -- 対象取引区分(PROD)         ⇒ 313:解体半製品
     --                            ⇒ 314:返品原料
     --                            ⇒ 301:沖縄
+    --                            ⇒ 309:品目振替
     --                            ⇒ 311:包装
     --                            ⇒ 307:セット
     --===============================================================
@@ -2259,6 +2265,100 @@ AS
     || '  AND    xrpm.break_col_10       IS NOT NULL'
     || '  AND    ( ( ( gmd.attribute5 IS NULL ) AND ( xrpm.hit_in_div IS NULL ) )'
     || '         OR ( xrpm.hit_in_div        = gmd.attribute5 ) )'
+    ;
+--
+    --===============================================================
+    -- 検索条件.受払区分          ⇒ 313
+    --                            ⇒ 314
+    -- 対象取引区分(PROD)         ⇒ 309:
+    --===============================================================
+    lv_select31x_1 := 
+       '  SELECT /*+ leading (itp gmd gbh grb xrpm gic1 mcb1 gic2 mcb2) use_nl (itp gmd gbh grb xrpm gic1 mcb1 gic2 mcb2) */'
+    || '         iimb.item_no             item_code'            -- 品目コード
+    || '        ,ximb.item_short_name     item_name'            -- 品目名称
+    || '        ,xsup.stnd_unit_price     unit_price'           -- 原価：標準原価
+    || '        ,xsup.stnd_unit_price_gen raw_material_cost'    -- 原価：原料費
+    || '        ,xsup.stnd_unit_price_sai agein_cost'           -- 原価：再製費
+    || '        ,xsup.stnd_unit_price_shi material_cost'        -- 原価：資材費
+    || '        ,xsup.stnd_unit_price_hou pack_cost'            -- 原価：包装費
+    || '        ,xsup.stnd_unit_price_kei other_expense_cost'   -- 原価：その他経費
+    || '        ,mcb3.segment1                  crowd_code'     --群コード
+    || '        ,SUBSTR(mcb3.segment1, 1, 3)    crowd_low'      --小群
+    || '        ,SUBSTR(mcb3.segment1, 1, 2)    crowd_mid'      --中群
+    || '        ,SUBSTR(mcb3.segment1, 1, 1)    crowd_high'     --大群
+    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
+    || '  FROM   ic_tran_pnd               itp'
+    || '        ,gme_material_details      gmd'
+    || '        ,gme_batch_header          gbh'
+    || '        ,gmd_routings_b            grb'
+    || '        ,ic_item_mst_b             iimb'
+    || '        ,xxcmn_item_mst_b          ximb'
+    || '        ,gmi_item_categories       gic1'
+    || '        ,mtl_categories_b          mcb1'
+    || '        ,gmi_item_categories       gic2'
+    || '        ,mtl_categories_b          mcb2'
+    || '        ,gmi_item_categories       gic3'
+    || '        ,mtl_categories_b          mcb3'
+    || '        ,xxcmn_stnd_unit_price_v   xsup'
+    || '        ,xxcmn_rcv_pay_mst         xrpm'
+    || '  WHERE  itp.doc_type            = ''' || cv_doc_type_prod || ''''
+    || '  AND    itp.completed_ind       = ''' || cv_completed_ind || ''''
+    || '  AND    itp.reverse_id          IS NULL'
+    || '  AND    itp.trans_date          >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
+    || '  AND    itp.trans_date          <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+    || '  AND    gmd.batch_id            = itp.doc_id'
+    || '  AND    gmd.line_no             = itp.doc_line'
+    || '  AND    gbh.batch_id            = gmd.batch_id'
+    || '  AND    grb.routing_id          = gbh.routing_id'
+    || '  AND    iimb.item_id            = itp.item_id'
+    || '  AND    iimb.attribute15        = ''' || cv_cost_manage_code || ''''
+    || '  AND    ximb.item_id            = iimb.item_id'
+    || '  AND    ximb.start_date_active <= TRUNC(itp.trans_date)'
+    || '  AND    ximb.end_date_active   >= TRUNC(itp.trans_date)'
+    || '  AND    gic1.item_id            = itp.item_id'
+    || '  AND    gic1.category_set_id    = ''' || cn_prod_class_id || ''''
+    || '  AND    gic1.category_id        = mcb1.category_id'
+    || '  AND    mcb1.segment1           = ''' || ir_param.goods_class || ''''
+    || '  AND    gic2.item_id            = itp.item_id'
+    || '  AND    gic2.category_set_id    = ''' || cn_item_class_id || ''''
+    || '  AND    gic2.category_id        = mcb2.category_id'
+    || '  AND    mcb2.segment1           = ''' || ir_param.item_class || ''''
+    || '  AND    gic3.item_id            = itp.item_id'
+    || '  AND    gic3.category_id        = mcb3.category_id'
+    || '  AND    xsup.item_id            = itp.item_id'
+    || '  AND    xsup.start_date_active <= TRUNC(itp.trans_date)'
+    || '  AND    xsup.end_date_active   >= TRUNC(itp.trans_date)'
+    || '  AND    xrpm.doc_type           = itp.doc_type'
+    || '  AND    xrpm.line_type          = itp.line_type'
+    || '  AND    xrpm.routing_class      = ''70'''
+    || '  AND    xrpm.new_div_account    = ''' || ir_param.rcv_pay_div || ''''
+    || '  AND    xrpm.line_type          = gmd.line_type'
+    || '  AND    xrpm.routing_class      = grb.routing_class'
+    || '  AND    xrpm.break_col_10       IS NOT NULL'
+    || '  AND    ( ( ( gmd.attribute5 IS NULL ) AND ( xrpm.hit_in_div IS NULL ) )'
+    || '         OR ( xrpm.hit_in_div        = gmd.attribute5 ) )'
+    || '  AND    (EXISTS (SELECT 1'
+    || '                  FROM   gme_material_details gmd2'
+    || '                        ,gmi_item_categories  gic'
+    || '                        ,mtl_categories_b     mcb'
+    || '                  WHERE  gmd2.batch_id   = gmd.batch_id'
+    || '                  AND    gmd2.line_no    = gmd.line_no'
+    || '                  AND    gmd2.line_type  = -1'
+    || '                  AND    gic.item_id     = gmd2.item_id'
+    || '                  AND    gic.category_set_id = ''' || cn_item_class_id || ''''
+    || '                  AND    gic.category_id = mcb.category_id'
+    || '                  AND    mcb.segment1    = xrpm.item_div_origin))'
+    || '  AND    (EXISTS (SELECT 1'
+    || '                  FROM   gme_material_details gmd3'
+    || '                        ,gmi_item_categories  gic'
+    || '                        ,mtl_categories_b     mcb'
+    || '                  WHERE  gmd3.batch_id   = gmd.batch_id'
+    || '                  AND    gmd3.line_no    = gmd.line_no'
+    || '                  AND    gmd3.line_type  = 1'
+    || '                  AND    gic.item_id     = gmd3.item_id'
+    || '                  AND    gic.category_set_id = ''' || cn_item_class_id || ''''
+    || '                  AND    gic.category_id = mcb.category_id'
+    || '                  AND    mcb.segment1    = xrpm.item_div_ahead))'
     ;
 --
     --===============================================================
@@ -3634,6 +3734,7 @@ AS
         -- 対象取引区分(PROD)         ⇒ 313:解体半製品
         --                            ⇒ 314:返品原料
         --                            ⇒ 301:沖縄
+        --                            ⇒ 309:品目振替
         --                            ⇒ 311:包装
         --                            ⇒ 307:セット
         --===============================================================
@@ -3646,6 +3747,23 @@ AS
           FETCH get_data_cur3xx BULK COLLECT INTO ot_data_rec;
           -- カーソルクローズ
           CLOSE get_data_cur3xx;
+        --===============================================================
+        -- 検索条件.受払区分          ⇒ 313
+        --                            ⇒ 314
+        --                            ⇒ 315
+        --                            ⇒ 316
+        -- 対象取引区分(PROD)         ⇒ 309:
+        --                            ⇒ 310:
+        --===============================================================
+        ELSIF (ir_param.rcv_pay_div IN ('313','314','315','316')) THEN
+          -- オープン
+          OPEN  get_data_cur31x FOR lv_select31x_1
+                                 || lv_where_category_crowd
+                                 || lv_order_by;
+          -- バルクフェッチ
+          FETCH get_data_cur31x BULK COLLECT INTO ot_data_rec;
+          -- カーソルクローズ
+          CLOSE get_data_cur31x;
         --===============================================================
         -- 検索条件.受払区分             ⇒ 401
         --                               ⇒ 402
@@ -3923,6 +4041,24 @@ AS
           FETCH get_data_cur3xx BULK COLLECT INTO ot_data_rec;
           -- カーソルクローズ
           CLOSE get_data_cur3xx;
+        --===============================================================
+        -- 検索条件.受払区分          ⇒ 313
+        --                            ⇒ 314
+        --                            ⇒ 315
+        --                            ⇒ 316
+        -- 対象取引区分(PROD)         ⇒ 309:
+        --                            ⇒ 310:
+        --===============================================================
+        ELSIF (ir_param.rcv_pay_div IN ('313','314','315','316')) THEN
+          -- オープン
+          OPEN  get_data_cur31x FOR lv_select31x_1
+                                 || lv_where_category_crowd
+                                 || lv_where_in_crowd
+                                 || lv_order_by;
+          -- バルクフェッチ
+          FETCH get_data_cur31x BULK COLLECT INTO ot_data_rec;
+          -- カーソルクローズ
+          CLOSE get_data_cur31x;
         --===============================================================
         -- 検索条件.受払区分             ⇒ 401
         --                               ⇒ 402
@@ -4195,6 +4331,23 @@ AS
           -- カーソルクローズ
           CLOSE get_data_cur3xx;
         --===============================================================
+        -- 検索条件.受払区分          ⇒ 313
+        --                            ⇒ 314
+        --                            ⇒ 315
+        --                            ⇒ 316
+        -- 対象取引区分(PROD)         ⇒ 309:
+        --                            ⇒ 310:
+        --===============================================================
+        ELSIF (ir_param.rcv_pay_div IN ('313','314','315','316')) THEN
+          -- オープン
+          OPEN  get_data_cur31x FOR lv_select31x_1
+                                 || lv_where_category_crowd
+                                 || lv_order_by;
+          -- バルクフェッチ
+          FETCH get_data_cur31x BULK COLLECT INTO ot_data_rec;
+          -- カーソルクローズ
+          CLOSE get_data_cur31x;
+        --===============================================================
         -- 検索条件.受払区分             ⇒ 401
         --                               ⇒ 402
         -- 対象取引区分(ADJI/TRNI/XFER)  ⇒ 401:倉庫移動_入庫
@@ -4471,6 +4624,24 @@ AS
           FETCH get_data_cur3xx BULK COLLECT INTO ot_data_rec;
           -- カーソルクローズ
           CLOSE get_data_cur3xx;
+        --===============================================================
+        -- 検索条件.受払区分          ⇒ 313
+        --                            ⇒ 314
+        --                            ⇒ 315
+        --                            ⇒ 316
+        -- 対象取引区分(PROD)         ⇒ 309:
+        --                            ⇒ 310:
+        --===============================================================
+        ELSIF (ir_param.rcv_pay_div IN ('313','314','315','316')) THEN
+          -- オープン
+          OPEN  get_data_cur31x FOR lv_select31x_1
+                                 || lv_where_category_crowd
+                                 || lv_where_in_crowd
+                                 || lv_order_by;
+          -- バルクフェッチ
+          FETCH get_data_cur31x BULK COLLECT INTO ot_data_rec;
+          -- カーソルクローズ
+          CLOSE get_data_cur31x;
         --===============================================================
         -- 検索条件.受払区分             ⇒ 401
         --                               ⇒ 402
@@ -5060,8 +5231,9 @@ AS
         prc_set_xml('D','item_name', gt_main_data(i).item_name);
         -- 取引数量
         prc_set_xml('Z','quantity', ln_quantity);
+-- 2008/11/29 v1.13 yoshida update start
         -- 標準原価
-        prc_set_xml('Z','standard_cost', round(gt_main_data(i).unit_price, gn_qty_dec));
+        /*prc_set_xml('Z','standard_cost', round(gt_main_data(i).unit_price, gn_qty_dec));
         -- 原価費
         prc_set_xml('Z','raw_material_cost',round(gt_main_data(i).raw_material_cost,gn_qty_dec));
         -- 再製費
@@ -5072,7 +5244,21 @@ AS
         prc_set_xml('Z','pack_cost', round(gt_main_data(i).pack_cost, gn_qty_dec));
         -- その他経費
         prc_set_xml('Z','other_expense_cost',round(gt_main_data(i).other_expense_cost,
+                      gn_qty_dec));*/
+        -- 標準原価
+        prc_set_xml('Z','standard_cost', round(gt_main_data(i).unit_price * ln_quantity, gn_qty_dec));
+        -- 原価費
+        prc_set_xml('Z','raw_material_cost',round(gt_main_data(i).raw_material_cost * ln_quantity,gn_qty_dec));
+        -- 再製費
+        prc_set_xml('Z','agein_cost', round(gt_main_data(i).agein_cost * ln_quantity, gn_qty_dec));
+        -- 資材費
+        prc_set_xml('Z','material_cost', round(gt_main_data(i).material_cost * ln_quantity, gn_qty_dec));
+        -- 包装費
+        prc_set_xml('Z','pack_cost', round(gt_main_data(i).pack_cost * ln_quantity, gn_qty_dec));
+        -- その他経費
+        prc_set_xml('Z','other_expense_cost',round(gt_main_data(i).other_expense_cost * ln_quantity,
                       gn_qty_dec));
+-- 2008/11/29 v1.13 yoshida update end
         -- 品目コードＧ終了タグ
         prc_set_xml('T','/g_item');
 --

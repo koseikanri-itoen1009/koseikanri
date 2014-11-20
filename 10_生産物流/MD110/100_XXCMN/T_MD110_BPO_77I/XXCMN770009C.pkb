@@ -7,7 +7,7 @@ AS
  * Description      : 他勘定振替原価差異表
  * MD.050/070       : 月次〆切処理帳票Issue1.0(T_MD050_BPO_770)
  *                  : 月次〆切処理帳票Issue1.0(T_MD070_BPO_77I)
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/10/29    1.10  T.Ohashi         T_S_524対応(PT対応)再対応
  *  2008/11/13    1.11  A.Shiina         移行データ検証不具合対応
  *  2008/11/19    1.12  N.Yoshida        移行データ検証不具合対応
+ *  2008/11/29    1.13  N.Yoshida        本番#213、214対応
  *
  *****************************************************************************************/
 --
@@ -466,18 +467,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -576,18 +587,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -687,18 +708,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -805,18 +836,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -925,18 +966,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -1038,18 +1089,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -1145,18 +1206,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -1252,18 +1323,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -1359,18 +1440,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -1473,18 +1564,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -1593,18 +1694,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -1703,18 +1814,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -1820,18 +1941,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -1931,18 +2062,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -2043,18 +2184,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -2162,18 +2313,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -2283,18 +2444,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -2397,18 +2568,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -2505,18 +2686,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -2613,18 +2804,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -2721,18 +2922,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -2836,18 +3047,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -2957,18 +3178,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -3068,18 +3299,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -3186,18 +3427,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -3297,18 +3548,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -3409,18 +3670,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -3528,18 +3799,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -3649,18 +3930,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -3763,18 +4054,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -3871,18 +4172,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -3979,18 +4290,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -4087,18 +4408,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -4202,18 +4533,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -4323,18 +4664,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -4434,18 +4785,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -4552,18 +4913,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -4664,18 +5035,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -4777,18 +5158,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -4897,18 +5288,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -5019,18 +5420,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -5134,18 +5545,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
@@ -5243,18 +5664,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -5352,18 +5783,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -5461,18 +5902,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -5577,18 +6028,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -5699,18 +6160,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
@@ -5811,18 +6282,28 @@ AS
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
             ,SUM(
-               DECODE(iimb.attribute15
+-- 2008/11/29 v1.13 UPDATE START
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
             ,SUM(ROUND(
-               DECODE(iimb.attribute15
+--               DECODE(iimb.attribute15
+               DECODE(iimb2.attribute15
                     ,gn_one,xsup_m.stnd_unit_price
-                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb.lot_ctl
+                    ,DECODE(iimb2.lot_ctl
+-- 2008/11/29 v1.13 UPDATE END
                       ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
-            ,SUM(xsup.stnd_unit_price) to_price
-            ,SUM(ROUND(xsup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+--            ,SUM(xsup.stnd_unit_price) to_price
+--            ,SUM(ROUND(xsup.stnd_unit_price
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(ROUND(xsup.stnd_unit_price_gen
+-- 2008/11/29 v1.13 UPDATE END
               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd

@@ -7,7 +7,7 @@ AS
  * Description      : 生産原価差異表
  * MD.050           : 有償支給帳票Issue1.0(T_MD050_BPO_770)
  * MD.070           : 有償支給帳票Issue1.0(T_MD070_BPO_77G)
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2008/10/09    1.10  A.Shiina         T_S_422対応
  *  2008/11/11    1.11  N.Yoshida        I_S_511対応、移行データ検証不具合対応
  *  2008/11/19    1.12  N.Yoshida        移行データ検証不具合対応
+ *  2008/11/29    1.13  N.Yoshida        本番#212対応
  *
  *****************************************************************************************/
 --
@@ -190,7 +191,9 @@ AS
       ,item_id           ic_tran_pnd.item_id%TYPE              -- 品目ID
       ,item_code         xxcmn_lot_each_item_v.item_code%TYPE  -- 品目コード
       ,item_name         ic_item_mst_b.item_desc1%TYPE         -- 品目名称
-      ,item_net          ic_item_mst_b.attribute12%TYPE        -- NET
+-- 2008/11/29 v1.13 UPDATE START
+      --,item_net          ic_item_mst_b.attribute12%TYPE        -- NET
+-- 2008/11/29 v1.13 UPDATE END
       ,trans_qty         NUMBER                                -- 取引数量
       ,kan_qty           NUMBER                                -- 取引数量(完成品)
       ,tou_qty           NUMBER                                -- 取引数量(投入品)
@@ -495,7 +498,9 @@ AS
            , gmd1.item_id                      item_id 
            , iimb2.item_no                     item_code 
            , ximb2.item_short_name             item_name 
-           , NVL(iimb2.attribute12,1)          item_net
+-- 2008/11/29 v1.13 UPDATE START
+           --, NVL(iimb2.attribute12,1)          item_net
+-- 2008/11/29 v1.13 UPDATE END
            , SUM(NVL(itp.trans_qty , 0) * TO_NUMBER(xrpm.rcv_pay_div))       trans_qty 
            , SUM(NVL(DECODE(xrpm.line_type
                            ,gc_kan, itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)
@@ -536,15 +541,24 @@ AS
                 )   tou_jitu 
 -- 2008/11/19 v1.12 UPDATE END
            --, SUM(NVL(xcup.stnd_unit_price , 0))                          cmpnt_cost 
-           , NVL(xcup.stnd_unit_price , 0)     cmpnt_cost
+-- 2008/11/29 v1.13 UPDATE START
+           --, NVL(xcup.stnd_unit_price , 0)     cmpnt_cost
+           , NVL(xcup.stnd_unit_price_gen , 0)     cmpnt_cost
+-- 2008/11/29 v1.13 UPDATE END
            , SUM(NVL(DECODE(xrpm.line_type
                            ,gc_huku, ROUND((itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
+-- 2008/11/29 v1.13 UPDATE START
 -- 2008/11/19 v1.12 UPDATE START
-                             * xcup2.stnd_unit_price)), 0)) cmpnt_huku 
+                             -- * xcup2.stnd_unit_price)), 0)) cmpnt_huku 
+                             * xcup2.stnd_unit_price_gen)), 0)) cmpnt_huku 
 -- 2008/11/19 v1.12 UPDATE END
+-- 2008/11/29 v1.13 UPDATE END
 -- 2008/11/19 v1.12 UPDATE START
            --, SUM(NVL(xcup.stnd_unit_price * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)), 0)
-           , SUM(NVL(xcup.stnd_unit_price , 0) * NVL(DECODE(xrpm.line_type
+-- 2008/11/29 v1.13 UPDATE START
+           --, SUM(NVL(xcup.stnd_unit_price , 0) * NVL(DECODE(xrpm.line_type
+           , SUM(NVL(xcup.stnd_unit_price_gen , 0) * NVL(DECODE(xrpm.line_type
+-- 2008/11/29 v1.13 UPDATE END
                            ,gc_kan, itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)
                            ), 0)
 -- 2008/11/19 v1.12 UPDATE END
@@ -675,8 +689,10 @@ AS
              , gmd1.item_id
              , iimb2.item_no
              , ximb2.item_short_name
-             , iimb2.attribute12
-             , xcup.stnd_unit_price
+-- 2008/11/29 v1.13 UPDATE START
+             --, iimb2.attribute12
+-- 2008/11/29 v1.13 UPDATE END
+             , xcup.stnd_unit_price_gen
       ORDER BY 
                mcb3.segment1
               ,iimb2.item_no
@@ -692,7 +708,9 @@ AS
            , gmd1.item_id                      item_id 
            , iimb2.item_no                     item_code 
            , ximb2.item_short_name             item_name 
-           , NVL(iimb2.attribute12,1)          item_net
+-- 2008/11/29 v1.13 UPDATE START
+           --, NVL(iimb2.attribute12,1)          item_net
+-- 2008/11/29 v1.13 UPDATE END
            , SUM(NVL(itp.trans_qty , 0) * TO_NUMBER(xrpm.rcv_pay_div))       trans_qty 
            , SUM(NVL(DECODE(xrpm.line_type
                            ,gc_kan, itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)
@@ -1102,7 +1120,9 @@ AS
              , gmd1.item_id
              , iimb2.item_no
              , ximb2.item_short_name
-             , iimb2.attribute12
+-- 2008/11/29 v1.13 UPDATE START
+             --, iimb2.attribute12
+-- 2008/11/29 v1.13 UPDATE END
       ORDER BY 
                mcb3.segment1
               ,iimb2.item_no
@@ -1525,7 +1545,10 @@ AS
       --出来高単価
       IF (gt_main_data(ln_loop_index).trans_qty != 0 ) THEN
         --ln_dekitan := ln_dekikin / gt_main_data(ln_loop_index).trans_qty ;
-        ln_dekitan := ln_dekikin / (gt_main_data(ln_loop_index).kan_qty * gt_main_data(ln_loop_index).item_net / gn_thousand) ;
+-- 2008/11/29 v1.13 UPDATE START
+        --ln_dekitan := ln_dekikin / (gt_main_data(ln_loop_index).kan_qty * gt_main_data(ln_loop_index).item_net / gn_thousand) ;
+        ln_dekitan := ln_dekikin / gt_main_data(ln_loop_index).kan_qty ;
+-- 2008/11/29 v1.13 UPDATE END
       END IF;
       prc_set_xml('D', 'piece_price', ln_dekitan);
 --

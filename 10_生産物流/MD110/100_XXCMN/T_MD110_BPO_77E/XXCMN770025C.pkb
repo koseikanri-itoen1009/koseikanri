@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績表作成
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77E)
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2008/10/28    1.7   H.Itou           T_S_524対応(再対応)
  *  2008/11/13    1.8   A.Shiina         移行データ検証不具合対応
  *  2008/11/19    1.9   N.Yoshida        移行データ検証不具合対応
+ *  2008/11/28    1.10  N.Yoshida        本番#182対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1417,7 +1418,8 @@ AS
 -- 2008/10/28 H.Itou Mod End
       || '      ,SUM(mst.stnd_unit_price * mst.trans_qty) AS j_amt '
 --      || '      ,SUM(mst.purchases_price * mst.trans_qty) AS s_amt '
-      || '      ,SUM(mst.purchases_price) AS s_amt '
+--      || '      ,SUM(mst.purchases_price) AS s_amt '
+      || '      ,SUM(mst.powder_price) AS s_amt '
       || '      ,:para_lkup_code              AS c_tax ';
 --
     -- ----------------------------------------------------
@@ -1445,12 +1447,19 @@ AS
 --      || '             ,itp.trans_qty           AS trans_qty '
 --      || '             ,NVL(pla.unit_price, 0) * NVL(itp.trans_qty, 0) AS purchases_price '
       || '             ,NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div) AS trans_qty '
-      || '            ,ROUND(NVL(pla.unit_price, 0) '
+-- 2008/11/29 v1.10 UPDATE START
+--      || '            ,ROUND(NVL(pla.unit_price, 0) '
+      || '            ,ROUND(NVL(pla.attribute8, 0) '
       || '             * (NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS purchases_price '
 -- 2008/11/13 v1.8 UPDATE END
-      || '             ,NVL(plla.attribute2, :para_zero) AS powder_price '
-      || '             ,NVL(plla.attribute4, :para_zero) AS commission_price '
+--      || '             ,NVL(plla.attribute2, :para_zero) AS powder_price '
+      || '            ,ROUND(NVL(pla.unit_price, :para_zero) '
+      || '             * (NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS powder_price '
+--      || '             ,NVL(plla.attribute4, :para_zero) AS commission_price '
+      || '            ,ROUND(NVL(plla.attribute4, :para_zero) '
+      || '             * (NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS commission_price '
       || '             ,NVL(plla.attribute7, :para_zero) AS assessment '
+-- 2008/11/29 v1.10 UPDATE END
 -- 2008/10/28 H.Itou Mod Start T_S_524対応(再対応)
 --      || '             ,(NVL((SELECT xsupv.stnd_unit_price '
 --      || '                    FROM   xxcmn_stnd_unit_price_v xsupv '
@@ -1633,9 +1642,15 @@ AS
       || '      ,ROUND(NVL(xrrt.unit_price, 0) '
       || '        * (NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS purchases_price '
 -- 2008/11/13 v1.8 UPDATE START
-      || '             ,TO_CHAR(NVL(xrrt.kobki_converted_unit_price, :para_zero)) AS powder_price '
-      || '           ,TO_CHAR(NVL(xrrt.kousen_rate_or_unit_price, :para_zero)) AS commission_price '
+-- 2008/11/29 v1.10 UPDATE START
+--      || '             ,TO_CHAR(NVL(xrrt.kobki_converted_unit_price, :para_zero)) AS powder_price '
+      || '      ,ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
+      || '        * (NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS powder_price '
+--      || '           ,TO_CHAR(NVL(xrrt.kousen_rate_or_unit_price, :para_zero)) AS commission_price '
+      || '      ,ROUND(NVL(xrrt.kousen_rate_or_unit_price, :para_zero) '
+      || '        * (NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS commission_price '
       || '             ,TO_CHAR(NVL(xrrt.fukakin_price, :para_zero)) AS assessment '
+-- 2008/11/29 v1.10 UPDATE END
 -- 2008/10/28 H.Itou Mod Start T_S_524対応(再対応)
 --      || '             ,(NVL((SELECT xsupv.stnd_unit_price '
 --      || '                    FROM   xxcmn_stnd_unit_price_v xsupv '
@@ -2095,7 +2110,8 @@ AS
       on_sum_quantity := on_sum_quantity + ln_qty;
     END IF;
     -- 仕入単価
-    IF ( it_data_rec.item_atr15 = gc_cost_st ) THEN
+-- 2008/11/29 v1.10 UPDATE START
+    /*IF ( it_data_rec.item_atr15 = gc_cost_st ) THEN
       -- 品目.原価管理区分 = 1:標準原価 (標準原価マスタより、実際単価)
       ln_order_price := it_data_rec.stnd_unit_price; -- 標準単価
     ELSE
@@ -2107,7 +2123,9 @@ AS
         -- 品目.ロット管理 = 0:対象外 (標準原価マスタより、実際単価)
         ln_order_price := it_data_rec.stnd_unit_price; -- 標準単価
       END IF;
-    END IF;
+    END IF;*/
+    ln_order_price := it_data_rec.purchases_price; -- 仕入単価(ロット)※加重平均
+-- 2008/11/29 v1.10 UPDATE END
     IF ( ln_order_price IS NOT NULL ) THEN
       iot_xml_idx := iot_xml_data_table.COUNT + 1 ;
       iot_xml_data_table(iot_xml_idx).tag_name  := 'order_price' ;
@@ -2121,8 +2139,9 @@ AS
       iot_xml_data_table(iot_xml_idx).tag_type  := 'D' ;
       iot_xml_data_table(iot_xml_idx).tag_value := it_data_rec.powder_price;
     END IF;
+-- 2008/11/29 v1.10 UPDATE START
     -- 仕入金額
-    IF ( it_data_rec.item_atr15 = gc_cost_st ) THEN
+    /*IF ( it_data_rec.item_atr15 = gc_cost_st ) THEN
       -- 品目.原価管理区分 = 1:標準原価 (標準原価マスタより、実際単価)
       ln_order_amount := ROUND(it_data_rec.j_amt); -- 標準単価 * 数量
     ELSE
@@ -2134,7 +2153,9 @@ AS
         -- 品目.ロット管理 = 0:対象外 (標準原価マスタより、実際単価)
         ln_order_amount := ROUND(it_data_rec.j_amt); -- 標準単価 * 数量
       END IF;
-    END IF;
+    END IF;*/
+    ln_order_amount := ROUND(it_data_rec.s_amt); -- 仕入単価(ﾛｯﾄ) * 数量
+-- 2008/11/29 v1.10 UPDATE END
     IF ( ln_order_amount IS NOT NULL ) THEN
       iot_xml_idx := iot_xml_data_table.COUNT + 1 ;
       iot_xml_data_table(iot_xml_idx).tag_name  := 'order_amount' ;
