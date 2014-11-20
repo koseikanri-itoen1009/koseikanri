@@ -7,7 +7,7 @@ AS
  * Description      : 実績計上済フラグ更新処理
  * MD.050           : 実績計上済フラグ更新 T_MD050_BPO_450
  * MD.070           : 実績計上済フラグ更新処理(45A)
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -26,6 +26,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2010/03/01    1.0   H.Itou           新規作成
+ *  2010/03/17    1.1   M.Hokkanji       本番稼働障害#1612(発注分納時に実績計上済
+ *                                       フラグが正しく更新されない問題を修正)
  *
  *****************************************************************************************/
 --
@@ -124,6 +126,9 @@ AS
   gt_doc_type_prod           CONSTANT ic_tran_pnd.doc_type      %TYPE := 'PROD'; -- 文書タイプ：生産
 --
   -- 発注の固定値
+-- Ver1.1 M.Hokkanji Start
+  gt_status_ukeari           CONSTANT po_headers_all.attribute1 %TYPE := '25'; -- ステータス：受入有
+-- Ver1.1 M.Hokkanji End
   gt_status_suukaku          CONSTANT po_headers_all.attribute1 %TYPE := '30'; -- ステータス:数量確定済
   gt_status_kinkaku          CONSTANT po_headers_all.attribute1 %TYPE := '35'; -- ステータス:金額確定済
   gt_aitesaki                CONSTANT po_headers_all.attribute11%TYPE := '3' ; -- 発注区分:相手先在庫
@@ -521,7 +526,10 @@ AS
       AND    pla.cancel_flag              = gt_cancel_n                             -- 削除されていない
       AND    pla.attribute12             IS NOT NULL                                -- 相手先在庫入庫先
       AND    pha.org_id                   = gn_pro_org_id                           -- 組織ID
-      AND    pha.attribute1              IN (gt_status_suukaku,gt_status_kinkaku)   -- 数量確定済,金額確定済
+-- Ver1.1 M.Hokkanji Start
+--      AND    pha.attribute1              IN (gt_status_suukaku,gt_status_kinkaku)   -- 数量確定済,金額確定済
+      AND    pha.attribute1              IN (gt_status_ukeari,gt_status_suukaku,gt_status_kinkaku)   -- 受入有,数量確定済,金額確定済
+-- Ver1.1 M.Hokkanji End
       AND    pha.attribute11              = gt_aitesaki                             -- 発注区分：相手先在庫
       AND    pla.last_update_date        >= gd_date_from                            -- 最終更新日がパラメータ.更新日付(FROM)から更新日付(TO)の間のデータ
       AND    pla.last_update_date        <= gd_date_to                              -- 
