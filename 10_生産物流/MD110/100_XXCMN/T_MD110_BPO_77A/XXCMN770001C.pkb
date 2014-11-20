@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）原料・資材・半製品
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77A)
- * Version          : 1.20
+ * Version          : 1.25
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -58,6 +58,11 @@ AS
  *  2008/11/19    1.18  N.Yoshida        I_S_684対応、移行データ検証不具合対応
  *  2008/11/25    1.19  A.Shiina         本番指摘52対応
  *  2008/12/03    1.20  A.Shiina         本番指摘361対応
+ *  2008/12/05    1.21  H.Maru           本番障害492対応
+ *  2008/12/08    1.22  N.Yoshida        本番障害数値あわせ対応(受注ヘッダの最新フラグを追加)
+ *  2008/12/08    1.23  A.Shiina         本番障害565対応
+ *  2008/12/09    1.24  H.Marushita      本番障害565対応
+ *  2008/12/10    1.25  A.Shiina         本番障害617,636対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1579,6 +1584,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -1685,6 +1691,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -1793,6 +1800,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         = '04'
@@ -1895,6 +1903,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -2076,6 +2085,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -2180,6 +2190,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         = '08'
@@ -2286,6 +2297,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         = '04'
@@ -2387,6 +2399,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -2485,7 +2498,15 @@ AS
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = xsims.whse_code
       AND    xsims.invent_ym         = TO_CHAR(gd_s_date, gc_char_ym_format)
-      AND    xsims.monthly_stock    <> 0
+-- 2008/12/10 v1.25 UPDATE START
+--      AND    xsims.monthly_stock    <> 0
+      AND    (
+               (xsims.monthly_stock <> 0)
+               OR
+               (xsims.cargo_stock   <> 0)
+             )
+      AND    iwm.attribute1          = '0'
+-- 2008/12/10 v1.25 UPDATE END
       ORDER BY h_whse_code
               ,crowd_code
               ,item_code
@@ -3381,6 +3402,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -3486,6 +3508,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -3593,6 +3616,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         = '04'
@@ -3694,6 +3718,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -3873,6 +3898,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -3976,6 +4002,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         = '08'
@@ -4081,6 +4108,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         = '04'
@@ -4181,6 +4209,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -4277,7 +4306,15 @@ AS
       AND    gic3.category_id        = mcb3.category_id
       AND    iwm.whse_code           = xsims.whse_code
       AND    xsims.invent_ym         = TO_CHAR(gd_s_date, gc_char_ym_format)
-      AND    xsims.monthly_stock    <> 0
+-- 2008/12/10 v1.25 UPDATE START
+--      AND    xsims.monthly_stock    <> 0
+      AND    (
+               (xsims.monthly_stock <> 0)
+               OR
+               (xsims.cargo_stock   <> 0)
+             )
+      AND    iwm.attribute1          = '0'
+-- 2008/12/10 v1.25 UPDATE END
       ORDER BY h_whse_code
               ,crowd_code
               ,item_code
@@ -5191,6 +5228,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -5298,6 +5336,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -5407,6 +5446,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         = '04'
@@ -5510,6 +5550,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -5693,6 +5734,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -5798,6 +5840,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         = '08'
@@ -5905,6 +5948,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         = '04'
@@ -6007,6 +6051,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -6107,7 +6152,15 @@ AS
       AND    xsims.invent_ym         = TO_CHAR(gd_s_date, gc_char_ym_format)
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
-      AND    xsims.monthly_stock    <> 0
+-- 2008/12/10 v1.25 UPDATE START
+--      AND    xsims.monthly_stock    <> 0
+      AND    (
+               (xsims.monthly_stock <> 0)
+               OR
+               (xsims.cargo_stock   <> 0)
+             )
+      AND    iwm.attribute1          = '0'
+-- 2008/12/10 v1.25 UPDATE END
       ORDER BY h_whse_code
               ,crowd_code
               ,item_code
@@ -7012,6 +7065,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -7118,6 +7172,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -7226,6 +7281,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         = '04'
@@ -7328,6 +7384,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -7509,6 +7566,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -7613,6 +7671,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         = '08'
@@ -7719,6 +7778,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         = '04'
@@ -7820,6 +7880,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -7918,7 +7979,15 @@ AS
       AND    iwm.whse_code           = xsims.whse_code
       AND    xsims.invent_ym         = TO_CHAR(gd_s_date, gc_char_ym_format)
       AND    iwm.whse_code           = ir_param.locat_code
-      AND    xsims.monthly_stock    <> 0
+-- 2008/12/10 v1.25 UPDATE START
+--      AND    xsims.monthly_stock    <> 0
+      AND    (
+               (xsims.monthly_stock <> 0)
+               OR
+               (xsims.cargo_stock   <> 0)
+             )
+      AND    iwm.attribute1          = '0'
+-- 2008/12/10 v1.25 UPDATE END
       ORDER BY h_whse_code
               ,crowd_code
               ,item_code
@@ -8804,6 +8873,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -8908,6 +8978,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -9014,6 +9085,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         = '04'
@@ -9114,6 +9186,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -9291,6 +9364,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -9393,6 +9467,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         = '08'
@@ -9497,6 +9572,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         = '04'
@@ -9596,6 +9672,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -9670,6 +9747,9 @@ AS
             ,mtl_categories_b                 mcb2
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
+-- 2008/12/10 v1.25 ADD START
+            ,ic_whse_mst                      iwm
+-- 2008/12/10 v1.25 ADD END
       WHERE  xsims.item_id           = iimb.item_id
       AND    ximb.item_id            = iimb.item_id
       AND    ilm.item_id             = xsims.item_id
@@ -9691,7 +9771,16 @@ AS
       AND    gic3.category_id        = mcb3.category_id
       AND    xsims.invent_ym         = TO_CHAR(gd_s_date, gc_char_ym_format)
       AND    mcb3.segment1           = lt_crowd_code
-      AND    xsims.monthly_stock    <> 0
+-- 2008/12/10 v1.25 UPDATE START
+--      AND    xsims.monthly_stock    <> 0
+      AND    (
+               (xsims.monthly_stock <> 0)
+               OR
+               (xsims.cargo_stock   <> 0)
+             )
+      AND    iwm.whse_code           = xsims.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2008/12/10 v1.25 UPDATE END
       ORDER BY crowd_code
               ,item_code
       ;
@@ -10567,6 +10656,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -10670,6 +10760,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -10775,6 +10866,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         = '04'
@@ -10874,6 +10966,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -11049,6 +11142,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -11150,6 +11244,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         = '08'
@@ -11253,6 +11348,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    xoha.req_status         = '04'
@@ -11351,6 +11447,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date > FND_DATE.STRING_TO_DATE(gd_prv2_dt_chr,gc_char_dt_format)
       AND    xoha.arrival_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -11424,6 +11521,9 @@ AS
             ,mtl_categories_b                 mcb2
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
+-- 2008/12/10 v1.25 ADD START
+            ,ic_whse_mst                      iwm
+-- 2008/12/10 v1.25 ADD END
       WHERE  xsims.item_id           = iimb.item_id
       AND    ximb.item_id            = iimb.item_id
       AND    ilm.item_id             = xsims.item_id
@@ -11444,7 +11544,16 @@ AS
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
       AND    xsims.invent_ym         = TO_CHAR(gd_s_date, gc_char_ym_format)
-      AND    xsims.monthly_stock    <> 0
+-- 2008/12/10 v1.25 UPDATE START
+--      AND    xsims.monthly_stock    <> 0
+      AND    (
+               (xsims.monthly_stock <> 0)
+               OR
+               (xsims.cargo_stock   <> 0)
+             )
+      AND    iwm.whse_code           = xsims.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2008/12/10 v1.25 UPDATE END
       ORDER BY crowd_code
               ,item_code
       ;
@@ -12573,17 +12682,32 @@ NULL;
                 ,on_inv_amt_tbl
                 ,ln_cargo_amt
           FROM   xxinv_stc_inventory_month_stck stc
+-- 2008/12/10 v1.25 ADD START
+                ,ic_whse_mst                    iwm
+-- 2008/12/10 v1.25 ADD END
                 ,xxcmn_lot_cost         xlc
           WHERE  stc.whse_code    = gt_body_data(in_pos).whse_code
-          AND  stc.item_id    = gt_body_data(in_pos).item_id
+          AND    stc.item_id    = gt_body_data(in_pos).item_id
           AND    stc.invent_ym  = lv_invent_yyyymm
-          AND    stc.item_id    = xlc.item_id
-          AND    stc.lot_id     = xlc.lot_id;
+-- 2008/12/10 v1.25 ADD START
+          AND    iwm.whse_code  = stc.whse_code
+          AND    iwm.attribute1 = '0'
+-- 2008/12/10 v1.25 ADD END
+-- 2008/12/09 v1.24 UPDATE START
+--          AND    stc.item_id    = xlc.item_id
+--          AND    stc.lot_id     = xlc.lot_id;
+          AND    stc.item_id    = xlc.item_id(+)
+          AND    stc.lot_id     = xlc.lot_id(+);
+-- 2008/12/09 v1.24 UPDATE END
 -- 2008/11/17 v 1.16 UPDATE END
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             on_inv_qty_tbl :=  0;
             on_inv_amt_tbl :=  0;
+-- 2008/12/09 v1.24 UPDATE START
+            ln_cargo_qty   :=  0;
+            ln_cargo_amt   :=  0;
+-- 2008/12/09 v1.24 UPDATE END
         END;
 -- 2008/12/03 v1.20 ADD START
 --
@@ -12591,10 +12715,17 @@ NULL;
        ELSE
         -- 棚卸結果より数量を取得
         BEGIN
-          SELECT  SUM(stcr.case_amt * stcr.content * stcr.loose_amt) AS stock
+-- 2008/12/05 MOD START
+--          SELECT  SUM(stcr.case_amt * stcr.content * stcr.loose_amt) AS stock
+--                 ,SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
+--                 ,SUM(ROUND((stcr.case_amt * stcr.content * stcr.loose_amt) * NVL(xlc.unit_ploce, 0))) AS stock_amt
+--                 ,SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))) AS cargo_price
+-- 2008/12/09 v1.24 UPDATE START
+          /*SELECT SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) AS stock
                  ,SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
-                 ,SUM(ROUND((stcr.case_amt * stcr.content * stcr.loose_amt) * NVL(xlc.unit_ploce, 0))) AS stock_amt
+                 ,SUM(ROUND((NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) * NVL(xlc.unit_ploce, 0))) AS stock_amt
                  ,SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))) AS cargo_price
+-- 2008/12/05 MOD END
           INTO   on_inv_qty_tbl
                 ,ln_cargo_qty
                 ,on_inv_amt_tbl
@@ -12610,11 +12741,58 @@ NULL;
           AND    stc.item_id      = stcr.item_id
           AND    stc.lot_id       = stcr.lot_id
           AND    stc.whse_code    = stcr.invent_whse_code
+          ;*/
+--
+          -- 月末在庫数取得
+          SELECT SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) AS stock
+                 ,SUM(ROUND((NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) * NVL(xlc.unit_ploce, 0))) AS stock_amt
+          INTO   on_inv_qty_tbl
+                ,on_inv_amt_tbl
+          FROM   xxinv_stc_inventory_result       stcr
+                ,xxcmn_lot_cost                   xlc
+-- 2008/12/10 v1.25 ADD START
+                ,ic_whse_mst                      iwm
+-- 2008/12/10 v1.25 ADD END
+          WHERE  stcr.invent_whse_code    = gt_body_data(in_pos).whse_code
+          AND    stcr.item_id      = gt_body_data(in_pos).item_id
+          AND    TO_CHAR(stcr.invent_date,'YYYYMM')  = lv_invent_yyyymm
+          AND    stcr.item_id      = xlc.item_id(+)
+          AND    stcr.lot_id       = xlc.lot_id(+)
+-- 2008/12/10 v1.25 ADD START
+          AND    iwm.whse_code     = stcr.invent_whse_code
+          AND    iwm.attribute1    = '0'
+-- 2008/12/10 v1.25 ADD END
           ;
+--
+          -- 月末積送中数取得
+          SELECT SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
+                 ,SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))) AS cargo_price
+          INTO   ln_cargo_qty
+                ,ln_cargo_amt
+          FROM   xxinv_stc_inventory_month_stck   stc
+                ,xxcmn_lot_cost                   xlc
+-- 2008/12/10 v1.25 ADD START
+                ,ic_whse_mst                      iwm
+-- 2008/12/10 v1.25 ADD END
+          WHERE  stc.whse_code    = gt_body_data(in_pos).whse_code
+          AND    stc.item_id      = gt_body_data(in_pos).item_id
+          AND    stc.invent_ym    = lv_invent_yyyymm
+          AND    stc.item_id      = xlc.item_id(+)
+          AND    stc.lot_id       = xlc.lot_id(+)
+-- 2008/12/10 v1.25 ADD START
+          AND    iwm.whse_code    = stc.whse_code
+          AND    iwm.attribute1   = '0'
+-- 2008/12/10 v1.25 ADD END
+          ;
+-- 2008/12/09 v1.24 UPDATE END
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             on_inv_qty_tbl :=  0;
             on_inv_amt_tbl :=  0;
+-- 2008/12/09 v1.24 UPDATE START
+            ln_cargo_qty   :=  0;
+            ln_cargo_amt   :=  0;
+-- 2008/12/09 v1.24 UPDATE END
         END;
 --
        END IF;
@@ -12661,10 +12839,21 @@ NULL;
                 ,ln_cargo_amt
           FROM   xxinv_stc_inventory_month_stck stc
                 ,xxcmn_lot_cost         xlc
+-- 2008/12/10 v1.25 ADD START
+                ,ic_whse_mst                    iwm
+-- 2008/12/10 v1.25 ADD END
           WHERE  stc.item_id    = gt_body_data(in_pos).item_id
           AND    stc.invent_ym  = lv_invent_yyyymm
-          AND    stc.item_id    = xlc.item_id
-          AND    stc.lot_id     = xlc.lot_id;
+-- 2008/12/10 v1.25 ADD START
+          AND    iwm.whse_code  = stc.whse_code
+          AND    iwm.attribute1 = '0'
+-- 2008/12/10 v1.25 ADD END
+-- 2008/12/09 v1.24 UPDATE START
+--          AND    stc.item_id    = xlc.item_id
+--          AND    stc.lot_id     = xlc.lot_id;
+          AND    stc.item_id    = xlc.item_id(+)
+          AND    stc.lot_id     = xlc.lot_id(+);
+-- 2008/12/09 v1.24 UPDATE END
 -- 2008/11/17 v1.16 UPDATE END
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
@@ -12681,10 +12870,17 @@ NULL;
        ELSE
         -- 棚卸結果より数量を取得
         BEGIN
-          SELECT  SUM(stcr.case_amt * stcr.content * stcr.loose_amt) AS stock
+-- 2008/12/05 MOD START
+--          SELECT  SUM(stcr.case_amt * stcr.content * stcr.loose_amt) AS stock
+--                 ,SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
+--                 ,SUM(ROUND((stcr.case_amt * stcr.content * stcr.loose_amt) * NVL(xlc.unit_ploce, 0))) AS stock_amt
+--                 ,SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))) AS cargo_price
+-- 2008/12/09 v1.24 UPDATE START
+          /*SELECT SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) AS stock
                  ,SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
-                 ,SUM(ROUND((stcr.case_amt * stcr.content * stcr.loose_amt) * NVL(xlc.unit_ploce, 0))) AS stock_amt
+                 ,SUM(ROUND((NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) * NVL(xlc.unit_ploce, 0))) AS stock_amt
                  ,SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))) AS cargo_price
+-- 2008/12/05 MOD END
           INTO   on_inv_qty_tbl
                 ,ln_cargo_qty
                 ,on_inv_amt_tbl
@@ -12699,7 +12895,48 @@ NULL;
           AND    stc.item_id      = stcr.item_id
           AND    stc.lot_id       = stcr.lot_id
           AND    stc.whse_code    = stcr.invent_whse_code
+          ;*/
+--
+          -- 月末在庫数取得
+          SELECT SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) AS stock
+                 ,SUM(ROUND((NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) * NVL(xlc.unit_ploce, 0))) AS stock_amt
+          INTO   on_inv_qty_tbl
+                ,on_inv_amt_tbl
+          FROM   xxinv_stc_inventory_result       stcr
+                ,xxcmn_lot_cost                   xlc
+-- 2008/12/10 v1.25 ADD START
+                ,ic_whse_mst                      iwm
+-- 2008/12/10 v1.25 ADD END
+          WHERE  stcr.item_id      = gt_body_data(in_pos).item_id
+          AND    TO_CHAR(stcr.invent_date,'YYYYMM')  = lv_invent_yyyymm
+          AND    stcr.item_id      = xlc.item_id(+)
+          AND    stcr.lot_id       = xlc.lot_id(+)
+-- 2008/12/10 v1.25 ADD START
+          AND    iwm.whse_code     = stcr.invent_whse_code
+          AND    iwm.attribute1    = '0'
+-- 2008/12/10 v1.25 ADD END
           ;
+--
+          -- 月末積送中数取得
+          SELECT SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
+                 ,SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))) AS cargo_price
+          INTO   ln_cargo_qty
+                ,ln_cargo_amt
+          FROM   xxinv_stc_inventory_month_stck   stc
+                ,xxcmn_lot_cost                   xlc
+-- 2008/12/10 v1.25 ADD START
+                ,ic_whse_mst                      iwm
+-- 2008/12/10 v1.25 ADD END
+          WHERE  stc.item_id      = gt_body_data(in_pos).item_id
+          AND    stc.invent_ym    = lv_invent_yyyymm
+          AND    stc.item_id      = xlc.item_id(+)
+          AND    stc.lot_id       = xlc.lot_id(+)
+-- 2008/12/10 v1.25 ADD START
+          AND    iwm.whse_code    = stc.whse_code
+          AND    iwm.attribute1   = '0'
+-- 2008/12/10 v1.25 ADD END
+          ;
+-- 2008/12/09 v1.24 UPDATE END
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             on_inv_qty_tbl :=  0;
@@ -12713,8 +12950,9 @@ NULL;
 -- 2008/12/03 v1.20 UPDATE END
       END IF;
 --
+-- 2008/12/09 v1.24 UPDATE START
 -- 2008/11/17 v1.16 ADD START
-     IF (ib_stock  =  TRUE) THEN
+     /*IF (ib_stock  =  TRUE) THEN
 -- 2008/11/17 v1.16 ADD END
       on_inv_qty  :=  NVL(on_inv_qty_tbl, 0);
       on_inv_amt  :=  NVL(on_inv_amt_tbl, 0);
@@ -12722,9 +12960,12 @@ NULL;
      ELSE
       on_inv_qty  :=  NVL(on_inv_qty_tbl, 0) + NVL(ln_cargo_qty, 0);
       on_inv_amt  :=  NVL(on_inv_amt_tbl, 0) + NVL(ln_cargo_amt, 0);
-     END IF;
+     END IF;*/
+      on_inv_qty  :=  NVL(on_inv_qty_tbl, 0) + NVL(ln_cargo_qty, 0);
+      on_inv_amt  :=  NVL(on_inv_amt_tbl, 0) + NVL(ln_cargo_amt, 0);
 -- 2008/11/17 v1.16 ADD END
 -- 2008/11/17 v1.16 DELETE START
+-- 2008/12/09 v1.24 UPDATE END
 /*
       --棚卸未確定：「棚卸月末在庫テーブルの数量＝０」は在庫は０とみなす。
       IF  (on_inv_qty = 0) AND (ib_stock  = FALSE) THEN
@@ -12739,15 +12980,31 @@ NULL;
     ---------------------------------------------
     --4.在庫数取得(標準原価用) 戻り値：数量 -
     ---------------------------------------------
+-- 2008/12/10 v1.25 UPDTE START
+/*
     FUNCTION fnc_st_inv_qty_get(
        ib_stock           IN   BOOLEAN    --TRUE:月首 FALSE:棚卸
       ,in_pos             IN   NUMBER     --品目レコード配列位置
       ,iv_exec_year_month IN   VARCHAR2)  --処理年月
       RETURN NUMBER
     IS
+*/
+    PROCEDURE fnc_st_inv_qty_get(
+       ib_stock           IN   BOOLEAN  --TRUE:月首  FALSE:棚卸
+      ,in_pos             IN   NUMBER   --品目レコード配列位置
+      ,in_price           IN   NUMBER   --原価
+      ,iv_exec_year_month IN   VARCHAR2 --処理年月
+      ,on_inv_qty         OUT  NUMBER   --数量
+      ,on_inv_amt         OUT  NUMBER)  --金額
+    IS
+-- 2008/12/10 v1.25 UPDTE END
 --
       --在庫数戻り値
       on_inv_qty_tbl NUMBER DEFAULT 0;--在庫テーブルより
+-- 2008/12/10 v1.25 ADD START
+      --在庫金額戻り値
+      on_inv_amt_tbl NUMBER DEFAULT 0;--在庫テーブルより
+-- 2008/12/10 v1.25 ADD END
       on_inv_qty_viw NUMBER DEFAULT 0;--受払VIWより
       --日付計算用
       ld_invent_date  DATE  DEFAULT FND_DATE.STRING_TO_DATE(
@@ -12758,6 +13015,9 @@ NULL;
 -- 2008/11/17 v1.16 ADD START
       -- 変数の初期化
       ln_cargo_qty   :=  0;
+-- 2008/12/10 v1.25 ADD START
+      ln_cargo_amt   :=  0;
+-- 2008/12/10 v1.25 ADD END
 --
 -- 2008/11/17 v1.16 ADD END
       -- 「月首」指定の場合は前月の年月を求めます。
@@ -12769,9 +13029,9 @@ NULL;
       ELSE
         lv_invent_yyyymm  := iv_exec_year_month;
       END IF;
-      -- =======================================================
-      -- 棚卸月末在庫テーブルより「前月末在庫数」を取得します。=
-      -- =======================================================
+      -- ===============================================================
+      -- 棚卸月末在庫テーブルより「前月末在庫数」「金額」を取得します。=
+      -- ===============================================================
       -- 倉庫別の場合は倉庫毎の在庫を取得する。
       IF  (gt_body_data(in_pos).whse_code IS NOT NULL) THEN
 -- 2008/12/03 v1.20 ADD START
@@ -12785,16 +13045,39 @@ NULL;
 --          INTO   on_inv_qty_tbl
           SELECT SUM(NVL(stc.monthly_stock, 0)) AS stock
                 ,SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
+-- 2008/12/10 v1.25 ADD START
+                ,SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(in_price, 0))) AS stock_amt
+                ,SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(in_price, 0))) AS cargo_price
+-- 2008/12/10 v1.25 ADD END
           INTO   on_inv_qty_tbl
                 ,ln_cargo_qty
+-- 2008/12/10 v1.25 ADD START
+                ,on_inv_amt_tbl
+                ,ln_cargo_amt
+-- 2008/12/10 v1.25 ADD END
 -- 2008/11/17 v1.16 UPDATE END
           FROM   xxinv_stc_inventory_month_stck stc
+-- 2008/12/10 v1.25 ADD START
+                ,ic_whse_mst                    iwm
+-- 2008/12/10 v1.25 ADD END
           WHERE  stc.whse_code    = gt_body_data(in_pos).whse_code
           AND    stc.item_id    = gt_body_data(in_pos).item_id
+-- 2008/12/10 v1.25 ADD START
+          AND    iwm.whse_code    = stc.whse_code
+          AND    iwm.attribute1   = '0'
+-- 2008/12/10 v1.25 ADD END
           AND   stc.invent_ym = lv_invent_yyyymm;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             on_inv_qty_tbl :=  0;
+-- 2008/12/09 v1.24 UPDATE START
+            ln_cargo_qty   :=  0;
+-- 2008/12/09 v1.24 UPDATE END
+-- 2008/12/10 v1.25 UPDATE START
+            on_inv_amt_tbl :=  0;
+            ln_cargo_amt   :=  0;
+--
+-- 2008/12/10 v1.25 UPDATE END
         END;
 -- 2008/12/03 v1.20 ADD START
 --
@@ -12802,8 +13085,13 @@ NULL;
        ELSE
         -- 棚卸結果より数量を取得
         BEGIN
-          SELECT SUM(stcr.case_amt * stcr.content * stcr.loose_amt) AS stock
-                ,SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
+-- 2008/12/05 MOD START
+--          SELECT  SUM(stcr.case_amt * stcr.content * stcr.loose_amt) AS stock
+--                 ,SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
+-- 2008/12/09 v1.24 UPDATE START
+          /*SELECT SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) AS stock
+                 ,SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
+-- 2008/12/05 MOD END
           INTO   on_inv_qty_tbl
                 ,ln_cargo_qty
           FROM   xxinv_stc_inventory_month_stck stc
@@ -12812,12 +13100,64 @@ NULL;
           AND    stc.item_id      = gt_body_data(in_pos).item_id
           AND    stc.invent_ym    = lv_invent_yyyymm
           AND    stc.item_id      = stcr.item_id
-          AND    stc.lot_id       = stcr.lot_id
+-- 2008/12/08 DELETE START
+--          AND    stc.lot_id       = stcr.lot_id
+-- 2008/12/08 DELETE END
           AND    stc.whse_code    = stcr.invent_whse_code
+          ;*/
+--
+          -- 月末在庫数取得
+-- 2008/12/10 UPDTE START
+--          SELECT SUM(stcr.case_amt * stcr.content * stcr.loose_amt) AS stock
+--          INTO   on_inv_qty_tbl
+          SELECT SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) AS stock
+                 ,SUM(ROUND((NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) * NVL(in_price, 0))) AS stock_amt
+          INTO   on_inv_qty_tbl
+                ,on_inv_amt_tbl
+-- 2008/12/10 UPDTE END
+          FROM   xxinv_stc_inventory_result   stcr
+-- 2008/12/10 v1.25 ADD START
+                ,ic_whse_mst                  iwm
+-- 2008/12/10 v1.25 ADD END
+          WHERE  stcr.invent_whse_code = gt_body_data(in_pos).whse_code
+          AND    stcr.item_id          = gt_body_data(in_pos).item_id
+          AND    TO_CHAR(stcr.invent_date,'YYYYMM')  = lv_invent_yyyymm
+-- 2008/12/10 v1.25 ADD START
+          AND    iwm.whse_code         = stcr.invent_whse_code
+          AND    iwm.attribute1        = '0'
+-- 2008/12/10 v1.25 ADD END
           ;
+--
+          -- 月末積送中数取得
+          SELECT SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
+-- 2008/12/10 ADD START
+                 ,SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(in_price, 0))) AS cargo_price
+-- 2008/12/10 ADD END
+          INTO   ln_cargo_qty
+-- 2008/12/10 ADD START
+                ,ln_cargo_amt
+-- 2008/12/10 ADD END
+          FROM   xxinv_stc_inventory_month_stck       stc
+-- 2008/12/10 v1.25 ADD START
+                ,ic_whse_mst                          iwm
+-- 2008/12/10 v1.25 ADD END
+          WHERE  stc.whse_code    = gt_body_data(in_pos).whse_code
+          AND    stc.item_id      = gt_body_data(in_pos).item_id
+          AND    stc.invent_ym    = lv_invent_yyyymm
+-- 2008/12/10 v1.25 ADD START
+          AND    iwm.whse_code    = stc.whse_code
+          AND    iwm.attribute1   = '0'
+-- 2008/12/10 v1.25 ADD END
+          ;
+-- 2008/12/09 v1.24 UPDATE END
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             on_inv_qty_tbl :=  0;
+            ln_cargo_qty   :=  0;
+-- 2008/12/10 v1.25 ADD START
+            on_inv_amt_tbl :=  0;
+            ln_cargo_amt   :=  0;
+-- 2008/12/10 v1.25 ADD END
         END;
 --
        END IF;
@@ -12835,11 +13175,26 @@ NULL;
 --          INTO   on_inv_qty_tbl
           SELECT SUM(NVL(stc.monthly_stock, 0)) AS stock
                 ,SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
+-- 2008/12/10 v1.25 ADD START
+                ,SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(in_price, 0))) AS stock_amt
+                ,SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(in_price, 0))) AS cargo_price
+-- 2008/12/10 v1.25 ADD END
           INTO   on_inv_qty_tbl
                 ,ln_cargo_qty
+-- 2008/12/10 v1.25 ADD START
+                ,on_inv_amt_tbl
+                ,ln_cargo_amt
+-- 2008/12/10 v1.25 ADD END
 -- 2008/11/17 v1.16 UPDATE END
           FROM   xxinv_stc_inventory_month_stck stc
+-- 2008/12/10 v1.25 ADD START
+                ,ic_whse_mst                    iwm
+-- 2008/12/10 v1.25 ADD END
           WHERE  stc.item_id    = gt_body_data(in_pos).item_id
+-- 2008/12/10 v1.25 ADD START
+          AND    iwm.whse_code  = stc.whse_code
+          AND    iwm.attribute1 = '0'
+-- 2008/12/10 v1.25 ADD END
           AND   stc.invent_ym = lv_invent_yyyymm;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
@@ -12847,6 +13202,10 @@ NULL;
 -- 2008/11/17 v1.16 ADD START
             ln_cargo_qty   :=  0;
 -- 2008/11/17 v1.16 ADD END
+-- 2008/12/10 v1.25 ADD START
+            on_inv_amt_tbl :=  0;
+            ln_cargo_amt   :=  0;
+-- 2008/12/10 v1.25 ADD END
         END;
 -- 2008/12/03 v1.20 ADD START
 --
@@ -12854,8 +13213,13 @@ NULL;
        ELSE
         -- 棚卸結果より数量を取得
         BEGIN
-          SELECT SUM(stcr.case_amt * stcr.content * stcr.loose_amt) AS stock
-                ,SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
+-- 2008/12/05 MOD START
+--          SELECT  SUM(stcr.case_amt * stcr.content * stcr.loose_amt) AS stock
+--                 ,SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
+-- 2008/12/09 v1.24 UPDATE START
+          /*SELECT SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) AS stock
+                 ,SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
+-- 2008/12/05 MOD END
           INTO   on_inv_qty_tbl
                 ,ln_cargo_qty
           FROM   xxinv_stc_inventory_month_stck stc
@@ -12863,13 +13227,65 @@ NULL;
           WHERE  stc.item_id      = gt_body_data(in_pos).item_id
           AND    stc.invent_ym    = lv_invent_yyyymm
           AND    stc.item_id      = stcr.item_id
-          AND    stc.lot_id       = stcr.lot_id
+-- 2008/12/08 DELETE START
+--          AND    stc.lot_id       = stcr.lot_id
+-- 2008/12/08 DELETE END
           AND    stc.whse_code    = stcr.invent_whse_code
+          ;*/
+--
+          -- 月末在庫数取得
+-- 2008/12/10 v1.25 UPDATE START
+--          SELECT SUM(stcr.case_amt * stcr.content * stcr.loose_amt) AS stock
+          SELECT SUM(stcr.case_amt * stcr.content + stcr.loose_amt) AS stock
+-- 2008/12/10 v1.25 UPDATE END
+-- 2008/12/10 v1.25 ADD START
+                 ,SUM(ROUND((NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) * NVL(in_price, 0))) AS stock_amt
+-- 2008/12/10 v1.25 ADD END
+          INTO   on_inv_qty_tbl
+-- 2008/12/10 v1.25 ADD START
+                ,on_inv_amt_tbl
+-- 2008/12/10 v1.25 ADD END
+          FROM   xxinv_stc_inventory_result   stcr
+-- 2008/12/10 v1.25 ADD START
+                ,ic_whse_mst                  iwm
+-- 2008/12/10 v1.25 ADD END
+          WHERE  stcr.item_id      = gt_body_data(in_pos).item_id
+          AND    TO_CHAR(stcr.invent_date,'YYYYMM')  = lv_invent_yyyymm
+-- 2008/12/10 v1.25 ADD START
+          AND    iwm.whse_code     = stcr.invent_whse_code
+          AND    iwm.attribute1    = '0'
+-- 2008/12/10 v1.25 ADD END
           ;
+--
+          -- 月末積送中数取得
+          SELECT SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
+-- 2008/12/10 v1.25 ADD START
+                 ,SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(in_price, 0))) AS cargo_price
+-- 2008/12/10 v1.25 ADD END
+          INTO   ln_cargo_qty
+-- 2008/12/10 v1.25 ADD START
+                ,ln_cargo_amt
+-- 2008/12/10 v1.25 ADD END
+          FROM   xxinv_stc_inventory_month_stck       stc
+-- 2008/12/10 v1.25 ADD START
+                ,ic_whse_mst                          iwm
+-- 2008/12/10 v1.25 ADD END
+          WHERE  stc.item_id      = gt_body_data(in_pos).item_id
+          AND    stc.invent_ym    = lv_invent_yyyymm
+-- 2008/12/10 v1.25 ADD START
+          AND    iwm.whse_code    = stc.whse_code
+          AND    iwm.attribute1   = '0'
+-- 2008/12/10 v1.25 ADD END
+          ;
+-- 2008/12/09 v1.24 UPDATE END
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             on_inv_qty_tbl :=  0;
             ln_cargo_qty   :=  0;
+-- 2008/12/10 v1.25 ADD START
+            on_inv_amt_tbl :=  0;
+            ln_cargo_amt   :=  0;
+-- 2008/12/10 v1.25 ADD END
         END;
 --
        END IF;
@@ -12877,15 +13293,22 @@ NULL;
 -- 2008/12/03 v1.20 UPDATE END
       END IF;
 --
+-- 2008/12/09 v1.24 UPDATE START
 -- 2008/11/17 v1.16 ADD START
-     IF (ib_stock  =  TRUE) THEN
+     /*IF (ib_stock  =  TRUE) THEN
 -- 2008/11/17 v1.16 ADD END
       RETURN  NVL(on_inv_qty_tbl, 0);
 -- 2008/11/17 v1.16 ADD START
      ELSE
       RETURN  NVL(on_inv_qty_tbl, 0) + NVL(ln_cargo_qty, 0);
-     END IF;
+     END IF;*/
 -- 2008/11/17 v1.16 ADD END
+-- 2008/12/10 v1.25 UPDATE START
+--      RETURN  NVL(on_inv_qty_tbl, 0) + NVL(ln_cargo_qty, 0);
+      on_inv_qty  :=  NVL(on_inv_qty_tbl, 0) + NVL(ln_cargo_qty, 0);
+      on_inv_amt  :=  NVL(on_inv_amt_tbl, 0) + NVL(ln_cargo_amt, 0);
+-- 2008/12/10 v1.25 UPDATE END
+-- 2008/12/09 v1.24 UPDATE END
 --
     END fnc_st_inv_qty_get;
 --
@@ -12931,6 +13354,8 @@ NULL;
           ,on_inv_qty           =>  ln_inv_qty
           ,on_inv_amt           =>  ln_inv_amt);
 --
+-- 2008/12/10 v1.25 UPDATE START
+/*
           ln_inv_qty  :=  ln_inv_qty  + gn_fst_inv_qty;
 -- 2008/11/04 v1.12 UPDATE START
 --          ln_inv_amt  :=  ln_inv_amt  + gn_fst_inv_amt;
@@ -12948,6 +13373,19 @@ NULL;
         ln_inv_amt  :=  ROUND(in_price * ln_inv_qty);
 -- 2008/11/04 v1.12 UPDATE END
       END IF;
+*/
+      ELSE
+        fnc_st_inv_qty_get(                             --標準原価の場合
+           ib_stock             =>  ib_stock
+          ,in_pos               =>  in_pos
+          ,in_price             =>  in_price
+          ,iv_exec_year_month   =>  iv_exec_year_month
+          ,on_inv_qty           =>  ln_inv_qty
+          ,on_inv_amt           =>  ln_inv_amt);
+--
+      END IF;
+--
+-- 2008/12/10 v1.25 UPDATE END
 --
       prc_xml_add( 'g_item', 'T');
       prc_xml_add('item_code', 'D', gt_body_data(in_pos).item_code); --品目ID
@@ -13035,6 +13473,8 @@ NULL;
           ,on_inv_qty           =>  ln_stock_qty
           ,on_inv_amt           =>  ln_stock_amt);
 --
+-- 2008/12/10 v1.25 UPDATE START
+/*
           ln_stock_qty  :=  ln_stock_qty  + gn_lst_inv_qty;
           ln_stock_amt  :=  ln_stock_amt  + gn_lst_inv_amt;
       ELSE
@@ -13045,6 +13485,17 @@ NULL;
 --
         ln_stock_qty  :=  ln_stock_qty  + gn_lst_inv_qty;
         ln_stock_amt  :=  in_price * ln_stock_qty;
+*/
+      ELSE
+        fnc_st_inv_qty_get(                             --標準原価の場合
+           ib_stock             =>  ib_stock
+          ,in_pos               =>  in_pos
+          ,in_price             =>  in_price
+          ,iv_exec_year_month   =>  iv_exec_year_month
+          ,on_inv_qty           =>  ln_stock_qty
+          ,on_inv_amt           =>  ln_stock_amt);
+--
+-- 2008/12/10 v1.25 UPDATE END
       END IF;
       --棚卸数が確定している場合のみ出力します。
       IF  (ln_stock_qty !=  0)  THEN

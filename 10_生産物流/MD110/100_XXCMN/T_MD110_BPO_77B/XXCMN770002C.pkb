@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）製品
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77B)
- * Version          : 1.19
+ * Version          : 1.24
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -54,6 +54,11 @@ AS
  *  2008/11/19    1.17  N.Yoshida        I_S_684対応、移行データ検証不具合対応
  *  2008/11/25    1.18  A.Shiina         本番指摘52対応
  *  2008/12/03    1.19  A.Shiina         本番指摘361対応
+ *  2008/12/05    1.20  H.Maru           本番障害492対応
+ *  2008/12/07    1.21  N.Yoshida        本番障害数値あわせ対応(受注ヘッダの最新フラグを追加)
+ *  2008/12/08    1.22  A.Shiina         本番障害565対応
+ *  2008/12/09    1.23  H.Marushita      本番障害565対応
+ *  2008/12/10    1.24  A.Shiina         本番障害617,636対応
  *
  *****************************************************************************************/
 --
@@ -1394,6 +1399,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -1494,6 +1500,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -1598,6 +1605,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -1702,6 +1710,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -1803,6 +1812,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -1904,6 +1914,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -1997,6 +2008,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -2086,6 +2098,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -2249,6 +2262,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -2347,6 +2361,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -2448,6 +2463,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -2549,6 +2565,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -2650,6 +2667,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -2749,6 +2767,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -2841,6 +2860,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -2928,6 +2948,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -3017,7 +3038,15 @@ AS
       AND    gic3.category_id        = mcb3.category_id
       AND    iwm.whse_code           = xsims.whse_code
       AND    xsims.invent_ym         = gv_exec_year_month_bef
-      AND    xsims.monthly_stock    <> 0
+-- 2008/12/10 v1.24 UPDATE START
+--      AND    xsims.monthly_stock    <> 0
+      AND    (
+               (xsims.monthly_stock <> 0)
+               OR
+               (xsims.cargo_stock   <> 0)
+             )
+      AND    iwm.attribute1          = '0'
+-- 2008/12/10 v1.24 UPDATE END
       ORDER BY h_whse_code      -- 倉庫コード
               ,crowd_code       -- 群コード
               ,item_code        -- 品目コード
@@ -3753,6 +3782,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -3854,6 +3884,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -3959,6 +3990,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -4064,6 +4096,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -4166,6 +4199,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -4268,6 +4302,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -4362,6 +4397,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -4452,6 +4488,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -4617,6 +4654,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -4716,6 +4754,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -4818,6 +4857,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -4920,6 +4960,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -5022,6 +5063,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -5122,6 +5164,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -5215,6 +5258,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -5303,6 +5347,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -5394,7 +5439,15 @@ AS
       AND    iwm.whse_code           = xsims.whse_code
       AND    xsims.invent_ym         = gv_exec_year_month_bef
       AND    iwm.whse_code           = ir_param.locat_code
-      AND    xsims.monthly_stock    <> 0
+-- 2008/12/10 v1.24 UPDATE START
+--      AND    xsims.monthly_stock    <> 0
+      AND    (
+               (xsims.monthly_stock <> 0)
+               OR
+               (xsims.cargo_stock   <> 0)
+             )
+      AND    iwm.attribute1          = '0'
+-- 2008/12/10 v1.24 UPDATE END
       ORDER BY h_whse_code      -- 倉庫コード
               ,crowd_code       -- 群コード
               ,item_code        -- 品目コード
@@ -6130,6 +6183,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -6231,6 +6285,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -6336,6 +6391,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -6441,6 +6497,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -6543,6 +6600,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -6645,6 +6703,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -6739,6 +6798,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -6829,6 +6889,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -6994,6 +7055,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -7093,6 +7155,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -7195,6 +7258,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -7297,6 +7361,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -7399,6 +7464,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -7499,6 +7565,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -7592,6 +7659,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -7680,6 +7748,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -7771,7 +7840,15 @@ AS
       AND    iwm.whse_code           = xsims.whse_code
       AND    xsims.invent_ym         = gv_exec_year_month_bef
       AND    mcb3.segment1           = lt_crowd_code
-      AND    xsims.monthly_stock    <> 0
+-- 2008/12/10 v1.24 UPDATE START
+--      AND    xsims.monthly_stock    <> 0
+      AND    (
+               (xsims.monthly_stock <> 0)
+               OR
+               (xsims.cargo_stock   <> 0)
+             )
+      AND    iwm.attribute1          = '0'
+-- 2008/12/10 v1.24 UPDATE END
       ORDER BY h_whse_code      -- 倉庫コード
               ,crowd_code       -- 群コード
               ,item_code        -- 品目コード
@@ -8515,6 +8592,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -8617,6 +8695,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -8723,6 +8802,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -8829,6 +8909,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -8932,6 +9013,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -9035,6 +9117,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -9130,6 +9213,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -9221,6 +9305,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -9388,6 +9473,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -9488,6 +9574,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -9591,6 +9678,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -9694,6 +9782,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -9797,6 +9886,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -9898,6 +9988,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -9992,6 +10083,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -10081,6 +10173,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -10174,7 +10267,15 @@ AS
       AND    xsims.invent_ym         = gv_exec_year_month_bef
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = ir_param.locat_code
-      AND    xsims.monthly_stock    <> 0
+-- 2008/12/10 v1.24 UPDATE START
+--      AND    xsims.monthly_stock    <> 0
+      AND    (
+               (xsims.monthly_stock <> 0)
+               OR
+               (xsims.cargo_stock   <> 0)
+             )
+      AND    iwm.attribute1          = '0'
+-- 2008/12/10 v1.24 UPDATE END
       ORDER BY h_whse_code      -- 倉庫コード
               ,crowd_code       -- 群コード
               ,item_code        -- 品目コード
@@ -10885,6 +10986,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -10983,6 +11085,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -11085,6 +11188,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -11187,6 +11291,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -11286,6 +11391,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -11385,6 +11491,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -11476,6 +11583,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -11563,6 +11671,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -11722,6 +11831,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -11818,6 +11928,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -11917,6 +12028,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -12016,6 +12128,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -12115,6 +12228,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -12212,6 +12326,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -12302,6 +12417,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -12387,6 +12503,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -12453,6 +12570,9 @@ AS
             ,mtl_categories_b                 mcb2
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
+-- 2008/12/10 v1.24 ADD START
+            ,ic_whse_mst                      iwm
+-- 2008/12/10 v1.24 ADD END
       WHERE  xsims.item_id           = iimb.item_id
       AND    ximb.item_id            = iimb.item_id
       AND    ilm.item_id             = xsims.item_id
@@ -12473,7 +12593,16 @@ AS
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
       AND    xsims.invent_ym         = gv_exec_year_month_bef
-      AND    xsims.monthly_stock    <> 0
+-- 2008/12/10 v1.24 UPDATE START
+--      AND    xsims.monthly_stock    <> 0
+      AND    (
+               (xsims.monthly_stock <> 0)
+               OR
+               (xsims.cargo_stock   <> 0)
+             )
+      AND    iwm.whse_code           = xsims.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2008/12/10 v1.24 UPDATE END
       ORDER BY crowd_code       -- 群コード
               ,item_code        -- 品目コード
               ,column_no        -- 項目位置
@@ -13191,6 +13320,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -13290,6 +13420,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -13393,6 +13524,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -13496,6 +13628,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -13596,6 +13729,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -13696,6 +13830,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -13788,6 +13923,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -13876,6 +14012,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    ilm.item_id             = itp.item_id
@@ -14037,6 +14174,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -14134,6 +14272,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -14234,6 +14373,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -14334,6 +14474,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -14434,6 +14575,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -14532,6 +14674,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -14623,6 +14766,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -14709,6 +14853,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
+      AND    xoha.latest_external_flag = 'Y'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -14776,6 +14921,9 @@ AS
             ,mtl_categories_b                 mcb2
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
+-- 2008/12/10 v1.24 ADD START
+            ,ic_whse_mst                      iwm
+-- 2008/12/10 v1.24 ADD END
       WHERE  xsims.item_id           = iimb.item_id
       AND    ximb.item_id            = iimb.item_id
       AND    ilm.item_id             = xsims.item_id
@@ -14797,7 +14945,16 @@ AS
       AND    gic3.category_id        = mcb3.category_id
       AND    xsims.invent_ym         = gv_exec_year_month_bef
       AND    mcb3.segment1           = lt_crowd_code
-      AND    xsims.monthly_stock    <> 0
+-- 2008/12/10 v1.24 UPDATE START
+--      AND    xsims.monthly_stock    <> 0
+      AND    (
+               (xsims.monthly_stock <> 0)
+               OR
+               (xsims.cargo_stock   <> 0)
+             )
+      AND    iwm.whse_code           = xsims.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2008/12/10 v1.24 UPDATE END
       ORDER BY crowd_code       -- 群コード
               ,item_code        -- 品目コード
               ,column_no        -- 項目位置
@@ -16444,6 +16601,7 @@ AS
     IS
       -- *** ローカル変数 ***
       ln_idx  NUMBER;
+      ln_cost_kbn NUMBER; -- 0実際原価、1標準原価
 --
     BEGIN
 --
@@ -16454,173 +16612,271 @@ AS
         ln_idx := in_pos - 1;
       END IF;
 --
-      --原価区分＝標準原価、原価区分＝実際原価andロット管理＝対象外のとき
-      IF  (   (gt_main_data(in_pos).cost_kbn = gc_cost_st)
-           OR (    (gt_main_data(in_pos).cost_kbn = gc_cost_ac)
-               AND (gt_main_data(in_pos).lot_ctl  = gn_lot_ctl_n) ) )
-      THEN
--- 2008/12/03 v1.20 ADD START
-       -- 月末在庫を求める場合
-       IF (iv_year_month = gv_exec_year_month_bef) THEN
--- 2008/12/03 v1.20 ADD END
-        -- 月末在庫より数量を取得
-        BEGIN
+      -- 原価管理区分
+      IF((gt_main_data(in_pos).cost_kbn = gc_cost_ac) AND (gt_main_data(in_pos).lot_ctl  = gn_lot_ctl_y))THEN
+        ln_cost_kbn := 0;
+      ELSE
+        ln_cost_kbn := 1;
+      END IF;
+--
+      IF( (ln_cost_kbn=1) AND(iv_year_month = gv_exec_year_month_bef) AND (ir_param.print_kind = gc_print_kind_locat)) THEN
+         -- 月初残高を取得 倉庫別 標準原価
+         SELECT NVL(SUM(NVL(stc.monthly_stock, 0)),0) as stock
+               ,NVL(SUM(NVL(stc.cargo_stock  , 0)),0) as cargo_stock
+-- 2008/12/10 v1.24 UPDATE START
+--               ,0 as price
+--               ,0 as cargo_price
+               ,NVL(SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(ln_unit_price, 0))),0) as price
+               ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(ln_unit_price, 0))),0)   as cargo_price
+-- 2008/12/10 v1.24 UPDATE END
+         INTO   on_inv_qty
+               ,on_cargo_qty
+               ,on_inv_amt
+               ,on_cargo_amt
+         FROM   xxinv_stc_inventory_month_stck stc
+-- 2008/12/10 v1.24 ADD START
+               ,ic_whse_mst                    iwm
+-- 2008/12/10 v1.24 ADD END
+         WHERE  stc.item_id   = gt_main_data(ln_idx).item_id
+         AND    stc.invent_ym = iv_year_month
+         AND    stc.whse_code = gt_main_data(ln_idx).locat_code
+-- 2008/12/10 v1.24 ADD START
+         AND    iwm.whse_code  = stc.whse_code
+         AND    iwm.attribute1 = '0'
+-- 2008/12/10 v1.24 ADD END
+         ;
+      ELSIF((ln_cost_kbn=1) AND(iv_year_month = gv_exec_year_month_bef) AND (ir_param.print_kind <> gc_print_kind_locat)) THEN
+         -- 月初残高を取得 品目別 標準原価
+         SELECT NVL(SUM(NVL(stc.monthly_stock, 0)),0) as stock
+               ,NVL(SUM(NVL(stc.cargo_stock  , 0)),0) as cargo_stock
+-- 2008/12/10 v1.24 UPDATE START
+--               ,0 as price
+--               ,0 as cargo_price
+               ,NVL(SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(ln_unit_price, 0))),0) as price
+               ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(ln_unit_price, 0))),0)   as cargo_price
+-- 2008/12/10 v1.24 UPDATE END
+         INTO   on_inv_qty
+               ,on_cargo_qty
+               ,on_inv_amt
+               ,on_cargo_amt
+         FROM   xxinv_stc_inventory_month_stck stc
+-- 2008/12/10 v1.24 ADD START
+               ,ic_whse_mst                    iwm
+-- 2008/12/10 v1.24 ADD END
+         WHERE  stc.item_id   = gt_main_data(ln_idx).item_id
+         AND    stc.invent_ym = iv_year_month
+-- 2008/12/10 v1.24 ADD START
+         AND    iwm.whse_code  = stc.whse_code
+         AND    iwm.attribute1 = '0'
+-- 2008/12/10 v1.24 ADD END
+         ;
+      ELSIF((ln_cost_kbn=0) AND(iv_year_month = gv_exec_year_month_bef) AND (ir_param.print_kind = gc_print_kind_locat)) THEN
+         -- 月初残高を取得 倉庫別 実際原価
           SELECT NVL(SUM(NVL(stc.monthly_stock, 0)),0) as stock
--- 2008/11/17 v1.16 ADD START
                 ,NVL(SUM(NVL(stc.cargo_stock, 0)),0)   as cargo_stock
--- 2008/11/17 v1.16 ADD END
-                ,0                                     as price
-                ,0                                     as cargo_price
+                ,NVL(SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(xlc.unit_ploce, 0))),0) as price
+                ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))),0)   as cargo_price
           INTO   on_inv_qty
--- 2008/11/17 v1.16 ADD START
                 ,on_cargo_qty
--- 2008/11/17 v1.16 ADD END
                 ,on_inv_amt
--- 2008/11/17 v1.16 ADD START
                 ,on_cargo_amt
--- 2008/11/17 v1.16 ADD END
           FROM   xxinv_stc_inventory_month_stck stc
+-- 2008/12/10 v1.24 ADD START
+                ,ic_whse_mst                    iwm
+-- 2008/12/10 v1.24 ADD END
+                ,xxcmn_lot_cost xlc
           WHERE  stc.item_id   = gt_main_data(ln_idx).item_id
           AND    stc.invent_ym = iv_year_month
-          AND ( (ir_param.print_kind <> gc_print_kind_locat)
-             OR ( (ir_param.print_kind = gc_print_kind_locat)
-              AND (stc.whse_code = gt_main_data(ln_idx).locat_code)));
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            on_inv_qty :=  0;
-            on_inv_amt :=  0;
-        END;
--- 2008/12/03 v1.20 ADD START
---
-       -- 棚卸在庫を求める場合
-       ELSE
-        -- 棚卸結果より数量を取得
-        BEGIN
-          SELECT NVL(SUM(NVL((stcr.case_amt * stcr.content * stcr.loose_amt), 0)),0) AS stock
-                ,NVL(SUM(NVL(stc.cargo_stock, 0)),0)          AS cargo_stock
-                ,0                                     AS price
-                ,0                                     AS cargo_price
-          INTO   on_inv_qty
-                ,on_cargo_qty
-                ,on_inv_amt
-                ,on_cargo_amt
-          FROM   xxinv_stc_inventory_month_stck stc
-                ,xxinv_stc_inventory_result     stcr
-          WHERE  stc.item_id      = gt_main_data(ln_idx).item_id
-          AND    stc.invent_ym    = iv_year_month
-          AND    stc.item_id      = stcr.item_id
-          AND    stc.lot_id       = stcr.lot_id
-          AND    stc.whse_code    = stcr.invent_whse_code
-          AND ( (ir_param.print_kind <> gc_print_kind_locat)
-             OR ( (ir_param.print_kind = gc_print_kind_locat)
-              AND (stc.whse_code = gt_main_data(ln_idx).locat_code)));
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            on_inv_qty :=  0;
-            on_inv_amt :=  0;
-        END;
---
-       END IF;
--- 2008/12/03 v1.20 ADD END
--- 2008/12/03 v1.20 UPDATE END
---
-        -- ※原価区分＝標準原価のため、金額を算出しない
---
-      --原価区分＝標準原価以外の場合
-      ELSE
--- 2008/12/03 v1.20 ADD START
-       -- 月末在庫を求める場合
-       IF (iv_year_month = gv_exec_year_month_bef) THEN
--- 2008/12/03 v1.20 ADD END
-        -- 月末在庫より数量・金額を取得
-        BEGIN
--- 2008/12/03 v1.20 UPDATE START
--- 2008/10/31 v1.14 MOD START
---          SELECT NVL(SUM(NVL(stc.monthly_stock, 0)),0) as stock
---                ,NVL(SUM(NVL(stc.monthly_stock, 0) * NVL(xleiv.actual_unit_price, 0)),0)
---                                                       as price
---          INTO   on_inv_qty
---                ,on_inv_amt
---          FROM   xxinv_stc_inventory_month_stck stc
---                ,xxcmn_lot_each_item_v          xleiv    -- ロット別品目情報
---          WHERE  stc.item_id   = gt_main_data(ln_idx).item_id
---          AND    stc.invent_ym = iv_year_month
---          AND    stc.item_id   = xleiv.item_id
---          AND    stc.lot_id    = xleiv.lot_id
---          AND ( (ir_param.print_kind <> gc_print_kind_locat)
---             OR ( (ir_param.print_kind = gc_print_kind_locat)
---              AND (stc.whse_code = gt_main_data(ln_idx).locat_code)));
+          AND    stc.whse_code = gt_main_data(ln_idx).locat_code
+          AND    stc.item_id   = xlc.item_id(+)
+          AND    stc.lot_id    = xlc.lot_id (+)
+-- 2008/12/10 v1.24 ADD START
+          AND    iwm.whse_code  = stc.whse_code
+          AND    iwm.attribute1 = '0'
+-- 2008/12/10 v1.24 ADD END
+          ;
+      ELSIF((ln_cost_kbn=0) AND(iv_year_month = gv_exec_year_month_bef) AND (ir_param.print_kind <> gc_print_kind_locat)) THEN
+         -- 月初残高を取得 品目別 実際原価
           SELECT NVL(SUM(NVL(stc.monthly_stock, 0)),0) as stock
--- 2008/11/17 v1.16 ADD START
                 ,NVL(SUM(NVL(stc.cargo_stock, 0)),0)   as cargo_stock
--- 2008/11/17 v1.16 ADD END
-                --,NVL(SUM(NVL(stc.monthly_stock, 0) * NVL(xlc.unit_ploce, 0)),0)
-                ,NVL(SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(xlc.unit_ploce, 0))),0)
-                                                       as price
--- 2008/11/17 v1.16 ADD START
-                --,NVL(SUM(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0)),0)
-                ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))),0)
-                                                       as cargo_price
--- 2008/11/17 v1.16 ADD END
+                ,NVL(SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(xlc.unit_ploce, 0))),0) as price
+                ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))),0)   as cargo_price
           INTO   on_inv_qty
--- 2008/11/17 v1.16 ADD START
                 ,on_cargo_qty
--- 2008/11/17 v1.16 ADD END
                 ,on_inv_amt
--- 2008/11/17 v1.16 ADD START
                 ,on_cargo_amt
--- 2008/11/17 v1.16 ADD END
           FROM   xxinv_stc_inventory_month_stck stc
                 ,xxcmn_lot_cost xlc
+-- 2008/12/10 v1.24 ADD START
+                ,ic_whse_mst                    iwm
+-- 2008/12/10 v1.24 ADD END
           WHERE  stc.item_id   = gt_main_data(ln_idx).item_id
           AND    stc.invent_ym = iv_year_month
           AND    stc.item_id   = xlc.item_id(+)
           AND    stc.lot_id    = xlc.lot_id (+)
-          AND ( (ir_param.print_kind <> gc_print_kind_locat)
-             OR ( (ir_param.print_kind = gc_print_kind_locat)
-              AND (stc.whse_code = gt_main_data(ln_idx).locat_code)));
--- 2008/10/31 v1.14 MOD END
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            on_inv_qty :=  0;
-            on_inv_amt :=  0;
-        END;
--- 2008/12/03 v1.20 ADD START
---
-       -- 棚卸在庫を求める場合
-       ELSE
-        -- 棚卸結果より数量を取得
-        BEGIN
-          SELECT NVL(SUM(NVL((stcr.case_amt * stcr.content * stcr.loose_amt), 0)),0) AS stock
-                ,NVL(SUM(NVL(stc.cargo_stock, 0)),0)   AS cargo_stock
-                ,NVL(SUM(ROUND((stcr.case_amt * stcr.content * stcr.loose_amt) * NVL(xlc.unit_ploce, 0))),0) AS stock_amt
-                ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))),0) AS cargo_price
+-- 2008/12/10 v1.24 ADD START
+          AND    iwm.whse_code  = stc.whse_code
+          AND    iwm.attribute1 = '0'
+-- 2008/12/10 v1.24 ADD END
+          ;
+      ELSIF((ln_cost_kbn=1) AND(iv_year_month <> gv_exec_year_month_bef) AND (ir_param.print_kind = gc_print_kind_locat)) THEN
+                -- 実棚卸金額 倉庫別 標準原価
+          SELECT NVL(SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)),0) AS stock
+-- 2008/12/10 v1.24 UPDATE START
+--                ,0 as price
+                ,NVL(SUM(ROUND((NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) * NVL(ln_unit_price, 0))),0) AS stock_amt
+-- 2008/12/10 v1.24 UPDATE END
           INTO   on_inv_qty
-                ,on_cargo_qty
                 ,on_inv_amt
+          FROM   xxinv_stc_inventory_result     stcr
+-- 2008/12/10 v1.24 ADD START
+                ,ic_whse_mst                    iwm
+-- 2008/12/10 v1.24 ADD END
+          WHERE  stcr.item_id                       = gt_main_data(ln_idx).item_id
+          AND    TO_CHAR(stcr.invent_date,'YYYYMM')  = iv_year_month
+          AND    stcr.invent_whse_code              = gt_main_data(ln_idx).locat_code
+-- 2008/12/10 v1.24 ADD START
+          AND    iwm.whse_code  = stcr.invent_whse_code
+          AND    iwm.attribute1 = '0'
+-- 2008/12/10 v1.24 ADD END
+          ;
+              -- 積送金額 倉庫別 標準原価
+          SELECT NVL(SUM(NVL(stc.cargo_stock, 0)),0)   AS cargo_stock
+-- 2008/12/10 v1.24 UPDATE START
+--                ,0 as cargo_price
+                ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(ln_unit_price, 0))),0) AS cargo_price
+-- 2008/12/10 v1.24 UPDATE START
+          INTO   on_cargo_qty
+                ,on_cargo_amt
+          FROM   xxinv_stc_inventory_month_stck stc
+-- 2008/12/10 v1.24 ADD START
+                ,ic_whse_mst                    iwm
+-- 2008/12/10 v1.24 ADD END
+          WHERE  stc.item_id   = gt_main_data(ln_idx).item_id
+          AND    stc.invent_ym = iv_year_month
+          AND    stc.whse_code = gt_main_data(ln_idx).locat_code
+-- 2008/12/10 v1.24 ADD START
+          AND    iwm.whse_code  = stc.whse_code
+          AND    iwm.attribute1 = '0'
+-- 2008/12/10 v1.24 ADD END
+          ;
+      ELSIF((ln_cost_kbn=1) AND(iv_year_month <> gv_exec_year_month_bef) AND (ir_param.print_kind <> gc_print_kind_locat)) THEN
+                -- 実棚卸金額 品目別 標準原価
+          SELECT NVL(SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)),0) AS stock
+-- 2008/12/10 v1.24 UPDATE START
+--                ,0 as price
+                ,NVL(SUM(ROUND((NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) * NVL(ln_unit_price, 0))),0) AS stock_amt
+-- 2008/12/10 v1.24 UPDATE END
+          INTO   on_inv_qty
+                ,on_inv_amt
+          FROM   xxinv_stc_inventory_result     stcr
+-- 2008/12/10 v1.24 ADD START
+                ,ic_whse_mst                    iwm
+-- 2008/12/10 v1.24 ADD END
+          WHERE  stcr.item_id                       = gt_main_data(ln_idx).item_id
+          AND    TO_CHAR(stcr.invent_date,'YYYYMM')  = iv_year_month
+-- 2008/12/10 v1.24 ADD START
+          AND    iwm.whse_code  = stcr.invent_whse_code
+          AND    iwm.attribute1 = '0'
+-- 2008/12/10 v1.24 ADD END
+          ;
+              -- 積送金額 品目別 標準原価
+          SELECT NVL(SUM(NVL(stc.cargo_stock, 0)),0)   AS cargo_stock
+-- 2008/12/10 v1.24 UPDATE START
+--                ,0 as cargo_price
+                ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(ln_unit_price, 0))),0) AS cargo_price
+-- 2008/12/10 v1.24 UPDATE END
+          INTO   on_cargo_qty
+                ,on_cargo_amt
+          FROM   xxinv_stc_inventory_month_stck stc
+-- 2008/12/10 v1.24 ADD START
+                ,ic_whse_mst                    iwm
+-- 2008/12/10 v1.24 ADD END
+          WHERE  stc.item_id      = gt_main_data(ln_idx).item_id
+          AND    stc.invent_ym    = iv_year_month
+-- 2008/12/10 v1.24 ADD START
+          AND    iwm.whse_code    = stc.whse_code
+          AND    iwm.attribute1   = '0'
+-- 2008/12/10 v1.24 ADD END
+          ;
+      ELSIF((ln_cost_kbn=0) AND(iv_year_month <> gv_exec_year_month_bef) AND (ir_param.print_kind = gc_print_kind_locat)) THEN
+                -- 実棚卸金額 倉庫別 実際原価
+          SELECT  NVL(SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)),0) AS stock
+                 ,NVL(SUM(ROUND((NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) * NVL(xlc.unit_ploce, 0))),0) AS stock_amt
+          INTO   on_inv_qty
+                ,on_inv_amt
+          FROM   xxinv_stc_inventory_result       stcr
+                ,xxcmn_lot_cost                   xlc
+-- 2008/12/10 v1.24 ADD START
+                ,ic_whse_mst                      iwm
+-- 2008/12/10 v1.24 ADD END
+          WHERE  stcr.item_id                       = gt_main_data(ln_idx).item_id
+          AND    TO_CHAR(stcr.invent_date,'YYYYMM')  = iv_year_month
+          AND    stcr.item_id          = xlc.item_id(+)
+          AND    stcr.lot_id           = xlc.lot_id (+)
+          AND    stcr.invent_whse_code = gt_main_data(ln_idx).locat_code
+-- 2008/12/10 v1.24 ADD START
+          AND    iwm.whse_code  = stcr.invent_whse_code
+          AND    iwm.attribute1 = '0'
+-- 2008/12/10 v1.24 ADD END
+          ;
+          SELECT  NVL(SUM(NVL(stc.cargo_stock, 0)),0)   AS cargo_stock
+                 ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))),0) AS cargo_price
+          INTO   on_cargo_qty
                 ,on_cargo_amt
           FROM   xxinv_stc_inventory_month_stck   stc
-                ,xxinv_stc_inventory_result       stcr
                 ,xxcmn_lot_cost                   xlc
+-- 2008/12/10 v1.24 ADD START
+                ,ic_whse_mst                      iwm
+-- 2008/12/10 v1.24 ADD END
           WHERE  stc.item_id      = gt_main_data(ln_idx).item_id
           AND    stc.invent_ym    = iv_year_month
           AND    stc.item_id      = xlc.item_id(+)
           AND    stc.lot_id       = xlc.lot_id (+)
-          AND    stc.item_id      = stcr.item_id
-          AND    stc.lot_id       = stcr.lot_id
-          AND    stc.whse_code    = stcr.invent_whse_code
-          AND ( (ir_param.print_kind <> gc_print_kind_locat)
-             OR ( (ir_param.print_kind = gc_print_kind_locat)
-              AND (stc.whse_code = gt_main_data(ln_idx).locat_code)));
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            on_inv_qty :=  0;
-            on_inv_amt :=  0;
-        END;
---
-       END IF;
---
--- 2008/12/03 v1.20 ADD END
+          AND    stc.whse_code    = gt_main_data(ln_idx).locat_code
+-- 2008/12/10 v1.24 ADD START
+          AND    iwm.whse_code    = stc.whse_code
+          AND    iwm.attribute1   = '0'
+-- 2008/12/10 v1.24 ADD END
+          ;
+      ELSE
+                -- 実棚卸金額 品目別 実際原価
+          SELECT  NVL(SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)),0) AS stock
+                 ,NVL(SUM(ROUND((NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) * NVL(xlc.unit_ploce, 0))),0) AS stock_amt
+          INTO   on_inv_qty
+                ,on_inv_amt
+          FROM   xxinv_stc_inventory_result       stcr
+                ,xxcmn_lot_cost                   xlc
+-- 2008/12/10 v1.24 ADD START
+                ,ic_whse_mst                      iwm
+-- 2008/12/10 v1.24 ADD END
+          WHERE  stcr.item_id                       = gt_main_data(ln_idx).item_id
+          AND    TO_CHAR(stcr.invent_date,'YYYYMM')  = iv_year_month
+          AND    stcr.item_id          = xlc.item_id(+)
+          AND    stcr.lot_id           = xlc.lot_id (+)
+-- 2008/12/10 v1.24 ADD START
+          AND    iwm.whse_code  = stcr.invent_whse_code
+          AND    iwm.attribute1 = '0'
+-- 2008/12/10 v1.24 ADD END
+          ;
+          SELECT  NVL(SUM(NVL(stc.cargo_stock, 0)),0)   AS cargo_stock
+                 ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))),0) AS cargo_price
+          INTO   on_cargo_qty
+                ,on_cargo_amt
+          FROM   xxinv_stc_inventory_month_stck   stc
+                ,xxcmn_lot_cost                   xlc
+-- 2008/12/10 v1.24 ADD START
+                ,ic_whse_mst                      iwm
+-- 2008/12/10 v1.24 ADD END
+          WHERE  stc.item_id      = gt_main_data(ln_idx).item_id
+          AND    stc.invent_ym    = iv_year_month
+          AND    stc.item_id      = xlc.item_id(+)
+          AND    stc.lot_id       = xlc.lot_id (+)
+-- 2008/12/10 v1.24 ADD START
+          AND    iwm.whse_code    = stc.whse_code
+          AND    iwm.attribute1   = '0'
+-- 2008/12/10 v1.24 ADD END
+          ;
       END IF;
 --
     END prc_get_fst_end_inv_qty_amt;
@@ -16837,6 +17093,8 @@ AS
 -- 2008/11/17 v1.16 UPDATE END
             prc_set_xml('N', 'inv_qty' ,TO_CHAR(ROUND(ln_end_inv_qty, gn_quantity_decml)));
             -- 棚卸金額
+-- 2008/12/10 v1.24 UPDATE START
+/*
             IF (lv_cost_kbn = gc_cost_st ) THEN
               -- 原価管理区分が「標準原価」の場合
               ln_end_inv_amt := ln_end_inv_qty * ln_unit_price;
@@ -16847,6 +17105,10 @@ AS
               ln_end_inv_amt := ln_end_inv_amt + ln_end_cargo_amt;
 -- 2008/11/17 v1.16 UPDATE END
             END IF;
+*/
+            ln_end_inv_amt := ln_end_inv_amt + ln_end_cargo_amt;
+--
+-- 2008/12/10 v1.24 UPDATE END
             prc_set_xml('N', 'inv_amt' ,TO_CHAR(ROUND(ln_end_inv_amt, gn_amount_decml )));
             -- 差異数量
             ln_quantity := ln_quantity - ln_end_inv_qty;
@@ -17048,6 +17310,8 @@ AS
 -- 2008/11/17 v1.16 UPDATE END
             prc_set_xml('N', 'inv_qty' ,TO_CHAR(ROUND(ln_end_inv_qty, gn_quantity_decml)));
             -- 棚卸金額
+-- 2008/12/10 v1.24 UPDATE START
+/*
             IF (lv_cost_kbn = gc_cost_st ) THEN
               -- 原価管理区分が「標準原価」の場合
               ln_end_inv_amt := ln_end_inv_qty * ln_unit_price;
@@ -17058,6 +17322,10 @@ AS
               ln_end_inv_amt := ln_end_inv_amt + ln_end_cargo_amt;
 -- 2008/11/17 v1.16 UPDATE END
             END IF;
+*/
+            ln_end_inv_amt := ln_end_inv_amt + ln_end_cargo_amt;
+--
+-- 2008/12/10 v1.24 UPDATE END
             prc_set_xml('N', 'inv_amt' ,TO_CHAR(ROUND(ln_end_inv_amt, gn_amount_decml )));
             -- 差異数量
             ln_quantity := ln_quantity - ln_end_inv_qty;
@@ -17246,6 +17514,8 @@ AS
 -- 2008/11/17 v1.16 UPDATE END
             prc_set_xml('N', 'inv_qty' ,TO_CHAR(ROUND(ln_end_inv_qty, gn_quantity_decml)));
             -- 棚卸金額
+-- 2008/12/10 v1.24 UPDATE START
+/*
             IF (lv_cost_kbn = gc_cost_st ) THEN
               -- 原価管理区分が「標準原価」の場合
               ln_end_inv_amt := ln_end_inv_qty * ln_unit_price;
@@ -17256,6 +17526,10 @@ AS
               ln_end_inv_amt := ln_end_inv_amt + ln_end_cargo_amt;
 -- 2008/11/17 v1.16 UPDATE END
             END IF;
+*/
+            ln_end_inv_amt := ln_end_inv_amt + ln_end_cargo_amt;
+--
+-- 2008/12/10 v1.24 UPDATE END
             prc_set_xml('N', 'inv_amt' ,TO_CHAR(ROUND(ln_end_inv_amt, gn_amount_decml )));
             -- 差異数量
             ln_quantity := ln_quantity - ln_end_inv_qty;
@@ -17436,6 +17710,8 @@ AS
 -- 2008/11/17 v1.16 UPDATE END
             prc_set_xml('N', 'inv_qty' ,TO_CHAR(ROUND(ln_end_inv_qty, gn_quantity_decml)));
             -- 棚卸金額
+-- 2008/12/10 v1.24 UPDATE START
+/*
             IF (lv_cost_kbn = gc_cost_st ) THEN
               -- 原価管理区分が「標準原価」の場合
               ln_end_inv_amt := ln_end_inv_qty * ln_unit_price;
@@ -17446,6 +17722,10 @@ AS
               ln_end_inv_amt := ln_end_inv_amt + ln_end_cargo_amt;
 -- 2008/08/20 v1.7 UPDATE END
             END IF;
+*/
+            ln_end_inv_amt := ln_end_inv_amt + ln_end_cargo_amt;
+--
+-- 2008/12/10 v1.24 UPDATE END
             prc_set_xml('N', 'inv_amt' ,TO_CHAR(ROUND(ln_end_inv_amt, gn_amount_decml )));
             -- 差異数量
             ln_quantity := ln_quantity - ln_end_inv_qty;
@@ -17618,6 +17898,8 @@ AS
 -- 2008/11/17 v1.16 UPDATE END
             prc_set_xml('N', 'inv_qty' ,TO_CHAR(ROUND(ln_end_inv_qty, gn_quantity_decml)));
             -- 棚卸金額
+-- 2008/12/10 v1.24 UPDATE START
+/*
             IF (lv_cost_kbn = gc_cost_st ) THEN
               -- 原価管理区分が「標準原価」の場合
               ln_end_inv_amt := ln_end_inv_qty * ln_unit_price;
@@ -17628,6 +17910,10 @@ AS
               ln_end_inv_amt := ln_end_inv_amt + ln_end_cargo_amt;
 -- 2008/11/17 v1.16 UPDATE END
             END IF;
+*/
+            ln_end_inv_amt := ln_end_inv_amt + ln_end_cargo_amt;
+--
+-- 2008/12/10 v1.24 UPDATE END
             prc_set_xml('N', 'inv_amt' ,TO_CHAR(ROUND(ln_end_inv_amt, gn_amount_decml )));
             -- 差異数量
             ln_quantity := ln_quantity - ln_end_inv_qty;
@@ -17699,6 +17985,12 @@ AS
         ln_first_inv_amt := 0;
         ln_end_inv_qty   := 0;
         ln_end_inv_amt   := 0;
+-- 2008/12/09 v1.23 UPDATE START
+        ln_first_cargo_qty := 0;
+        ln_first_cargo_amt := 0;
+        ln_end_cargo_qty   := 0;
+        ln_end_cargo_amt   := 0;
+-- 2008/12/09 v1.23 UPDATE END
 --
       END IF ;
 --
@@ -17802,6 +18094,8 @@ AS
 -- 2008/11/17 v1.16 UPDATE END
             prc_set_xml('N', 'inv_qty' ,TO_CHAR(ROUND(ln_end_inv_qty, gn_quantity_decml)));
             -- 棚卸金額
+-- 2008/12/10 v1.24 UPDATE START
+/*
             IF (lv_cost_kbn = gc_cost_st ) THEN
               -- 原価管理区分が「標準原価」の場合
               ln_end_inv_amt := ln_end_inv_qty * ln_unit_price;
@@ -17812,6 +18106,10 @@ AS
               ln_end_inv_amt := ln_end_inv_amt + ln_end_cargo_amt;
 -- 2008/11/17 v1.16 UPDATE END
             END IF;
+*/
+            ln_end_inv_amt := ln_end_inv_amt + ln_end_cargo_amt;
+--
+-- 2008/12/10 v1.24 UPDATE END
             prc_set_xml('N', 'inv_amt' ,TO_CHAR(ROUND(ln_end_inv_amt, gn_amount_decml )));
             -- 差異数量
             ln_quantity := ln_quantity - ln_end_inv_qty;
@@ -17882,28 +18180,46 @@ AS
 -- 2008/11/17 v1.16 DELETE START
 --        ln_first_inv_qty := ln_first_inv_qty + ln_inv_qty;
 -- 2008/11/17 v1.16 DELETE END
-        prc_set_xml('Z', 'first_inv_qty' , TO_CHAR(ln_first_inv_qty) );
+-- 2008/12/09 v1.23 UPDATE START
+--        prc_set_xml('Z', 'first_inv_qty' , TO_CHAR(ln_first_inv_qty) );
+        prc_set_xml('Z', 'first_inv_qty' , TO_CHAR(ln_first_inv_qty + ln_first_cargo_qty) );
+-- 2008/12/09 v1.23 UPDATE END
         -- 金額
+-- 2008/12/10 v1.24 UPDATE START
+/*
         IF (NVL( gt_main_data(i).cost_kbn, lc_break_null ) = gc_cost_st ) THEN
           -- 原価管理区分が「標準原価」の場合
 -- 2008/11/11 v1.16 UPDATE START
 --          ln_first_inv_amt := (ln_first_inv_qty + ln_inv_qty) * ln_unit_price;
-          ln_first_inv_amt := ln_first_inv_qty * ln_unit_price;
+-- 2008/12/09 v1.23 UPDATE START
+--          ln_first_inv_amt := ln_first_inv_qty * ln_unit_price;
+          ln_first_inv_amt := ROUND((ln_first_inv_qty + ln_first_cargo_qty) * ln_unit_price);
+-- 2008/12/09 v1.23 UPDATE END
  -- 2008/11/11 v1.16 UPDATE END
         ELSE
           -- 原価管理区分が「実際原価」の場合
           IF (gt_main_data(i).lot_ctl = gn_lot_ctl_y) THEN
 -- 2008/11/11 v1.16 UPDATE START
 --            ln_first_inv_amt := ln_first_inv_amt + ln_inv_amt;
-            ln_first_inv_amt := ln_first_inv_amt;
+-- 2008/12/09 v1.23 UPDATE START
+--            ln_first_inv_amt := ln_first_inv_amt;
+            ln_first_inv_amt := ln_first_inv_amt + ln_first_cargo_amt;
+-- 2008/12/09 v1.23 UPDATE END
 -- 2008/11/11 v1.16 UPDATE END
           ELSE
 -- 2008/11/11 v1.16 UPDATE START
 --            ln_first_inv_amt := (ln_first_inv_qty + ln_inv_qty) * ln_unit_price;
-            ln_first_inv_amt := ln_first_inv_qty * ln_unit_price;
+-- 2008/12/09 v1.23 UPDATE START
+--            ln_first_inv_amt := ln_first_inv_qty * ln_unit_price;
+            ln_first_inv_amt := ROUND((ln_first_inv_qty + ln_first_cargo_qty) * ln_unit_price);
+-- 2008/12/09 v1.23 UPDATE END
 -- 2008/11/11 v1.16 UPDATE END
           END IF;
         END IF;
+*/
+        ln_first_inv_amt := ln_first_inv_amt + ln_first_cargo_amt;
+--
+-- 2008/12/10 v1.24 UPDATE END
         prc_set_xml('Z', 'first_inv_amt' , TO_CHAR(ln_first_inv_amt) );
 --
         -- -----------------------------------------------------
@@ -18242,6 +18558,8 @@ AS
 -- 2008/11/17 v1.16 UPDATE END
       prc_set_xml('N', 'inv_qty' ,TO_CHAR(ROUND(ln_end_inv_qty, gn_quantity_decml)));
       -- 棚卸金額
+-- 2008/12/10 v1.24 UPDATE START
+/*
       IF (lv_cost_kbn = gc_cost_st ) THEN
         -- 原価管理区分が「標準原価」の場合
         ln_end_inv_amt := ln_end_inv_qty * ln_unit_price;
@@ -18252,6 +18570,10 @@ AS
         ln_end_inv_amt := ln_end_inv_amt + ln_end_cargo_amt;
 -- 2008/11/17 v1.16 UPDATE END
       END IF;
+*/
+      ln_end_inv_amt := ln_end_inv_amt + ln_end_cargo_amt;
+--
+-- 2008/12/10 v1.24 UPDATE END
       prc_set_xml('N', 'inv_amt' ,TO_CHAR(ROUND(ln_end_inv_amt, gn_amount_decml )));
       -- 差異数量
       ln_quantity := ln_quantity - ln_end_inv_qty;
