@@ -6,9 +6,9 @@ AS
  * Package Name     : XXCSO015A03C(spec)
  * Description      : SQL*Loaderによって物件データワークテーブル（アドオン）に取り込まれた
  *                      物件の情報を物件マスタに登録します。
- * MD.050           : MD050_自販機-EBSインタフェース：（（IN）物件マスタ情報(IB)
+ * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009-03-25    1.2   N.Yabuki         【ST障害対応150】引揚時の担当拠点が不正
  *  2009-04-13    1.3   K.Satomura       【T1_0418対応】インスタンスタイプコード不正
  *  2009-04-17    1.4   K.Satomura       【T1_0466対応】A-6の処理を削除
+ *  2009-04-27    1.5   K.Satomura       【T1_0490対応】機器状態3を登録更新不正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3127,7 +3128,10 @@ AS
     -- 機器状態3（廃棄情報）
     ln_cnt := ln_cnt + 1;
     l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.jotai_kbn3;
-    l_ext_attrib_values_tab(ln_cnt).attribute_value := '';
+    /* 2009.04.27 K.Satomura T1_0490対応 START */
+    --l_ext_attrib_values_tab(ln_cnt).attribute_value := '';
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := io_inst_base_data_rec.machinery_status3;
+    /* 2009.04.27 K.Satomura T1_0490対応 END */
 --
     -- 入庫日
     ln_cnt := ln_cnt + 1;
@@ -3891,6 +3895,9 @@ AS
     /* 2009.04.13 K.Satomura T1_0418対応 START */
     cv_po_un_numbers_info     CONSTANT VARCHAR2(100) := '国連番号マスタ(機種コードマスタ)情報';    -- 抽出内容
     /* 2009.04.13 K.Satomura T1_0418対応 END */
+    /* 2009.04.27 K.Satomura T1_0490対応 START */
+    cv_ex_jotai_kbn3          CONSTANT VARCHAR2(100) := 'JOTAI_KBN3';
+    /* 2009.04.27 K.Satomura T1_0490対応 END */
 --
     -- *** ローカル変数 ***
     ld_date                    DATE;                    -- 業務処理日付格納用('yyyymmdd'形式)
@@ -4201,6 +4208,17 @@ AS
       l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
     END IF;
 --
+    /* 2009.04.27 K.Satomura T1_0490対応 START */
+    -- 機器状態3（廃棄情報）
+    l_ext_attrib_rec := xxcso_ib_common_pkg.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_jotai_kbn3);
+    IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL) THEN
+      ln_cnt := ln_cnt + 1;
+      l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+      l_ext_attrib_values_tab(ln_cnt).attribute_value       := io_inst_base_data_rec.machinery_status3;
+      l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+      l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+    END IF;
+    /* 2009.04.27 K.Satomura T1_0490対応 END */
     -- 入庫日
     l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_nyuko_dt);
     IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
@@ -7330,4 +7348,3 @@ AS
 --
 END XXCSO015A03C;
 /
-
