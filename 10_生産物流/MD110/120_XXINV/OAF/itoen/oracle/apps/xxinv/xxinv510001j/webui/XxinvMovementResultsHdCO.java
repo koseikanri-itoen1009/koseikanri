@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsHdCO
 * 概要説明   : 入出庫実績ヘッダ:検索コントローラ
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-11 1.0  大橋孝郎     新規作成
+* 2008-07-25 1.1  山本恭久     不具合指摘事項修正
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.webui;
@@ -517,10 +518,12 @@ public class XxinvMovementResultsHdCO extends XxcmnOAControllerImpl
           {
             // クリア処理
             am.invokeMethod("clearValue");
-          } else
-          {
+    // mod start ver1.1
+//          } else
+//          {
             // 運送業者入力制御処理
-            am.invokeMethod("inputFreightCarrier");
+//            am.invokeMethod("inputFreightCarrier");
+    // mod end ver1.1
           }
 
         }

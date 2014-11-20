@@ -1,0 +1,68 @@
+CREATE TABLE xxpo.xxpo_supply_req_headers_if
+(
+  supply_req_headers_if_id      NUMBER(10)    NOT NULL,
+  corporation_name              VARCHAR2(5),
+  data_class                    VARCHAR2(3),
+  transfer_branch_no            VARCHAR2(2),
+  trans_type                    NUMBER        NOT NULL,
+  weight_capacity_class         VARCHAR2(1)   NOT NULL,
+  requested_department_code     VARCHAR2(4)   NOT NULL,
+  instruction_post_code         VARCHAR2(4),
+  vendor_code                   VARCHAR2(4)   NOT NULL,
+  ship_to_code                  VARCHAR2(4)   NOT NULL,
+  shipped_locat_code            VARCHAR2(4)   NOT NULL,
+  freight_carrier_code          VARCHAR2(4)   NOT NULL,
+  ship_date                     DATE          NOT NULL,
+  arvl_date                     DATE          NOT NULL,
+  freight_charge_class          VARCHAR2(1),
+  takeback_class                VARCHAR2(1),
+  arrival_time_from             VARCHAR2(4),
+  arrival_time_to               VARCHAR2(4),
+  product_date                  DATE,
+  producted_item_code           VARCHAR2(7),
+  product_number                VARCHAR2(10),
+  header_description            VARCHAR2(2000),
+  created_by                    NUMBER(15)    NOT NULL,
+  creation_date                 DATE          NOT NULL,
+  last_updated_by               NUMBER(15)    NOT NULL,
+  last_update_date              DATE          NOT NULL,
+  last_update_login             NUMBER(15),
+  request_id                    NUMBER(15),
+  program_application_id        NUMBER(15),
+  program_id                    NUMBER(15),
+  program_update_date           DATE
+  );
+--
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.supply_req_headers_if_id  IS '支給依頼情報インタフェースヘッダID';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.corporation_name          IS '会社名';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.data_class                IS 'データ種別';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.transfer_branch_no        IS '伝送用枝番';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.trans_type                IS '発生区分';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.weight_capacity_class     IS '重量容積区分';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.requested_department_code IS '依頼部署コード';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.instruction_post_code     IS '指示部署コード';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.vendor_code               IS '取引先コード';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.ship_to_code              IS '配送先コード';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.shipped_locat_code        IS '出庫倉庫コード';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.freight_carrier_code      IS '運送業者コード';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.ship_date                 IS '出庫日';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.arvl_date                 IS '入庫日';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.freight_charge_class      IS '運賃区分';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.takeback_class            IS '引取区分';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.arrival_time_from         IS '着荷時間FROM';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.arrival_time_to           IS '着荷時間TO';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.product_date              IS '製造日';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.producted_item_code       IS '製造品目コード';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.product_number            IS '製造番号';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.header_description        IS 'ヘッダ摘要';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.created_by                IS '作成者';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.creation_date             IS '作成日';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.last_updated_by           IS '最終更新者';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.last_update_date          IS '最終更新日';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.last_update_login         IS '最終更新ログイン';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.request_id                IS '要求ID';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.program_application_id    IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.program_id                IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_headers_if.program_update_date       IS 'プログラム更新日';
+--
+COMMENT ON TABLE xxpo.xxpo_supply_req_headers_if IS '支給依頼情報インタフェーステーブルヘッダ';

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsAMImpl
 * 概要説明   : 入出庫実績要約:検索アプリケーションモジュール
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2008-06-11 1.2  大橋孝郎     不具合指摘事項修正
 * 2008-06-18 1.3  大橋孝郎     不具合指摘事項修正
 * 2008-06-26 1.4  伊藤ひとみ   ST#296対応
+* 2008-07-25 1.5  山本恭久     不具合指摘事項修正
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.server;
@@ -379,12 +380,14 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       // 1行目を取得
       OARow searchVoRow = (OARow)resultsSearchVo.first();
       
+    // mod start ver1.5
       // 製品識別区分:2(製品以外)の場合
-      if ("2".equals(searchVoRow.getAttribute("ProductFlg")))
-      {
+//      if ("2".equals(searchVoRow.getAttribute("ProductFlg")))
+//      {
         // ヘッダ.運送業者を読取専用に変更
-        readOnlyRow.setAttribute("FreightCarrierReadOnly", Boolean.TRUE);
-      }
+//        readOnlyRow.setAttribute("FreightCarrierReadOnly", Boolean.TRUE);
+//      }
+    // mod end ver1.5
       // ヘッダ.修正フラグを読取専用に変更
       readOnlyRow.setAttribute("NewModifyFlgReadOnly", Boolean.TRUE);
       // ヘッダ.移動タイプを読取専用に変更
@@ -754,10 +757,12 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // 運賃区分がOFFになった場合
     if ("0".equals(freightChargeClass))
     {
+    // mod start ver1.5
       // 運送業者(実績)内容をクリア
-      row.setAttribute("ActualCareerId", null);
-      row.setAttribute("ActualFreightCarrierCode", null);
-      row.setAttribute("PartyName2", null);
+//      row.setAttribute("ActualCareerId", null);
+//      row.setAttribute("ActualFreightCarrierCode", null);
+//      row.setAttribute("PartyName2", null);
+    // mod end ver1.5
       // 配送区分をクリア
       row.setAttribute("ShippingMethodCode", null);
       row.setAttribute("ShippingMethodName", null);
@@ -2614,20 +2619,22 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       }
       cstmt.setString(i++, noContFreightClass);                        // 契約外運賃区分
       cstmt.setString(i++, description);                               // 摘要
+    // mod start ver1.5
       // 運賃区分が：1(有)の場合
-      if (XxinvConstants.FREIGHT_CHARGE_CLASS_1.equals(freightChargeClass))
-      {
+//      if (XxinvConstants.FREIGHT_CHARGE_CLASS_1.equals(freightChargeClass))
+//      {
         cstmt.setInt(i++, XxcmnUtility.intValue(dctualCareerId));    // 運送業者ID
         cstmt.setString(i++, actualFreightCarrierCode);              // 運送業者
         cstmt.setInt(i++, XxcmnUtility.intValue(dctualCareerId));    // 運送業者ID_実績
         cstmt.setString(i++, actualFreightCarrierCode);              // 運送業者_実績
-      } else
-      {
-        cstmt.setNull(i++, Types.INTEGER);                           // 運送業者ID
-        cstmt.setNull(i++, Types.INTEGER);                           // 運送業者
-        cstmt.setNull(i++, Types.INTEGER);                           // 運送業者ID_実績
-        cstmt.setNull(i++, Types.INTEGER);                           // 運送業者_実績
-      }
+//      } else
+//      {
+//        cstmt.setNull(i++, Types.INTEGER);                           // 運送業者ID
+//        cstmt.setNull(i++, Types.INTEGER);                           // 運送業者
+//        cstmt.setNull(i++, Types.INTEGER);                           // 運送業者ID_実績
+//        cstmt.setNull(i++, Types.INTEGER);                           // 運送業者_実績
+//      }
+    // mod end ver1.5
       cstmt.setString(i++, actualShippingMethodCode);                  // 配送区分_実績
       cstmt.setString(i++, arrivalTimeFrom);                           // 着荷時間FROM
       cstmt.setString(i++, arrivalTimeTo);                             // 着荷時間TO

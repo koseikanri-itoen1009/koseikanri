@@ -1,0 +1,44 @@
+CREATE TABLE xxpo.xxpo_supply_req_lines_if
+(
+  supply_req_lines_if_id        NUMBER(10)    NOT NULL,
+  corporation_name              VARCHAR2(5),
+  data_class                    VARCHAR2(3),
+  transfer_branch_no            VARCHAR2(2),
+  supply_req_headers_if_id      NUMBER(10)    NOT NULL,
+  line_number                   NUMBER,
+  item_code                     VARCHAR2(7)   NOT NULL,
+  futai_code                    VARCHAR2(2),
+  request_qty                   NUMBER(12,3)  NOT NULL,
+  line_description              VARCHAR2(60),
+  created_by                    NUMBER(15)    NOT NULL,
+  creation_date                 DATE          NOT NULL,
+  last_updated_by               NUMBER(15)    NOT NULL,
+  last_update_date              DATE          NOT NULL,
+  last_update_login             NUMBER(15),
+  request_id                    NUMBER(15),
+  program_application_id        NUMBER(15),
+  program_id                    NUMBER(15),
+  program_update_date           DATE
+  );
+--
+COMMENT ON COLUMN xxpo.xxpo_supply_req_lines_if.supply_req_lines_if_id   IS '支給依頼情報インタフェース明細ID';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_lines_if.corporation_name         IS '会社名';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_lines_if.data_class               IS 'データ種別';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_lines_if.transfer_branch_no       IS '伝送用枝番';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_lines_if.supply_req_headers_if_id IS '支給依頼情報インタフェースヘッダID';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_lines_if.line_number              IS '明細番号';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_lines_if.item_code                IS '品目コード';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_lines_if.futai_code               IS '付帯';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_lines_if.request_qty              IS '依頼数量';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_lines_if.line_description         IS '明細摘要';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_lines_if.created_by               IS '作成者';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_lines_if.creation_date            IS '作成日';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_lines_if.last_updated_by          IS '最終更新者';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_lines_if.last_update_date         IS '最終更新日';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_lines_if.last_update_login        IS '最終更新ログイン';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_lines_if.request_id               IS '要求ID';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_lines_if.program_application_id   IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_lines_if.program_id               IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxpo.xxpo_supply_req_lines_if.program_update_date      IS 'プログラム更新日';
+--
+COMMENT ON TABLE xxpo.xxpo_supply_req_lines_if IS '支給依頼情報インタフェーステーブル明細';
