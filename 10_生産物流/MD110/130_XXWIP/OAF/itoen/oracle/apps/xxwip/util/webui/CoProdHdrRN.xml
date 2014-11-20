@@ -1,0 +1,128 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<oa:header version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/">
+   <ui:contents>
+      <oa:advancedTable id="CoProdRN" viewName="XxwipBatchCoProdVO1" width="100%" tableBanding="rowBanding" shortDesc="投入情報" blockSize="200">
+         <ui:contents>
+            <oa:column id="colItemNoCoProd">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="ItemNoCoProdHdr" prompt="品目コード" required="uiOnly"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:switcher id="ItemNoSwitcherCoProd" viewAttr="ItemNoSwitcher">
+                     <ui:case name="ItemNoCoProdEnable">
+                        <oa:messageLovInput id="ItemNoCoProdEnable" viewAttr="ItemNo" shortDesc="品目コード" externalListOfValues="/itoen/oracle/apps/xxwip/lov/webui/ItemNoCoProdLovRN" columns="10" styleClass="OraFieldText" required="uiOnly">
+                           <lovMappings>
+                              <lovMap id="ToItemIdCoProd" lovItem="ItemId" resultTo="ItemIdCoProd"/>
+                              <lovMap id="FromItemNoCoProd" lovItem="ItemNo" criteriaFrom="ItemNoCoProdEnable"/>
+                              <lovMap id="ToItemNameCoProd" resultTo="ItemNameCoProd" lovItem="ItemName"/>
+                              <lovMap id="ToItemNoCoProd" resultTo="ItemNoCoProdEnable" lovItem="ItemNo"/>
+                              <lovMap id="ToItemUmCoProd" lovItem="ItemUm" resultTo="ItemUmCoProd"/>
+                              <lovMap id="ToItemNameCoProdFv" lovItem="ItemName" resultTo="ItemNameCoProdFv"/>
+                              <lovMap id="ToItemUmInvestFv" lovItem="ItemUm" resultTo="ItemUmCoProdFv"/>
+                              <lovMap id="ToEntityInner" lovItem="EntityInner" resultTo="EntityInnerCoProd"/>
+                           </lovMappings>
+                        </oa:messageLovInput>
+                     </ui:case>
+                     <ui:case name="ItemNoCoProdDisable">
+                        <oa:messageStyledText id="ItemNoCoProdDisable" viewAttr="ItemNo" shortDesc="品目コード"/>
+                     </ui:case>
+                  </oa:switcher>
+                  <oa:formValue id="ItemIdCoProd" viewAttr="ItemId"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colitemNameCoProd">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="itemNameCoProdHdr" prompt="品目名称" shortDesc="品目名称"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageStyledText id="ItemNameCoProd" viewAttr="ItemName" shortDesc="品目名称"/>
+                  <oa:formValue id="ItemNameCoProdFv" viewAttr="ItemName"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colLotNoCoProd" columnDataFormat="textFormat">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="LotNoCoProdHdr" prompt="ロットNo"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageStyledText id="LotNoCoProd" viewAttr="LotNo" shortDesc="ロットNo"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colEntityInnerCoProd" columnDataFormat="numberFormat">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="EntityInnerCoProdHdr" prompt="在庫入数" required="uiOnly"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageTextInput id="EntityInnerCoProd" viewAttr="EntityInner" shortDesc="在庫入数" maximumLength="7" columns="10" styleClass="OraFieldNumber"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colActualQtyCoProd" columnDataFormat="numberFormat">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="ActualQtyCoProdHdr" prompt="実績総数" required="uiOnly"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageTextInput id="ActualQtyCoProd" viewAttr="ActualQty" shortDesc="実績総数" maximumLength="13" columns="15" styleClass="OraFieldNumber"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colItemUmCoProd">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="ItemUmCoProdHdr" prompt="単位"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageStyledText id="ItemUmCoProd" viewAttr="ItemUm" shortDesc="単位" dataType="NUMBER"/>
+                  <oa:formValue id="ItemUmCoProdFv" viewAttr="ItemUm"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colTypeCoProd">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="TypeCoProdHdr" prompt="タイプ"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageChoice id="TypeCoProd" pickListDispAttr="Type" pickListValAttr="TypeCode" pickListViewName="TypeVO1" viewAttr="Type" shortDesc="タイプ"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colRank1CoProd">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="Rank1CoProdHdr" prompt="R1"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageTextInput id="Rank1CoProd" viewAttr="Rank1" shortDesc="R1" maximumLength="10"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colRank2CoProd">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="Rank2CoProdHdr" prompt="R2"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageTextInput id="Rank2CoProd" viewAttr="Rank2" shortDesc="R2" maximumLength="10"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colDeleteBtnCoProd" columnDataFormat="iconButtonFormat">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="DeleteCoProdHdr" prompt="削除"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:image id="DeleteCoProd" source="deleteicon_enabled.gif" shortDesc="削除" imageHeight="24" imageWidth="24" serverUnvalidated="true">
+                     <ui:primaryClientAction>
+                        <ui:fireAction id="fireAction1" event="deleteRow" unvalidated="true">
+                           <ui:parameters>
+                              <ui:parameter key="MTL_DTL_ID" value="${oa.XxwipBatchCoProdVO1.MaterialDetailId}"/>
+                              <ui:parameter key="TAB_TYPE" value="2"/>
+                              <ui:parameter key="BATCH_ID" value="${oa.XxwipBatchCoProdVO1.BatchId}"/>
+                           </ui:parameters>
+                        </ui:fireAction>
+                     </ui:primaryClientAction>
+                  </oa:image>
+               </ui:contents>
+            </oa:column>
+            <oa:formValue id="MaterialDetailIdCoProd" viewAttr="MaterialDetailId"/>
+         </ui:contents>
+         <ui:footer>
+            <oa:tableFooter id="tableFooterCoProd">
+               <ui:contents>
+                  <oa:addTableRow id="AddRowCoProd" text="行挿入" shortDesc="行挿入" autoInsertion="false" rendered="${oa.XxwipVolumeActualPVO1.AddRowCoProdRender}"/>
+               </ui:contents>
+            </oa:tableFooter>
+         </ui:footer>
+      </oa:advancedTable>
+   </ui:contents>
+</oa:header>

@@ -1,0 +1,35 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<oa:tableLayout version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/">
+   <ui:contents>
+      <oa:rowLayout id="region1">
+         <ui:contents>
+            <oa:cellFormat id="region2">
+               <ui:contents>
+                  <oa:messageLovInput id="QsSearchBatchNo" externalListOfValues="/itoen/oracle/apps/xxwip/lov/webui/BatchNoLovRN" prompt="手配No" shortDesc="手配No" styleClass="LegendText" columns="15" maximumLength="10" viewName="XxwipBatchHeaderVO1" viewAttr="QsBatchNo">
+                     <lovMappings>
+                        <lovMap id="ToQsBatchNo" resultTo="QsSearchBatchNo" lovItem="BatchNo"/>
+                        <lovMap id="FromQsBatchNo" lovItem="BatchNo" criteriaFrom="QsSearchBatchNo"/>
+                        <lovMap id="ToQsBatchId" lovItem="BatchId" resultTo="QsSearchBatchId"/>
+                     </lovMappings>
+                  </oa:messageLovInput>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="region3">
+               <ui:contents>
+                  <oa:formValue id="QsSearchBatchId" viewName="XxwipBatchHeaderVO1" viewAttr="QsBatchId"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="region4">
+               <ui:contents>
+                  <oa:spacer id="item1" width="30"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="region5">
+               <ui:contents>
+                  <oa:submitButton id="QsSearch" text="進む" prompt="進む"/>
+               </ui:contents>
+            </oa:cellFormat>
+         </ui:contents>
+      </oa:rowLayout>
+   </ui:contents>
+</oa:tableLayout>

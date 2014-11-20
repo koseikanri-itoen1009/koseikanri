@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxwipItemChoiceInvestVO"
+   OrderBy="LINE_NO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="itoen.oracle.apps.xxwip.xxwip200002j.server.XxwipItemChoiceInvestVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT gmd.batch_id           batch_id           -- バッチID
+      ,gmd.material_detail_id material_detail_id -- 生産原料詳細ID
+      ,gmd.line_no            line_no            -- 行No
+      ,ximv.item_no           item_no            -- 品目コード
+      ,ximv.item_short_name   item_name          -- 品目名称
+      ,gbsi.slit              slit               -- 投入口
+      ,xicv.item_class_code   item_class_code    -- 品目区分
+FROM   gme_material_details      gmd  -- 生産原料詳細
+      ,xxcmn_item_mst2_v         ximv -- OPM品目マスタビュー
+      ,(SELECT gbsi.material_detail_id   material_detail_id
+              ,gov.oprn_desc             slit  
+        FROM   gme_batch_steps           gbs  -- バッチステップ
+              ,gme_batch_step_items      gbsi -- バッチステップ品目
+              ,gmd_operations_vl         gov  -- 工程マスタビュー
+        WHERE  gbs.batchstep_id = gbsi.batchstep_id
+        AND    gov.oprn_id      = gbs.oprn_id
+       ) gbsi
+      ,(SELECT a.batch_id batch_id       -- バッチID
+              ,FND_DATE.STRING_TO_DATE(b.attribute11, 'YYYY/MM/DD')
+                          product_date   -- 生産日
+        FROM   gme_batch_header     a -- 生産バッチヘッダ
+              ,gme_material_details b -- 生産原料詳細
+        WHERE  a.batch_id  = b.batch_id
+        AND    b.line_type = 1 ) gbhh
+      ,xxcmn_item_categories3_v  xicv    -- 品目カテゴリ情報VIEW3
+WHERE  
+/* 結合条件 */
+       gmd.item_id            = ximv.item_id
+AND    gmd.batch_id           = gbhh.batch_id
+AND    gmd.material_detail_id = gbsi.material_detail_id(+) -- 新缶煎ライン
+AND    xicv.item_id           = ximv.item_id
+/* 抽出条件 */
+AND    gmd.material_detail_id = TO_NUMBER(:1)
+AND    gmd.line_type          = -1    -- 投入品
+AND    gmd.attribute5         IS NULL -- 投入
+AND    gmd.attribute24        IS NULL -- 未取消
+AND    ximv.start_date_active<= NVL(gbhh.product_date, TRUNC(SYSDATE))
+AND    ximv.end_date_active  >= NVL(gbhh.product_date, TRUNC(SYSDATE))
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="BatchId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="10"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="BATCH_ID"
+      Expression="BATCH_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="MaterialDetailId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="10"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="MATERIAL_DETAIL_ID"
+      Expression="MATERIAL_DETAIL_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LineNo"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="5"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LINE_NO"
+      Expression="LINE_NO"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemNo"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="32"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_NO"
+      Expression="ITEM_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="32" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_NAME"
+      Expression="ITEM_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Slit"
+      IsPersistent="false"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SLIT"
+      Expression="SLIT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemClassCode"
+      IsPersistent="false"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_CLASS_CODE"
+      Expression="ITEM_CLASS_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="MaterialDetailId" />
+      <Item Value="LineNo" />
+   </AttrArray>
+</ViewObject>

@@ -1,0 +1,14 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--*手配No共有リージョン  手配No値リストを表示する共有リージョンです。   @see itoen.oracle.apps.xxwip.lov.server.LovAM 修正履歴 2007/11/09 nihei 新規作成-->
+<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxwip.lov.server.LovAM" scope="/">
+   <ui:contents>
+      <oa:table id="BatchNoTable" text="手配No" shortDesc="手配NO" name="BatchNoLovRN">
+         <ui:contents>
+            <oa:messageStyledText id="PlantCode" viewName="BatchNoVO1" viewAttr="PlantCode" queryable="true" prompt="プラントコード" shortDesc="プラントコード"/>
+            <oa:messageStyledText id="BatchNo" viewName="BatchNoVO1" viewAttr="BatchNo" prompt="手配No" queryable="true" serverUnvalidated="true"/>
+            <oa:formValue id="BatchId" viewName="BatchNoVO1" viewAttr="BatchId" dataType="NUMBER"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>

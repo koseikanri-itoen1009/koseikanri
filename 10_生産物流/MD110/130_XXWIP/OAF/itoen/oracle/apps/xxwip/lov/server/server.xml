@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE JboPackage SYSTEM "jbo_03_01.dtd">
+
+<JboPackage
+   Name="server"
+   SeparateXMLFiles="true"
+   PackageName="itoen.oracle.apps.xxwip.lov.server" >
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_ejbPackage" Value="false" />
+   </DesignTime>
+   <Containee
+      Name="BatchNoVO"
+      FullName="itoen.oracle.apps.xxwip.lov.server.BatchNoVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="LovAM"
+      FullName="itoen.oracle.apps.xxwip.lov.server.LovAM"
+      ObjectType="AppModule" >
+   </Containee>
+   <Containee
+      Name="ItemNoVO"
+      FullName="itoen.oracle.apps.xxwip.lov.server.ItemNoVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="ItemNoCoProdVO"
+      FullName="itoen.oracle.apps.xxwip.lov.server.ItemNoCoProdVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="InvestVO"
+      FullName="itoen.oracle.apps.xxwip.lov.server.InvestVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="ReInvestVO"
+      FullName="itoen.oracle.apps.xxwip.lov.server.ReInvestVO"
+      ObjectType="ViewObject" >
+   </Containee>
+</JboPackage>

@@ -1,0 +1,388 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxwipBatchInvestVO"
+   OrderBy="LINE_NO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="itoen.oracle.apps.xxwip.xxwip200001j.server.XxwipBatchInvestVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT gmd.batch_id                  batch_id              -- バッチID
+      ,gmd.material_detail_id        material_detail_id    -- 生産原料詳細ID
+      ,ximv.item_no                  item_no               -- 品目No
+      ,ximv.item_short_name          item_name             -- 品目名称
+      ,gbsi.slit                     slit                  -- 投入口
+      ,TO_CHAR(ilm.entity_inner, 'FM999,999,990.000')
+                                     entity_inner          -- 在庫入数
+      ,TO_CHAR(xmd.instructions_qty, 'FM999,999,990.000')
+                                     instructions_qty      -- 指示総数
+      ,TO_CHAR(xmd.invested_qty, 'FM999,999,990.000')
+                                     invested_qty          -- 投入数量計
+      ,TO_CHAR(xmd.return_qty, 'FM999,999,990.000')
+                                     return_qty            -- 戻入数量計
+      ,TO_CHAR(xmd.mtl_prod_qty, 'FM999,999,990.000')
+                                     mtl_prod_qty          -- 製造不良総数計
+      ,TO_CHAR(xmd.mtl_mfg_qty, 'FM999,999,990.000')
+                                     mtl_mfg_qty           -- 業者不良総数計
+      ,ximv.item_um                  item_um               -- 単位
+      ,ximv.item_id                  item_id               -- 品目ID
+      ,DECODE(xmd.material_detail_id,
+         null,'DeleteInvestEnable',
+              'DeleteInvestDisable') delete_switcher       -- 削除アイコン 
+      ,'ItemNoInvestDisable'         item_no_switcher      -- 品目制御
+      ,gmd.line_no                   line_no               -- 行No
+      ,'SlitInvestDisable'           slit_switcher         -- 投入口制御
+      ,grv.attribute9                delivery_location     -- 納品場所
+      ,gmd.line_type                 line_type             -- ラインタイプ
+      ,TO_CHAR(gmd.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+                                     gmd_last_update_date  -- 最終更新日(排他制御用)
+      ,xilv.inventory_location_id    inventory_location_id -- 保管倉庫ID    
+      ,ximv.destination_div        destination_type        -- 仕向区分
+FROM   gme_batch_header          gbh  -- 生産バッチヘッダ
+      ,gme_material_details      gmd  -- 生産原料詳細
+      ,xxcmn_item_mst2_v         ximv -- OPM品目マスタビュー
+      ,gmd_routings_vl           grv  -- 工順マスタビュー
+      ,xxcmn_item_locations_v    xilv -- 保管倉庫（納品場所用）
+      ,(SELECT a.material_detail_id
+              ,SUM(a.instructions_qty) instructions_qty -- 指示総数
+              ,SUM(a.invested_qty)     invested_qty     -- 投入数量計
+              ,SUM(a.return_qty)       return_qty       -- 戻入数量計
+              ,SUM(a.mtl_prod_qty)     mtl_prod_qty     -- 製造不良総数計
+              ,SUM(a.mtl_mfg_qty)      mtl_mfg_qty      -- 業者不良総数計
+        FROM   xxwip_material_detail     a  -- 生産原料詳細アドオン
+        WHERE  a.batch_id  = TO_NUMBER(:1)
+        AND    a.plan_type = '4' -- 投入
+        GROUP BY a.material_detail_id
+       ) xmd
+      ,(SELECT c.material_detail_id material_detail_id
+              ,b.batchstep_no          slit  
+        FROM   gme_batch_steps           b  -- バッチステップ
+              ,gme_batch_step_items      c  -- バッチステップ品目
+        WHERE  b.batchstep_id = c.batchstep_id
+       ) gbsi
+      ,(SELECT a.batch_id batch_id       -- バッチID
+              ,FND_DATE.STRING_TO_DATE(b.attribute11, 'YYYY/MM/DD')
+                          product_date   -- 生産日
+        FROM   gme_batch_header     a -- 生産バッチヘッダ
+              ,gme_material_details b -- 生産原料詳細
+        WHERE  a.batch_id  = b.batch_id
+        AND    b.line_type = 1 ) gbhh
+      ,(SELECT d.item_id         item_id
+              ,MAX(attribute6) entity_inner
+        FROM   ic_lots_mst d  -- OPMロットマスタ
+        GROUP BY d.item_id) ilm
+WHERE 
+/* 結合条件 */
+       gbh.batch_id           = gmd.batch_id
+AND    gbh.batch_id           = gbhh.batch_id
+AND    gbh.routing_id         = grv.routing_id
+AND    gmd.item_id            = ximv.item_id
+AND    gmd.item_id            = ilm.item_id(+)
+AND    gmd.material_detail_id = xmd.material_detail_id(+)
+AND    gmd.material_detail_id = gbsi.material_detail_id(+)
+AND    grv.attribute9         = xilv.segment1(+)
+/* 抽出条件 */
+AND    gbh.batch_id           = TO_NUMBER(:2)
+AND    gmd.line_type          = -1    -- 投入品
+AND    gmd.attribute5         IS NULL -- 投入
+AND    gmd.attribute24        IS NULL
+AND    ximv.start_date_active<= NVL(gbhh.product_date, TRUNC(SYSDATE))
+AND    ximv.end_date_active  >= NVL(gbhh.product_date, TRUNC(SYSDATE))
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="BatchId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="10"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="BATCH_ID"
+      Expression="BATCH_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="MaterialDetailId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="10"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="MATERIAL_DETAIL_ID"
+      Expression="MATERIAL_DETAIL_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemNo"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="32"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_NO"
+      Expression="ITEM_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="32" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemName"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="70"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_NAME"
+      Expression="ITEM_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="70" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Slit"
+      IsPersistent="false"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SLIT"
+      Expression="SLIT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="EntityInner"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="ENTITY_INNER"
+      Expression="ENTITY_INNER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstructionsQty"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="INSTRUCTIONS_QTY"
+      Expression="INSTRUCTIONS_QTY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InvestedQty"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="INVESTED_QTY"
+      Expression="INVESTED_QTY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ReturnQty"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="RETURN_QTY"
+      Expression="RETURN_QTY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="MtlProdQty"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="MTL_PROD_QTY"
+      Expression="MTL_PROD_QTY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="MtlMfgQty"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="MTL_MFG_QTY"
+      Expression="MTL_MFG_QTY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemUm"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_UM"
+      Expression="ITEM_UM"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="10"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="ITEM_ID"
+      Expression="ITEM_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DeleteSwitcher"
+      IsPersistent="false"
+      Precision="13"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DELETE_SWITCHER"
+      Expression="DELETE_SWITCHER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="13" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemNoSwitcher"
+      IsPersistent="false"
+      Precision="13"
+      Type="java.lang.String"
+      ColumnType="CHAR"
+      AliasName="ITEM_NO_SWITCHER"
+      Expression="ITEM_NO_SWITCHER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="13" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LineNo"
+      IsPersistent="false"
+      Precision="5"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE_NO"
+      Expression="LINE_NO"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SelectFlag"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="CHAR"
+      AliasName="select_flag"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SlitSwitcher"
+      IsPersistent="false"
+      Precision="17"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SlitSwitcher"
+      Expression="SlitSwitcher"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DeliveryLocation"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DeliveryLocation"
+      Expression="DeliveryLocation"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LineType"
+      IsPersistent="false"
+      Precision="5"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LineType"
+      Expression="LineType"
+      SQLType="NUMERIC" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="GmdLastUpdateDate"
+      IsPersistent="false"
+      Precision="19"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="GmdLastUpdateDate"
+      Expression="GmdLastUpdateDate"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InventoryLocationId"
+      IsPersistent="false"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="InventoryLocationId"
+      Expression="InventoryLocationId"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DestinationType"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DestinationType"
+      Expression="DestinationType"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="MaterialDetailId" />
+      <Item Value="Rownum" />
+   </AttrArray>
+</ViewObject>

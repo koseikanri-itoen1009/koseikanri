@@ -1,0 +1,389 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:tableLayout version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" width="90%">
+   <ui:contents>
+      <oa:rowLayout id="row1">
+         <ui:contents>
+            <oa:cellFormat id="cell11" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="BatchNoPrompt" prompt="手配No"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell12" styleClass="OraTableCellText">
+               <ui:contents>
+                  <oa:messageStyledText id="BatchNo" dataType="VARCHAR2" viewName="XxwipBatchHeaderVO1" viewAttr="BatchNo" shortDesc="手配No" styleClass="LegendText"/>
+                  <oa:formValue id="BatchId" dataType="NUMBER" viewName="XxwipBatchHeaderVO1" viewAttr="BatchId"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell232"/>
+            <oa:cellFormat id="cell13" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="SlipPrompt" prompt="伝票区分"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell14" styleClass="OraTableCellText">
+               <ui:contents>
+                  <oa:messageStyledText id="Slip" dataType="VARCHAR2" viewName="XxwipBatchHeaderVO1" viewAttr="Slip" shortDesc="伝票区分" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell15" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="ResultsManagementPostPrompt" prompt="成績管理部署"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell16" styleClass="OraTableCellText">
+               <ui:contents>
+                  <oa:messageStyledText id="ResultsManagementPost" dataType="VARCHAR2" viewName="XxwipBatchHeaderVO1" viewAttr="ResultsManagementPost" shortDesc="成績管理部署" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell17" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="DutyStatusPrompt" prompt="ステータス"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell18" styleClass="OraTableCellText">
+               <ui:contents>
+                  <oa:messageStyledText id="DutyStatus" dataType="VARCHAR2" viewName="XxwipBatchHeaderVO1" viewAttr="DutyStatus" shortDesc="ステータス" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="spRow1">
+         <ui:contents>
+            <oa:cellFormat id="spCell1" columnSpan="9" height="3"/>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="row2">
+         <ui:contents>
+            <oa:cellFormat id="cell21" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="ItemNoPrompt" prompt="品目"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell22" styleClass="OraTableCellText">
+               <ui:contents>
+                  <oa:messageStyledText id="ItemNo" dataType="VARCHAR2" viewName="XxwipBatchHeaderVO1" viewAttr="ItemNo" shortDesc="品目No" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell231">
+               <ui:contents>
+                  <oa:spacer id="Sp21" width="3"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell23" styleClass="OraTableCellText" columnSpan="2">
+               <ui:contents>
+                  <oa:messageStyledText id="ItemName" dataType="VARCHAR2" viewName="XxwipBatchHeaderVO1" viewAttr="ItemName" shortDesc="品目名称" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell24" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="LotNoPrompt" prompt="ロットNo"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell25" styleClass="OraTableCellText">
+               <ui:contents>
+                  <oa:messageStyledText id="LotNo" dataType="VARCHAR2" viewName="XxwipBatchHeaderVO1" viewAttr="LotNo" shortDesc="ロットNo" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell26" columnSpan="2">
+               <ui:contents>
+                  <oa:formValue id="ItemIdFv" viewName="XxwipBatchHeaderVO1" viewAttr="ItemId" dataType="NUMBER"/>
+               </ui:contents>
+            </oa:cellFormat>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="spRow2">
+         <ui:contents>
+            <oa:cellFormat id="spCell2" columnSpan="9" height="3"/>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="row3">
+         <ui:contents>
+            <oa:cellFormat id="cell31" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="RoutingNoPrompt" prompt="ラインNo"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell32" styleClass="OraTableCellText">
+               <ui:contents>
+                  <oa:messageStyledText id="RoutingNo" dataType="VARCHAR2" viewName="XxwipBatchHeaderVO1" viewAttr="RoutingNo" maximumLength="32" shortDesc="ラインNo" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell2321"/>
+            <oa:cellFormat id="cell33" styleClass="OraTableCellText" columnSpan="2">
+               <ui:contents>
+                  <oa:messageStyledText id="RoutingDesc" dataType="VARCHAR2" viewName="XxwipBatchHeaderVO1" viewAttr="RoutingDesc" maximumLength="240" shortDesc="ライン名称" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell34" columnSpan="4"/>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="spRow3">
+         <ui:contents>
+            <oa:cellFormat id="spCell3" columnSpan="9" height="3"/>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="row4">
+         <ui:contents>
+            <oa:cellFormat id="cell41" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="DeliveryLocationPrompt" prompt="納品場所"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell42" styleClass="OraTableCellText">
+               <ui:contents>
+                  <oa:messageStyledText id="DeliveryLocation" dataType="VARCHAR2" viewName="XxwipBatchHeaderVO1" viewAttr="DeliveryLocation" shortDesc="ラインNo" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell2322"/>
+            <oa:cellFormat id="cell43" styleClass="OraTableCellText" columnSpan="2">
+               <ui:contents>
+                  <oa:messageStyledText id="DeliveryLocationName" dataType="VARCHAR2" viewName="XxwipBatchHeaderVO1" viewAttr="DeliveryLocationName" shortDesc="ライン名称" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell44" columnSpan="4"/>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="spRow4">
+         <ui:contents>
+            <oa:cellFormat id="spCell4" columnSpan="9" height="3"/>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="row5">
+         <ui:contents>
+            <oa:cellFormat id="cell51" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="MoveLocationPrompt" prompt="移動場所"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell52" styleClass="OraTableCellText">
+               <ui:contents>
+                  <oa:messageStyledText id="MoveLocation" dataType="VARCHAR2" viewName="XxwipBatchHeaderVO1" viewAttr="MoveLocation" shortDesc="移動場所" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell23221"/>
+            <oa:cellFormat id="cell53" styleClass="OraTableCellText" columnSpan="2">
+               <ui:contents>
+                  <oa:messageStyledText id="MoveLocationName" dataType="VARCHAR2" viewName="XxwipBatchHeaderVO1" viewAttr="MoveLocationName" maximumLength="240" shortDesc="移動場所名称" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell54" columnSpan="4"/>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="spRow5">
+         <ui:contents>
+            <oa:cellFormat id="spCell5" columnSpan="9" height="3"/>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="row6">
+         <ui:contents>
+            <oa:cellFormat id="cell61" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="PlanDatePrompt" prompt="生産予定日"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell62" styleClass="OraTableCellText">
+               <ui:contents>
+                  <oa:messageStyledText id="PlanDate" dataType="DATE" viewName="XxwipBatchHeaderVO1" viewAttr="PlanDate" shortDesc="生産予定日" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell23222"/>
+            <oa:cellFormat id="cell63" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="ProductDatePrompt" prompt="生産日"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell64" styleClass="OraTableCellText">
+               <ui:contents>
+                  <oa:messageStyledText id="ProductDate" viewName="XxwipBatchHeaderVO1" viewAttr="ProductDate" shortDesc="生産日" dataType="DATE" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell65" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="MakerDatePrompt" prompt="製造日"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell66" styleClass="OraTableCellText">
+               <ui:contents>
+                  <oa:messageStyledText id="MakerDate" dataType="DATE" viewName="XxwipBatchHeaderVO1" viewAttr="MakerDate" shortDesc="製造日" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell67" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="ExpirationDatePrompt" prompt="賞味期限日"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell68" styleClass="OraTableCellText">
+               <ui:contents>
+                  <oa:messageStyledText id="ExpirationDate" dataType="DATE" viewName="XxwipBatchHeaderVO1" viewAttr="ExpirationDate" shortDesc="賞味期限日" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="spRow6">
+         <ui:contents>
+            <oa:cellFormat id="spCell6" columnSpan="9" height="3"/>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="row7">
+         <ui:contents>
+            <oa:cellFormat id="cell71" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="DirectionQtyPrompt" prompt="指図総数"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell72" styleClass="OraTableCellNumber">
+               <ui:contents>
+                  <oa:messageStyledText id="DirectionQty" viewName="XxwipBatchHeaderVO1" viewAttr="DispDirectionQty" maximumLength="32" shortDesc="指図総数" styleClass="OraFieldNumber"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell23223"/>
+            <oa:cellFormat id="cell73" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="ActualQtyPrompt" prompt="出来高総数"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell74" styleClass="OraTableCellNumber">
+               <ui:contents>
+                  <oa:messageStyledText id="ActualQty" viewName="XxwipBatchHeaderVO1" viewAttr="ActualQty" shortDesc="出来高総数" styleClass="OraFieldNumber"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell75" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="EntityInnerPrompt" prompt="在庫入数"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell76" styleClass="OraTableCellNumber">
+               <ui:contents>
+                  <oa:messageStyledText id="EntityInner" viewName="XxwipBatchHeaderVO1" viewAttr="EntityInner" shortDesc="在庫入数" styleClass="OraFieldNumber"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell77" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="ItemUmPrompt" prompt="単位"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell78" styleClass="OraTableCellText">
+               <ui:contents>
+                  <oa:messageStyledText id="ItemUm" dataType="VARCHAR2" viewName="XxwipBatchHeaderVO1" viewAttr="ItemUm" styleClass="LegendText" shortDesc="単位"/>
+               </ui:contents>
+            </oa:cellFormat>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="spRow7">
+         <ui:contents>
+            <oa:cellFormat id="spCell7" columnSpan="9" height="3"/>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="row8">
+         <ui:contents>
+            <oa:cellFormat id="cell81" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="TypePrompt" prompt="タイプ"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell82" styleClass="OraTableCellText">
+               <ui:contents>
+                  <oa:messageChoice id="Type" pickListDispAttr="Type" pickListValAttr="TypeCode" pickListViewName="TypeVO1" viewName="XxwipBatchHeaderVO1" viewAttr="Type" shortDesc="タイプ" styleClass="LegendText" readOnly="true"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell23224"/>
+            <oa:cellFormat id="cell83" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="Rank1Prompt" prompt="R1"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell84" styleClass="OraTableCellText">
+               <ui:contents>
+                  <oa:messageStyledText id="Rank1" viewName="XxwipBatchHeaderVO1" viewAttr="Rank1" shortDesc="R1" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell85" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="Rank2Prompt" prompt="R2"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell86" styleClass="OraTableCellText">
+               <ui:contents>
+                  <oa:messageStyledText id="Rank2" viewName="XxwipBatchHeaderVO1" viewAttr="Rank2" shortDesc="R2" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell87" columnSpan="2"/>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="spRow8">
+         <ui:contents>
+            <oa:cellFormat id="spCell8" columnSpan="9" height="3"/>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="row9">
+         <ui:contents>
+            <oa:cellFormat id="cell91" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="MaterialDescPrompt" prompt="摘要"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell92" columnSpan="8" styleClass="OraTableCellText">
+               <ui:contents>
+                  <oa:messageStyledText id="MaterialDesc" viewName="XxwipBatchHeaderVO1" viewAttr="MaterialDesc" shortDesc="摘要" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="spRow9">
+         <ui:contents>
+            <oa:cellFormat id="spCell9" columnSpan="9" height="3"/>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="row10">
+         <ui:contents>
+            <oa:cellFormat id="cell101" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="TrustPrompt" prompt="取引先"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell102" styleClass="OraTableCellText" vAlign="middle">
+               <ui:contents>
+                  <oa:messageStyledText id="Trust" dataType="VARCHAR2" viewName="XxwipBatchHeaderVO1" viewAttr="Trust" shortDesc="取引先" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell23225"/>
+            <oa:cellFormat id="cell103" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="TrustProcessUnitPricePrompt" prompt="加工単価"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell104" styleClass="OraTableCellNumber">
+               <ui:contents>
+                  <oa:messageStyledText id="TrustProcessUnitPrice" viewName="XxwipBatchHeaderVO1" viewAttr="TrustProcessUnitPrice" shortDesc="加工単価" styleClass="OraFieldNumber"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell105" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="TrustProcessCostPrompt" prompt="金額"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell106" hAlign="right" styleClass="OraTableCellNumber">
+               <ui:contents>
+                  <oa:messageStyledText id="TrustProcessCost" viewName="XxwipBatchHeaderVO1" viewAttr="TrustProcessCost" shortDesc="金額" styleClass="OraFieldNumber"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell107" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="OthersCostPrompt" prompt="その他金額"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cell108" styleClass="OraTableCellNumber">
+               <ui:contents>
+                  <oa:messageStyledText id="OthersCost" viewName="XxwipBatchHeaderVO1" viewAttr="OthersCost" shortDesc="その他金額" styleClass="OraFieldNumber"/>
+               </ui:contents>
+            </oa:cellFormat>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="spRow10">
+         <ui:contents>
+            <oa:cellFormat id="spCell10" columnSpan="9" height="3"/>
+         </ui:contents>
+      </oa:rowLayout>
+   </ui:contents>
+</oa:tableLayout>

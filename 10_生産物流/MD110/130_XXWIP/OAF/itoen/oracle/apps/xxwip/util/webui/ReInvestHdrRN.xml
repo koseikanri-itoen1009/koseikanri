@@ -1,0 +1,133 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<oa:header version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/">
+   <ui:contents>
+      <oa:advancedTable id="ReInvestRN" viewName="XxwipBatchReInvestVO1" width="100%" tableBanding="rowBanding" shortDesc="投入情報" blockSize="200">
+         <ui:contents>
+            <oa:column id="colItemNoReInvest">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="ItemNoReInvestHdr" prompt="品目コード" required="uiOnly"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:switcher id="ItemNoSwitcherReInvest" viewAttr="ItemNoSwitcher">
+                     <ui:case name="ItemNoReInvestEnable">
+                        <oa:messageLovInput id="ItemNoReInvestEnable" viewAttr="ItemNo" shortDesc="品目コード" externalListOfValues="/itoen/oracle/apps/xxwip/lov/webui/ItemNoLovRN" columns="10" styleClass="OraFieldText" required="uiOnly">
+                           <lovMappings>
+                              <lovMap id="ToItemIdReInvest" lovItem="ItemId" resultTo="ItemIdReInvest"/>
+                              <lovMap id="FromItemNoReInvest" lovItem="ItemNo" criteriaFrom="ItemNoReInvestEnable"/>
+                              <lovMap id="ToItemNameReInvest" resultTo="ItemNameReInvest" lovItem="ItemName"/>
+                              <lovMap id="ToItemNoReInvest" resultTo="ItemNoReInvestEnable" lovItem="ItemNo"/>
+                              <lovMap id="ToItemUmReInvest" lovItem="ItemUm" resultTo="ItemUmReInvest"/>
+                              <lovMap id="ToItemNameReInvestFv" lovItem="ItemName" resultTo="ItemNameReInvestFv"/>
+                              <lovMap id="ToItemUmReInvestFv" lovItem="ItemUm" resultTo="ItemUmReInvestFv"/>
+                              <lovMap id="FromInvLocIdReInvest" criteriaFrom="InvLocIdReInvest" lovItem="InventoryLocationId" programmaticQuery="true"/>
+                              <lovMap id="FromDestinationTypeReInvest" lovItem="DestinationType" criteriaFrom="DestinationTypeReInvest" programmaticQuery="true"/>
+                           </lovMappings>
+                        </oa:messageLovInput>
+                     </ui:case>
+                     <ui:case name="ItemNoReInvestDisable">
+                        <oa:messageStyledText id="ItemNoReInvestDisable" viewAttr="ItemNo" shortDesc="品目コード"/>
+                     </ui:case>
+                  </oa:switcher>
+                  <oa:formValue id="DestinationTypeReInvest" viewAttr="DestinationType"/>
+                  <oa:formValue id="ItemIdReInvest" viewAttr="ItemId"/>
+                  <oa:formValue id="InvLocIdReInvest" viewAttr="InventoryLocationId" dataType="NUMBER"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colitemNameReInvest">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="itemNameReInvestHdr" prompt="品目名称" shortDesc="品目名称"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageStyledText id="ItemNameReInvest" viewAttr="ItemName" shortDesc="品目名称"/>
+                  <oa:formValue id="ItemNameReInvestFv" viewAttr="ItemName"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colEntityInnerReInvest" columnDataFormat="numberFormat">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="EntityInnerReInvestHdr" prompt="在庫入数"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageStyledText id="EntityInnerReInvest" dataType="NUMBER" viewAttr="EntityInner" shortDesc="在庫入数"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colInstructionsQtyReInvest" columnDataFormat="numberFormat">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="InstructionsQtyReInvestHdr" prompt="指示総数計"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageStyledText id="InstructionsQtyReInvest" dataType="NUMBER" viewAttr="InstructionsQty" shortDesc="指示総数計"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colInvestedQtyReInvest" columnDataFormat="numberFormat">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="InvestedQtyinvestHdr1" prompt="実績総数計"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageStyledText id="InvestedQtyReInvest" dataType="NUMBER" viewAttr="InvestedQty" shortDesc="実績総数計"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colReturnQtyReInvest" columnDataFormat="numberFormat">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="ReturnQtyReInvestHdr" prompt="戻入総数計"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageStyledText id="ReturnQtyinvest1" dataType="NUMBER" viewAttr="ReturnQty" shortDesc="戻入総数計"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colItemUmReInvest">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="ItemUmReInvestHdr" prompt="単位"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageStyledText id="ItemUmReInvest" dataType="NUMBER" viewAttr="ItemUm" shortDesc="単位"/>
+                  <oa:formValue id="ItemUmReInvestFv" viewAttr="ItemUm"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colDeleteBtnReInvest" columnDataFormat="iconButtonFormat">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="DeleteReInvestHdr" prompt="削除"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:switcher id="DeleteSwitcherReInvest" viewAttr="DeleteSwitcher">
+                     <ui:case name="DeleteReInvestEnable">
+                        <oa:image id="DeleteReInvestEnable" source="deleteicon_enabled.gif" shortDesc="削除" imageHeight="24" imageWidth="24" serverUnvalidated="true">
+                           <ui:primaryClientAction>
+                              <ui:fireAction id="fireAction1" event="deleteRow" unvalidated="true">
+                                 <ui:parameters>
+                                    <ui:parameter key="MTL_DTL_ID" value="${oa.XxwipBatchReInvestVO1.MaterialDetailId}"/>
+                                    <ui:parameter key="TAB_TYPE" value="1"/>
+                                    <ui:parameter key="BATCH_ID" value="${oa.XxwipBatchReInvestVO1.BatchId}"/>
+                                 </ui:parameters>
+                              </ui:fireAction>
+                           </ui:primaryClientAction>
+                        </oa:image>
+                     </ui:case>
+                     <ui:case name="DeleteReInvestDisable">
+                        <oa:image id="DeleteReInvestDisable" source="deleteicon_disabled.gif" shortDesc="削除不可" imageHeight="24" imageWidth="24"/>
+                     </ui:case>
+                  </oa:switcher>
+               </ui:contents>
+            </oa:column>
+            <oa:formValue id="MaterialDetailIdReInvest" viewAttr="MaterialDetailId"/>
+         </ui:contents>
+         <ui:tableSelection>
+            <oa:singleSelection id="singleSelection1" viewAttr="SelectFlag">
+               <ui:contents>
+                  <oa:flowLayout id="singleSelectionRN1">
+                     <ui:contents>
+                        <oa:submitButton id="LotDetailReInvest" text="ロット明細" prompt="ロット明細" warnAboutChanges="true" serverUnvalidated="true" unvalidated="true"/>
+                     </ui:contents>
+                  </oa:flowLayout>
+               </ui:contents>
+            </oa:singleSelection>
+         </ui:tableSelection>
+         <ui:footer>
+            <oa:tableFooter id="tableFooterReInvest">
+               <ui:contents>
+                  <oa:addTableRow id="AddRowReInvest" text="行挿入" shortDesc="行挿入" autoInsertion="false" rendered="${oa.XxwipVolumeActualPVO1.AddRowReInvestRender}"/>
+               </ui:contents>
+            </oa:tableFooter>
+         </ui:footer>
+      </oa:advancedTable>
+   </ui:contents>
+</oa:header>

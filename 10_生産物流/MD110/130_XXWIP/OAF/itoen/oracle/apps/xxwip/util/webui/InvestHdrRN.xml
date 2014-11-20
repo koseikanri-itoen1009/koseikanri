@@ -1,0 +1,164 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<oa:header version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/">
+   <ui:contents>
+      <oa:advancedTable id="InvestRN" viewName="XxwipBatchInvestVO1" width="100%" tableBanding="rowBanding" shortDesc="投入情報" blockSize="200">
+         <ui:contents>
+            <oa:column id="colItemNoInvest">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="ItemNoInvestHdr" prompt="品目コード" required="uiOnly"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:switcher id="ItemNoInvestSwitcher" viewAttr="ItemNoSwitcher">
+                     <ui:case name="ItemNoInvestEnable">
+                        <oa:messageLovInput id="ItemNoInvestEnable" viewAttr="ItemNo" shortDesc="品目コード" externalListOfValues="/itoen/oracle/apps/xxwip/lov/webui/ItemNoLovRN" columns="10" styleClass="OraFieldText" required="uiOnly">
+                           <lovMappings>
+                              <lovMap id="ToItemIdInvest" lovItem="ItemId" resultTo="ItemIdInvest"/>
+                              <lovMap id="FromItemNoInvest" lovItem="ItemNo" criteriaFrom="ItemNoInvestEnable"/>
+                              <lovMap id="ToItemNameInvest" resultTo="ItemNameInvest" lovItem="ItemName"/>
+                              <lovMap id="ToItemNoInvest" resultTo="ItemNoInvestEnable" lovItem="ItemNo"/>
+                              <lovMap id="ToItemUmInvest" lovItem="ItemUm" resultTo="ItemUmInvest"/>
+                              <lovMap id="ToItemNameInvestFv" lovItem="ItemName" resultTo="ItemNameInvestFv"/>
+                              <lovMap id="ToItemUmInvestFv" resultTo="ItemUmInvestFv" lovItem="ItemUm"/>
+                              <lovMap id="FromInvLocIdInvest" criteriaFrom="InvLocIdInvest" lovItem="InventoryLocationId" programmaticQuery="true"/>
+                              <lovMap id="FromDestinationTypeInvest" lovItem="DestinationType" criteriaFrom="DestinationTypeInvest" programmaticQuery="true"/>
+                           </lovMappings>
+                        </oa:messageLovInput>
+                     </ui:case>
+                     <ui:case name="ItemNoInvestDisable">
+                        <oa:messageStyledText id="ItemNoInvestDisable" viewAttr="ItemNo" shortDesc="品目コード"/>
+                     </ui:case>
+                  </oa:switcher>
+                  <oa:formValue id="DestinationTypeInvest" viewAttr="DestinationType"/>
+                  <oa:formValue id="InvLocIdInvest" viewAttr="InventoryLocationId" dataType="NUMBER"/>
+                  <oa:formValue id="ItemIdInvest" viewAttr="ItemId"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colitemNameInvest">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="itemNameInvestHdr" prompt="品目名称" shortDesc="品目名称"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageStyledText id="ItemNameInvest" viewAttr="ItemName" shortDesc="品目名称"/>
+                  <oa:formValue id="ItemNameInvestFv" viewAttr="ItemName"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colSlit">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="SlitHdr" prompt="投入口"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:switcher id="SlitSwitcherInvest" viewAttr="SlitSwitcher">
+                     <ui:case name="SlitInvestEnable">
+                        <oa:messageChoice id="SlitInvestEnable" viewAttr="Slit" pickListViewName="SlitVO1" pickListDispAttr="SlitName" pickListValAttr="Slit" allowBlankValue="false"/>
+                     </ui:case>
+                     <ui:case name="SlitInvestDisable">
+                        <oa:messageChoice id="SlitInvestDisable" shortDesc="投入口" viewAttr="Slit" readOnly="true" pickListViewName="SlitVO1" pickListDispAttr="SlitName" pickListValAttr="Slit"/>
+                     </ui:case>
+                  </oa:switcher>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colEntityInnerInvest" width="7%" columnDataFormat="numberFormat">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="EntityInnerInvestHdr" prompt="在庫入数"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageStyledText id="EntityInnerInvest" viewAttr="EntityInner" shortDesc="在庫入数"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colInstructionsQtyInvest" columnDataFormat="numberFormat" width="11%">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="InstructionsQtyInvestHdr" prompt="指示総数計"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageStyledText id="InstructionsQtyInvest" viewAttr="InstructionsQty" shortDesc="指示総数計"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colInvestedQtyInvest" columnDataFormat="numberFormat" width="11%">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="InvestedQtyInvestHdr" prompt="実績総数計"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageStyledText id="InvestedQtyInvest" viewAttr="InvestedQty" shortDesc="実績総数計"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colReturnQtyInvest" columnDataFormat="numberFormat" width="11%">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="ReturnQtyInvestHdr" prompt="戻入総数計"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageStyledText id="ReturnQtyInvest" dataType="NUMBER" viewAttr="ReturnQty" shortDesc="戻入総数計"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colIMtlProdQtyInvest" columnDataFormat="numberFormat" width="11%">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="MtlProdQtyInvestHdr" prompt="製造不良総数計"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageStyledText id="MtlProdQtyInvest" viewAttr="MtlProdQty" shortDesc="製造不良総数計"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colMtlMfgQtyInvest" columnDataFormat="numberFormat" width="11%">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="MtlMfgQtyInvestHdr" prompt="業者不良総数計"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageStyledText id="MtlMfgQtyInvest" viewAttr="MtlMfgQty" shortDesc="業者不良総数計"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colItemUmInvest">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="ItemUmInvestHdr" prompt="単位"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageStyledText id="ItemUmInvest" viewAttr="ItemUm" shortDesc="単位"/>
+                  <oa:formValue id="ItemUmInvestFv" viewAttr="ItemUm"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colDeleteBtn" columnDataFormat="iconButtonFormat">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="DeleteInvestHdr" prompt="削除"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:switcher id="DeleteSwitcherInvest" viewAttr="DeleteSwitcher">
+                     <ui:case name="DeleteInvestEnable">
+                        <oa:image id="DeleteInvestEnable" source="deleteicon_enabled.gif" shortDesc="削除" imageHeight="24" imageWidth="24" serverUnvalidated="true">
+                           <ui:primaryClientAction>
+                              <ui:fireAction id="fireAction1" event="deleteRow">
+                                 <ui:parameters>
+                                    <ui:parameter key="MTL_DTL_ID" value="${oa.XxwipBatchInvestVO1.MaterialDetailId}"/>
+                                    <ui:parameter key="TAB_TYPE" value="0"/>
+                                    <ui:parameter key="BATCH_ID" value="${oa.XxwipBatchInvestVO1.BatchId}"/>
+                                 </ui:parameters>
+                              </ui:fireAction>
+                           </ui:primaryClientAction>
+                        </oa:image>
+                     </ui:case>
+                     <ui:case name="DeleteInvestDisable">
+                        <oa:image id="DeleteInvestDisable" source="deleteicon_disabled.gif" shortDesc="削除不可" imageHeight="24" imageWidth="24"/>
+                     </ui:case>
+                  </oa:switcher>
+               </ui:contents>
+            </oa:column>
+            <oa:formValue id="MaterialDetailIdInvest" viewAttr="MaterialDetailId"/>
+         </ui:contents>
+         <ui:tableSelection>
+            <oa:singleSelection id="singleSelection" viewAttr="SelectFlag">
+               <ui:contents>
+                  <oa:flowLayout id="singleSelectionRN">
+                     <ui:contents>
+                        <oa:submitButton id="LotDetailInvest" text="ロット明細" prompt="ロット明細" warnAboutChanges="true" unvalidated="true" serverUnvalidated="true"/>
+                     </ui:contents>
+                  </oa:flowLayout>
+               </ui:contents>
+            </oa:singleSelection>
+         </ui:tableSelection>
+         <ui:footer>
+            <oa:tableFooter id="tableFooterInvest">
+               <ui:contents>
+                  <oa:addTableRow id="AddRowInvest" text="行挿入" shortDesc="行挿入" autoInsertion="false" rendered="${oa.XxwipVolumeActualPVO1.AddRowInvestRender}"/>
+               </ui:contents>
+            </oa:tableFooter>
+         </ui:footer>
+      </oa:advancedTable>
+   </ui:contents>
+</oa:header>

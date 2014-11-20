@@ -1,0 +1,86 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:advancedTable xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:oa="http://xmlns.oracle.com/oa" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" viewName="XxwipInvestLotVO1" blockSize="200" width="100%" tableBanding="rowBanding" shortDesc="投入情報">
+   <ui:contents>
+      <oa:column id="InvestLotNoRow">
+         <ui:columnHeader>
+            <oa:sortableHeader id="InvestHdrLotNo" prompt="ロットNo"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="InvestLotNo" viewAttr="LotNo" shortDesc="ロットNo"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="InvestEntityInnerRow" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="InvestHdrEntityInner" prompt="在庫入数"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="InvestEntityInner" viewAttr="EntityInner" shortDesc="在庫入数"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="InvestMakerDateRow">
+         <ui:columnHeader>
+            <oa:sortableHeader id="InvestHdrMakerDate" prompt="製造日"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="InvestMakerDate" viewAttr="MakerDate"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="InvestInstructionsQtyRow" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="InvestHdrInstructionsQty" prompt="指示総数"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="InvestInstructionsQty" viewAttr="InstructionsQty" shortDesc="指示総数"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="InvestInvestedQtyRow" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="InvestHdrInvestedQty" prompt="実績総数"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageTextInput id="InvestInvestedQty" viewAttr="InvestedQty" shortDesc="実績総数" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="InvestReturnQtyRow" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="InvestHdrReturnQty" prompt="戻入総数"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageTextInput id="InvestReturnQty" viewAttr="ReturnQty" shortDesc="戻入総数" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="InvestMtlProdQtyRow" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="InvestHdrMtlProdQty" prompt="製造不良総数"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageTextInput id="InvestMtlProdQty" viewAttr="MtlProdQty" shortDesc="製造不良総数" styleClass="OraFieldNumber" disabled="${oa.XxwipInvestActualPVO1.InvestMtlQtyReject}"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="InvestMtlMfgQtyRow" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="InvestHdrMtlMfgQty" prompt="業者不良総数"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageTextInput id="InvestMtlMfgQty" viewAttr="MtlMfgQty" shortDesc="業者不良総数" styleClass="OraFieldNumber" disabled="${oa.XxwipInvestActualPVO1.InvestMtlQtyReject}"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="InvestStockQtyRow" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="InvestHdrStockQty" prompt="引当可能数"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="InvestStockQty" viewAttr="StockQty" shortDesc="引当可能数"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="InvestItemUmRow">
+         <ui:columnHeader>
+            <oa:sortableHeader id="InvestHdrItemUm" prompt="単位"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="InvestItemUm" viewAttr="ItemUm" shortDesc="単位"/>
+         </ui:contents>
+      </oa:column>
+   </ui:contents>
+</oa:advancedTable>

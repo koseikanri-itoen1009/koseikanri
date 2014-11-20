@@ -1,0 +1,70 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:advancedTable version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" blockSize="200" width="100%" tableBanding="rowBanding" viewName="XxwipReInvestLotVO1" shortDesc="打込情報">
+   <ui:contents>
+      <oa:column id="ReInvestLotNoRow">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ReInvestHdrLotNo" prompt="ロットNo"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ReInvestLotNo" viewAttr="LotNo" shortDesc="ロットNo"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="ReInvestEntityInnerRow" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ReInvestHdrEntityInner" prompt="在庫入数"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ReInvestEntityInner" viewAttr="EntityInner" shortDesc="在庫入数"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="ReInvestMakerDateRow">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ReInvestHdrMakerDate" prompt="製造日"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ReInvestMakerDate" viewAttr="MakerDate"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="ReInvestInstructionsQtyRow" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ReInvestHdrInstructionsQty" prompt="指示総数"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ReInvestInstructionsQty" viewAttr="InstructionsQty" shortDesc="指示総数"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="ReInvestInvestedQtyRow" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ReInvestHdrInvestedQty" prompt="実績総数"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageTextInput id="ReInvestInvestedQty" viewAttr="InvestedQty" shortDesc="実績総数" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="ReInvestReturnQtyRow" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ReInvestHdrReturnQty" prompt="戻入総数"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageTextInput id="ReInvestReturnQty" viewAttr="ReturnQty" shortDesc="戻入総数" styleClass="OraFieldNumber"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="ReInvestStockQtyRow" columnDataFormat="numberFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ReInvestHdrStockQty" prompt="引当可能数"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ReInvestStockQty" viewAttr="StockQty" shortDesc="引当可能数"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="ReInvestItemUmRow">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ReInvestHdrItemUm" prompt="単位"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ReInvestItemUm" viewAttr="ItemUm" shortDesc="単位"/>
+         </ui:contents>
+      </oa:column>
+   </ui:contents>
+</oa:advancedTable>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxwipInvestActualAM"
+   ComponentClass="itoen.oracle.apps.xxwip.xxwip200002j.server.XxwipInvestActualAMImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+      <Attr Name="_superClassName" Value="itoen.oracle.apps.xxcmn.util.server.XxcmnOAApplicationModuleImpl" />
+   </DesignTime>
+   <ViewUsage
+      Name="TypeVO1"
+      ViewObjectName="itoen.oracle.apps.xxwip.poplist.server.TypeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxwipInvestLotVO1"
+      ViewObjectName="itoen.oracle.apps.xxwip.xxwip200002j.server.XxwipInvestLotVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxwipInvestActualPVO1"
+      ViewObjectName="itoen.oracle.apps.xxwip.xxwip200002j.server.XxwipInvestActualPVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxwipReInvestLotVO1"
+      ViewObjectName="itoen.oracle.apps.xxwip.xxwip200002j.server.XxwipReInvestLotVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxwipItemChoiceInvestVO1"
+      ViewObjectName="itoen.oracle.apps.xxwip.xxwip200002j.server.XxwipItemChoiceInvestVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxwipItemChoiceReInvestVO1"
+      ViewObjectName="itoen.oracle.apps.xxwip.xxwip200002j.server.XxwipItemChoiceReInvestVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxwipBatchHeaderVO1"
+      ViewObjectName="itoen.oracle.apps.xxwip.xxwip200002j.server.XxwipBatchHeaderVO" >
+   </ViewUsage>
+</AppModule>

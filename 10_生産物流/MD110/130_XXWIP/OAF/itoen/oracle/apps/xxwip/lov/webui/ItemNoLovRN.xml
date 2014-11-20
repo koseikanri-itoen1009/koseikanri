@@ -1,0 +1,21 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--*品目共有リージョン 
+品目値リストを表示する共有リージョンです。  
+@see itoen.oracle.apps.xxwip.lov.server.LovAM
+修正履歴
+2007/11/09 nihei 新規作成-->
+<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" amDefName="itoen.oracle.apps.xxwip.lov.server.LovAM" controllerClass="itoen.oracle.apps.xxwip.lov.webui.ItemNoLovCO">
+   <ui:contents>
+      <oa:table id="ItemNoTable" text="品目" shortDesc="品目" name="ItemNoLovRN">
+         <ui:contents>
+            <oa:messageStyledText id="ItemNo" viewName="ItemNoVO1" viewAttr="ItemNo" queryable="true" prompt="品目コード" shortDesc="品目コード"/>
+            <oa:formValue id="ItemName" viewName="ItemNoVO1" viewAttr="ItemName"/>
+            <oa:formValue id="ItemId" viewName="ItemNoVO1" viewAttr="ItemId" dataType="NUMBER"/>
+            <oa:formValue id="ItemUm" viewName="ItemNoVO1" viewAttr="ItemUm"/>
+            <oa:formValue id="DestinationType" viewName="ItemNoVO1" viewAttr="DestinationType"/>
+            <oa:formValue id="InventoryLocationId" dataType="NUMBER" viewName="ItemNoVO1" viewAttr="InventoryLocationId"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>

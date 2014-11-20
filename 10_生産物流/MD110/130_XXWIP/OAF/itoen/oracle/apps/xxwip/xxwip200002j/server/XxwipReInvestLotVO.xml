@@ -1,0 +1,501 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxwipReInvestLotVO"
+   OrderBy="RECORD_TYPE DESC,INSTRUCTIONS_QTY,TO_NUMBER(LOT_NO)"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="itoen.oracle.apps.xxwip.xxwip200002j.server.XxwipReInvestLotVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT TO_CHAR(MAX(xgmd.record_type)) record_type         -- 更新
+      ,xgmd.batch_id                  batch_id            -- バッチID
+      ,xgmd.material_detail_id        material_detail_id  -- 生産原料詳細ID
+      ,xgmd.line_no                   line_no             -- 行No
+      ,MAX(xgmd.mtl_detail_addon_id)  mtl_detail_addon_id -- 生産原料詳細アドオンID
+      ,MAX(xgmd.trans_id)             trans_id            -- トランザクションID
+      ,MAX(xgmd.trans_qty)            trans_qty           -- 処理数量
+      ,xgmd.lot_id                    lot_id              -- ロットID
+      ,xgmd.lot_no                    lot_no              -- ロットNo
+      ,MAX(xgmd.maker_date)           maker_date          -- 製造日
+      ,MAX(xgmd.entity_inner)         entity_inner        -- 在庫入数
+      ,MAX(xgmd.instructions_qty)     instructions_qty    -- 指示総数
+      ,MAX(xgmd.invested_qty)         invested_qty        -- 投入数量計
+      ,MAX(xgmd.return_qty)           return_qty          -- 戻入数量計
+      ,TO_CHAR(SUM(xgmd.stock_qty),'FM999,999,990.000')
+                                      stock_qty           -- 引当可能数
+      ,xgmd.item_um                   item_um             -- 単位
+      ,xgmd.item_id                   item_id             -- 品目ID
+      ,xgmd.item_no                   item_no             -- 品目コード
+      ,xgmd.item_class_code           item_class_code     -- 品目区分
+      ,MAX(xgmd.xmd_last_update_date) xmd_last_update_date-- 最終更新日(排他制御用)
+      ,MAX(xgmd.base_invested_qty)    base_invested_qty   -- 元投入数量計
+      ,MAX(xgmd.base_return_qty)      base_return_qty     -- 元戻入数量計
+      ,xmld.mov_lot_dtl_id       mov_lot_dtl_id      -- 移動ロット詳細ID
+      ,TO_CHAR(MAX(xmld.actual_quantity))
+                                      xmld_actual_quantity-- ロット詳細実績数量
+FROM   (SELECT 1                         record_type         -- 更新
+              ,gmd.batch_id              batch_id            -- バッチID
+              ,gmd.material_detail_id  material_detail_id  -- 生産原料詳細ID
+              ,gmd.line_no               line_no             -- 行No
+              ,xmd.mtl_detail_addon_id mtl_detail_addon_id -- 生産原料詳細アドオンID
+              ,itp.trans_id              trans_id            -- トランザクションID
+              ,itp.trans_qty             trans_qty           -- 処理数量
+              ,ilm.lot_id                lot_id              -- ロットID
+              ,DECODE(xicv.item_class_code, 2, '', ilm.lot_no)
+                                         lot_no              -- ロットNo
+              ,ilm.attribute1            maker_date          -- 製造日
+              ,TO_CHAR(ilm.attribute6, DECODE(ilm.attribute6,null,'','0','','FM990.000'))
+                                         entity_inner        -- 在庫入数
+              ,TO_CHAR(xmd.instructions_qty, DECODE(xmd.instructions_qty,0,'', 'FM999,999,990.000')) 
+                                         instructions_qty    -- 指示総数
+              ,TO_CHAR(xmd.invested_qty, 'FM999999990.000')
+                                         invested_qty        -- 投入数量計
+              ,TO_CHAR(xmd.return_qty,   'FM999999990.000')
+                                         return_qty          -- 戻入数量計
+              ,DECODE(itp.completed_ind, 1, itp.trans_qty * -1, 0)
+                                         stock_qty
+              ,ximv.item_um              item_um             -- 単位
+              ,ximv.item_id              item_id             -- 品目ID
+              ,ximv.item_no              item_no             -- 品目コード
+              ,xicv.item_class_code      item_class_code     -- 品目区分
+              ,TO_CHAR(xmd.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+                                       xmd_last_update_date-- 最終更新日(排他制御用)
+              ,TO_CHAR(xmd.invested_qty) base_invested_qty   -- 元投入数量計
+              ,TO_CHAR(xmd.return_qty)   base_return_qty     -- 元戻入数量計
+        FROM   gme_material_details      gmd  -- 生産原料詳細
+              ,xxwip_material_detail     xmd  -- 生産原料詳細アドオン
+              ,ic_tran_pnd               itp  -- OPM保留在庫トランザクション
+              ,ic_lots_mst               ilm  -- OPMロットマスタ
+              ,xxcmn_item_mst2_v         ximv -- OPM品目マスタビュー
+              ,xxcmn_item_categories3_v  xicv -- 品目カテゴリ情報VIEW3
+              ,xxcmn_item_locations_v    xilv -- 保管倉庫
+              ,(SELECT a.batch_id batch_id       -- バッチID
+                      ,FND_DATE.STRING_TO_DATE(b.attribute11, 'YYYY/MM/DD')
+                                  product_date   -- 生産日
+                FROM   gme_batch_header     a -- 生産バッチヘッダ
+                      ,gme_material_details b -- 生産原料詳細
+                WHERE  a.batch_id  = b.batch_id
+                AND    b.line_type = 1 ) gbhh
+        WHERE  
+        /* 結合条件 */
+               gmd.material_detail_id = xmd.material_detail_id
+        AND    gmd.batch_id           = gbhh.batch_id
+        AND    gmd.item_id            = ximv.item_id
+        AND    gmd.material_detail_id = itp.line_id
+        AND    itp.lot_id             = xmd.lot_id
+        AND    itp.lot_id             = ilm.lot_id
+        AND    itp.item_id            = ilm.item_id
+        AND    xmd.location_code      = xilv.segment1
+        AND    xicv.item_id           = ximv.item_id
+        /* 抽出条件 */
+        AND    gmd.line_type          = -1    -- 投入品
+        AND    gmd.attribute5         = 'Y'   -- 打込
+        AND    gmd.attribute24        IS NULL -- 未取消
+        AND    itp.reverse_id         IS NULL
+        AND    xmd.plan_type          = '4' -- 投入
+        AND    ximv.start_date_active<= NVL(gbhh.product_date, TRUNC(SYSDATE))
+        AND    ximv.end_date_active  >= NVL(gbhh.product_date, TRUNC(SYSDATE))
+      UNION
+        SELECT 0                       record_type         -- 挿入
+              ,gmd.batch_id            batch_id            -- バッチID
+              ,gmd.material_detail_id  material_detail_id  -- 生産原料詳細ID
+              ,gmd.line_no             line_no             -- 行No
+              ,null                    mtl_detail_addon_id -- 生産原料詳細アドオンID
+              ,null                    trans_id            -- トランザクションID
+              ,null                    trans_qty           -- 処理数量
+              ,ilm.lot_id              lot_id              -- ロットID
+              ,DECODE(xicv.item_class_code, 2, '', ilm.lot_no)
+                                       lot_no              -- ロットNo
+              ,ilm.attribute1          maker_date          -- 製造日
+              ,TO_CHAR(ilm.attribute6, DECODE(ilm.attribute6,null,'','0','','FM990.000'))
+                                       entity_inner        -- 在庫入数
+              ,null                    instructions_qty    -- 指示総数
+              ,null                    invested_qty        -- 投入数量計
+              ,null                    return_qty          -- 戻入数量計
+              ,xxwip_common_pkg.get_can_stock_qty(gmd.batch_id, xilv.inventory_location_id, ximv.item_id, ilm.lot_id)
+                                       stock_qty
+              ,ximv.item_um            item_um             -- 単位
+              ,ximv.item_id            item_id             -- 品目ID
+              ,ximv.item_no            item_no             -- 品目コード
+              ,xicv.item_class_code    item_class_code     -- 品目区分
+              ,null                    xmd_last_update_date-- 最終更新日(排他制御用)
+              ,null                    base_invested_qty   -- 元投入数量計
+              ,null                    base_return_qty     -- 元戻入数量計
+        FROM   gme_batch_header          gbh  -- 生産バッチヘッダ
+              ,gme_material_details      gmd  -- 生産原料詳細
+              ,gmd_routings_vl           grv  -- 工順マスタビュー
+              ,ic_lots_mst               ilm  -- OPMロットマスタ
+              ,xxcmn_item_mst2_v         ximv -- OPM品目マスタビュー
+              ,xxcmn_item_categories3_v  xicv -- 品目カテゴリ情報VIEW3
+              ,xxcmn_item_locations_v    xilv -- 保管倉庫
+              ,(SELECT a.batch_id batch_id       -- バッチID
+                      ,FND_DATE.STRING_TO_DATE(b.attribute11, 'YYYY/MM/DD')
+                                  product_date   -- 生産日
+                FROM   gme_batch_header     a -- 生産バッチヘッダ
+                      ,gme_material_details b -- 生産原料詳細
+                WHERE  a.batch_id  = b.batch_id
+                AND    b.line_type = 1 ) gbhh
+        WHERE  
+        /* 結合条件 */
+               gbh.routing_id         = grv.routing_id
+        AND    gmd.batch_id           = gbh.batch_id
+        AND    gmd.batch_id           = gbhh.batch_id
+        AND    gmd.item_id            = ximv.item_id
+        AND    gmd.item_id            = ilm.item_id
+        AND    grv.attribute9         = xilv.segment1(+)
+        AND    xicv.item_id           = ximv.item_id
+        /* 抽出条件 */
+        AND    gmd.line_type          = -1    -- 投入品
+        AND    gmd.attribute5         = 'Y'   -- 打込
+        AND    gmd.attribute24        IS NULL -- 未取消
+        AND    xxwip_common_pkg.get_can_stock_qty(gmd.batch_id, xilv.inventory_location_id, ximv.item_id, ilm.lot_id) > 0
+        AND    ximv.start_date_active<= NVL(gbhh.product_date, TRUNC(SYSDATE))
+        AND    ximv.end_date_active  >= NVL(gbhh.product_date, TRUNC(SYSDATE))
+        )                        xgmd
+      ,xxinv_mov_lot_details     xmld -- 移動ロット詳細
+WHERE  
+/* 結合条件 */
+       xgmd.material_detail_id    = xmld.mov_line_id(+)
+AND    xgmd.lot_id                = xmld.lot_id(+)
+/* 抽出条件 */
+AND    xgmd.material_detail_id    = TO_NUMBER(:1)
+AND    xmld.document_type_code(+) = '40'
+AND    xmld.record_type_code(+)   = '40'
+GROUP BY xgmd.batch_id
+        ,xgmd.material_detail_id
+        ,xgmd.line_no
+        ,xgmd.lot_id
+        ,xgmd.lot_no
+        ,xgmd.item_um
+        ,xgmd.item_id
+        ,xgmd.item_no
+        ,xgmd.item_class_code
+        ,xmld.mov_lot_dtl_id
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="RecordType"
+      IsPersistent="false"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="RECORD_TYPE"
+      Expression="RECORD_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BatchId"
+      IsPersistent="false"
+      Precision="10"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="BATCH_ID"
+      Expression="BATCH_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="MaterialDetailId"
+      IsPersistent="false"
+      Precision="10"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="MATERIAL_DETAIL_ID"
+      Expression="MATERIAL_DETAIL_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LineNo"
+      IsPersistent="false"
+      Precision="5"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LINE_NO"
+      Expression="LINE_NO"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="MtlDetailAddonId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="MTL_DETAIL_ADDON_ID"
+      Expression="MTL_DETAIL_ADDON_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TransId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="TRANS_ID"
+      Expression="TRANS_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TransQty"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="TRANS_QTY"
+      Expression="TRANS_QTY"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LotId"
+      IsPersistent="false"
+      Precision="10"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LOT_ID"
+      Expression="LOT_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LotNo"
+      IsPersistent="false"
+      Precision="32"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LOT_NO"
+      Expression="LOT_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="32" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="MakerDate"
+      IsPersistent="false"
+      Precision="240"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="VARCHAR2"
+      AliasName="MAKER_DATE"
+      Expression="MAKER_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="EntityInner"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ENTITY_INNER"
+      Expression="ENTITY_INNER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstructionsQty"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTRUCTIONS_QTY"
+      Expression="INSTRUCTIONS_QTY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InvestedQty"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INVESTED_QTY"
+      Expression="INVESTED_QTY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ReturnQty"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="RETURN_QTY"
+      Expression="RETURN_QTY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="StockQty"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="STOCK_QTY"
+      Expression="STOCK_QTY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemUm"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_UM"
+      Expression="ITEM_UM"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemId"
+      IsPersistent="false"
+      Precision="10"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="ITEM_ID"
+      Expression="ITEM_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemNo"
+      IsPersistent="false"
+      Precision="32"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_NO"
+      Expression="ITEM_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="32" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemClassCode"
+      IsPersistent="false"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_CLASS_CODE"
+      Expression="ITEM_CLASS_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="XmdLastUpdateDate"
+      IsPersistent="false"
+      Precision="19"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="XMD_LAST_UPDATE_DATE"
+      Expression="XMD_LAST_UPDATE_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="19" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseInvestedQty"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_INVESTED_QTY"
+      Expression="BASE_INVESTED_QTY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseReturnQty"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_RETURN_QTY"
+      Expression="BASE_RETURN_QTY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="MovLotDtlId"
+      IsPersistent="false"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="MOV_LOT_DTL_ID"
+      Expression="MOV_LOT_DTL_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="XmldActualQuantity"
+      IsPersistent="false"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="XMLD_ACTUAL_QUANTITY"
+      Expression="XMLD_ACTUAL_QUANTITY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="LotId" />
+   </AttrArray>
+</ViewObject>

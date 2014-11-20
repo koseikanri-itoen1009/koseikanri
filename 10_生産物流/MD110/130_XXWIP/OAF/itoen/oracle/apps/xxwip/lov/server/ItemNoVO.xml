@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="ItemNoVO"
+   OrderBy="TO_NUMBER(ITEM_NO)"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="oracle.apps.fnd.framework.server.OAViewObjectImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT ximv.item_id         item_id
+      ,ximv.item_no         item_no
+      ,ximv.item_short_name item_name
+      ,ximv.item_um         item_um
+      ,ximv.destination_div destination_type
+      ,null                 inventory_location_id
+FROM   xxcmn_item_mst_v     ximv
+WHERE  EXISTS ( SELECT 'X'
+                FROM   ic_loct_inv            ili
+                      ,xxcmn_item_locations_v xilv
+                WHERE  ili.whse_code = xilv.whse_code
+                AND    ili.item_id   = ximv.item_id
+                AND    xilv.inventory_location_id = NVL(:1, xilv.inventory_location_id)
+                HAVING NVL(SUM(ili.loct_onhand), 0) > 0
+                GROUP BY ili.item_id )
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="4" />
+   </DesignTime>
+   <ViewAttribute
+      Name="ItemId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="10"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="ITEM_ID"
+      Expression="ITEM_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemNo"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="32"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_NO"
+      Expression="ITEM_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="32" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemName"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="70"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_NAME"
+      Expression="ITEM_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="70" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemUm"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_UM"
+      Expression="ITEM_UM"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DestinationType"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DESTINATION_TYPE"
+      Expression="DESTINATION_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InventoryLocationId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="INVENTORY_LOCATION_ID"
+      Expression="INVENTORY_LOCATION_ID"
+      SQLType="NUMERIC" >
+   </ViewAttribute>
+</ViewObject>

@@ -1,0 +1,61 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:tableLayout version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/">
+   <ui:contents>
+      <oa:rowLayout id="TotalRow">
+         <ui:contents>
+            <oa:cellFormat id="cellTotalInvestPrompt" width="9%" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="TotalInvestPrompt" prompt="投入計"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cellTotalInvest" styleClass="OraTableCellNumber" width="10%">
+               <ui:contents>
+                  <oa:messageStyledText id="TotalInvest" shortDesc="投入計" viewName="XxwipBatchTotalVO1" viewAttr="TotalInvest" styleClass="OraFieldNumber"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cellTotalCoProdPrompt" width="9%" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="TotalCoProdPrompt" prompt="副産物計"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cellTotalCoProd" styleClass="OraTableCellNumber" width="10%">
+               <ui:contents>
+                  <oa:messageStyledText id="TotalCoProd" shortDesc="副産物計" viewName="XxwipBatchTotalVO1" viewAttr="TotalCoProd" styleClass="OraFieldNumber"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cellTotalCutPrompt" width="9%" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="TotalCutPrompt" prompt="計込／切れ"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cellTotalCut" styleClass="OraTableCellNumber" width="10%">
+               <ui:contents>
+                  <oa:messageStyledText id="TotalCut" shortDesc="計込／切れ" viewName="XxwipBatchTotalVO1" viewAttr="TotalCut" styleClass="OraFieldNumber"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cellTotalFinPrompt" width="9%" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="TotalFinPrompt" prompt="仕上計"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cellTotalFin" styleClass="OraTableCellNumber" width="10%">
+               <ui:contents>
+                  <oa:messageStyledText id="TotalFin" viewName="XxwipBatchTotalVO1" viewAttr="TotalFin" shortDesc="仕上計" styleClass="OraFieldNumber"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cellTotalReInvestPrompt" width="9%" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="TotalReInvestPrompt" prompt="打込計"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cellTotalReInvest" styleClass="OraTableCellNumber" width="10%">
+               <ui:contents>
+                  <oa:messageStyledText id="TotalReInvest" viewName="XxwipBatchTotalVO1" viewAttr="TotalReInvest" shortDesc="打込計" styleClass="OraFieldNumber"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="cellTotalSpace" width="5%"/>
+         </ui:contents>
+      </oa:rowLayout>
+   </ui:contents>
+</oa:tableLayout>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE JboPackage SYSTEM "jbo_03_01.dtd">
+
+<JboPackage
+   Name="server"
+   SeparateXMLFiles="true"
+   PackageName="itoen.oracle.apps.xxwip.xxwip200001j.server" >
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_ejbPackage" Value="false" />
+   </DesignTime>
+   <Containee
+      Name="XxwipVolumeActualAM"
+      FullName="itoen.oracle.apps.xxwip.xxwip200001j.server.XxwipVolumeActualAM"
+      ObjectType="AppModule" >
+   </Containee>
+   <Containee
+      Name="XxwipBatchHeaderVO"
+      FullName="itoen.oracle.apps.xxwip.xxwip200001j.server.XxwipBatchHeaderVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxwipBatchInvestVO"
+      FullName="itoen.oracle.apps.xxwip.xxwip200001j.server.XxwipBatchInvestVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxwipBatchReInvestVO"
+      FullName="itoen.oracle.apps.xxwip.xxwip200001j.server.XxwipBatchReInvestVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxwipBatchCoProdVO"
+      FullName="itoen.oracle.apps.xxwip.xxwip200001j.server.XxwipBatchCoProdVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxwipVolumeActualPVO"
+      FullName="itoen.oracle.apps.xxwip.xxwip200001j.server.XxwipVolumeActualPVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxwipBatchTotalVO"
+      FullName="itoen.oracle.apps.xxwip.xxwip200001j.server.XxwipBatchTotalVO"
+      ObjectType="ViewObject" >
+   </Containee>
+</JboPackage>

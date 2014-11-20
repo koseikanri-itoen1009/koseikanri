@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxwipBatchTotalVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="itoen.oracle.apps.xxwip.xxwip200001j.server.XxwipBatchTotalVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT gmd.batch_id batch_id
+      ,SUM(
+       CASE
+           WHEN ((gmd.line_type = -1) AND (gmd.attribute5 IS NULL) AND (xic.item_class_code <> 2))
+           THEN xmd.invested_qty
+           ELSE 0
+         END)     total_invest_num    -- 投入計
+      ,TO_CHAR(
+         SUM(
+           CASE
+             WHEN ((gmd.line_type = -1) AND (gmd.attribute5 IS NULL) AND (xic.item_class_code <> 2))
+             THEN xmd.invested_qty
+             ELSE 0
+           END), 'FM999,999,990.000')  total_invest    -- 投入計
+      ,TO_CHAR(
+         SUM(
+           CASE
+             WHEN ((gmd.line_type = -1) AND (gmd.attribute5 = 'Y') AND (xic.item_class_code <> 2))
+             THEN xmd.invested_qty
+             ELSE 0
+           END), 'FM999,999,990.000')  total_re_invest -- 打込計
+      ,TO_CHAR(
+         SUM(
+           CASE
+             WHEN (gmd.line_type = 2 AND (xic.item_class_code <> 5))
+             THEN gmd.actual_qty
+             ELSE 0
+           END), 'FM999,999,990.000')  total_co_prod   -- 副産物計
+      ,TO_CHAR(
+         SUM(
+           CASE
+             WHEN ((gmd.line_type = 1) AND (xic.item_class_code = 5))
+             THEN ROUND(ximv.net * gmd.actual_qty /1000, 3)
+             WHEN ((gmd.line_type = 1) AND (xic.item_class_code <> 5))
+             THEN gmd.actual_qty
+           ELSE 0
+           END) -  SUM(
+                     CASE
+                       WHEN ((gmd.line_type = -1) AND (gmd.attribute5 = 'Y') AND (xic.item_class_code <> 2))
+                       THEN xmd.invested_qty
+                       ELSE 0
+                     END), 'FM999,999,990.000')  total_fin       -- 仕上計
+      ,TO_CHAR(
+         SUM(
+           CASE
+             WHEN ((gmd.line_type = -1) AND (gmd.attribute5 IS NULL) AND (xic.item_class_code <> 2))
+             THEN xmd.invested_qty
+             ELSE 0
+           END) - (SUM(
+                     CASE
+                       WHEN ((gmd.line_type = 1) AND (xic.item_class_code = 5))
+                       THEN ROUND(ximv.net * gmd.actual_qty /1000, 3)
+                       WHEN ((gmd.line_type = 1) AND (xic.item_class_code <> 5))
+                       THEN gmd.actual_qty
+                     ELSE 0
+                     END) -  SUM(
+                               CASE
+                                 WHEN ((gmd.line_type = -1) AND (gmd.attribute5 = 'Y') AND (xic.item_class_code <> 2))
+                                 THEN xmd.invested_qty
+                                 ELSE 0
+                               END) + SUM(
+                                        CASE
+                                          WHEN (gmd.line_type = 2 AND (xic.item_class_code <> 5))
+                                          THEN gmd.actual_qty
+                                          ELSE 0
+                                        END)), 'FM999,999,990.000')  total_cut       -- 計込／切れ
+FROM   gme_material_details     gmd -- 生産原料詳細
+      ,xxwip_material_detail    xmd -- 生産原料詳細アドオン
+      ,xxcmn_item_categories3_v xic -- 品目カテゴリ情報VIEW3
+      ,xxcmn_item_mst_v         ximv -- OPM品目マスタビュー
+WHERE  
+/* 結合条件 */
+       gmd.material_detail_id = xmd.material_detail_id(+)
+AND    gmd.item_id             = xic.item_id
+AND    gmd.item_id             = ximv.item_id
+/* 抽出条件 */
+AND    gmd.attribute24         IS NULL
+AND    gmd.batch_id = TO_NUMBER(:1)
+GROUP BY gmd.batch_id
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="BatchId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="10"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="BATCH_ID"
+      Expression="BATCH_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TotalInvestNum"
+      IsPersistent="false"
+      Precision="16"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="TOTAL_INVEST_NUM"
+      Expression="TOTAL_INVEST_NUM"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TotalInvest"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TOTAL_INVEST"
+      Expression="TOTAL_INVEST"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TotalReInvest"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TOTAL_RE_INVEST"
+      Expression="TOTAL_RE_INVEST"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TotalCoProd"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TOTAL_CO_PROD"
+      Expression="TOTAL_CO_PROD"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TotalFin"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TOTAL_FIN"
+      Expression="TOTAL_FIN"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TotalCut"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TOTAL_CUT"
+      Expression="TOTAL_CUT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="BatchId" />
+   </AttrArray>
+</ViewObject>

@@ -1,0 +1,140 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <oa:pageLayout id="PageLayoutRN" windowTitle="投入実績入力" amDefName="itoen.oracle.apps.xxwip.xxwip200002j.server.XxwipInvestActualAM" controllerClass="itoen.oracle.apps.xxwip.xxwip200002j.webui.XxwipInvestActualCO" title="投入実績入力" warnAboutChanges="true">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="Cancel" prompt="取消" text="取消" serverUnvalidated="true" unvalidated="true"/>
+                  <oa:submitButton id="Go" text="適用" prompt="適用" unvalidated="true" disabled="${oa.XxwipInvestActualPVO1.GoBtnReject}"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:flowLayout id="MainRN">
+               <ui:contents>
+                  <oa:tableLayout id="BatchHdr" extends="/itoen/oracle/apps/xxwip/util/webui/BatchHdrRN"/>
+                  <oa:subTabLayout id="LotSubTab">
+                     <ui:subTabs>
+                        <oa:subTabBar id="LotSubTabBar">
+                           <ui:contents>
+                              <oa:link id="InvestLotLink" text="投入情報"/>
+                              <oa:link id="ReInvestLotLink" text="打込情報"/>
+                           </ui:contents>
+                        </oa:subTabBar>
+                     </ui:subTabs>
+                     <ui:contents>
+                        <oa:header id="InvestLotHdr" text="投入情報">
+                           <ui:contents>
+                              <oa:tableLayout id="InvestFieldDescRN" extends="/oracle/apps/fnd/framework/webui/OAReqFieldDescRG"/>
+                              <oa:rowLayout id="InvestRow" styleClass="x4x" width="100%">
+                                 <ui:contents>
+                                    <oa:tableLayout id="InvestMaterialTable">
+                                       <ui:contents>
+                                          <oa:rowLayout id="InvestMaterialRow" hAlign="left">
+                                             <ui:contents>
+                                                <oa:cellFormat id="InvestItemNoCol">
+                                                   <ui:contents>
+                                                      <oa:formValue id="InvestBatchId" viewAttr="BatchId" viewName="XxwipItemChoiceInvestVO1" dataType="NUMBER"/>
+                                                      <oa:formValue id="InvestMtlDtlId" viewName="XxwipItemChoiceInvestVO1" viewAttr="MaterialDetailId" dataType="NUMBER"/>
+                                                      <oa:messageLovInput id="InvestItemNo" styleClass="LegendText" maximumLength="7" columns="10" viewName="XxwipItemChoiceInvestVO1" viewAttr="ItemNo" prompt="品目" externalListOfValues="/itoen/oracle/apps/xxwip/lov/webui/MaterialInvestLovRN" required="uiOnly" disabled="${oa.XxwipInvestActualPVO1.InvestItemNameReject}" warnAboutChanges="false">
+                                                         <lovMappings>
+                                                            <lovMap id="FromInvestBatchId" criteriaFrom="InvestBatchId" lovItem="BatchId"/>
+                                                            <lovMap id="FromInvestItemNo" criteriaFrom="InvestItemNo" lovItem="ItemNo"/>
+                                                            <lovMap id="ToInvestItemNo" lovItem="ItemNo" resultTo="InvestItemNo"/>
+                                                            <lovMap id="ToInvestItemName" resultTo="InvestItemName" lovItem="ItemName"/>
+                                                            <lovMap id="ToInvestItemNameFv" lovItem="ItemName" resultTo="InvestItemNameFv"/>
+                                                            <lovMap id="ToInvestMtlDtlId" lovItem="MtlDtlId" resultTo="InvestMtlDtlId"/>
+                                                            <lovMap id="ToSlit" criteriaFrom="InvestSlit" lovItem="Slit"/>
+                                                            <lovMap id="ToSlitFv" lovItem="Slit" resultTo="InvestSlitFv"/>
+                                                         </lovMappings>
+                                                      </oa:messageLovInput>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                                <oa:cellFormat id="InvestItemNameCol" width="120" styleClass="OraTableCellText">
+                                                   <ui:contents>
+                                                      <oa:formValue id="InvestItemNameFv" viewName="XxwipItemChoiceInvestVO1" viewAttr="ItemName"/>
+                                                      <oa:messageStyledText id="InvestItemName" styleClass="LegendText" viewName="XxwipItemChoiceInvestVO1" viewAttr="ItemName" shortDesc="品目名称" cellNoWrapFormat="true"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                                <oa:cellFormat id="InvestSlitPromptCol">
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="InvestSlitPrompt" styleClass="LegendText" columns="30" prompt="投入口"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                                <oa:cellFormat id="InvestSlitCol" width="40" styleClass="OraTableCellText">
+                                                   <ui:contents>
+                                                      <oa:formValue id="InvestSlitFv" viewName="XxwipItemChoiceInvestVO1" viewAttr="Slit"/>
+                                                      <oa:messageStyledText id="InvestSlit" styleClass="LegendText" columns="30" viewName="XxwipItemChoiceInvestVO1" viewAttr="Slit" shortDesc="投入口" cellNoWrapFormat="true"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                                <oa:cellFormat id="ChangeItemInvestCol">
+                                                   <ui:contents>
+                                                      <oa:spacer id="SpChangeItemInvest" width="20"/>
+                                                      <oa:submitButton id="ChangeItemInvest" text="進む" prompt="進む" disabled="${oa.XxwipInvestActualPVO1.ChangeItemInvestReject}" warnAboutChanges="true"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:tableLayout>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:advancedTable id="InvestLotRN" extends="/itoen/oracle/apps/xxwip/util/webui/InvestLotRN"/>
+                           </ui:contents>
+                        </oa:header>
+                        <oa:header id="ReInvestLotHdr" text="打込情報">
+                           <ui:contents>
+                              <oa:tableLayout id="ReInvestFieldDescRN" extends="/oracle/apps/fnd/framework/webui/OAReqFieldDescRG"/>
+                              <oa:rowLayout id="ReInvestlRN" styleClass="x4x" width="100%">
+                                 <ui:contents>
+                                    <oa:tableLayout id="ReInvestMaterialTable">
+                                       <ui:contents>
+                                          <oa:rowLayout id="ReInvestMaterialRow">
+                                             <ui:contents>
+                                                <oa:cellFormat id="ReInvestItemNoCol">
+                                                   <ui:contents>
+                                                      <oa:formValue id="ReInvestBatchId" viewAttr="BatchId" viewName="XxwipItemChoiceReInvestVO1" dataType="NUMBER"/>
+                                                      <oa:formValue id="ReInvestMtlDtlId" viewName="XxwipItemChoiceReInvestVO1" viewAttr="MaterialDetailId" dataType="NUMBER"/>
+                                                      <oa:messageLovInput id="ReInvestItemNo" styleClass="LegendText" maximumLength="7" columns="10" viewName="XxwipItemChoiceReInvestVO1" viewAttr="ItemNo" prompt="品目" externalListOfValues="/itoen/oracle/apps/xxwip/lov/webui/MaterialReInvestLovRN" required="uiOnly" disabled="${oa.XxwipInvestActualPVO1.ReInvestItemNameReject}" warnAboutChanges="false">
+                                                         <lovMappings>
+                                                            <lovMap id="FromReInvestBatchId" criteriaFrom="ReInvestBatchId" lovItem="BatchId"/>
+                                                            <lovMap id="FromReInvestItemNo" criteriaFrom="ReInvestItemNo" lovItem="ItemNo"/>
+                                                            <lovMap id="ToReInvestItemNo" lovItem="ItemNo" resultTo="ReInvestItemNo"/>
+                                                            <lovMap id="ToReInvestItemName" resultTo="ReInvestItemName" lovItem="ItemName"/>
+                                                            <lovMap id="ToReInvestItemNameFv" lovItem="ItemName" resultTo="ReInvestItemNameFv"/>
+                                                            <lovMap id="ToReInvestMtlDtlId" lovItem="MtlDtlId" resultTo="ReInvestMtlDtlId"/>
+                                                         </lovMappings>
+                                                      </oa:messageLovInput>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                                <oa:cellFormat id="ReInvestItemNameCol" width="120" styleClass="OraTableCellText">
+                                                   <ui:contents>
+                                                      <oa:formValue id="ReInvestItemNameFv" viewName="XxwipItemChoiceReInvestVO1" viewAttr="ItemName"/>
+                                                      <oa:messageStyledText id="ReInvestItemName" styleClass="LegendText" viewName="XxwipItemChoiceReInvestVO1" viewAttr="ItemName" shortDesc="品目名称"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                                <oa:cellFormat id="ChangeItemReInvestCol">
+                                                   <ui:contents>
+                                                      <oa:spacer id="SpChangeItemReInvest" width="20"/>
+                                                      <oa:submitButton id="ChangeItemReInvest" text="進む" prompt="進む" disabled="${oa.XxwipInvestActualPVO1.ChangeItemReInvestReject}" warnAboutChanges="true"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:tableLayout>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:advancedTable id="ReInvestLotRN" extends="/itoen/oracle/apps/xxwip/util/webui/ReInvestLotRN"/>
+                           </ui:contents>
+                        </oa:header>
+                     </ui:contents>
+                  </oa:subTabLayout>
+               </ui:contents>
+            </oa:flowLayout>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>
