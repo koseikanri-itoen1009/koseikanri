@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *  2010/03/24    1.17  M.Hirose         [E_本稼働_01802] パフォーマンス対応
  *                                       [E_本稼働_01848] 納品日変更対応
  *  2010/04/01    1.18  M.Hokkanji       [E_本稼動_01979] 原価金額(出荷)の計算式を変更
+ *  2010/04/22    1.19  M.Sano           [E_本稼動_02249] 品目の結合をEDI→受注に変更
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -2662,7 +2663,10 @@ AS
 -- ********* 2009/10/06 1.14 N.Maeda MOD  END  ********* --
                     ,NULL                                                               stockout_reason               --欠品理由
 --******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
-                    ,xeh.item_code                                                      item_code                     --商品コード（伊藤園）
+--******************************************* 2010/04/22 1.19 M.Sano  MOD START *************************************
+--                    ,xeh.item_code                                                      item_code                     --商品コード（伊藤園）
+                    ,msib.segment1                                                      item_code                     --商品コード（伊藤園）
+--******************************************* 2010/04/22 1.19 M.Sano  MOD  END  *************************************
                     ,xeh.product_code1                                                  product_code1                 --商品コード１
                     ,xeh.product_code2                                                  product_code2                 --商品コード２
 --                    ,xel.item_code                                                      item_code                     --商品コード（伊藤園）
@@ -3951,35 +3955,49 @@ AS
               AND    i_other_rec.process_date
                 BETWEEN NVL(xlvv3.start_date_active,i_other_rec.process_date)
                 AND     NVL(xlvv3.end_date_active  ,i_other_rec.process_date)
-              --OPM品目マスタ抽出条件
---******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
-              AND    iimb.item_no(+)            = xeh.item_code                                                       --品目コード
---              AND    iimb.item_no(+)            = xel.item_code                                                       --品目コード
---******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
-              --OPM品目マスタアドオン抽出条件
-              AND    ximb.item_id(+)            = iimb.item_id                                                        --品目ID
-              AND    NVL(xeh.shop_delivery_date
-                        ,NVL(xeh.center_delivery_date
-                            ,NVL(xeh.order_date
-                                ,xeh.data_creation_date_edi_data)))
-                BETWEEN NVL(ximb.start_date_active
-                           ,NVL(xeh.shop_delivery_date
-                               ,NVL(xeh.center_delivery_date
-                                   ,NVL(xeh.order_date
-                                       ,xeh.data_creation_date_edi_data))))
-                AND     NVL(ximb.end_date_active
-                            ,NVL(xeh.shop_delivery_date
-                               ,NVL(xeh.center_delivery_date
-                                   ,NVL(xeh.order_date
-                                       ,xeh.data_creation_date_edi_data))))
+--******************************************* 2010/04/22 1.19 M.Sano  MOD START *************************************
+--              --OPM品目マスタ抽出条件
+----******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+--              AND    iimb.item_no(+)            = xeh.item_code                                                       --品目コード
+----              AND    iimb.item_no(+)            = xel.item_code                                                       --品目コード
+----******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
+--              --OPM品目マスタアドオン抽出条件
+--              AND    ximb.item_id(+)            = iimb.item_id                                                        --品目ID
+--              AND    NVL(xeh.shop_delivery_date
+--                        ,NVL(xeh.center_delivery_date
+--                            ,NVL(xeh.order_date
+--                                ,xeh.data_creation_date_edi_data)))
+--                BETWEEN NVL(ximb.start_date_active
+--                           ,NVL(xeh.shop_delivery_date
+--                               ,NVL(xeh.center_delivery_date
+--                                   ,NVL(xeh.order_date
+--                                       ,xeh.data_creation_date_edi_data))))
+--                AND     NVL(ximb.end_date_active
+--                            ,NVL(xeh.shop_delivery_date
+--                               ,NVL(xeh.center_delivery_date
+--                                   ,NVL(xeh.order_date
+--                                       ,xeh.data_creation_date_edi_data))))
+--              --DISC品目マスタ抽出条件
+----******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+--              AND    msib.segment1(+)           = xeh.item_code                                                       --品目コード
+----              AND    msib.segment1(+)           = xel.item_code                                                       --品目コード
+----******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
+--              AND    msib.organization_id(+)    = i_other_rec.organization_id                                         --在庫組織ID
+--              --DISC品目アドオン抽出条件
+--              AND    xsib.item_code(+)          = msib.segment1                                                       --INV品目ID
               --DISC品目マスタ抽出条件
---******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
-              AND    msib.segment1(+)           = xeh.item_code                                                       --品目コード
---              AND    msib.segment1(+)           = xel.item_code                                                       --品目コード
---******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
-              AND    msib.organization_id(+)    = i_other_rec.organization_id                                         --在庫組織ID
+              AND    msib.inventory_item_id     = oola.inventory_item_id                                              --品目ID
+              AND    msib.organization_id       = i_other_rec.organization_id                                         --在庫組織ID
               --DISC品目アドオン抽出条件
-              AND    xsib.item_code(+)          = msib.segment1                                                       --INV品目ID
+              AND    xsib.item_code             = msib.segment1                                                       --INV品目ID
+              --OPM品目マスタ抽出条件
+              AND    iimb.item_no               = msib.segment1
+              --OPM品目マスタアドオン抽出条件
+              AND    ximb.item_id               = iimb.item_id                                                        --品目ID
+              AND    ooha.request_date
+                BETWEEN ximb.start_date_active
+                AND     NVL( ximb.end_date_active, ooha.request_date)                                                 --適用日が納品日の範囲内
+--******************************************* 2010/04/22 1.19 M.Sano  MOD  END  *************************************
 --******************************************* 2009/08/27 1.13 N.Maeda DEL START *************************************
 --              --本社商品区分ビュー抽出条件
 --              AND    xhpc.segment1(+)           = iimb.item_no                                                        --品目コード
