@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理ロック対応
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -20,6 +20,7 @@ AS
  * ------------- ----- --------------- --------------------------------------------------
  *  2008/11/29    1.0  MIYATA.          新規作成
  *  2008/12/20    1.1  M.Hokkanji       本番障害#738
+ *  2009/01/16    1.2  M.Nomura         本番障害#900
  *
  *****************************************************************************************/
 --
@@ -138,23 +139,62 @@ AS
     lv_strsql VARCHAR2(1000);
     lv_phase   VARCHAR2(5);
     lv_staus   VARCHAR2(1);
+
+-- ##### 20090116 Ver.1.2 本番#900対応 START #####
+    ln_reqid        NUMBER;           -- 要求ID
+    ln_ret          BOOLEAN;
+    lv_phase2       VARCHAR2(1000);
+    lv_status2      VARCHAR2(1000);
+    lv_dev_phase2   VARCHAR2(1000);
+    lv_dev_status2  VARCHAR2(1000);
+    lv_message2     VARCHAR2(1000);
+-- ##### 20090116 Ver.1.2 本番#900対応 END   #####
+--
     -- *** ローカル・カーソル session解除対象取得***
+-- ##### 20090116 Ver.1.2 本番#900対応 START #####
+--    CURSOR lock_cur
+--      IS
+--        SELECT b.id1, a.sid, a.serial#, b.type  
+--        ,decode(b.lmode 
+--               ,1,'null', 2,'row share', 3,'row exclusive' 
+--               ,4,'share', 5,'share row exclusive', 6,'exclusive') LMODE
+--               FROM v$session a, v$lock b
+--               WHERE a.sid = b.sid
+--               AND(b.id1, b.id2) in 
+--               (SELECT d.id1, d.id2 FROM v$lock d 
+--               (SELECT d.id1, d.id2 FROM gv$lock d 
+--               WHERE d.id1=b.id1 AND d.id2=b.id2 AND d.request > 0) 
+--               and b.id1 IN (SELECT bb.id1
+--                             FROM v$session aa, v$lock bb
+--                             WHERE aa.lockwait = bb.kaddr 
+--                              and aa.module = 'XXWSH600001C')
+--               and b.lmode = 6;
+--
+    -- gv$sesson、gv$lockを参照するように修正
     CURSOR lock_cur
       IS
-        SELECT b.id1, a.sid, a.serial#, b.type  
-        ,decode(b.lmode 
-               ,1,'null', 2,'row share', 3,'row exclusive' 
-               ,4,'share', 5,'share row exclusive', 6,'exclusive') LMODE
-               FROM v$session a, v$lock b
-               WHERE a.sid = b.sid
-               AND(b.id1, b.id2) in 
-               (SELECT d.id1, d.id2 FROM v$lock d 
-               WHERE d.id1=b.id1 AND d.id2=b.id2 AND d.request > 0) 
-               and b.id1 IN (SELECT bb.id1
-                             FROM v$session aa, v$lock bb
-                             WHERE aa.lockwait = bb.kaddr 
-                              and aa.module = 'XXWSH600001C')
-               and b.lmode = 6;
+        SELECT b.id1, a.sid, a.serial#, b.type , a.inst_id , a.module , a.action
+              ,decode(b.lmode 
+                     ,1,'null' , 2,'row share', 3,'row exclusive' 
+                     ,4,'share', 5,'share row exclusive', 6,'exclusive') LMODE
+        FROM gv$session a
+           , gv$lock    b
+        WHERE a.sid = b.sid
+        AND a.module <> 'XXWSH600001C'
+        AND (b.id1, b.id2) in (SELECT d.id1
+                                     ,d.id2
+                               FROM gv$lock d 
+                               WHERE d.id1     =b.id1 
+                               AND   d.id2     =b.id2 
+                               AND   d.request > 0) 
+        AND   b.id1 IN (SELECT bb.id1
+                      FROM   gv$session aa
+                            , gv$lock bb
+                      WHERE  aa.lockwait = bb.kaddr 
+                      AND    aa.module   = 'XXWSH600001C')
+        AND b.lmode = 6;
+--
+-- ##### 20090116 Ver.1.2 本番#900対応 END   #####
 --
     -- *** ローカル・レコード ***
 --
@@ -167,26 +207,124 @@ AS
 --###########################  固定部 END   ############################
 --
   LOOP
-    EXIT WHEN (lv_phase = 'Y' OR lv_staus = '1');
+-- ##### 20090116 Ver.1.2 本番#900対応 START #####
+--    EXIT WHEN (lv_phase = 'Y' OR lv_staus = '1');
+    -- コンカレントが完了するまで処理を継続する
+    EXIT WHEN (lv_phase = 'Y');
+-- ##### 20090116 Ver.1.2 本番#900対応 END   #####
     --子コンカレント完了を取得
-	  BEGIN
-		  select decode(fcr.phase_code,'C','Y','I','Y','N')
-		  into lv_phase
-		  from   fnd_concurrent_requests fcr 
-		  where fcr.request_id = in_reqid;
-		EXCEPTION
-			WHEN NO_DATA_FOUND THEN
-			    lv_phase := 'Y';
-				NULL;
-		END;
-		--ロック解除の開始
-		FOR lock_rec IN lock_cur LOOP
-		  lv_strsql := 'ALTER SYSTEM KILL SESSION ''' || lock_rec.sid || ',' || lock_rec.serial# || ''' IMMEDIATE';
-		  EXECUTE IMMEDIATE lv_strsql;
-		  lv_staus := '1';
-		END LOOP;
-  END LOOP;
+    BEGIN
+      SELECT DECODE(fcr.phase_code,'C','Y','I','Y','N')
+      INTO lv_phase
+      FROM   fnd_concurrent_requests fcr 
+      WHERE fcr.request_id = in_reqid;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+          lv_phase := 'Y';
+        NULL;
+    END;
 --
+    --ロック解除の開始
+    FOR lock_rec IN lock_cur LOOP
+--
+      -- 削除対象セッションログ出力
+      FND_FILE.PUT_LINE(FND_FILE.LOG, '【セッション切断】' || 
+                                      ' 自動配車： 要求ID[' || TO_CHAR(in_reqid) || '] ' ||
+                                      ' 切断対象セッション：' ||
+                                      ' inst_id[' || TO_CHAR(lock_rec.inst_id) || '] ' ||
+                                      ' sid['     || TO_CHAR(lock_rec.sid)     || '] ' ||
+                                      ' serial['  || TO_CHAR(lock_rec.serial#) || '] ' ||
+                                      ' action['  || lock_rec.action           || '] ' ||
+                                      ' module['  || lock_rec.module           || '] '
+                                      );
+--
+-- ##### 20090116 Ver.1.2 本番#900対応 START #####
+--      lv_strsql := 'ALTER SYSTEM KILL SESSION ''' || lock_rec.sid || ',' || lock_rec.serial# || ''' IMMEDIATE';
+--      EXECUTE IMMEDIATE lv_strsql;
+--      lv_staus := '1';
+      -- =====================================
+      -- セッション切断コンカレントを起動する
+      -- =====================================
+      ln_reqid := fnd_request.submit_request(
+        Application => 'XXWSH',
+        Program     => 'XXWSH000001C',
+        Description => NULL,
+        Start_Time  => SYSDATE,
+        Sub_Request => FALSE,
+        Argument1   => lock_rec.inst_id,
+        Argument2   => lock_rec.sid    ,
+        Argument3   => lock_rec.serial#
+        );
+      IF (ln_reqid > 0) THEN
+        COMMIT;
+      ELSE
+        ROLLBACK;
+        -- 発行に失敗した場合はエラーにしメッセージを出力するように修正
+        -- エラーメッセージ取得
+        lv_errmsg  := SUBSTRB('XXWSH000001H 起動エラー ' ||
+                      ' inst_id[' || TO_CHAR(lock_rec.inst_id) || ']' ||
+                      ' sid['     || TO_CHAR(lock_rec.sid)     || ']' ||
+                      ' serial['  || TO_CHAR(lock_rec.serial#) || ']' || '<' || FND_MESSAGE.GET || '>'
+                      ,1,5000);
+        RAISE global_process_expt;
+      END IF;
+--
+      -- ==============================================
+      -- 起動したセッション切断コンカレントの終了を待つ
+      -- ==============================================
+      ln_ret := FND_CONCURRENT.WAIT_FOR_REQUEST(ln_reqid ,
+                                                1,
+                                                3600,
+                                                lv_phase2,
+                                                lv_status2,
+                                                lv_dev_phase2,
+                                                lv_dev_status2,
+                                                lv_message2);
+      -- ステータス確認
+      IF (ln_ret = FALSE) THEN
+        -- エラーは無視して、ログのみ出力
+        lv_errmsg := SUBSTRB('XXWSH000001H WAIT_FOR_REQUEST ERROR ' || 
+                     ' 要求ID['  || TO_CHAR(ln_reqid) || ']' ||
+                     ' phase['   || lv_dev_phase2     || ']' ||
+                     ' status['  || lv_dev_status2    || ']' ||
+                     ' message[' || lv_message2       || ']' || '<' || FND_MESSAGE.GET || '>'
+                     , 1 ,5000);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, lv_errmsg);
+--
+      -- COMPLETE以外での終了
+      ELSIF (lv_dev_phase2 <> 'COMPLETE') THEN
+        -- エラーは無視して、ログのみ出力
+        lv_errmsg := SUBSTRB('XXWSH000001H WAIT_FOR_REQUEST ERROR ' || 
+                     ' 要求ID['  || TO_CHAR(ln_reqid) || ']' ||
+                     ' phase['   || lv_dev_phase2     || ']' ||
+                     ' status['  || lv_dev_status2    || ']' ||
+                     ' message[' || lv_message2       || ']' || '<' || FND_MESSAGE.GET || '>'
+                     , 1 ,5000);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, lv_errmsg);
+--
+      -- ステータスがNORMAL以外での終了
+      ELSIF (lv_dev_status2 <> 'NORMAL') THEN
+        -- エラーは無視して、ログのみ出力
+        lv_errmsg := SUBSTRB('XXWSH000001H WAIT_FOR_REQUEST ERROR ' || 
+                     ' 要求ID['  || TO_CHAR(ln_reqid) || ']' ||
+                     ' phase['   || lv_dev_phase2     || ']' ||
+                     ' status['  || lv_dev_status2    || ']' ||
+                     ' message[' || lv_message2       || ']' || '<' || FND_MESSAGE.GET || '>'
+                     , 1 ,5000);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, lv_errmsg);
+--
+      END IF;
+--
+-- ##### 20090116 Ver.1.2 本番#900対応 END   #####
+--
+    END LOOP;
+--
+-- ##### 20090116 Ver.1.2 本番#900対応 START #####
+    -- 確認後は1秒待機する
+    DBMS_LOCK.SLEEP(1);
+-- ##### 20090116 Ver.1.2 本番#900対応 END   #####
+--
+  END LOOP;
 --
   EXCEPTION
 --
