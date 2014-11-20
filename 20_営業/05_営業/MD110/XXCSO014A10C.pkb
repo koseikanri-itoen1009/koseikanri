@@ -8,7 +8,7 @@ AS
  *                    
  * MD.050           : MD050_IPO_CSO_014_A10_HHT-EBSインターフェース：(OUT)訪問予定ファイル
  *                    
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2008-12-18    1.0   Syoei.Kin        新規作成
  *  2009-03-18    1.1   K.Boku           【結合障害069】抽出期間設定箇所修正
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
+ *  2010-01-15    1.3   Kazuyo.Hosoi     E_本稼動_01179対応
  *
  *****************************************************************************************/
 --
@@ -807,6 +808,10 @@ AS
     cv_p_week_visit            CONSTANT VARCHAR2(100)  := '前週訪問時刻';
     cv_pure_amount_sum         CONSTANT VARCHAR2(100)  := '販売実績金額';
     cv_sales_plan_amt_sum      CONSTANT VARCHAR2(100)  := '売上計画金額';
+    /* 2010.01.15 K.Hosoi E_本稼動_01179対応 START */
+    cv_plan_diff               CONSTANT VARCHAR2(100)  := '計画差';
+    cv_plan_diff_errmsg        CONSTANT VARCHAR2(100)  := '計画差が6バイトを超えたため、当該レコードをスキップします。';
+    /* 2010.01.15 K.Hosoi E_本稼動_01179対応 END */
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -829,7 +834,10 @@ AS
     ld_plan_date_1         DATE;              -- 年月日-1
     lt_emp_number          xxcso_cust_resources_v.employee_number%type;          -- 担当営業員コード
     lt_pure_amount_sum     xxcos_sales_exp_headers.pure_amount_sum%TYPE;         -- 販売実績金額
-    lt_sales_plan_amt_sum  xxcso_account_sales_plans.sales_plan_day_amt%TYPE;    -- 日別売上計画の合計
+    /* 2010.01.15 K.Hosoi E_本稼動_01179対応 START */
+    --lt_sales_plan_amt_sum  xxcso_account_sales_plans.sales_plan_day_amt%TYPE;    -- 日別売上計画の合計
+    lt_sales_plan_amt_sum  xxcso_account_sales_plans.sales_plan_month_amt%TYPE;    -- 日別売上計画の合計
+    /* 2010.01.15 K.Hosoi E_本稼動_01179対応 END */
     ln_plan_diff           NUMBER;            -- 計画差
     -- *** ローカル・レコード ***
     l_get_rec       g_value_rtype;            -- 訪問予定情報データ
@@ -999,6 +1007,29 @@ AS
     END;
     -- 計画差を取得
     ln_plan_diff := NVL(lt_pure_amount_sum,0) - NVL(lt_sales_plan_amt_sum,0);
+    /* 2010.01.15 K.Hosoi E_本稼動_01179対応 START */
+    IF (LENGTHB(ln_plan_diff) > 6) THEN
+          -- 日別売上計画合計抽出エラーメッセージ
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                 iv_application  => cv_app_name                         -- アプリケーション短縮名
+                ,iv_name         => cv_tkn_number_09                    -- メッセージコード
+                ,iv_token_name1  => cv_tkn_proc_name                    -- トークンコード1
+                ,iv_token_value1 => cv_plan_diff                        -- トークン値1パラメータ
+                ,iv_token_name2  => cv_tkn_location_cd                  -- トークンコード2
+                ,iv_token_value2 => TO_CHAR(l_get_rec.base_code)        -- トークン値2売上拠点コード
+                ,iv_token_name3  => cv_tkn_customer_cd                  -- トークンコード3
+                ,iv_token_value3 => l_get_rec.account_number            -- トークン値3顧客コード
+                ,iv_token_name4  => cv_tkn_year_month                   -- トークンコード4
+                ,iv_token_value4 => l_get_rec.year_month                -- トークン値4年月
+                ,iv_token_name5  => cv_tkn_day                          -- トークンコード5
+                ,iv_token_value5 => l_get_rec.plan_day                  -- トークン値5日
+                ,iv_token_name6  => cv_tkn_err_msg                      -- トークンコード6
+                ,iv_token_value6 => cv_plan_diff_errmsg                 -- トークン値6
+              );
+        lv_errbuf  := lv_errmsg;
+      RAISE select_error_expt;
+    END IF;
+    /* 2010.01.15 K.Hosoi E_本稼動_01179対応 END */
 --
     -- 取得したパラメータをOUTパラメータに設定
     l_get_rec.sales_person_cd     := lt_emp_number;            -- 担当営業員コード
