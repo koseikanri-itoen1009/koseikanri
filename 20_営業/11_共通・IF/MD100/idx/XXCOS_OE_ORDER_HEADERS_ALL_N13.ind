@@ -1,0 +1,9 @@
+CREATE INDEX ont.xxcos_oe_order_headers_all_n13
+ON           ont.oe_order_headers_all 
+               (
+                  salesrep_id
+                 ,cust_po_number
+                 ,flow_status_code
+               )
+TABLESPACE apps_ts_tx_idx
+/

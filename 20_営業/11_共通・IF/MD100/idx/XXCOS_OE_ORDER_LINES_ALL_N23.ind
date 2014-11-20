@@ -1,0 +1,9 @@
+CREATE INDEX ont.xxcos_oe_order_lines_all_n23
+ON           ont.oe_order_lines_all
+               (
+                  header_id
+                 ,Request_date
+                 ,org_id
+               )
+TABLESPACE apps_ts_tx_idx
+/
