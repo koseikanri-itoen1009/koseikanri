@@ -24,7 +24,7 @@ JDBC=OracleType4TEBS06
 LIBRARYPATH1=C:\sqlDeveloper\jdbc\lib\ojdbc14.jar
 CLASSNAME=oracle.jdbc.driver.OracleDriver
 DATABASEURL=jdbc:oracle:thin:@{0}:{1}:{2}
-PARAM1="DBQ=h03130.itoen.co.jp"
+PARAM1="DBQ=tebsdb21"
 PARAM2="PORT=1528"
 PARAM3="SID=tebs06"
 FORMAT=1
