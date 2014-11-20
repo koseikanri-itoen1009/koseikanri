@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsAMImpl
 * 概要説明   : 入出庫実績要約:検索アプリケーションモジュール
-* バージョン : 1.9
+* バージョン : 1.10
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -15,6 +15,7 @@
 * 2008-09-24 1.7  伊藤ひとみ   統合テスト 指摘59,156対応
 * 2008-10-21 1.8  伊藤ひとみ   統合テスト 指摘353対応
 * 2008-12-01 1.9  伊藤ひとみ   本番障害#236対応
+* 2008-12-25 1.10 伊藤ひとみ   本番障害#797,821対応
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.server;
@@ -44,7 +45,7 @@ import itoen.oracle.apps.xxinv.util.XxinvConstants;
 /***************************************************************************
  * 入出庫実績要約:検索アプリケーションモジュールです。
  * @author  ORACLE 大橋 孝郎
- * @version 1.9
+ * @version 1.10
  ***************************************************************************
  */
 public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -996,8 +997,12 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // 出庫日(実績)、着日(実績)が同日の場合
     if (XxcmnUtility.isEquals(actualShipDate, actualArrivalDate))
     {
-      // 出庫日(実績)の未来日チェック
-      chkFutureDate(vo, row, "1", exceptions);
+// 2008-12-25 H.Itou Mod Start
+//      // 出庫日(実績)の未来日チェック
+//      chkFutureDate(vo, row, "1", exceptions);
+      // 未来日チェック
+      chkDivFutureDate(vo, row, exceptions);
+// 2008-12-25 H.Itou Mod End
 
     // 出庫日(実績)、着日(実績)が同日でない場合はエラー
     } else
@@ -1066,36 +1071,40 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       OARow  actualVoRow = (OARow)actualVo.first(); 
       String actualFlg   = (String)actualVoRow.getAttribute("ActualFlg");
 
-      // 出庫実績メニューから起動した場合
-      if ("1".equals(actualFlg))
-      {
-        // ステータスが「入庫報告有」又は「入出庫報告有」の場合
-        if ((XxinvConstants.STATUS_05.equals(status))
-              || (XxinvConstants.STATUS_06.equals(status)))
-        {
-          // 出庫日(実績)、着日(実績)の未来日チェック
-          chkFutureDate(vo, row, "3", exceptions);
-        } else
-        {
-          // 出庫日(実績)の未来日チェック
-          chkFutureDate(vo, row, "1", exceptions);
-        }
+// 2008-12-25 H.Itou Mod Start
+//      // 出庫実績メニューから起動した場合
+//      if ("1".equals(actualFlg))
+//      {
+//        // ステータスが「入庫報告有」又は「入出庫報告有」の場合
+//        if ((XxinvConstants.STATUS_05.equals(status))
+//              || (XxinvConstants.STATUS_06.equals(status)))
+//        {
+//          // 出庫日(実績)、着日(実績)の未来日チェック
+//          chkFutureDate(vo, row, "3", exceptions);
+//        } else
+//        {
+//          // 出庫日(実績)の未来日チェック
+//          chkFutureDate(vo, row, "1", exceptions);
+//        }
 
-      // 入庫実績メニューから起動した場合
-      } else if ("2".equals(actualFlg))
-      {
-        // ステータスが「出庫報告有」又は「入出庫報告有」の場合
-        if ((XxinvConstants.STATUS_04.equals(status))
-              || (XxinvConstants.STATUS_06.equals(status)))
-        {
-          // 出庫日(実績)、着日(実績)の未来日チェック
-          chkFutureDate(vo, row, "3", exceptions);
-        } else
-        {
-          // 着日(実績)の未来日チェック
-          chkFutureDate(vo, row, "2", exceptions);
-        }
-      }
+//      // 入庫実績メニューから起動した場合
+//      } else if ("2".equals(actualFlg))
+//      {
+//        // ステータスが「出庫報告有」又は「入出庫報告有」の場合
+//        if ((XxinvConstants.STATUS_04.equals(status))
+//              || (XxinvConstants.STATUS_06.equals(status)))
+//        {
+//          // 出庫日(実績)、着日(実績)の未来日チェック
+//          chkFutureDate(vo, row, "3", exceptions);
+//        } else
+//        {
+//          // 着日(実績)の未来日チェック
+//          chkFutureDate(vo, row, "2", exceptions);
+//        }
+//      }
+      // 未来日チェック
+      chkDivFutureDate(vo, row, exceptions);
+// 2008-12-25 H.Itou Mod End
     }
     
   } // chkActualTypeOff
@@ -1120,7 +1129,9 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // 実績日を取得
     Date actualShipDate    = (Date)row.getAttribute("ActualShipDate");    // 出庫日(実績)
     Date actualArrivalDate = (Date)row.getAttribute("ActualArrivalDate"); // 着日(実績)
-    
+// 2008-12-25 H.Itou Mod Start
+    String movType = (String)row.getAttribute("MovType"); // 移動タイプ
+// 2008-12-25 H.Itou Mod End
     // 未入力チェック
     String retCode = (String)chkUninput(vo, row, exeType, exceptions);
 
@@ -1131,8 +1142,13 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       if (!XxcmnUtility.isBlankOrNull(actualShipDate)
             && !XxcmnUtility.isBlankOrNull(actualArrivalDate))
       {
-        // 出庫日(実績) > 着日(実績)の場合
-        if (XxcmnUtility.chkCompareDate(1, actualShipDate, actualArrivalDate))
+// 2008-12-25 H.Itou Mod Start
+//        // 出庫日(実績) > 着日(実績)の場合
+//        if (XxcmnUtility.chkCompareDate(1, actualShipDate, actualArrivalDate))
+        // 移動タイプが1:積送ありで出庫日(実績) > 着日(実績)の場合
+        if ( XxinvConstants.MOV_TYPE_1.equals(movType)
+          && XxcmnUtility.chkCompareDate(1, actualShipDate, actualArrivalDate))
+// 2008-12-25 H.Itou Mod End
         {
           // エラーメッセージトークン取得
           MessageToken[] tokens = new MessageToken[2];
@@ -1147,30 +1163,52 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
                                 XxcmnConstants.APPL_XXINV,
                                 XxinvConstants.XXINV10055,
                                 tokens));
-
+// 2008-12-25 H.Itou Add Start
+        // 移動タイプが2:積送なしで出庫日(実績)、着日(実績)が同日でない場合
+        } else if ( XxinvConstants.MOV_TYPE_2.equals(movType)
+                  && !XxcmnUtility.isEquals(actualShipDate, actualArrivalDate))
+        {
+          // エラーメッセージトークン取得
+          MessageToken[] tokens = new MessageToken[2];
+          tokens[0] = new MessageToken(XxinvConstants.TOKEN_SHIP_DATE, XxinvConstants.TOKEN_NAME_SHIP_DATE);
+          tokens[1] = new MessageToken(XxinvConstants.TOKEN_ARRIVAL_DATE, XxinvConstants.TOKEN_NAME_ARRIVAL_DATE);
+          exceptions.add( new OAAttrValException(
+                                OAAttrValException.TYP_VIEW_OBJECT,
+                                vo.getName(),
+                                row.getKey(),
+                                "ActualShipDate",
+                                actualShipDate,
+                                XxcmnConstants.APPL_XXINV,
+                                XxinvConstants.XXINV10034,
+                                tokens));
+// 2008-12-25 H.Itou Add End
         }
       }
       // 出庫日(実績) <= 着日(実績)の場合
       if (i == 0)
       {
-        // 実績データ区分VO取得
-        OAViewObject actualVo = getXxinvMovResultsSearchVO1();
-        // 1行目を取得
-        OARow  actualVoRow = (OARow)actualVo.first();
-        String actualFlg   = (String)actualVoRow.getAttribute("ActualFlg");
-
-        // 出庫実績メニューから起動した場合
-        if ("1".equals(actualFlg))
-        {
-          // 出庫日(実績)の未来日チェック
-          chkFutureDate(vo, row, "1", exceptions);
-
-        // 入庫実績メニューから起動した場合
-        } else if ("2".equals(actualFlg))
-        {
-          // 着日(実績)の未来日チェック
-          chkFutureDate(vo, row, "2", exceptions);
-        }
+// 2008-12-25 H.Itou Mod Start
+//        // 実績データ区分VO取得
+//        OAViewObject actualVo = getXxinvMovResultsSearchVO1();
+//        // 1行目を取得
+//        OARow  actualVoRow = (OARow)actualVo.first();
+//        String actualFlg   = (String)actualVoRow.getAttribute("ActualFlg");
+//
+//        // 出庫実績メニューから起動した場合
+//        if ("1".equals(actualFlg))
+//        {
+//          // 出庫日(実績)の未来日チェック
+//          chkFutureDate(vo, row, "1", exceptions);
+//
+//        // 入庫実績メニューから起動した場合
+//        } else if ("2".equals(actualFlg))
+//        {
+//          // 着日(実績)の未来日チェック
+//          chkFutureDate(vo, row, "2", exceptions);
+//        }
+        // 未来日チェック
+        chkDivFutureDate(vo, row, exceptions);
+// 2008-12-25 H.Itou Mod End
 
         // 保管倉庫の未入力チェック
         chkLocat(vo, row, exeType,exceptions);
@@ -1514,6 +1552,68 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     return retCode;
   } // chkUninput
 
+// 2008-12-25 H.Itou Add Start
+  /***************************************************************************
+   * 入出庫実績ヘッダ画面の未来日チェックの分岐を行います。
+   * @param vo        チェック対象VO
+   * @param row       チェック対象行
+   * @param exceptions エラーリスト
+   * @throws OAException - OA例外
+   ***************************************************************************
+   */
+  public void chkDivFutureDate(
+    OAViewObject vo,
+    OARow row,
+    ArrayList exceptions
+  ) throws OAException
+  {
+  /* ------------------------------------------------------------------------------------
+   * 2008-12-25 新規追加
+   *  実績計上前かつ入庫報告有の場合、出庫実績画面で入庫日に未来日を入力できてしまうため
+   *  どの場合でもステータスと起動メニューにより、チェック対象を分岐する。
+   *  【出庫実績日のみチェック】
+   *  【入庫実績日のみチェック】
+   *  【出庫実績日・入庫実績日チェック】
+   * ------------------------------------------------------------------------------------ */
+    String status = (String)row.getAttribute("Status"); // ステータス
+
+    OAViewObject actualVo = getXxinvMovResultsSearchVO1(); // 検索VO
+    OARow  actualVoRow = (OARow)actualVo.first(); 
+    String actualFlg  = (String)actualVoRow.getAttribute("ActualFlg"); // 起動メニューフラグ
+    
+    // 出庫実績メニューから起動した場合
+    if ("1".equals(actualFlg))
+    {
+      // ステータスが「入庫報告有」又は「入出庫報告有」の場合
+      if ((XxinvConstants.STATUS_05.equals(status))
+            || (XxinvConstants.STATUS_06.equals(status)))
+      {
+        // 出庫日(実績)、着日(実績)の未来日チェック
+        chkFutureDate(vo, row, "3", exceptions);
+      } else
+      {
+        // 出庫日(実績)の未来日チェック
+        chkFutureDate(vo, row, "1", exceptions);
+      }
+
+    // 入庫実績メニューから起動した場合
+    } else if ("2".equals(actualFlg))
+    {
+      // ステータスが「出庫報告有」又は「入出庫報告有」の場合
+      if ((XxinvConstants.STATUS_04.equals(status))
+            || (XxinvConstants.STATUS_06.equals(status)))
+      {
+        // 出庫日(実績)、着日(実績)の未来日チェック
+        chkFutureDate(vo, row, "3", exceptions);
+      } else
+      {
+        // 着日(実績)の未来日チェック
+        chkFutureDate(vo, row, "2", exceptions);
+      }
+    }
+  } // chkDivFutureDate
+// 2008-12-25 H.Itou Add End
+
   /***************************************************************************
    * 入出庫実績ヘッダ画面の未来日のチェックを行います。
    * @param vo        チェック対象VO
@@ -1764,17 +1864,35 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     OAViewObject vo = getXxinvMovementResultsHdVO1();
     OARow row       = (OARow)vo.first();
     String movNum   = (String)row.getAttribute("MovNum");
+// 2008-12-25 H.Itou Add Start
+    Number movHeaderId = (Number)row.getAttribute("MovHdrId");
+    // 全移動明細出庫実績数量登録済チェック (true:登録済  false:未登録あり)
+    boolean shippedResultFlag = XxinvUtility.isQuantityAllEntry(getOADBTransaction(), movHeaderId, "1");
+    // 全移動明細入庫実績数量登録済チェック (true:登録済  false:未登録あり)
+    boolean shipToResultFlag  = XxinvUtility.isQuantityAllEntry(getOADBTransaction(), movHeaderId, "2");
 
+    // 移動明細の出庫実績数量・入庫実績数量が共にすべて登録済の場合
+    if (shippedResultFlag && shipToResultFlag)
+    {
+// 2008-12-25 H.Itou Add End
+      // INパラメータ用HashMap生成
+      HashMap inParams = new HashMap();
+      inParams.put("MovNum", movNum);
 
-    // INパラメータ用HashMap生成
-    HashMap inParams = new HashMap();
-    inParams.put("MovNum", movNum);
-
-    // 移動入出庫実績登録処理実行
-    return XxinvUtility.doMovShipActualMake(
-                          getOADBTransaction(), // トランザクション
-                          inParams              // パラメータ
-                          );
+      // 移動入出庫実績登録処理実行
+      return XxinvUtility.doMovShipActualMake(
+                            getOADBTransaction(), // トランザクション
+                            inParams              // パラメータ
+                            );
+// 2008-12-25 H.Itou Add Start
+    // 移動明細の出庫実績数量・入庫実績数量が登録されていない場合、コンカレントを起動しない。
+    } else
+    {
+      HashMap retParams = new HashMap();
+      retParams.put("retFlag", null);
+      return retParams;
+    }
+// 2008-12-25 H.Itou Add End
   } // doMovActualMake
 
   /***************************************************************************
