@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_クイックコード_現在_V FOR APPS.XXSKZ_クイックコード_現在_V
+/

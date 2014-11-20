@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_仕入単価明細_基本_V FOR APPS.XXSKZ_仕入単価明細_基本_V
+/

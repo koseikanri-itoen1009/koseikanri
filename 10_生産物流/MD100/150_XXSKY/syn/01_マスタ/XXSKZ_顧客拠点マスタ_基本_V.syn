@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_顧客拠点マスタ_基本_V FOR APPS.XXSKZ_顧客拠点マスタ_基本_V
+/

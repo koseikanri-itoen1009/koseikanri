@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_事業所マスタ_基本_V FOR APPS.XXSKZ_事業所マスタ_基本_V
+/

@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_配送LT_混載以外_基本_V FOR APPS.XXSKZ_配送LT_混載以外_基本_V
+/

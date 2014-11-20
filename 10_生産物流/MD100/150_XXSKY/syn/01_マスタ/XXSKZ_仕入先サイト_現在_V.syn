@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_仕入先サイト_現在_V FOR APPS.XXSKZ_仕入先サイト_現在_V
+/

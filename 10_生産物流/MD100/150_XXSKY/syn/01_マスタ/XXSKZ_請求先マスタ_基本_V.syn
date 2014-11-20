@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKZ_請求先マスタ_基本_V FOR APPS.XXSKZ_請求先マスタ_基本_V
+/
