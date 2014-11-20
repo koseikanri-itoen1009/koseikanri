@@ -1,0 +1,2 @@
+CREATE INDEX xxcos.xxcos_vd_digestion_lns_n01 ON xxcos.xxcos_vd_digestion_lns ( vd_digestion_hdr_id ) TABLESPACE xxidx2
+/
