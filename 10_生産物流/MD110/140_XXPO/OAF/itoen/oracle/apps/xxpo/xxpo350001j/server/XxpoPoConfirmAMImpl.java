@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxpoPoConfirmAMImpl
 * 概要説明   : 発注確認画面:検索/発注・受入照会画面アプリケーションモジュール
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-03 1.0  伊藤ひとみ     新規作成
 * 2008-05-07      伊藤ひとみ     内部変更要求対応(#41,48)
+* 2009-02-24 1.1  二瓶　大輔     本番障害#6対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo350001j.server;
@@ -32,7 +33,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 発注確認画面:検索/発注・受入照会画面アプリケーションモジュールです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoPoConfirmAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -118,7 +119,13 @@ public class XxpoPoConfirmAMImpl extends XxcmnOAApplicationModuleImpl
     Object fdDate  = poPoConfirmSearchRow.getAttribute("DeliveryDateFrom"); // 納入日FROM
 
     // 納入日FROMがNULLの場合、エラー
-    if (XxcmnUtility.isBlankOrNull(fdDate))
+// 2008-02-24 D.Nihei Add Start 本番障害#6対応
+//    if (XxcmnUtility.isBlankOrNull(fdDate))
+    // 発注No
+    Object poNum  = poPoConfirmSearchRow.getAttribute("HeaderNumber");
+    if (XxcmnUtility.isBlankOrNull(poNum) 
+     && XxcmnUtility.isBlankOrNull(fdDate))
+// 2008-02-24 D.Nihei Add End
     {
       throw new OAAttrValException(
                    OAAttrValException.TYP_VIEW_OBJECT,          
@@ -783,6 +790,27 @@ public class XxpoPoConfirmAMImpl extends XxcmnOAApplicationModuleImpl
     XxpoUtility.commit(getOADBTransaction());
 
   }  
+
+// 2008-02-24 D.Nihei Add Start 本番障害#6対応
+  /***************************************************************************
+   * 納入日のコピー処理を行うメソッドです。
+   ***************************************************************************
+   */
+  public void copyDeliveryDate()
+  {
+    // バッチヘッダ情報VO取得
+    XxpoPoConfirmSearchVOImpl vo = getXxpoPoConfirmSearchVO1();
+    OARow row = (OARow)vo.first();
+    // 値を取得
+    Date deliveryDateFrom      = (Date)row.getAttribute("DeliveryDateFrom"); // 納入日（開始）
+    Date deliveryDateTo        = (Date)row.getAttribute("DeliveryDateTo");   // 納入日（終了）
+    if (XxcmnUtility.isBlankOrNull(deliveryDateTo)) 
+    {
+      row.setAttribute("DeliveryDateTo", deliveryDateFrom);
+    }
+  } // copyDeliveryDate
+// 2008-02-24 D.Nihei Add End
+
   /**
    * 
    * Container's getter for XxpoPoConfirmSearchVO1
@@ -809,12 +837,6 @@ public class XxpoPoConfirmAMImpl extends XxcmnOAApplicationModuleImpl
   {
     return (XxpoPoInquiryVOImpl)findViewObject("XxpoPoInquiryVO1");
   }
-
-
-
-
-
-
 
   /**
    * 

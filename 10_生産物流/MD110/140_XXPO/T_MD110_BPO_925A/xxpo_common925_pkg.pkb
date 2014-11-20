@@ -6,7 +6,7 @@ AS
  * Package Name     : xxpo_common925_pkg(body)
  * Description      : 共通関数
  * MD.050/070       : 支給指示からの発注自動作成 Issue1.0  (T_MD050_BPO_925)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/12/02    1.6   Y.Suzuki         PLSQL表初期化プロシージャの追加
  *  2008/12/02    1.7   T.Yoshimoto      本番障害#377対応
  *  2009/01/05    1.8   D.Nihei          本番障害#861対応
+ *  2009/02/25    1.9   D.Nihei          本番障害#1131対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -264,6 +265,9 @@ AS
 -- 2008/12/02 v1.7 T.Yoshimoto Add Start 本番障害#377
     AND    xola.delete_flag         = gv_no                               -- 削除フラグ(N)
 -- 2008/12/02 v1.7 T.Yoshimoto Add End 本番障害#377
+-- 2009/02/25 v1.9 D.Nihei Add Start 本番障害#1131
+    AND    xola.quantity            > 0                                   -- 数量が0より大きい場合
+-- 2009/02/25 v1.9 D.Nihei Add End
     ORDER BY xola.order_line_number                                       -- 明細番号
     FOR UPDATE NOWAIT
   ;

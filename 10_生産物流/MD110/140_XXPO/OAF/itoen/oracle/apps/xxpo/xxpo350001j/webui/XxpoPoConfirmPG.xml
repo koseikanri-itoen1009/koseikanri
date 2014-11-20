@@ -105,7 +105,11 @@
                                     </oa:cellFormat>
                                     <oa:cellFormat id="SearchCell0301">
                                        <ui:contents>
-                                          <oa:messageTextInput id="TxtDeliveryDateFrom" prompt="" required="no" shortDesc="納入日（開始）" dataType="DATE" styleClass="LegendText" maximumLength="10" columns="12" viewName="XxpoPoConfirmSearchVO1" viewAttr="DeliveryDateFrom"/>
+                                          <oa:messageTextInput id="TxtDeliveryDateFrom" prompt="" required="no" shortDesc="納入日（開始）" dataType="DATE" styleClass="LegendText" maximumLength="10" columns="12" viewName="XxpoPoConfirmSearchVO1" viewAttr="DeliveryDateFrom">
+                                             <ui:primaryClientAction>
+                                                <ui:firePartialAction event="deliveryDateFrom"/>
+                                             </ui:primaryClientAction>
+                                          </oa:messageTextInput>
                                        </ui:contents>
                                     </oa:cellFormat>
                                     <oa:cellFormat id="SearchCell0302" hAlign="center">

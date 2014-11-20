@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxpoPoConfirmCO
 * 概要説明   : 発注確認画面:検索コントローラ
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-03 1.0  伊藤ひとみ   新規作成
 * 2008-05-07      伊藤ひとみ   内部変更要求対応(#41,48)
+* 2009-02-24 1.1  二瓶　大輔   本番障害#6対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo350001j.webui;
@@ -30,7 +31,7 @@ import oracle.apps.fnd.framework.webui.beans.OAWebBean;
 /***************************************************************************
  * 発注確認画面:検索コントローラクラスです。
  * @author  ORACLE 伊藤 ひとみ
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoPoConfirmCO extends XxcmnOAControllerImpl
@@ -134,6 +135,15 @@ public class XxpoPoConfirmCO extends XxcmnOAControllerImpl
       {
         // 発注承諾ボタン押下時は処理は行わずに、再表示。
 
+// 2008-02-24 D.Nihei Add Start 本番障害#6対応
+      // *********************************** //
+      // *   納入日FROMが変更された場合    * //
+      // *********************************** //
+      } else if ("deliveryDateFrom".equals(pageContext.getParameter(EVENT_PARAM)))
+      {
+        // 納入日FROMが変更された場合は処理は行わずに、再表示。
+
+// 2008-02-24 D.Nihei Add End
       // ****************** //
       // *  初期処理      * //
       // ****************** //
@@ -280,6 +290,15 @@ public class XxpoPoConfirmCO extends XxcmnOAControllerImpl
           OAWebBeanConstants.ADD_BREAD_CRUMB_NO, 
           OAWebBeanConstants.IGNORE_MESSAGES); 
 
+// 2008-02-24 D.Nihei Add Start 本番障害#6対応
+      // *********************************** //
+      // *   納入日FROMが変更された場合    * //
+      // *********************************** //
+      } else if ("deliveryDateFrom".equals(pageContext.getParameter(EVENT_PARAM)))
+      {
+        // コピー処理
+        am.invokeMethod("copyDeliveryDate");
+// 2008-02-24 D.Nihei Add End
       // ******************* //
       // *  ページング時   * //
       // ******************* //
