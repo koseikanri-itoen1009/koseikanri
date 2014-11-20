@@ -205,9 +205,9 @@ SELECT '2'                                 AS  data_kind_flag                 --
  WHERE spmp.base_code(+)       = :6  --base_code 売上計画検索情報リージョン.拠点コード
    AND spmp.employee_number(+) = prsn_base.employee_number
    AND spmp.year_month(+)      = prsn_base.year_month  
-ORDER BY prsn_base.group_number ASC,
+ORDER BY TO_NUMBER(prsn_base.group_number) ASC,
          prsn_base.slsprsn_xsts_f ASC,
-         prsn_base.group_grade ASC,
+         TO_NUMBER(prsn_base.group_grade) ASC,
          prsn_base.employee_name ASC,
          prsn_base.year_month ASC
    ]]></SQLQuery>

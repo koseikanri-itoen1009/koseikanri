@@ -6,7 +6,8 @@
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
-* 2008-12-11 1.0  SCS丸山美緒　  新規作成
+* 2008-12-11 1.0  SCS丸山美緒  新規作成
+* 2009-05-11 1.1  SCS柳平直人  [ST障害T1_0600]不要インデント,Stace,Tabの削除
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso001001j.server;
@@ -83,7 +84,8 @@ public class XxcsoSalesPlanOutAMImpl extends OAApplicationModuleImpl
     XxcsoSalesPlanSearchVOImpl searchVo = getXxcsoSalesPlanSearchVO1();
     if ( searchVo == null )
     {
-      throw XxcsoMessage.createInstanceLostError("XxcsoSalesPlanSearchVO1mpl");
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoSalesPlanSearchVO1mpl");
     }
 
     // 検索情報リージョン行インスタンス
@@ -124,7 +126,8 @@ public class XxcsoSalesPlanOutAMImpl extends OAApplicationModuleImpl
     XxcsoSalesPlanSearchVOImpl searchVo = getXxcsoSalesPlanSearchVO1();
     if ( searchVo == null )
     {
-      throw XxcsoMessage.createInstanceLostError("XxcsoSalesPlanSearchVO1mpl");
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoSalesPlanSearchVO1mpl");
     }
     searchVo.executeQuery();
     XxcsoUtils.debug(getOADBTransaction(), "[END]");
@@ -194,6 +197,7 @@ public class XxcsoSalesPlanOutAMImpl extends OAApplicationModuleImpl
           XxcsoSalesPlanConstants.XXCSO1_EXCEL_VER_SLSPLN_ROUTE
         );
     }
+
     String verHonbu = 
       txn.getProfile(XxcsoSalesPlanConstants.XXCSO1_EXCEL_VER_SLSPLN_HONBU);
     if ( verHonbu == null || "".equals(verHonbu.trim()) )
@@ -203,7 +207,6 @@ public class XxcsoSalesPlanOutAMImpl extends OAApplicationModuleImpl
           XxcsoSalesPlanConstants.XXCSO1_EXCEL_VER_SLSPLN_HONBU
         );
     }
-
 
     XxcsoUtils.debug(getOADBTransaction(), "[END]");
 
@@ -233,8 +236,8 @@ public class XxcsoSalesPlanOutAMImpl extends OAApplicationModuleImpl
     XxcsoCreateBasePlanCsvVOImpl baseVo = getXxcsoCreateBasePlanCsvVO1();
     if ( baseVo == null )
     {
-      throw XxcsoMessage.
-        createInstanceLostError("XxcsoCreateBasePlanCsvVOImpl");
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoCreateBasePlanCsvVOImpl");
     }
 
     // CallableStatement取得
@@ -251,17 +254,17 @@ public class XxcsoSalesPlanOutAMImpl extends OAApplicationModuleImpl
     {
       // バインドへの値の設定、ResultSet取得
       stmt.setString(1, searchRowVo.getBusinessYear()); // 年度
-      stmt.setString(2, searchRowVo.getBaseCode()); 	// 拠点コード
-      stmt.setString(3, searchRowVo.getBaseCode()); 	// 拠点コード
+      stmt.setString(2, searchRowVo.getBaseCode());     // 拠点コード
+      stmt.setString(3, searchRowVo.getBaseCode());     // 拠点コード
       rs = (OracleResultSet)stmt.executeQuery();
 
       // ResultSetループ
       while (rs.next())
       {
         // ResultSe項目取得
-      	for (int i = 1; i <= XxcsoSalesPlanConstants.CSV_MAX_ITEM_ID; i++)
-      	{
-  	      if (i > 1) 
+        for (int i = 1; i <= XxcsoSalesPlanConstants.CSV_MAX_ITEM_ID; i++)
+        {
+          if (i > 1) 
           {
             csvData.append(XxcsoSalesPlanConstants.CSV_ITEM_DELIMITER);
           }
@@ -291,7 +294,7 @@ public class XxcsoSalesPlanOutAMImpl extends OAApplicationModuleImpl
       throw
         XxcsoMessage.createSqlErrorMessage(
           e
-          ,XxcsoConstants.TOKEN_VALUE_CSV_CREATE
+         ,XxcsoConstants.TOKEN_VALUE_CSV_CREATE
         );
     }
     finally
@@ -312,7 +315,7 @@ public class XxcsoSalesPlanOutAMImpl extends OAApplicationModuleImpl
         throw
           XxcsoMessage.createSqlErrorMessage(
             e
-            ,XxcsoConstants.TOKEN_VALUE_CSV_CREATE
+           ,XxcsoConstants.TOKEN_VALUE_CSV_CREATE
           );
       }
     }
@@ -353,21 +356,21 @@ public class XxcsoSalesPlanOutAMImpl extends OAApplicationModuleImpl
     try
     {
       // バインドへの値の設定、ResultSet取得
-      stmt.setString(1, searchRowVo.getBaseCode()); 	// 拠点コード
-      stmt.setString(2, searchRowVo.getBaseCode()); 	// 拠点コード
-      stmt.setString(3, searchRowVo.getBusinessYear()); // 年度
-      stmt.setString(4, searchRowVo.getBaseCode()); 	// 拠点コード
-      stmt.setString(5, searchRowVo.getBusinessYear()); // 年度
-      stmt.setString(6, searchRowVo.getBaseCode()); 	// 拠点コード
+      stmt.setString(1, searchRowVo.getBaseCode());      // 拠点コード
+      stmt.setString(2, searchRowVo.getBaseCode());      // 拠点コード
+      stmt.setString(3, searchRowVo.getBusinessYear());  // 年度
+      stmt.setString(4, searchRowVo.getBaseCode());      // 拠点コード
+      stmt.setString(5, searchRowVo.getBusinessYear());  // 年度
+      stmt.setString(6, searchRowVo.getBaseCode());      // 拠点コード
       rs = (OracleResultSet)stmt.executeQuery();
 
       // ResultSetループ
-      while (rs.next())
+      while ( rs.next() )
       {
         // ResultSe項目取得
-      	for (int i = 1; i <= XxcsoSalesPlanConstants.CSV_MAX_ITEM_ID; i++)
-      	{
-  	      if (i > 1) 
+        for (int i = 1; i <= XxcsoSalesPlanConstants.CSV_MAX_ITEM_ID; i++)
+        {
+          if (i > 1) 
           {
             csvData.append(XxcsoSalesPlanConstants.CSV_ITEM_DELIMITER);
           }
@@ -397,7 +400,7 @@ public class XxcsoSalesPlanOutAMImpl extends OAApplicationModuleImpl
       throw
         XxcsoMessage.createSqlErrorMessage(
           e
-          ,XxcsoConstants.TOKEN_VALUE_CSV_CREATE
+         ,XxcsoConstants.TOKEN_VALUE_CSV_CREATE
         );
     }
     finally
@@ -418,7 +421,7 @@ public class XxcsoSalesPlanOutAMImpl extends OAApplicationModuleImpl
         throw
           XxcsoMessage.createSqlErrorMessage(
             e
-            ,XxcsoConstants.TOKEN_VALUE_CSV_CREATE
+           ,XxcsoConstants.TOKEN_VALUE_CSV_CREATE
           );
       }
     }
@@ -454,7 +457,8 @@ public class XxcsoSalesPlanOutAMImpl extends OAApplicationModuleImpl
     XxcsoCsvDownVOImpl csvVo = getXxcsoCsvDownVO1();
     if ( csvVo == null )
     {
-      throw XxcsoMessage.createInstanceLostError("XxcsoCsvDownVOImpl");
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoCsvDownVOImpl");
     }
 
     // ファイルダウンロード行VOインスタンス
@@ -462,7 +466,8 @@ public class XxcsoSalesPlanOutAMImpl extends OAApplicationModuleImpl
       = (XxcsoCsvDownVORowImpl)csvVo.createRow();
     if ( csvRowVo == null )
     {
-        throw XxcsoMessage.createInstanceLostError("XxcsoCsvDownVORowImpl");
+        throw
+          XxcsoMessage.createInstanceLostError("XxcsoCsvDownVORowImpl");
     }
 
     // ファイル名取得
@@ -479,9 +484,7 @@ public class XxcsoSalesPlanOutAMImpl extends OAApplicationModuleImpl
     {
       // エラー：対象データなし
       throw
-        XxcsoMessage.createErrorMessage(
-               XxcsoConstants.APP_XXCSO1_00454
-        );
+        XxcsoMessage.createErrorMessage( XxcsoConstants.APP_XXCSO1_00454 );
     }
 
     try
@@ -496,8 +499,7 @@ public class XxcsoSalesPlanOutAMImpl extends OAApplicationModuleImpl
     }
     catch (UnsupportedEncodingException uae)
     {
-      throw
-          XxcsoMessage.createCsvErrorMessage(uae);
+      throw XxcsoMessage.createCsvErrorMessage( uae );
     }
 
     // VOに出力
@@ -513,10 +515,10 @@ public class XxcsoSalesPlanOutAMImpl extends OAApplicationModuleImpl
     mMessage
       = XxcsoMessage.createConfirmMessage(
           XxcsoConstants.APP_XXCSO1_00001
-          ,XxcsoConstants.TOKEN_RECORD
-          ,new String(sbMsg)
-          ,XxcsoConstants.TOKEN_ACTION
-          ,XxcsoSalesPlanConstants.MSG_DISP_OUT
+         ,XxcsoConstants.TOKEN_RECORD
+         ,new String(sbMsg)
+         ,XxcsoConstants.TOKEN_ACTION
+         ,XxcsoSalesPlanConstants.MSG_DISP_OUT
         );
         
     XxcsoUtils.debug(txn, "[END]");
@@ -540,7 +542,7 @@ public class XxcsoSalesPlanOutAMImpl extends OAApplicationModuleImpl
     sbFileName.append(XxcsoAcctSalesPlansUtils.getSysdateTimeString(txn));
     sbFileName.append(XxcsoSalesPlanConstants.CSV_EXTENSION);
 
-    XxcsoUtils.debug(getOADBTransaction(), "[END]");
+    XxcsoUtils.debug(txn, "[END]");
 
     return sbFileName.toString();
   }
