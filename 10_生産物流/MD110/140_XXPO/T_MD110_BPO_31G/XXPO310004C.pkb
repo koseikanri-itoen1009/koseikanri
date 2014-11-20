@@ -7,7 +7,7 @@ AS
  * Description      : HHT受入実績計上
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : HHT受入実績計上     T_MD070_BPO_31G
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2008/05/21    1.2   Oracle 山根 一浩 変更要求No109対応
  *                                       結合テスト不具合ログ#300_3対応
  *  2008/05/23    1.3   Oracle 山根 一浩 結合テスト不具合ログ対応
+ *  2008/06/26    1.4   Oracle 山根 一浩 結合テスト不具合No84,86対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -320,7 +321,10 @@ AS
 -- 2008/05/21 v1.2 Add
   TYPE reg_opm_item_id       IS TABLE OF xxpo_rcv_and_rtn_txns.item_id                              %TYPE INDEX BY BINARY_INTEGER;
 -- 2008/05/21 v1.2 Add
-
+-- 2008/06/26 v1.4 Add
+  -- 受入返品明細番号
+  TYPE reg_rtn_line_num      IS TABLE OF xxpo_rcv_and_rtn_txns.rcv_rtn_line_number                  %TYPE INDEX BY BINARY_INTEGER;
+-- 2008/06/26 v1.4 Add
 --
   -- ***************************************
   -- ***      項目格納テーブル型定義     ***
@@ -399,6 +403,9 @@ AS
 -- 2008/05/21 v1.2 Add
   gt_opm_item_id       reg_opm_item_id;        -- OPM品目ID
 -- 2008/05/21 v1.2 Add
+-- 2008/06/26 v1.4 Add
+  gt_rtn_line_num      reg_rtn_line_num;       -- 受入返品明細番号
+-- 2008/06/26 v1.4 Add
 --
   /**********************************************************************************
    * Procedure Name   : keep_po_head_id
@@ -1993,7 +2000,9 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
---
+    ln_count      NUMBER;
+    lv_doc_num    xxpo_rcv_and_rtn_txns.source_document_number%TYPE;
+    ln_line_num   xxpo_rcv_and_rtn_txns.source_document_line_num%TYPE;
 --
     -- *** ローカル・カーソル ***
 --
@@ -2006,6 +2015,31 @@ AS
     ov_retcode := gv_status_normal;
 --
 --###########################  固定部 END   ############################
+--
+-- 2008/06/26 v1.4 Add
+    <<number_get_loop>>
+    FOR i IN 0..gt_master_tbl.COUNT-1 LOOP
+--
+      IF ((i = 0)
+       OR (lv_doc_num <> gt_src_doc_num(i))
+       OR (ln_line_num <> gt_src_doc_line_num(i))) THEN
+--
+        lv_doc_num  := gt_src_doc_num(i);
+        ln_line_num := gt_src_doc_line_num(i);
+--
+        -- 件数取得
+        SELECT COUNT(xrrt.txns_id)
+        INTO   ln_count
+        FROM   xxpo_rcv_and_rtn_txns xrrt
+        WHERE  xrrt.source_document_number   = lv_doc_num
+        AND    xrrt.source_document_line_num = ln_line_num
+        AND    ROWNUM = 1;
+      END IF;
+--
+      ln_count := ln_count + 1;
+      gt_rtn_line_num(i) := ln_count;
+    END LOOP number_get_loop;
+-- 2008/06/26 v1.4 Add
 --
     -- ***************************************
     -- ***  受入返品実績(アドオン)一括登録 ***
@@ -2047,7 +2081,10 @@ AS
       VALUES
       (   gt_txns_id(itp_cnt)               -- txns_id
          ,gt_src_doc_num(itp_cnt)           -- rcv_rtn_number
-         ,gt_src_doc_line_num(itp_cnt)      -- rcv_rtn_line_number
+-- 2008/06/26 v1.4 Add
+--         ,gt_src_doc_line_num(itp_cnt)      -- rcv_rtn_line_number
+         ,gt_rtn_line_num(itp_cnt)          -- rcv_rtn_line_number
+-- 2008/06/26 v1.4 Add
          ,gv_txns_type_po                   -- txns_type
          ,gt_src_doc_num(itp_cnt)           -- source_document_number
          ,gt_src_doc_line_num(itp_cnt)      -- source_document_line_num
@@ -2149,7 +2186,10 @@ AS
     -- ***************************************
     FORALL item_cnt IN 0 .. gt_master_tbl.COUNT-1
       UPDATE po_lines_all
-      SET  attribute7             = TO_CHAR(gt_rcv_quantity(item_cnt))
+-- 2008/06/26 v1.4 Add
+--      SET  attribute7             = TO_CHAR(gt_rcv_quantity(item_cnt))
+-- 2008/06/26 v1.4 Add
+      SET  attribute7         = TO_CHAR(TO_NUMBER(NVL(attribute7,'0'))+gt_rcv_quantity(item_cnt))
           ,attribute13            = gv_flg_on
           ,last_updated_by        = gn_last_update_by
           ,last_update_date       = gd_last_update_date
