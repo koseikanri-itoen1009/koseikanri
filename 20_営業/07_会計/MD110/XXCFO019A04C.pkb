@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A04C AS
  * Package Name     : XXCFO019A04C
  * Description      : 電子帳簿AP仕入請求の情報系システム連携
  * MD.050           : MD050_CFO_019_A04_電子帳簿AP仕入請求の情報系システム連携
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A04C AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/08/31    1.0   M.Kitajma        初回作成
+ *  2012/12/05    1.1   T.Osawa          照合数量の桁あふれ対応
  *
  *****************************************************************************************/
 --
@@ -2035,7 +2036,10 @@ EXCEPTION
              ,aid.line_type_lookup_code                                               --13.請求書明細タイプ
              ,aid.description                            AS d_description             --14.配分明細摘要
              ,aid.amount                                                              --15.配分入力金額
-             ,aid.quantity_invoiced                                                   --16.照合数量
+-- 2012/12/05 Ver.1.1 T.Osawa Modify Start
+--           ,aid.quantity_invoiced                                                   --16.照合数量
+             ,ROUND(aid.quantity_invoiced, 2)            AS quantity_invoiced         --16.照合数量
+-- 2012/12/05 Ver.1.1 T.Osawa Modify End
              ,aid.unit_price                                                          --17.価格
              ,aid.tax_code_id                                                         --18.税金コードID
              ,aid.po_distribution_id                                                  --19.発注明細ID
@@ -2185,7 +2189,10 @@ EXCEPTION
              ,aid.line_type_lookup_code                                               --13.請求書明細タイプ
              ,aid.description                            AS d_description             --14.配分明細摘要
              ,aid.amount                                                              --15.配分入力金額
-             ,aid.quantity_invoiced                                                   --16.照合数量
+-- 2012/12/05 Ver.1.1 T.Osawa Modify Start
+--           ,aid.quantity_invoiced                                                   --16.照合数量
+             ,ROUND(aid.quantity_invoiced, 2)            AS quantity_invoiced         --16.照合数量
+-- 2012/12/05 Ver.1.1 T.Osawa Modify End
              ,aid.unit_price                                                          --17.価格
              ,aid.tax_code_id                                                         --18.税金コードID
              ,aid.po_distribution_id                                                  --19.発注明細ID
@@ -2378,7 +2385,10 @@ EXCEPTION
                  ,aid.line_type_lookup_code                                               --13.請求書明細タイプ  
                  ,aid.description                            AS d_description             --14.配分明細摘要      
                  ,aid.amount                                                              --15.配分入力金額      
-                 ,aid.quantity_invoiced                                                   --16.照合数量          
+-- 2012/12/05 Ver.1.1 T.Osawa Modify Start
+--               ,aid.quantity_invoiced                                                   --16.照合数量          
+                 ,ROUND(aid.quantity_invoiced, 2)            AS quantity_invoiced         --16.照合数量          
+-- 2012/12/05 Ver.1.1 T.Osawa Modify End
                  ,aid.unit_price                                                          --17.価格              
                  ,aid.tax_code_id                                                         --18.税金コードID      
                  ,aid.po_distribution_id                                                  --19.発注明細ID        
@@ -2529,7 +2539,10 @@ EXCEPTION
                  ,aid.line_type_lookup_code                                               --13.請求書明細タイプ
                  ,aid.description                            AS d_description             --14.配分明細摘要
                  ,aid.amount                                                              --15.配分入力金額
-                 ,aid.quantity_invoiced                                                   --16.照合数量
+-- 2012/12/05 Ver.1.1 T.Osawa Modify Start
+--               ,aid.quantity_invoiced                                                   --16.照合数量
+                 ,ROUND(aid.quantity_invoiced, 2)            AS quantity_invoiced         --16.照合数量
+-- 2012/12/05 Ver.1.1 T.Osawa Modify End
                  ,aid.unit_price                                                          --17.価格
                  ,aid.tax_code_id                                                         --18.税金コードID
                  ,aid.po_distribution_id                                                  --19.発注明細ID
