@@ -109,12 +109,6 @@ WHERE xqh.account_number = xcav.account_number
             )
           )
         )
--- 2011/11/02 E_–{‰Ò“®_08325 Add Start
-        OR
-        (
-          fnd_profile.value('XXCSO1_QUOTE_STANDARD') = '3'
-        )
--- 2011/11/02 E_–{‰Ò“®_08325 Add End
       )
    ]]></SQLQuery>
    <DesignTime>
