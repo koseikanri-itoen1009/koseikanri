@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫配送計画情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60E_入出庫配送計画情報抽出処理
- * Version          : 1.28
+ * Version          : 1.29
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -71,7 +71,7 @@ AS
  *  2008/10/28    1.26  M.Nomura         統合#143対応
  *  2008/11/12    1.27  M.Nomura         統合#626対応
  *  2008/11/27    1.28  M.Nomura         本番177対応
- *
+ *  2009/01/13    1.29  H.Itou           本番971対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -317,6 +317,10 @@ AS
 -- ##### 20080612 Ver.1.7 商品セキュリティ対応 START #####
   gv_item_div_security        VARCHAR2(100);
 -- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
+-- ##### 20090113 Ver.1.29 本番#971対応 START #####
+  gd_min_date        DATE; -- MIN日付
+  gd_max_date        DATE; -- MAX日付
+-- ##### 20090113 Ver.1.29 本番#971対応 END   #####
 --
 -- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
   -- 多重起動確認用
@@ -709,10 +713,25 @@ AS
     -- ====================================================
     IF ( gr_param.fix_class = gc_fix_class_y ) THEN
 --
-      gr_param.date_cutoff := NVL( gr_param.date_cutoff, TO_CHAR( SYSDATE, 'YYYY/MM/DD' ) ) ;
-      gd_effective_date := FND_DATE.CANONICAL_TO_DATE( gr_param.date_cutoff ) ;
-      gd_date_from  := FND_DATE.CANONICAL_TO_DATE( gr_param.date_cutoff || gr_param.cutoff_from ) ;
-      gd_date_to    := FND_DATE.CANONICAL_TO_DATE( gr_param.date_cutoff || gr_param.cutoff_to ) ;
+-- ##### 20090113 Ver.1.29 本番#971対応 START #####
+--      gr_param.date_cutoff := NVL( gr_param.date_cutoff, TO_CHAR( SYSDATE, 'YYYY/MM/DD' ) ) ;
+--      gd_effective_date := FND_DATE.CANONICAL_TO_DATE( gr_param.date_cutoff ) ;
+--      gd_date_from      := FND_DATE.CANONICAL_TO_DATE( gr_param.date_cutoff || gr_param.cutoff_from ) ;
+--      gd_date_to        := FND_DATE.CANONICAL_TO_DATE( gr_param.date_cutoff || gr_param.cutoff_to ) ;
+--
+      -- 締め実施日指定なしの場合
+      IF (gr_param.date_cutoff IS NULL) THEN
+        gd_effective_date := TRUNC(SYSDATE); -- 基準日(SYSDATE)
+        gd_date_from      := gd_min_date;    -- 締め日時FROM
+        gd_date_to        := gd_max_date;    -- 締め日時TO
+--
+      -- 締め実施日指定ありの場合
+      ELSE
+        gd_effective_date := FND_DATE.CANONICAL_TO_DATE( gr_param.date_cutoff ) ;
+        gd_date_from      := FND_DATE.CANONICAL_TO_DATE( gr_param.date_cutoff || gr_param.cutoff_from ) ;
+        gd_date_to        := FND_DATE.CANONICAL_TO_DATE( gr_param.date_cutoff || gr_param.cutoff_to ) ;
+      END IF;
+-- ##### 20090113 Ver.1.29 本番#971対応 END   #####
 --
       -- ----------------------------------------------------
       -- 逆転チェック
@@ -772,15 +791,27 @@ AS
 -- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 START #####
       lv_tok_name := lc_tok_name ;
 -- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
-      -- 確定通知実施日
-      IF ( gr_param.date_fix IS NULL ) THEN
-        lv_tok_val  := lc_p_name_date_fix ;
-        RAISE ex_param_error ;
-      END IF ;
+-- ##### 20090113 Ver.1.29 本番#971対応 START #####
+--      -- 確定通知実施日
+--      IF ( gr_param.date_fix IS NULL ) THEN
+--        lv_tok_val  := lc_p_name_date_fix ;
+--        RAISE ex_param_error ;
+--      END IF ;
+--      gd_effective_date := FND_DATE.CANONICAL_TO_DATE( gr_param.date_fix ) ;
+--      gd_date_from      := FND_DATE.CANONICAL_TO_DATE( gr_param.date_fix || gr_param.fix_from ) ;
+--      gd_date_to        := FND_DATE.CANONICAL_TO_DATE( gr_param.date_fix || gr_param.fix_to ) ;
 --
-      gd_effective_date := FND_DATE.CANONICAL_TO_DATE( gr_param.date_fix ) ;
-      gd_date_from  := FND_DATE.CANONICAL_TO_DATE( gr_param.date_fix || gr_param.fix_from ) ;
-      gd_date_to    := FND_DATE.CANONICAL_TO_DATE( gr_param.date_fix || gr_param.fix_to ) ;
+      -- 確定通知実施日指定なしの場合
+      IF (gr_param.date_fix IS NULL) THEN
+        gd_effective_date := TRUNC(SYSDATE); -- 基準日(SYSDATE)
+        gd_date_from      := gd_min_date;    -- 確定通知実施日FROM
+        gd_date_to        := gd_max_date;    -- 確定通知実施日TO
+      ELSE
+        gd_effective_date := FND_DATE.CANONICAL_TO_DATE( gr_param.date_fix ) ;
+        gd_date_from      := FND_DATE.CANONICAL_TO_DATE( gr_param.date_fix || gr_param.fix_from ) ;
+        gd_date_to        := FND_DATE.CANONICAL_TO_DATE( gr_param.date_fix || gr_param.fix_to ) ;
+      END IF;
+-- ##### 20090113 Ver.1.29 本番#971対応 END   #####
 --
       -- ----------------------------------------------------
       -- 逆転チェック
@@ -915,6 +946,14 @@ AS
       RAISE ex_prof_error ;
     END IF;
 -- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
+--
+-- ##### 20090113 Ver.1.29 本番#971対応 START #####
+    -- MIN日付
+    gd_min_date := TRUNC(SYSDATE) - gn_prof_del_date + 1; -- システム日付 - 通知済情報パージ処理対象期間_配車配送計画 + 1
+--
+    -- MAX日付
+    gd_max_date := TRUNC(SYSDATE) + 2 - 1/24/60/60; -- 翌日の23:59:59
+-- ##### 20090113 Ver.1.29 本番#971対応 END   #####
 --
   EXCEPTION
     -- ============================================================================================
@@ -1604,6 +1643,9 @@ AS
 -- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
       AND   xoha.req_status           IN( gc_req_status_syu_3   -- 締め済
                                          ,gc_req_status_syu_5 ) -- 取消
+-- ##### 20090113 Ver.1.29 本番#971対応 START #####
+      AND   xoha.schedule_ship_date BETWEEN gd_ship_date_from AND gd_ship_date_to -- 出庫日From To
+-- ##### 20090113 Ver.1.29 本番#971対応 END   #####
 -- M.HOKKANJI Ver1.9 START
 -- 2008/09/01 v1.16 update Y.Yamamoto start
 --      AND  ((gr_param.fix_class = gc_fix_class_y
@@ -5779,6 +5821,49 @@ AS
     gn_program_application_id := FND_GLOBAL.PROG_APPL_ID ;      -- ＣＰ・アプリケーションID
     gn_program_id             := FND_GLOBAL.CONC_PROGRAM_ID ;   -- コンカレント・プログラムID
 --
+-- ##### 20090113 Ver.1.29 本番#971対応 START #####
+--    -- =============================================================================================
+--    -- E-01 パラメータチェック
+--    -- =============================================================================================
+--    prc_chk_param
+--      (
+--        ov_errbuf   => lv_errbuf
+--       ,ov_retcode  => lv_retcode
+--       ,ov_errmsg   => lv_errmsg
+--      ) ;
+--    IF ( lv_retcode = gv_status_error ) THEN
+--      gn_error_cnt := gn_error_cnt + 1 ;
+--      RAISE global_process_expt;
+--    END IF ;
+----
+--    -- =============================================================================================
+--    -- E-02 プロファイル取得
+--    -- =============================================================================================
+--    prc_get_profile
+--      (
+--        ov_errbuf   => lv_errbuf
+--       ,ov_retcode  => lv_retcode
+--       ,ov_errmsg   => lv_errmsg
+--      ) ;
+--    IF ( lv_retcode = gv_status_error ) THEN
+--      gn_error_cnt := gn_error_cnt + 1 ;
+--      RAISE global_process_expt;
+--    END IF ;
+----
+    -- =============================================================================================
+    -- E-02 プロファイル取得
+    -- =============================================================================================
+    prc_get_profile
+      (
+        ov_errbuf   => lv_errbuf
+       ,ov_retcode  => lv_retcode
+       ,ov_errmsg   => lv_errmsg
+      ) ;
+    IF ( lv_retcode = gv_status_error ) THEN
+      gn_error_cnt := gn_error_cnt + 1 ;
+      RAISE global_process_expt;
+    END IF ;
+--
     -- =============================================================================================
     -- E-01 パラメータチェック
     -- =============================================================================================
@@ -5793,19 +5878,7 @@ AS
       RAISE global_process_expt;
     END IF ;
 --
-    -- =============================================================================================
-    -- E-02 プロファイル取得
-    -- =============================================================================================
-    prc_get_profile
-      (
-        ov_errbuf   => lv_errbuf
-       ,ov_retcode  => lv_retcode
-       ,ov_errmsg   => lv_errmsg
-      ) ;
-    IF ( lv_retcode = gv_status_error ) THEN
-      gn_error_cnt := gn_error_cnt + 1 ;
-      RAISE global_process_expt;
-    END IF ;
+-- ##### 20090113 Ver.1.29 本番#971対応 END #####
 --
 -- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
     -- 予定確定区分：確定 の場合
