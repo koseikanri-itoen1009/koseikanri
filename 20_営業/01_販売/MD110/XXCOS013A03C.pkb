@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A03C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : GLへの販売実績データ連携 MD050_COS_013_A03
- * Version          : 1.13
+ * Version          : 1.14
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -43,6 +43,7 @@ AS
  *                                       [E_T4_00216]返品,返品修正対応
  *  2009/12/29    1.12  N.Maeda          [E_本稼動_00697] 処理条件を検収日⇒納品日に変更
  *  2010/03/01    1.13  K.Aatsushiba     [E_本稼動_01399] 上様の売上値引き対応
+ *  2012/08/15    1.14  T.Osawa          [E_本稼動_09922] 電子帳簿の対応
  *
  *****************************************************************************************/
 --
@@ -1872,6 +1873,10 @@ AS
                                                               -- 属性4（起票部門）
       gt_gl_interface_tbl( in_gl_idx ).attribute5          := gt_sales_card_tbl ( in_card_idx ).results_employee_code;
                                                               -- 属性5（ユーザID）
+--****************************** 2012/08/15 1.14 T.Osawa ADD START ******************************--
+      gt_gl_interface_tbl( in_gl_idx ).attribute8          := gt_sales_card_tbl ( in_card_idx ).sales_exp_header_id;
+                                                              -- 属性8（販売実績ヘッダID）
+--****************************** 2012/08/15 1.14 T.Osawa ADD  END  ******************************--
     ELSE
       gt_gl_interface_tbl( in_gl_idx ).accounting_date     := gt_sales_exp_tbl ( in_sale_idx ).delivery_date;
                                                               -- 記帳日
@@ -1906,6 +1911,10 @@ AS
         gt_gl_interface_tbl( in_gl_idx ).jgzz_recon_ref    := gt_sales_exp_tbl( in_sale_idx ).ship_to_customer_code;
                                                               -- 消込参照(現金勘定のみ)
       END IF;
+--****************************** 2012/08/15 1.14 T.Osawa ADD START ******************************--
+      gt_gl_interface_tbl( in_gl_idx ).attribute8          := gt_sales_exp_tbl ( in_sale_idx ).sales_exp_header_id;
+                                                              -- 属性8（販売実績ヘッダID）
+--****************************** 2012/08/15 1.14 T.Osawa ADD  END  ******************************--
     END IF;
 --
     gt_gl_interface_tbl( in_gl_idx ).reference10           := lv_detail;
