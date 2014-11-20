@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_dlv_headers_info_v
  * Description     : 納品伝票ヘッダ情報ビュー
- * Version         : 1.6
+ * Version         : 1.8
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -19,6 +19,7 @@
  *  2009/09/03    1.6   M.Sano           [0001227]パフォーマンス対応
  *                                       (業務日付の取得方法変更)
  *  2009/11/27    1.7   M.Sano           [E_本稼動_00130]重複データ対応
+ *  2009/12/16    1.8   K.Kiriu          [E_本稼動_00244]売上値引のみのデータ(ヘッダのみ作成)対応
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcos_dlv_headers_info_v
 (
@@ -111,13 +112,37 @@ SELECT
        ic.meaning input_name,                                      --入力区分表示用
        xdh.consumption_tax_class consumption_tax_class,            --消費税区分
        abs( xdh.total_amount ) abs_total_amount,                   --合計金額（画面用:絶対値）
-       xdh.total_amount total_amount,                              --合計金額（DB値）
+/* 2009/12/16 Ver1.28 Mod Start */
+--       xdh.total_amount total_amount,                              --合計金額（DB値）
+       DECODE(
+         ( SELECT 1
+           FROM   xxcos_dlv_lines xdl
+           WHERE  xdl.order_no_hht        = xdh.order_no_hht
+           AND    xdl.digestion_ln_number = xdh.digestion_ln_number
+           AND    ROWNUM                  = 1
+         )
+         , 1, xdh.total_amount
+         , NULL
+       ) total_amount,                                             --合計金額（DB値）
+/* 2009/12/16 Ver1.28 Mod END   */
        abs( xdh.sale_discount_amount ) abs_sale_discount_amount,   --売上値引金額（画面用:絶対値）
        xdh.sale_discount_amount sale_discount_amount,              --売上値引金額（DB値）
        abs( xdh.sales_consumption_tax ) abs_sales_consumption_tax, --売上消費税額（画面用:絶対値）
        xdh.sales_consumption_tax sales_consumption_tax,            --売上消費税額（DB値）
        abs( xdh.tax_include ) abs_tax_include,                     --税込金額（画面用:絶対値）
-       xdh.tax_include tax_include,                                --税込金額（DB値）
+/* 2009/12/16 Ver1.28 Mod Start */
+--       xdh.tax_include tax_include,                                --税込金額（DB値）
+       DECODE(
+         ( SELECT 1
+           FROM   xxcos_dlv_lines xdl
+           WHERE  xdl.order_no_hht        = xdh.order_no_hht
+           AND    xdl.digestion_ln_number = xdh.digestion_ln_number
+           AND    ROWNUM                  = 1
+         )
+         , 1, xdh.tax_include
+         , NULL
+       ) tax_include,                                              --合計金額（DB値）
+/* 2009/12/16 Ver1.28 Mod END   */
        xdh.keep_in_code keep_in_code,                              --預け先コード
        xdh.department_screen_class department_screen_class,        --百貨店画面種別
        dsc.meaning department_screen_name,                         --百貨店画面種別表示用
