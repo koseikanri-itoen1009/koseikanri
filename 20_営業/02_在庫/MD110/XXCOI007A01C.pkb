@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI007A01C(body)
  * Description      : 資材配賦情報の差額仕訳※の生成。※原価差額(標準原価-営業原価)
  * MD.050           : 調整仕訳自動生成 MD050_COI_007_A01
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,8 @@ AS
  *  2009/03/26    1.1   H.Sasaki        [障害T1_0120]
  *  2009/05/11    1.2   T.Nakamura      [障害T1_0933]
  *  2009/05/11    1.3   T.Nakamura      [T1_1327]営業原価更新時の調整仕分け処理を追加
+ *  2009/07/14    1.4   S.Moriyama      [0000261]記帳日を取引日からパラメータ指定日or業務日付へ変更
+ *                                      取引日が前月の場合は前月末日を記帳日とする
  *
  *****************************************************************************************/
 --
@@ -87,6 +89,9 @@ AS
   -- ユーザー定義例外
   -- ===============================
   profile_expt        EXCEPTION;    -- プロファイル値取得例外
+-- == 2009/07/14 V1.4 Added START ===============================================================
+  org_code_expt       EXCEPTION;    -- 在庫組織プロファイル値取得例外
+-- == 2009/07/14 V1.4 Added END   ===============================================================
   lock_expt           EXCEPTION;    -- ロック処理例外
   PRAGMA EXCEPTION_INIT( lock_expt, -54 );
 --
@@ -115,6 +120,10 @@ AS
 -- == 2009/06/04 V1.3 Added START ===============================================================
   cv_msg_code_xxcoi_10256    CONSTANT VARCHAR2(30)  :=  'APP-XXCOI1-10256';   -- 取引タイプID取得エラーメッセージ
 -- == 2009/06/04 V1.3 Added END   ===============================================================
+-- == 2009/07/14 V1.4 Added START ===============================================================
+  cv_msg_code_xxcoi_00005    CONSTANT VARCHAR2(30)  :=  'APP-XXCOI1-00005';   -- 在庫組織コード取得エラーメッセージ
+  cv_msg_code_xxcoi_10384    CONSTANT VARCHAR2(30)  :=  'APP-XXCOI1-10384';   -- パラメータ設定記帳日メッセージ
+-- == 2009/07/14 V1.4 Added END   ===============================================================
 --
   -- トークン
   cv_tkn_profile             CONSTANT VARCHAR2(25)  := 'PRO_TOK';                 -- プロファイル名
@@ -130,6 +139,10 @@ AS
 -- == 2009/06/04 V1.3 Added START ===============================================================
   cv_tkn_transaction_type    CONSTANT VARCHAR2(30)  := 'TRANSACTION_TYPE_TOK';    -- 取引タイプ
 -- == 2009/06/04 V1.3 Added END   ===============================================================
+-- == 2009/07/14 V1.4 Added START ===============================================================
+  cv_prf_org                 CONSTANT VARCHAR2(25) := 'XXCOI1_ORGANIZATION_CODE'; -- XXCOI:在庫組織コード
+  cv_tkn_effective_date      CONSTANT VARCHAR2(25) := 'P_EFFECTIVE_DATE';         -- 設定記帳日
+-- == 2009/07/14 V1.4 Added END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -192,13 +205,22 @@ AS
 -- == 2009/06/04 V1.3 Added START ===============================================================
   gt_trans_type_std_cost_upd     mtl_transaction_types.transaction_type_id%TYPE;      -- 取引タイプID（標準原価更新）
 -- == 2009/06/04 V1.3 Added END   ===============================================================
+-- == 2009/07/14 V1.4 Added START ===============================================================
+  gt_effective_date              gl_je_lines.effective_date%TYPE;                     -- 記帳日
+  gt_last_period_date            gl_periods.end_date%TYPE;                            -- 前会計期間最終日
+  gt_min_org_acct_date           org_acct_periods.period_start_date%TYPE;             -- 在庫会計期間オープン最古日付
+  gt_org_code                    mtl_parameters.organization_code%TYPE;               -- 在庫組織コード
+-- == 2009/07/14 V1.4 Added END   ===============================================================
 --
   /**********************************************************************************
    * Procedure Name   : init
    * Description      : 初期処理 (A-1)
    ***********************************************************************************/
   PROCEDURE init(
-      ov_errbuf       OUT VARCHAR2      -- エラー・メッセージ           --# 固定 #
+-- == 2009/07/14 V1.4 Added START ===============================================================
+      iv_effective_date  IN  VARCHAR2      -- 記帳日
+-- == 2009/07/14 V1.4 Added END   ===============================================================
+    , ov_errbuf       OUT VARCHAR2      -- エラー・メッセージ           --# 固定 #
     , ov_retcode      OUT VARCHAR2      -- リターン・コード             --# 固定 #
     , ov_errmsg       OUT VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
   IS
@@ -242,6 +264,9 @@ AS
 -- == 2009/06/04 V1.3 Added START ===============================================================
     lt_std_cost_upd  mtl_transaction_types.transaction_type_name%TYPE;                              -- 取引タイプ名（標準原価更新）
 -- == 2009/06/04 V1.3 Added END   ===============================================================
+-- == 2009/07/14 V1.4 Added START ===============================================================
+    lv_effective_date  VARCHAR2(10);                                                                -- 記帳日
+-- == 2009/07/14 V1.4 Added END   ===============================================================
 --
   BEGIN
 --
@@ -250,13 +275,23 @@ AS
     ov_retcode := cv_status_normal;
 --
 --###########################  固定部 END   ############################
-    -- ==============================================================
-    -- コンカレント入力パラメータなしメッセージ出力
-    -- ==============================================================
+-- == 2009/07/14 V1.4 Mod START ===============================================================
+--    -- ==============================================================
+--    -- コンカレント入力パラメータなしメッセージ出力
+--    -- ==============================================================
+--    gv_out_msg := xxccp_common_pkg.get_msg(
+--                      iv_application => cv_appl_short_name_xxccp
+--                    , iv_name        => cv_msg_no_prm
+--                  );
+    --==============================================================
+    --コンカレントパラメータ出力
+    --==============================================================
     gv_out_msg := xxccp_common_pkg.get_msg(
-                      iv_application => cv_appl_short_name_xxccp
-                    , iv_name        => cv_msg_no_prm
-                  );
+                      iv_application  => cv_appl_short_name_xxcoi
+                    , iv_name         => cv_msg_code_xxcoi_10384
+                    , iv_token_name1  => cv_tkn_effective_date
+                    , iv_token_value1 => SUBSTRB ( iv_effective_date , 1 , 10)
+                   );
     FND_FILE.PUT_LINE(
         which  => FND_FILE.OUTPUT
       , buff   => gv_out_msg
@@ -265,6 +300,7 @@ AS
         which  => FND_FILE.LOG
       , buff   => gv_out_msg
     );
+-- == 2009/07/14 V1.4 Mod END ===============================================================
     -- 空行出力
     FND_FILE.PUT_LINE(
         which  => FND_FILE.OUTPUT
@@ -423,7 +459,56 @@ AS
     WHERE   mtt.transaction_type_name   =   lt_std_cost_upd
     AND     TRUNC(SYSDATE)             <=   TRUNC(NVL(mtt.disable_date, SYSDATE));
 -- == 2009/06/04 V1.3 Added END   ===============================================================
+-- == 2009/07/14 V1.4 Added START ===============================================================
+    -- ==============================================================
+    -- 在庫組織コード取得
+    -- ==============================================================
+    gt_org_code := fnd_profile.value( cv_prf_org );
+    IF( gt_org_code IS NULL ) THEN
+      lv_tkn_profile := cv_prf_org;
+      RAISE org_code_expt;
+    END IF;
+--
+    -- ==============================================================
+    -- 在庫原価振替設定記帳日取得
+    -- ==============================================================
+    lv_effective_date := SUBSTRB(iv_effective_date,1,10);
+    gt_effective_date := NVL ( TO_DATE( lv_effective_date ,'YYYY/MM/DD') , TRUNC(xxccp_common_pkg2.get_process_date) );
+--
+    -- ==============================================================
+    -- 前月会計期間末日取得
+    -- ==============================================================
+    SELECT gp.end_date
+    INTO   gt_last_period_date
+    FROM   gl_periods gp
+    WHERE  gp.period_set_name = gt_sales_calendar
+    AND    ADD_MONTHS ( xxccp_common_pkg2.get_process_date , -1 ) BETWEEN gp.start_date AND gp.end_date
+    AND    gp.adjustment_period_flag = cv_error_record;
+--
+    -- ==============================================================
+    -- 資材配賦抽出条件用在庫会計期間オープン在庫日付取得
+    -- ==============================================================
+    SELECT MIN(oap.period_start_date)
+    INTO   gt_min_org_acct_date
+    FROM   org_acct_periods oap
+    WHERE  oap.organization_id = xxcoi_common_pkg.get_organization_id ( gt_org_code )
+    AND    oap.open_flag = cv_normal_record;
+-- == 2009/07/14 V1.4 Added END   ===============================================================
   EXCEPTION
+-- == 2009/07/14 V1.4 Added START ===============================================================
+    -- *** プロファイル値取得例外 ***
+    WHEN org_code_expt THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_short_name_xxcoi
+                     , iv_name         => cv_msg_code_xxcoi_00005
+                     , iv_token_name1  => cv_tkn_profile
+                     , iv_token_value1 => cv_prf_org
+                   );
+      lv_errbuf  := lv_errmsg;
+      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;                                            --# 任意 #
+-- == 2009/07/14 V1.4 Added END   ===============================================================
     -- *** プロファイル値取得例外 ***
     WHEN profile_expt THEN
       lv_errmsg := xxccp_common_pkg.get_msg(
@@ -509,7 +594,11 @@ AS
     -- 資材配賦情報取得
     CURSOR mtl_txn_acct_cur
     IS
-      SELECT mta.transaction_id          AS mta_transaction_id           --  1.在庫取引ID
+-- == 2009/07/14 V1.4 Added START ===============================================================
+--      SELECT mta.transaction_id          AS mta_transaction_id           --  1.在庫取引ID
+      SELECT /*+ index(gcc xxcoi_gl_code_combinations_n34) */
+             mta.transaction_id          AS mta_transaction_id           --  1.在庫取引ID
+-- == 2009/07/14 V1.4 Added End ===============================================================
            , gcc.segment2                AS gcc_dept_code                --  2.部門コード
            , CASE WHEN gcc.segment3      = gt_aff3_shizuoka_factory THEN --   5.勘定科目コードが静岡工場勘定の場合
                     gcc.segment2                                         --     2.部門コード
@@ -545,6 +634,9 @@ AS
 -- == 2009/06/04 V1.3 Added START ===============================================================
       AND    mta.transaction_id          = mmt.transaction_id            -- 取引ID
 -- == 2009/06/04 V1.3 Added END   ===============================================================
+-- == 2009/07/14 V1.4 Added START ===============================================================
+      AND    mta.transaction_date        BETWEEN gt_min_org_acct_date AND TRUNC(SYSDATE)
+-- == 2009/07/14 V1.4 Added END   ===============================================================
       ORDER BY mta.inventory_item_id                                     -- 品目ID
              , mta.transaction_date;                                     -- 取引日
 --
@@ -1000,7 +1092,12 @@ AS
       , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_subacct_code           --  5.補助科目コード
 -- == 2009/03/26 V1.1 Added END   ===============================================================
       , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_inventory_item_id      --  6.品目ID
-      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_date       --  7.取引日
+-- == 2009/07/14 V1.4 Mod Start ===============================================================
+--      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_date       --  7.取引日
+      , CASE WHEN g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_date > gt_last_period_date
+        THEN gt_effective_date
+        ELSE gt_last_period_date END                                         --  7.取引日
+-- == 2009/07/14 V1.4 Mod END   ===============================================================
       , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_value      --  8.取引金額
       , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_primary_quantity       --  9.取引数量
       , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_base_transaction_value -- 10.基準単位金額
@@ -1279,6 +1376,9 @@ AS
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
+-- == 2009/07/14 V1.4 Added START ===============================================================
+    iv_effective_date  IN VARCHAR2, -- 記帳日
+-- == 2009/07/14 V1.4 Added END   ===============================================================
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1332,7 +1432,10 @@ AS
     -- 初期処理 (A-1)
     -- ===============================
     init(
-        ov_errbuf       => lv_errbuf        -- エラー・メッセージ
+-- == 2009/07/14 V1.4 Added START ===============================================================
+        iv_effective_date  => iv_effective_date   -- 記帳日
+-- == 2009/07/14 V1.4 Added END   ===============================================================
+      , ov_errbuf       => lv_errbuf        -- エラー・メッセージ
       , ov_retcode      => lv_retcode       -- リターン・コード
       , ov_errmsg       => lv_errmsg        -- ユーザー・エラー・メッセージ
     );
@@ -1478,6 +1581,9 @@ AS
   PROCEDURE main(
       errbuf          OUT VARCHAR2     --  エラーメッセージ #固定#
     , retcode         OUT VARCHAR2     --  エラーコード     #固定#
+-- == 2009/07/14 V1.4 Added START ===============================================================
+    , iv_effective_date  IN  VARCHAR2  --  記帳日
+-- == 2009/07/14 V1.4 Added END   ===============================================================
   )
 --
 --###########################  固定部 START   ###########################
@@ -1528,7 +1634,10 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
-        ov_errbuf       => lv_errbuf        -- エラー・メッセージ           --# 固定 #
+-- == 2009/07/14 V1.4 Added START ===============================================================
+        iv_effective_date  => iv_effective_date   --  記帳日
+-- == 2009/07/14 V1.4 Added END   ===============================================================
+      , ov_errbuf       => lv_errbuf        -- エラー・メッセージ           --# 固定 #
       , ov_retcode      => lv_retcode       -- リターン・コード             --# 固定 #
       , ov_errmsg       => lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
     );
