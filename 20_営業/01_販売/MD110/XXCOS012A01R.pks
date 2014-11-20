@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A01R (spec)
  * Description      : ピックリスト（チェーン・製品別トータル）
  * MD.050           : ピックリスト（チェーン・製品別トータル） MD050_COS_012_A01
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -38,6 +38,13 @@ AS
  *  2010/02/02    1.8   Y.Kikuchi        [E_本稼動_01161]以下の抽出条件を除外する。
  *                                                       ・出荷元保管場所の条件
  *                                                       ・通過在庫型区分
+ *  2010/02/12    1.9   Y.Kikuchi        [E_本稼動_01551]
+ *                                        ・受注テーブルにない受注情報のピッキングリストを
+ *                                          ＥＤＩ情報テーブルから出力可能にする
+ *                                        ・ＥＤＩ（受注有）の抽出条件を情報区分をNULL,'2'に変更する
+ *                                        ・エラー品目の明細レベル集約条件を商品コード２のみにする
+ *                                        ・単位換算マスタの結合条件：無効日も外部結合項目に追加する
+ *                                        ・クイックコード適用開始日～終了日判定日付を受注日に変更する
  *
  *****************************************************************************************/
 --
@@ -48,7 +55,11 @@ AS
     iv_login_base_code        IN      VARCHAR2,         -- 1.拠点
     iv_login_chain_store_code IN      VARCHAR2,         -- 2.チェーン店
     iv_request_date_from      IN      VARCHAR2,         -- 3.着日（From）
-    iv_request_date_to        IN      VARCHAR2)         -- 4.着日（To）
+-- 2010/02/12 Ver1.9 Add Start *
+--    iv_request_date_to        IN      VARCHAR2)         -- 4.着日（To）
+    iv_request_date_to        IN      VARCHAR2,         -- 4.着日（To）
+    iv_sales_output_type      IN      VARCHAR2)         -- 5.売上対象出力区分
+-- 2010/02/12 Ver1.9 Add End   *
   ;
 END XXCOS012A01R;
 /

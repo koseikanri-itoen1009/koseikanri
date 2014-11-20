@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A01R (body)
  * Description      : ピックリスト（チェーン・製品別トータル）
  * MD.050           : ピックリスト（チェーン・製品別トータル） MD050_COS_012_A01
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,13 @@ AS
  *  2010/02/02    1.8   Y.Kikuchi        [E_本稼動_01161]以下の抽出条件を除外する。
  *                                                       ・出荷元保管場所の条件
  *                                                       ・通過在庫型区分
+ *  2010/02/12    1.9   Y.Kikuchi        [E_本稼動_01551]
+ *                                        ・受注テーブルにない受注情報のピッキングリストを
+ *                                          ＥＤＩ情報テーブルから出力可能にする
+ *                                        ・ＥＤＩ（受注有）の抽出条件を情報区分をNULL,'2'に変更する
+ *                                        ・エラー品目の明細レベル集約条件を商品コード２のみにする
+ *                                        ・単位換算マスタの結合条件：無効日も外部結合項目に追加する
+ *                                        ・クイックコード適用開始日～終了日判定日付を受注日に変更する
  *
  *****************************************************************************************/
 --
@@ -99,7 +106,9 @@ AS
   -- ===============================
   -- ユーザー定義例外
   -- ===============================
-  global_proc_date_err_expt EXCEPTION;
+-- 2010/02/12 Ver1.9 Del Start *
+--  global_proc_date_err_expt EXCEPTION;
+-- 2010/02/12 Ver1.9 Del End   *
   global_api_err_expt       EXCEPTION;
   global_call_api_expt      EXCEPTION;
   global_date_reversal_expt EXCEPTION;
@@ -127,6 +136,10 @@ AS
   --アプリケーション短縮名
   ct_xxcos_appl_short_name  CONSTANT fnd_application.application_short_name%TYPE
                                      := 'XXCOS';                      --販物短縮アプリ名
+-- 2010/02/12 Ver1.9 Add Start *
+  cv_xxcoi_short_name       CONSTANT fnd_application.application_short_name%TYPE
+                                     := 'XXCOI';                      -- 在庫領域短縮アプリ名
+-- 2010/02/12 Ver1.9 Add End   *
   --販物メッセージ
   ct_msg_lock_err           CONSTANT fnd_new_messages.message_name%TYPE
                                      := 'APP-XXCOS1-00001';           --ロック取得エラーメッセージ
@@ -140,8 +153,10 @@ AS
                                      := 'APP-XXCOS1-00012';           --データ削除エラーメッセージ
   ct_msg_select_data_err    CONSTANT fnd_new_messages.message_name%TYPE
                                      := 'APP-XXCOS1-00013';           --データ取得エラーメッセージ
-  ct_msg_process_date_err   CONSTANT fnd_new_messages.message_name%TYPE
-                                     := 'APP-XXCOS1-00014';           --業務日付取得エラー
+-- 2010/02/12 Ver1.9 Del Start *
+--  ct_msg_process_date_err   CONSTANT fnd_new_messages.message_name%TYPE
+--                                     := 'APP-XXCOS1-00014';           --業務日付取得エラー
+-- 2010/02/12 Ver1.9 Del End   *
   ct_msg_call_api_err       CONSTANT fnd_new_messages.message_name%TYPE
                                      := 'APP-XXCOS1-00017';           --API呼出エラーメッセージ
   ct_msg_nodata_err         CONSTANT fnd_new_messages.message_name%TYPE
@@ -164,6 +179,14 @@ AS
                                      := 'APP-XXCOS1-12603';           --着日(To)
   ct_msg_rpt_wrk_tbl        CONSTANT fnd_new_messages.message_name%TYPE
                                      := 'APP-XXCOS1-12604';           --帳票ワークテーブル
+-- 2010/02/12 Ver1.9 Add Start *
+  cv_msg_org_cd_err         CONSTANT fnd_new_messages.message_name%TYPE
+                                     := 'APP-XXCOI1-00005';           -- 在庫組織コード取得エラーメッセージ
+  cv_msg_org_id_err         CONSTANT fnd_new_messages.message_name%TYPE
+                                     := 'APP-XXCOI1-00006';           -- 在庫組織ID取得エラーメッセージ
+  ct_msg_get_hon_uom        CONSTANT fnd_new_messages.message_name%TYPE
+                                     := 'APP-XXCOS1-12605';           -- XXCOS:本単位コード(メッセージ文字列)
+-- 2010/02/12 Ver1.9 Add End   *
   --トークン
   cv_tkn_table              CONSTANT VARCHAR2(100) := 'TABLE';                  --テーブル
   cv_tkn_date_from          CONSTANT VARCHAR2(100) := 'DATE_FROM';              --日付（From)
@@ -176,7 +199,14 @@ AS
   cv_tkn_param2             CONSTANT VARCHAR2(100) := 'PARAM2';                 --第２入力パラメータ
   cv_tkn_param3             CONSTANT VARCHAR2(100) := 'PARAM3';                 --第３入力パラメータ
   cv_tkn_param4             CONSTANT VARCHAR2(100) := 'PARAM4';                 --第４入力パラメータ
+-- 2010/02/12 Ver1.9 Add Start *
+  cv_tkn_param5             CONSTANT VARCHAR2(100) := 'PARAM5';                 --第５入力パラメータ
+-- 2010/02/12 Ver1.9 Add End   *
   cv_tkn_request            CONSTANT VARCHAR2(100) := 'REQUEST';                --要求ＩＤ
+-- 2010/02/12 Ver1.9 Add Start *
+  cv_tkn_nm_profile2        CONSTANT VARCHAR2(100) :=  'PRO_TOK';               --プロファイル名(在庫領域)
+  cv_tkn_nm_org_cd          CONSTANT VARCHAR2(100) :=  'ORG_CODE_TOK';          --在庫組織コード
+-- 2010/02/12 Ver1.9 Add End   *
   --プロファイル名称
   ct_prof_org_id            CONSTANT fnd_profile_options.profile_option_name%TYPE
                                      := 'ORG_ID';
@@ -184,6 +214,12 @@ AS
                                      := 'XXCOS1_MAX_DATE';
   ct_prof_case_uom_code     CONSTANT fnd_profile_options.profile_option_name%TYPE
                                      := 'XXCOS1_CASE_UOM_CODE';
+-- 2010/02/12 Ver1.9 Add Start *
+  cv_prof_org               CONSTANT fnd_profile_options.profile_option_name%TYPE
+                                     :=  'XXCOI1_ORGANIZATION_CODE';            -- プロファイル名(在庫組織コード)
+  ct_hon_uom_code           CONSTANT  fnd_profile_options.profile_option_name%TYPE
+                                     := 'XXCOS1_HON_UOM_CODE';                  -- プロファイル名(本単位コード)
+-- 2010/02/12 Ver1.9 Add End   *
   --クイックコードタイプ
   ct_qct_order_type         CONSTANT fnd_lookup_types.lookup_type%TYPE
                                      := 'XXCOS1_TRAN_TYPE_MST_012_A01';
@@ -263,6 +299,12 @@ AS
   cv_info_class_01          CONSTANT  VARCHAR2(2)   := '01';          --情報区分：「01」
   cv_info_class_02          CONSTANT  VARCHAR2(2)   := '02';          --情報区分：「02」
 -- 2009/07/10 Ver1.6 Add End   *
+-- 2010/02/12 Ver1.9 Add Start *
+  cv_info_class_04          CONSTANT  VARCHAR2(2)   := '04';          --情報区分：「04」
+  -- 売上対象出力区分
+  cv_sales_output_type_1    CONSTANT  VARCHAR2(2)   := '1';           --売上対象出力区分：「1」(対象)
+  cv_sales_output_type_2    CONSTANT  VARCHAR2(2)   := '2';           --売上対象出力区分：「2」(対象外)
+-- 2010/02/12 Ver1.9 Add End   *
 -- 2009/08/10 Ver1.7 Del Start *
   -- 言語コード
   ct_lang                   CONSTANT fnd_lookup_values.language%TYPE := USERENV('LANG');
@@ -290,14 +332,24 @@ AS
   gv_login_chain_store_code           VARCHAR2(4);                    -- チェーン店
   gd_request_date_from                DATE;                           -- 着日(From)
   gd_request_date_to                  DATE;                           -- 着日(To)
+-- 2010/02/12 Ver1.9 Add Start *
+  gv_sales_output_type                VARCHAR2(1);                    -- 売上対象出力区分
+-- 2010/02/12 Ver1.9 Add End   *
   --初期取得
-  gd_process_date                     DATE;                           -- 業務日付
+-- 2010/02/12 Ver1.9 Del Start *
+--  gd_process_date                     DATE;                           -- 業務日付
+-- 2010/02/12 Ver1.9 Del End   *
   gn_org_id                           NUMBER;                         -- 営業単位
   gd_max_date                         DATE;                           -- MAX日付
   gt_case_uom_code                    mtl_units_of_measure_tl.uom_code%TYPE;
                                                                       -- ケース単位コード
   --帳票ワーク内部テーブル
   g_rpt_data_tab                      g_rpt_data_ttype;
+-- 2010/02/12 Ver1.9 Add Start *
+  gt_org_id                           mtl_parameters.organization_id%TYPE;
+                                                                      --在庫組織ID
+  gv_hon_uom_code                     VARCHAR2(128);                  --本単位コード
+-- 2010/02/12 Ver1.9 Add End   *
 --
   -- ===============================
   -- ユーザー定義関数
@@ -375,6 +427,9 @@ AS
     iv_login_chain_store_code IN      VARCHAR2,         -- 2.チェーン店
     iv_request_date_from      IN      VARCHAR2,         -- 3.着日（From）
     iv_request_date_to        IN      VARCHAR2,         -- 4.着日（To）
+-- 2010/02/12 Ver1.9 Add Start *
+    iv_sales_output_type      IN      VARCHAR2,         -- 5.売上対象出力区分
+-- 2010/02/12 Ver1.9 Add End   *
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -425,7 +480,12 @@ AS
                                    iv_token_name3        => cv_tkn_param3,
                                    iv_token_value3       => iv_request_date_from,
                                    iv_token_name4        => cv_tkn_param4,
-                                   iv_token_value4       => iv_request_date_to
+-- 2010/02/12 Ver1.9 Add Start *
+--                                   iv_token_value4       => iv_request_date_to
+                                   iv_token_value4       => iv_request_date_to,
+                                   iv_token_name5        => cv_tkn_param5,
+                                   iv_token_value5       => iv_sales_output_type
+-- 2010/02/12 Ver1.9 Add End *
                                  );
     --
     fnd_file.put_line(
@@ -452,6 +512,9 @@ AS
     gd_request_date_to          := TO_DATE( TO_CHAR( TO_DATE(iv_request_date_to,   cv_fmt_date)
                                                     ,cv_fmt_date) || cv_time_max
                                            ,cv_fmt_datetime );
+-- 2010/02/12 Ver1.9 Add Start *
+    gv_sales_output_type        := iv_sales_output_type;
+-- 2010/02/12 Ver1.9 Add End *
 -- 2009/08/10 Ver1.7 Mod Start *
 --
     --==============================================================
@@ -511,6 +574,9 @@ AS
     lv_profile_name  VARCHAR2(5000);
     lv_req_dt_from   VARCHAR2(5000);
     lv_req_dt_to     VARCHAR2(5000);
+-- 2010/02/12 Ver1.9 Add Start *
+    lt_org_cd        mtl_parameters.organization_code%TYPE;  -- 在庫組織コード
+-- 2010/02/12 Ver1.9 Add End   *
 --
     -- *** ローカル・カーソル ***
 --
@@ -524,15 +590,17 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    --==================================
-    -- 1.業務日付取得
-    --==================================
-    gd_process_date           := TRUNC( xxccp_common_pkg2.get_process_date );
---
-    IF ( gd_process_date IS NULL ) THEN
-      RAISE global_proc_date_err_expt;
-    END IF;
---
+-- 2010/02/12 Ver1.9 Del Start *
+--    --==================================
+--    -- 1.業務日付取得
+--    --==================================
+--    gd_process_date           := TRUNC( xxccp_common_pkg2.get_process_date );
+----
+--    IF ( gd_process_date IS NULL ) THEN
+--      RAISE global_proc_date_err_expt;
+--    END IF;
+----
+-- 2010/02/12 Ver1.9 Del End   *
     --==================================
     -- 2.MO:営業単位
     --==================================
@@ -592,15 +660,63 @@ AS
       RAISE global_date_reversal_expt;
     END IF;
 --
-  EXCEPTION
-    -- *** 業務日付取得例外ハンドラ ***
-    WHEN global_proc_date_err_expt THEN
-      ov_errmsg               := xxccp_common_pkg.get_msg(
+-- 2010/02/12 Ver1.9 Add Start *
+--
+    --========================================
+    -- 6.在庫組織コード取得処理
+    --========================================
+    lt_org_cd := FND_PROFILE.VALUE( cv_prof_org );
+    IF ( lt_org_cd IS NULL ) THEN
+      lv_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcoi_short_name,
+        iv_name               =>  cv_msg_org_cd_err,
+        iv_token_name1        =>  cv_tkn_nm_profile2,
+        iv_token_value1       =>  cv_prof_org
+      );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    --========================================
+    -- 7.在庫組織ID取得処理
+    --========================================
+    gt_org_id := xxcoi_common_pkg.get_organization_id( lt_org_cd );
+    IF ( gt_org_id IS NULL ) THEN
+      lv_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcoi_short_name,
+        iv_name               =>  cv_msg_org_id_err,
+        iv_token_name1        =>  cv_tkn_nm_org_cd,
+        iv_token_value1       =>  lt_org_cd
+      );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    --========================================
+    -- 8.XXCOS:本単位コードの取得
+    --========================================
+    gv_hon_uom_code := FND_PROFILE.VALUE( ct_hon_uom_code );
+    -- XXCOS:本単位コードの取得ができない場合のエラー編集
+    IF ( gv_hon_uom_code IS NULL ) THEN
+      lv_profile_name         := xxccp_common_pkg.get_msg(
                                    iv_application        => ct_xxcos_appl_short_name,
-                                   iv_name               => ct_msg_process_date_err
+                                   iv_name               => ct_msg_get_hon_uom
                                  );
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
-      ov_retcode := cv_status_error;
+      RAISE global_get_profile_expt;
+    END IF;
+--
+-- 2010/02/12 Ver1.9 Add End   *
+  EXCEPTION
+-- 2010/02/12 Ver1.9 Del Start *
+--    -- *** 業務日付取得例外ハンドラ ***
+--    WHEN global_proc_date_err_expt THEN
+--      ov_errmsg               := xxccp_common_pkg.get_msg(
+--                                   iv_application        => ct_xxcos_appl_short_name,
+--                                   iv_name               => ct_msg_process_date_err
+--                                 );
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+--      ov_retcode := cv_status_error;
+-- 2010/02/12 Ver1.9 Del End   *
     -- *** プロファイル例外ハンドラ ***
     WHEN global_get_profile_expt THEN
       ov_errmsg               := xxccp_common_pkg.get_msg(
@@ -730,8 +846,11 @@ AS
     lv_key_edi_item_err_flag            VARCHAR2(1);                  --ＥＤＩ品目エラーフラグ
     lt_key_item_code2                   xxcos_edi_lines.product_code2%TYPE;
                                                                       --商品コード２
-    lt_key_item_name2                   xxcos_edi_lines.product_name2_alt%TYPE;
-                                                                      --商品名２
+-- 2010/02/12 Ver1.9 Mod Start *
+--    lt_key_item_name2                   xxcos_edi_lines.product_name2_alt%TYPE;
+--                                                                      --商品名２
+    lt_key_item_name2                   xxcos_rep_pick_deli_pro.item_name%TYPE;
+-- 2010/02/12 Ver1.9 Mod End   *
     lt_key_case_content                 mtl_uom_class_conversions.conversion_rate%TYPE;
                                                                       --ケース入数
 --
@@ -763,7 +882,15 @@ AS
                                               item_name2,                     --商品名２
         NVL( mucc.conversion_rate, ct_conv_rate_default )
                                               case_content,                   --ケース入数
-        rpcpi.order_quantity_uom              order_quantity_uom,             --受注単位コード
+-- 2010/02/12 Ver1.9 Mod Start *
+--        rpcpi.order_quantity_uom              order_quantity_uom,             --受注単位コード
+        CASE
+          WHEN rpcpi.sales_output_type = cv_sales_output_type_2
+           AND xeiet.lookup_code IS NOT NULL
+          THEN gv_hon_uom_code
+          ELSE rpcpi.order_quantity_uom
+        END                                   order_quantity_uom,             --受注単位コード
+-- 2010/02/12 Ver1.9 Mod End   *
         rpcpi.ordered_quantity                ordered_quantity                --受注数量
       FROM
         mtl_uom_class_conversions             mucc,                           --単位変換マスタ
@@ -816,7 +943,11 @@ AS
             NULL                              product_name2_alt,              --商品名２
             TRUNC( ooha.ordered_date )        ordered_date,                   --受注日
             oola.order_quantity_uom           order_quantity_uom,             --受注単位コード
-            oola.ordered_quantity             ordered_quantity                --受注数量
+-- 2010/02/12 Ver1.9 Add Start *
+--            oola.ordered_quantity             ordered_quantity                --受注数量
+            oola.ordered_quantity             ordered_quantity,               --受注数量
+            cv_sales_output_type_1            sales_output_type               --売上対象出力区分
+-- 2010/02/12 Ver1.9 Add End   *
           FROM
             oe_order_headers_all              ooha,                           --受注ヘッダテーブル
             oe_order_lines_all                oola,                           --受注明細テーブル
@@ -833,7 +964,12 @@ AS
             mtl_secondary_inventories         msi,                            --保管場所マスタ
             mtl_system_items_b                msib                            --品目マスタ
           WHERE
-            ooha.header_id                    = oola.header_id
+-- 2010/02/12 Ver1.9 Add Start *
+--              ooha.header_id                    = oola.header_id
+              NVL( gv_sales_output_type ,cv_sales_output_type_1 )
+                                              = cv_sales_output_type_1
+          AND ooha.header_id                  = oola.header_id
+-- 2010/02/12 Ver1.9 Add End   *
           AND ooha.order_source_id            = oos.order_source_id
           AND EXISTS(
                 SELECT
@@ -854,8 +990,12 @@ AS
 -- 2009/08/10 Ver1.7 Mod End   *
                 AND flv.lookup_code           LIKE ct_qcc_ord_src_manual
                 AND flv.meaning               = oos.name
-                AND gd_process_date           >= flv.start_date_active
-                AND gd_process_date           <= NVL( flv.end_date_active, gd_max_date )
+-- 2010/02/12 Ver1.9 Mod Start *
+--                AND gd_process_date           >= flv.start_date_active
+--                AND gd_process_date           <= NVL( flv.end_date_active, gd_max_date )
+                AND TRUNC( ooha.ordered_date )  >= flv.start_date_active
+                AND TRUNC( ooha.ordered_date )  <= NVL( flv.end_date_active, gd_max_date )
+-- 2010/02/12 Ver1.9 Mod End   *
 -- 2009/08/10 Ver1.7 Mod Start *
 --                AND flv.language              = USERENV( 'LANG' )
 --                AND ROWNUM                    = 1
@@ -885,8 +1025,12 @@ AS
 -- 2009/08/10 Ver1.7 Mod End   *
                 AND flv.lookup_code           LIKE ct_qcc_order_type
                 AND flv.meaning               = ottt.name
-                AND gd_process_date           >= flv.start_date_active
-                AND gd_process_date           <= NVL( flv.end_date_active, gd_max_date )
+-- 2010/02/12 Ver1.9 Mod Start *
+--                AND gd_process_date           >= flv.start_date_active
+--                AND gd_process_date           <= NVL( flv.end_date_active, gd_max_date )
+                AND TRUNC( ooha.ordered_date )  >= flv.start_date_active
+                AND TRUNC( ooha.ordered_date )  <= NVL( flv.end_date_active, gd_max_date )
+-- 2010/02/12 Ver1.9 Mod End   *
                 AND flv.enabled_flag          = ct_enabled_flag_yes
 -- 2009/08/10 Ver1.7 Mod Start *
 --                AND flv.language              = USERENV( 'LANG' )
@@ -942,8 +1086,12 @@ AS
 -- 2009/08/10 Ver1.7 Mod End   *
                 AND flv.lookup_code           LIKE ct_qcc_cus_class_mst1
                 AND flv.meaning               = hca2.customer_class_code
-                AND gd_process_date           >= flv.start_date_active
-                AND gd_process_date           <= NVL( flv.end_date_active, gd_max_date )
+-- 2010/02/12 Ver1.9 Mod Start *
+--                AND gd_process_date           >= flv.start_date_active
+--                AND gd_process_date           <= NVL( flv.end_date_active, gd_max_date )
+                AND TRUNC( ooha.ordered_date )  >= flv.start_date_active
+                AND TRUNC( ooha.ordered_date )  <= NVL( flv.end_date_active, gd_max_date )
+-- 2010/02/12 Ver1.9 Mod End   *
                 AND flv.enabled_flag          = ct_enabled_flag_yes
 -- 2009/08/10 Ver1.7 Mod Start *
 --                AND flv.language              = USERENV( 'LANG' )
@@ -973,8 +1121,12 @@ AS
 -- 2009/08/10 Ver1.7 Mod End   *
                 AND flv.lookup_code           LIKE ct_qcc_cus_class_mst2
                 AND flv.meaning               = hca3.customer_class_code
-                AND gd_process_date           >= flv.start_date_active
-                AND gd_process_date           <= NVL( flv.end_date_active, gd_max_date )
+-- 2010/02/12 Ver1.9 Mod Start *
+--                AND gd_process_date           >= flv.start_date_active
+--                AND gd_process_date           <= NVL( flv.end_date_active, gd_max_date )
+                AND TRUNC( ooha.ordered_date )  >= flv.start_date_active
+                AND TRUNC( ooha.ordered_date )  <= NVL( flv.end_date_active, gd_max_date )
+-- 2010/02/12 Ver1.9 Mod End   *
                 AND flv.enabled_flag          = ct_enabled_flag_yes
 -- 2009/08/10 Ver1.7 Mod Start *
 --                AND flv.language              = USERENV( 'LANG' )
@@ -1011,8 +1163,12 @@ AS
                 WHERE   look_val.language     = ct_lang
                 AND     msib.segment1         = look_val.lookup_code
 -- 2009/08/10 Ver1.7 Mod End   *
-                AND     gd_process_date      >= look_val.start_date_active
-                AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+-- 2010/02/12 Ver1.9 Mod Start *
+--                AND     gd_process_date      >= look_val.start_date_active
+--                AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+                AND     TRUNC( ooha.ordered_date ) >= look_val.start_date_active
+                AND     TRUNC( ooha.ordered_date ) <= NVL(look_val.end_date_active, gd_max_date)
+-- 2010/02/12 Ver1.9 Mod End   *
                 AND     look_val.enabled_flag = ct_enabled_flag_yes
                 AND     look_val.lookup_type = ct_xxcos1_no_inv_item_code )
           UNION ALL
@@ -1037,10 +1193,18 @@ AS
             msib.segment1                     item_code,                      --商品コード
             msib.description                  item_name,                      --商品名
             xel.product_code2                 product_code2,                  --商品コード２
-            xel.product_name2_alt             product_name2_alt,              --商品名２
+-- 2010/02/12 Ver1.9 Mod Start *
+--            xel.product_name2_alt             product_name2_alt,              --商品名２
+            NVL( xel.product_name2_alt || xel.item_standard2
+               , xel.product_name1_alt || xel.item_standard1 ) product_name2_alt,   --商品名２（商品名ｘ（カナ）＋規格ｘ）
+-- 2010/02/12 Ver1.9 Mod End   *
             TRUNC( ooha.ordered_date )        ordered_date,                   --受注日
             oola.order_quantity_uom           order_quantity_uom,             --受注単位コード
-            oola.ordered_quantity             ordered_quantity                --受注数量
+-- 2010/02/12 Ver1.9 Add Start *
+--            oola.ordered_quantity             ordered_quantity                --受注数量
+            oola.ordered_quantity             ordered_quantity,               --受注数量
+            cv_sales_output_type_1                                            --売上対象出力区分
+-- 2010/02/12 Ver1.9 Add End   *
           FROM
             oe_order_headers_all              ooha,                           --受注ヘッダテーブル
             oe_order_lines_all                oola,                           --受注明細テーブル
@@ -1059,7 +1223,12 @@ AS
             xxcos_edi_headers                 xeh,                            --EDIヘッダ情報テーブル
             xxcos_edi_lines                   xel                             --EDI明細情報テーブル
           WHERE
-            ooha.header_id                    = oola.header_id
+-- 2010/02/12 Ver1.9 Add Start *
+--              ooha.header_id                    = oola.header_id
+              NVL( gv_sales_output_type ,cv_sales_output_type_1 )
+                                              = cv_sales_output_type_1
+          AND ooha.header_id                  = oola.header_id
+-- 2010/02/12 Ver1.9 Add End   *
           AND ooha.order_source_id            = oos.order_source_id
           AND EXISTS(
                 SELECT
@@ -1226,7 +1395,10 @@ AS
           AND ooha.org_id                     = gn_org_id
 -- 2009/07/10 Ver1.6 Add Start *
           AND (   ooha.global_attribute3 IS NULL
-               OR ooha.global_attribute3 IN ( cv_info_class_01, cv_info_class_02 ) )
+-- 2010/02/12 Ver1.9 Mod Start *
+--               OR ooha.global_attribute3 IN ( cv_info_class_01, cv_info_class_02 ) )
+               OR ooha.global_attribute3 = cv_info_class_02 )
+-- 2010/02/12 Ver1.9 Mod End   *
 -- 2009/07/10 Ver1.6 Add End   *
 -- 2009/08/10 Ver1.7 Mod Start *
 --          AND msib.segment1         NOT IN (
@@ -1252,8 +1424,12 @@ AS
                 WHERE   look_val.language     = ct_lang
                 AND     look_val.lookup_code  = msib.segment1
 -- 2009/08/10 Ver1.7 Mod End   *
-                AND     gd_process_date      >= look_val.start_date_active
-                AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+-- 2010/02/12 Ver1.9 Mod Start *
+--                AND     gd_process_date      >= look_val.start_date_active
+--                AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+                AND     TRUNC( ooha.ordered_date ) >= look_val.start_date_active
+                AND     TRUNC( ooha.ordered_date ) <= NVL(look_val.end_date_active, gd_max_date)
+-- 2010/02/12 Ver1.9 Mod End   *                      
                 AND     look_val.enabled_flag = ct_enabled_flag_yes
                 AND     look_val.lookup_type = ct_xxcos1_no_inv_item_code
 -- 2009/08/10 Ver1.7 Mod Start *
@@ -1281,15 +1457,156 @@ AS
                           WHERE   look_val.language    = ct_lang
                           AND     look_val.lookup_code = msib.segment1
 -- 2009/08/10 Ver1.7 Mod End   *
-                          AND     gd_process_date      >= look_val.start_date_active
-                          AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+-- 2010/02/12 Ver1.9 Mod Start *
+--                          AND     gd_process_date      >= look_val.start_date_active
+--                          AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+                          AND     TRUNC( ooha.ordered_date ) >= look_val.start_date_active
+                          AND     TRUNC( ooha.ordered_date ) <= NVL(look_val.end_date_active, gd_max_date)
+-- 2010/02/12 Ver1.9 Mod End   *                      
                           AND     look_val.enabled_flag = ct_enabled_flag_yes
                           AND     look_val.lookup_type =  ct_qct_edi_item_err_type ))
+-- 2010/02/12 Ver1.9 Add Start *
+--== EDI受注（受注データなし）
+          UNION ALL
+          SELECT
+            /*+
+               LEADING(xeh)
+               USE_NL(hca2 xca3)
+            */
+            xca1.delivery_base_code                          base_code,             --拠点コード
+            hp2.party_name                                   base_name,             --拠点名称
+            xca1.ship_storage_code                           subinventory,          --倉庫（出荷元保管場所(EDI)）
+            msi.description                                  subinventory_name,     --倉庫名
+            xeh.edi_chain_code                              chain_store_code,      --チェーン店コード
+            hp3.party_name                                   chain_store_name,      --チェーン店名
+            xca1.deli_center_code                            deli_center_code,      --センターコード
+            xca1.deli_center_name                            deli_center_name,      --センター名
+            xca1.edi_district_code                           edi_district_code,     --地区コード
+            xca1.edi_district_name                           edi_district_name,     --地区名
+            NULL                                             schedule_ship_date,    --出荷日（ブランク）
+            TRUNC( NVL( xeh.shop_delivery_date  
+                      , NVL( xeh.center_delivery_date
+                           , NVL( xeh.order_date
+                                , xeh.creation_date ) ) ) )  request_date,          --着日
+            msib.inventory_item_id                           inventory_item_id,     --品目ID
+            msib.organization_id                             organization_id,       --在庫組織ID
+            msib.segment1                                    item_code,             --商品コード
+            msib.description                                 item_name,             --商品名
+            xel.product_code2                                product_code2,         --商品コード２
+            NVL( xel.product_name2_alt || xel.item_standard2
+               , xel.product_name1_alt || xel.item_standard1 ) product_name2_alt,   --商品名２（商品名ｘ（カナ）＋規格ｘ）
+            TRUNC( NVL( xeh.order_date
+                      , xeh.creation_date ) )                ordered_date,          --受注日（発注日）
+            xel.line_uom                                     order_quantity_uom,    --受注単位コード（明細単位）
+            NVL( xel.sum_order_qty ,0 )                      ordered_quantity,      --受注数量（発注数量（合計・バラ））
+            cv_sales_output_type_2                                                  --売上対象出力区分
+          FROM
+            hz_cust_accounts                  hca1,                           --顧客マスタ
+            xxcmm_cust_accounts               xca1,                           --アカウントアドオンマスタ
+            hz_cust_accounts                  hca2,                           --顧客拠点マスタ
+            hz_parties                        hp2,                            --パーティ拠点マスタ
+            hz_cust_accounts                  hca3,                           --顧客チェーン店マスタ
+            hz_parties                        hp3,                            --パーティチェーン店マスタ
+            xxcmm_cust_accounts               xca3,                           --アカウントアドオンチェーン店マスタ
+            mtl_secondary_inventories         msi,                            --保管場所マスタ
+            mtl_system_items_b                msib,                           --品目マスタ
+            xxcos_edi_headers                 xeh,                            --EDIヘッダ情報テーブル
+            xxcos_edi_lines                   xel                             --EDI明細情報テーブル
+          WHERE
+              NVL( gv_sales_output_type ,cv_sales_output_type_2 )
+                                              = cv_sales_output_type_2
+          AND xeh.edi_header_info_id          = xel.edi_header_info_id
+--== EDIヘッダの変換後顧客コードから顧客情報を結合
+          AND xeh.conv_customer_code          = hca1.account_number
+          AND hca1.cust_account_id            = xca1.customer_id
+--== 顧客情報の納品拠点から拠点情報を結合
+          AND xca1.delivery_base_code         = hca2.account_number
+          AND hca2.party_id                   = hp2.party_id
+          AND EXISTS(
+                SELECT
+                  cv_exists_flag_yes          exists_flag
+                FROM
+                  fnd_lookup_values           flv                             --クイックコードマスタ
+                WHERE
+                    flv.lookup_type           = ct_qct_cus_class_mst
+                AND flv.lookup_code           LIKE ct_qcc_cus_class_mst1
+                AND flv.meaning               = hca2.customer_class_code
+                AND TRUNC( NVL( xeh.order_date ,xeh.creation_date ) )
+                                              >= flv.start_date_active
+                AND TRUNC( NVL( xeh.order_date ,xeh.creation_date ) )
+                                              <= NVL( flv.end_date_active, gd_max_date )
+                AND flv.enabled_flag          = ct_enabled_flag_yes
+                AND flv.language              = ct_lang
+              )
+--== EDIヘッダのチェーン店からチェーン店情報を結合
+          AND xeh.edi_chain_code              = xca3.chain_store_code
+          AND hca3.cust_account_id            = xca3.customer_id
+          AND hca3.party_id                   = hp3.party_id
+          AND EXISTS(
+                SELECT
+                  'Y'          exists_flag
+                FROM
+                  fnd_lookup_values           flv                             --クイックコードマスタ
+                WHERE
+                    flv.lookup_type           = ct_qct_cus_class_mst
+                AND flv.lookup_code           LIKE ct_qcc_cus_class_mst2
+                AND flv.meaning               = hca3.customer_class_code
+                AND TRUNC( NVL( xeh.order_date ,xeh.creation_date ) )
+                                              >= flv.start_date_active
+                AND TRUNC( NVL( xeh.order_date ,xeh.creation_date ) )
+                                              <= NVL( flv.end_date_active, gd_max_date )
+                AND flv.enabled_flag          = ct_enabled_flag_yes
+                AND flv.language              = ct_lang
+              )
+--==顧客アドオンの出荷元保管場所(EDI)から保管場所マスタを結合
+          AND gt_org_id                       = msi.organization_id                         -- 結合条件：プロファイル在庫組織
+          AND xca1.ship_storage_code          = msi.secondary_inventory_name                -- 結合条件：出荷元保管場所(EDI)
+--==EDI明細の品目コードにて品目マスタを結合
+          AND gt_org_id                       = msib.organization_id                        -- 結合条件：プロファイル在庫組織
+          AND xel.item_code                   = msib.segment1                               -- 結合条件：商品コード（伊藤園）
+--==EDI情報の抽出条件
+          AND xeh.info_class                  = cv_info_class_04                            -- 情報区分
+          AND xeh.data_type_code              = ct_data_type_code_edi                       -- データ種コード
+          AND xca1.delivery_base_code         = gv_login_base_code                          -- 入力パラメータ：拠点
+          AND xeh.edi_chain_code              = gv_login_chain_store_code                   -- 入力パラメータ：チェーン店
+          AND NVL( xeh.shop_delivery_date
+                      , NVL( xeh.center_delivery_date
+                           , NVL( xeh.order_date
+                                , xeh.creation_date ) ) ) BETWEEN gd_request_date_from      -- 入力パラメータ：着日（FROM）
+                                                              AND gd_request_date_to        -- 入力パラメータ：着日（TO）
+--==非在庫品目の除外、但し、その中でもエラー品目は出力対象
+          AND (   NOT EXISTS (
+                SELECT  cv_exists_flag_yes          exists_flag
+                FROM    fnd_lookup_values     look_val
+                WHERE   look_val.language     = ct_lang
+                AND     look_val.lookup_code  = msib.segment1
+                AND     TRUNC( NVL( xeh.order_date ,xeh.creation_date ) )
+                                              >= look_val.start_date_active
+                AND     TRUNC( NVL( xeh.order_date ,xeh.creation_date ) )
+                                              <= NVL(look_val.end_date_active, gd_max_date)
+                AND     look_val.enabled_flag = ct_enabled_flag_yes
+                AND     look_val.lookup_type = ct_xxcos1_no_inv_item_code
+                        )
+               OR EXISTS (
+                          SELECT  cv_exists_flag_yes    exists_flag
+                          FROM    fnd_lookup_values     look_val
+                          WHERE   look_val.language    = ct_lang
+                          AND     look_val.lookup_code = msib.segment1
+                          AND     TRUNC( NVL( xeh.order_date ,xeh.creation_date ) )
+                                                       >= look_val.start_date_active
+                          AND     TRUNC( NVL( xeh.order_date ,xeh.creation_date ) )
+                                                       <= NVL(look_val.end_date_active, gd_max_date)
+                          AND     look_val.enabled_flag = ct_enabled_flag_yes
+                          AND     look_val.lookup_type =  ct_qct_edi_item_err_type ))
+-- 2010/02/12 Ver1.9 Add End   *
       ) rpcpi
       WHERE
         mucc.inventory_item_id (+)            = rpcpi.inventory_item_id
       AND mucc.to_uom_code (+)                = gt_case_uom_code
-      AND NVL( mucc.disable_date, gd_max_date )
+-- 2010/02/12 Ver1.9 Mod Start *
+--      AND NVL( mucc.disable_date, gd_max_date )
+      AND NVL( mucc.disable_date(+), gd_max_date )
+-- 2010/02/12 Ver1.9 Add End   *
                                               > rpcpi.ordered_date
       AND rpcpi.item_code                     = xeiet.lookup_code (+)
       AND TRUNC( rpcpi.ordered_date )         >= xeiet.start_date_active (+)
@@ -1307,13 +1624,22 @@ AS
         rpcpi.edi_district_name,                                              --地区名
         rpcpi.schedule_ship_date,                                             --出荷日
         rpcpi.request_date,                                                   --着日
+-- 2010/02/12 Ver1.9 Add Start *
+-- エラー品目の場合は、商品コード２で集計を行う為、ソート順を上位にする。
+-- ※正常品目の場合は、商品コード２、商品名２はNULL
+        edi_item_err_flag,                                                    --ＥＤＩ品目エラーフラグ
+        item_code2,                                                           --商品コード２
+        item_name2,                                                           --商品名２
+-- 2010/02/12 Ver1.9 Add End   *
         rpcpi.inventory_item_id,                                              --品目ID
         rpcpi.organization_id,                                                --在庫組織ID
         rpcpi.item_code,                                                      --商品コード
         rpcpi.item_name,                                                      --商品名
-        edi_item_err_flag,                                                    --ＥＤＩ品目エラーフラグ
-        item_code2,                                                           --商品コード２
-        item_name2,                                                           --商品名２
+-- 2010/02/12 Ver1.9 Del Start *
+--        edi_item_err_flag,                                                    --ＥＤＩ品目エラーフラグ
+--        item_code2,                                                           --商品コード２
+--        item_name2,                                                           --商品名２
+-- 2010/02/12 Ver1.9 Del End   *
         case_content                                                          --ケース入数
       ;
 --
@@ -1565,13 +1891,27 @@ AS
           AND ( comp_char( lt_key_edi_district_name, l_data_rec.edi_district_name ) )       --地区名
           AND ( comp_date( lt_key_schedule_ship_date, l_data_rec.schedule_ship_date ) )     --出荷日
           AND ( comp_date( lt_key_request_date, l_data_rec.request_date ) )                 --着日
-          AND ( comp_num( lt_key_inventory_item_id, l_data_rec.inventory_item_id ) )        --品目ID
-          AND ( comp_num( lt_key_organization_id, l_data_rec.organization_id ) )            --在庫組織ID
-          AND ( comp_char( lt_key_item_code, l_data_rec.item_code ) )                       --商品コード
-          AND ( comp_char( lt_key_item_name, l_data_rec.item_name ) )                       --商品名
+-- 2010/02/12 Ver1.9 Mod Start *
+--          AND ( comp_num( lt_key_inventory_item_id, l_data_rec.inventory_item_id ) )        --品目ID
+--          AND ( comp_num( lt_key_organization_id, l_data_rec.organization_id ) )            --在庫組織ID
+--          AND ( comp_char( lt_key_item_code, l_data_rec.item_code ) )                       --商品コード
+--          AND ( comp_char( lt_key_item_name, l_data_rec.item_name ) )                       --商品名
+          -- エラー品目の場合、商品コード２で集計する為、品目ID～商品名はチェックしない
+          AND ( (    ( l_data_rec.edi_item_err_flag = cv_edi_item_err_flag_yes )
+                )
+                OR
+                (    ( comp_num( lt_key_inventory_item_id, l_data_rec.inventory_item_id ) ) --品目ID
+                 AND ( comp_num( lt_key_organization_id, l_data_rec.organization_id ) )     --在庫組織ID
+                 AND ( comp_char( lt_key_item_code, l_data_rec.item_code ) )                --商品コード
+                 AND ( comp_char( lt_key_item_name, l_data_rec.item_name ) )                --商品名
+                )
+              )
+-- 2010/02/12 Ver1.9 Mod End   *
           AND ( comp_char( lv_key_edi_item_err_flag, l_data_rec.edi_item_err_flag ) )       --ＥＤＩ品目エラーフラグ
           AND ( comp_char( lt_key_item_code2, l_data_rec.item_code2 ) )                     --商品コード２
-          AND ( comp_char( lt_key_item_name2, l_data_rec.item_name2 ) )                     --商品名２
+-- 2010/02/12 Ver1.9 Del Start *
+--          AND ( comp_char( lt_key_item_name2, l_data_rec.item_name2 ) )                     --商品名２
+-- 2010/02/12 Ver1.9 Del End   *
           AND ( comp_num( lt_key_case_content, l_data_rec.case_content ) ) )                --ケース入数
         THEN
           --換算数量加算
@@ -2056,6 +2396,9 @@ AS
     iv_login_chain_store_code IN      VARCHAR2,         -- 2.チェーン店
     iv_request_date_from      IN      VARCHAR2,         -- 3.着日（From）
     iv_request_date_to        IN      VARCHAR2,         -- 4.着日（To）
+-- 2010/02/12 Ver1.9 Add Start *
+    iv_sales_output_type      IN      VARCHAR2,         -- 5.売上対象出力区分
+-- 2010/02/12 Ver1.9 Add End   *
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2102,6 +2445,9 @@ AS
       iv_login_chain_store_code => iv_login_chain_store_code,   -- 2.チェーン店
       iv_request_date_from      => iv_request_date_from,        -- 3.着日（From）
       iv_request_date_to        => iv_request_date_to,          -- 4.着日（To）
+-- 2010/02/12 Ver1.9 Add Start *
+      iv_sales_output_type      => iv_sales_output_type,        -- 5.売上対象出力区分
+-- 2010/02/12 Ver1.9 Add End   *
       ov_errbuf                 => lv_errbuf,                   -- エラー・メッセージ
       ov_retcode                => lv_retcode,                  -- リターン・コード
       ov_errmsg                 => lv_errmsg                    -- ユーザー・エラー・メッセージ
@@ -2178,7 +2524,6 @@ AS
     lv_errmsg_svf  := lv_errmsg;
 -- 2009/06/19  Ver1.5 T1_1437  Mod End
 --
-
     -- ===============================
     -- A-3  帳票ワークテーブル削除
     -- ===============================
@@ -2192,7 +2537,6 @@ AS
     ELSE
       RAISE global_process_expt;
     END IF;
-
 --
     COMMIT;
 --
@@ -2243,7 +2587,11 @@ AS
     iv_login_base_code        IN      VARCHAR2,         -- 1.拠点
     iv_login_chain_store_code IN      VARCHAR2,         -- 2.チェーン店
     iv_request_date_from      IN      VARCHAR2,         -- 3.着日（From）
-    iv_request_date_to        IN      VARCHAR2          -- 4.着日（To）
+-- 2010/02/12 Ver1.9 Add Start *
+--    iv_request_date_to        IN      VARCHAR2          -- 4.着日（To）
+    iv_request_date_to        IN      VARCHAR2,         -- 4.着日（To）
+    iv_sales_output_type      IN      VARCHAR2          -- 5.売上対象出力区分
+-- 2010/02/12 Ver1.9 Add End   *
   )
 --
 --
@@ -2302,6 +2650,9 @@ AS
       ,iv_login_chain_store_code           -- 2.チェーン店
       ,iv_request_date_from                -- 3.着日（From）
       ,iv_request_date_to                  -- 4.着日（To）
+-- 2010/02/12 Ver1.9 Add Start *
+      ,iv_sales_output_type                -- 5.売上対象出力区分
+-- 2010/02/12 Ver1.9 Add End   *
       ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
