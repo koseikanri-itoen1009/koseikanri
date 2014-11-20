@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  chk_bank_branch           F    V      銀行支店マスタチェック
  *  chk_supplier              F    V      仕入先マスタチェック
  *  chk_bank_account          F    V      銀行口座マスタチェック
+ *  chk_bank_account_change   F    V      銀行口座マスタ変更チェック
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -55,6 +56,7 @@ AS
  *  2011/01/06    1.10  K.Kiriu          E_本稼動_02498対応
  *  2011/06/06    1.11  K.Kiriu          E_本稼動_01963対応
  *  2012/08/10    1.12  K.Kiriu          E_本稼動_09914対応
+ *  2013/04/01    1.13  K.Kiriu          E_本稼動_10413対応
  *****************************************************************************************/
 --
   -- ===============================
@@ -1857,6 +1859,101 @@ AS
 --#####################################  固定部 END   ##########################################
   END chk_bank_account;
 /* 2011/06/06 Ver1.11 K.Kiriu E_本稼動_01963対応 END */
+/* 2013/04/01 Ver1.13 K.Kiriu E_本稼動_10413対応 START */
+  /**********************************************************************************
+   * Function Name    : chk_bank_account_change
+   * Description      : 銀行口座マスタ変更チェック
+   ***********************************************************************************/
+  FUNCTION chk_bank_account_change(
+    iv_bank_number             IN  VARCHAR2         -- 銀行番号
+   ,iv_bank_num                IN  VARCHAR2         -- 支店番号
+   ,iv_bank_account_num        IN  VARCHAR2         -- 口座番号
+   ,iv_bank_account_type       IN  VARCHAR2         -- 口座種別(画面入力値)
+   ,iv_account_holder_name_alt IN  VARCHAR2         -- 口座名義カナ(画面入力値)
+   ,iv_account_holder_name     IN  VARCHAR2         -- 口座名義漢字(画面入力値)
+   ,ov_bank_account_type       OUT VARCHAR2         -- 口座種別(マスタ)
+   ,ov_account_holder_name_alt OUT VARCHAR2         -- 口座名義カナ(マスタ)
+   ,ov_account_holder_name     OUT VARCHAR2         -- 口座名義漢字(マスタ)
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_bank_account_change';
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cv_flag_yes                  CONSTANT VARCHAR2(1)     := 'Y';                                        -- 主フラグ
+    cd_process_date              CONSTANT DATE            := TRUNC(xxccp_common_pkg2.get_process_date);  -- 業務処理日付
+    cv_vendor_type               CONSTANT VARCHAR2(3)     := 'VD';                                       -- 仕入先タイプ
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_return_value              VARCHAR2(1);
+--
+  BEGIN
+--
+    --初期化
+    lv_return_value            := '0';
+    ov_bank_account_type       := NULL;
+    ov_account_holder_name_alt := NULL;
+    ov_account_holder_name     := NULL;
+--
+    --指定された口座にVD以外の有効な仕入先が紐付く場合、口座情報を取得
+    BEGIN
+      SELECT bac.bank_account_type       bank_account_type       -- 口座種別
+            ,bac.account_holder_name_alt account_holder_name_alt -- 口座名義カナ
+            ,bac.account_holder_name     account_holder_name     -- 口座名義
+      INTO   ov_bank_account_type
+            ,ov_account_holder_name_alt
+            ,ov_account_holder_name
+      FROM   ap_bank_branches     bbr   -- 銀行マスタ
+            ,ap_bank_accounts     bac   -- 口座マスタビュー
+            ,ap_bank_account_uses bau   -- 口座割当マスタビュー
+            ,po_vendors           pv    -- 仕入先マスタ
+      WHERE  bbr.bank_number                             =  iv_bank_number       -- 銀行番号
+      AND    bbr.bank_num                                =  iv_bank_num          -- 支店番号
+      AND    bbr.bank_branch_id                          =  bac.bank_branch_id
+      AND    bac.bank_account_num                        =  iv_bank_account_num  -- 口座番号
+      AND    bac.bank_account_id                         =  bau.external_bank_account_id
+      AND    bau.primary_flag                            =  cv_flag_yes    -- 主フラグ
+      AND    bau.vendor_id                               =  pv.vendor_id
+      AND    TRUNC(NVL(bau.start_date, cd_process_date))
+                                                        <= cd_process_date -- 開始日
+      AND    TRUNC(NVL(bau.end_date, cd_process_date))
+                                                        >= cd_process_date -- 終了日
+      AND    pv.vendor_type_lookup_code                 <> cv_vendor_type  -- VD(自販機)以外
+      AND    ROWNUM = 1
+      ;
+      lv_return_value := '1';    --データが存在
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_return_value := '0';  --データが存在しない
+    END;
+--
+    --指定された口座にVD以外の仕入先が存在する場合
+    IF ( lv_return_value <> '0' ) THEN
+      --画面から入力された値と比較
+      IF   ( iv_bank_account_type       <> ov_bank_account_type )       --口座種別が異なる
+        OR ( iv_account_holder_name_alt <> ov_account_holder_name_alt ) --口座名義カナが異なる
+        OR ( iv_account_holder_name     <> ov_account_holder_name )     --口座名義漢字が異なる
+      THEN
+        lv_return_value := '2';  --口座情報が変更されている
+      END IF;
+    END IF;
+--
+    RETURN lv_return_value;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_bank_account_change;
+/* 2013/04/01 Ver1.13 K.Kiriu E_本稼動_10413対応 END */
 --
 END xxcso_010003j_pkg;
 /

@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  chk_bank_branch           F    V      銀行支店マスタチェック
  *  chk_supplier              F    V      仕入先マスタチェック
  *  chk_bank_account          F    V      銀行口座マスタチェック
+ *  chk_bank_account_change   F    V      銀行口座マスタ変更チェック
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
@@ -50,6 +51,7 @@ AS
  *  2010/03/01    1.6   D.Abe            E_本稼動_01678,E_本稼動_01868対応
  *  2011/01/06    1.7   K.Kiriu          E_本稼動_02498対応
  *  2011/06/06    1.8   K.Kiriu          E_本稼動_01963対応
+ *  2013/04/01    1.9   K.Kiriu          E_本稼動_10413対応
  *****************************************************************************************/
 --
   -- BM情報分岐取得
@@ -214,6 +216,20 @@ AS
    ,iv_bank_account_num           IN  VARCHAR2         -- 口座番号
   ) RETURN VARCHAR2;
 /* 2011/06/06 Ver1.8 K.kiriu E_本稼動_01963対応 END */
+/* 2013/04/01 Ver1.9 K.kiriu E_本稼動_10413対応 START */
+  -- 銀行口座マスタ変更チェック
+  FUNCTION chk_bank_account_change(
+    iv_bank_number                IN  VARCHAR2         -- 銀行番号
+   ,iv_bank_num                   IN  VARCHAR2         -- 支店番号
+   ,iv_bank_account_num           IN  VARCHAR2         -- 口座番号
+   ,iv_bank_account_type          IN  VARCHAR2         -- 口座種別(画面入力値)
+   ,iv_account_holder_name_alt    IN  VARCHAR2         -- 口座名義カナ(画面入力値)
+   ,iv_account_holder_name        IN  VARCHAR2         -- 口座名義漢字(画面入力値)
+   ,ov_bank_account_type          OUT VARCHAR2         -- 口座種別(マスタ)
+   ,ov_account_holder_name_alt    OUT VARCHAR2         -- 口座名義カナ(マスタ)
+   ,ov_account_holder_name        OUT VARCHAR2         -- 口座名義漢字(マスタ)
+  ) RETURN VARCHAR2;
+/* 2013/04/01 Ver1.9 K.kiriu E_本稼動_10413対応 END */
 --
 END xxcso_010003j_pkg;
 /

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistAMImpl
 * 概要説明   : 自販機設置契約情報登録画面アプリケーション・モジュールクラス
-* バージョン : 1.8
+* バージョン : 1.9
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -17,6 +17,7 @@
 * 2010-03-01 1.6  SCS阿部大輔  [E_本稼動_01678]現金支払対応
 * 2011-06-06 1.7  SCS桐生和幸  [E_本稼動_01963]新規仕入先作成チェック対応
 * 2012-06-12 1.8  SCS桐生和幸  [E_本稼動_09602]契約取消ボタン追加対応
+* 2013-04-01 1.9  SCSK桐生和幸 [E_本稼動_10413]銀行口座マスタ変更チェック追加対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -2661,6 +2662,406 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
   {
     return (XxcsoContractManagementFullVOImpl)findViewObject("XxcsoContractManagementFullVO1");
   }
+
+// 2013-04-01 Ver1.9 [E_本稼動_10413] Add START
+  /*****************************************************************************
+   * 銀行口座マスタ変更チェック処理
+   *****************************************************************************
+   */
+  public void bankAccountChangeCheck()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    mMessage = this.validatebankAccountChangeInfo();
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 銀行口座マスタ変更チェック
+   * @return OAException 
+   *****************************************************************************
+   */
+  private OAException validatebankAccountChangeInfo()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    OAException  confirmMsg = null;
+    OAException  MsgData    = null;
+
+    StringBuffer sbMsg    = new StringBuffer();
+
+    String retVal         = null;
+    String BkAcType       = null;
+    String BkAcHldNameAlt = null;
+    String BkAcHldName    = null;
+
+    OracleCallableStatement stmt = null;
+
+    //インスタンス取得
+    XxcsoPageRenderVOImpl pageRenderVo
+      = getXxcsoPageRenderVO1();
+    if ( pageRenderVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoPageRenderVOImpl");
+    }
+
+    XxcsoBm1BankAccountFullVOImpl bank1Vo
+      = getXxcsoBm1BankAccountFullVO1();
+    if ( bank1Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm1BankAccountFullVO1");
+    }
+
+    XxcsoBm2BankAccountFullVOImpl bank2Vo
+      = getXxcsoBm2BankAccountFullVO1();
+    if ( bank2Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm2BankAccountFullVO1");
+    }
+
+    XxcsoBm3BankAccountFullVOImpl bank3Vo
+      = getXxcsoBm3BankAccountFullVO1();
+    if ( bank3Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm3BankAccountFullVO1");
+    }
+
+    // 行インスタンス取得
+    XxcsoPageRenderVORowImpl pageRenderRow
+      = (XxcsoPageRenderVORowImpl) pageRenderVo.first();
+
+    XxcsoBm1BankAccountFullVORowImpl bank1Row
+      = (XxcsoBm1BankAccountFullVORowImpl)bank1Vo.first();
+
+    XxcsoBm2BankAccountFullVORowImpl bank2Row
+      = (XxcsoBm2BankAccountFullVORowImpl)bank2Vo.first();
+
+    XxcsoBm3BankAccountFullVORowImpl bank3Row
+      = (XxcsoBm3BankAccountFullVORowImpl)bank3Vo.first();
+
+    /////////////////////////////////////
+    // BM1銀行口座変更チェック
+    /////////////////////////////////////
+    // BM1指定がONの場合
+    if ( XxcsoContractRegistValidateUtils.isChecked(
+           pageRenderRow.getBm1ExistFlag() ) )
+    {
+      //銀行・支店・口座がnull以外の場合
+      if (( bank1Row.getBankNumber() != null )
+         &&( bank1Row.getBranchNumber() != null )
+         &&( bank1Row.getBankAccountNumber() != null ))
+      {
+        try
+        {
+
+          StringBuffer sql = new StringBuffer(300);
+          //  銀行口座マスタ変更チェック
+          sql.append("BEGIN");
+          sql.append("  :1 := xxcso_010003j_pkg.chk_bank_account_change(");
+          sql.append("        iv_bank_number             => :2");          // 銀行番号
+          sql.append("       ,iv_bank_num                => :3");          // 支店番号
+          sql.append("       ,iv_bank_account_num        => :4");          // 口座番号
+          sql.append("       ,iv_bank_account_type       => :5");          // 口座種別(画面入力)
+          sql.append("       ,iv_account_holder_name_alt => :6");          // 口座名義カナ(画面入力)
+          sql.append("       ,iv_account_holder_name     => :7");          // 口座名義漢字(画面入力)
+          sql.append("       ,ov_bank_account_type       => :8");          // 口座種別(マスタ)
+          sql.append("       ,ov_account_holder_name_alt => :9");          // 口座名義カナ(マスタ)
+          sql.append("       ,ov_account_holder_name     => :10");         // 口座名義漢字(マスタ)
+          sql.append("        );");
+          sql.append("END;");
+
+          stmt
+            = (OracleCallableStatement)
+                txn.createCallableStatement(sql.toString(), 0);
+
+          stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+          stmt.setString(2, bank1Row.getBankNumber());
+          stmt.setString(3, bank1Row.getBranchNumber());
+          stmt.setString(4, bank1Row.getBankAccountNumber());
+          stmt.setString(5, bank1Row.getBankAccountType());
+          stmt.setString(6, bank1Row.getBankAccountNameKana());
+          stmt.setString(7, bank1Row.getBankAccountNameKanji());
+          stmt.registerOutParameter(8, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(9, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(10,OracleTypes.VARCHAR);
+
+          stmt.execute();
+
+          retVal         = stmt.getString(1);   //リターンコード
+          BkAcType       = stmt.getString(8);   //口座種別(マスタ)
+          BkAcHldNameAlt = stmt.getString(9);   //口座名義カナ(マスタ)
+          BkAcHldName    = stmt.getString(10);  //口座名義漢字(マスタ)
+
+          //戻り値が2(変更あり)の場合
+          if ( "2".equals(retVal) )
+          {
+            //BM1トークン設定
+            sbMsg.append( XxcsoContractRegistConstants.TOKEN_VALUE_BM1 );
+            //口座情報をマスタの値で更新
+            bank1Row.setBankAccountType(BkAcType);
+            bank1Row.setBankAccountNameKana(BkAcHldNameAlt);
+            bank1Row.setBankAccountNameKanji(BkAcHldName);
+          }
+
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+          throw
+            XxcsoMessage.createSqlErrorMessage(
+              e
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_PLURAL_SUPPLIER_CHK
+            );
+        }
+        finally
+        {
+          try
+          {
+            if ( stmt != null )
+            {
+              stmt.close();
+            }
+          }
+          catch ( SQLException e )
+          {
+            XxcsoUtils.unexpected(txn, e);
+          }
+        }
+      }
+    }
+
+    retVal         = null;
+    BkAcType       = null;
+    BkAcHldNameAlt = null;
+    BkAcHldName    = null;
+
+    /////////////////////////////////////
+    // BM2銀行口座変更チェック
+    /////////////////////////////////////
+    // BM2指定がONの場合
+    if ( XxcsoContractRegistValidateUtils.isChecked(
+           pageRenderRow.getBm2ExistFlag() ) )
+    {
+      //銀行・支店・口座がnull以外の場合
+      if (( bank2Row.getBankNumber() != null )
+         &&( bank2Row.getBranchNumber() != null )
+         &&( bank2Row.getBankAccountNumber() != null ))
+      {
+        try
+        {
+
+          StringBuffer sql = new StringBuffer(300);
+          //  銀行口座マスタ変更チェック
+          sql.append("BEGIN");
+          sql.append("  :1 := xxcso_010003j_pkg.chk_bank_account_change(");
+          sql.append("        iv_bank_number             => :2");          // 銀行番号
+          sql.append("       ,iv_bank_num                => :3");          // 支店番号
+          sql.append("       ,iv_bank_account_num        => :4");          // 口座番号
+          sql.append("       ,iv_bank_account_type       => :5");          // 口座種別(画面入力)
+          sql.append("       ,iv_account_holder_name_alt => :6");          // 口座名義カナ(画面入力)
+          sql.append("       ,iv_account_holder_name     => :7");          // 口座名義漢字(画面入力)
+          sql.append("       ,ov_bank_account_type       => :8");          // 口座種別(マスタ)
+          sql.append("       ,ov_account_holder_name_alt => :9");          // 口座名義カナ(マスタ)
+          sql.append("       ,ov_account_holder_name     => :10");         // 口座名義漢字(マスタ)
+          sql.append("        );");
+          sql.append("END;");
+
+          stmt
+            = (OracleCallableStatement)
+                txn.createCallableStatement(sql.toString(), 0);
+
+          stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+          stmt.setString(2, bank2Row.getBankNumber());
+          stmt.setString(3, bank2Row.getBranchNumber());
+          stmt.setString(4, bank2Row.getBankAccountNumber());
+          stmt.setString(5, bank2Row.getBankAccountType());
+          stmt.setString(6, bank2Row.getBankAccountNameKana());
+          stmt.setString(7, bank2Row.getBankAccountNameKanji());
+          stmt.registerOutParameter(8, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(9, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(10,OracleTypes.VARCHAR);
+
+          stmt.execute();
+
+          retVal         = stmt.getString(1);   //リターンコード
+          BkAcType       = stmt.getString(8);   //口座種別(マスタ)
+          BkAcHldNameAlt = stmt.getString(9);   //口座名義カナ(マスタ)
+          BkAcHldName    = stmt.getString(10);  //口座名義漢字(マスタ)
+
+          //戻り値が2(変更あり)の場合
+          if ( "2".equals(retVal) )
+          {
+            //区切り文字設定
+           if (sbMsg.length() > 0) 
+           {
+            sbMsg.append(XxcsoConstants.TOKEN_VALUE_DELIMITER5);
+            sbMsg.append(XxcsoConstants.TOKEN_VALUE_DELIMITER4);
+            sbMsg.append(XxcsoConstants.TOKEN_VALUE_DELIMITER5);
+           }
+            //BM2トークン設定
+            sbMsg.append( XxcsoContractRegistConstants.TOKEN_VALUE_BM2 );
+            //口座情報をマスタの値で更新
+            bank2Row.setBankAccountType(BkAcType);
+            bank2Row.setBankAccountNameKana(BkAcHldNameAlt);
+            bank2Row.setBankAccountNameKanji(BkAcHldName);
+          }
+
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+          throw
+            XxcsoMessage.createSqlErrorMessage(
+              e
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_PLURAL_SUPPLIER_CHK
+            );
+        }
+        finally
+        {
+          try
+          {
+            if ( stmt != null )
+            {
+              stmt.close();
+            }
+          }
+          catch ( SQLException e )
+          {
+            XxcsoUtils.unexpected(txn, e);
+          }
+        }
+      }
+    }
+
+    retVal         = null;
+    BkAcType       = null;
+    BkAcHldNameAlt = null;
+    BkAcHldName    = null;
+
+    /////////////////////////////////////
+    // BM3銀行口座変更チェック
+    /////////////////////////////////////
+    // BM3指定がONの場合
+    if ( XxcsoContractRegistValidateUtils.isChecked(
+           pageRenderRow.getBm3ExistFlag() ) )
+    {
+      //銀行・支店・口座がnull以外の場合
+      if (( bank3Row.getBankNumber() != null )
+         &&( bank3Row.getBranchNumber() != null )
+         &&( bank3Row.getBankAccountNumber() != null ))
+      {
+        try
+        {
+
+          StringBuffer sql = new StringBuffer(300);
+          //  銀行口座マスタ変更チェック
+          sql.append("BEGIN");
+          sql.append("  :1 := xxcso_010003j_pkg.chk_bank_account_change(");
+          sql.append("        iv_bank_number             => :2");          // 銀行番号
+          sql.append("       ,iv_bank_num                => :3");          // 支店番号
+          sql.append("       ,iv_bank_account_num        => :4");          // 口座番号
+          sql.append("       ,iv_bank_account_type       => :5");          // 口座種別(画面入力)
+          sql.append("       ,iv_account_holder_name_alt => :6");          // 口座名義カナ(画面入力)
+          sql.append("       ,iv_account_holder_name     => :7");          // 口座名義漢字(画面入力)
+          sql.append("       ,ov_bank_account_type       => :8");          // 口座種別(マスタ)
+          sql.append("       ,ov_account_holder_name_alt => :9");          // 口座名義カナ(マスタ)
+          sql.append("       ,ov_account_holder_name     => :10");         // 口座名義漢字(マスタ)
+          sql.append("        );");
+          sql.append("END;");
+
+          stmt
+            = (OracleCallableStatement)
+                txn.createCallableStatement(sql.toString(), 0);
+
+          stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+          stmt.setString(2, bank3Row.getBankNumber());
+          stmt.setString(3, bank3Row.getBranchNumber());
+          stmt.setString(4, bank3Row.getBankAccountNumber());
+          stmt.setString(5, bank3Row.getBankAccountType());
+          stmt.setString(6, bank3Row.getBankAccountNameKana());
+          stmt.setString(7, bank3Row.getBankAccountNameKanji());
+          stmt.registerOutParameter(8, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(9, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(10,OracleTypes.VARCHAR);
+
+          stmt.execute();
+
+          retVal         = stmt.getString(1);   //リターンコード
+          BkAcType       = stmt.getString(8);   //口座種別(マスタ)
+          BkAcHldNameAlt = stmt.getString(9);   //口座名義カナ(マスタ)
+          BkAcHldName    = stmt.getString(10);  //口座名義漢字(マスタ)
+
+          //戻り値が2(変更あり)の場合
+          if ( "2".equals(retVal) )
+          {
+            //区切り文字設定
+           if (sbMsg.length() > 0) 
+           {
+            sbMsg.append(XxcsoConstants.TOKEN_VALUE_DELIMITER5);
+            sbMsg.append(XxcsoConstants.TOKEN_VALUE_DELIMITER4);
+            sbMsg.append(XxcsoConstants.TOKEN_VALUE_DELIMITER5);
+           }
+            //BM3トークン設定
+            sbMsg.append( XxcsoContractRegistConstants.TOKEN_VALUE_BM3 );
+            //口座情報をマスタの値で更新
+            bank3Row.setBankAccountType(BkAcType);
+            bank3Row.setBankAccountNameKana(BkAcHldNameAlt);
+            bank3Row.setBankAccountNameKanji(BkAcHldName);
+          }
+
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+          throw
+            XxcsoMessage.createSqlErrorMessage(
+              e
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_PLURAL_SUPPLIER_CHK
+            );
+        }
+        finally
+        {
+          try
+          {
+            if ( stmt != null )
+            {
+              stmt.close();
+            }
+          }
+          catch ( SQLException e )
+          {
+            XxcsoUtils.unexpected(txn, e);
+          }
+        }
+      }
+    }
+
+    // 銀行口座が存在する場合、確認画面を表示する
+    if (sbMsg.length() > 0) 
+    {
+
+      confirmMsg
+        = XxcsoMessage.createWarningMessage(
+            XxcsoConstants.APP_XXCSO1_00646
+           ,XxcsoConstants.TOKEN_BM_INFO
+           ,new String(sbMsg)
+          );
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return confirmMsg;
+  }
+// 2013-04-01 Ver1.9 [E_本稼動_10413] Add End
 
   /**
    * 

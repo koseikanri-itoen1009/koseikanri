@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistCO
 * 概要説明   : 自販機設置契約情報登録コントローラクラス
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2010-02-09 1.2  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
 * 2011-06-06 1.3  SCS桐生和幸  [E_本稼動_01963]新規仕入先作成チェック対応
 * 2012-06-12 1.4  SCSK桐生和幸 [E_本稼動_09602]契約取消ボタン追加対応
+* 2013-04-01 1.5  SCSK桐生和幸 [E_本稼動_10413]銀行口座マスタ変更チェック追加対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.webui;
@@ -219,6 +220,21 @@ public class XxcsoContractRegistCO extends OAControllerImpl
         );
       }
 // 2011-06-06 Ver1.3 [E_本稼動_01963] Add End
+
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add Start
+      // 銀行口座変更チェック
+      am.invokeMethod("bankAccountChangeCheck");
+      // メッセージの取得
+      confirmMsg = (OAException)am.invokeMethod("getMessage");
+      if (confirmMsg != null)
+      {
+        this.createConfirmDialogWarn(
+          pageContext
+         ,confirmMsg
+         ,XxcsoConstants.TOKEN_VALUE_WARN1
+        );
+      }
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
       else
       {
         // AMへのパラメータ作成
@@ -278,6 +294,22 @@ public class XxcsoContractRegistCO extends OAControllerImpl
           );
         }
 // 2011-06-06 Ver1.3 [E_本稼動_01963] Add End
+
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add Start
+        // 銀行口座変更チェック
+        am.invokeMethod("bankAccountChangeCheck");
+        // メッセージの取得
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN2
+          );
+        }
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
+
 // 2010-02-09 [E_本稼動_01538] Mod Start
         // マスタ連携待ちチェック
         am.invokeMethod("cooperateWaitCheck");
@@ -313,9 +345,32 @@ public class XxcsoContractRegistCO extends OAControllerImpl
     /////////////////////////////////////
     if ( pageContext.getParameter("PrintPdfButton") != null )
     {
-      HashMap returnMap = (HashMap) am.invokeMethod("handlePrintPdfButton");
 
-      this.redirect(pageContext, returnMap);
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add Start
+      // 銀行口座変更チェック
+      am.invokeMethod("bankAccountChangeCheck");
+      // メッセージの取得
+      OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+      if (confirmMsg != null)
+      {
+        this.createConfirmDialogWarn(
+          pageContext
+         ,confirmMsg
+         ,XxcsoConstants.TOKEN_VALUE_WARN3
+        );
+      }
+      else
+      {
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
+
+        HashMap returnMap = (HashMap) am.invokeMethod("handlePrintPdfButton");
+
+        this.redirect(pageContext, returnMap);
+
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add Start
+      }
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
+
     }
 // 2012-06-12 Ver1.4 [E_本稼動_09602] Add Start
     /////////////////////////////////////
@@ -376,6 +431,22 @@ public class XxcsoContractRegistCO extends OAControllerImpl
           );
         }
 // 2011-06-06 Ver1.3 [E_本稼動_01963] Add End
+
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add Start
+        // 銀行口座変更チェック
+        am.invokeMethod("bankAccountChangeCheck");
+        // メッセージの取得
+         confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN2
+          );
+        }
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
+
         // マスタ連携待ちチェック
         am.invokeMethod("cooperateWaitCheck");
         // メッセージの取得
@@ -420,6 +491,21 @@ public class XxcsoContractRegistCO extends OAControllerImpl
           );
         }
 
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add Start
+        // 銀行口座変更チェック
+        am.invokeMethod("bankAccountChangeCheck");
+        // メッセージの取得
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN2
+          );
+        }
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
+
         // マスタ連携待ちチェック
         am.invokeMethod("cooperateWaitCheck");
         // メッセージの取得
@@ -446,6 +532,53 @@ public class XxcsoContractRegistCO extends OAControllerImpl
       // 確定ボタン(仕入先存在チェック)の場合
       else if ( XxcsoConstants.TOKEN_VALUE_DECISION3.equals(actionValue) )
       {
+
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add Start
+        // 銀行口座変更チェック
+        am.invokeMethod("bankAccountChangeCheck");
+        // メッセージの取得
+         OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN2
+          );
+        }
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
+
+        // マスタ連携待ちチェック
+        am.invokeMethod("cooperateWaitCheck");
+        // メッセージの取得
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Mod Start
+//        OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Mod End
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogCooperate(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_DECISION
+          );
+        }
+        else
+        {
+          // AMへのパラメータ作成
+          Serializable[] params    = { XxcsoConstants.TOKEN_VALUE_DECISION };
+
+          HashMap returnMap
+            = (HashMap) am.invokeMethod("handleConfirmOkButton", params);
+
+          this.redirect(pageContext, returnMap);
+        }      
+      }
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add Start
+      // 確定ボタン(銀行口座変更チェック)の場合
+      else if ( XxcsoConstants.TOKEN_VALUE_WARN2.equals(actionValue) )
+      {
+
         // マスタ連携待ちチェック
         am.invokeMethod("cooperateWaitCheck");
         // メッセージの取得
@@ -467,8 +600,10 @@ public class XxcsoContractRegistCO extends OAControllerImpl
             = (HashMap) am.invokeMethod("handleConfirmOkButton", params);
 
           this.redirect(pageContext, returnMap);
-        }      
+        }
+
       }
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
       // 適用ボタン(複数顧客指定送付先)の場合
       else if ( XxcsoConstants.TOKEN_VALUE_SAVE.equals(actionValue) )
       {
@@ -497,6 +632,21 @@ public class XxcsoContractRegistCO extends OAControllerImpl
            ,XxcsoConstants.TOKEN_VALUE_SAVE3
           );
         }
+
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add Start
+        // 銀行口座変更チェック
+        am.invokeMethod("bankAccountChangeCheck");
+        // メッセージの取得
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN1
+          );
+        }
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
         else
         {
           // AMへのパラメータ作成
@@ -523,6 +673,21 @@ public class XxcsoContractRegistCO extends OAControllerImpl
            ,XxcsoConstants.TOKEN_VALUE_SAVE3
           );
         }
+
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add Start
+        // 銀行口座変更チェック
+        am.invokeMethod("bankAccountChangeCheck");
+        // メッセージの取得
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN1
+          );
+        }
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
         else
         {
           // AMへのパラメータ作成
@@ -537,6 +702,38 @@ public class XxcsoContractRegistCO extends OAControllerImpl
       // 適用ボタン(仕入先存在チェック)の場合
       else if ( XxcsoConstants.TOKEN_VALUE_SAVE3.equals(actionValue) )
       {
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add Start
+        // 銀行口座変更チェック
+        am.invokeMethod("bankAccountChangeCheck");
+        // メッセージの取得
+         OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN1
+          );
+        }
+        else
+        {
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
+          // AMへのパラメータ作成
+          Serializable[] params    = { XxcsoConstants.TOKEN_VALUE_SAVE };
+
+          HashMap returnMap
+            = (HashMap) am.invokeMethod("handleConfirmOkButton", params);
+
+          this.redirect(pageContext, returnMap);
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add Start
+        }
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
+      }
+// 2011-06-06 Ver1.3 [E_本稼動_01963] Add End
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add Start
+      //適用ボタン(銀行口座変更チェック)の場合
+      else if ( XxcsoConstants.TOKEN_VALUE_WARN1.equals(actionValue) )
+      {
         // AMへのパラメータ作成
         Serializable[] params    = { XxcsoConstants.TOKEN_VALUE_SAVE };
 
@@ -545,7 +742,17 @@ public class XxcsoContractRegistCO extends OAControllerImpl
 
         this.redirect(pageContext, returnMap);
       }
-// 2011-06-06 Ver1.3 [E_本稼動_01963] Add End
+      // PDF作成ボタン(銀行口座変更チェック)の場合
+      else if ( XxcsoConstants.TOKEN_VALUE_WARN3.equals(actionValue) )
+      {
+
+        HashMap returnMap
+          = (HashMap) am.invokeMethod("handlePrintPdfButton");
+
+        this.redirect(pageContext, returnMap);
+
+      }
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
 // 2012-06-12 Ver1.4 [E_本稼動_09602] Add Start
       else if ( XxcsoConstants.TOKEN_VALUE_REJECT.equals(actionValue) )
       {
@@ -715,6 +922,44 @@ public class XxcsoContractRegistCO extends OAControllerImpl
       pageContext.redirectToDialogPage(confirmDialogCooperate);
   }
 // 2010-02-09 [E_本稼動_01538] Mod End
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add Start
+  /*****************************************************************************
+   * 警告ダイアログ生成処理(銀行口座変更)
+   * @param pageContext ページコンテキスト
+   * @param confirmMsg  確認画面表示用メッセージ
+   *****************************************************************************
+   */
+  private void createConfirmDialogWarn(
+    OAPageContext pageContext
+   ,OAException   confirmMsg
+   ,String        actionValue
+  )
+  {
+      // ダイアログを生成
+      OADialogPage confirmDialogWarn
+        = new OADialogPage(
+            OAException.WARNING
+           ,confirmMsg
+           ,null
+           ,""
+           ,null //NOボタンの表示なし
+          );
+          
+      String ok = pageContext.getMessage("AK", "FWK_TBX_T_YES", null);
+
+      confirmDialogWarn.setOkButtonItemName("ConfirmOkButton");
+      confirmDialogWarn.setOkButtonToPost(true);
+      confirmDialogWarn.setPostToCallingPage(true);
+      confirmDialogWarn.setOkButtonLabel(ok);
+
+      Hashtable param = new Hashtable(1);
+      param.put(XxcsoConstants.TOKEN_ACTION, actionValue);
+
+      confirmDialogWarn.setFormParameters(param);
+
+      pageContext.redirectToDialogPage(confirmDialogWarn);
+  }
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
   /*****************************************************************************
    * 再表示時処理
    * @param pageContext ページコンテキスト
