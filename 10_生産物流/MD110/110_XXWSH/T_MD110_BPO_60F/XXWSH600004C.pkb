@@ -7,7 +7,7 @@ AS
  * Description      : ＨＨＴ入出庫配車確定情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60F_ＨＨＴ入出庫配車確定情報抽出処理
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2008/09/25    1.14  M.Nomura         統合#26対応
  *  2008/10/07    1.15  M.Nomura         TE080_600指摘#27対応
  *  2008/11/07    1.16  N.Fukuda         統合指摘#143対応
+ *  2009/01/26    1.17  N.Yoshida        本番1017対応、本番#1044対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1280,9 +1281,13 @@ AS
               ,xim.item_id                        AS item_id
               ,xim.item_name                      AS item_name
               ,xim.item_um                        AS item_uom_code
-              ,NULL                               AS conv_unit
+-- 2009/01/26 v1.17 N.Yoshida UPDATE START
+--              ,NULL                               AS conv_unit
+              ,xim.conv_unit                      AS conv_unit
               ,xmril.instruct_qty                 AS item_quantity
-              ,NULL                               AS num_of_cases
+--              ,NULL                               AS num_of_cases
+              ,xim.num_of_cases                   AS num_of_cases
+-- 2009/01/26 v1.17 N.Yoshida UPDATE END
               ,xim.lot_ctl                        AS lot_ctl
               ,CASE xmril.delete_flg
                  WHEN  gc_yes_no_y THEN gc_delete_flag_y
@@ -1795,7 +1800,8 @@ AS
       -- ロット数量換算
       -------------------------------------------------------
     -- 出荷の場合
-    IF ( ir_main_data.data_type = gc_data_type_syu_ins ) THEN
+-- 2009/01/26 v1.17 N.Yoshida UPDATE START
+--    IF ( ir_main_data.data_type = gc_data_type_syu_ins ) THEN
 --
         -- 入出庫換算単位≠NULLの場合
         IF (ir_main_data.conv_unit IS NOT NULL) THEN
@@ -1806,7 +1812,8 @@ AS
 --          gt_lot_quantity(gn_cre_idx) := TRUNC( gt_lot_quantity(gn_cre_idx), 3 ) ;
 --2008/08/08 Mod ↑
         END IF ;
-    END IF ;
+--    END IF ;
+-- 2009/01/26 v1.17 N.Yoshida UPDATE END
 -- ##### 20080627 Ver.1.6 ロット数量換算対応 END   #####
 --
     END IF ;
@@ -1890,8 +1897,11 @@ AS
     -- ケース入り数チェック
     -------------------------------------------------------
     -- 出荷の場合で、入出庫換算単位の設定がある場合
-    IF (   ( gt_main_data(in_idx).data_type = gc_data_type_syu_ins )
-       AND ( gt_main_data(in_idx).conv_unit IS NOT NULL            ) ) THEN
+-- 2009/01/26 v1.17 N.Yoshida UPDATE START
+--    IF (   ( gt_main_data(in_idx).data_type = gc_data_type_syu_ins )
+--       AND ( gt_main_data(in_idx).conv_unit IS NOT NULL            ) ) THEN
+    IF (gt_main_data(in_idx).conv_unit IS NOT NULL) THEN
+-- 2009/01/26 v1.17 N.Yoshida UPDATE END
       -- ケース入り数の値がない場合
       IF ( NVL( gt_main_data(in_idx).num_of_cases, 0 ) = 0 ) THEN
         lv_tok_val := gt_main_data(in_idx).item_code ;
@@ -1972,8 +1982,21 @@ AS
       -------------------------------------------------------
       -- 可変項目編集
       -------------------------------------------------------
-      lv_item_uom_code := gt_main_data(in_idx).item_uom_code  ;   -- 品目単位
-      lv_item_quantity := gt_main_data(in_idx).item_quantity  ;   -- 品目数量
+-- 2009/01/26 v1.17 N.Yoshida UPDATE START
+--      lv_item_uom_code := gt_main_data(in_idx).item_uom_code  ;   -- 品目単位
+--      lv_item_quantity := gt_main_data(in_idx).item_quantity  ;   -- 品目数量
+--
+      -- 品目単位
+      lv_item_uom_code := NVL( gt_main_data(in_idx).conv_unit
+                              ,gt_main_data(in_idx).item_uom_code ) ;
+      -- 品目数量
+      IF gt_main_data(in_idx).conv_unit IS NULL THEN
+        lv_item_quantity := gt_main_data(in_idx).item_quantity ;
+      ELSE
+        lv_item_quantity := gt_main_data(in_idx).item_quantity
+                          / gt_main_data(in_idx).num_of_cases ;
+      END IF ;
+-- 2009/01/26 v1.17 N.Yoshida UPDATE END
 --
       -------------------------------------------------------
       -- ヘッダデータの作成
@@ -2679,7 +2702,10 @@ AS
                   || re_out_data.shipping_method_code     || ','  -- 配送区分
                   -- 2008/08/12 Start ----------------------------------------------
                   --|| re_out_data.weight                   || ','  -- 重量/容積
-                  || CEIL(TRUNC(re_out_data.weight,3))    || ','  -- 重量/容積
+-- 2009/01/26 v1.17 N.Yoshida UPDATE START
+--                  || CEIL(TRUNC(re_out_data.weight,3))    || ','  -- 重量/容積
+                  || TRUNC(re_out_data.weight + 0.9)      || ','  -- 重量/容積
+-- 2009/01/26 v1.17 N.Yoshida UPDATE END
                   -- 2008/08/12 End ----------------------------------------------
                   || re_out_data.mixed_no                 || ','  -- 混載元依頼№
                   || re_out_data.collected_pallet_qty     || ','  -- パレット回収枚数

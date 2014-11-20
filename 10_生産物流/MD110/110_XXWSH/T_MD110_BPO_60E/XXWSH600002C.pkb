@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫配送計画情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60E_入出庫配送計画情報抽出処理
- * Version          : 1.29
+ * Version          : 1.30
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -72,6 +72,7 @@ AS
  *  2008/11/12    1.27  M.Nomura         統合#626対応
  *  2008/11/27    1.28  M.Nomura         本番177対応
  *  2009/01/13    1.29  H.Itou           本番971対応
+ *  2009/01/26    1.30  N.Yoshida        本番1017対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5261,7 +5262,10 @@ AS
                     || TO_CHAR( re_out_data.schedule_arrival_date, 'YYYY/MM/DD' ) || ','
                     || re_out_data.shipping_method_code     || ','    -- 配送区分
                     --|| re_out_data.weight                   || ','    -- 重量/容積 --2008/08/12 Del 課題#48(変更#164)
-                    || CEIL(TRUNC(re_out_data.weight,3))    || ','    -- 重量/容積   --2008/08/12 Add 課題#48(変更#164)
+-- 2009/01/26 v1.30 N.Yoshida UPDATE START
+--                    || CEIL(TRUNC(re_out_data.weight,3))    || ','    -- 重量/容積   --2008/08/12 Add 課題#48(変更#164)
+                    || TRUNC(re_out_data.weight + 0.9)      || ','    -- 重量/容積
+-- 2009/01/26 v1.30 N.Yoshida UPDATE END
                     || re_out_data.mixed_no                 || ','    -- 混載元依頼№
                     || re_out_data.collected_pallet_qty     || ','    -- パレット回収枚数
                     || re_out_data.arrival_time_from        || ','    -- 着荷時間指定(FROM)
