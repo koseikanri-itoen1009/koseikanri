@@ -38,6 +38,7 @@ AS
  *  2009/01/20    1.0   T.Osada          新規作成
  *  2009/06/12    1.1   K.Yamaguchi      [障害T1_1433]年月設定不正対応
  *  2010/08/02    2.0   S.Arizumi        [E_本稼動_03332]仕様変更（機能の見直し）
+ *  2010/08/24    2.0   S.Arizumi        [E_本稼動_03332]仕様変更（マイナス金額対応）
  *
  *****************************************************************************************/
 -- 2010/08/02 Ver.2.0 [E_本稼動_03332] SCS S.Arizumi REPAIR START
@@ -2481,6 +2482,9 @@ AS
   cn_2                      CONSTANT NUMBER         := 2;
   cv_comma                  CONSTANT VARCHAR2(1)    := ',';
   cv_0                      CONSTANT VARCHAR2(1)    := '0';
+-- 2010/08/24 Ver.2.0 [E_本稼動_03332] SCS S.Arizumi ADD START
+  cv_hyphen                 CONSTANT VARCHAR2(1)    := '-';
+-- 2010/08/24 Ver.2.0 [E_本稼動_03332] SCS S.Arizumi ADD END
 --
   -- =============================================================================
   -- グローバルレコード型
@@ -3505,12 +3509,44 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- 2010/08/24 Ver.2.0 [E_本稼動_03332] SCS S.Arizumi REPAIR START
+--    --===============================================
+--    -- 半角数字チェック
+--    --===============================================
+--    lb_chk_number := xxccp_common_pkg.chk_number(
+--                        iv_check_char => iv_amount
+--                     );
     --===============================================
-    -- 半角英数字チェック
+    -- 予算金額 数値チェック（マイナス金額可）
     --===============================================
-    lb_chk_number := xxccp_common_pkg.chk_number(
-                        iv_check_char => iv_amount
-                     );
+    BEGIN
+      --===============================================
+      -- 半角数字 ハイフンチェック
+      --===============================================
+      lb_chk_number := xxccp_common_pkg.chk_number(
+                          iv_check_char => REPLACE( iv_amount, cv_hyphen, NULL )
+                       );
+      lb_chk_number := NVL( lb_chk_number, FALSE ); -- 引数がNULLの場合、戻り値がNULLのため
+      IF( lb_chk_number ) THEN
+        --===============================================
+        -- 数値変換チェック
+        --===============================================
+          ot_amount  := TO_NUMBER( iv_amount );
+      END IF;
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_out_msg := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                          in_which        => FND_FILE.LOG     -- 出力区分
+                        , iv_message      => lv_out_msg       -- メッセージ
+                        , in_new_line     => cn_0             -- 改行
+                      );
+--
+        lb_chk_number := FALSE;
+    END;
+    ot_amount  := NULL;
+-- 2010/08/24 Ver.2.0 [E_本稼動_03332] SCS S.Arizumi REPAIR END
     IF( lb_chk_number = FALSE ) THEN
       lv_out_msg := xxccp_common_pkg.get_msg(
                         iv_application  => cv_appl_name_xxcok
