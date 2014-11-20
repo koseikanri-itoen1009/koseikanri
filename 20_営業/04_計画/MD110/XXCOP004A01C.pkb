@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A01C(body)
  * Description      : アップロードファイルからの登録(リーフ便）
  * MD.050           : アップロードファイルからの登録(リーフ便） MD050_COP_004_A01
- * Version          : 1.00
+ * Version          : 1.1
  *
  * Program List
  * ----------------------   ----------------------------------------------------------
@@ -27,7 +27,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2008/11/05    1.00  SCS.Tsubomatsu   新規作成
+ *  2008/11/05    1.0  SCS.Tsubomatsu   新規作成
+ *  2009/04/28    1.1  SCS.Kikuchi      T1_0645対応
  *
  *****************************************************************************************/
 --
@@ -104,6 +105,11 @@ AS
   -- プロファイル
   cv_master_org_id          CONSTANT VARCHAR2(19)  := 'XXCMN_MASTER_ORG_ID';    -- マスタ組織ID
   cv_master_org_id_name     CONSTANT VARCHAR2(100) := 'XXCMN:マスタ組織';       -- マスタ組織ID
+--20090428_Ver1.1_T1_0645_SCS.Kikuchi_ADD_START
+  cv_sales_org_code         CONSTANT VARCHAR2(30)  := 'XXCOP1_SALES_ORG_CODE';  -- 営業組織
+  cv_sales_org_code_name    CONSTANT VARCHAR2(100) := 'XXCOP:営業組織';         -- 営業組織ID
+  cv_item_org_code          CONSTANT VARCHAR2(100) := '組織コード';
+--20090428_Ver1.1_T1_0645_SCS.Kikuchi_ADD_END
   -- クイックコード
   cv_lookup_type            CONSTANT VARCHAR2(21)  := 'XXCOP1_FORMAT_PATTERN';  -- クイックコードタイプ
   cv_flv_enabled_flag       CONSTANT VARCHAR2(1)   := 'Y';                      -- 使用可能
@@ -168,6 +174,10 @@ AS
   cv_table_xldos            CONSTANT VARCHAR2(100) := 'リーフ便データアドオンテーブル';
   cv_table_hca              CONSTANT VARCHAR2(100) := '顧客マスタ';
   cv_table_mil              CONSTANT VARCHAR2(100) := 'OPM保管場所マスタ';
+--20090428_Ver1.1_T1_0645_SCS.Kikuchi_ADD_START
+  cv_table_mp               CONSTANT VARCHAR2(100) := '組織パラメータ';
+--20090428_Ver1.1_T1_0645_SCS.Kikuchi_ADD_END
+
   -- 桁数
   cn_len_code               CONSTANT NUMBER        := 4;    -- 拠点、出荷倉庫
   cn_len_target_month       CONSTANT NUMBER        := 6;    -- 対象年月
@@ -183,6 +193,11 @@ AS
   gv_upload_name            fnd_lookup_values.meaning%TYPE;                         -- ファイルアップロード名称
   gv_file_name              xxccp_mrp_file_ul_interface.file_name%TYPE;             -- ファイル名
   gd_upload_date            xxccp_mrp_file_ul_interface.creation_date%TYPE;         -- アップロード日時
+
+--20090428_Ver1.1_T1_0645_SCS.Kikuchi_ADD_START
+  gv_sales_org_code         mtl_parameters.organization_code%type;
+  gn_sales_org_id           mtl_parameters.organization_id%type;
+--20090428_Ver1.1_T1_0645_SCS.Kikuchi_ADD_END
 --
   -- ===============================
   -- ユーザー定義グローバルTABLE型
@@ -228,8 +243,8 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル変数 ***
-    lv_tkn_parameter  VARCHAR2(100);  -- メッセージに渡すTOKEN(&PARAMETER)
-    lv_tkn_item       VARCHAR2(100);  -- メッセージに渡すTOKEN(&ITEM)
+    lv_tkn_parameter  VARCHAR2(100);  -- メッセージに渡すTOKEN(＆PARAMETER)
+    lv_tkn_item       VARCHAR2(100);  -- メッセージに渡すTOKEN(＆ITEM)
     ln_dummy          NUMBER;         -- NUMBER型変換用ダミー
 --
     -- *** ローカル・ユーザ定義例外 ***
@@ -540,8 +555,8 @@ AS
     ln_dummy            NUMBER;               -- 件数、NUMBER型確認用
     ld_dummy            DATE;                 -- DATE型確認用
     ln_index            NUMBER := 0;          -- CSVインデックス
-    lv_tkn_item         VARCHAR2(100);        -- メッセージに渡すTOKEN(&ITEM)
-    lv_tkn_value        VARCHAR2(100);        -- メッセージに渡すTOKEN(&VALUE)
+    lv_tkn_item         VARCHAR2(100);        -- メッセージに渡すTOKEN(＆ITEM)
+    lv_tkn_value        VARCHAR2(100);        -- メッセージに渡すTOKEN(＆VALUE)
     lb_blank_day        BOOLEAN := FALSE;     -- 1-20便日付のNull検出フラグ
     lv_date             VARCHAR2(8);          -- DATE型チェック用
     ld_work_day         DATE;                 -- 稼働日チェック用
@@ -842,7 +857,10 @@ AS
             ld_work_day := TO_DATE( o_csv_div_data_tab( 3 ) || LPAD( o_csv_div_data_tab( i ), 2, '0' ), cv_date_format1 );
             -- 稼働日でない場合はエラーとする
             IF ( ld_work_day <> mrp_calendar.next_work_day(
-                                  arg_org_id  => gn_org_id
+--20090428_Ver1.1_T1_0645_SCS.Kikuchi_MOD_START
+--                                  arg_org_id  => gn_org_id
+                                  arg_org_id  => gn_sales_org_id
+--20090428_Ver1.1_T1_0645_SCS.Kikuchi_MOD_END
                                  ,arg_bucket  => cn_bucket_type
                                  ,arg_date    => ld_work_day ) )
             THEN
@@ -959,8 +977,8 @@ AS
     -- *** ローカル変数 ***
     lb_delete           BOOLEAN := TRUE;      -- 削除フラグ(1-20便が全てNullの場合はTRUE)
     ln_dummy            NUMBER;               -- 件数、NUMBER型確認用
-    lv_tkn_item         VARCHAR2(100);        -- メッセージに渡すTOKEN(&ITEM)
-    lv_tkn_value        VARCHAR2(100);        -- メッセージに渡すTOKEN(&VALUE)
+    lv_tkn_item         VARCHAR2(100);        -- メッセージに渡すTOKEN(＆ITEM)
+    lv_tkn_value        VARCHAR2(100);        -- メッセージに渡すTOKEN(＆VALUE)
 --
   BEGIN
 --
@@ -1079,12 +1097,12 @@ AS
     -- ===============================
 --
     -- *** ローカル変数 ***
-    lv_tkn_item         VARCHAR2(100);        -- メッセージに渡すTOKEN(&ITEM)
-    lv_tkn_value        VARCHAR2(100);        -- メッセージに渡すTOKEN(&VALUE)
-    lv_tkn_table        VARCHAR2(100);        -- メッセージに渡すTOKEN(&TABLE)
-    lv_tkn_store        VARCHAR2(100);        -- メッセージに渡すTOKEN(&STORE)
-    lv_tkn_location     VARCHAR2(100);        -- メッセージに渡すTOKEN(&LOCATION)
-    lv_tkn_yyyymm       VARCHAR2(100);        -- メッセージに渡すTOKEN(&YYYYMM)
+    lv_tkn_item         VARCHAR2(100);        -- メッセージに渡すTOKEN(＆ITEM)
+    lv_tkn_value        VARCHAR2(100);        -- メッセージに渡すTOKEN(＆VALUE)
+    lv_tkn_table        VARCHAR2(100);        -- メッセージに渡すTOKEN(＆TABLE)
+    lv_tkn_store        VARCHAR2(100);        -- メッセージに渡すTOKEN(＆STORE)
+    lv_tkn_location     VARCHAR2(100);        -- メッセージに渡すTOKEN(＆LOCATION)
+    lv_tkn_yyyymm       VARCHAR2(100);        -- メッセージに渡すTOKEN(＆YYYYMM)
     lr_xldos_rowid      ROWID;                -- リーフ便データアドオンテーブル.ROWID
 --
     -- *** ローカルTABLE型 ***
@@ -1369,8 +1387,8 @@ AS
     -- *** ローカル変数 ***
     ln_loop             NUMBER;               -- ループ変数
     ln_dummy            NUMBER;               -- 件数、NUMBER型確認用
-    lv_tkn_item         VARCHAR2(100);        -- メッセージに渡すTOKEN(&ITEM)
-    lv_tkn_value        VARCHAR2(100);        -- メッセージに渡すTOKEN(&VALUE)
+    lv_tkn_item         VARCHAR2(100);        -- メッセージに渡すTOKEN(＆ITEM)
+    lv_tkn_value        VARCHAR2(100);        -- メッセージに渡すTOKEN(＆VALUE)
     lv_conc_name        fnd_concurrent_programs.concurrent_program_name%TYPE;   -- コンカレント名
     lv_report           VARCHAR2(4096);       -- 出力文字列
     lv_warn_msg_wk      VARCHAR2(4096);       -- 警告メッセージ編集用
@@ -1599,6 +1617,7 @@ AS
     ln_delete_count     NUMBER;           -- 削除件数
     ln_insert_count     NUMBER;           -- 登録件数
     ln_ifdata_tab_idx   NUMBER;           -- PL/SQL表：I/Fテーブルデータのインデックス番号
+    ln_A_1_error_cnt    NUMBER := 0;      -- A-1エラー件数
 --
     -- *** ローカルレコード ***
     l_ifdata_rec           g_ifdata_rtype;  -- ファイルアップロードI/Fテーブル要素
@@ -1632,8 +1651,19 @@ AS
     --***      MD.050のフロー図を表す           ***
     --***      分岐と処理部の呼び出しを行う     ***
     --*********************************************
---
     BEGIN
+--
+      -- ===============================
+      -- A-2.パラメータ妥当性チェック
+      -- ===============================
+      chk_parameter_p(
+        lv_errbuf          -- エラー・メッセージ           --# 固定 #
+       ,lv_retcode         -- リターン・コード             --# 固定 #
+       ,lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        RAISE submain_expt;
+      END IF;
+--
       -- ===============================
       -- A-1.組織IDの取得
       -- ===============================
@@ -1653,19 +1683,61 @@ AS
                         ,iv_token_value1 => cv_master_org_id_name
                        );
         lv_retcode := cv_status_error;
+        ln_A_1_error_cnt := 1;
         RAISE submain_expt;
       END IF;
---
+--20090428_Ver1.1_T1_0645_SCS.Kikuchi_ADD_START
       -- ===============================
-      -- A-2.パラメータ妥当性チェック
+      --  営業組織コードの取得
       -- ===============================
-      chk_parameter_p(
-        lv_errbuf          -- エラー・メッセージ           --# 固定 #
-       ,lv_retcode         -- リターン・コード             --# 固定 #
-       ,lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-      IF ( lv_retcode <> cv_status_normal ) THEN
+      BEGIN
+        gv_sales_org_code := fnd_profile.value(cv_sales_org_code);
+      EXCEPTION
+        WHEN OTHERS THEN
+          gv_sales_org_code := NULL;
+      END;
+      -- プロファイル：営業組織が取得出来ない場合
+      IF ( gv_sales_org_code IS NULL ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_msg_application
+                      ,iv_name         => cv_message_00002
+                      ,iv_token_name1  => cv_message_00002_token_1
+                      ,iv_token_value1 => cv_sales_org_code_name
+                     );
+        lv_retcode   := cv_status_error;
+        ln_A_1_error_cnt := 1;
         RAISE submain_expt;
       END IF;
+      -- ===============================
+      --  営業組織IDの取得
+      -- ===============================
+      BEGIN
+        SELECT organization_id
+        INTO   gn_sales_org_id
+        FROM   mtl_parameters
+        WHERE  organization_code = gv_sales_org_code
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          gn_sales_org_id := NULL;
+      END;
+      -- 営業組織IDが取得出来ない場合
+      IF ( gn_sales_org_id IS NULL ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_msg_application
+                      ,iv_name         => cv_message_00013
+                      ,iv_token_name1  => cv_message_00013_token_1
+                      ,iv_token_value1 => cv_item_org_code
+                      ,iv_token_name2  => cv_message_00013_token_2
+                      ,iv_token_value2 => gv_sales_org_code
+                      ,iv_token_name3  => cv_message_00013_token_3
+                      ,iv_token_value3 => cv_table_mp
+                     );
+        lv_retcode   := cv_status_error;
+        ln_A_1_error_cnt := 1;
+        RAISE submain_expt;
+      END IF;
+--20090428_Ver1.1_T1_0645_SCS.Kikuchi_ADD_END
 --
       -- ===============================
       -- A-3.クイックコード取得(リーフ便CSVファイルのフォーマット)
@@ -1811,6 +1883,7 @@ AS
       COMMIT;
     END IF;
 --
+    
     -- ===============================
     -- A-10.ファイルアップロードI/Fテーブルの削除
     -- ===============================
@@ -1853,6 +1926,8 @@ AS
      ,lv_retcode                  -- リターン・コード             --# 固定 #
      ,lv_errmsg2);                -- ユーザー・エラー・メッセージ --# 固定 #
 --
+
+    gn_error_cnt := gn_error_cnt + ln_A_1_error_cnt;
   EXCEPTION
       -- *** 任意で例外処理を記述する ****
       -- カーソルのクローズをここに記述する
