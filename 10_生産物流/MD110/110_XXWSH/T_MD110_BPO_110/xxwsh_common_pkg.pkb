@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.16
+ * Version                : 1.17
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -54,7 +54,8 @@ AS
  *  2008/07/09   1.14  Oracle 熊本和郎  [重量容積小口個数更新関数] ST障害#430対応
  *  2008/07/11   1.15  Oracle 福田直樹  [最大配送区分算出関数]変更要求対応#95
  *  2008/07/11   1.16  Oracle 福田直樹  [最大パレット枚数算出関数]変更要求対応#95
- *
+ *  2008/08/04   1.17  Oracle 伊藤ひとみ[最大配送区分算出関数][最大パレット枚数算出関数]
+ *                                       コード区分2 = 4,11の場合、入出庫場所コード2 = ZZZZで検索する。
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -98,6 +99,12 @@ AS
 --add start 1.14
   gv_freight_charge_yes CONSTANT VARCHAR2(1) := '1';
 --add end 1.14
+-- 2008/08/04 Add H.Itou Start
+  -- コード区分
+  code_class_whse       CONSTANT VARCHAR2(10) := '4';  -- 倉庫
+  code_class_ship       CONSTANT VARCHAR2(10) := '9';  -- 出荷
+  code_class_supply     CONSTANT VARCHAR2(10) := '11'; -- 支給
+-- 2008/08/04 Add H.Itou End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -439,9 +446,11 @@ AS
     ------------- 2008/07/11 変更要求対応#95 ADD START --------------------------------------
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
-        IF (iv_code_class2 <> cv_deliver_to) THEN  -- コード区分２<>「9:配送」の場合は再検索しない
-          RAISE no_data;
-        END IF;
+-- 2008/08/04 Del H.Itou Start
+--        IF (iv_code_class2 <> cv_deliver_to) THEN  -- コード区分２<>「9:配送」の場合は再検索しない
+--          RAISE no_data;
+--        END IF;
+-- 2008/08/04 Del H.Itou End
 --
         ---------- 2. 倉庫(ALL値)－配送先(個別コード) -------------------------------
         BEGIN
@@ -585,8 +594,16 @@ AS
                      AND     xdlv2.entering_despatching_code1   =  iv_entering_despatching_code1    --個別
                      -- コード区分２
                      AND     xdlv2.code_class2                  =  iv_code_class2
+-- 2008/08/04 Mod H.Itou Start
                      -- 入出庫場所コード２
-                     AND     xdlv2.entering_despatching_code2   =  cv_all_9          --ALL'Z'
+                       -- コード区分が9:出荷の場合、ZZZZZZZZZ
+                     AND   (((iv_code_class2                     = code_class_ship)
+                         AND (xdlv2.entering_despatching_code2   = cv_all_9))          --ALL'Z'
+                       -- コード区分が4:配送先 OR 11:支給 の場合、ZZZZ
+                       OR   ((iv_code_class2                     IN (code_class_whse, code_class_supply))
+                         AND (xdlv2.entering_despatching_code2   = cv_all_4)))         --ALL'Z'
+--                     AND     xdlv2.entering_despatching_code2   =  cv_all_9          --ALL'Z'
+-- 2008/08/04 Mod H.Itou End
                      -- 適用開始日(配送L/T)
                      AND     ((xdlv2.lt_start_date_active       <= ld_standard_date) OR
                                (xdlv2.lt_start_date_active      IS NULL))
@@ -679,8 +696,16 @@ AS
                          AND     xdlv2.entering_despatching_code1   =  cv_all_4          --ALL'Z'
                          -- コード区分２
                          AND     xdlv2.code_class2                  =  iv_code_class2
-                         -- 入出庫場所コード２
-                         AND     xdlv2.entering_despatching_code2   =  cv_all_9          --ALL'Z'
+-- 2008/08/04 Mod H.Itou Start
+                     -- 入出庫場所コード２
+                       -- コード区分が9:出荷の場合、ZZZZZZZZZ
+                     AND   (((iv_code_class2                     = code_class_ship)
+                         AND (xdlv2.entering_despatching_code2   = cv_all_9))          --ALL'Z'
+                       -- コード区分が4:配送先 OR 11:支給 の場合、ZZZZ
+                       OR   ((iv_code_class2                     IN (code_class_whse, code_class_supply))
+                         AND (xdlv2.entering_despatching_code2   = cv_all_4)))         --ALL'Z'
+--                     AND     xdlv2.entering_despatching_code2   =  cv_all_9          --ALL'Z'
+-- 2008/08/04 Mod H.Itou End
                          -- 適用開始日(配送L/T)
                          AND     ((xdlv2.lt_start_date_active       <= ld_standard_date) OR
                                    (xdlv2.lt_start_date_active      IS NULL))
@@ -1338,9 +1363,11 @@ AS
     ------------- 2008/07/11 変更要求対応#95 ADD START --------------------------------------
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
-        IF (iv_code_class2 <> cv_deliver_to) THEN  -- コード区分２<>「9:配送」の場合は再検索しない
-          RAISE no_data;
-        END IF;
+-- 2008/08/04 Del H.Itou Start
+--        IF (iv_code_class2 <> cv_deliver_to) THEN  -- コード区分２<>「9:配送」の場合は再検索しない
+--          RAISE no_data;
+--        END IF;
+-- 2008/08/04 Del H.Itou End
 --
         --------------- 2. 倉庫(ALL値)－配送先(個別コード) --------------------------
         BEGIN
@@ -1401,8 +1428,18 @@ AS
                 xdlv2.entering_despatching_code1  =  iv_entering_despatching_code1  -- 入出庫場所コード１（個別）
                 AND
                 xdlv2.code_class2                 =  iv_code_class2                 -- コード区分２
+-- 2008/08/04 Mod H.Itou Start
+                -- 入出庫場所コード２
                 AND
-                xdlv2.entering_despatching_code2  =  cv_all_9                       -- 入出庫場所コード２（ALL'Z'）
+                  -- コード区分が9:出荷の場合、ZZZZZZZZZ
+                      (((iv_code_class2                     = code_class_ship)
+                    AND (xdlv2.entering_despatching_code2   = cv_all_9))          --ALL'Z'
+                  -- コード区分が4:配送先 OR 11:支給 の場合、ZZZZ
+                  OR   ((iv_code_class2                     IN (code_class_whse, code_class_supply))
+                    AND (xdlv2.entering_despatching_code2   = cv_all_4)))         --ALL'Z'
+--                AND
+--                xdlv2.entering_despatching_code2  =  cv_all_9                       -- 入出庫場所コード２（ALL'Z'）
+-- 2008/08/04 Mod H.Itou End
                 AND
                 xdlv2.lt_start_date_active       <=  ld_standard_date               -- 適用開始日(配送L/T)
                 AND
@@ -1438,8 +1475,18 @@ AS
                     xdlv2.entering_despatching_code1  =  cv_all_4                       -- 入出庫場所コード１（ALL'Z'）
                     AND
                     xdlv2.code_class2                 =  iv_code_class2                 -- コード区分２
-                    AND
-                    xdlv2.entering_despatching_code2  =  cv_all_9                       -- 入出庫場所コード２（ALL'Z'）
+-- 2008/08/04 Mod H.Itou Start
+                -- 入出庫場所コード２
+                AND
+                  -- コード区分が9:出荷の場合、ZZZZZZZZZ
+                      (((iv_code_class2                     = code_class_ship)
+                    AND (xdlv2.entering_despatching_code2   = cv_all_9))          --ALL'Z'
+                  -- コード区分が4:配送先 OR 11:支給 の場合、ZZZZ
+                  OR   ((iv_code_class2                     IN (code_class_whse, code_class_supply))
+                    AND (xdlv2.entering_despatching_code2   = cv_all_4)))         --ALL'Z'
+--                AND
+--                xdlv2.entering_despatching_code2  =  cv_all_9                       -- 入出庫場所コード２（ALL'Z'）
+-- 2008/08/04 Mod H.Itou End
                     AND
                     xdlv2.lt_start_date_active       <=  ld_standard_date               -- 適用開始日(配送L/T)
                     AND
