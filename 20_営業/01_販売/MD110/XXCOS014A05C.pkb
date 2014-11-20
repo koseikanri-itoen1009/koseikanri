@@ -7,7 +7,7 @@ AS
  * Description      : 帳票発行画面(アドオン)で指定した条件を元にEDI経由で取り込んだ在庫情報を、
  *                    帳票サーバ向けにファイルを出力します。
  * MD.050           : 在庫情報データ作成 MD050_COS_014_A05
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/05/27    1.8   K.Tsuboi         [T1_1222] 単位の取得元変更
  *  2009/06/18    1.9   T.Kitajima       [T1_1158] 店舗コードNULL対応
  *  2010/03/09    1.10  T.Nakano         [E_本稼動_01695] EDI取込日の変更
+ *  2010/06/15    1.11  S.Niki           [E_本稼動_03075] 拠点選択対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2138,20 +2139,28 @@ AS
                       ,xxcmm_cust_accounts                                     xca                            --顧客マスタアドオン
                       ,hz_cust_accounts                                        hca                            --顧客マスタ
                       ,hz_parties                                              hp                             --パーティマスタ
-                      ,xxcos_chain_store_security_v                            xcss                           --チェーン店店舗セキュリティビュー
+/* 2010/06/15 Ver1.11 Del Start */
+--                      ,xxcos_chain_store_security_v                            xcss                           --チェーン店店舗セキュリティビュー
+/* 2010/06/15 Ver1.11 Del End  */
                 WHERE xei.conv_customer_code     IS NOT NULL
                 --顧客アドオン
                   AND xca.chain_store_code        = xei.edi_chain_code                                        --チェーン店コード
                   AND xca.store_code              = xei.shop_code                                             --店舗コード
+/* 2010/06/15 Ver1.11 Add Start */
+                  AND xca.delivery_base_code      = i_input_rec.base_code                                     --納品拠点コード
+/* 2010/06/15 Ver1.11 Add End */
                 --顧客マスタ
                   AND ( hca.cust_account_id       = xca.customer_id )                                         --顧客ID
                   AND hca.customer_class_code    IN ( cv_cust_class_chain_store, cv_cust_class_uesama )
                 --パーティマスタ
                   AND hp.party_id                 = hca.party_id
+/* 2010/06/15 Ver1.11 Del Start */
                 --店舗セキュリティVIEW
-                  AND xcss.chain_code             = xei.edi_chain_code                                        --チェーン店コード
-                  AND xcss.chain_store_code       = xei.shop_code                                             --店コード
-                  AND xcss.user_id                = i_input_rec.user_id                                       --ユーザID
+--                  AND xcss.chain_code             = xei.edi_chain_code                                        --チェーン店コード
+--                  AND xcss.chain_store_code       = xei.shop_code                                             --店コード
+--                  AND xcss.user_id                = i_input_rec.user_id                                       --ユーザID
+/* 2010/06/15 Ver1.11 Del End   */
+
                UNION
                SELECT 2                                                        select_block
                       ,xei.medium_class                                        medium_class                   --媒体区分

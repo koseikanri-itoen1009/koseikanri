@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A03C (body)
  * Description      : 納品確定情報データ作成(EDI)
  * MD.050           : 納品確定情報データ作成(EDI) MD050_COS_014_A03
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2009/09/09    1.12  M.Sano           [0001211] 税関連項目取得基準日修正
  *  2009/10/02    1.13  M.Sano           [0001306] 売上区分混在チェックのIF条件修正
  *  2010/02/16    1.14  K.Kiriu          [E_本稼動_01590] エラー明細出力対応（単位換算実行チェック追加）
+ *  2010/06/14    1.15  S.Arizumi        [E_本稼動_03075] 拠点選択対応
  *
  *****************************************************************************************/
 --
@@ -3193,7 +3194,9 @@ AS
                      ,hz_cust_accounts                                           hca                           --顧客マスタ
                      ,xxcmm_cust_accounts                                        xca                           --顧客アドオン
                      ,hz_parties                                                 hp                            --パーティマスタ
-                     ,xxcos_chain_store_security_v                               xcss                          --チェーン店店舗セキュリティビュー
+-- 2010/06/14 S.Arizumi Ver1.15 DEL Start
+--                     ,xxcos_chain_store_security_v                               xcss                          --チェーン店店舗セキュリティビュー
+-- 2010/06/14 S.Arizumi Ver1.15 DEL End
                      ,xxcos_lookup_values_v                                      xlvv                          --税コードマスタ
                      ,ar_vat_tax_all_b                                           avtab                         --税率マスタ
                WHERE xel.edi_header_info_id   = xeh.edi_header_info_id           --EDIヘッダ.ヘッダID                  = EDI明細.ヘッダID
@@ -3202,9 +3205,12 @@ AS
                  AND xca.chain_store_code     = xeh.edi_chain_code               --顧客アドオン.EDIチェーン店コード    = EDIヘッダ.EDIチェーン店コード
                  AND xca.store_code           = xeh.shop_code                    --顧客アドオン.店舗コード             = EDIヘッダ.店舗コード
                  --チェーン店店舗セキュリティビュー抽出条件
-                 AND xcss.chain_code          = xeh.edi_chain_code               --セキュリティビュー.チェーン店コード = EDIヘッダ.EDIチェーン店コード
-                 AND xcss.chain_store_code    = xeh.shop_code                    --セキュリティビュー.店舗コード       = EDIヘッダ.店舗コード
-                 AND xcss.user_id             = i_input_rec.user_id              --セキュリティビュー.ユーザID         = ログインユーザーID
+-- 2010/06/14 Ver1.15 S.Arizumi MOD Start
+--                 AND xcss.chain_code          = xeh.edi_chain_code               --セキュリティビュー.チェーン店コード = EDIヘッダ.EDIチェーン店コード
+--                 AND xcss.chain_store_code    = xeh.shop_code                    --セキュリティビュー.店舗コード       = EDIヘッダ.店舗コード
+--                 AND xcss.user_id             = i_input_rec.user_id              --セキュリティビュー.ユーザID         = ログインユーザーID
+                 AND xca.delivery_base_code   = i_input_rec.base_code
+-- 2010/06/14 Ver1.15 S.Arizumi MOD End
                  --顧客マスタ(店舗)抽出条件
                  AND hca.cust_account_id      = xca.customer_id                  --顧客マスタ.顧客ID                   = 顧客アドオン.顧客マスタ
                  AND hca.customer_class_code IN ( cv_cust_class_chain_store

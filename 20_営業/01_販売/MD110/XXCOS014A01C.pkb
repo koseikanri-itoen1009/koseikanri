@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2010/01/05    1.19  N.Maeda          [E_本稼動_00862] ＪＡＮコード取得設定内容修正
  *  2010/01/06    1.20  N.Maeda          [E_本稼動_00552] 取引先名称のスペース削除
  *  2010/02/19    1.21  S.Karikomi       [E_本稼動_01440] 端数処理対応
+ *  2010/06/11    1.22  S.Miyakoshi      [E_本稼動_03075] 拠点選択対応
  *
  *****************************************************************************************/
 --
@@ -3094,9 +3095,11 @@ AS
                    ,hz_cust_accounts                                            hca                           --* 顧客マスタ *--
                    ,xxcmm_cust_accounts                                         xca                           --* 顧客マスタアドオン *--
                    ,oe_order_sources                                            oos                           --* 受注ソース *--
-/* 2009/08/12 Ver1.14 Add Start */
-                   ,xxcos_chain_store_security_v                                xcss                          --チェーン店店舗セキュリティビュー
-/* 2009/08/12 Ver1.14 Add End   */
+/* 2010/06/11 Ver1.22 Del Start */
+--/* 2009/08/12 Ver1.14 Add Start */
+--                   ,xxcos_chain_store_security_v                                xcss                          --チェーン店店舗セキュリティビュー
+--/* 2009/08/12 Ver1.14 Add End   */
+/* 2010/06/11 Ver1.22 Del End   */
              WHERE  hca.cust_account_id             = ooha.sold_to_org_id                                     --顧客ID
              AND    hca.customer_class_code         IN ( cv_cust_class_chain_store                            --顧客区分:店舗
                                                         ,cv_cust_class_uesama )                               --顧客区分:上様
@@ -3106,10 +3109,13 @@ AS
              AND    xca.chain_store_code            = i_input_rec.ssm_store_code                              --チェーン店コード(EDI)
              AND    xca.store_code                  = NVL( i_input_rec.store_code, xca.store_code )           --店舗コード
 --******************************************* 2009/04/13 1.7 T.Kitajima MOD  END  *************************************
-/* 2009/08/12 Ver1.14 Add Start */
-             AND    xcss.account_number             = hca.account_number
-             AND    xcss.user_id                    = i_input_rec.user_id
-/* 2009/08/12 Ver1.14 Add End   */
+/* 2010/06/11 Ver1.22 Mod Start */
+--/* 2009/08/12 Ver1.14 Add Start */
+--             AND    xcss.account_number             = hca.account_number
+--             AND    xcss.user_id                    = i_input_rec.user_id
+--/* 2009/08/12 Ver1.14 Add End   */
+             AND    xca.delivery_base_code          = i_input_rec.base_code
+/* 2010/06/11 Ver1.22 Del End   */
              --受注ソース抽出条件
              AND    oos.description                != i_msg_rec.order_source
              AND    oos.enabled_flag                = cv_enabled_flag
@@ -3184,6 +3190,9 @@ AS
              AND    oos.enabled_flag                = cv_enabled_flag
              AND    ooha.order_source_id            = oos.order_source_id
              AND    ooha.flow_status_code          != cv_cancel                                               --ステータス
+/* 2010/06/11 Ver1.22 Add Start */
+             AND    xca.delivery_base_code          = i_input_rec.base_code                                   --指定された拠点
+/* 2010/06/11 Ver1.22 Add End   */
 /* 2009/09/15 Ver1.15 Mod Start */
 --             AND    TRUNC(ooha.request_date)                                                                  --店舗納品日
 --               BETWEEN TO_DATE(i_input_rec.shop_delivery_date_from, cv_date_fmt)

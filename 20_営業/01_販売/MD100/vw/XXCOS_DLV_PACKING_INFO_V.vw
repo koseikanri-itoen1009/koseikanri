@@ -3,13 +3,14 @@
  *
  * View Name       : xxcos_dlv_packing_info_v
  * Description     : 納品予定更新(荷番情報)画面view
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/10/29    1.0   K.Kiriu         新規作成
+ *  2010/06/16    1.1   H.Sasaki        [E_本稼動_03075]拠点選択対応
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_dlv_packing_info_v(
    edi_header_info_id          -- EDIヘッダ情報.EDIヘッダ情報ID
@@ -39,6 +40,9 @@ CREATE OR REPLACE VIEW xxcos_dlv_packing_info_v(
   ,item_name                   -- 商品名
   ,org_id                      -- 受注ヘッダ.営業単位ID
   ,organization_id             -- Disc品目.在庫組織ID
+/* 2010/06/16 Ver1.1 Add START */
+  ,base_code                   --  顧客アドオン.納品拠点
+/* 2010/06/16 Ver1.1 Add END   */
 )
 AS
   SELECT xeh.edi_header_info_id          edi_header_info_id      -- EDIヘッダ情報.EDIヘッダ情報ID
@@ -87,6 +91,9 @@ AS
                  msib.description )      item_name               -- 商品名
         ,ooha.org_id                     org_id                  -- 受注ヘッダ.営業単位ID
         ,msib.organization_id            organization_id         -- Disc品目.在庫組織ID
+/* 2010/06/16 Ver1.1 Add START */
+        ,xca.delivery_base_code          base_code               --  顧客アドオン.納品拠点
+/* 2010/06/16 Ver1.1 Add END   */
   FROM   xxcos_edi_headers     xeh   -- EDIヘッダ情報
         ,xxcos_edi_lines       xel   -- EDI明細情報
         ,oe_order_headers_all  ooha  -- 受注ヘッダ
@@ -94,6 +101,9 @@ AS
         ,ic_item_mst_b         iimb  -- OPM品目
         ,mtl_system_items_b    msib  -- Disc品目
         ,xxcmm_system_items_b  xsib  -- Disc品目アドオン
+/* 2010/06/16 Ver1.1 Add START */
+        , xxcmm_cust_accounts   xca   --  顧客アドオン
+/* 2010/06/16 Ver1.1 Add END   */
   WHERE  xeh.edi_header_info_id            =  xel.edi_header_info_id
   AND    xeh.edi_delivery_schedule_flag    =  'N'
   AND    xeh.order_connection_number       =  ooha.orig_sys_document_ref
@@ -107,6 +117,9 @@ AS
   AND    oola.inventory_item_id            =  msib.inventory_item_id
   AND    msib.segment1                     =  iimb.item_no
   AND    msib.segment1                     =  xsib.item_code
+/* 2010/06/16 Ver1.1 Add START */
+  AND    ooha.sold_to_org_id               =   xca.customer_id
+/* 2010/06/16 Ver1.1 Add END   */
   ;
 --
 COMMENT ON COLUMN xxcos_dlv_packing_info_v.edi_header_info_id      IS 'EDIヘッダ情報ID';
@@ -136,5 +149,8 @@ COMMENT ON COLUMN xxcos_dlv_packing_info_v.jan_code                IS 'JANコード
 COMMENT ON COLUMN xxcos_dlv_packing_info_v.item_name               IS '商品名';
 COMMENT ON COLUMN xxcos_dlv_packing_info_v.org_id                  IS '営業単位ID';
 COMMENT ON COLUMN xxcos_dlv_packing_info_v.organization_id         IS '在庫組織ID';
+/* 2010/06/16 Ver1.1 Add START */
+COMMENT ON COLUMN xxcos_dlv_packing_info_v.base_code               IS '拠点コード';
+/* 2010/06/16 Ver1.1 Add END   */
 --
 COMMENT ON TABLE  xxcos_dlv_packing_info_v                         IS  '納品予定更新(荷番情報)画面view';

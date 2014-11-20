@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *                                       [E_本稼働_01848] 納品日変更対応
  *  2010/04/01    1.18  M.Hokkanji       [E_本稼動_01979] 原価金額(出荷)の計算式を変更
  *  2010/04/22    1.19  M.Sano           [E_本稼動_02249] 品目の結合をEDI→受注に変更
+ *  2010/06/18    1.20  S.Miyakoshi      [E_本稼動_03075] 拠点選択対応
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -2991,12 +2992,17 @@ AS
 -- ********* 2009/10/06 1.14 N.Maeda ADD  END  ********* --
 -- ******************** 2010/03/24 1.17 M.Hirose MOD START ************************* --
 --              FROM   (SELECT xeh.medium_class                                            medium_class                  --媒体区分
-              FROM   (SELECT /*+ LEADING( xcss.xuiv.fu xcss.xuiv.papf xcss.xuiv.paaf )
-                                  USE_NL( xcss.xuiv.fu    xcss.xuiv.papf   xcss.xuiv.paaf   xcss.base.xca_b
-                                          xcss.base.hca_b xcss.store.xca_s xcss.store.hca_s                 )
-                                  USE_NL( xeh ore )
+/* 2010/06/18 Ver1.20 Mod Start */
+--              FROM   (SELECT /*+ LEADING( xcss.xuiv.fu xcss.xuiv.papf xcss.xuiv.paaf )
+--                                  USE_NL( xcss.xuiv.fu    xcss.xuiv.papf   xcss.xuiv.paaf   xcss.base.xca_b
+--                                          xcss.base.hca_b xcss.store.xca_s xcss.store.hca_s                 )
+--                                  USE_NL( xeh ore )
+--                                  INDEX ( xeh xxcos_edi_headers_n08)
+--                             */
+              FROM   (SELECT /*+  USE_NL( xeh ore )
                                   INDEX ( xeh xxcos_edi_headers_n08)
                              */
+/* 2010/06/18 Ver1.20 Mod End    */
                              xeh.medium_class                                            medium_class                  --媒体区分
 -- ******************** 2010/03/24 1.17 M.Hirose MOD START ************************* --
                             ,xeh.file_no                                                 file_no                       --ファイルＮｏ
@@ -3326,7 +3332,9 @@ AS
                             ,xxcmm_cust_accounts                                         xca                           --顧客マスタアドオン
                             ,hz_cust_accounts                                            hca                           --顧客マスタ
                             ,hz_parties                                                  hp                            --パーティマスタ
-                            ,xxcos_chain_store_security_v                                xcss                          --チェーン店店舗セキュリティビュー
+/* 2010/06/18 Ver1.20 Del Start */
+--                            ,xxcos_chain_store_security_v                                xcss                          --チェーン店店舗セキュリティビュー
+/* 2010/06/18 Ver1.20 Del END   */
                             ,xxcos_lookup_values_v                                       xlvv2                         --税コードマスタ
                             ,ar_vat_tax_all_b                                            avtab                         --税率マスタ
 --******************************************* 2009/08/27 1.13 N.Maeda ADD START *************************************
@@ -3405,10 +3413,13 @@ AS
                       AND    hca.customer_class_code    IN (cv_cust_class_chain_store, cv_cust_class_uesama)                  --顧客区分
                       --パーティマスタ(店舗)抽出条件
                       AND    hp.party_id                = hca.party_id                                                        --パーティID
-                      --チェーン店店舗セキュリティビュー抽出条件
-                      AND    xcss.chain_code            = xeh.edi_chain_code                                                  --チェーン店コード
-                      AND    xcss.chain_store_code      = xeh.shop_code                                                       --店コード
-                      AND    xcss.user_id               = i_input_rec.user_id                                                 --ユーザID
+/* 2010/06/18 Ver1.20 Mod Start */
+--                      --チェーン店店舗セキュリティビュー抽出条件
+--                      AND    xcss.chain_code            = xeh.edi_chain_code                                                  --チェーン店コード
+--                      AND    xcss.chain_store_code      = xeh.shop_code                                                       --店コード
+--                      AND    xcss.user_id               = i_input_rec.user_id                                                 --ユーザID
+                      AND    xca.delivery_base_code     = i_input_rec.base_code
+/* 2010/06/18 Ver1.20 Mod End   */
                       --税コードマスタ抽出条件
                       AND    xlvv2.lookup_type          = ct_qc_consumption_tax_class
                       AND    xlvv2.attribute3           = xca.tax_div
@@ -3439,7 +3450,9 @@ AS
 -- ********* 2009/10/06 1.14 N.Maeda ADD  END  ********* --
 -- ******************** 2010/03/24 1.17 M.Hirose INS START ************************* --
                       AND    xeh.order_forward_flag = 'Y'                     -- 受注に連携済みのもの
-                      AND    xcss.chain_code        = i_input_rec.chain_code  -- EDIチェーン店コード(チェーン店店舗セキュリティビューを更に絞り込む)
+/* 2010/06/18 Ver1.20 Del Start */
+--                      AND    xcss.chain_code        = i_input_rec.chain_code  -- EDIチェーン店コード(チェーン店店舗セキュリティビューを更に絞り込む)
+/* 2010/06/18 Ver1.20 Del End   */
 -- ******************** 2010/03/24 1.17 M.Hirose INS END   ************************* --
 -- ******************** 2010/03/24 1.17 M.Hirose DEL START ************************* --
 /* EDIヘッダ情報の変換顧客コードがNULLにもかかわらず、受注データ(標準)に連携されることはあり得ない。
@@ -4706,7 +4719,9 @@ AS
                   ,xxcos_lookup_values_v                                                xlvv                          --売上区分マスタ
                   ,xxcos_lookup_values_v                                                xlvv2                         --税コードマスタ
                   ,ar_vat_tax_all_b                                                     avtab                         --税率マスタ
-                  ,xxcos_chain_store_security_v                                         xcss                          --チェーン店店舗セキュリティビュー
+/* 2010/06/18 Ver1.20 Del Start */
+--                  ,xxcos_chain_store_security_v                                         xcss                          --チェーン店店舗セキュリティビュー
+/* 2010/06/18 Ver1.20 Del End   */
 --******************************************* 2009/04/02 1.9 T.Kitajima ADD START *************************************
                   ,(
                     SELECT
@@ -4894,15 +4909,18 @@ AS
 --              AND   xcss.chain_store_code(+)        = ooha.store_code                                       --店コード
 --              AND   xcss.user_id(+)                 = i_input_rec.user_id
 --              AND   ooha.store_code                 = NVL( i_input_rec.store_code, ooha.store_code)
-              AND   xcss.chain_code                 = i_input_rec.chain_code
-              AND   xcss.account_number             = ooha.account_number
-              AND   xcss.user_id                    = i_input_rec.user_id
-              AND  (i_input_rec.store_code          IS NOT NULL
-                AND i_input_rec.store_code          = ooha.store_code
-                OR  i_input_rec.store_code          IS NULL
-                AND xcss.chain_store_code           = ooha.store_code
-              )
-              AND   xcss.chain_code                 = i_input_rec.chain_code
+/* 2010/06/18 Ver1.20 Mod Start */
+--              AND   xcss.chain_code                 = i_input_rec.chain_code
+--              AND   xcss.account_number             = ooha.account_number
+--              AND   xcss.user_id                    = i_input_rec.user_id
+--              AND  (i_input_rec.store_code          IS NOT NULL
+--                AND i_input_rec.store_code          = ooha.store_code
+--                OR  i_input_rec.store_code          IS NULL
+--                AND xcss.chain_store_code           = ooha.store_code
+--              )
+--              AND   xcss.chain_code                 = i_input_rec.chain_code
+              AND   ooha.delivery_base_code         = i_input_rec.base_code
+/* 2010/06/18 Ver1.20 Mod End   */
 --******************************************* 2009/04/02 1.9 T.Kitajima MOD  END *************************************
 -- ********************* 2009/07/03 1.11 N.Maeda MOD  END  *********************** --
 -- ************ 2009/08/27 N.Maeda 1.13 MOD START ***************** --

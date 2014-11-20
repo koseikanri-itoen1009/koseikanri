@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A02C (body)
  * Description      : 納品書用データ作成(EDI)
  * MD.050           : 納品書用データ作成(EDI) MD050_COS_014_A02
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2010/03/10    1.15  T.Nakano         [E_本稼動_01695] EDI取込日の変更
  *  2010/04/20    1.16  H.Sasaki         [E_本稼動_01900] 原価金額の取得元を変更
  *                                       [E_本稼動_02042] 商品名の取得元を変更
+ *  2010/06/11    1.17  S.Miyakoshi      [E_本稼動_03075] 拠点選択対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -206,7 +207,7 @@ AS
   cv_tkn_prm16                    CONSTANT VARCHAR2(7) := 'PARAM16';                              --入力パラメータ16
   cv_tkn_prm17                    CONSTANT VARCHAR2(7) := 'PARAM17';                              --入力パラメータ17
 --******************************************* 2009/04/01 1.7 T.Kitajima ADD START *************************************
-  cv_tkn_prm18                    CONSTANT VARCHAR2(7) := 'PARAM18';                              --入力パラメータ17
+  cv_tkn_prm18                    CONSTANT VARCHAR2(7) := 'PARAM18';                              --入力パラメータ18
 --******************************************* 2009/04/01 1.7 T.Kitajima END START *************************************
   cv_tkn_filename                 CONSTANT VARCHAR2(100) := 'FILE_NAME';                          --ファイル名
   cv_tkn_prf                      CONSTANT VARCHAR2(7)  := 'PROFILE';                             --プロファイル
@@ -3163,7 +3164,9 @@ AS
                     ,xxcmm_cust_accounts                    xca                           --顧客マスタアドオン
                     ,hz_cust_accounts                       hca                           --顧客マスタ
                     ,hz_parties                             hp                            --パーティマスタ
-                    ,xxcos_chain_store_security_v           xcss                          --チェーン店店舗セキュリティビュー
+/* 2010/06/11 Ver1.17 Del Start */
+--                    ,xxcos_chain_store_security_v           xcss                          --チェーン店店舗セキュリティビュー
+/* 2010/06/11 Ver1.17 Del End */
                     ,xxcos_lookup_values_v                  xlvv2                         --税コードマスタ
                     ,ar_vat_tax_all_b                       avtab                         --税率マスタ
                     ,(
@@ -3208,10 +3211,13 @@ AS
                    )                                                                                                       --顧客区分
              --パーティマスタ(店舗)抽出条件
              AND    hp.party_id = hca.party_id                                                                    --パーティID
-             --チェーン店店舗セキュリティビュー抽出条件
-             AND    xcss.chain_code       = xeh.edi_chain_code                                                    --チェーン店コード
-             AND    xcss.chain_store_code = xeh.shop_code                                                         --店コード
-             AND    xcss.user_id          = i_input_rec.user_id                                                   --ユーザID
+/* 2010/06/11 Ver1.17 Mod Start */
+--             --チェーン店店舗セキュリティビュー抽出条件
+--             AND    xcss.chain_code       = xeh.edi_chain_code                                                    --チェーン店コード
+--             AND    xcss.chain_store_code = xeh.shop_code                                                         --店コード
+--             AND    xcss.user_id          = i_input_rec.user_id                                                   --ユーザID
+             AND xca.delivery_base_code  = i_input_rec.base_code
+/* 2010/06/11 Ver1.17 Del End   */
 --
 /* 2009/09/15 Ver1.12 Mod Start */
 --             AND xlvv2.lookup_type = 'XXCOS1_CONSUMPTION_TAX_CLASS'                               --
