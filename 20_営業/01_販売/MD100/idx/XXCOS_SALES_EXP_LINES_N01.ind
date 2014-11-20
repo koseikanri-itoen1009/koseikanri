@@ -1,3 +1,1 @@
-CREATE INDEX "XXCOS"."XXCOS_SALES_EXP_LINES_N01" ON "XXCOS"."XXCOS_SALES_EXP_LINES" 
-  ( "SALES_EXP_HEADER_ID" ) 
-TABLESPACE "XXIDX2" ;
+CREATE INDEX xxcos.xxcos_sales_exp_lines_n01 ON xxcos.xxcos_sales_exp_lines ( sales_exp_header_id, to_calculate_fees_flag ) TABLESPACE xxidx2;

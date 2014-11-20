@@ -1,2 +1,1 @@
-CREATE INDEX XXCOS.XXCOS_SALES_EXP_LINES_N04 ON XXCOS.XXCOS_SALES_EXP_LINES ( UNIT_PRICE_MST_FLAG, SALES_EXP_HEADER_ID, SALES_CLASS ) TABLESPACE xxidx2
-/
+CREATE INDEX xxcos.xxcos_sales_exp_lines_n04 ON xxcos.xxcos_sales_exp_lines ( item_code, delivery_base_code, sales_class ) TABLESPACE xxidx2;
