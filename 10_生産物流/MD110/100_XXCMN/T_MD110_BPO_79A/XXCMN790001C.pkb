@@ -396,6 +396,7 @@ AS
       WHERE itp.doc_type            =   cv_doc_type_porc        -- 文書タイプ：購買
       AND   itp.completed_ind       =   cn_completion           -- 完了区分：完了
       AND   itp.trans_date          >=  gd_opening_date         -- 取引日
+      AND   itp.reverse_id          IS NULL
       AND   itp.item_id             =   ximv.item_id            -- 品目ID
       AND   ximv.cost_manage_code   =   cv_zero                 -- 原価管理区分：0
       AND   itp.doc_id              =   rsl.shipment_header_id  -- 文書ID
@@ -405,6 +406,7 @@ AS
       AND   rt.transaction_type     =   cv_dest_type_deliver    -- 取引タイプ
       AND   itp.item_id             =   ilm.item_id             -- 品目ID
       AND   itp.lot_id              =   ilm.lot_id              -- ロットID
+      AND   ilm.lot_id              >   0                       -- デフォルトロットは対象外
       AND   rsl.po_line_id          =   pla.po_line_id          -- 発注明細ID
       GROUP BY  itp.doc_type        -- 文書タイプ
               , itp.doc_id          -- 文書ID
@@ -436,6 +438,7 @@ AS
       AND   ximv2.cost_manage_code    =   cv_zero               -- 原価管理区分：0
       AND   itc.item_id               =   ilm2.item_id          -- 品目ID
       AND   itc.lot_id                =   ilm2.lot_id           -- ロットID
+      AND   ilm2.lot_id               >   0                     -- デフォルトロットは対象外
       AND   itc.item_id               =   lca.item_id           -- 品目ID
       AND   itc.lot_id                =   lca.lot_id            -- ロットID
       AND   lca.adjustment_id         =   lcad.adjustment_id    -- ロット原価調整ID

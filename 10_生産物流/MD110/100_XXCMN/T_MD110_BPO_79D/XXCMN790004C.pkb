@@ -7,7 +7,7 @@ AS
  * Description      : 実際原価洗替処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 実際原価洗替処理 T_MD070_BPO_79D
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/2/20     1.0   R.Matusita       新規作成
  *  2008/04/25    1.1   Marushita        TE080_BPO_790 不具合ID 2,3
+ *  2008/06/03    1.2   Marushita        TE080_BPO_790 不具合ID 4
  *
  *****************************************************************************************/
 --
@@ -356,6 +357,7 @@ AS
             , ic_lots_mst    ilm                        -- OPMロットマスタ
       WHERE xlc.item_id    =  ilm.item_id
       AND   xlc.lot_id     =  ilm.lot_id
+      AND   ilm.lot_id     >  0 -- デフォルトロットを対象外とする
       AND   xlc.unit_ploce <> TO_NUMBER(NVL(ilm.attribute7,'0'))
       FOR UPDATE OF ilm.item_id
                   , ilm.lot_id

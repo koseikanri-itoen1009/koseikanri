@@ -7,7 +7,7 @@ AS
  * Description      : 半製品原価計算処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 半製品原価計算処理 T_MD070_BPO_79B
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -28,7 +28,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/2/13     1.0   Y.Kanami         新規作成
- *  2008/04/25    1.1   Marushita        TE080_BPO_790 不具合ID 1
+ *  2008/04/25    1.2   Marushita        TE080_BPO_790 不具合ID 1
+ *  2008/06/03    1.3   Marushita        TE080_BPO_790 不具合ID 1
  *
  *****************************************************************************************/
 --
@@ -348,6 +349,7 @@ AS
       AND   itp.doc_type          =   gv_doc_type_prod      -- 文書タイプ：生産
       AND   itp.completed_ind     =   gn_completion         -- 完了区分：完了
       AND   itp.line_type         =   gn_l_type_materials   -- 明細タイプ：投入品
+      AND   itp.reverse_id        IS NULL
       AND   itp.item_id           =   ximv.item_id          -- 品目ID
       AND   ximv.cost_manage_code =   gv_real_cost_price    -- 原価管理区分：実際原価
       AND   itp.item_id           =   xtlc.item_id(+)       -- 品目ID
@@ -373,6 +375,7 @@ AS
       AND   itp.doc_type          =   gv_doc_type_prod      -- 文書タイプ：生産
       AND   itp.completed_ind     =   gn_completion         -- 完了区分：完了
       AND   itp.line_type         =   gn_l_type_materials   -- 明細タイプ：投入品
+      AND   itp.reverse_id        IS NULL
       AND   itp.item_id           =   ximv.item_id          -- 品目ID
       AND   ximv.cost_manage_code =   gv_standard_cost      -- 原価管理区分：標準原価
       AND   itp.item_id           =   ccd.item_id           -- 品目ID
@@ -1185,6 +1188,7 @@ AS
       AND   itp.completed_ind     =   gn_completion       -- 完了区分：完了
       AND   itp.line_type         =   gn_l_type_finished  -- 明細タイプ：完成品
       AND   itp.trans_date        >=  gd_opening_date     -- 取引日
+      AND   itp.reverse_id        IS NULL
       AND   itp.item_id           =   ximv.item_id        -- 品目ID
       AND   ximv.cost_manage_code =   gv_real_cost_price  -- 原価管理区分：0(実際原価)
       AND   itp.item_id           =   ilm.item_id         -- 品目ID
@@ -1209,6 +1213,7 @@ AS
     AND     itp.doc_id            =   batch_id            -- バッチID
     AND     itp.completed_ind     =   gn_completion       -- 完了区分：完了
     AND     itp.line_type         =   gn_l_type_product   -- 明細タイプ：副産物
+    AND     itp.reverse_id        IS NULL
     AND     itp.item_id           =   ccd.item_id         -- 品目ID
     AND     ccd.calendar_code     =   clh.calendar_code   -- 原価カレンダーコード
     AND     clh.calendar_code     =   cll.calendar_code   -- 原価カレンダーコード
@@ -1227,6 +1232,7 @@ AS
     AND     itp.doc_id            = batch_id              -- バッチID
     AND     itp.completed_ind     = gn_completion         -- 完了区分：完了
     AND     itp.line_type         = gn_l_type_product     -- 明細タイプ：副産物
+    AND     itp.reverse_id        IS NULL
     AND     itp.item_id           = ximv.item_id          -- 品目ID
   ;
 --
