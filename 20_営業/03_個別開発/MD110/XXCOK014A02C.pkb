@@ -7,7 +7,7 @@ AS
  * Description      : 販売手数料（自販機）の計算結果を情報系システムに
  *                    連携するインターフェースファイルを作成します
  * MD.050           : 情報系システムIFファイル作成-条件別販手販協  MD050_COK_014_A02
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009/04/17    1.6   K.Yamaguchi      [障害T1_0641] 契約管理テーブルの締め日、支払日がNULLの場合には、
  *                                                     プロファイル XXCOK1_FB_TERM_NAME の値を使用する。
  *  2009/06/29    1.7   K.Yamaguchi      [障害0000200] [障害0000290] パフォーマンス障害対応
+ *  2009/10/08    1.8   S.Moriyama       [障害E_最終移行リハ_00460] 定額条件の場合は割戻額をNULLでファイル出力するよう変更
  *
  *****************************************************************************************/
 --
@@ -119,6 +120,10 @@ AS
   cn_1                       CONSTANT NUMBER        := 1;                                  -- 数値 1
   cn_2                       CONSTANT NUMBER        := 2;                                  -- 数値 2
   cn_minus_2                 CONSTANT NUMBER        := -2;                                 -- 数値 -2
+-- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama ADD START
+  cn_0                       CONSTANT NUMBER        := 0;                                  -- 数値 0
+  cv_except_calc_type        CONSTANT VARCHAR2(10)  := '定額条件';                         -- 情報系IF割戻額未連携計算条件
+-- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama ADD END
 --
   --==========================
   -- グローバル変数
@@ -233,7 +238,15 @@ AS
   CURSOR bm_support_cur
 -- 2009/06/29 Ver.1.7 [障害0000200] [障害0000290] SCS K.Yamaguchi REPAIR END
   IS
-  SELECT  xcbs.cond_bm_support_id       AS cond_bm_support_id         -- 条件別販手販協ID
+-- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama UPD START
+--  SELECT  xcbs.cond_bm_support_id       AS cond_bm_support_id         -- 条件別販手販協ID
+  SELECT  /*+
+              LEADING( xcbs , xbb )
+              INDEX( xbb xxcok_backmargin_balance_n03 )
+              INDEX( xcbs xxcok_cond_bm_support_n03 )
+          */
+          xcbs.cond_bm_support_id       AS cond_bm_support_id         -- 条件別販手販協ID
+-- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama UPD END
          ,xcbs.base_code                AS base_code                  -- 拠点コード
          ,xcbs.emp_code                 AS emp_code                   -- 担当者コード
          ,xcbs.delivery_cust_code       AS delivery_cust_code         -- 顧客【納品先】
@@ -263,7 +276,10 @@ AS
          ,xxcok_backmargin_balance      xbb                           -- 販手残高テーブル
          ,po_vendors                    pv                            -- 仕入先マスタ
          ,po_vendor_sites_all           pvsa                          -- 仕入先サイトマスタ
-         ,xxcmn_lookup_values_v         xlv_v                         -- クイックコード
+-- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama UPD START
+--         ,xxcmn_lookup_values_v         xlv_v                         -- クイックコード
+         ,xxcok_lookups_v               xlv_v                         -- クイックコード
+-- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama UPD END
   WHERE xcbs.base_code                  = xbb.base_code
   AND   xcbs.supplier_code              = xbb.supplier_code
   AND   xcbs.closing_date               = xbb.closing_date
@@ -281,6 +297,11 @@ AS
 -- 2009/06/29 Ver.1.7 [障害0000200] [障害0000290] SCS K.Yamaguchi REPAIR END
   AND   xlv_v.lookup_code               = xcbs.calc_type
   AND   xlv_v.lookup_type               = cv_bm_calc_type
+-- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama ADD START
+  AND   gd_business_date                BETWEEN xlv_v.start_date_active
+                                            AND NVL(xlv_v.end_date_active,gd_business_date)
+  AND   xbb.payment_amt_tax             = cn_0
+-- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama ADD END
   AND   pvsa.attribute4                 IN (cv_1, cv_2);
   bm_support_rec    bm_support_cur%ROWTYPE;
   -- 条件別販手販協テーブルロック情報
@@ -867,11 +888,22 @@ AS
     lv_retcode    VARCHAR2(1)    DEFAULT NULL;                 -- リターン・コード
     lv_errmsg     VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
     lv_csv_file   VARCHAR2(5000) DEFAULT NULL;                 -- CSVファイル
+-- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama ADD START
+    lt_rebate_amt xxcok_cond_bm_support.rebate_amt%TYPE;       -- 割戻額
+-- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama ADD END
+    
 --
   BEGIN
     -- ステータス初期化
     ov_retcode := cv_status_normal;
     --
+-- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama ADD START
+    IF ( i_bm_support_rec.calc_type = cv_except_calc_type ) THEN
+      lt_rebate_amt := NULL;
+    ELSE
+      lt_rebate_amt := i_bm_support_rec.rebate_amt;
+    END IF;
+-- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama ADD END
 -- 2009/06/29 Ver.1.7 [障害0000200] [障害0000290] SCS K.Yamaguchi REPAIR START
 --    lv_csv_file := TO_CHAR( gt_bms_csv_tab( in_csv_cnt ).sequence_number )                     || cv_comma || -- シーケンス番号
 --          cv_wq ||          gt_bms_csv_tab( in_csv_cnt ).company_code                 || cv_wq || cv_comma || -- 会社コード
@@ -919,7 +951,10 @@ AS
                    TO_CHAR( i_bm_support_rec.selling_amt_tax )                               || cv_comma || -- 売上金額(税込)
           cv_wq ||          i_bm_support_rec.calc_type                              || cv_wq || cv_comma || -- 取引条件
                    TO_CHAR( i_bm_support_rec.rebate_rate )                                   || cv_comma || -- 割戻率
-                   TO_CHAR( i_bm_support_rec.rebate_amt )                                    || cv_comma || -- 割戻額
+-- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama UPD START
+--                   TO_CHAR( i_bm_support_rec.rebate_amt )                                    || cv_comma || -- 割戻額
+                   TO_CHAR( lt_rebate_amt )                                                  || cv_comma || -- 割戻額
+-- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama UPD END
           cv_wq ||          i_bm_support_rec.container_type_code                    || cv_wq || cv_comma || -- 容器区分コード
                    TO_CHAR( i_bm_support_rec.selling_price )                                 || cv_comma || -- 売価金額
                    TO_CHAR( i_bm_support_rec.cond_bm_amt_tax )                               || cv_comma || -- 条件別手数料額(税込)
@@ -931,7 +966,10 @@ AS
                    TO_CHAR( i_bm_support_rec.calc_target_period_from, 'YYYYMMDD' )           || cv_comma || -- 計算対象期間(From)
                    TO_CHAR( i_bm_support_rec.calc_target_period_to  , 'YYYYMMDD' )           || cv_comma || -- 計算対象期間(To)
           cv_wq ||          i_bm_support_rec.ref_base_code                          || cv_wq || cv_comma || -- 問合わせ担当拠点コード
-                   TO_CHAR( gd_sysdate, 'YYYYMMDDHHMISS' );                  -- 連携日時
+-- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama UPD START
+--                   TO_CHAR( gd_sysdate, 'YYYYMMDDHHMISS' );                  -- 連携日時
+                   TO_CHAR( gd_sysdate, 'YYYYMMDDHH24MISS' );                                               -- 連携日時
+-- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama UPD END
 -- 2009/06/29 Ver.1.7 [障害0000200] [障害0000290] SCS K.Yamaguchi REPAIR END
     -- CSVファイル出力
     UTL_FILE.PUT_LINE(
