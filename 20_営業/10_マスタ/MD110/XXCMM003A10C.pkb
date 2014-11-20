@@ -7,7 +7,7 @@ AS
  * Description     : 未取引客チェックリスト
  * MD.050          : MD050_CMM_003_A10_未取引客チェックリスト
  * MD.070          : MD050_CMM_003_A10_未取引客チェックリスト
- * Version         : 1.2
+ * Version         : 1.3
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -30,6 +30,12 @@ AS
  *  2009/03/09    1.1  Yutaka.Kuboshima ファイル出力先のプロファイルの削除
  *                                      物件マスタコード取得の抽出条件を変更
  *  2010/02/12    1.2  Yutaka.Kuboshima 障害E_本稼動_01545 管理元拠点も出力するよう修正
+ *  2011/04/18    1.3  Naoki.Horigome   障害E_本稼動_01956,01961,05192
+ *                                      ・物件が紐付いていない場合でも基準在庫数,釣銭基準額を出力するよう修正
+ *                                      ・業態分類（大分類）に関係なく、物件コードを出力するよう修正
+ *                                      ・職責に紐付くアプリケーションではなく、ARの会計期間を取得するよう修正
+ *                                      ・担当営業員コード、担当営業員名の取得処理を追加
+ *                                      ・顧客に紐付く物件コードの表示方法を修正
  *
  ************************************************************************/
 --
@@ -119,6 +125,9 @@ AS
   cv_format_date_ymd        CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';                -- 日付フォーマット（年月日）
   cv_format_date_ym         CONSTANT VARCHAR2(7)   := 'YYYY/MM';                   -- 日付フォーマット（年月）
   cv_trunc_month            CONSTANT VARCHAR2(5)   := 'MONTH';                     -- TRUNC関数用
+-- 2011/01/07 Ver1.3 E_本稼動_01956,01961,05192 add start by Shigeto.Niki
+  cv_appl_short_nm_ar       CONSTANT VARCHAR2(2)   := 'AR';                        -- アプリケーション短縮名（AR）
+-- 2011/01/07 Ver1.3 E_本稼動_01956,01961,05192 add end by Shigeto.Niki
 --
   -- メッセージ番号
   cv_msg_cmm_00002          CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00002'; -- プロファイル取得エラーメッセージ
@@ -184,6 +193,10 @@ AS
   gn_balance_amount            NUMBER;                                              -- 売掛残高格納用
   gt_no_data_msg               xxcfo_rep_standard_po.data_empty_message%TYPE;       -- 0件メッセージ
   gv_svf_form_name             VARCHAR2(100);                                       -- フォーム様式ファイル名
+-- 2011/04/13 Ver1.3 E_本稼動_01956,01961,05192 Add Start by Naoki.Horigome
+  gt_employee_name             xxcmm_rep_undeal_list.employee_name%TYPE;            -- 担当営業員名称
+  gt_employee_number           xxcmm_rep_undeal_list.employee_number%TYPE;          -- 担当営業員コード
+-- 2011/04/13 Ver1.3 E_本稼動_01956,01961,05192 Add End   by Naoki.Horigome
 --
   --===============================================================
   -- グローバルテーブルタイプ
@@ -351,7 +364,10 @@ AS
     AND    NOT EXISTS (SELECT 'X'
                        FROM csi_instance_statuses cis
                        WHERE cis.name               = cv_instance_stat_deleted
-                       AND   cii.instance_status_id = cis.instance_status_id);
+                       AND   cii.instance_status_id = cis.instance_status_id)
+-- 2011/04/13 Ver1.3 E_本稼動_05192 Add Start by Naoki.Horigome
+    ORDER BY install_code ASC;
+-- 2011/04/13 Ver1.3 E_本稼動_05192 Add End   by Naoki.Horigome
 -- 2009/03/09 modify end
 --
   --===============================================================
@@ -663,10 +679,17 @@ AS
              FROM
                     gl_periods         gp            -- 会計期間マスタ
                    ,gl_period_statuses gps           -- 会計期間ステータス
+-- 2011/01/07 Ver1.3 E_本稼動_01956,01961,05192 add start by Shigeto.Niki
+                   ,fnd_application    fa            -- アプリケーションマスタ
+-- 2011/01/07 Ver1.3 E_本稼動_01956,01961,05192 add end by Shigeto.Niki
              WHERE
                     gp.period_name            = gps.period_name
              AND    gp.period_set_name        = gt_period_sets_mn
-             AND    gps.application_id        = gn_resp_appl_id
+-- 2011/01/07 Ver1.3 E_本稼動_01956,01961,05192 modify start by Shigeto.Niki
+--             AND    gps.application_id        = gn_resp_appl_id
+             AND    fa.application_id         = gps.application_id
+             AND    fa.application_short_name = cv_appl_short_nm_ar
+-- 2011/01/07 Ver1.3 E_本稼動_01956,01961,05192 modify end by Shigeto.Niki
              AND    gps.set_of_books_id       = gn_set_of_bks_id
              AND    gp.adjustment_period_flag = cv_flag_n
              AND    gps.closing_status        = cv_flag_c
@@ -817,6 +840,95 @@ AS
 --
   END get_inventory;
 --
+-- 2011/04/13 Ver1.3 E_本稼動_01956,01961,05192 Add Start by Naoki.Horigome
+  /**********************************************************************************
+   * Procedure Name   : get_employee
+   * Description      : 担当営業員名称取得(A-5)
+   ***********************************************************************************/
+  PROCEDURE get_employee(
+    in_cust_account_id         IN         NUMBER,       --   顧客ID
+    ov_employee_name           OUT        VARCHAR2,     --   担当営業員名称
+    ov_employee_number         OUT        VARCHAR2,     --   担当営業員コード
+    ov_errbuf                  OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode                 OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg                  OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name          CONSTANT VARCHAR2(100) := 'get_employee'; -- プログラム名
+    cv_employee_err_msg  CONSTANT VARCHAR2(30)  := '担当営業員取得エラー';
+    cv_employee_err_code CONSTANT VARCHAR2(30)  := '999999';
+    cv_max_date          CONSTANT VARCHAR2(10)  := '9999/12/31';
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    SELECT
+           xsv.kanji_last || xsv.kanji_first employee_name   -- 担当営業員名称
+          ,xsv.employee_number employee_number               -- 担当営業員コード
+    INTO
+           ov_employee_name
+          ,ov_employee_number
+    FROM
+           xxcos_salesreps_v xsv  -- 担当営業員ビュー
+    WHERE
+           xsv.cust_account_id = in_cust_account_id
+    AND
+           gd_process_date BETWEEN xsv.effective_start_date
+                           AND     NVL(xsv.effective_end_date,cv_max_date);
+--
+  EXCEPTION
+    -- 対象データ無し：正常
+    WHEN NO_DATA_FOUND THEN
+      ov_employee_name   := cv_employee_err_msg;
+      ov_employee_number := cv_employee_err_code;
+--
+    -- 複数件取得時：正常
+    WHEN TOO_MANY_ROWS THEN
+      ov_employee_name   := cv_employee_err_msg;
+      ov_employee_number := cv_employee_err_code;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_employee;
+-- 2011/04/13 Ver1.3 E_本稼動_01956,01961,05192 Add End   by Naoki.Horigome
+--
   /**********************************************************************************
    * Procedure Name   : make_worktable
    * Description      : ワークテーブルデータ登録(A-6)
@@ -824,6 +936,10 @@ AS
   PROCEDURE make_worktable(
     iv_sale_base_code          IN         VARCHAR2,     --   拠点コード
     iv_sale_base_name          IN         VARCHAR2,     --   拠点名
+-- 2011/04/13 Ver1.3 E_本稼動_01956,01961,05192 Add Start   by Naoki.Horigome
+    iv_employee_number         IN         VARCHAR2,     --   担当営業員コード
+    iv_employee_name           IN         VARCHAR2,     --   担当営業員名
+-- 2011/04/13 Ver1.3 E_本稼動_01956,01961,05192 Add End     by Naoki.Horigome
     iv_account_number          IN         VARCHAR2,     --   顧客コード
     iv_account_name            IN         VARCHAR2,     --   顧客名
     iv_status                  IN         VARCHAR2,     --   顧客ステータス
@@ -878,6 +994,10 @@ AS
        ,p_base_cd_name          -- 拠点名(パラメータ)
        ,base_code               -- 拠点コード
        ,base_cd_name            -- 拠点名
+-- 2011/04/13 Ver1.3 E_本稼動_01956,01961,05192 Add Start   by Naoki.Horigome
+       ,employee_number         -- 担当営業員コード
+       ,employee_name           -- 担当営業員名
+-- 2011/04/13 Ver1.3 E_本稼動_01956,01961,05192 Add End     by Naoki.Horigome
        ,customer_code           -- 顧客コード
        ,customer_name           -- 顧客名
        ,customer_status         -- 顧客ステータス
@@ -907,6 +1027,10 @@ AS
        ,gt_p_sale_base_name                       -- 拠点名(パラメータ)
        ,iv_sale_base_code                         -- 拠点コード
        ,iv_sale_base_name                         -- 拠点名
+-- 2011/04/13 Ver1.3 E_本稼動_01956,01961,05192 Add Start   by Naoki.Horigome
+       ,iv_employee_number                        -- 担当営業員コード
+       ,iv_employee_name                          -- 担当営業員名
+-- 2011/04/13 Ver1.3 E_本稼動_01956,01961,05192 Add End     by Naoki.Horigome
        ,iv_account_number                         -- 顧客コード
        ,iv_account_name                           -- 顧客名
        ,iv_status                                 -- 顧客ステータス
@@ -1232,9 +1356,19 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- 2011/04/13 Ver1.3 E_本稼動_05192 Add Start by Naoki.Horigome
+    cv_etc         CONSTANT VARCHAR2(10) := '他'; 
+-- 2011/04/13 Ver1.3 E_本稼動_05192 Add End   by Naoki.Horigome
 --
     -- *** ローカル変数 ***
     ln_get_instance_cur_cnt NUMBER DEFAULT 0; -- 物件コード取得カーソル件数格納用
+-- 2011/01/07 Ver1.3 E_本稼動_01956,01961,05192 add start by Shigeto.Niki
+    lv_external_reference   csi_item_instances.external_reference%TYPE; -- 物件コード
+-- 2011/01/07 Ver1.3 E_本稼動_01956,01961,05192 add end by Shigeto.Niki
+-- 2011/04/13 Ver1.3 E_本稼動_05192 Add Start by Naoki.Horigome
+    lv_work_reference       csi_item_instances.external_reference%TYPE; -- 複数件チェック用物件コード
+-- 2011/04/13 Ver1.3 E_本稼動_05192 Add End   by Naoki.Horigome
+
 --
     -- *** ローカル・カーソル ***
 --
@@ -1292,8 +1426,10 @@ AS
         RAISE global_process_expt;
       END IF;
 --
-      -- 業態(大分類)がベンダーの場合
-      IF (l_undeal_cust_rec.business_high_type = cv_business_htype_vd) THEN
+-- 2011/04/13 Ver1.3 E_本稼動_05192 Delete Start by Naoki.Horigome
+--      -- 業態(大分類)がベンダーの場合
+--      IF (l_undeal_cust_rec.business_high_type = cv_business_htype_vd) THEN
+-- 2011/04/13 Ver1.3 E_本稼動_05192 Delete end   by Naoki.Horigome
 --
         -- =====================================================
         -- 基準在庫数取得(A-4)
@@ -1311,14 +1447,137 @@ AS
           RAISE global_process_expt;
         END IF;
 --
+-- 2011/04/13 Ver1.3 E_本稼動_01956,01961,05192 Add Start by Naoki.Horigome
+        -- =====================================================
+        -- 担当営業員名称取得(A-5)
+        -- =====================================================
+        get_employee(
+          l_undeal_cust_rec.cust_account_id  -- 顧客ID
+         ,gt_employee_name                   -- 担当営業員名称
+         ,gt_employee_number                 -- 担当営業員コード
+         ,lv_errbuf                          -- エラー・メッセージ           --# 固定 #
+         ,lv_retcode                         -- リターン・コード             --# 固定 #
+         ,lv_errmsg                          -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+--
+        IF (lv_retcode = cv_status_error) THEN
+          --(エラー処理)
+          RAISE global_process_expt;
+        END IF;
+--
+-- 2011/04/13 Ver1.3 E_本稼動_01956,01961,05192 Add End   by Naoki.Horigome
+--
         -- =====================================================
         -- 物件コード取得(A-5)
         -- =====================================================
         -- 物件コードカーソル件数初期化
         ln_get_instance_cur_cnt := 0;
 --
-        <<get_instance_loop>>
-        FOR l_get_instance_rec IN get_instance_cur(l_undeal_cust_rec.cust_account_id) LOOP
+-- 2011/01/07 Ver1.3 E_本稼動_01956,01961,05192 modify start by Shigeto.Niki
+-- FOR LOOP -> LOOPに変更
+--        <<get_instance_loop>>
+--        FOR l_get_instance_rec IN get_instance_cur(l_undeal_cust_rec.cust_account_id) LOOP
+----
+--          -- =====================================================
+--          -- ワークテーブルデータ登録(A-6)
+--          -- =====================================================
+--          make_worktable(
+--            l_undeal_cust_rec.sale_base_code          -- 拠点コード
+--           ,l_undeal_cust_rec.sale_base_name          -- 拠点名
+--           ,l_undeal_cust_rec.account_number          -- 顧客コード
+--           ,l_undeal_cust_rec.account_name            -- 顧客名
+--           ,l_undeal_cust_rec.status                  -- 顧客ステータス
+--           ,l_undeal_cust_rec.status_name             -- 顧客ステータス名
+--           ,l_undeal_cust_rec.business_high_type      -- 業態分類（大分類）
+--           ,l_undeal_cust_rec.business_high_type_name -- 業態分類（大分類）名
+--           ,l_undeal_cust_rec.final_call_date         -- 最終訪問日
+--           ,l_undeal_cust_rec.final_tran_date         -- 最終取引日
+--           ,NVL(l_get_instance_rec.install_code, 0)   -- 物件コード
+--           ,NVL(gn_inventory_quantity_sum, 0)         -- 在庫
+--           ,l_undeal_cust_rec.change_amount           -- 釣銭基準額
+--           ,lv_errbuf                                 -- エラー・メッセージ           --# 固定 #
+--           ,lv_retcode                                -- リターン・コード             --# 固定 #
+--           ,lv_errmsg                                 -- ユーザー・エラー・メッセージ --# 固定 #
+--          );
+----
+--          ln_get_instance_cur_cnt := get_instance_cur%ROWCOUNT;
+----
+--          IF (lv_retcode = cv_status_error) THEN
+--            --(エラー処理)
+--            RAISE global_process_expt;
+--          END IF;
+----
+--        END LOOP get_instance_loop;
+--
+        -- 物件コード初期化
+        lv_external_reference := NULL;
+-- 2011/04/13 Ver1.3 E_本稼動_05192 Add Start by Naoki.Horigome
+        lv_work_reference     := NULL;
+-- 2011/04/13 Ver1.3 E_本稼動_05192 Add End   by Naoki.Horigome
+        -- カーソルオープン
+        OPEN get_instance_cur(l_undeal_cust_rec.cust_account_id);
+        -- フェッチ
+        FETCH get_instance_cur INTO lv_external_reference;
+-- 2011/04/13 Ver1.3 E_本稼動_05192 Add Start by Naoki.Horigome
+        -- 1件以上値が取れた場合
+        IF lv_external_reference IS NOT NULL THEN
+          -- フェッチ
+          FETCH get_instance_cur INTO lv_work_reference;
+--
+          IF get_instance_cur%FOUND THEN
+            --  2件以上の場合
+            lv_external_reference := lv_external_reference || cv_etc;
+          END IF;
+        END IF;
+-- 2011/04/13 Ver1.3 E_本稼動_05192 Add End   by Naoki.Horigome
+--
+-- 2011/04/13 Ver1.3 E_本稼動_05192 Delete Start by Naoki.Horigome
+--        -- ループ
+--        <<get_instance_loop>>
+--        LOOP
+--
+--          -- =====================================================
+--          -- ワークテーブルデータ登録(A-6)
+--          -- =====================================================
+--          make_worktable(
+--            l_undeal_cust_rec.sale_base_code          -- 拠点コード
+--           ,l_undeal_cust_rec.sale_base_name          -- 拠点名
+--           ,l_undeal_cust_rec.account_number          -- 顧客コード
+--           ,l_undeal_cust_rec.account_name            -- 顧客名
+--           ,l_undeal_cust_rec.status                  -- 顧客ステータス
+--           ,l_undeal_cust_rec.status_name             -- 顧客ステータス名
+--           ,l_undeal_cust_rec.business_high_type      -- 業態分類（大分類）
+--           ,l_undeal_cust_rec.business_high_type_name -- 業態分類（大分類）名
+--           ,l_undeal_cust_rec.final_call_date         -- 最終訪問日
+--           ,l_undeal_cust_rec.final_tran_date         -- 最終取引日
+---- 2011/01/07 Ver1.3 E_本稼動_01956,01961,05192 modify start by Shigeto.Niki
+----           ,NVL(l_get_instance_rec.install_code, 0)   -- 物件コード
+--           ,lv_external_reference                     -- 物件コード
+---- 2011/01/07 Ver1.3 E_本稼動_01956,01961,05192 modify end by Shigeto.Niki
+--           ,NVL(gn_inventory_quantity_sum, 0)         -- 在庫
+--           ,l_undeal_cust_rec.change_amount           -- 釣銭基準額
+--           ,lv_errbuf                                 -- エラー・メッセージ           --# 固定 #
+--           ,lv_retcode                                -- リターン・コード             --# 固定 #
+--           ,lv_errmsg                                 -- ユーザー・エラー・メッセージ --# 固定 #
+--          );
+----
+--          IF (lv_retcode = cv_status_error) THEN
+--            --(エラー処理)
+--            RAISE global_process_expt;
+--          END IF;
+--
+--          -- フェッチ
+--          FETCH get_instance_cur INTO lv_external_reference;
+--          -- 終了条件
+--          EXIT WHEN (get_instance_cur%NOTFOUND);
+----
+--        END LOOP get_instance_loop;
+-- 2011/04/13 Ver1.3 E_本稼動_05192 Delete End   by Naoki.Horigome
+--
+        -- カーソルクローズ
+        CLOSE get_instance_cur;
+--
+-- 2011/04/13 Ver1.3 E_本稼動_01956,01961,05192 Add Start by Naoki.Horigome
 --
           -- =====================================================
           -- ワークテーブルデータ登録(A-6)
@@ -1326,6 +1585,8 @@ AS
           make_worktable(
             l_undeal_cust_rec.sale_base_code          -- 拠点コード
            ,l_undeal_cust_rec.sale_base_name          -- 拠点名
+           ,gt_employee_number                        -- 担当営業員コード
+           ,gt_employee_name                          -- 担当営業員名
            ,l_undeal_cust_rec.account_number          -- 顧客コード
            ,l_undeal_cust_rec.account_name            -- 顧客名
            ,l_undeal_cust_rec.status                  -- 顧客ステータス
@@ -1334,7 +1595,7 @@ AS
            ,l_undeal_cust_rec.business_high_type_name -- 業態分類（大分類）名
            ,l_undeal_cust_rec.final_call_date         -- 最終訪問日
            ,l_undeal_cust_rec.final_tran_date         -- 最終取引日
-           ,NVL(l_get_instance_rec.install_code, 0)   -- 物件コード
+           ,lv_external_reference                     -- 物件コード
            ,NVL(gn_inventory_quantity_sum, 0)         -- 在庫
            ,l_undeal_cust_rec.change_amount           -- 釣銭基準額
            ,lv_errbuf                                 -- エラー・メッセージ           --# 固定 #
@@ -1342,51 +1603,59 @@ AS
            ,lv_errmsg                                 -- ユーザー・エラー・メッセージ --# 固定 #
           );
 --
-          ln_get_instance_cur_cnt := get_instance_cur%ROWCOUNT;
---
           IF (lv_retcode = cv_status_error) THEN
             --(エラー処理)
             RAISE global_process_expt;
           END IF;
 --
-        END LOOP get_instance_loop;
+-- 2011/04/13 Ver1.3 E_本稼動_01956,01961,05192 Add End   by Naoki.Horigome
 --
-      END IF;
+-- 2011/01/07 Ver1.3 E_本稼動_01956,01961,05192 modify end by Shigeto.Niki
+--
+-- 2011/04/13 Ver1.3 E_本稼動_01956,01961 Delete Start by Naoki.Horigome
+--      END IF;
       -- 業態(大分類)がベンダー以外の場合
-      IF ((l_undeal_cust_rec.business_high_type <> cv_business_htype_vd)
-        OR ((l_undeal_cust_rec.business_high_type = cv_business_htype_vd)
-            AND (ln_get_instance_cur_cnt = 0)))
-      THEN
+-- 2011/01/07 Ver1.3 E_本稼動_01956,01961,05192 modify start by Shigeto.Niki
+--      IF ((l_undeal_cust_rec.business_high_type <> cv_business_htype_vd)
+--        OR ((l_undeal_cust_rec.business_high_type = cv_business_htype_vd)
+--            AND (ln_get_instance_cur_cnt = 0)))
+--      THEN
+--      IF (l_undeal_cust_rec.business_high_type <> cv_business_htype_vd) THEN
+-- 2011/01/07 Ver1.3 E_本稼動_01956,01961,05192 modify end by Shigeto.Niki
 --
-        -- =====================================================
-        -- ワークテーブルデータ登録(A-6)
-        -- =====================================================
-        make_worktable(
-          l_undeal_cust_rec.sale_base_code          -- 拠点コード
-         ,l_undeal_cust_rec.sale_base_name          -- 拠点名
-         ,l_undeal_cust_rec.account_number          -- 顧客コード
-         ,l_undeal_cust_rec.account_name            -- 顧客名
-         ,l_undeal_cust_rec.status                  -- 顧客ステータス
-         ,l_undeal_cust_rec.status_name             -- 顧客ステータス名
-         ,l_undeal_cust_rec.business_high_type      -- 業態分類（大分類）
-         ,l_undeal_cust_rec.business_high_type_name -- 業態分類（大分類）名
-         ,l_undeal_cust_rec.final_call_date         -- 最終訪問日
-         ,l_undeal_cust_rec.final_tran_date         -- 最終取引日
-         ,NULL                                      -- 物件コード
-         ,NULL                                      -- 在庫
-         ,NULL                                      -- 釣銭基準額
-         ,lv_errbuf                                 -- エラー・メッセージ           --# 固定 #
-         ,lv_retcode                                -- リターン・コード             --# 固定 #
-         ,lv_errmsg                                 -- ユーザー・エラー・メッセージ --# 固定 #
-        );
---
-        IF (lv_retcode = cv_status_error) THEN
-          --(エラー処理)
-          RAISE global_process_expt;
-        END IF;
---
-      END IF;
---
+--        -- =====================================================
+--        -- ワークテーブルデータ登録(A-6)
+--        -- =====================================================
+--        make_worktable(
+--          l_undeal_cust_rec.sale_base_code          -- 拠点コード
+--         ,l_undeal_cust_rec.sale_base_name          -- 拠点名
+--         ,l_undeal_cust_rec.account_number          -- 顧客コード
+--         ,l_undeal_cust_rec.account_name            -- 顧客名
+--         ,l_undeal_cust_rec.status                  -- 顧客ステータス
+--         ,l_undeal_cust_rec.status_name             -- 顧客ステータス名
+--         ,l_undeal_cust_rec.business_high_type      -- 業態分類（大分類）
+--         ,l_undeal_cust_rec.business_high_type_name -- 業態分類（大分類）名
+--         ,l_undeal_cust_rec.final_call_date         -- 最終訪問日
+--         ,l_undeal_cust_rec.final_tran_date         -- 最終取引日
+---- 2011/01/07 Ver1.3 E_本稼動_01956,01961,05192 modify start by Shigeto.Niki
+----         ,NULL                                      -- 物件コード
+--         ,lv_external_reference                     -- 物件コード
+---- 2011/01/07 Ver1.3 E_本稼動_01956,01961,05192 modify end by Shigeto.Niki
+--         ,NULL                                      -- 在庫
+--         ,NULL                                      -- 釣銭基準額
+--         ,lv_errbuf                                 -- エラー・メッセージ           --# 固定 #
+--         ,lv_retcode                                -- リターン・コード             --# 固定 #
+--         ,lv_errmsg                                 -- ユーザー・エラー・メッセージ --# 固定 #
+--        );
+----
+--        IF (lv_retcode = cv_status_error) THEN
+--          --(エラー処理)
+--          RAISE global_process_expt;
+--        END IF;
+----
+--      END IF;
+-- 
+-- 2011/04/13 Ver1.3 E_本稼動_01956,01961 Delete End   by Naoki.Horigome
     END LOOP undeal_cust_loop;
 --
     -- =====================================================
@@ -1427,6 +1696,11 @@ AS
 --      ov_errmsg  := lv_errbuf;
       ov_errbuf  := SUBSTRB(lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
+-- 2011/01/07 Ver1.3 E_本稼動_01956,01961,05192 add start by Shigeto.Niki
+      IF (get_instance_cur%ISOPEN) THEN
+        CLOSE get_instance_cur;
+      END IF;
+-- 2011/01/07 Ver1.3 E_本稼動_01956,01961,05192 add end by Shigeto.Niki
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
