@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A08C (body)
  * Description      : CSVファイルの受注取込
  * MD.050           : CSVファイルの受注取込 MD050_COS_005_A08
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -74,6 +74,7 @@ AS
  *  2011/01/19    1.22  H.Sekine         [E_本稼動_04801] センターコードの最大桁数について5から10に変更
  *  2011/01/25    1.23  H.Sekine         [E_本稼動_06397] CSVファイルの行No.について数値型チェックを行なうように変更
  *                                                        受注明細OIFの明細行にCSVファイルの行No.をセットするように変更                                                        
+ *  2011/02/01    1.24  H.Sekine         [E_本稼動_06457] 問屋CSVについて単価が0となってしまう障害を修正
  *
  *****************************************************************************************/
 --
@@ -2507,15 +2508,17 @@ AS
 --
 -- ************** 2010/12/03 1.21 H.Sekine ADD END    ************** --
     END IF;
--- ************** 2010/12/03 1.21 H.Sekine ADD STRAT  ************** --
-    IF ( iv_get_format = cv_kokusai_format ) THEN
-      --「国際CSV」の場合、取得した単価をセットする。
-      on_unit_price := gr_order_work_data(in_cnt)(cn_unit_price_stand);
-    ELSE
-      --「国際CSV」以外の場合、単価に'0'をセットする。
-      on_unit_price := cn_tanka_zero;
-    END IF;
--- ************** 2010/12/03 1.21 H.Sekine ADD END    ************** --
+-- ************** 2011/02/01 1.24 H.Sekine DEL STRAT  ************** --
+---- ************** 2010/12/03 1.21 H.Sekine ADD STRAT  ************** --
+--    IF ( iv_get_format = cv_kokusai_format ) THEN
+--      --「国際CSV」の場合、取得した単価をセットする。
+--      on_unit_price := gr_order_work_data(in_cnt)(cn_unit_price_stand);
+--    ELSE
+--      --「国際CSV」以外の場合、単価に'0'をセットする。
+--      on_unit_price := cn_tanka_zero;
+--    END IF;
+---- ************** 2010/12/03 1.21 H.Sekine ADD END    ************** --
+-- ************** 2011/02/01 1.24 H.Sekine DEL END    ************** --
 --
 --
 -- ************** 2010/12/03 1.21 H.Sekine MOD START  ************** --
