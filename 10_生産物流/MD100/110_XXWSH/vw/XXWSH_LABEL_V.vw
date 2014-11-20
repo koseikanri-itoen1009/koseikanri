@@ -81,10 +81,20 @@ WHERE
   AND xlvv.lookup_code    = NVL(xoha.result_shipping_method_code,xoha.shipping_method_code) -- 配送区分
 -- 2008.07.07 ADD S.Takemoto end
   AND  xoha.shipping_method_code    = xsm2v.ship_method_code
+-- 2009.05.22 Mod H.Itou start 本番障害#1398 顧客付け替え発生時に最新データを取得するため、コードで結合する。
+--  AND  (CASE 
+--         WHEN  xoha.req_status = '03' THEN  xoha.deliver_to_id
+--         WHEN  xoha.req_status = '04' THEN  xoha.result_deliver_to_id
+--        END )          =    xcas.party_site_id ( + ) 
   AND  (CASE 
-         WHEN  xoha.req_status = '03' THEN  xoha.deliver_to_id
-         WHEN  xoha.req_status = '04' THEN  xoha.result_deliver_to_id
-        END )          =    xcas.party_site_id ( + ) 
+         WHEN  xoha.req_status = '03' THEN  xoha.deliver_to
+         WHEN  xoha.req_status = '04' THEN  xoha.result_deliver_to
+        END )          =    xcas.party_site_number ( + ) 
+-- 2009.05.22 Mod H.Itou end
+-- 2009.05.22 Add H.Itou start 本番障害#1398
+  AND  NVL(xcas.party_site_status, 'A')     = 'A' -- 有効な配送先
+  AND  NVL(xcas.cust_acct_site_status, 'A') = 'A' -- 有効な配送先
+-- 2009.05.22 Add H.Itou end
   AND  xoha.delivery_no             =    xcs.delivery_no
   AND  xoha.order_type_id           =    xottv.transaction_type_id
   --------------------------------------------------------------------------------------------

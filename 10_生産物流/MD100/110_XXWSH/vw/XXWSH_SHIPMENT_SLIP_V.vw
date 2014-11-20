@@ -122,7 +122,14 @@ WHERE     xoha.req_status               =            '04' -- 出荷実績計上済
       AND xoha.order_type_id            =            xott2v.transaction_type_id 
       AND xoha.latest_external_flag     =            'Y' 
       AND xoha.head_sales_branch        =            xcav.party_number
-      AND xoha.result_deliver_to_id     =            xcas2v.party_site_id
+-- 2009/05/25 ADD START 本番障害#1398 IDが最新でない場合があるので、コードで結合
+--      AND xoha.result_deliver_to_id     =            xcas2v.party_site_id
+      AND xoha.result_deliver_to        =            xcas2v.party_site_number
+-- 2009/05/25 ADD END
+-- 2009/05/25 MOD START 本番障害#1398 コードで結合に変更したので、ステータス「最新」を条件に追加
+      AND xcas2v.party_site_status      =            'A' -- 有効な配送先
+      AND xcas2v.cust_acct_site_status  =            'A' -- 有効な配送先
+-- 2009/05/25 ADD END
       AND xoha.deliver_from_id          =            xil2v .inventory_location_id 
       AND xoha.order_header_id          =            xola.order_header_id
       AND xola.delete_flag              =            'N'
@@ -249,7 +256,14 @@ WHERE     xoha.req_status               =            '03' -- 出荷実績計上済
       AND xoha.order_type_id            =            xott2v.transaction_type_id 
       AND xoha.latest_external_flag     =            'Y' 
       AND xoha.head_sales_branch        =            xcav.party_number
-      AND xoha.deliver_to_id            =            xcas2v.party_site_id
+-- 2009/05/25 ADD START 本番障害#1398 IDが最新でない場合があるので、コードで結合
+--      AND xoha.deliver_to_id            =            xcas2v.party_site_id
+      AND xoha.deliver_to               =            xcas2v.party_site_number
+-- 2009/05/25 ADD END
+-- 2009/05/25 MOD START 本番障害#1398 コードで結合に変更したので、ステータス「最新」を条件に追加
+      AND xcas2v.party_site_status      =            'A' -- 有効な配送先
+      AND xcas2v.cust_acct_site_status  =            'A' -- 有効な配送先
+-- 2009/05/25 ADD END
       AND xoha.deliver_from_id          =            xil2v .inventory_location_id 
       AND xoha.order_header_id          =            xola.order_header_id
       AND xola.delete_flag              =            'N'
