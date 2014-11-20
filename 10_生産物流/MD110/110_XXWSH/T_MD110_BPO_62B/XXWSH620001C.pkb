@@ -7,7 +7,7 @@ AS
  * Description      : 在庫不足確認リスト
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 在庫不足確認リスト T_MD070_BPO_62B
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  Date          Ver.  Editor             Description
  * ------------- ----- ------------------ -----------------------------------------------
  *  2008/05/05    1.0   Nozomi Kashiwagi   新規作成
+ *  2008/07/08    1.1   Akiyoshi Shiina    禁則文字「'」「"」「<」「>」「＆」対応
  *
  *****************************************************************************************/
 --
@@ -1517,7 +1518,8 @@ AS
 --
     --データの場合
     IF (ir_xml.tag_type = 'D') THEN
-      lv_data := '<'|| ir_xml.tag_name || '>' || ir_xml.tag_value || '</' || ir_xml.tag_name || '>';
+      lv_data :=
+    '<'|| ir_xml.tag_name || '><![CDATA[' || ir_xml.tag_value || ']]></' || ir_xml.tag_name || '>';
     ELSE
       lv_data := '<' || ir_xml.tag_name || '>';
     END IF ;
