@@ -12,6 +12,7 @@
  *  2008/12/08    1.0   T.Tyou           新規作成
  *  2009/02/18    1.1   T.Tyou           受注NO（EBS）を追加
  *  2009/05/28    1.2   K.Kiriu          [T1_1119]明細番号(EBS)を追加
+ *  2009/06/09    1.3   K.Kiriu          [T1_1382]基準在庫数量取得不具合の修正
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_dlv_lines_info_v (
   order_no_hht
@@ -81,7 +82,10 @@ SELECT
        xdl.replenish_number replenish_number,                      --補充数（DB値）
        abs(xdl.cash_and_card) abs_cash_and_card,                   --現金・カード併用額（画面用:絶対値）
        xdl.cash_and_card cash_and_card,                            --現金・カード併用額（DB値）
-       CASE WHEN xdh.dlv_date < xxccp_common_pkg2.get_process_date THEN
+/* 2009/06/09 Ver1.3 Mod Start */
+--       CASE WHEN xdh.dlv_date < xxccp_common_pkg2.get_process_date THEN
+       CASE WHEN TO_CHAR( xdh.dlv_date, 'YYYYMM' ) < TO_CHAR( xxccp_common_pkg2.get_process_date, 'YYYYMM') THEN
+/* 2009/06/09 Ver1.3 Mod End   */
          xmvc.last_month_inventory_quantity
        ELSE
          xmvc.inventory_quantity
