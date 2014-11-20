@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009-03-25    1.2   N.Yabuki         【ST障害対応147】物件関連情報変更履歴テーブル登録不正
  *  2009-03-25    1.2   N.Yabuki         【ST障害対応150】引揚時の担当拠点が不正
  *  2009-04-13    1.3   K.Satomura       【T1_0418対応】インスタンスタイプコード不正
+ *  2009-04-17    1.4   K.Satomura       【T1_0466対応】A-6の処理を削除
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -6771,16 +6772,18 @@ AS
           -- ========================================
           -- A-6.論理削除更新チェック処理
           -- ========================================
-          IF (ln_instance_status_id = gt_instance_status_id_6) THEN
-            lv_errmsg := xxccp_common_pkg.get_msg(
-                            iv_application  => cv_app_name                  -- アプリケーション短縮名
-                           ,iv_name         => cv_tkn_number_26             -- メッセージコード
-                           ,iv_token_name1  => cv_tkn_bukken                -- トークンコード1
-                           ,iv_token_value1 => lv_bukken_code               -- トークン値1
-                         );
-            lv_errbuf := lv_errmsg;
-            RAISE skip_process_expt;
-          END IF;
+          /* 2009.04.17 K.Satomura T1_0466対応 START */
+          --IF (ln_instance_status_id = gt_instance_status_id_6) THEN
+          --  lv_errmsg := xxccp_common_pkg.get_msg(
+          --                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+          --                 ,iv_name         => cv_tkn_number_26             -- メッセージコード
+          --                 ,iv_token_name1  => cv_tkn_bukken                -- トークンコード1
+          --                 ,iv_token_value1 => lv_bukken_code               -- トークン値1
+          --               );
+          --  lv_errbuf := lv_errmsg;
+          --  RAISE skip_process_expt;
+          --END IF;
+          /* 2009.04.17 K.Satomura T1_0466対応 END */
 --
           -- ========================================
           -- A-7.物件ロック処理
