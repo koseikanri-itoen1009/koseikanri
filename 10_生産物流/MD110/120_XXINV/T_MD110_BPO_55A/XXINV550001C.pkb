@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.40
+ * Version          : 1.41
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -67,6 +67,7 @@ AS
  *  2009/01/05    1.38  Takao    Ohashi    本番指摘 #911対応
  *  2008/01/07    1.39  Yasuhisa Yamamoto  本番指摘 #945対応
  *  2008/01/08    1.40  Yasuhisa Yamamoto  本番指摘 #957対応
+ *  2008/02/10    1.41  Yukari Kanami      本番指摘 #1168対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3112,19 +3113,28 @@ AS
       RAISE global_process_expt ;
     END IF ;
 --
-    -- =====================================================
-    -- 棚卸スナップショット作成プログラム呼出(A-2)
-    -- =====================================================
-    prc_call_xxinv550004c
-      (
-        ir_param          => lr_param_rec       -- 入力パラメータ群
-       ,ov_errbuf         => lv_errbuf          -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode        => lv_retcode         -- リターン・コード             --# 固定 #
-       ,ov_errmsg         => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
-      ) ;
-    IF (lv_retcode = gv_status_error) THEN
-      RAISE global_process_expt ;
-    END IF ;
+-- 2009/02/10 Y.Kanami 本番#1168対応 START --
+    -- 在庫カレンダーがオープンしている場合のみ棚卸スナップショットを呼び出す
+    IF (lr_param_rec.iv_date_ym > xxcmn_common_pkg.get_opminv_close_period()) THEN
+-- 2009/02/10 Y.Kanami 本番#1168対応 END   --
+
+      -- =====================================================
+      -- 棚卸スナップショット作成プログラム呼出(A-2)
+      -- =====================================================
+      prc_call_xxinv550004c
+        (
+          ir_param          => lr_param_rec       -- 入力パラメータ群
+         ,ov_errbuf         => lv_errbuf          -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode        => lv_retcode         -- リターン・コード             --# 固定 #
+         ,ov_errmsg         => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+        ) ;
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt ;
+      END IF ;
+
+-- 2009/02/10 Y.Kanami 本番#1168対応 START --
+    END IF;
+-- 2009/02/10 Y.Kanami 本番#1168対応 START --
 --
     -- =====================================================
     -- 帳票データ出力(A-3,4)
