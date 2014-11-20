@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(body)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/10/23    1.0   T.Nishikawa      新規作成
  *  2009/03/13    1.1   H.Wada           get_subinventory_info1 取得条件修正(障害番号T1_0040)
  *  2009/03/30    1.2   N.Abe            convert_cust_subinv_code 顧客ステータス不備対応(障害番号T1_0165)
+ *  2009/04/09    1.3   H.Sasaki         [T1_0380]入庫側顧客コードの戻り値設定
  *
  *****************************************************************************************/
 --
@@ -2817,6 +2818,10 @@ AS
            ,iv_cust_code        => iv_inside_code           -- 4.顧客コード
           );
         --
+-- == 2009/04/09 V1.3 Added START ===============================================================
+        -- 入庫側顧客コードをセット
+        ov_inside_cust_code := iv_inside_code;
+-- == 2009/04/09 V1.3 Added END   ===============================================================
         IF lv_retcode <> cv_status_normal THEN
             RAISE sub_prog_error_expt;
         END IF;    
