@@ -98,8 +98,11 @@ FROM xxwsh_order_headers_all xoha --受注ヘッダアドオン
 WHERE xola.order_header_id = xoha.order_header_id  
 --OPM品目情報VIEW2  
 AND   ximv.inventory_item_id = xola.shipping_inventory_item_id  
---OPM品目情報VIEW  
-AND   whximv.whse_item_id(+) = ximv.item_id  
+--OPM品目情報VIEW
+-- 2008-10-08 H.Itou Mod Start 統合テスト指摘327
+--AND   whximv.whse_item_id(+) = ximv.item_id
+AND   ximv.whse_item_id = whximv.item_id(+)
+-- 2008-10-08 H.Itou Mod End
 -------------------- 抽出条件 --------------------  
 --受注明細アドオン  
 AND xola.delete_flag = 'N'  --削除フラグ

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestAMImpl
 * 概要説明   : 支給依頼要約アプリケーションモジュール
-* バージョン : 1.7
+* バージョン : 1.8
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -16,6 +16,7 @@
 * 2008-07-29 1.5  二瓶大輔     内部変更要求#164,166,173、課題#32
 * 2008-08-13 1.6  二瓶大輔     ST不具合#249対応
 * 2008-08-27 1.7  伊藤ひとみ   内部変更要求#209対応
+* 2008-10-07 1.8  伊藤ひとみ   統合テスト指摘240対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -49,7 +50,7 @@ import oracle.jbo.RowSetIterator;
 /***************************************************************************
  * 支給依頼要約画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.6
+ * @version 1.8
  ***************************************************************************
  */
 public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -3801,6 +3802,9 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
           // 明細導出処理
           getLineData(vo,
                       updRow,
+// 2008-10-07 H.Itou Add Start 統合テスト指摘240
+                      shippedDate,
+// 2008-10-07 H.Itou Add End
                       arrivalDate,
                       listIdRepresent,
                       listIdVendor,
@@ -3831,6 +3835,9 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
             // 明細導出処理
             getLineData(vo,
                         insRow,
+// 2008-10-07 H.Itou Add Start 統合テスト指摘240
+                        shippedDate,
+// 2008-10-07 H.Itou Add End
                         arrivalDate,
                         listIdRepresent,
                         listIdVendor,
@@ -4393,6 +4400,7 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
    * 明細項目の導出処理を行うメソッドです。
    * @param vo  - 明細ビューオブジェクト
    * @param row - 明細行オブジェクト
+   * @param shippedDate     - 出庫日
    * @param arrivalDate     - 入庫日
    * @param listIdRepresent - 代表価格表ID
    * @param listIdVendor    - 取引先価格表ID
@@ -4404,6 +4412,9 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
   public void getLineData(
     OAViewObjectImpl vo,
     OARow row,
+// 2008-10-07 H.Itou Add Start 統合テスト指摘240
+    Date shippedDate,
+// 2008-10-07 H.Itou Add End
     Date arrivalDate,
     String listIdRepresent,
     String listIdVendor,
@@ -4448,7 +4459,11 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     HashMap retMap = XxpoUtility.calcTotalValue(
                        getOADBTransaction(),
                        itemNo,
-                       XxcmnUtility.commaRemoval(reqQuantity));
+                       XxcmnUtility.commaRemoval(reqQuantity),
+// 2008-10-07 H.Itou Add Start 統合テスト指摘240
+                       shippedDate
+// 2008-10-07 H.Itou Add End
+                       );
     String retCode = (String)retMap.get("retCode");
     // 戻り値がエラーの場合
     if (!XxcmnConstants.API_RETURN_NORMAL.equals(retCode)) 

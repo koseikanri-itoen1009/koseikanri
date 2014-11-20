@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.10
+* バージョン : 1.11
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -18,6 +18,7 @@
 * 2008-07-29 1.8  二瓶大輔     内部変更要求#164,166,173、課題#32
 * 2008-08-07 1.9  二瓶大輔     内部変更要求#166修正
 * 2008-08-19 1.10 二瓶大輔     ST不具合#249対応
+* 2008-10-07 1.11 伊藤ひとみ   統合テスト指摘240対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -39,7 +40,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仕入共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.10
+ * @version 1.11
  ***************************************************************************
  */
 public class XxpoUtility 
@@ -9400,7 +9401,10 @@ public class XxpoUtility
   public static HashMap calcTotalValue(
     OADBTransaction trans,
     String itemNo,
-    String quantity
+    String quantity,
+// 2008-10-07 H.Itou Add Start 統合テスト指摘240
+    Date standardDate
+// 2008-10-07 H.Itou Add End
   ) throws  OAException
   {
     String apiName = "calcTotalValue";
@@ -9423,10 +9427,18 @@ public class XxpoUtility
     sb.append("   ,on_sum_weight        => ln_sum_weight ");
     sb.append("   ,on_sum_capacity      => ln_sum_capacity ");
     sb.append("   ,on_sum_pallet_weight => ln_sum_pallet_weight ");
+// 2008-10-07 H.Itou Add Start 統合テスト指摘240
+    sb.append("   ,id_standard_date     => :6 ");
+// 2008-10-07 H.Itou Add End
     sb.append("  ); ");
-    sb.append("  :6 := TO_CHAR(ln_sum_weight);        ");
-    sb.append("  :7 := TO_CHAR(ln_sum_capacity);      ");
-    sb.append("  :8 := TO_CHAR(ln_sum_pallet_weight); ");
+// 2008-10-07 H.Itou Mod Start 統合テスト指摘240
+//    sb.append("  :6 := TO_CHAR(ln_sum_weight);        ");
+//    sb.append("  :7 := TO_CHAR(ln_sum_capacity);      ");
+//    sb.append("  :8 := TO_CHAR(ln_sum_pallet_weight); ");
+    sb.append("  :7 := TO_CHAR(ln_sum_weight);        ");
+    sb.append("  :8 := TO_CHAR(ln_sum_capacity);      ");
+    sb.append("  :9 := TO_CHAR(ln_sum_pallet_weight); ");
+// 2008-10-07 H.Itou Mod End
     sb.append("END; ");
 
     // PL/SQLの設定を行います。
@@ -9444,6 +9456,9 @@ public class XxpoUtility
       cstmt.registerOutParameter(i++, Types.VARCHAR, 1);         // ステータスコード
       cstmt.registerOutParameter(i++, Types.VARCHAR, 5000);      // エラーメッセージ
       cstmt.registerOutParameter(i++, Types.VARCHAR, 5000);      // システムメッセージ
+// 2008-10-07 H.Itou Add Start 統合テスト指摘240
+      cstmt.setDate(i++, XxcmnUtility.dateValue(standardDate)); // 基準日
+// 2008-10-07 H.Itou Add End
       cstmt.registerOutParameter(i++, Types.VARCHAR);
       cstmt.registerOutParameter(i++, Types.VARCHAR);
       cstmt.registerOutParameter(i++, Types.VARCHAR);
@@ -9455,9 +9470,14 @@ public class XxpoUtility
       String retCode   = cstmt.getString(3);  // リターンコード
       String errMsg    = cstmt.getString(4);  // エラーメッセージ
       String systemMsg = cstmt.getString(5);  // システムメッセージ
-      String sumWeight       = cstmt.getString(6);  // 重量
-      String sumCapacity     = cstmt.getString(7);  // 容積
-      String sumPalletWeight = cstmt.getString(8);  // パレット重量
+// 2008-10-07 H.Itou Mod Start 統合テスト指摘240
+//      String sumWeight       = cstmt.getString(6);  // 重量
+//      String sumCapacity     = cstmt.getString(7);  // 容積
+//      String sumPalletWeight = cstmt.getString(8);  // パレット重量
+      String sumWeight       = cstmt.getString(7);  // 重量
+      String sumCapacity     = cstmt.getString(8);  // 容積
+      String sumPalletWeight = cstmt.getString(9);  // パレット重量
+// 2008-10-07 H.Itou Mod End
 
       // 戻り値取得
       retHashMap.put("retCode",         retCode);

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRtnSummaryAMImpl
 * 概要説明   : 支給返品要約:検索アプリケーションモジュール
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,7 +9,8 @@
 * 2008-03-17 1.0  熊本 和郎    新規作成
 * 2008-06-06 1.0  二瓶 大輔    内部変更要求#137対応
 * 2008-07-01 1.1  二瓶 大輔    内部変更要求#146対応
-* 2008-08-20 1.2  二瓶大輔     ST不具合#249対応
+* 2008-08-20 1.2  二瓶 大輔    ST不具合#249対応
+* 2008-10-07 1.3  伊藤ひとみ   統合テスト指摘240対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo443001j.server;
@@ -42,7 +43,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 支給返品要約:検索画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 熊本 和郎
- * @version 1.2
+ * @version 1.3
  ***************************************************************************
  */
 public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -1599,7 +1600,11 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
           // 合計重量・合計容積の算出
           HashMap retMap = XxpoUtility.calcTotalValue(getOADBTransaction(),
                                                       itemNo,
-                                                      XxcmnUtility.commaRemoval(reqQuantity));
+                                                      XxcmnUtility.commaRemoval(reqQuantity),
+// 2008-10-07 H.Itou Add Start 統合テスト指摘240
+                                                      shippedDate
+// 2008-10-07 H.Itou Add End
+                                                      );
           String retCode = (String)retMap.get("retCode");
           // 戻り値がエラーの場合
           if (!XxcmnConstants.API_RETURN_NORMAL.equals(retCode)) 
@@ -1679,7 +1684,11 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
           // 合計重量・合計容積の導出
           HashMap retMap = XxpoUtility.calcTotalValue(getOADBTransaction(),
                                                       itemNo,
-                                                      XxcmnUtility.commaRemoval(reqQuantity));
+                                                      XxcmnUtility.commaRemoval(reqQuantity),
+// 2008-10-07 H.Itou Add Start 統合テスト指摘240
+                                                      shippedDate
+// 2008-10-07 H.Itou Add End
+                                                      );
           String retCode = (String)retMap.get("retCode");
           // 戻り値がエラーの場合
           if (!XxcmnConstants.API_RETURN_NORMAL.equals(retCode)) 
