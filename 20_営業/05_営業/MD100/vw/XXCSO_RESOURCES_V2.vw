@@ -10,6 +10,7 @@
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/25    1.1  K.Satomura    ST障害対応(T1_0156)
  ************************************************************************/
 CREATE OR REPLACE VIEW APPS.XXCSO_RESOURCES_V2
 (
@@ -77,10 +78,16 @@ SELECT
 ,ppf.attribute22
 ,paf.assignment_id
 ,paf.ass_attribute2
-,paf.ass_attribute3
-,paf.ass_attribute4
-,xxcso_util_common_pkg.get_base_name(paf.ass_attribute3, xxcso_util_common_pkg.get_online_sysdate)
-,xxcso_util_common_pkg.get_base_name(paf.ass_attribute4, xxcso_util_common_pkg.get_online_sysdate)
+/* 2009/03/25 K.Satomura ST0156 START */
+--,paf.ass_attribute3
+--,paf.ass_attribute4
+--,xxcso_util_common_pkg.get_base_name(paf.ass_attribute3, xxcso_util_common_pkg.get_online_sysdate)
+--,xxcso_util_common_pkg.get_base_name(paf.ass_attribute4, xxcso_util_common_pkg.get_online_sysdate)
+,paf.ass_attribute5
+,paf.ass_attribute6
+,xxcso_util_common_pkg.get_base_name(paf.ass_attribute5, xxcso_util_common_pkg.get_online_sysdate)
+,xxcso_util_common_pkg.get_base_name(paf.ass_attribute6, xxcso_util_common_pkg.get_online_sysdate)
+/* 2009/03/25 K.Satomura ST0156 END */
 ,paf.ass_attribute11
 ,paf.ass_attribute12
 ,SUBSTRB(paf.ass_attribute13, 1, 3)
@@ -134,10 +141,16 @@ COMMENT ON COLUMN XXCSO_RESOURCES_V2.job_type_name_new IS '職種名（新）';
 COMMENT ON COLUMN XXCSO_RESOURCES_V2.job_type_name_old IS '職種名（旧）';
 COMMENT ON COLUMN XXCSO_RESOURCES_V2.assignment_id IS 'アサイメントID';
 COMMENT ON COLUMN XXCSO_RESOURCES_V2.issue_date IS '発令日';
-COMMENT ON COLUMN XXCSO_RESOURCES_V2.work_base_code_new IS '勤務地拠点コード（新）';
-COMMENT ON COLUMN XXCSO_RESOURCES_V2.work_base_code_old IS '勤務地拠点コード（旧）';
-COMMENT ON COLUMN XXCSO_RESOURCES_V2.work_base_name_new IS '勤務地拠点名（新）';
-COMMENT ON COLUMN XXCSO_RESOURCES_V2.work_base_name_old IS '勤務地拠点名（旧）';
+/* 2009/03/25 K.Satomura ST0156 START */
+-- COMMENT ON COLUMN XXCSO_RESOURCES_V2.work_base_code_new IS '勤務地拠点コード（新）';
+-- COMMENT ON COLUMN XXCSO_RESOURCES_V2.work_base_code_old IS '勤務地拠点コード（旧）';
+-- COMMENT ON COLUMN XXCSO_RESOURCES_V2.work_base_name_new IS '勤務地拠点名（新）';
+-- COMMENT ON COLUMN XXCSO_RESOURCES_V2.work_base_name_old IS '勤務地拠点名（旧）';
+COMMENT ON COLUMN XXCSO_RESOURCES_V2.work_base_code_new IS '拠点コード（新）';
+COMMENT ON COLUMN XXCSO_RESOURCES_V2.work_base_code_old IS '拠点コード（旧）';
+COMMENT ON COLUMN XXCSO_RESOURCES_V2.work_base_name_new IS '拠点名（新）';
+COMMENT ON COLUMN XXCSO_RESOURCES_V2.work_base_name_old IS '拠点名（旧）';
+/* 2009/03/25 K.Satomura ST0156 END */
 COMMENT ON COLUMN XXCSO_RESOURCES_V2.position_sort_code_new IS '職位並順コード（新）';
 COMMENT ON COLUMN XXCSO_RESOURCES_V2.position_sort_code_old IS '職位並順コード（旧）';
 COMMENT ON COLUMN XXCSO_RESOURCES_V2.approval_type_code_new IS '承認コード（新）';

@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008-11-20    1.0   kyo              新規作成
  *  2009-03-16    1.1   abe              変更管理番号I_E_108の対応
+ *  2009-03-25    1.2   N.Yabuki         【ST障害対応147】物件関連情報変更履歴テーブル登録不正
+ *  2009-03-25    1.2   N.Yabuki         【ST障害対応150】引揚時の担当拠点が不正
  *
  *****************************************************************************************/
 --
@@ -2667,7 +2669,10 @@ AS
     lv_install_number          VARCHAR2(20);            -- 機番
     lv_base_code               VARCHAR2(4);             -- 拠点コード
     lv_install_name            VARCHAR2(30);            -- 設置先名
-    lv_install_address         VARCHAR2(540);           -- 設置先住所
+    /*20090325_yabuki_ST147 START*/
+    --lv_install_address         VARCHAR2(540);           -- 設置先住所
+    lv_install_address         VARCHAR2(600);           -- 設置先住所
+    /*20090325_yabuki_ST147 END*/
     lv_owner_cmp_flag          VARCHAR2(1);             -- 本社/工場フラグ
     lv_owner_cmp_type          VARCHAR2(150);           -- 本社/工場区分
     lv_owner_cmp_name          VARCHAR2(10);            -- 本社/工場区分名
@@ -3833,6 +3838,9 @@ AS
     cv_kbn1                   CONSTANT VARCHAR2(1)   := '1'; 
     cv_kbn2                   CONSTANT VARCHAR2(1)   := '2'; 
     cv_cust_mst_info          CONSTANT VARCHAR2(100) := '顧客マスタ情報';    -- 抽出内容
+    /*20090325_yabuki_ST150 START*/
+    cv_cust_base_info          CONSTANT VARCHAR2(100) := '引揚前設置先顧客の売上拠点情報';    -- 抽出内容
+    /*20090325_yabuki_ST150 END*/
     cv_inst_party_info        CONSTANT VARCHAR2(100) := 'インスタンスパーティ情報';      -- 抽出内容
     cv_inst_account_info      CONSTANT VARCHAR2(100) := 'インスタンスアカウント情報';    -- 抽出内容
     cv_inst_base_insert       CONSTANT VARCHAR2(100) := 'インストールベースマスタ';
@@ -3919,6 +3927,9 @@ AS
     lv_last_inst_cust_code     VARCHAR2(10);            -- 先月末設置先顧客コード
     ln_last_jotai_kbn          NUMBER;                  -- 先月末機器状態
     lv_last_year_month         VARCHAR2(10);            -- 先月末年月
+    /*20090325_yabuki_ST150 START*/
+    lt_sale_base_code          xxcso_cust_acct_sites_v.sale_base_code%TYPE;    -- 売上拠点コード
+    /*20090325_yabuki_ST150 END*/
     
     -- API戻り値格納用
     lv_return_status           VARCHAR2(1);
@@ -4291,11 +4302,17 @@ AS
             ,casv.party_site_id                                       -- パーティサイトID
             ,casv.party_id                                            -- パーティID
             ,casv.area_code                                           -- 地区コード
+            /*20090325_yabuki_ST150 START*/
+            ,casv.sale_base_code                                      -- 売上拠点コード
+            /*s_yabuki_ST150 END*/
       INTO   lv_account_num
             ,ln_account_id
             ,ln_party_site_id
             ,ln_party_id
             ,lv_area_code
+            /*20090325_yabuki_ST150 START*/
+            ,lt_sale_base_code
+            /*20090325_yabuki_ST150 END*/
       FROM   xxcso_cust_acct_sites_v casv                               -- 顧客マスタサイトビュー
             ,csi_item_instances      ciis                               -- インストールベースマスタ
       WHERE  ciis.external_reference     = lv_install_code
@@ -4565,6 +4582,88 @@ AS
         ln_party_site_id  := gn_jyki_party_site_id;
         ln_party_id       := gn_jyki_party_id;
         lv_area_code      := gv_jyki_area_code;
+        --
+      /*20090325_yabuki_ST150 START*/
+      ELSE
+        -- ============================
+        -- 3.引揚前設置先顧客の売上拠点情報抽出
+        -- ============================
+        BEGIN
+          SELECT casv.account_number                                      -- 顧客コード
+                ,casv.cust_account_id                                     -- アカウントID
+                ,casv.party_site_id                                       -- パーティサイトID
+                ,casv.party_id                                            -- パーティID
+                ,casv.area_code                                           -- 地区コード
+          INTO   lv_account_num
+                ,ln_account_id
+                ,ln_party_site_id
+                ,ln_party_id
+                ,lv_area_code
+          FROM   xxcso_cust_acct_sites_v casv                             -- 顧客マスタサイトビュー
+          WHERE  casv.account_number    = lt_sale_base_code
+            AND  casv.account_status    = cv_active
+            AND  casv.acct_site_status  = cv_active
+            AND  casv.party_status      = cv_active
+            AND  casv.party_site_status = cv_active
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            -- データが存在しない場合
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_app_name                   -- アプリケーション短縮名
+                           ,iv_name         => cv_tkn_number_23              -- メッセージコード
+                           ,iv_token_name1  => cv_tkn_task_nm                -- トークンコード1
+                           ,iv_token_value1 => cv_cust_base_info             -- トークン値1
+                           ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
+                           ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
+                           ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
+                           ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
+                           ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
+                           ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
+                           ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
+                           ,iv_token_value5 => TO_CHAR(ln_line_num)          -- トークン値5
+                           ,iv_token_name6  => cv_tkn_bukken1                -- トークンコード6
+                           ,iv_token_value6 => lv_install_code1              -- トークン値6
+                           ,iv_token_name7  => cv_tkn_bukken2                -- トークンコード7
+                           ,iv_token_value7 => lv_install_code2              -- トークン値7
+                           ,iv_token_name8  => cv_tkn_account_num1           -- トークンコード8
+                           ,iv_token_value8 => lv_account_num1               -- トークン値8
+                           ,iv_token_name9  => cv_tkn_account_num2           -- トークンコード9
+                           ,iv_token_value9 => lv_account_num2               -- トークン値9
+                         );
+            lv_errbuf := lv_errmsg;
+            RAISE skip_process_expt;
+            -- 抽出に失敗した場合
+          WHEN OTHERS THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_app_name                   -- アプリケーション短縮名
+                           ,iv_name         => cv_tkn_number_24              -- メッセージコード
+                           ,iv_token_name1  => cv_tkn_task_nm                -- トークンコード1
+                           ,iv_token_value1 => cv_cust_base_info             -- トークン値1
+                           ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
+                           ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
+                           ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
+                           ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
+                           ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
+                           ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
+                           ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
+                           ,iv_token_value5 => TO_CHAR(ln_line_num)          -- トークン値5
+                           ,iv_token_name6  => cv_tkn_bukken1                -- トークンコード6
+                           ,iv_token_value6 => lv_install_code1              -- トークン値6
+                           ,iv_token_name7  => cv_tkn_bukken2                -- トークンコード7
+                           ,iv_token_value7 => lv_install_code2              -- トークン値7
+                           ,iv_token_name8  => cv_tkn_account_num1           -- トークンコード8
+                           ,iv_token_value8 => lv_account_num1               -- トークン値8
+                           ,iv_token_name9  => cv_tkn_account_num2           -- トークンコード9
+                           ,iv_token_value9 => lv_account_num2               -- トークン値9
+                           ,iv_token_name10 => cv_tkn_errmsg                 -- トークンコード10
+                           ,iv_token_value10=> SQLERRM                       -- トークン値10
+                         );
+            lv_errbuf := lv_errmsg;
+            RAISE skip_process_expt;
+        END;
+--
+      /*20090325_yabuki_ST150 END*/
       END IF;
 --
     END IF;
@@ -4690,6 +4789,10 @@ AS
     l_instance_rec.attribute2                 := lv_install_number;            -- 機番
     l_instance_rec.attribute4                 := cv_flg_no;                    -- 作業依頼中フラグ
     l_instance_rec.attribute5                 := cv_flg_no;                    -- 新古台フラグ
+    IF (io_inst_base_data_rec.po_req_number IS NOT NULL AND
+        io_inst_base_data_rec.po_req_number <> 0) THEN
+      l_instance_rec.attribute6                 := io_inst_base_data_rec.po_req_number;  -- 最終発注依頼番号
+    END IF;
     l_instance_rec.object_version_number      := 
       io_inst_base_data_rec.object_version1;                                   -- オブジェクトバージョン番号
     l_instance_rec.request_id                 := cn_request_id;                -- REQUEST_ID

@@ -10,6 +10,7 @@
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/25    1.1  K.Satomura    ST障害対応(T1_0156)
  ************************************************************************/
 CREATE OR REPLACE VIEW APPS.XXCSO_RESOURCE_RELATIONS_V
 (
@@ -24,6 +25,10 @@ CREATE OR REPLACE VIEW APPS.XXCSO_RESOURCE_RELATIONS_V
 ,last_name
 ,first_name
 ,full_name
+/* 2009/03/25 K.Satomura ST0156 START */
+,last_name_kana
+,first_name_kana
+/* 2009/03/25 K.Satomura ST0156 END */
 ,qualify_code_new
 ,qualify_code_old
 ,qualify_name_new
@@ -82,6 +87,10 @@ SELECT
 ,rs.per_information18
 ,rs.per_information19
 ,rs.per_information18 || ' ' || rs.per_information19
+/* 2009/03/25 K.Satomura ST0156 START */
+,rs.last_name
+,rs.first_name
+/* 2009/03/25 K.Satomura ST0156 END */
 ,rs.attribute7
 ,rs.attribute9
 ,rs.attribute8
@@ -102,8 +111,12 @@ SELECT
 ,rs.paf_start_date
 ,rs.paf_end_date
 ,rs.ass_attribute2
-,rs.ass_attribute3
-,rs.ass_attribute4
+/* 2009/03/25 K.Satomura ST0156 START */
+--,rs.ass_attribute3
+--,rs.ass_attribute4
+,rs.ass_attribute5
+,rs.ass_attribute6
+/* 2009/03/25 K.Satomura ST0156 END */
 ,rs.ass_attribute11
 ,rs.ass_attribute12
 ,SUBSTRB(rs.ass_attribute13, 1, 3)
@@ -139,6 +152,10 @@ FROM
    ppf.effective_end_date ppf_end_date, 
    ppf.per_information18, 
    ppf.per_information19, 
+   /* 2009/03/25 K.Satomura ST0156 START */
+   ppf.last_name, 
+   ppf.first_name, 
+   /* 2009/03/25 K.Satomura ST0156 END */
    ppf.attribute7, 
    ppf.attribute8, 
    ppf.attribute9, 
@@ -159,8 +176,12 @@ FROM
    paf.effective_start_date paf_start_date, 
    paf.effective_end_date paf_end_date, 
    paf.ass_attribute2, 
-   paf.ass_attribute3, 
-   paf.ass_attribute4, 
+   /* 2009/03/25 K.Satomura ST0156 START */
+   --paf.ass_attribute3, 
+   --paf.ass_attribute4, 
+   paf.ass_attribute5, 
+   paf.ass_attribute6, 
+   /* 2009/03/25 K.Satomura ST0156 END */
    paf.ass_attribute11, 
    paf.ass_attribute12, 
    paf.ass_attribute13, 
@@ -218,9 +239,15 @@ FROM
    jrgm.group_id = jrgb.group_id 
 )  jrgmo
 WHERE
-jrgmn.rsg_dept_code(+) = rs.ass_attribute3 AND
+/* 2009/03/25 K.Satomura ST0156 START */
+--jrgmn.rsg_dept_code(+) = rs.ass_attribute3 AND
+jrgmn.rsg_dept_code(+) = rs.ass_attribute5 AND
+/* 2009/03/25 K.Satomura ST0156 END */
 jrgmn.resource_id(+) = rs.resource_id AND
-jrgmo.rsg_dept_code(+) = rs.ass_attribute4 AND
+/* 2009/03/25 K.Satomura ST0156 START */
+--jrgmo.rsg_dept_code(+) = rs.ass_attribute4 AND
+jrgmo.rsg_dept_code(+) = rs.ass_attribute6 AND
+/* 2009/03/25 K.Satomura ST0156 END */
 jrgmo.resource_id(+) = rs.resource_id
 WITH READ ONLY
 ;
@@ -235,6 +262,10 @@ COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.employee_number IS '従業員番号';
 COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.last_name IS '漢字姓';
 COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.first_name IS '漢字名';
 COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.full_name IS '氏名';
+/* 2009/03/25 K.Satomura ST0156 START */
+COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.last_name_kana IS 'カナ姓';
+COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.first_name_kana IS 'カナ名';
+/* 2009/03/25 K.Satomura ST0156 END */
 COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.qualify_code_new IS '資格コード（新）';
 COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.qualify_code_old IS '資格コード（旧）';
 COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.qualify_name_new IS '資格名（新）';
@@ -255,8 +286,12 @@ COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.assignment_id IS 'アサイメントID';
 COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.assign_start_date IS '有効開始日（アサイメント）';
 COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.assign_end_date IS '有効終了日（アサイメント）';
 COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.issue_date IS '発令日';
-COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.work_dept_code_new IS '勤務地拠点コード（新）';
-COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.work_dept_code_old IS '勤務地拠点コード（旧）';
+/* 2009/03/25 K.Satomura ST0156 START */
+-- COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.work_dept_code_new IS '勤務地拠点コード（新）';
+-- COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.work_dept_code_old IS '勤務地拠点コード（旧）';
+COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.work_dept_code_new IS '拠点コード（新）';
+COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.work_dept_code_old IS '拠点コード（旧）';
+/* 2009/03/25 K.Satomura ST0156 END */
 COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.position_sort_code_new IS '職位並順コード（新）';
 COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.position_sort_code_old IS '職位並順コード（旧）';
 COMMENT ON COLUMN XXCSO_RESOURCE_RELATIONS_V.approval_type_code_new IS '承認コード（新）';

@@ -65,6 +65,7 @@ AS
  *                                       ・販手条件の作成更新条件変更
  *                                         (ＢＭ１～３の入力が無い、又は0の場合は処理を行
  *                                         わない)
+ *  2009-03-24    1.1   Kazuo.Satomura   システムテスト障害(障害番号T1_0135,0136,0140)
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -1914,7 +1915,10 @@ AS
     cv_electricity_amount_01 CONSTANT xxcso_sp_decision_headers.electricity_amount%TYPE      := '1';   -- 定額
     cv_calc_type_01          CONSTANT xxcok_mst_bm_contract.calc_type%TYPE                   := '10';  -- 売価別条件
     cv_calc_type_02          CONSTANT xxcok_mst_bm_contract.calc_type%TYPE                   := '20';  -- 容器区分別条件
-    cv_calc_type_03          CONSTANT xxcok_mst_bm_contract.calc_type%TYPE                   := '40';  -- 定率条件
+    /* 2009.03.24 K.Satomura 障害番号T1_0136応 START */
+    --cv_calc_type_03          CONSTANT xxcok_mst_bm_contract.calc_type%TYPE                   := '40';  -- 定率条件
+    cv_calc_type_03          CONSTANT xxcok_mst_bm_contract.calc_type%TYPE                   := '30';  -- 定率条件
+    /* 2009.03.24 K.Satomura 障害番号T1_0136対応 END */
     cv_calc_type_04          CONSTANT xxcok_mst_bm_contract.calc_type%TYPE                   := '50';  -- 電気料(固定)
     cv_lookup_type           CONSTANT fnd_lookup_values_vl.lookup_type%TYPE                  := 'XXCSO1_SP_RULE_BOTTLE';
     --
@@ -2072,7 +2076,9 @@ AS
             AND    NVL(xmb.selling_price, fnd_api.g_miss_num)        = NVL(lt_sp_decision_rec.sales_price, fnd_api.g_miss_num) -- 売価
             AND    NVL(xmb.container_type_code, fnd_api.g_miss_char) = NVL(lt_sp_decision_rec.bm_container_type, fnd_api.g_miss_char) -- 容器区分
             AND    TRUNC(xmb.start_date_active)                      = TRUNC(cd_process_date)               -- 有効日(From)
-            AND    xmb.calc_target_flag                              = cv_flag_yes                          -- 計算対象フラグ
+            /* 2009.03.24 K.Satomura 障害番号T1_0140対応 START */
+            --AND    xmb.calc_target_flag                              = cv_flag_yes                          -- 計算対象フラグ
+            /* 2009.03.24 K.Satomura 障害番号T1_0140対応 END */
             ;
             --
             lv_no_data_found_flag := cv_flag_no;
@@ -2246,7 +2252,10 @@ AS
         WHERE  xmb.cust_code                = it_install_account_number -- 顧客コード
         AND    xmb.calc_type                = cv_calc_type_04           -- 計算条件
         AND    TRUNC(xmb.start_date_active) = TRUNC(cd_process_date)    -- 有効日(From)
+        /* 2009.03.24 K.Satomura 障害番号T1_0140対応 START */
+        --AND    xmb.calc_target_flag         = cv_flag_yes               -- 計算対象フラグ
         AND    xmb.calc_target_flag         = cv_flag_yes               -- 計算対象フラグ
+        /* 2009.03.24 K.Satomura 障害番号T1_0140対応 END */
         ;
         --
         lv_no_data_found_flag := cv_flag_no;
@@ -2409,7 +2418,9 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cv_territory_code        CONSTANT VARCHAR2(2) := 'JP'; -- 国コード
-    cv_business_low_type     CONSTANT xxcmm_cust_accounts.business_low_type%TYPE := '25';
+    /* 2009.03.24 K.Satomura 障害番号T1_0135対応 START */
+    cv_business_low_type     CONSTANT xxcmm_cust_accounts.business_low_type%TYPE := '24';
+    /* 2009.03.24 K.Satomura 障害番号T1_0135対応 END */
     cv_vendor_contact_code1  CONSTANT VARCHAR2(8) := 'FLVDDMY1';
     cv_vendor_contact_code2  CONSTANT VARCHAR2(8) := 'FLVDDMY2';
     cv_vendor_contact_code3  CONSTANT VARCHAR2(8) := 'FLVDDMY3';
@@ -2610,7 +2621,10 @@ AS
       --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
-        lt_vendor_number1 := cv_vendor_contact_code1;
+        /* 2009.03.24 K.Satomura 障害番号T1_0135対応 START */
+        --lt_vendor_number1 := cv_vendor_contact_code1;
+        lt_vendor_number1 := NULL;
+        /* 2009.03.24 K.Satomura 障害番号T1_0135対応 END */
         --
     END;
     --
@@ -2626,7 +2640,10 @@ AS
       --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
-        lt_vendor_number2 := cv_vendor_contact_code2;
+        /* 2009.03.24 K.Satomura 障害番号T1_0135対応 START */
+        --lt_vendor_number2 := cv_vendor_contact_code2;
+        lt_vendor_number2 := NULL;
+        /* 2009.03.24 K.Satomura 障害番号T1_0135対応 END */
         --
     END;
     --
@@ -2642,7 +2659,10 @@ AS
       --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
-        lt_vendor_number3 := cv_vendor_contact_code3;
+        /* 2009.03.24 K.Satomura 障害番号T1_0135対応 START */
+        --lt_vendor_number3 := cv_vendor_contact_code3;
+        lt_vendor_number3 := NULL;
+        /* 2009.03.24 K.Satomura 障害番号T1_0135対応 END */
         --
     END;
     --
@@ -2652,14 +2672,26 @@ AS
     BEGIN
       UPDATE xxcmm_cust_accounts xca -- 顧客アドオンマスタ
       SET    xca.contractor_supplier_code = DECODE(xca.business_low_type
-                                                  ,cv_business_low_type, lt_vendor_number1
-                                                  ,cv_vendor_contact_code1) -- 契約者仕入先コード
+                                                  /* 2009.03.24 K.Satomura 障害番号T1_0135対応 START */
+                                                  --,cv_business_low_type, lt_vendor_number1
+                                                  --,cv_vendor_contact_code1) -- 契約者仕入先コード
+                                                  ,cv_business_low_type, cv_vendor_contact_code1
+                                                  ,lt_vendor_number1) -- 契約者仕入先コード
+                                                  /* 2009.03.24 K.Satomura 障害番号T1_0135対応 END */
             ,xca.bm_pay_supplier_code1    = DECODE(xca.business_low_type
-                                                  ,cv_business_low_type, lt_vendor_number2
-                                                  ,cv_vendor_contact_code2) -- 紹介者BM支払仕入先コード１
+                                                  /* 2009.03.24 K.Satomura 障害番号T1_0135対応 START */
+                                                  --,cv_business_low_type, lt_vendor_number2
+                                                  --,cv_vendor_contact_code2) -- 紹介者BM支払仕入先コード１
+                                                  ,cv_business_low_type, cv_vendor_contact_code2
+                                                  ,lt_vendor_number2) -- 紹介者BM支払仕入先コード１
+                                                  /* 2009.03.24 K.Satomura 障害番号T1_0135対応 END */
             ,xca.bm_pay_supplier_code2    = DECODE(xca.business_low_type
-                                                  ,cv_business_low_type, lt_vendor_number3
-                                                  ,cv_vendor_contact_code3) -- 紹介者BM支払仕入先コード２
+                                                  /* 2009.03.24 K.Satomura 障害番号T1_0135対応 START */
+                                                  --,cv_business_low_type, lt_vendor_number3
+                                                  --,cv_vendor_contact_code3) -- 紹介者BM支払仕入先コード２
+                                                  ,cv_business_low_type, cv_vendor_contact_code3
+                                                  ,lt_vendor_number3) -- 紹介者BM支払仕入先コード２
+                                                  /* 2009.03.24 K.Satomura 障害番号T1_0135対応 END */
             ,xca.last_update_date         = cd_last_update_date       -- 最終更新日
             ,xca.last_updated_by          = cn_last_updated_by        -- 最終更新者
             ,xca.last_update_login        = cn_last_update_login      -- 最終更新ログイン

@@ -10,6 +10,7 @@
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/25    1.1  K.Satomura    ST障害対応(T1_0156)
  ************************************************************************/
 CREATE OR REPLACE VIEW APPS.XXCSO_RESOURCES_V
 (
@@ -88,8 +89,12 @@ SELECT
 ,paf.effective_start_date
 ,paf.effective_end_date
 ,paf.ass_attribute2
-,paf.ass_attribute3
-,paf.ass_attribute4
+/* 2009/03/25 K.Satomura ST0156 START */
+--,paf.ass_attribute3
+--,paf.ass_attribute4
+,paf.ass_attribute5
+,paf.ass_attribute6
+/* 2009/03/25 K.Satomura ST0156 END */
 ,paf.ass_attribute11
 ,paf.ass_attribute12
 ,SUBSTRB(paf.ass_attribute13, 1, 3)
@@ -142,8 +147,12 @@ COMMENT ON COLUMN XXCSO_RESOURCES_V.assignment_id IS 'アサイメントID';
 COMMENT ON COLUMN XXCSO_RESOURCES_V.assign_start_date IS '有効開始日（アサイメント）';
 COMMENT ON COLUMN XXCSO_RESOURCES_V.assign_end_date IS '有効終了日（アサイメント）';
 COMMENT ON COLUMN XXCSO_RESOURCES_V.issue_date IS '発令日';
-COMMENT ON COLUMN XXCSO_RESOURCES_V.work_dept_code_new IS '勤務地拠点コード（新）';
-COMMENT ON COLUMN XXCSO_RESOURCES_V.work_dept_code_old IS '勤務地拠点コード（旧）';
+/* 2009/03/25 K.Satomura ST0156 START */
+-- COMMENT ON COLUMN XXCSO_RESOURCES_V.work_dept_code_new IS '勤務地拠点コード（新）';
+-- COMMENT ON COLUMN XXCSO_RESOURCES_V.work_dept_code_old IS '勤務地拠点コード（旧）';
+COMMENT ON COLUMN XXCSO_RESOURCES_V.work_dept_code_new IS '拠点コード（新）';
+COMMENT ON COLUMN XXCSO_RESOURCES_V.work_dept_code_old IS '拠点コード（旧）';
+/* 2009/03/25 K.Satomura ST0156 END */
 COMMENT ON COLUMN XXCSO_RESOURCES_V.position_sort_code_new IS '職位並順コード（新）';
 COMMENT ON COLUMN XXCSO_RESOURCES_V.position_sort_code_old IS '職位並順コード（旧）';
 COMMENT ON COLUMN XXCSO_RESOURCES_V.approval_type_code_new IS '承認コード（新）';
