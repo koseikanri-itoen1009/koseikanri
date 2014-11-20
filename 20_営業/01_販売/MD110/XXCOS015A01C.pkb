@@ -66,6 +66,7 @@ AS
  *  2009/05/29    2.5   T.Kitajima       [T1_1120]org_id追加
  *  2009/06/02    2.6   N.Maeda          [T1_1291]端数処理修正
  *  2009/06/05    2.7   S.Kayahara       [T1_1330]売上金額の編集処理(edit_sales_amount)削除
+ *  2009/06/09    2.8   N.Maeda          [T1_1133]MC顧客対応
  *
  *****************************************************************************************/
 --
@@ -238,6 +239,12 @@ AS
   cn_sub_1                    CONSTANT NUMBER      := 1;               -- 
   cv_zero                     CONSTANT VARCHAR2(1) := '0';             -- 
 --****************************** 2009/04/23 2.3 4 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/06/08 2.8 N.Maeda ADD START ******************************--
+  cv_cust_type_mc             CONSTANT VARCHAR2(2)     := '20';
+  cv_cust_type_sp             CONSTANT VARCHAR2(2)     := '25';
+  cv_relate_stat_a            CONSTANT VARCHAR2(1)     := 'A';
+  cv_relate_attri_req         CONSTANT VARCHAR2(1)     := '1';
+--****************************** 2009/06/08 2.8 N.Maeda ADD  END  ******************************--
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -323,11 +330,86 @@ AS
     AND    xchv.ship_account_number     = xseh.ship_to_customer_code           -- 出荷先顧客コード
     AND    xchv.ship_account_id         = hca.cust_account_id                  -- 出荷先顧客ID
     AND    hca.account_number           = xseh.ship_to_customer_code           -- 顧客コード
-    ORDER BY  xseh.dlv_invoice_number                                          -- 納品伝票番号
-             ,xsel.dlv_invoice_line_number                                     -- 納品明細番号
-    FOR UPDATE OF  xseh.sales_exp_header_id
-                  ,xsel.sales_exp_line_id
-    NOWAIT;
+--****************************** 2009/06/08 2.8 N.Maeda MOD START ******************************--
+    UNION ALL
+    SELECT xseh.inspect_date                   xseh_inspect_date              -- 検収日
+           ,xseh.dlv_invoice_number             xseh_dlv_invoice_number        -- 納品伝票番号
+           ,xsel.dlv_invoice_line_number        xsel_dlv_invoice_line_number   -- 納品明細番号
+           ,xseh.ship_to_customer_code          xseh_ship_to_customer_code     -- 顧客【納品先】
+           ,xsel.item_code                      xsel_item_code                 -- 品目コード
+           ,xsel.hot_cold_class                 xsel_hot_cold_class            -- Ｈ/Ｃ
+           ,xseh.sales_base_code                xseh_sales_base_code           -- 売上拠点コード
+           ,xseh.results_employee_code          xseh_results_employee_code     -- 成績計上者コード
+           ,NVL(xseh.card_sale_class
+                ,cv_def_card_sale_class)        xseh_card_sale_class           -- カード売り区分
+           ,xsel.delivery_base_code             xsel_delivery_base_code        -- 納品拠点コード
+           ,xsel.pure_amount                    xsel_pure_amount               -- 本体金額
+           ,xsel.standard_qty                   xsel_standard_qty              -- 基準数量
+           ,xsel.tax_amount                     xsel_tax_amount                -- 消費税金額
+           ,xseh.dlv_invoice_class              xseh_dlv_invoice_class         -- 納品伝票区分
+           ,xsel.sales_class                    xsel_sales_class               -- 売上区分
+           ,xsel.delivery_pattern_class         xsel_delivery_pattern_class    -- 納品形態
+           ,xsel.column_no                      xsel_column_no                 -- コラムNO
+           ,xseh.delivery_date                  xseh_delivery_date             -- 納品日
+           ,xsel.standard_unit_price            xsel_standard_unit_price       -- 税抜基準単価
+           ,xsel.standard_uom_code              xsel_standard_uom_code         -- 基準単位
+           ,NULL                                xseh_tax_rate                  -- 消費税率
+           ,xseh.tax_code                       xseh_tax_code                  -- 税コード
+           ,NULL                                xsel_std_unit_price_excluded   -- 税抜基準単価
+           ,NVL(hca_r.account_number,
+                xseh.ship_to_customer_code)     xchv_bill_account_number       -- 請求先顧客コード
+--                uses_hca.account_number)         xchv_bill_account_number       -- 請求先顧客コード
+           ,NULL                                xchv_cash_account_number       -- 入金先顧客コード
+           ,NVL(xsel.cash_and_card,
+                cn_non_cash_and_card)           xsel_cash_and_card             -- 現金・カード併用額
+           ,NULL                                xchv_bill_tax_round_rule       -- 税金－端数処理
+           ,NULL                                xseh_create_class              -- 作成元区分
+           ,NULL                                xchv_ship_account_id           -- 出荷先顧客ID
+           ,hca.cust_account_id                 hca_cust_account_id            -- 顧客アカウントID
+           ,NULL                                xchv_ship_account_name         -- 出荷先顧客名
+           ,xseh.rowid                          xseh_rowid
+    FROM    xxcos_sales_exp_headers             xseh                           -- 販売実績ヘッダ
+           ,xxcos_sales_exp_lines               xsel                           -- 販売実績明細
+           ,hz_cust_accounts                    hca                            -- 顧客アカウントマスタ
+           ,hz_parties                          hpt                               -- パーティーマスタ
+           ,hz_cust_accounts                    hca_r                             -- 顧客マスタ顧客関連用
+           ,hz_cust_acct_sites_all              bill_hcasa                        -- 請求先顧客所在地（請求先）
+           ,hz_cust_site_uses_all               bill_hcsua                        -- 請求先顧客使用目的
+           ,hz_cust_acct_relate_all             bill_hcara                        -- 顧客関連マスタ(請求関連)
+--           ,hz_cust_acct_sites_all              uses_hcasa                        -- 使用目的所在地
+--           ,hz_cust_accounts                    uses_hca                          -- 使用目的顧客
+    WHERE  xseh.sales_exp_header_id     = xsel.sales_exp_header_id             -- ヘッダID
+    AND    xseh.dlv_invoice_number      = xsel.dlv_invoice_number              -- 納品伝票番号
+    AND    xseh.dwh_interface_flag      = cv_flag_no                           -- インタフェースフラグ
+    AND    xseh.inspect_date           <= gd_business_date                     -- 納品日
+    AND    xsel.item_code              <> gt_var_elec_amount                   -- 品目コード
+    AND    hca.account_number           = xseh.ship_to_customer_code           -- 顧客コード
+    AND    hca.party_id                 =  hpt.party_id
+    AND    hpt.duns_number_c           IN ( cv_cust_type_mc , cv_cust_type_sp )  -- MC顧客,SP決済済み
+    AND    hca.cust_account_id         = bill_hcasa.cust_account_id(+)
+    AND    bill_hcasa.cust_acct_site_id = bill_hcsua.cust_acct_site_id(+)
+    AND    bill_hcsua.site_use_code(+)     = cv_site_bill_to
+    AND    bill_hcasa.org_id(+)            = gt_org_id
+    AND    bill_hcsua.org_id(+)            = gt_org_id
+    AND    hca.cust_account_id          = bill_hcara.related_cust_account_id(+) 
+    AND    bill_hcara.status(+)            = cv_relate_stat_a 
+    AND    bill_hcara.attribute1(+)        = cv_relate_attri_req
+    AND    bill_hcara.org_id(+)            = gt_org_id
+    AND    bill_hcara.cust_account_id   = hca_r.cust_account_id(+)
+    AND    hca.account_number     = xseh.ship_to_customer_code     -- 出荷先顧客コード
+--    AND    uses_hcasa.cust_acct_site_id(+) = bill_hcsua.cust_acct_site_id
+--    AND    uses_hca.cust_account_id(+)    = uses_hcasa.cust_account_id
+    AND    NOT EXISTS( SELECT  'Y'
+                       FROM    xxcos_cust_hierarchy_v  xchv
+                       WHERE   xchv.ship_account_number   = xseh.ship_to_customer_code)
+    ORDER BY  xseh_dlv_invoice_number                                          -- 納品伝票番号
+             ,xsel_dlv_invoice_line_number;
+--    ORDER BY  xseh.dlv_invoice_number                                          -- 納品伝票番号
+--             ,xsel.dlv_invoice_line_number;
+--    FOR UPDATE OF  xseh.sales_exp_header_id
+--                  ,xsel.sales_exp_line_id
+--    NOWAIT;
+--****************************** 2009/06/08 2.8 N.Maeda MOD  END  ******************************--
     --
     -- AR取引データ抽出
     CURSOR get_ar_deal_info_cur(
@@ -1248,32 +1330,36 @@ AS
     BEGIN
       OPEN get_sales_actual_cur;
     EXCEPTION
-      -- ロックエラー
-      WHEN record_lock_expt THEN
-        RAISE record_lock_expt;
+--****************************** 2009/06/08 2.8 N.Maeda DEL START ******************************--
+--      -- ロックエラー
+--      WHEN record_lock_expt THEN
+--        RAISE record_lock_expt;
+--****************************** 2009/06/08 2.8 N.Maeda DEL  END  ******************************--
       -- データ抽出エラー
       WHEN OTHERS THEN
         RAISE sales_actual_extra_expt;
     END;
 --
   EXCEPTION
-    --*** ロックエラー ***
-    WHEN record_lock_expt THEN
- --     IF ( get_sales_actual_cur%ISOPEN ) THEN
- --       CLOSE get_sales_actual_cur;
- --     END IF;
-      lv_table_name := xxccp_common_pkg.get_msg(
-          iv_application => cv_xxcos_short_name             -- アプリケーション短縮名
-         ,iv_name        => cv_msg_sales_line               -- メッセージID
-      );
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_xxcos_short_name
-                     ,iv_name         => cv_msg_lock_error
-                     ,iv_token_name1  => cv_tkn_table
-                     ,iv_token_value1 => lv_table_name);
-      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
-      ov_retcode := cv_status_error;   
+--****************************** 2009/06/08 2.8 N.Maeda DEL START ******************************--
+--    --*** ロックエラー ***
+--    WHEN record_lock_expt THEN
+-- --     IF ( get_sales_actual_cur%ISOPEN ) THEN
+-- --       CLOSE get_sales_actual_cur;
+-- --     END IF;
+--      lv_table_name := xxccp_common_pkg.get_msg(
+--          iv_application => cv_xxcos_short_name             -- アプリケーション短縮名
+--         ,iv_name        => cv_msg_sales_line               -- メッセージID
+--      );
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_xxcos_short_name
+--                     ,iv_name         => cv_msg_lock_error
+--                     ,iv_token_name1  => cv_tkn_table
+--                     ,iv_token_value1 => lv_table_name);
+--      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+--      ov_retcode := cv_status_error;
+--****************************** 2009/06/08 2.8 N.Maeda DEL  END  ******************************--
     --
     --*** 売上明細データ抽出エラー ***
     WHEN sales_actual_extra_expt THEN
@@ -2036,6 +2122,16 @@ AS
     -- *** ローカル例外 ***
     update_expt               EXCEPTION;          -- 更新エラー
 --
+--****************************** 2009/06/08 2.8 N.Maeda ADD START ******************************--
+--
+    CURSOR get_lock_cur ( in_rowid ROWID )
+    IS
+      SELECT  'Y'
+      FROM    xxcos_sales_exp_headers xseh
+      WHERE   xseh.ROWID = in_rowid
+    FOR UPDATE NOWAIT;
+--
+--****************************** 2009/06/08 2.8 N.Maeda ADD  END  ******************************--
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -2044,6 +2140,14 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+--****************************** 2009/06/08 2.8 N.Maeda ADD START ******************************--
+        --
+    FOR l IN g_sales_h_tbl.FIRST..g_sales_h_tbl.LAST LOOP
+      OPEN get_lock_cur (g_sales_h_tbl(l));
+      CLOSE get_lock_cur;
+    END LOOP;
+        --
+--****************************** 2009/06/08 2.8 N.Maeda ADD  END  ******************************--
     BEGIN
       FORALL ln_idx IN g_sales_h_tbl.FIRST..g_sales_h_tbl.LAST
         UPDATE xxcos_sales_exp_headers  xseh                                  -- 販売実績ヘッダ
@@ -2060,6 +2164,7 @@ AS
       WHEN OTHERS THEN
         -- 更新に失敗した場合
         RAISE update_expt;
+      -- ロックエラー
     END;
 --
   EXCEPTION
@@ -2080,6 +2185,22 @@ AS
       ov_errmsg  := lv_errmsg;                                                  --# 任意 #
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
       ov_retcode := cv_status_error;                                            --# 任意 #
+    --*** ロックエラー ***
+    WHEN record_lock_expt THEN
+      gn_error_cnt := gn_error_cnt + 1;
+      lv_table_name := xxccp_common_pkg.get_msg(
+          iv_application => cv_xxcos_short_name             -- アプリケーション短縮名
+         ,iv_name        => cv_msg_sales_line               -- メッセージID
+      );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcos_short_name
+                     ,iv_name         => cv_msg_lock_error
+                     ,iv_token_name1  => cv_tkn_table
+                     ,iv_token_value1 => lv_table_name);
+      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+      ov_retcode := cv_status_error;   
+    --
 --
 --#################################  固定例外処理部 START   ####################################
 --

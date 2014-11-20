@@ -1,5 +1,4 @@
-create or replace
-PACKAGE XXCOS015A01C
+CREATE OR REPLACE PACKAGE XXCOS015A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -7,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(spec)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 2.7
+ * Version          : 2.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -54,6 +53,7 @@ AS
  *  2009/05/29    2.5   T.Kitajima       [T1_1120]org_id追加
  *  2009/06/02    2.6   N.Maeda          [T1_1291]端数処理修正
  *  2009/06/05    2.7   S.Kayahara       [T1_1330]売上金額の編集処理(edit_sales_amount)削除
+ *  2009/06/09    2.8   N.Maeda          [T1_1133]MC顧客対応
  
  *****************************************************************************************/
 --
