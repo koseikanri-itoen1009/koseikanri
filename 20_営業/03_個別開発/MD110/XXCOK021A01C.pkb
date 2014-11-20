@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A01C(body)
  * Description      : 問屋販売条件請求書Excelアップロード
  * MD.050           : 問屋販売条件請求書Excelアップロード MD050_COK_021_A01
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -42,6 +42,8 @@ AS
  *  2009/12/25    1.8   K.Nakamura       [E_本稼動_00608] 請求単価、支払単価チェック修正
  *  2010/01/04    1.9   K.Yamaguchi      [E_本稼動_00752] 請求数量、支払数量、請求金額、支払金額チェック修正
  *  2010/01/05    1.10  K.Yamaguchi      [E_本稼動_00069] 顧客マスタ・問屋の判定条件変更
+ *  2012/03/14    1.11  S.Niki           [E_本稼動_08315] 支払予定日として定義された日以外の場合にはエラーとする
+ *                                       [E_本稼動_08316] 請求および支払金額の妥当性チェック追加
  *
  *****************************************************************************************/
 --
@@ -101,6 +103,13 @@ AS
   cv_err_msg_10470           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10470';   --勘定科目支払時、請求単価チェックエラー
   cv_err_msg_10471           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10471';   --勘定科目支払時、請求単価チェックエラー
 -- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Nakamura ADD END
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD START
+  cv_err_msg_10491           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10491';   --支払予定日設定エラーメッセージ
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD END
+-- 2012/03/14 Ver.1.11 [障害E_本稼動_08316] SCSK S.Niki ADD START
+  cv_err_msg_10492           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10492';   --請求金額チェックエラーメッセージ
+  cv_err_msg_10493           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10493';   --支払金額チェックエラーメッセージ
+-- 2012/03/14 Ver.1.11 [障害E_本稼動_08316] SCSK S.Niki ADD END
   cv_err_msg_00061           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00061';   --IF表ロック取得エラー
   cv_err_msg_00041           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00041';   --BLOBデータ変換エラー
   cv_err_msg_00039           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00039';   --空ファイルエラー
@@ -142,9 +151,16 @@ AS
   cv_token_profile           CONSTANT VARCHAR2(10)  := 'PROFILE';         --トークン名(PROFILE)
   cv_token_emp               CONSTANT VARCHAR2(10)  := 'EMP_CODE';        --トークン名(EMP_CODE)
   cv_token_count             CONSTANT VARCHAR2(5)   := 'COUNT';           --トークン名(COUNT)
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD START
+  -- 参照タイプ名
+  cv_lookup_payment_date     CONSTANT VARCHAR2(30)  := 'XXCOK1_EXPECT_PAYMENT_DATE';  --問屋請求支払予定日
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD END
   --フォーマット
   cv_date_format1            CONSTANT VARCHAR2(10)  := 'FXYYYYMMDD';   --支払予定日のフォーマット
   cv_date_format2            CONSTANT VARCHAR2(8)   := 'FXYYYYMM';     --売上対象年月のフォーマット
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD START
+  cv_date_format3            CONSTANT VARCHAR2(8)   := 'FXDD';         --月末日のフォーマット(DD)
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD END
 -- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Nakamura ADD START
   cv_number_format1          CONSTANT VARCHAR2(7)   := '9999999';      --勘定科目支払時の単価フォーマット
   cv_number_format2          CONSTANT VARCHAR2(10)  := '9999999.99';   --勘定科目支払時以外の単価フォーマット
@@ -157,6 +173,9 @@ AS
   cv_msg_part                CONSTANT VARCHAR2(3)   := ' : ';   --コロン
   cv_msg_cont                CONSTANT VARCHAR2(3)   := '.';     --ピリオド
   cv_comma                   CONSTANT VARCHAR2(1)   := ',';     --カンマ
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD START
+  cv_comma2                  CONSTANT VARCHAR2(2)   := '、';    --全角カンマ
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD END
 -- Start 2009/04/10 Ver_1.3 T1_0400 M.Hiruta
   cv_minus                   CONSTANT VARCHAR2(1)   := '-';     --マイナス
 -- End   2009/04/10 Ver_1.3 T1_0400 M.Hiruta
@@ -170,6 +189,11 @@ AS
   cv_status_p                CONSTANT VARCHAR2(1)   := 'P';    --P:支払済
   cv_cust_status_80          CONSTANT VARCHAR2(2)   := '80';   --80:更正債権
   cv_cust_status_90          CONSTANT VARCHAR2(2)   := '90';   --90:中止決裁済
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD START
+  cv_last_date               CONSTANT VARCHAR2(2)   := '31';   --31:末日
+  cv_flag_y                  CONSTANT VARCHAR2(1)   := 'Y';    --Y:有効
+  cv_lang                    CONSTANT fnd_lookup_values.language%TYPE := USERENV( 'LANG' );  --言語
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD END
   --数値
   cn_0                       CONSTANT NUMBER        := 0;      --数値:0
   cn_1                       CONSTANT NUMBER        := 1;      --数値:1
@@ -197,6 +221,9 @@ AS
 -- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD START
   gv_organization_code  mtl_parameters.organization_code%TYPE DEFAULT NULL;  --在庫組織
 -- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD END
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD START
+  gv_payment_date   VARCHAR2(5000) DEFAULT NULL;              --メッセージトークン格納用
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD END
   -- =============================================================================
   -- グローバル例外
   -- =============================================================================
@@ -755,6 +782,10 @@ AS
     lv_errmsg               VARCHAR2(5000) DEFAULT NULL;               --ユーザー・エラー・メッセージ
     lv_msg                  VARCHAR2(5000) DEFAULT NULL;               --メッセージ取得変数
     lv_cust_status          VARCHAR2(2)    DEFAULT NULL;               --顧客ステータス
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD START
+    lv_last_date_dd         VARCHAR2(2)    DEFAULT NULL;               --月末日(DD)
+    lv_payment_date_dd      VARCHAR2(2)    DEFAULT NULL;               --支払日(DD)
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD END
     lb_retcode              BOOLEAN        DEFAULT TRUE;               --メッセージ出力の戻り値
 -- Start 2009/04/10 Ver_1.3 T1_0400 M.Hiruta
 --    lb_chk_number           BOOLEAN        DEFAULT TRUE;               --半角数字チェックの結果
@@ -1743,6 +1774,46 @@ AS
                     );
       ov_retcode := cv_status_continue;
     END IF;
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD START
+    -- =============================================================================
+    -- 13.支払予定日が登録されているいずれかの日付であることをチェック
+    -- =============================================================================
+    -- 月末日(DD)、支払日(DD)を取得
+    lv_last_date_dd    := TO_CHAR( LAST_DAY( ld_expect_payment_date ), cv_date_format3 ) ;  --月末日(DD)
+    lv_payment_date_dd := SUBSTR( iv_expect_payment_date, 7, 2 ) ;                          --支払日(DD)
+--
+    -- 支払日(DD)が月末日(DD)と一致する場合、31日に読み替える
+    IF ( lv_payment_date_dd = lv_last_date_dd ) THEN
+      lv_payment_date_dd := cv_last_date;
+    END IF;
+--
+    -- 参照タイプ・コードの存在チェック
+    SELECT COUNT( 'X' ) AS cnt
+    INTO   ln_count
+    FROM   fnd_lookup_values flv
+    WHERE  flv.language     = cv_lang
+    AND    flv.lookup_type  = cv_lookup_payment_date      --問屋請求支払予定日
+    AND    flv.lookup_code  = lv_payment_date_dd          --支払日(DD)
+    AND    flv.enabled_flag = cv_flag_y                   --Y:有効
+    ;
+    -- *** 値が取得できなかった場合、例外処理 ***
+    IF ( ln_count = cn_0 ) THEN
+      lv_msg     := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_name
+                    , iv_name         => cv_err_msg_10491  --支払予定日設定エラーメッセージ
+                    , iv_token_name1  => cv_token_payment_date
+                    , iv_token_value1 => gv_payment_date
+                    , iv_token_name2  => cv_token_row_num
+                    , iv_token_value2 => TO_CHAR( in_loop_cnt )
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which        => FND_FILE.OUTPUT   --出力区分
+                    , iv_message      => lv_msg            --メッセージ
+                    , in_new_line     => 0                 --改行
+                    );
+      ov_retcode := cv_status_continue;
+    END IF;
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD END
     -- =============================================================================
     -- 12.支払数量・支払単価・支払金額のチェック
     -- =============================================================================
@@ -1806,6 +1877,57 @@ AS
       ov_retcode := cv_status_continue;
     END IF;
 -- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD END
+-- 2012/03/14 Ver.1.11 [障害E_本稼動_08316] SCSK S.Niki ADD START
+    -- =============================================================================
+    -- 17.請求金額の値が、請求単価×請求数量の値と一致することをチェック
+    -- =============================================================================
+    IF (     ( ln_demand_amt        IS NOT NULL )        --請求金額
+         AND ( ln_demand_unit_price IS NOT NULL )        --請求単価
+         AND ( ln_demand_qty        IS NOT NULL )        --請求数量
+    ) THEN
+      -- 請求金額、請求単価、請求数量が設定されている場合はチェック
+      IF ( ln_demand_amt <> TRUNC( ln_demand_unit_price * ln_demand_qty ) ) THEN
+        -- *** 請求金額の値が、請求単価×請求数量の値と一致しない場合、例外処理 ***
+        lv_msg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_xxcok_appl_name
+                  , iv_name         => cv_err_msg_10492
+                  , iv_token_name1  => cv_token_row_num
+                  , iv_token_value1 => TO_CHAR( in_loop_cnt )
+                  );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which    => FND_FILE.OUTPUT   --出力区分
+                      , iv_message  => lv_msg            --メッセージ
+                      , in_new_line => 0                 --改行
+                      );
+        ov_retcode := cv_status_continue;
+      END IF;
+    END IF;
+--
+    -- =============================================================================
+    -- 18.支払金額の値が、支払単価×支払数量の値と一致することをチェック
+    -- =============================================================================
+    IF (     ( ln_payment_amt        IS NOT NULL )       --支払金額
+         AND ( ln_payment_unit_price IS NOT NULL )       --支払単価
+         AND ( ln_payment_qty        IS NOT NULL )       --支払数量
+    ) THEN
+      -- 支払金額、支払単価、支払数量が設定されている場合はチェック
+      IF ( ln_payment_amt <> TRUNC( ln_payment_unit_price * ln_payment_qty ) ) THEN
+        -- *** 支払金額の値が、支払単価×支払数量の値と一致しない場合、例外処理 ***
+        lv_msg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_xxcok_appl_name
+                  , iv_name         => cv_err_msg_10493
+                  , iv_token_name1  => cv_token_row_num
+                  , iv_token_value1 => TO_CHAR( in_loop_cnt )
+                  );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which    => FND_FILE.OUTPUT   --出力区分
+                      , iv_message  => lv_msg            --メッセージ
+                      , in_new_line => 0                 --改行
+                      );
+        ov_retcode := cv_status_continue;
+      END IF;
+    END IF;
+-- 2012/03/14 Ver.1.11 [障害E_本稼動_08316] SCSK S.Niki ADD END
     -- =============================================================================
     -- 問屋請求書テーブルデータチェック(A-5)
     -- 問屋請求書ヘッダーテーブル、問屋請求書明細テーブルの既存データチェックを行う
@@ -2351,6 +2473,31 @@ AS
     lv_emp_code     VARCHAR2(5)    DEFAULT NULL;               --従業員コード取得変数
     lv_profile_code VARCHAR2(100)  DEFAULT NULL;               --プロファイル値
     lb_retcode      BOOLEAN        DEFAULT TRUE;               --メッセージ出力の戻り値
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD START
+    -- =======================
+    -- ローカルカーソル
+    -- =======================
+    -- メッセージトークン取得カーソル
+    CURSOR get_column_name_cur
+    IS
+      SELECT flv.meaning       AS column_name               --摘要
+      FROM   fnd_lookup_values flv
+      WHERE  flv.language     = cv_lang
+      AND    flv.lookup_type  = cv_lookup_payment_date      --問屋請求支払予定日
+      AND    flv.enabled_flag = cv_flag_y                   --Y:有効
+      ORDER BY TO_NUMBER( flv.lookup_code )
+      ;
+--
+    -- ===============================================
+    -- ローカルテーブル型
+    -- ===============================================
+    TYPE l_column_name_ttype IS TABLE OF get_column_name_cur%ROWTYPE
+    INDEX BY BINARY_INTEGER;
+    -- ===============================================
+    -- ローカルテーブル型変数
+    -- ===============================================
+    lt_column_name_tab     l_column_name_ttype;
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD END
     -- =======================
     -- ローカル例外
     -- =======================
@@ -2454,6 +2601,22 @@ AS
     IF ( gd_prdate IS NULL ) THEN
       RAISE get_process_expt;
     END IF;
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD START
+    -- =============================================================================
+    -- 5.支払予定日設定エラー時のメッセージトークン取得
+    -- =============================================================================
+    OPEN get_column_name_cur;
+    FETCH get_column_name_cur BULK COLLECT INTO lt_column_name_tab;
+    CLOSE get_column_name_cur;
+    --
+    FOR i IN 1 .. lt_column_name_tab.COUNT LOOP
+      IF ( i != lt_column_name_tab.COUNT ) THEN
+        gv_payment_date := gv_payment_date || lt_column_name_tab( i ).column_name || cv_comma2 ;
+      ELSE
+        gv_payment_date := gv_payment_date || lt_column_name_tab( i ).column_name;
+      END IF;
+    END LOOP output_csv_column_loop;
+-- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD END
   EXCEPTION
     -- *** プロファイル取得エラー ***
     WHEN get_profile_expt THEN

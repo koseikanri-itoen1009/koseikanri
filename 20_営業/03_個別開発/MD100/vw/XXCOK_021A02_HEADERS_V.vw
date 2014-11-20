@@ -3,7 +3,7 @@
  *
  * View Name   : XXCOK_021A02_HEADERS_V
  * Description : –â‰®¿‹Œ©Ï‘“Ë‚«‡‚í‚¹‰æ–Êiƒwƒbƒ_jƒrƒ…[
- * Version     : 1.1
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -13,6 +13,7 @@
  *  2009/02/02    1.1   K.Yamaguchi      [áŠQCOK_004] ’ŠoğŒ‚É‰c‹Æ’PˆÊ‚ğ’Ç‰Á
  *                                       [áŠQCOK_004] ’ŠoğŒ‚Éd“üæƒTƒCƒgƒ}ƒXƒ^‚Ì–³Œø“ú‚ğ’Ç‰Á
  *  2010/02/23    1.2   K.Yamaguchi      [E_–{‰Ò“®_01176] ŒûÀí•Ê‚Ìæ“¾Œ³•ÏX
+ *  2012/03/08    1.3   S.Niki           [E_–{‰Ò“®_08315] ƒwƒbƒ_‚É”„ã‘ÎÛ”NŒ‚ğ’Ç‰Á
  *
  **************************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcok_021a02_headers_v(
@@ -25,6 +26,9 @@ CREATE OR REPLACE VIEW apps.xxcok_021a02_headers_v(
 , wholesale_ctrl_code
 , wholesale_ctrl_name
 , expect_payment_date
+-- 2012/03/08 Ver.1.3 [áŠQE_–{‰Ò“®_08315] SCSK S.Niki ADD START
+, selling_month
+-- 2012/03/08 Ver.1.3 [áŠQE_–{‰Ò“®_08315] SCSK S.Niki ADD END
 , supplier_code
 , supplier_name
 , bank_name
@@ -48,6 +52,9 @@ SELECT xwbh.ROWID                       AS row_id                     -- ROW_ID
      , xca2.wholesale_ctrl_code         AS wholesale_ctrl_code        -- –â‰®ŠÇ—ƒR[ƒh
      , flv.meaning                      AS wholesale_ctrl_name        -- –â‰®ŠÇ—–¼
      , xwbh.expect_payment_date         AS expect_payment_date        -- x•¥—\’è“ú
+-- 2012/03/08 Ver.1.3 [áŠQE_–{‰Ò“®_08315] SCSK S.Niki ADD START
+     , line.selling_month               AS selling_month              -- ”„ã‘ÎÛ”NŒ
+-- 2012/03/08 Ver.1.3 [áŠQE_–{‰Ò“®_08315] SCSK S.Niki ADD END
      , xwbh.supplier_code               AS supplier_code              -- d“üæƒR[ƒh
      , pv.vendor_name                   AS supplier_name              -- d“üæ–¼
      , abb.bank_name                    AS bank_name                  -- U‹âs–¼
@@ -61,6 +68,14 @@ SELECT xwbh.ROWID                       AS row_id                     -- ROW_ID
      , xwbh.last_update_date            AS last_update_date           -- ÅIXV“ú
      , xwbh.last_update_login           AS last_update_login          -- ÅIXVƒƒOƒCƒ“
 FROM xxcok_wholesale_bill_head     xwbh      -- –â‰®¿‹‘ƒwƒbƒ_ƒe[ƒuƒ‹
+-- 2012/03/08 Ver.1.3 [áŠQE_–{‰Ò“®_08315] SCSK S.Niki ADD START
+   , ( SELECT xwbl.wholesale_bill_header_id      AS wholesale_bill_header_id  -- –â‰®¿‹‘ƒwƒbƒ_ID
+            , xwbl.selling_month                 AS selling_month             -- ”„ã‘ÎÛ”NŒ
+       FROM   xxcok_wholesale_bill_line  xwbl  -- –â‰®¿‹‘–¾×ƒe[ƒuƒ‹
+       GROUP BY xwbl.wholesale_bill_header_id
+              , xwbl.selling_month
+     )                             line      -- –â‰®¿‹‘–¾×ƒe[ƒuƒ‹
+-- 2012/03/08 Ver.1.3 [áŠQE_–{‰Ò“®_08315] SCSK S.Niki ADD END
    , hz_cust_accounts              hca1      -- ŒÚ‹qƒ}ƒXƒ^i‹’“_j
    , hz_cust_accounts              hca2      -- ŒÚ‹qƒ}ƒXƒ^iŒÚ‹qj
    , hz_parties                    hp1       -- ƒp[ƒeƒBƒ}ƒXƒ^i‹’“_j
@@ -74,7 +89,11 @@ FROM xxcok_wholesale_bill_head     xwbh      -- –â‰®¿‹‘ƒwƒbƒ_ƒe[ƒuƒ‹
    , ap_bank_accounts_all          abaa      -- ‹âsŒûÀƒ}ƒXƒ^
    , ap_bank_branches              abb       -- ‹âsx“Xƒ}ƒXƒ^
    , hr_lookups                    hl        -- ƒNƒCƒbƒNƒR[ƒhiŒûÀí•Êj
-WHERE xwbh.base_code                    = hca1.account_number
+-- 2012/03/08 Ver.1.3 [áŠQE_–{‰Ò“®_08315] SCSK S.Niki MOD START
+--WHERE xwbh.base_code                    = hca1.account_number
+WHERE line.wholesale_bill_header_id     = xwbh.wholesale_bill_header_id
+  AND xwbh.base_code                    = hca1.account_number
+-- 2012/03/08 Ver.1.3 [áŠQE_–{‰Ò“®_08315] SCSK S.Niki MOD END
   AND xwbh.cust_code                    = hca2.account_number
   AND hca1.party_id                     = hp1.party_id
   AND hca2.party_id                     = hp2.party_id
@@ -93,10 +112,10 @@ WHERE xwbh.base_code                    = hca1.account_number
   AND abaua.primary_flag                = 'Y'
   AND ( abaua.start_date <= xxccp_common_pkg2.get_process_date OR abaua.start_date IS NULL )
   AND ( abaua.end_date   >= xxccp_common_pkg2.get_process_date OR abaua.end_date   IS NULL )
--- 2010/02/23 Ver.1.3 [E_–{‰Ò“®_01176] SCS K.Yamaguchi REPAIR START
+-- 2010/02/23 Ver.1.2 [E_–{‰Ò“®_01176] SCS K.Yamaguchi REPAIR START
 --  AND hl.lookup_type                    = 'JP_BANK_ACCOUNT_TYPE'
   AND hl.lookup_type                    = 'XXCSO1_KOZA_TYPE'
--- 2010/02/23 Ver.1.3 [E_–{‰Ò“®_01176] SCS K.Yamaguchi REPAIR END
+-- 2010/02/23 Ver.1.2 [E_–{‰Ò“®_01176] SCS K.Yamaguchi REPAIR END
   AND pvsa.org_id                       = abaua.org_id
   AND pvsa.org_id                       = abaa.org_id
   AND pvsa.org_id                       = TO_NUMBER( FND_PROFILE.VALUE( 'ORG_ID' ) )
@@ -122,6 +141,10 @@ COMMENT ON COLUMN apps.xxcok_021a02_headers_v.wholesale_ctrl_name          IS '–
 /
 COMMENT ON COLUMN apps.xxcok_021a02_headers_v.expect_payment_date          IS 'x•¥—\’è“ú'
 /
+-- 2012/03/08 Ver.1.3 [áŠQE_–{‰Ò“®_08315] SCSK S.Niki ADD START
+COMMENT ON COLUMN apps.xxcok_021a02_headers_v.selling_month                IS '”„ã‘ÎÛ”NŒ'
+/
+-- 2012/03/08 Ver.1.3 [áŠQE_–{‰Ò“®_08315] SCSK S.Niki ADD END
 COMMENT ON COLUMN apps.xxcok_021a02_headers_v.supplier_code                IS 'd“üæƒR[ƒh'
 /
 COMMENT ON COLUMN apps.xxcok_021a02_headers_v.supplier_name                IS 'd“üæ–¼'

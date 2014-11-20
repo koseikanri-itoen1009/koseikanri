@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A05C(body)
  * Description      : APインターフェイス
  * MD.050           : APインターフェース MD050_COK_021_A05
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2010/09/21    1.7   M.Watanabe       [E_本稼動_02046]
  *                                       ・マイナス支払金額時のAPOIF請求書タイプの設定値変更
  *                                       ・補助科目名称取得時の条件追加
+ *  2012/03/27    1.8   S.Niki           [E_本稼動_08315]支払起算日の設定値変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -129,6 +130,10 @@ AS
   cv_prof_asst_sell_fee      CONSTANT VARCHAR2(40)  := 'XXCOK1_AFF4_SELL_FEE';           -- 販売手数料(問屋)_問屋条件
   cv_prof_asst_sell_support  CONSTANT VARCHAR2(40)  := 'XXCOK1_AFF4_SELL_SUPPORT';       -- 販売協賛金(問屋)_拡売費
   cv_prof_asst_dummy         CONSTANT VARCHAR2(40)  := 'XXCOK1_AFF4_SUBACCT_DUMMY';      -- ダミー値
+-- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD START
+  cv_prof_inst_term_name     CONSTANT VARCHAR2(40)  := 'XXCOK1_INSTANTLY_TERM_NAME';     -- 支払条件_即時払い
+  cv_prof_spec_term_name     CONSTANT VARCHAR2(40)  := 'XXCOK1_SPECIFICATION_TERM_NAME'; -- 支払条件_指定払い
+-- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD END
   -- セパレータ
   cv_msg_part                CONSTANT VARCHAR2(3)   := ' : ';
   cv_msg_cont                CONSTANT VARCHAR2(3)   := '.';
@@ -153,6 +158,10 @@ AS
   cv_payment_uncooperate     CONSTANT VARCHAR2(1)   := '0';                 -- 未連携(問屋支払テーブル)
   cv_payment_cooperate       CONSTANT VARCHAR2(1)   := '1';                 -- 連携済(問屋支払テーブル)
   cv_bill_cooperate          CONSTANT VARCHAR2(1)   := 'P';                 -- 連携済(問屋請求書明細テーブル)
+-- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD START
+  -- 書式
+  cv_format_mm               CONSTANT VARCHAR2(2)   := 'MM';
+-- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD END
   -- ===============================================
   -- グローバル変数
   -- ===============================================
@@ -185,6 +194,10 @@ AS
   gv_prof_asst_sell_fee      VARCHAR2(50) DEFAULT NULL;   -- プロファイル：販売手数料(問屋)_問屋条件
   gv_prof_asst_sell_support  VARCHAR2(50) DEFAULT NULL;   -- プロファイル：販売協賛金(問屋)_拡売費
   gv_prof_asst_dummy         VARCHAR2(50) DEFAULT NULL;   -- プロファイル：ダミー値
+-- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD START
+  gv_prof_inst_term_name     VARCHAR2(50) DEFAULT NULL;   -- プロファイル：支払条件_即時払い
+  gv_prof_spec_term_name     VARCHAR2(50) DEFAULT NULL;   -- プロファイル：支払条件_指定払い
+-- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD END
   gd_prof_process_date       DATE         DEFAULT NULL;   -- 業務日付格納
   gn_tax_rate                NUMBER       DEFAULT NULL;   -- 税率
   gn_payment_ccid            NUMBER       DEFAULT NULL;   -- 負債勘定科目CCID
@@ -208,15 +221,24 @@ AS
     SELECT xwp.expect_payment_date AS expect_payment_date      -- 支払予定日
          , xwp.selling_month       AS selling_month            -- 売上対象年月
          , xwp.supplier_code       AS supplier_code            -- 仕入先コード
+-- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD START
+         , att.name                AS term_name                -- 支払条件
+-- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD END
          , SUM( xwp.payment_amt )  AS payment_amt              -- 支払金額(税抜)(集計)
          , pvsa.vendor_site_code   AS vendor_site_code         -- 仕入先サイトコード
          , xwp.base_code           AS base_code                -- 拠点コード
     FROM   xxcok_wholesale_payment    xwp                      -- 問屋支払テーブル
          , po_vendors                 pv                       -- 仕入先マスタ
          , po_vendor_sites_all        pvsa                     -- 仕入先サイトマスタ
+-- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD START
+         , ap_terms                   att                      -- 支払条件マスタ
+-- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD END
     WHERE  xwp.ap_interface_status = cv_payment_uncooperate    -- APインターフェース連携状況：'0'未連携
     AND    pv.vendor_id            = pvsa.vendor_id
     AND    pv.segment1             = xwp.supplier_code
+-- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD START
+    AND    pvsa.terms_id           = att.term_id
+-- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD END
     AND    pvsa.org_id             = in_org_id                 -- 営業単位ID = A-1.で取得した組織ID
     AND ( 
            ( pvsa.inactive_date    > id_proc_date )            -- 無効日 > 業務処理日付 OR 無効日 IS NULL
@@ -226,6 +248,9 @@ AS
            xwp.expect_payment_date         -- 支払予定日
          , xwp.selling_month               -- 売上対象年月
          , xwp.supplier_code               -- 仕入先コード
+-- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD START
+         , att.name                        -- 支払条件
+-- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD END
          , pvsa.vendor_site_code           -- 仕入先サイトコード
          , xwp.base_code                   -- 拠点コード
   ;
@@ -1291,7 +1316,11 @@ AS
     lv_errmsg                    VARCHAR2(5000) DEFAULT NULL;             -- ユーザ・エラー･メッセージ
     lb_retcode                   BOOLEAN        DEFAULT NULL;             -- メッセージ出力時リターンコード
     lv_invoice_num               VARCHAR2(50)   DEFAULT NULL;             -- 請求書番号格納
-    ld_selling_month_first_date  DATE           DEFAULT NULL;             -- 売上対象年月の初日
+-- 2012/03/27 Ver.1.8 [E_本稼動_08315] SCSK S.Niki MOD START
+--    ld_selling_month_first_date  DATE           DEFAULT NULL;             -- 売上対象年月の初日
+    ld_terms_date                DATE           DEFAULT NULL;             -- 支払起算日
+    ln_due_months_forword        NUMBER         DEFAULT 0;                -- サイト月数
+-- 2012/03/27 Ver.1.8 [E_本稼動_08315] SCSK S.Niki MOD END
 -- ************ 2010/09/21 1.7 M.Watanabe ADD START ************ --
     lt_invoice_type              ap_invoices_interface.invoice_type_lookup_code%TYPE; -- 請求書タイプ
 -- ************ 2010/09/21 1.7 M.Watanabe ADD END   ************ --
@@ -1308,6 +1337,10 @@ AS
     ov_retcode := cv_status_normal;
     -- 明細連番初期化
     gn_detail_num := 1;
+-- 2012/03/27 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD START
+    -- サイト月数初期化
+    ln_due_months_forword := 0;
+-- 2012/03/27 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD END
     -- ===============================================
     -- セーブポイント設定
     -- ===============================================
@@ -1331,11 +1364,27 @@ AS
                        ir_sell_head_data_rec.payment_amt + ir_sell_head_data_rec.payment_amt * gn_tax_rate
                      , 0
                      );
-    -- 売上対象年月の初日を取得
-    ld_selling_month_first_date := TO_DATE(
-                                     ir_sell_head_data_rec.selling_month
-                                   , 'YYYYMM'
-                                   );
+-- 2012/03/27 Ver.1.8 [E_本稼動_08315] SCSK S.Niki MOD START
+--    -- 売上対象年月の初日を取得
+--    ld_selling_month_first_date := TO_DATE(
+--                                     ir_sell_head_data_rec.selling_month
+--                                   , 'YYYYMM'
+--                                   );
+--
+    -- 支払条件から支払起算日を取得
+    IF ( ir_sell_head_data_rec.term_name = gv_prof_inst_term_name ) THEN
+      -- 支払条件が即時払いの場合、支払起算日に「支払予定日」を設定
+      ld_terms_date := ir_sell_head_data_rec.expect_payment_date;
+    ELSIF ( ir_sell_head_data_rec.term_name = gv_prof_spec_term_name ) THEN
+      -- 支払条件が指定払いの場合、支払起算日に「支払予定日」を設定
+      ld_terms_date := ir_sell_head_data_rec.expect_payment_date;
+    ELSE
+      -- 支払条件_サイト月数を取得
+      ln_due_months_forword := TO_NUMBER( SUBSTRB( ir_sell_head_data_rec.term_name ,7 ,2 ) );
+      -- 「支払予定日」から支払条件_サイト月数を差引いた月の月初日を設定
+      ld_terms_date := ADD_MONTHS( TRUNC( ir_sell_head_data_rec.expect_payment_date ,cv_format_mm ), - ln_due_months_forword );
+    END IF;
+-- 2012/03/27 Ver.1.8 [E_本稼動_08315] SCSK S.Niki MOD END
 --
 -- ************ 2010/09/21 1.7 M.Watanabe ADD START ************ --
     -- 請求金額をもとに請求書タイプの値を設定する。
@@ -1404,7 +1453,10 @@ AS
       , gd_prof_process_date                    -- 業務処理日付(initで取得)
       , gn_payment_ccid                         -- 負債勘定科目CCID(initで取得)
       , TO_NUMBER( gv_prof_org_id )             -- 組織ID(initで取得)
-      , ld_selling_month_first_date             -- 売上対象年月の初日
+-- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki MOD START
+--      , ld_selling_month_first_date             -- 売上対象年月の初日
+      , ld_terms_date                           -- 支払起算日
+-- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki MOD END
       );
     EXCEPTION
       WHEN OTHERS THEN
@@ -1842,6 +1894,34 @@ AS
                     );
       RAISE get_data_err_expt;
     END IF;
+-- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD START
+    -- カスタム・プロファイル：支払条件_即時払いの取得
+    gv_prof_inst_term_name := FND_PROFILE.VALUE(
+                                cv_prof_inst_term_name
+                              );
+    IF ( gv_prof_inst_term_name IS NULL ) THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_short_name
+                    , iv_name         => cv_msg_code_00003
+                    , iv_token_name1  => cv_token_profile             -- プロファイル名
+                    , iv_token_value1 => cv_prof_inst_term_name       -- 支払条件_即時払い
+                    );
+      RAISE get_data_err_expt;
+    END IF;
+    -- カスタム・プロファイル：支払条件_指定払いの取得
+    gv_prof_spec_term_name := FND_PROFILE.VALUE(
+                                cv_prof_spec_term_name
+                              );
+    IF ( gv_prof_spec_term_name IS NULL ) THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_short_name
+                    , iv_name         => cv_msg_code_00003
+                    , iv_token_name1  => cv_token_profile             -- プロファイル名
+                    , iv_token_value1 => cv_prof_spec_term_name       -- 支払条件_指定払い
+                    );
+      RAISE get_data_err_expt;
+    END IF;
+-- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD END
     -- ===============================================
     -- 業務処理日付の取得
     -- ===============================================
