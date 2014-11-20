@@ -7,7 +7,7 @@ AS
  * Description      : 新旧差額計算表作成
  * MD.050/070       : 標準原価マスタDraft1C (T_MD050_BPO_820)
  *                    新旧差額計算表作成    (T_MD070_BPO_82D)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/06/26    1.3   Marushita        ST不具合No.288,289対応
  *  2008/07/02    1.4   Satoshi Yunba    禁則文字対応
  *  2009/04/15    1.5   Marushita        本番障害1412
+ *  2009/04/20    1.6   Marushita        本番障害1412
  *
  *****************************************************************************************/
 --
@@ -416,7 +417,12 @@ AS
 */
          -- 品目毎に1行となるように集計を実施
         ,(SELECT  xph.price_header_id     AS header_id
-                  ,xph.start_date_active  AS start_date_active
+-- 2009/04/20 MOD START
+--                  ,xph.start_date_active  AS start_date_active
+                  ,(CASE WHEN MIN(xph.start_date_active) OVER (PARTITION BY xph.item_id) = xph.start_date_active
+                         THEN TO_DATE('19000101','YYYYMMDD') 
+                         ELSE xph.start_date_active END) AS start_date_active
+-- 2009/04/20 MOD END
                   ,xph.end_date_active    AS end_date_active
                   ,xph.item_id            AS item_id
                   ,xph.item_code          AS item_code
@@ -435,6 +441,9 @@ AS
             AND   flv_item.attribute1  = xpl.expense_item_type
             AND   xph.price_header_id  = xpl.price_header_id
             AND   xph.price_type       = gc_price_type
+-- 2009/04/20 ADD START
+            AND   xph.end_date_active  >= TO_DATE(civ_current_year || '0501','YYYYMMDD')
+-- 2009/04/20 ADD END
             GROUP BY xph.price_header_id
                     ,xph.start_date_active
                     ,xph.end_date_active
@@ -559,6 +568,9 @@ AS
             AND   flv_item.attribute1  = xpl.expense_item_type
             AND   xph.price_header_id  = xpl.price_header_id
             AND   xph.price_type       = '2'
+-- 2009/04/20 ADD START
+            AND   xph.start_date_active < TO_DATE(civ_current_year || '0501','YYYYMMDD')
+-- 2009/04/20 ADD END
             GROUP BY xph.price_header_id
                     ,xph.start_date_active
                     ,xph.end_date_active

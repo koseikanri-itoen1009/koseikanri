@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼確定関数(BODY)
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_EDO_BPO_40D_出荷依頼確定関数
- * Version                : 1.26
+ * Version                : 1.27
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2008/12/24    1.24  M.Hokkanji       本番障害839対応
  *  2009/01/09    1.25  H.Itou           本番障害894対応
  *  2009/03/03    1.26  Y.Kazama         本番障害#1243対応
+ *  2009/04/16    1.27  Y.Kazama         本番障害#1398対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -885,6 +886,9 @@ AS
 -- Ver1.19 M.Hokkanji Start
     lt_transaction_type_id_mat       xxwsh_oe_transaction_types_v.transaction_type_id%TYPE; -- 資材出荷ID保管
 -- Ver1.19 M.Hokkanji End
+-- Ver1.27 Y.Kazama 本番障害#1398 Add Start
+    lt_party_site_number            xxcmn_cust_acct_sites2_v.party_site_number%TYPE; -- サイト番号
+-- Ver1.27 Y.Kazama 本番障害#1398 Add End
 -- 2008/09/01 N.Yoshida ADD START
     lv_select     VARCHAR2(32000) ;
     lv_select_other     VARCHAR2(32000) ;
@@ -1185,7 +1189,11 @@ AS
                                 -- 受注ヘッダアドオン.入力拠点＝パラメータ.入力拠点コードかつ
     ||  ' AND   xoha.order_header_id        =  xola.order_header_id '
         -- 受注ヘッダアドオン.受注ヘッダアドオンID＝受注明細アドオン.受注ヘッダアドオンIDかつ
-    ||  ' AND   NVL(xoha.result_deliver_to_id,xoha.deliver_to_id)          =  xcasv.party_site_id '
+-- Ver1.27 Y.Kazama 本番障害#1398 Mod Start
+    ||  ' AND   NVL(xoha.result_deliver_to,xoha.deliver_to) = xcasv.party_site_number '
+    ||  ' AND   xcasv.party_site_status                     = ''A'''  -- サイトステータス[A:有効]
+--    ||  ' AND   NVL(xoha.result_deliver_to_id,xoha.deliver_to_id)          =  xcasv.party_site_id '
+-- Ver1.27 Y.Kazama 本番障害#1398 Mod End
         -- 受注ヘッダアドオン.出荷先ID ＝ パーティサイトアドオンマスタ.パーティサイトIDかつ
     ||  ' AND   xcav.party_id               =    xcasv.party_id '
         -- パーティアドオンマスタ.パーティサイトID＝パーティサイトアドオンマスタ.パーティサイトIDかつ
@@ -1425,7 +1433,18 @@ AS
       -- 配送先IDがNULLの場合
       lv_select_c2 := '';
     ELSE
-      lv_select_c2 := ' AND NVL(xoha.result_deliver_to_id,xoha.deliver_to_id) = ''' || in_deliver_to_id ||  '''';
+-- Ver1.27 Y.Kazama 本番障害#1398 Mod Start
+      -- 配送先IDを基に配送先コード取得
+      SELECT xcasv.party_site_number
+      INTO   lt_party_site_number
+      FROM   xxcmn_cust_acct_sites2_v  xcasv
+      WHERE  xcasv.party_site_id     = in_deliver_to_id
+      AND    xcasv.party_site_status = 'A'  -- サイトステータス[A:有効]
+      ;
+--
+      lv_select_c2 := ' AND NVL(xoha.result_deliver_to,xoha.deliver_to) = ''' || lt_party_site_number ||  '''';
+--      lv_select_c2 := ' AND NVL(xoha.result_deliver_to_id,xoha.deliver_to_id) = ''' || in_deliver_to_id ||  '''';
+-- Ver1.27 Y.Kazama 本番障害#1398 Mod End
     END IF;
 --
     -- パラメータ.依頼No NULLチェック
@@ -2702,7 +2721,10 @@ AS
                                             gv_cnst_msg_002);
       -- 警告をセット
       lv_warn_message := lv_errmsg;
-      ln_warn_cnt := 1 ;
+-- Ver1.27 Y.Kazama 本番障害#1398 Mod Start
+      ln_warn_cnt := 0 ;
+--      ln_warn_cnt := 1 ;
+-- Ver1.27 Y.Kazama 本番障害#1398 Mod End
       RAISE global_process_warn;
 --
     -- 出荷依頼情報対象データあり
